@@ -83,7 +83,7 @@ describe("export routes", () => {
   });
 
   it("POST / returns 403 for authz errors", async () => {
-    const { AuthzError } = await import("../lib/errors.js");
+    const { AuthzError } = await import("@auction/exports/providers");
     const createExport = vi
       .fn()
       .mockRejectedValue(new AuthzError("Finance export requires finance.read", 403));

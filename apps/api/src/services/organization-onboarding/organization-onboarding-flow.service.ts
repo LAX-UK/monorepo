@@ -1,10 +1,20 @@
 import type { Database } from "@auction/db";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import type { LegalEntityDocumentUploadInput } from "@auction/validators";
+import { DrizzleLegalEntityOnboardingRepository } from "../../repositories/drizzle-legal-entity-onboarding.repository.js";
+import type { ILegalEntityOnboardingRepository } from "../../repositories/interfaces/legal-entity-onboarding.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IOrganizationOnboardingService } from "../interfaces/organization-onboarding.js";
 import type { IConnectAccountSync, IConnectSessionProvider } from "../interfaces/stripe-connect.js";
+import {
+  type IOrganizationOnboardingFlowService,
+  createOnboardingContext,
+} from "./onboarding-context.js";
+import { OnboardingProfileService } from "./onboarding-profile.service.js";
+import { OnboardingReadService } from "./onboarding-read.service.js";
+import { OnboardingStepService } from "./onboarding-step.service.js";
+import { OnboardingSubmitService } from "./onboarding-submit.service.js";
 import { attachDocument, detachDocument } from "./org-onboarding-documents.js";
 import type {
   OrganizationOnboardingFlowOptions,
@@ -12,14 +22,15 @@ import type {
   OrganizationOnboardingProfileInput,
   SubmitForReviewResult,
 } from "./org-onboarding-mappers.js";
-import {
-  completeDetailsWithType,
-  completeStep,
-  getOnboarding,
-  submitForReview,
-  updateProfile,
-} from "./org-onboarding-progress.js";
 import type { OrganizationOnboardingFlowDeps } from "./org-onboarding-types.js";
+
+export type {
+  IOnboardingProfileService,
+  IOnboardingReadService,
+  IOnboardingStepService,
+  IOnboardingSubmitService,
+  IOrganizationOnboardingFlowService,
+} from "./onboarding-context.js";
 
 export type {
   OrganizationOnboardingDocumentDto,
@@ -29,8 +40,12 @@ export type {
   SubmitForReviewResult,
 } from "./org-onboarding-mappers.js";
 
-export class OrganizationOnboardingFlowService {
+export class OrganizationOnboardingFlowService implements IOrganizationOnboardingFlowService {
   private readonly deps: OrganizationOnboardingFlowDeps;
+  private readonly read: OnboardingReadService;
+  private readonly profile: OnboardingProfileService;
+  private readonly step: OnboardingStepService;
+  private readonly submit: OnboardingSubmitService;
 
   constructor(
     db: Database,
@@ -41,6 +56,7 @@ export class OrganizationOnboardingFlowService {
       | (IConnectAccountSync & Pick<IConnectSessionProvider, "isConfigured">)
       | null = null,
     options: OrganizationOnboardingFlowOptions = {},
+    onboardingRepo?: ILegalEntityOnboardingRepository,
   ) {
     this.deps = {
       db,
@@ -50,10 +66,25 @@ export class OrganizationOnboardingFlowService {
       stripeConnect,
       options,
     };
+
+    const ctx = createOnboardingContext({
+      db,
+      onboardingRepo: onboardingRepo ?? new DrizzleLegalEntityOnboardingRepository(db),
+      legalEntityRepository,
+      organizationOnboardingService,
+      domainEventPublisher,
+      stripeConnect,
+      options,
+    });
+
+    this.read = new OnboardingReadService(ctx);
+    this.profile = new OnboardingProfileService(ctx);
+    this.step = new OnboardingStepService(ctx);
+    this.submit = new OnboardingSubmitService(ctx);
   }
 
   getOnboarding(userId: string, entityId: string): Promise<OrganizationOnboardingGetResult | null> {
-    return getOnboarding(this.deps, userId, entityId);
+    return this.read.getOnboarding(userId, entityId);
   }
 
   updateProfile(
@@ -63,7 +94,7 @@ export class OrganizationOnboardingFlowService {
   ): Promise<
     { ok: true } | { ok: false; code: "not_found" | "forbidden" | "entity_not_editable" }
   > {
-    return updateProfile(this.deps, userId, entityId, input);
+    return this.profile.updateProfile(userId, entityId, input);
   }
 
   attachDocument(
@@ -86,18 +117,18 @@ export class OrganizationOnboardingFlowService {
     userId: string,
     entityId: string,
     step: OrgOnboardingStepKey,
-  ): ReturnType<typeof completeStep> {
-    return completeStep(this.deps, userId, entityId, step);
+  ): ReturnType<OnboardingStepService["completeStep"]> {
+    return this.step.completeStep(userId, entityId, step);
   }
 
   completeDetailsWithType(
     userId: string,
     entityId: string,
-  ): ReturnType<typeof completeDetailsWithType> {
-    return completeDetailsWithType(this.deps, userId, entityId);
+  ): ReturnType<OnboardingStepService["completeDetailsWithType"]> {
+    return this.step.completeDetailsWithType(userId, entityId);
   }
 
   submitForReview(userId: string, entityId: string): Promise<SubmitForReviewResult> {
-    return submitForReview(this.deps, userId, entityId);
+    return this.submit.submitForReview(userId, entityId);
   }
 }

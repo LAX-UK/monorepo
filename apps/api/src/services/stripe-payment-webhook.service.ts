@@ -6,27 +6,21 @@ import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 import { handleChargeRefunded } from "./stripe-webhook/checkout-refund-handlers.js";
+import { createPaymentWebhookHandlers } from "./stripe-webhook/create-payment-webhook-handlers.js";
 import {
   handleDisputeClosed,
   handleDisputeCreated,
   handleDisputeFundsWithdrawn,
 } from "./stripe-webhook/dispute-handlers.js";
-import {
-  handleCheckoutSessionAsyncPaymentFailed,
-  handlePaymentIntentCanceled,
-  handlePaymentIntentFailed,
-  handlePaymentIntentPartiallyFunded,
-  handlePaymentIntentProcessing,
-  handlePaymentIntentSucceeded,
-} from "./stripe-webhook/payment-intent-handlers.js";
 import type { StripePaymentWebhookDeps } from "./stripe-webhook/payment-webhook-lookup.js";
 import type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
 
 export type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
 
-/** Service for handling Stripe payment-related webhooks. */
+/** Routes Stripe payment webhooks to segregated handlers (no business logic). */
 export class StripePaymentWebhookService {
   private readonly deps: StripePaymentWebhookDeps;
+  private readonly handlers: ReturnType<typeof createPaymentWebhookHandlers>;
 
   constructor(
     db: Database,
@@ -44,48 +38,49 @@ export class StripePaymentWebhookService {
       paymentCapture,
       domainEventPublisher,
     };
+    this.handlers = createPaymentWebhookHandlers(this.deps);
   }
 
   async handlePaymentIntentSucceeded(
     event: Stripe.Event,
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<PaymentWebhookResult> {
-    return handlePaymentIntentSucceeded(this.deps, event, paymentIntent);
+    return this.handlers.paymentIntentSucceeded.handle(event, paymentIntent);
   }
 
   async handlePaymentIntentProcessing(
     event: Stripe.Event,
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<PaymentWebhookResult> {
-    return handlePaymentIntentProcessing(this.deps, event, paymentIntent);
+    return this.handlers.paymentIntentProcessing.handle(event, paymentIntent);
   }
 
   async handlePaymentIntentPartiallyFunded(
     event: Stripe.Event,
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<PaymentWebhookResult> {
-    return handlePaymentIntentPartiallyFunded(this.deps, event, paymentIntent);
+    return this.handlers.paymentIntentPartiallyFunded.handle(event, paymentIntent);
   }
 
   async handlePaymentIntentFailed(
     event: Stripe.Event,
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<PaymentWebhookResult> {
-    return handlePaymentIntentFailed(this.deps, event, paymentIntent);
+    return this.handlers.paymentIntentFailed.handle(event, paymentIntent);
   }
 
   async handlePaymentIntentCanceled(
     event: Stripe.Event,
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<PaymentWebhookResult> {
-    return handlePaymentIntentCanceled(this.deps, event, paymentIntent);
+    return this.handlers.paymentIntentCanceled.handle(event, paymentIntent);
   }
 
   async handleCheckoutSessionAsyncPaymentFailed(
     event: Stripe.Event,
     session: Stripe.Checkout.Session,
   ): Promise<PaymentWebhookResult> {
-    return handleCheckoutSessionAsyncPaymentFailed(this.deps, event, session);
+    return this.handlers.checkoutSessionAsyncPaymentFailed.handle(event, session);
   }
 
   async handleDisputeCreated(

@@ -37,33 +37,13 @@ export type FulfillConditionReportInput = {
   responseAttachmentUploadId?: string | undefined;
 };
 
-export interface IConditionReportService {
+export interface IConditionReportBuyerService {
   createRequest(input: {
     userId: string;
     lotId: string;
     requestingLegalEntityId?: string | undefined;
     requestNote?: string | undefined;
   }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>>;
-
-  listForAdmin(input: {
-    status?: "open" | "pending" | "in_progress" | "fulfilled" | "declined" | undefined;
-    lotId?: string | undefined;
-    limit: number;
-    offset: number;
-  }): Promise<{ items: ConditionReportRequestListRow[]; total: number }>;
-
-  fulfill(input: FulfillConditionReportInput): Promise<Result<Lot, ConditionReportServiceError>>;
-
-  markInProgress(input: {
-    id: string;
-    actorUserId: string;
-  }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>>;
-
-  decline(input: {
-    id: string;
-    fulfilledByUserId: string;
-    responseNote?: string | undefined;
-  }): Promise<Result<void, ConditionReportServiceError>>;
 
   findForBuyerOnLot(input: {
     userId: string;
@@ -76,3 +56,39 @@ export interface IConditionReportService {
     offset: number;
   }): Promise<{ items: BuyerConditionReportListRow[]; total: number }>;
 }
+
+export interface IConditionReportAdminService {
+  listForAdmin(input: {
+    status?: "open" | "pending" | "in_progress" | "fulfilled" | "declined" | undefined;
+    lotId?: string | undefined;
+    limit: number;
+    offset: number;
+  }): Promise<{ items: ConditionReportRequestListRow[]; total: number }>;
+
+  markInProgress(input: {
+    id: string;
+    actorUserId: string;
+  }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>>;
+
+  fulfill(input: FulfillConditionReportInput): Promise<Result<Lot, ConditionReportServiceError>>;
+
+  decline(input: {
+    id: string;
+    fulfilledByUserId: string;
+    responseNote?: string | undefined;
+  }): Promise<Result<void, ConditionReportServiceError>>;
+}
+
+export interface IConditionReportFulfilmentService {
+  fulfill(input: FulfillConditionReportInput): Promise<Result<Lot, ConditionReportServiceError>>;
+
+  decline(input: {
+    id: string;
+    fulfilledByUserId: string;
+    responseNote?: string | undefined;
+  }): Promise<Result<void, ConditionReportServiceError>>;
+}
+
+export interface IConditionReportService
+  extends IConditionReportBuyerService,
+    IConditionReportAdminService {}

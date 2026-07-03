@@ -1,7 +1,6 @@
-import type { Database } from "@auction/db";
-import { emailEvent, emailOutbox, emailSuppression, user } from "@auction/db/schema";
 import { emailHash } from "@auction/email";
-import { and, eq, gt, sql } from "drizzle-orm";
+import type { IEmailSuppressionRepository } from "../repositories/interfaces/email-suppression.repository.js";
+import type { IEmailWebhookIngestRepository } from "../repositories/interfaces/email-webhook-ingest.repository.js";
 
 export type PostmarkWebhookPayload = Record<string, unknown> & {
   RecordType?: string;
@@ -15,7 +14,8 @@ export type PostmarkWebhookPayload = Record<string, unknown> & {
 
 export class PostmarkWebhookService {
   constructor(
-    private readonly db: Database,
+    private readonly emailWebhookIngest: IEmailWebhookIngestRepository,
+    private readonly emailSuppressions: IEmailSuppressionRepository,
     private readonly onUnsubscribe: (token: string) => Promise<void>,
   ) {}
 
@@ -24,7 +24,7 @@ export class PostmarkWebhookService {
     const messageId = String(payload.MessageID ?? payload.MessageId ?? "");
     const eventType = mapRecordType(recordType, payload);
 
-    await this.db.insert(emailEvent).values({
+    await this.emailWebhookIngest.insertEmailEvent({
       messageId: messageId || null,
       type: eventType,
       provider: "postmark",
@@ -49,35 +49,23 @@ export class PostmarkWebhookService {
     payload: PostmarkWebhookPayload,
   ): Promise<void> {
     const reason = eventType === "complaint" ? "complaint" : ("hard_bounce" as const);
+    const emailStatus = eventType === "complaint" ? "complained" : "bounced";
 
     if (messageId) {
-      const [row] = await this.db
-        .select({
-          id: emailOutbox.id,
-          userId: emailOutbox.userId,
-          toEmailHash: emailOutbox.toEmailHash,
-        })
-        .from(emailOutbox)
-        .where(eq(emailOutbox.messageId, messageId))
-        .limit(1);
+      const row = await this.emailWebhookIngest.findOutboxByMessageId(messageId);
       if (row) {
-        await upsertSuppressionAndMaybeUser(this.db, row.toEmailHash, reason, row.userId);
+        await this.emailSuppressions.upsert(row.toEmailHash, reason);
+        if (row.userId) {
+          await this.emailWebhookIngest.updateUserEmailStatusByUserId(row.userId, emailStatus);
+        }
         return;
       }
     }
 
     const addr = recipientEmailFromPostmarkPayload(payload);
     if (!addr) return;
-    const hash = emailHash(addr);
-    await upsertSuppressionAndMaybeUser(this.db, hash, reason, null);
-
-    await this.db
-      .update(user)
-      .set({
-        emailStatus: eventType === "complaint" ? "complained" : "bounced",
-        emailStatusChangedAt: new Date(),
-      })
-      .where(sql`lower(${user.email}) = ${addr}`);
+    await this.emailSuppressions.upsert(emailHash(addr), reason);
+    await this.emailWebhookIngest.updateUserEmailStatusByEmail(addr, emailStatus);
   }
 
   private async maybeSuppressAfterSoftBounceThreshold(
@@ -85,36 +73,13 @@ export class PostmarkWebhookService {
   ): Promise<void> {
     const addr = recipientEmailFromPostmarkPayload(payload);
     if (!addr) return;
-    const addrLower = addr.toLowerCase();
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [row] = await this.db
-      .select({
-        n: sql<number>`count(*)::int`,
-      })
-      .from(emailEvent)
-      .where(
-        and(
-          eq(emailEvent.type, "soft_bounce"),
-          gt(emailEvent.receivedAt, since),
-          sql`(lower(coalesce(${emailEvent.payload}->>'Email','')) = ${addrLower} OR lower(coalesce(${emailEvent.payload}->>'OriginalRecipient','')) = ${addrLower})`,
-        ),
-      );
-    const count = row?.n ?? 0;
+    const count = await this.emailWebhookIngest.countSoftBouncesForEmailSince(
+      addr.toLowerCase(),
+      since,
+    );
     if (count < 3) return;
-    const hash = emailHash(addr);
-    await this.db
-      .insert(emailSuppression)
-      .values({
-        emailHash: hash,
-        reason: "soft_bounce_threshold",
-      })
-      .onConflictDoUpdate({
-        target: emailSuppression.emailHash,
-        set: {
-          reason: "soft_bounce_threshold",
-          createdAt: new Date(),
-        },
-      });
+    await this.emailSuppressions.upsert(emailHash(addr), "soft_bounce_threshold");
   }
 }
 
@@ -165,35 +130,4 @@ function recipientEmailFromPostmarkPayload(payload: PostmarkWebhookPayload): str
     }
   }
   return null;
-}
-
-async function upsertSuppressionAndMaybeUser(
-  db: Database,
-  emailHashValue: string,
-  reason: "complaint" | "hard_bounce",
-  userId: string | null,
-) {
-  await db
-    .insert(emailSuppression)
-    .values({
-      emailHash: emailHashValue,
-      reason,
-    })
-    .onConflictDoUpdate({
-      target: emailSuppression.emailHash,
-      set: {
-        reason,
-        createdAt: new Date(),
-      },
-    });
-
-  if (userId) {
-    await db
-      .update(user)
-      .set({
-        emailStatus: reason === "complaint" ? "complained" : "bounced",
-        emailStatusChangedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
-  }
 }

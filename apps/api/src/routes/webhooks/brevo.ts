@@ -1,14 +1,6 @@
-import type { EmailSuppressionReason } from "@auction/db/schema";
-import { emailSuppression, user } from "@auction/db/schema";
-import { emailHash } from "@auction/email";
-import { sql } from "drizzle-orm";
 import { Hono } from "hono";
-import type { Container } from "../../container.js";
-
-type BrevoPayload = Record<string, unknown> & {
-  event?: string;
-  email?: string;
-};
+import type { ContainerBrevoWebhookRoutesSlice } from "../../container.js";
+import type { BrevoWebhookPayload } from "../../services/brevo-webhook-ingest.service.js";
 
 let warnedMissingSecret = false;
 
@@ -17,7 +9,7 @@ let warnedMissingSecret = false;
  * events into `email_suppression` (and `user.email_status` for bounce/complaint), so
  * opt-outs are honored by the contact-sync job and survive a later switch to Zoho.
  */
-export function createBrevoWebhookRoutes(container: Container) {
+export function createBrevoWebhookRoutes(container: ContainerBrevoWebhookRoutesSlice) {
   const r = new Hono();
 
   r.post("/", async (c) => {
@@ -29,27 +21,8 @@ export function createBrevoWebhookRoutes(container: Container) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const payload = (await c.req.json().catch(() => ({}))) as BrevoPayload;
-    const event = String(payload.event ?? "").toLowerCase();
-    const reason = mapEventToSuppressionReason(event);
-    const email = normalizeEmail(payload.email);
-
-    if (!reason || !email) {
-      // Delivery/open/click and unknown events are acknowledged but not acted on.
-      return c.json({ ok: true });
-    }
-
-    await upsertSuppression(container, emailHash(email), reason);
-
-    if (reason === "hard_bounce" || reason === "complaint") {
-      await container.db
-        .update(user)
-        .set({
-          emailStatus: reason === "complaint" ? "complained" : "bounced",
-          emailStatusChangedAt: new Date(),
-        })
-        .where(sql`lower(${user.email}) = ${email}`);
-    }
+    const payload = (await c.req.json().catch(() => ({}))) as BrevoWebhookPayload;
+    await container.brevoWebhookIngestService.handle(payload);
 
     return c.json({ ok: true });
   });
@@ -73,44 +46,4 @@ function isAuthorized(
   }
   const provided = c.req.query("secret") ?? c.req.header("x-brevo-secret");
   return provided === expected;
-}
-
-function mapEventToSuppressionReason(event: string): EmailSuppressionReason | null {
-  switch (event) {
-    case "unsubscribe":
-    case "unsubscribed":
-    case "list_unsubscribe":
-    case "blocked":
-    case "blocklist":
-    case "blacklist":
-      return "unsubscribe";
-    case "spam":
-    case "complaint":
-      return "complaint";
-    case "hard_bounce":
-    case "hardbounce":
-      return "hard_bounce";
-    default:
-      return null;
-  }
-}
-
-function normalizeEmail(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim().toLowerCase();
-  return trimmed.includes("@") && trimmed.length > 3 ? trimmed : null;
-}
-
-async function upsertSuppression(
-  container: Container,
-  emailHashValue: string,
-  reason: EmailSuppressionReason,
-): Promise<void> {
-  await container.db
-    .insert(emailSuppression)
-    .values({ emailHash: emailHashValue, reason })
-    .onConflictDoUpdate({
-      target: emailSuppression.emailHash,
-      set: { reason, createdAt: new Date() },
-    });
 }

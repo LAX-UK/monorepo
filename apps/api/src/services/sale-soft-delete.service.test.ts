@@ -5,6 +5,8 @@ import {
 } from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { ISaleSoftDeleteGuardReader } from "../repositories/interfaces/sale-soft-delete-guard.reader.js";
+import { CatalogSoftDeleteOrchestrator } from "./catalog/catalog-soft-delete-orchestrator.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
@@ -75,6 +77,32 @@ function baseLot(overrides: Partial<Lot> = {}): Lot {
   } as Lot;
 }
 
+function createService(input: {
+  saleRepo?: ISaleRepository;
+  lotRepo?: ILotRepository;
+  guardReader?: ISaleSoftDeleteGuardReader;
+  sideEffects?: ISaleSoftDeleteSideEffects;
+  jobScheduler?: ILotJobScheduler | null;
+  db?: unknown;
+  domainEventPublisher?: DomainEventPublisher | null;
+}) {
+  const jobScheduler = input.jobScheduler ?? null;
+  const db = input.db ?? null;
+  const domainEventPublisher = input.domainEventPublisher ?? null;
+  const orchestrator = new CatalogSoftDeleteOrchestrator(
+    jobScheduler,
+    db as never,
+    domainEventPublisher,
+  );
+  return new SaleSoftDeleteService(
+    input.saleRepo ?? ({} as ISaleRepository),
+    input.lotRepo ?? ({} as ILotRepository),
+    input.guardReader ?? ({} as ISaleSoftDeleteGuardReader),
+    input.sideEffects ?? ({} as ISaleSoftDeleteSideEffects),
+    orchestrator,
+  );
+}
+
 describe("SaleSoftDeleteService", () => {
   it("soft deletes draft sale and cancels lot jobs", async () => {
     const saleRow = baseSale();
@@ -89,23 +117,24 @@ describe("SaleSoftDeleteService", () => {
     const lotRepo = {
       findBySaleId: vi.fn().mockResolvedValue([lotRow]),
     } as unknown as ILotRepository;
-    const sideEffects = {
+    const guardReader = {
       countGuardsForSale: vi
         .fn()
         .mockResolvedValue({ bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }),
-      softDeleteCascade,
-    } as unknown as ISaleSoftDeleteSideEffects;
+    } as unknown as ISaleSoftDeleteGuardReader;
+    const sideEffects = { softDeleteCascade } as unknown as ISaleSoftDeleteSideEffects;
     const jobScheduler = { cancelLotJobs } as unknown as ILotJobScheduler;
     const domainEventPublisher = { publish } as unknown as DomainEventPublisher;
 
-    const svc = new SaleSoftDeleteService(
+    const svc = createService({
       saleRepo,
       lotRepo,
+      guardReader,
       sideEffects,
       jobScheduler,
-      {} as never,
+      db: {},
       domainEventPublisher,
-    );
+    });
 
     const result = await svc.softDelete(
       "admin-1",
@@ -126,14 +155,7 @@ describe("SaleSoftDeleteService", () => {
   });
 
   it("denies client role", async () => {
-    const svc = new SaleSoftDeleteService(
-      {} as ISaleRepository,
-      {} as ILotRepository,
-      {} as ISaleSoftDeleteSideEffects,
-      null,
-      null,
-      null,
-    );
+    const svc = createService({});
     const result = await svc.softDelete(
       "u1",
       "client",
@@ -147,14 +169,7 @@ describe("SaleSoftDeleteService", () => {
 
   it("returns not found for missing sale", async () => {
     const saleRepo = { findById: vi.fn().mockResolvedValue(null) } as unknown as ISaleRepository;
-    const svc = new SaleSoftDeleteService(
-      saleRepo,
-      {} as ILotRepository,
-      {} as ISaleSoftDeleteSideEffects,
-      null,
-      null,
-      null,
-    );
+    const svc = createService({ saleRepo });
     const result = await svc.softDelete(
       "admin-1",
       "staff",
@@ -169,14 +184,7 @@ describe("SaleSoftDeleteService", () => {
   it("rejects confirmation phrase mismatch", async () => {
     const saleRow = baseSale({ title: "Evening Sale" });
     const saleRepo = { findById: vi.fn().mockResolvedValue(saleRow) } as unknown as ISaleRepository;
-    const svc = new SaleSoftDeleteService(
-      saleRepo,
-      {} as ILotRepository,
-      {} as ISaleSoftDeleteSideEffects,
-      null,
-      null,
-      null,
-    );
+    const svc = createService({ saleRepo });
     const result = await svc.softDelete(
       "admin-1",
       "staff",
@@ -198,20 +206,11 @@ describe("SaleSoftDeleteService", () => {
     const guardsMap = new Map([
       ["s1", { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }],
     ]);
-    const sideEffects = {
-      countGuardsForSale: vi.fn(),
+    const guardReader = {
       countGuardsForSales: vi.fn().mockResolvedValue(guardsMap),
-      softDeleteCascade: vi.fn(),
-    } as unknown as ISaleSoftDeleteSideEffects;
+    } as unknown as ISaleSoftDeleteGuardReader;
 
-    const svc = new SaleSoftDeleteService(
-      {} as ISaleRepository,
-      {} as ILotRepository,
-      sideEffects,
-      null,
-      null,
-      null,
-    );
+    const svc = createService({ guardReader });
 
     const result = await svc.getDeleteEligibilityBatch([
       { sale: draft, lots: [lotRow] },
@@ -221,7 +220,7 @@ describe("SaleSoftDeleteService", () => {
     expect(result.size).toBe(1);
     expect(result.get("s1")?.canDelete).toBe(true);
     expect(result.has("s2")).toBe(false);
-    expect(sideEffects.countGuardsForSales).toHaveBeenCalledWith(["s1"]);
+    expect(guardReader.countGuardsForSales).toHaveBeenCalledWith(["s1"]);
   });
 
   it("bulkSoftDelete deletes eligible sales and reports ineligible per id", async () => {
@@ -235,27 +234,27 @@ describe("SaleSoftDeleteService", () => {
     const lotRepo = {
       findBySaleId: vi.fn().mockResolvedValue([lotRow]),
     } as unknown as ILotRepository;
-    const sideEffects = {
-      countGuardsForSale: vi
-        .fn()
-        .mockResolvedValue({ bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }),
+    const guardReader = {
       countGuardsForSales: vi.fn().mockResolvedValue(
         new Map([
           ["s1", { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }],
           ["s2", { bidCount: 0, paymentCount: 0, approvedRegistrationCount: 0 }],
         ]),
       ),
-      softDeleteCascade,
-    } as unknown as ISaleSoftDeleteSideEffects;
+    } as unknown as ISaleSoftDeleteGuardReader;
+    const sideEffects = { softDeleteCascade } as unknown as ISaleSoftDeleteSideEffects;
 
-    const svc = new SaleSoftDeleteService(
+    const svc = createService({
       saleRepo,
       lotRepo,
+      guardReader,
       sideEffects,
-      { cancelLotJobs: vi.fn(), cancelLotEndJob: vi.fn() } as unknown as ILotJobScheduler,
-      null,
-      { publish: vi.fn() } as unknown as DomainEventPublisher,
-    );
+      jobScheduler: {
+        cancelLotJobs: vi.fn(),
+        cancelLotEndJob: vi.fn(),
+      } as unknown as ILotJobScheduler,
+      domainEventPublisher: { publish: vi.fn() } as unknown as DomainEventPublisher,
+    });
 
     const result = await svc.bulkSoftDelete(
       "admin-1",

@@ -58,7 +58,7 @@ function buildLiveBiddingApp(partial: {
       },
     },
     telephoneBidBookingService: { countGlobalPending: vi.fn().mockResolvedValue(0) },
-    onsiteEventRsvpService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
+    onsiteEventAdminService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
   } as unknown as Container;
 
   const authenticator: IAuthenticator = {

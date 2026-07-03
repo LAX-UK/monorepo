@@ -1,24 +1,17 @@
-import type { Database } from "@auction/db";
-import { saleNotDeleted } from "@auction/db";
-import { sale, user } from "@auction/db/schema";
-import { PADDLE_NUMBER_MIN, saleAllowsInRoomCheckIn } from "@auction/validators";
-import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { Counter } from "prom-client";
-import { buyerEntityCanBid } from "../lib/buyer-entity-bid-eligibility.js";
-import { memberEligibleForStaffInRoomCheckIn } from "../lib/sale-registration-policy.js";
 import {
   type CheckInCandidateRow,
   type ISaleroomCheckInRepository,
   PaddleTakenError,
 } from "../repositories/drizzle-saleroom-check-in.repository.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type {
   ISaleroomCheckInService,
   SaleroomCheckInServiceError,
   SaleroomCheckInSuccess,
 } from "./interfaces/saleroom-check-in-service.js";
 import type { PaddleService } from "./paddle.service.js";
+import type { SaleroomCheckInEligibilityValidator } from "./saleroom-check-in-eligibility.validator.js";
 
 export const saleroomCheckInTotal = new Counter({
   name: "saleroom_check_in_total",
@@ -40,9 +33,8 @@ function prefixStaffNotes(raw: string | undefined): string | null {
 
 export class SaleroomCheckInService implements ISaleroomCheckInService {
   constructor(
-    private readonly db: Database,
     private readonly repo: ISaleroomCheckInRepository,
-    private readonly legalEntityRepository: ILegalEntityRepository,
+    private readonly eligibility: SaleroomCheckInEligibilityValidator,
     private readonly paddleService: PaddleService,
   ) {}
 
@@ -65,99 +57,16 @@ export class SaleroomCheckInService implements ISaleroomCheckInService {
     userId: string;
     buyerLegalEntityId: string;
     decidedByUserId: string;
+    assignPaddle?: boolean;
     bidLimit?: number | undefined;
     paddleNumber?: number | undefined;
     laxNotes?: string | undefined;
   }): Promise<Result<SaleroomCheckInSuccess, SaleroomCheckInServiceError>> {
-    const [saleRow] = await this.db
-      .select({ id: sale.id, status: sale.status, deliveryMode: sale.deliveryMode })
-      .from(sale)
-      .where(and(eq(sale.id, input.saleId), saleNotDeleted()))
-      .limit(1);
-
-    if (!saleRow) {
-      return this.serviceErr("Sale not found", 404);
-    }
-    if (!saleAllowsInRoomCheckIn(saleRow.deliveryMode)) {
-      saleroomCheckInTotal.inc({ outcome: "sale_not_saleroom" });
-      return this.serviceErr(
-        "Check-in is only available for onsite or hybrid sales",
-        400,
-        "sale_not_saleroom",
-      );
-    }
-    if (saleRow.status !== "scheduled" && saleRow.status !== "active") {
-      saleroomCheckInTotal.inc({ outcome: "sale_not_registerable" });
-      return this.serviceErr("This sale is not open for check-in", 400, "sale_not_registerable");
-    }
-
-    const [userRow] = await this.db
-      .select({
-        id: user.id,
-        emailVerified: user.emailVerified,
-        kycStatus: user.kycStatus,
-        suspendedAt: user.suspendedAt,
-      })
-      .from(user)
-      .where(eq(user.id, input.userId))
-      .limit(1);
-    if (!userRow) {
-      return this.serviceErr("User not found", 404);
-    }
-    if (userRow.suspendedAt != null) {
-      saleroomCheckInTotal.inc({ outcome: "user_suspended" });
-      return this.serviceErr("User account is suspended", 403, "user_suspended");
-    }
-    if (userRow.kycStatus !== "approved") {
-      saleroomCheckInTotal.inc({ outcome: "kyc_required" });
-      return this.serviceErr("Complete identity verification before check-in", 402, "kyc_required");
-    }
-    if (!userRow.emailVerified) {
-      saleroomCheckInTotal.inc({ outcome: "email_not_verified" });
-      return this.serviceErr("Email address must be verified", 400, "email_not_verified");
-    }
-
-    const membership = await this.legalEntityRepository.findActiveMembership(
-      input.userId,
-      input.buyerLegalEntityId,
-    );
-    if (!membership) {
-      saleroomCheckInTotal.inc({ outcome: "membership_required" });
-      return this.serviceErr(
-        "Not a member of the selected legal entity",
-        403,
-        "membership_required",
-      );
-    }
-
-    const entity = await this.legalEntityRepository.findById(input.buyerLegalEntityId);
-    if (!entity) {
-      return this.serviceErr("Legal entity not found", 404);
-    }
-    if (!buyerEntityCanBid(entity.status)) {
-      saleroomCheckInTotal.inc({ outcome: "entity_not_authorised" });
-      return this.serviceErr("Legal entity is not authorised to bid", 403, "entity_not_authorised");
-    }
-
-    if (!memberEligibleForStaffInRoomCheckIn(membership.role, entity.kind)) {
-      saleroomCheckInTotal.inc({ outcome: "not_eligible_for_check_in" });
-      return this.serviceErr(
-        "This membership is not eligible for in-room check-in",
-        400,
-        "not_eligible_for_check_in",
-      );
-    }
-
-    if (
-      input.paddleNumber != null &&
-      (!Number.isInteger(input.paddleNumber) || input.paddleNumber < PADDLE_NUMBER_MIN)
-    ) {
-      saleroomCheckInTotal.inc({ outcome: "invalid_paddle" });
-      return this.serviceErr(
-        `Paddle number must be at least ${PADDLE_NUMBER_MIN}`,
-        400,
-        "invalid_paddle",
-      );
+    const validation = await this.eligibility.validate(input);
+    if (validation.isErr()) {
+      const code = validation.error.code;
+      if (code) saleroomCheckInTotal.inc({ outcome: code });
+      return err(validation.error);
     }
 
     const bidLimitStr =
@@ -171,13 +80,12 @@ export class SaleroomCheckInService implements ISaleroomCheckInService {
 
     let result: Awaited<ReturnType<ISaleroomCheckInRepository["checkInWithPaddle"]>>;
     try {
-      // Atomic: approved registration + paddle assignment commit together, or roll
-      // back entirely on paddle conflict so staff never see a partial check-in.
       result = await this.repo.checkInWithPaddle({
         saleId: input.saleId,
         userId: input.userId,
         buyerLegalEntityId: input.buyerLegalEntityId,
         decidedByUserId: input.decidedByUserId,
+        assignPaddle: input.assignPaddle !== false,
         ...(bidLimitStr !== undefined ? { bidLimit: bidLimitStr } : {}),
         ...(laxNotes !== undefined ? { laxNotes } : {}),
         requestedPaddleNumber: input.paddleNumber ?? null,

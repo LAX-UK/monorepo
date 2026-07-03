@@ -38,12 +38,30 @@ describe("SaleroomOnBlockPolicy", () => {
     }
   });
 
-  it("rejects when session is not live", async () => {
+  it("rejects when session is paused", async () => {
     const db = {
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue([{ status: "paused", currentLotId: lotId }]),
+          }),
+        }),
+      }),
+    };
+    const policy = new SaleroomOnBlockPolicy(db as never);
+    const result = await policy.assertLotOnBlock(saleId, lotId);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("saleroom_paused");
+    }
+  });
+
+  it("rejects when session is not live", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ status: "scheduled", currentLotId: lotId }]),
           }),
         }),
       }),

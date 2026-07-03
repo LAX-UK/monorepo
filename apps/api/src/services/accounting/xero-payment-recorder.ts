@@ -17,8 +17,8 @@ import type {
   IXeroConnectionRepository,
   XeroConnectionRow,
 } from "../interfaces/xero-repositories.js";
-import { getXeroScopes } from "./xero-accounting.provider.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
+import { getXeroScopes } from "./xero-token.service.js";
 
 export interface IXeroPaymentRecorder {
   recordStripeCapture(

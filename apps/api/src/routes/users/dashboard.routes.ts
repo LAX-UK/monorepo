@@ -38,7 +38,10 @@ export function attachUserDashboardRoutes(r: UserHono, deps: UserRouteDeps): voi
     });
     // Use the full buyer payments presenter so manualReviewReason is derived
     // (AML/SoF compliance check included) — avoids a separate N+1 gate call.
-    const { data: payments } = await container.paymentService.listMyPaymentsForBuyerApi(userId, {});
+    const { data: payments } = await container.paymentBuyerService.listMyPaymentsForBuyerApi(
+      userId,
+      {},
+    );
     const byLot = new Map<string, (typeof payments)[number]>();
     for (const p of payments) {
       if (!byLot.has(p.lotId)) byLot.set(p.lotId, p);

@@ -1,7 +1,10 @@
 import type { LegalEntity } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
+import type { ISaleRegistrationRepository } from "../repositories/interfaces/sale-registration.repository.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import { SaleRegistrationService } from "./sale-registration.service.js";
+import type { ISaleRepository } from "./interfaces/repositories.js";
+import { SaleRegistrationBuyerService } from "./sale-registration/sale-registration-buyer.service.js";
+import { createSaleRegistrationContext } from "./sale-registration/sale-registration-context.js";
 
 const saleId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const userId = "user-1";
@@ -33,35 +36,22 @@ const baseEntity: LegalEntity = {
   updatedAt: new Date(),
 };
 
-function createDbMock(limitResults: unknown[][]) {
-  const queue = [...limitResults];
-  const insertReturning = vi.fn();
-  const db = {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          limit: vi.fn(() => Promise.resolve(queue.shift() ?? [])),
-        })),
-      })),
-    })),
-    insert: vi.fn(() => ({
-      values: vi.fn().mockReturnThis(),
-      returning: insertReturning,
-    })),
-    update: vi.fn(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          returning: vi.fn(() => Promise.resolve([])),
-        })),
-      })),
-    })),
-  };
-  return { db, insertReturning };
+function createBuyerService(input: {
+  saleRepo: ISaleRepository;
+  registrationRepo: ISaleRegistrationRepository;
+  legalEntityRepository: ILegalEntityRepository;
+}) {
+  const ctx = createSaleRegistrationContext({
+    db: {} as never,
+    saleRepo: input.saleRepo,
+    registrationRepo: input.registrationRepo,
+    legalEntityRepository: input.legalEntityRepository,
+  });
+  return new SaleRegistrationBuyerService(ctx);
 }
 
-describe("SaleRegistrationService.requestRegistration", () => {
+describe("SaleRegistrationBuyerService.requestRegistration", () => {
   it("returns no_registration_required for non-buyer_agent membership", async () => {
-    const { db } = createDbMock([[{ id: saleId, status: "active" }]]);
     const repo = {
       findActiveMembership: vi.fn().mockResolvedValue({
         legalEntityId: leId,
@@ -71,7 +61,14 @@ describe("SaleRegistrationService.requestRegistration", () => {
       }),
       findById: vi.fn(),
     } as unknown as ILegalEntityRepository;
-    const svc = new SaleRegistrationService(db as never, repo);
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue({ id: saleId, status: "active" }),
+    } as unknown as ISaleRepository;
+    const registrationRepo = {
+      findBySaleUserEntity: vi.fn(),
+      insert: vi.fn(),
+    } as unknown as ISaleRegistrationRepository;
+    const svc = createBuyerService({ saleRepo, registrationRepo, legalEntityRepository: repo });
     const r = await svc.requestRegistration({
       userId,
       saleId,
@@ -91,16 +88,16 @@ describe("SaleRegistrationService.requestRegistration", () => {
       saleId,
       userId,
       buyerLegalEntityId: leId,
-      status: "pending",
+      status: "pending" as const,
       requestedAt: new Date(),
       decidedAt: null,
       decidedByUserId: null,
       bidLimit: null,
       laxNotes: null,
       rejectionReason: null,
+      paddleNumber: null,
+      checkedInAt: null,
     };
-    const { db, insertReturning } = createDbMock([[{ id: saleId, status: "active" }], []]);
-    insertReturning.mockResolvedValue([insertedRow]);
     const repo = {
       findActiveMembership: vi.fn().mockResolvedValue({
         legalEntityId: leId,
@@ -110,7 +107,15 @@ describe("SaleRegistrationService.requestRegistration", () => {
       }),
       findById: vi.fn().mockResolvedValue(baseEntity),
     } as unknown as ILegalEntityRepository;
-    const svc = new SaleRegistrationService(db as never, repo);
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue({ id: saleId, status: "active" }),
+    } as unknown as ISaleRepository;
+    const insert = vi.fn().mockResolvedValue(insertedRow);
+    const registrationRepo = {
+      findBySaleUserEntity: vi.fn().mockResolvedValue(null),
+      insert,
+    } as unknown as ISaleRegistrationRepository;
+    const svc = createBuyerService({ saleRepo, registrationRepo, legalEntityRepository: repo });
     const r = await svc.requestRegistration({
       userId,
       saleId,
@@ -121,6 +126,6 @@ describe("SaleRegistrationService.requestRegistration", () => {
       expect(r.value.status).toBe("pending");
       expect(r.value.id).toBe("reg-new");
     }
-    expect(db.insert).toHaveBeenCalled();
+    expect(insert).toHaveBeenCalled();
   });
 });

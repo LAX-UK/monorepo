@@ -2,30 +2,34 @@ import { emailHash } from "@auction/email";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Container } from "../../container.js";
+import { BrevoWebhookIngestService } from "../../services/brevo-webhook-ingest.service.js";
 import { createBrevoWebhookRoutes } from "./brevo.js";
 
 const originalNodeEnv = process.env.NODE_ENV;
 
 function makeApp(nodeEnv: "development" | "production", secret?: string) {
   process.env.NODE_ENV = nodeEnv;
-  const inserted: unknown[] = [];
-  const onConflictDoUpdate = vi.fn(() => Promise.resolve(undefined));
-  const values = vi.fn((v: unknown) => {
-    inserted.push(v);
-    return { onConflictDoUpdate };
-  });
-  const updateWhere = vi.fn(() => Promise.resolve(undefined));
-  const db = {
-    insert: vi.fn(() => ({ values })),
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })),
+  const upserted: Array<{ emailHash: string; reason: string }> = [];
+  const emailSuppressions = {
+    upsert: vi.fn(async (hash: string, reason: string) => {
+      upserted.push({ emailHash: hash, reason });
+    }),
+  };
+  const updateUserEmailStatusByEmail = vi.fn(async () => undefined);
+  const emailWebhookIngest = {
+    insertEmailEvent: vi.fn(),
+    findOutboxByMessageId: vi.fn(),
+    countSoftBouncesForEmailSince: vi.fn(),
+    updateUserEmailStatusByEmail,
+    updateUserEmailStatusByUserId: vi.fn(),
   };
   const container = {
     env: { NODE_ENV: nodeEnv, BREVO_WEBHOOK_SECRET: secret },
-    db,
+    brevoWebhookIngestService: new BrevoWebhookIngestService(emailSuppressions, emailWebhookIngest),
   } as unknown as Container;
   const app = new Hono();
   app.route("/webhooks/brevo", createBrevoWebhookRoutes(container));
-  return { app, inserted, db, updateWhere };
+  return { app, upserted, updateUserEmailStatusByEmail };
 }
 
 function post(app: Hono, body: unknown, query = "") {
@@ -43,10 +47,10 @@ describe("Brevo webhook auth", () => {
   });
 
   it("fails closed when the secret is unset in production", async () => {
-    const { app, inserted } = makeApp("production");
+    const { app, upserted } = makeApp("production");
     const res = await post(app, { event: "unsubscribe", email: "a@b.com" });
     expect(res.status).toBe(503);
-    expect(inserted).toHaveLength(0);
+    expect(upserted).toHaveLength(0);
   });
 
   it("rejects a wrong secret", async () => {
@@ -56,10 +60,10 @@ describe("Brevo webhook auth", () => {
   });
 
   it("accepts a matching secret via query param", async () => {
-    const { app, inserted } = makeApp("production", "right");
+    const { app, upserted } = makeApp("production", "right");
     const res = await post(app, { event: "unsubscribe", email: "a@b.com" }, "?secret=right");
     expect(res.status).toBe(200);
-    expect(inserted).toHaveLength(1);
+    expect(upserted).toHaveLength(1);
   });
 });
 
@@ -70,44 +74,43 @@ describe("Brevo webhook event mapping", () => {
   });
 
   it("suppresses an unsubscribe without touching user.email_status", async () => {
-    const { app, inserted, db } = makeApp("development");
+    const { app, upserted, updateUserEmailStatusByEmail } = makeApp("development");
     const res = await post(app, { event: "unsubscribe", email: "Buyer@Example.com" });
     expect(res.status).toBe(200);
-    expect(inserted[0]).toMatchObject({
+    expect(upserted[0]).toMatchObject({
       reason: "unsubscribe",
       emailHash: emailHash("buyer@example.com"),
     });
-    expect(db.update).not.toHaveBeenCalled();
+    expect(updateUserEmailStatusByEmail).not.toHaveBeenCalled();
   });
 
   it("maps hardbounce alias to suppression + user.email_status=bounced", async () => {
-    const { app, inserted, db } = makeApp("development");
+    const { app, upserted, updateUserEmailStatusByEmail } = makeApp("development");
     const res = await post(app, { event: "hardbounce", email: "x@y.com" });
     expect(res.status).toBe(200);
-    expect(inserted[0]).toMatchObject({ reason: "hard_bounce" });
-    expect(db.update).toHaveBeenCalled();
+    expect(upserted[0]).toMatchObject({ reason: "hard_bounce" });
+    expect(updateUserEmailStatusByEmail).toHaveBeenCalledWith("x@y.com", "bounced");
   });
 
   it("maps a hard bounce to suppression + user.email_status=bounced", async () => {
-    const { app, inserted, db, updateWhere } = makeApp("development");
+    const { app, upserted, updateUserEmailStatusByEmail } = makeApp("development");
     const res = await post(app, { event: "hard_bounce", email: "x@y.com" });
     expect(res.status).toBe(200);
-    expect(inserted[0]).toMatchObject({ reason: "hard_bounce" });
-    expect(db.update).toHaveBeenCalled();
-    expect(updateWhere).toHaveBeenCalled();
+    expect(upserted[0]).toMatchObject({ reason: "hard_bounce" });
+    expect(updateUserEmailStatusByEmail).toHaveBeenCalledWith("x@y.com", "bounced");
   });
 
   it("ignores delivery/open events", async () => {
-    const { app, inserted } = makeApp("development");
+    const { app, upserted } = makeApp("development");
     const res = await post(app, { event: "delivered", email: "x@y.com" });
     expect(res.status).toBe(200);
-    expect(inserted).toHaveLength(0);
+    expect(upserted).toHaveLength(0);
   });
 
   it("ignores events with no email", async () => {
-    const { app, inserted } = makeApp("development");
+    const { app, upserted } = makeApp("development");
     const res = await post(app, { event: "unsubscribe" });
     expect(res.status).toBe(200);
-    expect(inserted).toHaveLength(0);
+    expect(upserted).toHaveLength(0);
   });
 });

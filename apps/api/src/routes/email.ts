@@ -1,8 +1,8 @@
 import { type Context, Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerEmailRoutesSlice } from "../container.js";
 import { verifyUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
 
-export function createEmailRoutes(container: Container) {
+export function createEmailRoutes(container: ContainerEmailRoutesSlice) {
   const r = new Hono();
 
   r.get("/unsubscribe", async (c) => {

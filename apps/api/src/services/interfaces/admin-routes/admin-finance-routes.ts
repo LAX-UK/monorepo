@@ -90,21 +90,28 @@ export type FinanceIssueSnapshot = {
   staleLeadOrganisationsCount: number;
 };
 
-export interface IAdminFinanceDashboardQueryService {
+export type StripeConnectRequirementEntityRow = {
+  id: string;
+  displayName: string;
+  status: string;
+  stripeConnectRequirementsCurrentlyDue: string[];
+};
+
+export interface IAdminFinanceIssueSnapshotQueryService {
   getFinanceIssueSnapshot(): Promise<FinanceIssueSnapshot>;
-  listStripeConnectRequirementEntities(): Promise<
-    {
-      id: string;
-      displayName: string;
-      status: string;
-      stripeConnectRequirementsCurrentlyDue: string[];
-    }[]
-  >;
+  listStripeConnectRequirementEntities(): Promise<StripeConnectRequirementEntityRow[]>;
+}
+
+export interface IAdminManualReviewPaymentQueryService {
   listManualReviewPayments(): Promise<
     import("../../../admin/admin-route-dtos.js").AdminManualReviewPaymentRow[]
   >;
   countManualReviewPayments(): Promise<number>;
 }
+
+export interface IAdminFinanceDashboardQueryService
+  extends IAdminFinanceIssueSnapshotQueryService,
+    IAdminManualReviewPaymentQueryService {}
 
 export type AdminFinanceRouteServices = {
   payments: IAdminPaymentsApplicationService;

@@ -1,46 +1,36 @@
-import type { Database } from "@auction/db";
-import { type Lot, type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import type { Lot } from "@auction/types";
 import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
-import { AuthzError, LotError } from "../lib/errors.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
-import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
-import type { ILotSoftDeleteSideEffects } from "./interfaces/lot-soft-delete.js";
+import { type AuthzError, LotError } from "../lib/errors.js";
+import type { ILotSoftDeleteGuardReader } from "../repositories/interfaces/lot-soft-delete-guard.reader.js";
+import type { CatalogSoftDeleteOrchestrator } from "./catalog/catalog-soft-delete-orchestrator.js";
+import type {
+  ILotSoftDeleteService,
+  ILotSoftDeleteSideEffects,
+  LotBulkSoftDeleteError,
+  LotBulkSoftDeleteResult,
+  LotDeleteEligibility,
+} from "./interfaces/lot-soft-delete.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import {
   type LotSoftDeleteContext,
   canLotSoftDelete,
   listLotSoftDeleteBlockers,
-  validateLotSoftDelete,
 } from "./lot-soft-delete.policy.js";
 
-export type LotDeleteEligibility = {
-  canDelete: boolean;
-  confirmationPhrase: string | null;
-  blockers: string[];
-};
+export type {
+  LotBulkSoftDeleteError,
+  LotBulkSoftDeleteResult,
+  LotDeleteEligibility,
+} from "./interfaces/lot-soft-delete.js";
 
-export type LotBulkSoftDeleteError = {
-  lotId: string;
-  message: string;
-  blockers?: string[];
-};
-
-export type LotBulkSoftDeleteResult = {
-  attempted: number;
-  failed: number;
-  errors: LotBulkSoftDeleteError[];
-  orphanDraftSales: Array<{ id: string; title: string }>;
-};
-
-export class LotSoftDeleteService {
+export class LotSoftDeleteService implements ILotSoftDeleteService {
   constructor(
     private readonly lotRepo: ILotRepository,
     private readonly saleRepo: ISaleRepository,
+    private readonly guardReader: ILotSoftDeleteGuardReader,
     private readonly sideEffects: ILotSoftDeleteSideEffects,
-    private readonly jobScheduler: ILotJobScheduler | null,
-    private readonly db: Database | null,
-    private readonly domainEventPublisher: DomainEventPublisher | null,
+    private readonly orchestrator: CatalogSoftDeleteOrchestrator,
   ) {}
 
   async getDeleteEligibility(lotId: string): Promise<LotDeleteEligibility | null> {
@@ -48,7 +38,7 @@ export class LotSoftDeleteService {
     if (!lot) return null;
 
     const sale = lot.saleId ? await this.saleRepo.findById(lot.saleId) : null;
-    const guards = await this.sideEffects.countGuardsForLot(lotId, lot.saleId);
+    const guards = await this.guardReader.countGuardsForLot(lotId, lot.saleId);
     const ctx: LotSoftDeleteContext = { lot, sale, guards };
     const blockers = listLotSoftDeleteBlockers(ctx);
     const canDelete = canLotSoftDelete(ctx);
@@ -71,7 +61,7 @@ export class LotSoftDeleteService {
     const sales = saleIds.length > 0 ? await this.saleRepo.findByIds(saleIds) : [];
     const saleById = new Map(sales.map((s) => [s.id, s]));
 
-    const guardsByLot = await this.sideEffects.countGuardsForLots(
+    const guardsByLot = await this.guardReader.countGuardsForLots(
       eligibleLots.map((l) => ({ lotId: l.id, saleId: l.saleId })),
     );
 
@@ -102,15 +92,12 @@ export class LotSoftDeleteService {
     confirmationPhrase: string,
     userStaffRole?: string | null,
   ): Promise<Result<void, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Only staff with auction.manage can delete lots", 403));
-    }
+    const auth = this.orchestrator.assertAuctionManageCapability(
+      userRole,
+      "Only staff with auction.manage can delete lots",
+      userStaffRole,
+    );
+    if (auth.isErr()) return err(auth.error);
 
     const lot = await this.lotRepo.findById(lotId);
     if (!lot) return err(new LotError("Lot not found", 404));
@@ -130,15 +117,12 @@ export class LotSoftDeleteService {
     confirmationPhrase: string,
     userStaffRole?: string | null,
   ): Promise<Result<LotBulkSoftDeleteResult, AuthzError | LotError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Only staff with auction.manage can delete lots", 403));
-    }
+    const auth = this.orchestrator.assertAuctionManageCapability(
+      userRole,
+      "Only staff with auction.manage can delete lots",
+      userStaffRole,
+    );
+    if (auth.isErr()) return err(auth.error);
 
     const expected = bulkLotDeleteConfirmationPhrase(ids.length);
     if (confirmationPhrase !== expected) {
@@ -153,7 +137,7 @@ export class LotSoftDeleteService {
     const [sales, guardsByLot] = await Promise.all([
       saleIds.length > 0 ? this.saleRepo.findByIds(saleIds) : Promise.resolve([]),
       lotsFound.length > 0
-        ? this.sideEffects.countGuardsForLots(
+        ? this.guardReader.countGuardsForLots(
             lotsFound.map((l) => ({ lotId: l.id, saleId: l.saleId })),
           )
         : Promise.resolve(new Map()),
@@ -244,40 +228,16 @@ export class LotSoftDeleteService {
       ctx ??
       (await (async () => {
         const sale = lot.saleId ? await this.saleRepo.findById(lot.saleId) : null;
-        const guards = await this.sideEffects.countGuardsForLot(lot.id, lot.saleId);
+        const guards = await this.guardReader.countGuardsForLot(lot.id, lot.saleId);
         return { lot, sale, guards };
       })());
-    const validation = validateLotSoftDelete(resolvedCtx);
-    if (validation.isErr()) return err(validation.error);
 
-    await this.jobScheduler?.cancelLotJobs(lot.id);
-
-    const deletedAt = new Date();
-    try {
-      await this.sideEffects.softDeleteLot({ lotId: lot.id, actorUserId, deletedAt });
-    } catch (error) {
-      if (error instanceof LotError) return err(error);
-      throw error;
-    }
-
-    await this.publishEvent(actorUserId, lot, deletedAt);
-
-    return ok(undefined);
-  }
-
-  private async publishEvent(actorUserId: string, lot: Lot, deletedAt: Date): Promise<void> {
-    if (!this.db || !this.domainEventPublisher) return;
-    await this.domainEventPublisher.publish(this.db, {
-      aggregateType: "lot",
-      aggregateId: lot.id,
-      eventType: "lot.soft_deleted",
-      payload: {
-        title: lot.title,
-        from_status: lot.status,
-        saleId: lot.saleId,
-        deleted_at: deletedAt.toISOString(),
-      },
+    return this.orchestrator.executeLotSoftDelete(
       actorUserId,
-    });
+      lot,
+      this.sideEffects,
+      ctx,
+      resolvedCtx,
+    );
   }
 }

@@ -1,5 +1,5 @@
+import { AuthzError } from "@auction/exports/providers";
 import { describe, expect, it, vi } from "vitest";
-import { AuthzError } from "../lib/errors.js";
 import { resolveIncludePii } from "./auth.js";
 import { type ExportProviderDeps, createExportProviders } from "./registry.js";
 

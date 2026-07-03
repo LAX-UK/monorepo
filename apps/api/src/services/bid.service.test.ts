@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BidError } from "../lib/errors.js";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import { BidService } from "./bid.service.js";
+import { SaleroomOnBlockPolicy } from "./bid/saleroom-on-block.policy.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
@@ -175,6 +176,10 @@ function createSaleroomSessionLookupMock(
     shouldEnforceOnBlockGateForLot: vi.fn().mockResolvedValue(opts.enforceOnBlock ?? false),
     isLotUnderLiveClerkSession: vi.fn().mockResolvedValue(opts.skipAntiSnipe ?? false),
   };
+}
+
+function createSaleroomOnBlockPolicy(): SaleroomOnBlockPolicy {
+  return new SaleroomOnBlockPolicy({} as Database);
 }
 
 function createMockFactory(
@@ -1111,6 +1116,7 @@ describe("BidService.placeBid", () => {
       ),
       lotJobs: { rescheduleEnd: vi.fn(), cancelLotJobs: vi.fn() },
       saleroomSessionLookup,
+      saleroomOnBlockPolicy: createSaleroomOnBlockPolicy(),
       bidPolicy: {
         antiSnipingWindowMs: 120_000,
         antiSnipingExtensionMs: 30_000,
@@ -1155,6 +1161,7 @@ describe("BidService.placeBid", () => {
       ),
       lotJobs: null,
       saleroomSessionLookup,
+      saleroomOnBlockPolicy: createSaleroomOnBlockPolicy(),
     });
 
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
@@ -1188,6 +1195,7 @@ describe("BidService.placeBid", () => {
       ),
       lotJobs: null,
       saleroomSessionLookup,
+      saleroomOnBlockPolicy: createSaleroomOnBlockPolicy(),
     });
 
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
@@ -1223,6 +1231,7 @@ describe("BidService.placeBid", () => {
       ),
       lotJobs: null,
       saleroomSessionLookup,
+      saleroomOnBlockPolicy: createSaleroomOnBlockPolicy(),
     });
 
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
@@ -1254,6 +1263,7 @@ describe("BidService.placeBid", () => {
       ),
       lotJobs: null,
       saleroomSessionLookup,
+      saleroomOnBlockPolicy: createSaleroomOnBlockPolicy(),
     });
 
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
@@ -1291,6 +1301,7 @@ describe("BidService.placeBid", () => {
       ),
       lotJobs: null,
       saleroomSessionLookup,
+      saleroomOnBlockPolicy: createSaleroomOnBlockPolicy(),
     });
 
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));

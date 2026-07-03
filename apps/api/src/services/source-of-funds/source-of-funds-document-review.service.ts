@@ -1,26 +1,23 @@
 import type { Database } from "@auction/db";
 import type {
   ISourceOfFundsDocumentReviewRepository,
-  SourceOfFundsDocumentChecks,
   SourceOfFundsDocumentReviewRow,
 } from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type {
+  ISourceOfFundsDocumentReviewService,
+  ReviewSourceOfFundsDocumentCommand,
+} from "../interfaces/source-of-funds-document-review.js";
 import type { ISourceOfFundsRepository } from "./source-of-funds.types.js";
 
 export const SOURCE_OF_FUNDS_DOCUMENT_REVIEWED_EVENT = "source_of_funds.document_reviewed";
 
+export type { ReviewSourceOfFundsDocumentCommand } from "../interfaces/source-of-funds-document-review.js";
+
 const NOTES_MAX = 2000;
 
-export type ReviewSourceOfFundsDocumentCommand = {
-  caseId: string;
-  documentId: string;
-  staffUserId: string;
-  checks: SourceOfFundsDocumentChecks;
-  note: string | null;
-};
-
-export class SourceOfFundsDocumentReviewService {
+export class SourceOfFundsDocumentReviewService implements ISourceOfFundsDocumentReviewService {
   constructor(
     private readonly caseRepo: ISourceOfFundsRepository,
     private readonly docRepo: ISourceOfFundsDocumentRepository,
@@ -85,7 +82,9 @@ export class SourceOfFundsDocumentReviewService {
   }
 }
 
-function normalizeChecks(input: SourceOfFundsDocumentChecks): SourceOfFundsDocumentChecks {
+function normalizeChecks(
+  input: ReviewSourceOfFundsDocumentCommand["checks"],
+): ReviewSourceOfFundsDocumentCommand["checks"] {
   return {
     matchesDeclaredSource: Boolean(input.matchesDeclaredSource),
     coversExposure: Boolean(input.coversExposure),

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { searchLegalEntitiesForAdminBrowse } from "./admin-legal-entity-browse.js";
+import { DrizzleAdminLegalEntityBrowseReader } from "../repositories/drizzle-admin-legal-entity-browse.reader.js";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -49,7 +49,7 @@ function mockDb(options: {
   return { db, listWhere, countWhere, limit, offset };
 }
 
-describe("searchLegalEntitiesForAdminBrowse", () => {
+describe("DrizzleAdminLegalEntityBrowseReader.searchLegalEntitiesBrowse", () => {
   it("returns rows and total", async () => {
     const updatedAt = new Date("2026-01-01T00:00:00.000Z");
     const { db } = mockDb({
@@ -67,7 +67,8 @@ describe("searchLegalEntitiesForAdminBrowse", () => {
       ],
     });
 
-    const result = await searchLegalEntitiesForAdminBrowse(db as never, {
+    const reader = new DrizzleAdminLegalEntityBrowseReader(db as never);
+    const result = await reader.searchLegalEntitiesBrowse({
       q: "acme",
       limit: 10,
       offset: 0,
@@ -90,7 +91,8 @@ describe("searchLegalEntitiesForAdminBrowse", () => {
   it("applies where when q is non-empty", async () => {
     const { db, listWhere } = mockDb({ countTotal: 0, rows: [] });
 
-    await searchLegalEntitiesForAdminBrowse(db as never, {
+    const reader = new DrizzleAdminLegalEntityBrowseReader(db as never);
+    await reader.searchLegalEntitiesBrowse({
       q: "acme",
       limit: 10,
       offset: 0,
@@ -102,7 +104,8 @@ describe("searchLegalEntitiesForAdminBrowse", () => {
   it("skips list where when no filters", async () => {
     const { db, listWhere } = mockDb({ countTotal: 0, rows: [] });
 
-    await searchLegalEntitiesForAdminBrowse(db as never, {
+    const reader = new DrizzleAdminLegalEntityBrowseReader(db as never);
+    await reader.searchLegalEntitiesBrowse({
       q: "   ",
       limit: 5,
       offset: 2,
@@ -127,7 +130,8 @@ describe("searchLegalEntitiesForAdminBrowse", () => {
       ],
     });
 
-    const result = await searchLegalEntitiesForAdminBrowse(db as never, {
+    const reader = new DrizzleAdminLegalEntityBrowseReader(db as never);
+    const result = await reader.searchLegalEntitiesBrowse({
       createdByUserId: "user-abc",
       limit: 10,
       offset: 0,
@@ -141,7 +145,8 @@ describe("searchLegalEntitiesForAdminBrowse", () => {
   it("filters by status and stripeDue", async () => {
     const { db, listWhere } = mockDb({ countTotal: 0, rows: [] });
 
-    await searchLegalEntitiesForAdminBrowse(db as never, {
+    const reader = new DrizzleAdminLegalEntityBrowseReader(db as never);
+    await reader.searchLegalEntitiesBrowse({
       status: "under_review",
       stripeDue: true,
       limit: 10,

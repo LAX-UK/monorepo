@@ -155,7 +155,7 @@ export class PayoutStatusTransitionError extends Error {
   }
 }
 
-export interface IPayoutService {
+export interface IPayoutSellerService {
   /** Seller-side: list payouts for the acting legal entity. */
   listForLegalEntity(legalEntityId: string, filter?: ListPayoutsFilter): Promise<Payout[]>;
 
@@ -166,37 +166,11 @@ export interface IPayoutService {
    * are not yet linked to a payout. Used for the "next payout" tile.
    */
   previewPending(legalEntityId: string): Promise<PendingPayoutPreview>;
+}
 
+export interface IPayoutAdminService {
   /** Admin: list payouts across all entities, with optional filter. */
   adminList(filter?: AdminListPayoutsFilter): Promise<Payout[]>;
-
-  /** Admin: roll captured payments for an entity into a single payout
-   * (settlement). Returns `no_pending_payments` when there is nothing to
-   * settle.
-   */
-  createSettlement(
-    actorUserId: string | null,
-    input: CreateSettlementInput,
-  ): Promise<CreateSettlementResult>;
-
-  /** Finance automation: create a settlement payout for every legal entity
-   * that currently has unlinked captured payments (`actorUserId` null for cron).
-   */
-  runBulkSettlement(
-    actorUserId: string | null,
-    opts?: { periodEnd?: Date },
-  ): Promise<BulkPayoutSettlementResult>;
-
-  /** Bulk cron: per legal entity, commit settlement (payout + lines +
-   * `payout.settlement_created`) in one DB transaction, then attempt Stripe
-   * transfer outside the transaction. Processes resume rows (`scheduled`, no
-   * transfer id, positive net) in a second pass. Continues after per-entity failures.
-   */
-  runBulkSettlementWithTransfers(
-    actorUserId: string | null,
-    port: BulkSettlementTransferPort,
-    opts?: { periodEnd?: Date },
-  ): Promise<BulkSettlementWithTransfersResult>;
 
   /** Admin: append a manual adjustment line. Adjustments require both a
    * `note` and a positive/negative `amount`. The payout's `gross / fee /
@@ -215,13 +189,6 @@ export interface IPayoutService {
    */
   markPaid(actorUserId: string, payoutId: string, input: MarkPaidInput): Promise<Payout>;
 
-  /** Stripe Connect webhook reconciliation (`transfer.created`, `transfer.updated`,
-   * `transfer.reversed`). Transfers complete synchronously so transfer.created
-   * maps to status "paid". Idempotent: missing payouts are ignored because
-   * webhook delivery can race settlement creation.
-   */
-  reconcileStripeTransfer(input: StripeTransferReconciliationInput): Promise<Payout | null>;
-
   /** Admin-only manual reversal bookkeeping (does not call Stripe). */
   adminManualReverse(
     actorUserId: string,
@@ -229,3 +196,49 @@ export interface IPayoutService {
     input: { reason: string },
   ): Promise<Payout>;
 }
+
+export interface IPayoutSettlementService {
+  /** Admin: roll captured payments for an entity into a single payout
+   * (settlement). Returns `no_pending_payments` when there is nothing to
+   * settle.
+   */
+  createSettlement(
+    actorUserId: string | null,
+    input: CreateSettlementInput,
+  ): Promise<CreateSettlementResult>;
+
+  /** Finance automation: create a settlement payout for every legal entity
+   * that currently has unlinked captured payments (`actorUserId` null for cron).
+   */
+  runBulkSettlement(
+    actorUserId: string | null,
+    opts?: { periodEnd?: Date },
+  ): Promise<BulkPayoutSettlementResult>;
+
+  /** Bulk settlement + transfer: per legal entity, commit settlement (payout +
+   * lines + `payout.settlement_created`) in one DB transaction, then attempt
+   * Stripe transfer outside the transaction. Processes resume rows (`scheduled`,
+   * no transfer id, positive net) in a second pass. Continues after per-entity failures.
+   */
+  runBulkSettlementWithTransfers(
+    actorUserId: string | null,
+    port: BulkSettlementTransferPort,
+    opts?: { periodEnd?: Date },
+  ): Promise<BulkSettlementWithTransfersResult>;
+}
+
+export interface IPayoutMaintenanceService {
+  /** Stripe Connect webhook reconciliation (`transfer.created`, `transfer.updated`,
+   * `transfer.reversed`). Transfers complete synchronously so transfer.created
+   * maps to status "paid". Idempotent: missing payouts are ignored because
+   * webhook delivery can race settlement creation.
+   */
+  reconcileStripeTransfer(input: StripeTransferReconciliationInput): Promise<Payout | null>;
+}
+
+/** Composite payout port — prefer segregated interfaces for new callers. */
+export interface IPayoutService
+  extends IPayoutSellerService,
+    IPayoutAdminService,
+    IPayoutSettlementService,
+    IPayoutMaintenanceService {}

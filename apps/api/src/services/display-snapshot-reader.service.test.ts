@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { DrizzleSaleroomDisplaySnapshotReader } from "../repositories/drizzle-saleroom-display-snapshot.reader.js";
 import { DisplaySnapshotReader } from "./display-snapshot-reader.service.js";
 
 function chain(resolved: unknown[]) {
@@ -18,7 +19,7 @@ describe("DisplaySnapshotReader", () => {
     ]);
     const db = { select: vi.fn().mockReturnValue(saleChain) };
     const reader = new DisplaySnapshotReader({
-      db: db as never,
+      reader: new DrizzleSaleroomDisplaySnapshotReader(db as never),
       mediaUrlResolver: { resolve: vi.fn() } as never,
     });
 
@@ -123,7 +124,7 @@ describe("DisplaySnapshotReader", () => {
       .mockResolvedValueOnce("https://cdn/next.jpg");
 
     const reader = new DisplaySnapshotReader({
-      db: db as never,
+      reader: new DrizzleSaleroomDisplaySnapshotReader(db as never),
       mediaUrlResolver: { resolve } as never,
     });
 
@@ -210,7 +211,7 @@ describe("DisplaySnapshotReader", () => {
     };
 
     const reader = new DisplaySnapshotReader({
-      db: db as never,
+      reader: new DrizzleSaleroomDisplaySnapshotReader(db as never),
       mediaUrlResolver: { resolve: vi.fn().mockResolvedValue(null) } as never,
     });
 
@@ -251,7 +252,7 @@ describe("DisplaySnapshotReader", () => {
 
     const resolve = vi.fn().mockResolvedValue("https://cdn/cover.jpg");
     const reader = new DisplaySnapshotReader({
-      db: db as never,
+      reader: new DrizzleSaleroomDisplaySnapshotReader(db as never),
       mediaUrlResolver: { resolve } as never,
     });
 

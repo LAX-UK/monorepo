@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type { Env } from "../env.js";
 import { NoOpErrorReporter } from "../infrastructure/no-op-error.reporter.js";
 import { SentryErrorReporter } from "../infrastructure/sentry-error.reporter.js";
+import { DrizzlePaymentDomainEventsRepository } from "../repositories/drizzle-payment-domain-events.repository.js";
 import { NoOpAccountingProvider } from "../services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "../services/accounting/xero-accounting.provider.js";
 import { XeroPaymentRecorder } from "../services/accounting/xero-payment-recorder.js";
@@ -10,6 +11,7 @@ import { AdminMetricsService } from "../services/admin-metrics.service.js";
 import { AmlSettlementCompliancePolicy } from "../services/aml/settlement-compliance.policy.js";
 import type { IErrorReporter } from "../services/interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "../services/interfaces/invoice-accounting.js";
+import type { IPaymentService } from "../services/interfaces/payment-service.js";
 import { LotFulfilmentService } from "../services/lot-fulfilment.service.js";
 import { LotInvoiceInitiationService } from "../services/lot-invoice-initiation.service.js";
 import { PaymentService } from "../services/payment.service.js";
@@ -41,7 +43,7 @@ export type ContainerPaymentsServices = {
   lotFulfilmentService: LotFulfilmentService;
   paymentCaptureService: PaymentCaptureService;
   stripeCheckoutService: StripeCheckoutService | null;
-  paymentService: PaymentService;
+  paymentService: IPaymentService;
   lotInvoiceInitiationService: LotInvoiceInitiationService;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   xeroOAuthService: XeroOAuthService | null;
@@ -87,7 +89,7 @@ export function createPaymentsServices(
     notificationOutboxService,
   } = platform;
   const { marketingEventService, mediaUrlResolver, sourceOfFundsService } = complianceMedia;
-  const { itemSubmissionService } = catalog;
+  const { itemSubmissionAdminApi } = catalog;
 
   const errorReporter: IErrorReporter = env.SENTRY_DSN_API
     ? new SentryErrorReporter()
@@ -155,7 +157,7 @@ export function createPaymentsServices(
       )
     : null;
 
-  const lotFulfilmentService = new LotFulfilmentService(db);
+  const lotFulfilmentService = new LotFulfilmentService(db, lotRepo);
 
   const paymentCaptureService = new PaymentCaptureService(
     db,
@@ -199,6 +201,10 @@ export function createPaymentsServices(
     amlHoldStore,
     sourceOfFundsService,
   );
+  const paymentDomainEventsRepository = new DrizzlePaymentDomainEventsRepository(
+    db,
+    domainEventPublisher,
+  );
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -229,6 +235,7 @@ export function createPaymentsServices(
     addressRepo,
     settlementCompliancePolicy,
     env.XERO_INVOICE_BLOCKING,
+    paymentDomainEventsRepository,
   );
 
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(
@@ -270,7 +277,7 @@ export function createPaymentsServices(
   const adminMetricsService = new AdminMetricsService(
     repoFactory,
     redis,
-    itemSubmissionService,
+    itemSubmissionAdminApi,
     paymentService,
   );
 

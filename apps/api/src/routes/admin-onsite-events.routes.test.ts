@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import type { Redis } from "ioredis";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
-import type { IOnsiteEventCheckInService } from "../services/interfaces/onsite-event-check-in-service.js";
-import type { IOnsiteEventRsvpService } from "../services/interfaces/onsite-event-rsvp-service.js";
+import type { IOnsiteEventAdminService } from "../services/interfaces/onsite-event-admin-service.js";
+import type { IOnsiteEventStaffCheckInService } from "../services/interfaces/onsite-event-staff-check-in-service.js";
 import { createAdminOnsiteEventRoutes } from "./admin-onsite-events.js";
 
 function buildRateLimitRedis(): Redis {
@@ -31,21 +31,18 @@ describe("admin onsite event routes", () => {
   const recordPassResend = vi.fn().mockResolvedValue(undefined);
   const resendPass = vi.fn().mockResolvedValue({ ok: true, rotated: false, emailSent: true });
 
-  const onsiteEventRsvpService: IOnsiteEventRsvpService = {
-    getPublicConfig: vi.fn(),
-    lookupByEmail: vi.fn(),
-    submitRsvp: vi.fn(),
+  const onsiteEventAdminService: IOnsiteEventAdminService = {
     listAdminEvents: vi.fn(),
     getAdminEventDetail: vi.fn(),
     listAdminRsvps: vi.fn(),
     exportAdminCsv: vi.fn(),
     resendPass,
     setCheckInDryRun: vi.fn(),
+    createAdminEvent: vi.fn(),
+    updateAdminEvent: vi.fn(),
   };
 
-  const onsiteEventCheckInService: IOnsiteEventCheckInService = {
-    getPassView: vi.fn(),
-    renderPassQrSvg: vi.fn(),
+  const onsiteEventStaffCheckInService: IOnsiteEventStaffCheckInService = {
     checkIn: vi.fn(),
     searchGuests: vi.fn(),
     getCheckInStats: vi.fn(),
@@ -59,8 +56,8 @@ describe("admin onsite event routes", () => {
       await next();
     });
     const container = {
-      onsiteEventRsvpService,
-      onsiteEventCheckInService,
+      onsiteEventAdminService,
+      onsiteEventStaffCheckInService,
       redis: buildRateLimitRedis(),
     } as unknown as Container;
     hono.route("/admin/event-rsvps", createAdminOnsiteEventRoutes(container));
@@ -68,7 +65,7 @@ describe("admin onsite event routes", () => {
   }
 
   it("GET detail returns admin event metadata", async () => {
-    vi.mocked(onsiteEventRsvpService.getAdminEventDetail).mockResolvedValue({
+    vi.mocked(onsiteEventAdminService.getAdminEventDetail).mockResolvedValue({
       slug: "lax001",
       title: "LAX 001",
       status: "published",
@@ -79,9 +76,11 @@ describe("admin onsite event routes", () => {
       venue: null,
       dressCode: null,
       arrivalNote: null,
+      opsEmail: "events@lax.bid",
       checkInDryRun: false,
       rsvpCount: 3,
       checkedInCount: 1,
+      saleId: null,
     });
 
     const res = await app("staff-1").request("/admin/event-rsvps/lax001");

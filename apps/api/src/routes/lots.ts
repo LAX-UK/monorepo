@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import type { Container } from "../container.js";
+import type { ContainerLotRouteDepsSlice } from "../container.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { createRequireKyc } from "../middleware/require-kyc.js";
@@ -12,7 +12,10 @@ import { attachLotCatalogRoutes } from "./lots/catalog.routes.js";
 import { attachLotDetailRoutes } from "./lots/detail.routes.js";
 import { attachLotLifecycleRoutes } from "./lots/lifecycle.routes.js";
 
-export function createLotRoutes(container: Container, authenticator: IAuthenticator) {
+export function createLotRoutes(
+  container: ContainerLotRouteDepsSlice,
+  authenticator: IAuthenticator,
+) {
   const biddingKillSwitch = createMiddleware(async (c, next) => {
     if (container.env?.DISABLE_BIDDING) {
       return c.json({ error: "Bidding temporarily disabled", code: "bidding_disabled" }, 503);

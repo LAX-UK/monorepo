@@ -1,6 +1,7 @@
 import type { Bid } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { BidError } from "../../lib/errors.js";
+import type { PlaceBidWithIdempotencyOutcome } from "../bid/place-bid-idempotency.js";
 
 export type PlaceBidPlacement = {
   placedVia?: string;
@@ -25,4 +26,26 @@ export type PlaceBidInput = {
 /** Narrow port for callers that only need to place bids (e.g. absentee replay). */
 export interface IBidPlacer {
   placeBid(input: PlaceBidInput): Promise<Result<Bid, BidError>>;
+}
+
+export type PlaceBidWithIdempotencyInput = {
+  placedByUserId: string;
+  buyerLegalEntityId?: string;
+  idempotencyKey?: string;
+  lotId: string;
+  amount: number;
+  maxAutoBidAmount?: number;
+  autoBidStepAmount?: number;
+  placedVia?: string;
+  telephoneBookingId?: string;
+  clerkUserId?: string;
+  saleId?: string;
+  paddleNumber?: number;
+};
+
+/** Narrow port for HTTP/auto-bid callers that need idempotent placement. */
+export interface IBidPlacerWithIdempotency extends IBidPlacer {
+  placeBidWithIdempotency(
+    input: PlaceBidWithIdempotencyInput,
+  ): Promise<PlaceBidWithIdempotencyOutcome>;
 }

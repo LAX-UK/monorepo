@@ -1,19 +1,10 @@
-import type { Database } from "@auction/db";
-import { impersonationSession } from "@auction/db/schema";
-import { IMPERSONATION_TTL_MS } from "@auction/types";
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import type {
+  IImpersonationSessionRepository,
+  ImpersonationEndReason,
+  ImpersonationSessionRow,
+} from "../repositories/interfaces/impersonation-session.repository.js";
 
-/** Root pool or Drizzle transaction client (same insert/update surface). */
-type DbClient = Database;
-
-export type ImpersonationSessionRow = typeof impersonationSession.$inferSelect;
-export type ImpersonationEndReason =
-  | "manual"
-  | "timeout"
-  | "timeout_swept"
-  | "session_replaced"
-  | "cookie_cleared_after_failed_end"
-  | "force_ended";
+export type { ImpersonationEndReason, ImpersonationSessionRow };
 
 function normalizeEndReason(reason: string): ImpersonationEndReason {
   switch (reason) {
@@ -34,37 +25,22 @@ export type ImpersonationSessionValidation =
   | { ok: false; reason: "not_found" | "actor_mismatch" | "entity_mismatch" | "ended" | "expired" };
 
 export class ImpersonationSessionService {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly repo: IImpersonationSessionRepository) {}
 
   async start(
     actorUserId: string,
     targetLegalEntityId: string,
-    client: DbClient = this.db,
+    client?: Parameters<IImpersonationSessionRepository["start"]>[2],
   ): Promise<ImpersonationSessionRow> {
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + IMPERSONATION_TTL_MS);
-    const [row] = await client
-      .insert(impersonationSession)
-      .values({
-        actorUserId,
-        targetLegalEntityId,
-        startedAt: now,
-        expiresAt,
-      })
-      .returning();
-    if (!row) throw new Error("impersonation_session_create_failed");
-    return row;
+    return this.repo.start(actorUserId, targetLegalEntityId, client);
   }
 
   async end(
     sessionId: string,
     endReason: ImpersonationEndReason,
-    client: DbClient = this.db,
+    client?: Parameters<IImpersonationSessionRepository["end"]>[2],
   ): Promise<void> {
-    await client
-      .update(impersonationSession)
-      .set({ endedAt: new Date(), endReason })
-      .where(and(eq(impersonationSession.id, sessionId), isNull(impersonationSession.endedAt)));
+    await this.repo.end(sessionId, endReason, client);
   }
 
   async forceEnd(sessionId: string, _byAdminUserId: string, reason: string): Promise<void> {
@@ -72,32 +48,11 @@ export class ImpersonationSessionService {
   }
 
   async findActive(sessionId: string): Promise<ImpersonationSessionRow | null> {
-    const [row] = await this.db
-      .select()
-      .from(impersonationSession)
-      .where(
-        and(
-          eq(impersonationSession.id, sessionId),
-          isNull(impersonationSession.endedAt),
-          gt(impersonationSession.expiresAt, new Date()),
-        ),
-      )
-      .limit(1);
-    return row ?? null;
+    return this.repo.findActive(sessionId);
   }
 
   async listActiveByActor(actorUserId: string): Promise<ImpersonationSessionRow[]> {
-    return this.db
-      .select()
-      .from(impersonationSession)
-      .where(
-        and(
-          eq(impersonationSession.actorUserId, actorUserId),
-          isNull(impersonationSession.endedAt),
-          gt(impersonationSession.expiresAt, new Date()),
-        ),
-      )
-      .orderBy(desc(impersonationSession.startedAt));
+    return this.repo.listActiveByActor(actorUserId);
   }
 
   async validateForRequest(input: {
@@ -105,11 +60,7 @@ export class ImpersonationSessionService {
     actorUserId: string;
     targetLegalEntityId: string;
   }): Promise<ImpersonationSessionValidation> {
-    const [row] = await this.db
-      .select()
-      .from(impersonationSession)
-      .where(eq(impersonationSession.id, input.sessionId))
-      .limit(1);
+    const row = await this.repo.findById(input.sessionId);
     if (!row) return { ok: false, reason: "not_found" };
     if (row.actorUserId !== input.actorUserId) return { ok: false, reason: "actor_mismatch" };
     if (row.targetLegalEntityId !== input.targetLegalEntityId) {

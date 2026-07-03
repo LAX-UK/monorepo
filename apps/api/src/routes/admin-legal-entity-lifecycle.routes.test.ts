@@ -4,6 +4,7 @@ import { err } from "neverthrow";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
+import { DrizzleLegalEntityLifecycleAdminRepository } from "../repositories/drizzle-legal-entity-lifecycle-admin.repository.js";
 import { AdminLegalEntityLifecycleApplicationService } from "../services/admin/admin-legal-entity-lifecycle-application.service.js";
 import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifecycle-admin.service.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
@@ -101,7 +102,11 @@ function buildAppWithRealLifecycleServiceStatusPair(outerStatus: string, lockedR
     }),
     transaction: vi.fn(async (fn: (tx: typeof txHandle) => Promise<unknown>) => fn(txHandle)),
   };
-  const service = new LegalEntityLifecycleAdminService(db as never, { publish } as never);
+  const service = new LegalEntityLifecycleAdminService(
+    db as never,
+    new DrizzleLegalEntityLifecycleAdminRepository(db as never),
+    { publish } as never,
+  );
   const app = lifecycleApp(
     minimalContainer({ legalEntityLifecycleAdminService: service, legalEntityRepository }),
     ADMIN_ID,

@@ -5,7 +5,7 @@ import { BidError } from "../../lib/errors.js";
 import type { IIdempotencyStore } from "../interfaces/idempotency-store.js";
 import { IDEMPOTENCY_PENDING_VALUE } from "../interfaces/idempotency-store.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { IBidPlacer } from "../interfaces/place-bid.js";
+import type { IBidPlacer, PlaceBidWithIdempotencyInput } from "../interfaces/place-bid.js";
 import type { PlaceBidWithIdempotencyOutcome } from "./place-bid-idempotency.js";
 
 const IDEMPOTENCY_TTL_SEC = 86_400;
@@ -30,20 +30,9 @@ export class IdempotentBidExecutor {
     private readonly idempotencyStore: IIdempotencyStore | null,
   ) {}
 
-  async placeBidWithIdempotency(input: {
-    placedByUserId: string;
-    buyerLegalEntityId?: string;
-    idempotencyKey?: string;
-    lotId: string;
-    amount: number;
-    maxAutoBidAmount?: number;
-    autoBidStepAmount?: number;
-    placedVia?: string;
-    telephoneBookingId?: string;
-    clerkUserId?: string;
-    saleId?: string;
-    paddleNumber?: number;
-  }): Promise<PlaceBidWithIdempotencyOutcome> {
+  async placeBidWithIdempotency(
+    input: PlaceBidWithIdempotencyInput,
+  ): Promise<PlaceBidWithIdempotencyOutcome> {
     const { placedByUserId, idempotencyKey, lotId, amount, maxAutoBidAmount } = input;
     let idempotencyRedisKey: string | undefined;
 

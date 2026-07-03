@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import type Stripe from "stripe";
 import { tryClaimProcessedStripeEvent } from "../../../lib/stripe-processed-event.js";
-import type { IPayoutService } from "../../interfaces/payout.js";
+import type { IPayoutMaintenanceService } from "../../interfaces/payout.js";
 import {
   TRANSFER_EVENT_TYPES,
   stripeFeeFromTransfer,
@@ -12,7 +12,7 @@ import {
 export class ConnectTransferWebhookService {
   constructor(
     private readonly db: Database,
-    private readonly payoutService: IPayoutService,
+    private readonly payoutService: IPayoutMaintenanceService,
   ) {}
 
   async handleTransferEvent(event: Stripe.Event): Promise<{ processed: boolean }> {

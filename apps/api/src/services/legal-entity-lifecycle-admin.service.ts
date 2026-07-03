@@ -1,14 +1,13 @@
 import type { Database } from "@auction/db";
-import { legalEntity } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import type { LegalEntityStatus } from "@auction/types";
-import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import {
   type LifecycleAdminOp,
   nextStatusForLifecycleOp,
 } from "../lib/legal-entity-lifecycle-transitions.js";
 import { enqueueOrgLifecycleMemberEmails } from "../lib/org-lifecycle-notifications.js";
+import type { ILegalEntityLifecycleAdminRepository } from "../repositories/interfaces/legal-entity-lifecycle-admin.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 /** Distinct `domain_events.event_type` per admin lifecycle operation.
@@ -52,9 +51,27 @@ export type LegalEntityLifecycleAdminOptions = {
   supportContactEmail?: string;
 };
 
+function resolveStatusReason(
+  op: LifecycleAdminOp,
+  navLocked: { requiresReason: boolean },
+  reason?: string | null,
+): string | null {
+  if (navLocked.requiresReason && reason?.trim()) {
+    return reason.trim();
+  }
+  if (op === "request_docs" && reason?.trim()) {
+    return reason.trim();
+  }
+  if (op === "reject") {
+    return reason?.trim() ?? null;
+  }
+  return null;
+}
+
 export class LegalEntityLifecycleAdminService {
   constructor(
     private readonly db: Database,
+    private readonly lifecycleRepo: ILegalEntityLifecycleAdminRepository,
     private readonly publisher: DomainEventPublisher,
     private readonly options: LegalEntityLifecycleAdminOptions = {},
   ) {}
@@ -65,17 +82,12 @@ export class LegalEntityLifecycleAdminService {
     op: LifecycleAdminOp,
     reason?: string | null,
   ): Promise<Result<{ id: string; status: LegalEntityStatus }, LegalEntityLifecycleFailure>> {
-    const preRows = await this.db
-      .select()
-      .from(legalEntity)
-      .where(eq(legalEntity.id, entityId))
-      .limit(1);
-    const pre = preRows[0];
+    const pre = await this.lifecycleRepo.findById(entityId);
     if (!pre) {
       return err({ code: "not_found", message: "Legal entity not found", status: 404 });
     }
 
-    const preStatus = pre.status as LegalEntityStatus;
+    const preStatus = pre.status;
     const nav = nextStatusForLifecycleOp(preStatus, op);
     if (!nav) {
       return err({
@@ -96,17 +108,11 @@ export class LegalEntityLifecycleAdminService {
     }
 
     const result = await this.db.transaction(async (tx) => {
-      const lockedRows = await tx
-        .select()
-        .from(legalEntity)
-        .where(eq(legalEntity.id, entityId))
-        .for("update")
-        .limit(1);
-      const row = lockedRows[0];
+      const row = await this.lifecycleRepo.findByIdForUpdate(tx, entityId);
       if (!row) {
         return err({ code: "not_found", message: "Legal entity not found", status: 404 });
       }
-      const lockedStatus = row.status as LegalEntityStatus;
+      const lockedStatus = row.status;
       if (lockedStatus !== preStatus) {
         return err({
           code: "concurrent_modification",
@@ -124,23 +130,12 @@ export class LegalEntityLifecycleAdminService {
         });
       }
 
-      await tx
-        .update(legalEntity)
-        .set({
-          status: navLocked.next,
-          statusChangedAt: new Date(),
-          statusChangedByUserId: actorUserId,
-          statusReason:
-            navLocked.requiresReason && reason?.trim()
-              ? reason.trim()
-              : op === "request_docs" && reason?.trim()
-                ? reason.trim()
-                : op === "reject"
-                  ? (reason?.trim() ?? null)
-                  : null,
-          updatedAt: new Date(),
-        })
-        .where(eq(legalEntity.id, entityId));
+      await this.lifecycleRepo.applyTransitionUpdate(tx, {
+        entityId,
+        actorUserId,
+        nextStatus: navLocked.next,
+        statusReason: resolveStatusReason(op, navLocked, reason),
+      });
 
       await this.publisher.publish(tx, {
         aggregateType: "legal_entity",

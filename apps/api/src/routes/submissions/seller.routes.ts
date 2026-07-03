@@ -53,7 +53,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
         ...body,
         legalEntityId: ctx.legalEntityId,
       } as CreateItemSubmissionInput;
-      const result = await container.itemSubmissionService.createDraftForSellerApi(
+      const result = await container.itemSubmissionSellerApi.createDraftForSellerApi(
         ctx.legalEntityId,
         input,
       );
@@ -71,7 +71,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const q = c.req.valid("query");
-      const { data, total } = await container.itemSubmissionService.listSubmissionsForSellerApi(
+      const { data, total } = await container.itemSubmissionSellerApi.listSubmissionsForSellerApi(
         ctx.legalEntityId,
         {
           status: q.status,
@@ -86,7 +86,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
 
   r.get("/mine/summary", requireAuth, requireSubmissionEntityContext, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
-    const summary = await container.itemSubmissionService.getSubmissionSummaryForSellerApi(
+    const summary = await container.itemSubmissionSellerApi.getSubmissionSummaryForSellerApi(
       ctx.legalEntityId,
     );
     return c.json({ data: summary });
@@ -102,7 +102,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
       const role = (c.get("userRole") ?? "client") as UserRole;
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const staff = (c.get("userStaffRole") as string | null | undefined) ?? null;
-      const result = await container.itemSubmissionService.getSubmissionForViewerApi({
+      const result = await container.itemSubmissionSellerApi.getSubmissionForViewerApi({
         submissionId: id,
         role,
         staffRole: staff,
@@ -130,7 +130,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
         return c.json({ data });
       }
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
-      const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
+      const owned = await container.itemSubmissionSellerApi.getForSeller(ctx.legalEntityId, id);
       if (owned.isErr()) {
         return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
       }
@@ -154,7 +154,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       if (!canStaffManageSubmissionDocuments(role, staff)) {
         const ctx = c.get("legalEntityContext") as LegalEntityContext;
-        const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
+        const owned = await container.itemSubmissionSellerApi.getForSeller(ctx.legalEntityId, id);
         if (owned.isErr()) {
           return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
         }
@@ -189,7 +189,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
       const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
       if (!canStaffManageSubmissionDocuments(role, staff)) {
         const ctx = c.get("legalEntityContext") as LegalEntityContext;
-        const owned = await container.itemSubmissionService.getForSeller(ctx.legalEntityId, id);
+        const owned = await container.itemSubmissionSellerApi.getForSeller(ctx.legalEntityId, id);
         if (owned.isErr()) {
           return c.json({ error: owned.error.message }, asHttpStatus(owned.error.status));
         }
@@ -217,7 +217,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
         raw = {};
       }
       const staff = (c.get("userStaffRole") as string | null | undefined) ?? null;
-      const out = await container.itemSubmissionService.patchSubmissionFromRequestBody({
+      const out = await container.itemSubmissionSellerApi.patchSubmissionFromRequestBody({
         rawBody: raw,
         submissionId: id,
         role,
@@ -244,7 +244,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { id } = c.req.valid("param");
-      const result = await container.itemSubmissionService.submitForReviewForSellerApi(
+      const result = await container.itemSubmissionSellerApi.submitForReviewForSellerApi(
         ctx.legalEntityId,
         id,
       );
@@ -264,7 +264,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { id } = c.req.valid("param");
-      const result = await container.itemSubmissionService.withdrawForSellerApi(
+      const result = await container.itemSubmissionSellerApi.withdrawForSellerApi(
         ctx.legalEntityId,
         id,
       );

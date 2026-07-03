@@ -1,9 +1,11 @@
 import {
+  createOnsiteEventBodySchema,
   onsiteEventCheckInBodySchema,
   onsiteEventCheckInDryRunBodySchema,
   onsiteEventCheckInSearchQuerySchema,
   onsiteEventRsvpIdParamSchema,
   onsiteEventSlugParamSchema,
+  updateOnsiteEventBodySchema,
 } from "@auction/validators";
 import { Hono } from "hono";
 import type { Container } from "../container.js";
@@ -20,22 +22,46 @@ export function createAdminOnsiteEventRoutes(container: Container) {
   const resendLimit = createOnsiteEventResendRateLimitMiddleware(container.redis);
 
   r.get("/", async (c) => {
-    const rows = await container.onsiteEventRsvpService.listAdminEvents();
+    const rows = await container.onsiteEventAdminService.listAdminEvents();
     return c.json({ data: rows });
+  });
+
+  r.post("/", zValidator("json", createOnsiteEventBodySchema), async (c) => {
+    const body = c.req.valid("json");
+    const created = await container.onsiteEventAdminService.createAdminEvent(body);
+    if (isOnsiteEventRsvpServiceError(created)) {
+      return c.json({ error: created.message, code: created.code }, asHttpStatus(created.status));
+    }
+    return c.json({ data: created }, 201);
   });
 
   r.get("/:slug", zValidator("param", onsiteEventSlugParamSchema), async (c) => {
     const { slug } = c.req.valid("param");
-    const detail = await container.onsiteEventRsvpService.getAdminEventDetail(slug);
+    const detail = await container.onsiteEventAdminService.getAdminEventDetail(slug);
     if (isOnsiteEventRsvpServiceError(detail)) {
       return c.json({ error: detail.message, code: detail.code }, asHttpStatus(detail.status));
     }
     return c.json({ data: detail });
   });
 
+  r.patch(
+    "/:slug",
+    zValidator("param", onsiteEventSlugParamSchema),
+    zValidator("json", updateOnsiteEventBodySchema),
+    async (c) => {
+      const { slug } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const updated = await container.onsiteEventAdminService.updateAdminEvent(slug, body);
+      if (isOnsiteEventRsvpServiceError(updated)) {
+        return c.json({ error: updated.message, code: updated.code }, asHttpStatus(updated.status));
+      }
+      return c.json({ data: updated });
+    },
+  );
+
   r.get("/:slug/rsvps", zValidator("param", onsiteEventSlugParamSchema), async (c) => {
     const { slug } = c.req.valid("param");
-    const rows = await container.onsiteEventRsvpService.listAdminRsvps(slug);
+    const rows = await container.onsiteEventAdminService.listAdminRsvps(slug);
     if (isOnsiteEventRsvpServiceError(rows)) {
       return c.json({ error: rows.message, code: rows.code }, asHttpStatus(rows.status));
     }
@@ -44,7 +70,7 @@ export function createAdminOnsiteEventRoutes(container: Container) {
 
   r.get("/:slug/rsvps/export", zValidator("param", onsiteEventSlugParamSchema), async (c) => {
     const { slug } = c.req.valid("param");
-    const csv = await container.onsiteEventRsvpService.exportAdminCsv(slug);
+    const csv = await container.onsiteEventAdminService.exportAdminCsv(slug);
     if (isOnsiteEventRsvpServiceError(csv)) {
       return c.json({ error: csv.message, code: csv.code }, asHttpStatus(csv.status));
     }
@@ -56,7 +82,7 @@ export function createAdminOnsiteEventRoutes(container: Container) {
 
   r.get("/:slug/check-in/stats", zValidator("param", onsiteEventSlugParamSchema), async (c) => {
     const { slug } = c.req.valid("param");
-    const stats = await container.onsiteEventCheckInService.getCheckInStats(slug);
+    const stats = await container.onsiteEventStaffCheckInService.getCheckInStats(slug);
     if (isOnsiteEventCheckInServiceError(stats)) {
       return c.json({ error: stats.message, code: stats.code }, asHttpStatus(stats.status));
     }
@@ -70,7 +96,7 @@ export function createAdminOnsiteEventRoutes(container: Container) {
     async (c) => {
       const { slug } = c.req.valid("param");
       const { q } = c.req.valid("query");
-      const rows = await container.onsiteEventCheckInService.searchGuests(slug, q);
+      const rows = await container.onsiteEventStaffCheckInService.searchGuests(slug, q);
       if (isOnsiteEventCheckInServiceError(rows)) {
         return c.json({ error: rows.message, code: rows.code }, asHttpStatus(rows.status));
       }
@@ -88,14 +114,14 @@ export function createAdminOnsiteEventRoutes(container: Container) {
       if (!staffUserId) {
         return c.json({ error: "Unauthorized" }, 401);
       }
-      const result = await container.onsiteEventRsvpService.resendPass(slug, rsvpId);
+      const result = await container.onsiteEventAdminService.resendPass(slug, rsvpId);
       if (!result.ok) {
         return c.json(
           { error: result.error.message, code: result.error.code },
           asHttpStatus(result.error.status),
         );
       }
-      await container.onsiteEventCheckInService.recordPassResend(slug, rsvpId, staffUserId);
+      await container.onsiteEventStaffCheckInService.recordPassResend(slug, rsvpId, staffUserId);
       return c.json({ data: { rotated: result.rotated, emailSent: result.emailSent } });
     },
   );
@@ -107,7 +133,7 @@ export function createAdminOnsiteEventRoutes(container: Container) {
     async (c) => {
       const { slug } = c.req.valid("param");
       const { enabled } = c.req.valid("json");
-      const result = await container.onsiteEventRsvpService.setCheckInDryRun(slug, enabled);
+      const result = await container.onsiteEventAdminService.setCheckInDryRun(slug, enabled);
       if (!result.ok) {
         return c.json(
           { error: result.error.message, code: result.error.code },
@@ -132,7 +158,7 @@ export function createAdminOnsiteEventRoutes(container: Container) {
       const checkInInput: { token?: string; rsvpId?: string } = {};
       if (body.token) checkInInput.token = body.token;
       if (body.rsvpId) checkInInput.rsvpId = body.rsvpId;
-      const result = await container.onsiteEventCheckInService.checkIn(
+      const result = await container.onsiteEventStaffCheckInService.checkIn(
         slug,
         checkInInput,
         staffUserId,

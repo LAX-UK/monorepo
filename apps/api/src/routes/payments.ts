@@ -6,7 +6,7 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerPaymentHttpRoutesSlice } from "../container.js";
 import { LotError, PaymentProviderError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
@@ -30,7 +30,10 @@ const attachSofDocumentBodySchema = z.object({
   label: z.string().max(500).optional(),
 });
 
-export function createPaymentRoutes(container: Container, authenticator: IAuthenticator) {
+export function createPaymentRoutes(
+  container: ContainerPaymentHttpRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
@@ -52,7 +55,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
   r.get("/", requireAuth, async (c) => {
     const role = c.get("userRole") ?? "client";
     const staffRole = c.get("userStaffRole") ?? null;
-    const result = await container.paymentService.listAllForAdmin(role, staffRole);
+    const result = await container.paymentAdminService.listAllForAdmin(role, staffRole);
     return result.match(
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
@@ -64,7 +67,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
    * before the buyer submits. */
   r.get("/me/compliance-gate", requireAuth, requireBuyerRole, async (c) => {
     const userId = c.get("userId") as string;
-    const result = await container.paymentService.getBuyerComplianceGateStatus(userId);
+    const result = await container.paymentBuyerService.getBuyerComplianceGateStatus(userId);
     return c.json({ data: result });
   });
 
@@ -157,7 +160,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
   r.get("/me", requireAuth, zValidator("query", myPaymentsQuerySchema), async (c) => {
     const userId = c.get("userId") as string;
     const { status } = c.req.valid("query");
-    const { data } = await container.paymentService.listMyPaymentsForBuyerApi(userId, {
+    const { data } = await container.paymentBuyerService.listMyPaymentsForBuyerApi(userId, {
       ...(status !== undefined ? { status } : {}),
     });
     return c.json({ data });
@@ -190,7 +193,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     async (c) => {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const result = await container.paymentService.cancelPendingAsBuyer(userId, id);
+      const result = await container.paymentBuyerService.cancelPendingAsBuyer(userId, id);
       return result.match(
         () => c.json({ ok: true }),
         (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
@@ -206,7 +209,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const result = await container.paymentService.createPendingForWinner(
+      const result = await container.paymentBuyerService.createPendingForWinner(
         userId,
         body.lotId,
         body.addressId,
@@ -258,7 +261,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
-      const result = await container.paymentService.markCapturedByAdmin(
+      const result = await container.paymentAdminService.markCapturedByAdmin(
         userId,
         role,
         id,
@@ -287,7 +290,7 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
-      const result = await container.paymentService.refundPayment(
+      const result = await container.paymentAdminService.refundPayment(
         userId,
         role,
         id,

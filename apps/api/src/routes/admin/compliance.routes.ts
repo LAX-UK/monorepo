@@ -1,4 +1,4 @@
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { applyStaffPreviewFramingHeaders } from "../../lib/staff-preview-framing.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireAmlReview, requireMlroDecision } from "../../middleware/require-capability.js";
@@ -17,7 +17,10 @@ import {
 } from "./_schemas.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminComplianceRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminComplianceRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   // ── AML / sanctions watchlist review (MLRO / compliance) ──────────────────
   platform.get(
     "/compliance/aml/screenings",

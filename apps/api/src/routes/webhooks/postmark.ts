@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import type { Container } from "../../container.js";
+import type { ContainerPostmarkWebhookRoutesSlice } from "../../container.js";
 import type { PostmarkWebhookPayload } from "../../services/postmark-webhook.service.js";
 
 let warnedMissingAuth = false;
 
-export function createPostmarkWebhookRoutes(container: Container) {
+export function createPostmarkWebhookRoutes(container: ContainerPostmarkWebhookRoutesSlice) {
   const r = new Hono();
 
   r.post("/", async (c) => {

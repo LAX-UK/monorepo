@@ -1,3 +1,4 @@
+import { AuthzError } from "@auction/exports/providers";
 import {
   createExportBodySchema,
   exportIdParamSchema,
@@ -6,7 +7,6 @@ import {
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import type { Container } from "../container.js";
-import { AuthzError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";

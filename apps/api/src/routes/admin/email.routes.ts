@@ -5,7 +5,7 @@ import {
   adminListSuppressionsQuerySchema,
   emailHashParamSchema,
 } from "@auction/validators";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
   requireEmailAdmin,
@@ -13,7 +13,10 @@ import {
 } from "../../middleware/require-capability.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminEmailRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminEmailRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get(
     "/email/outbox",
     requireEmailObservability,

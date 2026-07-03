@@ -28,10 +28,8 @@ export type {
   StripeCheckoutLineItem,
 } from "./stripe-checkout-session.types.js";
 
-export interface IStripePaymentGateway {
+export interface IStripeCheckoutGateway {
   isConfigured(): boolean;
-  capturePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent>;
-  createRefund(input: StripeRefundInput): Promise<StripeRefundGatewayResult>;
   createCardCheckoutSession(
     input: CreateCheckoutSessionInput,
   ): Promise<CreateCheckoutSessionResult>;
@@ -47,6 +45,16 @@ export interface IStripePaymentGateway {
     paymentIntentId: string | null | undefined,
   ): Promise<void>;
 }
+
+export interface IStripeCaptureRefundGateway {
+  isConfigured(): boolean;
+  capturePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent>;
+  createRefund(input: StripeRefundInput): Promise<StripeRefundGatewayResult>;
+}
+
+export interface IStripePaymentGateway
+  extends IStripeCheckoutGateway,
+    IStripeCaptureRefundGateway {}
 
 export class StripePaymentGateway implements IStripePaymentGateway {
   private readonly stripeFactory: IStripeClientFactory;

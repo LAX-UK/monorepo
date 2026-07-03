@@ -7,6 +7,7 @@ import type {
   SaleroomCheckInServiceError,
   SaleroomCheckInSuccess,
 } from "../interfaces/saleroom-check-in-service.js";
+import type { SaleExpectedGuestsService } from "../sale-expected-guests.service.js";
 
 type CheckInRateLimitError = {
   message: string;
@@ -19,11 +20,16 @@ export class AdminSaleroomCheckInApplicationService
 {
   constructor(
     private readonly checkIn: ISaleroomCheckInService,
+    private readonly expectedGuests: SaleExpectedGuestsService,
     private readonly redis: Redis,
   ) {}
 
   searchCandidates(...args: Parameters<ISaleroomCheckInService["searchCandidates"]>) {
     return this.checkIn.searchCandidates(...args);
+  }
+
+  listExpectedGuests(saleId: string) {
+    return this.expectedGuests.listForSale(saleId);
   }
 
   async checkInBidder(

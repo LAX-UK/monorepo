@@ -1,8 +1,6 @@
-import type { Database } from "@auction/db";
-import { absenteeBid } from "@auction/db/schema";
 import type { Lot } from "@auction/types";
-import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import type { IAbsenteeBidRepository } from "../repositories/interfaces/absentee-bid.repository.js";
 import type {
   AbsenteeBidServiceError,
   IAbsenteeBidService,
@@ -28,7 +26,7 @@ function isUniqueViolation(e: unknown): boolean {
 
 export class AbsenteeBidService implements IAbsenteeBidService {
   constructor(
-    private readonly db: Database,
+    private readonly absenteeBidRepo: IAbsenteeBidRepository,
     private readonly bidService: IBidPlacer,
     private readonly lotRepo: ILotRepository,
     private readonly legalEntityRepository: ILegalEntityRepository | null,
@@ -61,16 +59,12 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     }
 
     try {
-      const [row] = await this.db
-        .insert(absenteeBid)
-        .values({
-          lotId: input.lotId,
-          userId: input.userId,
-          buyerLegalEntityId: input.buyerLegalEntityId,
-          maxAmount: input.maxAmount.toFixed(2),
-          status: "scheduled",
-        })
-        .returning({ id: absenteeBid.id });
+      const row = await this.absenteeBidRepo.insertScheduled({
+        lotId: input.lotId,
+        userId: input.userId,
+        buyerLegalEntityId: input.buyerLegalEntityId,
+        maxAmount: input.maxAmount.toFixed(2),
+      });
       if (!row) {
         return err({
           message: "Could not schedule absentee bid",
@@ -101,30 +95,14 @@ export class AbsenteeBidService implements IAbsenteeBidService {
    */
   async expireStaleExecutingLeases(): Promise<void> {
     const cutoff = new Date(Date.now() - ABSENTEE_EXECUTING_LEASE_MS);
-    await this.db
-      .update(absenteeBid)
-      .set({
-        status: "lost",
-        cancellationReason: "executing_lease_expired",
-        executingAt: null,
-      })
-      .where(
-        and(
-          eq(absenteeBid.status, "executing"),
-          or(isNull(absenteeBid.executingAt), lt(absenteeBid.executingAt, cutoff)),
-        ),
-      );
+    await this.absenteeBidRepo.expireStaleExecutingLeases(cutoff);
   }
 
   /** When a lot becomes live, execute scheduled absentee rows against the opening price. */
   async replayScheduledForLot(lotId: string): Promise<void> {
     await this.expireStaleExecutingLeases();
 
-    const rows = await this.db
-      .select()
-      .from(absenteeBid)
-      .where(and(eq(absenteeBid.lotId, lotId), eq(absenteeBid.status, "scheduled")))
-      .orderBy(desc(absenteeBid.maxAmount));
+    const rows = await this.absenteeBidRepo.listScheduledForLot(lotId);
 
     let lotRow = await this.lotRepo.findById(lotId);
     if (!lotRow || lotRow.status !== "active") return;
@@ -132,10 +110,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     for (const row of rows) {
       const max = Number.parseFloat(String(row.maxAmount));
       if (!Number.isFinite(max)) {
-        await this.db
-          .update(absenteeBid)
-          .set({ status: "voided", cancellationReason: "invalid_max" })
-          .where(eq(absenteeBid.id, row.id));
+        await this.absenteeBidRepo.markVoided(row.id, "invalid_max");
         continue;
       }
 
@@ -146,16 +121,12 @@ export class AbsenteeBidService implements IAbsenteeBidService {
       const inc = minIncrementAmount(lotRow);
       const bidAmount = cur + inc;
       if (bidAmount > max + 1e-9) {
-        await this.db.update(absenteeBid).set({ status: "lost" }).where(eq(absenteeBid.id, row.id));
+        await this.absenteeBidRepo.markLost(row.id);
         continue;
       }
 
       const now = new Date();
-      const [claimed] = await this.db
-        .update(absenteeBid)
-        .set({ status: "executing", executingAt: now })
-        .where(and(eq(absenteeBid.id, row.id), eq(absenteeBid.status, "scheduled")))
-        .returning({ id: absenteeBid.id });
+      const claimed = await this.absenteeBidRepo.claimExecuting(row.id, now);
       if (!claimed) {
         continue;
       }
@@ -170,23 +141,9 @@ export class AbsenteeBidService implements IAbsenteeBidService {
       });
 
       if (res.isOk()) {
-        await this.db
-          .update(absenteeBid)
-          .set({
-            status: "executed",
-            executedBidId: res.value.id,
-            executingAt: null,
-          })
-          .where(eq(absenteeBid.id, row.id));
+        await this.absenteeBidRepo.markExecuted(row.id, res.value.id);
       } else {
-        await this.db
-          .update(absenteeBid)
-          .set({
-            status: "lost",
-            cancellationReason: res.error.code ?? res.error.message,
-            executingAt: null,
-          })
-          .where(eq(absenteeBid.id, row.id));
+        await this.absenteeBidRepo.markLost(row.id, res.error.code ?? res.error.message);
       }
     }
   }

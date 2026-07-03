@@ -29,19 +29,16 @@ describe("lot-lifecycle-tick distributed lock", () => {
       releaseFirst = resolve;
     });
 
-    const lotLifecycleService = {
-      runTransitions: vi.fn(async () => {
+    const lifecycleCronService = {
+      runLotLifecycleTick: vi.fn(async () => {
         await gate;
+        return { ok: true };
       }),
-    };
-    const saleLifecycleService = {
-      reconcileSaleStatuses: vi.fn(async () => {}),
     };
 
     const container = {
       redis,
-      lotLifecycleService,
-      saleLifecycleService,
+      lifecycleCronService,
     } as unknown as Container;
 
     const env: Env = {
@@ -55,10 +52,10 @@ describe("lot-lifecycle-tick distributed lock", () => {
 
     const p1 = app.request("/internal/jobs/lot-lifecycle-tick", { method: "POST", headers });
     for (let i = 0; i < 200; i++) {
-      if (lotLifecycleService.runTransitions.mock.calls.length > 0) break;
+      if (lifecycleCronService.runLotLifecycleTick.mock.calls.length > 0) break;
       await new Promise((r) => setTimeout(r, 5));
     }
-    expect(lotLifecycleService.runTransitions).toHaveBeenCalled();
+    expect(lifecycleCronService.runLotLifecycleTick).toHaveBeenCalled();
 
     const p2 = app.request("/internal/jobs/lot-lifecycle-tick", { method: "POST", headers });
 
@@ -69,7 +66,6 @@ describe("lot-lifecycle-tick distributed lock", () => {
     releaseFirst();
     const res1 = await p1;
     expect(res1.status).toBe(200);
-    expect(saleLifecycleService.reconcileSaleStatuses).toHaveBeenCalled();
 
     expect(redis.del).toHaveBeenCalledWith(LOT_LIFECYCLE_TICK_LOCK_KEY);
   });

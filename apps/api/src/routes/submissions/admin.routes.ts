@@ -63,7 +63,7 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
     async (c) => {
       const q = c.req.valid("query");
       const userId = c.get("userId") as string;
-      const { data, total } = await container.itemSubmissionService.listSubmissionsForAdminApi(
+      const { data, total } = await container.itemSubmissionAdminApi.listSubmissionsForAdminApi(
         submissionsAdminListFilter(q, userId),
       );
       return c.json({ data, total });
@@ -78,7 +78,7 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
     async (c) => {
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const result = await container.itemSubmissionService.startReviewForAdminApi(adminId, id);
+      const result = await container.itemSubmissionAdminApi.startReviewForAdminApi(adminId, id);
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
@@ -94,7 +94,7 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
     async (c) => {
       const adminId = c.get("userId") as string;
       const { ids, op, reason, reviewNotes } = c.req.valid("json");
-      const out = await container.itemSubmissionService.bulkApproveOrReject({
+      const out = await container.itemSubmissionAdminApi.bulkApproveOrReject({
         adminId,
         ids,
         op,
@@ -121,7 +121,7 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.itemSubmissionService.acceptForAdminApi(adminId, id, body);
+      const result = await container.itemSubmissionAdminApi.acceptForAdminApi(adminId, id, body);
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
@@ -139,7 +139,7 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.itemSubmissionService.convertForAdminApi(adminId, id, body);
+      const result = await container.itemSubmissionAdminApi.convertForAdminApi(adminId, id, body);
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
@@ -157,7 +157,7 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const { assignedToUserId } = c.req.valid("json");
-      const result = await container.itemSubmissionService.assignForAdminApi(
+      const result = await container.itemSubmissionAdminApi.assignForAdminApi(
         adminId,
         id,
         assignedToUserId,
@@ -179,7 +179,7 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.itemSubmissionService.approveForAdminApi(adminId, id, body);
+      const result = await container.itemSubmissionAdminApi.approveForAdminApi(adminId, id, body);
       if (result.isErr()) {
         return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
       }
@@ -197,7 +197,7 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
       const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const { rejectionReason, reviewNotes } = c.req.valid("json");
-      const result = await container.itemSubmissionService.rejectForAdminApi(
+      const result = await container.itemSubmissionAdminApi.rejectForAdminApi(
         adminId,
         id,
         rejectionReason,

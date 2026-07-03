@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { LifecycleAdminOp } from "../lib/legal-entity-lifecycle-transitions.js";
+import { DrizzleLegalEntityLifecycleAdminRepository } from "../repositories/drizzle-legal-entity-lifecycle-admin.repository.js";
 import {
   LegalEntityLifecycleAdminService,
   lifecycleDomainEventTypeForOp,
@@ -101,7 +102,12 @@ describe("LegalEntityLifecycleAdminService", () => {
       };
       const publisher = { publish };
 
-      const svc = new LegalEntityLifecycleAdminService(db as never, publisher as never);
+      const lifecycleRepo = new DrizzleLegalEntityLifecycleAdminRepository(db as never);
+      const svc = new LegalEntityLifecycleAdminService(
+        db as never,
+        lifecycleRepo,
+        publisher as never,
+      );
       const result = await svc.runTransition("actor-1", entityId, op, reason);
 
       expect(result.isOk()).toBe(true);
@@ -138,7 +144,12 @@ describe("LegalEntityLifecycleAdminService", () => {
     };
     const publisher = { publish: vi.fn() };
 
-    const svc = new LegalEntityLifecycleAdminService(db as never, publisher as never);
+    const lifecycleRepo = new DrizzleLegalEntityLifecycleAdminRepository(db as never);
+    const svc = new LegalEntityLifecycleAdminService(
+      db as never,
+      lifecycleRepo,
+      publisher as never,
+    );
     const result = await svc.runTransition("actor-1", entityId, "approve");
 
     expect(result.isErr()).toBe(true);
@@ -162,7 +173,12 @@ describe("LegalEntityLifecycleAdminService", () => {
       transaction: vi.fn(),
     };
     const publisher = { publish: vi.fn() };
-    const svc = new LegalEntityLifecycleAdminService(db as never, publisher as never);
+    const lifecycleRepo = new DrizzleLegalEntityLifecycleAdminRepository(db as never);
+    const svc = new LegalEntityLifecycleAdminService(
+      db as never,
+      lifecycleRepo,
+      publisher as never,
+    );
     const result = await svc.runTransition("actor-1", entityId, "reject", "  ");
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {

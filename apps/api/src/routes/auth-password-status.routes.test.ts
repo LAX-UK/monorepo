@@ -3,20 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createAuthRoutes } from "./auth.js";
 
-function buildFakeAuthDb(hasCredential: boolean) {
-  return {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          limit: vi.fn(async () => (hasCredential ? [{ id: "cred-1" }] : [])),
-        })),
-      })),
-    })),
-  };
-}
-
 function mountAuth(opts: {
-  authDb: object;
+  hasCredential?: boolean;
   getSessionUser?: IAuthenticator["getSessionUser"];
 }) {
   const authenticator: IAuthenticator = {
@@ -25,12 +13,15 @@ function mountAuth(opts: {
   };
   const container = {
     env: { WEB_ORIGIN: "http://localhost:3000" },
-    authDb: opts.authDb,
+    authDb: {},
     redis: null,
     authenticator,
     userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
     auth: { api: { getSession: vi.fn(async () => null) } },
     authAuditPublisher: { publish: vi.fn(async () => {}) },
+    authCredentialReader: {
+      hasCredentialAccount: vi.fn(async () => opts.hasCredential ?? false),
+    },
     db: {},
     emailService: { enqueue: vi.fn() },
     userService: {},
@@ -42,7 +33,7 @@ function mountAuth(opts: {
 describe("GET /auth/password-status", () => {
   it("returns 401 without a session", async () => {
     const { app } = mountAuth({
-      authDb: buildFakeAuthDb(false),
+      hasCredential: false,
       getSessionUser: vi.fn(async () => null),
     });
     const res = await app.request("/auth/password-status");
@@ -50,7 +41,7 @@ describe("GET /auth/password-status", () => {
   });
 
   it("returns hasPassword true when a credential account exists", async () => {
-    const { app } = mountAuth({ authDb: buildFakeAuthDb(true) });
+    const { app } = mountAuth({ hasCredential: true });
     const res = await app.request("/auth/password-status", {
       headers: { cookie: "better-auth.session_token=test" },
     });
@@ -59,7 +50,7 @@ describe("GET /auth/password-status", () => {
   });
 
   it("returns hasPassword false when no credential account exists", async () => {
-    const { app } = mountAuth({ authDb: buildFakeAuthDb(false) });
+    const { app } = mountAuth({ hasCredential: false });
     const res = await app.request("/auth/password-status", {
       headers: { cookie: "better-auth.session_token=test" },
     });

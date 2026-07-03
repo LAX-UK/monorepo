@@ -80,12 +80,12 @@ describe("admin session on buyer-gated POST routes", () => {
   });
 
   it("POST /submissions/:id/submit returns 403 bidding_not_allowed_for_role before submission service", async () => {
-    const itemSubmissionService = { submitForReview: vi.fn() };
+    const itemSubmissionSellerApi = { submitForReviewForSellerApi: vi.fn() };
     const app = new Hono().route(
       "/submissions",
       createSubmissionRoutes(
         minimalContainer({
-          itemSubmissionService,
+          itemSubmissionSellerApi,
         }),
         adminAuth,
       ),
@@ -97,6 +97,6 @@ describe("admin session on buyer-gated POST routes", () => {
     });
     expect(res.status).toBe(403);
     await expect(res.json()).resolves.toEqual({ error: "bidding_not_allowed_for_role" });
-    expect(itemSubmissionService.submitForReview).not.toHaveBeenCalled();
+    expect(itemSubmissionSellerApi.submitForReviewForSellerApi).not.toHaveBeenCalled();
   });
 });

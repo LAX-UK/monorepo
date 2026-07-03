@@ -1,6 +1,11 @@
 import type { MarketingEvent } from "@auction/types";
 import type { KycVerification, UserKycStatus } from "@auction/types";
 import type { KycUserFeedback } from "../kyc/kyc-user-feedback.js";
+import type {
+  IKycGateService,
+  IKycSessionService,
+  IKycWebhookIngestService,
+} from "../kyc/ports.js";
 
 export type { KycFeedbackAction, KycUserFeedback } from "../kyc/kyc-user-feedback.js";
 
@@ -78,20 +83,7 @@ export class KycRequiredError extends Error {
   }
 }
 
-export interface IKycService {
-  isConfigured(): boolean;
-  createSession(userId: string, returnUrl: string): Promise<CreateKycSessionResult>;
-  getLatestForUser(userId: string): Promise<KycVerification | null>;
-  getStatus(userId: string): Promise<KycStatusSummary>;
-  handleDecisionWebhook(
-    rawBody: string,
-    signature: string | undefined,
-    authClient: string | undefined,
-  ): Promise<KycWebhookHandleResult>;
-  handleEventWebhook(
-    rawBody: string,
-    signature: string | undefined,
-    authClient: string | undefined,
-  ): Promise<void>;
-  enforceThreshold(userId: string): Promise<void>;
-}
+export interface IKycService
+  extends IKycSessionService,
+    IKycWebhookIngestService,
+    IKycGateService {}

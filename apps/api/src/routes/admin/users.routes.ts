@@ -8,7 +8,7 @@ import {
   updateProfileNameFormSchema,
   userIdParamSchema,
 } from "@auction/validators";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { mapAdminUserListQuery } from "../../lib/admin-user-list-query.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -24,7 +24,10 @@ import {
 import { activityQuerySchema, adminUserIdParamSchema, userBidsQuerySchema } from "./_schemas.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminUsersDirectoryRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminUsersDirectoryRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get(
     "/users",
     requireUsersDirectory,
@@ -113,7 +116,10 @@ export function attachAdminUsersDirectoryRoutes(platform: AdminHono, container: 
   );
 }
 
-export function attachAdminUsersManagementRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminUsersManagementRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get(
     "/users/:userId/source-of-funds",
     requireAmlReview,

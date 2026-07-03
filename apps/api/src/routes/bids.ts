@@ -2,13 +2,14 @@ import { placeBidSchema } from "@auction/validators";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
-import type { Container } from "../container.js";
+import type { ContainerBidRoutesSlice } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import { createRequireKyc } from "../middleware/require-kyc.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import type { IBidPlacerWithIdempotency } from "../services/interfaces/place-bid.js";
 
 const BID_RL_MINUTE_MAX = 30;
 const BID_RL_HOUR_MAX = 100;
@@ -50,7 +51,8 @@ export function createBidUserRateLimitMiddleware(redis: Redis) {
   });
 }
 
-export function createBidRoutes(container: Container, authenticator: IAuthenticator) {
+export function createBidRoutes(container: ContainerBidRoutesSlice, authenticator: IAuthenticator) {
+  const bidPlacer: IBidPlacerWithIdempotency = container.bidService;
   const biddingKillSwitch = createMiddleware(async (c, next) => {
     if (container.env?.DISABLE_BIDDING) {
       return c.json({ error: "Bidding temporarily disabled", code: "bidding_disabled" }, 503);
@@ -92,7 +94,7 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
       const legalEntityContext = c.get("legalEntityContext");
       const idem = c.req.header("idempotency-key") ?? c.req.header("Idempotency-Key");
       const body = c.req.valid("json");
-      const out = await container.bidService.placeBidWithIdempotency({
+      const out = await bidPlacer.placeBidWithIdempotency({
         placedByUserId: userId,
         ...(legalEntityContext?.legalEntityId
           ? { buyerLegalEntityId: legalEntityContext.legalEntityId }

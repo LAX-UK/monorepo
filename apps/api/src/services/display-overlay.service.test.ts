@@ -3,16 +3,18 @@ import { DisplayOverlayService } from "./display-overlay.service.js";
 
 describe("DisplayOverlayService", () => {
   it("publishes overlay and records domain event on setOverlay", async () => {
-    const returning = vi.fn().mockResolvedValue([{ id: "session-1" }]);
-    const where = vi.fn().mockReturnValue({ returning });
-    const set = vi.fn().mockReturnValue({ where });
-    const update = vi.fn().mockReturnValue({ set });
+    const saleroomDisplaySessionRepo = {
+      setDisplayOverlay: vi.fn().mockResolvedValue({ updated: true }),
+      clearDisplayOverlay: vi.fn(),
+    };
 
     const publisher = { publishDisplayControl: vi.fn().mockResolvedValue(undefined) };
     const domainEvents = { publish: vi.fn().mockResolvedValue(undefined) };
+    const db = {} as never;
 
     const service = new DisplayOverlayService({
-      db: { update } as never,
+      db,
+      saleroomDisplaySessionRepo,
       publisher: publisher as never,
       domainEvents: domainEvents as never,
     });
@@ -24,12 +26,16 @@ describe("DisplayOverlayService", () => {
     });
 
     expect(result.isOk()).toBe(true);
+    expect(saleroomDisplaySessionRepo.setDisplayOverlay).toHaveBeenCalledWith({
+      saleId: "sale-1",
+      overlay: expect.objectContaining({ kind: "fair_warning" }),
+    });
     expect(publisher.publishDisplayControl).toHaveBeenCalledWith(
       "sale-1",
       expect.objectContaining({ kind: "fair_warning" }),
     );
     expect(domainEvents.publish).toHaveBeenCalledWith(
-      expect.anything(),
+      db,
       expect.objectContaining({
         eventType: "saleroom.display.overlay_set",
         actorUserId: "staff-1",
@@ -38,16 +44,18 @@ describe("DisplayOverlayService", () => {
   });
 
   it("publishes clear and records domain event on clearOverlay", async () => {
-    const returning = vi.fn().mockResolvedValue([{ id: "session-1" }]);
-    const where = vi.fn().mockReturnValue({ returning });
-    const set = vi.fn().mockReturnValue({ where });
-    const update = vi.fn().mockReturnValue({ set });
+    const saleroomDisplaySessionRepo = {
+      setDisplayOverlay: vi.fn(),
+      clearDisplayOverlay: vi.fn().mockResolvedValue({ updated: true }),
+    };
 
     const publisher = { publishDisplayControl: vi.fn().mockResolvedValue(undefined) };
     const domainEvents = { publish: vi.fn().mockResolvedValue(undefined) };
+    const db = {} as never;
 
     const service = new DisplayOverlayService({
-      db: { update } as never,
+      db,
+      saleroomDisplaySessionRepo,
       publisher: publisher as never,
       domainEvents: domainEvents as never,
     });
@@ -58,12 +66,13 @@ describe("DisplayOverlayService", () => {
     });
 
     expect(result.isOk()).toBe(true);
+    expect(saleroomDisplaySessionRepo.clearDisplayOverlay).toHaveBeenCalledWith("sale-1");
     expect(publisher.publishDisplayControl).toHaveBeenCalledWith(
       "sale-1",
       expect.objectContaining({ kind: "clear" }),
     );
     expect(domainEvents.publish).toHaveBeenCalledWith(
-      expect.anything(),
+      db,
       expect.objectContaining({
         eventType: "saleroom.display.overlay_clear",
         actorUserId: "staff-1",

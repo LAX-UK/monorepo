@@ -1,5 +1,5 @@
-import type { OnsiteEventCheckInServiceError } from "../services/interfaces/onsite-event-check-in-service.js";
-import type { OnsiteEventRsvpServiceError } from "../services/interfaces/onsite-event-rsvp-service.js";
+import type { OnsiteEventCheckInServiceError } from "../services/interfaces/onsite-event-service-errors.js";
+import type { OnsiteEventRsvpServiceError } from "../services/interfaces/onsite-event-service-errors.js";
 
 export function isOnsiteEventRsvpServiceError(
   value: unknown,

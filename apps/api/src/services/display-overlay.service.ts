@@ -1,8 +1,7 @@
 import type { Database } from "@auction/db";
-import { saleroomSession } from "@auction/db/schema";
 import type { SaleroomDisplayOverlay } from "@auction/types";
-import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import type { ISaleroomDisplaySessionRepository } from "../repositories/interfaces/saleroom-display-session.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
   DisplayServiceError,
@@ -12,17 +11,20 @@ import type { ISaleroomRealtimePublisher } from "./interfaces/saleroom-realtime-
 
 export type DisplayOverlayServiceOptions = {
   db: Database;
+  saleroomDisplaySessionRepo: ISaleroomDisplaySessionRepository;
   publisher: ISaleroomRealtimePublisher;
   domainEvents: DomainEventPublisher;
 };
 
 export class DisplayOverlayService implements IDisplayOverlayService {
   private readonly db: Database;
+  private readonly saleroomDisplaySessionRepo: ISaleroomDisplaySessionRepository;
   private readonly publisher: ISaleroomRealtimePublisher;
   private readonly domainEvents: DomainEventPublisher;
 
   constructor(opts: DisplayOverlayServiceOptions) {
     this.db = opts.db;
+    this.saleroomDisplaySessionRepo = opts.saleroomDisplaySessionRepo;
     this.publisher = opts.publisher;
     this.domainEvents = opts.domainEvents;
   }
@@ -41,15 +43,10 @@ export class DisplayOverlayService implements IDisplayOverlayService {
       emittedAt: new Date().toISOString(),
     };
 
-    const [updated] = await this.db
-      .update(saleroomSession)
-      .set({
-        displayOverlay: overlay,
-        displayOverlayAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(saleroomSession.saleId, input.saleId))
-      .returning({ id: saleroomSession.id });
+    const { updated } = await this.saleroomDisplaySessionRepo.setDisplayOverlay({
+      saleId: input.saleId,
+      overlay,
+    });
 
     if (!updated) {
       return err({
@@ -81,15 +78,7 @@ export class DisplayOverlayService implements IDisplayOverlayService {
     actorUserId: string;
   }): Promise<Result<void, DisplayServiceError>> {
     const emittedAt = new Date().toISOString();
-    const [updated] = await this.db
-      .update(saleroomSession)
-      .set({
-        displayOverlay: null,
-        displayOverlayAt: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(saleroomSession.saleId, input.saleId))
-      .returning({ id: saleroomSession.id });
+    const { updated } = await this.saleroomDisplaySessionRepo.clearDisplayOverlay(input.saleId);
 
     if (!updated) {
       return err({

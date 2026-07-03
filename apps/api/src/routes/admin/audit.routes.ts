@@ -4,12 +4,15 @@ import {
   roleHasCapability,
 } from "@auction/types";
 import { adminDomainEventsQuerySchema } from "@auction/validators";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireAuditDomainEvents } from "../../middleware/require-capability.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminAuditRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminAuditRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   /** GET /admin/audit/domain-events — paginated feed (PII redacted by default). */
   platform.get(
     "/audit/domain-events",

@@ -1,24 +1,24 @@
 import type { IAdminSaleRegistrationsApplicationService } from "../interfaces/admin-routes.js";
-import type { SaleRegistrationService } from "../sale-registration.service.js";
+import type { ISaleRegistrationAdminService } from "../interfaces/sale-registration-service.js";
 
 export class AdminSaleRegistrationsApplicationService
   implements IAdminSaleRegistrationsApplicationService
 {
-  constructor(private readonly registrations: SaleRegistrationService) {}
+  constructor(private readonly registrations: ISaleRegistrationAdminService) {}
 
-  listForSaleAdmin(...args: Parameters<SaleRegistrationService["listForSaleAdmin"]>) {
+  listForSaleAdmin(...args: Parameters<ISaleRegistrationAdminService["listForSaleAdmin"]>) {
     return this.registrations.listForSaleAdmin(...args);
   }
 
-  approve(...args: Parameters<SaleRegistrationService["approve"]>) {
+  approve(...args: Parameters<ISaleRegistrationAdminService["approve"]>) {
     return this.registrations.approve(...args);
   }
 
-  reject(...args: Parameters<SaleRegistrationService["reject"]>) {
+  reject(...args: Parameters<ISaleRegistrationAdminService["reject"]>) {
     return this.registrations.reject(...args);
   }
 
-  updateBidLimit(...args: Parameters<SaleRegistrationService["updateBidLimit"]>) {
+  updateBidLimit(...args: Parameters<ISaleRegistrationAdminService["updateBidLimit"]>) {
     return this.registrations.updateBidLimit(...args);
   }
 }

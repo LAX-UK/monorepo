@@ -1,6 +1,4 @@
 import type { Database } from "@auction/db";
-import { legalEntity, payment } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
 import type { Env } from "../../../env.js";
@@ -8,21 +6,24 @@ import { type AppLogger, createBaseLogger } from "../../../lib/logger.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { executeWithStripeRetries } from "../../../lib/stripe-retries.js";
 import { recordMoneyPathEvent } from "../../../middleware/metrics.js";
+import type { IConnectTransferRepository } from "../../../repositories/interfaces/connect-transfer.repository.js";
 import type { DomainEventPublisher } from "../../domain-event.publisher.js";
 import type { IPayoutRepository } from "../../interfaces/payout-repository.js";
 import type {
   IConnectAccountReadinessSync,
+  IConnectTransferInitiationService,
   InitiateTransferResult,
 } from "../../interfaces/stripe-connect.js";
 import { connectReadyFromCachedEntity } from "./connect-shared.js";
 
 /** Initiates platform → seller Stripe Connect transfers for scheduled payouts. */
-export class ConnectTransferInitiationService {
+export class ConnectTransferInitiationService implements IConnectTransferInitiationService {
   private readonly logger: AppLogger;
 
   constructor(
     env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">,
     private readonly db: Database,
+    private readonly connectTransferRepository: IConnectTransferRepository,
     readonly stripeFactory: IStripeClientFactory,
     private readonly accountSync: IConnectAccountReadinessSync,
     private readonly payoutRepository: IPayoutRepository | undefined,
@@ -86,12 +87,7 @@ export class ConnectTransferInitiationService {
       return { ok: false, reason: "negative_net_amount" };
     }
 
-    const rows = await this.db
-      .select()
-      .from(legalEntity)
-      .where(eq(legalEntity.id, payout.legalEntityId))
-      .limit(1);
-    const entity = rows[0];
+    const entity = await this.connectTransferRepository.findLegalEntityById(payout.legalEntityId);
     if (!entity) {
       return { ok: false, reason: "entity_not_found" };
     }
@@ -263,13 +259,7 @@ export class ConnectTransferInitiationService {
     const lines = await this.payoutRepository.listLines(payoutId);
     const saleLine = lines.find((line) => line.kind === "sale" && line.paymentId);
     if (!saleLine?.paymentId) return null;
-    const rows = await this.db
-      .select({ stripeChargeId: payment.stripeChargeId })
-      .from(payment)
-      .where(eq(payment.id, saleLine.paymentId))
-      .limit(1);
-    const chargeId = rows[0]?.stripeChargeId;
-    return chargeId && chargeId.length > 0 ? chargeId : null;
+    return this.connectTransferRepository.findStripeChargeIdByPaymentId(saleLine.paymentId);
   }
 
   private async resolveSourceTransaction(

@@ -10,8 +10,12 @@ import {
 } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DrizzleLegalEntityRepository } from "../repositories/drizzle-legal-entity.repository.js";
+import { createDrizzleLegalEntityRepository } from "../repositories/drizzle-legal-entity.repository.js";
+import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
+import { DrizzleSaleRepository } from "../repositories/drizzle-sale.repository.js";
+import { DrizzleTelephoneBidBookingDetailReader } from "../repositories/drizzle-telephone-bid-booking-detail.reader.js";
 import { DrizzleTelephoneBidBookingRepository } from "../repositories/drizzle-telephone-bid-booking.repository.js";
+import { DrizzleTelephoneBookingUserPhoneReader } from "../repositories/drizzle-telephone-booking-user-phone.reader.js";
 import { TelephoneBidBookingService } from "./telephone-bid-booking.service.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -28,8 +32,21 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
   // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
   const db = createDb(process.env.DATABASE_URL!);
   const repo = new DrizzleTelephoneBidBookingRepository(db);
-  const legalEntityRepository = new DrizzleLegalEntityRepository(db);
-  const service = new TelephoneBidBookingService(db, repo, legalEntityRepository, null, null, null);
+  const legalEntityRepository = createDrizzleLegalEntityRepository(db);
+  const saleRepo = new DrizzleSaleRepository(db);
+  const lotRepo = new DrizzleLotRepository(db);
+  const service = new TelephoneBidBookingService(
+    db,
+    repo,
+    new DrizzleTelephoneBidBookingDetailReader(db),
+    saleRepo,
+    lotRepo,
+    new DrizzleTelephoneBookingUserPhoneReader(db),
+    legalEntityRepository,
+    null,
+    null,
+    null,
+  );
 
   async function cleanup() {
     await db.delete(bid).where(eq(bid.lotId, lotId));

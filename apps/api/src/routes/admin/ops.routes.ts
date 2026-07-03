@@ -5,7 +5,7 @@ import {
   adminSubmissionCountBySellersQuerySchema,
   adminSubmissionCountQuerySchema,
 } from "@auction/validators";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
   requireAdminDashboard,
@@ -16,7 +16,10 @@ import {
 } from "../../middleware/require-capability.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminOpsRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminOpsRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get("/submissions/quality-gaps-count", requireSubmissionsAccess, async (c) => {
     const count = await container.admin.ops.countQualityGapsForAdminApi();
     return c.json({ data: { count } });
@@ -132,7 +135,10 @@ export function attachAdminOpsRoutes(platform: AdminHono, container: Container):
   );
 }
 
-export function attachAdminAttentionRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminAttentionRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get("/attention", requireAdminDashboard, async (c) => {
     const data = await container.admin.ops.listAttentionFeed();
     return c.json({ data });

@@ -23,15 +23,19 @@ import { getMarketingEventsConfig } from "../lib/marketing-events-enabled.js";
 import { VeriffScreeningProvider } from "../lib/veriff/veriff-screening-provider.js";
 import { VeriffWatchlistFetcher } from "../lib/veriff/veriff-watchlist-fetcher.js";
 import { VeriffWebhookVerifier } from "../lib/veriff/veriff-webhook-verifier.js";
+import { DrizzleExportJobRepository } from "../repositories/drizzle-export-job.repository.js";
 import { AdminSourceOfFundsQueryService } from "../services/admin/admin-source-of-funds-query.service.js";
 import { LegalEntityDocumentAdminService } from "../services/admin/legal-entity-document-admin.service.js";
 import { DefaultAmlDecisionPolicy } from "../services/aml/aml-decision.policy.js";
 import { AmlService } from "../services/aml/aml.service.js";
 import { EntityDocumentService } from "../services/entity-document.service.js";
+import { ExportFileStorage } from "../services/export/export-file-storage.js";
+import { RedisExportProgressStore } from "../services/export/export-progress.store.js";
 import { ExportService } from "../services/export/export.service.js";
 import { ImageCleanupService } from "../services/image-cleanup.service.js";
 import type { IKycService } from "../services/interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../services/interfaces/marketing-event-service.js";
+import type { IUploadService } from "../services/interfaces/upload-service.js";
 import { KycResubmissionNotifier } from "../services/kyc/kyc-resubmission-notifier.js";
 import { VeriffKycService } from "../services/kyc/veriff-kyc.service.js";
 import { MarketingEventService } from "../services/marketing-event.service.js";
@@ -63,7 +67,7 @@ export type ContainerComplianceMedia = {
   mediaAssetEnricher: MediaAssetEnricher;
   legalEntityDocumentAdminService: LegalEntityDocumentAdminService;
   imageCleanupService: ImageCleanupService;
-  uploadService: UploadService;
+  uploadService: IUploadService;
   lotDocumentService: EntityDocumentService<string>;
   saleDocumentService: EntityDocumentService<string>;
   submissionDocumentService: EntityDocumentService<string>;
@@ -170,10 +174,12 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
   );
   const exportProviderDeps = createExportProviderDeps(db);
   const exportProviders = createExportProviders(exportProviderDeps);
+  const exportJobRepo = new DrizzleExportJobRepository(db);
   const exportService = new ExportService(
     db,
-    redis,
-    objectStorage,
+    exportJobRepo,
+    new RedisExportProgressStore(redis),
+    new ExportFileStorage(objectStorage),
     dataExportQueue,
     exportProviders,
     {
@@ -217,7 +223,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
   );
   const mediaAssetEnricher = new MediaAssetEnricher(db, objectStorage);
   const legalEntityDocumentAdminService = new LegalEntityDocumentAdminService(
-    db,
+    repos.legalEntityDocumentAdminRepository,
     objectStorage,
     mediaUrlResolver,
   );
@@ -228,25 +234,26 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     redis,
     uploadValidationQueue,
     mediaUrlResolver,
+    { repo: repos.uploadPersistenceRepository },
   );
   const lotDocumentService = new EntityDocumentService(
     "lot",
     lotDocumentRepo,
-    db,
+    repos.uploadObjectReader,
     objectStorage,
     mediaUrlResolver,
   );
   const saleDocumentService = new EntityDocumentService(
     "sale",
     saleDocumentRepo,
-    db,
+    repos.uploadObjectReader,
     objectStorage,
     mediaUrlResolver,
   );
   const submissionDocumentService = new EntityDocumentService(
     "submission",
     submissionDocumentRepo,
-    db,
+    repos.uploadObjectReader,
     objectStorage,
     mediaUrlResolver,
   );

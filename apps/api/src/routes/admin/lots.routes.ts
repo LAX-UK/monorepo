@@ -5,7 +5,7 @@ import {
   lotIdParamSchema,
   returnLotToInventoryBodySchema,
 } from "@auction/validators";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
@@ -15,7 +15,10 @@ import {
 } from "../../middleware/require-capability.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminLotsRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminLotsRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   /** GET /admin/lots/browse — attachable draft lots for sale setup picker. */
   platform.get(
     "/lots/browse",

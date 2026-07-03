@@ -6,34 +6,21 @@ import { createUserRoutes } from "./users.js";
 
 const FAKE_COOKIE = "better-auth.session_token=test-session-token-fixture";
 
-function makeAuthDbForTwoFactor(row: { twoFactorEnabled: boolean } | undefined) {
-  return {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          limit: vi.fn(async () => (row ? [row] : [])),
-        })),
-      })),
-    })),
-  };
-}
-
 function securityNotifyTestApp(opts: {
-  twoFactorEnabled?: boolean;
+  twoFactorEnabled?: boolean | null;
   getById?: ReturnType<typeof vi.fn>;
   enqueue?: ReturnType<typeof vi.fn>;
 }) {
-  const authDb = makeAuthDbForTwoFactor(
-    opts.twoFactorEnabled === undefined ? undefined : { twoFactorEnabled: opts.twoFactorEnabled },
-  );
   const getById =
     opts.getById ?? vi.fn().mockResolvedValue({ id: "u1", email: "user@example.com", name: "Ada" });
   const enqueue = opts.enqueue ?? vi.fn().mockResolvedValue(undefined);
   const container = {
     env: {},
-    authDb,
     db: {},
     userService: { getById },
+    userSecurityReadService: {
+      getTwoFactorEnabled: vi.fn().mockResolvedValue(opts.twoFactorEnabled ?? null),
+    },
     emailService: { enqueue },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     authAuditPublisher: { publish: vi.fn().mockResolvedValue(undefined) },
@@ -43,13 +30,11 @@ function securityNotifyTestApp(opts: {
   };
   const app = new Hono();
   app.route("/users", createUserRoutes(container, authenticator));
-  return { app, authDb, getById, enqueue };
+  return { app, getById, enqueue };
 }
 
 describe("POST /users/me/security-notify/two-factor-enabled", () => {
   it("returns 409 and does not enqueue when user.twoFactorEnabled is false", async () => {
-    // Covers the abandoned-wizard case: a `twoFactor` row may exist (unverified)
-    // but `user.twoFactorEnabled` only flips to true once TOTP is confirmed.
     const { app, enqueue } = securityNotifyTestApp({ twoFactorEnabled: false });
 
     const res = await app.request("/users/me/security-notify/two-factor-enabled", {
@@ -64,7 +49,7 @@ describe("POST /users/me/security-notify/two-factor-enabled", () => {
   });
 
   it("returns 409 when there is no matching user row at all", async () => {
-    const { app, enqueue } = securityNotifyTestApp({});
+    const { app, enqueue } = securityNotifyTestApp({ twoFactorEnabled: null });
     const res = await app.request("/users/me/security-notify/two-factor-enabled", {
       method: "POST",
       headers: { cookie: FAKE_COOKIE },

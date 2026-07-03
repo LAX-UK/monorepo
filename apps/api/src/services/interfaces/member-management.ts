@@ -31,6 +31,12 @@ export interface IMemberManagementService {
   /** List active members for a legal entity (used by the team UI). */
   listMembers(legalEntityId: string): Promise<MemberWithUser[]>;
 
+  /** Active member row joined with user name for typed confirmation prompts. */
+  getMemberForConfirmation(
+    legalEntityId: string,
+    memberId: string,
+  ): Promise<{ role: LegalEntityMemberRole; memberName: string } | null>;
+
   /** Owner / admin only. Cannot demote a primary admin without a transfer. */
   updateRole(
     actingUserId: string,

@@ -1,7 +1,18 @@
 import type { Database } from "@auction/db";
+import type { IBidRepository } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { Env } from "../../env.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
+import type { IAdminDisputeCaseEnrichmentReader } from "../../repositories/interfaces/admin-dispute-case-enrichment.reader.js";
+import type { IAdminDomainEventReader } from "../../repositories/interfaces/admin-domain-event.reader.js";
+import type { IAdminFinanceIssueSnapshotReader } from "../../repositories/interfaces/admin-finance-issue-snapshot.reader.js";
+import type { IAdminLegalEntityBrowseReader } from "../../repositories/interfaces/admin-legal-entity-browse.reader.js";
+import type { IAdminManualReviewPaymentEnrichmentReader } from "../../repositories/interfaces/admin-manual-review-payment-enrichment.reader.js";
+import type { IAdminManualReviewPaymentReader } from "../../repositories/interfaces/admin-manual-review-payment.reader.js";
+import type { IAdminOnboardingIssuesReader } from "../../repositories/interfaces/admin-onboarding-issues.reader.js";
+import type { IAdminReviewTaskReader } from "../../repositories/interfaces/admin-review-task.reader.js";
+import type { IImpersonationDomainEventReader } from "../../repositories/interfaces/impersonation-domain-event.reader.js";
+import type { IImpersonationSessionRepository } from "../../repositories/interfaces/impersonation-session.repository.js";
 import type { AdminMetricsService } from "../admin-metrics.service.js";
 import type { AdminSaleOperationsSnapshotService } from "../admin-sale-operations-snapshot.service.js";
 import type { AdminUserService } from "../admin-user.service.js";
@@ -12,7 +23,6 @@ import type { SaleroomOnBlockPolicy } from "../bid/saleroom-on-block.policy.js";
 import type { CategoryService } from "../category.service.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ImpersonationAuditService } from "../impersonation-audit.service.js";
-import type { ImpersonationSessionService } from "../impersonation-session.service.js";
 import type { AdminRouteServices } from "../interfaces/admin-routes.js";
 import type { IAnalyticsService } from "../interfaces/analytics.js";
 import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
@@ -22,8 +32,12 @@ import type { IConveyorPipelineReader } from "../interfaces/conveyor-pipeline-re
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
 import type { IEmailObservabilityRepository } from "../interfaces/email-observability.js";
-import type { IItemSubmissionService } from "../interfaces/item-submission-service.js";
+import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-service.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
+import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
+import type { IPaymentAdminService } from "../interfaces/payment-service.js";
+import type { IUserRepository } from "../interfaces/repositories.js";
+import type { ISaleRegistrationService } from "../interfaces/sale-registration-service.js";
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 import type { IUserSuspensionChecker } from "../interfaces/user-suspension.js";
 import type {
@@ -33,18 +47,16 @@ import type {
 } from "../interfaces/xero-repositories.js";
 import type { InvitationService } from "../invitation.service.js";
 import type { LegalEntityLifecycleAdminService } from "../legal-entity-lifecycle-admin.service.js";
-import type { LotFulfilmentService } from "../lot-fulfilment.service.js";
 import type { LotLifecycleQueryService } from "../lot-lifecycle-query.service.js";
 import type { LotTransitionOrchestrator } from "../lot-transition-orchestrator.js";
 import type { LotService } from "../lot.service.js";
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { PaddleService } from "../paddle.service.js";
-import type { PaymentService } from "../payment.service.js";
 import type { ProfileService } from "../profile.service.js";
 import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
 import type { QrCodeService } from "../qr-code.service.js";
-import type { SaleRegistrationService } from "../sale-registration.service.js";
+import type { SaleExpectedGuestsService } from "../sale-expected-guests.service.js";
 import type { SaleroomCheckInService } from "../saleroom-check-in.service.js";
 import type { SaleroomService } from "../saleroom.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../source-of-funds/source-of-funds-document-collection.service.js";
@@ -52,40 +64,20 @@ import type { SourceOfFundsDocumentReviewService } from "../source-of-funds/sour
 import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
 import type { TelephoneBidBookingService } from "../telephone-bid-booking.service.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
-import { AdminAmlApplicationService } from "./admin-aml-application.service.js";
-import { AdminCatalogApplicationService } from "./admin-catalog-application.service.js";
-import { AdminConditionReportsApplicationService } from "./admin-condition-reports-application.service.js";
 import { AdminDashboardMetricsApplicationService } from "./admin-dashboard-metrics-application.service.js";
-import { AdminDashboardQueryService } from "./admin-dashboard-query.service.js";
-import { AdminDisputeCaseQueryService } from "./admin-dispute-case-query.service.js";
-import { AdminDomainEventQueryService } from "./admin-domain-event-query.service.js";
-import { AdminEmailApplicationService } from "./admin-email-application.service.js";
-import { AdminImpersonationService } from "./admin-impersonation.service.js";
-import { AdminInvitationApplicationService } from "./admin-invitation-application.service.js";
-import { AdminLegalEntityLifecycleApplicationService } from "./admin-legal-entity-lifecycle-application.service.js";
-import { AdminLiveBiddingApplicationService } from "./admin-live-bidding-application.service.js";
 import type { AdminLotBrowseService } from "./admin-lot-browse.service.js";
-import { AdminLotFulfilmentApplicationService } from "./admin-lot-fulfilment-application.service.js";
-import { AdminLotsApplicationService } from "./admin-lots-application.service.js";
 import type { AdminLotsKpiTrendService } from "./admin-lots-kpi-trend.service.js";
 import type { AdminNavCountsService } from "./admin-nav-counts.service.js";
-import { AdminOpsReadApplicationService } from "./admin-ops-read-application.service.js";
 import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
-import { AdminPaymentsApplicationService } from "./admin-payments-application.service.js";
 import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.service.js";
 import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.service.js";
-import { AdminQrCodesApplicationService } from "./admin-qr-codes-application.service.js";
-import { AdminRequestLifecycleApplicationService } from "./admin-request-lifecycle-application.service.js";
-import { AdminSaleRegistrationsApplicationService } from "./admin-sale-registrations-application.service.js";
-import { AdminSaleroomApplicationService } from "./admin-saleroom-application.service.js";
-import { AdminSaleroomCheckInApplicationService } from "./admin-saleroom-check-in-application.service.js";
-import { AdminSaleroomDisplayApplicationService } from "./admin-saleroom-display-application.service.js";
 import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.js";
-import { AdminSourceOfFundsApplicationService } from "./admin-source-of-funds-application.service.js";
 import type { AdminSourceOfFundsQueryService } from "./admin-source-of-funds-query.service.js";
-import { AdminStripeConnectApplicationService } from "./admin-stripe-connect-application.service.js";
-import { AdminUserApplicationService } from "./admin-user-application.service.js";
-import { AdminXeroApplicationService } from "./admin-xero-application.service.js";
+import { createAdminCatalogServices } from "./create-admin-catalog-services.js";
+import { createAdminComplianceServices } from "./create-admin-compliance-services.js";
+import { createAdminFinanceServices } from "./create-admin-finance-services.js";
+import { createAdminOperationsServices } from "./create-admin-operations-services.js";
+import { createAdminPeopleServices } from "./create-admin-people-services.js";
 import type { LegalEntityDocumentAdminService } from "./legal-entity-document-admin.service.js";
 
 export type AdminRouteServicesCore = Omit<AdminRouteServices, "dashboardMetrics">;
@@ -93,7 +85,8 @@ export type AdminRouteServicesCore = Omit<AdminRouteServices, "dashboardMetrics"
 export type CreateAdminRouteServicesInput = {
   db: Database;
   domainEventPublisher: DomainEventPublisher;
-  impersonationSessionService: ImpersonationSessionService;
+  impersonationSessionRepository: IImpersonationSessionRepository;
+  impersonationDomainEventReader: IImpersonationDomainEventReader;
   impersonationAuditService: ImpersonationAuditService;
   userSuspensionChecker: IUserSuspensionChecker;
   legalEntityRepository: ILegalEntityRepository;
@@ -108,14 +101,14 @@ export type CreateAdminRouteServicesInput = {
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
   conveyorPipelineReader: IConveyorPipelineReader;
-  itemSubmissionService: IItemSubmissionService;
-  paymentService: PaymentService;
+  itemSubmissionAdminApi: IItemSubmissionAdminApi;
+  paymentService: IPaymentAdminService;
   adminPaymentListQueryService: AdminPaymentListQueryService;
   lotService: LotService;
   adminLotBrowseService: AdminLotBrowseService;
   lotTransitionOrchestrator: LotTransitionOrchestrator;
   lotLifecycleQueryService: LotLifecycleQueryService;
-  saleRegistrationService: SaleRegistrationService;
+  saleRegistrationService: ISaleRegistrationService;
   artistRegistryService: IArtistRegistryService;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   invitationService: InvitationService;
@@ -123,6 +116,7 @@ export type CreateAdminRouteServicesInput = {
   xeroConnectionRepository: IXeroConnectionRepository;
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
   paymentExternalRefRepository: IPaymentExternalRefRepository;
+  userRepository: IUserRepository;
   displayPairingService: IDisplayPairingService;
   displayOverlayService: IDisplayOverlayService;
   qrCodeService: QrCodeService;
@@ -139,13 +133,23 @@ export type CreateAdminRouteServicesInput = {
   saleroomService: SaleroomService;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   saleroomCheckInService: SaleroomCheckInService;
-  lotFulfilmentService: LotFulfilmentService;
+  saleExpectedGuestsService: SaleExpectedGuestsService;
+  lotFulfilmentService: ILotFulfilmentService;
   bidService: BidService;
   saleroomOnBlockPolicy: SaleroomOnBlockPolicy;
   paddleService: PaddleService;
   telephoneBidBookingService: TelephoneBidBookingService;
   redis: Redis;
   findLotById: (lotId: string) => Promise<{ id: string; saleId: string } | null>;
+  adminDomainEventReader: IAdminDomainEventReader;
+  adminFinanceIssueSnapshotReader: IAdminFinanceIssueSnapshotReader;
+  adminManualReviewPaymentReader: IAdminManualReviewPaymentReader;
+  adminManualReviewPaymentEnrichmentReader: IAdminManualReviewPaymentEnrichmentReader;
+  adminOnboardingIssuesReader: IAdminOnboardingIssuesReader;
+  adminReviewTaskReader: IAdminReviewTaskReader;
+  adminLegalEntityBrowseReader: IAdminLegalEntityBrowseReader;
+  adminDisputeCaseEnrichmentReader: IAdminDisputeCaseEnrichmentReader;
+  bidRepo: IBidRepository;
   env: Pick<
     Env,
     | "XERO_REDIRECT_URI"
@@ -160,107 +164,100 @@ export type CreateAdminRouteServicesInput = {
 export function createAdminRouteServices(
   input: CreateAdminRouteServicesInput,
 ): AdminRouteServicesCore {
-  const domainEvents = new AdminDomainEventQueryService(input.db);
+  const operations = createAdminOperationsServices({
+    impersonationAuditService: input.impersonationAuditService,
+    userSuspensionChecker: input.userSuspensionChecker,
+    analyticsService: input.analyticsService,
+    adminMetricsService: input.adminMetricsService,
+    attentionFeedReader: input.attentionFeedReader,
+    conveyorPipelineReader: input.conveyorPipelineReader,
+    itemSubmissionAdminApi: input.itemSubmissionAdminApi,
+    emailObservabilityRepository: input.emailObservabilityRepository,
+    displayPairingService: input.displayPairingService,
+    displayOverlayService: input.displayOverlayService,
+    saleroomService: input.saleroomService,
+    adminSaleOperationsSnapshotService: input.adminSaleOperationsSnapshotService,
+    saleroomCheckInService: input.saleroomCheckInService,
+    saleExpectedGuestsService: input.saleExpectedGuestsService,
+    bidService: input.bidService,
+    saleroomOnBlockPolicy: input.saleroomOnBlockPolicy,
+    paddleService: input.paddleService,
+    telephoneBidBookingService: input.telephoneBidBookingService,
+    redis: input.redis,
+    findLotById: input.findLotById,
+    adminDomainEventReader: input.adminDomainEventReader,
+    adminFinanceIssueSnapshotReader: input.adminFinanceIssueSnapshotReader,
+    adminManualReviewPaymentReader: input.adminManualReviewPaymentReader,
+    adminManualReviewPaymentEnrichmentReader: input.adminManualReviewPaymentEnrichmentReader,
+    adminOnboardingIssuesReader: input.adminOnboardingIssuesReader,
+    adminReviewTaskReader: input.adminReviewTaskReader,
+    adminLegalEntityBrowseReader: input.adminLegalEntityBrowseReader,
+    bidRepo: input.bidRepo,
+  });
+
+  const catalog = createAdminCatalogServices({
+    categoryService: input.categoryService,
+    artistProfileService: input.artistProfileService,
+    artistRegistryService: input.artistRegistryService,
+    resolvePlatformCatalogLegalEntityId: input.resolvePlatformCatalogLegalEntityId,
+    lotService: input.lotService,
+    adminLotBrowseService: input.adminLotBrowseService,
+    lotTransitionOrchestrator: input.lotTransitionOrchestrator,
+    lotLifecycleQueryService: input.lotLifecycleQueryService,
+    saleRegistrationService: input.saleRegistrationService,
+    lotFulfilmentService: input.lotFulfilmentService,
+    qrCodeService: input.qrCodeService,
+    qrCodeAnalytics: input.qrCodeAnalytics,
+    conditionReportService: input.conditionReportService,
+    mediaUrlResolver: input.mediaUrlResolver,
+    mediaAssetEnricher: input.mediaAssetEnricher,
+  });
+
+  const finance = createAdminFinanceServices({
+    paymentService: input.paymentService,
+    adminPaymentListQueryService: input.adminPaymentListQueryService,
+    stripeConnectService: input.stripeConnectService,
+    xeroOAuthService: input.xeroOAuthService,
+    xeroConnectionRepository: input.xeroConnectionRepository,
+    xeroWebhookEventRepository: input.xeroWebhookEventRepository,
+    paymentExternalRefRepository: input.paymentExternalRefRepository,
+    userRepository: input.userRepository,
+    env: input.env,
+  });
+
+  const compliance = createAdminComplianceServices({
+    domainEvents: operations.domainEvents,
+    legalEntityRepository: input.legalEntityRepository,
+    legalEntityLifecycleAdminService: input.legalEntityLifecycleAdminService,
+    legalEntityDocumentAdminService: input.legalEntityDocumentAdminService,
+    adminDisputeCaseEnrichmentReader: input.adminDisputeCaseEnrichmentReader,
+    amlService: input.amlService,
+    adminSourceOfFundsQueryService: input.adminSourceOfFundsQueryService,
+    sourceOfFundsService: input.sourceOfFundsService,
+    sourceOfFundsDocumentCollectionService: input.sourceOfFundsDocumentCollectionService,
+    sourceOfFundsDocumentReviewService: input.sourceOfFundsDocumentReviewService,
+    env: input.env,
+  });
+
+  const people = createAdminPeopleServices({
+    db: input.db,
+    domainEventPublisher: input.domainEventPublisher,
+    impersonationSessionRepository: input.impersonationSessionRepository,
+    impersonationDomainEventReader: input.impersonationDomainEventReader,
+    legalEntityRepository: input.legalEntityRepository,
+    adminUserService: input.adminUserService,
+    profileService: input.profileService,
+    invitationService: input.invitationService,
+  });
+
+  const { domainEventsService: _domainEventsService, ...operationsServices } = operations;
+
   return {
-    requestLifecycle: new AdminRequestLifecycleApplicationService(
-      input.impersonationAuditService,
-      input.userSuspensionChecker,
-    ),
-    ops: new AdminOpsReadApplicationService(
-      input.analyticsService,
-      input.adminMetricsService,
-      input.attentionFeedReader,
-      input.itemSubmissionService,
-      input.conveyorPipelineReader,
-    ),
-    impersonation: new AdminImpersonationService(
-      input.db,
-      input.legalEntityRepository,
-      input.impersonationSessionService,
-      input.domainEventPublisher,
-    ),
-    domainEvents,
-    disputeCases: new AdminDisputeCaseQueryService(domainEvents, input.db),
-    dashboard: new AdminDashboardQueryService(input.db),
-    catalog: new AdminCatalogApplicationService(
-      input.categoryService,
-      input.artistProfileService,
-      input.artistRegistryService,
-      input.resolvePlatformCatalogLegalEntityId,
-    ),
-    email: new AdminEmailApplicationService(input.emailObservabilityRepository),
-    users: new AdminUserApplicationService(input.adminUserService, input.profileService),
-    payments: new AdminPaymentsApplicationService(
-      input.paymentService,
-      input.adminPaymentListQueryService,
-    ),
-    lots: new AdminLotsApplicationService(
-      input.lotService,
-      input.adminLotBrowseService,
-      input.lotTransitionOrchestrator,
-      input.lotLifecycleQueryService,
-    ),
-    invitations: new AdminInvitationApplicationService(input.invitationService),
-    legalEntityLifecycle: new AdminLegalEntityLifecycleApplicationService(
-      input.legalEntityRepository,
-      input.legalEntityLifecycleAdminService,
-      input.legalEntityDocumentAdminService,
-    ),
-    xero: new AdminXeroApplicationService(
-      input.xeroOAuthService,
-      input.env.XERO_REDIRECT_URI,
-      input.xeroConnectionRepository,
-      input.xeroWebhookEventRepository,
-      input.paymentExternalRefRepository,
-      input.db,
-      input.env,
-    ),
-    display: new AdminSaleroomDisplayApplicationService(
-      input.displayPairingService,
-      input.displayOverlayService,
-    ),
-    qrCodes: new AdminQrCodesApplicationService(input.qrCodeService, input.qrCodeAnalytics),
-    conditionReports: new AdminConditionReportsApplicationService(
-      input.conditionReportService,
-      input.mediaUrlResolver,
-      input.mediaAssetEnricher,
-    ),
-    aml: new AdminAmlApplicationService(input.amlService),
-    sourceOfFunds: new AdminSourceOfFundsApplicationService(
-      input.adminSourceOfFundsQueryService,
-      input.sourceOfFundsService,
-      input.sourceOfFundsDocumentCollectionService,
-      input.sourceOfFundsDocumentReviewService,
-      {
-        WEB_ORIGIN: input.env.WEB_ORIGIN,
-        WEB_ORIGINS: input.env.WEB_ORIGINS,
-        SSR_TRUSTED_ORIGINS: input.env.SSR_TRUSTED_ORIGINS,
-      },
-    ),
-    saleRegistrations: new AdminSaleRegistrationsApplicationService(input.saleRegistrationService),
-    stripeConnect: new AdminStripeConnectApplicationService(
-      input.stripeConnectService,
-      input.env.WEB_ORIGIN,
-    ),
-    saleroom: new AdminSaleroomApplicationService(
-      input.saleroomService,
-      input.adminSaleOperationsSnapshotService,
-    ),
-    saleroomCheckIn: new AdminSaleroomCheckInApplicationService(
-      input.saleroomCheckInService,
-      input.redis,
-    ),
-    lotFulfilment: new AdminLotFulfilmentApplicationService(input.lotFulfilmentService),
-    liveBidding: new AdminLiveBiddingApplicationService(
-      input.bidService,
-      input.saleroomOnBlockPolicy,
-      input.paddleService,
-      input.telephoneBidBookingService,
-      input.adminMetricsService,
-      input.db,
-      input.redis,
-      input.findLotById,
-    ),
+    ...catalog,
+    ...finance,
+    ...compliance,
+    ...people,
+    ...operationsServices,
   };
 }
 
@@ -288,3 +285,11 @@ export function attachAdminDashboardMetrics(
     ),
   };
 }
+
+export {
+  createAdminCatalogServices,
+  createAdminComplianceServices,
+  createAdminFinanceServices,
+  createAdminOperationsServices,
+  createAdminPeopleServices,
+};

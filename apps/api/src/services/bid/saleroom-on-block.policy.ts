@@ -7,8 +7,13 @@ import { BidError } from "../../lib/errors.js";
 export class SaleroomOnBlockPolicy {
   constructor(private readonly db: Database) {}
 
-  async assertLotOnBlock(saleId: string, lotId: string): Promise<Result<void, BidError>> {
-    const [session] = await this.db
+  async assertLotOnBlock(
+    saleId: string,
+    lotId: string,
+    tx?: Database,
+  ): Promise<Result<void, BidError>> {
+    const conn = tx ?? this.db;
+    const [session] = await conn
       .select({
         status: saleroomSession.status,
         currentLotId: saleroomSession.currentLotId,
@@ -17,6 +22,11 @@ export class SaleroomOnBlockPolicy {
       .where(eq(saleroomSession.saleId, saleId))
       .limit(1);
 
+    if (session?.status === "paused") {
+      return err(
+        new BidError("Saleroom is paused — bidding will resume shortly", 400, "saleroom_paused"),
+      );
+    }
     if (!session || session.status !== "live") {
       return err(
         new BidError(

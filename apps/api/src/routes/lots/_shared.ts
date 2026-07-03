@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import type { Hono } from "hono";
-import type { Container } from "../../container.js";
+import type { ContainerLotRouteDepsSlice } from "../../container.js";
 import type { createOptionalAuth } from "../../middleware/optional-auth.js";
 import type { createRequireAuth } from "../../middleware/require-auth.js";
 import type { createRequireKyc } from "../../middleware/require-kyc.js";
@@ -15,7 +15,7 @@ export type LotHono = Hono<{
 }>;
 
 export type LotRouteDeps = {
-  container: Container;
+  container: ContainerLotRouteDepsSlice;
   requireAuth: ReturnType<typeof createRequireAuth>;
   optionalAuth: ReturnType<typeof createOptionalAuth>;
   kycGate: ReturnType<typeof createRequireKyc>;

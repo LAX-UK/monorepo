@@ -1,11 +1,8 @@
+import { persistQrCodeScan, truncateIp } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
-import {
-  QrCodeService,
-  decodeQrSequence,
-  encodeQrSequence,
-  persistQrCodeScan,
-  truncateIp,
-} from "./qr-code.service.js";
+import { QrCodeService, decodeQrSequence, encodeQrSequence } from "./qr-code.service.js";
+import { resolveFromCached } from "./qr-code/qr-code-cache.js";
+import type { QrCodeCachedResolve } from "./qr-code/qr-code-types.js";
 
 describe("QR code helpers", () => {
   it("round-trips shuffled Base62 sequences", () => {
@@ -20,6 +17,34 @@ describe("QR code helpers", () => {
     expect(truncateIp("203.0.113.42")).toBe("203.0.113.0");
     expect(truncateIp("2001:db8:abcd:0012:0000:0000:0000:0001")).toBe("2001:db8:abcd:0012::");
     expect(truncateIp("not-an-ip")).toBeNull();
+  });
+
+  it("resolveFromCached returns 410 for inactive codes", () => {
+    const cached: QrCodeCachedResolve = {
+      qrCodeId: "qr_1",
+      destinationUrl: "https://example.test/sale/1",
+      status: "disabled",
+      expiresAt: null,
+    };
+    expect(resolveFromCached(cached)).toEqual({
+      ok: false,
+      status: 410,
+      reason: "inactive",
+    });
+  });
+
+  it("resolveFromCached returns 410 for expired codes", () => {
+    const cached: QrCodeCachedResolve = {
+      qrCodeId: "qr_1",
+      destinationUrl: "https://example.test/sale/1",
+      status: "active",
+      expiresAt: "2020-01-01T00:00:00.000Z",
+    };
+    expect(resolveFromCached(cached)).toEqual({
+      ok: false,
+      status: 410,
+      reason: "expired",
+    });
   });
 
   it("enqueues scan payloads without writing inline when a queue is configured", async () => {
@@ -59,6 +84,8 @@ describe("QR code helpers", () => {
         placement: null,
         status: "active",
         expiresAt: null,
+        isDefault: true,
+        createdByUserId: "user_1",
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
         updatedAt: new Date("2026-01-01T00:00:00.000Z"),
       },
@@ -67,7 +94,22 @@ describe("QR code helpers", () => {
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ id: "old-qr", shortCode: "OLD12345" }]),
+            limit: vi.fn().mockResolvedValue([
+              {
+                id: "old-qr",
+                shortCode: "OLD12345",
+                entityType: "lot",
+                entityId: "11111111-1111-4111-8111-111111111111",
+                campaign: null,
+                placement: null,
+                status: "active",
+                expiresAt: null,
+                isDefault: true,
+                createdByUserId: null,
+                createdAt: new Date("2026-01-01T00:00:00.000Z"),
+                updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+              },
+            ]),
           }),
         }),
       }),

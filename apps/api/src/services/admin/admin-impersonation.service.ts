@@ -1,11 +1,10 @@
 import type { Database } from "@auction/db";
-import { domainEvent } from "@auction/db/schema";
 import { encodeActingContextCookie } from "@auction/types";
-import { and, eq } from "drizzle-orm";
 import { parseActingLegalEntityCookieFromHeader } from "../../lib/impersonation-cookie.js";
+import type { IImpersonationDomainEventReader } from "../../repositories/interfaces/impersonation-domain-event.reader.js";
+import type { IImpersonationSessionRepository } from "../../repositories/interfaces/impersonation-session.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "../impersonation-audit.service.js";
-import type { ImpersonationSessionService } from "../impersonation-session.service.js";
 import type {
   AdminImpersonationLookupResult,
   AdminImpersonationRecordFailedEndResult,
@@ -18,7 +17,8 @@ export class AdminImpersonationService implements IAdminImpersonationService {
   constructor(
     private readonly db: Database,
     private readonly legalEntityRepository: ILegalEntityRepository,
-    private readonly impersonationSessionService: ImpersonationSessionService,
+    private readonly impersonationSessionRepository: IImpersonationSessionRepository,
+    private readonly impersonationDomainEventReader: IImpersonationDomainEventReader,
     private readonly domainEventPublisher: DomainEventPublisher,
   ) {}
 
@@ -59,8 +59,9 @@ export class AdminImpersonationService implements IAdminImpersonationService {
     const prevEntityId = prev?.e;
 
     const session = await this.db.transaction(async (tx) => {
+      const txRepo = this.impersonationSessionRepository.forConnection(tx);
       if (prevSessionId && prevEntityId) {
-        await this.impersonationSessionService.end(prevSessionId, "session_replaced", tx);
+        await txRepo.end(prevSessionId, "session_replaced");
         await this.domainEventPublisher.publish(tx, {
           aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
           aggregateId: prevSessionId,
@@ -74,7 +75,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
           schemaVersion: 1,
         });
       }
-      const row = await this.impersonationSessionService.start(actorUserId, entity.id, tx);
+      const row = await txRepo.start(actorUserId, entity.id);
       await this.domainEventPublisher.publish(tx, {
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
         aggregateId: row.id,
@@ -120,7 +121,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
       return { ok: false, error: "no_active_impersonation" };
     }
     await this.db.transaction(async (tx) => {
-      await this.impersonationSessionService.end(imp.sid, "manual", tx);
+      await this.impersonationSessionRepository.forConnection(tx).end(imp.sid, "manual");
       await this.domainEventPublisher.publish(tx, {
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
         aggregateId: imp.sid,
@@ -143,21 +144,10 @@ export class AdminImpersonationService implements IAdminImpersonationService {
     legalEntityId: string;
   }): Promise<AdminImpersonationRecordFailedEndResult> {
     const { actorUserId, sessionId, legalEntityId } = input;
-    const [started] = await this.db
-      .select({
-        id: domainEvent.id,
-        actingLegalEntityId: domainEvent.actingLegalEntityId,
-      })
-      .from(domainEvent)
-      .where(
-        and(
-          eq(domainEvent.aggregateType, ADMIN_IMPERSONATION_AGGREGATE_TYPE),
-          eq(domainEvent.aggregateId, sessionId),
-          eq(domainEvent.eventType, "admin.impersonation_started"),
-          eq(domainEvent.actorUserId, actorUserId),
-        ),
-      )
-      .limit(1);
+    const started = await this.impersonationDomainEventReader.findStartedEvent({
+      sessionId,
+      actorUserId,
+    });
 
     if (!started) {
       return { ok: false, status: 404, error: "session_not_found" };
@@ -166,24 +156,14 @@ export class AdminImpersonationService implements IAdminImpersonationService {
       return { ok: false, status: 400, error: "legal_entity_mismatch" };
     }
 
-    const [ended] = await this.db
-      .select({ id: domainEvent.id })
-      .from(domainEvent)
-      .where(
-        and(
-          eq(domainEvent.aggregateType, ADMIN_IMPERSONATION_AGGREGATE_TYPE),
-          eq(domainEvent.aggregateId, sessionId),
-          eq(domainEvent.eventType, "admin.impersonation_ended"),
-        ),
-      )
-      .limit(1);
-
-    if (ended) {
+    if (await this.impersonationDomainEventReader.hasEndedEvent(sessionId)) {
       return { ok: true, alreadyEnded: true };
     }
 
     await this.db.transaction(async (tx) => {
-      await this.impersonationSessionService.end(sessionId, "cookie_cleared_after_failed_end", tx);
+      await this.impersonationSessionRepository
+        .forConnection(tx)
+        .end(sessionId, "cookie_cleared_after_failed_end");
       await this.domainEventPublisher.publish(tx, {
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
         aggregateId: sessionId,

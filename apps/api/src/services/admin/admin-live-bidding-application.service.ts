@@ -1,6 +1,4 @@
-import type { Database } from "@auction/db";
-import { bid } from "@auction/db/schema";
-import { eq, sql } from "drizzle-orm";
+import type { IBidRepository } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import { type Result, err } from "neverthrow";
 import { BidError } from "../../lib/errors.js";
@@ -13,8 +11,8 @@ import type {
   AdminPlacePaddleBidResult,
   IAdminLiveBiddingApplicationService,
 } from "../interfaces/admin-routes.js";
+import type { ITelephoneBidBookingBidPolicy } from "../interfaces/telephone-bid-booking-service.js";
 import type { PaddleService, PaddleServiceError } from "../paddle.service.js";
-import type { TelephoneBidBookingService } from "../telephone-bid-booking.service.js";
 
 type RateLimitError = {
   message: string;
@@ -27,9 +25,9 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
     private readonly bids: BidService,
     private readonly onBlockPolicy: SaleroomOnBlockPolicy,
     private readonly paddles: PaddleService,
-    private readonly telephoneBookings: TelephoneBidBookingService,
+    private readonly telephoneBookings: ITelephoneBidBookingBidPolicy,
     private readonly adminMetrics: AdminMetricsService,
-    private readonly db: Database,
+    private readonly bidRepo: IBidRepository,
     private readonly redis: Redis,
     private readonly findLotById: (lotId: string) => Promise<{ id: string; saleId: string } | null>,
   ) {}
@@ -80,15 +78,12 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
     }
 
     this.adminMetrics.recordBidPlaced();
-    const [countRow] = await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(bid)
-      .where(eq(bid.lotId, input.lotId));
+    const bidCount = await this.bidRepo.countForLot(input.lotId);
 
     return {
       type: "ok_with_summary",
       body: out.body,
-      bidCount: countRow?.count ?? 0,
+      bidCount,
     };
   }
 

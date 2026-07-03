@@ -70,6 +70,9 @@ function mount(role: string, opts: MountOptions = {}) {
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     paymentService,
+    paymentBuyerService: paymentService,
+    paymentAdminService: paymentService,
+    paymentMaintenanceService: paymentService,
     lotFulfilmentService: {
       getForWinner: vi.fn().mockResolvedValue(ok(null)),
     },
@@ -366,6 +369,9 @@ describe("GET /payments/me/lot/:lotId/fulfilment", () => {
     const container = {
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       paymentService,
+      paymentBuyerService: paymentService,
+      paymentAdminService: paymentService,
+      paymentMaintenanceService: paymentService,
       lotFulfilmentService,
       lotService: { getById: vi.fn(async () => null) },
       mediaUrlResolver: {

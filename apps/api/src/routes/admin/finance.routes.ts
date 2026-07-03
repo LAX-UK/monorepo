@@ -8,13 +8,16 @@ import {
   adminFinanceDisputesQuerySchema,
   paymentIdParamSchema,
 } from "@auction/validators";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { attachXeroAdminRoutes } from "../xero-admin.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminFinanceRoutes(finance: AdminHono, container: Container): void {
+export function attachAdminFinanceRoutes(
+  finance: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   /** GET /admin/finance/dispute-domain-events — `payment.dispute*` only (finance-shell-safe). */
   finance.get(
     "/finance/dispute-domain-events",

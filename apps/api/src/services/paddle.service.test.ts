@@ -5,7 +5,7 @@ import { PaddleService } from "./paddle.service.js";
 function createPaddleService(
   overrides: {
     repo?: Record<string, ReturnType<typeof vi.fn>>;
-    db?: Record<string, unknown>;
+    lotRepo?: Record<string, ReturnType<typeof vi.fn>>;
     cache?: {
       get: ReturnType<typeof vi.fn>;
       set: ReturnType<typeof vi.fn>;
@@ -25,11 +25,12 @@ function createPaddleService(
     ...overrides.repo,
   };
 
-  return new PaddleService(
-    repo as never,
-    (overrides.db ?? { select: vi.fn() }) as never,
-    overrides.cache ?? null,
-  );
+  const lotRepo = {
+    findById: vi.fn(),
+    ...overrides.lotRepo,
+  };
+
+  return new PaddleService(repo as never, lotRepo as never, overrides.cache ?? null);
 }
 
 describe("PaddleService.assignPaddle", () => {
@@ -65,12 +66,11 @@ describe("PaddleService.assignPaddle", () => {
 
 describe("PaddleService.assertPaddleAllowsBid", () => {
   it("rejects when lot does not belong to sale", async () => {
-    const limit = vi.fn().mockResolvedValue([{ saleId: "other-sale" }]);
-    const where = vi.fn().mockReturnValue({ limit });
-    const from = vi.fn().mockReturnValue({ where });
-    const select = vi.fn().mockReturnValue({ from });
-
-    const service = createPaddleService({ db: { select } });
+    const service = createPaddleService({
+      lotRepo: {
+        findById: vi.fn().mockResolvedValue({ saleId: "other-sale" }),
+      },
+    });
     const result = await service.assertPaddleAllowsBid({
       saleId: "sale-1",
       paddleNumber: 205,
@@ -85,13 +85,10 @@ describe("PaddleService.assertPaddleAllowsBid", () => {
   });
 
   it("rejects unknown paddle numbers", async () => {
-    const limit = vi.fn().mockResolvedValue([{ saleId: "sale-1" }]);
-    const where = vi.fn().mockReturnValue({ limit });
-    const from = vi.fn().mockReturnValue({ where });
-    const select = vi.fn().mockReturnValue({ from });
-
     const service = createPaddleService({
-      db: { select },
+      lotRepo: {
+        findById: vi.fn().mockResolvedValue({ saleId: "sale-1" }),
+      },
       repo: {
         findBySaleAndPaddle: vi.fn().mockResolvedValue(null),
       },
@@ -110,13 +107,10 @@ describe("PaddleService.assertPaddleAllowsBid", () => {
   });
 
   it("resolves bidder identity for checked-in paddle", async () => {
-    const limit = vi.fn().mockResolvedValue([{ saleId: "sale-1" }]);
-    const where = vi.fn().mockReturnValue({ limit });
-    const from = vi.fn().mockReturnValue({ where });
-    const select = vi.fn().mockReturnValue({ from });
-
     const service = createPaddleService({
-      db: { select },
+      lotRepo: {
+        findById: vi.fn().mockResolvedValue({ saleId: "sale-1" }),
+      },
       repo: {
         findBySaleAndPaddle: vi.fn().mockResolvedValue({
           userId: "user-1",

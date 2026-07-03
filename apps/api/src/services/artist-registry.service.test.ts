@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
 import { ArtistRegistryService } from "./artist-registry.service.js";
+import { ArtistRegistryQueryService } from "./artist-registry/artist-registry-query.service.js";
 
 /** Build a chainable Drizzle-like stub. The shared `then(resolve)` call
  * on the chain returns the next configured row set from `resultsQueue`.
@@ -164,7 +165,7 @@ describe("ArtistRegistryService.search (3-pass)", () => {
 describe("ArtistRegistryService.proposeMatches", () => {
   it("buckets search results by matchType and respects limit", async () => {
     const svc = new ArtistRegistryService({} as Database);
-    vi.spyOn(svc, "search").mockResolvedValue([
+    vi.spyOn(ArtistRegistryQueryService.prototype, "search").mockResolvedValue([
       {
         id: "1",
         displayName: "A",

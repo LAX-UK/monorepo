@@ -17,6 +17,7 @@ const event: OnsiteEvent = {
   arrivalNote: "Doors 6:00 PM · Personal and non-transferable.",
   status: "published",
   checkInDryRun: false,
+  saleId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };

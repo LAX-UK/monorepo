@@ -1,7 +1,6 @@
 import type { Database } from "@auction/db";
-import { legalEntityMember, user } from "@auction/db/schema";
-import type { LegalEntityMember, LegalEntityMemberRole } from "@auction/types";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import type { LegalEntityMember } from "@auction/types";
+import type { ILegalEntityMemberRepository } from "../repositories/interfaces/legal-entity-member.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import {
   type IMemberManagementService,
@@ -11,79 +10,20 @@ import {
 } from "./interfaces/member-management.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
-const ADMIN_ROLES: LegalEntityMemberRole[] = ["owner", "admin"];
-
-function rowToMember(row: typeof legalEntityMember.$inferSelect): LegalEntityMember {
-  return {
-    id: row.id,
-    legalEntityId: row.legalEntityId,
-    userId: row.userId,
-    role: row.role,
-    isPrimaryAdmin: row.isPrimaryAdmin,
-    invitedByUserId: row.invitedByUserId ?? null,
-    invitedAt: row.invitedAt ?? null,
-    acceptedAt: row.acceptedAt ?? null,
-    removedAt: row.removedAt ?? null,
-    createdAt: row.createdAt,
-  };
-}
-
 export class MemberManagementService implements IMemberManagementService {
   constructor(
     private readonly db: Database,
+    private readonly memberRepo: ILegalEntityMemberRepository,
     private readonly domainEventPublisher: DomainEventPublisher,
     private readonly repoFactory: IRepositoryFactory,
   ) {}
 
-  private async assertActorIsAdmin(
-    actingUserId: string,
-    legalEntityId: string,
-  ): Promise<typeof legalEntityMember.$inferSelect> {
-    const rows = await this.db
-      .select()
-      .from(legalEntityMember)
-      .where(
-        and(
-          eq(legalEntityMember.userId, actingUserId),
-          eq(legalEntityMember.legalEntityId, legalEntityId),
-          isNull(legalEntityMember.removedAt),
-        ),
-      )
-      .limit(1);
-    const me = rows[0];
-    if (!me || !me.acceptedAt) {
-      throw new MemberPermissionError("not_a_member");
-    }
-    if (!ADMIN_ROLES.includes(me.role)) {
-      throw new MemberPermissionError("insufficient_role");
-    }
-    return me;
+  listMembers(legalEntityId: string): Promise<MemberWithUser[]> {
+    return this.memberRepo.listMembersWithUsers(legalEntityId);
   }
 
-  async listMembers(legalEntityId: string): Promise<MemberWithUser[]> {
-    const rows = await this.db
-      .select({
-        member: legalEntityMember,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        },
-      })
-      .from(legalEntityMember)
-      .innerJoin(user, eq(user.id, legalEntityMember.userId))
-      .where(
-        and(
-          eq(legalEntityMember.legalEntityId, legalEntityId),
-          isNull(legalEntityMember.removedAt),
-        ),
-      )
-      .orderBy(desc(legalEntityMember.isPrimaryAdmin), legalEntityMember.createdAt);
-    return rows.map((r) => ({
-      ...rowToMember(r.member),
-      user: { ...r.user, image: r.user.image ?? null },
-    }));
+  getMemberForConfirmation(legalEntityId: string, memberId: string) {
+    return this.memberRepo.findActiveMemberConfirmationContext(memberId, legalEntityId);
   }
 
   async updateRole(
@@ -92,13 +32,8 @@ export class MemberManagementService implements IMemberManagementService {
     memberId: string,
     input: UpdateMemberRoleInput,
   ): Promise<LegalEntityMember> {
-    await this.assertActorIsAdmin(actingUserId, legalEntityId);
-    const rows = await this.db
-      .select()
-      .from(legalEntityMember)
-      .where(eq(legalEntityMember.id, memberId))
-      .limit(1);
-    const target = rows[0];
+    await this.memberRepo.findActiveAdminMembership(actingUserId, legalEntityId);
+    const target = await this.memberRepo.findMemberById(memberId);
     if (!target || target.legalEntityId !== legalEntityId || target.removedAt) {
       throw new MemberPermissionError("member_not_found");
     }
@@ -106,12 +41,7 @@ export class MemberManagementService implements IMemberManagementService {
       throw new MemberPermissionError("cannot_demote_primary_admin");
     }
     const prevRole = target.role;
-    const [updated] = await this.db
-      .update(legalEntityMember)
-      .set({ role: input.role })
-      .where(eq(legalEntityMember.id, memberId))
-      .returning();
-    if (!updated) throw new MemberPermissionError("member_update_failed");
+    const updated = await this.memberRepo.updateRole(memberId, input.role);
     if (prevRole !== input.role) {
       await this.domainEventPublisher.publish(this.db, {
         aggregateType: "legal_entity",
@@ -129,17 +59,12 @@ export class MemberManagementService implements IMemberManagementService {
         producer: "apps/api",
       });
     }
-    return rowToMember(updated);
+    return updated;
   }
 
   async removeMember(actingUserId: string, legalEntityId: string, memberId: string): Promise<void> {
-    await this.assertActorIsAdmin(actingUserId, legalEntityId);
-    const rows = await this.db
-      .select()
-      .from(legalEntityMember)
-      .where(eq(legalEntityMember.id, memberId))
-      .limit(1);
-    const target = rows[0];
+    await this.memberRepo.findActiveAdminMembership(actingUserId, legalEntityId);
+    const target = await this.memberRepo.findMemberById(memberId);
     if (!target || target.legalEntityId !== legalEntityId || target.removedAt) {
       throw new MemberPermissionError("member_not_found");
     }
@@ -174,10 +99,7 @@ export class MemberManagementService implements IMemberManagementService {
         }
       }
 
-      await tx
-        .update(legalEntityMember)
-        .set({ removedAt: new Date() })
-        .where(eq(legalEntityMember.id, memberId));
+      await this.memberRepo.markRemoved(tx, memberId);
 
       await this.domainEventPublisher.publish(tx, {
         aggregateType: "legal_entity",
@@ -198,16 +120,11 @@ export class MemberManagementService implements IMemberManagementService {
   }
 
   async transferPrimaryAdmin(actingUserId: string, legalEntityId: string, toMemberId: string) {
-    const me = await this.assertActorIsAdmin(actingUserId, legalEntityId);
+    const me = await this.memberRepo.findActiveAdminMembership(actingUserId, legalEntityId);
     if (!me.isPrimaryAdmin) {
       throw new MemberPermissionError("only_primary_admin_can_transfer");
     }
-    const rows = await this.db
-      .select()
-      .from(legalEntityMember)
-      .where(eq(legalEntityMember.id, toMemberId))
-      .limit(1);
-    const target = rows[0];
+    const target = await this.memberRepo.findMemberById(toMemberId);
     if (!target || target.legalEntityId !== legalEntityId || target.removedAt) {
       throw new MemberPermissionError("target_member_not_found");
     }
@@ -216,24 +133,9 @@ export class MemberManagementService implements IMemberManagementService {
     }
 
     return await this.db.transaction(async (tx) => {
-      // Demote current primary first; the partial unique index requires the
-      // old row's `isPrimaryAdmin = false` before we can flip the new row to
-      // true.
-      const [from] = await tx
-        .update(legalEntityMember)
-        .set({ isPrimaryAdmin: false, role: "admin" })
-        .where(eq(legalEntityMember.id, me.id))
-        .returning();
-      if (!from) throw new MemberPermissionError("transfer_demote_failed");
-
-      const [to] = await tx
-        .update(legalEntityMember)
-        .set({ isPrimaryAdmin: true, role: "owner" })
-        .where(eq(legalEntityMember.id, toMemberId))
-        .returning();
-      if (!to) throw new MemberPermissionError("transfer_promote_failed");
-
-      return { from: rowToMember(from), to: rowToMember(to) };
+      const from = await this.memberRepo.demotePrimaryAdmin(tx, me.id);
+      const to = await this.memberRepo.promotePrimaryAdmin(tx, toMemberId);
+      return { from, to };
     });
   }
 }

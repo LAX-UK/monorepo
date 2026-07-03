@@ -17,10 +17,13 @@ export type SaleroomSessionStatusRow = PublicSaleroomSessionStatus & {
   saleId: string;
 };
 
-export interface ISaleroomService {
+export interface ISaleroomSessionReadService {
   getPublicSessionStatus(saleId: string): Promise<PublicSaleroomSessionStatus>;
   getSessionStatuses(saleIds: readonly string[]): Promise<SaleroomSessionStatusRow[]>;
   getSessionWithRecentEvents(saleId: string): Promise<SaleroomSessionSnapshot>;
+}
+
+export interface ISaleroomSessionControlService {
   goLive(input: {
     saleId: string;
     actorUserId: string;
@@ -50,6 +53,9 @@ export interface ISaleroomService {
     saleId: string;
     actorUserId: string;
   }): Promise<Result<{ sessionId: string }, SaleroomServiceError>>;
+}
+
+export interface ISaleroomDisplayControlService {
   publishClerkPaddleBidSummary(input: {
     saleId: string;
     lotId: string;
@@ -57,4 +63,10 @@ export interface ISaleroomService {
     bidCount: number;
     leaderPaddleNumber: number | null;
   }): Promise<void>;
+  clearDisplayOverlayIfAny(saleId: string): Promise<void>;
 }
+
+export interface ISaleroomService
+  extends ISaleroomSessionReadService,
+    ISaleroomSessionControlService,
+    ISaleroomDisplayControlService {}

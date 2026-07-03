@@ -13,20 +13,21 @@ import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
+import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
+import type { ISalePublishService } from "./interfaces/sale-publish.js";
 import type { IVenueRepository } from "./interfaces/venue.js";
-import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { QrCodeService } from "./qr-code.service.js";
 import { createSale } from "./sale/sale-create.js";
-import { cancelSale, publishSale, unpublishSale } from "./sale/sale-lifecycle.js";
 import {
   addLotToSale,
   attachExistingLotToSale,
   detachLotFromSale,
 } from "./sale/sale-lot-membership.js";
+import { SalePublishService } from "./sale/sale-publish.service.js";
 import {
   findByIds,
   getById,
@@ -56,16 +57,18 @@ export type SaleServiceOptions = {
   englishOnlyAuctions?: boolean;
   db?: Database;
   domainEventPublisher?: DomainEventPublisher | null;
-  lotLifecycleRecording?: LotLifecycleRecording | null;
+  lotLifecycleRecording?: ILotLifecycleRecorder | null;
   legalEntityRepository?: ILegalEntityRepository | null;
   venueRepository?: IVenueRepository | null;
   enforceIndividualConnectOnPublish?: boolean;
   qrCodeService?: QrCodeService | null;
   repoFactory?: IRepositoryFactory | null;
+  salePublishService?: ISalePublishService;
 };
 
 export class SaleService {
   private readonly deps: SaleServiceDeps;
+  private readonly publishService: ISalePublishService;
 
   constructor(opts: SaleServiceOptions) {
     this.deps = {
@@ -88,6 +91,7 @@ export class SaleService {
       qrCodeService: opts.qrCodeService ?? null,
       repoFactory: opts.repoFactory ?? null,
     };
+    this.publishService = opts.salePublishService ?? new SalePublishService(this.deps);
   }
 
   async create(adminId: string, input: ValidatorCreateSale): Promise<Sale> {
@@ -154,7 +158,7 @@ export class SaleService {
     saleId: string,
     userStaffRole?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    return publishSale(this.deps, userId, userRole, saleId, userStaffRole);
+    return this.publishService.publish(userId, userRole, saleId, userStaffRole);
   }
 
   async unpublish(
@@ -163,7 +167,7 @@ export class SaleService {
     saleId: string,
     userStaffRole?: string | null,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    return unpublishSale(this.deps, userId, userRole, saleId, userStaffRole);
+    return this.publishService.unpublish(userId, userRole, saleId, userStaffRole);
   }
 
   async cancel(
@@ -172,7 +176,7 @@ export class SaleService {
     saleId: string,
     userStaffRole?: string | null,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    return cancelSale(this.deps, userId, userRole, saleId, userStaffRole);
+    return this.publishService.cancel(userId, userRole, saleId, userStaffRole);
   }
 
   async addLot(

@@ -30,11 +30,19 @@ function buildApp(staffRole: string) {
       disputeCases: {
         countOpenCases: vi.fn().mockResolvedValue(0),
       },
+      saleroomCheckIn: {
+        listExpectedGuests: vi.fn().mockResolvedValue({
+          eventSlug: null,
+          eventTitle: null,
+          items: [],
+          counts: { rsvped: 0, galaCheckedIn: 0, salePresent: 0, paddled: 0 },
+        }),
+      },
     },
     telephoneBidBookingService: {
       countGlobalPending: vi.fn().mockResolvedValue(0),
     },
-    onsiteEventRsvpService: {
+    onsiteEventAdminService: {
       listAdminEvents: vi.fn().mockResolvedValue([]),
     },
   } as unknown as Container;
@@ -58,6 +66,9 @@ describe("admin route guard composition", () => {
     expect((await get(app, "/admin/telephone-bookings/pending-count")).status).toBe(403);
     expect((await get(app, "/admin/event-rsvps")).status).toBe(403);
     expect((await get(app, "/admin/finance/disputes/open-count")).status).toBe(403);
+    expect(
+      (await get(app, "/admin/sales/00000000-0000-4000-8000-000000000001/expected-guests")).status,
+    ).toBe(403);
   });
 
   it("super_admin can reach all of them", async () => {
@@ -67,6 +78,9 @@ describe("admin route guard composition", () => {
     expect((await get(app, "/admin/telephone-bookings/pending-count")).status).toBe(200);
     expect((await get(app, "/admin/event-rsvps")).status).toBe(200);
     expect((await get(app, "/admin/finance/disputes/open-count")).status).toBe(200);
+    expect(
+      (await get(app, "/admin/sales/00000000-0000-4000-8000-000000000001/expected-guests")).status,
+    ).toBe(200);
   });
 
   it("finance_ops can reach finance routes but not the platform shell", async () => {

@@ -11,7 +11,7 @@ const lotId = "00000000-0000-4000-8000-000000000001";
 const addressId = "00000000-0000-4000-8000-0000000000a1";
 
 function mountPaymentRoutes(
-  createPendingForWinner: Container["paymentService"]["createPendingForWinner"],
+  createPendingForWinner: Container["paymentBuyerService"]["createPendingForWinner"],
 ) {
   const app = new Hono();
   const paymentService = {
@@ -26,6 +26,9 @@ function mountPaymentRoutes(
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     paymentService,
+    paymentBuyerService: paymentService,
+    paymentAdminService: paymentService,
+    paymentMaintenanceService: paymentService,
     lotFulfilmentService: { getForWinner: vi.fn() },
     sourceOfFundsDocumentCollectionService: {},
     marketingEventService: { emit: vi.fn().mockResolvedValue(undefined) },

@@ -1,8 +1,7 @@
-import type { Database } from "@auction/db";
-import { saleRegistration, telephoneBidBooking } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
 import { BidError } from "../../lib/errors.js";
+import type { IOperatorPlacementReader } from "../../repositories/interfaces/operator-placement.reader.js";
 import { isOperatorPlacement } from "../interfaces/auction-strategy.js";
+import { parseMoneyCap } from "./bid-cap.util.js";
 
 export type OperatorBypassChecks = {
   saleRegistration: boolean;
@@ -16,14 +15,8 @@ export type OperatorCapInput = {
   paddleNumber?: number | null;
 };
 
-function parseMoneyCap(raw: string | null | undefined): number | null {
-  if (raw == null || raw === "") return null;
-  const n = Number.parseFloat(raw);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
 export class OperatorPlacementPolicy {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly reader: IOperatorPlacementReader) {}
 
   applies(placedVia?: string | null): boolean {
     return isOperatorPlacement(placedVia);
@@ -37,11 +30,7 @@ export class OperatorPlacementPolicy {
   }
 
   async isActiveTelephoneBooking(bookingId: string, saleId: string): Promise<boolean> {
-    const [row] = await this.db
-      .select({ status: telephoneBidBooking.status, saleId: telephoneBidBooking.saleId })
-      .from(telephoneBidBooking)
-      .where(eq(telephoneBidBooking.id, bookingId))
-      .limit(1);
+    const row = await this.reader.findTelephoneBookingPlacement(bookingId);
     if (!row || row.saleId !== saleId) return false;
     return row.status === "confirmed" || row.status === "in_progress";
   }
@@ -49,25 +38,15 @@ export class OperatorPlacementPolicy {
   async resolveOperatorCap(input: OperatorCapInput): Promise<number | null> {
     const { placedVia, telephoneBookingId, saleId, paddleNumber } = input;
     if (placedVia === "telephone" && telephoneBookingId) {
-      const [row] = await this.db
-        .select({ reserveAltMax: telephoneBidBooking.reserveAltMax })
-        .from(telephoneBidBooking)
-        .where(eq(telephoneBidBooking.id, telephoneBookingId))
-        .limit(1);
-      return parseMoneyCap(row?.reserveAltMax != null ? String(row.reserveAltMax) : null);
+      const row = await this.reader.findTelephoneBookingCap(telephoneBookingId);
+      return parseMoneyCap(row?.reserveAltMax ?? null);
     }
     if (placedVia === "saleroom" && saleId && paddleNumber != null) {
-      const [row] = await this.db
-        .select({ bidLimit: saleRegistration.bidLimit, status: saleRegistration.status })
-        .from(saleRegistration)
-        .where(
-          and(eq(saleRegistration.saleId, saleId), eq(saleRegistration.paddleNumber, paddleNumber)),
-        )
-        .limit(1);
+      const row = await this.reader.findPaddleRegistration(saleId, paddleNumber);
       if (!row || row.status !== "approved") {
         throw new BidError("Paddle is not registered for this sale", 403, "paddle_not_registered");
       }
-      return parseMoneyCap(row.bidLimit != null ? String(row.bidLimit) : null);
+      return parseMoneyCap(row.bidLimit);
     }
     return null;
   }

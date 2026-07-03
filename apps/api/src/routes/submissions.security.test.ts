@@ -21,7 +21,7 @@ describe("submissions API contract", () => {
         c.set("legalEntityContext", { legalEntityId: entityId });
         return next();
       }),
-      itemSubmissionService: { listSubmissionsForSellerApi },
+      itemSubmissionSellerApi: { listSubmissionsForSellerApi },
       mediaUrlResolver: { resolveMany: vi.fn().mockResolvedValue([]) },
     } as unknown as Container;
     const authenticator: IAuthenticator = {
@@ -48,7 +48,7 @@ describe("submissions API contract", () => {
         c.set("legalEntityContext", { legalEntityId: entityId });
         return next();
       }),
-      itemSubmissionService: { getSubmissionForViewerApi },
+      itemSubmissionSellerApi: { getSubmissionForViewerApi },
       mediaUrlResolver: { resolveMany: vi.fn().mockResolvedValue([]) },
     } as unknown as Container;
     const authenticator: IAuthenticator = {
@@ -73,7 +73,7 @@ describe("submissions API contract", () => {
         c.set("legalEntityContext", { legalEntityId: entityId });
         return next();
       }),
-      itemSubmissionService: { patchSubmissionFromRequestBody },
+      itemSubmissionSellerApi: { patchSubmissionFromRequestBody },
       mediaUrlResolver: { resolveMany: vi.fn().mockResolvedValue([]) },
     } as unknown as Container;
     const authenticator: IAuthenticator = {
@@ -105,7 +105,7 @@ describe("submissions API contract", () => {
         c.set("legalEntityContext", { legalEntityId: entityId });
         return next();
       }),
-      itemSubmissionService: { createDraftForSellerApi },
+      itemSubmissionSellerApi: { createDraftForSellerApi },
       mediaUrlResolver: { resolveMany: vi.fn().mockResolvedValue([]) },
     } as unknown as Container;
     const authenticator: IAuthenticator = {

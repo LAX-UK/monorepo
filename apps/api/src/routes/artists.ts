@@ -1,9 +1,21 @@
 import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
-import { artistKindEnum, publicArtistBrowseQuerySchema } from "@auction/validators";
-import { artistDeleteBodySchema } from "@auction/validators";
+import {
+  artistAddAliasBodySchema,
+  artistCheckNameQuerySchema,
+  artistDeleteBodySchema,
+  artistMergeBodySchema,
+  artistProposeMatchesBodySchema,
+  artistPublicListQuerySchema,
+  artistReviewBodySchema,
+  artistRouteCreateBodySchema,
+  artistSearchQuerySchema,
+  artistSlugParamSchema,
+  artistUuidParamSchema,
+  publicArtistBrowseQuerySchema,
+} from "@auction/validators";
 import { Hono } from "hono";
-import { z } from "zod";
 import type { Container } from "../container.js";
+import { ArtistError } from "../lib/errors.js";
 import { serviceErrorJsonBody } from "../lib/forbidden-response.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -16,58 +28,6 @@ import {
   requireArtistReview,
 } from "../middleware/require-capability.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
-
-const searchQuerySchema = z.object({
-  q: z.string().trim().min(1).max(200),
-  limit: z.coerce.number().int().min(1).max(50).optional().default(10),
-});
-
-const proposeBodySchema = z.object({
-  name: z.string().trim().min(1).max(200),
-  limit: z.number().int().min(1).max(20).optional(),
-});
-
-const createArtistSchema = z.object({
-  displayName: z.string().min(1).max(200),
-  kind: artistKindEnum.optional(),
-  shortBio: z.string().max(1000).optional(),
-  nationality: z.string().max(100).optional(),
-  countryCode: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z]{2}$/)
-    .optional(),
-  birthYear: z.string().max(10).optional(),
-  deathYear: z.string().max(10).optional(),
-  foundedYear: z.string().max(10).optional(),
-  dissolvedYear: z.string().max(10).optional(),
-  categoryIds: z.array(z.string().uuid()).max(20).optional(),
-});
-
-const checkNameSchema = z.object({
-  displayName: z.string().min(1).max(200),
-});
-
-const mergeSchema = z.object({
-  intoArtistId: z.string().uuid(),
-  fromArtistId: z.string().uuid(),
-  reason: z.string().min(10).max(1000),
-  confirmationPhrase: z.string().min(1).max(500),
-});
-
-const reviewSchema = z.object({
-  decision: z.enum(["approved", "rejected"]),
-  reviewNotes: z.string().max(1000).optional(),
-  rejectionReason: z.string().max(1000).optional(),
-});
-
-const addAliasSchema = z.object({
-  alias: z.string().min(1).max(200),
-  kind: z.string().max(50).optional(),
-});
-
-const idParam = z.object({ id: z.string().uuid() });
-const slugParam = z.object({ slug: z.string().min(1).max(120) });
 
 /** Only match UUID path segments so static routes (`browse`, `public`, …) are never captured. */
 const artistIdSegment =
@@ -82,8 +42,7 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>();
 
-  /** GET /artists/search?q=…&limit=… — public 3-pass search. */
-  r.get("/search", optionalAuth, zValidator("query", searchQuerySchema), async (c) => {
+  r.get("/search", optionalAuth, zValidator("query", artistSearchQuerySchema), async (c) => {
     const { q, limit } = c.req.valid("query");
     const role = (c.get("userRole") ?? "client") as UserRole;
     const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
@@ -94,27 +53,12 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     return c.json({ data });
   });
 
-  /** GET /artists/public — public directory of approved canonical artists.
-   * Filters out archived rows, orders by `featured DESC, displayName ASC`.
-   * Replaces the legacy `/users/public/artists` endpoint that read from the
-   * user table. */
-  r.get(
-    "/public",
-    zValidator(
-      "query",
-      z.object({
-        limit: z.coerce.number().int().min(1).max(100).optional().default(24),
-        offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
-      }),
-    ),
-    async (c) => {
-      const { limit, offset } = c.req.valid("query");
-      const data = await container.artistProfileService.listPublic({ limit, offset });
-      return c.json({ data });
-    },
-  );
+  r.get("/public", zValidator("query", artistPublicListQuerySchema), async (c) => {
+    const { limit, offset } = c.req.valid("query");
+    const data = await container.artistProfileService.listPublic({ limit, offset });
+    return c.json({ data });
+  });
 
-  /** GET /artists/browse — paginated public directory with filters (additive; `/public` stays a flat array). */
   r.get("/browse", zValidator("query", publicArtistBrowseQuerySchema), async (c) => {
     const q = c.req.valid("query");
     const data = await container.artistProfileService.browsePublic({
@@ -138,18 +82,17 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     return c.json({ data });
   });
 
-  r.get("/check-name", zValidator("query", checkNameSchema), async (c) => {
+  r.get("/check-name", zValidator("query", artistCheckNameQuerySchema), async (c) => {
     const { displayName } = c.req.valid("query");
     const result = await container.artistRegistryService.checkNameAvailability(displayName);
     return c.json({ data: result });
   });
 
-  /** POST /artists/propose-matches — admin: surfaces exact + alias + fuzzy buckets. */
   r.post(
     "/propose-matches",
     requireAuth,
     requireArtistRead,
-    zValidator("json", proposeBodySchema),
+    zValidator("json", artistProposeMatchesBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
@@ -158,18 +101,21 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     },
   );
 
-  /** GET /artists/:id/aliases-public — public list of aliases for an approved artist (used by profile hero). */
-  r.get(`/${artistIdSegment}/aliases-public`, zValidator("param", idParam), async (c) => {
-    const { id } = c.req.valid("param");
-    const found = await container.artistRegistryService.findById(id);
-    if (!found || found.status !== "approved" || found.archived) {
-      return c.json({ error: "Not found" }, 404);
-    }
-    const detail = await container.artistProfileService.getPublicDetail(id);
-    return c.json({ data: detail?.aliases ?? [] });
-  });
+  r.get(
+    `/${artistIdSegment}/aliases-public`,
+    zValidator("param", artistUuidParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const found = await container.artistRegistryService.findById(id);
+      if (!found || found.status !== "approved" || found.archived) {
+        return c.json({ error: "Not found" }, 404);
+      }
+      const detail = await container.artistProfileService.getPublicDetail(id);
+      return c.json({ data: detail?.aliases ?? [] });
+    },
+  );
 
-  r.get("/by-slug/:slug", optionalAuth, zValidator("param", slugParam), async (c) => {
+  r.get("/by-slug/:slug", optionalAuth, zValidator("param", artistSlugParamSchema), async (c) => {
     const { slug } = c.req.valid("param");
     const role = (c.get("userRole") ?? "client") as UserRole;
     const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
@@ -181,27 +127,28 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     return c.json({ data: found });
   });
 
-  r.get(`/${artistIdSegment}`, optionalAuth, zValidator("param", idParam), async (c) => {
-    const { id } = c.req.valid("param");
-    const role = (c.get("userRole") ?? "client") as UserRole;
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    const found = await container.artistRegistryService.findById(id);
-    if (!found) return c.json({ error: "Not found" }, 404);
-    if (!roleHasCapability(role, "artist.read", staff) && found.status !== "approved") {
-      return c.json({ error: "Not found" }, 404);
-    }
-    return c.json({ data: found });
-  });
+  r.get(
+    `/${artistIdSegment}`,
+    optionalAuth,
+    zValidator("param", artistUuidParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      const found = await container.artistRegistryService.findById(id);
+      if (!found) return c.json({ error: "Not found" }, 404);
+      if (!roleHasCapability(role, "artist.read", staff) && found.status !== "approved") {
+        return c.json({ error: "Not found" }, 404);
+      }
+      return c.json({ data: found });
+    },
+  );
 
-  /** POST /artists — admin-only registry create. Caller is recorded as
-   * `created_by_user_id`. Clients never create catalogue identities; they
-   * submit items via `/submissions` and admins curate the artist registry.
-   */
   r.post(
     "/",
     requireAuth,
     requireArtistReview,
-    zValidator("json", createArtistSchema),
+    zValidator("json", artistRouteCreateBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
@@ -210,13 +157,12 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     },
   );
 
-  /** POST /artists/:id/aliases — add an alias to an existing artist. */
   r.post(
     `/${artistIdSegment}/aliases`,
     requireAuth,
     requireArtistReview,
-    zValidator("param", idParam),
-    zValidator("json", addAliasSchema),
+    zValidator("param", artistUuidParamSchema),
+    zValidator("json", artistAddAliasBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
@@ -231,49 +177,41 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     },
   );
 
-  /** POST /artists/:id/merge — admin merge. Body specifies the surviving
-   * artist via `intoArtistId`; the URL param is the artist being merged.
-   */
   r.post(
     `/${artistIdSegment}/merge`,
     requireAuth,
     requireArtistMerge,
-    zValidator("param", idParam),
-    zValidator("json", mergeSchema.omit({ fromArtistId: true })),
+    zValidator("param", artistUuidParamSchema),
+    zValidator("json", artistMergeBodySchema.omit({ fromArtistId: true })),
     async (c) => {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const canonical = await container.artistRegistryService.findById(body.intoArtistId);
-      if (!canonical) {
-        return c.json({ error: "canonical_not_found", message: "Target artist not found" }, 404);
-      }
-      const expected = `MERGE INTO ${canonical.displayName}`;
-      if (body.confirmationPhrase !== expected) {
-        return c.json(
-          {
-            error: "confirmation_mismatch",
-            message: `Type exactly: ${expected}`,
-          },
-          400,
+      try {
+        const result = await container.artistRegistryService.mergeWithConfirmation(
+          userId,
+          id,
+          body,
         );
+        return c.json({ data: result });
+      } catch (e) {
+        if (e instanceof ArtistError) {
+          return c.json(
+            { error: e.code ?? "artist_error", message: e.message },
+            asHttpStatus(e.status),
+          );
+        }
+        throw e;
       }
-      const result = await container.artistRegistryService.merge(userId, {
-        fromArtistId: id,
-        intoArtistId: body.intoArtistId,
-        reason: body.reason,
-      });
-      return c.json({ data: result });
     },
   );
 
-  /** POST /artists/:id/review — admin: approve or reject a pending artist. */
   r.post(
     `/${artistIdSegment}/review`,
     requireAuth,
     requireArtistReview,
-    zValidator("param", idParam),
-    zValidator("json", reviewSchema),
+    zValidator("param", artistUuidParamSchema),
+    zValidator("json", artistReviewBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
@@ -283,12 +221,11 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     },
   );
 
-  /** GET /artists/:id/delete-eligibility — admin: evaluate hard-delete blockers. */
   r.get(
     `/${artistIdSegment}/delete-eligibility`,
     requireAuth,
     requireArtistDelete,
-    zValidator("param", idParam),
+    zValidator("param", artistUuidParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
       const eligibility = await container.artistDeleteService.getDeleteEligibility(id);
@@ -299,12 +236,11 @@ export function createArtistRoutes(container: Container, authenticator: IAuthent
     },
   );
 
-  /** DELETE /artists/:id — admin: permanently remove an unused artist profile. */
   r.delete(
     `/${artistIdSegment}`,
     requireAuth,
     requireArtistDelete,
-    zValidator("param", idParam),
+    zValidator("param", artistUuidParamSchema),
     zValidator("json", artistDeleteBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;

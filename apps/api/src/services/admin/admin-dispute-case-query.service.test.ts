@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DrizzleAdminDisputeCaseEnrichmentReader } from "../../repositories/drizzle-admin-dispute-case-enrichment.reader.js";
 import type { IAdminDomainEventQueryService } from "../interfaces/admin-routes.js";
 import { AdminDisputeCaseQueryService } from "./admin-dispute-case-query.service.js";
 
@@ -104,9 +105,10 @@ describe("AdminDisputeCaseQueryService", () => {
         ]),
       });
 
+    const enrichmentReader = new DrizzleAdminDisputeCaseEnrichmentReader(mockDb as never);
     const svc = new AdminDisputeCaseQueryService(
       { listRedacted: mockListRedacted },
-      mockDb as never,
+      enrichmentReader,
     );
 
     const result = await svc.listCases({ limit: 1, offset: 0 });
@@ -120,9 +122,10 @@ describe("AdminDisputeCaseQueryService", () => {
 
   it("reuses cache for countOpenCases within TTL", async () => {
     chainSelect([]);
+    const enrichmentReader = new DrizzleAdminDisputeCaseEnrichmentReader(mockDb as never);
     const svc = new AdminDisputeCaseQueryService(
       { listRedacted: mockListRedacted },
-      mockDb as never,
+      enrichmentReader,
     );
 
     await svc.countOpenCases();
@@ -132,9 +135,10 @@ describe("AdminDisputeCaseQueryService", () => {
 
   it("filters open cases only", async () => {
     chainSelect([]);
+    const enrichmentReader = new DrizzleAdminDisputeCaseEnrichmentReader(mockDb as never);
     const svc = new AdminDisputeCaseQueryService(
       { listRedacted: mockListRedacted },
-      mockDb as never,
+      enrichmentReader,
     );
 
     const result = await svc.listCases({ limit: 50, offset: 0, status: "open" });

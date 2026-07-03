@@ -4,9 +4,14 @@ import type { AuthzError, LotError } from "../../lib/errors.js";
 
 /** Domain port for explicit, audit-friendly admin status transitions on a sale
  * and its child lots.
- * * Kept separate from {@link SaleService} (SRP): admin status orchestration is
+ *
+ * Kept separate from {@link SaleService} (SRP): admin status orchestration is
  * a different concern from authoring drafts and managing lots, and from the
  * automatic reconciliation done by `SaleLifecycleService`.
+ *
+ * Publish/unpublish/cancel live on {@link ISalePublishService}; per-lot admin
+ * overrides live on {@link ILotStatusAdminService}. This facade delegates to
+ * those services while preserving the composite route surface.
  */
 export interface ISaleStatusTransitionService {
   /** Manually mark an active onsite sale as ended. Ends all still-active lots

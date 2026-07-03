@@ -9,7 +9,7 @@ export type SaleroomCheckInServiceError = {
 
 export type SaleroomCheckInSuccess = {
   registrationId: string;
-  paddleNumber: number;
+  paddleNumber: number | null;
   checkedInAt: Date;
   /** Present only when staff set a limit on this check-in. */
   bidLimit?: string;
@@ -21,6 +21,7 @@ export interface ISaleroomCheckInService {
     userId: string;
     buyerLegalEntityId: string;
     decidedByUserId: string;
+    assignPaddle?: boolean;
     bidLimit?: number | undefined;
     paddleNumber?: number | undefined;
     laxNotes?: string | undefined;

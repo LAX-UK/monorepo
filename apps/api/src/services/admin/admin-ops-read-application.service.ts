@@ -3,7 +3,7 @@ import type { ConveyorPipelineRowDto, IAdminOpsReadService } from "../interfaces
 import type { DateRange, IAnalyticsService } from "../interfaces/analytics.js";
 import type { IAttentionFeedReader } from "../interfaces/attention-feed.js";
 import type { IConveyorPipelineReader } from "../interfaces/conveyor-pipeline-reader.js";
-import type { IItemSubmissionService } from "../interfaces/item-submission-service.js";
+import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-service.js";
 import type { ListSubmissionsFilter } from "../interfaces/repositories.js";
 
 export class AdminOpsReadApplicationService implements IAdminOpsReadService {
@@ -11,7 +11,7 @@ export class AdminOpsReadApplicationService implements IAdminOpsReadService {
     private readonly analytics: IAnalyticsService,
     private readonly adminMetrics: AdminMetricsService,
     private readonly attentionFeed: IAttentionFeedReader,
-    private readonly itemSubmissions: IItemSubmissionService,
+    private readonly itemSubmissions: IItemSubmissionAdminApi,
     private readonly conveyorReader: IConveyorPipelineReader,
   ) {}
 

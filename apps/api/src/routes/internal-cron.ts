@@ -1,14 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
-import { verification } from "@auction/db/schema";
-import { probeSentryConnectivity } from "@auction/observability";
-import { inArray, lt } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
 import type { Env } from "../env.js";
-import { createBaseLogger } from "../lib/logger.js";
 import { zValidator } from "../lib/z-validator.js";
-import { proactiveRefreshXeroTokens } from "../services/accounting/xero-auth-runtime.js";
 
 /** Redis key for `SET … NX` — only one bulk settlement across API instances. */
 export const BULK_PAYOUT_SETTLEMENT_LOCK_KEY = "payout:settlement:lock";
@@ -26,6 +21,17 @@ function timingSafeSecretMatches(actual: string | undefined, expected: string): 
   return timingSafeEqual(actualBuf, expectedBuf);
 }
 
+function requireCronAuth(c: { req: { header: (name: string) => string | undefined } }, env: Env) {
+  if (!env.CRON_INTERNAL_SECRET) {
+    return { ok: false as const, status: 503 as const, body: { error: "cron_not_configured" } };
+  }
+  const secret = c.req.header("x-cron-secret");
+  if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
+    return { ok: false as const, status: 401 as const, body: { error: "unauthorized" } };
+  }
+  return { ok: true as const };
+}
+
 /** Machine-to-machine triggers (worker / platform cron). Guarded by
  * `CRON_INTERNAL_SECRET` + `X-Cron-Secret` header — not for browser clients.
  */
@@ -33,13 +39,8 @@ export function createInternalCronRoutes(container: Container, env: Env) {
   const r = new Hono();
 
   r.post("/bulk-payout-settlement", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
 
     const lockOk = await container.redis.set(
       BULK_PAYOUT_SETTLEMENT_LOCK_KEY,
@@ -59,25 +60,7 @@ export function createInternalCronRoutes(container: Container, env: Env) {
           503,
         );
       }
-      const log = createBaseLogger(env).child({ component: "bulk_payout_settlement" });
-      const bulk = await container.payoutService.runBulkSettlementWithTransfers(null, {
-        initiateTransfer: (payoutId, opts) =>
-          container.stripeConnectService.initiateTransfer(payoutId, opts),
-        onEntityOutcome: (row) => {
-          log.info(
-            {
-              legalEntityId: row.legalEntityId,
-              payoutId: row.payoutId,
-              outcome: row.outcome,
-              resume: row.resume ?? false,
-              reason: row.reason,
-              stripeErrorCode: row.stripeErrorCode,
-            },
-            "bulk_payout_settlement_entity",
-          );
-        },
-      });
-
+      const bulk = await container.settlementCronService.runBulkSettlement();
       return c.json({
         data: {
           settlement: bulk.settlement,
@@ -91,13 +74,8 @@ export function createInternalCronRoutes(container: Container, env: Env) {
 
   /** worker → API Xero supplier bill for a paid payout (idempotent). */
   r.post("/xero-payout-bill", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
     let body: { payoutId?: unknown };
     try {
       body = (await c.req.json()) as { payoutId?: unknown };
@@ -108,123 +86,64 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     if (!payoutId) {
       return c.json({ error: "payout_id_required" }, 400);
     }
-    if (!container.xeroPayoutBillWriter) {
-      return c.json({ error: "xero_payout_bill_disabled" }, 503);
+    const result = await container.settlementCronService.syncXeroPayoutBill(payoutId);
+    if (!result.ok) {
+      return c.json({ error: result.error }, 503);
     }
-    const data = await container.xeroPayoutBillWriter.syncPaidPayout(payoutId);
-    return c.json({ data });
+    return c.json({ data: result.data });
   });
 
   /** Expire stale `pending` buyer payments (winner never paid). */
   r.post("/expire-stale-payments", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    const n = await container.paymentService.expireStalePendingPayments(
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const data = await container.paymentMaintenanceCronService.expireStalePayments(
       env.PAYMENT_PENDING_EXPIRE_DAYS,
       env.PAYMENT_AUTHORIZED_EXPIRE_DAYS,
     );
-    return c.json({ data: { expired: n } });
+    return c.json({ data });
   });
 
   /** Replay Xero invoice sync for webhook rows that previously failed (idempotent). */
   r.post("/retry-xero-webhook-failures", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    const rows = await container.xeroWebhookEventRepository.listRecentFailures(25);
-    let recovered = 0;
-    for (const row of rows) {
-      const sync = await container.accountingProvider.syncInvoiceFromProvider(
-        row.tenantId,
-        row.resourceId,
-      );
-      if (sync.ok) {
-        await container.xeroWebhookEventRepository.markProcessed(row.eventKey);
-        recovered += 1;
-      } else {
-        await container.xeroWebhookEventRepository.markFailed(
-          row.eventKey,
-          sync.error ?? "retry_failed",
-        );
-      }
-    }
-    return c.json({ data: { attempted: rows.length, recovered } });
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const data = await container.accountingReplayCronService.retryXeroWebhookFailures();
+    return c.json({ data });
   });
 
   /** Proactively refresh Xero OAuth tokens (keeps refresh token alive on idle stacks). */
   r.post("/refresh-xero-tokens", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    if (!env.XERO_CLIENT_ID || !env.XERO_CLIENT_SECRET || !env.XERO_REDIRECT_URI) {
-      return c.json({ error: "xero_not_configured" }, 503);
-    }
-    const { DrizzleXeroConnectionRepository } = await import(
-      "../repositories/drizzle-xero-connection.repository.js"
-    );
-    const connections = new DrizzleXeroConnectionRepository(container.db);
-    const result = await proactiveRefreshXeroTokens({
-      env,
-      connections,
-      redis: container.redis,
-    });
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const result = await container.accountingReplayCronService.refreshXeroTokens();
     if (!result.ok) {
-      return c.json({ data: result }, result.reason === "not_connected" ? 200 : 502);
+      if (result.error === "xero_not_configured") {
+        return c.json({ error: result.error }, 503);
+      }
+      const status = result.status === 502 ? 502 : 200;
+      return c.json({ data: result.result }, status);
     }
-    return c.json({ data: result });
+    return c.json({ data: result.result });
   });
 
   /** Replay admin refunds where Stripe succeeded but DB persist failed. */
   r.post("/retry-refund-reconciles", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    const data = await container.paymentRefundReconcileService.replayPending(25);
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const data = await container.paymentMaintenanceCronService.retryRefundReconciles();
     return c.json({ data });
   });
 
   /** Retry Xero bank payment recording for captured Stripe payments missing xeroPaymentId. */
   r.post("/retry-xero-stripe-capture-sync", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const result = await container.accountingReplayCronService.retryXeroStripeCaptureSync();
+    if (!result.ok) {
+      return c.json({ error: result.error }, 503);
     }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    if (!container.xeroPaymentRecorder) {
-      return c.json({ error: "xero_payment_recorder_disabled" }, 503);
-    }
-    const { listPendingStripeCaptureSync } = await import(
-      "../repositories/drizzle-payment-refund-reconcile.repository.js"
-    );
-    const rows = await listPendingStripeCaptureSync(container.db, 25);
-    let synced = 0;
-    for (const row of rows) {
-      const result = await container.xeroPaymentRecorder.recordStripeCapture(
-        row.paymentId,
-        row.amount,
-      );
-      if (result.ok) synced += 1;
-    }
-    return c.json({ data: { attempted: rows.length, synced } });
+    return c.json({ data: result.data });
   });
 
   /**
@@ -232,26 +151,13 @@ export function createInternalCronRoutes(container: Container, env: Env) {
    * down — XERO_INVOICE_BLOCKING=false). Idempotent; no-op while Xero is still disconnected.
    */
   r.post("/retry-xero-invoice-creation", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const result = await container.accountingReplayCronService.retryXeroInvoiceCreation();
+    if (!result.ok) {
+      return c.json({ error: result.error }, 503);
     }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    if (!container.accountingProvider.isConfigured()) {
-      return c.json({ error: "xero_not_configured" }, 503);
-    }
-    const { listPaymentsMissingXeroInvoice } = await import(
-      "../repositories/drizzle-payment-refund-reconcile.repository.js"
-    );
-    const rows = await listPaymentsMissingXeroInvoice(container.db, 25);
-    let created = 0;
-    for (const row of rows) {
-      const result = await container.paymentService.backfillXeroInvoiceForPayment(row.paymentId);
-      if (result.ok) created += 1;
-    }
-    return c.json({ data: { attempted: rows.length, created } });
+    return c.json({ data: result.data });
   });
 
   /**
@@ -261,77 +167,45 @@ export function createInternalCronRoutes(container: Container, env: Env) {
    * The cron should be invoked frequently enough that a single batch clears the backlog.
    */
   r.post("/purge-expired-verifications", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    const now = new Date();
-    const batchSize = 500;
-    const deleted = await container.authDb
-      .delete(verification)
-      .where(
-        inArray(
-          verification.id,
-          container.authDb
-            .select({ id: verification.id })
-            .from(verification)
-            .where(lt(verification.expiresAt, now))
-            .limit(batchSize),
-        ),
-      )
-      .returning({ id: verification.id });
-    return c.json({ data: { deleted: deleted.length, capped: deleted.length === batchSize } });
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const data = await container.hygieneCronService.purgeExpiredVerifications();
+    return c.json({ data });
   });
 
   /** Nudge sellers whose draft submissions have been untouched for N days. */
   r.post("/stale-submission-draft-reminders", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    const data = await container.itemSubmissionService.sendStaleDraftReminders({
-      staleDays: env.SUBMISSION_DRAFT_REMINDER_DAYS,
-    });
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const data = await container.hygieneCronService.sendStaleSubmissionDraftReminders(
+      env.SUBMISSION_DRAFT_REMINDER_DAYS,
+    );
     return c.json({ data });
   });
 
   /** Verify Sentry connectivity from worker/cron callers (guarded by X-Cron-Secret). */
   r.post("/sentry-test", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const result = await container.hygieneCronService.probeSentry(env.SENTRY_DSN_API);
+    if (!result.ok) {
+      return c.json({ error: result.error }, 503);
     }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    if (!env.SENTRY_DSN_API) {
-      return c.json({ error: "sentry_not_configured" }, 503);
-    }
-    const eventId = await probeSentryConnectivity();
-    return c.json({ ok: true, eventId });
+    return c.json({ ok: true, eventId: result.eventId });
   });
 
   /** Pull Veriff watchlist screening for a session (backfill when webhook ingest failed). */
   r.post("/aml/reconcile-watchlist", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
     const body = (await c.req.json().catch(() => ({}))) as { providerSessionId?: string };
     if (!body.providerSessionId) {
       return c.json({ error: "provider_session_id_required" }, 400);
     }
     try {
-      const result = await container.amlService.ingestFromFetch(body.providerSessionId);
+      const result = await container.hygieneCronService.reconcileAmlWatchlist(
+        body.providerSessionId,
+      );
       return c.json({ data: result });
     } catch (err) {
       const message = err instanceof Error ? err.message : "reconcile_failed";
@@ -341,13 +215,8 @@ export function createInternalCronRoutes(container: Container, env: Env) {
 
   /** Lot scheduled→active / active→ended transitions + sale status reconciliation (worker cron). */
   r.post("/lot-lifecycle-tick", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
 
     const lockOk = await container.redis.set(
       LOT_LIFECYCLE_TICK_LOCK_KEY,
@@ -361,9 +230,8 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     }
 
     try {
-      await container.lotLifecycleService.runTransitions();
-      await container.saleLifecycleService.reconcileSaleStatuses();
-      return c.json({ data: { ok: true } });
+      const data = await container.lifecycleCronService.runLotLifecycleTick();
+      return c.json({ data });
     } finally {
       await container.redis.del(LOT_LIFECYCLE_TICK_LOCK_KEY);
     }
@@ -371,27 +239,17 @@ export function createInternalCronRoutes(container: Container, env: Env) {
 
   /** Drain critical bid/lot-close notification outbox rows (outbid, won, lost). */
   r.post("/process-notification-outbox", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    const data = await container.notificationOutboxProcessor.processBatch(50);
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const data = await container.lifecycleCronService.processNotificationOutbox();
     return c.json({ data });
   });
 
   /** Expire abandoned display pairing rows and purge old terminal records. */
   r.post("/cleanup-display-pairings", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    const data = await container.displayPairingService.cleanupStalePairings();
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const data = await container.hygieneCronService.cleanupDisplayPairings();
     return c.json({ data });
   });
 
@@ -400,49 +258,20 @@ export function createInternalCronRoutes(container: Container, env: Env) {
     "/ensure-lot-invoice",
     zValidator("json", z.object({ lotId: z.string().uuid() })),
     async (c) => {
-      if (!env.CRON_INTERNAL_SECRET) {
-        return c.json({ error: "cron_not_configured" }, 503);
-      }
-      const secret = c.req.header("x-cron-secret");
-      if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-        return c.json({ error: "unauthorized" }, 401);
-      }
+      const auth = requireCronAuth(c, env);
+      if (!auth.ok) return c.json(auth.body, auth.status);
       const { lotId } = c.req.valid("json");
-      const data = await container.lotInvoiceInitiationService.ensureForLot(lotId);
+      const data = await container.settlementCronService.ensureLotInvoice(lotId);
       return c.json({ data });
     },
   );
 
   /** Reconciliation sweep: backfill invoices for sold lots missing a payment row. */
   r.post("/ensure-lot-invoices", async (c) => {
-    if (!env.CRON_INTERNAL_SECRET) {
-      return c.json({ error: "cron_not_configured" }, 503);
-    }
-    const secret = c.req.header("x-cron-secret");
-    if (!timingSafeSecretMatches(secret, env.CRON_INTERNAL_SECRET)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    const lotIds = await container.repoFactory.root.lot.listSoldLotsMissingPayment(50);
-    const settled = await Promise.allSettled(
-      lotIds.map((id) => container.lotInvoiceInitiationService.ensureForLot(id)),
-    );
-    const results = settled.map((outcome, index) => {
-      if (outcome.status === "fulfilled") return outcome.value;
-      return {
-        created: false,
-        reason: "ensure_failed",
-        lotId: lotIds[index],
-        error: outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason),
-      };
-    });
-    return c.json({
-      data: {
-        processed: lotIds.length,
-        created: results.filter((r) => r.created).length,
-        failed: settled.filter((r) => r.status === "rejected").length,
-        results,
-      },
-    });
+    const auth = requireCronAuth(c, env);
+    if (!auth.ok) return c.json(auth.body, auth.status);
+    const data = await container.settlementCronService.ensureLotInvoices();
+    return c.json({ data });
   });
 
   return r;

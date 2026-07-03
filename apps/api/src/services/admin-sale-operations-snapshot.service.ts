@@ -1,10 +1,7 @@
-import type { Database } from "@auction/db";
-import { lotNotDeleted, saleNotDeleted } from "@auction/db";
-import { bid, lot, sale, saleroomSession } from "@auction/db/schema";
 import { isSaleroomDeliveryMode } from "@auction/validators";
-import { and, eq, sql } from "drizzle-orm";
+import type { IAdminSaleOperationsSnapshotReader } from "../repositories/interfaces/admin-sale-operations-snapshot.reader.js";
 import type { ISaleRegistrationService } from "./interfaces/sale-registration-service.js";
-import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
+import type { ITelephoneBidBookingQueryService } from "./interfaces/telephone-bid-booking-service.js";
 
 export type AdminSaleOperationsSnapshot = {
   sale: {
@@ -36,31 +33,19 @@ export type AdminSaleOperationsSnapshot = {
   };
   pendingActions: {
     registrations: Awaited<ReturnType<ISaleRegistrationService["listForSaleAdmin"]>>;
-    telephone: Awaited<ReturnType<ITelephoneBidBookingService["listForSaleAdmin"]>>;
+    telephone: Awaited<ReturnType<ITelephoneBidBookingQueryService["listForSaleAdmin"]>>;
   };
 };
 
 export class AdminSaleOperationsSnapshotService {
   constructor(
-    private readonly db: Database,
+    private readonly reader: IAdminSaleOperationsSnapshotReader,
     private readonly saleRegistrationService: ISaleRegistrationService,
-    private readonly telephoneBidBookingService: ITelephoneBidBookingService,
+    private readonly telephoneBidBookingService: ITelephoneBidBookingQueryService,
   ) {}
 
   async getSnapshot(saleId: string): Promise<AdminSaleOperationsSnapshot | null> {
-    const [saleRow] = await this.db
-      .select({
-        id: sale.id,
-        title: sale.title,
-        status: sale.status,
-        deliveryMode: sale.deliveryMode,
-        startTime: sale.startTime,
-        locationName: sale.locationName,
-        streamUrl: sale.streamUrl,
-      })
-      .from(sale)
-      .where(and(eq(sale.id, saleId), saleNotDeleted()))
-      .limit(1);
+    const saleRow = await this.reader.findSaleroomSale(saleId);
     if (
       !saleRow ||
       !isSaleroomDeliveryMode(saleRow.deliveryMode as "online" | "onsite" | "hybrid")
@@ -68,43 +53,18 @@ export class AdminSaleOperationsSnapshotService {
       return null;
     }
 
-    const [session] = await this.db
-      .select()
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, saleId))
-      .limit(1);
+    const session = await this.reader.findSession(saleId);
 
     let currentLotBidding: AdminSaleOperationsSnapshot["currentLotBidding"] = null;
     let currentLotNumber: number | null = null;
     let currentLotTitle: string | null = null;
 
     if (session?.currentLotId) {
-      const [lotRow] = await this.db
-        .select({
-          lotNumber: lot.lotNumber,
-          title: lot.title,
-          currentPrice: lot.currentPrice,
-        })
-        .from(lot)
-        .where(and(eq(lot.id, session.currentLotId), lotNotDeleted()))
-        .limit(1);
+      const lotRow = await this.reader.findCurrentLot(session.currentLotId);
       if (lotRow) {
         currentLotNumber = lotRow.lotNumber;
         currentLotTitle = lotRow.title;
-        const [countRow] = await this.db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(bid)
-          .where(eq(bid.lotId, session.currentLotId));
-        const [winner] = await this.db
-          .select({ bidderId: bid.bidderId })
-          .from(bid)
-          .where(and(eq(bid.lotId, session.currentLotId), eq(bid.isWinning, true)))
-          .limit(1);
-        currentLotBidding = {
-          currentPrice: String(lotRow.currentPrice),
-          leaderRef: winner?.bidderId ?? null,
-          bidCount: countRow?.count ?? 0,
-        };
+        currentLotBidding = await this.reader.loadCurrentLotBidding(session.currentLotId);
       }
     }
 

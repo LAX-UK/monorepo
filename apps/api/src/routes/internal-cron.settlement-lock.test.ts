@@ -29,8 +29,8 @@ describe("bulk-payout-settlement distributed lock", () => {
       releaseFirst = resolve;
     });
 
-    const payoutService = {
-      runBulkSettlementWithTransfers: vi.fn(async () => {
+    const settlementCronService = {
+      runBulkSettlement: vi.fn(async () => {
         await gate;
         return {
           settlement: { eligibleEntityCount: 0, createdCount: 0, items: [] },
@@ -42,12 +42,9 @@ describe("bulk-payout-settlement distributed lock", () => {
       }),
     };
 
-    const stripeConnectService = { initiateTransfer: vi.fn() };
-
     const container = {
       redis,
-      payoutService,
-      stripeConnectService,
+      settlementCronService,
     } as unknown as Container;
 
     const env: Env = {
@@ -61,10 +58,10 @@ describe("bulk-payout-settlement distributed lock", () => {
 
     const p1 = app.request("/internal/jobs/bulk-payout-settlement", { method: "POST", headers });
     for (let i = 0; i < 200; i++) {
-      if (payoutService.runBulkSettlementWithTransfers.mock.calls.length > 0) break;
+      if (settlementCronService.runBulkSettlement.mock.calls.length > 0) break;
       await new Promise((r) => setTimeout(r, 5));
     }
-    expect(payoutService.runBulkSettlementWithTransfers).toHaveBeenCalled();
+    expect(settlementCronService.runBulkSettlement).toHaveBeenCalled();
 
     const p2 = app.request("/internal/jobs/bulk-payout-settlement", { method: "POST", headers });
 

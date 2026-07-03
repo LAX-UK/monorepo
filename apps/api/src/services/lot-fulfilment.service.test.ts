@@ -1,5 +1,5 @@
-import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
+import type { ILotFulfilmentRepository } from "../repositories/interfaces/lot-fulfilment.repository.js";
 import { LotFulfilmentService } from "./lot-fulfilment.service.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -11,12 +11,11 @@ function makeFulfilmentRow(overrides: Partial<{ id: string; lotId: string; statu
     lotId: overrides.lotId ?? lotId,
     paymentId: "pay-1",
     status: overrides.status ?? "awaiting_release",
-    carrier: null,
+    fulfilmentMethod: null,
+    shippingCarrier: null,
     trackingNumber: null,
     releaseApprovedByUserId: null,
     releaseApprovedAt: null,
-    shippedAt: null,
-    deliveredAt: null,
     collectedAt: null,
     collectedBy: null,
     addressSnapshot: null,
@@ -26,60 +25,23 @@ function makeFulfilmentRow(overrides: Partial<{ id: string; lotId: string; statu
   };
 }
 
-function thenable<T>(value: T) {
-  return Object.assign(Promise.resolve(value), {
-    where: vi.fn(async () => value),
-  });
-}
-
 function serviceForListForAdmin(
   rows: Array<ReturnType<typeof makeFulfilmentRow> & { lotTitle: string | null }>,
-  opts?: { total?: number; whereCalled?: { current: boolean } },
+  opts?: { total?: number },
 ) {
-  const whereCalled = opts?.whereCalled ?? { current: false };
   const total = opts?.total ?? rows.length;
-  const statusRows = [{ status: "awaiting_release", n: total }];
-
-  const db = {
-    select: vi.fn((sel: { n?: unknown; status?: unknown }) => {
-      if (sel && "n" in sel && "status" in sel) {
-        return {
-          from: vi.fn(() => ({
-            innerJoin: vi.fn(() => ({
-              groupBy: vi.fn(() => thenable(statusRows)),
-            })),
-          })),
-        };
-      }
-      if (sel && "n" in sel) {
-        return {
-          from: vi.fn(() => ({
-            innerJoin: vi.fn(() => thenable([{ n: total }])),
-          })),
-        };
-      }
-      return {
-        from: vi.fn(() => ({
-          innerJoin: vi.fn(() => ({
-            orderBy: vi.fn(() => ({
-              limit: vi.fn(() => ({
-                offset: vi.fn(() =>
-                  Object.assign(Promise.resolve(rows), {
-                    where: vi.fn(async () => {
-                      whereCalled.current = true;
-                      return rows;
-                    }),
-                  }),
-                ),
-              })),
-            })),
-          })),
-        })),
-      };
+  const fulfilmentRepo = {
+    listForAdmin: vi.fn().mockResolvedValue({
+      items: rows,
+      total,
+      statusCounts: { awaiting_release: total },
     }),
-  } as unknown as Database;
+  } as unknown as ILotFulfilmentRepository;
 
-  return { svc: new LotFulfilmentService(db), whereCalled };
+  return {
+    svc: new LotFulfilmentService({} as never, {} as never, fulfilmentRepo),
+    fulfilmentRepo,
+  };
 }
 
 describe("LotFulfilmentService.listForAdmin", () => {
@@ -95,18 +57,18 @@ describe("LotFulfilmentService.listForAdmin", () => {
 
   it("applies search filter when q is provided", async () => {
     const row = { ...makeFulfilmentRow(), lotTitle: "Blue vase" };
-    const { svc, whereCalled } = serviceForListForAdmin([row], { whereCalled: { current: false } });
+    const { svc, fulfilmentRepo } = serviceForListForAdmin([row]);
     const result = await svc.listForAdmin({ q: "vase" });
-    expect(whereCalled.current).toBe(true);
+    expect(fulfilmentRepo.listForAdmin).toHaveBeenCalledWith({ q: "vase" });
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.lotTitle).toBe("Blue vase");
   });
 
   it("applies search filter for UUID needles", async () => {
     const row = { ...makeFulfilmentRow(), lotTitle: "Matched lot" };
-    const { svc, whereCalled } = serviceForListForAdmin([row]);
+    const { svc, fulfilmentRepo } = serviceForListForAdmin([row]);
     await svc.listForAdmin({ q: lotId });
-    expect(whereCalled.current).toBe(true);
+    expect(fulfilmentRepo.listForAdmin).toHaveBeenCalledWith({ q: lotId });
   });
 
   it("returns paginated total and status counts", async () => {

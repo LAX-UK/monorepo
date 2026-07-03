@@ -1,11 +1,12 @@
 import {
   onsiteEventEmailBodySchema,
+  onsiteEventPassTokenOnlyParamSchema,
   onsiteEventPassTokenParamSchema,
   onsiteEventSlugParamSchema,
   submitOnsiteEventRsvpBodySchema,
 } from "@auction/validators";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerOnsiteEventRoutesSlice } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import {
   isOnsiteEventCheckInServiceError,
@@ -45,15 +46,31 @@ function mapRsvpResponse(
   };
 }
 
-export function createOnsiteEventRoutes(container: Container) {
+export function createOnsiteEventRoutes(container: ContainerOnsiteEventRoutesSlice) {
   const r = new Hono();
   const apiPublicUrl = (container.env?.API_PUBLIC_URL ?? "https://api.lax.bid").replace(/\/$/, "");
   const lookupLimit = createOnsiteEventLookupRateLimitMiddleware(container.redis);
   const rsvpLimit = createOnsiteEventRsvpRateLimitMiddleware(container.redis);
 
+  r.get("/", async (c) => {
+    const events = await container.onsiteEventPublicRsvpService.listUpcomingPublicEvents();
+    c.header("Cache-Control", "public, max-age=60");
+    return c.json({ data: events });
+  });
+
+  r.get("/pass/:token", zValidator("param", onsiteEventPassTokenOnlyParamSchema), async (c) => {
+    const { token } = c.req.valid("param");
+    const pass = await container.onsiteEventPassService.getPassViewByToken(token, apiPublicUrl);
+    if (isOnsiteEventCheckInServiceError(pass)) {
+      return c.json({ error: pass.message, code: pass.code }, asHttpStatus(pass.status));
+    }
+    c.header("Cache-Control", "no-store");
+    return c.json({ data: pass });
+  });
+
   r.get("/:slug/config", zValidator("param", onsiteEventSlugParamSchema), async (c) => {
     const { slug } = c.req.valid("param");
-    const config = await container.onsiteEventRsvpService.getPublicConfig(slug);
+    const config = await container.onsiteEventPublicRsvpService.getPublicConfig(slug);
     if (isOnsiteEventRsvpServiceError(config)) {
       return c.json({ error: config.message, code: config.code }, asHttpStatus(config.status));
     }
@@ -72,7 +89,7 @@ export function createOnsiteEventRoutes(container: Container) {
       if (!emailAllowed) {
         return c.json({ error: "Too many requests", code: "rate_limited" }, 429);
       }
-      const lookup = await container.onsiteEventRsvpService.lookupByEmail(slug, email);
+      const lookup = await container.onsiteEventPublicRsvpService.lookupByEmail(slug, email);
       if (isOnsiteEventRsvpServiceError(lookup)) {
         return c.json({ error: lookup.message, code: lookup.code }, asHttpStatus(lookup.status));
       }
@@ -88,7 +105,7 @@ export function createOnsiteEventRoutes(container: Container) {
     async (c) => {
       const { slug } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.onsiteEventRsvpService.submitRsvp(slug, body);
+      const result = await container.onsiteEventPublicRsvpService.submitRsvp(slug, body);
       if (!result.ok) {
         const e = result.error;
         return c.json(
@@ -108,7 +125,7 @@ export function createOnsiteEventRoutes(container: Container) {
 
   r.get("/:slug/pass/:token", zValidator("param", onsiteEventPassTokenParamSchema), async (c) => {
     const { slug, token } = c.req.valid("param");
-    const pass = await container.onsiteEventCheckInService.getPassView(slug, token, apiPublicUrl);
+    const pass = await container.onsiteEventPassService.getPassView(slug, token, apiPublicUrl);
     if (isOnsiteEventCheckInServiceError(pass)) {
       return c.json({ error: pass.message, code: pass.code }, asHttpStatus(pass.status));
     }
@@ -121,11 +138,11 @@ export function createOnsiteEventRoutes(container: Container) {
     zValidator("param", onsiteEventPassTokenParamSchema),
     async (c) => {
       const { slug, token } = c.req.valid("param");
-      const pass = await container.onsiteEventCheckInService.getPassView(slug, token, apiPublicUrl);
+      const pass = await container.onsiteEventPassService.getPassView(slug, token, apiPublicUrl);
       if (isOnsiteEventCheckInServiceError(pass)) {
         return c.json({ error: pass.message, code: pass.code }, asHttpStatus(pass.status));
       }
-      const svg = await container.onsiteEventCheckInService.renderPassQrSvg(pass.passUrl);
+      const svg = await container.onsiteEventPassService.renderPassQrSvg(pass.passUrl);
       c.header("Content-Type", "image/svg+xml; charset=utf-8");
       c.header("Cache-Control", "no-store");
       return c.body(svg);

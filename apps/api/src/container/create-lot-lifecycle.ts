@@ -1,4 +1,9 @@
-import { LotLifecycleService } from "../services/lot-lifecycle.service.js";
+import {
+  ClerkLotOutcomeService,
+  LotLifecycleNotificationCoordinator,
+  LotLifecycleService,
+  TimedLotTransitionRunner,
+} from "../services/lot-lifecycle.service.js";
 import { SaleLifecycleService } from "../services/sale-lifecycle.service.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
@@ -43,22 +48,40 @@ export function createLotLifecycle(input: CreateLotLifecycleInput): ContainerLot
   const lotLifecycleHooks: LotLifecycleHooks = {
     onLotActivated: null,
   };
-  const lotLifecycleService = new LotLifecycleService(
+
+  const lotLifecycleNotifications = new LotLifecycleNotificationCoordinator(
     repoFactory,
     watchlistRepo,
     cache,
     notificationDispatcher,
     notificationFactory,
+    notificationService,
+    notificationOutboxService,
+    saleRepo,
+  );
+
+  const clerkLotOutcomeService = new ClerkLotOutcomeService(
+    repoFactory,
+    lotLifecycleNotifications,
     antiShillingGuard,
     domainEventPublisher,
+    lotLifecycleRecording,
+  );
+
+  const timedLotTransitionRunner = new TimedLotTransitionRunner(
+    repoFactory,
+    lotLifecycleNotifications,
+    clerkLotOutcomeService,
+    saleroomSessionLookup,
+    lotLifecycleRecording,
     async (lotId) => {
       await lotLifecycleHooks.onLotActivated?.(lotId);
     },
-    lotLifecycleRecording,
-    notificationService,
-    notificationOutboxService,
-    saleroomSessionLookup,
-    saleRepo,
+  );
+
+  const lotLifecycleService = new LotLifecycleService(
+    clerkLotOutcomeService,
+    timedLotTransitionRunner,
   );
 
   const saleLifecycleService = new SaleLifecycleService(saleRepo, lotRepo);

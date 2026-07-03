@@ -1,0 +1,37 @@
+import type { Database } from "@auction/db";
+import { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
+import { DomainEventPublisher } from "../services/domain-event.publisher.js";
+import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
+import { LotLifecycleEventRecorder } from "../services/lot-lifecycle-event-recorder.js";
+import { LotLifecycleRecording } from "../services/lot-lifecycle-recording.service.js";
+import { NotificationFactory } from "../services/notification.factory.js";
+import { LotStrategyFactory } from "../strategies/strategy.factory.js";
+
+export type ContainerPlatformCore = {
+  domainEventPublisher: DomainEventPublisher;
+  lotLifecycleEventRecorder: LotLifecycleEventRecorder;
+  lotLifecycleRecording: ILotLifecycleRecorder;
+  authAuditPublisher: AuthAuditPublisher;
+  strategyFactory: LotStrategyFactory;
+  notificationFactory: NotificationFactory;
+};
+
+export function createPlatformCore(db: Database): ContainerPlatformCore {
+  const domainEventPublisher = new DomainEventPublisher();
+  const lotLifecycleEventRecorder = new LotLifecycleEventRecorder(domainEventPublisher);
+  const lotLifecycleRecording: ILotLifecycleRecorder = new LotLifecycleRecording(
+    lotLifecycleEventRecorder,
+  );
+  const authAuditPublisher = new AuthAuditPublisher(domainEventPublisher, db);
+  const strategyFactory = new LotStrategyFactory();
+  const notificationFactory = new NotificationFactory();
+
+  return {
+    domainEventPublisher,
+    lotLifecycleEventRecorder,
+    lotLifecycleRecording,
+    authAuditPublisher,
+    strategyFactory,
+    notificationFactory,
+  };
+}

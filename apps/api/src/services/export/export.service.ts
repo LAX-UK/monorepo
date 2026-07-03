@@ -1,99 +1,47 @@
-import { createHash, randomUUID } from "node:crypto";
-import { Readable } from "node:stream";
+import { randomUUID } from "node:crypto";
 import type { Database } from "@auction/db";
-import { dataExport } from "@auction/db/schema";
-import {
-  type ExportEntityType,
-  type ExportFormat,
-  type ExportPhase,
-  type ExportStatus,
-  exportFilename,
-  formatCsvHeader,
-  formatCsvRow,
-} from "@auction/exports";
+import { type ExportEntityType, type ExportFormat, exportFilename } from "@auction/exports";
+import { AuthzError } from "@auction/exports/providers";
 import { DATA_EXPORT_QUEUE_NAME } from "@auction/queues";
-import type { ExportPreviewBody } from "@auction/validators";
-import type { CreateExportBody } from "@auction/validators";
+import type { CreateExportBody, ExportPreviewBody } from "@auction/validators";
 import type { Queue } from "bullmq";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
-import type { Redis } from "ioredis";
 import type { ExportProvider } from "../../exports/types.js";
-import { AuthzError } from "../../lib/errors.js";
+import type { IExportJobRepository } from "../../repositories/interfaces/export-job.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { IObjectStorage } from "../interfaces/object-storage.js";
+import type { ExportFileStorage } from "./export-file-storage.js";
+import { ExportJobViewMapper } from "./export-job-view.mapper.js";
+import type { IExportProgressStore } from "./export-progress.store.js";
+import { ExportRateLimitPolicy } from "./export-rate-limit.policy.js";
+import {
+  type ExportAuthContext,
+  type ExportJobView,
+  type ExportServiceConfig,
+  filtersHash,
+  isReusableExport,
+} from "./export-types.js";
+import { SyncExportRunner } from "./sync-export.runner.js";
 
-const EXPORT_PROGRESS_TTL_SEC = 3600;
-const EXPORT_DOWNLOAD_TTL_SEC = 86400;
-const MAX_CONCURRENT_EXPORTS = 5;
-const MAX_DAILY_EXPORTS = 20;
-
-export type ExportServiceConfig = {
-  syncMaxRows: number;
-  staleProcessingMs: number;
-};
-
-export type ExportJobView = {
-  id: string;
-  entityType: ExportEntityType;
-  format: ExportFormat;
-  status: ExportStatus;
-  phase?: ExportPhase;
-  progress: number;
-  processedRows?: number;
-  totalRows?: number;
-  estimatedSecondsRemaining?: number;
-  filename?: string;
-  filterSummary?: string;
-  downloadUrl?: string;
-  expiresAt?: string;
-  errorMessage?: string;
-  createdAt: string;
-  completedAt?: string;
-};
-
-function filtersHash(entityType: string, format: string, filters: Record<string, unknown>): string {
-  return createHash("sha256").update(JSON.stringify({ entityType, format, filters })).digest("hex");
-}
-
-function exportObjectKey(exportId: string, format: ExportFormat): string {
-  return `exports/${exportId}.${format}`;
-}
-
-function progressKey(exportId: string): string {
-  return `export:progress:${exportId}`;
-}
-
-function utcDayStart(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-/** Reuse an existing export row only when in-flight or async file is still downloadable. */
-function isReusableExport(row: typeof dataExport.$inferSelect, staleProcessingMs: number): boolean {
-  if (row.status === "pending" || row.status === "processing") {
-    return row.createdAt.getTime() > Date.now() - staleProcessingMs;
-  }
-  if (
-    row.status === "completed" &&
-    row.s3Key &&
-    row.expiresAt &&
-    row.expiresAt.getTime() > Date.now()
-  ) {
-    return true;
-  }
-  return false;
-}
+export type { ExportJobView, ExportServiceConfig } from "./export-types.js";
 
 export class ExportService {
+  private readonly rateLimitPolicy: ExportRateLimitPolicy;
+  private readonly jobViewMapper: ExportJobViewMapper;
+  private readonly syncRunner: SyncExportRunner;
+
   constructor(
     private readonly db: Database,
-    private readonly redis: Redis,
-    private readonly objectStorage: IObjectStorage,
+    private readonly repo: IExportJobRepository,
+    private readonly progressStore: IExportProgressStore,
+    private readonly fileStorage: ExportFileStorage,
     private readonly dataExportQueue: Queue,
     private readonly providers: Map<ExportEntityType, ExportProvider>,
     private readonly config: ExportServiceConfig,
     private readonly domainEventPublisher?: DomainEventPublisher,
-  ) {}
+  ) {
+    this.rateLimitPolicy = new ExportRateLimitPolicy(repo, config.staleProcessingMs);
+    this.jobViewMapper = new ExportJobViewMapper(progressStore, providers);
+    this.syncRunner = new SyncExportRunner(repo);
+  }
 
   private provider(entityType: ExportEntityType): ExportProvider {
     const p = this.providers.get(entityType);
@@ -101,34 +49,16 @@ export class ExportService {
     return p;
   }
 
-  private authContext(userId: string, userRole: string, userStaffRole?: string | null) {
+  private authContext(
+    userId: string,
+    userRole: string,
+    userStaffRole?: string | null,
+  ): ExportAuthContext {
     return { userId, userRole, userStaffRole: userStaffRole ?? null };
   }
 
   async assertRateLimits(userId: string): Promise<void> {
-    const staleCutoff = new Date(Date.now() - this.config.staleProcessingMs);
-    const active = await this.db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(dataExport)
-      .where(
-        and(
-          eq(dataExport.userId, userId),
-          inArray(dataExport.status, ["pending", "processing"]),
-          gte(dataExport.createdAt, staleCutoff),
-        ),
-      );
-    if ((active[0]?.n ?? 0) >= MAX_CONCURRENT_EXPORTS) {
-      throw new AuthzError("Too many exports running — try again in a few minutes", 429);
-    }
-
-    const dayStart = utcDayStart();
-    const daily = await this.db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(dataExport)
-      .where(and(eq(dataExport.userId, userId), gte(dataExport.createdAt, dayStart)));
-    if ((daily[0]?.n ?? 0) >= MAX_DAILY_EXPORTS) {
-      throw new AuthzError("Daily export limit reached (20/day). Try again tomorrow.", 429);
-    }
+    return this.rateLimitPolicy.assertWithinLimits(userId);
   }
 
   async createExport(input: {
@@ -137,7 +67,12 @@ export class ExportService {
     userStaffRole?: string | null;
     body: CreateExportBody;
   }): Promise<
-    | { mode: "sync"; stream: Readable; filename: string; contentType: string }
+    | {
+        mode: "sync";
+        stream: ReturnType<SyncExportRunner["createCsvStream"]>;
+        filename: string;
+        contentType: string;
+      }
     | { mode: "async"; job: ExportJobView }
     | { mode: "existing"; job: ExportJobView }
   > {
@@ -150,16 +85,9 @@ export class ExportService {
     await this.assertRateLimits(userId);
 
     const hash = filtersHash(body.entityType, body.format, filters);
-
-    const existing = await this.db
-      .select()
-      .from(dataExport)
-      .where(and(eq(dataExport.userId, userId), eq(dataExport.filtersHash, hash)))
-      .orderBy(desc(dataExport.createdAt))
-      .limit(1);
-    const existingRow = existing[0];
+    const existingRow = await this.repo.findLatestByUserAndHash(userId, hash);
     if (existingRow && isReusableExport(existingRow, this.config.staleProcessingMs)) {
-      return { mode: "existing", job: await this.toJobView(existingRow) };
+      return { mode: "existing", job: await this.jobViewMapper.toJobView(existingRow) };
     }
 
     const totalRows = await provider.estimateCount(ctx, filters);
@@ -168,7 +96,7 @@ export class ExportService {
     if (!useAsync) {
       const exportId = randomUUID();
       const now = new Date();
-      await this.db.insert(dataExport).values({
+      await this.repo.insert({
         id: exportId,
         userId,
         userRole,
@@ -194,10 +122,14 @@ export class ExportService {
         totalRows,
       });
 
-      const columns = provider.columns(ctx, filters);
-      const stream = Readable.from(
-        this.syncCsvGenerator(provider, ctx, filters, columns, exportId, totalRows),
-      );
+      const stream = this.syncRunner.createCsvStream({
+        provider,
+        ctx,
+        filters,
+        exportId,
+        totalRows,
+        onFailed: (id, message) => this.markFailed(id, message),
+      });
       return {
         mode: "sync",
         stream,
@@ -208,7 +140,7 @@ export class ExportService {
 
     const exportId = randomUUID();
     const now = new Date();
-    await this.db.insert(dataExport).values({
+    await this.repo.insert({
       id: exportId,
       userId,
       userRole,
@@ -254,50 +186,9 @@ export class ExportService {
       processedRows: 0,
     });
 
-    const [row] = await this.db.select().from(dataExport).where(eq(dataExport.id, exportId));
+    const row = await this.repo.findById(exportId);
     if (!row) throw new Error("export_row_missing");
-    return { mode: "async", job: await this.toJobView(row) };
-  }
-
-  private async *syncCsvGenerator(
-    provider: ExportProvider,
-    ctx: ReturnType<ExportService["authContext"]>,
-    filters: Record<string, unknown>,
-    columns: ReturnType<ExportProvider["columns"]>,
-    exportId: string,
-    totalRows: number,
-  ): AsyncGenerator<string> {
-    try {
-      yield formatCsvHeader(columns);
-      let processedRows = 0;
-      for await (const row of provider.streamRows(ctx, filters)) {
-        yield formatCsvRow(columns, row);
-        processedRows += 1;
-        if (processedRows % 500 === 0 && totalRows > 0) {
-          await this.db
-            .update(dataExport)
-            .set({
-              processedRows,
-              progress: Math.min(99, Math.round((processedRows / totalRows) * 100)),
-            })
-            .where(eq(dataExport.id, exportId));
-        }
-      }
-      await this.db
-        .update(dataExport)
-        .set({
-          status: "completed",
-          phase: null,
-          progress: 100,
-          processedRows,
-          completedAt: new Date(),
-        })
-        .where(eq(dataExport.id, exportId));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Export failed";
-      await this.markFailed(exportId, message);
-      throw err;
-    }
+    return { mode: "async", job: await this.jobViewMapper.toJobView(row) };
   }
 
   async previewExport(input: {
@@ -316,96 +207,70 @@ export class ExportService {
   }
 
   async getExport(userId: string, exportId: string): Promise<ExportJobView | null> {
-    const [row] = await this.db
-      .select()
-      .from(dataExport)
-      .where(and(eq(dataExport.id, exportId), eq(dataExport.userId, userId)));
+    const row = await this.repo.findByIdForUser(exportId, userId);
     if (!row) return null;
-    return this.toJobView(row);
+    return this.jobViewMapper.toJobView(row);
   }
 
   async listExports(userId: string): Promise<ExportJobView[]> {
     const since = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-    const rows = await this.db
-      .select()
-      .from(dataExport)
-      .where(and(eq(dataExport.userId, userId), gte(dataExport.createdAt, since)))
-      .orderBy(desc(dataExport.createdAt))
-      .limit(50);
-    return Promise.all(rows.map((r) => this.toJobListView(r)));
+    const rows = await this.repo.listRecentForUser(userId, since);
+    return Promise.all(rows.map((r) => this.jobViewMapper.toJobListView(r)));
   }
 
   async cancelExport(userId: string, exportId: string): Promise<ExportJobView | null> {
-    const [row] = await this.db
-      .select()
-      .from(dataExport)
-      .where(and(eq(dataExport.id, exportId), eq(dataExport.userId, userId)));
+    const row = await this.repo.findByIdForUser(exportId, userId);
     if (!row) return null;
-    if (row.status !== "pending" && row.status !== "processing") return this.toJobView(row);
+    if (row.status !== "pending" && row.status !== "processing") {
+      return this.jobViewMapper.toJobView(row);
+    }
 
-    await this.db
-      .update(dataExport)
-      .set({ status: "cancelled", cancelledAt: new Date(), progress: 0 })
-      .where(eq(dataExport.id, exportId));
-
+    await this.repo.markCancelled(exportId);
     const job = await this.dataExportQueue.getJob(exportId);
     if (job) await job.remove();
-
     await this.setProgress(exportId, { status: "cancelled", progress: 0 });
-    const [updated] = await this.db.select().from(dataExport).where(eq(dataExport.id, exportId));
-    return updated ? this.toJobView(updated) : null;
+
+    const updated = await this.repo.findById(exportId);
+    return updated ? this.jobViewMapper.toJobView(updated) : null;
   }
 
   async getDownloadUrl(
     userId: string,
     exportId: string,
   ): Promise<{ url: string; filename: string } | null> {
-    const [row] = await this.db
-      .select()
-      .from(dataExport)
-      .where(and(eq(dataExport.id, exportId), eq(dataExport.userId, userId)));
+    const row = await this.repo.findByIdForUser(exportId, userId);
     if (!row || row.status !== "completed" || !row.s3Key) return null;
     if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return null;
 
-    const { url } = await this.objectStorage.createPresignedGet({
-      key: row.s3Key,
-      expiresInSec: EXPORT_DOWNLOAD_TTL_SEC,
+    return this.fileStorage.createDownloadUrl({
+      s3Key: row.s3Key,
+      entityType: row.entityType as ExportEntityType,
+      format: row.format as ExportFormat,
     });
-    return {
-      url,
-      filename: exportFilename(row.entityType as ExportEntityType, row.format as ExportFormat),
-    };
   }
 
   async setProgress(
     exportId: string,
     snapshot: {
-      status: ExportStatus;
-      phase?: ExportPhase;
+      status: import("@auction/exports").ExportStatus;
+      phase?: import("@auction/exports").ExportPhase;
       progress: number;
       processedRows?: number;
       totalRows?: number;
       errorMessage?: string;
     },
   ): Promise<void> {
-    await this.redis.set(
-      progressKey(exportId),
-      JSON.stringify(snapshot),
-      "EX",
-      EXPORT_PROGRESS_TTL_SEC,
-    );
-    await this.db
-      .update(dataExport)
-      .set({
-        status: snapshot.status,
-        phase: snapshot.phase ?? null,
-        progress: snapshot.progress,
-        processedRows: snapshot.processedRows ?? null,
-        totalRows: snapshot.totalRows ?? null,
-        errorMessage: snapshot.errorMessage ?? null,
-        ...(snapshot.status === "completed" ? { completedAt: new Date() } : {}),
-      })
-      .where(eq(dataExport.id, exportId));
+    await this.progressStore.set(exportId, snapshot);
+    const patch: Parameters<IExportJobRepository["updateProgress"]>[1] = {
+      status: snapshot.status,
+      phase: snapshot.phase ?? null,
+      progress: snapshot.progress,
+      errorMessage: snapshot.errorMessage ?? null,
+      ...(snapshot.status === "completed" ? { completedAt: new Date() } : {}),
+    };
+    if (snapshot.processedRows !== undefined) patch.processedRows = snapshot.processedRows;
+    if (snapshot.totalRows !== undefined) patch.totalRows = snapshot.totalRows;
+    await this.repo.updateProgress(exportId, patch);
   }
 
   async markCompleted(
@@ -415,20 +280,7 @@ export class ExportService {
     processedRows: number,
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
-    await this.db
-      .update(dataExport)
-      .set({
-        status: "completed",
-        phase: null,
-        progress: 100,
-        processedRows,
-        s3Key,
-        fileSizeBytes,
-        expiresAt,
-        completedAt: new Date(),
-        errorMessage: null,
-      })
-      .where(eq(dataExport.id, exportId));
+    await this.repo.markCompleted({ exportId, s3Key, fileSizeBytes, processedRows, expiresAt });
     await this.setProgress(exportId, {
       status: "completed",
       progress: 100,
@@ -437,19 +289,13 @@ export class ExportService {
   }
 
   async markFailed(exportId: string, message: string): Promise<void> {
-    await this.db
-      .update(dataExport)
-      .set({ status: "failed", errorMessage: message, phase: null })
-      .where(eq(dataExport.id, exportId));
+    await this.repo.markFailed(exportId, message);
     await this.setProgress(exportId, { status: "failed", progress: 0, errorMessage: message });
   }
 
-  isCancelled(exportId: string): Promise<boolean> {
-    return this.db
-      .select({ status: dataExport.status })
-      .from(dataExport)
-      .where(eq(dataExport.id, exportId))
-      .then(([row]) => row?.status === "cancelled");
+  async isCancelled(exportId: string): Promise<boolean> {
+    const status = await this.repo.getStatus(exportId);
+    return status === "cancelled";
   }
 
   getProvider(entityType: ExportEntityType): ExportProvider {
@@ -457,7 +303,7 @@ export class ExportService {
   }
 
   objectKey(exportId: string, format: ExportFormat): string {
-    return exportObjectKey(exportId, format);
+    return this.fileStorage.objectKey(exportId, format);
   }
 
   private async publishExportRequested(input: {
@@ -483,68 +329,6 @@ export class ExportService {
       },
       actorUserId: input.userId,
     });
-  }
-
-  private async toJobView(row: typeof dataExport.$inferSelect): Promise<ExportJobView> {
-    const provider = this.providers.get(row.entityType as ExportEntityType);
-    const filterSummary = provider
-      ? provider.filterSummary(
-          {
-            userId: row.userId,
-            userRole: row.userRole,
-            userStaffRole: row.userStaffRole,
-          },
-          row.filters as Record<string, unknown>,
-        )
-      : undefined;
-    return this.buildJobView(row, await this.readProgress(row.id), filterSummary);
-  }
-
-  private async toJobListView(row: typeof dataExport.$inferSelect): Promise<ExportJobView> {
-    const isActive = row.status === "pending" || row.status === "processing";
-    return this.buildJobView(row, isActive ? await this.readProgress(row.id) : {}, undefined);
-  }
-
-  private async readProgress(exportId: string): Promise<{
-    phase?: ExportPhase;
-    processedRows?: number;
-    totalRows?: number;
-  }> {
-    const cached = await this.redis.get(progressKey(exportId));
-    return cached
-      ? (JSON.parse(cached) as {
-          phase?: ExportPhase;
-          processedRows?: number;
-          totalRows?: number;
-        })
-      : {};
-  }
-
-  private buildJobView(
-    row: typeof dataExport.$inferSelect,
-    progress: { phase?: ExportPhase; processedRows?: number; totalRows?: number },
-    filterSummary: string | undefined,
-  ): ExportJobView {
-    const view: ExportJobView = {
-      id: row.id,
-      entityType: row.entityType as ExportEntityType,
-      format: row.format as ExportFormat,
-      status: row.status as ExportStatus,
-      progress: row.progress,
-      filename: exportFilename(row.entityType, row.format as ExportFormat),
-      createdAt: row.createdAt.toISOString(),
-    };
-    const processed = progress.processedRows ?? row.processedRows;
-    const total = progress.totalRows ?? row.totalRows;
-    const phase = progress.phase ?? row.phase;
-    if (phase) view.phase = phase as ExportPhase;
-    if (processed != null) view.processedRows = processed;
-    if (total != null) view.totalRows = total;
-    if (filterSummary) view.filterSummary = filterSummary;
-    if (row.expiresAt) view.expiresAt = row.expiresAt.toISOString();
-    if (row.errorMessage) view.errorMessage = row.errorMessage;
-    if (row.completedAt) view.completedAt = row.completedAt.toISOString();
-    return view;
   }
 }
 

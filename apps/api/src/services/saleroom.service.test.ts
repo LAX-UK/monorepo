@@ -1,9 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ISaleroomSessionRepository } from "../repositories/interfaces/saleroom-session.repository.js";
 import { SaleroomService } from "./saleroom.service.js";
+
+function mockSessionRepo(
+  overrides: Partial<ISaleroomSessionRepository> = {},
+): ISaleroomSessionRepository {
+  return {
+    findBySaleId: vi.fn(),
+    findStatusSummariesBySaleIds: vi.fn().mockResolvedValue([]),
+    upsertPending: vi.fn(),
+    markLive: vi.fn(),
+    markPaused: vi.fn(),
+    markResumed: vi.fn(),
+    setCurrentLot: vi.fn(),
+    clearCurrentLot: vi.fn(),
+    markEnded: vi.fn(),
+    clearDisplayOverlay: vi.fn().mockResolvedValue({ cleared: false }),
+    appendEvent: vi.fn(),
+    listRecentEvents: vi.fn().mockResolvedValue([]),
+    ...overrides,
+  };
+}
 
 function createService(
   overrides: {
-    db?: Record<string, unknown>;
+    sessionRepo?: ISaleroomSessionRepository;
     redis?: { publish: ReturnType<typeof vi.fn> };
     displayPublisher?: { publishDisplayControl: ReturnType<typeof vi.fn> };
     lotLifecycle?: Record<string, ReturnType<typeof vi.fn>>;
@@ -17,10 +38,11 @@ function createService(
   const displayPublisher = overrides.displayPublisher ?? {
     publishDisplayControl: vi.fn().mockResolvedValue(undefined),
   };
+  const sessionRepo = overrides.sessionRepo ?? mockSessionRepo();
 
   return {
     service: new SaleroomService({
-      db: (overrides.db ?? {}) as never,
+      sessionRepo,
       redis: { publish: redisPublish } as never,
       lotLifecycle: (overrides.lotLifecycle ?? {}) as never,
       saleRepo: (overrides.saleRepo ?? { findById: vi.fn() }) as never,
@@ -29,6 +51,7 @@ function createService(
       telephoneBidBookingService: (overrides.telephoneBidBookingService ?? null) as never,
       displayPublisher: displayPublisher as never,
     }),
+    sessionRepo,
     redisPublish,
     displayPublisher,
   };
@@ -57,13 +80,10 @@ describe("SaleroomService.goLive", () => {
 
 describe("SaleroomService.getSessionStatuses", () => {
   it("returns none for sale ids without a session row", async () => {
-    const where = vi.fn().mockResolvedValue([]);
-    const from = vi.fn().mockReturnValue({ where });
-    const select = vi.fn().mockReturnValue({ from });
-
-    const { service } = createService({
-      db: { select },
+    const sessionRepo = mockSessionRepo({
+      findStatusSummariesBySaleIds: vi.fn().mockResolvedValue([]),
     });
+    const { service } = createService({ sessionRepo });
 
     const rows = await service.getSessionStatuses(["sale-a", "sale-b"]);
     expect(rows).toEqual([
@@ -73,13 +93,12 @@ describe("SaleroomService.getSessionStatuses", () => {
   });
 
   it("maps batched session rows in request order", async () => {
-    const where = vi
-      .fn()
-      .mockResolvedValue([{ saleId: "sale-b", status: "live", currentLotId: "lot-9" }]);
-    const from = vi.fn().mockReturnValue({ where });
-    const select = vi.fn().mockReturnValue({ from });
-
-    const { service } = createService({ db: { select } });
+    const sessionRepo = mockSessionRepo({
+      findStatusSummariesBySaleIds: vi
+        .fn()
+        .mockResolvedValue([{ saleId: "sale-b", status: "live", currentLotId: "lot-9" }]),
+    });
+    const { service } = createService({ sessionRepo });
     const rows = await service.getSessionStatuses(["sale-a", "sale-b"]);
     expect(rows).toEqual([
       { saleId: "sale-a", status: "none", currentLotId: null },
@@ -90,28 +109,23 @@ describe("SaleroomService.getSessionStatuses", () => {
 
 describe("SaleroomService.pause", () => {
   it("publishes paused event when session is live", async () => {
-    const limit = vi
-      .fn()
-      .mockResolvedValue([
-        { id: "session-1", saleId: "sale-1", status: "live", currentLotId: "lot-1" },
-      ]);
-    const whereSelect = vi.fn().mockReturnValue({ limit });
-    const fromSelect = vi.fn().mockReturnValue({ where: whereSelect });
-    const select = vi.fn().mockReturnValue({ from: fromSelect });
-
-    const whereUpdate = vi.fn().mockResolvedValue(undefined);
-    const set = vi.fn().mockReturnValue({ where: whereUpdate });
-    const update = vi.fn().mockReturnValue({ set });
-
-    const values = vi.fn().mockResolvedValue(undefined);
-    const insert = vi.fn().mockReturnValue({ values });
-
-    const { service, redisPublish } = createService({
-      db: { select, update, insert },
+    const sessionRepo = mockSessionRepo({
+      findBySaleId: vi.fn().mockResolvedValue({
+        id: "session-1",
+        saleId: "sale-1",
+        status: "live",
+        currentLotId: "lot-1",
+      }),
     });
+
+    const { service, redisPublish } = createService({ sessionRepo });
 
     const result = await service.pause({ saleId: "sale-1", actorUserId: "staff-1" });
     expect(result.isOk()).toBe(true);
+    expect(sessionRepo.markPaused).toHaveBeenCalledWith("session-1");
+    expect(sessionRepo.appendEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "paused", sessionId: "session-1" }),
+    );
     expect(redisPublish).toHaveBeenCalledWith(
       "sale:sale-1:saleroom",
       expect.stringContaining('"kind":"paused"'),
@@ -119,16 +133,16 @@ describe("SaleroomService.pause", () => {
   });
 
   it("rejects when session is not live", async () => {
-    const limit = vi
-      .fn()
-      .mockResolvedValue([
-        { id: "session-1", saleId: "sale-1", status: "paused", currentLotId: null },
-      ]);
-    const whereSelect = vi.fn().mockReturnValue({ limit });
-    const fromSelect = vi.fn().mockReturnValue({ where: whereSelect });
-    const select = vi.fn().mockReturnValue({ from: fromSelect });
+    const sessionRepo = mockSessionRepo({
+      findBySaleId: vi.fn().mockResolvedValue({
+        id: "session-1",
+        saleId: "sale-1",
+        status: "paused",
+        currentLotId: null,
+      }),
+    });
 
-    const { service } = createService({ db: { select } });
+    const { service } = createService({ sessionRepo });
     const result = await service.pause({ saleId: "sale-1", actorUserId: "staff-1" });
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -139,25 +153,15 @@ describe("SaleroomService.pause", () => {
 
 describe("SaleroomService.advanceToLot", () => {
   it("clears display overlay and publishes advance event", async () => {
-    const session = {
-      id: "session-1",
-      saleId: "sale-1",
-      status: "live",
-      currentLotId: null,
-      displayOverlay: { kind: "fair_warning", emittedAt: "2026-06-17T09:00:00.000Z" },
-    };
-    const limit = vi.fn().mockResolvedValue([session]);
-    const whereSelect = vi.fn().mockReturnValue({ limit });
-    const fromSelect = vi.fn().mockReturnValue({ where: whereSelect });
-    const select = vi.fn().mockReturnValue({ from: fromSelect });
-
-    const returning = vi.fn().mockResolvedValue([{ id: "session-1" }]);
-    const whereUpdate = vi.fn().mockReturnValue({ returning });
-    const set = vi.fn().mockReturnValue({ where: whereUpdate });
-    const update = vi.fn().mockReturnValue({ set });
-
-    const values = vi.fn().mockResolvedValue(undefined);
-    const insert = vi.fn().mockReturnValue({ values });
+    const sessionRepo = mockSessionRepo({
+      findBySaleId: vi.fn().mockResolvedValue({
+        id: "session-1",
+        saleId: "sale-1",
+        status: "live",
+        currentLotId: null,
+      }),
+      clearDisplayOverlay: vi.fn().mockResolvedValue({ cleared: true }),
+    });
 
     const lotRepo = {
       findById: vi.fn().mockResolvedValue({ id: "lot-2", saleId: "sale-1", status: "active" }),
@@ -165,7 +169,7 @@ describe("SaleroomService.advanceToLot", () => {
     };
 
     const { service, redisPublish, displayPublisher } = createService({
-      db: { select, update, insert },
+      sessionRepo,
       lotRepo,
     });
 
@@ -176,6 +180,7 @@ describe("SaleroomService.advanceToLot", () => {
     });
 
     expect(result.isOk()).toBe(true);
+    expect(sessionRepo.setCurrentLot).toHaveBeenCalledWith("session-1", "lot-2");
     expect(displayPublisher.publishDisplayControl).toHaveBeenCalledWith(
       "sale-1",
       expect.objectContaining({ kind: "clear" }),
@@ -187,25 +192,14 @@ describe("SaleroomService.advanceToLot", () => {
   });
 
   it("activates a scheduled lot before advancing", async () => {
-    const session = {
-      id: "session-1",
-      saleId: "sale-1",
-      status: "live",
-      currentLotId: null,
-      displayOverlay: null,
-    };
-    const limit = vi.fn().mockResolvedValue([session]);
-    const whereSelect = vi.fn().mockReturnValue({ limit });
-    const fromSelect = vi.fn().mockReturnValue({ where: whereSelect });
-    const select = vi.fn().mockReturnValue({ from: fromSelect });
-
-    const returning = vi.fn().mockResolvedValue([]);
-    const whereUpdate = vi.fn().mockReturnValue({ returning });
-    const set = vi.fn().mockReturnValue({ where: whereUpdate });
-    const update = vi.fn().mockReturnValue({ set });
-
-    const values = vi.fn().mockResolvedValue(undefined);
-    const insert = vi.fn().mockReturnValue({ values });
+    const sessionRepo = mockSessionRepo({
+      findBySaleId: vi.fn().mockResolvedValue({
+        id: "session-1",
+        saleId: "sale-1",
+        status: "live",
+        currentLotId: null,
+      }),
+    });
 
     const processActivateJob = vi.fn().mockResolvedValue(undefined);
     const lotRepo = {
@@ -217,7 +211,7 @@ describe("SaleroomService.advanceToLot", () => {
     };
 
     const { service } = createService({
-      db: { select, update, insert },
+      sessionRepo,
       lotRepo,
       lotLifecycle: { processActivateJob },
     });
@@ -233,23 +227,21 @@ describe("SaleroomService.advanceToLot", () => {
   });
 
   it("rejects ended lots", async () => {
-    const session = {
-      id: "session-1",
-      saleId: "sale-1",
-      status: "live",
-      currentLotId: null,
-    };
-    const limit = vi.fn().mockResolvedValue([session]);
-    const whereSelect = vi.fn().mockReturnValue({ limit });
-    const fromSelect = vi.fn().mockReturnValue({ where: whereSelect });
-    const select = vi.fn().mockReturnValue({ from: fromSelect });
+    const sessionRepo = mockSessionRepo({
+      findBySaleId: vi.fn().mockResolvedValue({
+        id: "session-1",
+        saleId: "sale-1",
+        status: "live",
+        currentLotId: null,
+      }),
+    });
 
     const lotRepo = {
       findById: vi.fn().mockResolvedValue({ id: "lot-2", saleId: "sale-1", status: "ended" }),
       findBySaleId: vi.fn(),
     };
 
-    const { service } = createService({ db: { select }, lotRepo });
+    const { service } = createService({ sessionRepo, lotRepo });
     const result = await service.advanceToLot({
       saleId: "sale-1",
       lotId: "lot-2",
@@ -266,25 +258,15 @@ describe("SaleroomService.advanceToLot", () => {
 
 describe("SaleroomService.hammerCurrentLot", () => {
   it("completes telephone lines and clears overlay", async () => {
-    const session = {
-      id: "session-1",
-      saleId: "sale-1",
-      status: "live",
-      currentLotId: "lot-1",
-      displayOverlay: { kind: "announcement", emittedAt: "2026-06-17T09:00:00.000Z" },
-    };
-    const limit = vi.fn().mockResolvedValue([session]);
-    const whereSelect = vi.fn().mockReturnValue({ limit });
-    const fromSelect = vi.fn().mockReturnValue({ where: whereSelect });
-    const select = vi.fn().mockReturnValue({ from: fromSelect });
-
-    const returning = vi.fn().mockResolvedValue([{ id: "session-1" }]);
-    const whereUpdate = vi.fn().mockReturnValue({ returning });
-    const set = vi.fn().mockReturnValue({ where: whereUpdate });
-    const update = vi.fn().mockReturnValue({ set });
-
-    const values = vi.fn().mockResolvedValue(undefined);
-    const insert = vi.fn().mockReturnValue({ values });
+    const sessionRepo = mockSessionRepo({
+      findBySaleId: vi.fn().mockResolvedValue({
+        id: "session-1",
+        saleId: "sale-1",
+        status: "live",
+        currentLotId: "lot-1",
+      }),
+      clearDisplayOverlay: vi.fn().mockResolvedValue({ cleared: true }),
+    });
 
     const lotLifecycle = {
       finalizeActiveLotFromClerkHammer: vi.fn().mockResolvedValue({ lotId: "lot-1" }),
@@ -295,7 +277,7 @@ describe("SaleroomService.hammerCurrentLot", () => {
     };
 
     const { service, displayPublisher } = createService({
-      db: { select, update, insert },
+      sessionRepo,
       lotLifecycle,
       lotJobs,
       telephoneBidBookingService,
@@ -304,6 +286,7 @@ describe("SaleroomService.hammerCurrentLot", () => {
     const result = await service.hammerCurrentLot({ saleId: "sale-1", actorUserId: "staff-1" });
     expect(result.isOk()).toBe(true);
     expect(telephoneBidBookingService.completeLinesForLot).toHaveBeenCalledWith("sale-1", "lot-1");
+    expect(sessionRepo.clearCurrentLot).toHaveBeenCalledWith("session-1");
     expect(displayPublisher.publishDisplayControl).toHaveBeenCalledWith(
       "sale-1",
       expect.objectContaining({ kind: "clear" }),

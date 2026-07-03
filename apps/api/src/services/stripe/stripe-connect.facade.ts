@@ -3,6 +3,7 @@ import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../env.js";
 import { StripeClientFactory } from "../../lib/stripe-client.js";
+import type { IConnectTransferRepository } from "../../repositories/interfaces/connect-transfer.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
@@ -36,6 +37,7 @@ export class StripeConnectFacade implements IStripeConnectService {
     env: Env,
     db: Database,
     payoutService: IPayoutService,
+    connectTransferRepository: IConnectTransferRepository,
     payoutRepository?: IPayoutRepository,
     domainEventPublisher?: DomainEventPublisher,
     stripeFactory?: StripeClientFactory,
@@ -53,6 +55,7 @@ export class StripeConnectFacade implements IStripeConnectService {
       factory,
       this.accountService,
       payoutService,
+      connectTransferRepository,
       payoutRepository,
       domainEventPublisher,
     );

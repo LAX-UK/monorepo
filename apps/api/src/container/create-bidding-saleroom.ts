@@ -3,10 +3,10 @@ import type { Env } from "../env.js";
 import { RedisIdempotencyStore } from "../infrastructure/redis-idempotency.store.js";
 import { RedisSaleroomRealtimePublisher } from "../infrastructure/redis-saleroom-realtime.publisher.js";
 import { DisplayTokenIssuer } from "../lib/display-token.js";
+import { DrizzleSaleroomSessionRepository } from "../repositories/drizzle-saleroom-session.repository.js";
 import { AbsenteeBidService } from "../services/absentee-bid.service.js";
 import { AdminSaleOperationsSnapshotService } from "../services/admin-sale-operations-snapshot.service.js";
 import { AutoBidService } from "../services/auto-bid.service.js";
-import { BidEligibilityService } from "../services/bid-eligibility.service.js";
 import { BidService } from "../services/bid.service.js";
 import { DEFAULT_BID_POLICY } from "../services/bid/bid-policy.js";
 import { SaleroomOnBlockPolicy } from "../services/bid/saleroom-on-block.policy.js";
@@ -18,6 +18,7 @@ import type { IDisplayPairingService } from "../services/interfaces/display-pair
 import type { IDisplaySnapshotReader } from "../services/interfaces/display-snapshot-reader.js";
 import { SaleRegistrationService } from "../services/sale-registration.service.js";
 import { SaleroomService } from "../services/saleroom.service.js";
+import { createBidEligibility } from "./create-bid-eligibility.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -79,10 +80,11 @@ export function createBiddingSaleroom(input: CreateBiddingSaleroomInput): Contai
   const { lotJobScheduler, telephoneBidBookingService } = catalog;
   const { adminMetricsService } = payments;
 
-  const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository);
-  const bidEligibilityService = new BidEligibilityService(db, kycService, amlHoldStore);
+  const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository, saleRepo);
+  const bidEligibilityService = createBidEligibility({ db, kycService, amlHoldStore });
 
   const bidIdempotencyStore = new RedisIdempotencyStore(redis);
+  const saleroomOnBlockPolicy = new SaleroomOnBlockPolicy(db);
   const bidService = new BidService({
     repos: repoFactory,
     strategyFactory,
@@ -92,6 +94,7 @@ export function createBiddingSaleroom(input: CreateBiddingSaleroomInput): Contai
     adminMetrics: adminMetricsService,
     saleModeLookup,
     saleroomSessionLookup,
+    saleroomOnBlockPolicy,
     antiShillingGuard,
     domainEventPublisher,
     legalEntityRepository,
@@ -108,9 +111,14 @@ export function createBiddingSaleroom(input: CreateBiddingSaleroomInput): Contai
     notificationFactory,
     saleRepo,
   });
-  const absenteeBidService = new AbsenteeBidService(db, bidService, lotRepo, legalEntityRepository);
+  const absenteeBidService = new AbsenteeBidService(
+    repos.absenteeBidRepository,
+    bidService,
+    lotRepo,
+    legalEntityRepository,
+  );
   const adminSaleOperationsSnapshotService = new AdminSaleOperationsSnapshotService(
-    db,
+    repos.adminSaleOperationsSnapshotReader,
     saleRegistrationService,
     telephoneBidBookingService,
   );
@@ -125,8 +133,9 @@ export function createBiddingSaleroom(input: CreateBiddingSaleroomInput): Contai
   lotLifecycleHooks.onLotActivated = (lotId) => absenteeBidService.replayScheduledForLot(lotId);
   const displayTokenIssuer = new DisplayTokenIssuer();
   const saleroomRealtimePublisher = new RedisSaleroomRealtimePublisher(redis);
+  const saleroomSessionRepo = new DrizzleSaleroomSessionRepository(db);
   const saleroomService = new SaleroomService({
-    db,
+    sessionRepo: saleroomSessionRepo,
     redis,
     lotLifecycle: lotLifecycleService,
     saleRepo,
@@ -145,15 +154,14 @@ export function createBiddingSaleroom(input: CreateBiddingSaleroomInput): Contai
   });
   const displayOverlayService = new DisplayOverlayService({
     db,
+    saleroomDisplaySessionRepo: repos.saleroomDisplaySessionRepository,
     publisher: saleroomRealtimePublisher,
     domainEvents: domainEventPublisher,
   });
   const displaySnapshotReader = new DisplaySnapshotReader({
-    db,
+    reader: repos.saleroomDisplaySnapshotReader,
     mediaUrlResolver,
   });
-  const saleroomOnBlockPolicy = new SaleroomOnBlockPolicy(db);
-
   return {
     saleRegistrationService,
     bidService,

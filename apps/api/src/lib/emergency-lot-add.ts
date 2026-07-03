@@ -2,8 +2,8 @@ import type { Database } from "@auction/db";
 import type { Lot, Sale } from "@auction/types";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
+import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository } from "../services/interfaces/repositories.js";
-import type { LotLifecycleRecording } from "../services/lot-lifecycle-recording.service.js";
 import { LotError } from "./errors.js";
 
 export function nextLotNumberForSale(lots: readonly Lot[]): number {
@@ -28,7 +28,7 @@ export function resolveLotNumberForEmergencyAdd(input: {
 export type RollbackEmergencyLotAddDeps = {
   lotRepo: ILotRepository;
   jobScheduler: ILotJobScheduler | null;
-  lotLifecycleRecording?: LotLifecycleRecording | null;
+  lotLifecycleRecording?: ILotLifecycleRecorder | null;
   db?: Database | null;
   recordLotLifecycle?: ((fn: (tx: Database) => Promise<void>) => Promise<void>) | null;
 };

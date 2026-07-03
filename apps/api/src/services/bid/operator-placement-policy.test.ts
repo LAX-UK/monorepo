@@ -1,8 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { IOperatorPlacementReader } from "../../repositories/interfaces/operator-placement.reader.js";
 import { OperatorPlacementPolicy } from "./operator-placement-policy.js";
 
 describe("OperatorPlacementPolicy", () => {
-  const policy = new OperatorPlacementPolicy({} as never);
+  const reader: IOperatorPlacementReader = {
+    findTelephoneBookingPlacement: vi.fn(),
+    findTelephoneBookingCap: vi.fn(),
+    findPaddleRegistration: vi.fn(),
+  };
+  const policy = new OperatorPlacementPolicy(reader);
 
   it("bypasses sale registration for telephone and saleroom", () => {
     expect(policy.bypassChecks("telephone")).toEqual({

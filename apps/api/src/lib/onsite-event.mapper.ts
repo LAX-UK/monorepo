@@ -39,6 +39,7 @@ export function mapOnsiteEventRow(row: Row): OnsiteEvent {
     arrivalNote: row.arrivalNote,
     status: parseStatus(row.status),
     checkInDryRun: row.checkInDryRun,
+    saleId: row.saleId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

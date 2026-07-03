@@ -1,44 +1,25 @@
-import type { Database } from "@auction/db";
-import { lotNotDeleted } from "@auction/db";
-import {
-  buyerAgentAuthorisation,
-  legalEntityMember,
-  lot,
-  saleRegistration,
-} from "@auction/db/schema";
 import { type AutoBidLotRules, validateAutoBidStepAmount } from "@auction/validators";
-import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
-import { memberRequiresSaleRegistration } from "../lib/sale-registration-policy.js";
-import type { IAmlHoldStore } from "./aml/ports.js";
-import { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";
+import type { IBidLotRulesReader } from "../repositories/interfaces/bid-lot-rules.reader.js";
+import type { IBidMembershipReader } from "../repositories/interfaces/bid-membership.reader.js";
+import type { IAmlBidGate } from "./bid/aml-bid.gate.js";
+import type { BuyerAgentBidGate } from "./bid/buyer-agent-bid.gate.js";
+import type { IKycBidGate } from "./bid/kyc-bid.gate.js";
+import type { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";
+import type { SaleRegistrationBidGate } from "./bid/sale-registration-bid.gate.js";
 import type { BidEligibilityCheckInput, IBidEligibility } from "./interfaces/bid-eligibility.js";
-import type { IKycService } from "./interfaces/kyc-service.js";
-import { KycRequiredError } from "./interfaces/kyc-service.js";
-
-function parseMoneyCap(raw: string | null | undefined): number | null {
-  if (raw == null || raw === "") return null;
-  const n = Number.parseFloat(raw);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-function minPositiveCap(a: number | null, b: number | null): number | null {
-  if (a == null) return b;
-  if (b == null) return a;
-  return Math.min(a, b);
-}
 
 export class BidEligibilityService implements IBidEligibility {
-  private readonly operatorPolicy: OperatorPlacementPolicy;
-
   constructor(
-    private readonly db: Database,
-    private readonly kycService: IKycService | null = null,
-    private readonly amlHoldStore: IAmlHoldStore | null = null,
-  ) {
-    this.operatorPolicy = new OperatorPlacementPolicy(db);
-  }
+    private readonly kycGate: IKycBidGate,
+    private readonly amlGate: IAmlBidGate,
+    private readonly lotRulesReader: IBidLotRulesReader,
+    private readonly membershipReader: IBidMembershipReader,
+    private readonly operatorPolicy: OperatorPlacementPolicy,
+    private readonly saleRegistrationGate: SaleRegistrationBidGate,
+    private readonly buyerAgentGate: BuyerAgentBidGate,
+  ) {}
 
   async assertCanPlaceBid(input: BidEligibilityCheckInput): Promise<Result<void, BidError>> {
     const {
@@ -58,50 +39,23 @@ export class BidEligibilityService implements IBidEligibility {
         ? Math.max(amount, maxAutoBidAmount)
         : amount;
 
-    if (this.kycService?.isConfigured()) {
-      try {
-        await this.kycService.enforceThreshold(placedByUserId);
-      } catch (caught) {
-        if (caught instanceof KycRequiredError) {
-          return err(
-            new BidError("Complete identity verification before bidding", 402, "kyc_required"),
-          );
-        }
-        throw caught;
-      }
-    }
+    const kycResult = await this.kycGate.assertCanBid(placedByUserId);
+    if (kycResult.isErr()) return kycResult;
 
-    if (this.amlHoldStore) {
-      const hold = await this.amlHoldStore.getHold(placedByUserId);
-      if (hold?.status === "blocked") {
-        return err(
-          new BidError("Bidding is suspended pending compliance review", 403, "aml_blocked"),
-        );
-      }
-    }
+    const amlResult = await this.amlGate.assertCanBid(placedByUserId);
+    if (amlResult.isErr()) return amlResult;
 
-    const [lotRow] = await this.db
-      .select({
-        saleId: lot.saleId,
-        autoBidEnabled: lot.autoBidEnabled,
-        minBidIncrement: lot.minBidIncrement,
-        autoBidStepMin: lot.autoBidStepMin,
-        autoBidStepMax: lot.autoBidStepMax,
-        autoBidStepPresets: lot.autoBidStepPresets,
-      })
-      .from(lot)
-      .where(and(eq(lot.id, lotId), lotNotDeleted()))
-      .limit(1);
+    const lotRow = await this.lotRulesReader.findLotBidRules(lotId);
     if (!lotRow) {
       return err(new BidError("Lot not found", 404));
     }
 
     const autoRules: AutoBidLotRules = {
       autoBidEnabled: lotRow.autoBidEnabled ?? true,
-      minBidIncrement: String(lotRow.minBidIncrement),
-      autoBidStepMin: lotRow.autoBidStepMin != null ? String(lotRow.autoBidStepMin) : null,
-      autoBidStepMax: lotRow.autoBidStepMax != null ? String(lotRow.autoBidStepMax) : null,
-      autoBidStepPresets: lotRow.autoBidStepPresets ?? null,
+      minBidIncrement: lotRow.minBidIncrement,
+      autoBidStepMin: lotRow.autoBidStepMin,
+      autoBidStepMax: lotRow.autoBidStepMax,
+      autoBidStepPresets: lotRow.autoBidStepPresets,
     };
 
     if (maxAutoBidAmount != null || autoBidStepAmount != null) {
@@ -118,19 +72,11 @@ export class BidEligibilityService implements IBidEligibility {
 
     const saleId = lotRow.saleId ?? inputSaleId ?? null;
 
-    const [mem] = await this.db
-      .select({ role: legalEntityMember.role })
-      .from(legalEntityMember)
-      .where(
-        and(
-          eq(legalEntityMember.legalEntityId, buyerLegalEntityId),
-          eq(legalEntityMember.userId, placedByUserId),
-          isNull(legalEntityMember.removedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!mem) {
+    const memberRole = await this.membershipReader.findActiveMemberRole(
+      placedByUserId,
+      buyerLegalEntityId,
+    );
+    if (!memberRole) {
       return err(new BidError("Not a member of this legal entity", 403, "membership_required"));
     }
 
@@ -156,99 +102,27 @@ export class BidEligibilityService implements IBidEligibility {
       }
     }
 
-    if (saleId && !operatorBypass) {
-      const [reg] = await this.db
-        .select({
-          status: saleRegistration.status,
-          bidLimit: saleRegistration.bidLimit,
-        })
-        .from(saleRegistration)
-        .where(
-          and(
-            eq(saleRegistration.saleId, saleId),
-            eq(saleRegistration.userId, placedByUserId),
-            eq(saleRegistration.buyerLegalEntityId, buyerLegalEntityId),
-          ),
-        )
-        .limit(1);
-
-      if (memberRequiresSaleRegistration(mem.role)) {
-        if (!reg || reg.status !== "approved") {
-          return err(
-            new BidError(
-              "Register and be approved to bid on this sale",
-              403,
-              "sale_registration_required",
-            ),
-          );
-        }
-      }
-
-      if (reg?.status === "approved") {
-        const regCap = parseMoneyCap(reg.bidLimit);
-        if (regCap != null && effectiveAmount > regCap) {
-          return err(
-            new BidError(
-              "Bid exceeds your approved limit for this sale",
-              403,
-              "bid_limit_exceeded",
-            ),
-          );
-        }
-      }
+    if (saleId) {
+      const regResult = await this.saleRegistrationGate.assertCanBid({
+        saleId,
+        placedByUserId,
+        buyerLegalEntityId,
+        memberRole,
+        effectiveAmount,
+        operatorBypass,
+      });
+      if (regResult.isErr()) return regResult;
     }
 
-    if (memberRequiresSaleRegistration(mem.role) && !operatorBypass) {
-      const now = new Date();
-      const rows = await this.db
-        .select({
-          saleId: buyerAgentAuthorisation.saleId,
-          bidLimit: buyerAgentAuthorisation.bidLimit,
-        })
-        .from(buyerAgentAuthorisation)
-        .where(
-          and(
-            eq(buyerAgentAuthorisation.legalEntityId, buyerLegalEntityId),
-            eq(buyerAgentAuthorisation.userId, placedByUserId),
-            eq(buyerAgentAuthorisation.status, "active"),
-            lte(buyerAgentAuthorisation.validFrom, now),
-            or(
-              isNull(buyerAgentAuthorisation.validUntil),
-              gt(buyerAgentAuthorisation.validUntil, now),
-            ),
-            saleId
-              ? or(
-                  isNull(buyerAgentAuthorisation.saleId),
-                  eq(buyerAgentAuthorisation.saleId, saleId),
-                )
-              : isNull(buyerAgentAuthorisation.saleId),
-          ),
-        );
-
-      if (rows.length === 0) {
-        return err(
-          new BidError(
-            "Buyer agent authorisation is required for this legal entity",
-            403,
-            "buyer_agent_authorisation_required",
-          ),
-        );
-      }
-
-      const saleScoped = saleId ? rows.filter((r) => r.saleId === saleId) : [];
-      const scoped = saleScoped.length > 0 ? saleScoped : rows;
-
-      let cap: number | null = null;
-      for (const r of scoped) {
-        cap = minPositiveCap(cap, parseMoneyCap(r.bidLimit));
-      }
-
-      if (cap != null && effectiveAmount > cap) {
-        return err(
-          new BidError("Bid exceeds buyer agent authorisation limit", 403, "bid_limit_exceeded"),
-        );
-      }
-    }
+    const agentResult = await this.buyerAgentGate.assertCanBid({
+      saleId,
+      placedByUserId,
+      buyerLegalEntityId,
+      memberRole,
+      effectiveAmount,
+      operatorBypass,
+    });
+    if (agentResult.isErr()) return agentResult;
 
     return ok(undefined);
   }

@@ -8,7 +8,7 @@ import {
   artistIdParamSchema,
   categoryIdParamSchema,
 } from "@auction/validators";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
   requireArtistReviewAccess,
@@ -21,7 +21,10 @@ import { adminArtistSearchQuerySchema } from "./_schemas.js";
 import { adminArtistIdSegment } from "./_shared.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminCatalogRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminCatalogRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get(
     "/categories",
     requireCategoriesAccess,

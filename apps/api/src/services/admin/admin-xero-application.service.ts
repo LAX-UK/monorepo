@@ -1,13 +1,11 @@
-import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
 import { canonicalizeXeroCallbackUrl } from "@auction/validators";
-import { eq } from "drizzle-orm";
 import type { Env } from "../../env.js";
 import type {
   IXeroAdminApplicationService,
   XeroConnectionHealth,
   XeroStatusPayload,
 } from "../interfaces/admin-routes.js";
+import type { IUserRepository } from "../interfaces/repositories.js";
 import type {
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
@@ -64,7 +62,7 @@ export class AdminXeroApplicationService implements IXeroAdminApplicationService
     private readonly connections: IXeroConnectionRepository,
     private readonly webhookEvents: IXeroWebhookEventRepository,
     private readonly externalRefs: IPaymentExternalRefRepository,
-    private readonly db: Database,
+    private readonly users: IUserRepository,
     private readonly env: Pick<Env, "API_PUBLIC_URL" | "XERO_WEBHOOK_KEY">,
   ) {}
 
@@ -97,12 +95,10 @@ export class AdminXeroApplicationService implements IXeroAdminApplicationService
 
     let connectedBy: XeroStatusPayload["connectedBy"] = null;
     if (row.connectedByUserId) {
-      const [u] = await this.db
-        .select({ id: user.id, name: user.name, email: user.email })
-        .from(user)
-        .where(eq(user.id, row.connectedByUserId))
-        .limit(1);
-      if (u) connectedBy = u;
+      const user = await this.users.findById(row.connectedByUserId);
+      if (user) {
+        connectedBy = { id: user.id, name: user.name, email: user.email };
+      }
     }
 
     const connectionStatus = row.connectionStatus;

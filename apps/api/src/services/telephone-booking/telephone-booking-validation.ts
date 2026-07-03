@@ -1,17 +1,16 @@
 import type { Database } from "@auction/db";
-import { lotNotDeleted, saleNotDeleted } from "@auction/db";
-import { lot, sale, user } from "@auction/db/schema";
 import type { TelephoneBidBooking } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
-import { and, eq, inArray } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { buyerEntityCanBid } from "../../lib/buyer-entity-bid-eligibility.js";
 import type { ITelephoneBidBookingRepository } from "../../repositories/interfaces/telephone-bid-booking.repository.js";
+import type { ITelephoneBookingUserPhoneReader } from "../../repositories/interfaces/telephone-booking-user-phone.reader.js";
 import type { IAmlHoldStore } from "../aml/ports.js";
 import type { IKycService } from "../interfaces/kyc-service.js";
 import { KycRequiredError } from "../interfaces/kyc-service.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { TelephoneBidBookingServiceError } from "../interfaces/telephone-bid-booking-service.js";
+import type { ILotRepository, ISaleRepository } from "../interfaces/repositories.js";
+import type { TelephoneBidBookingServiceError } from "../interfaces/telephone-bid-booking-service-errors.js";
 
 export const EDITABLE_LOT_STATUSES = ["requested", "confirmed"] as const;
 
@@ -33,6 +32,9 @@ export type TelephoneBookingValidationDeps = {
   legalEntityRepository: ILegalEntityRepository;
   kycService: IKycService | null;
   amlHoldStore: IAmlHoldStore | null;
+  saleRepo: ISaleRepository;
+  lotRepo: ILotRepository;
+  userPhoneReader: ITelephoneBookingUserPhoneReader;
 };
 
 export async function assertBuyerEligible(
@@ -70,14 +72,7 @@ export async function assertOnsiteSaleOpen(
   deps: TelephoneBookingValidationDeps,
   saleId: string,
 ): Promise<Result<{ deliveryMode: string; status: string }, TelephoneBidBookingServiceError>> {
-  const [saleRow] = await deps.db
-    .select({
-      deliveryMode: sale.deliveryMode,
-      status: sale.status,
-    })
-    .from(sale)
-    .where(and(eq(sale.id, saleId), saleNotDeleted()))
-    .limit(1);
+  const saleRow = await deps.saleRepo.findById(saleId);
   if (!saleRow) {
     return telephoneBookingErr("Sale not found", 404);
   }
@@ -95,7 +90,7 @@ export async function assertOnsiteSaleOpen(
       "sale_not_open",
     );
   }
-  return ok(saleRow);
+  return ok({ deliveryMode: saleRow.deliveryMode, status: saleRow.status });
 }
 
 export async function assertMembership(
@@ -128,15 +123,7 @@ export async function resolveProfilePhone(
   deps: TelephoneBookingValidationDeps,
   userId: string,
 ): Promise<Result<string, TelephoneBidBookingServiceError>> {
-  const [row] = await deps.db
-    .select({
-      phoneNumber: user.phoneNumber,
-      phoneNumberVerified: user.phoneNumberVerified,
-      mobile: user.mobile,
-    })
-    .from(user)
-    .where(eq(user.id, userId))
-    .limit(1);
+  const row = await deps.userPhoneReader.findByUserId(userId);
   const phone = row?.phoneNumber?.trim() ?? row?.mobile?.trim();
   if (!phone) {
     return telephoneBookingErr(
@@ -161,11 +148,9 @@ export async function validateLotIds(
   lotIds: string[],
 ): Promise<Result<void, TelephoneBidBookingServiceError>> {
   if (lotIds.length === 0) return ok(undefined);
-  const rows = await deps.db
-    .select({ id: lot.id })
-    .from(lot)
-    .where(and(eq(lot.saleId, saleId), inArray(lot.id, lotIds), lotNotDeleted()));
-  if (rows.length !== lotIds.length) {
+  const rows = await deps.lotRepo.findByIds(lotIds);
+  const valid = rows.filter((lot) => lot.saleId === saleId && lot.deletedAt == null);
+  if (valid.length !== lotIds.length) {
     return telephoneBookingErr(
       "One or more lots do not belong to this sale",
       400,

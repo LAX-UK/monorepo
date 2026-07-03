@@ -1,10 +1,9 @@
 import { createHash } from "node:crypto";
-import { webhookEvent } from "@auction/db/schema";
 import { Hono } from "hono";
-import type { Container } from "../../container.js";
+import type { ContainerInboundWebhookClaimRoutesSlice } from "../../container.js";
 import { verifyWordPressSignature } from "../../lib/wordpress-secret.js";
 
-export function createWordPressWebhookRoutes(container: Container) {
+export function createWordPressWebhookRoutes(container: ContainerInboundWebhookClaimRoutesSlice) {
   const r = new Hono();
 
   r.post("/", async (c) => {
@@ -18,10 +17,11 @@ export function createWordPressWebhookRoutes(container: Container) {
       .update(["wordpress", c.req.header("x-lax-event") ?? "", raw].join("|"))
       .digest("hex");
     const payload = JSON.parse(raw) as Record<string, unknown>;
-    await container.db
-      .insert(webhookEvent)
-      .values({ source: "wordpress", eventKey, payload })
-      .onConflictDoNothing();
+    await container.webhookEventRepository.tryClaimEvent({
+      source: "wordpress",
+      eventKey,
+      payload,
+    });
     return c.body(null, 200);
   });
 

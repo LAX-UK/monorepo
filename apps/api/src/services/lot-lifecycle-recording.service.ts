@@ -1,7 +1,5 @@
 import type { Database } from "@auction/db";
-import { bid, lot } from "@auction/db/schema";
-import type { Lot, LotStatus } from "@auction/types";
-import { eq, sql } from "drizzle-orm";
+import type { Lot } from "@auction/types";
 import type {
   LotAttachedToSalePayload,
   LotCancelledPayload,
@@ -11,6 +9,7 @@ import type {
   LotEventType,
   LotReturnedToInventoryPayload,
 } from "../domain/lot-events.js";
+import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type {
   LotLifecycleEventRecorder,
   RecordLotLifecycleInput,
@@ -29,7 +28,7 @@ export type RecordEndedInput = {
 };
 
 /** Shared recording helpers used by lot/sale/lifecycle services. */
-export class LotLifecycleRecording {
+export class LotLifecycleRecording implements ILotLifecycleRecorder {
   constructor(private readonly recorder: LotLifecycleEventRecorder) {}
 
   async recordCreated(tx: Database, input: RecordCreatedInput): Promise<void> {
@@ -251,26 +250,4 @@ export class LotLifecycleRecording {
       },
     });
   }
-}
-
-export async function resetLotForInventoryReturn(
-  tx: Database,
-  lotId: string,
-  _fromStatus: LotStatus,
-): Promise<void> {
-  await tx
-    .update(lot)
-    .set({
-      status: "draft",
-      saleId: null,
-      lotNumber: null,
-      winnerId: null,
-      buyerLegalEntityId: null,
-      currentPrice: sql`${lot.startingPrice}`,
-      voidedReason: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(lot.id, lotId));
-
-  await tx.update(bid).set({ isWinning: false }).where(eq(bid.lotId, lotId));
 }

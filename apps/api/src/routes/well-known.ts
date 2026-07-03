@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerWellKnownRoutesSlice } from "../container.js";
 import type { Env } from "../env.js";
 
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/$/, "");
 }
 
-export function createWellKnownRoutes(container: Container, env: Env) {
+export function createWellKnownRoutes(container: ContainerWellKnownRoutesSlice, env: Env) {
   const r = new Hono();
   const issuer = stripTrailingSlash(env.OIDC_ISSUER_URL ?? env.API_PUBLIC_URL);
   const authBase = `${issuer}/api/auth`;

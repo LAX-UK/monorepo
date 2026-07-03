@@ -1,4 +1,3 @@
-import type { lotFulfilment } from "@auction/db/schema";
 import {
   adminLotFulfilmentListQuerySchema,
   adminLotFulfilmentLotIdParamSchema,
@@ -6,15 +5,16 @@ import {
   lotFulfilmentReleaseBodySchema,
   lotFulfilmentShipBodySchema,
 } from "@auction/validators";
-
-type LotFulfilmentStatusCol = (typeof lotFulfilment.$inferSelect)["status"];
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireOperationsFulfilment } from "../../middleware/require-capability.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminLotFulfilmentRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminLotFulfilmentRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get(
     "/lot-fulfilment",
     requireOperationsFulfilment,
@@ -31,7 +31,7 @@ export function attachAdminLotFulfilmentRoutes(platform: AdminHono, container: C
               offset,
             }
           : {
-              status: query.status as LotFulfilmentStatusCol,
+              status: query.status,
               ...(query.q ? { q: query.q } : {}),
               limit,
               offset,

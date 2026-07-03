@@ -720,6 +720,8 @@ describe("PaymentService", () => {
       undefined,
       mockCheckoutAddresses(),
       settlementCompliance,
+      true,
+      publisher,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -733,7 +735,6 @@ describe("PaymentService", () => {
     expect(payments.updateStatus).toHaveBeenCalledWith("pay-pending", "requires_manual_review");
     expect(stripeCheckout.createCheckout).not.toHaveBeenCalled();
     expect(publisher.publish).toHaveBeenCalledWith(
-      {},
       expect.objectContaining({
         eventType: "payment.requires_manual_review",
         payload: expect.objectContaining({ reason: "aml_hold" }),

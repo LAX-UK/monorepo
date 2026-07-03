@@ -14,6 +14,7 @@ function mountApp(role: string, staffRole?: string) {
   const artistRegistryService = {
     review: vi.fn(),
     merge: vi.fn(),
+    mergeWithConfirmation: vi.fn(),
     addAlias: vi.fn(),
     proposeMatches: vi.fn(),
     proposeMatchesForAdmin: vi.fn(),
@@ -71,7 +72,7 @@ describe("artist admin routes — platform administrator gate", () => {
     });
 
     expect(res.status).toBe(403);
-    expect(artistRegistryService.merge).not.toHaveBeenCalled();
+    expect(artistRegistryService.mergeWithConfirmation).not.toHaveBeenCalled();
   });
 
   it("allows POST /artists/:id/review for staff (super_admin)", async () => {
@@ -92,11 +93,7 @@ describe("artist admin routes — platform administrator gate", () => {
 
   it("allows POST /artists/:id/merge for staff (super_admin)", async () => {
     const { app, artistRegistryService } = mountApp("staff", "super_admin");
-    artistRegistryService.findById.mockResolvedValue({
-      id: intoId,
-      displayName: "Canonical Name",
-    });
-    artistRegistryService.merge.mockResolvedValue({
+    artistRegistryService.mergeWithConfirmation.mockResolvedValue({
       merged: { id: artistId },
       remaining: { id: intoId },
     });
@@ -112,19 +109,18 @@ describe("artist admin routes — platform administrator gate", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(artistRegistryService.merge).toHaveBeenCalledWith("u1", {
-      fromArtistId: artistId,
+    expect(artistRegistryService.mergeWithConfirmation).toHaveBeenCalledWith("u1", artistId, {
       intoArtistId: intoId,
       reason: "duplicate catalogue entry",
+      confirmationPhrase: "MERGE INTO Canonical Name",
     });
   });
 
   it("returns 400 when merge confirmation phrase is wrong", async () => {
     const { app, artistRegistryService } = mountApp("staff", "super_admin");
-    artistRegistryService.findById.mockResolvedValue({
-      id: intoId,
-      displayName: "Canonical Name",
-    });
+    artistRegistryService.mergeWithConfirmation.mockRejectedValue(
+      new ArtistError("Type exactly: MERGE INTO Canonical Name", 400, "confirmation_mismatch"),
+    );
 
     const res = await app.request(`/artists/${artistId}/merge`, {
       method: "POST",
@@ -137,7 +133,11 @@ describe("artist admin routes — platform administrator gate", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(artistRegistryService.merge).not.toHaveBeenCalled();
+    expect(artistRegistryService.mergeWithConfirmation).toHaveBeenCalledWith("u1", artistId, {
+      intoArtistId: intoId,
+      reason: "duplicate catalogue entry",
+      confirmationPhrase: "MERGE",
+    });
   });
 
   it("returns 403 for POST /artists/propose-matches when user is client", async () => {

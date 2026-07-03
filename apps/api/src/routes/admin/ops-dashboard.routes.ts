@@ -1,4 +1,4 @@
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import {
   requireAdminDashboard,
   requireLegalEntityBrowse,
@@ -8,7 +8,10 @@ import type { AdminHono } from "./_shared.js";
 
 const requireLegalEntityRead = requireLegalEntityBrowse;
 
-export function attachAdminOpsDashboardRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminOpsDashboardRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get("/metrics/finance-issues", requireAdminDashboard, async (c) => {
     const data = await container.admin.dashboard.getFinanceIssueSnapshot();
     return c.json({ data });

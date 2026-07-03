@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import { emailHash } from "@auction/email";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -63,35 +62,24 @@ describe("Postmark bounce without outbox match", () => {
 
   it("falls back to recipient email suppression when MessageID is unknown", async () => {
     process.env.NODE_ENV = "development";
-    const inserted: unknown[] = [];
-    const selectLimit = vi.fn().mockResolvedValue([]);
-    const db = {
-      insert: vi.fn(() => ({
-        values: vi.fn((v: unknown) => {
-          inserted.push(v);
-          const row = v as Record<string, unknown>;
-          if ("provider" in row && row.provider === "postmark") {
-            return Promise.resolve(undefined);
-          }
-          return {
-            onConflictDoUpdate: vi.fn(() => Promise.resolve(undefined)),
-          };
-        }),
-      })),
-      select: vi.fn(() => ({
-        from: vi.fn(() => ({
-          where: vi.fn(() => ({
-            limit: selectLimit,
-          })),
-        })),
-      })),
-      update: vi.fn(() => ({
-        set: vi.fn(() => ({
-          where: vi.fn(() => Promise.resolve(undefined)),
-        })),
-      })),
-    } as unknown as Database;
-    const postmarkWebhookService = new PostmarkWebhookService(db, vi.fn());
+    const upserted: Array<{ emailHash: string; reason: string }> = [];
+    const emailSuppressions = {
+      upsert: vi.fn(async (hash: string, reason: string) => {
+        upserted.push({ emailHash: hash, reason });
+      }),
+    };
+    const emailWebhookIngest = {
+      insertEmailEvent: vi.fn(),
+      findOutboxByMessageId: vi.fn().mockResolvedValue(null),
+      countSoftBouncesForEmailSince: vi.fn(),
+      updateUserEmailStatusByEmail: vi.fn(),
+      updateUserEmailStatusByUserId: vi.fn(),
+    };
+    const postmarkWebhookService = new PostmarkWebhookService(
+      emailWebhookIngest,
+      emailSuppressions,
+      vi.fn(),
+    );
     const container = {
       env: { NODE_ENV: "development", POSTMARK_WEBHOOK_BASIC_AUTH: undefined },
       postmarkWebhookService,
@@ -111,12 +99,12 @@ describe("Postmark bounce without outbox match", () => {
     });
 
     expect(res.status).toBe(200);
-    const suppression = inserted.find(
-      (v) => typeof v === "object" && v !== null && "emailHash" in v && !("provider" in v),
-    ) as { emailHash: string; reason: string } | undefined;
-    expect(suppression?.reason).toBe("hard_bounce");
-    expect(suppression?.emailHash).toBe(emailHash("seller@example.com"));
-    expect(selectLimit).toHaveBeenCalled();
-    expect(db.update).toHaveBeenCalled();
+    expect(upserted[0]?.reason).toBe("hard_bounce");
+    expect(upserted[0]?.emailHash).toBe(emailHash("seller@example.com"));
+    expect(emailWebhookIngest.findOutboxByMessageId).toHaveBeenCalled();
+    expect(emailWebhookIngest.updateUserEmailStatusByEmail).toHaveBeenCalledWith(
+      "seller@example.com",
+      "bounced",
+    );
   });
 });

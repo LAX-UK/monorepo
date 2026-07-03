@@ -4,13 +4,13 @@ import { sale, saleroomSession } from "@auction/db/schema";
 import type { Sale } from "@auction/types";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { AmlService } from "../aml/aml.service.js";
-import type { ConditionReportService } from "../condition-report.service.js";
+import type { IConditionReportAdminService } from "../interfaces/condition-report.js";
+import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
 import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
+import type { ITelephoneBidBookingQueryService } from "../interfaces/telephone-bid-booking-service.js";
 import type { InvitationService } from "../invitation.service.js";
-import type { LotFulfilmentService } from "../lot-fulfilment.service.js";
 import type { SaleService } from "../sale.service.js";
 import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
-import type { TelephoneBidBookingService } from "../telephone-bid-booking.service.js";
 import type { AdminNavCountsDeps } from "./admin-nav-counts.service.js";
 import type { AdminRouteServicesCore } from "./create-admin-route-services.js";
 
@@ -18,13 +18,13 @@ export type CreateAdminNavCountsDepsInput = {
   db: Database;
   admin: AdminRouteServicesCore;
   repoFactory: IRepositoryFactory;
-  conditionReportService: ConditionReportService;
-  lotFulfilmentService: LotFulfilmentService;
+  conditionReportService: IConditionReportAdminService;
+  lotFulfilmentService: ILotFulfilmentService;
   saleService: SaleService;
   invitationService: InvitationService;
   amlService: AmlService;
   sourceOfFundsService: SourceOfFundsService;
-  telephoneBidBookingService: TelephoneBidBookingService;
+  telephoneBidBookingService: ITelephoneBidBookingQueryService;
 };
 
 function saleNeedsSetup(saleRow: Sale, lotCount: number): boolean {

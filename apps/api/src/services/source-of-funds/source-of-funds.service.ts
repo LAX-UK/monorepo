@@ -1,345 +1,74 @@
 import type { Database } from "@auction/db";
-import type {
-  ISourceOfFundsGate,
-  SettlementComplianceInput,
-} from "../aml/settlement-compliance.policy.js";
+import type { ISourceOfFundsGate } from "../aml/settlement-compliance.policy.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type {
-  ISourceOfFundsRepository,
-  SourceOfFundsCase,
-  SourceOfFundsStatus,
-  SourceOfFundsTrigger,
-} from "./source-of-funds.types.js";
+  ISourceOfFundsService,
+  SourceOfFundsConfig,
+} from "../interfaces/source-of-funds-service.js";
+import { SourceOfFundsGateService } from "./source-of-funds-gate.service.js";
+import { SourceOfFundsReviewService } from "./source-of-funds-review.service.js";
+import type { ISourceOfFundsRepository } from "./source-of-funds.types.js";
 
-export const SOURCE_OF_FUNDS_REQUIRED_EVENT = "source_of_funds.required";
-export const SOURCE_OF_FUNDS_REVIEWED_EVENT = "source_of_funds.reviewed";
-
-export type SourceOfFundsConfig = {
-  /** SoF threshold in GBP major units (no FX; platform is GBP-only). */
-  thresholdAmount: number;
-  currency: string;
-  /** Days an approved SoF case clears future settlements before re-validation. */
-  approvalValidityDays: number;
-};
-
-export type SourceOfFundsTriageCommand = {
-  caseId: string;
-  analystUserId: string;
-  recommendation: "approve" | "reject";
-  notes: string | null;
-};
-
-export type SourceOfFundsDecideCommand = {
-  caseId: string;
-  reviewerUserId: string;
-  decision: "approve" | "reject";
-  notes: string | null;
-};
-
-function penceToMajor(pence: number): string {
-  return (pence / 100).toFixed(2);
-}
-
-function majorToPence(major: string): number {
-  return Math.round(Number.parseFloat(major) * 100);
-}
-
-function isUniqueViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "23505";
-}
+export { SOURCE_OF_FUNDS_REQUIRED_EVENT } from "./source-of-funds-gate.service.js";
+export { SOURCE_OF_FUNDS_REVIEWED_EVENT } from "./source-of-funds-review.service.js";
+export type {
+  SourceOfFundsConfig,
+  SourceOfFundsDecideCommand,
+  SourceOfFundsTriageCommand,
+} from "../interfaces/source-of-funds-service.js";
 
 /**
- * Source-of-Funds service (CDD Section 6). Implements the settlement gate: a
- * buyer crossing the SoF threshold — by single transaction or aggregated linked
- * transactions — must have an `approved` SoF case before settlement proceeds.
- *
- * Implements `ISourceOfFundsGate` so the settlement compliance policy depends on
- * an abstraction, not this concretion (Dependency Inversion).
+ * Source-of-Funds migration facade. Delegates to segregated gate (payment hot
+ * path) and review (admin triage) services while preserving the original
+ * public surface for container wiring.
  */
-export class SourceOfFundsService implements ISourceOfFundsGate {
+export class SourceOfFundsService implements ISourceOfFundsService, ISourceOfFundsGate {
+  private readonly gate: SourceOfFundsGateService;
+  private readonly review: SourceOfFundsReviewService;
+
   constructor(
-    private readonly repo: ISourceOfFundsRepository,
-    private readonly config: SourceOfFundsConfig,
-    private readonly db: Database | null = null,
-    private readonly events: DomainEventPublisher | null = null,
-  ) {}
-
-  private thresholdPence(): number {
-    return Math.round(this.config.thresholdAmount * 100);
+    repo: ISourceOfFundsRepository,
+    config: SourceOfFundsConfig,
+    db: Database | null = null,
+    events: DomainEventPublisher | null = null,
+  ) {
+    this.gate = new SourceOfFundsGateService(repo, config, db, events);
+    this.review = new SourceOfFundsReviewService(repo, db, events);
   }
 
-  async requiresSourceOfFunds(input: SettlementComplianceInput): Promise<boolean> {
-    const thresholdPence = this.thresholdPence();
-    if (thresholdPence <= 0) return false;
-
-    const linkedPence = await this.repo.sumActiveBuyerSettlementPence(
-      input.buyerUserId,
-      input.excludePaymentId,
-    );
-    const exposurePence = linkedPence + input.amountPence;
-    // Below the threshold (single + aggregated linked transactions): no SoF.
-    if (exposurePence < thresholdPence) return false;
-
-    // Event-driven validity: a prior approval clears the buyer only until a
-    // material risk signal (much larger exposure) or the validity window lapses.
-    // New screening hits are handled separately by the AML hold gate, which the
-    // settlement policy evaluates before this gate.
-    const approved = await this.repo.findLatestApprovedForUser(input.buyerUserId);
-    if (approved && this.isApprovalStillValid(approved, exposurePence)) {
-      return false;
-    }
-
-    await this.ensurePendingCase(
-      input.buyerUserId,
-      exposurePence,
-      linkedPence > 0 ? "linked_transactions" : "threshold",
-    );
-    return true;
+  requiresSourceOfFunds(...args: Parameters<SourceOfFundsGateService["requiresSourceOfFunds"]>) {
+    return this.gate.requiresSourceOfFunds(...args);
   }
 
-  /**
-   * Read-only settlement-gate snapshot: true when the buyer's latest SoF case is
-   * still `pending` (an open review is gating settlement). No side effects — does
-   * not open a case. Used by buyer-facing surfaces to surface a blocker before a
-   * payment row exists.
-   */
-  async hasPendingCaseForUser(buyerUserId: string): Promise<boolean> {
-    // Detect *any* open pending case, not just the most recent row: a pending
-    // review can sit behind a newer approved/rejected case, and the settlement
-    // gate must keep blocking while it is unresolved.
-    const pending = await this.repo.findPendingForUser(buyerUserId);
-    return pending !== null;
+  hasPendingCaseForUser(...args: Parameters<SourceOfFundsGateService["hasPendingCaseForUser"]>) {
+    return this.gate.hasPendingCaseForUser(...args);
   }
 
-  /**
-   * An approved SoF case clears future settlements until either the validity
-   * window lapses or the buyer's aggregated exposure grows by another full
-   * threshold beyond what was approved (a material increase warranting re-CDD).
-   */
-  private isApprovalStillValid(approved: SourceOfFundsCase, currentExposurePence: number): boolean {
-    if (!approved.reviewedAt) return false;
-    const ageMs = Date.now() - approved.reviewedAt.getTime();
-    const maxAgeMs = this.config.approvalValidityDays * 24 * 60 * 60 * 1000;
-    if (ageMs > maxAgeMs) return false;
-    const approvedExposurePence = majorToPence(approved.exposureAmount);
-    if (currentExposurePence >= approvedExposurePence + this.thresholdPence()) return false;
-    return true;
+  listPending(...args: Parameters<SourceOfFundsReviewService["listPending"]>) {
+    return this.review.listPending(...args);
   }
 
-  /** Pending SoF cases awaiting MLRO/finance review. */
-  async listPending(limit = 50): Promise<SourceOfFundsCase[]> {
-    return this.listByStatus("pending", limit);
+  countPending(...args: Parameters<SourceOfFundsReviewService["countPending"]>) {
+    return this.review.countPending(...args);
   }
 
-  async countPending(): Promise<number> {
-    return this.repo.countByStatus("pending");
+  countByStatus(...args: Parameters<SourceOfFundsReviewService["countByStatus"]>) {
+    return this.review.countByStatus(...args);
   }
 
-  async countByStatus(status: SourceOfFundsStatus): Promise<number> {
-    return this.repo.countByStatus(status);
+  listByStatus(...args: Parameters<SourceOfFundsReviewService["listByStatus"]>) {
+    return this.review.listByStatus(...args);
   }
 
-  async listByStatus(
-    status: SourceOfFundsStatus,
-    limit = 50,
-    offset = 0,
-  ): Promise<SourceOfFundsCase[]> {
-    return this.repo.listByStatus(status, limit, offset);
+  triage(...args: Parameters<SourceOfFundsReviewService["triage"]>) {
+    return this.review.triage(...args);
   }
 
-  /**
-   * First-line analyst triage (maker): advisory recommendation only. Does not
-   * change the case status; the binding decision is made by a different
-   * MLRO/finance user via `decide` (maker-checker / four-eyes).
-   */
-  async triage(command: SourceOfFundsTriageCommand): Promise<SourceOfFundsCase> {
-    const run = async (conn?: Database): Promise<SourceOfFundsCase> => {
-      const existing = await this.repo.findById(command.caseId, conn);
-      if (!existing) throw new Error("source_of_funds_not_found");
-      if (existing.userId === command.analystUserId) {
-        throw new Error("source_of_funds_triage_self_forbidden");
-      }
-      if (existing.status !== "pending") {
-        throw new Error("source_of_funds_not_pending");
-      }
-      if (existing.triageRecommendation) {
-        throw new Error("source_of_funds_triage_already_set");
-      }
-      const recommendation =
-        command.recommendation === "approve" ? "recommend_approve" : "recommend_reject";
-      const updated = await this.repo.setTriage(
-        {
-          id: command.caseId,
-          recommendation,
-          triagedByUserId: command.analystUserId,
-          triageNotes: command.notes,
-        },
-        conn,
-      );
-      if (!updated) throw new Error("source_of_funds_triage_already_set");
-      return updated;
-    };
-
-    if (this.db) return this.db.transaction((tx) => run(tx));
-    return run();
+  decide(...args: Parameters<SourceOfFundsReviewService["decide"]>) {
+    return this.review.decide(...args);
   }
 
-  /**
-   * MLRO/finance binding disposition (checker). Enforces maker-checker: the
-   * decider must differ from the subject and from the analyst who triaged, and a
-   * triage recommendation must already exist.
-   */
-  async decide(command: SourceOfFundsDecideCommand): Promise<SourceOfFundsCase> {
-    const run = async (conn?: Database): Promise<SourceOfFundsCase> => {
-      const existing = await this.repo.findById(command.caseId, conn);
-      if (!existing) throw new Error("source_of_funds_not_found");
-      if (existing.userId === command.reviewerUserId) {
-        throw new Error("source_of_funds_review_self_forbidden");
-      }
-      if (existing.status !== "pending") {
-        throw new Error("source_of_funds_not_pending");
-      }
-      if (!existing.triagedByUserId || !existing.triageRecommendation) {
-        throw new Error("source_of_funds_triage_required");
-      }
-      if (existing.triagedByUserId === command.reviewerUserId) {
-        throw new Error("source_of_funds_review_same_as_triager");
-      }
-      const status = command.decision === "approve" ? "approved" : "rejected";
-      const updated = await this.repo.setReview(
-        {
-          id: command.caseId,
-          status,
-          reviewedByUserId: command.reviewerUserId,
-          reviewNotes: command.notes,
-        },
-        conn,
-      );
-      if (!updated) throw new Error("source_of_funds_not_pending");
-
-      if (conn && this.events) {
-        await this.events.publish(conn, {
-          aggregateType: "source_of_funds",
-          aggregateId: updated.id,
-          eventType: SOURCE_OF_FUNDS_REVIEWED_EVENT,
-          actorUserId: command.reviewerUserId,
-          payload: {
-            sourceOfFundsId: updated.id,
-            userId: updated.userId,
-            status: updated.status,
-            trigger: updated.trigger,
-          },
-        });
-      }
-      return updated;
-    };
-
-    if (this.db) return this.db.transaction((tx) => run(tx));
-    return run();
-  }
-
-  /**
-   * Deliberate compliance action to re-open a rejected SoF case (e.g. buyer
-   * supplied new evidence). Resets maker-checker fields and re-publishes
-   * `source_of_funds.required` for operational visibility.
-   */
-  async reopenRejected(command: {
-    caseId: string;
-    actorUserId: string;
-  }): Promise<SourceOfFundsCase> {
-    const run = async (conn?: Database): Promise<SourceOfFundsCase> => {
-      const existing = await this.repo.findById(command.caseId, conn);
-      if (!existing) throw new Error("source_of_funds_not_found");
-      if (existing.status !== "rejected") {
-        throw new Error("source_of_funds_not_rejected");
-      }
-      const updated = await this.repo.reopenRejected(command.caseId, conn);
-      if (!updated) throw new Error("source_of_funds_reopen_failed");
-      await this.repo.resetDocumentCycle(command.caseId, conn);
-
-      if (conn && this.events) {
-        await this.events.publish(conn, {
-          aggregateType: "source_of_funds",
-          aggregateId: updated.id,
-          eventType: SOURCE_OF_FUNDS_REQUIRED_EVENT,
-          actorUserId: command.actorUserId,
-          payload: {
-            sourceOfFundsId: updated.id,
-            userId: updated.userId,
-            trigger: updated.trigger,
-            thresholdAmount: updated.thresholdAmount,
-            exposureAmount: updated.exposureAmount,
-            currency: updated.currency,
-            reopened: true,
-          },
-        });
-      }
-      return updated;
-    };
-
-    if (this.db) return this.db.transaction((tx) => run(tx));
-    return run();
-  }
-
-  private async ensurePendingCase(
-    userId: string,
-    exposurePence: number,
-    trigger: SourceOfFundsTrigger,
-  ): Promise<SourceOfFundsCase> {
-    const run = async (conn?: Database): Promise<SourceOfFundsCase> => {
-      // Reuse any open pending case for this buyer — checking only the most
-      // recent row let an older pending case slip through whenever a newer
-      // approved/terminal case existed (or rows tied on created_at), producing
-      // duplicate pending cases and duplicate review tasks.
-      const pending = await this.repo.findPendingForUser(userId, conn);
-      if (pending) return pending;
-      const latest = await this.repo.findLatestForUser(userId, conn);
-      // A rejected case keeps blocking settlement; do NOT reopen automatically on
-      // checkout retries (avoids unbounded case/task churn). Re-opening is a
-      // deliberate compliance action.
-      if (latest && latest.status === "rejected") return latest;
-
-      let created: SourceOfFundsCase;
-      try {
-        created = await this.repo.create(
-          {
-            userId,
-            trigger,
-            thresholdAmount: this.config.thresholdAmount.toFixed(2),
-            exposureAmount: penceToMajor(exposurePence),
-            currency: this.config.currency,
-          },
-          conn,
-        );
-      } catch (err) {
-        // Partial unique index race: another checkout opened the pending case concurrently.
-        if (isUniqueViolation(err)) {
-          const raced = await this.repo.findPendingForUser(userId, conn);
-          if (raced) return raced;
-        }
-        throw err;
-      }
-
-      if (conn && this.events) {
-        await this.events.publish(conn, {
-          aggregateType: "source_of_funds",
-          aggregateId: created.id,
-          eventType: SOURCE_OF_FUNDS_REQUIRED_EVENT,
-          actorUserId: userId,
-          payload: {
-            sourceOfFundsId: created.id,
-            userId: created.userId,
-            trigger: created.trigger,
-            thresholdAmount: created.thresholdAmount,
-            exposureAmount: created.exposureAmount,
-            currency: created.currency,
-          },
-        });
-      }
-      return created;
-    };
-
-    if (this.db) return this.db.transaction((tx) => run(tx));
-    return run();
+  reopenRejected(...args: Parameters<SourceOfFundsReviewService["reopenRejected"]>) {
+    return this.review.reopenRejected(...args);
   }
 }

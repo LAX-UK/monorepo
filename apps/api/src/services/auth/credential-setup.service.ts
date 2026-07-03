@@ -1,13 +1,13 @@
 import { account } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type { Container } from "../../container.js";
-import type { AuthAuditPublisher } from "../auth-audit.publisher.js";
+import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 
 export async function setupCredentialPassword(args: {
   container: Container;
   userId: string;
   password: string;
-  authAudit?: AuthAuditPublisher | undefined;
+  authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<{ ok: true } | { ok: false; kind: "user_not_found" | "already_set" | "db_error" }> {
   const { container, userId, password, authAudit } = args;
 
@@ -50,7 +50,7 @@ export async function setupCredentialPassword(args: {
   if (alreadySet) return { ok: false, kind: "already_set" };
 
   void authAudit
-    ?.publish(container.db, {
+    ?.publish({
       eventType: "auth.password_credential_enabled",
       aggregateId: userId,
       payload: {},

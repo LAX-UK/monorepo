@@ -4,8 +4,8 @@ import { type Result, err, ok } from "neverthrow";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import { DrizzleSaleRepository } from "../repositories/drizzle-sale.repository.js";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
+import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository, ISaleRepository } from "../services/interfaces/repositories.js";
-import type { LotLifecycleRecording } from "../services/lot-lifecycle-recording.service.js";
 import { LotError } from "./errors.js";
 
 export const SCHEDULE_JOBS_FAILED_MESSAGE =
@@ -18,7 +18,7 @@ export function scheduleJobsFailedError(): LotError {
 export type ScheduleLotRollbackDeps = {
   jobScheduler: ILotJobScheduler | null;
   lotRepo: ILotRepository;
-  lotLifecycleRecording?: LotLifecycleRecording | null;
+  lotLifecycleRecording?: ILotLifecycleRecorder | null;
   db?: Database | null;
   recordLotLifecycle?: ((fn: (tx: Database) => Promise<void>) => Promise<void>) | null;
 };

@@ -9,6 +9,7 @@ import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
+import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
 import type {
   ArchiveEndedAggregateFilter,
@@ -18,9 +19,8 @@ import type {
   ListLotsFilter,
 } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
-import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
+import type { ITelephoneBidBookingSaleroomBridge } from "./interfaces/telephone-bid-booking-service.js";
 import type { IWatchlistRepository } from "./interfaces/watchlist.js";
-import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js";
 import { createLot } from "./lot/lot-create.js";
 import { bulkPublishOrCancel, cancelLot, publishLot } from "./lot/lot-lifecycle.js";
@@ -57,10 +57,10 @@ export type LotServiceOptions = {
   catalogueMediaUrlResolver?: MediaUrlResolver;
   mediaAssetEnricher?: MediaAssetEnricher;
   englishOnlyAuctions?: boolean;
-  lotLifecycleRecording?: LotLifecycleRecording | null;
+  lotLifecycleRecording?: ILotLifecycleRecorder | null;
   lotTransitionOrchestrator?: LotTransitionOrchestrator | null;
   qrCodeService?: QrCodeService | null;
-  telephoneBidBookingService?: ITelephoneBidBookingService | null;
+  telephoneBidBookingService?: ITelephoneBidBookingSaleroomBridge | null;
   repoFactory?: IRepositoryFactory | null;
 };
 

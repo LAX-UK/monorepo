@@ -1,7 +1,7 @@
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
+import type { IPaymentDomainEventsRepository } from "../../repositories/interfaces/payment-domain-events.repository.js";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import {
@@ -43,10 +43,9 @@ function baseDeps(overrides: Partial<CheckoutOrchestratorDeps> = {}): CheckoutOr
     settlementCompliance: null,
     paymentTierPolicy: policy,
     legalEntityRepository: undefined,
-    db: {} as never,
-    domainEventPublisher: {
+    paymentEvents: {
       publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher,
+    } as unknown as IPaymentDomainEventsRepository,
     xeroInvoiceBlocking: true,
     ...overrides,
   };
@@ -116,7 +115,7 @@ describe("promotePendingToComplianceManualReview", () => {
         findById: vi.fn().mockResolvedValue({ id: "pay-1", stripePaymentIntentId: "pi_1" }),
         updateStatus,
       } as unknown as IPaymentWriteRepository,
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      paymentEvents: { publish } as unknown as IPaymentDomainEventsRepository,
     });
 
     const result = await promotePendingToComplianceManualReview(
@@ -130,7 +129,6 @@ describe("promotePendingToComplianceManualReview", () => {
 
     expect(updateStatus).toHaveBeenCalledWith("pay-1", "requires_manual_review");
     expect(publish).toHaveBeenCalledWith(
-      deps.db,
       expect.objectContaining({
         eventType: "payment.requires_manual_review",
         payload: expect.objectContaining({

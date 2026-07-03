@@ -1,7 +1,7 @@
 import { normalizeUserStaffRole } from "@auction/types";
 import { pressArchiveQuerySchema, pressDayMediaQuerySchema } from "@auction/validators";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { Container, ContainerPressRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -28,7 +28,10 @@ function serializePressArchiveListResult(
   };
 }
 
-export function createPressRoutes(container: Container, authenticator: IAuthenticator) {
+export function createPressRoutes(
+  container: ContainerPressRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const optionalAuth = createOptionalAuth(authenticator);
   const r = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };

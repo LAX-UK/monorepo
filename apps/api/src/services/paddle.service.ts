@@ -1,6 +1,3 @@
-import type { Database } from "@auction/db";
-import { lot } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { Counter, Histogram } from "prom-client";
 import { BidError } from "../lib/errors.js";
@@ -9,6 +6,7 @@ import {
   isPaddleUniqueViolation,
 } from "../repositories/drizzle-paddle.repository.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
+import type { ILotRepository } from "./interfaces/repositories.js";
 
 const PADDLE_START = 100;
 const ROSTER_CACHE_TTL_SEC = 5;
@@ -59,7 +57,7 @@ export type PaddleBidResolution = {
 export class PaddleService {
   constructor(
     private readonly repo: IPaddleRepository,
-    private readonly db: Database,
+    private readonly lotRepo: ILotRepository,
     private readonly cache: ICacheProvider | null,
     private readonly hasActiveSelfServiceSession?: (
       saleId: string,
@@ -195,11 +193,7 @@ export class PaddleService {
     lotId: string;
   }): Promise<Result<PaddleBidResolution, BidError>> {
     const started = Date.now();
-    const [lotRow] = await this.db
-      .select({ saleId: lot.saleId })
-      .from(lot)
-      .where(eq(lot.id, input.lotId))
-      .limit(1);
+    const lotRow = await this.lotRepo.findById(input.lotId);
     if (!lotRow?.saleId || lotRow.saleId !== input.saleId) {
       return err(new BidError("Lot does not belong to this sale", 400));
     }

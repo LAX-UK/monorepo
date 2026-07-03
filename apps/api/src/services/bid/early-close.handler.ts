@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
 import type { Bid, Lot } from "@auction/types";
 import type { ILotStrategy } from "../interfaces/auction-strategy.js";
+import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository } from "../interfaces/repositories.js";
-import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
 
 export type EarlyCloseOutcome = {
   endedEarly: true;
@@ -12,7 +12,7 @@ export type EarlyCloseOutcome = {
 };
 
 export class EarlyCloseHandler {
-  constructor(private readonly lotLifecycleRecording: LotLifecycleRecording | null) {}
+  constructor(private readonly lotLifecycleRecording: ILotLifecycleRecorder | null) {}
 
   async tryEarlyClose(params: {
     strategy: ILotStrategy;

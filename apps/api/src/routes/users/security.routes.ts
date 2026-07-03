@@ -1,6 +1,3 @@
-import { lotNotDeleted } from "@auction/db";
-import { legalEntityMember, lot, payment, payout, user as userTable } from "@auction/db/schema";
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { extractBetterAuthSessionToken } from "../../lib/session-cookie.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -69,7 +66,7 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
       const ok = await container.sessionRevocation.deleteSessionForUser(userId, sessionId);
       if (!ok) return c.json({ error: "Session not found", code: "session_not_found" }, 404);
       void container.authAuditPublisher
-        .publish(container.db, {
+        .publish({
           eventType: "auth.session_revoked",
           aggregateId: userId,
           payload: { sessionId },
@@ -88,7 +85,7 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
     if (!sid) return c.json({ error: "Session not found", code: "session_required" }, 401);
     await container.sessionRevocation.revokeAllForUserExcept(userId, sid);
     void container.authAuditPublisher
-      .publish(container.db, {
+      .publish({
         eventType: "auth.sessions_revoked_all_except_current",
         aggregateId: userId,
         payload: {},
@@ -100,17 +97,8 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
 
   r.post("/me/security-notify/two-factor-enabled", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    // Server-side assertion: verify 2FA is actually enabled in the DB before
-    // sending the notification. This prevents a malicious client from triggering
-    // false security emails or spamming the user. `user.twoFactorEnabled` is the
-    // single source of truth Better Auth flips only once TOTP setup is verified —
-    // a `twoFactor` row alone can exist unverified (e.g. abandoned setup wizard).
-    const [authUser] = await container.authDb
-      .select({ twoFactorEnabled: userTable.twoFactorEnabled })
-      .from(userTable)
-      .where(eq(userTable.id, userId))
-      .limit(1);
-    if (!authUser?.twoFactorEnabled) {
+    const twoFactorEnabled = await container.userSecurityReadService.getTwoFactorEnabled(userId);
+    if (!twoFactorEnabled) {
       return c.json(
         { error: "Two-factor authentication is not enabled", code: "two_factor_not_enabled" },
         409,
@@ -126,7 +114,7 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
       vars: { userName: row.name },
     });
     void container.authAuditPublisher
-      .publish(container.db, {
+      .publish({
         eventType: "auth.two_factor_security_email",
         aggregateId: userId,
         payload: { kind: "enabled" },
@@ -138,15 +126,8 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
 
   r.post("/me/security-notify/two-factor-disabled", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    // Server-side assertion: verify 2FA is actually disabled before sending the
-    // notification. `user.twoFactorEnabled` still true means 2FA is still active —
-    // reject the call.
-    const [authUser] = await container.authDb
-      .select({ twoFactorEnabled: userTable.twoFactorEnabled })
-      .from(userTable)
-      .where(eq(userTable.id, userId))
-      .limit(1);
-    if (authUser?.twoFactorEnabled) {
+    const twoFactorEnabled = await container.userSecurityReadService.getTwoFactorEnabled(userId);
+    if (twoFactorEnabled) {
       return c.json(
         { error: "Two-factor authentication is still enabled", code: "two_factor_still_enabled" },
         409,
@@ -162,7 +143,7 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
       vars: { userName: row.name },
     });
     void container.authAuditPublisher
-      .publish(container.db, {
+      .publish({
         eventType: "auth.two_factor_security_email",
         aggregateId: userId,
         payload: { kind: "disabled" },
@@ -179,89 +160,9 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
     zValidator("json", deleteAccountBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
-      const [u] = await container.db
-        .select({ deletionRequestedAt: userTable.deletionRequestedAt })
-        .from(userTable)
-        .where(eq(userTable.id, userId))
-        .limit(1);
-      if (u?.deletionRequestedAt) {
-        return c.json(
-          { error: "Deletion already requested", code: "account_deletion_already_requested" },
-          409,
-        );
-      }
-
-      const [pendingPayment] = await container.db
-        .select({ id: payment.id })
-        .from(payment)
-        .where(and(eq(payment.buyerId, userId), eq(payment.status, "pending")))
-        .limit(1);
-      if (pendingPayment) {
-        return c.json(
-          {
-            error: "You have unpaid pending payments; resolve them before deleting your account.",
-            code: "account_deletion_pending_payments",
-          },
-          409,
-        );
-      }
-
-      const [activeSellerLot] = await container.db
-        .select({ id: lot.id })
-        .from(lot)
-        .innerJoin(
-          legalEntityMember,
-          and(
-            eq(legalEntityMember.legalEntityId, lot.sellerLegalEntityId),
-            eq(legalEntityMember.userId, userId),
-            isNull(legalEntityMember.removedAt),
-            isNotNull(legalEntityMember.acceptedAt),
-          ),
-        )
-        .where(
-          and(
-            isNotNull(lot.sellerLegalEntityId),
-            inArray(lot.status, ["draft", "scheduled", "active"]),
-            lotNotDeleted(),
-          ),
-        )
-        .limit(1);
-      if (activeSellerLot) {
-        return c.json(
-          {
-            error:
-              "You still have active or scheduled lots as a seller; withdraw or complete them first.",
-            code: "account_deletion_active_seller_lots",
-          },
-          409,
-        );
-      }
-
-      const memberRows = await container.db
-        .select({ legalEntityId: legalEntityMember.legalEntityId })
-        .from(legalEntityMember)
-        .where(and(eq(legalEntityMember.userId, userId), isNull(legalEntityMember.removedAt)));
-      const entityIds = memberRows.map((row) => row.legalEntityId).filter(Boolean);
-      if (entityIds.length > 0) {
-        const [openPayout] = await container.db
-          .select({ id: payout.id })
-          .from(payout)
-          .where(
-            and(
-              inArray(payout.legalEntityId, entityIds as string[]),
-              inArray(payout.status, ["scheduled", "in_transit", "clawback_pending"]),
-            ),
-          )
-          .limit(1);
-        if (openPayout) {
-          return c.json(
-            {
-              error: "Your organisation has payouts still in flight; resolve them before deletion.",
-              code: "account_deletion_open_payouts",
-            },
-            409,
-          );
-        }
+      const eligibility = await container.accountDeletionEligibilityService.check(userId);
+      if (!eligibility.ok) {
+        return c.json({ error: eligibility.error, code: eligibility.code }, 409);
       }
 
       await container.userService.requestAccountDeletion(userId);

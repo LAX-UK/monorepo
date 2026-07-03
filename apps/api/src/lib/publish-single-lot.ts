@@ -5,8 +5,8 @@ import { type Result, err, ok } from "neverthrow";
 import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
+import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository } from "../services/interfaces/repositories.js";
-import type { LotLifecycleRecording } from "../services/lot-lifecycle-recording.service.js";
 import { LotError } from "./errors.js";
 import { assertLotPublishable } from "./lot-publish-policy.js";
 import { resolveLotTimingForSale } from "./lot-sale-timing.js";
@@ -16,7 +16,7 @@ import { findLotsMissingSellerConnect } from "./seller-connect-readiness.js";
 export type PublishSingleLotDeps = {
   lotRepo: ILotRepository;
   jobScheduler: ILotJobScheduler | null;
-  lotLifecycleRecording?: LotLifecycleRecording | null;
+  lotLifecycleRecording?: ILotLifecycleRecorder | null;
   db?: Database | null;
   recordLotLifecycle?: ((fn: (tx: Database) => Promise<void>) => Promise<void>) | null;
   legalEntityRepository?: ILegalEntityRepository | null;

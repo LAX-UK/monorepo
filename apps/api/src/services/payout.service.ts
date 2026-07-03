@@ -18,6 +18,14 @@ import type {
   StripeTransferReconciliationInput,
 } from "./interfaces/payout.js";
 import { PayoutNotFoundError, PayoutPermissionError } from "./interfaces/payout.js";
+
+export type {
+  IPayoutAdminService,
+  IPayoutMaintenanceService,
+  IPayoutSellerService,
+  IPayoutService,
+  IPayoutSettlementService,
+} from "./interfaces/payout.js";
 import {
   addAdjustment,
   adminList,

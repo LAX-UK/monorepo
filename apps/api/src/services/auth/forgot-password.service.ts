@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { account, user } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import type { Container } from "../../container.js";
-import type { AuthAuditPublisher } from "../auth-audit.publisher.js";
+import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 import { requestMagicLinkForEmail } from "./request-magic-link.service.js";
 
 const SUPPORTED_SOCIAL_PROVIDERS = new Set(["google", "apple"]);
@@ -17,12 +17,12 @@ export async function runForgotPasswordSideEffects(args: {
   webOrigin: string;
   container: Container;
   clientIp?: string | undefined;
-  authAudit?: AuthAuditPublisher | undefined;
+  authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<void> {
   const { email, webOrigin, container, clientIp, authAudit } = args;
   const auditId = authAggregateId(`forgot:${email.toLowerCase()}:${clientIp ?? ""}`);
   void authAudit
-    ?.publish(container.db, {
+    ?.publish({
       eventType: "auth.forgot_password_requested",
       aggregateType: "auth",
       aggregateId: auditId,

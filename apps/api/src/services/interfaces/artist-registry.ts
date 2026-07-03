@@ -81,6 +81,12 @@ export type MergeArtistInput = {
   reason: string;
 };
 
+export type MergeArtistRouteInput = {
+  intoArtistId: string;
+  reason: string;
+  confirmationPhrase: string;
+};
+
 export type MergeArtistResult = {
   merged: ArtistRecord;
   remaining: ArtistRecord;
@@ -96,7 +102,8 @@ export type ReviewArtistInput = {
   rejectionReason?: string | undefined;
 };
 
-export interface IArtistRegistryService {
+/** Read-only artist registry: search, match browsing, and public lookup. */
+export interface IArtistRegistryQueryService {
   /** Three-pass search: exact slug → exact alias → fuzzy on display + aliases. */
   search(query: string, limit?: number): Promise<ArtistSearchHit[]>;
 
@@ -105,26 +112,23 @@ export interface IArtistRegistryService {
    */
   proposeMatches(input: ProposeMatchesInput): Promise<ProposeMatchesResult>;
 
-  /** Admin-only: same as {@link proposeMatches} plus audit `domain_events` row. */
-  proposeMatchesForAdmin(
-    actorUserId: string,
-    input: ProposeMatchesInput,
-  ): Promise<ProposeMatchesResult>;
-
   findById(id: string): Promise<ArtistRecord | null>;
   findBySlug(slug: string): Promise<ArtistRecord | null>;
-
-  /** Creates an artist as `pending` (status). Caller user is recorded as
-   * `created_by_user_id`. Slug derived from displayName + numeric suffix on
-   * collision.
-   */
-  create(creatorUserId: string | null, input: CreateArtistInput): Promise<ArtistRecord>;
 
   /** Slug availability — case-insensitive, suggests numeric suffix on collision. */
   checkNameAvailability(displayName: string): Promise<{
     available: boolean;
     suggestions: string[];
   }>;
+}
+
+/** Staff mutations: create, merge, review, alias management, and audited match proposals. */
+export interface IArtistRegistryStaffCommandService {
+  /** Creates an artist as `pending` (status). Caller user is recorded as
+   * `created_by_user_id`. Slug derived from displayName + numeric suffix on
+   * collision.
+   */
+  create(creatorUserId: string | null, input: CreateArtistInput): Promise<ArtistRecord>;
 
   /** Reserve a unique `artist_profile.slug` for the given display name (or
    * raw slug). The optional `ignoreArtistId` lets admin update flows keep
@@ -139,6 +143,13 @@ export interface IArtistRegistryService {
    */
   merge(reviewerUserId: string, input: MergeArtistInput): Promise<MergeArtistResult>;
 
+  /** Validates merge confirmation phrase then delegates to {@link merge}. */
+  mergeWithConfirmation(
+    reviewerUserId: string,
+    fromArtistId: string,
+    input: MergeArtistRouteInput,
+  ): Promise<MergeArtistResult>;
+
   /** Approve / reject a pending artist. On approve, also clears
    * `lot.artist_review_required` for any lots pointing at this artist.
    */
@@ -152,4 +163,15 @@ export interface IArtistRegistryService {
     alias: string,
     kind?: string,
   ): Promise<{ id: string; alias: string }>;
+
+  /** Admin-only: same as {@link IArtistRegistryQueryService.proposeMatches} plus audit `domain_events` row. */
+  proposeMatchesForAdmin(
+    actorUserId: string,
+    input: ProposeMatchesInput,
+  ): Promise<ProposeMatchesResult>;
 }
+
+/** Composite artist registry — prefer narrow ports for new callers. */
+export interface IArtistRegistryService
+  extends IArtistRegistryQueryService,
+    IArtistRegistryStaffCommandService {}

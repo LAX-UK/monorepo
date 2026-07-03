@@ -107,6 +107,14 @@ export interface IConnectTransferInitiator {
   ): Promise<InitiateTransferResult>;
 }
 
+/** Initiates platform → seller Stripe Connect transfers for scheduled payouts. */
+export interface IConnectTransferInitiationService {
+  initiateTransfer(
+    payoutId: string,
+    opts?: { keepScheduledOnTransferFailure?: boolean },
+  ): Promise<InitiateTransferResult>;
+}
+
 export interface IStripeConnectService
   extends IConnectAccountSync,
     IConnectSessionProvider,

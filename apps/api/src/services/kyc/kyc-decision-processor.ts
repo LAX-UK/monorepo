@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import type { KycVerification, MarketingEvent, UserKycStatus } from "@auction/types";
 import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
-import type { IKycRepository } from "../interfaces/kyc-repository.js";
+import type { IKycSessionRepository } from "../../repositories/interfaces/kyc-session.repository.js";
 import type { KycWebhookHandleResult } from "../interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import { buildKycUserFeedback, mergeKycDecisionPayload } from "./kyc-user-feedback.js";
@@ -46,7 +46,7 @@ const TERMINAL_VERIFICATION_STATUSES = new Set<KycVerification["status"]>(["veri
 /** Applies a normalized KYC decision to persistence and user columns. */
 export class KycDecisionProcessor {
   constructor(
-    private readonly repo: IKycRepository,
+    private readonly repo: IKycSessionRepository,
     private readonly marketingEvents: IMarketingEventService | null = null,
   ) {}
 

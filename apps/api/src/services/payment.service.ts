@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type { PaymentStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
+import type { IPaymentDomainEventsRepository } from "../repositories/interfaces/payment-domain-events.repository.js";
 import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
@@ -11,6 +12,7 @@ import type { ILegalEntityRepository } from "./interfaces/legal-entity-repositor
 import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
+import type { IPaymentService } from "./interfaces/payment-service.js";
 import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import type { IPlatformFeePolicy } from "./interfaces/platform-fee.js";
@@ -52,8 +54,14 @@ import type { PaymentTierPolicy } from "./payment/payment-tier.policy.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
 
 export type { CreatePendingPaymentResult } from "./payment/payment-service-types.js";
+export type {
+  IPaymentAdminService,
+  IPaymentBuyerService,
+  IPaymentMaintenanceService,
+  IPaymentService,
+} from "./interfaces/payment-service.js";
 
-export class PaymentService {
+export class PaymentService implements IPaymentService {
   private readonly deps: PaymentServiceDeps;
 
   constructor(
@@ -81,6 +89,7 @@ export class PaymentService {
     addresses: IAddressRepository | null = null,
     settlementCompliance: ISettlementCompliancePolicy | null = null,
     xeroInvoiceBlocking = true,
+    paymentDomainEvents: IPaymentDomainEventsRepository | null = null,
   ) {
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
@@ -91,8 +100,7 @@ export class PaymentService {
       settlementCompliance,
       paymentTierPolicy,
       legalEntityRepository,
-      db,
-      domainEventPublisher,
+      paymentEvents: paymentDomainEvents ?? null,
       xeroInvoiceBlocking,
     };
     this.deps = {

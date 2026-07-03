@@ -15,7 +15,6 @@ import type {
   AdminCatalogCreateArtistBody,
   AdminCatalogUpdateArtistBody,
 } from "../../../admin/admin-route-dtos.js";
-import type { LotFulfilmentService } from "../../lot-fulfilment.service.js";
 import type {
   LotLifecycleSnapshotRow,
   LotLifecycleTimelineEvent,
@@ -23,7 +22,6 @@ import type {
 import type { LotTransitionOrchestrator } from "../../lot-transition-orchestrator.js";
 import type { QrCodeAnalyticsService } from "../../qr-code-analytics.service.js";
 import type { QrCodeService } from "../../qr-code.service.js";
-import type { SaleRegistrationService } from "../../sale-registration.service.js";
 import type { ArtistSearchHit } from "../artist-registry.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "../category.js";
 import type {
@@ -31,6 +29,8 @@ import type {
   FulfillConditionReportInput,
   IConditionReportService,
 } from "../condition-report.js";
+import type { ILotFulfilmentAdminService } from "../lot-fulfilment-service.js";
+import type { ISaleRegistrationAdminService } from "../sale-registration-service.js";
 
 export interface IAdminCatalogApplicationService {
   listCategoriesForAdmin(input: { includeArchived: boolean }): Promise<AdminCategory[]>;
@@ -80,20 +80,20 @@ export interface IAdminLotsApplicationService {
 }
 
 export interface IAdminSaleRegistrationsApplicationService {
-  listForSaleAdmin: SaleRegistrationService["listForSaleAdmin"];
-  approve: SaleRegistrationService["approve"];
-  reject: SaleRegistrationService["reject"];
-  updateBidLimit: SaleRegistrationService["updateBidLimit"];
+  listForSaleAdmin: ISaleRegistrationAdminService["listForSaleAdmin"];
+  approve: ISaleRegistrationAdminService["approve"];
+  reject: ISaleRegistrationAdminService["reject"];
+  updateBidLimit: ISaleRegistrationAdminService["updateBidLimit"];
 }
 
 export interface IAdminLotFulfilmentApplicationService {
-  listForAdmin: LotFulfilmentService["listForAdmin"];
-  getByLotIdForAdmin: LotFulfilmentService["getByLotIdForAdmin"];
-  approveRelease: LotFulfilmentService["approveRelease"];
-  markShipped: LotFulfilmentService["markShipped"];
-  markReadyForCollection: LotFulfilmentService["markReadyForCollection"];
-  markDelivered: LotFulfilmentService["markDelivered"];
-  markCollected: LotFulfilmentService["markCollected"];
+  listForAdmin: ILotFulfilmentAdminService["listForAdmin"];
+  getByLotIdForAdmin: ILotFulfilmentAdminService["getByLotIdForAdmin"];
+  approveRelease: ILotFulfilmentAdminService["approveRelease"];
+  markShipped: ILotFulfilmentAdminService["markShipped"];
+  markReadyForCollection: ILotFulfilmentAdminService["markReadyForCollection"];
+  markDelivered: ILotFulfilmentAdminService["markDelivered"];
+  markCollected: ILotFulfilmentAdminService["markCollected"];
 }
 
 export interface IAdminQrCodesApplicationService {

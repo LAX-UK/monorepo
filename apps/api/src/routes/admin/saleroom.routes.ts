@@ -9,14 +9,28 @@ import {
   adminTelephonePlaceBidBodySchema,
 } from "@auction/validators";
 import { z } from "zod";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireAuctionManage } from "../../middleware/require-capability.js";
 import { paddleBidPlacedTotal } from "../../services/paddle.service.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminSaleroomRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminSaleroomRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
+  platform.get(
+    "/sales/:saleId/expected-guests",
+    requireAuctionManage,
+    zValidator("param", z.object({ saleId: z.string().uuid() })),
+    async (c) => {
+      const { saleId } = c.req.valid("param");
+      const data = await container.admin.saleroomCheckIn.listExpectedGuests(saleId);
+      return c.json({ data });
+    },
+  );
+
   platform.get(
     "/sales/:saleId/registrations/check-in-candidates",
     requireAuctionManage,
@@ -44,6 +58,7 @@ export function attachAdminSaleroomRoutes(platform: AdminHono, container: Contai
         userId: body.userId,
         buyerLegalEntityId: body.buyerLegalEntityId,
         decidedByUserId: clerkUserId,
+        assignPaddle: body.assignPaddle,
         ...(body.bidLimit != null ? { bidLimit: body.bidLimit } : {}),
         ...(body.paddleNumber != null ? { paddleNumber: body.paddleNumber } : {}),
         ...(body.laxNotes != null ? { laxNotes: body.laxNotes } : {}),

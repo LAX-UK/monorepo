@@ -148,3 +148,54 @@ export interface IAmlHoldStore {
     conn?: Database,
   ): Promise<{ status: AmlHoldStatus; reason: AmlHoldReason | null } | null>;
 }
+
+export type AmlWatchlistWebhookResult = {
+  processed: boolean;
+  outcome: AmlDecision["outcome"] | null;
+};
+
+export type AmlTriageInput = {
+  screeningId: string;
+  analystUserId: string;
+  /** Advisory recommendation; the MLRO makes the binding decision. */
+  recommendation: "clear" | "block";
+  notes: string | null;
+};
+
+export type AmlReviewInput = {
+  screeningId: string;
+  reviewerUserId: string;
+  /** `clear` lifts the hold; `block` escalates to a terminal block. */
+  decision: "clear" | "block";
+  notes: string | null;
+};
+
+/** Push/pull watchlist screening ingest with idempotent persistence. */
+export interface IAmlWebhookIngestService {
+  handleWatchlistWebhook(
+    rawBody: string,
+    signature: string | undefined,
+    authClient: string | undefined,
+  ): Promise<AmlWatchlistWebhookResult>;
+  ingestFromFetch(providerSessionId: string): Promise<AmlWatchlistWebhookResult>;
+}
+
+/** MLRO/compliance review workflow and screening reads. */
+export interface IAmlReviewApplicationService {
+  listPendingReviews(limit?: number, offset?: number): Promise<WatchlistScreeningRecord[]>;
+  countPendingReviews(): Promise<number>;
+  listForUser(userId: string, limit?: number): Promise<WatchlistScreeningRecord[]>;
+  triage(input: AmlTriageInput): Promise<WatchlistScreeningRecord>;
+  decide(input: AmlReviewInput): Promise<WatchlistScreeningRecord>;
+}
+
+/** Ongoing watchlist monitoring lifecycle (outbound provider calls). */
+export interface IAmlMonitoringService {
+  isConfigured(): boolean;
+  enableMonitoring(providerSessionId: string): Promise<void>;
+}
+
+export interface IAmlService
+  extends IAmlWebhookIngestService,
+    IAmlReviewApplicationService,
+    IAmlMonitoringService {}

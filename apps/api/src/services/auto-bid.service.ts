@@ -10,7 +10,7 @@ import { BidError } from "../lib/errors.js";
 import { lotMinIncrementMoney, minBidAmountMoney, numberToMoneyString } from "./bid/bid-money.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { IBidPlacer } from "./interfaces/place-bid.js";
+import type { IBidPlacer, IBidPlacerWithIdempotency } from "./interfaces/place-bid.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { NotificationService } from "./notification.service.js";
 
@@ -28,22 +28,7 @@ export type AutoBidSettings = {
 export type AutoBidServiceOptions = {
   repos: IRepositoryFactory;
   bidPlacer: IBidPlacer;
-  bidPlacerWithIdempotency?: IBidPlacer & {
-    placeBidWithIdempotency(input: {
-      placedByUserId: string;
-      buyerLegalEntityId?: string;
-      idempotencyKey?: string;
-      lotId: string;
-      amount: number;
-      maxAutoBidAmount?: number;
-      autoBidStepAmount?: number;
-      placedVia?: string;
-    }): Promise<
-      | { type: "ok"; body: { data: Bid } }
-      | { type: "replay"; body: { data: Bid } }
-      | { type: "err"; error: BidError }
-    >;
-  };
+  bidPlacerWithIdempotency?: IBidPlacerWithIdempotency;
   bidEligibility: IBidEligibility | null;
   legalEntityRepository: ILegalEntityRepository;
   notifications?: NotificationService | null;

@@ -4,13 +4,13 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import type { Container } from "../../container.js";
 import { createEmailChangeToken, verifyEmailChangeToken } from "../../lib/email-change-token.js";
 import { createAppLogger } from "../../lib/logger.js";
-import type { AuthAuditPublisher } from "../auth-audit.publisher.js";
+import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 
 export async function requestEmailChange(args: {
   container: Container;
   userId: string;
   body: RequestEmailChangeInput;
-  authAudit?: AuthAuditPublisher | undefined;
+  authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<{ ok: true } | { ok: false; kind: "user_not_found" | "same_email" | "email_taken" }> {
   const { container, userId, body, authAudit } = args;
   const current = await container.userService.getById(userId);
@@ -82,7 +82,7 @@ export async function requestEmailChange(args: {
   });
 
   void authAudit
-    ?.publish(container.db, {
+    ?.publish({
       eventType: "auth.email_change_started",
       aggregateId: userId,
       payload: {},
@@ -96,7 +96,7 @@ export async function requestEmailChange(args: {
 export async function clearEmailChangeInProgress(args: {
   container: Container;
   userId: string;
-  authAudit?: AuthAuditPublisher | undefined;
+  authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<{ ok: true } | { ok: false; kind: "none_in_progress" }> {
   const { container, userId, authAudit } = args;
 
@@ -119,7 +119,7 @@ export async function clearEmailChangeInProgress(args: {
     .where(eq(user.id, userId));
 
   void authAudit
-    ?.publish(container.db, {
+    ?.publish({
       eventType: "auth.email_change_cancelled",
       aggregateId: userId,
       payload: {},
@@ -141,7 +141,7 @@ export type ConfirmEmailChangeResult =
 export async function confirmEmailChangeFromToken(args: {
   container: Container;
   token: string;
-  authAudit?: AuthAuditPublisher | undefined;
+  authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<ConfirmEmailChangeResult> {
   const { container, token, authAudit } = args;
   let payload: ReturnType<typeof verifyEmailChangeToken>;
@@ -220,7 +220,7 @@ export async function confirmEmailChangeFromToken(args: {
         );
       }
       void authAudit
-        ?.publish(container.db, {
+        ?.publish({
           eventType: "auth.email_change_completed",
           aggregateId: payload.userId,
           payload: {},

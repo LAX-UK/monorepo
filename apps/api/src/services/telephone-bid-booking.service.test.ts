@@ -1,6 +1,9 @@
 import type { TelephoneBidBooking } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ITelephoneBidBookingDetailReader } from "../repositories/interfaces/telephone-bid-booking-detail.reader.js";
 import type { ITelephoneBidBookingRepository } from "../repositories/interfaces/telephone-bid-booking.repository.js";
+import type { ITelephoneBookingUserPhoneReader } from "../repositories/interfaces/telephone-booking-user-phone.reader.js";
+import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import { TelephoneBidBookingService } from "./telephone-bid-booking.service.js";
 
 const baseBooking = (): TelephoneBidBooking => ({
@@ -26,73 +29,6 @@ const baseBooking = (): TelephoneBidBooking => ({
   confirmedAt: null,
   updatedAt: new Date(),
 });
-
-function mockDb(
-  overrides: {
-    sale?: { deliveryMode: string; status: string } | null;
-    mobile?: string | null;
-    phoneNumber?: string | null;
-    phoneNumberVerified?: boolean;
-    lots?: Array<{ id: string }>;
-  } = {},
-) {
-  const saleRow = overrides.sale ?? { deliveryMode: "onsite", status: "scheduled" };
-  const mobile = "mobile" in overrides ? overrides.mobile : "+447700900123";
-  const phoneNumber = "phoneNumber" in overrides ? overrides.phoneNumber : (mobile ?? null);
-  const phoneNumberVerified =
-    "phoneNumberVerified" in overrides ? overrides.phoneNumberVerified : true;
-  const lots = overrides.lots ?? [{ id: "lot-1" }];
-
-  const chain = () => ({
-    from: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue({
-        limit: vi.fn().mockImplementation(async () => {
-          return [];
-        }),
-      }),
-    }),
-  });
-
-  const db = {
-    select: vi.fn().mockImplementation((fields: Record<string, unknown>) => {
-      const keys = Object.keys(fields);
-      if (keys.includes("deliveryMode")) {
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue(saleRow ? [saleRow] : []),
-            }),
-          }),
-        };
-      }
-      if (keys.includes("phoneNumber") || keys.includes("mobile")) {
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                {
-                  phoneNumber,
-                  phoneNumberVerified,
-                  mobile,
-                },
-              ]),
-            }),
-          }),
-        };
-      }
-      if (keys.includes("id") && keys.length === 1) {
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue(lots),
-          }),
-        };
-      }
-      return chain();
-    }),
-  };
-
-  return db as never;
-}
 
 function mockRepo(
   overrides: Partial<ITelephoneBidBookingRepository> = {},
@@ -123,6 +59,88 @@ function mockLegalEntity() {
   } as never;
 }
 
+function mockSaleRepo(
+  sale: { deliveryMode: string; status: string } | null = {
+    deliveryMode: "onsite",
+    status: "scheduled",
+  },
+): ISaleRepository {
+  return {
+    findById: vi.fn().mockResolvedValue(
+      sale
+        ? {
+            id: "sale-1",
+            deliveryMode: sale.deliveryMode,
+            status: sale.status,
+          }
+        : null,
+    ),
+  } as never;
+}
+
+function mockLotRepo(
+  lots: Array<{ id: string; saleId: string; deletedAt: null }> = [
+    { id: "lot-1", saleId: "sale-1", deletedAt: null },
+  ],
+): ILotRepository {
+  return {
+    findByIds: vi.fn().mockResolvedValue(lots),
+  } as never;
+}
+
+function mockUserPhoneReader(
+  overrides: {
+    mobile?: string | null;
+    phoneNumber?: string | null;
+    phoneNumberVerified?: boolean;
+  } = {},
+) {
+  const mobile = "mobile" in overrides ? overrides.mobile : "+447700900123";
+  const phoneNumber = "phoneNumber" in overrides ? overrides.phoneNumber : (mobile ?? null);
+  const phoneNumberVerified =
+    "phoneNumberVerified" in overrides ? overrides.phoneNumberVerified : true;
+
+  return {
+    findByUserId: vi.fn().mockResolvedValue({
+      mobile,
+      phoneNumber,
+      phoneNumberVerified,
+    }),
+  } satisfies ITelephoneBookingUserPhoneReader;
+}
+
+function mockDetailReader(): ITelephoneBidBookingDetailReader {
+  return {
+    enrichForUser: vi.fn().mockImplementation(async (booking) => ({
+      ...booking,
+      saleTitle: "Test sale",
+      linkedBids: [],
+    })),
+  };
+}
+
+function createService(input: {
+  repo?: ITelephoneBidBookingRepository;
+  legalEntity?: ReturnType<typeof mockLegalEntity>;
+  sale?: { deliveryMode: string; status: string } | null;
+  lots?: Array<{ id: string; saleId: string; deletedAt: null }>;
+  phone?: {
+    mobile?: string | null;
+    phoneNumber?: string | null;
+    phoneNumberVerified?: boolean;
+  };
+}) {
+  return new TelephoneBidBookingService(
+    {} as never,
+    input.repo ?? mockRepo(),
+    mockDetailReader(),
+    mockSaleRepo(input.sale),
+    mockLotRepo(input.lots),
+    mockUserPhoneReader(input.phone),
+    input.legalEntity ?? mockLegalEntity(),
+  );
+}
+
 describe("TelephoneBidBookingService", () => {
   let repo: ITelephoneBidBookingRepository;
 
@@ -131,11 +149,10 @@ describe("TelephoneBidBookingService", () => {
   });
 
   it("rejects request when sale is online", async () => {
-    const service = new TelephoneBidBookingService(
-      mockDb({ sale: { deliveryMode: "online", status: "scheduled" } }),
+    const service = createService({
       repo,
-      mockLegalEntity(),
-    );
+      sale: { deliveryMode: "online", status: "scheduled" },
+    });
     const result = await service.requestBooking({
       userId: "user-1",
       saleId: "sale-1",
@@ -148,11 +165,10 @@ describe("TelephoneBidBookingService", () => {
   });
 
   it("creates booking for valid hybrid request", async () => {
-    const service = new TelephoneBidBookingService(
-      mockDb({ sale: { deliveryMode: "hybrid", status: "scheduled" } }),
+    const service = createService({
       repo,
-      mockLegalEntity(),
-    );
+      sale: { deliveryMode: "hybrid", status: "scheduled" },
+    });
     const result = await service.requestBooking({
       userId: "user-1",
       saleId: "sale-1",
@@ -165,11 +181,10 @@ describe("TelephoneBidBookingService", () => {
   });
 
   it("rejects request without profile phone", async () => {
-    const service = new TelephoneBidBookingService(
-      mockDb({ mobile: null, phoneNumber: null, phoneNumberVerified: false }),
+    const service = createService({
       repo,
-      mockLegalEntity(),
-    );
+      phone: { mobile: null, phoneNumber: null, phoneNumberVerified: false },
+    });
     const result = await service.requestBooking({
       userId: "user-1",
       saleId: "sale-1",
@@ -182,11 +197,10 @@ describe("TelephoneBidBookingService", () => {
   });
 
   it("rejects request with unverified profile phone", async () => {
-    const service = new TelephoneBidBookingService(
-      mockDb({ phoneNumberVerified: false }),
+    const service = createService({
       repo,
-      mockLegalEntity(),
-    );
+      phone: { phoneNumberVerified: false },
+    });
     const result = await service.requestBooking({
       userId: "user-1",
       saleId: "sale-1",
@@ -199,7 +213,7 @@ describe("TelephoneBidBookingService", () => {
   });
 
   it("creates booking for valid onsite request", async () => {
-    const service = new TelephoneBidBookingService(mockDb(), repo, mockLegalEntity());
+    const service = createService({ repo });
     const result = await service.requestBooking({
       userId: "user-1",
       saleId: "sale-1",
@@ -212,10 +226,13 @@ describe("TelephoneBidBookingService", () => {
   });
 
   it("allows connect_pending buyer entity to request booking", async () => {
-    const service = new TelephoneBidBookingService(mockDb(), repo, {
-      findActiveMembership: vi.fn().mockResolvedValue({ role: "individual" }),
-      findById: vi.fn().mockResolvedValue({ id: "le-1", status: "connect_pending" }),
-    } as never);
+    const service = createService({
+      repo,
+      legalEntity: {
+        findActiveMembership: vi.fn().mockResolvedValue({ role: "individual" }),
+        findById: vi.fn().mockResolvedValue({ id: "le-1", status: "connect_pending" }),
+      } as never,
+    });
     const result = await service.requestBooking({
       userId: "user-1",
       saleId: "sale-1",
@@ -228,10 +245,13 @@ describe("TelephoneBidBookingService", () => {
   });
 
   it("rejects under_review buyer entity", async () => {
-    const service = new TelephoneBidBookingService(mockDb(), repo, {
-      findActiveMembership: vi.fn().mockResolvedValue({ role: "individual" }),
-      findById: vi.fn().mockResolvedValue({ id: "le-1", status: "under_review" }),
-    } as never);
+    const service = createService({
+      repo,
+      legalEntity: {
+        findActiveMembership: vi.fn().mockResolvedValue({ role: "individual" }),
+        findById: vi.fn().mockResolvedValue({ id: "le-1", status: "under_review" }),
+      } as never,
+    });
     const result = await service.requestBooking({
       userId: "user-1",
       saleId: "sale-1",
@@ -249,7 +269,7 @@ describe("TelephoneBidBookingService", () => {
     repo = mockRepo({
       findByIdForUser: vi.fn().mockResolvedValue({ ...baseBooking(), status: "confirmed" }),
     });
-    const service = new TelephoneBidBookingService(mockDb(), repo, mockLegalEntity());
+    const service = createService({ repo });
     const result = await service.cancelByBuyer({
       bookingId: "booking-1",
       userId: "user-1",
@@ -268,7 +288,7 @@ describe("TelephoneBidBookingService", () => {
         authorizedMax: "1000.00",
       }),
     });
-    const service = new TelephoneBidBookingService(mockDb(), repo, mockLegalEntity());
+    const service = createService({ repo });
     const result = await service.assertBookingAllowsTelephoneBid({
       bookingId: "booking-1",
       saleId: "sale-1",
@@ -289,7 +309,7 @@ describe("TelephoneBidBookingService", () => {
         lotIds: ["lot-1"],
       }),
     });
-    const service = new TelephoneBidBookingService(mockDb(), repo, mockLegalEntity());
+    const service = createService({ repo });
     const result = await service.assertBookingAllowsTelephoneBid({
       bookingId: "booking-1",
       saleId: "sale-1",
@@ -307,7 +327,7 @@ describe("TelephoneBidBookingService", () => {
         lotIds: [],
       }),
     });
-    const service = new TelephoneBidBookingService(mockDb(), repo, mockLegalEntity());
+    const service = createService({ repo });
     const result = await service.assertBookingAllowsTelephoneBid({
       bookingId: "booking-1",
       saleId: "sale-1",
@@ -325,7 +345,7 @@ describe("TelephoneBidBookingService", () => {
         lotIds: ["lot-1"],
       }),
     });
-    const service = new TelephoneBidBookingService(mockDb(), repo, mockLegalEntity());
+    const service = createService({ repo });
     const result = await service.assertBookingAllowsTelephoneBid({
       bookingId: "booking-1",
       saleId: "sale-1",

@@ -1,11 +1,10 @@
-import type { Database } from "@auction/db";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
+import type { IPaymentDomainEventsRepository } from "../../repositories/interfaces/payment-domain-events.repository.js";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IStripeCheckoutService } from "../interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
@@ -29,8 +28,7 @@ export type CheckoutOrchestratorDeps = {
   settlementCompliance: ISettlementCompliancePolicy | null;
   paymentTierPolicy: PaymentTierPolicy;
   legalEntityRepository?: ILegalEntityRepository | undefined;
-  db?: Database | undefined;
-  domainEventPublisher?: DomainEventPublisher | undefined;
+  paymentEvents: IPaymentDomainEventsRepository | null;
   xeroInvoiceBlocking: boolean;
 };
 
@@ -100,8 +98,8 @@ export async function promotePendingToComplianceManualReview(
 }> {
   await revokeOpenStripeCheckoutForPayment(deps, paymentId);
   await deps.payments.updateStatus(paymentId, "requires_manual_review");
-  if (deps.db && deps.domainEventPublisher) {
-    await deps.domainEventPublisher.publish(deps.db, {
+  if (deps.paymentEvents) {
+    await deps.paymentEvents.publish({
       aggregateType: "payment",
       aggregateId: paymentId,
       eventType: "payment.requires_manual_review",

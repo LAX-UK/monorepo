@@ -17,13 +17,13 @@ import type {
 } from "./interfaces/item-submission-service.js";
 import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
+import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type {
   IItemSubmissionRepository,
   IUserRepository,
   ListSubmissionsFilter,
 } from "./interfaces/repositories.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
-import type { LotLifecycleRecording } from "./lot-lifecycle-recording.service.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
@@ -83,7 +83,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     domainEventPublisher: DomainEventPublisher | null = null,
     mediaUrlResolver: MediaUrlResolver | undefined = undefined,
     mediaAssetEnricher: MediaAssetEnricher | undefined = undefined,
-    lotLifecycleRecording: LotLifecycleRecording | null = null,
+    lotLifecycleRecording: ILotLifecycleRecorder | null = null,
     repoFactory: IRepositoryFactory | null = null,
   ) {
     this.deps = {

@@ -2,6 +2,8 @@ import type { Database } from "@auction/db";
 import type { Lot } from "@auction/types";
 import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
+import { DrizzleAbsenteeBidRepository } from "../repositories/drizzle-absentee-bid.repository.js";
+import type { IAbsenteeBidRepository } from "../repositories/interfaces/absentee-bid.repository.js";
 import { AbsenteeBidService } from "./absentee-bid.service.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
@@ -50,7 +52,12 @@ describe("AbsenteeBidService", () => {
     const lotRepo: ILotRepository = {
       findById: vi.fn().mockResolvedValue(mkLot({ status: "ended" })),
     } as unknown as ILotRepository;
-    const svc = new AbsenteeBidService({} as Database, {} as IBidPlacer, lotRepo, null);
+    const svc = new AbsenteeBidService(
+      {} as IAbsenteeBidRepository,
+      {} as IBidPlacer,
+      lotRepo,
+      null,
+    );
     const result = await svc.schedule({
       userId: "u1",
       lotId: "lot-1",
@@ -72,7 +79,12 @@ describe("AbsenteeBidService", () => {
         }),
       }),
     } as unknown as Database;
-    const svc = new AbsenteeBidService(db, {} as IBidPlacer, lotRepo, null);
+    const svc = new AbsenteeBidService(
+      new DrizzleAbsenteeBidRepository(db),
+      {} as IBidPlacer,
+      lotRepo,
+      null,
+    );
     const result = await svc.schedule({
       userId: "u1",
       lotId: "lot-1",
@@ -113,7 +125,12 @@ describe("AbsenteeBidService", () => {
       }),
     } as unknown as Database;
     const placeBid = vi.fn();
-    const svc = new AbsenteeBidService(db, { placeBid } as unknown as IBidPlacer, lotRepo, null);
+    const svc = new AbsenteeBidService(
+      new DrizzleAbsenteeBidRepository(db),
+      { placeBid } as unknown as IBidPlacer,
+      lotRepo,
+      null,
+    );
     await svc.replayScheduledForLot("lot-1");
     expect(placeBid).not.toHaveBeenCalled();
     expect(updateWhere).toHaveBeenCalled();
@@ -149,7 +166,12 @@ describe("AbsenteeBidService", () => {
       }),
     } as unknown as Database;
     const placeBid = vi.fn().mockResolvedValue(ok({ id: "bid-1" }));
-    const svc = new AbsenteeBidService(db, { placeBid } as unknown as IBidPlacer, lotRepo, null);
+    const svc = new AbsenteeBidService(
+      new DrizzleAbsenteeBidRepository(db),
+      { placeBid } as unknown as IBidPlacer,
+      lotRepo,
+      null,
+    );
     await svc.replayScheduledForLot("lot-1");
     expect(placeBid).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -176,7 +198,7 @@ describe("AbsenteeBidService", () => {
       }),
     } as unknown as Database;
     const svc = new AbsenteeBidService(
-      db,
+      new DrizzleAbsenteeBidRepository(db),
       {} as IBidPlacer,
       { findById: vi.fn() } as unknown as ILotRepository,
       null,

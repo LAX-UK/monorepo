@@ -1,9 +1,7 @@
-import { legalEntityMember, user } from "@auction/db/schema";
 import {
   inviteLegalEntityMemberSchema,
   updateLegalEntityMemberRoleSchema,
 } from "@auction/validators";
-import { and, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
@@ -143,21 +141,10 @@ export function createLegalEntityMemberRoutes(container: Container, authenticato
         }
       }
 
-      const [targetRow] = await container.db
-        .select({
-          role: legalEntityMember.role,
-          memberName: user.name,
-        })
-        .from(legalEntityMember)
-        .innerJoin(user, eq(user.id, legalEntityMember.userId))
-        .where(
-          and(
-            eq(legalEntityMember.id, memberId),
-            eq(legalEntityMember.legalEntityId, ctx.legalEntityId),
-            isNull(legalEntityMember.removedAt),
-          ),
-        )
-        .limit(1);
+      const targetRow = await container.memberManagementService.getMemberForConfirmation(
+        ctx.legalEntityId,
+        memberId,
+      );
 
       if (targetRow && ADMIN_ROLES_FOR_TYPED_REMOVE.has(targetRow.role)) {
         const expected = `REMOVE ${targetRow.memberName}`;
@@ -194,18 +181,10 @@ export function createLegalEntityMemberRoutes(container: Container, authenticato
       const userId = c.get("userId") as string;
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const body = c.req.valid("json");
-      const [targetRow] = await container.db
-        .select({ memberName: user.name })
-        .from(legalEntityMember)
-        .innerJoin(user, eq(user.id, legalEntityMember.userId))
-        .where(
-          and(
-            eq(legalEntityMember.id, body.memberId),
-            eq(legalEntityMember.legalEntityId, ctx.legalEntityId),
-            isNull(legalEntityMember.removedAt),
-          ),
-        )
-        .limit(1);
+      const targetRow = await container.memberManagementService.getMemberForConfirmation(
+        ctx.legalEntityId,
+        body.memberId,
+      );
       const expected = targetRow ? `TRANSFER PRIMARY TO ${targetRow.memberName}` : "";
       if (!targetRow || body.confirmationPhrase !== expected) {
         return c.json(

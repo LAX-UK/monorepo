@@ -2,11 +2,13 @@ import type { Database } from "@auction/db";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
+import type { IConnectTransferRepository } from "../../../repositories/interfaces/connect-transfer.repository.js";
 import type { DomainEventPublisher } from "../../domain-event.publisher.js";
 import type { IPayoutRepository } from "../../interfaces/payout-repository.js";
 import type { IPayoutService } from "../../interfaces/payout.js";
 import type {
   IConnectAccountReadinessSync,
+  IConnectTransferInitiationService,
   InitiateTransferResult,
 } from "../../interfaces/stripe-connect.js";
 import { ConnectTransferInitiationService } from "./connect-transfer-initiation.service.js";
@@ -15,7 +17,7 @@ import { ConnectTransferWebhookService } from "./connect-transfer-webhook.servic
 /** Thin coordinator composing transfer webhook reconciliation and initiation (SRP split). */
 export class ConnectTransferService {
   private readonly webhookService: ConnectTransferWebhookService;
-  readonly initiationService: ConnectTransferInitiationService;
+  readonly initiationService: IConnectTransferInitiationService;
 
   constructor(
     env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">,
@@ -23,6 +25,7 @@ export class ConnectTransferService {
     stripeFactory: IStripeClientFactory,
     accountSync: IConnectAccountReadinessSync,
     payoutService: IPayoutService,
+    connectTransferRepository: IConnectTransferRepository,
     payoutRepository?: IPayoutRepository,
     domainEventPublisher?: DomainEventPublisher,
   ) {
@@ -30,6 +33,7 @@ export class ConnectTransferService {
     this.initiationService = new ConnectTransferInitiationService(
       env,
       db,
+      connectTransferRepository,
       stripeFactory,
       accountSync,
       payoutRepository,

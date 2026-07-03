@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
-import { BidEligibilityService } from "./bid-eligibility.service.js";
+import { createBidEligibilityForTest } from "../container/create-bid-eligibility.js";
 import { KycRequiredError } from "./interfaces/kyc-service.js";
 import type { IKycService } from "./interfaces/kyc-service.js";
 
@@ -42,7 +42,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       setHold: vi.fn(),
       clearHold: vi.fn(),
     };
-    const svc = new BidEligibilityService(db, null, amlHoldStore);
+    const svc = createBidEligibilityForTest(db, { amlHoldStore });
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -77,7 +77,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       setHold: vi.fn(),
       clearHold: vi.fn(),
     };
-    const svc = new BidEligibilityService(db, null, amlHoldStore);
+    const svc = createBidEligibilityForTest(db, { amlHoldStore });
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -112,7 +112,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
         }),
       ),
     } as unknown as IKycService;
-    const svc = new BidEligibilityService(db, kycService);
+    const svc = createBidEligibilityForTest(db, { kycService });
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -131,7 +131,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ role: "owner" }] },
       { kind: "limit", rows: [] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -147,7 +147,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ role: "admin" }] },
       { kind: "limit", rows: [] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -163,7 +163,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ role: "staff" }] },
       { kind: "limit", rows: [] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -178,7 +178,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -197,7 +197,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -216,7 +216,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [{ status: "pending", bidLimit: null }] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -236,7 +236,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ status: "approved", bidLimit: null }] },
       { kind: "all", rows: [] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -255,7 +255,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: "100.00" }] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -278,7 +278,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
         rows: [{ saleId: null, bidLimit: null }],
       },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -298,7 +298,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
         rows: [{ saleId, bidLimit: "50.00" }],
       },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -317,7 +317,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ role: "owner" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: "100.00" }] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -336,7 +336,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       { kind: "limit", rows: [{ role: "owner" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: "500.00" }] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -365,7 +365,7 @@ describe("BidEligibilityService auto-bid", () => {
       },
       { kind: "limit", rows: [{ role: "owner" }] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -398,7 +398,7 @@ describe("BidEligibilityService auto-bid", () => {
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: "200.00" }] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -430,7 +430,7 @@ describe("BidEligibilityService auto-bid", () => {
       },
       { kind: "limit", rows: [{ role: "owner" }] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -452,7 +452,7 @@ describe("BidEligibilityService auto-bid", () => {
       { kind: "limit", rows: [{ status: "confirmed", saleId }] },
       { kind: "limit", rows: [{ reserveAltMax: "5000.00" }] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,
@@ -471,7 +471,7 @@ describe("BidEligibilityService auto-bid", () => {
       { kind: "limit", rows: [{ status: "in_progress", saleId }] },
       { kind: "limit", rows: [{ reserveAltMax: "1000.00" }] },
     ]);
-    const svc = new BidEligibilityService(db);
+    const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
       placedByUserId: userId,
       buyerLegalEntityId: buyerLeId,

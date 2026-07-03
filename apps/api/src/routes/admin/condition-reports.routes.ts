@@ -4,13 +4,16 @@ import {
   declineConditionReportRequestBodySchema,
   fulfillConditionReportRequestBodySchema,
 } from "@auction/validators";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireSpecialistCatalogueOrAuctionManage } from "../../middleware/require-capability.js";
 import type { AdminHono } from "./_shared.js";
 
-export function attachAdminConditionReportsRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminConditionReportsRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get(
     "/condition-report-requests",
     requireSpecialistCatalogueOrAuctionManage,

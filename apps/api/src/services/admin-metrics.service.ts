@@ -1,7 +1,7 @@
 import type { Redis } from "ioredis";
-import type { IItemSubmissionService } from "./interfaces/item-submission-service.js";
+import type { IItemSubmissionAdminApi } from "./interfaces/item-submission-service.js";
+import type { IPaymentMaintenanceService } from "./interfaces/payment-service.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
-import type { PaymentService } from "./payment.service.js";
 
 const BIDS_1M_KEY = "admin:metrics:bids:1m";
 
@@ -20,8 +20,8 @@ export class AdminMetricsService {
   constructor(
     private readonly repos: IRepositoryFactory,
     private readonly redis: Redis,
-    private readonly itemSubmissionService: IItemSubmissionService,
-    private readonly paymentService: PaymentService,
+    private readonly itemSubmissionService: IItemSubmissionAdminApi,
+    private readonly paymentService: IPaymentMaintenanceService,
   ) {}
 
   async recordBidPlaced(): Promise<void> {

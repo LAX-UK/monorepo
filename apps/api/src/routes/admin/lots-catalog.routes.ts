@@ -1,4 +1,4 @@
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import type { AdminLegalEntityBrowseParams } from "../../lib/admin-legal-entity-browse.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
@@ -10,7 +10,10 @@ import type { AdminHono } from "./_shared.js";
 
 const requireLegalEntityRead = requireLegalEntityBrowse;
 
-export function attachAdminLotsCatalogRoutes(platform: AdminHono, container: Container): void {
+export function attachAdminLotsCatalogRoutes(
+  platform: AdminHono,
+  container: ContainerAdminRoutesSlice,
+): void {
   platform.get("/platform-catalog/legal-entity-id", requireVenuesAccess, async (c) => {
     const id = await container.admin.catalog.resolvePlatformCatalogLegalEntityId();
     return c.json({ data: { id } });

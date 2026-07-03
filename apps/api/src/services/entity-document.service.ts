@@ -1,8 +1,6 @@
-import type { Database } from "@auction/db";
-import { uploadObject } from "@auction/db/schema";
 import type { DocumentEntityKind, EntityDocument } from "@auction/types";
-import { eq } from "drizzle-orm";
 import { presentEntityDocumentsBatch } from "../lib/entity-document-presenter.js";
+import type { IUploadObjectReader } from "../repositories/interfaces/upload-object.reader.js";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
 import type { IEntityDocumentRepository } from "./interfaces/repositories.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
@@ -18,7 +16,7 @@ export class EntityDocumentService<TKind extends string> {
   constructor(
     private readonly entityKind: DocumentEntityKind,
     private readonly repo: IEntityDocumentRepository<TKind>,
-    private readonly db: Database,
+    private readonly uploadObjects: IUploadObjectReader,
     private readonly storage: IObjectStorage,
     private readonly media: MediaUrlResolver | undefined,
   ) {}
@@ -30,12 +28,8 @@ export class EntityDocumentService<TKind extends string> {
     uploadObjectId: string;
     userId: string;
   }): Promise<EntityDocument> {
-    const [u] = await this.db
-      .select({ status: uploadObject.status })
-      .from(uploadObject)
-      .where(eq(uploadObject.id, args.uploadObjectId))
-      .limit(1);
-    if (!u || u.status !== "active") {
+    const status = await this.uploadObjects.getStatus(args.uploadObjectId);
+    if (!status || status !== "active") {
       throw new EntityDocumentError("upload_not_active");
     }
     const row = await this.repo.attach({

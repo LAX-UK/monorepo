@@ -1,0 +1,39 @@
+import type { Database } from "@auction/db";
+import type { IImpersonationDomainEventReader } from "../../repositories/interfaces/impersonation-domain-event.reader.js";
+import type { IImpersonationSessionRepository } from "../../repositories/interfaces/impersonation-session.repository.js";
+import type { AdminUserService } from "../admin-user.service.js";
+import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { AdminPeopleRouteServices } from "../interfaces/admin-routes/admin-people-routes.js";
+import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
+import type { InvitationService } from "../invitation.service.js";
+import type { ProfileService } from "../profile.service.js";
+import { AdminImpersonationService } from "./admin-impersonation.service.js";
+import { AdminInvitationApplicationService } from "./admin-invitation-application.service.js";
+import { AdminUserApplicationService } from "./admin-user-application.service.js";
+
+export type CreateAdminPeopleServicesInput = {
+  db: Database;
+  domainEventPublisher: DomainEventPublisher;
+  impersonationSessionRepository: IImpersonationSessionRepository;
+  impersonationDomainEventReader: IImpersonationDomainEventReader;
+  legalEntityRepository: ILegalEntityRepository;
+  adminUserService: AdminUserService;
+  profileService: ProfileService;
+  invitationService: InvitationService;
+};
+
+export function createAdminPeopleServices(
+  input: CreateAdminPeopleServicesInput,
+): AdminPeopleRouteServices {
+  return {
+    impersonation: new AdminImpersonationService(
+      input.db,
+      input.legalEntityRepository,
+      input.impersonationSessionRepository,
+      input.impersonationDomainEventReader,
+      input.domainEventPublisher,
+    ),
+    users: new AdminUserApplicationService(input.adminUserService, input.profileService),
+    invitations: new AdminInvitationApplicationService(input.invitationService),
+  };
+}

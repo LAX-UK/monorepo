@@ -48,11 +48,11 @@ export type {
   AdminLegalEntityBrowseRow,
 } from "../../../lib/admin-legal-entity-browse.js";
 
-export interface IAdminDashboardQueryService extends IAdminFinanceDashboardQueryService {
-  searchLegalEntitiesBrowse(
-    params: AdminLegalEntityBrowseParams,
-  ): Promise<AdminLegalEntityBrowseResult>;
+export interface IAdminOnboardingIssuesQueryService {
   getOnboardingIssues(): Promise<AdminOnboardingIssues>;
+}
+
+export interface IAdminReviewTaskQueryService {
   listPendingAdminReviewTasks(
     kind: "lot_artist_backfill" | "lot_withdrawal_request",
   ): Promise<AdminReviewTaskRow[]>;
@@ -60,6 +60,18 @@ export interface IAdminDashboardQueryService extends IAdminFinanceDashboardQuery
     kind: "lot_artist_backfill" | "lot_withdrawal_request",
   ): Promise<number>;
 }
+
+export interface IAdminLegalEntityBrowseQueryService {
+  searchLegalEntitiesBrowse(
+    params: AdminLegalEntityBrowseParams,
+  ): Promise<AdminLegalEntityBrowseResult>;
+}
+
+export interface IAdminDashboardQueryService
+  extends IAdminFinanceDashboardQueryService,
+    IAdminOnboardingIssuesQueryService,
+    IAdminReviewTaskQueryService,
+    IAdminLegalEntityBrowseQueryService {}
 
 export interface IAdminEmailApplicationService {
   listOutbox(input: {
@@ -124,6 +136,7 @@ export interface IAdminSaleroomApplicationService {
 export interface IAdminSaleroomCheckInApplicationService {
   searchCandidates: SaleroomCheckInService["searchCandidates"];
   checkInBidder: SaleroomCheckInService["checkInBidder"];
+  listExpectedGuests(saleId: string): Promise<import("@auction/types").SaleExpectedGuestsSummary>;
 }
 
 export type AdminLiveBiddingRateLimitError = {

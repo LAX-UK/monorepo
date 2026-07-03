@@ -1,10 +1,9 @@
 import { createHash } from "node:crypto";
-import { webhookEvent } from "@auction/db/schema";
 import { Hono } from "hono";
-import type { Container } from "../../container.js";
+import type { ContainerInboundWebhookClaimRoutesSlice } from "../../container.js";
 import { verifyShopifyHmac } from "../../lib/shopify-hmac.js";
 
-export function createShopifyWebhookRoutes(container: Container) {
+export function createShopifyWebhookRoutes(container: ContainerInboundWebhookClaimRoutesSlice) {
   const r = new Hono();
 
   r.post("/", async (c) => {
@@ -25,10 +24,11 @@ export function createShopifyWebhookRoutes(container: Container) {
       )
       .digest("hex");
     const payload = JSON.parse(raw) as Record<string, unknown>;
-    await container.db
-      .insert(webhookEvent)
-      .values({ source: "shopify", eventKey, payload })
-      .onConflictDoNothing();
+    await container.webhookEventRepository.tryClaimEvent({
+      source: "shopify",
+      eventKey,
+      payload,
+    });
     return c.body(null, 200);
   });
 

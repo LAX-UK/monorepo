@@ -4,8 +4,10 @@ import {
   type ISaleroomCheckInRepository,
   PaddleTakenError,
 } from "../repositories/drizzle-saleroom-check-in.repository.js";
+import type { ISaleRegistrationCheckInReader } from "../repositories/interfaces/sale-registration-check-in.reader.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { PaddleService } from "./paddle.service.js";
+import { SaleroomCheckInEligibilityValidator } from "./saleroom-check-in-eligibility.validator.js";
 import { SaleroomCheckInService } from "./saleroom-check-in.service.js";
 
 const saleId = "00000000-0000-4000-8000-000000000002";
@@ -14,37 +16,31 @@ const entityId = "00000000-0000-4000-8000-0000000000e1";
 const staffId = "00000000-0000-4000-8000-0000000000f1";
 const registrationId = "00000000-0000-4000-8000-0000000000a1";
 
-function mockDb(
+function mockReader(
   sale: { deliveryMode: string; status: string } | null,
   user: {
     emailVerified: boolean;
     kycStatus: string;
     suspendedAt: Date | null;
   } | null,
-) {
+): ISaleRegistrationCheckInReader {
   return {
-    select: vi.fn().mockImplementation((fields: Record<string, unknown>) => {
-      if ("deliveryMode" in fields) {
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue(sale ? [sale] : []),
-            }),
-          }),
-        };
-      }
-      if ("emailVerified" in fields) {
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue(user ? [{ ...user, id: userId }] : []),
-            }),
-          }),
-        };
-      }
-      throw new Error("unexpected select");
-    }),
-  } as never;
+    findSaleForCheckIn: vi
+      .fn()
+      .mockResolvedValue(
+        sale ? { id: saleId, deliveryMode: sale.deliveryMode, status: sale.status } : null,
+      ),
+    findUserForCheckIn: vi.fn().mockResolvedValue(
+      user
+        ? {
+            id: userId,
+            emailVerified: user.emailVerified,
+            kycStatus: user.kycStatus,
+            suspendedAt: user.suspendedAt,
+          }
+        : null,
+    ),
+  };
 }
 
 function mockRepo(overrides: Partial<ISaleroomCheckInRepository> = {}): ISaleroomCheckInRepository {
@@ -112,6 +108,23 @@ function mockPaddleService(overrides: Partial<PaddleService> = {}): PaddleServic
   } as unknown as PaddleService;
 }
 
+function buildService(
+  sale: { deliveryMode: string; status: string } | null,
+  user: {
+    emailVerified: boolean;
+    kycStatus: string;
+    suspendedAt: Date | null;
+  } | null,
+  repoOverrides: Partial<ISaleroomCheckInRepository> = {},
+  legalEntityOverrides: Partial<ILegalEntityRepository> = {},
+) {
+  const eligibility = new SaleroomCheckInEligibilityValidator(
+    mockReader(sale, user),
+    mockLegalEntityRepo(legalEntityOverrides),
+  );
+  return new SaleroomCheckInService(mockRepo(repoOverrides), eligibility, mockPaddleService());
+}
+
 describe("SaleroomCheckInService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -119,8 +132,8 @@ describe("SaleroomCheckInService", () => {
 
   it("checkInBidder happy path assigns paddle", async () => {
     const paddleService = mockPaddleService();
-    const svc = new SaleroomCheckInService(
-      mockDb(
+    const eligibility = new SaleroomCheckInEligibilityValidator(
+      mockReader(
         { deliveryMode: "hybrid", status: "active" },
         {
           emailVerified: true,
@@ -128,10 +141,9 @@ describe("SaleroomCheckInService", () => {
           suspendedAt: null,
         },
       ),
-      mockRepo(),
       mockLegalEntityRepo(),
-      paddleService,
     );
+    const svc = new SaleroomCheckInService(mockRepo(), eligibility, paddleService);
 
     const result = await svc.checkInBidder({
       saleId,
@@ -150,18 +162,13 @@ describe("SaleroomCheckInService", () => {
   });
 
   it("rejects non-saleroom sale", async () => {
-    const svc = new SaleroomCheckInService(
-      mockDb(
-        { deliveryMode: "online", status: "active" },
-        {
-          emailVerified: true,
-          kycStatus: "approved",
-          suspendedAt: null,
-        },
-      ),
-      mockRepo(),
-      mockLegalEntityRepo(),
-      mockPaddleService(),
+    const svc = buildService(
+      { deliveryMode: "online", status: "active" },
+      {
+        emailVerified: true,
+        kycStatus: "approved",
+        suspendedAt: null,
+      },
     );
 
     const result = await svc.checkInBidder({
@@ -178,18 +185,13 @@ describe("SaleroomCheckInService", () => {
   });
 
   it("rejects when KYC not approved", async () => {
-    const svc = new SaleroomCheckInService(
-      mockDb(
-        { deliveryMode: "hybrid", status: "active" },
-        {
-          emailVerified: true,
-          kycStatus: "pending",
-          suspendedAt: null,
-        },
-      ),
-      mockRepo(),
-      mockLegalEntityRepo(),
-      mockPaddleService(),
+    const svc = buildService(
+      { deliveryMode: "hybrid", status: "active" },
+      {
+        emailVerified: true,
+        kycStatus: "pending",
+        suspendedAt: null,
+      },
     );
 
     const result = await svc.checkInBidder({
@@ -206,17 +208,15 @@ describe("SaleroomCheckInService", () => {
   });
 
   it("allows connect_pending buyer entity to check in", async () => {
-    const svc = new SaleroomCheckInService(
-      mockDb(
-        { deliveryMode: "hybrid", status: "active" },
-        {
-          emailVerified: true,
-          kycStatus: "approved",
-          suspendedAt: null,
-        },
-      ),
-      mockRepo(),
-      mockLegalEntityRepo({
+    const svc = buildService(
+      { deliveryMode: "hybrid", status: "active" },
+      {
+        emailVerified: true,
+        kycStatus: "approved",
+        suspendedAt: null,
+      },
+      {},
+      {
         findById: vi.fn().mockResolvedValue({
           id: entityId,
           displayName: "Jane Collector",
@@ -242,8 +242,7 @@ describe("SaleroomCheckInService", () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
-      }),
-      mockPaddleService(),
+      },
     );
 
     const result = await svc.checkInBidder({
@@ -257,17 +256,15 @@ describe("SaleroomCheckInService", () => {
   });
 
   it("rejects under_review buyer entity", async () => {
-    const svc = new SaleroomCheckInService(
-      mockDb(
-        { deliveryMode: "hybrid", status: "active" },
-        {
-          emailVerified: true,
-          kycStatus: "approved",
-          suspendedAt: null,
-        },
-      ),
-      mockRepo(),
-      mockLegalEntityRepo({
+    const svc = buildService(
+      { deliveryMode: "hybrid", status: "active" },
+      {
+        emailVerified: true,
+        kycStatus: "approved",
+        suspendedAt: null,
+      },
+      {},
+      {
         findById: vi.fn().mockResolvedValue({
           id: entityId,
           displayName: "Jane Collector",
@@ -293,8 +290,7 @@ describe("SaleroomCheckInService", () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
-      }),
-      mockPaddleService(),
+      },
     );
 
     const result = await svc.checkInBidder({
@@ -316,18 +312,14 @@ describe("SaleroomCheckInService", () => {
       paddleNumber: 142,
       checkedInAt: new Date("2026-06-15T12:00:00.000Z"),
     });
-    const svc = new SaleroomCheckInService(
-      mockDb(
-        { deliveryMode: "hybrid", status: "active" },
-        {
-          emailVerified: true,
-          kycStatus: "approved",
-          suspendedAt: null,
-        },
-      ),
-      mockRepo({ checkInWithPaddle }),
-      mockLegalEntityRepo(),
-      mockPaddleService(),
+    const svc = buildService(
+      { deliveryMode: "hybrid", status: "active" },
+      {
+        emailVerified: true,
+        kycStatus: "approved",
+        suspendedAt: null,
+      },
+      { checkInWithPaddle },
     );
 
     const result = await svc.checkInBidder({
@@ -350,18 +342,14 @@ describe("SaleroomCheckInService", () => {
       paddleNumber: 205,
       checkedInAt: new Date("2026-06-15T12:00:00.000Z"),
     });
-    const svc = new SaleroomCheckInService(
-      mockDb(
-        { deliveryMode: "hybrid", status: "active" },
-        {
-          emailVerified: true,
-          kycStatus: "approved",
-          suspendedAt: null,
-        },
-      ),
-      mockRepo({ checkInWithPaddle }),
-      mockLegalEntityRepo(),
-      mockPaddleService(),
+    const svc = buildService(
+      { deliveryMode: "hybrid", status: "active" },
+      {
+        emailVerified: true,
+        kycStatus: "approved",
+        suspendedAt: null,
+      },
+      { checkInWithPaddle },
     );
 
     const result = await svc.checkInBidder({
@@ -378,21 +366,50 @@ describe("SaleroomCheckInService", () => {
     );
   });
 
+  it("mark present without paddle forwards assignPaddle false", async () => {
+    const checkInWithPaddle = vi.fn().mockResolvedValue({
+      registrationId,
+      paddleNumber: null,
+      checkedInAt: new Date("2026-06-15T12:00:00.000Z"),
+    });
+    const svc = buildService(
+      { deliveryMode: "hybrid", status: "active" },
+      {
+        emailVerified: true,
+        kycStatus: "approved",
+        suspendedAt: null,
+      },
+      { checkInWithPaddle },
+    );
+
+    const result = await svc.checkInBidder({
+      saleId,
+      userId,
+      buyerLegalEntityId: entityId,
+      decidedByUserId: staffId,
+      assignPaddle: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.paddleNumber).toBeNull();
+    }
+    expect(checkInWithPaddle).toHaveBeenCalledWith(
+      expect.objectContaining({ assignPaddle: false, requestedPaddleNumber: null }),
+    );
+  });
+
   it("maps paddle conflict to paddle_taken", async () => {
-    const svc = new SaleroomCheckInService(
-      mockDb(
-        { deliveryMode: "hybrid", status: "active" },
-        {
-          emailVerified: true,
-          kycStatus: "approved",
-          suspendedAt: null,
-        },
-      ),
-      mockRepo({
+    const svc = buildService(
+      { deliveryMode: "hybrid", status: "active" },
+      {
+        emailVerified: true,
+        kycStatus: "approved",
+        suspendedAt: null,
+      },
+      {
         checkInWithPaddle: vi.fn().mockRejectedValue(new PaddleTakenError()),
-      }),
-      mockLegalEntityRepo(),
-      mockPaddleService(),
+      },
     );
 
     const result = await svc.checkInBidder({

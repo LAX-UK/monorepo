@@ -1,468 +1,98 @@
-import type { Database } from "@auction/db";
-import { saleroomEvent, saleroomSession } from "@auction/db/schema";
-import { isSaleroomDeliveryMode } from "@auction/validators";
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import type { Redis } from "ioredis";
-import { type Result, err, ok } from "neverthrow";
+import type { ISaleroomSessionRepository } from "../repositories/interfaces/saleroom-session.repository.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { ISaleroomRealtimePublisher } from "./interfaces/saleroom-realtime-publisher.js";
-import type {
-  ISaleroomService,
-  SaleroomServiceError,
-  SaleroomSessionStatusRow,
-} from "./interfaces/saleroom-service.js";
-import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
+import type { ISaleroomService, SaleroomSessionStatusRow } from "./interfaces/saleroom-service.js";
+import type { ITelephoneBidBookingSaleroomBridge } from "./interfaces/telephone-bid-booking-service.js";
 import type { LotLifecycleService } from "./lot-lifecycle.service.js";
+import { SaleroomDisplayControlService } from "./saleroom/saleroom-display-control.service.js";
+import { createSaleroomSessionContext } from "./saleroom/saleroom-session-context.js";
+import { SaleroomSessionControlService } from "./saleroom/saleroom-session-control.service.js";
+import { SaleroomSessionReadService } from "./saleroom/saleroom-session-read.service.js";
 
 export type { SaleroomServiceError } from "./interfaces/saleroom-service.js";
-
-const SALEROOM_CHANNEL = (saleId: string) => `sale:${saleId}:saleroom`;
+export { SALEROOM_CHANNEL } from "./saleroom/saleroom-session-context.js";
 
 export type SaleroomServiceOptions = {
-  db: Database;
+  sessionRepo: ISaleroomSessionRepository;
   redis: Redis;
   lotLifecycle: LotLifecycleService;
   saleRepo: ISaleRepository;
   lotRepo: ILotRepository;
   lotJobs: ILotJobScheduler | null;
-  telephoneBidBookingService?: ITelephoneBidBookingService | null;
+  telephoneBidBookingService?: ITelephoneBidBookingSaleroomBridge | null;
   displayPublisher?: ISaleroomRealtimePublisher | null;
 };
 
 export class SaleroomService implements ISaleroomService {
-  private readonly db: Database;
-  private readonly redis: Redis;
-  private readonly lotLifecycle: LotLifecycleService;
-  private readonly saleRepo: ISaleRepository;
-  private readonly lotRepo: ILotRepository;
-  private readonly lotJobs: ILotJobScheduler | null;
-  private readonly telephoneBidBookingService: ITelephoneBidBookingService | null;
-  private readonly displayPublisher: ISaleroomRealtimePublisher | null;
+  private readonly read: SaleroomSessionReadService;
+  private readonly control: SaleroomSessionControlService;
+  private readonly display: SaleroomDisplayControlService;
 
   constructor(opts: SaleroomServiceOptions) {
-    this.db = opts.db;
-    this.redis = opts.redis;
-    this.lotLifecycle = opts.lotLifecycle;
-    this.saleRepo = opts.saleRepo;
-    this.lotRepo = opts.lotRepo;
-    this.lotJobs = opts.lotJobs;
-    this.telephoneBidBookingService = opts.telephoneBidBookingService ?? null;
-    this.displayPublisher = opts.displayPublisher ?? null;
-  }
-
-  private async completeTelephoneLinesForLot(saleId: string, lotId: string): Promise<void> {
-    await this.telephoneBidBookingService?.completeLinesForLot(saleId, lotId);
-  }
-
-  private async publish(saleId: string, body: Record<string, unknown>): Promise<void> {
-    await this.redis.publish(
-      SALEROOM_CHANNEL(saleId),
-      JSON.stringify({ ...body, saleId, emittedAt: new Date().toISOString() }),
-    );
-  }
-
-  private async clearDisplayOverlayIfAny(saleId: string): Promise<void> {
-    const [updated] = await this.db
-      .update(saleroomSession)
-      .set({
-        displayOverlay: null,
-        displayOverlayAt: null,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(saleroomSession.saleId, saleId), isNotNull(saleroomSession.displayOverlay)))
-      .returning({ id: saleroomSession.id });
-
-    if (updated && this.displayPublisher) {
-      await this.displayPublisher.publishDisplayControl(saleId, {
-        kind: "clear",
-        emittedAt: new Date().toISOString(),
-      });
-    }
-  }
-
-  private async publishDisplayBidSummary(input: {
-    saleId: string;
-    lotId: string;
-    currentPrice: string;
-    bidCount: number;
-    leaderPaddleNumber: number | null;
-  }): Promise<void> {
-    if (!this.displayPublisher) return;
-    await this.displayPublisher.publishDisplayControl(input.saleId, {
-      kind: "bid_summary",
-      lotId: input.lotId,
-      currentPrice: input.currentPrice,
-      bidCount: input.bidCount,
-      leaderPaddleNumber: input.leaderPaddleNumber,
-      emittedAt: new Date().toISOString(),
+    const ctx = createSaleroomSessionContext({
+      sessionRepo: opts.sessionRepo,
+      redis: opts.redis,
+      lotLifecycle: opts.lotLifecycle,
+      saleRepo: opts.saleRepo,
+      lotRepo: opts.lotRepo,
+      lotJobs: opts.lotJobs,
+      telephoneBidBookingService: opts.telephoneBidBookingService ?? null,
+      displayPublisher: opts.displayPublisher ?? null,
     });
+    this.read = new SaleroomSessionReadService(ctx);
+    this.display = new SaleroomDisplayControlService(ctx);
+    this.control = new SaleroomSessionControlService(ctx, this.display);
   }
 
-  async publishClerkPaddleBidSummary(input: {
-    saleId: string;
-    lotId: string;
-    currentPrice: string;
-    bidCount: number;
-    leaderPaddleNumber: number | null;
-  }): Promise<void> {
-    await this.publishDisplayBidSummary(input);
+  getPublicSessionStatus(saleId: string) {
+    return this.read.getPublicSessionStatus(saleId);
   }
 
-  private async insertEvent(
-    sessionId: string,
-    kind: "opened" | "advanced_to_lot" | "hammer" | "no_sale" | "paused" | "resumed" | "closed",
-    payload: Record<string, unknown>,
-    actorUserId: string,
-  ): Promise<void> {
-    await this.db.insert(saleroomEvent).values({
-      sessionId,
-      kind,
-      payload,
-      actorUserId,
-    });
+  getSessionStatuses(saleIds: readonly string[]): Promise<SaleroomSessionStatusRow[]> {
+    return this.read.getSessionStatuses(saleIds);
   }
 
-  async getPublicSessionStatus(saleId: string): Promise<{
-    status: "none" | "pending" | "live" | "paused" | "ended";
-    currentLotId: string | null;
-  }> {
-    const [session] = await this.db
-      .select({
-        status: saleroomSession.status,
-        currentLotId: saleroomSession.currentLotId,
-      })
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, saleId))
-      .limit(1);
-    if (!session) {
-      return { status: "none", currentLotId: null };
-    }
-    return {
-      status: session.status,
-      currentLotId: session.currentLotId ?? null,
-    };
+  getSessionWithRecentEvents(saleId: string) {
+    return this.read.getSessionWithRecentEvents(saleId);
   }
 
-  async getSessionStatuses(saleIds: readonly string[]): Promise<SaleroomSessionStatusRow[]> {
-    const uniqueIds = [...new Set(saleIds.filter(Boolean))];
-    if (uniqueIds.length === 0) return [];
-
-    const rows = await this.db
-      .select({
-        saleId: saleroomSession.saleId,
-        status: saleroomSession.status,
-        currentLotId: saleroomSession.currentLotId,
-      })
-      .from(saleroomSession)
-      .where(inArray(saleroomSession.saleId, uniqueIds));
-
-    const bySaleId = new Map(rows.map((row) => [row.saleId, row]));
-    return uniqueIds.map((saleId) => {
-      const row = bySaleId.get(saleId);
-      if (!row) {
-        return { saleId, status: "none" as const, currentLotId: null };
-      }
-      return {
-        saleId,
-        status: row.status,
-        currentLotId: row.currentLotId ?? null,
-      };
-    });
+  goLive(input: Parameters<ISaleroomService["goLive"]>[0]) {
+    return this.control.goLive(input);
   }
 
-  async getSessionWithRecentEvents(saleId: string): Promise<{
-    session: typeof saleroomSession.$inferSelect | null;
-    events: (typeof saleroomEvent.$inferSelect)[];
-  }> {
-    const [session] = await this.db
-      .select()
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, saleId))
-      .limit(1);
-    if (!session) {
-      return { session: null, events: [] };
-    }
-    const events = await this.db
-      .select()
-      .from(saleroomEvent)
-      .where(eq(saleroomEvent.sessionId, session.id))
-      .orderBy(desc(saleroomEvent.occurredAt))
-      .limit(50);
-    return { session, events };
+  pause(input: Parameters<ISaleroomService["pause"]>[0]) {
+    return this.control.pause(input);
   }
 
-  private async ensureSession(saleId: string, clerkUserId: string) {
-    const now = new Date();
-    const [row] = await this.db
-      .insert(saleroomSession)
-      .values({
-        saleId,
-        clerkUserId,
-        status: "pending",
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: saleroomSession.saleId,
-        set: {
-          clerkUserId,
-          updatedAt: now,
-        },
-      })
-      .returning();
-    if (!row) {
-      throw new Error("Expected saleroom session row after upsert");
-    }
-    return row;
+  resume(input: Parameters<ISaleroomService["resume"]>[0]) {
+    return this.control.resume(input);
   }
 
-  async goLive(input: {
-    saleId: string;
-    actorUserId: string;
-  }): Promise<Result<{ sessionId: string; status: string }, SaleroomServiceError>> {
-    const sale = await this.saleRepo.findById(input.saleId);
-    if (!sale) return err({ message: "Sale not found", status: 404 });
-    if (!isSaleroomDeliveryMode(sale.deliveryMode)) {
-      return err({
-        message: "Saleroom sessions are only available for onsite and hybrid sales",
-        status: 400,
-      });
-    }
-    if (sale.status !== "active") {
-      return err({ message: "Sale must be active to open the saleroom", status: 400 });
-    }
-
-    const session = await this.ensureSession(input.saleId, input.actorUserId);
-    if (session.status === "live") {
-      return ok({ sessionId: session.id, status: session.status });
-    }
-
-    const startedAt = session.startedAt ?? new Date();
-    await this.db
-      .update(saleroomSession)
-      .set({
-        status: "live",
-        startedAt,
-        clerkUserId: input.actorUserId,
-        updatedAt: new Date(),
-      })
-      .where(eq(saleroomSession.id, session.id));
-
-    await this.insertEvent(session.id, "opened", {}, input.actorUserId);
-    await this.publish(input.saleId, { kind: "opened" });
-
-    const saleLots = await this.lotRepo.findBySaleId(input.saleId);
-    for (const lotRow of saleLots) {
-      if (lotRow.status === "active") {
-        await this.lotJobs?.cancelLotEndJob(lotRow.id);
-      }
-    }
-
-    return ok({ sessionId: session.id, status: "live" });
+  advanceToLot(input: Parameters<ISaleroomService["advanceToLot"]>[0]) {
+    return this.control.advanceToLot(input);
   }
 
-  async pause(input: {
-    saleId: string;
-    actorUserId: string;
-  }): Promise<Result<{ sessionId: string }, SaleroomServiceError>> {
-    const [s] = await this.db
-      .select()
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, input.saleId))
-      .limit(1);
-    if (!s) return err({ message: "Saleroom session not found", status: 404 });
-    if (s.status !== "live") {
-      return err({ message: "Saleroom must be live to pause", status: 400 });
-    }
-    await this.db
-      .update(saleroomSession)
-      .set({ status: "paused", updatedAt: new Date() })
-      .where(eq(saleroomSession.id, s.id));
-    await this.insertEvent(s.id, "paused", {}, input.actorUserId);
-    await this.publish(input.saleId, { kind: "paused" });
-    return ok({ sessionId: s.id });
+  hammerCurrentLot(input: Parameters<ISaleroomService["hammerCurrentLot"]>[0]) {
+    return this.control.hammerCurrentLot(input);
   }
 
-  async resume(input: {
-    saleId: string;
-    actorUserId: string;
-  }): Promise<Result<{ sessionId: string }, SaleroomServiceError>> {
-    const [row] = await this.db
-      .select()
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, input.saleId))
-      .limit(1);
-    if (!row) return err({ message: "Saleroom session not found", status: 404 });
-    if (row.status !== "paused") {
-      return err({ message: "Session is not paused", status: 400 });
-    }
-    await this.db
-      .update(saleroomSession)
-      .set({ status: "live", updatedAt: new Date() })
-      .where(eq(saleroomSession.id, row.id));
-    await this.insertEvent(row.id, "resumed", {}, input.actorUserId);
-    await this.publish(input.saleId, { kind: "resumed" });
-    return ok({ sessionId: row.id });
+  noSaleCurrentLot(input: Parameters<ISaleroomService["noSaleCurrentLot"]>[0]) {
+    return this.control.noSaleCurrentLot(input);
   }
 
-  async advanceToLot(input: {
-    saleId: string;
-    lotId: string;
-    actorUserId: string;
-  }): Promise<Result<{ sessionId: string; currentLotId: string }, SaleroomServiceError>> {
-    const [session] = await this.db
-      .select()
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, input.saleId))
-      .limit(1);
-    if (!session) return err({ message: "Saleroom session not found; go live first", status: 404 });
-    if (session.status !== "live") {
-      return err({ message: "Saleroom must be live to advance lots", status: 400 });
-    }
-
-    const lotRow = await this.lotRepo.findById(input.lotId);
-    if (!lotRow || lotRow.saleId !== input.saleId) {
-      return err({ message: "Lot not found on this sale", status: 404 });
-    }
-
-    if (lotRow.status === "ended" || lotRow.status === "cancelled") {
-      return err({
-        message: "This lot has already closed and cannot be put on the block",
-        status: 400,
-      });
-    }
-
-    if (lotRow.status === "scheduled") {
-      await this.lotLifecycle.processActivateJob(input.lotId);
-    }
-
-    const activeLot = await this.lotRepo.findById(input.lotId);
-    if (!activeLot || activeLot.status !== "active") {
-      return err({
-        message: "Lot must be active before it can be put on the block",
-        status: 400,
-      });
-    }
-
-    await this.db
-      .update(saleroomSession)
-      .set({ currentLotId: input.lotId, updatedAt: new Date() })
-      .where(eq(saleroomSession.id, session.id));
-
-    await this.clearDisplayOverlayIfAny(input.saleId);
-
-    await this.insertEvent(
-      session.id,
-      "advanced_to_lot",
-      { lotId: input.lotId },
-      input.actorUserId,
-    );
-    await this.publish(input.saleId, { kind: "advanced_to_lot", lotId: input.lotId });
-    return ok({ sessionId: session.id, currentLotId: input.lotId });
+  closeSession(input: Parameters<ISaleroomService["closeSession"]>[0]) {
+    return this.control.closeSession(input);
   }
 
-  async hammerCurrentLot(input: {
-    saleId: string;
-    actorUserId: string;
-  }): Promise<Result<{ lotId: string }, SaleroomServiceError>> {
-    const [session] = await this.db
-      .select()
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, input.saleId))
-      .limit(1);
-    if (!session) return err({ message: "Saleroom session not found", status: 404 });
-    if (session.status !== "live") {
-      return err({ message: "Saleroom must be live", status: 400 });
-    }
-    const lotId = session.currentLotId;
-    if (!lotId) {
-      return err({ message: "No current lot to hammer", status: 400 });
-    }
-
-    const outcome = await this.lotLifecycle.finalizeActiveLotFromClerkHammer(lotId);
-    if (!outcome) {
-      return err({
-        message: "Could not hammer this lot (not active or already closed)",
-        status: 400,
-      });
-    }
-
-    await this.lotJobs?.cancelLotJobs(lotId);
-
-    await this.db
-      .update(saleroomSession)
-      .set({ currentLotId: null, updatedAt: new Date() })
-      .where(eq(saleroomSession.id, session.id));
-
-    await this.clearDisplayOverlayIfAny(input.saleId);
-
-    await this.completeTelephoneLinesForLot(input.saleId, lotId);
-    await this.insertEvent(session.id, "hammer", { lotId }, input.actorUserId);
-    await this.publish(input.saleId, { kind: "hammer", lotId });
-    return ok({ lotId });
+  publishClerkPaddleBidSummary(
+    input: Parameters<ISaleroomService["publishClerkPaddleBidSummary"]>[0],
+  ) {
+    return this.display.publishClerkPaddleBidSummary(input);
   }
 
-  async noSaleCurrentLot(input: {
-    saleId: string;
-    actorUserId: string;
-  }): Promise<Result<{ lotId: string }, SaleroomServiceError>> {
-    const [session] = await this.db
-      .select()
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, input.saleId))
-      .limit(1);
-    if (!session) return err({ message: "Saleroom session not found", status: 404 });
-    if (session.status !== "live") {
-      return err({ message: "Saleroom must be live", status: 400 });
-    }
-    const lotId = session.currentLotId;
-    if (!lotId) {
-      return err({ message: "No current lot", status: 400 });
-    }
-
-    const closed = await this.lotLifecycle.noSaleEndActiveLotFromClerk(lotId);
-    if (!closed) {
-      return err({ message: "Could not declare no sale for this lot", status: 400 });
-    }
-
-    await this.lotJobs?.cancelLotJobs(lotId);
-
-    await this.db
-      .update(saleroomSession)
-      .set({ currentLotId: null, updatedAt: new Date() })
-      .where(eq(saleroomSession.id, session.id));
-
-    await this.clearDisplayOverlayIfAny(input.saleId);
-
-    await this.completeTelephoneLinesForLot(input.saleId, lotId);
-    await this.insertEvent(session.id, "no_sale", { lotId }, input.actorUserId);
-    await this.publish(input.saleId, { kind: "no_sale", lotId });
-    return ok({ lotId });
-  }
-
-  async closeSession(input: {
-    saleId: string;
-    actorUserId: string;
-  }): Promise<Result<{ sessionId: string }, SaleroomServiceError>> {
-    const [session] = await this.db
-      .select()
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, input.saleId))
-      .limit(1);
-    if (!session) return err({ message: "Saleroom session not found", status: 404 });
-    await this.db
-      .update(saleroomSession)
-      .set({
-        status: "ended",
-        endedAt: new Date(),
-        currentLotId: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(saleroomSession.id, session.id));
-    await this.telephoneBidBookingService?.closeAllOpenForSale(input.saleId);
-    await this.lotLifecycle.finalizeActiveLotsPastEnd(input.saleId);
-    await this.insertEvent(session.id, "closed", {}, input.actorUserId);
-    await this.publish(input.saleId, { kind: "closed" });
-    return ok({ sessionId: session.id });
+  clearDisplayOverlayIfAny(saleId: string) {
+    return this.display.clearDisplayOverlayIfAny(saleId);
   }
 }

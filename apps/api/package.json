@@ -43,6 +43,7 @@
     "@auction/domain": "workspace:*",
     "@auction/email": "workspace:^",
     "@auction/exports": "workspace:*",
+    "@auction/persistence": "workspace:*",
     "@auction/http-headers": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",

@@ -1,19 +1,14 @@
 import type { Database } from "@auction/db";
-import { lot } from "@auction/db/schema";
 import { canAdminOverrideLotStatus, canLotTransition } from "@auction/domain";
 import type { Lot, LotStatus, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
-import { eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
+import type { ILotTransitionGuardReader } from "../repositories/interfaces/lot-transition-guard.reader.js";
+import type { ILotTransitionRepository } from "../repositories/interfaces/lot-transition.repository.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
+import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
-import type { LotLifecycleEventRecorder } from "./lot-lifecycle-event-recorder.js";
-import {
-  LotLifecycleRecording,
-  resetLotForInventoryReturn,
-} from "./lot-lifecycle-recording.service.js";
-import { LotTransitionGuards } from "./lot-transition-guards.js";
 
 export type ReturnToInventoryInput = {
   reason: string;
@@ -22,20 +17,16 @@ export type ReturnToInventoryInput = {
 };
 
 export class LotTransitionOrchestrator {
-  private readonly recording: LotLifecycleRecording;
-  private readonly guards: LotTransitionGuards;
-
   constructor(
     private readonly db: Database,
-    recorder: LotLifecycleEventRecorder,
+    private readonly transitions: ILotTransitionRepository,
+    private readonly guards: ILotTransitionGuardReader,
+    private readonly recording: ILotLifecycleRecorder,
     private readonly lotRepo: ILotRepository,
     private readonly jobScheduler: ILotJobScheduler | null,
-  ) {
-    this.recording = new LotLifecycleRecording(recorder);
-    this.guards = new LotTransitionGuards(db);
-  }
+  ) {}
 
-  get recordingService(): LotLifecycleRecording {
+  get recordingService(): ILotLifecycleRecorder {
     return this.recording;
   }
 
@@ -96,7 +87,7 @@ export class LotTransitionOrchestrator {
     const lastSaleId = row.saleId;
 
     await this.db.transaction(async (tx) => {
-      await resetLotForInventoryReturn(tx, lotId, fromStatus);
+      await this.transitions.resetLotForInventoryReturn(tx, lotId, fromStatus);
       await this.recording.recordReturnedToInventory(
         tx,
         row,
@@ -128,7 +119,6 @@ export class LotTransitionOrchestrator {
   }
 
   async findLotForUpdate(tx: Database, lotId: string) {
-    const [row] = await tx.select().from(lot).where(eq(lot.id, lotId)).limit(1);
-    return row ?? null;
+    return this.transitions.findLotForUpdate(tx, lotId);
   }
 }

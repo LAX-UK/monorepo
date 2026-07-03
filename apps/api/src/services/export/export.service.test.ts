@@ -1,7 +1,10 @@
 import type { ExportEntityType } from "@auction/exports";
+import { AuthzError } from "@auction/exports/providers";
 import { describe, expect, it, vi } from "vitest";
 import type { ExportProvider } from "../../exports/types.js";
-import { AuthzError } from "../../lib/errors.js";
+import type { IExportJobRepository } from "../../repositories/interfaces/export-job.repository.js";
+import { ExportFileStorage } from "./export-file-storage.js";
+import { RedisExportProgressStore } from "./export-progress.store.js";
 import { ExportService } from "./export.service.js";
 
 function mockProvider(overrides: Partial<ExportProvider> = {}): ExportProvider {
@@ -19,35 +22,28 @@ function mockProvider(overrides: Partial<ExportProvider> = {}): ExportProvider {
   };
 }
 
-function buildSelectChain(results: {
-  rateLimitActive?: number;
-  rateLimitDaily?: number;
-  existingRow?: unknown;
-  finalRow?: unknown;
-}) {
-  let whereCalls = 0;
-  const limit = vi
-    .fn()
-    .mockImplementation(async () => (results.existingRow ? [results.existingRow] : []));
-  const orderBy = vi.fn().mockReturnValue({ limit });
-  const where = vi.fn().mockImplementation(() => {
-    whereCalls += 1;
-    if (whereCalls === 1) {
-      return Promise.resolve([{ n: results.rateLimitActive ?? 0 }]);
-    }
-    if (whereCalls === 2) {
-      return Promise.resolve([{ n: results.rateLimitDaily ?? 0 }]);
-    }
-    if (whereCalls === 3) {
-      return { orderBy };
-    }
-    return Promise.resolve(results.finalRow ? [results.finalRow] : []);
-  });
+function mockRepo(
+  input: {
+    rateLimitActive?: number;
+    rateLimitDaily?: number;
+    existingRow?: unknown;
+    finalRow?: unknown;
+    listRows?: unknown[];
+  } = {},
+): IExportJobRepository {
   return {
-    from: vi.fn().mockReturnValue({ where, orderBy, limit }),
-    where,
-    orderBy,
-    limit,
+    countActiveSince: vi.fn().mockResolvedValue(input.rateLimitActive ?? 0),
+    countSince: vi.fn().mockResolvedValue(input.rateLimitDaily ?? 0),
+    findLatestByUserAndHash: vi.fn().mockResolvedValue((input.existingRow as never) ?? null),
+    findById: vi.fn().mockResolvedValue((input.finalRow as never) ?? null),
+    findByIdForUser: vi.fn(),
+    listRecentForUser: vi.fn().mockResolvedValue((input.listRows as never) ?? []),
+    insert: vi.fn().mockResolvedValue(undefined),
+    updateProgress: vi.fn().mockResolvedValue(undefined),
+    markCompleted: vi.fn().mockResolvedValue(undefined),
+    markFailed: vi.fn().mockResolvedValue(undefined),
+    markCancelled: vi.fn().mockResolvedValue(undefined),
+    getStatus: vi.fn(),
   };
 }
 
@@ -59,34 +55,27 @@ function createService(input: {
   rateLimitDaily?: number;
   existingRow?: unknown;
   finalRow?: unknown;
+  listRows?: unknown[];
   domainEventPublisher?: { publish: ReturnType<typeof vi.fn> };
+  repo?: IExportJobRepository;
+  redis?: { set: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
 }) {
   const provider = input.provider ?? mockProvider();
   const providers = new Map([["lots", provider]]);
-
-  const selectChain = buildSelectChain({
-    ...(input.rateLimitActive !== undefined ? { rateLimitActive: input.rateLimitActive } : {}),
-    ...(input.rateLimitDaily !== undefined ? { rateLimitDaily: input.rateLimitDaily } : {}),
-    ...(input.existingRow !== undefined ? { existingRow: input.existingRow } : {}),
-    ...(input.finalRow !== undefined ? { finalRow: input.finalRow } : {}),
-  });
-
-  const db = {
-    select: vi.fn().mockReturnValue(selectChain),
-    insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
-    }),
+  const repo = input.repo ?? mockRepo(input);
+  const db = {} as never;
+  const redis = input.redis ?? {
+    set: vi.fn().mockResolvedValue("OK"),
+    get: vi.fn().mockResolvedValue(null),
   };
-
-  const redis = { set: vi.fn().mockResolvedValue("OK"), get: vi.fn().mockResolvedValue(null) };
   const objectStorage = { createPresignedGet: vi.fn() };
   const queue = { add: vi.fn(), getJob: vi.fn() };
 
   const service = new ExportService(
-    db as never,
-    redis as never,
-    objectStorage as never,
+    db,
+    repo,
+    new RedisExportProgressStore(redis as never),
+    new ExportFileStorage(objectStorage as never),
     queue as never,
     providers as never,
     {
@@ -96,14 +85,12 @@ function createService(input: {
     input.domainEventPublisher as never,
   );
 
-  return { service, provider, db, queue };
+  return { service, provider, repo, queue, redis };
 }
 
 describe("ExportService", () => {
   it("routes small exports synchronously and records an audit row", async () => {
-    const { service, db } = createService({ syncMaxRows: 10 });
-    const insertValues = vi.fn().mockResolvedValue(undefined);
-    db.insert = vi.fn().mockReturnValue({ values: insertValues });
+    const { service, repo } = createService({ syncMaxRows: 10 });
 
     const result = await service.createExport({
       userId: "user-1",
@@ -113,7 +100,7 @@ describe("ExportService", () => {
     });
 
     expect(result.mode).toBe("sync");
-    expect(insertValues).toHaveBeenCalledWith(
+    expect(repo.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
         userRole: "staff",
@@ -231,9 +218,7 @@ describe("ExportService", () => {
       cancelledAt: null,
     };
 
-    const insertValues = vi.fn().mockResolvedValue(undefined);
-    const { service, db } = createService({ existingRow, syncMaxRows: 10 });
-    db.insert = vi.fn().mockReturnValue({ values: insertValues });
+    const { service, repo } = createService({ existingRow, syncMaxRows: 10 });
 
     const result = await service.createExport({
       userId: "user-1",
@@ -243,7 +228,7 @@ describe("ExportService", () => {
     });
 
     expect(result.mode).toBe("sync");
-    expect(insertValues).toHaveBeenCalled();
+    expect(repo.insert).toHaveBeenCalled();
   });
 
   it("creates a fresh export when prior processing export is stale", async () => {
@@ -270,13 +255,11 @@ describe("ExportService", () => {
       cancelledAt: null,
     };
 
-    const insertValues = vi.fn().mockResolvedValue(undefined);
-    const { service, db } = createService({
+    const { service, repo } = createService({
       existingRow,
       syncMaxRows: 10,
       staleProcessingMs: 1_800_000,
     });
-    db.insert = vi.fn().mockReturnValue({ values: insertValues });
 
     const result = await service.createExport({
       userId: "user-1",
@@ -286,17 +269,15 @@ describe("ExportService", () => {
     });
 
     expect(result.mode).toBe("sync");
-    expect(insertValues).toHaveBeenCalled();
+    expect(repo.insert).toHaveBeenCalled();
   });
 
   it("publishes export.requested domain event on create", async () => {
     const publish = vi.fn().mockResolvedValue(undefined);
-    const insertValues = vi.fn().mockResolvedValue(undefined);
-    const { service, db } = createService({
+    const { service } = createService({
       syncMaxRows: 10,
       domainEventPublisher: { publish },
     });
-    db.insert = vi.fn().mockReturnValue({ values: insertValues });
 
     await service.createExport({
       userId: "user-1",
@@ -401,24 +382,17 @@ describe("ExportService", () => {
       expiresAt: null,
       completedAt: null,
     };
-    const limit = vi.fn().mockResolvedValue([completedRow, activeRow]);
-    const orderBy = vi.fn().mockReturnValue({ limit });
-    const where = vi.fn().mockReturnValue({ orderBy });
-    const db = { select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where }) }) };
     const redis = {
       get: vi
         .fn()
         .mockResolvedValue(JSON.stringify({ phase: "writing", processedRows: 1, totalRows: 5 })),
       set: vi.fn(),
     };
-    const service = new ExportService(
-      db as never,
-      redis as never,
-      { createPresignedGet: vi.fn() } as never,
-      { add: vi.fn(), getJob: vi.fn() } as never,
-      new Map([["lots", provider]]) as never,
-      { syncMaxRows: 5000, staleProcessingMs: 1_800_000 },
-    );
+    const { service } = createService({
+      provider,
+      listRows: [completedRow, activeRow],
+      redis,
+    });
 
     const jobs = await service.listExports("user-1");
 

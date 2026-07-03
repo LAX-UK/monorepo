@@ -1,21 +1,22 @@
 import { randomUUID } from "node:crypto";
 import type { Database } from "@auction/db";
-import { uploadObject } from "@auction/db/schema";
 import type { UserRole } from "@auction/types";
-import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import type { Queue } from "bullmq";
-import { and, eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
+import { DrizzleUploadPersistenceRepository } from "../repositories/drizzle-upload-persistence.repository.js";
+import type { IUploadPersistenceRepository } from "../repositories/interfaces/upload-persistence.repository.js";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
+import type { IUploadAuthorizationService, IUploadService } from "./interfaces/upload-service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
-import { canUploadKind, createUploadKey, isUploadKind, uploadPolicies } from "./upload.policy.js";
+import { createUploadKey } from "./upload.policy.js";
+import { UploadAuthorizationService } from "./upload/upload-authorization.service.js";
+import { UploadRateLimitPolicy } from "./upload/upload-rate-limit.policy.js";
+import { UploadValidationDispatcher } from "./upload/upload-validation.dispatcher.js";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const PRESIGN_EXPIRES_IN_SEC = 5 * 60;
 const PENDING_UPLOAD_TTL_MS = 24 * 60 * 60 * 1000;
-const DAILY_BYTES_LIMIT = 250 * 1024 * 1024;
-const DAILY_COUNT_LIMIT = 200;
 
 function extForContentType(ct: string): string {
   switch (ct) {
@@ -32,14 +33,34 @@ function extForContentType(ct: string): string {
   }
 }
 
-export class UploadService {
+export type { IUploadAuthorizationService, IUploadService };
+
+export class UploadService implements IUploadService {
+  private readonly auth: IUploadAuthorizationService;
+  private readonly repo: IUploadPersistenceRepository | undefined;
+  private readonly rateLimit: UploadRateLimitPolicy;
+  private readonly validation: UploadValidationDispatcher;
+  private readonly redis: Redis | undefined;
+
   constructor(
     private readonly storage: IObjectStorage,
-    private readonly db?: Database,
-    private readonly redis?: Redis,
-    private readonly validationQueue?: Queue,
+    db?: Database,
+    redis?: Redis,
+    validationQueue?: Queue,
     private readonly mediaUrlResolver?: MediaUrlResolver,
-  ) {}
+    deps?: {
+      repo?: IUploadPersistenceRepository;
+      auth?: IUploadAuthorizationService;
+      rateLimit?: UploadRateLimitPolicy;
+      validation?: UploadValidationDispatcher;
+    },
+  ) {
+    this.redis = redis;
+    this.repo = deps?.repo ?? (db ? new DrizzleUploadPersistenceRepository(db) : undefined);
+    this.auth = deps?.auth ?? new UploadAuthorizationService(this.repo);
+    this.rateLimit = deps?.rateLimit ?? new UploadRateLimitPolicy(redis);
+    this.validation = deps?.validation ?? new UploadValidationDispatcher(validationQueue);
+  }
 
   async uploadImage(body: Buffer, contentType: string): Promise<{ url: string }> {
     if (!ALLOWED_TYPES.has(contentType)) {
@@ -72,47 +93,29 @@ export class UploadService {
       }
     | { ok: false; status: number; error: string; resetAt?: string }
   > {
-    if (!this.db || !this.redis) {
+    if (!this.repo || !this.redis) {
       return { ok: false, status: 503, error: "upload_tracking_not_configured" };
     }
-    if (!isUploadKind(input.kind)) {
-      return { ok: false, status: 400, error: "unsupported_upload_kind" };
-    }
-    const staff = normalizeUserStaffRole(input.userStaffRole);
-    if (!canUploadKind(input.kind, input.userRole, staff)) {
-      return { ok: false, status: 403, error: "forbidden_upload_kind" };
-    }
-    const policy = uploadPolicies[input.kind];
-    if (!policy.allowedContentTypes.includes(input.contentType)) {
-      return { ok: false, status: 400, error: "unsupported_content_type" };
-    }
-    if (
-      !Number.isInteger(input.byteSize) ||
-      input.byteSize <= 0 ||
-      input.byteSize > policy.maxBytes
-    ) {
-      return { ok: false, status: 400, error: "invalid_byte_size" };
-    }
-    if (!roleHasCapability(input.userRole, "platform.admin.full", staff)) {
-      const quota = await this.checkQuota(input.userId, input.byteSize);
+    const authResult = this.auth.validatePresignedUploadRequest(input);
+    if (!authResult.ok) return authResult;
+
+    if (!this.auth.isPlatformAdmin(input.userRole, input.userStaffRole)) {
+      const quota = await this.rateLimit.checkQuota(input.userId, input.byteSize);
       if (!quota.ok) {
         return { ok: false, status: 429, error: "quota_exceeded", resetAt: quota.resetAt };
       }
     }
 
-    const key = createUploadKey(input.kind, input.userId, input.contentType);
+    const key = createUploadKey(authResult.kind, input.userId, input.contentType);
     const expiresAt = new Date(Date.now() + PENDING_UPLOAD_TTL_MS);
-    const [row] = await this.db
-      .insert(uploadObject)
-      .values({
-        ownerUserId: input.userId,
-        kind: input.kind,
-        key,
-        declaredContentType: input.contentType,
-        declaredByteSize: input.byteSize,
-        expiresAt,
-      })
-      .returning({ id: uploadObject.id });
+    const row = await this.repo.insertPending({
+      ownerUserId: input.userId,
+      kind: authResult.kind,
+      key,
+      declaredContentType: input.contentType,
+      declaredByteSize: input.byteSize,
+      expiresAt,
+    });
     if (!row) return { ok: false, status: 500, error: "upload_create_failed" };
 
     const signed = await this.storage.createPresignedPut({
@@ -143,29 +146,17 @@ export class UploadService {
     | { ok: true; value: { status: "queued"; key: string; publicUrl: string } }
     | { ok: false; status: number; error: string }
   > {
-    if (!this.db || !this.validationQueue) {
+    if (!this.repo || !this.validation.isConfigured) {
       return { ok: false, status: 503, error: "upload_validation_not_configured" };
     }
-    const row = await this.findUploadForAccess(
-      input.uploadId,
-      input.userId,
-      input.userRole,
-      input.userStaffRole,
-    );
+    const row = await this.auth.findUploadForAccess(input);
     if (!row) return { ok: false, status: 404, error: "upload_not_found" };
     if (row.status !== "pending") {
       return { ok: false, status: 409, error: `upload_status_${row.status}` };
     }
 
-    await this.db
-      .update(uploadObject)
-      .set({ status: "uploaded", uploadedAt: new Date() })
-      .where(eq(uploadObject.id, input.uploadId));
-    await this.validationQueue.add(
-      "validate-upload",
-      { uploadId: input.uploadId },
-      { attempts: 3 },
-    );
+    await this.repo.markUploaded(input.uploadId, new Date());
+    await this.validation.enqueue(input.uploadId);
     return {
       ok: true,
       value: { status: "queued", key: row.key, publicUrl: this.storage.getPublicUrl(row.key) },
@@ -191,13 +182,8 @@ export class UploadService {
       }
     | { ok: false; status: number; error: string }
   > {
-    if (!this.db) return { ok: false, status: 503, error: "upload_tracking_not_configured" };
-    const row = await this.findUploadForAccess(
-      input.uploadId,
-      input.userId,
-      input.userRole,
-      input.userStaffRole,
-    );
+    if (!this.repo) return { ok: false, status: 503, error: "upload_tracking_not_configured" };
+    const row = await this.auth.findUploadForAccess(input);
     if (!row) return { ok: false, status: 404, error: "upload_not_found" };
     const publicUrl =
       row.status === "active"
@@ -219,43 +205,5 @@ export class UploadService {
 
   async putLocalPresignedUpload(key: string, body: Buffer, contentType: string): Promise<void> {
     await this.storage.putObject(key, body, contentType);
-  }
-
-  private async findUploadForAccess(
-    uploadId: string,
-    userId: string,
-    userRole: UserRole,
-    userStaffRole?: import("@auction/types").UserStaffRole | null,
-  ) {
-    if (!this.db) return null;
-    const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
-    const where = roleHasCapability(userRole, "platform.admin.full", staff)
-      ? eq(uploadObject.id, uploadId)
-      : and(eq(uploadObject.id, uploadId), eq(uploadObject.ownerUserId, userId));
-    const [row] = await this.db.select().from(uploadObject).where(where).limit(1);
-    return row ?? null;
-  }
-
-  private async checkQuota(
-    userId: string,
-    byteSize: number,
-  ): Promise<{ ok: true } | { ok: false; resetAt: string }> {
-    if (!this.redis) return { ok: false, resetAt: new Date().toISOString() };
-    const day = new Date().toISOString().slice(0, 10);
-    const bytesKey = `upload:quota:bytes:${userId}:${day}`;
-    const countKey = `upload:quota:count:${userId}:${day}`;
-    const tx = this.redis.multi();
-    tx.incrby(bytesKey, byteSize);
-    tx.incr(countKey);
-    tx.expire(bytesKey, 36 * 60 * 60);
-    tx.expire(countKey, 36 * 60 * 60);
-    const result = await tx.exec();
-    const totalBytes = Number(result?.[0]?.[1] ?? 0);
-    const totalCount = Number(result?.[1]?.[1] ?? 0);
-    if (totalBytes > DAILY_BYTES_LIMIT || totalCount > DAILY_COUNT_LIMIT) {
-      const resetAt = new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString();
-      return { ok: false, resetAt };
-    }
-    return { ok: true };
   }
 }

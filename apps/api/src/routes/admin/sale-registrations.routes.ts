@@ -5,7 +5,7 @@ import {
   adminUpdateSaleRegistrationBidLimitBodySchema,
 } from "@auction/validators";
 import { z } from "zod";
-import type { Container } from "../../container.js";
+import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireAuctionManage } from "../../middleware/require-capability.js";
@@ -13,7 +13,7 @@ import type { AdminHono } from "./_shared.js";
 
 export function attachAdminSaleRegistrationsRoutes(
   platform: AdminHono,
-  container: Container,
+  container: ContainerAdminRoutesSlice,
 ): void {
   platform.get(
     "/sales/:saleId/registrations",
