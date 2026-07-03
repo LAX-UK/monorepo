@@ -1,6 +1,5 @@
+import type { AuthSessionListRow, ISessionRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ISessionRepository } from "../repositories/interfaces/session.repository.js";
-import type { AuthSessionListRow } from "../repositories/session.types.js";
 import { SessionRevocationService } from "./session-revocation.service.js";
 
 const NOW = new Date("2026-01-01T00:00:00Z");

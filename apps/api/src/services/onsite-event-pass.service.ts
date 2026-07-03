@@ -1,3 +1,4 @@
+import type { IGuestPaddleReader } from "@auction/persistence";
 import type { OnsiteEventPassView } from "@auction/types";
 import {
   buildPassUrl,
@@ -6,7 +7,6 @@ import {
 } from "../lib/onsite-event-check-in-token.js";
 import { partySize } from "../lib/onsite-event-check-in.mapper.js";
 import { segmentLabelFor } from "../lib/onsite-event.mapper.js";
-import type { IGuestPaddleReader } from "../repositories/interfaces/guest-paddle.reader.js";
 import type { IOnsiteEventRsvpRepository } from "../repositories/interfaces/onsite-event-rsvp.repository.js";
 import type { IOnsiteEventRepository } from "../repositories/interfaces/onsite-event.repository.js";
 import type { IOnsiteEventPassService } from "./interfaces/onsite-event-pass-service.js";

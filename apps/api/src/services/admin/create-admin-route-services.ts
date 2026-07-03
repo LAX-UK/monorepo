@@ -1,9 +1,12 @@
 import type { Database } from "@auction/db";
 import type { IBidRepository } from "@auction/persistence";
+import type {
+  IAdminDisputeCaseEnrichmentReader,
+  IImpersonationSessionRepository,
+} from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { Env } from "../../env.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
-import type { IAdminDisputeCaseEnrichmentReader } from "../../repositories/interfaces/admin-dispute-case-enrichment.reader.js";
 import type { IAdminDomainEventReader } from "../../repositories/interfaces/admin-domain-event.reader.js";
 import type { IAdminFinanceIssueSnapshotReader } from "../../repositories/interfaces/admin-finance-issue-snapshot.reader.js";
 import type { IAdminLegalEntityBrowseReader } from "../../repositories/interfaces/admin-legal-entity-browse.reader.js";
@@ -12,7 +15,6 @@ import type { IAdminManualReviewPaymentReader } from "../../repositories/interfa
 import type { IAdminOnboardingIssuesReader } from "../../repositories/interfaces/admin-onboarding-issues.reader.js";
 import type { IAdminReviewTaskReader } from "../../repositories/interfaces/admin-review-task.reader.js";
 import type { IImpersonationDomainEventReader } from "../../repositories/interfaces/impersonation-domain-event.reader.js";
-import type { IImpersonationSessionRepository } from "../../repositories/interfaces/impersonation-session.repository.js";
 import type { AdminMetricsService } from "../admin-metrics.service.js";
 import type { AdminSaleOperationsSnapshotService } from "../admin-sale-operations-snapshot.service.js";
 import type { AdminUserService } from "../admin-user.service.js";

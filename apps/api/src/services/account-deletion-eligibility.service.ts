@@ -1,4 +1,4 @@
-import type { IAccountDeletionEligibilityReader } from "../repositories/interfaces/account-deletion-eligibility.reader.js";
+import type { IAccountDeletionEligibilityReader } from "@auction/persistence";
 
 export type AccountDeletionEligibilityResult =
   | { ok: true }

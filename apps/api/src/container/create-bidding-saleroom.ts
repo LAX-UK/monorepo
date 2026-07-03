@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
+import { DrizzleSaleroomSessionRepository } from "@auction/persistence";
 import type { Env } from "../env.js";
 import { RedisIdempotencyStore } from "../infrastructure/redis-idempotency.store.js";
 import { RedisSaleroomRealtimePublisher } from "../infrastructure/redis-saleroom-realtime.publisher.js";
 import { DisplayTokenIssuer } from "../lib/display-token.js";
-import { DrizzleSaleroomSessionRepository } from "../repositories/drizzle-saleroom-session.repository.js";
 import { AbsenteeBidService } from "../services/absentee-bid.service.js";
 import { AdminSaleOperationsSnapshotService } from "../services/admin-sale-operations-snapshot.service.js";
 import { AutoBidService } from "../services/auto-bid.service.js";

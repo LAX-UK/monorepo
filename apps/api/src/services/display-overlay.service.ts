@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
+import type { ISaleroomDisplaySessionRepository } from "@auction/persistence";
 import type { SaleroomDisplayOverlay } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
-import type { ISaleroomDisplaySessionRepository } from "../repositories/interfaces/saleroom-display-session.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
   DisplayServiceError,

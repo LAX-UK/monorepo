@@ -1,6 +1,8 @@
 import { emailHash } from "@auction/email";
-import type { IEmailSuppressionRepository } from "../repositories/interfaces/email-suppression.repository.js";
-import type { IEmailWebhookIngestRepository } from "../repositories/interfaces/email-webhook-ingest.repository.js";
+import type {
+  IEmailSuppressionRepository,
+  IEmailWebhookIngestRepository,
+} from "@auction/persistence";
 
 export type PostmarkWebhookPayload = Record<string, unknown> & {
   RecordType?: string;

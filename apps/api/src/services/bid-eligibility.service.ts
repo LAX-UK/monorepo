@@ -1,8 +1,7 @@
+import type { IBidLotRulesReader, IBidMembershipReader } from "@auction/persistence";
 import { type AutoBidLotRules, validateAutoBidStepAmount } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
-import type { IBidLotRulesReader } from "../repositories/interfaces/bid-lot-rules.reader.js";
-import type { IBidMembershipReader } from "../repositories/interfaces/bid-membership.reader.js";
 import type { IAmlBidGate } from "./bid/aml-bid.gate.js";
 import type { BuyerAgentBidGate } from "./bid/buyer-agent-bid.gate.js";
 import type { IKycBidGate } from "./bid/kyc-bid.gate.js";

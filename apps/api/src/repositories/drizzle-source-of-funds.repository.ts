@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { payment, sourceOfFunds } from "@auction/db/schema";
+import { ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES } from "@auction/persistence";
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import type {
   CreateSourceOfFundsCaseInput,
@@ -10,7 +11,6 @@ import type {
   SourceOfFundsTriageInput,
   SourceOfFundsTriageRecommendation,
 } from "../services/source-of-funds/source-of-funds.types.js";
-import { ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES } from "./source-of-funds-settlement.types.js";
 
 function rowToCase(row: typeof sourceOfFunds.$inferSelect): SourceOfFundsCase {
   return {

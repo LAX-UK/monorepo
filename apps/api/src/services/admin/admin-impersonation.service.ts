@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
+import type { IImpersonationSessionRepository } from "@auction/persistence";
 import { encodeActingContextCookie } from "@auction/types";
 import { parseActingLegalEntityCookieFromHeader } from "../../lib/impersonation-cookie.js";
 import type { IImpersonationDomainEventReader } from "../../repositories/interfaces/impersonation-domain-event.reader.js";
-import type { IImpersonationSessionRepository } from "../../repositories/interfaces/impersonation-session.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "../impersonation-audit.service.js";
 import type {

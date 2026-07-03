@@ -62,9 +62,7 @@ export class AccountingReplayCronService {
     if (!this.xeroPaymentRecorder) {
       return { ok: false as const, error: "xero_payment_recorder_disabled" };
     }
-    const { listPendingStripeCaptureSync } = await import(
-      "../../repositories/drizzle-payment-refund-reconcile.repository.js"
-    );
+    const { listPendingStripeCaptureSync } = await import("@auction/persistence");
     const rows = await listPendingStripeCaptureSync(this.db, 25);
     let synced = 0;
     for (const row of rows) {
@@ -78,9 +76,7 @@ export class AccountingReplayCronService {
     if (!this.accountingProvider.isConfigured()) {
       return { ok: false as const, error: "xero_not_configured" };
     }
-    const { listPaymentsMissingXeroInvoice } = await import(
-      "../../repositories/drizzle-payment-refund-reconcile.repository.js"
-    );
+    const { listPaymentsMissingXeroInvoice } = await import("@auction/persistence");
     const rows = await listPaymentsMissingXeroInvoice(this.db, 25);
     let created = 0;
     for (const row of rows) {

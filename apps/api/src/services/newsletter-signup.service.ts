@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
+import type { INewsletterSignupRepository } from "@auction/persistence";
 import type { Queue } from "bullmq";
-import type { INewsletterSignupRepository } from "../repositories/interfaces/newsletter-signup.repository.js";
 
 export type ZohoCampaignsSyncJobData = {
   signupLogId: string;

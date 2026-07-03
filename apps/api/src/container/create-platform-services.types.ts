@@ -1,8 +1,10 @@
+import type { ITransactionRunner } from "@auction/persistence";
 import type { CachedUserSuspensionChecker } from "../infrastructure/cached-user-suspension.checker.js";
 import type { RedisUserNotificationPublisher } from "../infrastructure/redis-user-notification.publisher.js";
 import type { createRequireLegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import type { CachedCatalogueListService } from "../services/cached-catalogue-list.service.js";
+import type { IDomainEventSink } from "../services/domain-event-sink.js";
 import type { DomainEventPublisher } from "../services/domain-event.publisher.js";
 import type { ImpersonationAuditService } from "../services/impersonation-audit.service.js";
 import type { ImpersonationSessionService } from "../services/impersonation-session.service.js";
@@ -47,6 +49,8 @@ export type ContainerPlatformServices = ContainerPlatformCore &
 /** @deprecated Prefer sub-slice types from create-platform-*-services.ts for narrow deps. */
 export type ContainerPlatformServicesLegacy = {
   domainEventPublisher: DomainEventPublisher;
+  domainEventSink: IDomainEventSink;
+  transactionRunner: ITransactionRunner;
   lotLifecycleEventRecorder: LotLifecycleEventRecorder;
   lotLifecycleRecording: ILotLifecycleRecorder;
   authAuditPublisher: AuthAuditPublisher;

@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
-import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import type {
   IPaymentRefundReconcileRepository,
   PaymentRefundReconcilePayload,
-} from "../../repositories/drizzle-payment-refund-reconcile.repository.js";
+} from "@auction/persistence";
+import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";

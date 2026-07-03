@@ -1,3 +1,4 @@
+import type { IOnsiteEventCheckInLogRepository } from "@auction/persistence";
 import type { OnsiteEvent } from "@auction/types";
 import type { OnsiteEventCheckInResult, OnsiteEventCheckInSearchRow } from "@auction/types";
 import { type AppLogger, createBaseLogger } from "../lib/logger.js";
@@ -8,7 +9,6 @@ import {
 } from "../lib/onsite-event-check-in-token.js";
 import { mapGuestSummary, partySize } from "../lib/onsite-event-check-in.mapper.js";
 import { segmentLabelFor } from "../lib/onsite-event.mapper.js";
-import type { IOnsiteEventCheckInLogRepository } from "../repositories/interfaces/onsite-event-check-in-log.repository.js";
 import type {
   IOnsiteEventRsvpRepository,
   OnsiteEventRsvpWithGuest,

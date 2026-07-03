@@ -1,7 +1,7 @@
 import type {
   SourceOfFundsDocumentChecks,
   SourceOfFundsDocumentReviewRow,
-} from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
+} from "@auction/persistence";
 
 export type ReviewSourceOfFundsDocumentCommand = {
   caseId: string;

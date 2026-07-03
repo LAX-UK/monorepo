@@ -1,8 +1,8 @@
+import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence";
 import type { TelephoneBidBooking } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ITelephoneBidBookingDetailReader } from "../repositories/interfaces/telephone-bid-booking-detail.reader.js";
 import type { ITelephoneBidBookingRepository } from "../repositories/interfaces/telephone-bid-booking.repository.js";
-import type { ITelephoneBookingUserPhoneReader } from "../repositories/interfaces/telephone-booking-user-phone.reader.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import { buildTelephoneBidBookingService } from "./telephone-bid-booking.service.js";
 

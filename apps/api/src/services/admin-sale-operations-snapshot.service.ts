@@ -1,5 +1,5 @@
+import type { IAdminSaleOperationsSnapshotReader } from "@auction/persistence";
 import { isSaleroomDeliveryMode } from "@auction/validators";
-import type { IAdminSaleOperationsSnapshotReader } from "../repositories/interfaces/admin-sale-operations-snapshot.reader.js";
 import type { ISaleRegistrationService } from "./interfaces/sale-registration-service.js";
 import type { ITelephoneBidBookingQueryService } from "./interfaces/telephone-bid-booking-service.js";
 

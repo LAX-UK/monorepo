@@ -1,11 +1,10 @@
 import type { Database } from "@auction/db";
 import { canAdminOverrideLotStatus, canLotTransition } from "@auction/domain";
+import type { ILotTransitionGuardReader, ILotTransitionRepository } from "@auction/persistence";
 import type { Lot, LotStatus, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
-import type { ILotTransitionGuardReader } from "../repositories/interfaces/lot-transition-guard.reader.js";
-import type { ILotTransitionRepository } from "../repositories/interfaces/lot-transition.repository.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository } from "./interfaces/repositories.js";

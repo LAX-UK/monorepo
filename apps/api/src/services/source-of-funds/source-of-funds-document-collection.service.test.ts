@@ -1,5 +1,5 @@
+import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ISourceOfFundsDocumentReviewRepository } from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
 import { PerRequestSigningPolicy } from "../signed-url-policy.js";
 import {

@@ -1,8 +1,10 @@
-import type { ILotLifecycleSnapshotReader } from "../repositories/interfaces/lot-lifecycle-snapshot.reader.js";
-import type { ILotLifecycleTimelineReader } from "../repositories/interfaces/lot-lifecycle-timeline.reader.js";
-import type { LotLifecycleSnapshotRow } from "../repositories/lot-lifecycle-snapshot.types.js";
+import type {
+  ILotLifecycleSnapshotReader,
+  ILotLifecycleTimelineReader,
+  LotLifecycleSnapshotRow,
+} from "@auction/persistence";
 
-export type { LotLifecycleSnapshotRow } from "../repositories/lot-lifecycle-snapshot.types.js";
+export type { LotLifecycleSnapshotRow } from "@auction/persistence";
 
 export type LotLifecycleTimelineEvent = {
   id: number;

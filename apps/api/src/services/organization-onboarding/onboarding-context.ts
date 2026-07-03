@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
+import type { IUploadPersistenceRepository } from "@auction/persistence";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import type { LegalEntityDocumentUploadInput } from "@auction/validators";
 import type { ILegalEntityOnboardingRepository } from "../../repositories/interfaces/legal-entity-onboarding.repository.js";
-import type { IUploadPersistenceRepository } from "../../repositories/interfaces/upload-persistence.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IOrganizationOnboardingService } from "../interfaces/organization-onboarding.js";

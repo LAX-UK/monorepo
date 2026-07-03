@@ -1,6 +1,6 @@
+import type { ISourceOfFundsSettlementReader } from "@auction/persistence";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import { mapLotRow, mapSaleRow } from "../../lib/mappers.js";
-import type { ISourceOfFundsSettlementReader } from "../../repositories/interfaces/source-of-funds-settlement.reader.js";
 
 export type SourceOfFundsSettlementItem = {
   kind: "payment" | "won_unpaid";

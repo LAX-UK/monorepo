@@ -1,9 +1,6 @@
-import type {
-  ISavedSearchRepository,
-  SavedSearchRow,
-} from "../repositories/interfaces/saved-search.repository.js";
+import type { ISavedSearchRepository, SavedSearchRow } from "@auction/persistence";
 
-export type { SavedSearchRow } from "../repositories/interfaces/saved-search.repository.js";
+export type { SavedSearchRow } from "@auction/persistence";
 
 export class SavedSearchService {
   constructor(private readonly savedSearches: ISavedSearchRepository) {}

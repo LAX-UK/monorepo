@@ -2,7 +2,7 @@ import type {
   IImpersonationSessionRepository,
   ImpersonationEndReason,
   ImpersonationSessionRow,
-} from "../repositories/interfaces/impersonation-session.repository.js";
+} from "@auction/persistence";
 
 export type { ImpersonationEndReason, ImpersonationSessionRow };
 

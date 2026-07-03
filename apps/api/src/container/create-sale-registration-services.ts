@@ -1,9 +1,11 @@
 import type { Database } from "@auction/db";
+import {
+  DrizzlePaddleBidWindowReader,
+  DrizzleSaleRegistrationCheckInReader,
+  DrizzleTelephoneBookingUserPhoneReader,
+} from "@auction/persistence";
 import type { Env } from "../env.js";
-import { DrizzlePaddleBidWindowReader } from "../repositories/drizzle-paddle-bid-window.reader.js";
-import { DrizzleSaleRegistrationCheckInReader } from "../repositories/drizzle-sale-registration-check-in.reader.js";
 import { DrizzleTelephoneBidBookingDetailReader } from "../repositories/drizzle-telephone-bid-booking-detail.reader.js";
-import { DrizzleTelephoneBookingUserPhoneReader } from "../repositories/drizzle-telephone-booking-user-phone.reader.js";
 import { PaddleService } from "../services/paddle.service.js";
 import { SaleExpectedGuestsService } from "../services/sale-expected-guests.service.js";
 import { SaleroomCheckInEligibilityValidator } from "../services/saleroom-check-in-eligibility.validator.js";

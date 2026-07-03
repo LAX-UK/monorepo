@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
+import type { IPaymentRefundReconcileRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { IPaymentRefundReconcileRepository } from "../../repositories/drizzle-payment-refund-reconcile.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";

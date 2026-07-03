@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
+import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence";
 import type { TelephoneBidBooking } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { buyerEntityCanBid } from "../../lib/buyer-entity-bid-eligibility.js";
 import type { ITelephoneBidBookingRepository } from "../../repositories/interfaces/telephone-bid-booking.repository.js";
-import type { ITelephoneBookingUserPhoneReader } from "../../repositories/interfaces/telephone-booking-user-phone.reader.js";
 import type { IAmlHoldStore } from "../aml/ports.js";
 import type { IKycService } from "../interfaces/kyc-service.js";
 import { KycRequiredError } from "../interfaces/kyc-service.js";

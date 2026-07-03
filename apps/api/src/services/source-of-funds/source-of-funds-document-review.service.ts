@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import type {
   ISourceOfFundsDocumentReviewRepository,
   SourceOfFundsDocumentReviewRow,
-} from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
+} from "@auction/persistence";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type {

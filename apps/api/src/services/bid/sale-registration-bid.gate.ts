@@ -1,8 +1,8 @@
+import type { ISaleRegistrationBidReader } from "@auction/persistence";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../../lib/errors.js";
 import { memberRequiresSaleRegistration } from "../../lib/sale-registration-policy.js";
-import type { ISaleRegistrationBidReader } from "../../repositories/interfaces/sale-registration-bid.reader.js";
 import { parseMoneyCap } from "./bid-cap.util.js";
 
 export class SaleRegistrationBidGate {

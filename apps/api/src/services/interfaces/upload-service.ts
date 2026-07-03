@@ -16,9 +16,7 @@ export interface IUploadAuthorizationService {
     userId: string;
     userRole: UserRole;
     userStaffRole?: UserStaffRole | null;
-  }): Promise<
-    import("../../repositories/interfaces/upload-persistence.repository.js").UploadObjectRow | null
-  >;
+  }): Promise<import("@auction/persistence").UploadObjectRow | null>;
 
   isPlatformAdmin(userRole: UserRole, userStaffRole?: string | null): boolean;
 }

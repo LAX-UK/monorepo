@@ -1,9 +1,8 @@
 import type { Database } from "@auction/db";
+import { DrizzleAbsenteeBidRepository, type IAbsenteeBidRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
-import { DrizzleAbsenteeBidRepository } from "../repositories/drizzle-absentee-bid.repository.js";
-import type { IAbsenteeBidRepository } from "../repositories/interfaces/absentee-bid.repository.js";
 import { AbsenteeBidService } from "./absentee-bid.service.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
 import type { ILotRepository } from "./interfaces/repositories.js";

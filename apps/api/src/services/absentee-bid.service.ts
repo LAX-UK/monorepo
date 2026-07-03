@@ -1,6 +1,6 @@
+import type { IAbsenteeBidRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
-import type { IAbsenteeBidRepository } from "../repositories/interfaces/absentee-bid.repository.js";
 import type {
   AbsenteeBidServiceError,
   IAbsenteeBidService,

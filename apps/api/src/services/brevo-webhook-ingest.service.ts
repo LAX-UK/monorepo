@@ -1,7 +1,9 @@
 import type { EmailSuppressionReason } from "@auction/db/schema";
 import { emailHash } from "@auction/email";
-import type { IEmailSuppressionRepository } from "../repositories/interfaces/email-suppression.repository.js";
-import type { IEmailWebhookIngestRepository } from "../repositories/interfaces/email-webhook-ingest.repository.js";
+import type {
+  IEmailSuppressionRepository,
+  IEmailWebhookIngestRepository,
+} from "@auction/persistence";
 
 export type BrevoWebhookPayload = Record<string, unknown> & {
   event?: string;

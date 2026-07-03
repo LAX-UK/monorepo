@@ -1,11 +1,10 @@
 import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
+import { EmailChangeConfirmError, type IUserEmailChangeRepository } from "@auction/persistence";
 import type { RequestEmailChangeInput } from "@auction/validators";
 import type { Env } from "../../env.js";
 import { createEmailChangeToken, verifyEmailChangeToken } from "../../lib/email-change-token.js";
 import { createAppLogger } from "../../lib/logger.js";
-import type { IUserEmailChangeRepository } from "../../repositories/interfaces/user-email-change.repository.js";
-import { EmailChangeConfirmError } from "../../repositories/user-email-change.types.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 import type { SessionRevocationService } from "../session-revocation.service.js";
 import type { UserService } from "../user.service.js";

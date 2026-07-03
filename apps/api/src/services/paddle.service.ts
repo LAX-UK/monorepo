@@ -1,10 +1,7 @@
+import { type IPaddleRepository, isPaddleUniqueViolation } from "@auction/persistence";
 import { type Result, err, ok } from "neverthrow";
 import { Counter, Histogram } from "prom-client";
 import { BidError } from "../lib/errors.js";
-import {
-  type IPaddleRepository,
-  isPaddleUniqueViolation,
-} from "../repositories/drizzle-paddle.repository.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
 

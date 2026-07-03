@@ -1,6 +1,6 @@
+import type { SaleroomEventKind } from "@auction/persistence";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
-import type { SaleroomEventKind } from "../../repositories/interfaces/saleroom-session.repository.js";
 import type {
   ISaleroomSessionControlService,
   SaleroomServiceError,

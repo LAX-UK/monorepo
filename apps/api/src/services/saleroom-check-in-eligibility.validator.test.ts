@@ -1,6 +1,6 @@
+import type { ISaleRegistrationCheckInReader } from "@auction/persistence";
 import type { LegalEntity } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ISaleRegistrationCheckInReader } from "../repositories/interfaces/sale-registration-check-in.reader.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import { SaleroomCheckInEligibilityValidator } from "./saleroom-check-in-eligibility.validator.js";
 

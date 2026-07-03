@@ -1,5 +1,5 @@
+import type { IAdminDisputeCaseEnrichmentReader } from "@auction/persistence";
 import type { Env } from "../../env.js";
-import type { IAdminDisputeCaseEnrichmentReader } from "../../repositories/interfaces/admin-dispute-case-enrichment.reader.js";
 import type { AmlService } from "../aml/aml.service.js";
 import type { AdminComplianceRouteServices } from "../interfaces/admin-routes/admin-compliance-routes.js";
 import type { IAdminDomainEventQueryService } from "../interfaces/admin-routes/admin-operations-routes.js";

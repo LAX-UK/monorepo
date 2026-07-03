@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
+import type { IConnectTransferRepository } from "@auction/persistence";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
-import type { IConnectTransferRepository } from "../../../repositories/interfaces/connect-transfer.repository.js";
 import type { DomainEventPublisher } from "../../domain-event.publisher.js";
 import type { IPayoutRepository } from "../../interfaces/payout-repository.js";
 import type { IPayoutService } from "../../interfaces/payout.js";

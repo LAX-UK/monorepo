@@ -1,8 +1,8 @@
+import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
 import type {
   AdminSourceOfFundsDetailDto,
   AdminSourceOfFundsListRowDto,
 } from "../../admin/admin-route-dtos.js";
-import type { ISourceOfFundsDocumentReviewRepository } from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
 import type { IAdminUserReader } from "../interfaces/admin-user.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";

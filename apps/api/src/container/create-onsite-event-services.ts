@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
+import { DrizzleGuestPaddleReader } from "@auction/persistence";
 import type { Env } from "../env.js";
 import { createBaseLogger } from "../lib/logger.js";
-import { DrizzleGuestPaddleReader } from "../repositories/drizzle-guest-paddle.reader.js";
 import type { IOnsiteEventAdminService } from "../services/interfaces/onsite-event-admin-service.js";
 import type { IOnsiteEventPassService } from "../services/interfaces/onsite-event-pass-service.js";
 import type { IOnsiteEventPublicRsvpService } from "../services/interfaces/onsite-event-public-rsvp-service.js";

@@ -1,8 +1,7 @@
 import type { Auth } from "@auction/auth/server";
 import type { createDb } from "@auction/db";
+import type { IUserEmailChangeRepository, IWebhookEventRepository } from "@auction/persistence";
 import type { Env } from "../env.js";
-import type { IUserEmailChangeRepository } from "../repositories/interfaces/user-email-change.repository.js";
-import type { IWebhookEventRepository } from "../repositories/interfaces/webhook-event.repository.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
 import type { IAttentionFeedReader } from "../services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";

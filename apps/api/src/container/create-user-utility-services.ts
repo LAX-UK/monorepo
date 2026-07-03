@@ -1,12 +1,11 @@
 import type { Database } from "@auction/db";
+import { DrizzleAuthCredentialReader, type IAuthCredentialReader } from "@auction/persistence";
 import type { Env } from "../env.js";
 import { CompositeErrorClassifier } from "../infrastructure/composite-error.classifier.js";
 import { ConsoleErrorLogger } from "../infrastructure/console-error.logger.js";
 import { JsonErrorResponseBuilder } from "../infrastructure/json-error-response.builder.js";
 import { createBaseLogger } from "../lib/logger.js";
 import { queueRuntimeEnvFromApiEnv } from "../lib/queue-runtime-env.js";
-import { DrizzleAuthCredentialReader } from "../repositories/drizzle-auth-credential.reader.js";
-import type { IAuthCredentialReader } from "../repositories/interfaces/auth-credential.reader.js";
 import { AdminMarketingEventsService } from "../services/admin/admin-marketing-events.service.js";
 import { AdminPaymentListQueryService } from "../services/admin/admin-payment-list-query.service.js";
 import { StructuredQueueAuditService } from "../services/admin/queue-audit.service.js";

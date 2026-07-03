@@ -9,12 +9,12 @@ import {
   user,
 } from "@auction/db/schema";
 import { DrizzleLotRepository, DrizzleSaleRepository } from "@auction/persistence";
+import { DrizzleTelephoneBookingUserPhoneReader } from "@auction/persistence";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDrizzleLegalEntityRepository } from "../repositories/drizzle-legal-entity.repository.js";
 import { DrizzleTelephoneBidBookingDetailReader } from "../repositories/drizzle-telephone-bid-booking-detail.reader.js";
 import { DrizzleTelephoneBidBookingRepository } from "../repositories/drizzle-telephone-bid-booking.repository.js";
-import { DrizzleTelephoneBookingUserPhoneReader } from "../repositories/drizzle-telephone-booking-user-phone.reader.js";
 import { buildTelephoneBidBookingService } from "./telephone-bid-booking.service.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);

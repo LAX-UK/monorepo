@@ -1,4 +1,5 @@
 import { createDb } from "@auction/db";
+import { DrizzleSessionRepository } from "@auction/persistence";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuth } from "./container/create-auth.js";
@@ -14,7 +15,6 @@ import { createPlatformServices } from "./container/create-platform-services.js"
 import { createRepositories } from "./container/create-repositories.js";
 import { createUserMiscServices } from "./container/create-user-misc-services.js";
 import type { Env } from "./env.js";
-import { DrizzleSessionRepository } from "./repositories/drizzle-session.repository.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 

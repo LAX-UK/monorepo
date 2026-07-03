@@ -1,7 +1,7 @@
+import type { IOnsiteEventCheckInLogRepository } from "@auction/persistence";
 import type { OnsiteEvent, OnsiteEventRsvp } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hashCheckInToken, issueCheckInToken } from "../lib/onsite-event-check-in-token.js";
-import type { IOnsiteEventCheckInLogRepository } from "../repositories/interfaces/onsite-event-check-in-log.repository.js";
 import type {
   IOnsiteEventRsvpRepository,
   OnsiteEventRsvpWithGuest,

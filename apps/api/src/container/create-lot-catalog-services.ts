@@ -1,4 +1,8 @@
 import type { Database } from "@auction/db";
+import {
+  DrizzleLotTransitionGuardReader,
+  createDrizzleLotTransitionRepository,
+} from "@auction/persistence";
 import type { Env } from "../env.js";
 import { LotJobScheduler } from "../jobs/lot-job-scheduler.js";
 import {
@@ -8,8 +12,6 @@ import {
 import { DrizzleConditionReportRequestRepository } from "../repositories/drizzle-condition-report-request.repository.js";
 import { DrizzleLotSoftDeleteGuardReader } from "../repositories/drizzle-lot-soft-delete-guard.reader.js";
 import { DrizzleLotSoftDeleteSideEffects } from "../repositories/drizzle-lot-soft-delete.side-effects.js";
-import { DrizzleLotTransitionGuardReader } from "../repositories/drizzle-lot-transition-guard.reader.js";
-import { createDrizzleLotTransitionRepository } from "../repositories/drizzle-lot-transition.repository.js";
 import { DrizzleSaleSoftDeleteGuardReader } from "../repositories/drizzle-sale-soft-delete-guard.reader.js";
 import { DrizzleSaleSoftDeleteSideEffects } from "../repositories/drizzle-sale-soft-delete.side-effects.js";
 import { SalePressArchiveRepository } from "../repositories/sale-press-archive.repository.js";

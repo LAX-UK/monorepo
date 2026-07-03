@@ -1,2 +1,2 @@
-export type { LotTransitionGuardCounts } from "../repositories/interfaces/lot-transition-guard.reader.js";
-export { DrizzleLotTransitionGuardReader as LotTransitionGuards } from "../repositories/drizzle-lot-transition-guard.reader.js";
+export type { LotTransitionGuardCounts } from "@auction/persistence";
+export { DrizzleLotTransitionGuardReader as LotTransitionGuards } from "@auction/persistence";

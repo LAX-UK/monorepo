@@ -1,11 +1,11 @@
 import type { Database } from "@auction/db";
+import type { IConnectTransferRepository } from "@auction/persistence";
 import type { Payout } from "@auction/types";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../../env.js";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
-import type { IConnectTransferRepository } from "../../repositories/interfaces/connect-transfer.repository.js";
 import type { ILegalEntityConnectRepository } from "../../repositories/interfaces/legal-entity-connect.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";

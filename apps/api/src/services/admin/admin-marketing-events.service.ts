@@ -1,9 +1,9 @@
-import type { adminMarketingEventsReplayBodySchema } from "@auction/validators";
-import type { z } from "zod";
 import type {
   IAdminMarketingEventOutboxRepository,
   MarketingEventOutboxState,
-} from "../../repositories/interfaces/admin-marketing-event-outbox.repository.js";
+} from "@auction/persistence";
+import type { adminMarketingEventsReplayBodySchema } from "@auction/validators";
+import type { z } from "zod";
 
 const FAILED_ALERT_THRESHOLD = 10;
 const FAILED_ALERT_WINDOW_MS = 60 * 60 * 1000;

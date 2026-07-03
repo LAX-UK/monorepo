@@ -1,5 +1,5 @@
+import type { IOperatorPlacementReader } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { IOperatorPlacementReader } from "../../repositories/interfaces/operator-placement.reader.js";
 import { OperatorPlacementPolicy } from "./operator-placement-policy.js";
 
 describe("OperatorPlacementPolicy", () => {

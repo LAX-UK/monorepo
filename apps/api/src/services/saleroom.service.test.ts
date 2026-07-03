@@ -1,5 +1,5 @@
+import type { ISaleroomSessionRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ISaleroomSessionRepository } from "../repositories/interfaces/saleroom-session.repository.js";
 import { SaleroomService } from "./saleroom.service.js";
 
 function mockSessionRepo(

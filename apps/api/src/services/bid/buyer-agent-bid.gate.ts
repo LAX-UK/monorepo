@@ -1,8 +1,8 @@
+import type { IBuyerAgentAuthorisationReader } from "@auction/persistence";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../../lib/errors.js";
 import { memberRequiresSaleRegistration } from "../../lib/sale-registration-policy.js";
-import type { IBuyerAgentAuthorisationReader } from "../../repositories/interfaces/buyer-agent-authorisation.reader.js";
 import { minPositiveCap, parseMoneyCap } from "./bid-cap.util.js";
 
 export class BuyerAgentBidGate {

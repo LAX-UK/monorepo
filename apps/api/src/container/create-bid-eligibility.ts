@@ -1,9 +1,11 @@
 import type { Database } from "@auction/db";
-import { DrizzleBidLotRulesReader } from "../repositories/drizzle-bid-lot-rules.reader.js";
-import { DrizzleBidMembershipReader } from "../repositories/drizzle-bid-membership.reader.js";
-import { DrizzleBuyerAgentAuthorisationReader } from "../repositories/drizzle-buyer-agent-authorisation.reader.js";
-import { DrizzleOperatorPlacementReader } from "../repositories/drizzle-operator-placement.reader.js";
-import { DrizzleSaleRegistrationBidReader } from "../repositories/drizzle-sale-registration-bid.reader.js";
+import {
+  DrizzleBidLotRulesReader,
+  DrizzleBidMembershipReader,
+  DrizzleBuyerAgentAuthorisationReader,
+  DrizzleOperatorPlacementReader,
+  DrizzleSaleRegistrationBidReader,
+} from "@auction/persistence";
 import type { IAmlHoldStore } from "../services/aml/ports.js";
 import { BidEligibilityService } from "../services/bid-eligibility.service.js";
 import { AmlBidGate, NoOpAmlBidGate } from "../services/bid/aml-bid.gate.js";

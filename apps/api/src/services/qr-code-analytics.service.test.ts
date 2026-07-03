@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
-import type { IQrCodeAnalyticsReader } from "../repositories/interfaces/qr-code-analytics.reader.js";
 import type {
+  IQrCodeAnalyticsReader,
   QrCodeDailyAggregates,
   QrCodeRawAggregates,
-} from "../repositories/qr-code-analytics.types.js";
+} from "@auction/persistence";
+import { describe, expect, it } from "vitest";
 import { QrCodeAnalyticsService } from "./qr-code-analytics.service.js";
 
 function fakeReader(overrides: {

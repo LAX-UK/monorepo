@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
+import type { ILegalEntityLifecycleAdminRepository } from "@auction/persistence";
 import type { LegalEntityStatus } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import {
@@ -7,7 +8,6 @@ import {
   nextStatusForLifecycleOp,
 } from "../lib/legal-entity-lifecycle-transitions.js";
 import { enqueueOrgLifecycleMemberEmails } from "../lib/org-lifecycle-notifications.js";
-import type { ILegalEntityLifecycleAdminRepository } from "../repositories/interfaces/legal-entity-lifecycle-admin.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 /** Distinct `domain_events.event_type` per admin lifecycle operation.

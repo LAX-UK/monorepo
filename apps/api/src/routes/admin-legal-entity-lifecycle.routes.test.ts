@@ -1,10 +1,10 @@
+import { DrizzleLegalEntityLifecycleAdminRepository } from "@auction/persistence";
 import * as AuctionTypes from "@auction/types";
 import { Hono } from "hono";
 import { err } from "neverthrow";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
-import { DrizzleLegalEntityLifecycleAdminRepository } from "../repositories/drizzle-legal-entity-lifecycle-admin.repository.js";
 import { AdminLegalEntityLifecycleApplicationService } from "../services/admin/admin-legal-entity-lifecycle-application.service.js";
 import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifecycle-admin.service.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";

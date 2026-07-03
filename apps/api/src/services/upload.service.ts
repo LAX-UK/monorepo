@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
+import type { IUploadPersistenceRepository } from "@auction/persistence";
 import type { UserRole } from "@auction/types";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
-import type { IUploadPersistenceRepository } from "../repositories/interfaces/upload-persistence.repository.js";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
 import type { IUploadAuthorizationService, IUploadService } from "./interfaces/upload-service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";

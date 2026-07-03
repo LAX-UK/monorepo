@@ -1,6 +1,6 @@
+import { DrizzleLegalEntityLifecycleAdminRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { LifecycleAdminOp } from "../lib/legal-entity-lifecycle-transitions.js";
-import { DrizzleLegalEntityLifecycleAdminRepository } from "../repositories/drizzle-legal-entity-lifecycle-admin.repository.js";
 import {
   LegalEntityLifecycleAdminService,
   lifecycleDomainEventTypeForOp,

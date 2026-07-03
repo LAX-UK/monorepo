@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
+import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence";
 import type { ITelephoneBidBookingDetailReader } from "../../repositories/interfaces/telephone-bid-booking-detail.reader.js";
 import type { ITelephoneBidBookingRepository } from "../../repositories/interfaces/telephone-bid-booking.repository.js";
-import type { ITelephoneBookingUserPhoneReader } from "../../repositories/interfaces/telephone-booking-user-phone.reader.js";
 import type { IAmlHoldStore } from "../aml/ports.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IKycService } from "../interfaces/kyc-service.js";

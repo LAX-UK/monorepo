@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
 import { legalEntity, legalEntityMember, saleRegistration, user } from "@auction/db/schema";
+import { isPaddleUniqueViolation } from "@auction/persistence";
 import type { LegalEntityKind, LegalEntityMemberRole } from "@auction/types";
 import { PADDLE_NUMBER_MIN } from "@auction/validators";
 import { and, eq, ilike, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { groupEligibleCheckInEntities } from "../lib/saleroom-check-in-entities.js";
-import { isPaddleUniqueViolation } from "./drizzle-paddle.repository.js";
 
 export type CheckInCandidateEntity = {
   id: string;

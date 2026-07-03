@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
+import type { IImpersonationSessionRepository } from "@auction/persistence";
 import type { IImpersonationDomainEventReader } from "../../repositories/interfaces/impersonation-domain-event.reader.js";
-import type { IImpersonationSessionRepository } from "../../repositories/interfaces/impersonation-session.repository.js";
 import type { AdminUserService } from "../admin-user.service.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { AdminPeopleRouteServices } from "../interfaces/admin-routes/admin-people-routes.js";

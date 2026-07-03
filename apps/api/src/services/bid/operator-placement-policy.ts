@@ -1,5 +1,5 @@
+import type { IOperatorPlacementReader } from "@auction/persistence";
 import { BidError } from "../../lib/errors.js";
-import type { IOperatorPlacementReader } from "../../repositories/interfaces/operator-placement.reader.js";
 import { isOperatorPlacement } from "../interfaces/auction-strategy.js";
 import { parseMoneyCap } from "./bid-cap.util.js";
 

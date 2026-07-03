@@ -1,3 +1,4 @@
+import type { IAdminDisputeCaseEnrichmentReader } from "@auction/persistence";
 import {
   type AdminDisputeCaseRow,
   type DisputeCaseListFilter,
@@ -7,7 +8,6 @@ import {
   foldDisputeCasesFromEvents,
   summarizeDisputeCases,
 } from "@auction/types";
-import type { IAdminDisputeCaseEnrichmentReader } from "../../repositories/interfaces/admin-dispute-case-enrichment.reader.js";
 import type {
   IAdminDisputeCaseQueryService,
   IAdminDomainEventQueryService,
