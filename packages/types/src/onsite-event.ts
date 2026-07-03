@@ -19,6 +19,8 @@ export type OnsiteEvent = {
   arrivalNote: string | null;
   status: OnsiteEventStatus;
   checkInDryRun: boolean;
+  /** Linked onsite/hybrid sale for advance check-in / paddle express lane. */
+  saleId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -30,6 +32,7 @@ export type OnsiteEventListItem = {
   rsvpCloseAt: string | null;
   status: OnsiteEventStatus;
   rsvpCount: number;
+  saleId: string | null;
 };
 
 export type OnsiteEventAdminDetail = {
@@ -43,9 +46,11 @@ export type OnsiteEventAdminDetail = {
   venue: string | null;
   dressCode: string | null;
   arrivalNote: string | null;
+  opsEmail: string | null;
   checkInDryRun: boolean;
   rsvpCount: number;
   checkedInCount: number;
+  saleId: string | null;
 };
 
 export type OnsiteEventPublicConfig = {
@@ -59,6 +64,20 @@ export type OnsiteEventPublicConfig = {
   venue: string | null;
   dressCode: string | null;
   arrivalNote: string | null;
+  opsEmail: string | null;
+  saleId: string | null;
+  linkedSaleTitle: string | null;
+  status: "published" | "closed";
+};
+
+export type OnsiteEventPublicListItem = {
+  slug: string;
+  title: string;
+  startsAt: string | null;
+  venue: string | null;
+  dressCode: string | null;
+  micrositeUrl: string | null;
+  deliveryMode: "onsite" | "hybrid" | null;
 };
 
 export type OnsiteEventRsvp = {
@@ -170,6 +189,8 @@ export type OnsiteEventPassView = {
   qrImageUrl: string;
   checkedInAt: string | null;
   eventClosed: boolean;
+  /** Assigned in-room paddle when the linked sale has checked the guest in. */
+  paddleNumber: number | null;
 };
 
 export type OnsiteEventSubmitRsvpResponse = {

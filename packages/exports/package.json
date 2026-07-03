@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./providers": {
+      "types": "./dist/providers/index.d.ts",
+      "default": "./dist/providers/index.js"
     }
   },
   "scripts": {
@@ -14,6 +18,13 @@
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@auction/db": "workspace:*",
+    "@auction/persistence": "workspace:*",
+    "@auction/types": "workspace:*",
+    "@auction/validators": "workspace:*",
+    "drizzle-orm": "^0.41.0"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",

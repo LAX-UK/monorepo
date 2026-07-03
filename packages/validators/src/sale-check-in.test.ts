@@ -18,12 +18,16 @@ describe("adminSaleroomCheckInBodySchema", () => {
     }
   });
 
-  it("rejects non-UUID buyerLegalEntityId", () => {
+  it("defaults assignPaddle to true and accepts mark-present false", () => {
     const result = adminSaleroomCheckInBodySchema.safeParse({
       userId: "usr_8sK2xQ1aB9c",
-      buyerLegalEntityId: "not-a-uuid",
+      buyerLegalEntityId: ENTITY_ID,
+      assignPaddle: false,
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.assignPaddle).toBe(false);
+    }
   });
 });

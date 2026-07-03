@@ -1,32 +1,19 @@
+import {
+  DATA_EXPORT_QUEUE_NAME,
+  DEAD_LETTER_QUEUE_NAME,
+  EMAIL_QUEUE_NAME,
+  LOT_LIFECYCLE_QUEUE_NAME,
+  PROCESS_IMAGE_QUEUE_NAME,
+  QR_CODE_SCAN_QUEUE_NAME,
+  VALIDATE_UPLOAD_QUEUE_NAME,
+  WEBHOOK_EVENTS_QUEUE_NAME,
+} from "./queue-names.js";
+import { MAINTENANCE_QUEUE_REGISTRY } from "./registries/maintenance.js";
+import { MARKETING_QUEUE_REGISTRY } from "./registries/marketing.js";
+import { PAYOUT_QUEUE_REGISTRY } from "./registries/payout.js";
 import type { QueueDefinition, QueueRuntimeEnv } from "./types.js";
 
-/** Shared dead-letter queue for exhausted retries (not a per-queue `-dlq` suffix). */
-export const DEAD_LETTER_QUEUE_NAME = "dead-letter" as const;
-
-export const LOT_LIFECYCLE_QUEUE_NAME = "lot-lifecycle" as const;
-export const EMAIL_QUEUE_NAME = "email" as const;
-export const VALIDATE_UPLOAD_QUEUE_NAME = "validate-upload" as const;
-export const PROCESS_IMAGE_QUEUE_NAME = "process-image" as const;
-export const IMAGE_CLEANUP_QUEUE_NAME = "image-cleanup" as const;
-export const MARKETING_SYNC_QUEUE_NAME = "marketing-sync" as const;
-export const MARKETING_EVENTS_QUEUE_NAME = "marketing-events" as const;
-export const MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME = "marketing-events-capi-batch" as const;
-export const MARKETING_OUTBOX_POLLER_QUEUE_NAME = "marketing-outbox-poller" as const;
-export const PURGE_MARKETING_CLICK_IDS_QUEUE_NAME = "purge-marketing-click-ids" as const;
-export const QR_CODE_SCAN_QUEUE_NAME = "qr-code-scan" as const;
-export const PURGE_QR_CODE_SCANS_QUEUE_NAME = "purge-qr-code-scans" as const;
-export const WEBHOOK_EVENTS_QUEUE_NAME = "webhook-events" as const;
-export const GC_PENDING_UPLOADS_QUEUE_NAME = "gc-pending-uploads" as const;
-export const IMPERSONATION_SWEEPER_QUEUE_NAME = "impersonation-sweeper" as const;
-export const PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME = "purge-expired-verifications" as const;
-export const PURGE_SOFT_DELETED_USERS_QUEUE_NAME = "purge-soft-deleted-users" as const;
-export const PAYOUT_SETTLEMENT_QUEUE_NAME = "payout-settlement" as const;
-export const PAYOUT_STATEMENTS_QUEUE_NAME = "payout-statements" as const;
-export const LEGAL_ENTITY_ARCHIVE_QUEUE_NAME = "legal-entity-archive" as const;
-export const DATA_EXPORT_QUEUE_NAME = "data-export" as const;
-
-const marketingEnabled = (env: QueueRuntimeEnv) => env.marketingEventsEnabled;
-const cronEnabled = (env: QueueRuntimeEnv) => Boolean(env.cronInternalSecret?.trim());
+export * from "./queue-names.js";
 
 /**
  * Single source of truth for BullMQ queue metadata.
@@ -105,118 +92,6 @@ export const QUEUE_REGISTRY = {
     },
     description: "Extract image dimensions and LQIP after upload validation",
   },
-  [IMAGE_CLEANUP_QUEUE_NAME]: {
-    producers: ["api"],
-    consumer: "worker",
-    criticality: "background",
-    pauseOrder: null,
-    heartbeatKey: "image-cleanup",
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: true,
-    repeatable: false,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 200,
-      removeOnFail: 500,
-    },
-    description: "Orphan object deletion",
-  },
-  [MARKETING_SYNC_QUEUE_NAME]: {
-    producers: ["api"],
-    consumer: "worker",
-    criticality: "normal",
-    pauseOrder: null,
-    heartbeatKey: "marketing-sync",
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: true,
-    repeatable: false,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 200,
-      removeOnFail: 500,
-    },
-    description: "Newsletter signup → Zoho Campaigns",
-  },
-  [MARKETING_EVENTS_QUEUE_NAME]: {
-    producers: ["api"],
-    consumer: "worker",
-    criticality: "high",
-    pauseOrder: null,
-    heartbeatKey: "marketing-events",
-    dlq: true,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: false,
-    enabledWhen: marketingEnabled,
-    defaultJobOptions: {
-      attempts: 10,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 1000,
-      removeOnFail: 5000,
-    },
-    description: "Marketing event publish (sGTM + Meta CAPI)",
-  },
-  [MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "normal",
-    pauseOrder: null,
-    heartbeatKey: null,
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: true,
-    repeatable: false,
-    enabledWhen: marketingEnabled,
-    defaultJobOptions: {
-      attempts: 10,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 1000,
-      removeOnFail: 5000,
-    },
-    description: "Meta CAPI batch collector",
-  },
-  [MARKETING_OUTBOX_POLLER_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "normal",
-    pauseOrder: null,
-    heartbeatKey: null,
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    enabledWhen: marketingEnabled,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 10,
-      removeOnFail: 100,
-    },
-    description: "Re-enqueue stuck marketing outbox rows",
-  },
-  [PURGE_MARKETING_CLICK_IDS_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "background",
-    pauseOrder: null,
-    heartbeatKey: null,
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    enabledWhen: marketingEnabled,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 5,
-      removeOnFail: 50,
-    },
-    description: "Purge stale marketing click IDs and outbox",
-  },
   [QR_CODE_SCAN_QUEUE_NAME]: {
     producers: ["api"],
     consumer: "worker",
@@ -235,24 +110,6 @@ export const QUEUE_REGISTRY = {
     },
     description: "QR code scan analytics write-behind",
   },
-  [PURGE_QR_CODE_SCANS_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "background",
-    pauseOrder: null,
-    heartbeatKey: null,
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 5,
-      removeOnFail: 50,
-    },
-    description: "Daily purge for raw QR scan analytics",
-  },
   [WEBHOOK_EVENTS_QUEUE_NAME]: {
     producers: [],
     consumer: "worker",
@@ -270,133 +127,6 @@ export const QUEUE_REGISTRY = {
       removeOnFail: 500,
     },
     description: "Webhook ingest (Phase 2 — no producer yet)",
-  },
-  [GC_PENDING_UPLOADS_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "background",
-    pauseOrder: null,
-    heartbeatKey: "gc-pending-uploads",
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 10,
-      removeOnFail: 50,
-    },
-    description: "Hourly GC for pending uploads",
-  },
-  [IMPERSONATION_SWEEPER_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "background",
-    pauseOrder: 4,
-    heartbeatKey: "impersonation-sweeper",
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 10,
-      removeOnFail: 50,
-    },
-    description: "Sweep stale impersonation sessions",
-  },
-  [PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "background",
-    pauseOrder: null,
-    heartbeatKey: "purge-expired-verifications",
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 10,
-      removeOnFail: 50,
-    },
-    description: "Purge expired KYC verifications",
-  },
-  [PURGE_SOFT_DELETED_USERS_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "background",
-    pauseOrder: null,
-    heartbeatKey: null,
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 10,
-      removeOnFail: 50,
-    },
-    description: "Weekly purge of soft-deleted users",
-  },
-  [PAYOUT_SETTLEMENT_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "high",
-    pauseOrder: 1,
-    heartbeatKey: "payout-settlement",
-    dlq: true,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    enabledWhen: cronEnabled,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 10_000 },
-      removeOnComplete: 50,
-      removeOnFail: 200,
-    },
-    description: "Weekly bulk payout settlement cron",
-  },
-  [PAYOUT_STATEMENTS_QUEUE_NAME]: {
-    producers: ["api"],
-    consumer: "worker",
-    criticality: "high",
-    pauseOrder: 2,
-    heartbeatKey: "payout-statements",
-    dlq: true,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: false,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 4000 },
-      removeOnComplete: 50,
-      removeOnFail: 200,
-    },
-    description: "Generate payout statement PDFs",
-  },
-  [LEGAL_ENTITY_ARCHIVE_QUEUE_NAME]: {
-    producers: ["api"],
-    consumer: "worker",
-    criticality: "high",
-    pauseOrder: 3,
-    heartbeatKey: "legal-entity-archive",
-    dlq: true,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: false,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    },
-    description: "Legal entity archive cascade",
   },
   [DATA_EXPORT_QUEUE_NAME]: {
     producers: ["api"],
@@ -434,6 +164,9 @@ export const QUEUE_REGISTRY = {
     },
     description: "Exhausted-retry jobs for inspection and replay",
   },
+  ...MARKETING_QUEUE_REGISTRY,
+  ...MAINTENANCE_QUEUE_REGISTRY,
+  ...PAYOUT_QUEUE_REGISTRY,
 } as const satisfies Record<string, QueueDefinition>;
 
 export type QueueName = keyof typeof QUEUE_REGISTRY;

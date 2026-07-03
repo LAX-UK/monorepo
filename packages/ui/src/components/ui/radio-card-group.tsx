@@ -46,7 +46,10 @@ export function RadioCardGroup({
       aria-describedby={error ? errorId : undefined}
       className={className}
     >
-      <legend id={groupId} className={hideLegend ? "sr-only" : "mb-3 font-label text-sm font-medium text-on-surface"}>
+      <legend
+        id={groupId}
+        className={hideLegend ? "sr-only" : "mb-3 font-label text-sm font-medium text-on-surface"}
+      >
         {legend}
       </legend>
       <RadioGroup value={value} onValueChange={onValueChange} className="flex flex-col gap-3">
@@ -70,9 +73,13 @@ export function RadioCardGroup({
                 ref={index === 0 ? inputRef : undefined}
               />
               <span className="flex min-w-0 flex-col gap-1">
-                <span className="font-body text-sm font-medium text-on-surface">{option.label}</span>
+                <span className="font-body text-sm font-medium text-on-surface">
+                  {option.label}
+                </span>
                 {option.description ? (
-                  <span className="font-body text-xs text-on-surface-variant">{option.description}</span>
+                  <span className="font-body text-xs text-on-surface-variant">
+                    {option.description}
+                  </span>
                 ) : null}
               </span>
             </Label>

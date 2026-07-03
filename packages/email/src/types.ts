@@ -1,456 +1,57 @@
-import type { BillToContext } from "@auction/types";
+import type { AdminTemplateVars } from "./templates/types/admin.js";
+import { adminTemplates } from "./templates/types/admin.js";
+import type { AuthTemplateVars } from "./templates/types/auth.js";
+import { authTemplates } from "./templates/types/auth.js";
+import type { BiddingTemplateVars } from "./templates/types/bidding.js";
+import { biddingTemplates } from "./templates/types/bidding.js";
+import type { ComplianceTemplateVars } from "./templates/types/compliance.js";
+import { complianceTemplates } from "./templates/types/compliance.js";
+import type { InviteTemplateVars } from "./templates/types/invite.js";
+import { inviteTemplates } from "./templates/types/invite.js";
+import type { LegalEntityTemplateVars } from "./templates/types/legal-entity.js";
+import { legalEntityTemplates } from "./templates/types/legal-entity.js";
+import type { PaymentTemplateVars } from "./templates/types/payment.js";
+import { paymentTemplates } from "./templates/types/payment.js";
+import type { PayoutTemplateVars } from "./templates/types/payout.js";
+import { payoutTemplates } from "./templates/types/payout.js";
+import type { RecipientResolution, RenderedEmail } from "./templates/types/shared.js";
+import type { SubmissionTemplateVars } from "./templates/types/submission.js";
+import { submissionTemplates } from "./templates/types/submission.js";
+
+export type { RecipientResolution, RenderedEmail };
 
 export const templateNames = [
-  "account-suspended",
-  "welcome",
-  "verify-email",
-  "account-activation",
-  "sign-in-link",
-  "reset-password",
-  "oauth-account-reset-attempt",
-  "password-changed",
-  "2fa-enabled",
-  "2fa-disabled",
-  "social-account-linked",
-  "social-account-unlinked",
-  "new-device-login",
-  "password-changed-elsewhere",
-  "password-changed-sessions-not-revoked",
-  "change-email",
-  "invite",
-  "bid-outbid",
-  "lot-won",
-  "lot-ended-seller",
-  "payment-receipt",
-  "payment-invoice",
-  "admin-impersonation-notice",
-  "payout-transfer-failed-notice",
-  "payout-transfer-blocked-notice",
-  "payment-refund-notice",
-  "payment-manual-review-buyer-notice",
-  "payment-manual-review-admin-notice",
-  "payout-initiated-notice",
-  "dispute-opened-notice",
-  "dispute-closed-notice",
-  "proxy-cancelled-notice",
-  "lot-voided-notice",
-  "payout-clawback-required-notice",
-  "legal-entity-archived-notice",
-  "legal-entity-submitted-admin-notice",
-  "legal-entity-approved-notice",
-  "legal-entity-rejected-notice",
-  "legal-entity-docs-requested-notice",
-  "lot-voided-anti-shilling-admin",
-  "kyc-resubmission-required",
-  "aml-compliance-review-notice",
-  "submission-approved",
-  "submission-converted",
-  "submission-rejected",
-  "submission-draft-reminder",
-  "source-of-funds-buyer-notice",
-  "source-of-funds-documents-requested",
-  "source-of-funds-approved",
-  "source-of-funds-rejected",
+  ...authTemplates.names,
+  ...inviteTemplates.names,
+  ...biddingTemplates.names,
+  ...paymentTemplates.names,
+  ...payoutTemplates.names,
+  ...legalEntityTemplates.names,
+  ...submissionTemplates.names,
+  ...complianceTemplates.names,
+  ...adminTemplates.names,
 ] as const;
 
 export type TemplateName = (typeof templateNames)[number];
 
-export type TemplateVarsByName = {
-  "account-suspended": {
-    userName?: string | null;
-    supportContactEmail: string;
-  };
-  welcome: {
-    userName?: string | null;
-  };
-  "verify-email": {
-    verificationUrl: string;
-    userName?: string | null;
-  };
-  "account-activation": {
-    activationUrl: string;
-    userName?: string | null;
-    expirationMinutes: number;
-  };
-  "sign-in-link": {
-    signInUrl: string;
-    userName?: string | null;
-    expirationMinutes: number;
-  };
-  "reset-password": {
-    resetLink: string;
-    userEmail: string;
-    userName?: string | null;
-    expirationMinutes: number;
-  };
-  /** Sent when a forgot-password is requested for an account that exists
-   * but has no credential row (i.e. was created via Google/Apple). The
-   * privacy contract requires the public response to be identical to other
-   * branches; tailored guidance is delivered only to the inbox owner.
-   */
-  "oauth-account-reset-attempt": {
-    provider: "google" | "apple";
-    signInUrl: string;
-    settingsUrl: string;
-    userEmail: string;
-    userName?: string | null;
-  };
-  "password-changed": {
-    userName?: string | null;
-  };
-  "2fa-enabled": {
-    userName?: string | null;
-  };
-  "2fa-disabled": {
-    userName?: string | null;
-  };
-  "social-account-linked": {
-    provider: "google" | "apple";
-    userName?: string | null;
-  };
-  "social-account-unlinked": {
-    provider: "google" | "apple";
-    userName?: string | null;
-  };
-  "new-device-login": {
-    userName?: string | null;
-    whenDisplay?: string | null;
-    deviceSummary?: string | null;
-  };
-  "password-changed-elsewhere": {
-    userName?: string | null;
-  };
-  "password-changed-sessions-not-revoked": {
-    userName?: string | null;
-    sessionsSettingsUrl: string;
-  };
-  "change-email": {
-    confirmationUrl: string;
-    oldEmail: string;
-    newEmail: string;
-    userName?: string | null;
-    /** Which inbox received this message — copy differs for current vs new address. */
-    recipient: "current" | "new";
-  };
-  invite: {
-    inviteUrl: string;
-    inviterName?: string | null;
-    inviteeEmail: string;
-    role?: string | null;
-    /** When inviting platform staff, internal specialization label for copy. */
-    staffRole?: string | null;
-    expiresAt?: string | null;
-  };
-  "bid-outbid": OptOutableLotVars & {
-    currentBid: string;
-  };
-  "lot-won": OptOutableLotVars & {
-    winningBid: string;
-    paymentUrl?: string | null;
-    hammerPrice?: string;
-    totalDue?: string;
-  };
-  "lot-ended-seller": OptOutableLotVars & {
-    saleUrl?: string | null;
-  };
-  "payment-receipt": {
-    userName?: string | null;
-    lotTitle: string;
-    amount: string;
-    receiptUrl?: string | null;
-  };
-  "payment-invoice": {
-    userName?: string | null;
-    invoiceNumber: string;
-    amount: string;
-    invoiceUrl: string;
-    billTo: BillToContext;
-    dueDate?: string;
-  };
-  "admin-impersonation-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    adminDisplayName: string;
-    windowEndDisplay: string;
-    supportContactEmail: string;
-  };
-  /** notify finance-role members when a payout transfer fails after retries. */
-  "payout-transfer-failed-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    payoutId: string;
-    payoutAmount: string;
-    payoutCurrency: string;
-    failureReason: string;
-    supportContactEmail: string;
-    adminPayoutsUrl: string;
-    sellerPayoutSetupUrl?: string | null;
-  };
-  /** notify finance-role members when a payout cannot start because Connect is not payout-ready. */
-  "payout-transfer-blocked-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    payoutId: string;
-    payoutAmount: string;
-    payoutCurrency: string;
-    blockReason: string;
-    supportContactEmail: string;
-    adminPayoutsUrl: string;
-  };
-  /** notify seller entity members when a payment is refunded or dispute is lost. */
-  "payment-refund-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    lotTitle: string;
-    lotReference?: string | null;
-    refundAmount: string;
-    refundCurrency: string;
-    /** 'refund' | 'dispute_lost' */
-    eventKind: string;
-    /** Optional reason from Stripe (e.g. dispute reason). */
-    reason?: string | null;
-    supportContactEmail: string;
-  };
-  "payment-manual-review-buyer-notice": {
-    userName?: string | null;
-    lotTitle: string;
-    lotReference?: string | null;
-    supportContactEmail: string;
-  };
-  "payment-manual-review-admin-notice": {
-    paymentId: string;
-    lotTitle: string;
-    lotReference?: string | null;
-    sellerEntityName: string;
-    amount: string;
-    currency: string;
-    adminReviewUrl: string;
-  };
-  "payout-initiated-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    payoutId: string;
-    amount: string;
-    currency: string;
-    adminPayoutsUrl: string;
-  };
-  "dispute-opened-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    amount: string;
-    currency: string;
-    reason?: string | null;
-    supportContactEmail: string;
-  };
-  "dispute-closed-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    amount: string;
-    currency: string;
-    outcome: string;
-    supportContactEmail: string;
-  };
-  "proxy-cancelled-notice": {
-    userName?: string | null;
-    lotTitle: string;
-    reason: string;
-    supportContactEmail: string;
-  };
-  "lot-voided-notice": {
-    recipientFirstName?: string | null;
-    lotTitle: string;
-    reason: string;
-    supportContactEmail: string;
-  };
-  "payout-clawback-required-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    payoutId: string;
-    netAmount: string;
-    currency: string;
-    adminPayoutsUrl: string;
-  };
-  "legal-entity-archived-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    legalEntityId: string;
-    dashboardUrl: string;
-    supportContactEmail: string;
-  };
-  "legal-entity-submitted-admin-notice": {
-    entityName: string;
-    legalEntityId: string;
-    adminOnboardingUrl: string;
-    supportContactEmail: string;
-  };
-  "legal-entity-approved-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    legalEntityId: string;
-    dashboardUrl: string;
-    connectUrl: string;
-    supportContactEmail: string;
-  };
-  "legal-entity-rejected-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    legalEntityId: string;
-    rejectionReason?: string | null;
-    dashboardUrl: string;
-    supportContactEmail: string;
-  };
-  "legal-entity-docs-requested-notice": {
-    recipientFirstName?: string | null;
-    entityName: string;
-    legalEntityId: string;
-    docsUrl: string;
-    supportContactEmail: string;
-  };
-  "lot-voided-anti-shilling-admin": {
-    lotTitle: string;
-    lotId: string;
-    adminLotUrl: string;
-    supportContactEmail: string;
-  };
-  "kyc-resubmission-required": {
-    userName?: string | null;
-    issueDetail?: string | null;
-    verifyUrl: string;
-  };
-  /**
-   * MLRO / compliance escalation for a sanctions/PEP/adverse-media match or a
-   * Source-of-Funds case requiring review. Deliberately PII-light (references +
-   * a short detail line); full context lives behind the admin review queue.
-   */
-  "aml-compliance-review-notice": {
-    recipientFirstName?: string | null;
-    /** "screening" (watchlist match) or "source_of_funds". */
-    kind: "screening" | "source_of_funds";
-    /** Screening id or Source-of-Funds case id. */
-    caseReference: string;
-    detail: string;
-    adminReviewUrl: string;
-    supportContactEmail: string;
-  };
-  "submission-approved": {
-    userName?: string | null;
-    submissionTitle: string;
-    submissionUrl: string;
-    unsubscribeUrl: string;
-  };
-  "submission-converted": {
-    userName?: string | null;
-    submissionTitle: string;
-    submissionUrl: string;
-    unsubscribeUrl: string;
-  };
-  "submission-rejected": {
-    userName?: string | null;
-    submissionTitle: string;
-    submissionUrl: string;
-    resubmitUrl: string;
-    reasonSummary?: string | null;
-    unsubscribeUrl: string;
-  };
-  "submission-draft-reminder": {
-    userName?: string | null;
-    submissionTitle: string;
-    submissionUrl: string;
-    staleDays: number;
-    unsubscribeUrl: string;
-  };
-  "source-of-funds-buyer-notice": {
-    userName?: string | null;
-    supportContactEmail: string;
-    settlementSummary?: string | null;
-  };
-  "source-of-funds-documents-requested": {
-    userName?: string | null;
-    documentTypes: string[];
-    requestNote?: string | null;
-    uploadUrl: string;
-    settlementSummary?: string | null;
-    supportContactEmail: string;
-  };
-  "source-of-funds-approved": {
-    userName?: string | null;
-    settlementSummary?: string | null;
-    dashboardUrl: string;
-    supportContactEmail: string;
-  };
-  "source-of-funds-rejected": {
-    userName?: string | null;
-    settlementSummary?: string | null;
-    dashboardUrl: string;
-    supportContactEmail: string;
-  };
-};
-
-export type RecipientResolution = "live" | "snapshot";
+export type TemplateVarsByName = AuthTemplateVars &
+  InviteTemplateVars &
+  BiddingTemplateVars &
+  PaymentTemplateVars &
+  PayoutTemplateVars &
+  LegalEntityTemplateVars &
+  SubmissionTemplateVars &
+  ComplianceTemplateVars &
+  AdminTemplateVars;
 
 export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
-  "account-suspended": "live",
-  welcome: "live",
-  "verify-email": "live",
-  "account-activation": "live",
-  "sign-in-link": "live",
-  "reset-password": "live",
-  "oauth-account-reset-attempt": "live",
-  "password-changed": "live",
-  "2fa-enabled": "live",
-  "2fa-disabled": "live",
-  "social-account-linked": "live",
-  "social-account-unlinked": "live",
-  "new-device-login": "live",
-  "password-changed-elsewhere": "live",
-  "password-changed-sessions-not-revoked": "live",
-  "change-email": "snapshot",
-  /** Platform invites target addresses with no user row yet — worker must read `to_snapshot`. */
-  invite: "snapshot",
-  "bid-outbid": "live",
-  "lot-won": "live",
-  "lot-ended-seller": "live",
-  "payment-receipt": "live",
-  "payment-invoice": "live",
-  "admin-impersonation-notice": "live",
-  "payout-transfer-failed-notice": "live",
-  "payout-transfer-blocked-notice": "live",
-  "payment-refund-notice": "live",
-  "payment-manual-review-buyer-notice": "live",
-  "payment-manual-review-admin-notice": "live",
-  "payout-initiated-notice": "live",
-  "dispute-opened-notice": "live",
-  "dispute-closed-notice": "live",
-  "proxy-cancelled-notice": "live",
-  "lot-voided-notice": "live",
-  "payout-clawback-required-notice": "live",
-  "legal-entity-archived-notice": "live",
-  "legal-entity-submitted-admin-notice": "live",
-  "legal-entity-approved-notice": "live",
-  "legal-entity-rejected-notice": "live",
-  "legal-entity-docs-requested-notice": "live",
-  "lot-voided-anti-shilling-admin": "live",
-  "kyc-resubmission-required": "live",
-  "aml-compliance-review-notice": "live",
-  "submission-approved": "live",
-  "submission-converted": "live",
-  "submission-rejected": "live",
-  "submission-draft-reminder": "live",
-  "source-of-funds-buyer-notice": "live",
-  "source-of-funds-documents-requested": "live",
-  "source-of-funds-approved": "live",
-  "source-of-funds-rejected": "live",
-};
-
-export type RenderedEmail = {
-  subject: string;
-  html: string;
-  text: string;
-};
-
-type OptOutableLotVars = {
-  userName?: string | null;
-  lotTitle: string;
-  lotUrl: string;
-  unsubscribeUrl: string;
+  ...authTemplates.recipientResolution,
+  ...inviteTemplates.recipientResolution,
+  ...biddingTemplates.recipientResolution,
+  ...paymentTemplates.recipientResolution,
+  ...payoutTemplates.recipientResolution,
+  ...legalEntityTemplates.recipientResolution,
+  ...submissionTemplates.recipientResolution,
+  ...complianceTemplates.recipientResolution,
+  ...adminTemplates.recipientResolution,
 };
