@@ -1,9 +1,6 @@
-import type { Database } from "@auction/db";
-import { lot, payment, sale } from "@auction/db/schema";
-import { and, eq, inArray, notExists, sql } from "drizzle-orm";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import { mapLotRow, mapSaleRow } from "../../lib/mappers.js";
-import { ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES } from "./active-settlement-statuses.js";
+import type { ISourceOfFundsSettlementReader } from "../../repositories/interfaces/source-of-funds-settlement.reader.js";
 
 export type SourceOfFundsSettlementItem = {
   kind: "payment" | "won_unpaid";
@@ -44,29 +41,13 @@ function buildSummaryFromItems(
 }
 
 export class SourceOfFundsSettlementReadService {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly reader: ISourceOfFundsSettlementReader) {}
 
   async listSettlementItemsForBuyer(userId: string): Promise<SourceOfFundsSettlementItem[]> {
-    const paymentRows = await this.db
-      .select({
-        paymentId: payment.id,
-        paymentStatus: payment.status,
-        amount: payment.amount,
-        lotId: lot.id,
-        lotTitle: lot.title,
-        lotNumber: lot.lotNumber,
-        saleId: sale.id,
-        saleTitle: sale.title,
-      })
-      .from(payment)
-      .innerJoin(lot, eq(payment.lotId, lot.id))
-      .innerJoin(sale, eq(lot.saleId, sale.id))
-      .where(
-        and(
-          eq(payment.buyerId, userId),
-          inArray(payment.status, [...ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES]),
-        ),
-      );
+    const [paymentRows, wonUnpaidRows] = await Promise.all([
+      this.reader.fetchActivePaymentSettlementRows(userId),
+      this.reader.fetchWonUnpaidLotSaleRows(userId),
+    ]);
 
     const paymentItems: SourceOfFundsSettlementItem[] = paymentRows.map((row) => ({
       kind: "payment" as const,
@@ -79,22 +60,6 @@ export class SourceOfFundsSettlementReadService {
       paymentId: row.paymentId,
       paymentStatus: row.paymentStatus,
     }));
-
-    const wonUnpaidRows = await this.db
-      .select({
-        lotRow: lot,
-        saleRow: sale,
-      })
-      .from(lot)
-      .innerJoin(sale, eq(lot.saleId, sale.id))
-      .where(
-        and(
-          eq(lot.winnerId, userId),
-          notExists(
-            this.db.select({ id: payment.id }).from(payment).where(eq(payment.lotId, lot.id)),
-          ),
-        ),
-      );
 
     const wonUnpaidItems: SourceOfFundsSettlementItem[] = wonUnpaidRows.map((row) => {
       const mappedLot = mapLotRow(row.lotRow);
@@ -126,40 +91,10 @@ export class SourceOfFundsSettlementReadService {
       out.set(userId, { settlementSummary: null, settlementItemCount: 0 });
     }
 
-    const paymentRows = await this.db
-      .select({
-        buyerId: payment.buyerId,
-        amount: payment.amount,
-        lotTitle: lot.title,
-        lotNumber: lot.lotNumber,
-        saleTitle: sale.title,
-      })
-      .from(payment)
-      .innerJoin(lot, eq(payment.lotId, lot.id))
-      .innerJoin(sale, eq(lot.saleId, sale.id))
-      .where(
-        and(
-          inArray(payment.buyerId, uniqueIds),
-          inArray(payment.status, [...ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES]),
-        ),
-      );
-
-    const wonUnpaidRows = await this.db
-      .select({
-        winnerId: lot.winnerId,
-        lotRow: lot,
-        saleRow: sale,
-      })
-      .from(lot)
-      .innerJoin(sale, eq(lot.saleId, sale.id))
-      .where(
-        and(
-          inArray(lot.winnerId, uniqueIds),
-          notExists(
-            this.db.select({ id: payment.id }).from(payment).where(eq(payment.lotId, lot.id)),
-          ),
-        ),
-      );
+    const [paymentRows, wonUnpaidRows] = await Promise.all([
+      this.reader.fetchBatchPaymentSettlementRows(uniqueIds),
+      this.reader.fetchBatchWonUnpaidLotSaleRows(uniqueIds),
+    ]);
 
     const itemsByUser = new Map<string, SourceOfFundsSettlementItem[]>();
 
@@ -204,18 +139,7 @@ export class SourceOfFundsSettlementReadService {
   }
 
   async sumActivePaymentExposurePence(userId: string): Promise<number> {
-    const [row] = await this.db
-      .select({
-        totalPence: sql<number>`COALESCE(ROUND(SUM(${payment.amount}) * 100), 0)::bigint`,
-      })
-      .from(payment)
-      .where(
-        and(
-          eq(payment.buyerId, userId),
-          inArray(payment.status, [...ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES]),
-        ),
-      );
-    return Number(row?.totalPence ?? 0);
+    return this.reader.sumActivePaymentExposurePence(userId);
   }
 
   async listBlockedPaymentsForBuyer(userId: string): Promise<
@@ -226,16 +150,7 @@ export class SourceOfFundsSettlementReadService {
       lotNumber: number | null;
     }>
   > {
-    const rows = await this.db
-      .select({
-        paymentId: payment.id,
-        lotId: lot.id,
-        lotTitle: lot.title,
-        lotNumber: lot.lotNumber,
-      })
-      .from(payment)
-      .innerJoin(lot, eq(payment.lotId, lot.id))
-      .where(and(eq(payment.buyerId, userId), eq(payment.status, "requires_manual_review")));
+    const rows = await this.reader.fetchBlockedPaymentsForBuyer(userId);
     return rows.map((r) => ({
       paymentId: r.paymentId,
       lotId: r.lotId,

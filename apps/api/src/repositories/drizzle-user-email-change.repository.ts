@@ -4,7 +4,6 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import type { IUserEmailChangeRepository } from "./interfaces/user-email-change.repository.js";
 import {
   EmailChangeConfirmError,
-  type EmailChangeConfirmFailureKind,
   type EmailChangeConfirmPayload,
 } from "./user-email-change.types.js";
 

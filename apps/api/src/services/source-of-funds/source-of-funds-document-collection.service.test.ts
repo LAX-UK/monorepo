@@ -7,11 +7,21 @@ import {
   SourceOfFundsDocumentCollectionService,
   clampStaffPreviewContentType,
 } from "./source-of-funds-document-collection.service.js";
+import type { SourceOfFundsSettlementReadService } from "./source-of-funds-settlement-read.service.js";
 import type {
   ISourceOfFundsRepository,
   SourceOfFundsCase,
   SourceOfFundsDocumentRow,
 } from "./source-of-funds.types.js";
+
+function makeSettlementReadMock(): SourceOfFundsSettlementReadService {
+  return {
+    summarizeForBuyersBatch: vi.fn().mockResolvedValue(new Map()),
+    listSettlementItemsForBuyer: vi.fn().mockResolvedValue([]),
+    sumActivePaymentExposurePence: vi.fn().mockResolvedValue(0),
+    listBlockedPaymentsForBuyer: vi.fn().mockResolvedValue([]),
+  } as unknown as SourceOfFundsSettlementReadService;
+}
 
 function makeCase(
   partial: Partial<SourceOfFundsCase> & Pick<SourceOfFundsCase, "id" | "userId">,
@@ -74,6 +84,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       null,
       {} as never,
       new PerRequestSigningPolicy(90),
+      makeSettlementReadMock(),
     );
 
     await expect(
@@ -124,6 +135,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       null,
       {} as never,
       new PerRequestSigningPolicy(90),
+      makeSettlementReadMock(),
     );
 
     await service.attachDocument({
@@ -176,6 +188,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       null,
       {} as never,
       new PerRequestSigningPolicy(90),
+      makeSettlementReadMock(),
     );
 
     await service.attachDocument({
@@ -210,6 +223,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       null,
       {} as never,
       new PerRequestSigningPolicy(90),
+      makeSettlementReadMock(),
     );
 
     await expect(
@@ -249,6 +263,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       { publish } as never,
       { createPresignedGet } as never,
       new PerRequestSigningPolicy(90),
+      makeSettlementReadMock(),
     );
 
     const result = await service.getStaffDownloadUrl({
@@ -294,6 +309,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       { publish: vi.fn() } as never,
       { createPresignedGet } as never,
       new PerRequestSigningPolicy(90),
+      makeSettlementReadMock(),
     );
 
     const result = await service.getStaffDownloadUrl({

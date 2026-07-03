@@ -29,11 +29,15 @@ export class QrCodeAnalyticsService {
     qrCodeId: string,
     query: ResolvedQrCodeAnalyticsQuery,
   ): Promise<QrCodeDetailedAnalytics> {
-    const { total, trend: trendRows, device: deviceRows, country: countryRows } =
-      await this.reader.fetchDailyAggregates(qrCodeId, {
-        from: query.from,
-        to: query.to,
-      });
+    const {
+      total,
+      trend: trendRows,
+      device: deviceRows,
+      country: countryRows,
+    } = await this.reader.fetchDailyAggregates(qrCodeId, {
+      from: query.from,
+      to: query.to,
+    });
 
     const trend = fillTrendGaps(
       trendRows.map((row) => ({

@@ -1,14 +1,12 @@
-import type { Database } from "@auction/db";
-import { sourceOfFunds, user } from "@auction/db/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
 import type {
   AdminSourceOfFundsDetailDto,
   AdminSourceOfFundsListRowDto,
 } from "../../admin/admin-route-dtos.js";
 import type { ISourceOfFundsDocumentReviewRepository } from "../../repositories/drizzle-source-of-funds-document-review.repository.js";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
+import type { IAdminUserReader } from "../interfaces/admin-user.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
-import { SourceOfFundsSettlementReadService } from "../source-of-funds/source-of-funds-settlement-read.service.js";
+import type { SourceOfFundsSettlementReadService } from "../source-of-funds/source-of-funds-settlement-read.service.js";
 import type { ISourceOfFundsRepository } from "../source-of-funds/source-of-funds.types.js";
 import type { SourceOfFundsStatus } from "../source-of-funds/source-of-funds.types.js";
 
@@ -40,17 +38,14 @@ export interface IAdminSourceOfFundsQueryService {
 }
 
 export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryService {
-  private readonly settlementRead: SourceOfFundsSettlementReadService;
-
   constructor(
     private readonly caseRepo: ISourceOfFundsRepository,
     private readonly docRepo: ISourceOfFundsDocumentRepository,
     private readonly reviewRepo: ISourceOfFundsDocumentReviewRepository,
-    private readonly db: Database,
+    private readonly adminUserReader: IAdminUserReader,
+    private readonly settlementRead: SourceOfFundsSettlementReadService,
     private readonly mediaUrlResolver: MediaUrlResolver,
-  ) {
-    this.settlementRead = new SourceOfFundsSettlementReadService(db);
-  }
+  ) {}
 
   async listEnriched(
     status: SourceOfFundsStatus,
@@ -70,7 +65,7 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
     const [buyers, summaries, pendingCounts] = await Promise.all([
       this.loadBuyers(userIds),
       this.settlementRead.summarizeForBuyersBatch(userIds),
-      this.countPendingCasesByUser(userIds),
+      this.caseRepo.countPendingByUserIds(userIds),
     ]);
 
     const rows: AdminSourceOfFundsListRowDto[] = cases.map((c) => {
@@ -171,19 +166,13 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
   }
 
   async listForUser(userId: string, limit = 20): Promise<AdminSourceOfFundsListRowDto[]> {
-    const cases = await this.db
-      .select()
-      .from(sourceOfFunds)
-      .where(eq(sourceOfFunds.userId, userId))
-      .orderBy(sql`${sourceOfFunds.createdAt} DESC`)
-      .limit(limit);
-
+    const cases = await this.caseRepo.listForUser(userId, limit);
     if (cases.length === 0) return [];
 
     const [buyers, summaries, pendingCounts] = await Promise.all([
       this.loadBuyers([userId]),
       this.settlementRead.summarizeForBuyersBatch([userId]),
-      this.countPendingCasesByUser([userId]),
+      this.caseRepo.countPendingByUserIds([userId]),
     ]);
 
     const buyer = buyers.get(userId);
@@ -199,12 +188,6 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
     }));
   }
 
-  /**
-   * Map submitted documents to DTOs WITHOUT embedding presigned URLs. Staff
-   * downloads must go through the dedicated, audited download endpoint
-   * (short-TTL presigned GET + `document_downloaded` audit event), so the
-   * detail payload never carries a long-lived link to sensitive evidence.
-   */
   private resolveSubmittedDocuments(
     docs: Awaited<ReturnType<ISourceOfFundsDocumentRepository["listActiveForCase"]>>,
     reviews: Awaited<ReturnType<ISourceOfFundsDocumentReviewRepository["listForCase"]>>,
@@ -246,37 +229,9 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
     const out = new Map<string, { email: string | null; name: string | null }>();
     if (userIds.length === 0) return out;
 
-    const rows = await this.db
-      .select({ id: user.id, email: user.email, name: user.name })
-      .from(user)
-      .where(inArray(user.id, [...new Set(userIds)]));
-
+    const rows = await this.adminUserReader.getByIds([...new Set(userIds)]);
     for (const row of rows) {
       out.set(row.id, { email: row.email ?? null, name: row.name ?? null });
-    }
-    return out;
-  }
-
-  private async countPendingCasesByUser(userIds: readonly string[]): Promise<Map<string, number>> {
-    const out = new Map<string, number>();
-    if (userIds.length === 0) return out;
-
-    const rows = await this.db
-      .select({
-        userId: sourceOfFunds.userId,
-        n: sql<number>`count(*)::int`,
-      })
-      .from(sourceOfFunds)
-      .where(
-        and(
-          inArray(sourceOfFunds.userId, [...new Set(userIds)]),
-          eq(sourceOfFunds.status, "pending"),
-        ),
-      )
-      .groupBy(sourceOfFunds.userId);
-
-    for (const row of rows) {
-      out.set(row.userId, row.n);
     }
     return out;
   }

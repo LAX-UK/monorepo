@@ -14,8 +14,8 @@ import { createPlatformServices } from "./container/create-platform-services.js"
 import { createRepositories } from "./container/create-repositories.js";
 import { createUserMiscServices } from "./container/create-user-misc-services.js";
 import type { Env } from "./env.js";
-import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { DrizzleSessionRepository } from "./repositories/drizzle-session.repository.js";
+import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 
 export type { Container, ContainerComposedSlices };

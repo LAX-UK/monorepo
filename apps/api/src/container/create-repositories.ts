@@ -69,8 +69,9 @@ import { DrizzlePaymentRefundReconcileRepository } from "../repositories/drizzle
 import { DrizzlePaymentRepository } from "../repositories/drizzle-payment.repository.js";
 import { DrizzlePayoutRepository } from "../repositories/drizzle-payout.repository.js";
 import { DrizzlePendingInvitationsReader } from "../repositories/drizzle-pending-invitations.reader.js";
-import { DrizzleQrCodeAnalyticsReader } from "../repositories/drizzle-qr-code-analytics.reader.js";
+import { DrizzleProfileRepository } from "../repositories/drizzle-profile.repository.js";
 import { DrizzlePushSubscriptionRepository } from "../repositories/drizzle-push-subscription.repository.js";
+import { DrizzleQrCodeAnalyticsReader } from "../repositories/drizzle-qr-code-analytics.reader.js";
 import { DrizzleRepositoryFactory } from "../repositories/drizzle-repository.factory.js";
 import { DrizzleSaleBiddersReader } from "../repositories/drizzle-sale-bidders.reader.js";
 import { DrizzleSaleDocumentRepository } from "../repositories/drizzle-sale-document.repository.js";
@@ -85,15 +86,16 @@ import { DrizzleSaleroomSessionLookup } from "../repositories/drizzle-saleroom-s
 import { DrizzleSavedSearchRepository } from "../repositories/drizzle-saved-search.repository.js";
 import { DrizzleSourceOfFundsDocumentReviewRepository } from "../repositories/drizzle-source-of-funds-document-review.repository.js";
 import { DrizzleSourceOfFundsDocumentRepository } from "../repositories/drizzle-source-of-funds-document.repository.js";
+import { DrizzleSourceOfFundsSettlementReader } from "../repositories/drizzle-source-of-funds-settlement.reader.js";
 import { DrizzleSourceOfFundsRepository } from "../repositories/drizzle-source-of-funds.repository.js";
 import { DrizzleSubmissionDocumentRepository } from "../repositories/drizzle-submission-document.repository.js";
 import { DrizzleTelephoneBidBookingRepository } from "../repositories/drizzle-telephone-bid-booking.repository.js";
 import { DrizzleUiPreferenceRepository } from "../repositories/drizzle-ui-preference.repository.js";
 import { DrizzleUploadObjectReader } from "../repositories/drizzle-upload-object.reader.js";
 import { DrizzleUploadPersistenceRepository } from "../repositories/drizzle-upload-persistence.repository.js";
+import { DrizzleUserEmailChangeRepository } from "../repositories/drizzle-user-email-change.repository.js";
 import { DrizzleUserMetricsReader } from "../repositories/drizzle-user-metrics.reader.js";
 import { DrizzleUserSuspensionChecker } from "../repositories/drizzle-user-suspension.checker.js";
-import { DrizzleUserEmailChangeRepository } from "../repositories/drizzle-user-email-change.repository.js";
 import { DrizzleUserRepository } from "../repositories/drizzle-user.repository.js";
 import { DrizzleVenueRepository } from "../repositories/drizzle-venue.repository.js";
 import { DrizzleWatchlistRepository } from "../repositories/drizzle-watchlist.repository.js";
@@ -123,11 +125,14 @@ import type { ILegalEntityLifecycleAdminRepository } from "../repositories/inter
 import type { ILegalEntityMemberRepository } from "../repositories/interfaces/legal-entity-member.repository.js";
 import type { ILegalEntityOnboardingRepository } from "../repositories/interfaces/legal-entity-onboarding.repository.js";
 import type { INewsletterSignupRepository } from "../repositories/interfaces/newsletter-signup.repository.js";
+import type { IQrCodeAnalyticsReader } from "../repositories/interfaces/qr-code-analytics.reader.js";
 import type { ISaleroomDisplaySessionRepository } from "../repositories/interfaces/saleroom-display-session.repository.js";
 import type { ISaleroomDisplaySnapshotReader } from "../repositories/interfaces/saleroom-display-snapshot.reader.js";
 import type { ISavedSearchRepository } from "../repositories/interfaces/saved-search.repository.js";
+import type { ISourceOfFundsSettlementReader } from "../repositories/interfaces/source-of-funds-settlement.reader.js";
 import type { IUploadObjectReader } from "../repositories/interfaces/upload-object.reader.js";
 import type { IUploadPersistenceRepository } from "../repositories/interfaces/upload-persistence.repository.js";
+import type { IUserEmailChangeRepository } from "../repositories/interfaces/user-email-change.repository.js";
 import type { IWebhookEventRepository } from "../repositories/interfaces/webhook-event.repository.js";
 import type { IAntiShillingGuard } from "../services/interfaces/anti-shilling.js";
 import type { IAttentionFeedReader } from "../services/interfaces/attention-feed.js";
@@ -137,8 +142,7 @@ import type { ILegalEntityNotificationRecipientReader } from "../services/interf
 import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 import type { INotificationPreferenceRepository } from "../services/interfaces/notification-preference.js";
 import type { IPayoutRepository } from "../services/interfaces/payout-repository.js";
-import type { IUserEmailChangeRepository } from "../repositories/interfaces/user-email-change.repository.js";
-import type { IQrCodeAnalyticsReader } from "../repositories/interfaces/qr-code-analytics.reader.js";
+import type { IPendingInvitationsReader } from "../services/interfaces/pending-invitations-reader.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
 import type { IItemSubmissionRepository } from "../services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
@@ -182,6 +186,7 @@ export type ContainerRepositories = {
   sourceOfFundsRepository: DrizzleSourceOfFundsRepository;
   sourceOfFundsDocumentRepository: DrizzleSourceOfFundsDocumentRepository;
   sourceOfFundsDocumentReviewRepository: DrizzleSourceOfFundsDocumentReviewRepository;
+  sourceOfFundsSettlementReader: ISourceOfFundsSettlementReader;
   lotDocumentRepo: DrizzleLotDocumentRepository;
   saleDocumentRepo: DrizzleSaleDocumentRepository;
   submissionDocumentRepo: DrizzleSubmissionDocumentRepository;
@@ -287,6 +292,7 @@ export function createRepositories(db: Database): ContainerRepositories {
   const sourceOfFundsDocumentReviewRepository = new DrizzleSourceOfFundsDocumentReviewRepository(
     db,
   );
+  const sourceOfFundsSettlementReader = new DrizzleSourceOfFundsSettlementReader(db);
   const lotDocumentRepo = new DrizzleLotDocumentRepository(db);
   const saleDocumentRepo = new DrizzleSaleDocumentRepository(db);
   const submissionDocumentRepo = new DrizzleSubmissionDocumentRepository(db);
@@ -386,6 +392,7 @@ export function createRepositories(db: Database): ContainerRepositories {
     sourceOfFundsRepository,
     sourceOfFundsDocumentRepository,
     sourceOfFundsDocumentReviewRepository,
+    sourceOfFundsSettlementReader,
     lotDocumentRepo,
     saleDocumentRepo,
     submissionDocumentRepo,

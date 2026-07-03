@@ -1,7 +1,6 @@
 import type { Database } from "@auction/db";
 import { payment, sourceOfFunds } from "@auction/db/schema";
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
-import { ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES } from "../services/source-of-funds/active-settlement-statuses.js";
 import type {
   CreateSourceOfFundsCaseInput,
   ISourceOfFundsRepository,
@@ -11,6 +10,7 @@ import type {
   SourceOfFundsTriageInput,
   SourceOfFundsTriageRecommendation,
 } from "../services/source-of-funds/source-of-funds.types.js";
+import { ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES } from "./source-of-funds-settlement.types.js";
 
 function rowToCase(row: typeof sourceOfFunds.$inferSelect): SourceOfFundsCase {
   return {
@@ -274,5 +274,38 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
       .from(payment)
       .where(and(...conditions));
     return Number(row?.totalPence ?? 0);
+  }
+
+  async listForUser(userId: string, limit: number, conn?: Database): Promise<SourceOfFundsCase[]> {
+    const rows = await this.conn(conn)
+      .select()
+      .from(sourceOfFunds)
+      .where(eq(sourceOfFunds.userId, userId))
+      .orderBy(desc(sourceOfFunds.createdAt))
+      .limit(limit);
+    return rows.map(rowToCase);
+  }
+
+  async countPendingByUserIds(
+    userIds: readonly string[],
+    conn?: Database,
+  ): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    const uniqueIds = [...new Set(userIds)];
+    if (uniqueIds.length === 0) return out;
+
+    const rows = await this.conn(conn)
+      .select({
+        userId: sourceOfFunds.userId,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(sourceOfFunds)
+      .where(and(inArray(sourceOfFunds.userId, uniqueIds), eq(sourceOfFunds.status, "pending")))
+      .groupBy(sourceOfFunds.userId);
+
+    for (const row of rows) {
+      out.set(row.userId, row.n);
+    }
+    return out;
   }
 }

@@ -44,6 +44,7 @@ import { MediaUrlResolver } from "../services/media-url-resolver.js";
 import { PerRequestSigningPolicy, StableSigningPolicy } from "../services/signed-url-policy.js";
 import { SourceOfFundsDocumentCollectionService } from "../services/source-of-funds/source-of-funds-document-collection.service.js";
 import { SourceOfFundsDocumentReviewService } from "../services/source-of-funds/source-of-funds-document-review.service.js";
+import { SourceOfFundsSettlementReadService } from "../services/source-of-funds/source-of-funds-settlement-read.service.js";
 import { SourceOfFundsService } from "../services/source-of-funds/source-of-funds.service.js";
 import { UploadService } from "../services/upload.service.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -101,6 +102,8 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     sourceOfFundsRepository,
     sourceOfFundsDocumentRepository,
     sourceOfFundsDocumentReviewRepository,
+    sourceOfFundsSettlementReader,
+    adminUserReader,
     lotDocumentRepo,
     saleDocumentRepo,
     submissionDocumentRepo,
@@ -193,11 +196,15 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     env.STORAGE_READ_MODE,
     new PerRequestSigningPolicy(env.SIGNED_GET_TTL_SEC),
   );
+  const sourceOfFundsSettlementReadService = new SourceOfFundsSettlementReadService(
+    sourceOfFundsSettlementReader,
+  );
   const adminSourceOfFundsQueryService = new AdminSourceOfFundsQueryService(
     sourceOfFundsRepository,
     sourceOfFundsDocumentRepository,
     sourceOfFundsDocumentReviewRepository,
-    db,
+    adminUserReader,
+    sourceOfFundsSettlementReadService,
     mediaUrlResolver,
   );
   const sourceOfFundsDocumentCollectionService = new SourceOfFundsDocumentCollectionService(
@@ -208,6 +215,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     domainEventPublisher,
     objectStorage,
     new PerRequestSigningPolicy(env.SOF_DOWNLOAD_TTL_SEC),
+    sourceOfFundsSettlementReadService,
   );
   const sourceOfFundsDocumentReviewService = new SourceOfFundsDocumentReviewService(
     sourceOfFundsRepository,

@@ -25,6 +25,7 @@ describe.skipIf(!HAS_DB)("DrizzleQrCodeAnalyticsReader (integration)", () => {
             entityId,
           })
           .returning({ id: qrCode.id });
+        if (!code) throw new Error("expected qr code row");
 
         await tx.insert(qrCodeScanDaily).values({
           qrCodeId: code.id,

@@ -4,7 +4,7 @@ import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzl
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
 import type { ISignedUrlPolicy } from "../signed-url-policy.js";
-import { SourceOfFundsSettlementReadService } from "./source-of-funds-settlement-read.service.js";
+import type { SourceOfFundsSettlementReadService } from "./source-of-funds-settlement-read.service.js";
 import type { ISourceOfFundsRepository } from "./source-of-funds.types.js";
 
 export type SourceOfFundsDocumentCollectionContext = {
@@ -26,11 +26,9 @@ export function createSourceOfFundsDocumentCollectionContext(input: {
   events: DomainEventPublisher | null;
   storage: IObjectStorage;
   downloadSigningPolicy: ISignedUrlPolicy;
+  settlementRead: SourceOfFundsSettlementReadService;
 }): SourceOfFundsDocumentCollectionContext {
-  return {
-    ...input,
-    settlementRead: new SourceOfFundsSettlementReadService(input.db),
-  };
+  return input;
 }
 
 export const SOURCE_OF_FUNDS_DOCUMENTS_REQUESTED_EVENT = "source_of_funds.documents_requested";

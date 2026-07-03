@@ -119,4 +119,6 @@ export interface ISourceOfFundsRepository {
     excludePaymentId?: string,
     conn?: Database,
   ): Promise<number>;
+  listForUser(userId: string, limit: number, conn?: Database): Promise<SourceOfFundsCase[]>;
+  countPendingByUserIds(userIds: readonly string[], conn?: Database): Promise<Map<string, number>>;
 }

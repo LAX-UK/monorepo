@@ -7,7 +7,6 @@ import {
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Container } from "../container.js";
-import type { EmailChangeDeps } from "../services/auth/email-change.service.js";
 import { createAppLogger } from "../lib/logger.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -23,6 +22,7 @@ import {
 } from "../middleware/require-recent-password-auth.js";
 import { createTurnstileMiddleware } from "../middleware/turnstile.js";
 import { setupCredentialPassword } from "../services/auth/credential-setup.service.js";
+import type { EmailChangeDeps } from "../services/auth/email-change.service.js";
 import {
   clearEmailChangeInProgress,
   confirmEmailChangeFromToken,

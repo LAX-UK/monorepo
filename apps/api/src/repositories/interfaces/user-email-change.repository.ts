@@ -15,8 +15,5 @@ export interface IUserEmailChangeRepository {
    * Runs the confirm step inside `authDb.transaction` (preserves existing dual-DB boundary).
    * Returns true when both sides confirmed and email applied; false when only one side confirmed.
    */
-  confirmInAuthTransaction(
-    authDb: Database,
-    payload: EmailChangeConfirmPayload,
-  ): Promise<boolean>;
+  confirmInAuthTransaction(authDb: Database, payload: EmailChangeConfirmPayload): Promise<boolean>;
 }

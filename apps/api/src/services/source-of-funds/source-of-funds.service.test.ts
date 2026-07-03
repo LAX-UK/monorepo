@@ -140,6 +140,16 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
       }
       return state.linkedPence;
     },
+    async listForUser(userId, limit = 50) {
+      return state.cases.filter((c) => c.userId === userId).slice(0, limit);
+    },
+    async countPendingByUserIds(userIds) {
+      const map = new Map<string, number>();
+      for (const id of userIds) {
+        map.set(id, state.cases.filter((c) => c.userId === id && c.status === "pending").length);
+      }
+      return map;
+    },
   };
 }
 

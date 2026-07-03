@@ -8,6 +8,7 @@ import type { ISignedUrlPolicy } from "../signed-url-policy.js";
 import { SourceOfFundsDocumentCollectionBuyerService } from "./source-of-funds-document-collection-buyer.service.js";
 import { createSourceOfFundsDocumentCollectionContext } from "./source-of-funds-document-collection-context.js";
 import { SourceOfFundsDocumentCollectionStaffService } from "./source-of-funds-document-collection-staff.service.js";
+import type { SourceOfFundsSettlementReadService } from "./source-of-funds-settlement-read.service.js";
 import type { ISourceOfFundsRepository } from "./source-of-funds.types.js";
 
 export {
@@ -37,6 +38,7 @@ export class SourceOfFundsDocumentCollectionService
     events: DomainEventPublisher | null,
     storage: IObjectStorage,
     downloadSigningPolicy: ISignedUrlPolicy,
+    settlementRead: SourceOfFundsSettlementReadService,
   ) {
     const ctx = createSourceOfFundsDocumentCollectionContext({
       caseRepo,
@@ -46,6 +48,7 @@ export class SourceOfFundsDocumentCollectionService
       events,
       storage,
       downloadSigningPolicy,
+      settlementRead,
     });
     this.buyer = new SourceOfFundsDocumentCollectionBuyerService(ctx);
     this.staff = new SourceOfFundsDocumentCollectionStaffService(ctx);

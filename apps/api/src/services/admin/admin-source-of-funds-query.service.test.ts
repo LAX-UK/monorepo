@@ -1,25 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AdminUserListRow, IAdminUserReader } from "../interfaces/admin-user.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
+import type { SourceOfFundsSettlementReadService } from "../source-of-funds/source-of-funds-settlement-read.service.js";
 import type {
   ISourceOfFundsRepository,
   SourceOfFundsCase,
 } from "../source-of-funds/source-of-funds.types.js";
 import { AdminSourceOfFundsQueryService } from "./admin-source-of-funds-query.service.js";
-
-const mockSummarizeBatch = vi.fn();
-const mockListItems = vi.fn();
-const mockSumExposure = vi.fn();
-const mockListBlocked = vi.fn();
-
-vi.mock("../source-of-funds/source-of-funds-settlement-read.service.js", () => ({
-  SourceOfFundsSettlementReadService: vi.fn().mockImplementation(() => ({
-    summarizeForBuyersBatch: mockSummarizeBatch,
-    listSettlementItemsForBuyer: mockListItems,
-    sumActivePaymentExposurePence: mockSumExposure,
-    listBlockedPaymentsForBuyer: mockListBlocked,
-  })),
-  buildSettlementSummaryLabel: vi.fn(),
-}));
 
 function makeCase(
   partial: Partial<SourceOfFundsCase> & Pick<SourceOfFundsCase, "id" | "userId">,
@@ -51,10 +38,6 @@ function makeCase(
 }
 
 describe("AdminSourceOfFundsQueryService", () => {
-  const mockDb = {
-    select: vi.fn(),
-  };
-
   let repo: ISourceOfFundsRepository;
   let docRepo: {
     listActiveForCase: ReturnType<typeof vi.fn>;
@@ -62,6 +45,14 @@ describe("AdminSourceOfFundsQueryService", () => {
   let reviewRepo: {
     listForCase: ReturnType<typeof vi.fn>;
   };
+  let adminUserReader: IAdminUserReader;
+  let settlementRead: Pick<
+    SourceOfFundsSettlementReadService,
+    | "summarizeForBuyersBatch"
+    | "listSettlementItemsForBuyer"
+    | "sumActivePaymentExposurePence"
+    | "listBlockedPaymentsForBuyer"
+  >;
   let media: MediaUrlResolver;
 
   function makeSvc() {
@@ -69,19 +60,24 @@ describe("AdminSourceOfFundsQueryService", () => {
       repo,
       docRepo as never,
       reviewRepo as never,
-      mockDb as never,
+      adminUserReader,
+      settlementRead as SourceOfFundsSettlementReadService,
       media,
     );
   }
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSummarizeBatch.mockResolvedValue(
-      new Map([["user-1", { settlementSummary: "Lot 1 · Test Sale", settlementItemCount: 1 }]]),
-    );
-    mockListItems.mockResolvedValue([]);
-    mockSumExposure.mockResolvedValue(1_200_000);
-    mockListBlocked.mockResolvedValue([]);
+    settlementRead = {
+      summarizeForBuyersBatch: vi
+        .fn()
+        .mockResolvedValue(
+          new Map([["user-1", { settlementSummary: "Lot 1 · Test Sale", settlementItemCount: 1 }]]),
+        ),
+      listSettlementItemsForBuyer: vi.fn().mockResolvedValue([]),
+      sumActivePaymentExposurePence: vi.fn().mockResolvedValue(1_200_000),
+      listBlockedPaymentsForBuyer: vi.fn().mockResolvedValue([]),
+    };
     repo = {
       findLatestForUser: vi.fn(),
       findById: vi.fn(),
@@ -97,6 +93,15 @@ describe("AdminSourceOfFundsQueryService", () => {
       setDocumentsSubmitted: vi.fn(),
       resetDocumentCycle: vi.fn(),
       sumActiveBuyerSettlementPence: vi.fn(),
+      listForUser: vi.fn(),
+      countPendingByUserIds: vi.fn().mockResolvedValue(new Map([["user-1", 1]])),
+    };
+    adminUserReader = {
+      list: vi.fn(),
+      getById: vi.fn(),
+      getByIds: vi
+        .fn()
+        .mockResolvedValue([{ id: "user-1", email: "buyer@example.com", name: "Buyer One" }]),
     };
     docRepo = {
       listActiveForCase: vi.fn().mockResolvedValue([]),
@@ -129,19 +134,6 @@ describe("AdminSourceOfFundsQueryService", () => {
     vi.mocked(repo.listByStatus).mockResolvedValue([caseRow]);
     vi.mocked(repo.countByStatus).mockResolvedValue(1);
 
-    mockDb.select
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnThis(),
-        where: vi
-          .fn()
-          .mockResolvedValue([{ id: "user-1", email: "buyer@example.com", name: "Buyer One" }]),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        groupBy: vi.fn().mockResolvedValue([{ userId: "user-1", n: 1 }]),
-      });
-
     const svc = makeSvc();
     const { rows, total } = await svc.listEnriched("pending", 50, 0);
 
@@ -154,11 +146,9 @@ describe("AdminSourceOfFundsQueryService", () => {
   it("getDetail maps exposure fields and evidence downloads", async () => {
     const caseRow = makeCase({ id: "sof-1", userId: "user-1" });
     vi.mocked(repo.findById).mockResolvedValue(caseRow);
-
-    mockDb.select.mockReturnValue({
-      from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockResolvedValue([{ id: "user-1", email: "buyer@example.com", name: null }]),
-    });
+    vi.mocked(adminUserReader.getByIds).mockResolvedValue([
+      { id: "user-1", email: "buyer@example.com", name: "" } as AdminUserListRow,
+    ]);
 
     const svc = makeSvc();
     const detail = await svc.getDetail("sof-1");
