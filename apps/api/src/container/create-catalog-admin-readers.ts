@@ -42,7 +42,7 @@ export function createCatalogAdminReaders(
     createBaseLogger(env).child({ component: "qr_code" }),
     qrCodeScanQueue,
   );
-  const qrCodeAnalytics = new QrCodeAnalyticsService(db);
+  const qrCodeAnalytics = new QrCodeAnalyticsService(repos.qrCodeAnalyticsReader);
   const dashboardQueryService = new DashboardQueryService(repoFactory);
   const notificationQueryService = new NotificationQueryService(notificationReadRepo);
 

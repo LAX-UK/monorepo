@@ -1,8 +1,6 @@
-import { type Database, qrCodeScan, qrCodeScanDaily } from "@auction/db";
 import type { QrCodeDetailedAnalytics, ResolvedQrCodeAnalyticsQuery } from "@auction/validators";
-import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
+import type { IQrCodeAnalyticsReader } from "../repositories/interfaces/qr-code-analytics.reader.js";
 import {
-  dailyUpperExclusiveDay,
   fillTrendGaps,
   foldTopN,
   formatDayBucket,
@@ -15,7 +13,7 @@ export type { QrCodeDetailedAnalytics };
 const TOP_N = 5;
 
 export class QrCodeAnalyticsService {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly reader: IQrCodeAnalyticsReader) {}
 
   async getDetailed(
     qrCodeId: string,
@@ -27,64 +25,16 @@ export class QrCodeAnalyticsService {
     return this.getFromDaily(qrCodeId, query);
   }
 
-  private dailyWhere(qrCodeId: string, from: Date | null, to: Date) {
-    const clauses = [
-      eq(qrCodeScanDaily.qrCodeId, qrCodeId),
-      lt(qrCodeScanDaily.day, dailyUpperExclusiveDay(to)),
-    ];
-    if (from) clauses.push(gte(qrCodeScanDaily.day, from));
-    return and(...clauses);
-  }
-
-  private rawWhere(qrCodeId: string, from: Date | null, to: Date) {
-    const clauses = [eq(qrCodeScan.qrCodeId, qrCodeId), lt(qrCodeScan.scannedAt, to)];
-    if (from) clauses.push(gte(qrCodeScan.scannedAt, from));
-    return and(...clauses);
-  }
-
   private async getFromDaily(
     qrCodeId: string,
     query: ResolvedQrCodeAnalyticsQuery,
   ): Promise<QrCodeDetailedAnalytics> {
-    const where = this.dailyWhere(qrCodeId, query.from, query.to);
+    const { total, trend: trendRows, device: deviceRows, country: countryRows } =
+      await this.reader.fetchDailyAggregates(qrCodeId, {
+        from: query.from,
+        to: query.to,
+      });
 
-    const [totalRow, trendRows, deviceRows, countryRows] = await Promise.all([
-      this.db
-        .select({ total: sql<number>`coalesce(sum(${qrCodeScanDaily.scans}), 0)::int` })
-        .from(qrCodeScanDaily)
-        .where(where),
-      this.db
-        .select({
-          bucketAt: qrCodeScanDaily.day,
-          scans: sql<number>`sum(${qrCodeScanDaily.scans})::int`,
-        })
-        .from(qrCodeScanDaily)
-        .where(where)
-        .groupBy(qrCodeScanDaily.day)
-        .orderBy(qrCodeScanDaily.day),
-      this.db
-        .select({
-          key: qrCodeScanDaily.deviceType,
-          scans: sql<number>`sum(${qrCodeScanDaily.scans})::int`,
-        })
-        .from(qrCodeScanDaily)
-        .where(where)
-        .groupBy(qrCodeScanDaily.deviceType)
-        .orderBy(desc(sql`sum(${qrCodeScanDaily.scans})`))
-        .limit(TOP_N),
-      this.db
-        .select({
-          key: qrCodeScanDaily.country,
-          scans: sql<number>`sum(${qrCodeScanDaily.scans})::int`,
-        })
-        .from(qrCodeScanDaily)
-        .where(where)
-        .groupBy(qrCodeScanDaily.country)
-        .orderBy(desc(sql`sum(${qrCodeScanDaily.scans})`))
-        .limit(TOP_N),
-    ]);
-
-    const totalScans = totalRow[0]?.total ?? 0;
     const trend = fillTrendGaps(
       trendRows.map((row) => ({
         bucket: formatDayBucket(row.bucketAt),
@@ -99,17 +49,17 @@ export class QrCodeAnalyticsService {
       source: "daily",
       granularity: "day",
       rangeKey: query.rangeKey,
-      totalScans,
+      totalScans: total,
       uniqueIps: null,
       trend,
       byDevice: foldTopN(
         deviceRows.map((row) => ({ key: normalizeBreakdownKey(row.key), scans: row.scans })),
-        totalScans,
+        total,
         TOP_N,
       ),
       byCountry: foldTopN(
         countryRows.map((row) => ({ key: normalizeBreakdownKey(row.key), scans: row.scans })),
-        totalScans,
+        total,
         TOP_N,
       ),
       byBrowser: null,
@@ -123,100 +73,21 @@ export class QrCodeAnalyticsService {
     qrCodeId: string,
     query: ResolvedQrCodeAnalyticsQuery,
   ): Promise<QrCodeDetailedAnalytics> {
-    const where = this.rawWhere(qrCodeId, query.from, query.to);
-    const hourBucket = sql`date_trunc('hour', ${qrCodeScan.scannedAt} AT TIME ZONE 'UTC')`;
+    const {
+      total,
+      uniqueIps,
+      trend: trendRows,
+      device: deviceRows,
+      country: countryRows,
+      browser: browserRows,
+      os: osRows,
+      referrer: referrerRows,
+      recent: recentRows,
+    } = await this.reader.fetchRawAggregates(qrCodeId, {
+      from: query.from,
+      to: query.to,
+    });
 
-    const [
-      totalRow,
-      uniqueRow,
-      trendRows,
-      deviceRows,
-      countryRows,
-      browserRows,
-      osRows,
-      referrerRows,
-      recentRows,
-    ] = await Promise.all([
-      this.db.select({ total: sql<number>`count(*)::int` }).from(qrCodeScan).where(where),
-      this.db
-        .select({ n: sql<number>`count(distinct ${qrCodeScan.ipPrefix})::int` })
-        .from(qrCodeScan)
-        .where(and(where, sql`${qrCodeScan.ipPrefix} is not null`)),
-      this.db
-        .select({
-          bucketAt: sql<Date>`${hourBucket}`,
-          scans: sql<number>`count(*)::int`,
-        })
-        .from(qrCodeScan)
-        .where(where)
-        .groupBy(hourBucket)
-        .orderBy(hourBucket),
-      this.db
-        .select({
-          key: qrCodeScan.deviceType,
-          scans: sql<number>`count(*)::int`,
-        })
-        .from(qrCodeScan)
-        .where(where)
-        .groupBy(qrCodeScan.deviceType)
-        .orderBy(desc(sql`count(*)`))
-        .limit(TOP_N),
-      this.db
-        .select({
-          key: qrCodeScan.country,
-          scans: sql<number>`count(*)::int`,
-        })
-        .from(qrCodeScan)
-        .where(where)
-        .groupBy(qrCodeScan.country)
-        .orderBy(desc(sql`count(*)`))
-        .limit(TOP_N),
-      this.db
-        .select({
-          key: qrCodeScan.browser,
-          scans: sql<number>`count(*)::int`,
-        })
-        .from(qrCodeScan)
-        .where(where)
-        .groupBy(qrCodeScan.browser)
-        .orderBy(desc(sql`count(*)`))
-        .limit(TOP_N),
-      this.db
-        .select({
-          key: qrCodeScan.os,
-          scans: sql<number>`count(*)::int`,
-        })
-        .from(qrCodeScan)
-        .where(where)
-        .groupBy(qrCodeScan.os)
-        .orderBy(desc(sql`count(*)`))
-        .limit(TOP_N),
-      this.db
-        .select({
-          key: qrCodeScan.referrerHost,
-          scans: sql<number>`count(*)::int`,
-        })
-        .from(qrCodeScan)
-        .where(where)
-        .groupBy(qrCodeScan.referrerHost)
-        .orderBy(desc(sql`count(*)`))
-        .limit(TOP_N),
-      this.db
-        .select({
-          scannedAt: qrCodeScan.scannedAt,
-          deviceType: qrCodeScan.deviceType,
-          browser: qrCodeScan.browser,
-          os: qrCodeScan.os,
-          country: qrCodeScan.country,
-          referrerHost: qrCodeScan.referrerHost,
-        })
-        .from(qrCodeScan)
-        .where(where)
-        .orderBy(desc(qrCodeScan.scannedAt))
-        .limit(20),
-    ]);
-
-    const totalScans = totalRow[0]?.total ?? 0;
     const trend = fillTrendGaps(
       trendRows.map((row) => ({
         bucket: formatHourBucket(row.bucketAt),
@@ -234,19 +105,19 @@ export class QrCodeAnalyticsService {
       source: "raw",
       granularity: "hour",
       rangeKey: query.rangeKey,
-      totalScans,
-      uniqueIps: uniqueRow[0]?.n ?? 0,
+      totalScans: total,
+      uniqueIps,
       trend,
-      byDevice: foldTopN(mapRows(deviceRows), totalScans, TOP_N),
-      byCountry: foldTopN(mapRows(countryRows), totalScans, TOP_N),
-      byBrowser: foldTopN(mapRows(browserRows), totalScans, TOP_N),
-      byOs: foldTopN(mapRows(osRows), totalScans, TOP_N),
+      byDevice: foldTopN(mapRows(deviceRows), total, TOP_N),
+      byCountry: foldTopN(mapRows(countryRows), total, TOP_N),
+      byBrowser: foldTopN(mapRows(browserRows), total, TOP_N),
+      byOs: foldTopN(mapRows(osRows), total, TOP_N),
       byReferrer: foldTopN(
         mapRows(referrerRows).map((row) => ({
           key: row.key === "unknown" ? "direct" : row.key,
           scans: row.scans,
         })),
-        totalScans,
+        total,
         TOP_N,
       ),
       recentScans: recentRows.map((row) => ({

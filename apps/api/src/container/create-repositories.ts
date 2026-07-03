@@ -69,7 +69,7 @@ import { DrizzlePaymentRefundReconcileRepository } from "../repositories/drizzle
 import { DrizzlePaymentRepository } from "../repositories/drizzle-payment.repository.js";
 import { DrizzlePayoutRepository } from "../repositories/drizzle-payout.repository.js";
 import { DrizzlePendingInvitationsReader } from "../repositories/drizzle-pending-invitations.reader.js";
-import { DrizzleProfileRepository } from "../repositories/drizzle-profile.repository.js";
+import { DrizzleQrCodeAnalyticsReader } from "../repositories/drizzle-qr-code-analytics.reader.js";
 import { DrizzlePushSubscriptionRepository } from "../repositories/drizzle-push-subscription.repository.js";
 import { DrizzleRepositoryFactory } from "../repositories/drizzle-repository.factory.js";
 import { DrizzleSaleBiddersReader } from "../repositories/drizzle-sale-bidders.reader.js";
@@ -136,7 +136,7 @@ import type { ILegalEntityNotificationRecipientReader } from "../services/interf
 import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 import type { INotificationPreferenceRepository } from "../services/interfaces/notification-preference.js";
 import type { IPayoutRepository } from "../services/interfaces/payout-repository.js";
-import type { IPendingInvitationsReader } from "../services/interfaces/pending-invitations-reader.js";
+import type { IQrCodeAnalyticsReader } from "../repositories/interfaces/qr-code-analytics.reader.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
 import type { IItemSubmissionRepository } from "../services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
@@ -219,6 +219,7 @@ export type ContainerRepositories = {
   saleroomDisplaySnapshotReader: ISaleroomDisplaySnapshotReader;
   adminSaleOperationsSnapshotReader: IAdminSaleOperationsSnapshotReader;
   adminLotBrowseReader: IAdminLotBrowseReader;
+  qrCodeAnalyticsReader: IQrCodeAnalyticsReader;
   adminFinanceIssueSnapshotReader: IAdminFinanceIssueSnapshotReader;
   adminOnboardingIssuesReader: IAdminOnboardingIssuesReader;
   adminReviewTaskReader: IAdminReviewTaskReader;
@@ -322,6 +323,7 @@ export function createRepositories(db: Database): ContainerRepositories {
   const saleroomDisplaySnapshotReader = new DrizzleSaleroomDisplaySnapshotReader(db);
   const adminSaleOperationsSnapshotReader = new DrizzleAdminSaleOperationsSnapshotReader(db);
   const adminLotBrowseReader = new DrizzleAdminLotBrowseReader(db);
+  const qrCodeAnalyticsReader = new DrizzleQrCodeAnalyticsReader(db);
   const adminFinanceIssueSnapshotReader = new DrizzleAdminFinanceIssueSnapshotReader(db);
   const adminOnboardingIssuesReader = new DrizzleAdminOnboardingIssuesReader(db);
   const adminReviewTaskReader = new DrizzleAdminReviewTaskReader(db);
@@ -419,6 +421,7 @@ export function createRepositories(db: Database): ContainerRepositories {
     saleroomDisplaySnapshotReader,
     adminSaleOperationsSnapshotReader,
     adminLotBrowseReader,
+    qrCodeAnalyticsReader,
     adminFinanceIssueSnapshotReader,
     adminOnboardingIssuesReader,
     adminReviewTaskReader,

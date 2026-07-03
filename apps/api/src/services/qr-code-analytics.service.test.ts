@@ -1,120 +1,48 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { IQrCodeAnalyticsReader } from "../repositories/interfaces/qr-code-analytics.reader.js";
+import type {
+  QrCodeDailyAggregates,
+  QrCodeRawAggregates,
+} from "../repositories/qr-code-analytics.types.js";
 import { QrCodeAnalyticsService } from "./qr-code-analytics.service.js";
 
-function mockDailyDb(rows: {
-  total?: number;
-  trend?: { bucketAt: Date; scans: number }[];
-  device?: { key: string; scans: number }[];
-  country?: { key: string; scans: number }[];
-}) {
-  const total = rows.total ?? 0;
-  const trend = rows.trend ?? [];
-  const device = rows.device ?? [];
-  const country = rows.country ?? [];
-
-  let call = 0;
-  const select = vi.fn().mockImplementation(() => {
-    call += 1;
-    if (call === 1) {
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ total }]),
-        }),
-      };
-    }
-    if (call === 2) {
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            groupBy: vi.fn().mockReturnValue({
-              orderBy: vi.fn().mockResolvedValue(trend),
-            }),
-          }),
-        }),
-      };
-    }
-    const breakdownRows = call === 3 ? device : country;
-    return {
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          groupBy: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue(breakdownRows),
-            }),
-          }),
-        }),
-      }),
-    };
-  });
-
-  return { select } as never;
-}
-
-function mockRawDb(recentRows: Array<Record<string, unknown>>) {
-  let call = 0;
-  const emptyGrouped = {
-    groupBy: vi.fn().mockReturnValue({
-      orderBy: vi.fn().mockReturnValue({
-        limit: vi.fn().mockResolvedValue([]),
-      }),
+function fakeReader(overrides: {
+  daily?: Partial<QrCodeDailyAggregates>;
+  raw?: Partial<QrCodeRawAggregates>;
+}): IQrCodeAnalyticsReader {
+  return {
+    fetchDailyAggregates: async () => ({
+      total: 0,
+      trend: [],
+      device: [],
+      country: [],
+      ...overrides.daily,
+    }),
+    fetchRawAggregates: async () => ({
+      total: 0,
+      uniqueIps: 0,
+      trend: [],
+      device: [],
+      country: [],
+      browser: [],
+      os: [],
+      referrer: [],
+      recent: [],
+      ...overrides.raw,
     }),
   };
-  const select = vi.fn().mockImplementation(() => {
-    call += 1;
-    if (call === 1) {
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ total: 1 }]),
-        }),
-      };
-    }
-    if (call === 2) {
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ n: 1 }]),
-        }),
-      };
-    }
-    if (call === 3) {
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            groupBy: vi.fn().mockReturnValue({
-              orderBy: vi.fn().mockResolvedValue([]),
-            }),
-          }),
-        }),
-      };
-    }
-    if (call === 9) {
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue(recentRows),
-            }),
-          }),
-        }),
-      };
-    }
-    return {
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue(emptyGrouped),
-      }),
-    };
-  });
-
-  return { select } as never;
 }
 
 describe("QrCodeAnalyticsService", () => {
   it("returns daily analytics without raw-only breakdowns", async () => {
     const service = new QrCodeAnalyticsService(
-      mockDailyDb({
-        total: 12,
-        trend: [{ bucketAt: new Date("2026-06-12T00:00:00.000Z"), scans: 12 }],
-        device: [{ key: "mobile", scans: 12 }],
-        country: [{ key: "GB", scans: 12 }],
+      fakeReader({
+        daily: {
+          total: 12,
+          trend: [{ bucketAt: new Date("2026-06-12T00:00:00.000Z"), scans: 12 }],
+          device: [{ key: "mobile", scans: 12 }],
+          country: [{ key: "GB", scans: 12 }],
+        },
       }),
     );
 
@@ -135,16 +63,22 @@ describe("QrCodeAnalyticsService", () => {
 
   it("returns raw analytics with recent scan fields", async () => {
     const service = new QrCodeAnalyticsService(
-      mockRawDb([
-        {
-          scannedAt: new Date("2026-06-13T14:00:00.000Z"),
-          deviceType: "mobile",
-          browser: "safari",
-          os: "ios",
-          country: "GB",
-          referrerHost: null,
+      fakeReader({
+        raw: {
+          total: 1,
+          uniqueIps: 1,
+          recent: [
+            {
+              scannedAt: new Date("2026-06-13T14:00:00.000Z"),
+              deviceType: "mobile",
+              browser: "safari",
+              os: "ios",
+              country: "GB",
+              referrerHost: null,
+            },
+          ],
         },
-      ]),
+      }),
     );
 
     const result = await service.getDetailed("22222222-2222-4222-8222-222222222222", {
