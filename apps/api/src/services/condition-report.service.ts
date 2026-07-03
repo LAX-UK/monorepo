@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { DrizzleConditionReportRequestRepository } from "../repositories/drizzle-condition-report-request.repository.js";
+import { DrizzleConditionReportRequestRepository } from "@auction/persistence";
 import type { IConditionReportRequestRepository } from "../repositories/interfaces/condition-report-request.repository.js";
 import { ConditionReportAdminService } from "./condition-report/condition-report-admin.service.js";
 import { ConditionReportBuyerService } from "./condition-report/condition-report-buyer.service.js";

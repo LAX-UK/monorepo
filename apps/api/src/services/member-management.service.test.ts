@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
+import { DrizzleLegalEntityMemberRepository } from "@auction/persistence";
 import { describe, expect, it } from "vitest";
-import { DrizzleLegalEntityMemberRepository } from "../repositories/drizzle-legal-entity-member.repository.js";
 import { DomainEventPublisher } from "./domain-event.publisher.js";
 import { MemberPermissionError } from "./interfaces/member-management.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";

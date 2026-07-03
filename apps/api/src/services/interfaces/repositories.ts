@@ -22,4 +22,4 @@ export type {
   ILotDocumentRepository,
   ISaleDocumentRepository,
   ISubmissionDocumentRepository,
-} from "../../repositories/interfaces/entity-document.repository.js";
+} from "@auction/persistence";

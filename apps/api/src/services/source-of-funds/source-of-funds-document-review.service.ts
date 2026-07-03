@@ -3,7 +3,7 @@ import type {
   ISourceOfFundsDocumentReviewRepository,
   SourceOfFundsDocumentReviewRow,
 } from "@auction/persistence";
-import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
+import type { ISourceOfFundsDocumentRepository } from "../../repositories/interfaces/source-of-funds-document.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type {
   ISourceOfFundsDocumentReviewService,

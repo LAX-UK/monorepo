@@ -1,30 +1,7 @@
-import type { LegalEntityMemberRole } from "@auction/types";
+import type { SaleRegistrationAdminRow, SaleRegistrationRow } from "@auction/persistence";
 import type { Result } from "neverthrow";
 
-export type SaleRegistrationRow = {
-  id: string;
-  saleId: string;
-  userId: string;
-  buyerLegalEntityId: string;
-  status: "pending" | "approved" | "rejected" | "withdrawn";
-  requestedAt: Date;
-  decidedAt: Date | null;
-  decidedByUserId: string | null;
-  bidLimit: string | null;
-  paddleNumber: number | null;
-  checkedInAt: Date | null;
-  laxNotes: string | null;
-  rejectionReason: string | null;
-};
-
-export type SaleRegistrationAdminRow = SaleRegistrationRow & {
-  userEmail: string | null;
-  userName: string | null;
-  buyerLegalEntityDisplayName: string | null;
-  /** Current membership role for (buyerLegalEntityId, userId); null if no active row. */
-  memberRole: LegalEntityMemberRole | null;
-  kycStatus: string | null;
-};
+export type { SaleRegistrationAdminRow, SaleRegistrationRow };
 
 export type SaleRegistrationServiceError = {
   message: string;

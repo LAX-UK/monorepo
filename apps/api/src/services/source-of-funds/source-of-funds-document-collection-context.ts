@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
-import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
+import type { ISourceOfFundsDocumentRepository } from "../../repositories/interfaces/source-of-funds-document.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
 import type { ISignedUrlPolicy } from "../signed-url-policy.js";

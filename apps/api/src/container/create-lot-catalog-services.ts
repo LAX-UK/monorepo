@@ -1,8 +1,10 @@
 import type { Database } from "@auction/db";
 import {
+  DrizzleConditionReportRequestRepository,
   DrizzleLotSoftDeleteGuardReader,
   DrizzleLotTransitionGuardReader,
   DrizzleSaleSoftDeleteGuardReader,
+  SalePressArchiveRepository,
   createDrizzleLotTransitionRepository,
 } from "@auction/persistence";
 import type { Env } from "../env.js";
@@ -11,10 +13,8 @@ import {
   type PlatformCatalogLegalEntityIdProvider,
   createPlatformCatalogLegalEntityIdProvider,
 } from "../lib/platform-catalog-legal-entity.js";
-import { DrizzleConditionReportRequestRepository } from "../repositories/drizzle-condition-report-request.repository.js";
 import { DrizzleLotSoftDeleteSideEffects } from "../repositories/drizzle-lot-soft-delete.side-effects.js";
 import { DrizzleSaleSoftDeleteSideEffects } from "../repositories/drizzle-sale-soft-delete.side-effects.js";
-import { SalePressArchiveRepository } from "../repositories/sale-press-archive.repository.js";
 import { ArtistDeleteService } from "../services/artist-delete.service.js";
 import { ArtistProfileService } from "../services/artist-profile.service.js";
 import { CatalogSoftDeleteOrchestrator } from "../services/catalog/catalog-soft-delete-orchestrator.js";

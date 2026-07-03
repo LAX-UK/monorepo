@@ -1,10 +1,9 @@
 import type { createDb } from "@auction/db";
 import { domainEvent, impersonationSession } from "@auction/db/schema";
+import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence";
 import { and, eq, isNull, lt } from "drizzle-orm";
 
 type Db = ReturnType<typeof createDb>;
-
-const ADMIN_IMPERSONATION_AGGREGATE_TYPE = "admin_impersonation";
 
 /**
  * Closes impersonation sessions past expiry (sweeper). Returns count of sessions

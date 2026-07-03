@@ -1,1 +1,1 @@
-export { searchArtists } from "../../repositories/artist-registry-search.js";
+export { searchArtists } from "@auction/persistence";

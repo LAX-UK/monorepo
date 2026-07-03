@@ -1,5 +1,5 @@
+import { DrizzleSaleroomDisplaySnapshotReader } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import { DrizzleSaleroomDisplaySnapshotReader } from "../repositories/drizzle-saleroom-display-snapshot.reader.js";
 import { DisplaySnapshotReader } from "./display-snapshot-reader.service.js";
 
 function chain(resolved: unknown[]) {

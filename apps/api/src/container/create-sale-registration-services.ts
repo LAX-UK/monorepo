@@ -2,10 +2,10 @@ import type { Database } from "@auction/db";
 import {
   DrizzlePaddleBidWindowReader,
   DrizzleSaleRegistrationCheckInReader,
+  DrizzleTelephoneBidBookingDetailReader,
   DrizzleTelephoneBookingUserPhoneReader,
 } from "@auction/persistence";
 import type { Env } from "../env.js";
-import { DrizzleTelephoneBidBookingDetailReader } from "../repositories/drizzle-telephone-bid-booking-detail.reader.js";
 import { PaddleService } from "../services/paddle.service.js";
 import { SaleExpectedGuestsService } from "../services/sale-expected-guests.service.js";
 import { SaleroomCheckInEligibilityValidator } from "../services/saleroom-check-in-eligibility.validator.js";

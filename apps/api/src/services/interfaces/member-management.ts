@@ -1,13 +1,7 @@
+import type { MemberWithUser } from "@auction/persistence";
 import type { LegalEntityMember, LegalEntityMemberRole } from "@auction/types";
-
-export type MemberWithUser = LegalEntityMember & {
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    image: string | null;
-  };
-};
+export type { MemberWithUser } from "@auction/persistence";
+export { MemberPermissionError } from "@auction/persistence";
 
 export type InviteMemberInput = {
   email: string;
@@ -17,15 +11,6 @@ export type InviteMemberInput = {
 export type UpdateMemberRoleInput = {
   role: LegalEntityMemberRole;
 };
-
-export class MemberPermissionError extends Error {
-  readonly code: string;
-  constructor(code: string) {
-    super(code);
-    this.code = code;
-    this.name = "MemberPermissionError";
-  }
-}
 
 export interface IMemberManagementService {
   /** List active members for a legal entity (used by the team UI). */

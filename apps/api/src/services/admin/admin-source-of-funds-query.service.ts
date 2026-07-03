@@ -3,7 +3,7 @@ import type {
   AdminSourceOfFundsDetailDto,
   AdminSourceOfFundsListRowDto,
 } from "../../admin/admin-route-dtos.js";
-import type { ISourceOfFundsDocumentRepository } from "../../repositories/drizzle-source-of-funds-document.repository.js";
+import type { ISourceOfFundsDocumentRepository } from "../../repositories/interfaces/source-of-funds-document.repository.js";
 import type { IAdminUserReader } from "../interfaces/admin-user.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { SourceOfFundsSettlementReadService } from "../source-of-funds/source-of-funds-settlement-read.service.js";

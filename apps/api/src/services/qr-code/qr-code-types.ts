@@ -1,5 +1,6 @@
-export type QrCodeEntityType = "sale" | "lot";
-export type QrCodeStatus = "active" | "disabled";
+import type { QrCodeEntityType, QrCodeStatus } from "@auction/persistence";
+
+export type { QrCodeEntityType, QrCodeStatus } from "@auction/persistence";
 
 export type QrCodeDto = {
   id: string;

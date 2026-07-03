@@ -1,20 +1,9 @@
+import type { EntityDocumentPersistedRow } from "@auction/persistence";
 import type { DocumentEntityKind, EntityDocument } from "@auction/types";
 import type { IObjectStorage } from "../services/interfaces/object-storage.js";
 import type { MediaUrlResolver } from "../services/media-url-resolver.js";
 
-/** Row shape after joining `upload_object` (internal to API layer). */
-export type EntityDocumentPersistedRow = {
-  id: string;
-  entityId: string;
-  kind: string;
-  label: string | null;
-  uploadObjectId: string;
-  key: string;
-  actualByteSize: number | null;
-  actualContentType: string | null;
-  createdByUserId: string | null;
-  createdAt: Date;
-};
+export type { EntityDocumentPersistedRow } from "@auction/persistence";
 
 export async function presentEntityDocumentsBatch(
   entityKind: DocumentEntityKind,

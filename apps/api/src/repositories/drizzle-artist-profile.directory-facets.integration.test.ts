@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import { artistProfile } from "@auction/db/schema";
+import { createDrizzleArtistProfileRepository } from "@auction/persistence";
 import { describe, expect, it } from "vitest";
-import { createDrizzleArtistProfileRepository } from "./drizzle-artist-profile.repository.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 

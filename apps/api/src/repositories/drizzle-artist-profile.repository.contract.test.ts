@@ -1,13 +1,15 @@
+import type {
+  DrizzleArtistProfileRepository,
+  IArtistProfileAdminReader,
+  IArtistProfileCommandRepository,
+  IArtistProfileDirectoryReader,
+} from "@auction/persistence";
 import { describe, expect, it } from "vitest";
 import type {
   IArtistDeleteGuards,
   IArtistDeleteRepository,
 } from "../services/interfaces/artist-delete.js";
 import { defineCompileTimeContract } from "../testing/compile-time-contract.js";
-import type { DrizzleArtistProfileRepository } from "./drizzle-artist-profile.repository.js";
-import type { IArtistProfileAdminReader } from "./interfaces/artist-profile-admin.reader.js";
-import type { IArtistProfileDirectoryReader } from "./interfaces/artist-profile-directory.reader.js";
-import type { IArtistProfileCommandRepository } from "./interfaces/artist-profile.repository.js";
 
 type AssertAssignable<T extends U, U> = T;
 

@@ -1,5 +1,5 @@
+import type { CheckInCandidateRow } from "@auction/persistence";
 import type { Result } from "neverthrow";
-import type { CheckInCandidateRow } from "../../repositories/drizzle-saleroom-check-in.repository.js";
 
 export type SaleroomCheckInServiceError = {
   message: string;

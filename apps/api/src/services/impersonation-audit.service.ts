@@ -1,10 +1,11 @@
 import type { Database } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
+import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence";
 import { and, desc, eq } from "drizzle-orm";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
-export const ADMIN_IMPERSONATION_AGGREGATE_TYPE = "admin_impersonation";
+export { ADMIN_IMPERSONATION_AGGREGATE_TYPE };
 
 export class ImpersonationAuditService {
   constructor(

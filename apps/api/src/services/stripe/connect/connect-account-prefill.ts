@@ -1,17 +1,12 @@
 import type { legalEntity } from "@auction/db/schema";
+import type { ConnectAddressSnapshot, ConnectKycSnapshot } from "@auction/persistence";
 import type Stripe from "stripe";
-import type { ConnectAddressSnapshot } from "./connect-address-snapshot.js";
 import { normalizeConnectCountryCode } from "./connect-country-resolver.js";
 
 /** Controller config is always provided by the caller (Custom embedded accounts). */
 export type ConnectAccountController = NonNullable<Stripe.AccountCreateParams["controller"]>;
 
-export type ConnectKycSnapshot = {
-  verifiedFirstName: string | null;
-  verifiedLastName: string | null;
-  verifiedDateOfBirth: string | null;
-  verifiedIdCountry: string | null;
-};
+export type { ConnectKycSnapshot };
 
 export type ConnectOwnerSnapshot = {
   email: string;

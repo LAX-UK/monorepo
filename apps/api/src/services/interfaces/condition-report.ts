@@ -1,30 +1,16 @@
+import type {
+  BuyerConditionReportListRow,
+  ConditionReportRequestListRow,
+  ConditionReportRequestRow,
+} from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import type { Result } from "neverthrow";
 
-export type ConditionReportRequestRow = {
-  id: string;
-  lotId: string;
-  requestedByUserId: string;
-  requestingLegalEntityId: string | null;
-  status: "pending" | "in_progress" | "fulfilled" | "declined";
-  requestNote: string | null;
-  responseNote: string | null;
-  responseAttachmentUploadId: string | null;
-  fulfilledByUserId: string | null;
-  fulfilledAt: Date | null;
-  createdAt: Date;
-};
-
-export type ConditionReportRequestListRow = ConditionReportRequestRow & {
-  lotTitle: string | null;
-  requesterEmail: string | null;
-};
-
-export type BuyerConditionReportListRow = ConditionReportRequestRow & {
-  lotTitle: string;
-  lotNumber: number | null;
-  downloadUrl: string | null;
+export type {
+  BuyerConditionReportListRow,
+  ConditionReportRequestListRow,
+  ConditionReportRequestRow,
 };
 
 export type ConditionReportServiceError = { message: string; status: number; code?: string };

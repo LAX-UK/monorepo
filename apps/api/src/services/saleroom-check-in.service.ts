@@ -1,10 +1,10 @@
-import { type Result, err, ok } from "neverthrow";
-import { Counter } from "prom-client";
 import {
   type CheckInCandidateRow,
   type ISaleroomCheckInRepository,
   PaddleTakenError,
-} from "../repositories/drizzle-saleroom-check-in.repository.js";
+} from "@auction/persistence";
+import { type Result, err, ok } from "neverthrow";
+import { Counter } from "prom-client";
 import type {
   ISaleroomCheckInService,
   SaleroomCheckInServiceError,

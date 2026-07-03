@@ -116,9 +116,63 @@ export type {
 } from "./sale-registration-check-in.reader.js";
 
 export type {
+  ISaleRegistrationRepository,
+  InsertSaleRegistrationInput,
+  SaleRegistrationAdminRow,
+  SaleRegistrationRow,
+} from "./sale-registration.repository.js";
+
+export type {
+  ITelephoneBidBookingRepository,
+  InsertTelephoneBidBookingRow,
+  TelephoneBidBookingAdminRow,
+  TelephoneBidBookingRow,
+} from "./telephone-bid-booking.repository.js";
+
+export type {
+  ITelephoneBidBookingDetailReader,
+  TelephoneBidBookingDetail,
+} from "./telephone-bid-booking-detail.reader.js";
+
+export type {
+  BuyerConditionReportListRow,
+  ConditionReportAdminListFilter,
+  ConditionReportRequestListRow,
+  ConditionReportRequestRow,
+  IConditionReportRequestRepository,
+  InsertConditionReportRequestInput,
+  UpdateConditionReportRequestInput,
+} from "./condition-report-request.repository.js";
+
+export type {
   IOnsiteEventCheckInLogRepository,
   InsertOnsiteEventCheckInLogInput,
 } from "./onsite-event-check-in-log.repository.js";
+
+export type {
+  CreateOnsiteEventInput,
+  IOnsiteEventRepository,
+  UpdateOnsiteEventInput,
+} from "./onsite-event.repository.js";
+
+export type {
+  IOnsiteEventRsvpRepository,
+  OnsiteEventRsvpWithGuest,
+  UpdateOnsiteEventCheckInTokenInput,
+  UpsertOnsiteEventRsvpInput,
+} from "./onsite-event-rsvp.repository.js";
+
+export type { ISaleExpectedGuestsReader } from "./sale-expected-guests.reader.js";
+
+export type {
+  CheckInCandidateEntity,
+  CheckInCandidateRow,
+  CheckInWithPaddleInput,
+  CheckInWithPaddleResult,
+  ISaleroomCheckInRepository,
+} from "./saleroom-check-in.repository.js";
+
+export { PaddleTakenError } from "./saleroom-check-in.repository.js";
 
 export type {
   IOnsiteEventClientReader,
@@ -401,7 +455,39 @@ export type {
   RedactedDomainEventRow,
   FinanceIssueSnapshot,
   StripeConnectRequirementEntityRow,
+  AdminOnboardingLegalEntityRow,
+  AdminOnboardingArtistRow,
+  AdminOnboardingKycSessionRow,
+  AdminOnboardingDocumentRow,
+  AdminOnboardingStaleLeadRow,
+  AdminOnboardingIssues,
+  ManualReviewPaymentBaseRow,
+  AdminManualReviewPaymentRow,
+  AdminReviewTaskRow,
 } from "./admin-read-models.js";
+
+export type { IAdminOnboardingIssuesReader } from "./admin-onboarding-issues.reader.js";
+
+export type {
+  IAdminLegalEntityBrowseReader,
+  AdminLegalEntityBrowseParams,
+  AdminLegalEntityBrowseResult,
+  AdminLegalEntityBrowseRow,
+} from "./admin-legal-entity-browse.reader.js";
+
+export type {
+  IAdminLotBrowseReader,
+  AdminAttachableLotRow,
+  AdminLotBrowseInput,
+  AdminLotBrowseRawRow,
+  AdminLotBrowseState,
+} from "./admin-lot-browse.reader.js";
+
+export type { IAdminManualReviewPaymentReader } from "./admin-manual-review-payment.reader.js";
+
+export type { IAdminManualReviewPaymentEnrichmentReader } from "./admin-manual-review-payment-enrichment.reader.js";
+
+export type { IAdminReviewTaskReader } from "./admin-review-task.reader.js";
 
 export type {
   AdminActivityEntry,
@@ -425,3 +511,167 @@ export type {
 export type { IAdminDomainEventReader } from "./admin-domain-event.reader.js";
 
 export type { IAdminFinanceIssueSnapshotReader } from "./admin-finance-issue-snapshot.reader.js";
+
+export type {
+  IEntityDocumentRepository,
+  ILotDocumentRepository,
+  ISaleDocumentRepository,
+  ISubmissionDocumentRepository,
+} from "./entity-document.repository.js";
+
+export type { EntityDocumentPersistedRow } from "../lib/entity-document.types.js";
+
+export type {
+  ActiveMembership,
+  ILegalEntityRepository,
+} from "./legal-entity.repository.js";
+
+export type {
+  ILegalEntityMembershipReader,
+  ILegalEntityReader,
+} from "./legal-entity.reader.js";
+
+export type {
+  ILegalEntityMemberRepository,
+  LegalEntityMemberRow,
+  MemberConfirmationContext,
+  MemberWithUser,
+} from "./legal-entity-member.repository.js";
+
+export type {
+  AttachOnboardingDocumentInput,
+  CreateOrganisationAttemptInput,
+  ILegalEntityOnboardingRepository,
+  OnboardingAddressRow,
+  OnboardingDbExecutor,
+  OnboardingDocumentRow,
+  OnboardingOrganisationRow,
+} from "./legal-entity-onboarding.repository.js";
+
+export type { ILegalEntityConnectReader } from "./legal-entity-connect.reader.js";
+
+export type { ILegalEntityConnectRepository } from "./legal-entity-connect.repository.js";
+
+export type {
+  ILegalEntityNotificationRecipientReader,
+  LegalEntityNotificationAudience,
+} from "./legal-entity-notification-recipient.repository.js";
+
+export { legalEntityNotificationAudienceRoles } from "./legal-entity-notification-recipient.repository.js";
+
+export type {
+  EntityInvitationCreate,
+  EntityMemberCreate,
+  IEntityInvitationRepository,
+} from "./entity-invitation.repository.js";
+
+export type {
+  AmlDecision,
+  AmlDecisionOutcome,
+  AmlHoldReason,
+  AmlHoldStatus,
+  AmlReviewStatus,
+  AmlScreeningHit,
+  AmlScreeningListing,
+  AmlScreeningMatchStatus,
+  AmlScreeningMonitorStatus,
+  AmlScreeningResult,
+  AmlTriageRecommendation,
+  AmlWatchlistCategory,
+} from "./aml.types.js";
+
+export type {
+  IAmlHoldStore,
+  IWatchlistScreeningReader,
+  IWatchlistScreeningWriter,
+  UpsertWatchlistScreeningInput,
+  WatchlistReviewOutcomeInput,
+  WatchlistScreeningRecord,
+  WatchlistTriageInput,
+} from "./aml-screening.repository.js";
+
+export type {
+  CreateSourceOfFundsCaseInput,
+  ISourceOfFundsRepository,
+  SourceOfFundsCase,
+  SourceOfFundsReviewInput,
+  SourceOfFundsStatus,
+  SourceOfFundsTriageInput,
+  SourceOfFundsTriageRecommendation,
+  SourceOfFundsTrigger,
+} from "./source-of-funds.repository.js";
+
+export type {
+  ISourceOfFundsDocumentRepository,
+  SourceOfFundsDocumentReviewStatus,
+  SourceOfFundsDocumentRow,
+} from "./source-of-funds-document.repository.js";
+
+export type {
+  DbTransaction,
+  IArtistDeleteGuards,
+  IArtistDeleteRepository,
+} from "./artist-delete.repository.js";
+export type { ArtistDeleteGuardCounts } from "./artist-delete.repository.js";
+
+export type { IArtistExistenceReader } from "./artist-existence.reader.js";
+
+export type {
+  AdminArtistListLinkedFilter,
+  AdminArtistListOptions,
+  AdminArtistListSort,
+  IArtistProfileAdminReader,
+} from "./artist-profile-admin.reader.js";
+
+export type { IArtistProfileDirectoryReader } from "./artist-profile-directory.reader.js";
+
+export type {
+  IArtistProfileCommandRepository,
+  UpdateArtistInput,
+} from "./artist-profile.repository.js";
+export type { CreateArtistInput as ArtistProfileCreateInput } from "./artist-profile.repository.js";
+
+export type { IArtistRegistryRepository } from "./artist-registry.repository.js";
+
+export type {
+  ArtistRecord,
+  ArtistSearchHit,
+  ArtistSearchMatchType,
+  CreateArtistInput,
+  MergeArtistInput,
+  MergeArtistResult,
+  ReviewArtistInput,
+} from "./artist-registry.types.js";
+
+export type {
+  IQrCodeRepository,
+  QrCodeEntityRef,
+  QrCodeInsert,
+  QrCodeRow,
+  QrCodeUpdatePatch,
+} from "./qr-code.repository.js";
+
+export type { QrCodeEntityType, QrCodeStatus } from "../lib/qr-code.types.js";
+
+export type {
+  ExportJobInsert,
+  IExportJobRepository,
+} from "./export-job.repository.js";
+
+export type { ExportJobRow } from "../lib/export-job.types.js";
+
+export type {
+  ISaleroomDisplaySnapshotReader,
+  SaleroomDisplayCurrentLotRow,
+  SaleroomDisplayRecentBidRow,
+  SaleroomDisplaySaleRow,
+  SaleroomDisplaySessionRow,
+} from "./saleroom-display-snapshot.reader.js";
+
+export type { IImpersonationDomainEventReader } from "./impersonation-domain-event.reader.js";
+
+export type {
+  IPressArchiveRepository,
+  ListPressArchiveFilter,
+  PressCoveragePageResult,
+} from "./press-archive.repository.js";

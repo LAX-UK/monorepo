@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { DrizzleSaleRegistrationRepository } from "../repositories/drizzle-sale-registration.repository.js";
+import { DrizzleSaleRegistrationRepository } from "@auction/persistence";
 import type { ISaleRegistrationRepository } from "../repositories/interfaces/sale-registration.repository.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ISaleRepository } from "./interfaces/repositories.js";

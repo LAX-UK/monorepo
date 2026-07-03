@@ -3,4 +3,4 @@ export {
   partialSearchPattern,
   rowToRecord,
   slugify,
-} from "../../repositories/artist-registry.helpers.js";
+} from "@auction/persistence";

@@ -6,12 +6,21 @@ import {
   DrizzleAdminDisputeCaseEnrichmentReader,
   DrizzleAdminDomainEventReader,
   DrizzleAdminFinanceIssueSnapshotReader,
+  DrizzleAdminLegalEntityBrowseReader,
+  DrizzleAdminLotBrowseReader,
+  DrizzleAdminManualReviewPaymentEnrichmentReader,
+  DrizzleAdminManualReviewPaymentReader,
   DrizzleAdminMarketingEventOutboxRepository,
+  DrizzleAdminOnboardingIssuesReader,
+  DrizzleAdminReviewTaskReader,
   DrizzleAdminSaleOperationsSnapshotReader,
   DrizzleAdminUserActivityReader,
   DrizzleAdminUserBidsReader,
+  DrizzleAdminUserKycReader,
   DrizzleAdminUserReader,
   DrizzleAdminUserRoleManager,
+  DrizzleAmlHoldStore,
+  DrizzleAmlScreeningRepository,
   DrizzleAntiShillingRepository,
   DrizzleArtistWatchlistRepository,
   DrizzleCategoryRepository,
@@ -21,10 +30,16 @@ import {
   DrizzleEmailSuppressionRepository,
   DrizzleEmailWebhookIngestRepository,
   DrizzleImpersonationSessionRepository,
+  DrizzleInvitationRepository,
   DrizzleItemSubmissionRepository,
   DrizzleKycRepository,
+  DrizzleLegalEntityConnectRepository,
   DrizzleLegalEntityDocumentAdminRepository,
   DrizzleLegalEntityLifecycleAdminRepository,
+  DrizzleLegalEntityMemberRepository,
+  DrizzleLegalEntityNotificationRecipientRepository,
+  DrizzleLegalEntityOnboardingRepository,
+  DrizzleLotDocumentRepository,
   DrizzleLotLifecycleSnapshotRepository,
   DrizzleLotLifecycleTimelineReader,
   DrizzleLotMetricsReader,
@@ -35,6 +50,8 @@ import {
   DrizzleNotificationWriteRepository,
   DrizzleOnsiteEventCheckInLogRepository,
   DrizzleOnsiteEventClientReader,
+  DrizzleOnsiteEventRepository,
+  DrizzleOnsiteEventRsvpRepository,
   DrizzlePaddleRepository,
   DrizzlePaymentExternalRefRepository,
   DrizzlePaymentMetricsReader,
@@ -47,14 +64,20 @@ import {
   DrizzleQrCodeAnalyticsReader,
   DrizzleRepositoryFactory,
   DrizzleSaleBiddersReader,
+  DrizzleSaleDocumentRepository,
+  DrizzleSaleExpectedGuestsReader,
   DrizzleSaleFollowRepository,
   DrizzleSaleModeLookup,
   DrizzleSaleRepository,
+  DrizzleSaleroomCheckInRepository,
   DrizzleSaleroomDisplaySessionRepository,
   DrizzleSaleroomSessionLookup,
   DrizzleSavedSearchRepository,
+  DrizzleSourceOfFundsDocumentRepository,
   DrizzleSourceOfFundsDocumentReviewRepository,
+  DrizzleSourceOfFundsRepository,
   DrizzleSourceOfFundsSettlementReader,
+  DrizzleSubmissionDocumentRepository,
   DrizzleUiPreferenceRepository,
   DrizzleUploadObjectReader,
   DrizzleUploadPersistenceRepository,
@@ -80,6 +103,7 @@ import {
   type IAdminUserBidsReader,
   type IAdminUserReader,
   type IAdminUserRoleManager,
+  type IAmlHoldStore,
   type IAntiShillingGuard,
   type IArtistWatchlistRepository,
   type ICategoryRepository,
@@ -90,8 +114,15 @@ import {
   type IEmailWebhookIngestRepository,
   type IImpersonationSessionRepository,
   type IKycRepository,
+  type ILegalEntityConnectReader,
+  type ILegalEntityConnectRepository,
   type ILegalEntityDocumentAdminRepository,
   type ILegalEntityLifecycleAdminRepository,
+  type ILegalEntityMemberRepository,
+  type ILegalEntityNotificationRecipientReader,
+  type ILegalEntityOnboardingRepository,
+  type ILegalEntityRepository,
+  type ILotDocumentRepository,
   type ILotLifecycleSnapshotReader,
   type ILotLifecycleSnapshotRepository,
   type ILotLifecycleTimelineReader,
@@ -103,6 +134,8 @@ import {
   type INotificationWriteRepository,
   type IOnsiteEventCheckInLogRepository,
   type IOnsiteEventClientReader,
+  type IOnsiteEventRepository,
+  type IOnsiteEventRsvpRepository,
   type IPaddleRepository,
   type IPaymentExternalRefRepository,
   type IPaymentMetricsReader,
@@ -115,13 +148,19 @@ import {
   type IPushSubscriptionRepository,
   type IQrCodeAnalyticsReader,
   type ISaleBiddersReader,
+  type ISaleDocumentRepository,
+  type ISaleExpectedGuestsReader,
   type ISaleFollowRepository,
   type ISaleModeLookup,
+  type ISaleroomCheckInRepository,
   type ISaleroomDisplaySessionRepository,
   type ISaleroomSessionLookup,
   type ISavedSearchRepository,
+  type ISourceOfFundsDocumentRepository,
   type ISourceOfFundsDocumentReviewRepository,
+  type ISourceOfFundsRepository,
   type ISourceOfFundsSettlementReader,
+  type ISubmissionDocumentRepository,
   type IUiPreferenceRepository,
   type IUploadObjectReader,
   type IUploadPersistenceRepository,
@@ -132,87 +171,46 @@ import {
   type IUserSuspensionChecker,
   type IVenueRepository,
   type IWatchlistRepository,
+  type IWatchlistScreeningReader,
+  type IWatchlistScreeningWriter,
   type IWebhookEventRepository,
   type IXeroConnectionRepository,
   type IXeroWebhookEventRepository,
+  createDrizzleLegalEntityRepository,
 } from "@auction/persistence";
-import { DrizzleAdminLegalEntityBrowseReader } from "../repositories/drizzle-admin-legal-entity-browse.reader.js";
-import { DrizzleAdminLotBrowseReader } from "../repositories/drizzle-admin-lot-browse.reader.js";
-import { DrizzleAdminManualReviewPaymentEnrichmentReader } from "../repositories/drizzle-admin-manual-review-payment-enrichment.reader.js";
-import { DrizzleAdminManualReviewPaymentReader } from "../repositories/drizzle-admin-manual-review-payment.reader.js";
-import { DrizzleAdminOnboardingIssuesReader } from "../repositories/drizzle-admin-onboarding-issues.reader.js";
-import { DrizzleAdminReviewTaskReader } from "../repositories/drizzle-admin-review-task.reader.js";
-import { DrizzleAdminUserKycReader } from "../repositories/drizzle-admin-user-kyc.reader.js";
+import { DrizzleTelephoneBidBookingRepository } from "@auction/persistence";
 import {
-  DrizzleAmlHoldStore,
-  DrizzleAmlScreeningRepository,
-} from "../repositories/drizzle-aml-screening.repository.js";
-import { createDrizzleArtistProfileRepository } from "../repositories/drizzle-artist-profile.repository.js";
-import { DrizzleArtistRegistryRepository } from "../repositories/drizzle-artist-registry.repository.js";
+  DrizzleArtistRegistryRepository,
+  type IAdminLegalEntityBrowseReader,
+  type IAdminLotBrowseReader,
+  type IAdminManualReviewPaymentEnrichmentReader,
+  type IAdminManualReviewPaymentReader,
+  type IAdminOnboardingIssuesReader,
+  type IAdminReviewTaskReader,
+  type IArtistProfileAdminReader,
+  type IArtistProfileCommandRepository,
+  type IArtistProfileDirectoryReader,
+  type IArtistRegistryRepository,
+  createDrizzleArtistProfileRepository,
+} from "@auction/persistence";
+import {
+  DrizzleImpersonationDomainEventReader,
+  DrizzleSaleroomDisplaySnapshotReader,
+  type IImpersonationDomainEventReader,
+  type ISaleroomDisplaySnapshotReader,
+} from "@auction/persistence";
 import { DrizzleAttentionFeedReader } from "../repositories/drizzle-attention-feed.reader.js";
-import { DrizzleInvitationRepository } from "../repositories/drizzle-entity-invitation.repository.js";
-import { DrizzleImpersonationDomainEventReader } from "../repositories/drizzle-impersonation-domain-event.reader.js";
-import { DrizzleLegalEntityConnectRepository } from "../repositories/drizzle-legal-entity-connect.repository.js";
-import { DrizzleLegalEntityMemberRepository } from "../repositories/drizzle-legal-entity-member.repository.js";
-import { DrizzleLegalEntityNotificationRecipientRepository } from "../repositories/drizzle-legal-entity-notification-recipient.repository.js";
-import { DrizzleLegalEntityOnboardingRepository } from "../repositories/drizzle-legal-entity-onboarding.repository.js";
-import { createDrizzleLegalEntityRepository } from "../repositories/drizzle-legal-entity.repository.js";
-import { DrizzleLotDocumentRepository } from "../repositories/drizzle-lot-document.repository.js";
-import { DrizzleOnsiteEventRsvpRepository } from "../repositories/drizzle-onsite-event-rsvp.repository.js";
-import { DrizzleOnsiteEventRepository } from "../repositories/drizzle-onsite-event.repository.js";
-import { DrizzleSaleDocumentRepository } from "../repositories/drizzle-sale-document.repository.js";
-import { DrizzleSaleExpectedGuestsReader } from "../repositories/drizzle-sale-expected-guests.reader.js";
-import { DrizzleSaleroomCheckInRepository } from "../repositories/drizzle-saleroom-check-in.repository.js";
-import type { ISaleroomCheckInRepository } from "../repositories/drizzle-saleroom-check-in.repository.js";
-import { DrizzleSaleroomDisplaySnapshotReader } from "../repositories/drizzle-saleroom-display-snapshot.reader.js";
-import { DrizzleSourceOfFundsDocumentRepository } from "../repositories/drizzle-source-of-funds-document.repository.js";
-import type { ISourceOfFundsDocumentRepository } from "../repositories/drizzle-source-of-funds-document.repository.js";
-import { DrizzleSourceOfFundsRepository } from "../repositories/drizzle-source-of-funds.repository.js";
-import { DrizzleSubmissionDocumentRepository } from "../repositories/drizzle-submission-document.repository.js";
-import { DrizzleTelephoneBidBookingRepository } from "../repositories/drizzle-telephone-bid-booking.repository.js";
-import type { IAdminLegalEntityBrowseReader } from "../repositories/interfaces/admin-legal-entity-browse.reader.js";
-import type { IAdminLotBrowseReader } from "../repositories/interfaces/admin-lot-browse.reader.js";
-import type { IAdminManualReviewPaymentEnrichmentReader } from "../repositories/interfaces/admin-manual-review-payment-enrichment.reader.js";
-import type { IAdminManualReviewPaymentReader } from "../repositories/interfaces/admin-manual-review-payment.reader.js";
-import type { IAdminOnboardingIssuesReader } from "../repositories/interfaces/admin-onboarding-issues.reader.js";
-import type { IAdminReviewTaskReader } from "../repositories/interfaces/admin-review-task.reader.js";
-import type { IArtistProfileAdminReader } from "../repositories/interfaces/artist-profile-admin.reader.js";
-import type { IArtistProfileDirectoryReader } from "../repositories/interfaces/artist-profile-directory.reader.js";
-import type { IArtistProfileCommandRepository } from "../repositories/interfaces/artist-profile.repository.js";
-import type { IArtistRegistryRepository } from "../repositories/interfaces/artist-registry.repository.js";
-import type { IImpersonationDomainEventReader } from "../repositories/interfaces/impersonation-domain-event.reader.js";
 import type { IInvitationRepository } from "../repositories/interfaces/invitation.repository.js";
-import type { ILegalEntityConnectReader } from "../repositories/interfaces/legal-entity-connect.reader.js";
-import type { ILegalEntityConnectRepository } from "../repositories/interfaces/legal-entity-connect.repository.js";
-import type { ILegalEntityMemberRepository } from "../repositories/interfaces/legal-entity-member.repository.js";
-import type { ILegalEntityOnboardingRepository } from "../repositories/interfaces/legal-entity-onboarding.repository.js";
-import type { IOnsiteEventRsvpRepository } from "../repositories/interfaces/onsite-event-rsvp.repository.js";
-import type { IOnsiteEventRepository } from "../repositories/interfaces/onsite-event.repository.js";
-import type { ISaleExpectedGuestsReader } from "../repositories/interfaces/sale-expected-guests.reader.js";
-import type { ISaleroomDisplaySnapshotReader } from "../repositories/interfaces/saleroom-display-snapshot.reader.js";
 import type { ITelephoneBidBookingRepository } from "../repositories/interfaces/telephone-bid-booking.repository.js";
-import type {
-  IAmlHoldStore,
-  IWatchlistScreeningReader,
-  IWatchlistScreeningWriter,
-} from "../services/aml/ports.js";
 import type { IAdminUserKycReader } from "../services/interfaces/admin-user.js";
 import type {
   IArtistDeleteGuards,
   IArtistDeleteRepository,
 } from "../services/interfaces/artist-delete.js";
 import type { IAttentionFeedReader } from "../services/interfaces/attention-feed.js";
-import type { ILegalEntityNotificationRecipientReader } from "../services/interfaces/legal-entity-notification-recipients.js";
-import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 import type { IItemSubmissionRepository } from "../services/interfaces/repositories.js";
-import type {
-  ILotDocumentRepository,
-  ISaleDocumentRepository,
-  ISaleRepository,
-  ISubmissionDocumentRepository,
-} from "../services/interfaces/repositories.js";
+import type { ISaleRepository } from "../services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
-import type { ISourceOfFundsRepository } from "../services/source-of-funds/source-of-funds.types.js";
 
 export type IArtistProfileRepository = IArtistProfileDirectoryReader &
   IArtistProfileAdminReader &

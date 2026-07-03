@@ -1,5 +1,1 @@
-import type { AdminOnboardingIssues } from "../../admin/admin-route-dtos.js";
-
-export interface IAdminOnboardingIssuesReader {
-  getOnboardingIssues(): Promise<AdminOnboardingIssues>;
-}
+export type { IAdminOnboardingIssuesReader, AdminOnboardingIssues } from "@auction/persistence";

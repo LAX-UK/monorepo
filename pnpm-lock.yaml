@@ -865,6 +865,9 @@ importers:
       '@auction/db':
         specifier: workspace:*
         version: link:../db
+      '@auction/exports':
+        specifier: workspace:*
+        version: link:../exports
       '@auction/types':
         specifier: workspace:*
         version: link:../types

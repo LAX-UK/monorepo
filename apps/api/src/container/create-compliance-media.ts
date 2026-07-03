@@ -7,6 +7,7 @@ import {
   MetaCapiMarketingEventPublisher,
   SgtmMarketingEventPublisher,
 } from "@auction/marketing-events";
+import { DrizzleExportJobRepository } from "@auction/persistence";
 import type { Env } from "../env.js";
 import { createExportProviderDeps } from "../exports/deps.js";
 import { createExportProviders } from "../exports/registry.js";
@@ -23,7 +24,6 @@ import { getMarketingEventsConfig } from "../lib/marketing-events-enabled.js";
 import { VeriffScreeningProvider } from "../lib/veriff/veriff-screening-provider.js";
 import { VeriffWatchlistFetcher } from "../lib/veriff/veriff-watchlist-fetcher.js";
 import { VeriffWebhookVerifier } from "../lib/veriff/veriff-webhook-verifier.js";
-import { DrizzleExportJobRepository } from "../repositories/drizzle-export-job.repository.js";
 import { AdminSourceOfFundsQueryService } from "../services/admin/admin-source-of-funds-query.service.js";
 import { LegalEntityDocumentAdminService } from "../services/admin/legal-entity-document-admin.service.js";
 import { DefaultAmlDecisionPolicy } from "../services/aml/aml-decision.policy.js";

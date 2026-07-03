@@ -4,10 +4,10 @@
  */
 import { createDb } from "@auction/db";
 import { onsiteEventRsvp } from "@auction/db/schema";
+import { DrizzleOnsiteEventRepository } from "@auction/persistence";
 import { and, eq, isNull } from "drizzle-orm";
 import { encryptCheckInToken } from "../src/lib/check-in-token-ciphertext.js";
 import { buildPassUrl, issueCheckInToken } from "../src/lib/onsite-event-check-in-token.js";
-import { DrizzleOnsiteEventRepository } from "../src/repositories/drizzle-onsite-event.repository.js";
 
 const db = createDb(process.env.DATABASE_URL ?? "");
 const eventRepo = new DrizzleOnsiteEventRepository(db);

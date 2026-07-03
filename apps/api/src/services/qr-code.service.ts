@@ -1,9 +1,9 @@
 import { persistQrCodeScan, truncateIp } from "@auction/db";
 import type { Database } from "@auction/db";
+import { DrizzleQrCodeRepository } from "@auction/persistence";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 import type { AppLogger } from "../lib/logger.js";
-import { DrizzleQrCodeRepository } from "../repositories/drizzle-qr-code.repository.js";
 import type { IQrCodeRepository } from "../repositories/interfaces/qr-code.repository.js";
 import type {
   IQrCodeAdminService,

@@ -1,5 +1,5 @@
+import { DrizzleAdminManualReviewPaymentEnrichmentReader } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import { DrizzleAdminManualReviewPaymentEnrichmentReader } from "../../repositories/drizzle-admin-manual-review-payment-enrichment.reader.js";
 
 describe("DrizzleAdminManualReviewPaymentEnrichmentReader", () => {
   it("batch-loads domain events and attaches manual review reason", async () => {

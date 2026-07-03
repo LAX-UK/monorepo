@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
-import type { dataExport } from "@auction/db/schema";
 import type { ExportEntityType, ExportFormat, ExportPhase, ExportStatus } from "@auction/exports";
+import type { ExportJobRow } from "@auction/persistence";
+
+export type { ExportJobRow } from "@auction/persistence";
 
 export type ExportServiceConfig = {
   syncMaxRows: number;
@@ -25,8 +27,6 @@ export type ExportJobView = {
   createdAt: string;
   completedAt?: string;
 };
-
-export type ExportJobRow = typeof dataExport.$inferSelect;
 
 export type ExportProgressSnapshot = {
   status: ExportStatus;

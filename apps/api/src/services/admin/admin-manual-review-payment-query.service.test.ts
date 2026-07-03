@@ -1,6 +1,8 @@
+import {
+  DrizzleAdminManualReviewPaymentEnrichmentReader,
+  DrizzleAdminManualReviewPaymentReader,
+} from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import { DrizzleAdminManualReviewPaymentEnrichmentReader } from "../../repositories/drizzle-admin-manual-review-payment-enrichment.reader.js";
-import { DrizzleAdminManualReviewPaymentReader } from "../../repositories/drizzle-admin-manual-review-payment.reader.js";
 import { AdminManualReviewPaymentQueryService } from "./admin-manual-review-payment-query.service.js";
 
 describe("AdminManualReviewPaymentQueryService.listManualReviewPayments", () => {

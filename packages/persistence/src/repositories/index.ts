@@ -27,8 +27,19 @@ export { DrizzleSaleroomSessionRepository } from "./drizzle-saleroom-session.rep
 export { DrizzleTelephoneBookingUserPhoneReader } from "./drizzle-telephone-booking-user-phone.reader.js";
 export { DrizzleSaleRegistrationBidReader } from "./drizzle-sale-registration-bid.reader.js";
 export { DrizzleSaleRegistrationCheckInReader } from "./drizzle-sale-registration-check-in.reader.js";
+export { DrizzleSaleRegistrationRepository } from "./drizzle-sale-registration.repository.js";
+export { DrizzleTelephoneBidBookingRepository } from "./drizzle-telephone-bid-booking.repository.js";
+export { DrizzleTelephoneBidBookingDetailReader } from "./drizzle-telephone-bid-booking-detail.reader.js";
+export { DrizzleConditionReportRequestRepository } from "./drizzle-condition-report-request.repository.js";
 export { DrizzleOnsiteEventCheckInLogRepository } from "./drizzle-onsite-event-check-in-log.repository.js";
 export { DrizzleOnsiteEventClientReader } from "./drizzle-onsite-event-client.reader.js";
+export { DrizzleOnsiteEventRepository } from "./drizzle-onsite-event.repository.js";
+export { DrizzleOnsiteEventRsvpRepository } from "./drizzle-onsite-event-rsvp.repository.js";
+export {
+  DrizzleSaleroomCheckInRepository,
+  PaddleTakenError,
+} from "./drizzle-saleroom-check-in.repository.js";
+export { DrizzleSaleExpectedGuestsReader } from "./drizzle-sale-expected-guests.reader.js";
 export { DrizzleLotLifecycleSnapshotRepository } from "./drizzle-lot-lifecycle-snapshot.repository.js";
 export { DrizzleLotLifecycleTimelineReader } from "./drizzle-lot-lifecycle-timeline.reader.js";
 export { DrizzleLotTransitionGuardReader } from "./drizzle-lot-transition-guard.reader.js";
@@ -95,3 +106,58 @@ export { DrizzleAdminUserActivityReader } from "./drizzle-admin-user.reader.js";
 export { DrizzleAdminUserBidsReader } from "./drizzle-admin-user-bids.reader.js";
 export { DrizzleAdminDomainEventReader } from "./drizzle-admin-domain-event.reader.js";
 export { DrizzleAdminFinanceIssueSnapshotReader } from "./drizzle-admin-finance-issue-snapshot.reader.js";
+export { DrizzleAdminOnboardingIssuesReader } from "./drizzle-admin-onboarding-issues.reader.js";
+export { DrizzleAdminLegalEntityBrowseReader } from "./drizzle-admin-legal-entity-browse.reader.js";
+export { DrizzleAdminLotBrowseReader } from "./drizzle-admin-lot-browse.reader.js";
+export { DrizzleAdminManualReviewPaymentReader } from "./drizzle-admin-manual-review-payment.reader.js";
+export { DrizzleAdminManualReviewPaymentEnrichmentReader } from "./drizzle-admin-manual-review-payment-enrichment.reader.js";
+export { DrizzleAdminReviewTaskReader } from "./drizzle-admin-review-task.reader.js";
+export { DrizzleLotDocumentRepository } from "./drizzle-lot-document.repository.js";
+export { DrizzleSaleDocumentRepository } from "./drizzle-sale-document.repository.js";
+export { DrizzleSubmissionDocumentRepository } from "./drizzle-submission-document.repository.js";
+export {
+  createDrizzleLegalEntityRepository,
+  DrizzleLegalEntityRepository,
+} from "./drizzle-legal-entity.repository.js";
+export { DrizzleLegalEntityReader } from "./drizzle-legal-entity.reader.js";
+export { DrizzleLegalEntityMembershipReader } from "./drizzle-legal-entity-membership.reader.js";
+export { DrizzleLegalEntityMemberRepository } from "./drizzle-legal-entity-member.repository.js";
+export { DrizzleLegalEntityNotificationRecipientRepository } from "./drizzle-legal-entity-notification-recipient.repository.js";
+export { DrizzleLegalEntityOnboardingRepository } from "./drizzle-legal-entity-onboarding.repository.js";
+export { DrizzleLegalEntityConnectRepository } from "./drizzle-legal-entity-connect.repository.js";
+export {
+  DrizzleEntityInvitationRepository,
+  DrizzleInvitationRepository,
+} from "./drizzle-entity-invitation.repository.js";
+export {
+  DrizzleAmlHoldStore,
+  DrizzleAmlScreeningRepository,
+} from "./drizzle-aml-screening.repository.js";
+export { DrizzleSourceOfFundsRepository } from "./drizzle-source-of-funds.repository.js";
+export { DrizzleSourceOfFundsDocumentRepository } from "./drizzle-source-of-funds-document.repository.js";
+export { DrizzleAdminUserKycReader } from "./drizzle-admin-user-kyc.reader.js";
+export {
+  createDrizzleArtistProfileRepository,
+  DrizzleArtistProfileRepository,
+} from "./drizzle-artist-profile.repository.js";
+export { DrizzleArtistProfileAdminReader } from "./drizzle-artist-profile-admin.reader.js";
+export { DrizzleArtistProfileCommandRepository } from "./drizzle-artist-profile-command.repository.js";
+export { DrizzleArtistProfileDirectoryReader } from "./drizzle-artist-profile-directory.reader.js";
+export { DrizzleArtistRegistryRepository } from "./drizzle-artist-registry.repository.js";
+export {
+  insertArtistInTx,
+  replaceArtistCategoriesInTx,
+  resolveUniqueArtistSlug,
+} from "./artist-registry-mutations.js";
+export { searchArtists } from "./artist-registry-search.js";
+export {
+  FUZZY_THRESHOLD,
+  partialSearchPattern,
+  rowToRecord,
+  slugify,
+} from "./artist-registry.helpers.js";
+export { DrizzleQrCodeRepository } from "./drizzle-qr-code.repository.js";
+export { DrizzleExportJobRepository } from "./drizzle-export-job.repository.js";
+export { DrizzleSaleroomDisplaySnapshotReader } from "./drizzle-saleroom-display-snapshot.reader.js";
+export { DrizzleImpersonationDomainEventReader } from "./drizzle-impersonation-domain-event.reader.js";
+export { SalePressArchiveRepository } from "./sale-press-archive.repository.js";

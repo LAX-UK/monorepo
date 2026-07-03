@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
-import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
-import { defineCompileTimeContract } from "../testing/compile-time-contract.js";
-import type { DrizzleLegalEntityRepository } from "./drizzle-legal-entity.repository.js";
 import type {
+  DrizzleLegalEntityRepository,
   ILegalEntityMembershipReader,
   ILegalEntityReader,
-} from "./interfaces/legal-entity.reader.js";
+  ILegalEntityRepository,
+} from "@auction/persistence";
+import { describe, expect, it } from "vitest";
+import { defineCompileTimeContract } from "../testing/compile-time-contract.js";
 
 type AssertAssignable<T extends U, U> = T;
 
