@@ -69,11 +69,12 @@ export function createPlatformIdentityServices(
     userSuspensionChecker,
     artistRegistryRepository,
     entityInvitationRepository,
+    uploadPersistenceRepository,
   } = repos;
   const { domainEventPublisher } = core;
 
   const organizationOnboardingService: IOrganizationOnboardingService =
-    new OrganizationOnboardingService(db, domainEventPublisher);
+    new OrganizationOnboardingService(legalEntityOnboardingRepository, domainEventPublisher);
   const impersonationAuditService = new ImpersonationAuditService(db, domainEventPublisher);
   const impersonationSessionService = new ImpersonationSessionService(
     repos.impersonationSessionRepository,
@@ -115,6 +116,7 @@ export function createPlatformIdentityServices(
     legalEntityRepository,
     organizationOnboardingService,
     domainEventPublisher,
+    uploadPersistenceRepository,
     stripeConnectService,
     {
       onSubmittedForReview: async ({ legalEntityId, displayName }) => {

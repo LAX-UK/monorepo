@@ -56,11 +56,14 @@ describe("OrganizationOnboardingFlowService.submitForReview", () => {
 
     const publisher = { publish: vi.fn() } as never;
 
+    const uploadPersistenceRepository = { findByIdForOwner: vi.fn() } as never;
+
     const svc = new OrganizationOnboardingFlowService(
       db,
       legalEntityRepository,
       organizationOnboardingService,
       publisher,
+      uploadPersistenceRepository,
     );
 
     const res = await svc.submitForReview("u1", ENTITY_ROW.id);
@@ -128,12 +131,14 @@ describe("OrganizationOnboardingFlowService.submitForReview", () => {
     const organizationOnboardingService = { getRequirements: vi.fn() } as never;
     const publisher = { publish: vi.fn().mockResolvedValue(undefined) } as never;
     const onSubmittedForReview = vi.fn().mockResolvedValue(undefined);
+    const uploadPersistenceRepository = { findByIdForOwner: vi.fn() } as never;
 
     const svc = new OrganizationOnboardingFlowService(
       db,
       legalEntityRepository,
       organizationOnboardingService,
       publisher,
+      uploadPersistenceRepository,
       null,
       { onSubmittedForReview },
     );

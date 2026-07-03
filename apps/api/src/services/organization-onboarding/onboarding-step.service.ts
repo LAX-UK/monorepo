@@ -63,8 +63,9 @@ export class OnboardingStepService implements IOnboardingStepService {
 
   private documentDeps(): OrganizationOnboardingFlowDeps {
     return {
-      db: this.ctx.db,
       legalEntityRepository: this.ctx.legalEntityRepository,
+      onboardingRepo: this.ctx.onboardingRepo,
+      uploadPersistenceRepository: this.ctx.uploadPersistenceRepository,
       organizationOnboardingService: this.ctx.organizationOnboardingService,
       domainEventPublisher: this.ctx.domainEventPublisher,
       stripeConnect: this.ctx.stripeConnect,

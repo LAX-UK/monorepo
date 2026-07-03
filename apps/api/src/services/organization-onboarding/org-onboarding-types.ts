@@ -1,4 +1,5 @@
-import type { Database } from "@auction/db";
+import type { ILegalEntityOnboardingRepository } from "../../repositories/interfaces/legal-entity-onboarding.repository.js";
+import type { IUploadPersistenceRepository } from "../../repositories/interfaces/upload-persistence.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IOrganizationOnboardingService } from "../interfaces/organization-onboarding.js";
@@ -7,8 +8,9 @@ import type { OrganizationOnboardingFlowOptions } from "./org-onboarding-mappers
 
 /** Resolved deps record built once in OrganizationOnboardingFlowService constructor. */
 export type OrganizationOnboardingFlowDeps = {
-  db: Database;
   legalEntityRepository: ILegalEntityRepository;
+  onboardingRepo: ILegalEntityOnboardingRepository;
+  uploadPersistenceRepository: IUploadPersistenceRepository;
   organizationOnboardingService: IOrganizationOnboardingService;
   domainEventPublisher: DomainEventPublisher;
   stripeConnect: (IConnectAccountSync & Pick<IConnectSessionProvider, "isConfigured">) | null;

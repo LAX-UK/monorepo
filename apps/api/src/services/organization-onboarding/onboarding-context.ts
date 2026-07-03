@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import type { LegalEntityDocumentUploadInput } from "@auction/validators";
 import type { ILegalEntityOnboardingRepository } from "../../repositories/interfaces/legal-entity-onboarding.repository.js";
+import type { IUploadPersistenceRepository } from "../../repositories/interfaces/upload-persistence.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IOrganizationOnboardingService } from "../interfaces/organization-onboarding.js";
@@ -16,6 +17,7 @@ import type {
 export type OnboardingContext = {
   db: Database;
   onboardingRepo: ILegalEntityOnboardingRepository;
+  uploadPersistenceRepository: IUploadPersistenceRepository;
   legalEntityRepository: ILegalEntityRepository;
   organizationOnboardingService: IOrganizationOnboardingService;
   domainEventPublisher: DomainEventPublisher;
@@ -26,6 +28,7 @@ export type OnboardingContext = {
 export function createOnboardingContext(input: {
   db: Database;
   onboardingRepo: ILegalEntityOnboardingRepository;
+  uploadPersistenceRepository: IUploadPersistenceRepository;
   legalEntityRepository: ILegalEntityRepository;
   organizationOnboardingService: IOrganizationOnboardingService;
   domainEventPublisher: DomainEventPublisher;

@@ -55,7 +55,10 @@ function createCtx(overrides: Partial<OnboardingContext> = {}): OnboardingContex
       findUserKycStatus: vi.fn().mockResolvedValue("approved"),
       lockOrganisationForUpdate: vi.fn().mockResolvedValue(DOCS_REQUESTED_ROW),
       transitionOrganisationStatus: vi.fn().mockResolvedValue(undefined),
-    },
+    } as unknown as OnboardingContext["onboardingRepo"],
+    uploadPersistenceRepository: {
+      findByIdForOwner: vi.fn(),
+    } as unknown as OnboardingContext["uploadPersistenceRepository"],
     legalEntityRepository: {
       findActiveMembership: vi.fn().mockResolvedValue({ role: "owner" }),
     } as never,

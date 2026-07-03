@@ -1,9 +1,8 @@
-import type { Database } from "@auction/db";
-import { legalEntity, legalEntityAddress, legalEntityMember } from "@auction/db/schema";
 import type { LegalEntity } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 import { PUBLIC_ORG_SUBKIND_META } from "@auction/validators";
-import { and, eq, ne, sql } from "drizzle-orm";
+import type { ILegalEntityOnboardingRepository } from "../repositories/interfaces/legal-entity-onboarding.repository.js";
+import type { OnboardingOrganisationRow } from "../repositories/interfaces/legal-entity-onboarding.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
   CheckNameResult,
@@ -69,7 +68,7 @@ function slugify(name: string): string {
     .slice(0, 80);
 }
 
-function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
+function rowToEntity(row: OnboardingOrganisationRow): LegalEntity {
   return {
     id: row.id,
     displayName: row.displayName,
@@ -112,7 +111,7 @@ function isUniqueViolation(err: unknown): boolean {
 
 export class OrganizationOnboardingService implements IOrganizationOnboardingService {
   constructor(
-    private readonly db: Database,
+    private readonly onboardingRepo: ILegalEntityOnboardingRepository,
     private readonly domainEventPublisher?: DomainEventPublisher,
   ) {}
 
@@ -120,23 +119,13 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
     creatorUserId: string,
     input: CreateOrganizationInput,
   ): Promise<CreateOrganizationResult> {
-    const [countRow] = await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(legalEntity)
-      .where(
-        and(
-          eq(legalEntity.createdByUserId, creatorUserId),
-          eq(legalEntity.kind, "organisation"),
-          ne(legalEntity.status, "archived"),
-        ),
-      );
-    const count = countRow?.count ?? 0;
+    const count = await this.onboardingRepo.countNonArchivedOrganisationsByCreator(creatorUserId);
     if (count >= MAX_ORGS_PER_USER) {
       throw new Error("organization_limit_reached");
     }
 
     const baseSlug = slugify(input.displayName);
-    let entity: typeof legalEntity.$inferSelect | undefined;
+    let entity: OnboardingOrganisationRow | undefined;
     let slugAttempt = 1;
 
     while (!entity && slugAttempt <= 12) {
@@ -145,42 +134,28 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
         slug = `${baseSlug}-${slugAttempt}`;
       }
       try {
-        entity = await this.db.transaction(async (tx) => {
-          if (slug.length > 0) {
-            const existing = await tx
-              .select({ id: legalEntity.id })
-              .from(legalEntity)
-              .where(eq(legalEntity.slug, slug))
-              .limit(1);
-            if (existing.length > 0) {
-              throw new Error("slug_taken");
-            }
-          }
-
-          const [created] = await tx
-            .insert(legalEntity)
-            .values({
+        entity = await this.onboardingRepo.transaction(async (tx) => {
+          const created = await this.onboardingRepo.createOrganisationAttempt(
+            {
+              creatorUserId,
               displayName: input.displayName,
               legalName: input.legalName ?? null,
-              slug: slug.length > 0 ? slug : null,
-              kind: "organisation",
               subkind: input.subkind,
-              createdByUserId: creatorUserId,
-              status: "lead",
               vatNumber: input.vatNumber ?? null,
-            })
-            .returning();
-          if (!created) throw new Error("organization_create_failed");
-
-          await tx.insert(legalEntityMember).values({
-            legalEntityId: created.id,
-            userId: creatorUserId,
-            role: "owner",
-            isPrimaryAdmin: true,
-            invitedByUserId: creatorUserId,
-            invitedAt: new Date(),
-            acceptedAt: new Date(),
-          });
+              slug,
+              ...(input.primaryAddress !== undefined
+                ? {
+                    primaryAddress: {
+                      ...input.primaryAddress,
+                      line2: input.primaryAddress.line2 ?? null,
+                      state: input.primaryAddress.state ?? null,
+                      isDefault: input.primaryAddress.isDefault ?? null,
+                    },
+                  }
+                : {}),
+            },
+            tx,
+          );
 
           if (this.domainEventPublisher) {
             await this.domainEventPublisher.publish(tx, {
@@ -195,20 +170,6 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
               },
               actorUserId: creatorUserId,
               actingLegalEntityId: created.id as string,
-            });
-          }
-
-          if (input.primaryAddress) {
-            await tx.insert(legalEntityAddress).values({
-              legalEntityId: created.id,
-              addressType: input.primaryAddress.addressType,
-              line1: input.primaryAddress.line1,
-              line2: input.primaryAddress.line2 ?? null,
-              city: input.primaryAddress.city,
-              state: input.primaryAddress.state ?? null,
-              postalCode: input.primaryAddress.postalCode,
-              country: input.primaryAddress.country,
-              isDefault: input.primaryAddress.isDefault ?? true,
             });
           }
 
@@ -241,20 +202,11 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
     const slug = slugify(displayName);
     if (!slug) return { available: false, suggestions: [] };
 
-    const exists = await this.db
-      .select({ id: legalEntity.id })
-      .from(legalEntity)
-      .where(eq(legalEntity.slug, slug))
-      .limit(1);
+    const taken = await this.onboardingRepo.existsOrganisationSlug(slug);
+    if (!taken) return { available: true, suggestions: [] };
 
-    if (exists.length === 0) return { available: true, suggestions: [] };
-
-    // Suggest first three numeric suffixes that aren't taken.
-    const taken = await this.db
-      .select({ slug: legalEntity.slug })
-      .from(legalEntity)
-      .where(sql`${legalEntity.slug} like ${`${slug}-%`}`);
-    const takenSet = new Set(taken.map((r) => r.slug).filter(Boolean) as string[]);
+    const takenSlugs = await this.onboardingRepo.listOrganisationSlugSuffixes(slug);
+    const takenSet = new Set(takenSlugs);
     const suggestions: string[] = [];
     for (let n = 2; suggestions.length < 3 && n < 12; n += 1) {
       const candidate = `${slug}-${n}`;

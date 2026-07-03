@@ -3,13 +3,16 @@ import {
   legalEntity,
   legalEntityAddress,
   legalEntityDocument,
+  legalEntityMember,
   legalEntityOnboardingProgress,
   user,
 } from "@auction/db/schema";
 import type { LegalEntityStatus, OrgOnboardingStepKey } from "@auction/types";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { OrganizationOnboardingProfileInput } from "../services/organization-onboarding/org-onboarding-mappers.js";
 import type {
+  AttachOnboardingDocumentInput,
+  CreateOrganisationAttemptInput,
   ILegalEntityOnboardingRepository,
   OnboardingAddressRow,
   OnboardingDbExecutor,
@@ -19,6 +22,139 @@ import type {
 
 export class DrizzleLegalEntityOnboardingRepository implements ILegalEntityOnboardingRepository {
   constructor(private readonly db: Database) {}
+
+  transaction<T>(fn: (db: OnboardingDbExecutor) => Promise<T>): Promise<T> {
+    return this.db.transaction(fn);
+  }
+
+  async countNonArchivedOrganisationsByCreator(userId: string): Promise<number> {
+    const [countRow] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(legalEntity)
+      .where(
+        and(
+          eq(legalEntity.createdByUserId, userId),
+          eq(legalEntity.kind, "organisation"),
+          ne(legalEntity.status, "archived"),
+        ),
+      );
+    return countRow?.count ?? 0;
+  }
+
+  async existsOrganisationSlug(slug: string, db: OnboardingDbExecutor = this.db): Promise<boolean> {
+    if (slug.length === 0) return false;
+    const existing = await db
+      .select({ id: legalEntity.id })
+      .from(legalEntity)
+      .where(eq(legalEntity.slug, slug))
+      .limit(1);
+    return existing.length > 0;
+  }
+
+  async listOrganisationSlugSuffixes(baseSlug: string): Promise<string[]> {
+    const taken = await this.db
+      .select({ slug: legalEntity.slug })
+      .from(legalEntity)
+      .where(sql`${legalEntity.slug} like ${`${baseSlug}-%`}`);
+    return taken.map((r) => r.slug).filter(Boolean) as string[];
+  }
+
+  async createOrganisationAttempt(
+    input: CreateOrganisationAttemptInput,
+    db: OnboardingDbExecutor = this.db,
+  ): Promise<OnboardingOrganisationRow> {
+    if (input.slug.length > 0 && (await this.existsOrganisationSlug(input.slug, db))) {
+      throw new Error("slug_taken");
+    }
+
+    const [created] = await db
+      .insert(legalEntity)
+      .values({
+        displayName: input.displayName,
+        legalName: input.legalName,
+        slug: input.slug.length > 0 ? input.slug : null,
+        kind: "organisation",
+        subkind: input.subkind,
+        createdByUserId: input.creatorUserId,
+        status: "lead",
+        vatNumber: input.vatNumber,
+      })
+      .returning();
+    if (!created) throw new Error("organization_create_failed");
+
+    await db.insert(legalEntityMember).values({
+      legalEntityId: created.id,
+      userId: input.creatorUserId,
+      role: "owner",
+      isPrimaryAdmin: true,
+      invitedByUserId: input.creatorUserId,
+      invitedAt: new Date(),
+      acceptedAt: new Date(),
+    });
+
+    if (input.primaryAddress) {
+      await db.insert(legalEntityAddress).values({
+        legalEntityId: created.id,
+        addressType: input.primaryAddress.addressType,
+        line1: input.primaryAddress.line1,
+        line2: input.primaryAddress.line2 ?? null,
+        city: input.primaryAddress.city,
+        state: input.primaryAddress.state ?? null,
+        postalCode: input.primaryAddress.postalCode,
+        country: input.primaryAddress.country,
+        isDefault: input.primaryAddress.isDefault ?? true,
+      });
+    }
+
+    return created;
+  }
+
+  async findDocumentByUploadObjectId(entityId: string, uploadObjectId: string) {
+    const [row] = await this.db
+      .select({ id: legalEntityDocument.id })
+      .from(legalEntityDocument)
+      .where(
+        and(
+          eq(legalEntityDocument.legalEntityId, entityId),
+          eq(legalEntityDocument.uploadObjectId, uploadObjectId),
+        ),
+      )
+      .limit(1);
+    return row ?? null;
+  }
+
+  async attachOnboardingDocument(input: AttachOnboardingDocumentInput) {
+    const [doc] = await this.db
+      .insert(legalEntityDocument)
+      .values({
+        legalEntityId: input.legalEntityId,
+        uploadObjectId: input.uploadObjectId,
+        kind: input.kind,
+        label: input.label,
+        uploadedByUserId: input.uploadedByUserId,
+      })
+      .returning({ id: legalEntityDocument.id });
+    if (!doc) throw new Error("legal_entity_document_insert_failed");
+    return doc;
+  }
+
+  async findOnboardingDocumentById(entityId: string, documentId: string) {
+    const [doc] = await this.db
+      .select({ id: legalEntityDocument.id })
+      .from(legalEntityDocument)
+      .where(
+        and(
+          eq(legalEntityDocument.id, documentId),
+          eq(legalEntityDocument.legalEntityId, entityId),
+        ),
+      )
+      .limit(1);
+    return doc ?? null;
+  }
+
+  async detachOnboardingDocument(documentId: string): Promise<void> {
+    await this.db.delete(legalEntityDocument).where(eq(legalEntityDocument.id, documentId));
+  }
 
   async findOrganisationById(entityId: string): Promise<OnboardingOrganisationRow | null> {
     const [row] = await this.db

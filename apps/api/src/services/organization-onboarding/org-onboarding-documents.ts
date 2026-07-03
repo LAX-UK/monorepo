@@ -1,10 +1,8 @@
-import { legalEntity, legalEntityDocument, uploadObject } from "@auction/db/schema";
 import type { LegalEntityStatus } from "@auction/types";
 import type {
   LegalEntityDocumentUploadInput,
   PublicOrganisationSubkind,
 } from "@auction/validators";
-import { and, eq } from "drizzle-orm";
 import {
   assertDocumentsCompleteForSubkind,
   assertEditableStatus,
@@ -36,11 +34,7 @@ export async function attachDocument(
   if (!membership) return { ok: false, code: "forbidden" };
   if (!isOwnerOrAdmin(membership.role)) return { ok: false, code: "forbidden" };
 
-  const [entityRow] = await deps.db
-    .select({ status: legalEntity.status, kind: legalEntity.kind })
-    .from(legalEntity)
-    .where(eq(legalEntity.id, entityId))
-    .limit(1);
+  const entityRow = await deps.onboardingRepo.findOrganisationById(entityId);
   if (!entityRow || entityRow.kind !== "organisation") return { ok: false, code: "not_found" };
   if (!assertEditableStatus(entityRow.status as LegalEntityStatus)) {
     return { ok: false, code: "entity_not_editable" };
@@ -51,11 +45,7 @@ export async function attachDocument(
     if (!t) return { ok: false, code: "other_document_label_required" };
   }
 
-  const [upl] = await deps.db
-    .select()
-    .from(uploadObject)
-    .where(and(eq(uploadObject.id, input.uploadObjectId), eq(uploadObject.ownerUserId, userId)))
-    .limit(1);
+  const upl = await deps.uploadPersistenceRepository.findByIdForOwner(input.uploadObjectId, userId);
   if (!upl) return { ok: false, code: "upload_not_found" };
   if (upl.kind !== "legal_entity_document") {
     return { ok: false, code: "upload_kind_mismatch" };
@@ -64,32 +54,22 @@ export async function attachDocument(
     return { ok: false, code: "upload_not_ready" };
   }
 
-  const dup = await deps.db
-    .select({ id: legalEntityDocument.id })
-    .from(legalEntityDocument)
-    .where(
-      and(
-        eq(legalEntityDocument.legalEntityId, entityId),
-        eq(legalEntityDocument.uploadObjectId, input.uploadObjectId),
-      ),
-    )
-    .limit(1);
-  if (dup[0]) return { ok: false, code: "duplicate_upload" };
+  const dup = await deps.onboardingRepo.findDocumentByUploadObjectId(
+    entityId,
+    input.uploadObjectId,
+  );
+  if (dup) return { ok: false, code: "duplicate_upload" };
 
   const trimmedLabel = input.kind === "other" ? (input.label?.trim() ?? null) : null;
 
-  const [doc] = await deps.db
-    .insert(legalEntityDocument)
-    .values({
-      legalEntityId: entityId,
-      uploadObjectId: input.uploadObjectId,
-      kind: input.kind,
-      label: input.kind === "other" ? trimmedLabel : null,
-      uploadedByUserId: userId,
-    })
-    .returning({ id: legalEntityDocument.id });
+  const doc = await deps.onboardingRepo.attachOnboardingDocument({
+    legalEntityId: entityId,
+    uploadObjectId: input.uploadObjectId,
+    kind: input.kind,
+    label: input.kind === "other" ? trimmedLabel : null,
+    uploadedByUserId: userId,
+  });
 
-  if (!doc) throw new Error("legal_entity_document_insert_failed");
   return { ok: true, id: doc.id };
 }
 
@@ -106,26 +86,16 @@ export async function detachDocument(
   if (!membership) return { ok: false, code: "forbidden" };
   if (!isOwnerOrAdmin(membership.role)) return { ok: false, code: "forbidden" };
 
-  const [entityRow] = await deps.db
-    .select({ status: legalEntity.status, kind: legalEntity.kind })
-    .from(legalEntity)
-    .where(eq(legalEntity.id, entityId))
-    .limit(1);
+  const entityRow = await deps.onboardingRepo.findOrganisationById(entityId);
   if (!entityRow || entityRow.kind !== "organisation") return { ok: false, code: "not_found" };
   if (!assertEditableStatus(entityRow.status as LegalEntityStatus)) {
     return { ok: false, code: "entity_not_editable" };
   }
 
-  const [doc] = await deps.db
-    .select({ id: legalEntityDocument.id })
-    .from(legalEntityDocument)
-    .where(
-      and(eq(legalEntityDocument.id, documentId), eq(legalEntityDocument.legalEntityId, entityId)),
-    )
-    .limit(1);
+  const doc = await deps.onboardingRepo.findOnboardingDocumentById(entityId, documentId);
   if (!doc) return { ok: false, code: "document_not_found" };
 
-  await deps.db.delete(legalEntityDocument).where(eq(legalEntityDocument.id, documentId));
+  await deps.onboardingRepo.detachOnboardingDocument(documentId);
   return { ok: true };
 }
 
@@ -134,14 +104,7 @@ export async function assertDocumentsComplete(
   entityId: string,
   subkind: PublicOrganisationSubkind,
 ): Promise<boolean> {
-  const docs = await deps.db
-    .select({
-      kind: legalEntityDocument.kind,
-      label: legalEntityDocument.label,
-    })
-    .from(legalEntityDocument)
-    .where(eq(legalEntityDocument.legalEntityId, entityId));
-
+  const docs = await deps.onboardingRepo.listDocuments(entityId);
   const reqs = deps.organizationOnboardingService.getRequirements(subkind);
   return assertDocumentsCompleteForSubkind(docs, subkind, reqs.documentKinds);
 }

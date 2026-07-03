@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import type { legalEntity } from "@auction/db/schema";
 import type { LegalEntityStatus, OrgOnboardingStepKey } from "@auction/types";
+import type { PublicOrganisationSubkind } from "@auction/validators";
 import type { OrganizationOnboardingProfileInput } from "../../services/organization-onboarding/org-onboarding-mappers.js";
 
 export type OnboardingDbExecutor = Database;
@@ -25,12 +26,54 @@ export type OnboardingAddressRow = {
   isDefault: boolean | null;
 };
 
+export type CreateOrganisationAttemptInput = {
+  creatorUserId: string;
+  displayName: string;
+  legalName: string | null;
+  subkind: PublicOrganisationSubkind;
+  vatNumber: string | null;
+  slug: string;
+  primaryAddress?: OrganizationOnboardingProfileInput["primaryAddress"] | undefined;
+};
+
+export type AttachOnboardingDocumentInput = {
+  legalEntityId: string;
+  uploadObjectId: string;
+  kind: string;
+  label: string | null;
+  uploadedByUserId: string;
+};
+
 export interface ILegalEntityOnboardingRepository {
+  transaction<T>(fn: (db: OnboardingDbExecutor) => Promise<T>): Promise<T>;
+
+  countNonArchivedOrganisationsByCreator(userId: string): Promise<number>;
+
+  existsOrganisationSlug(slug: string, db?: OnboardingDbExecutor): Promise<boolean>;
+
+  listOrganisationSlugSuffixes(baseSlug: string): Promise<string[]>;
+
+  createOrganisationAttempt(
+    input: CreateOrganisationAttemptInput,
+    db?: OnboardingDbExecutor,
+  ): Promise<OnboardingOrganisationRow>;
+
   findOrganisationById(entityId: string): Promise<OnboardingOrganisationRow | null>;
 
   listCompletedStepKeys(entityId: string): Promise<string[]>;
 
   listDocuments(entityId: string): Promise<OnboardingDocumentRow[]>;
+
+  findDocumentByUploadObjectId(
+    entityId: string,
+    uploadObjectId: string,
+  ): Promise<{ id: string } | null>;
+
+  attachOnboardingDocument(input: AttachOnboardingDocumentInput): Promise<{ id: string }>;
+
+  findOnboardingDocumentById(entityId: string, documentId: string): Promise<{ id: string } | null>;
+
+  detachOnboardingDocument(documentId: string): Promise<void>;
 
   findRegisteredOfficeAddress(entityId: string): Promise<OnboardingAddressRow | null>;
 
