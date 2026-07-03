@@ -1,12 +1,6 @@
 import type { Database } from "@auction/db";
 import { adminReviewTask, artistAlias, artistProfile, lot } from "@auction/db/schema";
 import { and, eq, ilike, sql } from "drizzle-orm";
-import { rowToRecord, slugify } from "./artist-registry.helpers.js";
-import {
-  insertArtistInTx,
-  resolveUniqueArtistSlug,
-} from "./artist-registry-mutations.js";
-import { searchArtists } from "./artist-registry-search.js";
 import type {
   ArtistRecord,
   CreateArtistInput,
@@ -14,6 +8,9 @@ import type {
   MergeArtistResult,
   ReviewArtistInput,
 } from "../services/interfaces/artist-registry.js";
+import { insertArtistInTx, resolveUniqueArtistSlug } from "./artist-registry-mutations.js";
+import { searchArtists } from "./artist-registry-search.js";
+import { rowToRecord, slugify } from "./artist-registry.helpers.js";
 import type { IArtistRegistryRepository } from "./interfaces/artist-registry.repository.js";
 
 export class DrizzleArtistRegistryRepository implements IArtistRegistryRepository {

@@ -1,5 +1,9 @@
 import type { artistProfile } from "@auction/db/schema";
-import type { ArtistKind, ArtistRecord, ArtistStatus } from "../services/interfaces/artist-registry.js";
+import type {
+  ArtistKind,
+  ArtistRecord,
+  ArtistStatus,
+} from "../services/interfaces/artist-registry.js";
 
 export const FUZZY_THRESHOLD = 0.4;
 

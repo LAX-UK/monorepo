@@ -1,7 +1,11 @@
 import type { Database } from "@auction/db";
 import { artistAlias, artistProfile } from "@auction/db/schema";
 import { and, asc, eq, ilike, ne, or, sql } from "drizzle-orm";
-import type { ArtistKind, ArtistSearchHit, ArtistStatus } from "../services/interfaces/artist-registry.js";
+import type {
+  ArtistKind,
+  ArtistSearchHit,
+  ArtistStatus,
+} from "../services/interfaces/artist-registry.js";
 import { FUZZY_THRESHOLD, partialSearchPattern, slugify } from "./artist-registry.helpers.js";
 
 export async function searchArtists(
