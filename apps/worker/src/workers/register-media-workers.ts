@@ -26,6 +26,7 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     bullConnection,
     queueOpts,
     db,
+    uploadValidationRepo,
     uploadStorage,
     log,
     malwareScanner,
@@ -49,7 +50,7 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
         throw new Error("validate-upload job is missing uploadId");
       }
       const result = await validateUploadJob({
-        db,
+        uploadValidationRepo,
         storage: uploadStorage,
         uploadId,
         log,
@@ -132,7 +133,7 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     GC_PENDING_UPLOADS_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor("gc-pending-uploads", sentryMonitorSlugs, async () => {
-        await gcPendingUploads({ db, storage: uploadStorage, log });
+        await gcPendingUploads({ uploadValidationRepo, storage: uploadStorage, log });
         await purgeSourceOfFundsDocumentsJob({ db, storage: uploadStorage, log });
         await heartbeat("gc-pending-uploads");
       });

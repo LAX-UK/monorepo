@@ -32,6 +32,7 @@ export function registerEmailWorker(deps: WorkerBootstrapDeps): EmailWorkersHand
   const {
     env,
     db,
+    emailOutboxRepo,
     bullConnection,
     queueOpts,
     log,
@@ -63,13 +64,19 @@ export function registerEmailWorker(deps: WorkerBootstrapDeps): EmailWorkersHand
     async (job) => {
       if (job.name === "outbox-drain") {
         await withSentryCronMonitor("email-outbox-drain", sentryMonitorSlugs, async () => {
-          const count = await enqueueStaleEmailOutboxRows({ db, queue: emailQueue });
+          const count = await enqueueStaleEmailOutboxRows({
+            outboxRepo: emailOutboxRepo,
+            queue: emailQueue,
+          });
           log.info({ count }, "email outbox drain completed");
           await heartbeat("email");
         });
         return;
       }
-      await sendEmailJob({ db, sender: emailSender, log }, job.data as SendEmailJobData);
+      await sendEmailJob(
+        { outboxRepo: emailOutboxRepo, sender: emailSender, log },
+        job.data as SendEmailJobData,
+      );
       await heartbeat("email");
     },
     {

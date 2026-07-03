@@ -41,25 +41,33 @@ describe("ImageContentTypeValidator", () => {
 });
 
 describe("validateUploadJob malware scan", () => {
-  function mockDb(uploadRow: Record<string, unknown>) {
-    const set = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+  function mockUploadValidationRepo(uploadRow: Record<string, unknown>) {
+    const rejectUpload = vi.fn().mockResolvedValue(undefined);
+    const activateUpload = vi.fn().mockResolvedValue(undefined);
     return {
-      db: {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([uploadRow]),
-            }),
-          }),
-        }),
-        update: vi.fn().mockReturnValue({ set }),
-      } as never,
-      set,
+      uploadValidationRepo: {
+        findUploadedById: vi.fn().mockResolvedValue(
+          uploadRow.status === "uploaded"
+            ? {
+                id: uploadRow.id,
+                key: uploadRow.key,
+                status: uploadRow.status,
+                kind: uploadRow.kind,
+                declaredContentType: uploadRow.declaredContentType,
+                declaredByteSize: uploadRow.declaredByteSize,
+              }
+            : null,
+        ),
+        rejectUpload,
+        activateUpload,
+      },
+      rejectUpload,
+      activateUpload,
     };
   }
 
   it("rejects source_of_funds_document when scanner detects malware", async () => {
-    const { db, set } = mockDb({
+    const { uploadValidationRepo, rejectUpload } = mockUploadValidationRepo({
       id: "u-sof",
       key: "uploads/pending/source-of-funds/abc",
       status: "uploaded",
@@ -75,7 +83,7 @@ describe("validateUploadJob malware scan", () => {
     const log = { info: vi.fn(), warn: vi.fn() };
 
     const result = await validateUploadJob({
-      db,
+      uploadValidationRepo: uploadValidationRepo as never,
       storage: storage as never,
       uploadId: "u-sof",
       log: log as never,
@@ -87,13 +95,15 @@ describe("validateUploadJob malware scan", () => {
       key: "uploads/pending/source-of-funds/abc",
       byteSize: 1024,
     });
-    expect(set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "rejected", rejectionReason: "malware" }),
+    expect(rejectUpload).toHaveBeenCalledWith(
+      "u-sof",
+      "malware",
+      expect.objectContaining({ byteSize: 1024 }),
     );
   });
 
   it("activates source_of_funds_document when scanner reports clean", async () => {
-    const { db, set } = mockDb({
+    const { uploadValidationRepo, activateUpload } = mockUploadValidationRepo({
       id: "u-sof",
       key: "uploads/pending/source-of-funds/clean",
       status: "uploaded",
@@ -108,7 +118,7 @@ describe("validateUploadJob malware scan", () => {
     const scanner = { scan: vi.fn().mockResolvedValue({ clean: true }) };
 
     const result = await validateUploadJob({
-      db,
+      uploadValidationRepo: uploadValidationRepo as never,
       storage: storage as never,
       uploadId: "u-sof",
       log: { info: vi.fn(), warn: vi.fn() } as never,
@@ -116,13 +126,14 @@ describe("validateUploadJob malware scan", () => {
     });
 
     expect(result.validated).toBe(true);
-    expect(set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "active", rejectionReason: null }),
+    expect(activateUpload).toHaveBeenCalledWith(
+      "u-sof",
+      expect.objectContaining({ byteSize: 512, contentType: "application/pdf" }),
     );
   });
 
   it("does not scan non-SoF upload kinds", async () => {
-    const { db } = mockDb({
+    const { uploadValidationRepo } = mockUploadValidationRepo({
       id: "u-img",
       key: "uploads/pending/lots/x",
       status: "uploaded",
@@ -137,7 +148,7 @@ describe("validateUploadJob malware scan", () => {
     const scanner = { scan: vi.fn() };
 
     await validateUploadJob({
-      db,
+      uploadValidationRepo: uploadValidationRepo as never,
       storage: storage as never,
       uploadId: "u-img",
       log: { info: vi.fn(), warn: vi.fn() } as never,

@@ -1,24 +1,15 @@
-import { adminReviewTask, domainEvent, projectorState } from "@auction/db";
-import { user } from "@auction/db/schema";
+import { domainEvent, projectorState } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
-import { listComplianceRecipients } from "../lib/compliance-email-recipients.js";
 import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
+import { escalateSourceOfFundsRequiredCase } from "./source-of-funds-review/escalate-required-case.js";
+import { manageSourceOfFundsReviewTask } from "./source-of-funds-review/manage-review-task.js";
+import type { SourceOfFundsRequiredPayload } from "./source-of-funds-review/sof-review-helpers.js";
 
 export const SOURCE_OF_FUNDS_REVIEW_PROJECTOR = "source_of_funds_review";
 
 type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
-
-type SourceOfFundsRequiredPayload = {
-  sourceOfFundsId?: string;
-  userId?: string;
-  trigger?: string;
-  thresholdAmount?: string;
-  exposureAmount?: string;
-  currency?: string;
-  reopened?: boolean;
-};
 
 /**
  * Projects `source_of_funds.required` outbox events into durable MLRO/finance
@@ -73,124 +64,24 @@ export async function processSourceOfFundsReview(options: {
       const payload = (row.payload ?? {}) as SourceOfFundsRequiredPayload;
       const sourceOfFundsId = payload.sourceOfFundsId ?? row.aggregateId;
 
-      const existing = await db
-        .select({ id: adminReviewTask.id, status: adminReviewTask.status })
-        .from(adminReviewTask)
-        .where(
-          and(
-            eq(adminReviewTask.kind, "source_of_funds_review"),
-            sql`${adminReviewTask.payload} ->> 'sourceOfFundsId' = ${sourceOfFundsId}`,
-          ),
-        )
-        .limit(1);
-
-      const reopened = Boolean(payload.reopened);
-      const existingTask = existing[0];
-      if (existingTask && reopened) {
-        await db
-          .update(adminReviewTask)
-          .set({ status: "pending", resolvedAt: null, resolvedByUserId: null })
-          .where(eq(adminReviewTask.id, existingTask.id));
-        log.warn({ sourceOfFundsId }, "source_of_funds_review_task_reactivated");
-      }
-
-      const createdTask = existing.length === 0;
-      if (createdTask) {
-        await db.insert(adminReviewTask).values({
-          kind: "source_of_funds_review",
-          status: "pending",
-          targetLotId: null,
-          payload: {
-            sourceOfFundsId,
-            userId: payload.userId ?? null,
-            trigger: payload.trigger ?? null,
-            thresholdAmount: payload.thresholdAmount ?? null,
-            exposureAmount: payload.exposureAmount ?? null,
-            currency: payload.currency ?? null,
-          },
-        });
-        log.warn(
-          {
-            sourceOfFundsId,
-            userId: payload.userId ?? null,
-            trigger: payload.trigger ?? null,
-            exposureAmount: payload.exposureAmount ?? null,
-          },
-          "source_of_funds_review_task_created",
-        );
-      }
+      const { createdTask } = await manageSourceOfFundsReviewTask({
+        db,
+        log,
+        payload,
+        sourceOfFundsId,
+      });
 
       // Active MLRO escalation (CDD Section 6). Idempotent via idempotencyKey.
       if (createdTask && emailService && supportContactEmail) {
-        const detail =
-          [
-            payload.trigger ? `Trigger: ${payload.trigger}` : null,
-            payload.exposureAmount
-              ? `Exposure: ${payload.currency ?? ""} ${payload.exposureAmount}`.trim()
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" · ") || "Source-of-Funds threshold crossed";
-        const recipients = await listComplianceRecipients(db);
-        if (recipients.length > 0) {
-          for (const r of recipients) {
-            await emailService.enqueue({
-              template: "aml-compliance-review-notice",
-              to: r.email,
-              userId: r.id,
-              vars: {
-                recipientFirstName: r.firstName,
-                kind: "source_of_funds",
-                caseReference: sourceOfFundsId,
-                detail,
-                adminReviewUrl,
-                supportContactEmail,
-              },
-              category: "transactional",
-              idempotencyKey: `aml-compliance-review-notice:sof:${sourceOfFundsId}:${r.id}`,
-            });
-          }
-        } else if (adminEmailAddress) {
-          await emailService.enqueue({
-            template: "aml-compliance-review-notice",
-            to: adminEmailAddress,
-            recipientResolution: "snapshot",
-            vars: {
-              recipientFirstName: "Compliance",
-              kind: "source_of_funds",
-              caseReference: sourceOfFundsId,
-              detail,
-              adminReviewUrl,
-              supportContactEmail,
-            },
-            category: "transactional",
-            idempotencyKey: `aml-compliance-review-notice:sof:${sourceOfFundsId}:admin`,
-          });
-        }
-
-        // Buyer-facing notification: inform them checkout is on hold and our
-        // team will contact with secure upload instructions.
-        const buyerId = payload.userId;
-        if (buyerId) {
-          const [buyerRow] = await db
-            .select({ email: user.email, firstName: user.firstName })
-            .from(user)
-            .where(eq(user.id, buyerId))
-            .limit(1);
-          if (buyerRow?.email) {
-            await emailService.enqueue({
-              template: "source-of-funds-buyer-notice",
-              to: buyerRow.email,
-              userId: buyerId,
-              vars: {
-                userName: buyerRow.firstName ?? null,
-                supportContactEmail,
-              },
-              category: "transactional",
-              idempotencyKey: `source-of-funds-buyer-notice:${sourceOfFundsId}`,
-            });
-          }
-        }
+        await escalateSourceOfFundsRequiredCase({
+          db,
+          emailService,
+          supportContactEmail,
+          adminReviewUrl,
+          adminEmailAddress,
+          payload,
+          sourceOfFundsId,
+        });
       }
       maxId = row.id;
     } catch (err) {

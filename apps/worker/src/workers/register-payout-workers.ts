@@ -35,8 +35,16 @@ export type PayoutWorkersHandle = {
 };
 
 export function registerPayoutWorkers(deps: WorkerBootstrapDeps): PayoutWorkersHandle {
-  const { env, db, log, bullConnection, queueOpts, uploadStorage, sentryMonitorSlugs, heartbeat } =
-    deps;
+  const {
+    env,
+    log,
+    bullConnection,
+    queueOpts,
+    uploadStorage,
+    payoutStatementRepo,
+    sentryMonitorSlugs,
+    heartbeat,
+  } = deps;
 
   const payoutStatementQueue = new Queue<PayoutStatementJobData>(
     PAYOUT_STATEMENTS_QUEUE_NAME,
@@ -45,7 +53,13 @@ export function registerPayoutWorkers(deps: WorkerBootstrapDeps): PayoutWorkersH
   const payoutStatementWorker = new Worker<PayoutStatementJobData>(
     PAYOUT_STATEMENTS_QUEUE_NAME,
     async (job) => {
-      await generatePayoutStatementJob({ db, storage: uploadStorage, env, log, job });
+      await generatePayoutStatementJob({
+        payoutStatementRepo,
+        storage: uploadStorage,
+        env,
+        log,
+        job,
+      });
       await heartbeat("payout-statements");
     },
     {

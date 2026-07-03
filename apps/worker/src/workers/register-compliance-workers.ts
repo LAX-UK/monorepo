@@ -1,5 +1,5 @@
-import { createExportProviderDeps } from "@auction/api/exports/providers";
 import type { IEmailService } from "@auction/email";
+import { createExportProviderDeps } from "@auction/exports/providers";
 import {
   DATA_EXPORT_QUEUE_NAME,
   IMPERSONATION_SWEEPER_QUEUE_NAME,

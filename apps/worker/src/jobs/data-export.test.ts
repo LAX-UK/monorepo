@@ -9,7 +9,7 @@ const streamRows = vi.fn(async function* () {
   yield { id: "pay-1" };
 });
 
-vi.mock("@auction/api/exports/providers", () => ({
+vi.mock("@auction/exports/providers", () => ({
   createExportProviders: () =>
     new Map([
       [

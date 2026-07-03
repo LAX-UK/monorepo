@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@auction/db": "workspace:*",
-    "@auction/api": "workspace:*",
     "@auction/exports": "workspace:*",
+    "@auction/persistence": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",
     "@auction/email": "workspace:^",
