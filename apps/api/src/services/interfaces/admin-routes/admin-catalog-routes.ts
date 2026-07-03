@@ -64,9 +64,9 @@ export interface IAdminLotsApplicationService {
     | { ok: false; status: number; error: string; code?: string | undefined }
   >;
   listAttachable(
-    input: import("../../admin/admin-lot-browse.service.js").AdminLotBrowseInput,
+    input: import("../../admin/admin-lot-browse.types.js").AdminLotBrowseInput,
   ): Promise<{
-    data: import("../../admin/admin-lot-browse.service.js").AdminAttachableLotRow[];
+    data: import("../../admin/admin-lot-browse.types.js").AdminAttachableLotRow[];
     total: number;
   }>;
   returnToInventory: LotTransitionOrchestrator["returnToInventory"];

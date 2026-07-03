@@ -1,35 +1,11 @@
-import type { LotStatus } from "@auction/types";
 import type { IAdminLotBrowseReader } from "../../repositories/interfaces/admin-lot-browse.reader.js";
+import type { AdminAttachableLotRow, AdminLotBrowseInput } from "./admin-lot-browse.types.js";
 
-export type AdminLotBrowseState = "available" | "returned" | "all";
-
-export type AdminLotBrowseInput = {
-  q?: string | undefined;
-  sellerLegalEntityId?: string | undefined;
-  categoryIds?: string[] | undefined;
-  artistId?: string | undefined;
-  state?: AdminLotBrowseState | undefined;
-  excludeSaleId?: string | undefined;
-  limit: number;
-  offset: number;
-};
-
-export type AdminAttachableLotRow = {
-  id: string;
-  title: string;
-  status: LotStatus;
-  sellerLegalEntityId: string;
-  saleId: string | null;
-  artistId: string | null;
-  createdAt: Date;
-  lifecycle: {
-    kind: "new_draft" | "returned";
-    returnedAt: Date | null;
-    lastSaleId: string | null;
-    lastSaleName: string | null;
-    returnCount: number;
-  };
-};
+export type {
+  AdminAttachableLotRow,
+  AdminLotBrowseInput,
+  AdminLotBrowseState,
+} from "./admin-lot-browse.types.js";
 
 export class AdminLotBrowseService {
   constructor(private readonly reader: IAdminLotBrowseReader) {}

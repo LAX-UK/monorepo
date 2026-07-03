@@ -5,7 +5,7 @@ import type {
   LotCancelledPayload,
   LotReturnedToInventoryPayload,
 } from "../../domain/lot-events.js";
-import type { RecordCreatedInput, RecordEndedInput } from "../lot-lifecycle-recording.service.js";
+import type { RecordCreatedInput, RecordEndedInput } from "../lot-lifecycle-recording.types.js";
 
 /** Narrow port for lot lifecycle event recording (status transitions, attach/detach). */
 export interface ILotLifecycleRecorder {

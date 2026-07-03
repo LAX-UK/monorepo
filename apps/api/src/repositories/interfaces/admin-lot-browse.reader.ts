@@ -2,7 +2,7 @@ import type { LotStatus } from "@auction/types";
 import type {
   AdminAttachableLotRow,
   AdminLotBrowseInput,
-} from "../../services/admin/admin-lot-browse.service.js";
+} from "../../services/admin/admin-lot-browse.types.js";
 
 export type AdminLotBrowseRawRow = {
   id: string;

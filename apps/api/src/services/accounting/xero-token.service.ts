@@ -1,30 +1,15 @@
 import type { Redis } from "ioredis";
-import { XeroClient } from "xero-node";
-import type { Env } from "../../env.js";
+import type { XeroClient } from "xero-node";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type {
   IXeroConnectionRepository,
   XeroConnectionRow,
 } from "../interfaces/xero-repositories.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
+import { type XeroEnvConfig, createXeroClientForOAuth } from "./xero-client-factory.js";
 
-/** Granular Accounting scopes (required for Xero apps created on/after 2026-03-02). */
-const XERO_SCOPES = [
-  "openid",
-  "profile",
-  "email",
-  "offline_access",
-  "accounting.settings",
-  "accounting.contacts",
-  "accounting.invoices",
-  "accounting.invoices.read",
-  "accounting.payments",
-];
-
-export type XeroEnvConfig = Pick<
-  Env,
-  "XERO_CLIENT_ID" | "XERO_CLIENT_SECRET" | "XERO_REDIRECT_URI"
->;
+export type { XeroEnvConfig } from "./xero-client-factory.js";
+export { createXeroClientForOAuth, getXeroScopes } from "./xero-client-factory.js";
 
 export class XeroTokenService {
   constructor(
@@ -73,22 +58,4 @@ export class XeroTokenService {
     const liveConn = await this.refreshXeroTokensReporting(xero, conn);
     return { xero, tenantId: liveConn.tenantId };
   }
-}
-
-/** Scopes used for Xero OAuth (exported for OAuth service). */
-export function getXeroScopes(): string[] {
-  return [...XERO_SCOPES];
-}
-
-export function createXeroClientForOAuth(env: XeroEnvConfig, state?: string): XeroClient {
-  const cfg: ConstructorParameters<typeof XeroClient>[0] = {
-    clientId: env.XERO_CLIENT_ID as string,
-    clientSecret: env.XERO_CLIENT_SECRET as string,
-    redirectUris: [env.XERO_REDIRECT_URI as string],
-    scopes: XERO_SCOPES,
-  };
-  if (state !== undefined) {
-    cfg.state = state;
-  }
-  return new XeroClient(cfg);
 }

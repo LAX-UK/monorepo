@@ -5,7 +5,6 @@ import type {
   LotCancelledPayload,
   LotCreatedPayload,
   LotDetachedFromSalePayload,
-  LotEndedPayload,
   LotEventType,
   LotReturnedToInventoryPayload,
 } from "../domain/lot-events.js";
@@ -14,18 +13,9 @@ import type {
   LotLifecycleEventRecorder,
   RecordLotLifecycleInput,
 } from "./lot-lifecycle-event-recorder.js";
+import type { RecordCreatedInput, RecordEndedInput } from "./lot-lifecycle-recording.types.js";
 
-export type RecordCreatedInput = {
-  lot: Pick<Lot, "id" | "status" | "saleId" | "sellerLegalEntityId">;
-  source: LotCreatedPayload["source"];
-  actorUserId?: string | null;
-};
-
-export type RecordEndedInput = {
-  lot: Pick<Lot, "id" | "status" | "saleId" | "sellerLegalEntityId">;
-  payload: LotEndedPayload;
-  actorUserId?: string | null;
-};
+export type { RecordCreatedInput, RecordEndedInput } from "./lot-lifecycle-recording.types.js";
 
 /** Shared recording helpers used by lot/sale/lifecycle services. */
 export class LotLifecycleRecording implements ILotLifecycleRecorder {

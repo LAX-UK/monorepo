@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
 import { lot, lotCategories, lotLifecycleSnapshot, sale } from "@auction/db/schema";
 import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
-import type { AdminLotBrowseInput } from "../services/admin/admin-lot-browse.service.js";
+import type { AdminLotBrowseInput } from "../services/admin/admin-lot-browse.types.js";
 import type {
   AdminLotBrowseRawRow,
   IAdminLotBrowseReader,

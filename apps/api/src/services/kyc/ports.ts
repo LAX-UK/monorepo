@@ -3,7 +3,7 @@ import type {
   CreateKycSessionResult,
   KycStatusSummary,
   KycWebhookHandleResult,
-} from "../interfaces/kyc-service.js";
+} from "./kyc-contracts.js";
 
 /** Buyer session create/reuse for Veriff InContext. */
 export interface IKycSessionService {

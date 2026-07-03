@@ -7,6 +7,7 @@ import {
 import type { SaleroomSalePickerOption } from "@/lib/admin/load-saleroom-sales-picker";
 import type { OnsiteEventAdminDetail, OnsiteEventSegmentOption } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import { DateTimePicker } from "@auction/ui/components/date-time-picker";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import {
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
+import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -36,6 +38,12 @@ function emptySegment(): OnsiteEventSegmentOption {
   return { value: "", label: "" };
 }
 
+function toInitialDatetimeFormString(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const instant = new Date(iso);
+  return Number.isNaN(instant.getTime()) ? "" : toDatetimeFormString(instant);
+}
+
 export function OnsiteEventForm({ mode, initial = null, saleroomSales = [] }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -50,8 +58,8 @@ export function OnsiteEventForm({ mode, initial = null, saleroomSales = [] }: Pr
   const [opsEmail, setOpsEmail] = useState(initial?.opsEmail ?? "");
   const [dressCode, setDressCode] = useState(initial?.dressCode ?? "");
   const [arrivalNote, setArrivalNote] = useState(initial?.arrivalNote ?? "");
-  const [startsAt, setStartsAt] = useState(initial?.startsAt?.slice(0, 16) ?? "");
-  const [rsvpCloseAt, setRsvpCloseAt] = useState(initial?.rsvpCloseAt?.slice(0, 16) ?? "");
+  const [startsAt, setStartsAt] = useState(toInitialDatetimeFormString(initial?.startsAt));
+  const [rsvpCloseAt, setRsvpCloseAt] = useState(toInitialDatetimeFormString(initial?.rsvpCloseAt));
   const [segmentOptions, setSegmentOptions] = useState<OnsiteEventSegmentOption[]>(
     initial?.segmentOptions.length ? initial.segmentOptions : DEFAULT_SEGMENTS,
   );
@@ -90,8 +98,8 @@ export function OnsiteEventForm({ mode, initial = null, saleroomSales = [] }: Pr
         opsEmail: opsEmail.trim() === "" ? null : opsEmail.trim(),
         dressCode: dressCode.trim() === "" ? null : dressCode.trim(),
         arrivalNote: arrivalNote.trim() === "" ? null : arrivalNote.trim(),
-        startsAt: startsAt ? new Date(startsAt).toISOString() : null,
-        rsvpCloseAt: rsvpCloseAt ? new Date(rsvpCloseAt).toISOString() : null,
+        startsAt: startsAt ? instantFromDatetimeFormString(startsAt).toISOString() : null,
+        rsvpCloseAt: rsvpCloseAt ? instantFromDatetimeFormString(rsvpCloseAt).toISOString() : null,
       };
 
       const result =
@@ -278,21 +286,11 @@ export function OnsiteEventForm({ mode, initial = null, saleroomSales = [] }: Pr
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="event-starts">Starts at</Label>
-            <Input
-              id="event-starts"
-              type="datetime-local"
-              value={startsAt}
-              onChange={(e) => setStartsAt(e.target.value)}
-            />
+            <DateTimePicker id="event-starts" value={startsAt} onChange={setStartsAt} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="event-rsvp-close">RSVP closes</Label>
-            <Input
-              id="event-rsvp-close"
-              type="datetime-local"
-              value={rsvpCloseAt}
-              onChange={(e) => setRsvpCloseAt(e.target.value)}
-            />
+            <DateTimePicker id="event-rsvp-close" value={rsvpCloseAt} onChange={setRsvpCloseAt} />
           </div>
         </div>
       </div>

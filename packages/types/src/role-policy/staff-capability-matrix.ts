@@ -1,5 +1,5 @@
 import type { UserStaffRole } from "../user.js";
-import type { RoleCapability } from "./role-capabilities.js";
+import type { RoleCapability } from "./role-capability.js";
 
 const ALL_STAFF_CAPABILITIES_EXCEPT_CLIENT: RoleCapability[] = [
   "platform.admin.full",
