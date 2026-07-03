@@ -24,23 +24,19 @@
  */
 
 import type { Database } from "@auction/db";
-import { account as accountTable, session as sessionTable } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import type { IPhoneVerificationService } from "@auction/sms";
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
-import { count, eq } from "drizzle-orm";
+import { buildDatabaseHooks } from "./auth-hooks/database-hooks.js";
 import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 import { parseAuthDekKey } from "./crypto/dek.js";
 import { createEnvelopeCrypto } from "./crypto/envelope.js";
-import { resetPhoneVerifiedIfNumberChanged } from "./phone-number-plugin.js";
 import {
   buildDrizzleDatabase,
   buildEmailAndPasswordBlock,
   buildEmailVerificationBlock,
   buildJwtAndOidcPlugins,
 } from "./server-plugins.js";
-import { assertUserNotSuspendedForSession } from "./session-suspended-guard.js";
 
 export type AuthEnv = {
   db: Database;
@@ -105,102 +101,6 @@ export type Auth = {
     }): Promise<unknown>;
   };
 } & Record<string, unknown>;
-
-type SocialLinkProvider = "google" | "apple";
-
-function isSocialLinkProvider(providerId: string): providerId is SocialLinkProvider {
-  return providerId === "google" || providerId === "apple";
-}
-
-/** Sign-up creates the user row and the first social account row back-to-back
- * within the same request; a gap larger than this means it is a later link. */
-export const SOCIAL_ACCOUNT_LINK_SIGNUP_THRESHOLD_MS = 5_000;
-
-/** True when a social account row represents a later link, not initial sign-up. */
-export function shouldNotifySocialAccountLinked(options: {
-  userCreatedAt: Date | string;
-  accountCreatedAt: Date | string;
-}): boolean {
-  const userMs = new Date(options.userCreatedAt).getTime();
-  const accountMs = new Date(options.accountCreatedAt).getTime();
-  if (!Number.isFinite(userMs) || !Number.isFinite(accountMs)) return false;
-  return accountMs - userMs > SOCIAL_ACCOUNT_LINK_SIGNUP_THRESHOLD_MS;
-}
-
-/** Block removing the last account row when verified email (magic link) is not available. */
-export async function shouldBlockLastAccountUnlink(options: {
-  db: Database;
-  userId: string;
-  accountRowsForUser: number;
-}): Promise<boolean> {
-  if (options.accountRowsForUser > 1) return false;
-  const userRow = await options.db.query.user.findFirst({
-    where: (u, { eq }) => eq(u.id, options.userId),
-    columns: { emailVerified: true },
-  });
-  if (!userRow) return true;
-  return userRow.emailVerified !== true;
-}
-
-/**
- * Guard for `databaseHooks.account.delete.before`. Throws (rather than
- * returning `false`) when unlinking would remove the user's last sign-in
- * method: Better Auth's `deleteWithHooks` silently no-ops on a `false` return
- * and `/unlink-account` still reports `{ status: true }`, so a `false` return
- * would leave the account linked while telling the client it was removed.
- */
-export async function assertCanUnlinkAccount(options: {
-  db: Database;
-  userId: string;
-}): Promise<void> {
-  const countResult = await options.db
-    .select({ value: count() })
-    .from(accountTable)
-    .where(eq(accountTable.userId, options.userId));
-  const accountRowsForUser = countResult[0]?.value ?? 0;
-  const block = await shouldBlockLastAccountUnlink({
-    db: options.db,
-    userId: options.userId,
-    accountRowsForUser,
-  });
-  if (block) {
-    throw new APIError("BAD_REQUEST", {
-      message: "You need at least one sign-in method on your account.",
-      code: "FAILED_TO_UNLINK_LAST_ACCOUNT",
-    });
-  }
-}
-
-async function notifySocialAccountChange(options: {
-  db: Database;
-  email?: IEmailService | undefined;
-  userId: string;
-  providerId: string;
-  template: "social-account-linked" | "social-account-unlinked";
-}) {
-  const { db, email, userId, providerId, template } = options;
-  if (!email || !isSocialLinkProvider(providerId)) return;
-  const userRow = await db.query.user.findFirst({
-    where: (u, { eq }) => eq(u.id, userId),
-    columns: { email: true, name: true },
-  });
-  if (!userRow) return;
-  email
-    .enqueue({
-      template,
-      to: userRow.email,
-      userId,
-      category: "auth",
-      vars: { provider: providerId, userName: userRow.name },
-    })
-    .catch((err: unknown) => {
-      console.error(`[auth] enqueue ${template} failed`, {
-        userId,
-        providerId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    });
-}
 
 export function createSocialProviders(
   env: Pick<
@@ -294,150 +194,12 @@ export function createAuth(env: AuthEnv): Auth {
       email: env.email,
       onEmailVerified: env.onEmailVerified,
     }),
-    databaseHooks: {
-      user: {
-        create: {
-          after: async (authUser) => {
-            if (env.onUserCreated) {
-              try {
-                await env.onUserCreated({
-                  id: authUser.id,
-                  email: authUser.email,
-                  name: authUser.name,
-                });
-              } catch (err) {
-                console.error("[auth.user.create.after] onUserCreated failed", {
-                  userId: authUser.id,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              }
-            }
-            if (!authUser.emailVerified) return;
-            env.email
-              ?.enqueue({
-                template: "welcome",
-                to: authUser.email,
-                userId: authUser.id,
-                category: "transactional",
-                vars: { userName: authUser.name },
-              })
-              .catch((err: unknown) => {
-                console.error("[auth] enqueue welcome failed", {
-                  userId: authUser.id,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              });
-          },
-        },
-        update: {
-          before: async (userData) => {
-            if (!("phoneNumber" in userData)) return;
-            const userId = (userData as { id?: string }).id;
-            if (!userId) return;
-            const existing = await env.db.query.user.findFirst({
-              where: (u, { eq }) => eq(u.id, userId),
-              columns: { phoneNumber: true },
-            });
-            const nextPhone =
-              userData.phoneNumber === null || userData.phoneNumber === undefined
-                ? null
-                : String(userData.phoneNumber);
-            await resetPhoneVerifiedIfNumberChanged(
-              env.db,
-              userId,
-              existing?.phoneNumber,
-              nextPhone,
-            );
-          },
-        },
-      },
-      session: {
-        create: {
-          before: async (sess) => {
-            await assertUserNotSuspendedForSession(env.db, sess.userId);
-          },
-          after: async (sess) => {
-            if (!env.enableNewDeviceLoginEmail) return;
-            // Count all sessions for this user (the new one is already committed).
-            // If count === 1 this is the very first session — the user just registered.
-            // Don't send a "new device login" email in that case; they already receive
-            // a welcome / email-verification email and the duplicate is confusing.
-            const countResult = await env.db
-              .select({ value: count() })
-              .from(sessionTable)
-              .where(eq(sessionTable.userId, sess.userId));
-            const sessionCount = countResult[0]?.value ?? 0;
-            if (sessionCount <= 1) return;
-            const userRow = await env.db.query.user.findFirst({
-              where: (u, { eq }) => eq(u.id, sess.userId),
-              columns: { email: true, name: true },
-            });
-            if (!userRow) return;
-            const when = new Date(sess.createdAt);
-            env.email
-              ?.enqueue({
-                template: "new-device-login",
-                to: userRow.email,
-                userId: sess.userId,
-                category: "auth",
-                vars: {
-                  userName: userRow.name,
-                  whenDisplay: when.toUTCString(),
-                  deviceSummary: (sess as { userAgent?: string | null }).userAgent ?? null,
-                },
-              })
-              .catch((err: unknown) => {
-                console.error("[auth] enqueue new-device-login failed", {
-                  userId: sess.userId,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              });
-          },
-        },
-      },
-      account: {
-        create: {
-          after: async (acct) => {
-            if (acct.providerId === "credential") return;
-            const userRow = await env.db.query.user.findFirst({
-              where: (u, { eq }) => eq(u.id, acct.userId),
-              columns: { createdAt: true },
-            });
-            if (!userRow) return;
-            if (
-              !shouldNotifySocialAccountLinked({
-                userCreatedAt: userRow.createdAt,
-                accountCreatedAt: acct.createdAt,
-              })
-            ) {
-              return;
-            }
-            await notifySocialAccountChange({
-              db: env.db,
-              email: env.email,
-              userId: acct.userId,
-              providerId: acct.providerId,
-              template: "social-account-linked",
-            });
-          },
-        },
-        delete: {
-          before: async (acct) => {
-            await assertCanUnlinkAccount({ db: env.db, userId: acct.userId });
-          },
-          after: async (acct) => {
-            if (acct.providerId === "credential") return;
-            await notifySocialAccountChange({
-              db: env.db,
-              email: env.email,
-              userId: acct.userId,
-              providerId: acct.providerId,
-              template: "social-account-unlinked",
-            });
-          },
-        },
-      },
-    },
+    databaseHooks: buildDatabaseHooks({
+      db: env.db,
+      email: env.email,
+      onUserCreated: env.onUserCreated,
+      enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
+    }),
     session: {
       expiresIn: AUTH_TIMINGS.sessionExpiresSec,
       updateAge: AUTH_TIMINGS.sessionUpdateAgeSec,
@@ -484,3 +246,9 @@ export {
 } from "./sign-in-turnstile-gate.js";
 export { verifyTurnstileResponse } from "./turnstile-siteverify.js";
 export { stampLastPasswordAuthFromSignInResponse } from "./stamp-last-password-auth.js";
+export {
+  assertCanUnlinkAccount,
+  shouldBlockLastAccountUnlink,
+  shouldNotifySocialAccountLinked,
+  SOCIAL_ACCOUNT_LINK_SIGNUP_THRESHOLD_MS,
+} from "./account-linking.js";

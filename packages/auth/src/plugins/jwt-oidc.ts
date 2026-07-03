@@ -1,0 +1,145 @@
+import type { Database } from "@auction/db";
+import { account } from "@auction/db/schema";
+import type { IEmailService } from "@auction/email";
+import type { IPhoneVerificationService } from "@auction/sms";
+import type { BetterAuthPlugin } from "better-auth";
+import { magicLink, twoFactor } from "better-auth/plugins";
+import { jwt } from "better-auth/plugins/jwt";
+import { oidcProvider } from "better-auth/plugins/oidc-provider";
+import { eq } from "drizzle-orm";
+import { AUTH_TIMINGS } from "../auth-timings.js";
+import type { EnvelopeCrypto } from "../crypto/envelope.js";
+import { createJwksAdapter } from "../jwks.js";
+import { pickMagicLinkTemplate } from "../magic-link-email.js";
+import { buildMagicLinkVerifyPlugin } from "../magic-link-verify-hooks.js";
+import {
+  buildPhoneNumberGuardPlugin,
+  buildPhoneNumberPlugin,
+  buildPhoneNumberRateLimitPlugin,
+} from "../phone-number-plugin.js";
+import { buildTwoFactorEnforcementPlugin } from "../two-factor-enforcement.js";
+
+export function buildJwtAndOidcPlugins(options: {
+  db: Database;
+  issuer: string;
+  webOrigin?: string | undefined;
+  jwtAudience: string;
+  envelope?: EnvelopeCrypto | undefined;
+  email?: IEmailService | undefined;
+  phoneVerification?: IPhoneVerificationService | undefined;
+  onEmailVerified?:
+    | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
+    | undefined;
+}): BetterAuthPlugin[] {
+  const jwksAdapter = createJwksAdapter(options.db, options.envelope);
+  const { db, issuer, webOrigin, jwtAudience, email, phoneVerification, onEmailVerified } = options;
+  const webBase = (webOrigin ?? "https://lax.bid").replace(/\/$/, "");
+  return [
+    jwt({
+      jwks: {
+        jwksPath: "/.well-known/jwks.json",
+        keyPairConfig: {
+          alg: "RS256",
+          modulusLength: 2048,
+        },
+        gracePeriod: 60 * 30,
+      },
+      jwt: {
+        issuer,
+        audience: jwtAudience,
+        expirationTime: "15 minutes",
+        definePayload: ({ user: sessionUser }) => ({
+          email: sessionUser.email,
+          email_verified: sessionUser.emailVerified,
+          name: sessionUser.name,
+          // `image` is intentionally excluded — it is PII (avatar URL) and not required
+          // for authorization decisions; clients should fetch it from the userinfo endpoint.
+          role: (sessionUser as { role?: string }).role ?? "client",
+          staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
+        }),
+      },
+      adapter: {
+        getJwks: () => jwksAdapter.getJwks(),
+        createJwk: (data) => jwksAdapter.createJwk(data),
+      },
+    }),
+    oidcProvider({
+      __skipDeprecationWarning: true,
+      accessTokenExpiresIn: 60 * 15,
+      refreshTokenExpiresIn: AUTH_TIMINGS.oidcRefreshTokenExpiresSec,
+      loginPage: `${webOrigin ?? issuer}/login`,
+      useJWTPlugin: true,
+      requirePKCE: true,
+      scopes: ["openid", "profile", "email", "offline_access"],
+      metadata: {
+        issuer,
+        jwks_uri: `${issuer.replace(/\/$/, "")}/.well-known/jwks.json`,
+      },
+      getAdditionalUserInfoClaim: (sessionUser) => ({
+        email_verified: sessionUser.emailVerified,
+        role: (sessionUser as { role?: string }).role ?? "client",
+        staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
+      }),
+    }),
+    twoFactor({ issuer: "LAX", allowPasswordless: true }),
+    magicLink({
+      disableSignUp: true,
+      storeToken: "hashed",
+      expiresIn: AUTH_TIMINGS.magicLinkExpiresSec,
+      sendMagicLink: async ({ email: recipientEmail, token }, ctx) => {
+        if (!ctx) return;
+        const found = await ctx.context.internalAdapter.findUserByEmail(recipientEmail);
+        const authUser = found?.user;
+        if (!authUser) return;
+        // Any linked account (credential or social) means an established user —
+        // only truly account-less users (seeded passwordless) get activation copy.
+        const [linked] = await db
+          .select({ id: account.id })
+          .from(account)
+          .where(eq(account.userId, authUser.id))
+          .limit(1);
+        const template = pickMagicLinkTemplate(Boolean(linked));
+        const linkUrl = `${webBase}/auth/activate?token=${encodeURIComponent(token)}`;
+        const expirationMinutes = Math.round(AUTH_TIMINGS.magicLinkExpiresSec / 60);
+        const baseEnqueue = {
+          to: recipientEmail,
+          userId: authUser.id,
+          category: "auth" as const,
+        };
+        email
+          ?.enqueue(
+            template === "sign-in-link"
+              ? {
+                  ...baseEnqueue,
+                  template: "sign-in-link",
+                  vars: {
+                    signInUrl: linkUrl,
+                    userName: authUser.name,
+                    expirationMinutes,
+                  },
+                }
+              : {
+                  ...baseEnqueue,
+                  template: "account-activation",
+                  vars: {
+                    activationUrl: linkUrl,
+                    userName: authUser.name,
+                    expirationMinutes,
+                  },
+                },
+          )
+          .catch((err: unknown) => {
+            console.error(`[auth] enqueue ${template} failed`, {
+              userId: authUser.id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          });
+      },
+    }),
+    buildMagicLinkVerifyPlugin({ onEmailVerified }),
+    buildTwoFactorEnforcementPlugin({ webOrigin }),
+    buildPhoneNumberPlugin({ db, phoneVerification, email }),
+    buildPhoneNumberRateLimitPlugin(),
+    buildPhoneNumberGuardPlugin(db),
+  ];
+}

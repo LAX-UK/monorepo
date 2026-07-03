@@ -1,0 +1,82 @@
+import type { CreateLotInput, Lot, LotStatus } from "@auction/types";
+import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
+import type { ArchiveEndedAggregateFilter, ListLotsFilter } from "./filters.js";
+
+export type SaleCatalogLotsSort = "lot" | "priceAsc" | "priceDesc" | "endingAsc";
+
+export type ListCatalogLotsBySalePageInput = {
+  saleId: string;
+  lotStatuses?: LotStatus[] | undefined;
+  requirePublicSale?: boolean | undefined;
+  sort: SaleCatalogLotsSort;
+  limit: number;
+  offset: number;
+};
+
+export interface ILotRepository {
+  findById(id: string): Promise<Lot | null>;
+  /** Batch load lots by id (avoids N+1). */
+  findByIds(ids: string[]): Promise<Lot[]>;
+  /** Lock the lot row for the duration of the current transaction (SELECT FOR UPDATE). */
+  findByIdForUpdate(id: string): Promise<Lot | null>;
+  create(input: CreateLotInput): Promise<Lot>;
+  list(filter: ListLotsFilter): Promise<Lot[]>;
+  /** Count rows matching the same predicates as list (ignores limit/offset/sort). */
+  countMatching(filter: Omit<ListLotsFilter, "limit" | "offset" | "sort">): Promise<number>;
+  /** Sum of current_price for ended lots (hammer totals), optional calendar year on endTime. */
+  sumEndedHammer(filter: ArchiveEndedAggregateFilter): Promise<{ total: string; count: number }>;
+  updateCurrentPrice(id: string, price: string): Promise<void>;
+  updateEndTime(id: string, endTime: Date): Promise<void>;
+  updateStatus(id: string, status: Lot["status"]): Promise<void>;
+  /** void lot after anti-shilling eliminated all reserve-eligible winners at close. */
+  voidLotAntiShillingClose(id: string): Promise<void>;
+  /** flag draft/scheduled lots whose seller entity was archived. */
+  markArchivedSellerOnDraftScheduledLots(sellerLegalEntityId: string): Promise<number>;
+  /** Partial update for editable fields (e.g. draft lots). */
+  update(id: string, input: Partial<CreateLotInput>): Promise<Lot>;
+  /** Merge marketing JSONB for the four managed keys; preserves other marketing keys. */
+  updateMarketingDetails(id: string, patch: UpdateLotMarketingDetailsInput): Promise<Lot>;
+  setWinner(id: string, winnerId: string, buyerLegalEntityId: string): Promise<void>;
+  /** Lifecycle: scheduled lots whose start time has passed. */
+  findScheduledToActivate(asOf: Date): Promise<Lot[]>;
+  /** Lifecycle: active lots whose end time has passed. */
+  findActivePastEnd(asOf: Date): Promise<Lot[]>;
+  /** Active lots whose endTime is in (endAfter, endBeforeInclusive]. */
+  findActiveByEndTimeBetween(endAfter: Date, endBeforeInclusive: Date): Promise<Lot[]>;
+  /** Active Dutch lots (for timed price decrements). */
+  findActiveDutchLots(): Promise<Lot[]>;
+  setDutchLastDecrementAt(id: string, at: Date | null): Promise<void>;
+  updateDutchCurrentPrice(id: string, price: string, lastDecrementAt: Date): Promise<void>;
+  updateDutchCurrentPriceIfMatch(
+    id: string,
+    expectedPrice: string,
+    nextPrice: string,
+    lastDecrementAt: Date,
+  ): Promise<boolean>;
+  /** Clear sale association (admin detach; draft sale only at service layer). */
+  clearSaleId(id: string): Promise<void>;
+  /** List lots belonging to a sale (any status). */
+  findBySaleId(saleId: string): Promise<Lot[]>;
+  /** Batch lots for many sales (avoids N+1). */
+  findBySaleIds(saleIds: string[]): Promise<Lot[]>;
+  /** UTC day counts for admin KPI trends (created_at >= rangeStart, non-deleted lots). */
+  countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
+  /** Lot counts per sale id for list endpoints. */
+  countLotsBySaleIds(
+    saleIds: string[],
+    options?: { publicOnly?: boolean | undefined },
+  ): Promise<Map<string, number>>;
+  /** Up to `limitPerSale` preview lots per sale (saleroom cards). */
+  findPreviewLotsBySaleIds(
+    saleIds: string[],
+    limitPerSale: number,
+    options?: { publicOnly?: boolean | undefined },
+  ): Promise<Lot[]>;
+  /** Paginated lots for a sale catalog (saleroom); filter + sort + count in SQL. */
+  listCatalogLotsBySalePage(input: ListCatalogLotsBySalePageInput): Promise<{
+    items: Lot[];
+    total: number;
+  }>;
+  /** Ended sold lots with a winner but no payment row (reconciliation sweep). */
+  listSoldLotsMissingPayment(limit: number): Promise<string[]>;
+}
