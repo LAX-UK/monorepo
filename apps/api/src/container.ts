@@ -15,6 +15,7 @@ import { createRepositories } from "./container/create-repositories.js";
 import { createUserMiscServices } from "./container/create-user-misc-services.js";
 import type { Env } from "./env.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
+import { DrizzleSessionRepository } from "./repositories/drizzle-session.repository.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 
 export type { Container, ContainerComposedSlices };
@@ -24,7 +25,8 @@ export function createContainer(env: Env): Container {
   const authDb = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
   const infra = createInfra(env, db, authDb);
 
-  const sessionRevocation = new SessionRevocationService(authDb);
+  const sessionRepository = new DrizzleSessionRepository(authDb);
+  const sessionRevocation = new SessionRevocationService(sessionRepository);
   const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
   const { auth, authenticator } = createContainerAuth({
     env,
