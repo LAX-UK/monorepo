@@ -45,6 +45,7 @@ import { DrizzleImpersonationSessionRepository } from "../repositories/drizzle-i
 import { DrizzleUserInvitationRepository } from "../repositories/drizzle-invitation.repository.js";
 import { DrizzleItemSubmissionRepository } from "../repositories/drizzle-item-submission.repository.js";
 import { DrizzleKycRepository } from "../repositories/drizzle-kyc.repository.js";
+import { DrizzleLegalEntityConnectRepository } from "../repositories/drizzle-legal-entity-connect.repository.js";
 import { DrizzleLegalEntityDocumentAdminRepository } from "../repositories/drizzle-legal-entity-document-admin.repository.js";
 import { DrizzleLegalEntityLifecycleAdminRepository } from "../repositories/drizzle-legal-entity-lifecycle-admin.repository.js";
 import { DrizzleLegalEntityMemberRepository } from "../repositories/drizzle-legal-entity-member.repository.js";
@@ -122,6 +123,8 @@ import type { IEmailSuppressionRepository } from "../repositories/interfaces/ema
 import type { IEmailWebhookIngestRepository } from "../repositories/interfaces/email-webhook-ingest.repository.js";
 import type { IImpersonationDomainEventReader } from "../repositories/interfaces/impersonation-domain-event.reader.js";
 import type { IImpersonationSessionRepository } from "../repositories/interfaces/impersonation-session.repository.js";
+import type { ILegalEntityConnectReader } from "../repositories/interfaces/legal-entity-connect.reader.js";
+import type { ILegalEntityConnectRepository } from "../repositories/interfaces/legal-entity-connect.repository.js";
 import type { ILegalEntityDocumentAdminRepository } from "../repositories/interfaces/legal-entity-document-admin.repository.js";
 import type { ILegalEntityLifecycleAdminRepository } from "../repositories/interfaces/legal-entity-lifecycle-admin.repository.js";
 import type { ILegalEntityMemberRepository } from "../repositories/interfaces/legal-entity-member.repository.js";
@@ -164,6 +167,8 @@ export type ContainerRepositories = {
   itemSubmissionRepository: IItemSubmissionRepository;
   legalEntityRepository: ILegalEntityRepository;
   legalEntityOnboardingRepository: ILegalEntityOnboardingRepository;
+  legalEntityConnectRepository: ILegalEntityConnectRepository;
+  legalEntityConnectReader: ILegalEntityConnectReader;
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader;
   kycRepository: IKycRepository;
   pendingInvitationsReader: IPendingInvitationsReader;
@@ -267,6 +272,8 @@ export function createRepositories(db: Database): ContainerRepositories {
   const itemSubmissionRepository = new DrizzleItemSubmissionRepository(db);
   const legalEntityRepository = createDrizzleLegalEntityRepository(db);
   const legalEntityOnboardingRepository = new DrizzleLegalEntityOnboardingRepository(db);
+  const legalEntityConnectRepository = new DrizzleLegalEntityConnectRepository(db);
+  const legalEntityConnectReader = legalEntityConnectRepository;
   const legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader =
     new DrizzleLegalEntityNotificationRecipientRepository(db);
   const kycRepository = new DrizzleKycRepository(db);
@@ -376,6 +383,8 @@ export function createRepositories(db: Database): ContainerRepositories {
     itemSubmissionRepository,
     legalEntityRepository,
     legalEntityOnboardingRepository,
+    legalEntityConnectRepository,
+    legalEntityConnectReader,
     legalEntityNotificationRecipients,
     kycRepository,
     pendingInvitationsReader,

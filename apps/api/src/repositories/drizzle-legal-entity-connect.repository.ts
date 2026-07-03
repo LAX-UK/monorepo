@@ -1,0 +1,279 @@
+import type { Database } from "@auction/db";
+import {
+  kycVerification,
+  legalEntity,
+  legalEntityAddress,
+  user,
+  userAddress,
+} from "@auction/db/schema";
+import { and, desc, eq } from "drizzle-orm";
+import type { ConnectKycSnapshot } from "../services/stripe/connect/connect-account-prefill.js";
+import type { ConnectAddressSnapshot } from "../services/stripe/connect/connect-address-snapshot.js";
+import type { ILegalEntityConnectReader } from "./interfaces/legal-entity-connect.reader.js";
+import type { ILegalEntityConnectRepository } from "./interfaces/legal-entity-connect.repository.js";
+import type {
+  ApplyConnectStatusTransitionInput,
+  ConnectAccountCreationContextRow,
+  LegalEntityConnectRow,
+  PersistConnectAccountInput,
+  StripeConnectFlagPatch,
+} from "./legal-entity-connect.types.js";
+
+const ENTITY_ADDRESS_TYPE_ORDER: Record<string, number> = {
+  registered_office: 0,
+  billing: 1,
+  both: 2,
+};
+
+function toAddressSnapshot(row: {
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string | null;
+  postalCode: string;
+  country: string;
+}): ConnectAddressSnapshot {
+  return {
+    line1: row.line1,
+    line2: row.line2,
+    city: row.city,
+    state: row.state,
+    postalCode: row.postalCode,
+    country: row.country,
+  };
+}
+
+function pickEntityAddress(
+  rows: Array<{
+    line1: string;
+    line2: string | null;
+    city: string;
+    state: string | null;
+    postalCode: string;
+    country: string;
+    addressType: string;
+    isDefault: boolean;
+  }>,
+): ConnectAddressSnapshot | null {
+  if (rows.length === 0) return null;
+  const sorted = [...rows].sort((a, b) => {
+    const oa = ENTITY_ADDRESS_TYPE_ORDER[a.addressType] ?? 99;
+    const ob = ENTITY_ADDRESS_TYPE_ORDER[b.addressType] ?? 99;
+    if (oa !== ob) return oa - ob;
+    return (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0);
+  });
+  const best = sorted[0];
+  return best ? toAddressSnapshot(best) : null;
+}
+
+function pickUserAddress(
+  rows: Array<{
+    line1: string;
+    line2: string | null;
+    city: string;
+    state: string | null;
+    postalCode: string;
+    country: string;
+    addressType: string;
+    isDefault: boolean;
+  }>,
+): ConnectAddressSnapshot | null {
+  if (rows.length === 0) return null;
+  const def = rows.find((r) => r.isDefault);
+  const billingish = rows.find((r) => r.addressType === "billing" || r.addressType === "both");
+  const picked = def ?? billingish ?? rows[0];
+  return picked ? toAddressSnapshot(picked) : null;
+}
+
+export class DrizzleLegalEntityConnectRepository
+  implements ILegalEntityConnectReader, ILegalEntityConnectRepository
+{
+  constructor(private readonly db: Database) {}
+
+  forConnection(conn: Database): ILegalEntityConnectRepository {
+    return new DrizzleLegalEntityConnectRepository(conn);
+  }
+
+  async findLegalEntityRowById(id: string): Promise<LegalEntityConnectRow | null> {
+    const [row] = await this.db.select().from(legalEntity).where(eq(legalEntity.id, id)).limit(1);
+    return row ?? null;
+  }
+
+  async findLegalEntityRowByStripeAccountId(
+    stripeAccountId: string,
+  ): Promise<LegalEntityConnectRow | null> {
+    const [row] = await this.db
+      .select()
+      .from(legalEntity)
+      .where(eq(legalEntity.stripeConnectAccountId, stripeAccountId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async loadAccountCreationContext(
+    legalEntityId: string,
+  ): Promise<ConnectAccountCreationContextRow | null> {
+    const entityRows = await this.db
+      .select({
+        entity: legalEntity,
+        ownerEmail: user.email,
+        ownerFirstName: user.firstName,
+        ownerLastName: user.lastName,
+        ownerDisplayName: user.name,
+        ownerKycStatus: user.kycStatus,
+        ownerMobile: user.mobile,
+        ownerUserId: user.id,
+      })
+      .from(legalEntity)
+      .innerJoin(user, eq(user.id, legalEntity.createdByUserId))
+      .where(eq(legalEntity.id, legalEntityId))
+      .limit(1);
+    const entityRow = entityRows[0];
+    if (!entityRow) return null;
+
+    const [entityAddresses, userAddresses, kycRows] = await Promise.all([
+      this.db
+        .select({
+          line1: legalEntityAddress.line1,
+          line2: legalEntityAddress.line2,
+          city: legalEntityAddress.city,
+          state: legalEntityAddress.state,
+          postalCode: legalEntityAddress.postalCode,
+          country: legalEntityAddress.country,
+          addressType: legalEntityAddress.addressType,
+          isDefault: legalEntityAddress.isDefault,
+        })
+        .from(legalEntityAddress)
+        .where(eq(legalEntityAddress.legalEntityId, legalEntityId)),
+      this.db
+        .select({
+          line1: userAddress.line1,
+          line2: userAddress.line2,
+          city: userAddress.city,
+          state: userAddress.state,
+          postalCode: userAddress.postalCode,
+          country: userAddress.country,
+          addressType: userAddress.addressType,
+          isDefault: userAddress.isDefault,
+        })
+        .from(userAddress)
+        .where(eq(userAddress.userId, entityRow.ownerUserId)),
+      this.db
+        .select({
+          verifiedFirstName: kycVerification.verifiedFirstName,
+          verifiedLastName: kycVerification.verifiedLastName,
+          verifiedDateOfBirth: kycVerification.verifiedDateOfBirth,
+          verifiedIdCountry: kycVerification.verifiedIdCountry,
+        })
+        .from(kycVerification)
+        .where(
+          and(
+            eq(kycVerification.userId, entityRow.ownerUserId),
+            eq(kycVerification.status, "verified"),
+          ),
+        )
+        .orderBy(desc(kycVerification.decisionAt), desc(kycVerification.createdAt))
+        .limit(1),
+    ]);
+
+    const kycRow = kycRows[0];
+    const kyc: ConnectKycSnapshot | null = kycRow
+      ? {
+          verifiedFirstName: kycRow.verifiedFirstName ?? null,
+          verifiedLastName: kycRow.verifiedLastName ?? null,
+          verifiedDateOfBirth: kycRow.verifiedDateOfBirth ?? null,
+          verifiedIdCountry: kycRow.verifiedIdCountry ?? null,
+        }
+      : null;
+
+    return {
+      entity: entityRow.entity,
+      ownerUserId: entityRow.ownerUserId,
+      ownerEmail: entityRow.ownerEmail,
+      ownerFirstName: entityRow.ownerFirstName,
+      ownerLastName: entityRow.ownerLastName,
+      ownerDisplayName: entityRow.ownerDisplayName,
+      ownerKycStatus: entityRow.ownerKycStatus,
+      ownerMobile: entityRow.ownerMobile,
+      entityAddress: pickEntityAddress(entityAddresses),
+      userAddress: pickUserAddress(userAddresses),
+      kyc,
+    };
+  }
+
+  async persistConnectAccount(
+    input: PersistConnectAccountInput,
+  ): Promise<LegalEntityConnectRow | null> {
+    const [updated] = await this.db
+      .update(legalEntity)
+      .set({
+        stripeConnectAccountId: input.stripeAccountId,
+        ...(input.promoteLeadToConnectPending
+          ? { status: "connect_pending" as const, statusChangedAt: new Date() }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(legalEntity.id, input.legalEntityId))
+      .returning();
+    return updated ?? null;
+  }
+
+  async updateStripeConnectFlags(
+    legalEntityId: string,
+    flags: StripeConnectFlagPatch,
+    db: Database = this.db,
+  ): Promise<void> {
+    await db
+      .update(legalEntity)
+      .set({
+        ...flags,
+        updatedAt: new Date(),
+      })
+      .where(eq(legalEntity.id, legalEntityId));
+  }
+
+  async applyConnectStatusTransition(
+    input: ApplyConnectStatusTransitionInput,
+    db: Database = this.db,
+  ): Promise<LegalEntityConnectRow | null> {
+    const [updated] = await db
+      .update(legalEntity)
+      .set({
+        ...input.flags,
+        status: input.nextStatus,
+        statusChangedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(legalEntity.id, input.legalEntityId), eq(legalEntity.status, input.expectedStatus)),
+      )
+      .returning();
+    return updated ?? null;
+  }
+
+  async applyDeauthorized(stripeAccountId: string, db: Database = this.db) {
+    const [row] = await db
+      .select()
+      .from(legalEntity)
+      .where(eq(legalEntity.stripeConnectAccountId, stripeAccountId))
+      .limit(1);
+    if (!row) return null;
+
+    const nextStatus =
+      !row.isLaxManaged && row.status === "approved" ? ("connect_pending" as const) : row.status;
+
+    const [updated] = await db
+      .update(legalEntity)
+      .set({
+        stripeConnectPayoutsEnabled: false,
+        stripeConnectChargesEnabled: false,
+        stripeConnectDisabledReason: "platform_deauthorized",
+        stripeConnectRequirementsCurrentlyDue: [],
+        ...(nextStatus !== row.status ? { status: nextStatus, statusChangedAt: new Date() } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(legalEntity.id, row.id))
+      .returning();
+    return updated ?? null;
+  }
+}

@@ -6,6 +6,7 @@ import type { Env } from "../../env.js";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { IConnectTransferRepository } from "../../repositories/interfaces/connect-transfer.repository.js";
+import type { ILegalEntityConnectRepository } from "../../repositories/interfaces/legal-entity-connect.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
@@ -87,6 +88,22 @@ function makeConnectTransferRepository(
   } as IConnectTransferRepository;
 }
 
+function makeConnectLegalEntityRepository(
+  overrides: Partial<ILegalEntityConnectRepository> = {},
+): ILegalEntityConnectRepository {
+  return {
+    findLegalEntityRowById: vi.fn().mockResolvedValue(null),
+    findLegalEntityRowByStripeAccountId: vi.fn().mockResolvedValue(null),
+    loadAccountCreationContext: vi.fn().mockResolvedValue(null),
+    forConnection: vi.fn().mockReturnThis(),
+    persistConnectAccount: vi.fn(),
+    updateStripeConnectFlags: vi.fn(),
+    applyConnectStatusTransition: vi.fn(),
+    applyDeauthorized: vi.fn(),
+    ...overrides,
+  } as ILegalEntityConnectRepository;
+}
+
 function connectTransferEntityRow(
   row: {
     id: string;
@@ -148,6 +165,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
       makeTransactionDb(),
       payoutService,
       makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
     );
     const transfer = {
       id: "tr_1",
@@ -180,6 +198,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
       makeTransactionDb(),
       payoutService,
       makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
     );
 
     const result = await svc.handleTransferEvent({
@@ -211,6 +230,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
       makeTransactionDb(),
       payoutService,
       makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
     );
 
     const result = await svc.handleTransferEvent({
@@ -237,6 +257,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
       makeTransactionDb(),
       payoutService,
       makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
     );
     const transfer = {
       id: "tr_reversed",
@@ -309,6 +330,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makeMockDb(),
       makePayoutService(null),
       makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
     );
 
     const result = await svc.initiateTransfer("po1");
@@ -323,6 +345,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makeMockDb(),
       makePayoutService(null),
       makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
       payoutRepo,
       makeDomainEventPublisher(),
     );
@@ -339,6 +362,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makeMockDb(),
       makePayoutService(null),
       makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
       payoutRepo,
       makeDomainEventPublisher(),
     );
@@ -361,6 +385,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       db,
       makePayoutService(null),
       connectTransferRepository,
+      makeConnectLegalEntityRepository(),
       payoutRepo,
       makeDomainEventPublisher(),
     );
@@ -384,6 +409,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       db,
       makePayoutService(null),
       connectTransferRepository,
+      makeConnectLegalEntityRepository(),
       payoutRepo,
       publisher,
     );
@@ -417,6 +443,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makeMockDb(),
       makePayoutService(null),
       connectTransferRepository,
+      makeConnectLegalEntityRepository(),
       payoutRepo,
       makeDomainEventPublisher(),
     );
@@ -439,6 +466,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       db,
       makePayoutService(null),
       makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
       payoutRepo,
       publisher,
     );
@@ -506,6 +534,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       db,
       makePayoutService(null),
       connectTransferRepository,
+      makeConnectLegalEntityRepository(),
       payoutRepo,
       publisher,
     );
@@ -575,6 +604,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       db,
       makePayoutService(null),
       connectTransferRepository,
+      makeConnectLegalEntityRepository(),
       payoutRepo,
       makeDomainEventPublisher(),
     );
@@ -648,6 +678,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       db,
       makePayoutService(null),
       connectTransferRepository,
+      makeConnectLegalEntityRepository(),
       payoutRepo,
       publisher,
     );
@@ -671,57 +702,62 @@ describe("StripeConnectService.initiateTransfer", () => {
   });
 });
 
-function makeEnsureAccountDb(input: {
+type EnsureAccountFixtureInput = {
   entityJoinRow: Record<string, unknown>;
   entityAddressRows?: unknown[];
   userAddressRows?: unknown[];
   kycRows?: unknown[];
   updatedRow: Record<string, unknown>;
-}): Database {
-  let selectCount = 0;
+};
+
+function toConnectAddressSnapshot(row: unknown): {
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string | null;
+  postalCode: string;
+  country: string;
+} | null {
+  if (!row || typeof row !== "object") return null;
+  const address = row as Record<string, unknown>;
   return {
-    select: vi.fn().mockImplementation(() => {
-      selectCount += 1;
-      if (selectCount === 1) {
-        return {
-          from: vi.fn().mockReturnValue({
-            innerJoin: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([input.entityJoinRow]),
-              }),
-            }),
-          }),
-        };
-      }
-      if (selectCount === 2 || selectCount === 3) {
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi
-              .fn()
-              .mockResolvedValue(
-                selectCount === 2 ? (input.entityAddressRows ?? []) : (input.userAddressRows ?? []),
-              ),
-          }),
-        };
-      }
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue(input.kycRows ?? []),
-            }),
-          }),
-        }),
-      };
+    line1: address.line1 as string,
+    line2: (address.line2 as string | null) ?? null,
+    city: address.city as string,
+    state: (address.state as string | null) ?? null,
+    postalCode: address.postalCode as string,
+    country: address.country as string,
+  };
+}
+
+function makeEnsureAccountConnectRepository(
+  input: EnsureAccountFixtureInput,
+): ILegalEntityConnectRepository {
+  const join = input.entityJoinRow;
+  const kycRow = input.kycRows?.[0] as Record<string, unknown> | undefined;
+  return makeConnectLegalEntityRepository({
+    loadAccountCreationContext: vi.fn().mockResolvedValue({
+      entity: join.entity,
+      ownerUserId: join.ownerUserId,
+      ownerEmail: join.ownerEmail,
+      ownerFirstName: join.ownerFirstName ?? null,
+      ownerLastName: join.ownerLastName ?? null,
+      ownerDisplayName: join.ownerDisplayName ?? null,
+      ownerKycStatus: join.ownerKycStatus,
+      ownerMobile: join.ownerMobile ?? null,
+      entityAddress: toConnectAddressSnapshot(input.entityAddressRows?.[0]),
+      userAddress: toConnectAddressSnapshot(input.userAddressRows?.[0]),
+      kyc: kycRow
+        ? {
+            verifiedFirstName: kycRow.verifiedFirstName as string,
+            verifiedLastName: kycRow.verifiedLastName as string,
+            verifiedDateOfBirth: kycRow.verifiedDateOfBirth as string,
+            verifiedIdCountry: kycRow.verifiedIdCountry as string,
+          }
+        : null,
     }),
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([input.updatedRow]),
-        }),
-      }),
-    }),
-  } as unknown as Database;
+    persistConnectAccount: vi.fn().mockResolvedValue(input.updatedRow),
+  });
 }
 
 describe("StripeConnectService.ensureAccount", () => {
@@ -756,7 +792,7 @@ describe("StripeConnectService.ensureAccount", () => {
       status: "connect_pending" as const,
     };
     const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_test_1" });
-    const db = makeEnsureAccountDb({
+    const connectRepository = makeEnsureAccountConnectRepository({
       entityJoinRow: {
         entity: entityRow,
         ownerEmail: "ada@example.com",
@@ -780,9 +816,10 @@ describe("StripeConnectService.ensureAccount", () => {
 
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      {} as Database,
       makePayoutService(null),
       makeConnectTransferRepository(),
+      connectRepository,
     );
     injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
@@ -844,7 +881,7 @@ describe("StripeConnectService.ensureAccount", () => {
       status: "connect_pending" as const,
     };
     const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_fr" });
-    const db = makeEnsureAccountDb({
+    const connectRepository = makeEnsureAccountConnectRepository({
       entityJoinRow: {
         entity: entityRow,
         ownerEmail: "owner@example.com",
@@ -872,9 +909,10 @@ describe("StripeConnectService.ensureAccount", () => {
 
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      {} as Database,
       makePayoutService(null),
       makeConnectTransferRepository(),
+      connectRepository,
     );
     injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
@@ -923,7 +961,7 @@ describe("StripeConnectService.ensureAccount", () => {
       status: "connect_pending" as const,
     };
     const accountsCreate = vi.fn().mockResolvedValue({ id: "acct_org" });
-    const db = makeEnsureAccountDb({
+    const connectRepository = makeEnsureAccountConnectRepository({
       entityJoinRow: {
         entity: entityRow,
         ownerEmail: "owner@example.com",
@@ -939,9 +977,10 @@ describe("StripeConnectService.ensureAccount", () => {
 
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      {} as Database,
       makePayoutService(null),
       makeConnectTransferRepository(),
+      connectRepository,
     );
     injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
@@ -983,6 +1022,7 @@ describe("StripeConnectService.handleConnectedAccountEvent dedup", () => {
       db,
       makePayoutService(null),
       makeConnectTransferRepository(),
+      makeConnectLegalEntityRepository(),
       undefined,
       publisher,
     );

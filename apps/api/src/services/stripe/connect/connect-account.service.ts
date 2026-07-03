@@ -1,7 +1,5 @@
 import { statusFromLegalEntityRow } from "@auction/connect";
 import type { Database } from "@auction/db";
-import { legalEntity } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
@@ -10,6 +8,9 @@ import { legalEntityRowToDomain } from "../../../lib/legal-entity-row-mapper.js"
 import { type AppLogger, createBaseLogger } from "../../../lib/logger.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { recordMoneyPathEvent } from "../../../middleware/metrics.js";
+import type { ILegalEntityConnectReader } from "../../../repositories/interfaces/legal-entity-connect.reader.js";
+import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
+import type { LegalEntityConnectRow } from "../../../repositories/legal-entity-connect.types.js";
 import type { ConnectAccountStatus, CreateAccountResult } from "../../interfaces/stripe-connect.js";
 import { loadConnectAccountCreationContext } from "./connect-account-context.loader.js";
 import {
@@ -31,6 +32,8 @@ export class ConnectAccountService {
   constructor(
     env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">,
     private readonly db: Database,
+    private readonly connectReader: ILegalEntityConnectReader,
+    private readonly connectRepository: ILegalEntityConnectRepository,
     private readonly stripeFactory: IStripeClientFactory,
     private readonly lifecyclePromoter: ConnectLifecyclePromoter,
     private readonly redis?: Redis,
@@ -47,7 +50,7 @@ export class ConnectAccountService {
     if (!allowed) throwConnectError("stripe_rate_limited", 429);
   }
 
-  statusFromRow(row: typeof legalEntity.$inferSelect, syncDegraded = false): ConnectAccountStatus {
+  statusFromRow(row: LegalEntityConnectRow, syncDegraded = false): ConnectAccountStatus {
     const base = statusFromLegalEntityRow(row);
     return {
       ...base,
@@ -58,7 +61,7 @@ export class ConnectAccountService {
   async ensureAccount(legalEntityId: string): Promise<CreateAccountResult> {
     await this.assertMutationRateLimit("account", legalEntityId);
     const stripe = requireConnectStripe(this.stripeFactory);
-    const context = await loadConnectAccountCreationContext(this.db, legalEntityId);
+    const context = await loadConnectAccountCreationContext(this.connectReader, legalEntityId);
     const row = context.entity;
 
     if (row.stripeConnectAccountId) {
@@ -77,7 +80,6 @@ export class ConnectAccountService {
       kycIdCountry: context.kyc?.verifiedIdCountry ?? null,
     });
 
-    // Custom embedded: platform fees + losses + KYC collection; no Stripe Dashboard access.
     const controller: ConnectAccountController = {
       fees: { payer: "application" },
       losses: { payments: "application" },
@@ -116,26 +118,20 @@ export class ConnectAccountService {
     });
 
     const persistUpdate = () =>
-      this.db
-        .update(legalEntity)
-        .set({
-          stripeConnectAccountId: account.id,
-          ...(row.status === "lead"
-            ? { status: "connect_pending" as const, statusChangedAt: new Date() }
-            : {}),
-          updatedAt: new Date(),
-        })
-        .where(eq(legalEntity.id, legalEntityId))
-        .returning();
+      this.connectRepository.persistConnectAccount({
+        legalEntityId,
+        stripeAccountId: account.id,
+        promoteLeadToConnectPending: row.status === "lead",
+      });
 
-    let updated = (await persistUpdate())[0];
+    let updated = await persistUpdate();
     if (!updated) {
       recordMoneyPathEvent("stripe_connect_account_orphan_created");
       this.logger.error(
         { legalEntityId, stripeAccountId: account.id },
         "connect_account_db_update_failed",
       );
-      updated = (await persistUpdate())[0];
+      updated = await persistUpdate();
     }
     if (!updated) {
       throw new ConnectServiceError("legal_entity_update_failed", 500, {
@@ -146,9 +142,8 @@ export class ConnectAccountService {
     return { stripeAccountId: account.id, legalEntity: legalEntityRowToDomain(updated) };
   }
 
-  /** Cached DB status — use {@link syncAccountFromStripe} for live Stripe refresh. */
   async getStatus(legalEntityId: string): Promise<ConnectAccountStatus> {
-    const row = await loadConnectLegalEntity(this.db, legalEntityId);
+    const row = await loadConnectLegalEntity(this.connectReader, legalEntityId);
     if (!row.stripeConnectAccountId) {
       return {
         stripeAccountId: null,
@@ -165,7 +160,7 @@ export class ConnectAccountService {
   async syncAccountFromStripe(legalEntityId: string): Promise<ConnectAccountStatus> {
     await this.assertMutationRateLimit("sync", legalEntityId);
     const stripe = requireConnectStripe(this.stripeFactory);
-    const row = await loadConnectLegalEntity(this.db, legalEntityId);
+    const row = await loadConnectLegalEntity(this.connectReader, legalEntityId);
     if (!row.stripeConnectAccountId) {
       return {
         stripeAccountId: null,
@@ -178,17 +173,12 @@ export class ConnectAccountService {
     }
     const account = await stripe.accounts.retrieve(row.stripeConnectAccountId);
     await this.applyAccountUpdate(account);
-    const refreshed = await loadConnectLegalEntity(this.db, legalEntityId);
+    const refreshed = await loadConnectLegalEntity(this.connectReader, legalEntityId);
     return this.statusFromRow(refreshed);
   }
 
   async applyAccountUpdate(account: Stripe.Account, db: Database = this.db): Promise<void> {
-    const rows = await db
-      .select()
-      .from(legalEntity)
-      .where(eq(legalEntity.stripeConnectAccountId, account.id))
-      .limit(1);
-    const row = rows[0];
+    const row = await this.connectReader.findLegalEntityRowByStripeAccountId(account.id);
     if (!row) {
       recordMoneyPathEvent("stripe_connect_webhook_orphan_account");
       return;
@@ -196,34 +186,13 @@ export class ConnectAccountService {
     await this.lifecyclePromoter.applyStripeAccountFlags(account, row, db);
   }
 
-  /** Seller revoked platform access — block payouts and demote lifecycle. */
   async applyAccountDeauthorized(stripeAccountId: string, db: Database = this.db): Promise<void> {
-    const rows = await db
-      .select()
-      .from(legalEntity)
-      .where(eq(legalEntity.stripeConnectAccountId, stripeAccountId))
-      .limit(1);
-    const row = rows[0];
-    if (!row) {
+    const repo = this.connectRepository.forConnection(db);
+    const updated = await repo.applyDeauthorized(stripeAccountId, db);
+    if (!updated) {
       recordMoneyPathEvent("stripe_connect_webhook_orphan_account");
       return;
     }
-
-    const nextStatus =
-      !row.isLaxManaged && row.status === "approved" ? ("connect_pending" as const) : row.status;
-
-    await db
-      .update(legalEntity)
-      .set({
-        stripeConnectPayoutsEnabled: false,
-        stripeConnectChargesEnabled: false,
-        stripeConnectDisabledReason: "platform_deauthorized",
-        stripeConnectRequirementsCurrentlyDue: [],
-        ...(nextStatus !== row.status ? { status: nextStatus, statusChangedAt: new Date() } : {}),
-        updatedAt: new Date(),
-      })
-      .where(eq(legalEntity.id, row.id));
-
     recordMoneyPathEvent("stripe_connect_account_deauthorized");
   }
 }

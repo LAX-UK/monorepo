@@ -1,14 +1,12 @@
-import type { Database } from "@auction/db";
-import { legalEntity } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
+import type { ILegalEntityConnectReader } from "../../../repositories/interfaces/legal-entity-connect.reader.js";
+import type { LegalEntityConnectRow } from "../../../repositories/legal-entity-connect.types.js";
 import { StripeConnectNotConfiguredError } from "../../interfaces/stripe-connect.js";
 import { throwConnectError } from "./connect-service-errors.js";
 
-export async function loadConnectLegalEntity(db: Database, id: string) {
-  const rows = await db.select().from(legalEntity).where(eq(legalEntity.id, id)).limit(1);
-  const row = rows[0];
+export async function loadConnectLegalEntity(reader: ILegalEntityConnectReader, id: string) {
+  const row = await reader.findLegalEntityRowById(id);
   if (!row) throwConnectError("legal_entity_not_found", 404);
   return row;
 }
@@ -20,7 +18,7 @@ export function requireConnectStripe(stripeFactory: IStripeClientFactory): Strip
 }
 
 /** Cached Connect readiness when live Stripe sync is unavailable. */
-export function connectReadyFromCachedEntity(entity: typeof legalEntity.$inferSelect): boolean {
+export function connectReadyFromCachedEntity(entity: LegalEntityConnectRow): boolean {
   const due = entity.stripeConnectRequirementsCurrentlyDue ?? [];
   const disabledReason = entity.stripeConnectDisabledReason?.trim();
   return (

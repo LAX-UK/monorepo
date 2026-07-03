@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 import type { Env } from "../../env.js";
 import { StripeClientFactory } from "../../lib/stripe-client.js";
 import type { IConnectTransferRepository } from "../../repositories/interfaces/connect-transfer.repository.js";
+import type { ILegalEntityConnectRepository } from "../../repositories/interfaces/legal-entity-connect.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
@@ -38,16 +39,28 @@ export class StripeConnectFacade implements IStripeConnectService {
     db: Database,
     payoutService: IPayoutService,
     connectTransferRepository: IConnectTransferRepository,
+    legalEntityConnectRepository: ILegalEntityConnectRepository,
     payoutRepository?: IPayoutRepository,
     domainEventPublisher?: DomainEventPublisher,
     stripeFactory?: StripeClientFactory,
     redis?: Redis,
   ) {
     const factory = stripeFactory ?? new StripeClientFactory(env);
-    const lifecyclePromoter = new ConnectLifecyclePromoter(domainEventPublisher);
-    this.accountService = new ConnectAccountService(env, db, factory, lifecyclePromoter, redis);
-    this.sessionService = new ConnectSessionService(env, db, factory);
-    this.linkService = new ConnectLinkService(env, db, factory);
+    const lifecyclePromoter = new ConnectLifecyclePromoter(
+      legalEntityConnectRepository,
+      domainEventPublisher,
+    );
+    this.accountService = new ConnectAccountService(
+      env,
+      db,
+      legalEntityConnectRepository,
+      legalEntityConnectRepository,
+      factory,
+      lifecyclePromoter,
+      redis,
+    );
+    this.sessionService = new ConnectSessionService(env, legalEntityConnectRepository, factory);
+    this.linkService = new ConnectLinkService(env, legalEntityConnectRepository, factory);
     this.webhookHandler = new ConnectWebhookHandler(db, factory, this.accountService);
     this.transferService = new ConnectTransferService(
       env,

@@ -1,7 +1,7 @@
-import type { Database } from "@auction/db";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
+import type { ILegalEntityConnectReader } from "../../../repositories/interfaces/legal-entity-connect.reader.js";
 import { StripeConnectNotConfiguredError } from "../../interfaces/stripe-connect.js";
 import { throwConnectError } from "./connect-service-errors.js";
 import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
@@ -20,7 +20,7 @@ export type ConnectClientConfig = {
 export class ConnectSessionService {
   constructor(
     private readonly env: Env,
-    private readonly db: Database,
+    private readonly connectReader: ILegalEntityConnectReader,
     private readonly stripeFactory: IStripeClientFactory,
   ) {}
 
@@ -74,7 +74,7 @@ export class ConnectSessionService {
     surface: ConnectSessionSurface,
   ): Promise<AccountSessionResult> {
     const stripe = requireConnectStripe(this.stripeFactory);
-    const row = await loadConnectLegalEntity(this.db, legalEntityId);
+    const row = await loadConnectLegalEntity(this.connectReader, legalEntityId);
     if (!row.stripeConnectAccountId) {
       throwConnectError("stripe_account_missing", 400);
     }

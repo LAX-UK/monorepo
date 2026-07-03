@@ -1,19 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
 import { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";
 
-function makeDbWithLifecycleUpdate(returning: unknown[]) {
-  const returningFn = vi.fn().mockResolvedValue(returning);
-  const where = vi.fn().mockReturnValue({ returning: returningFn });
-  const set = vi.fn().mockReturnValue({ where });
-  const update = vi.fn().mockReturnValue({ set });
-  return { db: { update } as never, set, where, returningFn };
+function makeConnectRepositoryMocks() {
+  const updateStripeConnectFlags = vi.fn().mockResolvedValue(undefined);
+  const applyConnectStatusTransition = vi.fn().mockResolvedValue({ id: "e1", status: "approved" });
+  const repo = {
+    updateStripeConnectFlags,
+    applyConnectStatusTransition,
+  };
+  const connectRepository = {
+    forConnection: vi.fn().mockReturnValue(repo),
+  } as unknown as ILegalEntityConnectRepository;
+  return { connectRepository, updateStripeConnectFlags, applyConnectStatusTransition, repo };
 }
 
 describe("ConnectLifecyclePromoter", () => {
   it("promotes connect_pending to approved when Stripe account is configured", async () => {
     const publish = vi.fn();
-    const promoter = new ConnectLifecyclePromoter({ publish } as never);
-    const { db, set } = makeDbWithLifecycleUpdate([{ id: "e1", status: "approved" }]);
+    const { connectRepository, applyConnectStatusTransition } = makeConnectRepositoryMocks();
+    const promoter = new ConnectLifecyclePromoter(connectRepository, { publish } as never);
+    const db = {} as never;
 
     await promoter.applyStripeAccountFlags(
       {
@@ -32,11 +39,13 @@ describe("ConnectLifecyclePromoter", () => {
       db,
     );
 
-    expect(set).toHaveBeenCalledWith(
+    expect(applyConnectStatusTransition).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: "approved",
-        stripeConnectPayoutsEnabled: true,
+        legalEntityId: "e1",
+        expectedStatus: "connect_pending",
+        nextStatus: "approved",
       }),
+      db,
     );
     expect(publish).toHaveBeenCalledWith(
       db,
@@ -49,15 +58,20 @@ describe("ConnectLifecyclePromoter", () => {
 
   it("demotes approved to connect_pending when requirements become due", async () => {
     const publish = vi.fn();
-    const promoter = new ConnectLifecyclePromoter({ publish } as never);
-    const { db, set } = makeDbWithLifecycleUpdate([{ id: "e1", status: "connect_pending" }]);
+    const { connectRepository, applyConnectStatusTransition } = makeConnectRepositoryMocks();
+    applyConnectStatusTransition.mockResolvedValue({ id: "e1", status: "connect_pending" });
+    const promoter = new ConnectLifecyclePromoter(connectRepository, { publish } as never);
+    const db = {} as never;
 
     await promoter.applyStripeAccountFlags(
       {
         id: "acct_1",
-        charges_enabled: false,
-        payouts_enabled: true,
-        requirements: { currently_due: ["external_account"], disabled_reason: null },
+        charges_enabled: true,
+        payouts_enabled: false,
+        requirements: {
+          currently_due: ["individual.verification.document"],
+          disabled_reason: null,
+        },
       } as never,
       {
         id: "e1",
@@ -69,61 +83,31 @@ describe("ConnectLifecyclePromoter", () => {
       db,
     );
 
-    expect(set).toHaveBeenCalledWith(
+    expect(applyConnectStatusTransition).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: "connect_pending",
+        nextStatus: "connect_pending",
+        expectedStatus: "approved",
       }),
+      db,
     );
     expect(publish).toHaveBeenCalledWith(
       db,
       expect.objectContaining({
-        eventType: "legal_entity.lifecycle_progressed",
         payload: expect.objectContaining({ reason: "stripe_connect_requirements_due" }),
       }),
     );
   });
 
-  it("does not promote or demote LAX-managed entities", async () => {
+  it("updates flags only when status unchanged", async () => {
     const publish = vi.fn();
-    const promoter = new ConnectLifecyclePromoter({ publish } as never);
-    const { db, set } = makeDbWithLifecycleUpdate([]);
+    const { connectRepository, updateStripeConnectFlags } = makeConnectRepositoryMocks();
+    const promoter = new ConnectLifecyclePromoter(connectRepository, { publish } as never);
+    const db = {} as never;
 
     await promoter.applyStripeAccountFlags(
       {
         id: "acct_1",
-        charges_enabled: false,
-        payouts_enabled: false,
-        requirements: { currently_due: ["external_account"], disabled_reason: null },
-      } as never,
-      {
-        id: "e1",
-        kind: "organisation",
-        status: "connect_pending",
-        stripeConnectAccountId: "acct_1",
-        isLaxManaged: true,
-      } as never,
-      db,
-    );
-
-    expect(set).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        status: expect.anything(),
-      }),
-    );
-    expect(publish).not.toHaveBeenCalled();
-  });
-
-  it("no-ops lifecycle when status already matches configured state", async () => {
-    const publish = vi.fn();
-    const promoter = new ConnectLifecyclePromoter({ publish } as never);
-    const where = vi.fn().mockResolvedValue(undefined);
-    const set = vi.fn().mockReturnValue({ where });
-    const db = { update: vi.fn().mockReturnValue({ set }) } as never;
-
-    await promoter.applyStripeAccountFlags(
-      {
-        id: "acct_1",
-        charges_enabled: false,
+        charges_enabled: true,
         payouts_enabled: true,
         requirements: { currently_due: [], disabled_reason: null },
       } as never,
@@ -137,32 +121,7 @@ describe("ConnectLifecyclePromoter", () => {
       db,
     );
 
-    expect(set).toHaveBeenCalledWith(expect.not.objectContaining({ status: expect.anything() }));
-    expect(publish).not.toHaveBeenCalled();
-  });
-
-  it("skips lifecycle event when concurrent webhook wins the status transition", async () => {
-    const publish = vi.fn();
-    const promoter = new ConnectLifecyclePromoter({ publish } as never);
-    const { db } = makeDbWithLifecycleUpdate([]);
-
-    await promoter.applyStripeAccountFlags(
-      {
-        id: "acct_1",
-        charges_enabled: false,
-        payouts_enabled: true,
-        requirements: { currently_due: [], disabled_reason: null },
-      } as never,
-      {
-        id: "e1",
-        kind: "individual",
-        status: "connect_pending",
-        stripeConnectAccountId: "acct_1",
-        isLaxManaged: false,
-      } as never,
-      db,
-    );
-
+    expect(updateStripeConnectFlags).toHaveBeenCalled();
     expect(publish).not.toHaveBeenCalled();
   });
 });

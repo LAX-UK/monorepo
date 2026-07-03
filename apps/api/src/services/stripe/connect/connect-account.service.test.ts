@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
 import type { Env } from "../../../env.js";
+import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
 import { ConnectAccountService } from "./connect-account.service.js";
 import type { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";
 
@@ -22,15 +23,11 @@ describe("ConnectAccountService.getStatus", () => {
       stripeConnectRequirementsCurrentlyDue: [],
       stripeConnectDisabledReason: null,
     };
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([row]),
-          }),
-        }),
-      }),
-    } as unknown as Database;
+    const connectReader = {
+      findLegalEntityRowById: vi.fn().mockResolvedValue(row),
+    };
+    const connectRepository = {} as ILegalEntityConnectRepository;
+    const db = {} as Database;
     const stripeFactory = {
       get: vi.fn().mockReturnValue({
         accounts: { retrieve: vi.fn() },
@@ -38,7 +35,14 @@ describe("ConnectAccountService.getStatus", () => {
       require: vi.fn(),
     };
 
-    const svc = new ConnectAccountService(baseEnv(), db, stripeFactory, lifecyclePromoter);
+    const svc = new ConnectAccountService(
+      baseEnv(),
+      db,
+      connectReader as never,
+      connectRepository,
+      stripeFactory as never,
+      lifecyclePromoter,
+    );
     const status = await svc.getStatus("le1");
 
     expect(status.stripeAccountId).toBe("acct_1");

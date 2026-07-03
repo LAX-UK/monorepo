@@ -71,6 +71,7 @@ export function createPlatformPayoutServices(
     db,
     payoutService,
     connectTransferRepository,
+    repos.legalEntityConnectRepository,
     payoutRepository,
     domainEventPublisher,
     stripeClientFactory,

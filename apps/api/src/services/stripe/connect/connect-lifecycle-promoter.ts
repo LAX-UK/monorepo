@@ -1,16 +1,19 @@
 import { isStripeAccountConfigured } from "@auction/connect";
 import type { Database } from "@auction/db";
-import { legalEntity } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
 import type Stripe from "stripe";
+import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
+import type { LegalEntityConnectRow } from "../../../repositories/legal-entity-connect.types.js";
 import type { DomainEventPublisher } from "../../domain-event.publisher.js";
 
 export class ConnectLifecyclePromoter {
-  constructor(private readonly domainEventPublisher?: DomainEventPublisher) {}
+  constructor(
+    private readonly connectRepository: ILegalEntityConnectRepository,
+    private readonly domainEventPublisher?: DomainEventPublisher,
+  ) {}
 
   async applyStripeAccountFlags(
     account: Stripe.Account,
-    row: typeof legalEntity.$inferSelect,
+    row: LegalEntityConnectRow,
     db: Database,
   ): Promise<void> {
     const requirementsCurrentlyDue = (account.requirements?.currently_due ?? []) as string[];
@@ -30,7 +33,7 @@ export class ConnectLifecyclePromoter {
       isLaxManaged: row.isLaxManaged,
     });
 
-    let nextStatus = row.status as typeof row.status;
+    let nextStatus = row.status;
     if (!row.isLaxManaged) {
       if (configured && row.status === "connect_pending") {
         nextStatus = "approved";
@@ -39,28 +42,28 @@ export class ConnectLifecyclePromoter {
       }
     }
 
-    const flagUpdate = {
+    const flags = {
       stripeConnectChargesEnabled: chargesEnabled,
       stripeConnectPayoutsEnabled: payoutsEnabled,
       stripeConnectRequirementsCurrentlyDue: requirementsCurrentlyDue,
       stripeConnectDisabledReason: disabledReason,
-      updatedAt: new Date(),
     };
 
+    const repo = this.connectRepository.forConnection(db);
     if (nextStatus === row.status) {
-      await db.update(legalEntity).set(flagUpdate).where(eq(legalEntity.id, row.id));
+      await repo.updateStripeConnectFlags(row.id, flags, db);
       return;
     }
 
-    const [updated] = await db
-      .update(legalEntity)
-      .set({
-        ...flagUpdate,
-        status: nextStatus,
-        statusChangedAt: new Date(),
-      })
-      .where(and(eq(legalEntity.id, row.id), eq(legalEntity.status, row.status)))
-      .returning();
+    const updated = await repo.applyConnectStatusTransition(
+      {
+        legalEntityId: row.id,
+        expectedStatus: row.status,
+        nextStatus,
+        flags,
+      },
+      db,
+    );
 
     if (!updated) return;
 

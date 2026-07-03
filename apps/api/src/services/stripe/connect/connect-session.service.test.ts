@@ -1,16 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ILegalEntityConnectReader } from "../../../repositories/interfaces/legal-entity-connect.reader.js";
 import { ConnectSessionService } from "./connect-session.service.js";
 
-function makeDb(rows: unknown[]) {
+function makeReader(row: { id: string; stripeConnectAccountId: string | null } | null) {
   return {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue(rows),
-        }),
-      }),
-    }),
-  } as never;
+    findLegalEntityRowById: vi.fn().mockResolvedValue(row),
+  } as unknown as ILegalEntityConnectReader;
 }
 
 describe("ConnectSessionService", () => {
@@ -28,7 +23,7 @@ describe("ConnectSessionService", () => {
   it("returns client config with enforcement flag", () => {
     const svc = new ConnectSessionService(
       { STRIPE_PUBLISHABLE_KEY: "pk_test" } as never,
-      makeDb([]),
+      makeReader(null),
       stripeFactory,
     );
     expect(svc.getClientConfig()).toEqual({
@@ -40,7 +35,7 @@ describe("ConnectSessionService", () => {
   it("returns null publishable key when unset", () => {
     const svc = new ConnectSessionService(
       { STRIPE_PUBLISHABLE_KEY: undefined } as never,
-      makeDb([]),
+      makeReader(null),
       stripeFactory,
     );
     expect(svc.getClientConfig()).toEqual({
@@ -52,7 +47,7 @@ describe("ConnectSessionService", () => {
   it("builds onboarding session for owner", async () => {
     const svc = new ConnectSessionService(
       { STRIPE_PUBLISHABLE_KEY: "pk_test" } as never,
-      makeDb([{ id: "entity-1", stripeConnectAccountId: "acct_123" }]),
+      makeReader({ id: "entity-1", stripeConnectAccountId: "acct_123" }),
       stripeFactory,
     );
     const result = await svc.createAccountSession("entity-1", "owner", "onboarding");
@@ -69,7 +64,7 @@ describe("ConnectSessionService", () => {
   it("rejects finance role on onboarding surface", async () => {
     const svc = new ConnectSessionService(
       { STRIPE_PUBLISHABLE_KEY: "pk_test" } as never,
-      makeDb([{ id: "entity-1", stripeConnectAccountId: "acct_123" }]),
+      makeReader({ id: "entity-1", stripeConnectAccountId: "acct_123" }),
       stripeFactory,
     );
     await expect(svc.createAccountSession("entity-1", "finance", "onboarding")).rejects.toThrow(
@@ -80,7 +75,7 @@ describe("ConnectSessionService", () => {
   it("rejects member role on management surface", async () => {
     const svc = new ConnectSessionService(
       { STRIPE_PUBLISHABLE_KEY: "pk_test" } as never,
-      makeDb([{ id: "entity-1", stripeConnectAccountId: "acct_123" }]),
+      makeReader({ id: "entity-1", stripeConnectAccountId: "acct_123" }),
       stripeFactory,
     );
     await expect(svc.createAccountSession("entity-1", "member", "management")).rejects.toThrow(
@@ -91,7 +86,7 @@ describe("ConnectSessionService", () => {
   it("builds management session for finance", async () => {
     const svc = new ConnectSessionService(
       { STRIPE_PUBLISHABLE_KEY: "pk_test" } as never,
-      makeDb([{ id: "entity-1", stripeConnectAccountId: "acct_123" }]),
+      makeReader({ id: "entity-1", stripeConnectAccountId: "acct_123" }),
       stripeFactory,
     );
     await svc.createAccountSession("entity-1", "finance", "management");
@@ -107,7 +102,7 @@ describe("ConnectSessionService", () => {
   it("throws legal_entity_not_found", async () => {
     const svc = new ConnectSessionService(
       { STRIPE_PUBLISHABLE_KEY: "pk_test" } as never,
-      makeDb([]),
+      makeReader(null),
       stripeFactory,
     );
     await expect(svc.createAccountSession("missing", "owner", "onboarding")).rejects.toThrow(
@@ -118,7 +113,7 @@ describe("ConnectSessionService", () => {
   it("throws stripe_account_missing when entity has no account id", async () => {
     const svc = new ConnectSessionService(
       { STRIPE_PUBLISHABLE_KEY: "pk_test" } as never,
-      makeDb([{ id: "entity-1", stripeConnectAccountId: null }]),
+      makeReader({ id: "entity-1", stripeConnectAccountId: null }),
       stripeFactory,
     );
     await expect(svc.createAccountSession("entity-1", "owner", "onboarding")).rejects.toThrow(
