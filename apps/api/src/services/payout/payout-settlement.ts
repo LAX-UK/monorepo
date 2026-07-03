@@ -1,6 +1,6 @@
+import { DrizzlePayoutRepository } from "@auction/persistence";
 import type { PayoutLine } from "@auction/types";
 import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
-import { DrizzlePayoutRepository } from "../../repositories/drizzle-payout.repository.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type {
   BulkPayoutSettlementResult,

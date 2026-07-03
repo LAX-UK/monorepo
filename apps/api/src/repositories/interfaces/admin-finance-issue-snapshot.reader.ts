@@ -1,9 +1,5 @@
-import type {
+export type { IAdminFinanceIssueSnapshotReader } from "@auction/persistence";
+export type {
   FinanceIssueSnapshot,
   StripeConnectRequirementEntityRow,
-} from "../../services/interfaces/admin-routes.js";
-
-export interface IAdminFinanceIssueSnapshotReader {
-  getFinanceIssueSnapshot(): Promise<FinanceIssueSnapshot>;
-  listStripeConnectRequirementEntities(): Promise<StripeConnectRequirementEntityRow[]>;
-}
+} from "@auction/persistence";

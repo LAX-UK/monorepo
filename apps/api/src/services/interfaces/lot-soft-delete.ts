@@ -2,11 +2,7 @@ import type { Lot } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 
-export type LotSoftDeleteGuardCounts = {
-  bidCount: number;
-  paymentCount: number;
-  approvedRegistrationCount: number;
-};
+export type { LotSoftDeleteGuardCounts } from "@auction/persistence";
 
 export type LotDeleteEligibility = {
   canDelete: boolean;

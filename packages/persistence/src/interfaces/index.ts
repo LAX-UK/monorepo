@@ -215,3 +215,213 @@ export type {
   LegalEntityLifecycleRow,
   LegalEntityLifecycleTransitionUpdate,
 } from "./legal-entity-lifecycle-admin.repository.js";
+
+export type {
+  CreateAddressInput,
+  IAddressRepository,
+  IProfileReader,
+  IProfileWriter,
+  ProfileMeRow,
+  ProfileUpdateInput,
+  UpdateAddressInput,
+  UserAddressRow,
+} from "./profile.repository.js";
+
+export type { IUserRepository, UserProfileRow } from "./user.repository.js";
+
+export type { IUserSuspensionChecker } from "./user-suspension.checker.js";
+
+export type { IUiPreferenceRepository, UiPreferenceRow } from "./ui-preference.repository.js";
+
+export type {
+  CreatePushSubscriptionRow,
+  IPushSubscriptionRepository,
+} from "./push-subscription.repository.js";
+
+export type {
+  IWatchlistRepository,
+  WatchlistListPageInput,
+  WatchlistPageSort,
+  WatchlistRow,
+} from "./watchlist.repository.js";
+
+export type {
+  ArtistWatchlistRow,
+  IArtistWatchlistRepository,
+} from "./artist-watchlist.repository.js";
+
+export type {
+  INotificationReadRepository,
+  NotificationListFilter,
+  NotificationListTab,
+} from "./notification-read.repository.js";
+
+export type {
+  CreateNotificationRow,
+  INotificationWriteRepository,
+} from "./notification-write.repository.js";
+
+export type {
+  INotificationOutboxRepository,
+  NotificationOutboxRow,
+  NotificationPayload,
+  StageNotificationOutboxInput,
+} from "./notification-outbox.repository.js";
+
+export type {
+  INotificationPreferenceReader,
+  INotificationPreferenceRepository,
+  INotificationPreferenceWriter,
+  NotificationPreferenceInput,
+} from "./notification-preference.repository.js";
+
+export type { ISaleFollowRepository, SaleFollowRow } from "./sale-follow.repository.js";
+
+export type { ISaleBiddersReader, SaleBidderRow } from "./sale-bidders.reader.js";
+
+export type { ISaleModeLookup } from "./sale-mode.lookup.js";
+
+export type { ISaleroomSessionLookup } from "./saleroom-session.lookup.js";
+
+export type {
+  IVenueRepository,
+  ListVenuesFilter,
+  VenueListRow,
+} from "./venue.repository.js";
+
+export type {
+  CreateCategoryInput,
+  ICategoryRepository,
+  UpdateCategoryInput,
+} from "./category.repository.js";
+
+export type {
+  ApproveDisplayPairingInput,
+  DisplayPairingRow,
+  IDisplayPairingRepository,
+  InsertDisplayPairingInput,
+} from "./display-pairing.repository.js";
+
+export type {
+  EmailEventRow,
+  EmailOutboxRow,
+  EmailSuppressionRow,
+  IEmailObservabilityRepository,
+} from "./email-observability.repository.js";
+
+export type {
+  ILotSoftDeleteGuardReader,
+  LotSoftDeleteGuardCounts,
+} from "./lot-soft-delete-guard.reader.js";
+
+export type {
+  ISaleSoftDeleteGuardReader,
+  SaleSoftDeleteGuardCounts,
+} from "./sale-soft-delete-guard.reader.js";
+
+export type {
+  CreateKycVerificationInput,
+  IKycSessionRepository,
+  UpdateKycVerificationPatch,
+} from "./kyc-session.repository.js";
+
+export type { IKycRepository } from "./kyc.repository.js";
+
+export type {
+  AntiShillingBidContext,
+  IAntiShillingGuard,
+} from "./anti-shilling.repository.js";
+
+export type {
+  IPendingInvitationsReader,
+  PendingInvitationView,
+} from "./pending-invitations.reader.js";
+
+export type {
+  ConsumeInviteResult,
+  InvitationAdminListFilters,
+  InvitationAdminListRow,
+  InvitationInsert,
+  InvitationRow,
+  InvitationSummary,
+  IUserInvitationRepository,
+} from "./invitation.repository.js";
+
+export type {
+  AdminPaymentTableRowDto,
+  AdminPaymentsSummaryStats,
+  CreatePaymentRow,
+  IPaymentAnalyticsRepository,
+  IPaymentLifecycleRepository,
+  IPaymentMutationRepository,
+  IPaymentReadRepository,
+  IPaymentWriteRepository,
+  ListPaymentsAdminTableFilter,
+  ListPaymentsExportFilter,
+  PaymentRecord,
+} from "./payment-write.repository.js";
+
+export type {
+  CreatePayoutInput,
+  InsertPayoutLineInput,
+  IPayoutAnalyticsRepository,
+  IPayoutLifecycleRepository,
+  IPayoutReadRepository,
+  IPayoutRepository,
+  IPayoutWriteRepository,
+  ListPayoutsFilter,
+  PendingPaymentRow,
+  ReconcileStripeTransferPatch,
+} from "./payout.repository.js";
+
+export type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+  IXeroWebhookEventRepository,
+  PaymentExternalRefInsert,
+  PaymentExternalRefRow,
+  PaymentExternalSyncStatus,
+  XeroConnectionInsert,
+  XeroConnectionRow,
+  XeroConnectionStatus,
+  XeroWebhookEventInsert,
+} from "./xero.repository.js";
+
+export type {
+  DateRange,
+  ILotMetricsReader,
+  IPaymentMetricsReader,
+  IUserMetricsReader,
+  LotMetricPoint,
+  RevenueMetricPoint,
+  UserMetricPoint,
+} from "./metrics.reader.js";
+
+export type {
+  RedactedDomainEventRow,
+  FinanceIssueSnapshot,
+  StripeConnectRequirementEntityRow,
+} from "./admin-read-models.js";
+
+export type {
+  AdminActivityEntry,
+  AdminKycSession,
+  AdminUserAccountStatus,
+  AdminUserBidListResult,
+  AdminUserBidRow,
+  AdminUserDetail,
+  AdminUserListFilter,
+  AdminUserListResult,
+  AdminUserListRow,
+  AdminUserListSort,
+  IAdminUserActivityReader,
+  IAdminUserBidsReader,
+  IAdminUserKycReader,
+  IAdminUserReader,
+  IAdminUserRoleManager,
+  IAdminUserSuspender,
+} from "./admin-user.repository.js";
+
+export type { IAdminDomainEventReader } from "./admin-domain-event.reader.js";
+
+export type { IAdminFinanceIssueSnapshotReader } from "./admin-finance-issue-snapshot.reader.js";

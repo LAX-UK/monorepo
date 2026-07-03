@@ -1,7 +1,7 @@
+import { DrizzlePayoutRepository } from "@auction/persistence";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import { addDecimal, subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
-import { DrizzlePayoutRepository } from "../../repositories/drizzle-payout.repository.js";
 import type { ReconcileStripeTransferPatch } from "../interfaces/payout-repository.js";
 import type {
   AdminListPayoutsFilter,

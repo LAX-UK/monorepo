@@ -1,6 +1,4 @@
-export interface IUserSuspensionChecker {
-  isSuspended(userId: string): Promise<boolean>;
-}
+export type { IUserSuspensionChecker } from "@auction/persistence";
 
 export interface IUserSuspensionCacheInvalidator {
   invalidate(userId: string): Promise<void>;

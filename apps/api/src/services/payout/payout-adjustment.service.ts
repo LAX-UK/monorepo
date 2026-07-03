@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
+import { DrizzlePayoutRepository } from "@auction/persistence";
 import type { PayoutLineKind } from "@auction/types";
 import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
-import { DrizzlePayoutRepository } from "../../repositories/drizzle-payout.repository.js";
 import type {
   AddPaymentPayoutLineInput,
   IPayoutAdjustmentService,

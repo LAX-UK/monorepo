@@ -1,6 +1,8 @@
 import type { Database } from "@auction/db";
 import {
+  DrizzleLotSoftDeleteGuardReader,
   DrizzleLotTransitionGuardReader,
+  DrizzleSaleSoftDeleteGuardReader,
   createDrizzleLotTransitionRepository,
 } from "@auction/persistence";
 import type { Env } from "../env.js";
@@ -10,9 +12,7 @@ import {
   createPlatformCatalogLegalEntityIdProvider,
 } from "../lib/platform-catalog-legal-entity.js";
 import { DrizzleConditionReportRequestRepository } from "../repositories/drizzle-condition-report-request.repository.js";
-import { DrizzleLotSoftDeleteGuardReader } from "../repositories/drizzle-lot-soft-delete-guard.reader.js";
 import { DrizzleLotSoftDeleteSideEffects } from "../repositories/drizzle-lot-soft-delete.side-effects.js";
-import { DrizzleSaleSoftDeleteGuardReader } from "../repositories/drizzle-sale-soft-delete-guard.reader.js";
 import { DrizzleSaleSoftDeleteSideEffects } from "../repositories/drizzle-sale-soft-delete.side-effects.js";
 import { SalePressArchiveRepository } from "../repositories/sale-press-archive.repository.js";
 import { ArtistDeleteService } from "../services/artist-delete.service.js";

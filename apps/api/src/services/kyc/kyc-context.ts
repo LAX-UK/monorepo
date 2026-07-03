@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import type { Env } from "../../env.js";
 import { VeriffClient } from "../../lib/veriff/veriff-client.js";
 import { VeriffWebhookVerifier } from "../../lib/veriff/veriff-webhook-verifier.js";
-import type { IKycSessionRepository } from "../../repositories/interfaces/kyc-session.repository.js";
+import type { IKycSessionRepository } from "../interfaces/kyc-repository.js";
 import type { IKycRepository } from "../interfaces/kyc-repository.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import { KycDecisionProcessor } from "./kyc-decision-processor.js";

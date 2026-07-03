@@ -10,7 +10,7 @@ import { DrizzleUserProfilePersister } from "../infrastructure/user-profile.pers
 import { ZodRegistrationValidator } from "../infrastructure/zod-registration.validator.js";
 import { type OrgModuleGate, createOrgModuleGate } from "../lib/org-module-gate.js";
 import { createSubmissionsLegalEntityContext } from "../middleware/require-legal-entity-context.js";
-import { DrizzleAdminUserSuspender } from "../repositories/drizzle-admin-user.reader.js";
+import { DrizzleAdminUserSuspender } from "../repositories/drizzle-admin-user-suspender.js";
 import { AddressService } from "../services/address.service.js";
 import { AdminUserService } from "../services/admin-user.service.js";
 import { ArtistWatchlistService } from "../services/artist-watchlist.service.js";

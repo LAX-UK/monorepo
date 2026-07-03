@@ -1,12 +1,9 @@
+import type { SaleSoftDeleteGuardCounts } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 
-export type SaleSoftDeleteGuardCounts = {
-  bidCount: number;
-  paymentCount: number;
-  approvedRegistrationCount: number;
-};
+export type { SaleSoftDeleteGuardCounts } from "@auction/persistence";
 
 export type SaleDeleteEligibility = {
   canDelete: boolean;

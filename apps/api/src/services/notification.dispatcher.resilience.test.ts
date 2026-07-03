@@ -1,5 +1,5 @@
+import { defaultNotificationPreference } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
 import type {
   INotificationChannel,
   NotificationPayload,

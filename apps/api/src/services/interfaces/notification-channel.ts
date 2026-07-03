@@ -1,27 +1,7 @@
-export type NotificationPayload = {
-  type: string;
-  title: string;
-  message: string;
-  lotId?: string | undefined;
-  submissionId?: string | undefined;
-  /** Structured extras for email/push rendering (not persisted on in-app rows). */
-  meta?: {
-    paymentId?: string;
-    amount?: string;
-    invoiceUrl?: string | null;
-    invoiceNumber?: string;
-    /** Payment due date for invoice emails (human-readable, e.g. "7 July 2026"). */
-    dueDate?: string;
-    /** Hammer price for lot-won celebration emails. */
-    hammerPrice?: string;
-    /** Total due (hammer + premium) for lot-won emails. */
-    totalDue?: string;
-    /** Canonical lot title for deep links (push/email). */
-    lotTitle?: string;
-    /** Outbox idempotency key — used by in-app channel to skip duplicate retries. */
-    outboxIdempotencyKey?: string;
-  };
-};
+import type { NotificationPayload } from "@auction/persistence";
+
+/** Row-level payload type lives with the outbox port in @auction/persistence. */
+export type { NotificationPayload } from "@auction/persistence";
 
 export type NotificationChannelKind = "in_app" | "push" | "email" | "whatsapp";
 

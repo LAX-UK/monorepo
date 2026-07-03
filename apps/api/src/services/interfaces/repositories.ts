@@ -13,12 +13,9 @@ export type {
   ListSalesSort,
   ListSubmissionsFilter,
   SaleCatalogLotsSort,
-} from "@auction/persistence";
-
-export type {
   IUserRepository,
   UserProfileRow,
-} from "../../repositories/interfaces/user.repository.js";
+} from "@auction/persistence";
 
 export type {
   IEntityDocumentRepository,

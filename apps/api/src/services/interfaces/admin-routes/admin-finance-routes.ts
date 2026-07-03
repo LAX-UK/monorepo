@@ -79,23 +79,10 @@ export interface IAdminDashboardMetricsService {
   getPayoutsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
 }
 
-export type FinanceIssueSnapshot = {
-  failedPayoutCount: number;
-  legalEntitiesWithStripeConnectRequirementsCount: number;
-  staleBlockedScheduledPayoutCount: number;
-  entitiesPendingReviewCount: number;
-  artistsPendingApprovalCount: number;
-  staleKycSessionsCount: number;
-  documentsAwaitingReviewCount: number;
-  staleLeadOrganisationsCount: number;
-};
+export type FinanceIssueSnapshot = import("@auction/persistence").FinanceIssueSnapshot;
 
-export type StripeConnectRequirementEntityRow = {
-  id: string;
-  displayName: string;
-  status: string;
-  stripeConnectRequirementsCurrentlyDue: string[];
-};
+export type StripeConnectRequirementEntityRow =
+  import("@auction/persistence").StripeConnectRequirementEntityRow;
 
 export interface IAdminFinanceIssueSnapshotQueryService {
   getFinanceIssueSnapshot(): Promise<FinanceIssueSnapshot>;

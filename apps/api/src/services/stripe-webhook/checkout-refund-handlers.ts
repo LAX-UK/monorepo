@@ -1,6 +1,6 @@
+import { DrizzlePayoutRepository } from "@auction/persistence";
 import type Stripe from "stripe";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
-import { DrizzlePayoutRepository } from "../../repositories/drizzle-payout.repository.js";
 import { type StripePaymentWebhookDeps, findPaymentRow } from "./payment-webhook-lookup.js";
 import {
   PAYMENT_WEBHOOK_EVENT_SOURCE,

@@ -43,9 +43,7 @@ export class AccountingReplayCronService {
     if (!this.env.XERO_CLIENT_ID || !this.env.XERO_CLIENT_SECRET || !this.env.XERO_REDIRECT_URI) {
       return { ok: false as const, error: "xero_not_configured" };
     }
-    const { DrizzleXeroConnectionRepository } = await import(
-      "../../repositories/drizzle-xero-connection.repository.js"
-    );
+    const { DrizzleXeroConnectionRepository } = await import("@auction/persistence");
     const connections = new DrizzleXeroConnectionRepository(this.db);
     const result = await proactiveRefreshXeroTokens({
       env: this.env,

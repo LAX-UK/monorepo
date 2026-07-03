@@ -52,3 +52,46 @@ export { DrizzleSourceOfFundsDocumentReviewRepository } from "./drizzle-source-o
 export { DrizzleSourceOfFundsSettlementReader } from "./drizzle-source-of-funds-settlement.reader.js";
 export { DrizzleLegalEntityDocumentAdminRepository } from "./drizzle-legal-entity-document-admin.repository.js";
 export { DrizzleLegalEntityLifecycleAdminRepository } from "./drizzle-legal-entity-lifecycle-admin.repository.js";
+export { DrizzleProfileRepository } from "./drizzle-profile.repository.js";
+export { DrizzleAddressRepository } from "./drizzle-address.repository.js";
+export { DrizzleUserRepository } from "./drizzle-user.repository.js";
+export { DrizzleUserSuspensionChecker } from "./drizzle-user-suspension.checker.js";
+export { DrizzleUiPreferenceRepository } from "./drizzle-ui-preference.repository.js";
+export { DrizzlePushSubscriptionRepository } from "./drizzle-push-subscription.repository.js";
+export { DrizzleWatchlistRepository } from "./drizzle-watchlist.repository.js";
+export { DrizzleArtistWatchlistRepository } from "./drizzle-artist-watchlist.repository.js";
+export { DrizzleNotificationReadRepository } from "./drizzle-notification-read.repository.js";
+export { DrizzleNotificationWriteRepository } from "./drizzle-notification-write.repository.js";
+export {
+  DrizzleNotificationOutboxRepository,
+  NOTIFICATION_OUTBOX_MAX_ATTEMPTS,
+} from "./drizzle-notification-outbox.repository.js";
+export { DrizzleNotificationPreferenceRepository } from "./drizzle-notification-preference.repository.js";
+export { DrizzleSaleFollowRepository } from "./drizzle-sale-follow.repository.js";
+export { DrizzleSaleBiddersReader } from "./drizzle-sale-bidders.reader.js";
+export { DrizzleSaleModeLookup } from "./drizzle-sale-mode.lookup.js";
+export { DrizzleSaleroomSessionLookup } from "./drizzle-saleroom-session.lookup.js";
+export { DrizzleVenueRepository } from "./drizzle-venue.repository.js";
+export { DrizzleCategoryRepository } from "./drizzle-category.repository.js";
+export { DrizzleDisplayPairingRepository } from "./drizzle-display-pairing.repository.js";
+export { DrizzleEmailObservabilityRepository } from "./drizzle-email-observability.repository.js";
+export { DrizzleLotSoftDeleteGuardReader } from "./drizzle-lot-soft-delete-guard.reader.js";
+export { DrizzleSaleSoftDeleteGuardReader } from "./drizzle-sale-soft-delete-guard.reader.js";
+export { DrizzleKycRepository } from "./drizzle-kyc.repository.js";
+export { DrizzleAntiShillingRepository } from "./drizzle-anti-shilling.repository.js";
+export { DrizzlePendingInvitationsReader } from "./drizzle-pending-invitations.reader.js";
+export { DrizzleUserInvitationRepository } from "./drizzle-invitation.repository.js";
+export { DrizzlePaymentRepository } from "./drizzle-payment.repository.js";
+export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
+export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-ref.repository.js";
+export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";
+export { DrizzleXeroWebhookEventRepository } from "./drizzle-xero-webhook-event.repository.js";
+export { DrizzleLotMetricsReader } from "./drizzle-lot-metrics.reader.js";
+export { DrizzlePaymentMetricsReader } from "./drizzle-payment-metrics.reader.js";
+export { DrizzleUserMetricsReader } from "./drizzle-user-metrics.reader.js";
+export { DrizzleAdminUserReader } from "./drizzle-admin-user.reader.js";
+export { DrizzleAdminUserRoleManager } from "./drizzle-admin-user.reader.js";
+export { DrizzleAdminUserActivityReader } from "./drizzle-admin-user.reader.js";
+export { DrizzleAdminUserBidsReader } from "./drizzle-admin-user-bids.reader.js";
+export { DrizzleAdminDomainEventReader } from "./drizzle-admin-domain-event.reader.js";
+export { DrizzleAdminFinanceIssueSnapshotReader } from "./drizzle-admin-finance-issue-snapshot.reader.js";

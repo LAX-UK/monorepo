@@ -19,16 +19,7 @@ import type { EmailEventRow, EmailOutboxRow, EmailSuppressionRow } from "../emai
 import type { ListSubmissionsFilter } from "../repositories.js";
 import type { IAdminFinanceDashboardQueryService } from "./admin-finance-routes.js";
 
-export type RedactedDomainEventRow = {
-  id: number;
-  aggregateType: string;
-  aggregateId: string;
-  eventType: string;
-  payload: unknown;
-  actorUserId: string | null;
-  actingLegalEntityId: string | null;
-  occurredAt: Date;
-};
+export type RedactedDomainEventRow = import("@auction/persistence").RedactedDomainEventRow;
 
 export interface IAdminDomainEventQueryService {
   listRedacted(input: {

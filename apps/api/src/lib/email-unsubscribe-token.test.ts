@@ -1,7 +1,7 @@
 import { notificationPreference } from "@auction/db/schema";
+import { emailPreferenceKey, notificationTypeToTemplate } from "@auction/persistence";
 import { describe, expect, it } from "vitest";
 import { createUnsubscribeToken, verifyUnsubscribeToken } from "./email-unsubscribe-token.js";
-import { emailPreferenceKey, notificationTypeToTemplate } from "./notification-preference-keys.js";
 
 const secret = "test-unsubscribe-secret-long-enough";
 
