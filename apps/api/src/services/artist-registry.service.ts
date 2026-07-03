@@ -14,7 +14,7 @@ export {
   insertArtistInTx,
   replaceArtistCategoriesInTx,
   resolveUniqueArtistSlug,
-} from "./artist-registry/artist-registry-mutations.js";
+} from "../repositories/artist-registry-mutations.js";
 
 export type {
   IArtistRegistryQueryService,

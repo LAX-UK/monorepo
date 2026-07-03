@@ -1,12 +1,12 @@
 import type { Database } from "@auction/db";
 import { adminReviewTask, artistAlias, artistProfile, lot } from "@auction/db/schema";
 import { and, eq, ilike, sql } from "drizzle-orm";
-import { rowToRecord, slugify } from "../services/artist-registry/artist-registry-helpers.js";
+import { rowToRecord, slugify } from "./artist-registry.helpers.js";
 import {
   insertArtistInTx,
   resolveUniqueArtistSlug,
-} from "../services/artist-registry/artist-registry-mutations.js";
-import { searchArtists } from "../services/artist-registry/artist-registry-search.js";
+} from "./artist-registry-mutations.js";
+import { searchArtists } from "./artist-registry-search.js";
 import type {
   ArtistRecord,
   CreateArtistInput,
