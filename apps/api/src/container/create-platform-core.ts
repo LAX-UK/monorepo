@@ -7,6 +7,8 @@ import { LotLifecycleRecording } from "../services/lot-lifecycle-recording.servi
 import { NotificationFactory } from "../services/notification.factory.js";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 
+import type { ContainerRepositories } from "./create-repositories.js";
+
 export type ContainerPlatformCore = {
   domainEventPublisher: DomainEventPublisher;
   lotLifecycleEventRecorder: LotLifecycleEventRecorder;
@@ -16,9 +18,15 @@ export type ContainerPlatformCore = {
   notificationFactory: NotificationFactory;
 };
 
-export function createPlatformCore(db: Database): ContainerPlatformCore {
+export function createPlatformCore(
+  db: Database,
+  repos: Pick<ContainerRepositories, "lotLifecycleSnapshotRepository">,
+): ContainerPlatformCore {
   const domainEventPublisher = new DomainEventPublisher();
-  const lotLifecycleEventRecorder = new LotLifecycleEventRecorder(domainEventPublisher);
+  const lotLifecycleEventRecorder = new LotLifecycleEventRecorder(
+    domainEventPublisher,
+    repos.lotLifecycleSnapshotRepository,
+  );
   const lotLifecycleRecording: ILotLifecycleRecorder = new LotLifecycleRecording(
     lotLifecycleEventRecorder,
   );

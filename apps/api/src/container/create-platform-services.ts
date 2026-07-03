@@ -22,7 +22,7 @@ export function createPlatformServices(
 ): ContainerPlatformServices {
   const { env, db, infra, repos } = input;
 
-  const core = createPlatformCore(db);
+  const core = createPlatformCore(db, repos);
   const payout = createPlatformPayoutServices({ env, db, infra, repos, core });
   const notification = createPlatformNotificationServices({ env, infra, repos, core });
   const identity = createPlatformIdentityServices({

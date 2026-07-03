@@ -31,9 +31,17 @@ export function createCatalogAdminReaders(
 ): ContainerCatalogAdminReaders {
   const { env, db, infra, repos } = input;
   const { redis, qrCodeScanQueue } = infra;
-  const { repoFactory, notificationReadRepo } = repos;
+  const {
+    repoFactory,
+    notificationReadRepo,
+    lotLifecycleSnapshotReader,
+    lotLifecycleTimelineReader,
+  } = repos;
 
-  const lotLifecycleQueryService = new LotLifecycleQueryService(db);
+  const lotLifecycleQueryService = new LotLifecycleQueryService(
+    lotLifecycleSnapshotReader,
+    lotLifecycleTimelineReader,
+  );
   const adminLotBrowseService = new AdminLotBrowseService(repos.adminLotBrowseReader);
   const qrCodeService = new QrCodeService(
     db,

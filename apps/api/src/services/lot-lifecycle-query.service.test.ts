@@ -1,46 +1,32 @@
-import type { Database } from "@auction/db";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { ILotLifecycleTimelineReader } from "../repositories/interfaces/lot-lifecycle-timeline.reader.js";
 import { LotLifecycleQueryService } from "./lot-lifecycle-query.service.js";
-
-function mockTimelineDb(rows: Array<{ id: number; occurredAt: Date; eventType: string }>) {
-  const descRows = [...rows].sort(
-    (a, b) => b.occurredAt.getTime() - a.occurredAt.getTime() || b.id - a.id,
-  );
-  return {
-    select: () => ({
-      from: () => ({
-        where: () => ({
-          orderBy: () => ({
-            offset: () => ({
-              limit: (n: number) => Promise.resolve(descRows.slice(0, n)),
-            }),
-          }),
-        }),
-      }),
-    }),
-  } as unknown as Database;
-}
 
 describe("LotLifecycleQueryService.timeline", () => {
   it("returns the newest events in chronological order", async () => {
-    const svc = new LotLifecycleQueryService(
-      mockTimelineDb([
+    const timelineReader: ILotLifecycleTimelineReader = {
+      fetchTimelineEvents: vi.fn().mockResolvedValue([
         {
-          id: 1,
-          occurredAt: new Date("2024-01-01T00:00:00.000Z"),
-          eventType: "lot.created",
+          id: 3,
+          occurredAt: new Date("2024-12-01T00:00:00.000Z"),
+          eventType: "lot.ended",
+          payload: {},
+          actorUserId: null,
         },
         {
           id: 2,
           occurredAt: new Date("2024-06-01T00:00:00.000Z"),
           eventType: "lot.published",
-        },
-        {
-          id: 3,
-          occurredAt: new Date("2024-12-01T00:00:00.000Z"),
-          eventType: "lot.ended",
+          payload: {},
+          actorUserId: null,
         },
       ]),
+      fetchSaleTitlesByIds: vi.fn(),
+    };
+
+    const svc = new LotLifecycleQueryService(
+      { getSnapshot: vi.fn(), getSnapshotsForLots: vi.fn() },
+      timelineReader,
     );
 
     const timeline = await svc.timeline("lot-1", { limit: 2 });

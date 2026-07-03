@@ -52,6 +52,8 @@ import { DrizzleLegalEntityNotificationRecipientRepository } from "../repositori
 import { DrizzleLegalEntityOnboardingRepository } from "../repositories/drizzle-legal-entity-onboarding.repository.js";
 import { createDrizzleLegalEntityRepository } from "../repositories/drizzle-legal-entity.repository.js";
 import { DrizzleLotDocumentRepository } from "../repositories/drizzle-lot-document.repository.js";
+import { DrizzleLotLifecycleSnapshotRepository } from "../repositories/drizzle-lot-lifecycle-snapshot.repository.js";
+import { DrizzleLotLifecycleTimelineReader } from "../repositories/drizzle-lot-lifecycle-timeline.reader.js";
 import { DrizzleLotMetricsReader } from "../repositories/drizzle-lot-metrics.reader.js";
 import { DrizzleNewsletterSignupRepository } from "../repositories/drizzle-newsletter-signup.repository.js";
 import { DrizzleNotificationOutboxRepository } from "../repositories/drizzle-notification-outbox.repository.js";
@@ -124,6 +126,9 @@ import type { ILegalEntityDocumentAdminRepository } from "../repositories/interf
 import type { ILegalEntityLifecycleAdminRepository } from "../repositories/interfaces/legal-entity-lifecycle-admin.repository.js";
 import type { ILegalEntityMemberRepository } from "../repositories/interfaces/legal-entity-member.repository.js";
 import type { ILegalEntityOnboardingRepository } from "../repositories/interfaces/legal-entity-onboarding.repository.js";
+import type { ILotLifecycleSnapshotReader } from "../repositories/interfaces/lot-lifecycle-snapshot.reader.js";
+import type { ILotLifecycleSnapshotRepository } from "../repositories/interfaces/lot-lifecycle-snapshot.repository.js";
+import type { ILotLifecycleTimelineReader } from "../repositories/interfaces/lot-lifecycle-timeline.reader.js";
 import type { INewsletterSignupRepository } from "../repositories/interfaces/newsletter-signup.repository.js";
 import type { IQrCodeAnalyticsReader } from "../repositories/interfaces/qr-code-analytics.reader.js";
 import type { ISaleroomDisplaySessionRepository } from "../repositories/interfaces/saleroom-display-session.repository.js";
@@ -187,6 +192,9 @@ export type ContainerRepositories = {
   sourceOfFundsDocumentRepository: DrizzleSourceOfFundsDocumentRepository;
   sourceOfFundsDocumentReviewRepository: DrizzleSourceOfFundsDocumentReviewRepository;
   sourceOfFundsSettlementReader: ISourceOfFundsSettlementReader;
+  lotLifecycleSnapshotRepository: ILotLifecycleSnapshotRepository;
+  lotLifecycleSnapshotReader: ILotLifecycleSnapshotReader;
+  lotLifecycleTimelineReader: ILotLifecycleTimelineReader;
   lotDocumentRepo: DrizzleLotDocumentRepository;
   saleDocumentRepo: DrizzleSaleDocumentRepository;
   submissionDocumentRepo: DrizzleSubmissionDocumentRepository;
@@ -293,6 +301,9 @@ export function createRepositories(db: Database): ContainerRepositories {
     db,
   );
   const sourceOfFundsSettlementReader = new DrizzleSourceOfFundsSettlementReader(db);
+  const lotLifecycleSnapshotRepository = new DrizzleLotLifecycleSnapshotRepository(db);
+  const lotLifecycleSnapshotReader = lotLifecycleSnapshotRepository;
+  const lotLifecycleTimelineReader = new DrizzleLotLifecycleTimelineReader(db);
   const lotDocumentRepo = new DrizzleLotDocumentRepository(db);
   const saleDocumentRepo = new DrizzleSaleDocumentRepository(db);
   const submissionDocumentRepo = new DrizzleSubmissionDocumentRepository(db);
@@ -393,6 +404,9 @@ export function createRepositories(db: Database): ContainerRepositories {
     sourceOfFundsDocumentRepository,
     sourceOfFundsDocumentReviewRepository,
     sourceOfFundsSettlementReader,
+    lotLifecycleSnapshotRepository,
+    lotLifecycleSnapshotReader,
+    lotLifecycleTimelineReader,
     lotDocumentRepo,
     saleDocumentRepo,
     submissionDocumentRepo,

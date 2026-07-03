@@ -1,8 +1,8 @@
-import type { Database } from "@auction/db";
-import { domainEvent, lotLifecycleSnapshot, sale } from "@auction/db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import type { ILotLifecycleSnapshotReader } from "../repositories/interfaces/lot-lifecycle-snapshot.reader.js";
+import type { ILotLifecycleTimelineReader } from "../repositories/interfaces/lot-lifecycle-timeline.reader.js";
+import type { LotLifecycleSnapshotRow } from "../repositories/lot-lifecycle-snapshot.types.js";
 
-export type LotLifecycleSnapshotRow = typeof lotLifecycleSnapshot.$inferSelect;
+export type { LotLifecycleSnapshotRow } from "../repositories/lot-lifecycle-snapshot.types.js";
 
 export type LotLifecycleTimelineEvent = {
   id: number;
@@ -14,24 +14,17 @@ export type LotLifecycleTimelineEvent = {
 };
 
 export class LotLifecycleQueryService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly snapshotReader: ILotLifecycleSnapshotReader,
+    private readonly timelineReader: ILotLifecycleTimelineReader,
+  ) {}
 
   async getSnapshot(lotId: string): Promise<LotLifecycleSnapshotRow | null> {
-    const [row] = await this.db
-      .select()
-      .from(lotLifecycleSnapshot)
-      .where(eq(lotLifecycleSnapshot.lotId, lotId))
-      .limit(1);
-    return row ?? null;
+    return this.snapshotReader.getSnapshot(lotId);
   }
 
   async getSnapshotsForLots(lotIds: string[]): Promise<Map<string, LotLifecycleSnapshotRow>> {
-    if (lotIds.length === 0) return new Map();
-    const rows = await this.db
-      .select()
-      .from(lotLifecycleSnapshot)
-      .where(inArray(lotLifecycleSnapshot.lotId, lotIds));
-    return new Map(rows.map((r) => [r.lotId, r]));
+    return this.snapshotReader.getSnapshotsForLots(lotIds);
   }
 
   async timeline(
@@ -41,61 +34,31 @@ export class LotLifecycleQueryService {
     const limit = opts.limit ?? 50;
     const offset = opts.offset ?? 0;
 
-    const rows = await this.db
-      .select({
-        id: domainEvent.id,
-        eventType: domainEvent.eventType,
-        payload: domainEvent.payload,
-        actorUserId: domainEvent.actorUserId,
-        occurredAt: domainEvent.occurredAt,
-      })
-      .from(domainEvent)
-      .where(and(eq(domainEvent.aggregateType, "lot"), eq(domainEvent.aggregateId, lotId)))
-      .orderBy(desc(domainEvent.occurredAt), desc(domainEvent.id))
-      .offset(offset)
-      .limit(limit);
-
+    const rows = await this.timelineReader.fetchTimelineEvents(lotId, limit, offset);
     const chronological = [...rows].reverse();
 
     if (!opts.includeSaleContext) {
-      return chronological.map((r) => ({
-        id: r.id,
-        eventType: r.eventType,
-        payload: r.payload as Record<string, unknown>,
-        actorUserId: r.actorUserId,
-        occurredAt: r.occurredAt,
-      }));
+      return chronological;
     }
 
     const saleIds = new Set<string>();
     for (const row of chronological) {
-      const payload = row.payload as Record<string, unknown>;
+      const payload = row.payload;
       if (typeof payload.saleId === "string") saleIds.add(payload.saleId);
       if (typeof payload.lastSaleId === "string") saleIds.add(payload.lastSaleId);
       if (typeof payload.fromSaleId === "string") saleIds.add(payload.fromSaleId);
     }
 
-    const saleTitles = new Map<string, string>();
-    if (saleIds.size > 0) {
-      const saleRows = await this.db
-        .select({ id: sale.id, title: sale.title })
-        .from(sale)
-        .where(inArray(sale.id, [...saleIds]));
-      for (const s of saleRows) saleTitles.set(s.id, s.title);
-    }
+    const saleTitles = await this.timelineReader.fetchSaleTitlesByIds([...saleIds]);
 
     return chronological.map((r) => {
-      const payload = r.payload as Record<string, unknown>;
+      const payload = r.payload;
       const sid =
         (typeof payload.saleId === "string" ? payload.saleId : null) ??
         (typeof payload.lastSaleId === "string" ? payload.lastSaleId : null) ??
         (typeof payload.fromSaleId === "string" ? payload.fromSaleId : null);
       return {
-        id: r.id,
-        eventType: r.eventType,
-        payload,
-        actorUserId: r.actorUserId,
-        occurredAt: r.occurredAt,
+        ...r,
         saleTitle: sid ? (saleTitles.get(sid) ?? null) : null,
       };
     });
