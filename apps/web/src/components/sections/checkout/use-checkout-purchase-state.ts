@@ -1,6 +1,5 @@
 "use client";
 
-import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import {
   type CheckoutPaymentActionData,
   createCheckoutPaymentAction,
@@ -13,6 +12,7 @@ import {
   resolveCheckoutManualReviewDisplayReason,
 } from "@/lib/checkout/checkout-payment-errors";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
+import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
 import { notify } from "@/lib/ui/notify";
 import type { ManualReviewReason, PaymentStatus } from "@auction/types";

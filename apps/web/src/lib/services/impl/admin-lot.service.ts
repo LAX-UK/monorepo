@@ -98,4 +98,10 @@ export class AdminLotService implements IAdminLotService {
       },
     );
   }
+
+  async approveWithdrawalRequest(id: string): Promise<ServiceResult<void>> {
+    return this.api.json<void>(`/admin/lots/${encodeURIComponent(id)}/approve-withdrawal-request`, {
+      method: "POST",
+    });
+  }
 }

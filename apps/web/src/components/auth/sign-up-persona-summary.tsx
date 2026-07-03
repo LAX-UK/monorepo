@@ -1,11 +1,8 @@
 "use client";
 
-import {
-  signUpPersonaLabel,
-  signUpPersonaSummary,
-} from "@/lib/auth/sign-up-persona-options";
-import type { SignupPersona } from "@auction/validators";
+import { signUpPersonaLabel, signUpPersonaSummary } from "@/lib/auth/sign-up-persona-options";
 import { SelectionSummaryStrip } from "@auction/ui/components/selection-summary-strip";
+import type { SignupPersona } from "@auction/validators";
 
 type SignUpPersonaSummaryProps = {
   persona: SignupPersona;

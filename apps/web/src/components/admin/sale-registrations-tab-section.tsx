@@ -2,6 +2,7 @@
 
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { ExpectedGuestsPanel } from "@/components/admin/expected-guests-panel";
 import { PaddleCheckInControls } from "@/components/admin/paddle-check-in-controls";
 import { SaleRegistrationRejectButton } from "@/components/admin/sale-registration-reject-button";
 import { SaleroomCheckInPanel } from "@/components/admin/saleroom-check-in-panel";
@@ -10,6 +11,7 @@ import {
   adminUpdateSaleRegistrationBidLimitAction,
 } from "@/lib/actions/admin";
 import { saleStatusLabel } from "@/lib/admin/status-badge-variants";
+import type { AdminExpectedGuestsSummary } from "@/lib/data/http/admin-expected-guests.server";
 import type { AdminSaleRegistrationRow } from "@/lib/data/http/admin.server";
 import {
   BID_LIMIT_FIELD_LABEL,
@@ -186,6 +188,7 @@ type Props = {
   fetchError?: string | null;
   actionError?: string | null;
   saleCurrency?: string;
+  expectedGuests?: AdminExpectedGuestsSummary | null;
 };
 
 export function SaleRegistrationsTabSection({
@@ -197,6 +200,7 @@ export function SaleRegistrationsTabSection({
   fetchError = null,
   actionError = null,
   saleCurrency = "GBP",
+  expectedGuests = null,
 }: Props) {
   const showSaleroomCheckIn = isSaleroomDeliveryMode(deliveryMode);
   const pendingApprovals = rows.filter((r) => r.status === "pending");
@@ -238,8 +242,23 @@ export function SaleRegistrationsTabSection({
 
   return (
     <div className="space-y-6">
+      {expectedGuests?.eventSlug && expectedGuests.items.length > 0 ? (
+        <ExpectedGuestsPanel
+          saleId={saleId}
+          deliveryMode={deliveryMode}
+          eventSlug={expectedGuests.eventSlug}
+          eventTitle={expectedGuests.eventTitle ?? expectedGuests.eventSlug}
+          segmentOptions={expectedGuests.segmentOptions}
+          items={expectedGuests.items}
+        />
+      ) : null}
+
       {showSaleroomCheckIn ? (
-        <SaleroomCheckInPanel saleId={saleId} saleCurrency={saleCurrency} />
+        <SaleroomCheckInPanel
+          saleId={saleId}
+          saleCurrency={saleCurrency}
+          deliveryMode={deliveryMode}
+        />
       ) : null}
 
       {showSaleroomCheckIn ? (

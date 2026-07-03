@@ -1,11 +1,11 @@
 "use server";
 
-import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-
+import { readApiActionErrorMeta } from "@/lib/actions/_utils";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { LOTS_ACCESS, SALES_ACCESS, SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import type { EntityDocument } from "@auction/types";
 import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -16,6 +16,46 @@ type AttachPayload = {
   label: string | null;
 };
 
+function serviceAttachFailure(
+  body: unknown,
+  _message: string,
+  status: number,
+  code?: string,
+): ActionResult<never> {
+  const err =
+    body && typeof body === "object" && "error" in body
+      ? (body as { error?: unknown }).error
+      : undefined;
+  const meta = readApiActionErrorMeta(body);
+  return actionFailure(
+    normalizeApiErrorMessage(err, "attach_failed"),
+    undefined,
+    status,
+    code,
+    meta,
+  );
+}
+
+function serviceRemoveFailure(
+  body: unknown,
+  _message: string,
+  status: number,
+  code?: string,
+): ActionResult<never> {
+  const err =
+    body && typeof body === "object" && "error" in body
+      ? (body as { error?: unknown }).error
+      : undefined;
+  const meta = readApiActionErrorMeta(body);
+  return actionFailure(
+    normalizeApiErrorMessage(err, "remove_failed"),
+    undefined,
+    status,
+    code,
+    meta,
+  );
+}
+
 export async function adminAttachSaleDocumentResultAction(
   saleId: string,
   input: AttachPayload,
@@ -23,21 +63,13 @@ export async function adminAttachSaleDocumentResultAction(
   return instrumentServerAction("adminAttachSaleDocumentResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SALES_ACCESS);
     if (denied) return denied;
-    const res = await authedServerFetch(`/sales/${saleId}/documents`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-      skipActingLegalEntityHeader: true,
-    });
-    const payload = (await res.json().catch(() => ({}))) as {
-      data?: EntityDocument;
-      error?: unknown;
-    };
-    if (!res.ok) return actionFailure(normalizeApiErrorMessage(payload.error, "attach_failed"));
-    if (!payload.data) return actionFailure("invalid_response");
+    const res = await getWriteContainer().adminDocuments.attachSaleDocument(saleId, input);
+    if (!res.ok) {
+      return serviceAttachFailure(res.body, res.message, res.status, res.code);
+    }
     revalidatePath(`/admin/sales/${saleId}/edit`);
     revalidatePath(`/admin/sales/${saleId}`);
-    return actionSuccess(payload.data);
+    return actionSuccess(res.data);
   });
 }
 
@@ -48,13 +80,9 @@ export async function adminRemoveSaleDocumentResultAction(
   return instrumentServerAction("adminRemoveSaleDocumentResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SALES_ACCESS);
     if (denied) return denied;
-    const res = await authedServerFetch(`/sales/${saleId}/documents/${documentId}`, {
-      method: "DELETE",
-      skipActingLegalEntityHeader: true,
-    });
+    const res = await getWriteContainer().adminDocuments.removeSaleDocument(saleId, documentId);
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(normalizeApiErrorMessage(body.error, "remove_failed"));
+      return serviceRemoveFailure(res.body, res.message, res.status, res.code);
     }
     revalidatePath(`/admin/sales/${saleId}/edit`);
     revalidatePath(`/admin/sales/${saleId}`);
@@ -77,20 +105,12 @@ export async function adminAttachLotDocumentResultAction(
   return instrumentServerAction("adminAttachLotDocumentResultAction", async () => {
     const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
     if (denied) return denied;
-    const res = await authedServerFetch(`/lots/${lotId}/documents`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-      skipActingLegalEntityHeader: true,
-    });
-    const payload = (await res.json().catch(() => ({}))) as {
-      data?: EntityDocument;
-      error?: unknown;
-    };
-    if (!res.ok) return actionFailure(normalizeApiErrorMessage(payload.error, "attach_failed"));
-    if (!payload.data) return actionFailure("invalid_response");
+    const res = await getWriteContainer().adminDocuments.attachLotDocument(lotId, input);
+    if (!res.ok) {
+      return serviceAttachFailure(res.body, res.message, res.status, res.code);
+    }
     revalidateAdminLotEdit(lotId);
-    return actionSuccess(payload.data);
+    return actionSuccess(res.data);
   });
 }
 
@@ -101,13 +121,9 @@ export async function adminRemoveLotDocumentResultAction(
   return instrumentServerAction("adminRemoveLotDocumentResultAction", async () => {
     const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
     if (denied) return denied;
-    const res = await authedServerFetch(`/lots/${lotId}/documents/${documentId}`, {
-      method: "DELETE",
-      skipActingLegalEntityHeader: true,
-    });
+    const res = await getWriteContainer().adminDocuments.removeLotDocument(lotId, documentId);
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(normalizeApiErrorMessage(body.error, "remove_failed"));
+      return serviceRemoveFailure(res.body, res.message, res.status, res.code);
     }
     revalidateAdminLotEdit(lotId);
     return actionSuccess(undefined);
@@ -121,20 +137,15 @@ export async function adminAttachSubmissionDocumentResultAction(
   return instrumentServerAction("adminAttachSubmissionDocumentResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
     if (denied) return denied;
-    const res = await authedServerFetch(`/submissions/${submissionId}/documents`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-      skipActingLegalEntityHeader: true,
-    });
-    const payload = (await res.json().catch(() => ({}))) as {
-      data?: EntityDocument;
-      error?: unknown;
-    };
-    if (!res.ok) return actionFailure(normalizeApiErrorMessage(payload.error, "attach_failed"));
-    if (!payload.data) return actionFailure("invalid_response");
+    const res = await getWriteContainer().adminDocuments.attachSubmissionDocument(
+      submissionId,
+      input,
+    );
+    if (!res.ok) {
+      return serviceAttachFailure(res.body, res.message, res.status, res.code);
+    }
     revalidatePath(`/admin/submissions/${submissionId}`);
-    return actionSuccess(payload.data);
+    return actionSuccess(res.data);
   });
 }
 
@@ -145,13 +156,12 @@ export async function adminRemoveSubmissionDocumentResultAction(
   return instrumentServerAction("adminRemoveSubmissionDocumentResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
     if (denied) return denied;
-    const res = await authedServerFetch(`/submissions/${submissionId}/documents/${documentId}`, {
-      method: "DELETE",
-      skipActingLegalEntityHeader: true,
-    });
+    const res = await getWriteContainer().adminDocuments.removeSubmissionDocument(
+      submissionId,
+      documentId,
+    );
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(normalizeApiErrorMessage(body.error, "remove_failed"));
+      return serviceRemoveFailure(res.body, res.message, res.status, res.code);
     }
     revalidatePath(`/admin/submissions/${submissionId}`);
     return actionSuccess(undefined);

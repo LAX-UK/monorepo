@@ -8,6 +8,7 @@ import {
   loadAdminSaleRegistrationCount,
 } from "@/lib/admin/load-sale-detail";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
 import {
   getAdminDomainEventsForAggregate,
   getAdminTelephoneBookings,
@@ -63,6 +64,9 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     connectRequiredByLotId,
   });
 
+  const linkedEvent =
+    isSaleroom && liveish ? await getAdminExpectedGuests(id).catch(() => null) : null;
+
   return (
     <SaleDetailShell
       saleId={id}
@@ -75,6 +79,8 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       canManageSales={canManageSales}
       connectRequiredByLotId={connectRequiredByLotId}
       draftSetupReadiness={draftSetupReadiness}
+      linkedEventSlug={linkedEvent?.eventSlug ?? null}
+      linkedEventTitle={linkedEvent?.eventTitle ?? null}
     >
       {children}
     </SaleDetailShell>

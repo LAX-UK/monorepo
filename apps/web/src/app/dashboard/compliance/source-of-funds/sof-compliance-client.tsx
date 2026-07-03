@@ -3,8 +3,11 @@
 import { SofProgressStepper } from "@/components/dashboard/compliance/sof-progress-stepper";
 import { DocumentUploadField } from "@/components/forms/document-upload-field";
 import { uploadObjectFile } from "@/hooks/use-upload-object-lifecycle";
-import { apiBaseUrl } from "@/lib/auth/api-base";
-import type { BuyerSourceOfFundsView } from "@/lib/data/http/compliance.server";
+import {
+  attachBuyerSofDocumentAction,
+  submitBuyerSofDocumentsAction,
+} from "@/lib/actions/buyer-sof";
+import type { BuyerSourceOfFundsView } from "@/lib/data/http/compliance-sof.mapper";
 import {
   buyerSofSubmitBlockReason,
   computeBuyerSofUploadCompletion,
@@ -117,24 +120,11 @@ export function SofComplianceClient({ initial }: Props) {
           });
         },
       });
-      const base = apiBaseUrl();
-      const res = await fetch(
-        `${base}/payments/me/source-of-funds/${encodeURIComponent(view.caseId)}/documents`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            uploadObjectId: upload.uploadObjectId,
-            requestedType,
-            label: file.name,
-          }),
-        },
-      );
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? "Upload failed");
-      }
+      await attachBuyerSofDocumentAction(view.caseId, {
+        uploadObjectId: upload.uploadObjectId,
+        requestedType,
+        label: file.name,
+      });
       setTypeState(requestedType, { phase: "idle", progress: 100, error: null });
       router.refresh();
     } catch (e) {
@@ -167,15 +157,7 @@ export function SofComplianceClient({ initial }: Props) {
     setGlobalError(null);
     startTransition(async () => {
       try {
-        const base = apiBaseUrl();
-        const res = await fetch(
-          `${base}/payments/me/source-of-funds/${encodeURIComponent(view.caseId)}/documents/submit`,
-          { method: "POST", credentials: "include" },
-        );
-        if (!res.ok) {
-          const body = (await res.json().catch(() => ({}))) as { error?: string };
-          throw new Error(body.error ?? "Submit failed");
-        }
+        await submitBuyerSofDocumentsAction(view.caseId);
         setView((v) => ({ ...v, documentsSubmitted: true }));
         router.refresh();
       } catch (e) {

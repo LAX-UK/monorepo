@@ -1,7 +1,6 @@
 "use client";
 
 import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
-import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import {
@@ -10,6 +9,7 @@ import {
   setDefaultAddressAction,
   updateAddressFromValuesAction,
 } from "@/lib/actions/profile";
+import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";

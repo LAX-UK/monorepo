@@ -1,8 +1,8 @@
 "use client";
 
+import { useFocusOnMount } from "@auction/ui";
 import type { WizardProgressStep } from "@auction/ui/components/wizard-progress";
 import { WizardProgress } from "@auction/ui/components/wizard-progress";
-import { useFocusOnMount } from "@auction/ui";
 import type { ReactNode } from "react";
 
 export type AuthStepShellProps = {
@@ -25,9 +25,7 @@ export function AuthStepShell({
 
   return (
     <div className="flex flex-col gap-10">
-      {wizardSteps ? (
-        <WizardProgress steps={wizardSteps} currentIndex={currentStepIndex} />
-      ) : null}
+      {wizardSteps ? <WizardProgress steps={wizardSteps} currentIndex={currentStepIndex} /> : null}
       <h2
         ref={headingRef}
         tabIndex={-1}

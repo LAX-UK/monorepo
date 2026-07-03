@@ -31,4 +31,5 @@ export interface IAdminLotService {
     id: string,
     body: ReturnLotToInventoryBody,
   ): Promise<ServiceResult<Record<string, unknown>>>;
+  approveWithdrawalRequest(id: string): Promise<ServiceResult<void>>;
 }

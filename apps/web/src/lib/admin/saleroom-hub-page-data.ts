@@ -1,6 +1,7 @@
 import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
 import { SaleroomHubLiveGrid } from "@/components/admin/saleroom-hub-board/saleroom-hub-live-grid";
 import type { saleroomHubController } from "@/lib/admin/saleroom-hub-controller";
+import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
 import { getAdminSaleroomSessions } from "@/lib/data/http/admin.server";
 import {
   enrichHubRowWithCurrentLot,
@@ -69,9 +70,36 @@ export async function buildSaleroomHubViewData(
   const liveGridRows = enrichedSummaries.filter((s) => s.saleStatus === "active");
   const scheduledOnlyRows = rows.filter((r) => r.sale.status === "scheduled");
 
+  const venueCountsBySaleId = new Map<
+    string,
+    NonNullable<(typeof liveGridRows)[number]["venueDayCounts"]>
+  >();
+  await Promise.all(
+    liveGridRows.map(async (row) => {
+      try {
+        const summary = await getAdminExpectedGuests(row.saleId);
+        if (!summary.eventSlug) return;
+        venueCountsBySaleId.set(row.saleId, {
+          eventSlug: summary.eventSlug,
+          eventTitle: summary.eventTitle ?? summary.eventSlug,
+          rsvped: summary.counts.rsvped,
+          galaCheckedIn: summary.counts.galaCheckedIn,
+          paddled: summary.counts.paddled,
+        });
+      } catch {
+        // Non-fatal — hub cards still render without venue-day counts.
+      }
+    }),
+  );
+
+  const summariesWithVenueCounts = liveGridRows.map((row) => ({
+    ...row,
+    venueDayCounts: venueCountsBySaleId.get(row.saleId) ?? null,
+  }));
+
   return {
     rows,
-    summaries: liveGridRows,
+    summaries: summariesWithVenueCounts,
     initialSessions,
     scheduledOnlyRows,
   };

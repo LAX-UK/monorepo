@@ -37,6 +37,8 @@ type Props = {
   draftSetupReadiness?: CatalogReadinessResult | null;
   quickRailItems?: readonly QuickActionItem[];
   draftSetupHref?: string;
+  linkedEventSlug?: string | null;
+  linkedEventTitle?: string | null;
   status?: ReactNode;
   publicHref?: string;
 };
@@ -53,6 +55,8 @@ export function SaleContextRail({
   connectRequiredByLotId: _connectRequiredByLotId,
   draftSetupReadiness = null,
   quickRailItems = [],
+  linkedEventSlug = null,
+  linkedEventTitle = null,
   status,
   publicHref,
 }: Props) {
@@ -105,6 +109,16 @@ export function SaleContextRail({
                     label: "Bidder registrations",
                     href: saleDetailTabHref(saleId, "registrations"),
                     ...(registrationCount != null ? { meta: `${registrationCount} on file` } : {}),
+                  },
+                ]
+              : []),
+            ...(linkedEventSlug
+              ? [
+                  {
+                    id: "linked-event",
+                    kind: "Tab",
+                    label: linkedEventTitle ?? "Linked RSVP event",
+                    href: `/admin/event-rsvps/${encodeURIComponent(linkedEventSlug)}`,
                   },
                 ]
               : []),

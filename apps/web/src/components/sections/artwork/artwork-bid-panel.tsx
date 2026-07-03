@@ -16,8 +16,8 @@ import { LotBidModeChooser } from "@/components/sections/artwork/redesign/lot-bi
 import { LotBidPositionSummary } from "@/components/sections/artwork/redesign/lot-bid-position-summary";
 import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-stack";
 import { LotPricingStatusHeader } from "@/components/sections/artwork/redesign/lot-pricing-status-header";
-import { useArtworkBidPanelState } from "@/components/sections/artwork/use-artwork-bid-panel-state";
 import { ParticipationWarningBadge } from "@/components/ui/participation-warning-badge";
+import { usePlaceBid } from "@/hooks/lot-bid/use-place-bid";
 import { useLotBidState } from "@/hooks/use-lot-bid-state";
 import { lotBidPositionStickyLabel } from "@/lib/bid/derive-lot-bid-position";
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
@@ -129,7 +129,7 @@ export function ArtworkBidPanel({
     setActiveAutoBid,
   } = bidState;
 
-  const panelState = useArtworkBidPanelState({
+  const panelState = usePlaceBid({
     auction,
     sessionUser,
     initialAutoBidSettings,

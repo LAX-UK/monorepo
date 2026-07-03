@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import type { UseFormReturn } from "react-hook-form";
 import type { SignUpFormValues } from "@/lib/auth/schemas";
 import type { SignUpWizardStep } from "@/lib/auth/sign-up-types";
+import { useCallback, useState } from "react";
+import type { UseFormReturn } from "react-hook-form";
 
 /** Wizard step navigation for sign-up — isolated from submit/turnstile concerns. */
 export function useSignUpWizardStep(

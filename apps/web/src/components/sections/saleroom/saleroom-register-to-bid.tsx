@@ -44,6 +44,8 @@ type RegisterToBidBaseProps = {
     buyerLegalEntityId: string;
     status: string;
     bidLimit?: string | null;
+    paddleNumber?: number | null;
+    checkedInAt?: string | null;
   }[];
   kycApproved: boolean;
   kycFeedback?: KycUserFeedbackDto | null;
@@ -397,6 +399,19 @@ export function SaleroomRegisterToBid({
       <RegisterOutlineLink href="/onboarding/organisation">
         Set up a buyer profile
       </RegisterOutlineLink>
+    );
+  }
+
+  const assignedPaddle = myRegistrations.find(
+    (registration) => registration.status === "approved" && registration.paddleNumber != null,
+  )?.paddleNumber;
+
+  if (assignedPaddle != null) {
+    return (
+      <RegisterHelperText>
+        Your in-room paddle:{" "}
+        <strong className="font-headline tabular-nums text-on-surface">{assignedPaddle}</strong>
+      </RegisterHelperText>
     );
   }
 

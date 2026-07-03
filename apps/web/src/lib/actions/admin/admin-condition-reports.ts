@@ -1,7 +1,8 @@
 "use server";
 
+import { readApiError } from "@/lib/actions/_utils";
 import { assertAdminCapabilityForRedirect } from "@/lib/auth/assert-admin-action-capability";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { CONDITION_REPORTS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { revalidatePath } from "next/cache";
@@ -26,18 +27,12 @@ export async function adminMarkConditionReportInProgressAction(formData: FormDat
       if (!parsed.success) {
         redirect(`/admin/condition-reports?error=${encodeURIComponent("Invalid request")}`);
       }
-      const res = await authedServerFetch(
-        `/admin/condition-report-requests/${encodeURIComponent(parsed.data.requestId)}/mark-in-progress`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
+      const res = await getWriteContainer().adminConditionReports.markInProgress(
+        parsed.data.requestId,
       );
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
         redirect(
-          `/admin/condition-reports?error=${encodeURIComponent(payload.error ?? "Could not mark in progress")}`,
+          `/admin/condition-reports?error=${encodeURIComponent(readApiError(res.body, "Could not mark in progress"))}`,
         );
       }
       revalidatePath("/admin/condition-reports");
@@ -79,21 +74,13 @@ export async function adminFulfillConditionReportAction(formData: FormData): Pro
       if (details) conditionReport.details = details;
       if (downloadUrl) conditionReport.downloadUrl = downloadUrl;
 
-      const res = await authedServerFetch(
-        `/admin/condition-report-requests/${encodeURIComponent(parsed.data.requestId)}/fulfill`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            conditionReport,
-            ...(responseNote ? { responseNote } : {}),
-          }),
-        },
-      );
+      const res = await getWriteContainer().adminConditionReports.fulfill(parsed.data.requestId, {
+        conditionReport,
+        ...(responseNote ? { responseNote } : {}),
+      });
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
         redirect(
-          `/admin/condition-reports?error=${encodeURIComponent(payload.error ?? "Fulfil failed")}`,
+          `/admin/condition-reports?error=${encodeURIComponent(readApiError(res.body, "Fulfil failed"))}`,
         );
       }
       revalidatePath("/admin/condition-reports");
@@ -118,18 +105,13 @@ export async function adminDeclineConditionReportAction(formData: FormData): Pro
         redirect(`/admin/condition-reports?error=${encodeURIComponent("Invalid request")}`);
       }
       const responseNote = String(formData.get("responseNote") ?? "").trim();
-      const res = await authedServerFetch(
-        `/admin/condition-report-requests/${encodeURIComponent(parsed.data.requestId)}/decline`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(responseNote ? { responseNote } : {}),
-        },
+      const res = await getWriteContainer().adminConditionReports.decline(
+        parsed.data.requestId,
+        responseNote || undefined,
       );
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
         redirect(
-          `/admin/condition-reports?error=${encodeURIComponent(payload.error ?? "Decline failed")}`,
+          `/admin/condition-reports?error=${encodeURIComponent(readApiError(res.body, "Decline failed"))}`,
         );
       }
       revalidatePath("/admin/condition-reports");

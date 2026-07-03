@@ -5,7 +5,6 @@ import { OrgSubmittedAlert } from "@/components/dashboard/org-submitted-alert";
 import { buildOverviewDescription } from "@/components/dashboard/overview/overview-presenters";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
-import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import {
   dashboardSliceFailureMessage,
   describeSessionsOverviewError,
@@ -18,6 +17,7 @@ import type {
   OrgOnboardingResumeVm,
   WatchlistWithLotRow,
 } from "@/lib/data/dto/dashboard-dtos";
+import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
 import { buildDashboardActivityVm } from "@/lib/data/view-models/dashboard-activity.vm";
 import { buildDashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney } from "@/lib/format-currency";

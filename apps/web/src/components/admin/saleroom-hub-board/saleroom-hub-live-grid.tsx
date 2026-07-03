@@ -157,6 +157,20 @@ function RoomCard({
         </p>
       )}
 
+      {row.venueDayCounts ? (
+        <p className="mt-2 font-body text-xs text-on-surface-variant">
+          RSVP&apos;d {row.venueDayCounts.rsvped} · Gala in {row.venueDayCounts.galaCheckedIn} ·
+          Paddled {row.venueDayCounts.paddled}
+          {" · "}
+          <Link
+            href={`/admin/event-rsvps/${encodeURIComponent(row.venueDayCounts.eventSlug)}`}
+            className="text-link underline"
+          >
+            {row.venueDayCounts.eventTitle}
+          </Link>
+        </p>
+      ) : null}
+
       <div className="mt-4 flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" className="min-h-11" asChild>
           <Link href={`/admin/saleroom/${row.saleId}`}>Open console</Link>

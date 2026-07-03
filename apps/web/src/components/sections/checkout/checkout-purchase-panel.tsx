@@ -1,6 +1,5 @@
 "use client";
 
-import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { BuyerGate, isAdminBuyerBlocked } from "@/components/marketing/admin-cannot-buy-notice";
 import { CheckoutLotMobileChrome } from "@/components/sections/checkout/checkout-lot-mobile-chrome";
 import {
@@ -16,6 +15,7 @@ import {
 } from "@/lib/checkout/settlements-contact";
 import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
 import type { ManualReviewReason, PaymentStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Card, CardContent } from "@auction/ui/components/card";

@@ -1,5 +1,6 @@
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { SaleRegistrationsTabSection } from "@/components/admin/sale-registrations-tab-section";
+import type { AdminExpectedGuestsSummary } from "@/lib/data/http/admin-expected-guests.server";
 import type { AdminSaleRegistrationRow } from "@/lib/data/http/admin.server";
 import type { Sale } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
@@ -12,6 +13,7 @@ type Props = {
   fetchError: string | null;
   actionError: string | null;
   saleCurrency?: string;
+  expectedGuests?: AdminExpectedGuestsSummary | null;
 };
 
 export function SaleRegistrationsTab({
@@ -22,6 +24,7 @@ export function SaleRegistrationsTab({
   fetchError,
   actionError,
   saleCurrency = "GBP",
+  expectedGuests = null,
 }: Props) {
   const showPaddleCheckIn = isSaleroomDeliveryMode(sale.deliveryMode);
   return (
@@ -44,6 +47,7 @@ export function SaleRegistrationsTab({
           fetchError={fetchError}
           actionError={actionError}
           saleCurrency={saleCurrency}
+          expectedGuests={expectedGuests}
         />
       </div>
     </CatalogDetailTabPanel>

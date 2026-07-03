@@ -1,7 +1,6 @@
 import { AddressesBoard } from "@/components/dashboard/addresses-board";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
@@ -9,6 +8,7 @@ import {
   describeSettingsActionError,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
 
 export default async function AddressSettingsPage({
   searchParams,

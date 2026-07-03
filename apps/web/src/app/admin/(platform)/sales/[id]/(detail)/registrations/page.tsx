@@ -2,6 +2,8 @@ import { isSaleLiveish } from "@/components/admin/sale-detail/sale-detail-helper
 import { SaleRegistrationsTab } from "@/components/admin/sale-detail/tabs/registrations-tab";
 import { loadAdminSaleDetail, loadAdminSaleRegistrations } from "@/lib/admin/load-sale-detail";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -23,6 +25,11 @@ export default async function AdminSaleRegistrationsPage({ params, searchParams 
         }))
     : { rows: [], error: null as string | null };
 
+  const expectedGuests =
+    liveish && isSaleroomDeliveryMode(bundle.sale.deliveryMode)
+      ? await getAdminExpectedGuests(id).catch(() => null)
+      : null;
+
   return (
     <SaleRegistrationsTab
       saleId={id}
@@ -32,6 +39,7 @@ export default async function AdminSaleRegistrationsPage({ params, searchParams 
       fetchError={registrationsResult.error}
       actionError={sp.error ? safeDecodeAdminErrorParam(sp.error) : null}
       saleCurrency={bundle.lots[0]?.marketingDetails?.estimate?.currency ?? "GBP"}
+      expectedGuests={expectedGuests}
     />
   );
 }

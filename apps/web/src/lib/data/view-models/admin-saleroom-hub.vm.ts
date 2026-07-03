@@ -21,6 +21,14 @@ export type SaleroomHubRowSummary = {
   /** Lot number of current on-block lot when known from SSR snapshot. */
   currentLotNumber: number | null;
   currentLotTitle: string | null;
+  /** Combined venue-day counts when this sale has a linked RSVP event. */
+  venueDayCounts?: {
+    eventSlug: string;
+    eventTitle: string;
+    rsvped: number;
+    galaCheckedIn: number;
+    paddled: number;
+  } | null;
 };
 
 export function mapSaleroomHubRowSummary(row: AdminSaleListRow): SaleroomHubRowSummary {

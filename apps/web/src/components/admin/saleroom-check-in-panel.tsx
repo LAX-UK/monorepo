@@ -5,51 +5,32 @@ import {
   adminSaleroomCheckInResultAction,
 } from "@/lib/actions/admin";
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
-import {
-  BID_LIMIT_FIELD_LABEL,
-  bidLimitFieldHelp,
-  bidLimitFieldPlaceholder,
-} from "@/lib/saleroom/bid-limit-field-copy";
-import { formatMoney } from "@/lib/ui/format";
+import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";
 import { notify } from "@/lib/ui/notify";
+import type { SaleDeliveryMode } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-
-const CHECK_IN_ERROR_MESSAGES: Record<string, string> = {
-  sale_not_saleroom: "Check-in is only available for onsite or hybrid sales.",
-  sale_not_registerable: "This sale is not open for check-in.",
-  user_suspended: "This client account is suspended.",
-  kyc_required: "Client must complete identity verification before check-in.",
-  email_not_verified: "Client must verify their email address.",
-  membership_required: "Client is not a member of the selected entity.",
-  entity_not_authorised: "The selected entity is not authorised to bid.",
-  not_eligible_for_check_in: "This membership type cannot be checked in for in-room bidding.",
-  paddle_taken: "That paddle number is already in use. Try another or leave blank to auto-assign.",
-  invalid_paddle: "Paddle number must be at least 100.",
-  rate_limited: "Too many attempts. Wait a moment and try again.",
-};
+import { SaleroomCheckInForm } from "./saleroom-check-in-form";
+import { SaleroomCheckInSearch } from "./saleroom-check-in-search";
 
 type Props = {
   saleId: string;
   saleCurrency?: string;
+  deliveryMode?: SaleDeliveryMode;
 };
 
 function displayName(candidate: AdminCheckInCandidate): string {
   return candidate.name ?? candidate.email;
 }
 
-export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
+export function SaleroomCheckInPanel({
+  saleId,
+  saleCurrency = "GBP",
+  deliveryMode = "onsite",
+}: Props) {
+  const isHybrid = deliveryMode === "hybrid";
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<AdminCheckInCandidate[]>([]);
@@ -60,7 +41,11 @@ export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
   const [bidLimit, setBidLimit] = useState("");
   const [paddleNumber, setPaddleNumber] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ name: string; paddleNumber: number } | null>(null);
+  const [success, setSuccess] = useState<{
+    name: string;
+    paddleNumber: number | null;
+    markedPresentOnly: boolean;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
   const searchGenerationRef = useRef(0);
 
@@ -120,33 +105,15 @@ export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
     return () => window.clearTimeout(handle);
   }, [query, runSearch]);
 
-  const prerequisitesOk =
-    selectedCandidate != null &&
-    !selectedCandidate.suspended &&
-    selectedCandidate.kycStatus === "approved" &&
-    selectedCandidate.emailVerified &&
-    entityId.length > 0;
-
-  const blockerMessages = useMemo(() => {
-    if (!selectedCandidate) return [];
-    const items: string[] = [];
-    if (selectedCandidate.suspended) items.push("Account is suspended.");
-    if (selectedCandidate.kycStatus !== "approved") {
-      items.push("Identity verification is not complete.");
-    }
-    if (!selectedCandidate.emailVerified) items.push("Email address is not verified.");
-    return items;
-  }, [selectedCandidate]);
-
-  const onCheckIn = () => {
+  const onCheckIn = (assignPaddle: boolean) => {
     if (!selectedCandidate || !entityId) return;
     setSubmitError(null);
     const paddleTrimmed = paddleNumber.trim();
-    if (paddleTrimmed !== "") {
+    if (assignPaddle && paddleTrimmed !== "") {
       const paddleN = Number.parseInt(paddleTrimmed, 10);
       if (!Number.isInteger(paddleN) || paddleN < 100) {
         setSubmitError(
-          CHECK_IN_ERROR_MESSAGES.invalid_paddle ?? "Paddle number must be at least 100.",
+          saleroomCheckInErrorMessage("invalid_paddle", "Paddle number must be at least 100."),
         );
         return;
       }
@@ -156,25 +123,27 @@ export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
         saleId: string;
         userId: string;
         buyerLegalEntityId: string;
+        assignPaddle: boolean;
         bidLimit?: number;
         paddleNumber?: number;
       } = {
         saleId,
         userId: selectedCandidate.userId,
         buyerLegalEntityId: entityId,
+        assignPaddle,
       };
       const limitN = Number.parseFloat(bidLimit);
       if (bidLimit.trim() !== "" && Number.isFinite(limitN) && limitN > 0) {
         body.bidLimit = limitN;
       }
-      if (paddleTrimmed !== "") {
+      if (assignPaddle && paddleTrimmed !== "") {
         body.paddleNumber = Number.parseInt(paddleTrimmed, 10);
       }
 
       const result = await adminSaleroomCheckInResultAction(body);
       if (!result.ok || !result.data) {
         if (result.ok === false) {
-          setSubmitError(CHECK_IN_ERROR_MESSAGES[result.errorCode ?? ""] ?? result.error);
+          setSubmitError(saleroomCheckInErrorMessage(result.errorCode, result.error));
         } else {
           setSubmitError("Check-in failed");
         }
@@ -183,10 +152,17 @@ export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
       setSuccess({
         name: displayName(selectedCandidate),
         paddleNumber: result.data.paddleNumber,
+        markedPresentOnly: !assignPaddle,
       });
-      notify.success(`Paddle ${result.data.paddleNumber} assigned`, {
-        description: "Return to the clerk console to place in-room bids.",
-      });
+      if (assignPaddle && result.data.paddleNumber != null) {
+        notify.success(`Paddle ${result.data.paddleNumber} assigned`, {
+          description: "Return to the clerk console to place in-room bids.",
+        });
+      } else {
+        notify.success("Marked present", {
+          description: "Guest can bid online; assign a paddle later if needed.",
+        });
+      }
       router.refresh();
     });
   };
@@ -223,8 +199,16 @@ export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
         aria-live="polite"
       >
         <p className="font-body text-sm text-on-surface">
-          Paddle <strong className="tabular-nums">{success.paddleNumber}</strong> assigned to{" "}
-          <strong>{success.name}</strong>.
+          {success.markedPresentOnly ? (
+            <>
+              <strong>{success.name}</strong> marked present.
+            </>
+          ) : (
+            <>
+              Paddle <strong className="tabular-nums">{success.paddleNumber}</strong> assigned to{" "}
+              <strong>{success.name}</strong>.
+            </>
+          )}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild size="sm" variant="default">
@@ -252,160 +236,31 @@ export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
       </div>
 
       <div className="mt-4 space-y-4">
-        <div className="space-y-1">
-          <Label htmlFor="check-in-search">Search client</Label>
-          <Input
-            id="check-in-search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type email or name (min 2 characters)"
-            className="font-body text-sm"
-            autoComplete="off"
-          />
-          {query.trim().length < 2 ? (
-            <p className="font-body text-xs text-on-surface-variant">
-              Type email or name (min 2 characters)
-            </p>
-          ) : null}
-          {searching ? (
-            <p className="font-body text-xs text-on-surface-variant">Searching…</p>
-          ) : null}
-          {searchError ? (
-            <p className="font-body text-xs text-destructive" role="alert">
-              {searchError}
-            </p>
-          ) : null}
-        </div>
-
-        {candidates.length > 0 ? (
-          <ul className="space-y-2" aria-label="Search results">
-            {candidates.map((c) => {
-              const selected = c.userId === selectedUserId;
-              const existingPaddle = c.eligibleEntities.find(
-                (e) => e.existingRegistration?.paddleNumber != null,
-              )?.existingRegistration?.paddleNumber;
-              return (
-                <li key={c.userId}>
-                  <button
-                    type="button"
-                    aria-pressed={selected}
-                    className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
-                      selected
-                        ? "border-primary bg-primary/5"
-                        : "border-border-hairline hover:bg-surface-container-low/60"
-                    }`}
-                    onClick={() => setSelectedUserId(c.userId)}
-                  >
-                    <p className="font-medium">{displayName(c)}</p>
-                    <p className="font-body text-xs text-on-surface-variant">{c.email}</p>
-                    <p className="mt-1 font-body text-xs text-on-surface-variant">
-                      KYC: {c.kycStatus}
-                      {existingPaddle != null ? <> · Already paddle #{existingPaddle}</> : null}
-                    </p>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
+        <SaleroomCheckInSearch
+          query={query}
+          onQueryChange={setQuery}
+          searching={searching}
+          searchError={searchError}
+          candidates={candidates}
+          selectedUserId={selectedUserId}
+          onSelectCandidate={setSelectedUserId}
+        />
 
         {selectedCandidate ? (
-          <div className="space-y-3 rounded-md border border-border-hairline p-4">
-            {blockerMessages.length > 0 ? (
-              <ul className="space-y-1" role="alert">
-                {blockerMessages.map((msg) => (
-                  <li key={msg} className="font-body text-xs text-destructive">
-                    {msg}
-                  </li>
-                ))}
-                <li>
-                  <Link
-                    href={`/admin/clients/${selectedCandidate.userId}`}
-                    className="font-body text-xs text-link underline"
-                  >
-                    Open client profile
-                  </Link>
-                </li>
-              </ul>
-            ) : null}
-
-            <div className="space-y-1">
-              <Label htmlFor="check-in-entity">Buying as</Label>
-              <Select
-                value={entityId}
-                onValueChange={(id) => {
-                  setEntityId(id);
-                  const ent = eligibleEntities.find((e) => e.id === id);
-                  const existingLimit = ent?.existingRegistration?.bidLimit;
-                  setBidLimit(existingLimit?.replace(/\.00$/, "") ?? "");
-                }}
-              >
-                <SelectTrigger id="check-in-entity" className="font-body text-sm">
-                  <SelectValue placeholder="Select entity…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligibleEntities.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.displayName} ({e.role})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="check-in-bid-limit">{BID_LIMIT_FIELD_LABEL}</Label>
-                <Input
-                  id="check-in-bid-limit"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={bidLimit}
-                  onChange={(e) => setBidLimit(e.target.value)}
-                  placeholder={bidLimitFieldPlaceholder(saleCurrency)}
-                  className="font-body text-sm"
-                />
-                <p className="font-body text-xs text-on-surface-variant">
-                  {bidLimitFieldHelp(saleCurrency)}
-                </p>
-                {(() => {
-                  const selectedEntity = eligibleEntities.find((e) => e.id === entityId);
-                  const existingLimit = selectedEntity?.existingRegistration?.bidLimit;
-                  return existingLimit && bidLimit.trim() === "" ? (
-                    <p className="font-body text-xs text-secondary">
-                      Current limit: {formatMoney(existingLimit, saleCurrency)}
-                    </p>
-                  ) : null;
-                })()}
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="check-in-paddle">Paddle number</Label>
-                <Input
-                  id="check-in-paddle"
-                  value={paddleNumber}
-                  onChange={(e) => setPaddleNumber(e.target.value)}
-                  placeholder="Leave blank to auto-assign"
-                  className="font-body text-sm tabular-nums"
-                />
-              </div>
-            </div>
-
-            {submitError ? (
-              <p className="font-body text-xs text-destructive" role="alert" aria-live="polite">
-                {submitError}
-              </p>
-            ) : null}
-
-            <Button
-              type="button"
-              disabled={!prerequisitesOk || pending}
-              onClick={onCheckIn}
-              className="min-h-10"
-            >
-              {pending ? "Checking in…" : "Check in and assign paddle"}
-            </Button>
-          </div>
+          <SaleroomCheckInForm
+            candidate={selectedCandidate}
+            saleCurrency={saleCurrency}
+            isHybrid={isHybrid}
+            entityId={entityId}
+            onEntityIdChange={setEntityId}
+            bidLimit={bidLimit}
+            onBidLimitChange={setBidLimit}
+            paddleNumber={paddleNumber}
+            onPaddleNumberChange={setPaddleNumber}
+            submitError={submitError}
+            pending={pending}
+            onCheckIn={onCheckIn}
+          />
         ) : null}
       </div>
     </div>

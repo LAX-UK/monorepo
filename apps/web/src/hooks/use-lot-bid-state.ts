@@ -1,24 +1,12 @@
 "use client";
 
-import { classifyLotTimerState } from "@/components/lot-timer";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
-import { useLotRealtime } from "@/hooks/use-lot-realtime";
-import { useNow } from "@/hooks/use-now";
-import { type LotBidPosition, deriveLotBidPosition } from "@/lib/bid/derive-lot-bid-position";
-import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
-import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
-import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
+import { useLotBidEligibility } from "@/hooks/lot-bid/use-lot-bid-eligibility";
+import { useLotCountdown } from "@/hooks/lot-bid/use-lot-countdown";
+import { useLotRealtimePricing } from "@/hooks/lot-bid/use-lot-realtime-pricing";
 import type { AutoBidSettings, SessionUser } from "@/lib/data/contracts";
-import { formatCountdownForDisplay } from "@/lib/format-countdown";
-import { type LotLifecycle, classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
-import {
-  type LotReserveContext,
-  resolveEndedBanner,
-  resolveLotReserveContext,
-} from "@/lib/lot/reserve-presentation";
-import { notify } from "@/lib/ui/notify";
-import type { Lot, LotEndedNoSaleReason, PublicLotView, Sale } from "@auction/types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Lot, PublicLotView, Sale } from "@auction/types";
+import { useCallback } from "react";
 
 export type UseLotBidStateParams = {
   auction: Lot | PublicLotView;
@@ -44,28 +32,21 @@ export type UseLotBidStateResult = {
   activeAutoBid: AutoBidSettings | null;
   setActiveAutoBid: (settings: AutoBidSettings | null) => void;
   handleAutoBidSaved: (settings: AutoBidSettings | null) => void;
-  lifecycle: LotLifecycle;
+  lifecycle: ReturnType<typeof useLotCountdown>["lifecycle"];
   countdownClock: string;
-  timerState: ReturnType<typeof classifyLotTimerState>;
+  timerState: ReturnType<typeof useLotCountdown>["timerState"];
   remainingLabel: string;
   saleEndLocalLabel: string;
   saleStartLocalLabel: string;
-  position: LotBidPosition;
-  reserveContext: LotReserveContext;
+  position: ReturnType<typeof useLotBidEligibility>["position"];
+  reserveContext: ReturnType<typeof useLotRealtimePricing>["reserveContext"];
   biddingLive: boolean;
   priceFlash: boolean;
   endedBanner: string | null;
-  noSaleReason: LotEndedNoSaleReason | null;
+  noSaleReason: ReturnType<typeof useLotRealtimePricing>["noSaleReason"];
   outbidSignal: boolean;
   userHasBid: boolean;
-  applyOwnBidResult: (bid: {
-    id: string;
-    amount: string;
-    bidderId?: string | null | undefined;
-    placedByUserId?: string | null | undefined;
-    maxAutoBidAmount?: string | null | undefined;
-    autoBidStepAmount?: string | null | undefined;
-  }) => void;
+  applyOwnBidResult: ReturnType<typeof useLotRealtimePricing>["applyOwnBidResult"];
   scrollToBid: () => void;
   scrollToAutoBid: () => void;
   extendedByMs: number | null;
@@ -82,306 +63,38 @@ export function useLotBidState({
   saleForLifecycle = null,
   isOwnLot = false,
 }: UseLotBidStateParams): UseLotBidStateResult {
-  const {
-    entries: history,
-    currentPrice,
-    leadingBidderId,
-    applyOwnBid,
-    setEndedWinner,
-    latestSnapshotReserveMet,
-  } = useLotBidHistory();
-  const onlineLifecycle = useOnlineLotLifecycle();
-  const saleroomLive = useSaleroomLive();
-  const now = useNow();
-
-  const [endTime, setEndTime] = useState(() => new Date(auction.endTime).getTime());
-  const startTimeMs = useMemo(() => new Date(auction.startTime).getTime(), [auction.startTime]);
-  const [lotStatus, setLotStatus] = useState<Lot["status"]>(auction.status);
-  const [activeAutoBid, setActiveAutoBid] = useState<AutoBidSettings | null>(
+  const pricing = useLotRealtimePricing({
+    auction,
+    sessionUser,
     initialAutoBidSettings,
-  );
-  const [priceFlash, setPriceFlash] = useState(false);
-  const [endedBanner, setEndedBanner] = useState<string | null>(null);
-  const [noSaleReason, setNoSaleReason] = useState<LotEndedNoSaleReason | null>(null);
-  const [outbidSignal, setOutbidSignal] = useState(initialOutbid);
-  const [userHasBid, setUserHasBid] = useState(initialUserHasBid);
-  /** Overrides the SSR-derived reserveMet when a live bid event carries the updated value. */
-  const [liveReserveMet, setLiveReserveMet] = useState<boolean | undefined>(undefined);
-
-  const endTimeRef = useRef(endTime);
-  endTimeRef.current = endTime;
-
-  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const triggerPriceFlash = useCallback(() => {
-    setPriceFlash(true);
-    if (flashTimeoutRef.current != null) {
-      clearTimeout(flashTimeoutRef.current);
-    }
-    flashTimeoutRef.current = setTimeout(() => {
-      setPriceFlash(false);
-      flashTimeoutRef.current = null;
-    }, 500);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (flashTimeoutRef.current != null) {
-        clearTimeout(flashTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleAutoBidSaved = useCallback((settings: AutoBidSettings | null) => {
-    setActiveAutoBid(settings);
-  }, []);
-
-  useLotRealtime(auction.id, {
-    onBidUpdate: (e) => {
-      triggerPriceFlash();
-      onlineLifecycle?.setExtendedDeltaMs(null);
-      if (sessionUser?.id && e.outbidUserId === sessionUser.id) {
-        setOutbidSignal(true);
-      }
-      if (
-        sessionUser?.id &&
-        (e.bidderId === sessionUser.id || e.placedByUserId === sessionUser.id)
-      ) {
-        setUserHasBid(true);
-        if (e.bidderId === sessionUser.id) {
-          setOutbidSignal(false);
-        }
-      }
-      if (typeof e.reserveMet === "boolean") {
-        setLiveReserveMet(e.reserveMet);
-      }
-    },
-    onLotExtended: (payload) => {
-      const p = payload as { newEndTime?: string };
-      if (!p?.newEndTime) return;
-      const newMs = new Date(p.newEndTime).getTime();
-      const prev = endTimeRef.current;
-      const delta = Math.max(0, newMs - prev);
-      setEndTime(newMs);
-      onlineLifecycle?.setLiveEndTimeMs(newMs);
-      if (delta > 0) {
-        onlineLifecycle?.setExtendedDeltaMs(delta);
-        const bidCardVisible = onlineLifecycle?.bidCardInView ?? true;
-        if (!bidCardVisible) {
-          notify.info("Closing time extended", {
-            id: `lot-extend-${auction.id}`,
-            description: `A bid near the closing time added ${Math.round(delta / 1000)}s to this lot's clock.`,
-            duration: 7000,
-          });
-        }
-      }
-    },
-    onLotEnded: (p) => {
-      setLotStatus("ended");
-      setEndedWinner(p.winnerId ?? null, p.currentPrice);
-      const noSale = Boolean(p.noSale) || p.outcome === "no_sale" || !p.winnerId;
-      const reason = p.noSaleReason ?? (noSale ? "reserve_not_met" : null);
-      setNoSaleReason(reason ?? null);
-      onlineLifecycle?.setLiveLotEnded({
-        winnerId: p.winnerId ?? null,
-        noSale,
-      });
-      if (noSale) {
-        const isHighBidder = Boolean(
-          sessionUser?.id && leadingBidderId && leadingBidderId === sessionUser.id,
-        );
-        setEndedBanner(
-          resolveEndedBanner({
-            ...(reason ? { noSaleReason: reason } : {}),
-            isHighBidder,
-          }),
-        );
-      } else if (sessionUser?.id && p.winnerId === sessionUser.id) {
-        setEndedBanner("You won this lot — complete checkout from your dashboard.");
-      } else {
-        setEndedBanner("This lot has sold — thank you for participating.");
-      }
-    },
-    onLotEvent: (payload) => {
-      if (!sessionUser?.id || !payload || typeof payload !== "object") return;
-      const o = payload as Record<string, unknown>;
-      if (o.type !== "proxy_cancelled") return;
-      if (o.bidderUserId !== sessionUser.id) return;
-      handleAutoBidSaved(null);
-      notify.warning("Auto-bid cancelled", {
-        id: `proxy-cancelled-${auction.id}`,
-        description: "Your auto-bid on this lot was cleared by the saleroom.",
-        duration: 8000,
-      });
-    },
+    initialOutbid,
+    initialUserHasBid,
   });
 
-  useEffect(() => {
-    if (onlineLifecycle?.liveEndTimeMs != null) {
-      setEndTime(onlineLifecycle.liveEndTimeMs);
-    }
-  }, [onlineLifecycle?.liveEndTimeMs]);
+  const countdown = useLotCountdown({
+    auction,
+    endTime: pricing.endTime,
+    startTimeMs: pricing.startTimeMs,
+    lotStatus: pricing.lotStatus,
+    currentPrice: pricing.currentPrice,
+    leadingBidderId: pricing.leadingBidderId,
+    saleForLifecycle,
+  });
 
-  useEffect(() => {
-    if (onlineLifecycle?.liveLotStatus != null) {
-      setLotStatus(onlineLifecycle.liveLotStatus);
-    }
-  }, [onlineLifecycle?.liveLotStatus]);
-
-  // Sync liveReserveMet from the server snapshot whenever the provider completes a hydrate
-  // (initial mount, reconnect, periodic 15s refresh, tab-focus re-sync).
-  useEffect(() => {
-    if (latestSnapshotReserveMet !== undefined) {
-      setLiveReserveMet(latestSnapshotReserveMet);
-    }
-  }, [latestSnapshotReserveMet]);
-
-  const reserveContext = useMemo((): LotReserveContext => {
-    const base = resolveLotReserveContext(auction, currentPrice);
-    if (liveReserveMet !== undefined && base.hasReserve) {
-      return { hasReserve: true, reserveMet: liveReserveMet };
-    }
-    return base;
-  }, [auction, currentPrice, liveReserveMet]);
-
-  const lifecycleLot = useMemo(
-    () => ({
-      id: auction.id,
-      status: lotStatus,
-      startTime: new Date(startTimeMs),
-      endTime: new Date(endTime),
-      winnerId: lotStatus === "ended" ? leadingBidderId : auction.winnerId,
-      currentPrice,
-      reservePrice: "reservePrice" in auction ? auction.reservePrice : null,
-    }),
-    [auction, lotStatus, startTimeMs, endTime, currentPrice, leadingBidderId],
-  );
-
-  const lifecycle = useMemo(
-    () =>
-      classifyLotLifecycle(lifecycleLot, saleForLifecycle, now ?? 0, {
-        recentlyExtended: Boolean(
-          onlineLifecycle?.extendedByMs && onlineLifecycle.extendedByMs > 0,
-        ),
-        saleroomSessionPaused: saleroomLive?.status === "paused",
-        saleroomSessionActive: saleroomLive?.isSessionLive ?? false,
-        isOnBlock: saleroomLive?.isLotOnBlock(auction.id) ?? false,
-      }),
-    [lifecycleLot, saleForLifecycle, now, onlineLifecycle?.extendedByMs, saleroomLive, auction.id],
-  );
-
-  const remainingLabel = now != null ? formatCountdownForDisplay(endTime - now) : "";
-
-  const saleEndLocalLabel = useMemo(() => {
-    const d = new Date(endTime);
-    return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  }, [endTime]);
-
-  const saleStartLocalLabel = useMemo(() => {
-    const d = new Date(startTimeMs);
-    return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  }, [startTimeMs]);
-
-  const timerState = useMemo(
-    () =>
-      classifyLotTimerState(
-        {
-          status: lotStatus,
-          startTime: new Date(startTimeMs).toISOString(),
-          endTime: new Date(endTime).toISOString(),
-        },
-        now,
-      ),
-    [lotStatus, startTimeMs, endTime, now],
-  );
-
-  const countdownClock = useMemo(() => {
-    if (now == null) return "";
-    if (
-      lifecycle.msLeft != null &&
-      (lifecycle.kind === "scheduled" || lifecycle.kind === "live" || lifecycle.kind === "extended")
-    ) {
-      return formatCountdownForDisplay(lifecycle.msLeft);
-    }
-    return remainingLabel;
-  }, [lifecycle, remainingLabel, now]);
-
-  const position = useMemo(
-    () =>
-      deriveLotBidPosition({
-        sessionUserId: sessionUser?.id ?? null,
-        sellerId: auction.sellerId ?? null,
-        isOwnLot,
-        lotStatus,
-        lifecycleKind: lifecycle.kind,
-        leadingBidderId,
-        winnerId:
-          lotStatus === "ended"
-            ? (leadingBidderId ?? auction.winnerId ?? null)
-            : (auction.winnerId ?? null),
-        userHasBid,
-        outbidSignal,
-        activeAutoBid,
-        endedBanner,
-        reserveContext,
-        noSaleReason,
-      }),
-    [
-      sessionUser?.id,
-      auction.sellerId,
-      isOwnLot,
-      auction.winnerId,
-      lotStatus,
-      lifecycle.kind,
-      leadingBidderId,
-      userHasBid,
-      outbidSignal,
-      activeAutoBid,
-      endedBanner,
-      reserveContext,
-      noSaleReason,
-    ],
-  );
-
-  const biddingLive = lotStatus === "active";
-
-  const msRemaining = now != null ? Math.max(0, endTime - now) : 0;
-
-  const markLotEndedLocally = useCallback((banner: string) => {
-    setLotStatus("ended");
-    setEndedBanner(banner);
-  }, []);
-
-  const applyOwnBidResult = useCallback(
-    (bid: {
-      id: string;
-      amount: string;
-      bidderId?: string | null | undefined;
-      placedByUserId?: string | null | undefined;
-      maxAutoBidAmount?: string | null | undefined;
-      autoBidStepAmount?: string | null | undefined;
-    }) => {
-      setOutbidSignal(false);
-      setUserHasBid(true);
-      applyOwnBid({
-        id: bid.id,
-        amount: bid.amount,
-        bidderId: bid.bidderId ?? null,
-        placedByUserId: bid.placedByUserId ?? null,
-        ...(bid.maxAutoBidAmount ? { isAutoBid: true } : {}),
-        placedVia: "web",
-      });
-      if (bid.maxAutoBidAmount) {
-        setActiveAutoBid({
-          maxAutoBidAmount: bid.maxAutoBidAmount,
-          autoBidStepAmount: bid.autoBidStepAmount ?? null,
-          isActive: true,
-        });
-      }
-      triggerPriceFlash();
-    },
-    [applyOwnBid, triggerPriceFlash],
-  );
+  const eligibility = useLotBidEligibility({
+    auction,
+    sessionUser,
+    lotStatus: pricing.lotStatus,
+    lifecycle: countdown.lifecycle,
+    leadingBidderId: pricing.leadingBidderId,
+    userHasBid: pricing.userHasBid,
+    outbidSignal: pricing.outbidSignal,
+    activeAutoBid: pricing.activeAutoBid,
+    endedBanner: pricing.endedBanner,
+    reserveContext: pricing.reserveContext,
+    noSaleReason: pricing.noSaleReason,
+    isOwnLot,
+  });
 
   const scrollToBid = useCallback(() => {
     document.getElementById("lot-bid-entry")?.scrollIntoView({
@@ -398,34 +111,34 @@ export function useLotBidState({
   }, []);
 
   return {
-    currentPrice,
-    endTime,
-    startTimeMs,
-    lotStatus,
-    leadingBidderId,
-    history,
-    activeAutoBid,
-    setActiveAutoBid,
-    handleAutoBidSaved,
-    lifecycle,
-    countdownClock,
-    timerState,
-    remainingLabel,
-    saleEndLocalLabel,
-    saleStartLocalLabel,
-    position,
-    reserveContext,
-    biddingLive,
-    priceFlash,
-    endedBanner,
-    outbidSignal,
-    userHasBid,
-    applyOwnBidResult,
+    currentPrice: pricing.currentPrice,
+    endTime: pricing.endTime,
+    startTimeMs: pricing.startTimeMs,
+    lotStatus: pricing.lotStatus,
+    leadingBidderId: pricing.leadingBidderId,
+    history: pricing.history,
+    activeAutoBid: pricing.activeAutoBid,
+    setActiveAutoBid: pricing.setActiveAutoBid,
+    handleAutoBidSaved: pricing.handleAutoBidSaved,
+    lifecycle: countdown.lifecycle,
+    countdownClock: countdown.countdownClock,
+    timerState: countdown.timerState,
+    remainingLabel: countdown.remainingLabel,
+    saleEndLocalLabel: countdown.saleEndLocalLabel,
+    saleStartLocalLabel: countdown.saleStartLocalLabel,
+    position: eligibility.position,
+    reserveContext: pricing.reserveContext,
+    biddingLive: countdown.biddingLive,
+    priceFlash: pricing.priceFlash,
+    endedBanner: pricing.endedBanner,
+    noSaleReason: pricing.noSaleReason,
+    outbidSignal: pricing.outbidSignal,
+    userHasBid: pricing.userHasBid,
+    applyOwnBidResult: pricing.applyOwnBidResult,
     scrollToBid,
     scrollToAutoBid,
-    extendedByMs: onlineLifecycle?.extendedByMs ?? null,
-    msRemaining,
-    markLotEndedLocally,
-    noSaleReason,
+    extendedByMs: countdown.extendedByMs,
+    msRemaining: countdown.msRemaining,
+    markLotEndedLocally: pricing.markLotEndedLocally,
   };
 }

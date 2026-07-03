@@ -50,6 +50,8 @@ type Props = {
   connectRequiredByLotId?: ConnectRequiredByLotId;
   /** Precomputed in layout — avoids duplicate readiness work in rail and overview. */
   draftSetupReadiness?: CatalogReadinessResult | null;
+  linkedEventSlug?: string | null;
+  linkedEventTitle?: string | null;
   children: ReactNode;
 };
 
@@ -64,6 +66,8 @@ export function SaleDetailShell({
   canManageSales = false,
   connectRequiredByLotId,
   draftSetupReadiness: draftSetupReadinessProp,
+  linkedEventSlug = null,
+  linkedEventTitle = null,
   children,
 }: Props) {
   const { sale, lots } = bundle;
@@ -255,6 +259,14 @@ export function SaleDetailShell({
             status={<AdminStatusBadge domain="sale" status={sale.status} />}
             quickLinks={[
               ...(liveish ? [{ label: "Open saleroom", href: `/admin/saleroom/${saleId}` }] : []),
+              ...(linkedEventSlug
+                ? [
+                    {
+                      label: linkedEventTitle ?? "Linked RSVP event",
+                      href: `/admin/event-rsvps/${encodeURIComponent(linkedEventSlug)}`,
+                    },
+                  ]
+                : []),
             ]}
             primaryAction={
               saleNav.primaryMetaAction ? (
@@ -282,6 +294,8 @@ export function SaleDetailShell({
             quickRailItems={saleNav.quickRailItems}
             {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
             {...(draftSetupHref ? { draftSetupHref } : {})}
+            linkedEventSlug={linkedEventSlug}
+            linkedEventTitle={linkedEventTitle}
             status={<AdminStatusBadge domain="sale" status={sale.status} />}
             publicHref={publicHref}
           />

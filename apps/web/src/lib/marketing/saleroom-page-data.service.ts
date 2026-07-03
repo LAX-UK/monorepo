@@ -13,7 +13,8 @@ import {
 import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import type { SaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort";
-import type { Category, Sale } from "@auction/types";
+import type { SaleroomCatalogStatusFilter } from "@/lib/marketing/saleroom-page.query";
+import type { Category, Lot, Sale } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 
 const CATALOG_LOAD_ALL_BATCH = 48;
@@ -128,6 +129,26 @@ export class SaleroomPageDataService {
     ]);
 
     return { follow, relatedSales, kycSummary, watchedLotIds, telephoneBooking };
+  }
+
+  filterCatalogLots(
+    lots: Lot[],
+    options: {
+      statusFilter: SaleroomCatalogStatusFilter | null;
+      catalogSearch: string;
+    },
+  ): Lot[] {
+    const searchNeedle = options.catalogSearch.toLowerCase();
+    const accumulatedLotIds = new Set<string>();
+    return lots.filter((lot) => {
+      if (accumulatedLotIds.has(lot.id)) return false;
+      accumulatedLotIds.add(lot.id);
+      if (options.statusFilter === "live" && lot.status !== "active") return false;
+      if (options.statusFilter === "upcoming" && lot.status !== "scheduled") return false;
+      if (options.statusFilter === "ended" && lot.status !== "ended") return false;
+      if (searchNeedle && !lot.title.toLowerCase().includes(searchNeedle)) return false;
+      return true;
+    });
   }
 }
 

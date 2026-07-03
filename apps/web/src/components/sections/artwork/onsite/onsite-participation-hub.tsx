@@ -22,6 +22,7 @@ type Props = {
   buyerEntities: Array<{ id: string; displayName: string; memberRole: string }>;
   telephoneBooking?: TelephoneBookingSnapshot | null;
   orgModuleEnabled?: boolean;
+  assignedPaddle?: number | null;
 };
 
 export function OnsiteParticipationHub({
@@ -37,6 +38,7 @@ export function OnsiteParticipationHub({
   buyerEntities,
   telephoneBooking = null,
   orgModuleEnabled = true,
+  assignedPaddle = null,
 }: Props) {
   return (
     <section
@@ -76,6 +78,11 @@ export function OnsiteParticipationHub({
               account and completed identity verification — staff will assign your paddle at
               reception.
             </p>
+            {assignedPaddle != null ? (
+              <p className="font-body text-sm font-semibold text-primary">
+                Your in-room paddle: {assignedPaddle}
+              </p>
+            ) : null}
           </div>
           <div className="mt-6 flex flex-wrap gap-2 border-t border-outline-variant/10 pt-3">
             <OnsiteVenueDrawer sale={sale}>

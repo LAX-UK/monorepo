@@ -10,6 +10,7 @@ import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { updateProfileImageAction } from "@/lib/actions/profile";
 import { removePhoneNumberService } from "@/lib/auth/services/phone-verification.service";
+import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
 import { useCreateAddressController } from "@/lib/forms/profile/use-create-address-controller";
 import { useProfileMobileController } from "@/lib/forms/profile/use-profile-mobile-controller";
 import { useProfileNameController } from "@/lib/forms/profile/use-profile-name-controller";
@@ -30,19 +31,6 @@ import { CreditCard, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-
-export type ProfileAddressRow = {
-  id: string;
-  label: string;
-  line1: string;
-  line2: string | null;
-  city: string;
-  state: string | null;
-  postalCode: string;
-  country: string;
-  addressType: "shipping" | "billing" | "both";
-  isDefault: boolean;
-};
 
 type Props = {
   initialName: string;

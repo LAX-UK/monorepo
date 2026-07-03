@@ -10,7 +10,7 @@ import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
-import { ScanLine } from "lucide-react";
+import { Plus, ScanLine } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -78,11 +78,20 @@ export default async function AdminEventRsvpsPage() {
           <AdminHubQuickLinks
             ariaLabel="Event RSVPs quick links"
             links={[
+              { href: "/admin/event-rsvps/new", label: "Create event" },
               { href: "/admin/saleroom", label: "Saleroom console" },
               { href: "/admin/sales", label: "Sales" },
               { href: "/admin/invitations", label: "Invitations" },
             ]}
           />
+          <div className="flex justify-end">
+            <Button type="button" size="sm" asChild>
+              <Link href="/admin/event-rsvps/new">
+                <Plus className="mr-2 size-4" />
+                Create event
+              </Link>
+            </Button>
+          </div>
           {!loadError && events.length > 0 ? (
             <Surface className="divide-y divide-border-hairline">
               {events.map((event) => (
@@ -107,6 +116,15 @@ export default async function AdminEventRsvpsPage() {
                     <span className="font-body text-xs text-on-surface-variant">
                       {event.rsvpCount} RSVP{event.rsvpCount === 1 ? "" : "s"}
                     </span>
+                    {event.saleId ? (
+                      <Button type="button" variant="outline" size="sm" asChild>
+                        <Link
+                          href={`/admin/sales/${encodeURIComponent(event.saleId)}/registrations`}
+                        >
+                          Sale check-in
+                        </Link>
+                      </Button>
+                    ) : null}
                     <Button type="button" variant="outline" size="sm" asChild>
                       <Link href={`/admin/event-rsvps/${encodeURIComponent(event.slug)}/check-in`}>
                         <ScanLine className="mr-2 size-4" />

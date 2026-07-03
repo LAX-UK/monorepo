@@ -2,7 +2,7 @@
 
 import { assertSaleroomAccess } from "@/lib/actions/admin/_shared/saleroom-access";
 import { redirectSaleroomError } from "@/lib/actions/admin/_shared/saleroom-redirect";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -17,6 +17,14 @@ const saleroomAdvanceForm = z.object({
   lotId: z.string().uuid(),
 });
 
+function saleroomActionError(body: unknown, fallback: string): string {
+  if (body && typeof body === "object" && "error" in body) {
+    const error = (body as { error?: unknown }).error;
+    if (typeof error === "string" && error.length > 0) return error;
+  }
+  return fallback;
+}
+
 export async function adminSaleroomGoLiveAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "adminSaleroomGoLiveAction",
@@ -29,13 +37,9 @@ export async function adminSaleroomGoLiveAction(formData: FormData): Promise<voi
       }
       const { saleId } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/go-live`,
-        { method: "POST" },
-      );
+      const res = await getWriteContainer().adminSaleroom.goLive(saleId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Go live failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Go live failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -53,15 +57,9 @@ export async function adminSaleroomPauseAction(formData: FormData): Promise<void
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/pause`,
-        {
-          method: "POST",
-        },
-      );
+      const res = await getWriteContainer().adminSaleroom.pause(saleId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Pause failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Pause failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -79,13 +77,9 @@ export async function adminSaleroomResumeAction(formData: FormData): Promise<voi
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/resume`,
-        { method: "POST" },
-      );
+      const res = await getWriteContainer().adminSaleroom.resume(saleId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Resume failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Resume failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -105,17 +99,9 @@ export async function adminSaleroomAdvanceAction(formData: FormData): Promise<vo
         redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid advance")}`);
       const { saleId, lotId } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/advance`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lotId }),
-        },
-      );
+      const res = await getWriteContainer().adminSaleroom.advance(saleId, lotId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Advance failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Advance failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -133,13 +119,9 @@ export async function adminSaleroomHammerAction(formData: FormData): Promise<voi
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/hammer`,
-        { method: "POST" },
-      );
+      const res = await getWriteContainer().adminSaleroom.hammer(saleId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Hammer failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Hammer failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -157,13 +139,9 @@ export async function adminSaleroomNoSaleAction(formData: FormData): Promise<voi
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/no-sale`,
-        { method: "POST" },
-      );
+      const res = await getWriteContainer().adminSaleroom.noSale(saleId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "No sale failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "No sale failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -181,15 +159,9 @@ export async function adminSaleroomCloseAction(formData: FormData): Promise<void
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/close`,
-        {
-          method: "POST",
-        },
-      );
+      const res = await getWriteContainer().adminSaleroom.close(saleId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Close failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Close failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -224,17 +196,9 @@ export async function adminSaleroomDisplayApproveAction(formData: FormData): Pro
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid code")}`);
       const { saleId, userCode } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/display/approve`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userCode: userCode.toUpperCase() }),
-        },
-      );
+      const res = await getWriteContainer().adminSaleroom.displayApprove(saleId, userCode);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Display approve failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Display approve failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -255,17 +219,9 @@ export async function adminSaleroomDisplayOverlayAction(formData: FormData): Pro
         redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid overlay")}`);
       const { saleId, kind, message } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/display/overlay`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kind, ...(message ? { message } : {}) }),
-        },
-      );
+      const res = await getWriteContainer().adminSaleroom.displayOverlay(saleId, kind, message);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Overlay failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Overlay failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -283,13 +239,9 @@ export async function adminSaleroomDisplayClearOverlayAction(formData: FormData)
       if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
       const { saleId } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/display/overlay`,
-        { method: "DELETE" },
-      );
+      const res = await getWriteContainer().adminSaleroom.displayClearOverlay(saleId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Clear overlay failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Clear overlay failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },
@@ -309,17 +261,9 @@ export async function adminSaleroomDisplayRevokeAction(formData: FormData): Prom
         redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid revoke")}`);
       const { saleId, pairingId } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/saleroom/display/revoke`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pairingId }),
-        },
-      );
+      const res = await getWriteContainer().adminSaleroom.displayRevoke(saleId, pairingId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Revoke failed");
+        redirectSaleroomError(saleId, saleroomActionError(res.body, "Revoke failed"));
       }
       revalidatePath(`/admin/saleroom/${saleId}`);
     },

@@ -155,6 +155,8 @@ export type SaleRegistrationMineRow = {
   requestedAt: string;
   bidLimit: string | null;
   rejectionReason: string | null;
+  paddleNumber: number | null;
+  checkedInAt: string | null;
 };
 
 const saleRegistrationStatuses = ["pending", "approved", "rejected", "withdrawn"] as const;
@@ -175,6 +177,11 @@ function parseSaleRegistrationMine(raw: unknown): SaleRegistrationMineRow {
     requestedAt: typeof o.requestedAt === "string" ? o.requestedAt : "",
     bidLimit: o.bidLimit == null ? null : String(o.bidLimit),
     rejectionReason: o.rejectionReason == null ? null : String(o.rejectionReason),
+    paddleNumber:
+      typeof o.paddleNumber === "number" && Number.isInteger(o.paddleNumber)
+        ? o.paddleNumber
+        : null,
+    checkedInAt: typeof o.checkedInAt === "string" ? o.checkedInAt : null,
   };
 }
 

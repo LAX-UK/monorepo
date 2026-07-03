@@ -1,5 +1,5 @@
 import "server-only";
-import type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
+import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
 
 import { authedServerFetch } from "./authed-fetch.server";
 

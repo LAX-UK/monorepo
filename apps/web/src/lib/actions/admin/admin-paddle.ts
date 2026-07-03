@@ -1,9 +1,9 @@
 "use server";
 
+import { readApiActionErrorMeta, readApiError } from "@/lib/actions/_utils";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
-import { parseAdminCheckInCandidate } from "@/lib/data/http/admin.server";
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
   actionFailure,
@@ -23,6 +23,7 @@ const saleroomCheckInForm = z.object({
   saleId: z.string().uuid(),
   userId: z.string().min(1).max(191),
   buyerLegalEntityId: z.string().uuid(),
+  assignPaddle: z.boolean().default(true),
   bidLimit: z.coerce.number().finite().positive().max(1e12).optional(),
   paddleNumber: z.coerce.number().int().min(100).optional(),
 });
@@ -40,26 +41,23 @@ export async function adminSaleroomCheckInCandidatesResultAction(
     }
 
     const { saleId, q } = parsed.data;
-    const res = await authedServerFetch(
-      `/admin/sales/${encodeURIComponent(saleId)}/registrations/check-in-candidates?${new URLSearchParams({ q }).toString()}`,
-      { cache: "no-store" },
-    );
-
+    const res = await getWriteContainer().adminPaddle.checkInCandidates(saleId, q);
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(payload.error ?? "Could not search clients");
+      return actionFailure(
+        readApiError(res.body, "Could not search clients"),
+        undefined,
+        res.status,
+        res.code,
+      );
     }
-
-    const json = (await res.json()) as { data?: { items?: unknown[] } };
-    const items = (json.data?.items ?? []).map((row) => parseAdminCheckInCandidate(row));
-    return actionSuccess({ items });
+    return actionSuccess({ items: res.data.items });
   });
 }
 
 export async function adminSaleroomCheckInResultAction(input: unknown): Promise<
   ActionResult<{
     registrationId: string;
-    paddleNumber: number;
+    paddleNumber: number | null;
     checkedInAt: string;
     bidLimit?: string;
   }>
@@ -73,44 +71,18 @@ export async function adminSaleroomCheckInResultAction(input: unknown): Promise<
       return actionFailure(firstZodErrorMessage(parsed.error));
     }
 
-    const body = parsed.data;
-    const res = await authedServerFetch(
-      `/admin/sales/${encodeURIComponent(body.saleId)}/registrations/check-in`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: body.userId,
-          buyerLegalEntityId: body.buyerLegalEntityId,
-          ...(body.bidLimit != null ? { bidLimit: body.bidLimit } : {}),
-          ...(body.paddleNumber != null ? { paddleNumber: body.paddleNumber } : {}),
-        }),
-      },
-    );
-
+    const res = await getWriteContainer().adminPaddle.checkIn(parsed.data);
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
-      return actionFailure(payload.error ?? "Check-in failed", undefined, res.status, payload.code);
+      const meta = readApiActionErrorMeta(res.body);
+      return actionFailure(
+        readApiError(res.body, "Check-in failed"),
+        undefined,
+        res.status,
+        res.code,
+        meta,
+      );
     }
-
-    const json = (await res.json()) as {
-      data?: {
-        registrationId?: string;
-        paddleNumber?: number;
-        checkedInAt?: string;
-        bidLimit?: string;
-      };
-    };
-    const data = json.data;
-    if (!data?.registrationId || data.paddleNumber == null || !data.checkedInAt) {
-      return actionFailure("Unexpected response from server");
-    }
-    return actionSuccess({
-      registrationId: data.registrationId,
-      paddleNumber: data.paddleNumber,
-      checkedInAt: data.checkedInAt,
-      ...(data.bidLimit != null ? { bidLimit: data.bidLimit } : {}),
-    });
+    return actionSuccess(res.data);
   });
 }
 
@@ -144,24 +116,20 @@ export async function adminAssignPaddleResultAction(
     }
 
     const { saleId, registrationId, paddleNumber } = parsed.data;
-    const res = await authedServerFetch(
-      `/admin/sales/${encodeURIComponent(saleId)}/registrations/${encodeURIComponent(registrationId)}/paddle`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(paddleNumber != null ? { paddleNumber } : {}),
-      },
+    const res = await getWriteContainer().adminPaddle.assignPaddle(
+      saleId,
+      registrationId,
+      paddleNumber,
     );
-
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(payload.error ?? "Paddle assignment failed");
+      return actionFailure(
+        readApiError(res.body, "Paddle assignment failed"),
+        undefined,
+        res.status,
+        res.code,
+      );
     }
-
-    const json = (await res.json()) as { data?: { paddleNumber?: number } };
-    const assigned = json.data?.paddleNumber;
-    if (assigned == null) return actionFailure("Unexpected response from server");
-    return actionSuccess({ paddleNumber: assigned });
+    return actionSuccess(res.data);
   });
 }
 
@@ -178,17 +146,16 @@ export async function adminClearPaddleResultAction(
     }
 
     const { saleId, registrationId } = parsed.data;
-    const res = await authedServerFetch(
-      `/admin/sales/${encodeURIComponent(saleId)}/registrations/${encodeURIComponent(registrationId)}/paddle`,
-      { method: "DELETE" },
-    );
-
+    const res = await getWriteContainer().adminPaddle.clearPaddle(saleId, registrationId);
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(payload.error ?? "Clear paddle failed");
+      return actionFailure(
+        readApiError(res.body, "Clear paddle failed"),
+        undefined,
+        res.status,
+        res.code,
+      );
     }
-
-    return actionSuccess({ ok: true });
+    return actionSuccess(res.data);
   });
 }
 
@@ -204,27 +171,15 @@ export async function adminPaddlePlaceBidResultAction(
       return actionFailure(firstZodErrorMessage(parsed.error));
     }
 
-    const body = parsed.data;
-    const res = await authedServerFetch("/admin/saleroom/paddle-bids", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        saleId: body.saleId,
-        lotId: body.lotId,
-        paddleNumber: body.paddleNumber,
-        amount: body.amount,
-        ...(body.maxAutoBidAmount != null ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
-      }),
-    });
-
+    const res = await getWriteContainer().adminPaddle.placeBid(parsed.data);
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(payload.error ?? "Paddle bid failed");
+      return actionFailure(
+        readApiError(res.body, "Paddle bid failed"),
+        undefined,
+        res.status,
+        res.code,
+      );
     }
-
-    const json = (await res.json()) as { data?: { id?: string } };
-    const bidId = json.data?.id;
-    if (!bidId) return actionFailure("Unexpected response from server");
-    return actionSuccess({ bidId });
+    return actionSuccess(res.data);
   });
 }

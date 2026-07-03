@@ -1,7 +1,8 @@
 "use server";
 
+import { readApiError } from "@/lib/actions/_utils";
 import { assertAdminCapabilityForRedirect } from "@/lib/auth/assert-admin-action-capability";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { firstZodErrorMessage } from "@/lib/forms/form-result";
 import { LOT_FULFILMENT_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
@@ -67,17 +68,14 @@ export async function adminLotFulfilmentReleaseAction(formData: FormData): Promi
           ),
         );
       }
-      const res = await authedServerFetch(
-        `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/release`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(bodyParsed.data),
-        },
+      const res = await getWriteContainer().adminLotFulfilment.release(
+        lotParsed.data.lotId,
+        bodyParsed.data,
       );
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Release failed"));
+        redirect(
+          lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Release failed")),
+        );
       }
       revalidatePath("/admin/lot-fulfilment");
       revalidatePath("/admin/payments");
@@ -112,17 +110,14 @@ export async function adminLotFulfilmentShipAction(formData: FormData): Promise<
           ),
         );
       }
-      const res = await authedServerFetch(
-        `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/ship`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(bodyParsed.data),
-        },
+      const res = await getWriteContainer().adminLotFulfilment.ship(
+        lotParsed.data.lotId,
+        bodyParsed.data,
       );
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Ship update failed"));
+        redirect(
+          lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Ship update failed")),
+        );
       }
       revalidatePath("/admin/lot-fulfilment");
       revalidatePath("/admin/payments");
@@ -147,13 +142,11 @@ export async function adminLotFulfilmentReadyForCollectionAction(
       if (!lotParsed.success) {
         redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
       }
-      const res = await authedServerFetch(
-        `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/ready-for-collection`,
-        { method: "POST" },
+      const res = await getWriteContainer().adminLotFulfilment.readyForCollection(
+        lotParsed.data.lotId,
       );
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Update failed"));
+        redirect(lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Update failed")));
       }
       revalidatePath("/admin/lot-fulfilment");
       revalidatePath("/admin/payments");
@@ -176,13 +169,9 @@ export async function adminLotFulfilmentDeliveredAction(formData: FormData): Pro
       if (!lotParsed.success) {
         redirect(lotFulfilmentQueueErrorUrl(returnStatus, "Invalid lot"));
       }
-      const res = await authedServerFetch(
-        `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/delivered`,
-        { method: "POST" },
-      );
+      const res = await getWriteContainer().adminLotFulfilment.delivered(lotParsed.data.lotId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Update failed"));
+        redirect(lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Update failed")));
       }
       revalidatePath("/admin/lot-fulfilment");
       revalidatePath("/admin/payments");
@@ -216,17 +205,12 @@ export async function adminLotFulfilmentCollectedAction(formData: FormData): Pro
           ),
         );
       }
-      const res = await authedServerFetch(
-        `/admin/lot-fulfilment/${encodeURIComponent(lotParsed.data.lotId)}/collected`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(bodyParsed.data),
-        },
+      const res = await getWriteContainer().adminLotFulfilment.collected(
+        lotParsed.data.lotId,
+        bodyParsed.data,
       );
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirect(lotFulfilmentQueueErrorUrl(returnStatus, payload.error ?? "Update failed"));
+        redirect(lotFulfilmentQueueErrorUrl(returnStatus, readApiError(res.body, "Update failed")));
       }
       revalidatePath("/admin/lot-fulfilment");
       revalidatePath("/admin/payments");

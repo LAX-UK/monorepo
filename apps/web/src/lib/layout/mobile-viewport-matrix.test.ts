@@ -27,7 +27,7 @@ function usesPageBottomPadding(routeSrc: string): boolean {
 const LONG_SCROLL_ROUTES = [
   {
     label: "sales browse",
-    path: "app/(marketing)/sales/page.tsx",
+    path: "components/sections/sales/sales-browse-view.tsx",
   },
   {
     label: "sales browse loading",
@@ -43,7 +43,7 @@ const LONG_SCROLL_ROUTES = [
   },
   {
     label: "artist profile",
-    path: "app/(marketing)/artist/[slug]/[id]/page.tsx",
+    path: "components/sections/artists/artist-detail-view.tsx",
   },
   {
     label: "artist loading",

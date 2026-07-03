@@ -1,10 +1,11 @@
 "use server";
 
+import { readApiError } from "@/lib/actions/_utils";
 import { assertSaleroomAccess } from "@/lib/actions/admin/_shared/saleroom-access";
 import { redirectSaleroomError } from "@/lib/actions/admin/_shared/saleroom-redirect";
 import { revalidateAdminSaleDetail } from "@/lib/actions/revalidate-admin-sale-detail";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
   actionFailure,
@@ -58,16 +59,18 @@ async function postTelephoneBookingAction(
   bookingId: string,
   action: string,
   body?: Record<string, unknown>,
-): Promise<Response> {
+): Promise<{ ok: true } | { ok: false; body?: unknown }> {
   await assertSaleroomAccess(saleId);
-  return authedServerFetch(
-    `/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings/${encodeURIComponent(bookingId)}/${action}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body ?? {}),
-    },
+  const res = await getWriteContainer().adminTelephone.bookingAction(
+    saleId,
+    bookingId,
+    action,
+    body,
   );
+  if (!res.ok) {
+    return { ok: false, body: res.body };
+  }
+  return { ok: true };
 }
 
 function revalidateTelephoneBookingPaths(saleId: string) {
@@ -89,8 +92,7 @@ export async function adminTelephoneBookingConfirmAction(formData: FormData): Pr
       const { saleId, bookingId } = parsed.data;
       const res = await postTelephoneBookingAction(saleId, bookingId, "confirm");
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectTelephoneBookingError(saleId, payload.error ?? "Confirm failed");
+        redirectTelephoneBookingError(saleId, readApiError(res.body, "Confirm failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
@@ -114,8 +116,7 @@ export async function adminTelephoneBookingAssignClerkAction(formData: FormData)
         clerkUserId,
       });
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectTelephoneBookingError(saleId, payload.error ?? "Assign clerk failed");
+        redirectTelephoneBookingError(saleId, readApiError(res.body, "Assign clerk failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
@@ -138,8 +139,7 @@ export async function adminTelephoneBookingApproveLimitIncreaseAction(
       const { saleId, bookingId } = parsed.data;
       const res = await postTelephoneBookingAction(saleId, bookingId, "approve-limit-increase");
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectTelephoneBookingError(saleId, payload.error ?? "Approve limit failed");
+        redirectTelephoneBookingError(saleId, readApiError(res.body, "Approve limit failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
@@ -161,8 +161,7 @@ export async function adminTelephoneBookingStartLineAction(formData: FormData): 
       const { saleId, bookingId, lotId } = parsed.data;
       const res = await postTelephoneBookingAction(saleId, bookingId, "start-line", { lotId });
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Start line failed");
+        redirectSaleroomError(saleId, readApiError(res.body, "Start line failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
@@ -184,8 +183,7 @@ export async function adminTelephoneBookingCompleteLineAction(formData: FormData
       const { saleId, bookingId, lotId } = parsed.data;
       const res = await postTelephoneBookingAction(saleId, bookingId, "complete-line", { lotId });
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectSaleroomError(saleId, payload.error ?? "Complete line failed");
+        redirectSaleroomError(saleId, readApiError(res.body, "Complete line failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
@@ -206,8 +204,7 @@ export async function adminTelephoneBookingCloseAction(formData: FormData): Prom
       const { saleId, bookingId } = parsed.data;
       const res = await postTelephoneBookingAction(saleId, bookingId, "close");
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectTelephoneBookingError(saleId, payload.error ?? "Close failed");
+        redirectTelephoneBookingError(saleId, readApiError(res.body, "Close failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
@@ -234,8 +231,7 @@ export async function adminTelephoneBookingCancelAction(formData: FormData): Pro
         reason ? { reason } : {},
       );
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectTelephoneBookingError(saleId, payload.error ?? "Cancel failed");
+        redirectTelephoneBookingError(saleId, readApiError(res.body, "Cancel failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
@@ -256,17 +252,9 @@ export async function adminTelephoneBookingNotesAction(formData: FormData): Prom
       if (!parsed.success) redirectTelephoneBookingError("", "Invalid notes");
       const { saleId, bookingId, notes } = parsed.data;
       await assertSaleroomAccess(saleId);
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings/${encodeURIComponent(bookingId)}/notes`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes }),
-        },
-      );
+      const res = await getWriteContainer().adminTelephone.updateNotes(saleId, bookingId, notes);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
-        redirectTelephoneBookingError(saleId, payload.error ?? "Save notes failed");
+        redirectTelephoneBookingError(saleId, readApiError(res.body, "Save notes failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings`);
@@ -287,28 +275,15 @@ export async function adminTelephonePlaceBidResultAction(
       return actionFailure(firstZodErrorMessage(parsed.error));
     }
 
-    const body = parsed.data;
-    const res = await authedServerFetch("/admin/saleroom/telephone-bids", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        lotId: body.lotId,
-        buyerUserId: body.buyerUserId,
-        buyerLegalEntityId: body.buyerLegalEntityId,
-        amount: body.amount,
-        ...(body.maxAutoBidAmount != null ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
-        ...(body.telephoneBookingId ? { telephoneBookingId: body.telephoneBookingId } : {}),
-      }),
-    });
-
+    const res = await getWriteContainer().adminTelephone.placeBid(parsed.data);
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      return actionFailure(payload.error ?? "Telephone bid failed");
+      return actionFailure(
+        readApiError(res.body, "Telephone bid failed"),
+        undefined,
+        res.status,
+        res.code,
+      );
     }
-
-    const json = (await res.json()) as { data?: { id?: string } };
-    const bidId = json.data?.id;
-    if (!bidId) return actionFailure("Unexpected response from server");
-    return actionSuccess({ bidId });
+    return actionSuccess(res.data);
   });
 }

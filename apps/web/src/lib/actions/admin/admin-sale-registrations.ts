@@ -1,7 +1,8 @@
 "use server";
 
+import { readApiError } from "@/lib/actions/_utils";
 import { assertAdminCapabilityForRedirect } from "@/lib/auth/assert-admin-action-capability";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { revalidatePath } from "next/cache";
@@ -29,14 +30,10 @@ export async function adminApproveSaleRegistrationAction(formData: FormData): Pr
         redirect(`/admin/sales?error=${encodeURIComponent("Invalid registration")}`);
       }
       const { saleId, registrationId } = parsed.data;
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/registrations/${encodeURIComponent(registrationId)}/approve`,
-        { method: "POST" },
-      );
+      const res = await getWriteContainer().adminSaleRegistrations.approve(saleId, registrationId);
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
         redirect(
-          `/admin/sales/${encodeURIComponent(saleId)}/registrations?error=${encodeURIComponent(payload.error ?? "Approve failed")}`,
+          `/admin/sales/${encodeURIComponent(saleId)}/registrations?error=${encodeURIComponent(readApiError(res.body, "Approve failed"))}`,
         );
       }
       revalidatePath(`/admin/sales/${saleId}/registrations`);
@@ -63,18 +60,14 @@ export async function adminRejectSaleRegistrationAction(formData: FormData): Pro
       }
       const { saleId, registrationId } = parsed.data;
       const reasonRaw = String(formData.get("reason") ?? "").trim();
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/registrations/${encodeURIComponent(registrationId)}/reject`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(reasonRaw ? { reason: reasonRaw } : {}),
-        },
+      const res = await getWriteContainer().adminSaleRegistrations.reject(
+        saleId,
+        registrationId,
+        reasonRaw || undefined,
       );
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
         redirect(
-          `/admin/sales/${encodeURIComponent(saleId)}/registrations?error=${encodeURIComponent(payload.error ?? "Reject failed")}`,
+          `/admin/sales/${encodeURIComponent(saleId)}/registrations?error=${encodeURIComponent(readApiError(res.body, "Reject failed"))}`,
         );
       }
       revalidatePath(`/admin/sales/${saleId}/registrations`);
@@ -108,18 +101,14 @@ export async function adminUpdateSaleRegistrationBidLimitAction(formData: FormDa
               const n = Number.parseFloat(limitRaw);
               return Number.isFinite(n) && n > 0 ? n : null;
             })();
-      const res = await authedServerFetch(
-        `/admin/sales/${encodeURIComponent(saleId)}/registrations/${encodeURIComponent(registrationId)}/bid-limit`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bidLimit }),
-        },
+      const res = await getWriteContainer().adminSaleRegistrations.updateBidLimit(
+        saleId,
+        registrationId,
+        bidLimit,
       );
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: string };
         redirect(
-          `/admin/sales/${encodeURIComponent(saleId)}/registrations?error=${encodeURIComponent(payload.error ?? "Could not update bid limit")}`,
+          `/admin/sales/${encodeURIComponent(saleId)}/registrations?error=${encodeURIComponent(readApiError(res.body, "Could not update bid limit"))}`,
         );
       }
       revalidatePath(`/admin/sales/${saleId}/registrations`);

@@ -11,9 +11,14 @@ vi.mock("@/lib/auth/assert-admin-action-capability", () => ({
   denyUnlessAdminCapability: (...args: unknown[]) => denyUnlessAdminCapability(...args),
 }));
 
-const authedServerFetch = vi.fn();
-vi.mock("@/lib/data/http/authed-server-fetch", () => ({
-  authedServerFetch: (...args: unknown[]) => authedServerFetch(...args),
+const list = vi.fn();
+const create = vi.fn();
+const regenerate = vi.fn();
+const getAnalytics = vi.fn();
+vi.mock("@/lib/data/write-container.server", () => ({
+  getWriteContainer: () => ({
+    adminQrCodes: { list, create, regenerate, getAnalytics },
+  }),
 }));
 
 import {
@@ -48,25 +53,20 @@ const qrItem = {
   placement: "admin",
 };
 
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
-
 describe("admin QR code actions", () => {
   beforeEach(() => {
     denyUnlessAdminCapability.mockReset();
-    authedServerFetch.mockReset();
+    list.mockReset();
+    create.mockReset();
+    regenerate.mockReset();
+    getAnalytics.mockReset();
     denyUnlessAdminCapability.mockResolvedValue(null);
   });
 
   it("loads or creates the default QR code and fetches analytics", async () => {
-    authedServerFetch
-      .mockResolvedValueOnce(jsonResponse({ data: { items: [] } }))
-      .mockResolvedValueOnce(jsonResponse({ data: qrItem }, 201))
-      .mockResolvedValueOnce(jsonResponse({ data: analyticsPayload }));
+    list.mockResolvedValueOnce({ ok: true, data: [], status: 200 });
+    create.mockResolvedValueOnce({ ok: true, data: qrItem, status: 201 });
+    getAnalytics.mockResolvedValueOnce({ ok: true, data: analyticsPayload, status: 200 });
 
     const result = await adminLoadQrCodeDialogResultAction("lot", uuid);
 
@@ -75,15 +75,11 @@ describe("admin QR code actions", () => {
       expect(result.data?.item.shortUrl).toBe(qrItem.shortUrl);
       expect(result.data?.analytics?.totalScans).toBe(3);
     }
-    expect(authedServerFetch).toHaveBeenNthCalledWith(
-      2,
-      "/admin/qr-codes",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ entityType: "lot", entityId: uuid, placement: "admin" }),
-        skipActingLegalEntityHeader: true,
-      }),
-    );
+    expect(create).toHaveBeenCalledWith({
+      entityType: "lot",
+      entityId: uuid,
+      placement: "admin",
+    });
   });
 
   it("returns capability denial before calling the API", async () => {
@@ -96,11 +92,12 @@ describe("admin QR code actions", () => {
     const result = await adminLoadQrCodeDialogResultAction("lot", uuid);
 
     expect(result.ok).toBe(false);
-    expect(authedServerFetch).not.toHaveBeenCalled();
+    expect(list).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("ensures lot QR codes for printing", async () => {
-    authedServerFetch.mockResolvedValue(jsonResponse({ data: qrItem }, 201));
+    create.mockResolvedValue({ ok: true, data: qrItem, status: 201 });
 
     const result = await adminEnsureLotQrCodesForPrintResultAction([
       { id: uuid, title: "Lot title", lotNumber: 7 },
@@ -110,39 +107,28 @@ describe("admin QR code actions", () => {
     if (result.ok) {
       expect(result.data?.[0]?.shortUrl).toBe(qrItem.shortUrl);
     }
-    expect(authedServerFetch).toHaveBeenCalledWith(
-      "/admin/qr-codes",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ entityType: "lot", entityId: uuid, placement: "gallery-label" }),
-      }),
-    );
+    expect(create).toHaveBeenCalledWith({
+      entityType: "lot",
+      entityId: uuid,
+      placement: "gallery-label",
+    });
   });
 
   it("loads analytics for a selected range", async () => {
-    authedServerFetch.mockResolvedValue(jsonResponse({ data: analyticsPayload }));
+    getAnalytics.mockResolvedValue({ ok: true, data: analyticsPayload, status: 200 });
 
     const result = await adminLoadQrCodeAnalyticsResultAction(qrItem.id, { range: "24h" });
 
     expect(result.ok).toBe(true);
-    expect(authedServerFetch).toHaveBeenCalledWith(
-      `/admin/qr-codes/${qrItem.id}/analytics?range=24h`,
-      expect.objectContaining({ skipActingLegalEntityHeader: true }),
-    );
+    expect(getAnalytics).toHaveBeenCalledWith(qrItem.id, { range: "24h" });
   });
 
   it("regenerates a QR code through the admin API", async () => {
-    authedServerFetch.mockResolvedValue(jsonResponse({ data: qrItem }, 201));
+    regenerate.mockResolvedValue({ ok: true, data: qrItem, status: 201 });
 
     const result = await adminRegenerateQrCodeResultAction("lot", uuid);
 
     expect(result.ok).toBe(true);
-    expect(authedServerFetch).toHaveBeenCalledWith(
-      "/admin/qr-codes/regenerate",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ entityType: "lot", entityId: uuid }),
-      }),
-    );
+    expect(regenerate).toHaveBeenCalledWith({ entityType: "lot", entityId: uuid });
   });
 });

@@ -56,4 +56,4 @@ export type OrgOnboardingResumeVm = {
   resumeHref: string;
 };
 
-export type { ProfileAddressRow } from "@/components/dashboard/profile-settings-board";
+export type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";

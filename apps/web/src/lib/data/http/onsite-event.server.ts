@@ -56,6 +56,7 @@ function parseListItem(value: unknown): OnsiteEventListItem | null {
     rsvpCloseAt: typeof row.rsvpCloseAt === "string" ? row.rsvpCloseAt : null,
     status: row.status as OnsiteEventListItem["status"],
     rsvpCount: row.rsvpCount,
+    saleId: typeof row.saleId === "string" ? row.saleId : null,
   };
 }
 
@@ -103,9 +104,11 @@ function parseAdminDetail(value: unknown): OnsiteEventAdminDetail | null {
     venue: typeof row.venue === "string" ? row.venue : null,
     dressCode: typeof row.dressCode === "string" ? row.dressCode : null,
     arrivalNote: typeof row.arrivalNote === "string" ? row.arrivalNote : null,
+    opsEmail: typeof row.opsEmail === "string" ? row.opsEmail : null,
     checkInDryRun: row.checkInDryRun,
     rsvpCount: row.rsvpCount,
     checkedInCount: row.checkedInCount,
+    saleId: typeof row.saleId === "string" ? row.saleId : null,
   };
 }
 

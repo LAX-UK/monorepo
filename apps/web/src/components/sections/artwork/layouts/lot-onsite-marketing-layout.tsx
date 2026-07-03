@@ -51,6 +51,7 @@ type Props = {
   isSaleQueueLoading?: boolean;
   saleForLifecycle: SaleLifecyclePick;
   overview: SaleOverviewVM;
+  participationHub?: ReactNode;
 };
 
 function locationOneLine(sale: Sale): string {
@@ -79,6 +80,7 @@ export function LotOnsiteMarketingLayout({
   isSaleQueueLoading = false,
   saleForLifecycle,
   overview,
+  participationHub = null,
 }: Props) {
   const streamPosterUrl = auction.images[0] ?? sale.coverImages[0] ?? null;
   const streamCtx = resolveSaleStreamContext({
@@ -159,6 +161,8 @@ export function LotOnsiteMarketingLayout({
               overview={overview}
               locationLine={locationLine}
             />
+
+            {participationHub}
 
             {accordionBlocks.length > 0 ? (
               <div className="mx-auto w-full max-w-[900px]">

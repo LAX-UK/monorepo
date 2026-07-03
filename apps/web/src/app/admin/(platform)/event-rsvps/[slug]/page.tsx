@@ -2,6 +2,7 @@ import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { OnsiteEventAdminPanel } from "@/components/admin/event-rsvps/onsite-event-admin-panel";
 import { OnsiteEventRefreshOnReturn } from "@/components/admin/event-rsvps/onsite-event-refresh-on-return";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
 import {
   getAdminOnsiteEventDetail,
   getAdminOnsiteEventRsvps,
@@ -30,6 +31,12 @@ export default async function AdminOnsiteEventPage({ params, searchParams }: Pro
 
   let detail: Awaited<ReturnType<typeof getAdminOnsiteEventDetail>> = null;
   let rsvps: Awaited<ReturnType<typeof getAdminOnsiteEventRsvps>> = [];
+  let venueDayCounts: {
+    rsvped: number;
+    galaCheckedIn: number;
+    salePresent: number;
+    paddled: number;
+  } | null = null;
   let loadError: string | null = null;
 
   try {
@@ -39,6 +46,14 @@ export default async function AdminOnsiteEventPage({ params, searchParams }: Pro
       rsvps = await getAdminOnsiteEventRsvps(slug);
     } catch (e) {
       loadError = e instanceof Error ? e.message : "Could not load RSVPs.";
+    }
+    if (detail.saleId) {
+      try {
+        const linked = await getAdminExpectedGuests(detail.saleId);
+        venueDayCounts = linked.counts;
+      } catch {
+        // Non-fatal — RSVP list still renders.
+      }
     }
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Could not load onsite event data.";
@@ -65,6 +80,8 @@ export default async function AdminOnsiteEventPage({ params, searchParams }: Pro
         title={detail.title}
         segmentOptions={detail.segmentOptions}
         micrositeUrl={detail.micrositeUrl}
+        saleId={detail.saleId}
+        venueDayCounts={venueDayCounts}
         rsvps={rsvps}
         error={error ?? loadError}
       />

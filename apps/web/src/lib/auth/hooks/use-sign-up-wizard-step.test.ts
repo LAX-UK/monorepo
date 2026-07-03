@@ -1,7 +1,7 @@
+import type { SignUpFormValues } from "@/lib/auth/schemas";
 import { act, renderHook } from "@testing-library/react";
 import { useForm } from "react-hook-form";
 import { describe, expect, it } from "vitest";
-import type { SignUpFormValues } from "@/lib/auth/schemas";
 import { useSignUpWizardStep } from "./use-sign-up-wizard-step";
 
 function renderWizardStep(initialStep: "persona" | "details" = "persona") {
@@ -18,9 +18,7 @@ function renderWizardStep(initialStep: "persona" | "details" = "persona") {
       },
     }),
   );
-  const { result } = renderHook(() =>
-    useSignUpWizardStep(formResult.current, initialStep),
-  );
+  const { result } = renderHook(() => useSignUpWizardStep(formResult.current, initialStep));
   return { form: formResult.current, wizard: result };
 }
 

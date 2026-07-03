@@ -7,20 +7,24 @@ import {
   buildSofListHref,
 } from "@/lib/admin/sof-list-query";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-async function apiError(res: Response, fallback: string): Promise<string> {
+function serviceErrorMessage(body: unknown, fallback: string, status: number): string {
   try {
-    const body = (await res.json()) as { error?: unknown };
-    const raw = normalizeApiErrorMessage(body.error, fallback);
+    const raw = normalizeApiErrorMessage(
+      body && typeof body === "object" && "error" in body
+        ? (body as { error?: unknown }).error
+        : body,
+      fallback,
+    );
     return complianceErrorMessage(raw);
   } catch {
-    return `${fallback} (${res.status})`;
+    return `${fallback} (${status})`;
   }
 }
 
@@ -63,15 +67,14 @@ export async function amlTriageAction(formData: FormData): Promise<void> {
       redirectAml(undefined, "Invalid triage form");
     }
 
-    const res = await authedServerFetch(
-      `/admin/compliance/aml/screenings/${encodeURIComponent(screeningId)}/triage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recommendation, notes: notes || undefined }),
-      },
+    const res = await getWriteContainer().adminCompliance.amlTriage(
+      screeningId,
+      recommendation as "clear" | "block",
+      notes || undefined,
     );
-    if (!res.ok) redirectAml(undefined, await apiError(res, "Triage failed"));
+    if (!res.ok) {
+      redirectAml(undefined, serviceErrorMessage(res.body, "Triage failed", res.status));
+    }
 
     revalidatePath("/admin/compliance/aml");
     revalidatePath("/admin");
@@ -91,15 +94,14 @@ export async function amlDecideAction(formData: FormData): Promise<void> {
       redirectAml(undefined, "Invalid decision form");
     }
 
-    const res = await authedServerFetch(
-      `/admin/compliance/aml/screenings/${encodeURIComponent(screeningId)}/decide`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision, notes: notes || undefined }),
-      },
+    const res = await getWriteContainer().adminCompliance.amlDecide(
+      screeningId,
+      decision as "clear" | "block",
+      notes || undefined,
     );
-    if (!res.ok) redirectAml(undefined, await apiError(res, "Decision failed"));
+    if (!res.ok) {
+      redirectAml(undefined, serviceErrorMessage(res.body, "Decision failed", res.status));
+    }
 
     revalidatePath("/admin/compliance/aml");
     revalidatePath("/admin/payments");
@@ -120,15 +122,14 @@ export async function sofTriageAction(formData: FormData): Promise<void> {
       redirectSof(undefined, "Invalid triage form");
     }
 
-    const res = await authedServerFetch(
-      `/admin/compliance/source-of-funds/${encodeURIComponent(caseId)}/triage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recommendation, notes: notes || undefined }),
-      },
+    const res = await getWriteContainer().adminCompliance.sofTriage(
+      caseId,
+      recommendation as "approve" | "reject",
+      notes || undefined,
     );
-    if (!res.ok) redirectSof(undefined, await apiError(res, "Triage failed"), caseId);
+    if (!res.ok) {
+      redirectSof(undefined, serviceErrorMessage(res.body, "Triage failed", res.status), caseId);
+    }
 
     revalidatePath("/admin/compliance/source-of-funds");
     revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
@@ -149,15 +150,14 @@ export async function sofDecideAction(formData: FormData): Promise<void> {
       redirectSof(undefined, "Invalid decision form");
     }
 
-    const res = await authedServerFetch(
-      `/admin/compliance/source-of-funds/${encodeURIComponent(caseId)}/decide`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision, notes: notes || undefined }),
-      },
+    const res = await getWriteContainer().adminCompliance.sofDecide(
+      caseId,
+      decision as "approve" | "reject",
+      notes || undefined,
     );
-    if (!res.ok) redirectSof(undefined, await apiError(res, "Decision failed"), caseId);
+    if (!res.ok) {
+      redirectSof(undefined, serviceErrorMessage(res.body, "Decision failed", res.status), caseId);
+    }
 
     revalidatePath("/admin/compliance/source-of-funds");
     revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
@@ -180,11 +180,10 @@ export async function sofReopenAction(formData: FormData): Promise<void> {
     const caseId = String(formData.get("caseId") ?? "").trim();
     if (!caseId) redirectSof(undefined, "Case id is required");
 
-    const res = await authedServerFetch(
-      `/admin/compliance/source-of-funds/${encodeURIComponent(caseId)}/reopen`,
-      { method: "POST" },
-    );
-    if (!res.ok) redirectSof(undefined, await apiError(res, "Reopen failed"), caseId);
+    const res = await getWriteContainer().adminCompliance.sofReopen(caseId);
+    if (!res.ok) {
+      redirectSof(undefined, serviceErrorMessage(res.body, "Reopen failed", res.status), caseId);
+    }
 
     revalidatePath("/admin/compliance/source-of-funds");
     revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
@@ -219,18 +218,14 @@ export async function downloadSofDocumentAction(
       return { ok: false as const, error: "Document id is required" };
     }
 
-    const res = await authedServerFetch(
-      `/admin/compliance/source-of-funds/${encodeURIComponent(id)}/documents/${encodeURIComponent(docId)}/download`,
-    );
+    const res = await getWriteContainer().adminCompliance.downloadSofDocument(id, docId);
     if (!res.ok) {
-      return { ok: false as const, error: await apiError(res, "Download failed") };
+      return {
+        ok: false as const,
+        error: serviceErrorMessage(res.body, "Download failed", res.status),
+      };
     }
-    const body = (await res.json().catch(() => ({}))) as { data?: { url?: unknown } };
-    const url = typeof body.data?.url === "string" ? body.data.url : null;
-    if (!url) {
-      return { ok: false as const, error: "Download URL unavailable" };
-    }
-    return { ok: true as const, url };
+    return { ok: true as const, url: res.data.url };
   });
 }
 
@@ -249,17 +244,14 @@ export async function downloadAllSofDocumentsAction(
       return { ok: false as const, error: "Case id is required" };
     }
 
-    const res = await authedServerFetch(
-      `/admin/compliance/source-of-funds/${encodeURIComponent(id)}/documents/download-all`,
-    );
+    const res = await getWriteContainer().adminCompliance.downloadAllSofDocuments(id);
     if (!res.ok) {
-      return { ok: false as const, error: await apiError(res, "Download failed") };
+      return {
+        ok: false as const,
+        error: serviceErrorMessage(res.body, "Download failed", res.status),
+      };
     }
-    const buffer = await res.arrayBuffer();
-    const disposition = res.headers.get("Content-Disposition") ?? "";
-    const match = disposition.match(/filename="([^"]+)"/);
-    const fileName = match?.[1] ?? `source-of-funds-${id}.zip`;
-    return { ok: true as const, data: buffer, fileName };
+    return { ok: true as const, data: res.data.data, fileName: res.data.fileName };
   });
 }
 
@@ -288,16 +280,16 @@ export async function requestSofDocumentsAction(
       return { ok: false as const, error: "Case and at least one document type required" };
     }
 
-    const res = await authedServerFetch(
-      `/admin/compliance/source-of-funds/${encodeURIComponent(caseId)}/request-documents`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentTypes, note: note || undefined }),
-      },
+    const res = await getWriteContainer().adminCompliance.requestSofDocuments(
+      caseId,
+      documentTypes,
+      note || undefined,
     );
     if (!res.ok) {
-      return { ok: false as const, error: await apiError(res, "Request failed") };
+      return {
+        ok: false as const,
+        error: serviceErrorMessage(res.body, "Request failed", res.status),
+      };
     }
 
     revalidatePath("/admin/compliance/source-of-funds");
@@ -331,16 +323,17 @@ export async function reviewSofDocumentAction(
       return { ok: false as const, error: "Document id is required" };
     }
 
-    const res = await authedServerFetch(
-      `/admin/compliance/source-of-funds/${encodeURIComponent(id)}/documents/${encodeURIComponent(docId)}/review`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checks, note: note.trim() || undefined }),
-      },
+    const res = await getWriteContainer().adminCompliance.reviewSofDocument(
+      id,
+      docId,
+      checks,
+      note,
     );
     if (!res.ok) {
-      return { ok: false as const, error: await apiError(res, "Review save failed") };
+      return {
+        ok: false as const,
+        error: serviceErrorMessage(res.body, "Review save failed", res.status),
+      };
     }
 
     revalidatePath(`/admin/compliance/source-of-funds/${id}`);

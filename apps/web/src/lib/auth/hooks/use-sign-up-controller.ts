@@ -2,19 +2,19 @@
 
 import { trackSignUp } from "@/lib/analytics/events";
 import { trackSellAuthHandoff } from "@/lib/analytics/sell-funnel";
+import { useSignUpWizardStep } from "@/lib/auth/hooks/use-sign-up-wizard-step";
 import { notifySignUpRegistrationError } from "@/lib/auth/notify-sign-up-error";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 /** After email/password registration we always send users to verify-pending (product copy). */
 import { type SignUpFormValues, signUpFormSchema } from "@/lib/auth/schemas";
 import { signUpService } from "@/lib/auth/services/sign-up.service";
 import type { SignUpWizardStep } from "@/lib/auth/sign-up-types";
-import { useSignUpWizardStep } from "@/lib/auth/hooks/use-sign-up-wizard-step";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, type FormEvent } from "react";
+import { type FormEvent, useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 
 export function useSignUpController(opts?: {

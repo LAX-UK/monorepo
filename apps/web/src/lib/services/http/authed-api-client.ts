@@ -1,20 +1,20 @@
 import "server-only";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { type AuthedServerFetchInit, authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ServiceResult, bodyToServiceFailure, serviceSuccess } from "./service-result";
 
 /** Low-level API client (DIP). Server-only: uses session cookies via `authedServerFetch`.
  */
 export interface IAuthedApiClient {
-  json<T>(path: string, init?: RequestInit): Promise<ServiceResult<T>>;
-  request(path: string, init?: RequestInit): Promise<Response>;
+  json<T>(path: string, init?: AuthedServerFetchInit): Promise<ServiceResult<T>>;
+  request(path: string, init?: AuthedServerFetchInit): Promise<Response>;
 }
 
 export class AuthedApiClient implements IAuthedApiClient {
-  async request(path: string, init?: RequestInit): Promise<Response> {
+  async request(path: string, init?: AuthedServerFetchInit): Promise<Response> {
     return authedServerFetch(path, init);
   }
 
-  async json<T>(path: string, init?: RequestInit): Promise<ServiceResult<T>> {
+  async json<T>(path: string, init?: AuthedServerFetchInit): Promise<ServiceResult<T>> {
     const res = await this.request(path, init);
     const text = await res.text();
     const body: unknown = text

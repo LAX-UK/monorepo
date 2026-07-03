@@ -28,8 +28,7 @@ export function SignUpInviteBanner({ invitePreview, isInvite }: SignUpInviteBann
   if (isInvite) {
     return (
       <p className="font-body text-sm text-on-surface-variant">
-        You&apos;re signing up with an invitation. Use the email address the invitation was sent
-        to.
+        You&apos;re signing up with an invitation. Use the email address the invitation was sent to.
       </p>
     );
   }

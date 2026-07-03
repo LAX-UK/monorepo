@@ -19,7 +19,6 @@ import {
   denyUnlessAdminCapability,
 } from "@/lib/auth/assert-admin-action-capability";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -460,15 +459,10 @@ export async function adminApproveWithdrawalRequestResultAction(
     if (denied) return denied;
     const id = lotId.trim();
     if (!id) return actionFailure("Missing lot ID");
-    const res = await authedServerFetch(
-      `/admin/lots/${encodeURIComponent(id)}/approve-withdrawal-request`,
-      {
-        method: "POST",
-      },
-    );
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({ error: "Request failed" }));
-      return actionFailure((body as { error?: string }).error ?? "Failed to approve withdrawal");
+    const { adminLots } = getWriteContainer();
+    const r = await adminLots.approveWithdrawalRequest(id);
+    if (!r.ok) {
+      return actionFailure(r.message || "Failed to approve withdrawal");
     }
     revalidatePath("/admin/lots");
     revalidatePath(`/admin/lots/${id}`);

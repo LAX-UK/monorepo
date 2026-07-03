@@ -1,10 +1,9 @@
 "use server";
 
-import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
-import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { getWriteContainer } from "@/lib/data/write-container.server";
 import { LEGAL_ENTITY_BROWSE_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { getSiteUrl } from "@/lib/site-url";
 import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -17,13 +16,13 @@ export async function adminSyncStripeConnectAction(
     if (denied && !denied.ok) {
       return { ok: false, error: denied.error };
     }
-    const res = await authedServerFetch(
-      `/admin/legal-entities/${encodeURIComponent(legalEntityId)}/stripe-connect/sync`,
-      { method: "POST" },
-    );
+    const res = await getWriteContainer().adminStripeConnect.sync(legalEntityId);
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return { ok: false, error: normalizeApiErrorMessage(body.error, "sync_failed") };
+      const err =
+        res.body && typeof res.body === "object" && "error" in res.body
+          ? (res.body as { error?: unknown }).error
+          : undefined;
+      return { ok: false, error: normalizeApiErrorMessage(err, "sync_failed") };
     }
     revalidatePath(`/admin/legal-entities/${legalEntityId}`);
     return { ok: true };
@@ -45,23 +44,18 @@ export async function adminCreateStripeConnectOnboardingLinkAction(
         ? `/dashboard/organisations/${legalEntityId}/connect`
         : "/dashboard/seller/connect";
     const returnUrl = `${site}${returnPath}`;
-    const res = await authedServerFetch(
-      `/admin/legal-entities/${encodeURIComponent(legalEntityId)}/stripe-connect/onboarding-link`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ returnUrl, refreshUrl: returnUrl }),
-      },
+    const res = await getWriteContainer().adminStripeConnect.createOnboardingLink(
+      legalEntityId,
+      returnUrl,
+      returnUrl,
     );
-    const body = (await res.json().catch(() => ({}))) as {
-      data?: { url?: string };
-      error?: string;
-    };
     if (!res.ok) {
-      return { ok: false, error: normalizeApiErrorMessage(body.error, "onboarding_link_failed") };
+      const err =
+        res.body && typeof res.body === "object" && "error" in res.body
+          ? (res.body as { error?: unknown }).error
+          : undefined;
+      return { ok: false, error: normalizeApiErrorMessage(err, "onboarding_link_failed") };
     }
-    const url = body.data?.url;
-    if (!url) return { ok: false, error: "missing_url" };
-    return { ok: true, url };
+    return { ok: true, url: res.data.url };
   });
 }
