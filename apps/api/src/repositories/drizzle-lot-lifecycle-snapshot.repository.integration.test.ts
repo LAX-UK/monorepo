@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
-import { lotLifecycleSnapshot } from "@auction/db/schema";
+import { legalEntity, lot, lotLifecycleSnapshot, user } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleLotLifecycleSnapshotRepository } from "./drizzle-lot-lifecycle-snapshot.repository.js";
@@ -13,9 +13,46 @@ describe.skipIf(!HAS_DB)("DrizzleLotLifecycleSnapshotRepository (integration)", 
     const db = createDb(process.env.DATABASE_URL!);
     const rollback = new Error("rollback_test_tx");
     const lotId = randomUUID();
+    const sellerUserId = `lot-lifecycle-snapshot-${randomUUID()}`;
+    const sellerLegalEntityId = randomUUID();
+    const now = new Date();
 
     try {
       await db.transaction(async (tx) => {
+        await tx.insert(user).values({
+          id: sellerUserId,
+          name: "Snapshot Seller",
+          email: `${sellerUserId}@integration.test`,
+          emailVerified: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await tx.insert(legalEntity).values({
+          id: sellerLegalEntityId,
+          displayName: "Snapshot Seller Entity",
+          kind: "individual",
+          subkind: "private_collector",
+          createdByUserId: sellerUserId,
+          status: "approved",
+          createdAt: now,
+          updatedAt: now,
+        });
+        await tx.insert(lot).values({
+          id: lotId,
+          sellerLegalEntityId,
+          title: "Lot lifecycle snapshot integration lot",
+          images: [],
+          auctionType: "english",
+          startingPrice: "100.00",
+          currentPrice: "100.00",
+          minBidIncrement: "10.00",
+          startTime: new Date(now.getTime() - 86_400_000),
+          endTime: new Date(now.getTime() + 86_400_000),
+          status: "draft",
+          createdAt: now,
+          updatedAt: now,
+        });
+
         const repo = new DrizzleLotLifecycleSnapshotRepository(tx);
 
         await repo.upsertSnapshot({
