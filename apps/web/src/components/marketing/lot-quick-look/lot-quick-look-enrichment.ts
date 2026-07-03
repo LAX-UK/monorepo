@@ -4,7 +4,7 @@ import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import type { Lot, PublicLotView } from "@auction/types";
 import { toLotCardTimingVM } from "@auction/validators";
-import type { LotQuickLookEnrichment } from "./fetch-lot-quick-look-enrichment.client";
+import type { LotQuickLookEnrichment } from "./enrichment-types";
 
 function formatBuyerPremiumHint(rate: string): string | undefined {
   const n = Number.parseFloat(rate);

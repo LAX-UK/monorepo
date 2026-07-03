@@ -1,6 +1,6 @@
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.server";
 import type { MyPaymentRow } from "@/lib/data/http/payments.server";
-import type { PaymentStatus } from "@auction/types";
+import type { ManualReviewReason, PaymentStatus } from "@auction/types";
 
 // Only a captured payment (or a post-payment fulfilment state) marks checkout complete.
 // `authorized` (bank transfer in flight) must stay an open payment so the page renders
@@ -42,6 +42,79 @@ export function isAwaitingCaptureConfirmation(input: {
     input.openPaymentStatus === "pending" ||
     input.openPaymentStatus === "authorized"
   );
+}
+
+export type CheckoutViewKind =
+  | "complete"
+  | "bankTransfer"
+  | "confirming"
+  | "loadFailed"
+  | "redirectFailed"
+  | "redirecting"
+  | "purchase";
+
+export type CheckoutPurchaseSubView = "manualReview" | "inFlight" | "form";
+
+export type CheckoutView =
+  | { kind: "complete" }
+  | { kind: "bankTransfer" }
+  | { kind: "confirming" }
+  | { kind: "loadFailed" }
+  | { kind: "redirectFailed" }
+  | { kind: "redirecting" }
+  | {
+      kind: "purchase";
+      sub: CheckoutPurchaseSubView;
+      manualReviewReason: ManualReviewReason | null;
+    };
+
+export type ResolveCheckoutViewInput = {
+  paymentComplete: boolean;
+  paymentsLoadFailed: boolean;
+  bankTransferInstructions: boolean;
+  awaitingCaptureConfirmation: boolean;
+  redirectFailed: boolean;
+  pendingCheckoutUrl: string | null;
+  redirectingToStripe: boolean;
+  showManualReview: ManualReviewReason | null;
+  openPaymentStatus: PaymentStatus | null;
+};
+
+export function resolveCheckoutView(input: ResolveCheckoutViewInput): CheckoutView {
+  if (input.paymentComplete) {
+    return { kind: "complete" };
+  }
+  if (input.bankTransferInstructions) {
+    return { kind: "bankTransfer" };
+  }
+  if (input.awaitingCaptureConfirmation) {
+    return { kind: "confirming" };
+  }
+  if (input.paymentsLoadFailed) {
+    return { kind: "loadFailed" };
+  }
+  if (input.redirectFailed && input.pendingCheckoutUrl) {
+    return { kind: "redirectFailed" };
+  }
+  if (input.redirectingToStripe) {
+    return { kind: "redirecting" };
+  }
+
+  if (input.showManualReview) {
+    return {
+      kind: "purchase",
+      sub: "manualReview",
+      manualReviewReason: input.showManualReview,
+    };
+  }
+  if (input.openPaymentStatus === "authorized") {
+    return { kind: "purchase", sub: "inFlight", manualReviewReason: null };
+  }
+  return { kind: "purchase", sub: "form", manualReviewReason: null };
+}
+
+export function checkoutViewShowsOrderSummary(view: CheckoutView): boolean {
+  return view.kind !== "complete" && view.kind !== "redirecting";
 }
 
 export function resolveCheckoutPagePaymentState(

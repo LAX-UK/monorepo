@@ -5,14 +5,13 @@ import {
   proposeLotTimesWithinWindow,
 } from "@/lib/admin/sale-lot-window-sync";
 import { syncLotsToSaleWindowLabel } from "@/lib/admin/sale-setup/field-copy";
-import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import {
   type SaleSetupLotRowContext,
   type SaleSetupLotRowFormValues,
   mergeSavedLotRow,
   mergeWizardRowsWithServerLots,
 } from "@/lib/admin/sale-setup/lot-row-schema";
-import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
+import { notifySaleSetupActionFailure } from "@/lib/admin/sale-setup/notify-sale-setup-action-failure.client";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
@@ -112,16 +111,7 @@ export function useSaleLotRowsEditorState({
         const { adminUpdateLotResultAction } = await import("@/lib/actions/admin");
         const r = await adminUpdateLotResultAction(conflict.lot.id, proposed);
         if (!r.ok) {
-          notify.error(
-            humanizeSetupError({
-              message: actionFailureNotifyMessage(r.error, {
-                status: r.status,
-                errorCode: r.errorCode,
-                meta: r.meta,
-              }),
-              errorCode: r.errorCode,
-            }),
-          );
+          notifySaleSetupActionFailure(r);
           return;
         }
       }

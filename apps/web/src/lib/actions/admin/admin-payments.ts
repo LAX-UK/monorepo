@@ -4,6 +4,7 @@ import {
   assertAdminCapabilityForRedirect,
   denyUnlessAdminCapability,
 } from "@/lib/auth/assert-admin-action-capability";
+import { getAdminXeroOAuthConsentUrl } from "@/lib/data/http/admin-payments.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
@@ -125,14 +126,13 @@ export async function adminXeroOAuthStartAction(): Promise<void> {
     if (!denied.ok) {
       redirect(`/admin/integrations/xero?error=${encodeURIComponent(denied.message)}`);
     }
-    const res = await authedServerFetch("/admin/integrations/xero/oauth/consent-url");
-    if (!res.ok) {
+    const url = await getAdminXeroOAuthConsentUrl();
+    if (!url) {
       redirect(
         `/admin/integrations/xero?error=${encodeURIComponent("Could not start Xero OAuth")}`,
       );
     }
-    const body = (await res.json()) as { data: { url: string } };
-    redirect(body.data.url);
+    redirect(url);
   });
 }
 

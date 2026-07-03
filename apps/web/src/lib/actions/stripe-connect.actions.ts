@@ -5,9 +5,14 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import {
   parseStripeConnectActionError,
   parseStripeConnectActionErrorFromBody,
-  readStripeConnectApiJson,
 } from "@/lib/connect/parse-stripe-connect-action-error";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
+import {
+  stripeConnectAccountSessionSchema,
+  stripeConnectStatusSchema,
+  stripeConnectUrlSchema,
+} from "@/lib/data/http/stripe-connect.schema";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
 import { getSiteUrl } from "@/lib/site-url";
 import { revalidatePath } from "next/cache";
@@ -56,27 +61,24 @@ export async function syncStripeConnectAction(entityId?: string): Promise<
       method: "POST",
       headers: entityHeaders(entityId),
     });
-    const body = await readStripeConnectApiJson<{
-      data?: {
-        ready?: boolean;
-        payoutsEnabled?: boolean;
-        requirementsCurrentlyDue?: string[];
-        disabledReason?: string | null;
-      };
-    }>(res);
+    const body = await readJsonBody(res);
     if (!res.ok) {
       return {
         ok: false,
-        error: parseStripeConnectActionErrorFromBody(body, "stripe_sync_failed"),
+        error: parseStripeConnectActionErrorFromBody(
+          body as Record<string, unknown>,
+          "stripe_sync_failed",
+        ),
       };
     }
+    const data = readDataEnvelope(body, stripeConnectStatusSchema, "POST /stripe-connect/sync");
     revalidateConnectPaths(entityId);
     return {
       ok: true,
-      ready: Boolean(body.data?.ready),
-      payoutsEnabled: Boolean(body.data?.payoutsEnabled),
-      requirementsDue: body.data?.requirementsCurrentlyDue ?? [],
-      disabledReason: body.data?.disabledReason ?? null,
+      ready: Boolean(data.ready),
+      payoutsEnabled: Boolean(data.payoutsEnabled),
+      requirementsDue: data.requirementsCurrentlyDue ?? [],
+      disabledReason: data.disabledReason ?? null,
     };
   });
 }
@@ -94,16 +96,21 @@ export async function createStripeConnectAccountSessionAction(
       },
       body: JSON.stringify({ surface }),
     });
-    const body = await readStripeConnectApiJson<{
-      data?: { clientSecret?: string };
-    }>(res);
+    const body = await readJsonBody(res);
     if (!res.ok) {
       return {
         ok: false,
-        error: parseStripeConnectActionErrorFromBody(body, "account_session_failed"),
+        error: parseStripeConnectActionErrorFromBody(
+          body as Record<string, unknown>,
+          "account_session_failed",
+        ),
       };
     }
-    const clientSecret = body.data?.clientSecret;
+    const { clientSecret } = readDataEnvelope(
+      body,
+      stripeConnectAccountSessionSchema,
+      "POST /stripe-connect/account-session",
+    );
     if (!clientSecret) {
       return { ok: false, error: "missing_client_secret" };
     }
@@ -119,16 +126,21 @@ export async function openStripeDashboardLinkAction(
       method: "POST",
       headers: entityHeaders(entityId),
     });
-    const body = await readStripeConnectApiJson<{
-      data?: { url?: string };
-    }>(res);
+    const body = await readJsonBody(res);
     if (!res.ok) {
       return {
         ok: false,
-        error: parseStripeConnectActionErrorFromBody(body, "dashboard_link_failed"),
+        error: parseStripeConnectActionErrorFromBody(
+          body as Record<string, unknown>,
+          "dashboard_link_failed",
+        ),
       };
     }
-    const url = body.data?.url;
+    const { url } = readDataEnvelope(
+      body,
+      stripeConnectUrlSchema,
+      "POST /stripe-connect/dashboard-link",
+    );
     if (!url) return { ok: false, error: "missing_dashboard_url" };
     return { ok: true, url };
   });
@@ -150,16 +162,21 @@ export async function createStripeConnectOnboardingLinkAction(
       },
       body: JSON.stringify({ returnUrl, refreshUrl: returnUrl }),
     });
-    const body = await readStripeConnectApiJson<{
-      data?: { url?: string };
-    }>(res);
+    const body = await readJsonBody(res);
     if (!res.ok) {
       return {
         ok: false,
-        error: parseStripeConnectActionErrorFromBody(body, "stripe_onboarding_failed"),
+        error: parseStripeConnectActionErrorFromBody(
+          body as Record<string, unknown>,
+          "stripe_onboarding_failed",
+        ),
       };
     }
-    const url = body.data?.url;
+    const { url } = readDataEnvelope(
+      body,
+      stripeConnectUrlSchema,
+      "POST /stripe-connect/onboarding-link",
+    );
     if (!url) return { ok: false, error: "missing_onboarding_url" };
     revalidateConnectPaths(entityId);
     return { ok: true, url };

@@ -53,7 +53,6 @@ export type {
   AdminLiveBiddingRateLimitError,
   AdminOperationsRouteServices,
   AdminPlacePaddleBidResult,
-  ConveyorPipelineRowDto,
   IAdminDashboardQueryService,
   IAdminDomainEventQueryService,
   IAdminEmailApplicationService,

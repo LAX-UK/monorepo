@@ -15,7 +15,6 @@ import type { ImpersonationAuditService } from "../impersonation-audit.service.j
 import type { AdminOperationsRouteServices } from "../interfaces/admin-routes/admin-operations-routes.js";
 import type { IAnalyticsService } from "../interfaces/analytics.js";
 import type { IAttentionFeedReader } from "../interfaces/attention-feed.js";
-import type { IConveyorPipelineReader } from "../interfaces/conveyor-pipeline-reader.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
 import type { IEmailObservabilityRepository } from "../interfaces/email-observability.js";
@@ -47,7 +46,6 @@ export type CreateAdminOperationsServicesInput = {
   analyticsService: IAnalyticsService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
-  conveyorPipelineReader: IConveyorPipelineReader;
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   emailObservabilityRepository: IEmailObservabilityRepository;
   displayPairingService: IDisplayPairingService;
@@ -91,7 +89,6 @@ export function createAdminOperationsServices(
       input.adminMetricsService,
       input.attentionFeedReader,
       input.itemSubmissionAdminApi,
-      input.conveyorPipelineReader,
     ),
     domainEvents,
     dashboard: new AdminDashboardQueryService({

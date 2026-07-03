@@ -21,10 +21,6 @@
       "apps/web/src/components/admin/venue-form/venue-setup-steps.ts"
     ],
     [
-      "apps/web/src/components/marketing/lot-quick-look/fetch-lot-quick-look-enrichment.client.ts",
-      "apps/web/src/components/marketing/lot-quick-look/lot-quick-look-enrichment.ts"
-    ],
-    [
       "apps/web/src/lib/admin/admin-list-controllers.ts",
       "apps/web/src/lib/admin/list-controllers/sales-list-controller.ts",
       "apps/web/src/lib/admin/sales-list-export-filters.ts"

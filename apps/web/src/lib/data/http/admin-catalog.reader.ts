@@ -1,28 +1,27 @@
 import "server-only";
 
 import {
-  parseAdminArtistListRow,
-  parseAdminArtistStats,
-  parseAdminCategory,
-  parseArtistDeleteEligibility,
-  parseArtistProfile,
-} from "@/lib/data/http/admin-catalog.mapper";
+  adminArtistDuplicateHitRowSchema,
+  adminArtistListRowSchema,
+  adminArtistStatsRowSchema,
+  adminCategoryRowSchema,
+  artistDeleteEligibilityRowSchema,
+  artistProfileRowSchema,
+} from "@/lib/data/http/admin-catalog.schema";
 import {
   ADMIN_ARTIST_LIST_MAX_LIMIT,
   type AdminArtistDuplicateHit,
   type GetAdminArtistListParams,
 } from "@/lib/data/http/admin-catalog.types";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { readDataEnvelope, readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
 import type {
   AdminArtistListResult,
   AdminArtistStats,
   AdminCategory,
   ArtistDeleteEligibility,
-  ArtistKind,
   ArtistProfile,
-  ArtistStatus,
 } from "@auction/types";
-import { artistKinds, artistStatuses } from "@auction/types";
 
 export async function getAdminCategoryList(
   params: {
@@ -34,8 +33,12 @@ export async function getAdminCategoryList(
   if (params.includeArchived) qs.set("includeArchived", "true");
   const res = await authedServerFetch(`/admin/categories${qs.size ? `?${qs.toString()}` : ""}`);
   if (!res.ok) throw new Error(`Failed to load categories: ${res.status}`);
-  const body = (await res.json()) as { data: unknown[] };
-  const categories = body.data.map(parseAdminCategory);
+  const body = await readJsonBody(res);
+  const { rows: categories } = readListEnvelope(
+    body,
+    adminCategoryRowSchema,
+    "GET /admin/categories",
+  );
   const needle = params.q?.trim().toLowerCase();
   if (!needle) return categories;
   return categories.filter((category) =>
@@ -49,8 +52,8 @@ export async function getAdminCategoryById(id: string): Promise<AdminCategory | 
   const res = await authedServerFetch(`/admin/categories/${encodeURIComponent(id)}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to load category: ${res.status}`);
-  const body = (await res.json()) as { data: unknown };
-  return parseAdminCategory(body.data);
+  const body = await readJsonBody(res);
+  return readDataEnvelope(body, adminCategoryRowSchema, `GET /admin/categories/${id}`);
 }
 
 export async function getAdminArtistList(
@@ -76,18 +79,15 @@ export async function getAdminArtistList(
   const query = qs.toString();
   const res = await authedServerFetch(`/admin/artists?${query}`);
   if (!res.ok) throw new Error(`Failed to load artists: ${res.status}`);
-  const body = (await res.json()) as { data: { rows: unknown[]; total: number } };
-  return {
-    rows: body.data.rows.map(parseAdminArtistListRow),
-    total: body.data.total,
-  };
+  const body = await readJsonBody(res);
+  return readListEnvelope(body, adminArtistListRowSchema, "GET /admin/artists");
 }
 
 export async function getAdminArtistStats(): Promise<AdminArtistStats> {
   const res = await authedServerFetch("/admin/artists/stats");
   if (!res.ok) throw new Error(`Failed to load artist stats: ${res.status}`);
-  const body = (await res.json()) as { data: unknown };
-  return parseAdminArtistStats(body.data);
+  const body = await readJsonBody(res);
+  return readDataEnvelope(body, adminArtistStatsRowSchema, "GET /admin/artists/stats");
 }
 
 export async function getAdminArtistDuplicateCandidates(
@@ -95,30 +95,13 @@ export async function getAdminArtistDuplicateCandidates(
 ): Promise<AdminArtistDuplicateHit[]> {
   const res = await authedServerFetch(`/admin/artists/${encodeURIComponent(artistId)}/duplicates`);
   if (!res.ok) throw new Error(`Failed to load duplicate candidates: ${res.status}`);
-  const body = (await res.json()) as { data: unknown[] };
-  return body.data.map((raw) => {
-    const o = raw as Record<string, unknown>;
-    const k = o.kind;
-    const kind =
-      typeof k === "string" && (artistKinds as readonly string[]).includes(k)
-        ? (k as ArtistKind)
-        : "artist";
-    const st = o.status;
-    const status =
-      typeof st === "string" && (artistStatuses as readonly string[]).includes(st)
-        ? (st as ArtistStatus)
-        : "approved";
-    return {
-      id: String(o.id ?? ""),
-      displayName: String(o.displayName ?? ""),
-      slug: String(o.slug ?? ""),
-      kind,
-      status,
-      matchedAlias: o.matchedAlias == null ? null : String(o.matchedAlias),
-      matchType: String(o.matchType ?? ""),
-      score: Number(o.score ?? 0),
-    };
-  });
+  const body = await readJsonBody(res);
+  const { rows } = readListEnvelope(
+    body,
+    adminArtistDuplicateHitRowSchema,
+    `GET /admin/artists/${artistId}/duplicates`,
+  );
+  return rows;
 }
 
 /** Artist profiles where `ownerUserId` matches (includes archived). */
@@ -131,8 +114,25 @@ export async function getAdminArtistById(id: string): Promise<ArtistProfile | nu
   const res = await authedServerFetch(`/admin/artists/${encodeURIComponent(id)}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to load artist: ${res.status}`);
-  const body = (await res.json()) as { data: unknown };
-  return parseArtistProfile(body.data);
+  const body = await readJsonBody(res);
+  return readDataEnvelope(body, artistProfileRowSchema, `GET /admin/artists/${id}`);
+}
+
+/** Registry alias/fuzzy search for admin artist pickers (`GET /admin/artists/search`). */
+export async function searchAdminArtistsRegistry(
+  query: string,
+  limit = 20,
+): Promise<AdminArtistDuplicateHit[]> {
+  const qs = new URLSearchParams({ q: query, limit: String(limit) });
+  const res = await authedServerFetch(`/admin/artists/search?${qs.toString()}`);
+  if (!res.ok) return [];
+  const body = await readJsonBody(res);
+  const { rows } = readListEnvelope(
+    body,
+    adminArtistDuplicateHitRowSchema,
+    "GET /admin/artists/search",
+  );
+  return rows;
 }
 
 export async function getAdminArtistDeleteEligibility(
@@ -144,6 +144,10 @@ export async function getAdminArtistDeleteEligibility(
   if (res.status === 404) return null;
   if (res.status === 403) return null;
   if (!res.ok) throw new Error(`Failed to load artist delete eligibility: ${res.status}`);
-  const body = (await res.json()) as { data: unknown };
-  return parseArtistDeleteEligibility(body.data);
+  const body = await readJsonBody(res);
+  return readDataEnvelope(
+    body,
+    artistDeleteEligibilityRowSchema,
+    `GET /artists/${artistId}/delete-eligibility`,
+  );
 }

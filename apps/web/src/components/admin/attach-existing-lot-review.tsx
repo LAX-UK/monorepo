@@ -20,11 +20,10 @@ import {
   attachLotScheduleConflictBanner,
   emptySaleSetupLotRow,
   fieldTierSuffix,
-  humanizeSetupError,
   syncLotsToSaleWindowLabel,
 } from "@/lib/admin/sale-setup";
+import { notifySaleSetupActionFailure } from "@/lib/admin/sale-setup/notify-sale-setup-action-failure.client";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
-import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { formatDateTime } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
@@ -198,16 +197,7 @@ export function AttachExistingLotReview({
           endTime: validated.payload.endTime,
         });
         if (!r.ok) {
-          notify.error(
-            humanizeSetupError({
-              message: actionFailureNotifyMessage(r.error, {
-                status: r.status,
-                errorCode: r.errorCode,
-                meta: r.meta,
-              }),
-              errorCode: r.errorCode,
-            }),
-          );
+          notifySaleSetupActionFailure(r);
           return;
         }
       }
@@ -216,16 +206,7 @@ export function AttachExistingLotReview({
         via: attachVia,
       });
       if (!attachResult.ok) {
-        notify.error(
-          humanizeSetupError({
-            message: actionFailureNotifyMessage(attachResult.error, {
-              status: attachResult.status,
-              errorCode: attachResult.errorCode,
-              meta: attachResult.meta,
-            }),
-            errorCode: attachResult.errorCode,
-          }),
-        );
+        notifySaleSetupActionFailure(attachResult);
         return;
       }
 

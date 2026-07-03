@@ -10,7 +10,7 @@ import { DisplayHeading, LabelCaps } from "@/components/ui/typography";
 import { adminAddLotToSaleResultAction } from "@/lib/actions/admin-sales";
 import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import { deliveryModeExplanation } from "@/lib/admin/sale-setup/field-copy";
-import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
+import { formatSaleSetupActionError } from "@/lib/admin/sale-setup/format-sale-setup-action-error";
 import {
   type EmergencyAddLotFormValues,
   emergencyAddLotFormSchema,
@@ -19,7 +19,6 @@ import {
 } from "@/lib/admin/sale-setup/lot-row-schema";
 import { applySellerLegalEntitySelection } from "@/lib/admin/seller-legal-entity-form";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
-import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import type { CategoryNode, LotAuctionType, SaleDeliveryMode, SaleStatus } from "@auction/types";
 import { lotAuctionTypes } from "@auction/types";
@@ -101,14 +100,7 @@ export function EmergencyAddLotPanel({
         const lotId = typeof r.meta?.lotId === "string" ? r.meta.lotId : null;
         const rolledBack = r.meta?.rolledBack === true;
         notify.error(
-          humanizeSetupError({
-            message: actionFailureNotifyMessage(r.error, {
-              status: r.status,
-              errorCode: r.errorCode,
-              meta: r.meta,
-            }),
-            errorCode: r.errorCode,
-          }),
+          formatSaleSetupActionError(r),
           rolledBack && lotId
             ? {
                 description: `Saved as standalone inventory (lot ${lotId.slice(0, 8)}…). Open it to fix and retry.`,

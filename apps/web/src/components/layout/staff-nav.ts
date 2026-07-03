@@ -13,7 +13,6 @@ import {
   ARTISTS_ACCESS,
   CATEGORIES_ACCESS,
   CONDITION_REPORTS_ACCESS,
-  CONVEYOR_ACCESS,
   FINANCE_ACCESS,
   INVITATIONS_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
@@ -214,14 +213,6 @@ function buildStaffNavGroupSpecs(
           icon: PartyPopper,
           match: (pathname) => pathname.startsWith("/admin/event-rsvps"),
           requirement: SALEROOM_ACCESS,
-        },
-        {
-          id: "conveyor",
-          href: "/admin/conveyor",
-          label: "Submission pipeline",
-          icon: Workflow,
-          match: (pathname) => pathname.startsWith("/admin/conveyor"),
-          requirement: CONVEYOR_ACCESS,
         },
         {
           id: "lot-fulfilment",

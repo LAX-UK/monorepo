@@ -1,8 +1,6 @@
 import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
-import { itemSubmissionStatuses, lotStatuses } from "@auction/types";
 
 export type AdminLotFulfilmentListRow = {
   id: string;
@@ -101,61 +99,4 @@ export async function loadAdminLotFulfilmentQueue(params?: {
   if (r.kind === "authz") return { access: "forbidden" };
   if (r.kind === "error") return { access: "error", message: r.message };
   return { access: "ok", rows: r.rows, total: r.total, statusCounts: r.statusCounts };
-}
-
-export type AdminConveyorPipelineRow = {
-  submissionId: string;
-  title: string;
-  submissionStatus: ItemSubmissionStatus;
-  convertedLotId: string | null;
-  lotId: string | null;
-  lotStatus: LotStatus | null;
-  lotTitle: string | null;
-  artistReviewRequired: boolean | null;
-  archivedSeller: boolean | null;
-  assignedToUserId: string | null;
-  updatedAt: string;
-};
-
-function parseAdminConveyorPipelineRow(raw: unknown): AdminConveyorPipelineRow {
-  const o = raw as Record<string, unknown>;
-  const subSt = String(o.submissionStatus ?? "");
-  const submissionStatus: ItemSubmissionStatus = (
-    itemSubmissionStatuses as readonly string[]
-  ).includes(subSt)
-    ? (subSt as ItemSubmissionStatus)
-    : "draft";
-  const rawLotSt = o.lotStatus == null ? null : String(o.lotStatus);
-  const lotStatus: LotStatus | null =
-    rawLotSt === null
-      ? null
-      : (lotStatuses as readonly string[]).includes(rawLotSt)
-        ? (rawLotSt as LotStatus)
-        : null;
-  return {
-    submissionId: String(o.submissionId ?? ""),
-    title: String(o.title ?? ""),
-    submissionStatus,
-    convertedLotId: o.convertedLotId == null ? null : String(o.convertedLotId),
-    lotId: o.lotId == null ? null : String(o.lotId),
-    lotStatus,
-    lotTitle: o.lotTitle == null ? null : String(o.lotTitle),
-    artistReviewRequired:
-      typeof o.artistReviewRequired === "boolean" ? o.artistReviewRequired : null,
-    archivedSeller: typeof o.archivedSeller === "boolean" ? o.archivedSeller : null,
-    assignedToUserId: o.assignedToUserId == null ? null : String(o.assignedToUserId),
-    updatedAt: String(o.updatedAt ?? ""),
-  };
-}
-
-export async function getAdminConveyorPipeline(params?: {
-  limit?: number;
-}): Promise<AdminConveyorPipelineRow[]> {
-  const qs = new URLSearchParams();
-  if (params?.limit != null) qs.set("limit", String(params.limit));
-  const suffix = qs.size ? `?${qs.toString()}` : "";
-  const res = await authedServerFetch(`/admin/conveyor-pipeline${suffix}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Failed to load conveyor pipeline: ${res.status}`);
-  const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseAdminConveyorPipelineRow);
 }

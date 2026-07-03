@@ -40,6 +40,15 @@ export {
 } from "./field-copy";
 export { humanizeSetupError, type HumanizeSetupErrorInput } from "./humanize-setup-error";
 export {
+  formatSaleSetupActionError,
+  type SaleSetupActionFailure,
+} from "./format-sale-setup-action-error";
+export {
+  resolveSaleSetupStepTransition,
+  type ResolveSaleSetupStepTransitionInput,
+  type SaleSetupStepTransitionResult,
+} from "./resolve-sale-setup-step-transition";
+export {
   emptySaleSetupLotRow,
   mergeSavedLotRow,
   mergeWizardRowsWithServerLots,

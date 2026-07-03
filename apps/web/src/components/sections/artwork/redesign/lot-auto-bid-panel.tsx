@@ -1,17 +1,20 @@
 "use client";
 
 import { UnderlineInput } from "@/components/ui/input";
+import { useIdempotencyKey } from "@/hooks/lot-bid/use-idempotency-key";
+import { mapBidResultError } from "@/lib/bid/map-bid-result-error";
+import { refreshBeforeSubmitIfNeeded } from "@/lib/bid/refresh-before-submit";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { AutoBidPlacedBid, AutoBidSettings } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
-import { clientBidError, mapBidError } from "@/lib/ui/bid-error";
+import { clientBidError } from "@/lib/ui/bid-error";
 import type { Lot, LotAuctionType, PublicLotView } from "@auction/types";
 import { BodyText } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { listAllowedAutoBidSteps } from "@auction/validators";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Props = {
   lot: Lot | PublicLotView;
@@ -106,7 +109,7 @@ export function LotAutoBidPanel({
   const [clearing, setClearing] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
-  const saveIdempotencyKeyRef = useRef<string | null>(null);
+  const { ensure: ensureSaveIdempotencyKey, clear: clearSaveIdempotencyKey } = useIdempotencyKey();
 
   const reportError = useCallback(
     (presentation: ReturnType<typeof clientBidError> | null, scrollToFeedback = false) => {
@@ -222,17 +225,17 @@ export function LotAutoBidPanel({
     }
     setSaving(true);
     try {
-      if (biddingLive && biddingAllowed && !realtimeHealthy && refreshBeforeSave) {
-        const refreshed = await refreshBeforeSave();
-        if (!refreshed) {
-          reportError(
-            clientBidError("Could not refresh live prices. Check your connection and try again."),
-          );
-          return;
-        }
-      }
-      if (!saveIdempotencyKeyRef.current) {
-        saveIdempotencyKeyRef.current = crypto.randomUUID();
+      const refreshResult = await refreshBeforeSubmitIfNeeded({
+        biddingLive,
+        biddingAllowed,
+        realtimeHealthy,
+        refresh: async () => ({
+          ok: refreshBeforeSave ? await refreshBeforeSave() : true,
+        }),
+      });
+      if (!refreshResult.ok) {
+        reportError(refreshResult.error);
+        return;
       }
       let result: Awaited<ReturnType<typeof autoBidWriter.setAutoBid>>;
       try {
@@ -240,7 +243,7 @@ export function LotAutoBidPanel({
           lotId: lot.id,
           maxAutoBidAmount: maxNumeric,
           autoBidStepAmount: stepNumeric,
-          idempotencyKey: saveIdempotencyKeyRef.current,
+          idempotencyKey: ensureSaveIdempotencyKey(),
         });
       } catch {
         reportError(
@@ -250,7 +253,8 @@ export function LotAutoBidPanel({
       }
       if (!result.ok) {
         reportError(
-          mapBidError(result.error, {
+          mapBidResultError({
+            error: result.error,
             verifyReturnPath: loginNextPath,
             code: result.code ?? null,
             kycFeedback,
@@ -259,7 +263,7 @@ export function LotAutoBidPanel({
         );
         return;
       }
-      saveIdempotencyKeyRef.current = null;
+      clearSaveIdempotencyKey();
       setActiveSettings(result.settings);
       setMaxAuto(result.settings.maxAutoBidAmount);
       if (result.settings.autoBidStepAmount) setStep(result.settings.autoBidStepAmount);
@@ -274,7 +278,9 @@ export function LotAutoBidPanel({
     autoBidWriter,
     biddingAllowed,
     biddingLive,
+    clearSaveIdempotencyKey,
     emitDraft,
+    ensureSaveIdempotencyKey,
     loginNextPath,
     lot.id,
     maxNumeric,
@@ -305,7 +311,8 @@ export function LotAutoBidPanel({
     }
     if (!result.ok) {
       reportError(
-        mapBidError(result.error, {
+        mapBidResultError({
+          error: result.error,
           verifyReturnPath: loginNextPath,
           code: result.code ?? null,
           kycFeedback,

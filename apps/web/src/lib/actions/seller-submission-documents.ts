@@ -1,16 +1,13 @@
 "use server";
 
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { entityDocumentSchema } from "@/lib/data/http/document.schema";
+import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import type { EntityDocument } from "@auction/types";
 import type { attachSubmissionDocumentBodySchema } from "@auction/validators";
 import type { z } from "zod";
 
 type AttachBody = z.infer<typeof attachSubmissionDocumentBodySchema>;
-
-function parseDocument(raw: unknown): EntityDocument {
-  return raw as EntityDocument;
-}
 
 export async function sellerAttachSubmissionDocumentResultAction(
   submissionId: string,
@@ -25,12 +22,19 @@ export async function sellerAttachSubmissionDocumentResultAction(
         body: JSON.stringify(body),
       },
     );
+    const payload = await readJsonBody(res);
     if (!res.ok) {
-      const err = (await res.json().catch(() => null)) as { error?: string } | null;
+      const err = payload as { error?: string } | null;
       return { ok: false as const, error: err?.error ?? "Could not attach document." };
     }
-    const payload = (await res.json()) as { data: unknown };
-    return { ok: true as const, data: parseDocument(payload.data) };
+    return {
+      ok: true as const,
+      data: readDataEnvelope(
+        payload,
+        entityDocumentSchema,
+        `POST /submissions/${submissionId}/documents`,
+      ),
+    };
   });
 }
 

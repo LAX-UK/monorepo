@@ -88,10 +88,6 @@ export const SALEROOM_ACCESS: CapabilityRequirement = {
   anyOf: ["auction.manage", "platform.admin.full"],
 };
 
-export const CONVEYOR_ACCESS: CapabilityRequirement = {
-  anyOf: ["operations.fulfilment", "platform.admin.full"],
-};
-
 export const LOT_FULFILMENT_ACCESS: CapabilityRequirement = {
   anyOf: ["operations.fulfilment", "platform.admin.full"],
 };

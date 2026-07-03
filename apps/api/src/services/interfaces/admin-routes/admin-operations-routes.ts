@@ -1,5 +1,4 @@
 import type { EmailOutboxStatus } from "@auction/db/schema";
-import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AdminOnboardingIssues, AdminReviewTaskRow } from "../../../admin/admin-route-dtos.js";
 import type {
@@ -85,28 +84,12 @@ export interface IAdminEmailApplicationService {
   deleteSuppressionsBulk(emailHashes: string[]): Promise<number>;
 }
 
-export type ConveyorPipelineRowDto = {
-  submissionId: string;
-  title: string;
-  submissionStatus: ItemSubmissionStatus;
-  convertedLotId: string | null;
-  lotId: string | null;
-  lotStatus: LotStatus | null;
-  lotTitle: string | null;
-  artistReviewRequired: boolean | null;
-  archivedSeller: boolean | null;
-  assignedToUserId: string | null;
-  updatedAt: string;
-};
-
 export interface IAdminOpsReadService {
   getAnalyticsDashboard(range: DateRange): Promise<AdminAnalyticsDashboard>;
   getTodayMetrics(): Promise<AdminTodayMetrics>;
   getBidsPerMinute(): Promise<number>;
   listAttentionFeed(): Promise<AttentionItem[]>;
   countPendingSubmissions(filter: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
-  /** Submissions + converted lots for Arman-style conveyor (limit default 200). */
-  listConveyorPipeline(limit?: number): Promise<ConveyorPipelineRowDto[]>;
   countQualityGapsForAdminApi(): Promise<number>;
   countSubmissionsBySellersForAdminApi(sellerIds: readonly string[]): Promise<number>;
 }

@@ -1,6 +1,5 @@
 import {
   adminAnalyticsQuerySchema,
-  adminConveyorPipelineQuerySchema,
   adminKpiTrendQuerySchema,
   adminSubmissionCountBySellersQuerySchema,
   adminSubmissionCountQuerySchema,
@@ -11,7 +10,6 @@ import {
   requireAdminDashboard,
   requireAnalytics,
   requireFinanceAccess,
-  requireOperationsFulfilment,
   requireSubmissionsAccess,
 } from "../../middleware/require-capability.js";
 import type { AdminHono } from "./_shared.js";
@@ -46,18 +44,6 @@ export function attachAdminOpsRoutes(
       const { sellerIds } = c.req.valid("query");
       const count = await container.admin.ops.countSubmissionsBySellersForAdminApi(sellerIds);
       return c.json({ data: { count } });
-    },
-  );
-
-  /** Seller intake → catalogue → live: submissions joined to converted lots (recent first). */
-  platform.get(
-    "/conveyor-pipeline",
-    requireOperationsFulfilment,
-    zValidator("query", adminConveyorPipelineQuerySchema),
-    async (c) => {
-      const { limit } = c.req.valid("query");
-      const data = await container.admin.ops.listConveyorPipeline(limit);
-      return c.json({ data });
     },
   );
 

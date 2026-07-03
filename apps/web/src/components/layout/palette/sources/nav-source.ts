@@ -7,7 +7,6 @@ import {
   AML_REVIEW_ACCESS,
   ARTISTS_ACCESS,
   CONDITION_REPORTS_ACCESS,
-  CONVEYOR_ACCESS,
   FINANCE_ACCESS,
   LOTS_ACCESS,
   LOT_FULFILMENT_ACCESS,
@@ -130,14 +129,6 @@ const QUICK_ACTION_SPECS: QuickActionSpec[] = [
     label: "Condition reports",
     icon: FileSearch,
     requirement: CONDITION_REPORTS_ACCESS,
-    platformOnly: true,
-  },
-  {
-    id: "qa-conveyor",
-    href: "/admin/conveyor",
-    label: "Conveyor pipeline",
-    icon: ClipboardList,
-    requirement: CONVEYOR_ACCESS,
     platformOnly: true,
   },
   {

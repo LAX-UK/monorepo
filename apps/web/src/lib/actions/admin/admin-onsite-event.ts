@@ -2,6 +2,8 @@
 
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
+import { onsiteEventSlugSchema } from "@/lib/data/http/onsite-event.schema";
 import {
   type ActionResult,
   actionFailure,
@@ -30,12 +32,12 @@ export async function adminCreateOnsiteEventAction(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(parsed.data),
     });
+    const body = await readJsonBody(res);
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      const payload = body as { error?: string };
       return actionFailure(payload.error ?? "Could not create event");
     }
-    const body = (await res.json()) as { data?: { slug?: string } };
-    const slug = body.data?.slug;
+    const { slug } = readDataEnvelope(body, onsiteEventSlugSchema, "POST /admin/event-rsvps");
     if (!slug) return actionFailure("Unexpected response from server");
     redirect(`/admin/event-rsvps/${encodeURIComponent(slug)}`);
   });

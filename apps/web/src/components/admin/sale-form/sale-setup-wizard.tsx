@@ -12,18 +12,15 @@ import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation"
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { saleDetailReadinessDismissKey } from "@/lib/admin/compute-sale-detail-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness-shared";
-import { parseSaleWindowFromForm, parseSaleWindowFromSale } from "@/lib/admin/sale-lot-window-sync";
 import {
   SALE_SETUP_STEPS,
   type SaleSetupStepId,
-  buildSaleSetupReadiness,
-  catalogPrepReviewNotice,
   catalogueStaffReadOnlyMessage,
   isSaleSetupPublishReady,
+  resolveSaleSetupStepTransition,
   reviewPublishBlockedHint,
   saleSetupHref,
   saleSetupStepId,
-  saveDraftSuccessMessage,
 } from "@/lib/admin/sale-setup";
 import {
   type AdminSaleFormValues,
@@ -37,23 +34,17 @@ import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Form } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
-import {
-  buildGoogleMapsSearchUrl,
-  formatPostalAddress,
-  isSaleroomDeliveryMode,
-  isUkPostcode,
-} from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { SaleLotRowsEditor } from "./sale-lot-rows-editor";
 import { SaleSetupStepIntro } from "./sale-setup-step-intro";
 import { SaleSetupCatalogPrepStep } from "./steps/catalog-prep-step";
 import { SaleDocumentsStep } from "./steps/documents-step";
 import { SaleIdentityStep } from "./steps/identity-step";
-import { SaleSetupReviewStep, isSaleSetupReadyToPublish } from "./steps/review-step";
+import { SaleSetupReviewStep } from "./steps/review-step";
 import { SaleScheduleStep } from "./steps/schedule-step";
 import {
   SALE_SETUP_STEP_FIELD_GROUPS,
@@ -62,6 +53,7 @@ import {
   useSaleSetupSteps,
 } from "./use-sale-setup-steps";
 import { useSaleSetupSubmit } from "./use-sale-setup-submit";
+import { useSaleSetupWizardView } from "./use-sale-setup-wizard-view";
 import { useSaleTierBandPreview } from "./use-sale-tier-preview";
 
 function WizardStepSync({
@@ -166,108 +158,38 @@ export function SaleSetupWizard({
 
   const tierBandPreview = useSaleTierBandPreview(form);
 
-  const deliveryMode = form.watch("deliveryMode");
-  const watchedStartTime = form.watch("startTime");
-  const watchedEndTime = form.watch("endTime");
-  const isSaleroom = isSaleroomDeliveryMode(
-    (deliveryMode ?? "online") as "online" | "onsite" | "hybrid",
-  );
-  const watchedLocation = {
-    locationName: form.watch("locationName"),
-    locationAddressLine1: form.watch("locationAddressLine1"),
-    locationAddressLine2: form.watch("locationAddressLine2"),
-    locationCity: form.watch("locationCity"),
-    locationCounty: form.watch("locationCounty"),
-    locationPostcode: form.watch("locationPostcode"),
-    locationCountry: form.watch("locationCountry"),
-    locationAddress: form.watch("locationAddress"),
-  };
-  const formattedPreviewAddress = formatPostalAddress(watchedLocation);
-  const previewMapUrl = buildGoogleMapsSearchUrl(watchedLocation);
-  const customMapUrl = form.watch("locationMapUrl");
-  const postcodeRaw = watchedLocation.locationPostcode ?? "";
-  const postcodeIsValid = postcodeRaw.trim() === "" || isUkPostcode(postcodeRaw);
+  const {
+    isSaleroom,
+    formattedPreviewAddress,
+    previewMapUrl,
+    customMapUrl,
+    postcodeIsValid,
+    pendingSaleWindow,
+    readyToPublish,
+    isReviewStep,
+    setupReadinessNudge,
+    handleSaveDraft,
+    mobilePrimaryAction,
+    mobileCancelAction,
+  } = useSaleSetupWizardView({
+    form,
+    sale,
+    saleId,
+    lots,
+    lotsUnsaved,
+    wizardStepIndex,
+    showFirstSaveNudge,
+    pendingRegistrationCount,
+    connectRequiredByLotId,
+    canManageSale,
+    pending,
+    guardedPush,
+    persistSale,
+    startTransition,
+    onPublishOpen: () => setPublishOpen(true),
+  });
 
   const activeSale = sale;
-  const pendingSaleWindow = useMemo(() => {
-    const fromForm = parseSaleWindowFromForm({
-      deliveryMode,
-      startTime: watchedStartTime,
-      endTime: watchedEndTime,
-    });
-    if (fromForm) return fromForm;
-    return activeSale ? parseSaleWindowFromSale(activeSale) : null;
-  }, [activeSale, deliveryMode, watchedEndTime, watchedStartTime]);
-  const readyToPublish =
-    saleId &&
-    activeSale &&
-    !form.formState.isDirty &&
-    !lotsUnsaved &&
-    isSaleSetupReadyToPublish(
-      saleId,
-      activeSale,
-      lots,
-      pendingRegistrationCount,
-      connectRequiredByLotId,
-    );
-  const isReviewStep = saleSetupStepId(wizardStepIndex) === "review";
-  const setupReadinessNudge =
-    showFirstSaveNudge && saleId && activeSale && wizardStepIndex >= 1
-      ? buildSaleSetupReadiness({
-          saleId,
-          sale: activeSale,
-          lots,
-          pendingRegistrationCount,
-          ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
-          setupStepHref: (step) => saleSetupHref(saleId, step),
-        })
-      : null;
-
-  const handleSaveDraft = useCallback(() => {
-    startTransition(async () => {
-      if (saleId && canManageSale && form.formState.isDirty) {
-        const id = await persistSale({
-          savedNoticeStep: isReviewStep ? "review" : saleSetupStepId(wizardStepIndex),
-        });
-        if (!id) return;
-      }
-      notify.success(saveDraftSuccessMessage());
-      guardedPush(saleId ? `/admin/sales/${saleId}?created=1` : "/admin/sales");
-    });
-  }, [
-    canManageSale,
-    form.formState.isDirty,
-    guardedPush,
-    isReviewStep,
-    persistSale,
-    saleId,
-    wizardStepIndex,
-  ]);
-
-  const mobilePrimaryAction = useMemo(() => {
-    if (!isReviewStep) return null;
-    if (!canManageSale) {
-      return {
-        label: "Back to sale",
-        onClick: () => guardedPush(saleId ? `/admin/sales/${saleId}` : "/admin/sales"),
-      };
-    }
-    return {
-      label: "Publish sale",
-      onClick: () => setPublishOpen(true),
-      ...(!readyToPublish || pending ? { disabled: true as const } : {}),
-    };
-  }, [canManageSale, guardedPush, isReviewStep, pending, readyToPublish, saleId]);
-
-  const mobileCancelAction = useMemo(() => {
-    if (saleId) {
-      return {
-        label: isReviewStep ? "Save as draft" : WIZARD_COPY.finishLater,
-        onClick: handleSaveDraft,
-      };
-    }
-    return { label: "Cancel", href: "/admin/sales" };
-  }, [handleSaveDraft, isReviewStep, saleId]);
 
   const wizardCreateDraftExtras =
     !saleId && canManageSale
@@ -301,6 +223,96 @@ export function SaleSetupWizard({
     if (!saleId) return;
     await runPublish(saleId);
   };
+
+  const executeStepTransition = useCallback(
+    async (stepIndex: number): Promise<boolean> => {
+      const stepId = saleSetupStepId(stepIndex);
+
+      if (stepIndex <= 2 && !readOnlySaleSteps) {
+        const fields = SALE_SETUP_STEP_FIELD_GROUPS[stepIndex];
+        if (
+          fields?.length &&
+          !(await validateWizardStep(form, adminSaleDraftScheduleSchema(), fields))
+        ) {
+          setValidationStepIndex(stepIndex);
+          setValidationBanner(saleSetupWizardValidationMessage(stepIndex));
+          return false;
+        }
+        setValidationBanner(null);
+        setValidationStepIndex(null);
+      }
+
+      const catalogPrepShowReadinessNotice = Boolean(
+        activeSale &&
+          saleId &&
+          !isSaleSetupPublishReady({
+            saleId,
+            sale: activeSale,
+            lots,
+            pendingRegistrationCount,
+            ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
+          }),
+      );
+
+      const result = resolveSaleSetupStepTransition({
+        stepIndex,
+        stepId,
+        readOnlySaleSteps,
+        readOnlyLots,
+        saleId,
+        lotsUnsaved,
+        lotsCount: lots.length,
+        catalogPrepShowReadinessNotice,
+        catalogPrepHref: saleId ? `/admin/sales/${saleId}/setup?step=catalog-prep` : "/admin/sales",
+        reviewHref: saleId ? `/admin/sales/${saleId}/setup?step=review` : "/admin/sales",
+      });
+
+      switch (result.action) {
+        case "readonly-skip":
+          return stepIndex >= result.allowWhenStepIndexGte;
+        case "block":
+          if (result.notifyMessage) notify.error(result.notifyMessage);
+          return false;
+        case "persist": {
+          let ok = false;
+          await new Promise<void>((resolve) => {
+            startTransition(async () => {
+              ok =
+                (await persistSale({
+                  savedNoticeStep: result.savedNoticeStep,
+                  nextStep: result.nextStep,
+                })) != null;
+              resolve();
+            });
+          });
+          return ok;
+        }
+        case "navigate":
+          router.replace(result.href);
+          if (result.notice) setStepNotice(result.notice);
+          return true;
+        case "advance":
+          return true;
+        default: {
+          const _exhaustive: never = result;
+          return _exhaustive;
+        }
+      }
+    },
+    [
+      activeSale,
+      connectRequiredByLotId,
+      form,
+      lots,
+      lotsUnsaved,
+      pendingRegistrationCount,
+      persistSale,
+      readOnlyLots,
+      readOnlySaleSteps,
+      router,
+      saleId,
+    ],
+  );
 
   return (
     <>
@@ -362,86 +374,7 @@ export function SaleSetupWizard({
             onStepBack={(toIndex) => {
               if (saleId) router.replace(saleSetupHref(saleId, saleSetupStepId(toIndex)));
             }}
-            onBeforeNext={async (stepIndex) => {
-              const stepId = saleSetupStepId(stepIndex);
-              if (stepIndex <= 2) {
-                if (readOnlySaleSteps) return stepIndex >= 3;
-                const fields = SALE_SETUP_STEP_FIELD_GROUPS[stepIndex];
-                if (
-                  fields?.length &&
-                  !(await validateWizardStep(form, adminSaleDraftScheduleSchema(), fields))
-                ) {
-                  setValidationStepIndex(stepIndex);
-                  setValidationBanner(saleSetupWizardValidationMessage(stepIndex));
-                  return false;
-                }
-                setValidationBanner(null);
-                setValidationStepIndex(null);
-                if (stepIndex === 1) {
-                  let ok = false;
-                  await new Promise<void>((resolve) => {
-                    startTransition(async () => {
-                      ok =
-                        (await persistSale({
-                          savedNoticeStep: "documents",
-                          nextStep: "documents",
-                        })) != null;
-                      resolve();
-                    });
-                  });
-                  return ok;
-                }
-                if (stepIndex === 2) {
-                  let ok = false;
-                  await new Promise<void>((resolve) => {
-                    startTransition(async () => {
-                      ok =
-                        (await persistSale({
-                          savedNoticeStep: "lots",
-                          nextStep: "lots",
-                        })) != null;
-                      resolve();
-                    });
-                  });
-                  return ok;
-                }
-                return true;
-              }
-              if (stepId === "lots") {
-                if (readOnlyLots) return true;
-                if (!saleId) {
-                  notify.error("Save the sale first");
-                  return false;
-                }
-                if (lotsUnsaved) {
-                  notify.error("Save all lots before continuing");
-                  return false;
-                }
-                if (lots.length === 0) {
-                  notify.error("Add at least one lot");
-                  return false;
-                }
-                router.replace(`/admin/sales/${saleId}/setup?step=catalog-prep`);
-                return true;
-              }
-              if (stepId === "catalog-prep") {
-                router.replace(`/admin/sales/${saleId}/setup?step=review`);
-                if (
-                  activeSale &&
-                  !isSaleSetupPublishReady({
-                    saleId: saleId as string,
-                    sale: activeSale,
-                    lots,
-                    pendingRegistrationCount,
-                    ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
-                  })
-                ) {
-                  setStepNotice(catalogPrepReviewNotice());
-                }
-                return true;
-              }
-              return true;
-            }}
+            onBeforeNext={executeStepTransition}
             leadingSlot={
               <Button
                 type="button"

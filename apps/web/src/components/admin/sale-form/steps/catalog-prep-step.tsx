@@ -12,8 +12,8 @@ import {
   lotConnectRequired,
 } from "@/lib/admin/connect-readiness-shared";
 import { type LotImageSaveEntry, useLotImagesSave } from "@/lib/admin/lots/use-lot-images-save";
-import { countLotsCatalogReady, humanizeSetupError, saleSetupHref } from "@/lib/admin/sale-setup";
-import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
+import { countLotsCatalogReady, saleSetupHref } from "@/lib/admin/sale-setup";
+import { notifySaleSetupActionFailure } from "@/lib/admin/sale-setup/notify-sale-setup-action-failure.client";
 import { notify } from "@/lib/ui/notify";
 import type { Lot, Sale } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
@@ -72,16 +72,7 @@ function LotCatalogPrepCard({
         description: description.trim() || undefined,
       });
       if (!r.ok) {
-        notify.error(
-          humanizeSetupError({
-            message: actionFailureNotifyMessage(r.error, {
-              status: r.status,
-              errorCode: r.errorCode,
-              meta: r.meta,
-            }),
-            errorCode: r.errorCode,
-          }),
-        );
+        notifySaleSetupActionFailure(r);
         return;
       }
       notify.success("Description saved");

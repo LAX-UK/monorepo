@@ -5,26 +5,28 @@ import {
   type AdminSourceOfFundsDetail,
   type AdminSourceOfFundsRow,
   type BuyerSourceOfFundsView,
-  buyerSofViewFromJson,
-  sofDetailFromJson,
-  sofFromJson,
-} from "@/lib/data/http/compliance-sof.mapper";
+  adminSourceOfFundsDetailSchema,
+  adminSourceOfFundsRowSchema,
+  buyerSourceOfFundsViewSchema,
+} from "@/lib/data/http/compliance-sof.schema";
 import { COMPLIANCE_QUEUE_LIST_LIMIT } from "@/lib/data/http/compliance.shared";
+import { readDataEnvelope, readJsonBody, readNullableListEnvelope } from "@/lib/data/http/envelope";
+import { isIndexableObject } from "@/lib/data/http/object-guards";
 import { normalizeApiErrorMessage } from "@auction/validators";
+
+function readApiError(body: unknown, fallback: string): string {
+  const error = isIndexableObject(body) ? body.error : undefined;
+  return normalizeApiErrorMessage(error, fallback);
+}
 
 export async function getBuyerSourceOfFundsView(): Promise<BuyerSourceOfFundsView | null> {
   const res = await authedServerFetch("/payments/me/source-of-funds");
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(
-      normalizeApiErrorMessage(
-        (body as { error?: unknown }).error,
-        "Could not load source of funds status",
-      ),
-    );
+    const body = await readJsonBody(res).catch(() => ({}));
+    throw new Error(readApiError(body, "Could not load source of funds status"));
   }
-  const json = (await res.json()) as { data?: unknown };
-  return buyerSofViewFromJson(json.data);
+  const body = await readJsonBody(res);
+  return readDataEnvelope(body, buyerSourceOfFundsViewSchema, "GET /payments/me/source-of-funds");
 }
 
 export async function getAdminSourceOfFundsPending(
@@ -63,20 +65,15 @@ export async function getAdminSourceOfFundsPage(params: {
   });
   const res = await authedServerFetch(`/admin/compliance/source-of-funds?${qs.toString()}`);
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(
-      normalizeApiErrorMessage(
-        (body as { error?: unknown }).error,
-        "Could not load Source of Funds cases",
-      ),
-    );
+    const body = await readJsonBody(res).catch(() => ({}));
+    throw new Error(readApiError(body, "Could not load Source of Funds cases"));
   }
-  const json = (await res.json()) as { data?: unknown; meta?: { total?: number } };
-  const rows = Array.isArray(json.data) ? json.data : [];
-  return {
-    rows: rows.map(sofFromJson).filter((r): r is AdminSourceOfFundsRow => r != null),
-    total: json.meta?.total ?? rows.length,
-  };
+  const body = await readJsonBody(res);
+  return readNullableListEnvelope(
+    body,
+    adminSourceOfFundsRowSchema,
+    "GET /admin/compliance/source-of-funds",
+  );
 }
 
 export async function getAdminSourceOfFundsDetail(
@@ -87,30 +84,27 @@ export async function getAdminSourceOfFundsDetail(
   );
   if (res.status === 404) return null;
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(
-      normalizeApiErrorMessage(
-        (body as { error?: unknown }).error,
-        "Could not load Source of Funds case detail",
-      ),
-    );
+    const body = await readJsonBody(res).catch(() => ({}));
+    throw new Error(readApiError(body, "Could not load Source of Funds case detail"));
   }
-  const json = (await res.json()) as { data?: unknown };
-  return sofDetailFromJson(json.data);
+  const body = await readJsonBody(res);
+  return readDataEnvelope(
+    body,
+    adminSourceOfFundsDetailSchema,
+    `GET /admin/compliance/source-of-funds/${caseId}/detail`,
+  );
 }
 
 export async function getAdminUserSourceOfFunds(userId: string): Promise<AdminSourceOfFundsRow[]> {
   const res = await authedServerFetch(`/admin/users/${encodeURIComponent(userId)}/source-of-funds`);
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(
-      normalizeApiErrorMessage(
-        (body as { error?: unknown }).error,
-        "Could not load Source of Funds cases for user",
-      ),
-    );
+    const body = await readJsonBody(res).catch(() => ({}));
+    throw new Error(readApiError(body, "Could not load Source of Funds cases for user"));
   }
-  const json = (await res.json()) as { data?: unknown };
-  const rows = Array.isArray(json.data) ? json.data : [];
-  return rows.map(sofFromJson).filter((r): r is AdminSourceOfFundsRow => r != null);
+  const body = await readJsonBody(res);
+  return readNullableListEnvelope(
+    body,
+    adminSourceOfFundsRowSchema,
+    `GET /admin/users/${userId}/source-of-funds`,
+  ).rows;
 }

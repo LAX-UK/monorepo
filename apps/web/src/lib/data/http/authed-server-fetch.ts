@@ -35,3 +35,18 @@ export async function authedServerFetch(
     credentials: "include",
   });
 }
+
+/** Refetch without acting-entity header when the first response is 403. */
+export async function authedServerFetchWithEntityFallback(
+  path: string,
+  init?: AuthedServerFetchInit,
+): Promise<Response> {
+  let res = await authedServerFetch(path, init);
+  if (res.status === 403) {
+    res = await authedServerFetch(path, {
+      ...init,
+      skipActingLegalEntityHeader: true,
+    });
+  }
+  return res;
+}

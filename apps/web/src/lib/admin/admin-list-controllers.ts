@@ -35,8 +35,6 @@ export { disputesListController } from "./list-controllers/disputes-list-control
 export type { CategoriesListQuery } from "./list-controllers/categories-list-controller";
 export { categoriesListController } from "./list-controllers/categories-list-controller";
 
-export { conveyorListController } from "./list-controllers/conveyor-list-controller";
-
 export type { ConditionReportsListQuery } from "./list-controllers/condition-reports-list-controller";
 export { conditionReportsListController } from "./list-controllers/condition-reports-list-controller";
 

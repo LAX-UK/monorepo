@@ -390,23 +390,6 @@ test.describe("admin a11y smoke", () => {
     ).toHaveLength(0);
   });
 
-  test("conveyor hub has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/conveyor");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
-  });
-
   test("saleroom hub has no serious axe violations in main", async ({ page }) => {
     test.skip(!enabled || !staffEmail, skipReason);
     await staffLogin(page);

@@ -7,7 +7,10 @@ import {
 } from "@/lib/actions/idempotency-cache";
 import { revalidateCatalogueCache } from "@/lib/actions/revalidate-catalogue";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { artistMergeResultSchema } from "@/lib/data/http/admin-catalog.schema";
+import { getAdminArtistById } from "@/lib/data/http/admin-catalog.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -185,14 +188,11 @@ export async function adminMergeArtistResultAction(
       return actionFailure("Cannot merge an artist into itself");
     }
 
-    const canonRes = await authedServerFetch(
-      `/artists/${encodeURIComponent(parsed.data.intoArtistId)}`,
-    );
-    if (!canonRes.ok) {
-      return actionFailure("Target artist not found", undefined, canonRes.status);
+    const canonical = await getAdminArtistById(parsed.data.intoArtistId);
+    if (!canonical) {
+      return actionFailure("Target artist not found");
     }
-    const canonBody = (await canonRes.json()) as { data?: { displayName?: string } };
-    const displayName = canonBody.data?.displayName;
+    const displayName = canonical.displayName;
     if (!displayName) {
       return actionFailure("Target artist not found");
     }
@@ -210,11 +210,9 @@ export async function adminMergeArtistResultAction(
         confirmationPhrase: parsed.data.confirmationPhrase,
       }),
     });
+    const mergeBody = await readJsonBody(mergeRes);
     if (!mergeRes.ok) {
-      const payload = (await mergeRes.json().catch(() => ({}))) as {
-        error?: string;
-        message?: string;
-      };
+      const payload = mergeBody as { error?: string; message?: string };
       return actionFailure(
         payload.message ?? payload.error ?? "merge_failed",
         undefined,
@@ -222,11 +220,12 @@ export async function adminMergeArtistResultAction(
       );
     }
 
-    const body = (await mergeRes.json()) as {
-      data?: { remaining?: { id?: string }; canonical?: { id?: string } };
-    };
-    const remainingId =
-      body.data?.remaining?.id ?? body.data?.canonical?.id ?? parsed.data.intoArtistId;
+    const merged = readDataEnvelope(
+      mergeBody,
+      artistMergeResultSchema,
+      `POST /artists/${fromId}/merge`,
+    );
+    const remainingId = merged.remainingId || merged.canonicalId || parsed.data.intoArtistId;
 
     revalidatePath("/admin/artists");
     revalidatePath(`/admin/artists/${fromId}/edit`);

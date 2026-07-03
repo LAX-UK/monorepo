@@ -20,4 +20,5 @@ export {
   getAdminArtistStats,
   getAdminCategoryById,
   getAdminCategoryList,
+  searchAdminArtistsRegistry,
 } from "./admin-catalog.reader";

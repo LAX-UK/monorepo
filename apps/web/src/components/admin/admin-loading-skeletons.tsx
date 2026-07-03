@@ -97,7 +97,7 @@ export function AdminListPageSkeleton({
   );
 }
 
-/** Saleroom / conveyor kanban columns. */
+/** Saleroom kanban columns. */
 export function KanbanSkeleton({ columns = 5 }: { columns?: number }) {
   return (
     <div className="flex gap-4 overflow-x-auto pb-4" aria-busy="true" aria-label="Loading pipeline">

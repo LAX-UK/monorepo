@@ -28,7 +28,6 @@ import type { IAnalyticsService } from "../interfaces/analytics.js";
 import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "../interfaces/attention-feed.js";
 import type { IConditionReportService } from "../interfaces/condition-report.js";
-import type { IConveyorPipelineReader } from "../interfaces/conveyor-pipeline-reader.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
 import type { IEmailObservabilityRepository } from "../interfaces/email-observability.js";
@@ -100,7 +99,6 @@ export type CreateAdminRouteServicesInput = {
   analyticsService: IAnalyticsService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
-  conveyorPipelineReader: IConveyorPipelineReader;
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   paymentService: IPaymentAdminService;
   adminPaymentListQueryService: AdminPaymentListQueryService;
@@ -170,7 +168,6 @@ export function createAdminRouteServices(
     analyticsService: input.analyticsService,
     adminMetricsService: input.adminMetricsService,
     attentionFeedReader: input.attentionFeedReader,
-    conveyorPipelineReader: input.conveyorPipelineReader,
     itemSubmissionAdminApi: input.itemSubmissionAdminApi,
     emailObservabilityRepository: input.emailObservabilityRepository,
     displayPairingService: input.displayPairingService,

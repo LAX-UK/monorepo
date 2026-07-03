@@ -4,8 +4,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 
 import type { ArtistSearchHit } from "@/components/artists/artist-search";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
-import { getAdminArtistList } from "@/lib/data/http/admin.server";
-import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { getAdminArtistList, searchAdminArtistsRegistry } from "@/lib/data/http/admin.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { ARTISTS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { AdminArtistListRow } from "@auction/types";
@@ -43,11 +42,24 @@ export async function searchAdminArtistsAction(
 
       // Registry search (aliases/fuzzy) when list ILIKE finds nothing — requires API restart
       // after `/admin/artists/search` route + UUID param constraint ship.
-      const qs = new URLSearchParams({ q: trimmed, limit: "20" });
-      const registryRes = await authedServerFetch(`/admin/artists/search?${qs.toString()}`);
-      if (registryRes.ok) {
-        const body = (await registryRes.json()) as { data: ArtistSearchHit[] };
-        return actionSuccess(body.data.filter((hit) => hit.status !== "merged_into"));
+      const registryHits = await searchAdminArtistsRegistry(trimmed, 20);
+      if (registryHits.length > 0) {
+        return actionSuccess(
+          registryHits
+            .filter((hit) => hit.status !== "merged_into")
+            .map(
+              (hit): ArtistSearchHit => ({
+                id: hit.id,
+                displayName: hit.displayName,
+                slug: hit.slug,
+                kind: hit.kind,
+                status: hit.status,
+                matchedAlias: hit.matchedAlias,
+                matchType: hit.matchType as ArtistSearchHit["matchType"],
+                score: hit.score,
+              }),
+            ),
+        );
       }
 
       return actionSuccess([]);

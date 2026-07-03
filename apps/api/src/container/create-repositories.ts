@@ -34,7 +34,6 @@ import { DrizzleArtistWatchlistRepository } from "../repositories/drizzle-artist
 import { DrizzleAttentionFeedReader } from "../repositories/drizzle-attention-feed.reader.js";
 import { DrizzleCategoryRepository } from "../repositories/drizzle-category.repository.js";
 import { DrizzleConnectTransferRepository } from "../repositories/drizzle-connect-transfer.repository.js";
-import { DrizzleConveyorPipelineReader } from "../repositories/drizzle-conveyor-pipeline.reader.js";
 import { DrizzleDisplayPairingRepository } from "../repositories/drizzle-display-pairing.repository.js";
 import { DrizzleEmailObservabilityRepository } from "../repositories/drizzle-email-observability.repository.js";
 import { DrizzleEmailSuppressionRepository } from "../repositories/drizzle-email-suppression.repository.js";
@@ -234,7 +233,6 @@ export type ContainerRepositories = {
   saleroomDisplaySessionRepository: ISaleroomDisplaySessionRepository;
   impersonationSessionRepository: IImpersonationSessionRepository;
   impersonationDomainEventReader: IImpersonationDomainEventReader;
-  conveyorPipelineReader: DrizzleConveyorPipelineReader;
   saleBiddersReader: DrizzleSaleBiddersReader;
   userSuspensionChecker: DrizzleUserSuspensionChecker;
   saleroomDisplaySnapshotReader: ISaleroomDisplaySnapshotReader;
@@ -345,7 +343,6 @@ export function createRepositories(db: Database): ContainerRepositories {
   const saleroomDisplaySessionRepository = new DrizzleSaleroomDisplaySessionRepository(db);
   const impersonationSessionRepository = new DrizzleImpersonationSessionRepository(db);
   const impersonationDomainEventReader = new DrizzleImpersonationDomainEventReader(db);
-  const conveyorPipelineReader = new DrizzleConveyorPipelineReader(db);
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);
   const userSuspensionChecker = new DrizzleUserSuspensionChecker(db);
   const saleroomDisplaySnapshotReader = new DrizzleSaleroomDisplaySnapshotReader(db);
@@ -450,7 +447,6 @@ export function createRepositories(db: Database): ContainerRepositories {
     saleroomDisplaySessionRepository,
     impersonationSessionRepository,
     impersonationDomainEventReader,
-    conveyorPipelineReader,
     saleBiddersReader,
     userSuspensionChecker,
     saleroomDisplaySnapshotReader,

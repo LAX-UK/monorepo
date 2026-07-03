@@ -11,6 +11,7 @@ import {
   parseBulkSalesApiResponse,
 } from "@/lib/admin/bulk-ops/sale-bulk-result";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { readDataEnvelope } from "@/lib/data/http/envelope";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -28,7 +29,12 @@ import {
   updateSaleSchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
-import type { z } from "zod";
+import { z } from "zod";
+
+const saleRevalidateSummarySchema = z.object({
+  id: z.string().optional(),
+  title: z.string().optional(),
+});
 
 export async function adminCreateSaleResultAction(
   input: z.infer<typeof createSaleSchema>,
@@ -82,10 +88,9 @@ export async function adminUpdateSaleResultAction(
     if (parsed.data.dayImages !== undefined || parsed.data.pressCoverage !== undefined) {
       const { revalidateCatalogueCache } = await import("@/lib/actions/revalidate-catalogue");
       revalidateCatalogueCache();
-      const payload = r.data as { data?: { id?: string; title?: string } };
-      const updated = payload.data;
-      const revalidateId = updated?.id ?? id;
-      const revalidateTitle = updated?.title;
+      const updated = readDataEnvelope(r.data, saleRevalidateSummarySchema, `PATCH /sales/${id}`);
+      const revalidateId = updated.id ?? id;
+      const revalidateTitle = updated.title;
       if (revalidateId && revalidateTitle) {
         const { salePath: buildSalePath } = await import("@/lib/seo/url");
         revalidatePath(buildSalePath({ id: revalidateId, title: revalidateTitle }));

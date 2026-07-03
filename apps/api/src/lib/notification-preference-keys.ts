@@ -36,122 +36,131 @@ export function defaultNotificationPreference(userId: string): NotificationPrefe
   return { ...DEFAULTS, userId, updatedAt: new Date() };
 }
 
+type NotificationTypeConfig = {
+  inApp: keyof NotificationPreference | null;
+  push: keyof NotificationPreference | null;
+  email: keyof NotificationPreference | null;
+  whatsapp: keyof NotificationPreference | null;
+  template: string | null;
+};
+
+const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
+  outbid: {
+    inApp: "outbidInApp",
+    push: "outbidPush",
+    email: "outbidEmail",
+    whatsapp: "outbidWhatsapp",
+    template: "bid-outbid",
+  },
+  lot_cancelled: {
+    inApp: "outbidInApp",
+    push: "outbidPush",
+    email: "outbidEmail",
+    whatsapp: "outbidWhatsapp",
+    template: null,
+  },
+  lot_won: {
+    inApp: "wonInApp",
+    push: "wonPush",
+    email: "wonEmail",
+    whatsapp: "wonWhatsapp",
+    template: "lot-won",
+  },
+  lot_lost: {
+    inApp: "lostInApp",
+    push: null,
+    email: "lostEmail",
+    whatsapp: "lostWhatsapp",
+    template: null,
+  },
+  lot_ending_soon: {
+    inApp: "endingSoonInApp",
+    push: "endingSoonPush",
+    email: "endingSoonEmail",
+    whatsapp: "endingSoonWhatsapp",
+    template: null,
+  },
+  watchlist_starting: {
+    inApp: "watchlistInApp",
+    push: null,
+    email: "watchlistEmail",
+    whatsapp: "watchlistWhatsapp",
+    template: null,
+  },
+  watchlist_ending_soon: {
+    inApp: "endingSoonInApp",
+    push: "endingSoonPush",
+    email: "endingSoonEmail",
+    whatsapp: "endingSoonWhatsapp",
+    template: null,
+  },
+  payment_received: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    template: "payment-receipt",
+  },
+  payment_due: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    template: "payment-invoice",
+  },
+  lot_ended_seller: {
+    inApp: null,
+    push: null,
+    email: "lotEndedSellerEmail",
+    whatsapp: "lotEndedSellerWhatsapp",
+    template: "lot-ended-seller",
+  },
+  submission_approved: {
+    inApp: null,
+    push: "submissionUpdatesPush",
+    email: "submissionUpdatesEmail",
+    whatsapp: null,
+    template: "submission-approved",
+  },
+  submission_converted: {
+    inApp: null,
+    push: "submissionUpdatesPush",
+    email: "submissionUpdatesEmail",
+    whatsapp: null,
+    template: "submission-converted",
+  },
+  submission_rejected: {
+    inApp: null,
+    push: "submissionUpdatesPush",
+    email: "submissionUpdatesEmail",
+    whatsapp: null,
+    template: "submission-rejected",
+  },
+  submission_draft_reminder: {
+    inApp: null,
+    push: "submissionUpdatesPush",
+    email: "submissionUpdatesEmail",
+    whatsapp: null,
+    template: "submission-draft-reminder",
+  },
+};
+
 export function emailPreferenceKey(type: string): keyof NotificationPreference | null {
-  switch (type) {
-    case "outbid":
-    case "lot_cancelled":
-      return "outbidEmail";
-    case "lot_won":
-      return "wonEmail";
-    case "lot_lost":
-      return "lostEmail";
-    case "lot_ending_soon":
-    case "watchlist_ending_soon":
-      return "endingSoonEmail";
-    case "watchlist_starting":
-      return "watchlistEmail";
-    case "payment_received":
-    case "payment_due":
-      return "paymentEmail";
-    case "lot_ended_seller":
-      return "lotEndedSellerEmail";
-    case "submission_approved":
-    case "submission_converted":
-    case "submission_rejected":
-    case "submission_draft_reminder":
-      return "submissionUpdatesEmail";
-    default:
-      return null;
-  }
+  return NOTIFICATION_TYPE_CONFIG[type]?.email ?? null;
 }
 
 export function whatsappPreferenceKey(type: string): keyof NotificationPreference | null {
-  switch (type) {
-    case "outbid":
-    case "lot_cancelled":
-      return "outbidWhatsapp";
-    case "lot_won":
-      return "wonWhatsapp";
-    case "lot_lost":
-      return "lostWhatsapp";
-    case "lot_ending_soon":
-    case "watchlist_ending_soon":
-      return "endingSoonWhatsapp";
-    case "watchlist_starting":
-      return "watchlistWhatsapp";
-    case "payment_received":
-    case "payment_due":
-      return "paymentWhatsapp";
-    case "lot_ended_seller":
-      return "lotEndedSellerWhatsapp";
-    default:
-      return null;
-  }
+  return NOTIFICATION_TYPE_CONFIG[type]?.whatsapp ?? null;
 }
 
 export function notificationTypeToTemplate(type: string): string | null {
-  switch (type) {
-    case "outbid":
-      return "bid-outbid";
-    case "lot_won":
-      return "lot-won";
-    case "lot_ended_seller":
-      return "lot-ended-seller";
-    case "payment_received":
-      return "payment-receipt";
-    case "payment_due":
-      return "payment-invoice";
-    case "submission_approved":
-      return "submission-approved";
-    case "submission_converted":
-      return "submission-converted";
-    case "submission_rejected":
-      return "submission-rejected";
-    case "submission_draft_reminder":
-      return "submission-draft-reminder";
-    default:
-      return null;
-  }
+  return NOTIFICATION_TYPE_CONFIG[type]?.template ?? null;
 }
 
 export function inAppPreferenceKey(type: string): keyof NotificationPreference | null {
-  switch (type) {
-    case "outbid":
-    case "lot_cancelled":
-      return "outbidInApp";
-    case "lot_won":
-      return "wonInApp";
-    case "lot_lost":
-      return "lostInApp";
-    case "lot_ending_soon":
-    case "watchlist_ending_soon":
-      return "endingSoonInApp";
-    case "watchlist_starting":
-      return "watchlistInApp";
-    case "payment_received":
-    case "payment_due":
-      return "paymentInApp";
-    default:
-      return null;
-  }
+  return NOTIFICATION_TYPE_CONFIG[type]?.inApp ?? null;
 }
 
 export function pushPreferenceKey(type: string): keyof NotificationPreference | null {
-  switch (type) {
-    case "outbid":
-    case "lot_cancelled":
-      return "outbidPush";
-    case "lot_won":
-      return "wonPush";
-    case "lot_ending_soon":
-    case "watchlist_ending_soon":
-      return "endingSoonPush";
-    case "submission_approved":
-    case "submission_converted":
-    case "submission_rejected":
-    case "submission_draft_reminder":
-      return "submissionUpdatesPush";
-    default:
-      return null;
-  }
+  return NOTIFICATION_TYPE_CONFIG[type]?.push ?? null;
 }

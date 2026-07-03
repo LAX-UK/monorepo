@@ -1,26 +1,10 @@
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { parseLotDetail } from "@/lib/data/http/parse";
+import type { LotQuickLookEnrichment } from "./enrichment-types";
 import { lotQuickLookEnrichmentFromLot } from "./lot-quick-look-enrichment";
 import type { LotQuickLookVM } from "./types";
 
-export type LotQuickLookEnrichment = Partial<
-  Pick<
-    LotQuickLookVM,
-    | "medium"
-    | "images"
-    | "estimateLabel"
-    | "estimateValue"
-    | "status"
-    | "startTime"
-    | "endTime"
-    | "currentBidLabel"
-    | "currentBidValue"
-    | "dimensions"
-    | "minNextBidLabel"
-    | "minNextBidValue"
-    | "buyersPremiumHint"
-  >
->;
+export type { LotQuickLookEnrichment } from "./enrichment-types";
 
 /** Background fetch for extra images, medium, and pricing when absent on the card VM. */
 export async function fetchLotQuickLookEnrichment(

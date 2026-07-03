@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+import { formatSaleSetupActionError } from "./format-sale-setup-action-error";
 import { humanizeSetupError } from "./humanize-setup-error";
 import { emptySaleSetupLotRow, safeParseSaleSetupLotRowForApi } from "./lot-row-schema";
 import {
@@ -358,6 +359,25 @@ describe("buildSaleSetupReadiness", () => {
     const connectItem = result.items.find((i) => i.id.includes(":seller"));
     expect(connectItem?.ok).toBe(false);
     expect(connectItem?.label).toContain("payout setup");
+  });
+});
+
+describe("formatSaleSetupActionError", () => {
+  it("humanizes known backend messages from action failures", () => {
+    expect(
+      formatSaleSetupActionError({
+        error: "endTime must be after startTime",
+      }),
+    ).toBe("Closing time must be after opening time.");
+  });
+
+  it("handles connect_required error codes", () => {
+    expect(
+      formatSaleSetupActionError({
+        error: "blocked",
+        errorCode: "connect_required",
+      }),
+    ).toContain("payout setup");
   });
 });
 

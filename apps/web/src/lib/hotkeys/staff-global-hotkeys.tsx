@@ -164,16 +164,6 @@ export function StaffGlobalHotkeys() {
   });
 
   useHotkey({
-    id: "nav-conveyor",
-    keys: "g v",
-    label: "Conveyor",
-    description: "Go to conveyor pipeline",
-    group: "Go to",
-    scope: "global",
-    handler: go("/admin/conveyor"),
-  });
-
-  useHotkey({
     id: "nav-onboarding",
     keys: "g n",
     label: "Onboarding",
