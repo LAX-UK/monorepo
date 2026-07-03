@@ -2,7 +2,6 @@ import type { Database } from "@auction/db";
 import { session, user, type userStaffRoleEnum } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { count, desc, eq, inArray } from "drizzle-orm";
-import type { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import type {
   AdminActivityEntry,
   AdminUserDetail,
@@ -14,6 +13,7 @@ import type {
   IAdminUserRoleManager,
   IAdminUserSuspender,
 } from "../services/interfaces/admin-user.js";
+import type { IAuthAuditPublisher } from "../services/interfaces/auth-audit-publisher.js";
 import {
   adminUserListSelect,
   buildAdminUserListOrderBy,
@@ -116,7 +116,7 @@ export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
     private readonly db: Database,
     private readonly sessions: { revokeAllForUser: (userId: string) => Promise<unknown> },
     private readonly hooks?: {
-      authAudit?: AuthAuditPublisher;
+      authAudit?: IAuthAuditPublisher;
       emailService?: IEmailService;
       accountSuspendedSupportEmail?: string;
     },
@@ -140,7 +140,7 @@ export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
     await this.sessions.revokeAllForUser(userId);
 
     void this.hooks?.authAudit
-      ?.publish(this.db, {
+      ?.publish({
         eventType: "auth.account_suspended",
         aggregateId: userId,
         payload: {},

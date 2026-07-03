@@ -12,9 +12,10 @@ import type { KycVerification } from "@auction/types";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
   CreateKycVerificationInput,
-  IKycRepository,
+  IKycSessionRepository,
   UpdateKycVerificationPatch,
-} from "../services/interfaces/kyc-repository.js";
+} from "../repositories/interfaces/kyc-session.repository.js";
+import type { IKycRepository } from "../services/interfaces/kyc-repository.js";
 
 function rowToKyc(row: typeof kycVerification.$inferSelect): KycVerification {
   return {
@@ -46,7 +47,7 @@ function rowToKyc(row: typeof kycVerification.$inferSelect): KycVerification {
   };
 }
 
-export class DrizzleKycRepository implements IKycRepository {
+export class DrizzleKycRepository implements IKycRepository, IKycSessionRepository {
   constructor(private readonly db: Database) {}
 
   private resolveConn(conn?: Database): Database {

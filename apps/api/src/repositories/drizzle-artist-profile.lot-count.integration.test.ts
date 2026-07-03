@@ -1,7 +1,7 @@
 import { createDb } from "@auction/db";
 import { artistProfile, legalEntity, lot, user } from "@auction/db/schema";
 import { describe, expect, it } from "vitest";
-import { DrizzleArtistProfileRepository } from "./drizzle-artist-profile.repository.js";
+import { createDrizzleArtistProfileRepository } from "./drizzle-artist-profile.repository.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
@@ -71,7 +71,7 @@ describe.skipIf(!HAS_DB)(
             { ...lotBase, id: endedLotId, status: "ended" },
           ]);
 
-          const repo = new DrizzleArtistProfileRepository(tx);
+          const repo = createDrizzleArtistProfileRepository(tx);
           const result = await repo.listPublicDirectory({
             limit: 5,
             offset: 0,

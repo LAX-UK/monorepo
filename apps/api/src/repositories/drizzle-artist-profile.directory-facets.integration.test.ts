@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import { artistProfile } from "@auction/db/schema";
 import { describe, expect, it } from "vitest";
-import { DrizzleArtistProfileRepository } from "./drizzle-artist-profile.repository.js";
+import { createDrizzleArtistProfileRepository } from "./drizzle-artist-profile.repository.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
@@ -17,7 +17,7 @@ describe.skipIf(!HAS_DB)(
 
       try {
         await db.transaction(async (tx) => {
-          const repo = new DrizzleArtistProfileRepository(tx);
+          const repo = createDrizzleArtistProfileRepository(tx);
           const t = new Date();
           await tx.insert(artistProfile).values([
             {

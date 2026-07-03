@@ -1,8 +1,9 @@
 import type { Database } from "@auction/db";
 import { legalEntity, legalEntityMember, saleRegistration, user } from "@auction/db/schema";
 import type { LegalEntityKind, LegalEntityMemberRole } from "@auction/types";
-import { PADDLE_NUMBER_MIN, memberEligibleForStaffInRoomCheckIn } from "@auction/validators";
+import { PADDLE_NUMBER_MIN } from "@auction/validators";
 import { and, eq, ilike, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { groupEligibleCheckInEntities } from "../lib/saleroom-check-in-entities.js";
 import { isPaddleUniqueViolation } from "./drizzle-paddle.repository.js";
 
 export type CheckInCandidateEntity = {
@@ -33,17 +34,19 @@ export type CheckInWithPaddleInput = {
   userId: string;
   buyerLegalEntityId: string;
   decidedByUserId: string;
+  /** When false, mark present without assigning a paddle (hybrid website-first). */
+  assignPaddle: boolean;
   /** Omit to preserve an existing limit on re-check-in. */
   bidLimit?: string | null;
   /** Omit to preserve existing notes on re-check-in. */
   laxNotes?: string | null;
-  /** Explicit paddle from staff; null = keep existing or auto-assign next free. */
+  /** Explicit paddle from staff; null = keep existing or auto-assign next free when assignPaddle. */
   requestedPaddleNumber: number | null;
 };
 
 export type CheckInWithPaddleResult = {
   registrationId: string;
-  paddleNumber: number;
+  paddleNumber: number | null;
   checkedInAt: Date;
 };
 
@@ -115,29 +118,7 @@ export class DrizzleSaleroomCheckInRepository implements ISaleroomCheckInReposit
         ),
       );
 
-    const entitiesByUser = new Map<string, CheckInCandidateEntity[]>();
-    for (const m of membershipRows) {
-      const role = m.role as LegalEntityMemberRole;
-      const kind = m.kind as LegalEntityKind;
-      if (!memberEligibleForStaffInRoomCheckIn(role, kind)) continue;
-      const list = entitiesByUser.get(m.userId) ?? [];
-      list.push({
-        id: m.legalEntityId,
-        displayName: m.displayName,
-        role,
-        kind,
-        existingRegistration:
-          m.regStatus != null
-            ? {
-                status: m.regStatus,
-                paddleNumber: m.regPaddle,
-                bidLimit: m.regBidLimit,
-                checkedInAt: m.regCheckedInAt,
-              }
-            : null,
-      });
-      entitiesByUser.set(m.userId, list);
-    }
+    const entitiesByUser = groupEligibleCheckInEntities(membershipRows);
 
     const results: CheckInCandidateRow[] = [];
     for (const u of userRows) {
@@ -173,11 +154,15 @@ export class DrizzleSaleroomCheckInRepository implements ISaleroomCheckInReposit
           )
           .limit(1);
 
-        // Prefer the explicit paddle, then keep the existing one (stable re-check-in),
-        // otherwise auto-assign the next free number.
-        let paddleNumber = input.requestedPaddleNumber ?? existing?.paddleNumber ?? null;
-        if (paddleNumber == null) {
-          paddleNumber = await this.nextPaddleNumber(tx, input.saleId);
+        // Prefer explicit paddle when assigning; otherwise keep existing on re-check-in.
+        let paddleNumber: number | null;
+        if (input.assignPaddle) {
+          paddleNumber = input.requestedPaddleNumber ?? existing?.paddleNumber ?? null;
+          if (paddleNumber == null) {
+            paddleNumber = await this.nextPaddleNumber(tx, input.saleId);
+          }
+        } else {
+          paddleNumber = existing?.paddleNumber ?? null;
         }
 
         // Upsert on the natural key so concurrent/double-submitted first check-ins
@@ -217,10 +202,12 @@ export class DrizzleSaleroomCheckInRepository implements ISaleroomCheckInReposit
           .returning({ id: saleRegistration.id });
         if (!row) throw new Error("Could not upsert sale registration");
 
-        await tx
-          .update(user)
-          .set({ preferredPaddleNumber: paddleNumber })
-          .where(eq(user.id, input.userId));
+        if (paddleNumber != null) {
+          await tx
+            .update(user)
+            .set({ preferredPaddleNumber: paddleNumber })
+            .where(eq(user.id, input.userId));
+        }
 
         return { registrationId: row.id, paddleNumber, checkedInAt: now };
       });
