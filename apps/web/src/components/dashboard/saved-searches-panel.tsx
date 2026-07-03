@@ -1,19 +1,15 @@
 "use client";
 
 import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
-import { clientApiBase } from "@/lib/api/client-api-base";
+import {
+  type SavedSearchRow,
+  deleteSavedSearch,
+  fetchSavedSearches,
+} from "@/lib/data/http/saved-searches.client";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-
-type SavedSearchRow = {
-  id: string;
-  label: string;
-  query: Record<string, string>;
-  notifyEmail: boolean;
-  createdAt: string;
-};
 
 function buildSearchHref(query: Record<string, string>): string {
   const params = new URLSearchParams(query);
@@ -32,16 +28,13 @@ export function SavedSearchesPanel() {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch(`${clientApiBase()}/users/me/saved-searches`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
+      const result = await fetchSavedSearches();
+      if (!result.ok) {
         setRows([]);
-        setLoadError("Could not load saved searches. Try again in a moment.");
+        setLoadError(result.error);
         return;
       }
-      const payload = (await res.json()) as { data?: SavedSearchRow[] };
-      setRows(Array.isArray(payload.data) ? payload.data : []);
+      setRows(result.rows);
     } catch {
       setRows([]);
       setLoadError("Could not load saved searches. Check your connection and try again.");
@@ -57,14 +50,8 @@ export function SavedSearchesPanel() {
   async function remove(id: string) {
     setRemovingId(id);
     try {
-      const res = await fetch(
-        `${clientApiBase()}/users/me/saved-searches/${encodeURIComponent(id)}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        },
-      );
-      if (!res.ok) {
+      const ok = await deleteSavedSearch(id);
+      if (!ok) {
         notify.error("Could not remove saved search");
         return;
       }

@@ -7,7 +7,11 @@ export type {
 } from "./filters.js";
 
 export type {
+  ILotAnalyticsRepository,
+  ILotLifecycleRepository,
+  ILotReadRepository,
   ILotRepository,
+  ILotWriteRepository,
   ListCatalogLotsBySalePageInput,
   SaleCatalogLotsSort,
 } from "./lot.repository.js";

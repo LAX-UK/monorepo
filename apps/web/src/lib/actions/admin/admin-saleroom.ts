@@ -1,11 +1,16 @@
 "use server";
 
-import { assertSaleroomAccess } from "@/lib/actions/admin/_shared/saleroom-access";
-import { redirectSaleroomError } from "@/lib/actions/admin/_shared/saleroom-redirect";
+import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
+import {
+  type ActionResult,
+  actionFailure,
+  actionSuccess,
+  firstZodErrorMessage,
+} from "@/lib/forms/form-result";
+import { SALEROOM_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 const saleroomSaleIdForm = z.object({
@@ -16,158 +21,6 @@ const saleroomAdvanceForm = z.object({
   saleId: z.string().uuid(),
   lotId: z.string().uuid(),
 });
-
-function saleroomActionError(body: unknown, fallback: string): string {
-  if (body && typeof body === "object" && "error" in body) {
-    const error = (body as { error?: unknown }).error;
-    if (typeof error === "string" && error.length > 0) return error;
-  }
-  return fallback;
-}
-
-export async function adminSaleroomGoLiveAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomGoLiveAction",
-    async () => {
-      const parsed = saleroomSaleIdForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-      });
-      if (!parsed.success) {
-        redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
-      }
-      const { saleId } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.goLive(saleId);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Go live failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminSaleroomPauseAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomPauseAction",
-    async () => {
-      const parsed = saleroomSaleIdForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-      });
-      if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
-      const { saleId } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.pause(saleId);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Pause failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminSaleroomResumeAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomResumeAction",
-    async () => {
-      const parsed = saleroomSaleIdForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-      });
-      if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
-      const { saleId } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.resume(saleId);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Resume failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminSaleroomAdvanceAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomAdvanceAction",
-    async () => {
-      const parsed = saleroomAdvanceForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        lotId: String(formData.get("lotId") ?? "").trim(),
-      });
-      if (!parsed.success)
-        redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid advance")}`);
-      const { saleId, lotId } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.advance(saleId, lotId);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Advance failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminSaleroomHammerAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomHammerAction",
-    async () => {
-      const parsed = saleroomSaleIdForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-      });
-      if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
-      const { saleId } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.hammer(saleId);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Hammer failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminSaleroomNoSaleAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomNoSaleAction",
-    async () => {
-      const parsed = saleroomSaleIdForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-      });
-      if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
-      const { saleId } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.noSale(saleId);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "No sale failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminSaleroomCloseAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomCloseAction",
-    async () => {
-      const parsed = saleroomSaleIdForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-      });
-      if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
-      const { saleId } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.close(saleId);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Close failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
-}
 
 const displayApproveForm = z.object({
   saleId: z.string().uuid(),
@@ -185,88 +38,219 @@ const displayRevokeForm = z.object({
   pairingId: z.string().uuid(),
 });
 
-export async function adminSaleroomDisplayApproveAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomDisplayApproveAction",
-    async () => {
-      const parsed = displayApproveForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        userCode: String(formData.get("userCode") ?? "").trim(),
-      });
-      if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid code")}`);
-      const { saleId, userCode } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.displayApprove(saleId, userCode);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Display approve failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
+function saleroomActionError(body: unknown, fallback: string): string {
+  if (body && typeof body === "object" && "error" in body) {
+    const error = (body as { error?: unknown }).error;
+    if (typeof error === "string" && error.length > 0) return error;
+  }
+  return fallback;
 }
 
-export async function adminSaleroomDisplayOverlayAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomDisplayOverlayAction",
-    async () => {
-      const parsed = displayOverlayForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        kind: String(formData.get("kind") ?? "").trim(),
-        message: String(formData.get("message") ?? "").trim() || undefined,
-      });
-      if (!parsed.success)
-        redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid overlay")}`);
-      const { saleId, kind, message } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.displayOverlay(saleId, kind, message);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Overlay failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
+async function runSaleroomSaleMutation(
+  saleId: string,
+  mutate: (id: string) => Promise<{ ok: boolean; body?: unknown; status?: number }>,
+  fallback: string,
+): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(SALEROOM_ACCESS);
+  if (denied) return denied;
+
+  const res = await mutate(saleId);
+  if (!res.ok) {
+    return actionFailure(saleroomActionError(res.body, fallback), undefined, res.status);
+  }
+  revalidatePath(`/admin/saleroom/${saleId}`);
+  return actionSuccess();
 }
 
-export async function adminSaleroomDisplayClearOverlayAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomDisplayClearOverlayAction",
-    async () => {
-      const parsed = saleroomSaleIdForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-      });
-      if (!parsed.success) redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid sale")}`);
-      const { saleId } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.displayClearOverlay(saleId);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Clear overlay failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
+export async function adminSaleroomGoLiveAction(input: unknown): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomGoLiveAction", async () => {
+    const parsed = saleroomSaleIdForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId } = parsed.data;
+    return runSaleroomSaleMutation(
+      saleId,
+      (id) => getWriteContainer().adminSaleroom.goLive(id),
+      "Go live failed",
+    );
+  });
 }
 
-export async function adminSaleroomDisplayRevokeAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminSaleroomDisplayRevokeAction",
-    async () => {
-      const parsed = displayRevokeForm.safeParse({
-        saleId: String(formData.get("saleId") ?? "").trim(),
-        pairingId: String(formData.get("pairingId") ?? "").trim(),
-      });
-      if (!parsed.success)
-        redirect(`/admin/saleroom?error=${encodeURIComponent("Invalid revoke")}`);
-      const { saleId, pairingId } = parsed.data;
-      await assertSaleroomAccess(saleId);
-      const res = await getWriteContainer().adminSaleroom.displayRevoke(saleId, pairingId);
-      if (!res.ok) {
-        redirectSaleroomError(saleId, saleroomActionError(res.body, "Revoke failed"));
-      }
-      revalidatePath(`/admin/saleroom/${saleId}`);
-    },
-    { formData },
-  );
+export async function adminSaleroomPauseAction(input: unknown): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomPauseAction", async () => {
+    const parsed = saleroomSaleIdForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId } = parsed.data;
+    return runSaleroomSaleMutation(
+      saleId,
+      (id) => getWriteContainer().adminSaleroom.pause(id),
+      "Pause failed",
+    );
+  });
+}
+
+export async function adminSaleroomResumeAction(input: unknown): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomResumeAction", async () => {
+    const parsed = saleroomSaleIdForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId } = parsed.data;
+    return runSaleroomSaleMutation(
+      saleId,
+      (id) => getWriteContainer().adminSaleroom.resume(id),
+      "Resume failed",
+    );
+  });
+}
+
+export async function adminSaleroomAdvanceAction(input: unknown): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomAdvanceAction", async () => {
+    const parsed = saleroomAdvanceForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId, lotId } = parsed.data;
+    const denied = await denyUnlessAdminCapability(SALEROOM_ACCESS);
+    if (denied) return denied;
+
+    const res = await getWriteContainer().adminSaleroom.advance(saleId, lotId);
+    if (!res.ok) {
+      return actionFailure(saleroomActionError(res.body, "Advance failed"), undefined, res.status);
+    }
+    revalidatePath(`/admin/saleroom/${saleId}`);
+    return actionSuccess();
+  });
+}
+
+export async function adminSaleroomHammerAction(input: unknown): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomHammerAction", async () => {
+    const parsed = saleroomSaleIdForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId } = parsed.data;
+    return runSaleroomSaleMutation(
+      saleId,
+      (id) => getWriteContainer().adminSaleroom.hammer(id),
+      "Hammer failed",
+    );
+  });
+}
+
+export async function adminSaleroomNoSaleAction(input: unknown): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomNoSaleAction", async () => {
+    const parsed = saleroomSaleIdForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId } = parsed.data;
+    return runSaleroomSaleMutation(
+      saleId,
+      (id) => getWriteContainer().adminSaleroom.noSale(id),
+      "No sale failed",
+    );
+  });
+}
+
+export async function adminSaleroomCloseAction(input: unknown): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomCloseAction", async () => {
+    const parsed = saleroomSaleIdForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId } = parsed.data;
+    return runSaleroomSaleMutation(
+      saleId,
+      (id) => getWriteContainer().adminSaleroom.close(id),
+      "Close failed",
+    );
+  });
+}
+
+export async function adminSaleroomDisplayApproveAction(
+  input: unknown,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomDisplayApproveAction", async () => {
+    const parsed = displayApproveForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId, userCode } = parsed.data;
+    const denied = await denyUnlessAdminCapability(SALEROOM_ACCESS);
+    if (denied) return denied;
+
+    const res = await getWriteContainer().adminSaleroom.displayApprove(saleId, userCode);
+    if (!res.ok) {
+      return actionFailure(
+        saleroomActionError(res.body, "Display approve failed"),
+        undefined,
+        res.status,
+      );
+    }
+    revalidatePath(`/admin/saleroom/${saleId}`);
+    return actionSuccess();
+  });
+}
+
+export async function adminSaleroomDisplayOverlayAction(
+  input: unknown,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomDisplayOverlayAction", async () => {
+    const parsed = displayOverlayForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId, kind, message } = parsed.data;
+    const denied = await denyUnlessAdminCapability(SALEROOM_ACCESS);
+    if (denied) return denied;
+
+    const res = await getWriteContainer().adminSaleroom.displayOverlay(saleId, kind, message);
+    if (!res.ok) {
+      return actionFailure(saleroomActionError(res.body, "Overlay failed"), undefined, res.status);
+    }
+    revalidatePath(`/admin/saleroom/${saleId}`);
+    return actionSuccess();
+  });
+}
+
+export async function adminSaleroomDisplayClearOverlayAction(
+  input: unknown,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomDisplayClearOverlayAction", async () => {
+    const parsed = saleroomSaleIdForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId } = parsed.data;
+    return runSaleroomSaleMutation(
+      saleId,
+      (id) => getWriteContainer().adminSaleroom.displayClearOverlay(id),
+      "Clear overlay failed",
+    );
+  });
+}
+
+export async function adminSaleroomDisplayRevokeAction(
+  input: unknown,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminSaleroomDisplayRevokeAction", async () => {
+    const parsed = displayRevokeForm.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error));
+    }
+    const { saleId, pairingId } = parsed.data;
+    const denied = await denyUnlessAdminCapability(SALEROOM_ACCESS);
+    if (denied) return denied;
+
+    const res = await getWriteContainer().adminSaleroom.displayRevoke(saleId, pairingId);
+    if (!res.ok) {
+      return actionFailure(saleroomActionError(res.body, "Revoke failed"), undefined, res.status);
+    }
+    revalidatePath(`/admin/saleroom/${saleId}`);
+    return actionSuccess();
+  });
 }

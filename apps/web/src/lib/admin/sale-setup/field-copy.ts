@@ -1,4 +1,4 @@
-import type { SaleSetupStepId } from "./steps";
+import type { SaleSetupStepId } from "./sale-setup-step-ids";
 
 export type FieldTier = "required" | "before_publish" | "optional";
 

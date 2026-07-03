@@ -1,13 +1,9 @@
 "use client";
-
-import { marketingConsentHeaderValues } from "@/lib/analytics/consent-headers";
 import { useConsent } from "@/lib/analytics/consent/context";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
 import { useEffect, useRef } from "react";
 
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
+import { syncMarketingClickIds } from "@/lib/data/http/marketing-click-ids.client";
 
 function readCookie(name: string): string | undefined {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
@@ -29,17 +25,7 @@ export function MarketingClickIdsSync() {
       const fbc = readCookie("_fbc");
       if (!fbp && !fbc) return;
       sent.current = true;
-      void fetch(`${apiBase()}/marketing/click-ids`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...marketingConsentHeaderValues(),
-        },
-        body: JSON.stringify({ fbp, fbc }),
-      }).catch(() => {
-        sent.current = false;
-      });
+      syncMarketingClickIds({ fbp, fbc });
     }, 500);
 
     return () => window.clearTimeout(t);

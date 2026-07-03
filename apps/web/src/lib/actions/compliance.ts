@@ -1,18 +1,14 @@
 "use server";
 
 import { complianceErrorMessage } from "@/lib/admin/compliance-error-messages";
-import {
-  type SofListStatus,
-  buildSofCaseDetailHref,
-  buildSofListHref,
-} from "@/lib/admin/sof-list-query";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
+import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { z } from "zod";
 
 function serviceErrorMessage(body: unknown, fallback: string, status: number): string {
   try {
@@ -28,168 +24,163 @@ function serviceErrorMessage(body: unknown, fallback: string, status: number): s
   }
 }
 
-function redirectAml(success?: string, error?: string): never {
-  const params = new URLSearchParams();
-  if (success) params.set("success", success);
-  if (error) params.set("error", error);
-  const q = params.toString();
-  redirect(q ? `/admin/compliance/aml?${q}` : "/admin/compliance/aml");
-}
+const amlTriageInput = z.object({
+  screeningId: z.string().trim().min(1),
+  recommendation: z.enum(["clear", "block"]),
+  notes: z.string().trim().max(2000).optional(),
+});
 
-function redirectSof(
-  success?: string,
-  error?: string,
-  caseId?: string,
-  listStatus: SofListStatus = "pending",
-): never {
-  const params = new URLSearchParams();
-  if (success) params.set("success", success);
-  if (error) params.set("error", error);
-  const extra = params.toString();
+const amlDecideInput = z.object({
+  screeningId: z.string().trim().min(1),
+  decision: z.enum(["clear", "block"]),
+  notes: z.string().trim().max(2000).optional(),
+});
 
-  if (caseId) {
-    const base = buildSofCaseDetailHref(caseId, listStatus);
-    redirect(extra ? `${base}&${extra}` : base);
-  }
-  const listBase = buildSofListHref(listStatus);
-  redirect(extra ? `${listBase}&${extra}` : listBase);
-}
+const sofTriageInput = z.object({
+  caseId: z.string().trim().min(1),
+  recommendation: z.enum(["approve", "reject"]),
+  notes: z.string().trim().max(2000).optional(),
+});
 
-export async function amlTriageAction(formData: FormData): Promise<void> {
+const sofDecideInput = z.object({
+  caseId: z.string().trim().min(1),
+  decision: z.enum(["approve", "reject"]),
+  notes: z.string().trim().max(2000).optional(),
+});
+
+const sofReopenInput = z.object({
+  caseId: z.string().trim().min(1),
+});
+
+export async function amlTriageAction(input: unknown): Promise<ActionResult<void>> {
   return instrumentServerAction("amlTriageAction", async () => {
     const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
-    if (denied && !denied.ok) redirectAml(undefined, denied.error);
+    if (denied) return denied;
 
-    const screeningId = String(formData.get("screeningId") ?? "").trim();
-    const recommendation = String(formData.get("recommendation") ?? "").trim();
-    const notes = String(formData.get("notes") ?? "").trim();
-    if (!screeningId || (recommendation !== "clear" && recommendation !== "block")) {
-      redirectAml(undefined, "Invalid triage form");
+    const parsed = amlTriageInput.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure("Invalid triage form");
     }
 
+    const { screeningId, recommendation, notes } = parsed.data;
     const res = await getWriteContainer().adminCompliance.amlTriage(
       screeningId,
-      recommendation as "clear" | "block",
+      recommendation,
       notes || undefined,
     );
     if (!res.ok) {
-      redirectAml(undefined, serviceErrorMessage(res.body, "Triage failed", res.status));
+      return actionFailure(serviceErrorMessage(res.body, "Triage failed", res.status));
     }
 
     revalidatePath("/admin/compliance/aml");
     revalidatePath("/admin");
-    redirectAml("Triage recorded — awaiting MLRO decision");
+    return actionSuccess();
   });
 }
 
-export async function amlDecideAction(formData: FormData): Promise<void> {
+export async function amlDecideAction(input: unknown): Promise<ActionResult<void>> {
   return instrumentServerAction("amlDecideAction", async () => {
     const denied = await denyUnlessAdminCapability(MLRO_DECISION_ACCESS);
-    if (denied && !denied.ok) redirectAml(undefined, denied.error);
+    if (denied) return denied;
 
-    const screeningId = String(formData.get("screeningId") ?? "").trim();
-    const decision = String(formData.get("decision") ?? "").trim();
-    const notes = String(formData.get("notes") ?? "").trim();
-    if (!screeningId || (decision !== "clear" && decision !== "block")) {
-      redirectAml(undefined, "Invalid decision form");
+    const parsed = amlDecideInput.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure("Invalid decision form");
     }
 
+    const { screeningId, decision, notes } = parsed.data;
     const res = await getWriteContainer().adminCompliance.amlDecide(
       screeningId,
-      decision as "clear" | "block",
+      decision,
       notes || undefined,
     );
     if (!res.ok) {
-      redirectAml(undefined, serviceErrorMessage(res.body, "Decision failed", res.status));
+      return actionFailure(serviceErrorMessage(res.body, "Decision failed", res.status));
     }
 
     revalidatePath("/admin/compliance/aml");
     revalidatePath("/admin/payments");
     revalidatePath("/admin");
-    redirectAml(decision === "clear" ? "Screening cleared — hold lifted" : "Screening blocked");
+    return actionSuccess();
   });
 }
 
-export async function sofTriageAction(formData: FormData): Promise<void> {
+export async function sofTriageAction(input: unknown): Promise<ActionResult<void>> {
   return instrumentServerAction("sofTriageAction", async () => {
     const denied = await denyUnlessAdminCapability(AML_REVIEW_ACCESS);
-    if (denied && !denied.ok) redirectSof(undefined, denied.error);
+    if (denied) return denied;
 
-    const caseId = String(formData.get("caseId") ?? "").trim();
-    const recommendation = String(formData.get("recommendation") ?? "").trim();
-    const notes = String(formData.get("notes") ?? "").trim();
-    if (!caseId || (recommendation !== "approve" && recommendation !== "reject")) {
-      redirectSof(undefined, "Invalid triage form");
+    const parsed = sofTriageInput.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure("Invalid triage form");
     }
 
+    const { caseId, recommendation, notes } = parsed.data;
     const res = await getWriteContainer().adminCompliance.sofTriage(
       caseId,
-      recommendation as "approve" | "reject",
+      recommendation,
       notes || undefined,
     );
     if (!res.ok) {
-      redirectSof(undefined, serviceErrorMessage(res.body, "Triage failed", res.status), caseId);
+      return actionFailure(serviceErrorMessage(res.body, "Triage failed", res.status));
     }
 
     revalidatePath("/admin/compliance/source-of-funds");
     revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
     revalidatePath("/admin");
-    redirectSof("Triage recorded — awaiting MLRO decision", undefined, caseId);
+    return actionSuccess();
   });
 }
 
-export async function sofDecideAction(formData: FormData): Promise<void> {
+export async function sofDecideAction(input: unknown): Promise<ActionResult<void>> {
   return instrumentServerAction("sofDecideAction", async () => {
     const denied = await denyUnlessAdminCapability(MLRO_DECISION_ACCESS);
-    if (denied && !denied.ok) redirectSof(undefined, denied.error);
+    if (denied) return denied;
 
-    const caseId = String(formData.get("caseId") ?? "").trim();
-    const decision = String(formData.get("decision") ?? "").trim();
-    const notes = String(formData.get("notes") ?? "").trim();
-    if (!caseId || (decision !== "approve" && decision !== "reject")) {
-      redirectSof(undefined, "Invalid decision form");
+    const parsed = sofDecideInput.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure("Invalid decision form");
     }
 
+    const { caseId, decision, notes } = parsed.data;
     const res = await getWriteContainer().adminCompliance.sofDecide(
       caseId,
-      decision as "approve" | "reject",
+      decision,
       notes || undefined,
     );
     if (!res.ok) {
-      redirectSof(undefined, serviceErrorMessage(res.body, "Decision failed", res.status), caseId);
+      return actionFailure(serviceErrorMessage(res.body, "Decision failed", res.status));
     }
 
     revalidatePath("/admin/compliance/source-of-funds");
     revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
     revalidatePath("/admin/payments");
     revalidatePath("/admin");
-    redirectSof(
-      decision === "approve" ? "Source of Funds approved" : "Source of Funds rejected",
-      undefined,
-      caseId,
-      decision === "approve" ? "approved" : "rejected",
-    );
+    return actionSuccess();
   });
 }
 
-export async function sofReopenAction(formData: FormData): Promise<void> {
+export async function sofReopenAction(input: unknown): Promise<ActionResult<void>> {
   return instrumentServerAction("sofReopenAction", async () => {
     const denied = await denyUnlessAdminCapability(MLRO_DECISION_ACCESS);
-    if (denied && !denied.ok) redirectSof(undefined, denied.error);
+    if (denied) return denied;
 
-    const caseId = String(formData.get("caseId") ?? "").trim();
-    if (!caseId) redirectSof(undefined, "Case id is required");
+    const parsed = sofReopenInput.safeParse(input);
+    if (!parsed.success) {
+      return actionFailure("Case id is required");
+    }
 
+    const { caseId } = parsed.data;
     const res = await getWriteContainer().adminCompliance.sofReopen(caseId);
     if (!res.ok) {
-      redirectSof(undefined, serviceErrorMessage(res.body, "Reopen failed", res.status), caseId);
+      return actionFailure(serviceErrorMessage(res.body, "Reopen failed", res.status));
     }
 
     revalidatePath("/admin/compliance/source-of-funds");
     revalidatePath(`/admin/compliance/source-of-funds/${caseId}`);
     revalidatePath("/admin/payments");
     revalidatePath("/admin");
-    redirectSof("Rejected case reopened for review", undefined, caseId);
+    return actionSuccess();
   });
 }
 

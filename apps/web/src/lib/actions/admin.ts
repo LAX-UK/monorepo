@@ -1,20 +1,5 @@
 "use server";
 
-import { adminBulkLotsAction as _adminBulkLotsAction } from "./admin/admin-lots";
-export const adminBulkLotsAction = _adminBulkLotsAction;
-
-import { adminPublishLotAction as _adminPublishLotAction } from "./admin/admin-lots";
-export const adminPublishLotAction = _adminPublishLotAction;
-
-import { adminCancelLotAction as _adminCancelLotAction } from "./admin/admin-lots";
-export const adminCancelLotAction = _adminCancelLotAction;
-
-import { adminCreateLotAction as _adminCreateLotAction } from "./admin/admin-lots";
-export const adminCreateLotAction = _adminCreateLotAction;
-
-import { adminUpdateLotAction as _adminUpdateLotAction } from "./admin/admin-lots";
-export const adminUpdateLotAction = _adminUpdateLotAction;
-
 import { adminCreateLotResultAction as _adminCreateLotResultAction } from "./admin/admin-lots";
 export const adminCreateLotResultAction = _adminCreateLotResultAction;
 

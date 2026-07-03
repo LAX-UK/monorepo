@@ -33,7 +33,10 @@ export function CheckInSearchTab({
       <div className="space-y-2">
         {searching ? <p className="font-body text-sm text-on-surface-variant">Searching…</p> : null}
         {searchError ? <p className="font-body text-sm text-destructive">{searchError}</p> : null}
-        {!searching && !searchError && searchQuery.trim().length >= 2 && searchResults.length === 0 ? (
+        {!searching &&
+        !searchError &&
+        searchQuery.trim().length >= 2 &&
+        searchResults.length === 0 ? (
           <p className="font-body text-sm text-on-surface-variant">
             No guests match “{searchQuery.trim()}”.
           </p>

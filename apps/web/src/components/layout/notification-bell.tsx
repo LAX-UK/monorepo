@@ -5,9 +5,12 @@ import { ChromePopoverPanel } from "@/components/marketing/chrome-popover-panel"
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
-import { apiBaseUrl } from "@/lib/auth/api-base";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { lotPath } from "@/lib/seo/url";
+import {
+  patchNotificationRead,
+  patchNotificationsReadAll,
+} from "@/lib/services/client/notifications-inbox.api";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Bell } from "lucide-react";
@@ -31,21 +34,15 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
   useClickOutside(open, wrapRef, closeMenu);
 
   const markRead = async (id: string) => {
-    const res = await fetch(
-      `${apiBaseUrl()}/users/me/notifications/${encodeURIComponent(id)}/read`,
-      { method: "PATCH", credentials: "include" },
-    );
-    if (res.ok) {
+    const result = await patchNotificationRead(id);
+    if (result.ok) {
       setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
     }
   };
 
   const markAllRead = async () => {
-    const res = await fetch(`${apiBaseUrl()}/users/me/notifications/read-all`, {
-      method: "PATCH",
-      credentials: "include",
-    });
-    if (res.ok) {
+    const result = await patchNotificationsReadAll();
+    if (result.ok) {
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
     }
   };

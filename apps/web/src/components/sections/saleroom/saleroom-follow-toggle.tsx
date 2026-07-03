@@ -27,9 +27,7 @@ type Props = {
   appearance?: "rounded" | "outlined-block";
 };
 
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
+import { toggleSaleFollow } from "@/lib/data/http/sale-follow.client";
 
 const outlinedBlockSizing = cn(saleroomHeroActionSizing, "min-w-[117px]");
 
@@ -62,12 +60,8 @@ export function SaleroomFollowToggle({
     if (!isAuthenticated || busy) return;
     setBusy(true);
     try {
-      const url = `${apiBase()}/sales/${encodeURIComponent(saleId)}/follow`;
-      const res = await fetch(url, {
-        method: following ? "DELETE" : "POST",
-        credentials: "include",
-      });
-      if (res.ok) setFollowing(!following);
+      const ok = await toggleSaleFollow(saleId, following);
+      if (ok) setFollowing(!following);
     } finally {
       setBusy(false);
     }

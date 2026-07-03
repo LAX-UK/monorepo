@@ -1,5 +1,5 @@
 import type { SaleDeliveryMode, SaleStatus } from "@auction/types";
-import type { SalesListQuery } from "./admin-list-controllers";
+import type { SalesListQuery } from "./list-controllers/sales-list-query";
 
 export type SalesListExportFilters = {
   status?: SaleStatus;

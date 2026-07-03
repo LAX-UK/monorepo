@@ -29,7 +29,7 @@ async function mapResetFailure(res: Response): Promise<AuthSubmitResult> {
   return authSubmitFailure("reset_password_failed");
 }
 
-class ResetPasswordService implements IResetPasswordService {
+export class ResetPasswordService implements IResetPasswordService {
   async submit(input: ResetPasswordInput): Promise<AuthSubmitResult> {
     const authBaseUrl = process.env.NEXT_PUBLIC_AUTH_URL?.replace(/\/$/, "") ?? apiBaseUrl();
     const res = await fetch(`${authBaseUrl}/api/auth/reset-password`, {
@@ -48,5 +48,3 @@ class ResetPasswordService implements IResetPasswordService {
     return { ok: true };
   }
 }
-
-export const resetPasswordService = new ResetPasswordService();

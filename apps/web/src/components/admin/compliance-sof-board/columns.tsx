@@ -1,8 +1,7 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
-import { sofReopenAction } from "@/lib/actions/compliance";
+import { SofReopenButton } from "@/components/admin/compliance-sof-board/sof-reopen-button";
 import { type SofListStatus, buildSofCaseDetailHref } from "@/lib/admin/sof-list-query";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 import { Button } from "@auction/ui";
@@ -37,27 +36,15 @@ function buyerCell(row: AdminSofTableRow) {
 }
 
 function rejectedActions(row: AdminSofTableRow, canReopen: boolean, listStatus: SofListStatus) {
-  const formId = `sof-reopen-${row.id}`;
   return (
     <div className="flex flex-wrap gap-2">
       <Button type="button" variant="secondary" size="sm" asChild>
         <Link href={buildSofCaseDetailHref(row.id, listStatus)}>View case</Link>
       </Button>
       {canReopen ? (
-        <form id={formId} action={sofReopenAction}>
-          <input type="hidden" name="caseId" value={row.id} />
-          <ConfirmFormSubmit
-            formId={formId}
-            variant="outline"
-            size="sm"
-            confirmTitle="Reopen rejected case?"
-            confirmBody="Maker-checker fields will be cleared and the case returns to pending review."
-            confirmLabel="Reopen for review"
-            tone="warning"
-          >
-            Reopen for review
-          </ConfirmFormSubmit>
-        </form>
+        <SofReopenButton caseId={row.id} variant="outline" size="sm">
+          Reopen for review
+        </SofReopenButton>
       ) : null}
     </div>
   );

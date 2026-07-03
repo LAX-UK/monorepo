@@ -3,16 +3,9 @@
 import { formatMoney } from "@/lib/format-currency";
 import { useClientClock } from "@/lib/time/use-client-clock";
 
-export type BidHistoryEntry = {
-  id: string;
-  bidderId: string;
-  amount: string;
-  at: number;
-  /** Proxy/engine-raised bid when true. */
-  isAutoBid?: boolean;
-  /** Bid origin channel when known (web, saleroom, telephone, absentee). */
-  placedVia?: string | null;
-};
+import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
+
+export type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
 
 type Props = {
   entries: BidHistoryEntry[];

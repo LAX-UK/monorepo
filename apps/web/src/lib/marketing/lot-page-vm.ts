@@ -1,15 +1,17 @@
-import { shouldShowBidStickyMobileBar } from "@/components/bid/bid-sticky-mobile-bar.logic";
-import { classifyLotTimerState } from "@/components/lot-timer";
+import { shouldShowBidStickyMobileBar } from "@/lib/bid/bid-sticky-mobile-bar.logic";
+import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
+import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import {
   mapAuctionSessionHeaderVM,
   mapLotToHeroVM,
   mapLotToSummarySeed,
   mapSaleLotsToQueueVMs,
   mapSiblingsToRailVM,
-} from "@/components/sections/artwork/artwork-view-models";
-import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
-import { buildArtworkPageAccordionBlocks } from "@/components/sections/artwork/build-artwork-accordion-blocks";
-import { mapSaleToOverviewVM } from "@/components/sections/saleroom/mappers";
+} from "@/lib/marketing/artwork/artwork-view-models";
+import { buildArtworkPageAccordionBlocks } from "@/lib/marketing/artwork/build-artwork-accordion-blocks";
+import {
+  mapSaleToOverviewVM,
+} from "@/lib/marketing/saleroom/mappers";
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";

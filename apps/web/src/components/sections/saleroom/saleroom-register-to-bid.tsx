@@ -4,6 +4,7 @@ import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import { registerForSale } from "@/lib/data/http/sale-registration.client";
 import {
   BID_LIMIT_FIELD_LABEL,
   bidLimitFieldHelp,
@@ -56,10 +57,6 @@ type RegisterToBidBaseProps = {
 type Props = RegisterToBidBaseProps & {
   layout?: SaleroomRegisterToBidLayout;
 };
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
 
 function agentEntitiesFrom(buyerEntities: Entity[]) {
   return buyerEntities.filter((e) => e.memberRole === "buyer_agent");
@@ -195,15 +192,9 @@ function AgentRegistrationForm({
       if (bidLimit.trim() !== "" && Number.isFinite(n) && n > 0) {
         body.bidLimit = n;
       }
-      const res = await fetch(`${apiBase()}/sales/${encodeURIComponent(saleId)}/register`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const payload = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
-      if (!res.ok) {
-        setError(payload.error ?? "Could not submit registration");
+      const result = await registerForSale(saleId, body);
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
       setMessage(

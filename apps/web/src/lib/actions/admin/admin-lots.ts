@@ -14,10 +14,7 @@ import {
   bulkLotsFailureMessage,
   parseBulkLotsApiResponse,
 } from "@/lib/admin/bulk-ops/lot-bulk-result";
-import {
-  assertAdminCapabilityForRedirect,
-  denyUnlessAdminCapability,
-} from "@/lib/auth/assert-admin-action-capability";
+import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -30,7 +27,6 @@ import {
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import type { Lot } from "@auction/types";
-import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
   bulkLotsBodySchema,
   cancelLotBodySchema,
@@ -40,190 +36,7 @@ import {
   updateLotSchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import type { z } from "zod";
-
-export async function adminBulkLotsAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminBulkLotsAction",
-    async () => {
-      const raw = String(formData.get("payload") ?? "").trim();
-      let obj: unknown;
-      try {
-        obj = JSON.parse(raw) as unknown;
-      } catch {
-        redirect(`/admin/lots?error=${encodeURIComponent("Invalid bulk payload")}`);
-      }
-      const parsed = bulkLotsBodySchema.safeParse(obj);
-      if (!parsed.success) {
-        redirect(`/admin/lots?error=${encodeURIComponent("Invalid bulk payload")}`);
-      }
-      const access = parsed.data.op === "cancel" ? SALES_ACCESS : LOTS_ACCESS;
-      const denied = await assertAdminCapabilityForRedirect(access);
-      if (!denied.ok) {
-        redirect(`/admin/lots?error=${encodeURIComponent(denied.message)}`);
-      }
-      const { adminLots } = getWriteContainer();
-      const r = await adminLots.bulk(parsed.data);
-      if (!r.ok) {
-        redirect(`/admin/lots?error=${encodeURIComponent(r.message)}`);
-      }
-      revalidatePath("/admin/lots");
-      redirect("/admin/lots");
-    },
-    { formData },
-  );
-}
-
-export async function adminPublishLotAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminPublishLotAction",
-    async () => {
-      const denied = await assertAdminCapabilityForRedirect(LOTS_ACCESS);
-      if (!denied.ok) {
-        redirect(`/admin/lots?error=${encodeURIComponent(denied.message)}`);
-      }
-      const id = String(formData.get("lotId") ?? "").trim();
-      if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);
-      const { adminLots } = getWriteContainer();
-      const r = await adminLots.publish(id);
-      if (!r.ok) {
-        const q = new URLSearchParams({ error: r.message });
-        if (r.code) q.set("error_code", r.code);
-        redirect(`/admin/lots/${id}?${q.toString()}`);
-      }
-      revalidateAdminLotDetail(id);
-      redirect(`/admin/lots/${id}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminCancelLotAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminCancelLotAction",
-    async () => {
-      const denied = await assertAdminCapabilityForRedirect(SALES_ACCESS);
-      if (!denied.ok) {
-        redirect(`/admin/lots?error=${encodeURIComponent(denied.message)}`);
-      }
-      const id = String(formData.get("lotId") ?? "").trim();
-      if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);
-      const body = cancelLotBodySchema.safeParse({
-        reason: String(formData.get("reason") ?? "").trim() || undefined,
-      });
-      if (!body.success) {
-        redirect(`/admin/lots/${id}?error=${encodeURIComponent("Invalid cancel form")}`);
-      }
-      const { adminLots } = getWriteContainer();
-      const r = await adminLots.cancel(id, body.data);
-      if (!r.ok) {
-        redirect(`/admin/lots/${id}?error=${encodeURIComponent(r.message)}`);
-      }
-      revalidateAdminLotDetail(id);
-      redirect(`/admin/lots/${id}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminCreateLotAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminCreateLotAction",
-    async () => {
-      const denied = await assertAdminCapabilityForRedirect(LOTS_ACCESS);
-      if (!denied.ok) {
-        redirect(`/admin/lots/new?error=${encodeURIComponent(denied.message)}`);
-      }
-      const startRaw = String(formData.get("startTime") ?? "");
-      const endRaw = String(formData.get("endTime") ?? "");
-      const dutchInterval = String(formData.get("dutchDecrementIntervalMs") ?? "").trim();
-      const parsed = createLotSchema.safeParse({
-        title: String(formData.get("title") ?? "").trim(),
-        description: String(formData.get("description") ?? "").trim() || undefined,
-        medium: String(formData.get("medium") ?? "").trim() || undefined,
-        dimensions: String(formData.get("dimensions") ?? "").trim() || undefined,
-        sellerId: String(formData.get("sellerId") ?? "").trim() || undefined,
-        categoryId: String(formData.get("categoryId") ?? "").trim(),
-        auctionType: String(formData.get("auctionType") ?? "english"),
-        startingPrice: String(formData.get("startingPrice") ?? "").trim(),
-        reservePrice: String(formData.get("reservePrice") ?? "").trim() || undefined,
-        buyNowPrice: String(formData.get("buyNowPrice") ?? "").trim() || undefined,
-        buyerPremiumRate: String(formData.get("buyerPremiumRate") ?? "").trim() || undefined,
-        minBidIncrement: String(formData.get("minBidIncrement") ?? "").trim() || undefined,
-        dutchDecrementAmount:
-          String(formData.get("dutchDecrementAmount") ?? "").trim() || undefined,
-        dutchDecrementIntervalMs: dutchInterval ? Number.parseInt(dutchInterval, 10) : undefined,
-        startTime: instantFromDatetimeFormString(startRaw),
-        endTime: instantFromDatetimeFormString(endRaw),
-      });
-      if (!parsed.success) {
-        redirect(
-          `/admin/lots/new?error=${encodeURIComponent(parsed.error.issues.map((i) => i.message).join("; "))}`,
-        );
-      }
-      const { adminLots } = getWriteContainer();
-      const r = await adminLots.create(parsed.data);
-      if (!r.ok) {
-        redirect(`/admin/lots/new?error=${encodeURIComponent(r.message)}`);
-      }
-      const newId = r.data.id;
-      revalidatePath("/admin/lots");
-      redirect(`/admin/lots/${newId}`);
-    },
-    { formData },
-  );
-}
-
-export async function adminUpdateLotAction(formData: FormData): Promise<void> {
-  return instrumentServerAction(
-    "adminUpdateLotAction",
-    async () => {
-      const denied = await assertAdminCapabilityForRedirect(LOTS_ACCESS);
-      if (!denied.ok) {
-        redirect(`/admin/lots?error=${encodeURIComponent(denied.message)}`);
-      }
-      const id = String(formData.get("lotId") ?? "").trim();
-      if (!id) redirect(`/admin/lots?error=${encodeURIComponent("Missing lot")}`);
-      const startRaw = String(formData.get("startTime") ?? "");
-      const endRaw = String(formData.get("endTime") ?? "");
-      const dutchInterval = String(formData.get("dutchDecrementIntervalMs") ?? "").trim();
-      const parsed = updateLotSchema.safeParse({
-        title: String(formData.get("title") ?? "").trim(),
-        description: String(formData.get("description") ?? "").trim() || undefined,
-        medium: String(formData.get("medium") ?? "").trim() || undefined,
-        dimensions: String(formData.get("dimensions") ?? "").trim() || undefined,
-        sellerId: String(formData.get("sellerId") ?? "").trim() || undefined,
-        categoryId: String(formData.get("categoryId") ?? "").trim() || undefined,
-        auctionType: String(formData.get("auctionType") ?? "").trim() || undefined,
-        startingPrice: String(formData.get("startingPrice") ?? "").trim() || undefined,
-        reservePrice: String(formData.get("reservePrice") ?? "").trim() || undefined,
-        buyNowPrice: String(formData.get("buyNowPrice") ?? "").trim() || undefined,
-        buyerPremiumRate: String(formData.get("buyerPremiumRate") ?? "").trim() || undefined,
-        minBidIncrement: String(formData.get("minBidIncrement") ?? "").trim() || undefined,
-        dutchDecrementAmount:
-          String(formData.get("dutchDecrementAmount") ?? "").trim() || undefined,
-        dutchDecrementIntervalMs: dutchInterval ? Number.parseInt(dutchInterval, 10) : undefined,
-        startTime: startRaw ? instantFromDatetimeFormString(startRaw) : undefined,
-        endTime: endRaw ? instantFromDatetimeFormString(endRaw) : undefined,
-      });
-      if (!parsed.success) {
-        redirect(
-          `/admin/lots/${id}/edit?error=${encodeURIComponent(parsed.error.issues.map((i) => i.message).join("; "))}`,
-        );
-      }
-      const { adminLots } = getWriteContainer();
-      const r = await adminLots.update(id, parsed.data);
-      if (!r.ok) {
-        redirect(`/admin/lots/${id}/edit?error=${encodeURIComponent(r.message)}`);
-      }
-      revalidatePath("/admin/lots");
-      revalidatePath(`/admin/lots/${id}`);
-      redirect(`/admin/lots/${id}`);
-    },
-    { formData },
-  );
-}
 
 export async function adminCreateLotResultAction(
   input: z.infer<typeof createLotSchema>,

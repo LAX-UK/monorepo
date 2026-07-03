@@ -1,6 +1,6 @@
-import { paletteApiBase } from "@/components/layout/palette/api-base";
 import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
+import { paletteJsonFetch } from "@/lib/data/http/palette-search.client";
 
 const LIMIT = 5;
 
@@ -19,11 +19,8 @@ export const payoutsPaletteSource: PaletteSource = {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
     const qs = new URLSearchParams({ limit: "25", offset: "0" });
-    const res = await fetch(`${paletteApiBase()}/admin/payouts?${qs.toString()}`, {
-      credentials: "include",
-    });
-    if (!res.ok) return [];
-    const body = (await res.json()) as { data: PayoutRow[] };
+    const body = await paletteJsonFetch<{ data: PayoutRow[] }>("/admin/payouts", qs);
+    if (!body) return [];
     return body.data
       .filter(
         (row) =>

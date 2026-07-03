@@ -7,7 +7,7 @@ import { LabelCaps } from "@/components/ui/typography";
 import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { artistKindMeta, artistStatusLabel } from "@/lib/artists/kind-presenter";
-import { apiBaseUrl } from "@/lib/auth/api-base";
+import { fetchAdminArtistById } from "@/lib/data/http/admin-artist.client";
 import { Button } from "@auction/ui/components/button";
 import { Form, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,12 +22,10 @@ async function searchArtistHits(trimmed: string): Promise<ArtistSearchHit[]> {
 }
 
 async function resolveArtistHit(id: string): Promise<ArtistSearchHit | null> {
-  const res = await fetch(`${apiBaseUrl()}/admin/artists/${encodeURIComponent(id)}`, {
-    credentials: "include",
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error("resolve");
-  const body = (await res.json()) as { data: unknown };
+  const result = await fetchAdminArtistById(id);
+  if (result.ok === false && result.status === 404) return null;
+  if (!result.ok) throw new Error("resolve");
+  const body = result.data as { data: unknown };
   const o = body.data as Record<string, unknown>;
   const rawKind = o.kind;
   const kind =

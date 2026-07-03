@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetPasswordService } from "./reset-password.service";
+import { ResetPasswordService } from "./reset-password.service";
+
+const resetPasswordService = new ResetPasswordService();
 
 function mockFetchResponse(init: { ok: boolean; status?: number; body?: unknown }) {
   const res = new Response(init.body === undefined ? null : JSON.stringify(init.body), {

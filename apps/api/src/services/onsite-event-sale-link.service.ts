@@ -1,6 +1,6 @@
+import type { ISaleRepository } from "@auction/persistence";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { IOnsiteEventRepository } from "../repositories/interfaces/onsite-event.repository.js";
-import type { ISaleRepository } from "../repositories/interfaces/sale.repository.js";
 import type { OnsiteEventRsvpServiceError } from "./interfaces/onsite-event-service-errors.js";
 
 /**

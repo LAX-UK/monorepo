@@ -144,34 +144,22 @@ export function LotRunwayPanel({
           </ul>
 
           {policy.advanceInRunway && nextLot && !betweenLots ? (
-            <form
-              id={`saleroom-advance-next-${saleId}`}
-              action={adminSaleroomAdvanceAction}
-              className="mt-4"
-            >
-              <input type="hidden" name="saleId" value={saleId} />
-              <input type="hidden" name="lotId" value={nextLot.id} />
+            <div className="mt-4">
               <SaleroomPendingSubmit
-                formId={`saleroom-advance-next-${saleId}`}
                 pendingLabel="Advancing…"
                 variant="default"
                 className="min-h-11 w-full sm:w-auto"
                 disabled={!sessionLive}
                 aria-disabled={!sessionLive}
+                onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: nextLot.id })}
               >
                 Advance next ({formatLotRunListLabel(nextLot)})
               </SaleroomPendingSubmit>
-            </form>
+            </div>
           ) : null}
 
           {policy.jumpToLotInRunway ? (
-            <form
-              id={`saleroom-advance-${saleId}`}
-              action={adminSaleroomAdvanceAction}
-              className="mt-3 flex flex-wrap items-end gap-3"
-            >
-              <input type="hidden" name="saleId" value={saleId} />
-              <input type="hidden" name="lotId" value={advanceLotId} />
+            <div className="mt-3 flex flex-wrap items-end gap-3">
               <div className="flex w-full flex-col gap-1 font-body text-xs text-secondary sm:w-auto">
                 <Label htmlFor={`saleroom-advance-lot-${saleId}`}>Jump to lot</Label>
                 <Select value={advanceLotId} onValueChange={setAdvanceLotId}>
@@ -192,12 +180,12 @@ export function LotRunwayPanel({
                 </Select>
               </div>
               <SaleroomPendingSubmit
-                formId={`saleroom-advance-${saleId}`}
                 pendingLabel="Advancing…"
                 variant="outline"
                 className="min-h-11 w-full sm:w-auto"
                 disabled={!sessionLive || advanceableLots.length === 0}
                 aria-disabled={!sessionLive}
+                onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: advanceLotId })}
               >
                 On the block
               </SaleroomPendingSubmit>
@@ -212,7 +200,7 @@ export function LotRunwayPanel({
                   Select next
                 </Button>
               ) : null}
-            </form>
+            </div>
           ) : null}
         </>
       )}

@@ -22,35 +22,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useTransition } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { VenueContactStep } from "./steps/contact-step";
 import { VenueLocationStep } from "./steps/location-step";
 import { VenueNotesStep } from "./steps/notes-step";
+import { type AdminVenueFormValues, venueFormSchema } from "./venue-form-values";
 import { VENUE_SETUP_STEPS, VENUE_STEP_FIELD_GROUPS } from "./venue-setup-steps";
 
-const venueFormSchema = z.object({
-  legalEntityId: z.string(),
-  name: z.string(),
-  addressLine1: z.string(),
-  addressLine2: z.string(),
-  city: z.string(),
-  county: z.string(),
-  postcode: z.string(),
-  country: z.string(),
-  mapUrl: z.string(),
-  latitude: z.string(),
-  longitude: z.string(),
-  contactPhone: z.string(),
-  contactEmail: z.string(),
-  website: z.string(),
-  photos: z.string(),
-  capacity: z.string(),
-  accessNotes: z.string(),
-  parkingNotes: z.string(),
-  directionsNotes: z.string(),
-});
-
-export type AdminVenueFormValues = z.infer<typeof venueFormSchema>;
+export type { AdminVenueFormValues } from "./venue-form-values";
 
 type Props = {
   mode: "create" | "edit";

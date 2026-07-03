@@ -1,31 +1,24 @@
 export type {
   ArchiveEndedAggregateFilter,
+  CreateBidRow,
+  IBidRepository,
+  ILotRepository,
+  IItemSubmissionRepository,
+  ISaleRepository,
+  ItemSubmissionUpdatePatch,
+  ListCatalogLotsBySalePageInput,
   ListLotsFilter,
   ListLotsSort,
   ListSalesFilter,
   ListSalesSort,
-} from "../../repositories/interfaces/filters.js";
-
-export type {
-  ILotRepository,
-  ListCatalogLotsBySalePageInput,
+  ListSubmissionsFilter,
   SaleCatalogLotsSort,
-} from "../../repositories/interfaces/lot.repository.js";
-
-export type { ISaleRepository } from "../../repositories/interfaces/sale.repository.js";
-
-export type { CreateBidRow, IBidRepository } from "../../repositories/interfaces/bid.repository.js";
+} from "@auction/persistence";
 
 export type {
   IUserRepository,
   UserProfileRow,
 } from "../../repositories/interfaces/user.repository.js";
-
-export type {
-  IItemSubmissionRepository,
-  ItemSubmissionUpdatePatch,
-  ListSubmissionsFilter,
-} from "../../repositories/interfaces/item-submission.repository.js";
 
 export type {
   IEntityDocumentRepository,

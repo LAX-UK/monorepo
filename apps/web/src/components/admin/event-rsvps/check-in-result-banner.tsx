@@ -1,5 +1,5 @@
-import type { OnsiteEventCheckInResult } from "@auction/types";
 import { formatDateTime } from "@/lib/ui/format";
+import type { OnsiteEventCheckInResult } from "@auction/types";
 
 export function resultTone(status: OnsiteEventCheckInResult["status"]): string {
   switch (status) {

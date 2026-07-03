@@ -7,6 +7,7 @@ import { refreshBeforeSubmitIfNeeded } from "@/lib/bid/refresh-before-submit";
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { AutoBidPlacedBid, AutoBidSettings } from "@/lib/data/contracts";
 import { formatMoney } from "@/lib/format-currency";
+import { getArtworkAuctionTypeProfile } from "@/lib/marketing/artwork/auction-type-profile";
 import { clientBidError } from "@/lib/ui/bid-error";
 import type { Lot, LotAuctionType, PublicLotView } from "@auction/types";
 import { BodyText } from "@auction/ui";
@@ -35,8 +36,6 @@ type Props = {
   realtimeHealthy?: boolean;
   refreshBeforeSave?: () => Promise<boolean>;
 };
-
-const ELIGIBLE: LotAuctionType[] = ["english", "buy_it_now"];
 
 function AutoBidRangeVisual({
   currentPrice,
@@ -348,7 +347,7 @@ export function LotAutoBidPanel({
     setShowClearConfirm(false);
   }, [performClear]);
 
-  if (!ELIGIBLE.includes(auctionType)) return null;
+  if (!getArtworkAuctionTypeProfile(auctionType).showAutoBidPanel) return null;
 
   if (lot.autoBidEnabled === false) {
     return (

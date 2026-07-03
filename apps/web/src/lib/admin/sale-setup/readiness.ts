@@ -12,7 +12,7 @@ import {
 import type { Lot, Sale } from "@auction/types";
 import { isStartInFutureForPublish } from "@auction/validators";
 import { readinessLabel } from "./field-copy";
-import type { SaleSetupStepId } from "./steps";
+import type { SaleSetupStepId } from "./sale-setup-step-ids";
 
 function pct(complete: number, total: number): number {
   if (total === 0) return 100;

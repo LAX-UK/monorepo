@@ -1,21 +1,13 @@
 import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
-import type { AdminListQueryBase, IAdminListController } from "@/lib/admin/i-admin-list-controller";
+import type { IAdminListController } from "@/lib/admin/i-admin-list-controller";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { getAdminSalesList } from "@/lib/data/http/admin.server";
 import type { SaleDeliveryMode, SaleStatus } from "@auction/types";
+import type { SaleLifecycleSlug, SalesListQuery } from "./sales-list-query";
+
+export type { SaleLifecycleSlug, SalesListQuery } from "./sales-list-query";
 
 const saleStatuses: SaleStatus[] = ["draft", "scheduled", "active", "ended", "cancelled"];
-
-export type SaleLifecycleSlug = "upcoming" | "live" | "closed" | "settled";
-
-export type SalesListQuery = AdminListQueryBase & {
-  status?: SaleStatus | undefined;
-  /** Mutually exclusive with raw `status` for URL bookmarking — derived into `status` for fetch */
-  lifecycle?: SaleLifecycleSlug | undefined;
-  /** Server-side filter — online | onsite */
-  delivery?: "online" | "onsite" | undefined;
-  needsSetup?: boolean | undefined;
-};
 
 const saleLifecycleStatuses: Partial<Record<SaleLifecycleSlug, SaleStatus>> = {
   upcoming: "scheduled",

@@ -1,6 +1,6 @@
-import { paletteApiBase } from "@/components/layout/palette/api-base";
 import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
+import { paletteJsonFetchPath } from "@/lib/data/http/palette-search.client";
 
 const LIMIT = 5;
 
@@ -19,9 +19,8 @@ export const paymentsPaletteSource: PaletteSource = {
   async search(query) {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
-    const res = await fetch(`${paletteApiBase()}/payments`, { credentials: "include" });
-    if (!res.ok) return [];
-    const body = (await res.json()) as { data: PaymentRow[] };
+    const body = await paletteJsonFetchPath<{ data: PaymentRow[] }>("/payments");
+    if (!body) return [];
     return body.data
       .filter(
         (p) =>

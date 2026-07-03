@@ -1,8 +1,8 @@
 import { createDb } from "@auction/db";
 import { bid, legalEntity, legalEntityMember, lot, user } from "@auction/db/schema";
+import { DrizzleRepositoryFactory } from "@auction/persistence";
 import { count, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DrizzleRepositoryFactory } from "../repositories/drizzle-repository.factory.js";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import { BidService } from "./bid.service.js";
 import { NotificationService } from "./notification.service.js";

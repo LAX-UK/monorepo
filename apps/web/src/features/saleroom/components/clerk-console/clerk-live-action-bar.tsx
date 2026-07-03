@@ -19,8 +19,6 @@ type Props = {
 export function ClerkLiveActionBar({ saleId, canHammer, sessionLive, nextLot, policy }: Props) {
   if (!sessionLive || (!policy.advanceInDock && !policy.hammerInDock)) return null;
 
-  const advanceFormId = `saleroom-advance-next-bar-${saleId}`;
-
   return (
     <div
       className={cn(
@@ -35,24 +33,16 @@ export function ClerkLiveActionBar({ saleId, canHammer, sessionLive, nextLot, po
         )}
       >
         {policy.advanceInDock && nextLot ? (
-          <form
-            id={advanceFormId}
-            action={adminSaleroomAdvanceAction}
-            className="lg:flex-1 lg:max-w-sm"
+          <SaleroomPendingSubmit
+            pendingLabel="Advancing…"
+            variant="outline"
+            className="min-h-11 w-full lg:max-w-sm lg:flex-1"
+            disabled={!sessionLive}
+            aria-disabled={!sessionLive}
+            onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: nextLot.id })}
           >
-            <input type="hidden" name="saleId" value={saleId} />
-            <input type="hidden" name="lotId" value={nextLot.id} />
-            <SaleroomPendingSubmit
-              formId={advanceFormId}
-              pendingLabel="Advancing…"
-              variant="outline"
-              className="min-h-11 w-full"
-              disabled={!sessionLive}
-              aria-disabled={!sessionLive}
-            >
-              Advance next ({formatLotRunListLabel(nextLot)})
-            </SaleroomPendingSubmit>
-          </form>
+            Advance next ({formatLotRunListLabel(nextLot)})
+          </SaleroomPendingSubmit>
         ) : null}
         {policy.hammerInDock && canHammer ? (
           <LotOutcomeControls

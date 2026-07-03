@@ -1,4 +1,4 @@
-import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
+import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
 import type { Bid } from "@auction/types";
 
 export function mapBidToHistoryEntry(bid: Bid): BidHistoryEntry {

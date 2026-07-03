@@ -19,45 +19,54 @@ import { TelephoneBidBookingStaffService } from "./telephone-booking/telephone-b
 
 export type { TelephoneBidBookingServiceError } from "./interfaces/telephone-bid-booking-service-errors.js";
 
-export class TelephoneBidBookingService implements ITelephoneBidBookingService {
-  private readonly buyer: TelephoneBidBookingBuyerService;
-  private readonly staff: TelephoneBidBookingStaffService;
-  private readonly query: TelephoneBidBookingQueryService;
-  private readonly saleroomBridge: TelephoneBidBookingSaleroomBridgeService;
-  private readonly bidPolicy: TelephoneBidBookingBidPolicyService;
+export type TelephoneBidBookingServiceDeps = {
+  db: Database;
+  repo: ITelephoneBidBookingRepository;
+  detailReader: ITelephoneBidBookingDetailReader;
+  saleRepo: ISaleRepository;
+  lotRepo: ILotRepository;
+  userPhoneReader: ITelephoneBookingUserPhoneReader;
+  legalEntityRepository: ILegalEntityRepository;
+  kycService?: IKycService | null;
+  amlHoldStore?: IAmlHoldStore | null;
+  domainEventPublisher?: DomainEventPublisher | null;
+  notifier?: ITelephoneBookingNotifier | null;
+};
 
+/** Container/test wiring: builds sub-services from ports; only construction site for `new TelephoneBid*`. */
+export function buildTelephoneBidBookingService(
+  deps: TelephoneBidBookingServiceDeps,
+): TelephoneBidBookingService {
+  const ctx = createTelephoneBidBookingContext({
+    db: deps.db,
+    repo: deps.repo,
+    detailReader: deps.detailReader,
+    saleRepo: deps.saleRepo,
+    lotRepo: deps.lotRepo,
+    userPhoneReader: deps.userPhoneReader,
+    legalEntityRepository: deps.legalEntityRepository,
+    kycService: deps.kycService ?? null,
+    amlHoldStore: deps.amlHoldStore ?? null,
+    domainEventPublisher: deps.domainEventPublisher ?? null,
+    notifier: deps.notifier ?? null,
+  });
+  return new TelephoneBidBookingService(
+    new TelephoneBidBookingBuyerService(ctx),
+    new TelephoneBidBookingStaffService(ctx),
+    new TelephoneBidBookingQueryService(ctx),
+    new TelephoneBidBookingSaleroomBridgeService(ctx),
+    new TelephoneBidBookingBidPolicyService(ctx),
+  );
+}
+
+export class TelephoneBidBookingService implements ITelephoneBidBookingService {
   constructor(
-    db: Database,
-    repo: ITelephoneBidBookingRepository,
-    detailReader: ITelephoneBidBookingDetailReader,
-    saleRepo: ISaleRepository,
-    lotRepo: ILotRepository,
-    userPhoneReader: ITelephoneBookingUserPhoneReader,
-    legalEntityRepository: ILegalEntityRepository,
-    kycService: IKycService | null = null,
-    amlHoldStore: IAmlHoldStore | null = null,
-    domainEventPublisher: DomainEventPublisher | null = null,
-    notifier: ITelephoneBookingNotifier | null = null,
-  ) {
-    const ctx = createTelephoneBidBookingContext({
-      db,
-      repo,
-      detailReader,
-      saleRepo,
-      lotRepo,
-      userPhoneReader,
-      legalEntityRepository,
-      kycService,
-      amlHoldStore,
-      domainEventPublisher,
-      notifier,
-    });
-    this.buyer = new TelephoneBidBookingBuyerService(ctx);
-    this.staff = new TelephoneBidBookingStaffService(ctx);
-    this.query = new TelephoneBidBookingQueryService(ctx);
-    this.saleroomBridge = new TelephoneBidBookingSaleroomBridgeService(ctx);
-    this.bidPolicy = new TelephoneBidBookingBidPolicyService(ctx);
-  }
+    private readonly buyer: TelephoneBidBookingBuyerService,
+    private readonly staff: TelephoneBidBookingStaffService,
+    private readonly query: TelephoneBidBookingQueryService,
+    private readonly saleroomBridge: TelephoneBidBookingSaleroomBridgeService,
+    private readonly bidPolicy: TelephoneBidBookingBidPolicyService,
+  ) {}
 
   requestBooking(input: Parameters<ITelephoneBidBookingService["requestBooking"]>[0]) {
     return this.buyer.requestBooking(input);

@@ -1,12 +1,11 @@
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { SofNextActionCallout } from "@/components/admin/compliance-sof-board/sof-next-action-callout";
+import { SofReopenButton } from "@/components/admin/compliance-sof-board/sof-reopen-button";
 import { SofRequestDocumentsForm } from "@/components/admin/compliance-sof-board/sof-request-documents-form";
 import {
   ComplianceDecideForm,
   ComplianceTriageForm,
 } from "@/components/admin/compliance/compliance-review-forms";
-import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
-import { sofReopenAction } from "@/lib/actions/compliance";
 import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 
@@ -20,7 +19,6 @@ type Props = {
 
 export function SofCaseContextRail({ row, detail, canTriage, canDecide, currentUserId }: Props) {
   const readOnly = row.status !== "pending";
-  const reopenFormId = `sof-reopen-${row.id}`;
   const documentsAlreadyRequested = detail.documentRequest.requestedAt != null;
 
   return (
@@ -61,19 +59,9 @@ export function SofCaseContextRail({ row, detail, canTriage, canDecide, currentU
       ) : null}
 
       {row.status === "rejected" && canDecide ? (
-        <form id={reopenFormId} action={sofReopenAction}>
-          <input type="hidden" name="caseId" value={row.id} />
-          <ConfirmFormSubmit
-            formId={reopenFormId}
-            variant="outline"
-            confirmTitle="Reopen rejected case?"
-            confirmBody="Maker-checker fields will be cleared and the case returns to pending review."
-            confirmLabel="Reopen"
-            tone="warning"
-          >
-            Reopen for review
-          </ConfirmFormSubmit>
-        </form>
+        <SofReopenButton variant="outline" caseId={row.id} confirmLabel="Reopen">
+          Reopen for review
+        </SofReopenButton>
       ) : null}
 
       <AdminTechnicalIdDisclosure

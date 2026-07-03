@@ -28,57 +28,31 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
     refreshOverlay,
   } = useDisplayOverlayState({ saleId, initialOverlay });
 
-  const fairWarningFormId = `saleroom-display-fw-${saleId}`;
-  const announceFormId = `saleroom-display-announce-${saleId}`;
-  const clearFormId = `saleroom-display-clear-${saleId}`;
-
   return (
     <div className={cn("flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end", className)}>
-      <form
-        id={fairWarningFormId}
-        action={adminSaleroomDisplayOverlayAction}
-        onSubmit={() => {
+      <SaleroomPendingSubmit
+        pendingLabel="Sending…"
+        variant={activeOverlay?.kind === "fair_warning" ? "default" : "outline"}
+        className={cn(
+          "min-h-11 w-full sm:w-auto",
+          activeOverlay?.kind === "fair_warning" && "ring-2 ring-primary/30",
+        )}
+        onRun={() => adminSaleroomDisplayOverlayAction({ saleId, kind: "fair_warning" })}
+        onSuccess={() => {
           setOptimisticOverlay({ kind: "fair_warning" });
           void refreshOverlay();
         }}
       >
-        <input type="hidden" name="saleId" value={saleId} />
-        <input type="hidden" name="kind" value="fair_warning" />
-        <SaleroomPendingSubmit
-          formId={fairWarningFormId}
-          pendingLabel="Sending…"
-          variant={activeOverlay?.kind === "fair_warning" ? "default" : "outline"}
-          className={cn(
-            "min-h-11 w-full sm:w-auto",
-            activeOverlay?.kind === "fair_warning" && "ring-2 ring-primary/30",
-          )}
-        >
-          Fair warning
-        </SaleroomPendingSubmit>
-      </form>
+        Fair warning
+      </SaleroomPendingSubmit>
 
-      <form
-        id={announceFormId}
-        action={adminSaleroomDisplayOverlayAction}
-        className="flex w-full min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end"
-        onSubmit={() => {
-          const message = announcement.trim();
-          setOptimisticOverlay(
-            message ? { kind: "announcement", message } : { kind: "announcement" },
-          );
-          setAnnouncement("");
-          void refreshOverlay();
-        }}
-      >
-        <input type="hidden" name="saleId" value={saleId} />
-        <input type="hidden" name="kind" value="announcement" />
+      <div className="flex w-full min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
         <div className="min-w-0 flex-1 space-y-1">
           <Label htmlFor={`display-announce-${saleId}`} className="sr-only">
             Announcement text
           </Label>
           <Input
             id={`display-announce-${saleId}`}
-            name="message"
             value={announcement}
             onChange={(e) => setAnnouncement(e.target.value)}
             placeholder="Announcement text"
@@ -87,38 +61,47 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
           />
         </div>
         <SaleroomPendingSubmit
-          formId={announceFormId}
           pendingLabel="Sending…"
           variant={activeOverlay?.kind === "announcement" ? "default" : "outline"}
           className={cn(
             "min-h-11 w-full sm:w-auto",
             activeOverlay?.kind === "announcement" && "ring-2 ring-primary/30",
           )}
+          onRun={() => {
+            const message = announcement.trim();
+            return adminSaleroomDisplayOverlayAction({
+              saleId,
+              kind: "announcement",
+              ...(message ? { message } : {}),
+            });
+          }}
+          onSuccess={() => {
+            const message = announcement.trim();
+            setOptimisticOverlay(
+              message ? { kind: "announcement", message } : { kind: "announcement" },
+            );
+            setAnnouncement("");
+            void refreshOverlay();
+          }}
         >
           Announce
         </SaleroomPendingSubmit>
-      </form>
+      </div>
 
-      <form
-        id={clearFormId}
-        action={adminSaleroomDisplayClearOverlayAction}
-        onSubmit={() => {
+      <SaleroomPendingSubmit
+        pendingLabel="Clearing…"
+        variant="ghost"
+        className="min-h-11 w-full text-secondary sm:w-auto"
+        disabled={!hasActiveOverlay}
+        aria-disabled={!hasActiveOverlay}
+        onRun={() => adminSaleroomDisplayClearOverlayAction({ saleId })}
+        onSuccess={() => {
           clearOptimisticOverlay();
           void refreshOverlay();
         }}
       >
-        <input type="hidden" name="saleId" value={saleId} />
-        <SaleroomPendingSubmit
-          formId={clearFormId}
-          pendingLabel="Clearing…"
-          variant="ghost"
-          className="min-h-11 w-full text-secondary sm:w-auto"
-          disabled={!hasActiveOverlay}
-          aria-disabled={!hasActiveOverlay}
-        >
-          Clear overlay
-        </SaleroomPendingSubmit>
-      </form>
+        Clear overlay
+      </SaleroomPendingSubmit>
     </div>
   );
 }

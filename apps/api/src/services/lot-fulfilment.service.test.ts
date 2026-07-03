@@ -39,7 +39,7 @@ function serviceForListForAdmin(
   } as unknown as ILotFulfilmentRepository;
 
   return {
-    svc: new LotFulfilmentService({} as never, {} as never, fulfilmentRepo),
+    svc: new LotFulfilmentService({} as never, fulfilmentRepo),
     fulfilmentRepo,
   };
 }

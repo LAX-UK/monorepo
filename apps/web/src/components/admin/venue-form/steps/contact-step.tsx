@@ -9,7 +9,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import type { UseFormReturn } from "react-hook-form";
-import type { AdminVenueFormValues } from "../index";
+import type { AdminVenueFormValues } from "../venue-form-values";
 
 type Props = {
   form: UseFormReturn<AdminVenueFormValues>;

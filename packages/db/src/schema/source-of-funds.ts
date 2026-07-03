@@ -1,4 +1,4 @@
-import { relations, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   index,
   jsonb,
@@ -11,7 +11,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
-import { sourceOfFundsDocument } from "./source-of-funds-documents.js";
 
 export const sourceOfFundsStatusEnum = pgEnum("source_of_funds_status", [
   "pending",
@@ -102,22 +101,3 @@ export const sourceOfFunds = pgTable(
   ],
 );
 
-export const sourceOfFundsRelations = relations(sourceOfFunds, ({ one, many }) => ({
-  user: one(user, {
-    fields: [sourceOfFunds.userId],
-    references: [user.id],
-  }),
-  reviewedBy: one(user, {
-    fields: [sourceOfFunds.reviewedByUserId],
-    references: [user.id],
-  }),
-  triagedBy: one(user, {
-    fields: [sourceOfFunds.triagedByUserId],
-    references: [user.id],
-  }),
-  documentsRequestedBy: one(user, {
-    fields: [sourceOfFunds.documentsRequestedByUserId],
-    references: [user.id],
-  }),
-  documents: many(sourceOfFundsDocument),
-}));

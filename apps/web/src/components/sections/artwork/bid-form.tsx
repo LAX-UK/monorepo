@@ -4,6 +4,7 @@ import { BidErrorView } from "@/components/bid/bid-error-view";
 import { BidStepper } from "@/components/sections/artwork/online/bid-stepper";
 import { UnderlineInput } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-currency";
+import { getArtworkAuctionTypeProfile } from "@/lib/marketing/artwork/auction-type-profile";
 import type { BidErrorPresentation } from "@/lib/ui/bid-error";
 import type { LotAuctionType } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -60,9 +61,9 @@ export function BidForm({
 }: Props) {
   const minStr = minNumeric.toFixed(2);
   const amountInputId = useId();
+  const typeProfile = getArtworkAuctionTypeProfile(auctionType);
 
-  const showIncrementChips =
-    amountFieldVariant === "input" && (auctionType === "english" || auctionType === "buy_it_now");
+  const showIncrementChips = amountFieldVariant === "input" && typeProfile.showIncrementChips;
 
   const previewNum = Number.parseFloat(amount.trim() === "" ? minStr : amount);
   const previewForConfirm = Number.isFinite(previewNum) ? previewNum.toFixed(2) : minStr;
@@ -81,7 +82,9 @@ export function BidForm({
           onClick={onUseMinimum}
           className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary ring-1 ring-outline-variant/15 hover:bg-surface-container"
         >
-          {auctionType === "dutch" ? `Accept ${formatMoney(minStr)}` : `Min ${formatMoney(minStr)}`}
+          {typeProfile.minButtonLabel === "accept"
+            ? `Accept ${formatMoney(minStr)}`
+            : `Min ${formatMoney(minStr)}`}
         </Button>
         {showIncrementChips
           ? CHIP_ADDS.map((add) => {
@@ -148,7 +151,7 @@ export function BidForm({
           </div>
         </div>
       )}
-      {showMaxAutoField && (auctionType === "english" || auctionType === "buy_it_now") ? (
+      {showMaxAutoField && typeProfile.showMaxAutoField ? (
         <div>
           <label
             htmlFor="bid-max-auto"

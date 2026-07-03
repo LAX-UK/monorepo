@@ -64,9 +64,7 @@ describe("useGuestSearch", () => {
     const firstPromise = new Promise<OnsiteEventCheckInSearchRow[]>((resolve) => {
       resolveFirst = resolve;
     });
-    vi.mocked(searchOnsiteEventGuests)
-      .mockReturnValueOnce(firstPromise)
-      .mockResolvedValueOnce([]);
+    vi.mocked(searchOnsiteEventGuests).mockReturnValueOnce(firstPromise).mockResolvedValueOnce([]);
 
     const { result } = renderHook(() => useGuestSearch(SLUG));
 

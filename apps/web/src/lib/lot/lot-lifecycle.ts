@@ -1,4 +1,4 @@
-import { classifyLotTimerState } from "@/components/lot-timer";
+import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import type { Lot, Sale } from "@auction/types";
 import { isSaleroomGatedForOnlineBids, toLotCardTimingVM } from "@auction/validators";
 

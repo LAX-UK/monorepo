@@ -66,6 +66,7 @@ export * from "./kyc.js";
 export * from "./aml.js";
 export * from "./source-of-funds.js";
 export * from "./source-of-funds-documents.js";
+export * from "./source-of-funds-relations.js";
 export * from "./source-of-funds-document-review.js";
 export * from "./artist-aliases.js";
 export * from "./admin-review-tasks.js";

@@ -181,5 +181,3 @@ export class LotPageDataService {
     };
   }
 }
-
-export const lotPageDataService = new LotPageDataService();

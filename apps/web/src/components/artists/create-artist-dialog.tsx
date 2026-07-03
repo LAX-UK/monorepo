@@ -1,7 +1,7 @@
 "use client";
 
 import { adminCreateArtistResultAction } from "@/lib/actions/admin";
-import { apiBaseUrl } from "@/lib/auth/api-base";
+import { checkArtistNameAvailability } from "@/lib/data/http/artist-search.client";
 import { type ArtistKind, creatorKindConfigList } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -85,17 +85,10 @@ export function CreateArtistDialog({
     }
     const controller = new AbortController();
     const handle = setTimeout(async () => {
-      const apiBase = apiBaseUrl();
       try {
-        const res = await fetch(
-          `${apiBase}/artists/check-name?displayName=${encodeURIComponent(displayName)}`,
-          { credentials: "include", signal: controller.signal },
-        );
-        if (!res.ok) return;
-        const body = (await res.json()) as {
-          data: { available: boolean; suggestions: string[] };
-        };
-        setNameStatus(body.data);
+        const data = await checkArtistNameAvailability(displayName, controller.signal);
+        if (!data) return;
+        setNameStatus(data);
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
       }

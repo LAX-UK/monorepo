@@ -11,7 +11,11 @@ export type {
   ListLotsSort,
   ListSalesFilter,
   ListSalesSort,
+  ILotAnalyticsRepository,
+  ILotLifecycleRepository,
+  ILotReadRepository,
   ILotRepository,
+  ILotWriteRepository,
   ListCatalogLotsBySalePageInput,
   SaleCatalogLotsSort,
   ISaleRepository,
@@ -39,6 +43,13 @@ export {
 export { mergeLotMarketingDetailsPatch } from "./lib/lot-marketing-details-merge.js";
 
 export { queryCreatedAtDailyCounts } from "./repositories/created-at-daily-count.query.js";
+
+export {
+  EnsurePersonalLegalEntityService,
+  type EnsurePersonalLegalEntityInput,
+  type EnsurePersonalLegalEntityResult,
+  type IEnsurePersonalLegalEntityService,
+} from "./services/ensure-personal-legal-entity.js";
 
 export {
   endYearBoundsUtc,

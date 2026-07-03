@@ -1,4 +1,4 @@
-import type { EnsurePersonalLegalEntityService } from "@auction/db";
+import type { EnsurePersonalLegalEntityService } from "../services/ensure-personal-legal-entity.service.js";
 import { describe, expect, it, vi } from "vitest";
 import { applyUserRegisteredEvent } from "./legal-entity-provisioning.js";
 

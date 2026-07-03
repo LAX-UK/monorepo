@@ -1,6 +1,6 @@
+import { mergeLotMarketingDetailsPatch } from "@auction/persistence";
 import type { LotMarketingDetails } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { mergeLotMarketingDetailsPatch } from "./lot-marketing-details-merge.js";
 
 describe("mergeLotMarketingDetailsPatch", () => {
   it("replaces managed keys and preserves estimate and imageAlts", () => {

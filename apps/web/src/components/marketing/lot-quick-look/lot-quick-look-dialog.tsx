@@ -20,18 +20,15 @@ import { emitQuickLookDeckNav } from "./lot-quick-look-analytics";
 import { useLotQuickLook } from "./lot-quick-look-context";
 import { LotQuickLookDeckNav } from "./lot-quick-look-deck-nav";
 import { LotQuickLookLightbox } from "./lot-quick-look-lightbox";
-import { QuickLookFooter } from "./quick-look-footer";
+import { QuickLookBody, QuickLookMetaPanel } from "./quick-look-dialog-sections";
 import {
-  QuickLookBody,
-  QuickLookMetaPanel,
-} from "./quick-look-dialog-sections";
-import {
+  type DeckDirection,
   preloadQuickLookImage,
   quickLookOverlayMotion,
   quickLookPanelMotion,
   resolveQuickLookImages,
-  type DeckDirection,
 } from "./quick-look-dialog-utils";
+import { QuickLookFooter } from "./quick-look-footer";
 import { useLotQuickLookEnrichment } from "./use-lot-quick-look-enrichment";
 
 export function LotQuickLookDialog() {

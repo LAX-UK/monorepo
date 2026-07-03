@@ -1,6 +1,6 @@
-import { paletteApiBase } from "@/components/layout/palette/api-base";
 import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
+import { paletteJsonFetchPath } from "@/lib/data/http/palette-search.client";
 
 const LIMIT = 5;
 
@@ -17,11 +17,8 @@ export const invitationsPaletteSource: PaletteSource = {
   async search(query) {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
-    const res = await fetch(`${paletteApiBase()}/admin/invitations`, {
-      credentials: "include",
-    });
-    if (!res.ok) return [];
-    const body = (await res.json()) as { data: InvitationRow[] };
+    const body = await paletteJsonFetchPath<{ data: InvitationRow[] }>("/admin/invitations");
+    if (!body) return [];
     return body.data
       .filter(
         (inv) =>

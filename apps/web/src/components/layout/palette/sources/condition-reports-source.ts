@@ -1,6 +1,6 @@
-import { paletteApiBase } from "@/components/layout/palette/api-base";
 import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
+import { paletteJsonFetch } from "@/lib/data/http/palette-search.client";
 
 const LIMIT = 5;
 
@@ -23,16 +23,10 @@ export const conditionReportsPaletteSource: PaletteSource = {
       limit: "25",
       offset: "0",
     });
-    const res = await fetch(
-      `${paletteApiBase()}/admin/condition-report-requests?${qs.toString()}`,
-      {
-        credentials: "include",
-      },
-    );
-    if (!res.ok) return [];
-    const body = (await res.json()) as {
+    const body = await paletteJsonFetch<{
       data: { items: ConditionReportRow[] };
-    };
+    }>("/admin/condition-report-requests", qs);
+    if (!body) return [];
     const needle = q.toLowerCase();
     return body.data.items
       .filter(

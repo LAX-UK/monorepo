@@ -1,6 +1,6 @@
 "use client";
 
-import { clientApiBase } from "@/lib/api/client-api-base";
+import { fetchMyLotFulfilment } from "@/lib/data/http/lot-fulfilment-poll.client";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.server";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -82,16 +82,7 @@ const POLL_INTERVAL_MS = 8000;
 const POLL_TIMEOUT_MS = 30 * 60 * 1000;
 
 async function fetchFulfilment(lotId: string): Promise<LotFulfilmentSnapshot | null | "error"> {
-  const res = await fetch(
-    `${clientApiBase()}/payments/me/lot/${encodeURIComponent(lotId)}/fulfilment`,
-    {
-      credentials: "include",
-      cache: "no-store",
-    },
-  );
-  if (!res.ok) return "error";
-  const body = (await res.json()) as { data: LotFulfilmentSnapshot | null };
-  return body.data ?? null;
+  return fetchMyLotFulfilment(lotId);
 }
 
 export function LotCheckoutFulfilmentStrip({ fulfilment, lotId }: Props) {

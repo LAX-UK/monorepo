@@ -1,6 +1,6 @@
 "use client";
 
-import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
+import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
 import type { ClerkLivePhase } from "@/features/saleroom/lib/clerk-live-phase";
 import {
@@ -10,7 +10,9 @@ import {
   adminSaleroomResumeAction,
 } from "@/lib/actions/admin";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
+import { notify } from "@/lib/ui/notify";
 import { cn } from "@auction/ui/lib/utils";
+import { useRouter } from "next/navigation";
 
 type Props = {
   saleId: string;
@@ -20,6 +22,7 @@ type Props = {
 };
 
 export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky = false }: Props) {
+  const router = useRouter();
   const canGoLive =
     sessionStatus === "none" || sessionStatus === "ended" || sessionStatus === "pending";
   const canPause = sessionStatus === "live";
@@ -40,87 +43,79 @@ export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky =
       <div className="flex flex-wrap items-center gap-2" aria-label="Saleroom session controls">
         {livePhase === "setup" ? (
           <div className="flex flex-wrap gap-2">
-            <form id={`saleroom-go-live-${saleId}`} action={adminSaleroomGoLiveAction}>
-              <input type="hidden" name="saleId" value={saleId} />
+            <SaleroomPendingSubmit
+              pendingLabel="Going live…"
+              variant="default"
+              className="min-h-11"
+              disabled={!canGoLive}
+              aria-disabled={!canGoLive}
+              onRun={() => adminSaleroomGoLiveAction({ saleId })}
+            >
+              Go live
+            </SaleroomPendingSubmit>
+            {canResume ? (
               <SaleroomPendingSubmit
-                formId={`saleroom-go-live-${saleId}`}
-                pendingLabel="Going live…"
+                pendingLabel="Resuming…"
                 variant="default"
                 className="min-h-11"
-                disabled={!canGoLive}
-                aria-disabled={!canGoLive}
+                disabled={!canResume}
+                aria-disabled={!canResume}
+                onRun={() => adminSaleroomResumeAction({ saleId })}
               >
-                Go live
+                Resume
               </SaleroomPendingSubmit>
-            </form>
-            {canResume ? (
-              <form id={`saleroom-resume-setup-${saleId}`} action={adminSaleroomResumeAction}>
-                <input type="hidden" name="saleId" value={saleId} />
-                <SaleroomPendingSubmit
-                  formId={`saleroom-resume-setup-${saleId}`}
-                  pendingLabel="Resuming…"
-                  variant="default"
-                  className="min-h-11"
-                  disabled={!canResume}
-                  aria-disabled={!canResume}
-                >
-                  Resume
-                </SaleroomPendingSubmit>
-              </form>
             ) : null}
           </div>
         ) : null}
         {livePhase === "paused" ? (
-          <form id={`saleroom-resume-${saleId}`} action={adminSaleroomResumeAction}>
-            <input type="hidden" name="saleId" value={saleId} />
-            <SaleroomPendingSubmit
-              formId={`saleroom-resume-${saleId}`}
-              pendingLabel="Resuming…"
-              variant="default"
-              className="min-h-11"
-              disabled={!canResume}
-              aria-disabled={!canResume}
-            >
-              Resume
-            </SaleroomPendingSubmit>
-          </form>
+          <SaleroomPendingSubmit
+            pendingLabel="Resuming…"
+            variant="default"
+            className="min-h-11"
+            disabled={!canResume}
+            aria-disabled={!canResume}
+            onRun={() => adminSaleroomResumeAction({ saleId })}
+          >
+            Resume
+          </SaleroomPendingSubmit>
         ) : null}
         {livePhase === "betweenLots" || livePhase === "selling" ? (
-          <form id={`saleroom-pause-${saleId}`} action={adminSaleroomPauseAction}>
-            <input type="hidden" name="saleId" value={saleId} />
-            <SaleroomPendingSubmit
-              formId={`saleroom-pause-${saleId}`}
-              pendingLabel="Pausing…"
-              variant="secondary"
-              className="min-h-11"
-              disabled={!canPause}
-              aria-disabled={!canPause}
-            >
-              Pause
-            </SaleroomPendingSubmit>
-          </form>
+          <SaleroomPendingSubmit
+            pendingLabel="Pausing…"
+            variant="secondary"
+            className="min-h-11"
+            disabled={!canPause}
+            aria-disabled={!canPause}
+            onRun={() => adminSaleroomPauseAction({ saleId })}
+          >
+            Pause
+          </SaleroomPendingSubmit>
         ) : null}
         {livePhase !== "setup" ? (
-          <form id={`saleroom-close-${saleId}`} action={adminSaleroomCloseAction}>
-            <input type="hidden" name="saleId" value={saleId} />
-            <ConfirmFormSubmit
-              formId={`saleroom-close-${saleId}`}
-              variant={livePhase === "concluded" ? "default" : "secondary"}
-              confirmTitle="Close saleroom session?"
-              confirmBody={
-                livePhase === "concluded"
-                  ? "The sale is finished. Closing ends live updates for bidders and staff."
-                  : "Bidders will no longer see live updates until you go live again."
+          <ConfirmActionButton
+            variant={livePhase === "concluded" ? "default" : "secondary"}
+            confirmTitle="Close saleroom session?"
+            confirmBody={
+              livePhase === "concluded"
+                ? "The sale is finished. Closing ends live updates for bidders and staff."
+                : "Bidders will no longer see live updates until you go live again."
+            }
+            confirmLabel="Close session"
+            tone="warning"
+            className="min-h-11"
+            disabled={!canClose}
+            aria-disabled={!canClose}
+            onConfirmed={async () => {
+              const r = await adminSaleroomCloseAction({ saleId });
+              if (!r.ok) {
+                notify.error(r.error);
+                throw new Error(r.error);
               }
-              confirmLabel="Close session"
-              tone="warning"
-              className="min-h-11"
-              disabled={!canClose}
-              aria-disabled={!canClose}
-            >
-              Close session
-            </ConfirmFormSubmit>
-          </form>
+              router.refresh();
+            }}
+          >
+            Close session
+          </ConfirmActionButton>
         ) : null}
       </div>
     </div>

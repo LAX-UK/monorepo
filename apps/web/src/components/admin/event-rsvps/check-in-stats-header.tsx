@@ -1,7 +1,7 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { Button } from "@auction/ui/components/button";
-import { Surface } from "@auction/ui/components/surface";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import { Surface } from "@auction/ui/components/surface";
 
 type Stats = {
   total: number;

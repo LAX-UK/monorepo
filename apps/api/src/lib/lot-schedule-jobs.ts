@@ -1,8 +1,7 @@
 import type { Database } from "@auction/db";
+import { DrizzleLotRepository, DrizzleSaleRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
-import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
-import { DrizzleSaleRepository } from "../repositories/drizzle-sale.repository.js";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository, ISaleRepository } from "../services/interfaces/repositories.js";

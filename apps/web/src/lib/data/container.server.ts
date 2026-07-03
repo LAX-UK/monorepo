@@ -60,6 +60,11 @@ import type {
   DashboardWatchlistReader,
 } from "@/lib/data/readers/dashboard-readers";
 import type { LiveSaleReader } from "@/lib/data/readers/marketing-readers";
+import {
+  type LotPageSecondaryData,
+  type LotPageShellData,
+  LotPageDataService,
+} from "@/lib/marketing/lot-page-data.service";
 
 export type ServerDataContainer = {
   session: DashboardSessionReader;
@@ -84,6 +89,10 @@ export type ServerDataContainer = {
   sellerPayouts: DashboardSellerPayoutsReader;
   authSessions: DashboardSessionsReader;
   liveSale: LiveSaleReader;
+  lotPage: {
+    loadShell: (lotId: string) => Promise<LotPageShellData | null>;
+    loadSecondary: (shell: LotPageShellData) => Promise<LotPageSecondaryData>;
+  };
 };
 
 /** Composition root (DIP): server pages depend on this container, not on `fetch` / `hc` directly.
@@ -91,6 +100,7 @@ export type ServerDataContainer = {
 export async function getServerDataContainer(): Promise<ServerDataContainer> {
   const lotReader = await getServerLotReader();
   const categoryReader = await getServerCategoryReader();
+  const lotPageData = new LotPageDataService();
   return {
     session: { getCurrent: getServerSessionUser },
     kyc: { getSummary: getServerKycStatusSummary, startSession: postServerKycSession },
@@ -147,6 +157,10 @@ export async function getServerDataContainer(): Promise<ServerDataContainer> {
           return null;
         }
       },
+    },
+    lotPage: {
+      loadShell: (lotId) => lotPageData.loadShell(lotId),
+      loadSecondary: (shell) => lotPageData.loadSecondary(shell),
     },
   };
 }

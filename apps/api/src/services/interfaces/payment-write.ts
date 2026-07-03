@@ -68,14 +68,10 @@ export type AdminPaymentsSummaryStats = {
   refunded: string;
 };
 
-export interface IPaymentWriteRepository {
-  create(row: CreatePaymentRow): Promise<PaymentRecord>;
+export interface IPaymentReadRepository {
   findById(id: string): Promise<PaymentRecord | null>;
   findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   findRefundedByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
-  updateStatus(id: string, status: PaymentRecord["status"]): Promise<void>;
-  updateStripeChargeId(id: string, stripeChargeId: string): Promise<void>;
-  updateStripePaymentIntentId(id: string, stripePaymentIntentId: string): Promise<void>;
   findByStripePaymentIntentId(stripePaymentIntentId: string): Promise<PaymentRecord | null>;
   /** All payments (admin listing). */
   listAll(): Promise<PaymentRecord[]>;
@@ -86,6 +82,21 @@ export interface IPaymentWriteRepository {
   countForExport(filter: ListPaymentsExportFilter): Promise<number>;
   /** Payments where the user is the buyer (portfolio). */
   listByBuyerId(buyerId: string): Promise<PaymentRecord[]>;
+  /** Paginated admin payments table (with optional status/search). */
+  listForAdminTable(filter: ListPaymentsAdminTableFilter): Promise<AdminPaymentTableRowDto[]>;
+  countForAdminTable(
+    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
+  ): Promise<number>;
+}
+
+export interface IPaymentMutationRepository {
+  create(row: CreatePaymentRow): Promise<PaymentRecord>;
+  updateStatus(id: string, status: PaymentRecord["status"]): Promise<void>;
+  updateStripeChargeId(id: string, stripeChargeId: string): Promise<void>;
+  updateStripePaymentIntentId(id: string, stripePaymentIntentId: string): Promise<void>;
+}
+
+export interface IPaymentLifecycleRepository {
   /** Pending rows created at least `hours` ago (admin SLA). */
   countPendingOlderThanHours(hours: number): Promise<number>;
   /** Pending payments with `created_at` strictly before `cutoff` (cron expiry). */
@@ -94,19 +105,6 @@ export interface IPaymentWriteRepository {
   listStaleAuthorizedBefore(
     cutoff: Date,
   ): Promise<{ id: string; lotId: string; buyerId: string }[]>;
-  /** Sum captured payment amounts in `[start, end]`. */
-  sumCapturedBetween(start: Date, end: Date): Promise<string>;
-  /** UTC day counts for admin KPI trends (created_at >= rangeStart). */
-  countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
-  /** Paginated admin payments table (with optional status/search). */
-  listForAdminTable(filter: ListPaymentsAdminTableFilter): Promise<AdminPaymentTableRowDto[]>;
-  countForAdminTable(
-    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
-  ): Promise<number>;
-  summarizeForAdminTable(
-    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
-  ): Promise<AdminPaymentsSummaryStats>;
-
   applyCapturedInTransaction(
     tx: Database,
     id: string,
@@ -124,3 +122,20 @@ export interface IPaymentWriteRepository {
   /** Atomically move a payment from manual review to pending (finance release). */
   applyReleasedFromManualReviewInTransaction(tx: Database, id: string): Promise<boolean>;
 }
+
+export interface IPaymentAnalyticsRepository {
+  /** Sum captured payment amounts in `[start, end]`. */
+  sumCapturedBetween(start: Date, end: Date): Promise<string>;
+  /** UTC day counts for admin KPI trends (created_at >= rangeStart). */
+  countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
+  summarizeForAdminTable(
+    filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
+  ): Promise<AdminPaymentsSummaryStats>;
+}
+
+/** Full payment persistence port — composite of segregated slices (ISP). Name kept for backward compatibility. */
+export interface IPaymentWriteRepository
+  extends IPaymentReadRepository,
+    IPaymentMutationRepository,
+    IPaymentLifecycleRepository,
+    IPaymentAnalyticsRepository {}

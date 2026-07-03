@@ -1,6 +1,7 @@
 "use client";
 
-import { clientApiBase } from "@/lib/api/client-api-base";
+import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client";
+import { fetchLotBidHistoryRows } from "@/lib/bid/fetch-lot-bid-history.client";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { Skeleton } from "@auction/ui";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
@@ -41,37 +42,22 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
     setRows(null);
     void (async () => {
       try {
-        const res = await fetch(
-          `${clientApiBase()}/lots/${encodeURIComponent(lotId)}/bids?limit=200`,
-          {
-            credentials: "include",
-          },
-        );
-        if (!res.ok) {
-          if (!cancelled) setError(`Could not load bid history (${res.status}).`);
+        const body = await fetchLotBidHistoryRows(lotId, 200);
+        if (!body) {
+          if (!cancelled) setError("Could not load bid history.");
           return;
         }
-        const body = (await res.json()) as {
-          data: Array<{
-            id: string;
-            amount: string;
-            createdAt: string;
-            placedByUserId: string | null;
-            bidderRef?: string;
-          }>;
-        };
-        const meRes = await fetch(`${clientApiBase()}/users/me`, { credentials: "include" });
-        const me = meRes.ok ? ((await meRes.json()) as { data: { id: string } }).data.id : null;
+        const me = await fetchSessionUserAfterAuth();
         if (cancelled) return;
-        if (!meRes.ok) {
+        if (!me) {
           setOwnershipWarning(true);
         }
         setRows(
-          body.data.map((r) => ({
+          body.map((r) => ({
             id: r.id,
             amount: r.amount,
             createdAt: r.createdAt,
-            mine: me != null && r.placedByUserId === me,
+            mine: me != null && r.placedByUserId === me.id,
             bidderRef: r.bidderRef ?? "Bidder",
           })),
         );

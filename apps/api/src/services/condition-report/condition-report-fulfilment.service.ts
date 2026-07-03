@@ -1,9 +1,9 @@
 import { lotNotDeleted } from "@auction/db";
 import { lot } from "@auction/db/schema";
+import { mergeLotMarketingDetailsPatch } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
-import { mergeLotMarketingDetailsPatch } from "../../lib/lot-marketing-details-merge.js";
 import type {
   ConditionReportServiceError,
   FulfillConditionReportInput,

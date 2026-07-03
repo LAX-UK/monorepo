@@ -6,14 +6,14 @@ import {
   mapSaleToHeroVM,
   mapSaleToOverviewVM,
   mapSaleToPressCoverageVM,
-} from "@/components/sections/saleroom/mappers";
+} from "@/lib/marketing/saleroom/mappers";
 import type {
   DayGalleryVM,
   PressCoverageVM,
   SaleHeroVM,
   SaleLotCardVM,
   SaleOverviewVM,
-} from "@/components/sections/saleroom/view-models";
+} from "@/lib/marketing/saleroom/view-models";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type {

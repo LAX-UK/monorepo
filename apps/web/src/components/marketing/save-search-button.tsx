@@ -7,9 +7,7 @@ import { Button } from "@auction/ui/components/button";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useState } from "react";
 
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-}
+import { createSavedSearch } from "@/lib/data/http/saved-searches.client";
 
 type Props = {
   label: string;
@@ -30,13 +28,8 @@ export function SaveSearchButton({ label, query, compact = false, className }: P
   async function save() {
     setSaving(true);
     try {
-      const res = await fetch(`${apiBase()}/users/me/saved-searches`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label, query, notifyEmail: true }),
-      });
-      if (!res.ok) {
+      const result = await createSavedSearch({ label, query, notifyEmail: true });
+      if (!result.ok) {
         notify.error("Could not save search");
         return;
       }

@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
-import type { Database } from "../client.js";
-import { legalEntity, legalEntityMember } from "../schema/index.js";
+import type { Database } from "@auction/db";
+import { legalEntity, legalEntityMember } from "@auction/db/schema";
 
 export type EnsurePersonalLegalEntityInput = {
   userId: string;

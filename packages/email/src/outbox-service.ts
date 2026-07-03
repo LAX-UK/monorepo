@@ -4,6 +4,7 @@ import { emailOutbox, emailSuppression } from "@auction/db/schema";
 import type { JobsOptions, Queue } from "bullmq";
 import { eq } from "drizzle-orm";
 import stringify from "safe-stable-stringify";
+import type { TemplateName } from "./types.js";
 import type { EmailEnqueueInput, IEmailService } from "./service.js";
 import { RECIPIENT_RESOLUTION } from "./types.js";
 
@@ -142,4 +143,11 @@ export class PostmarkEmailService implements IEmailService {
   }
 }
 
-export class ConsoleEmailService extends PostmarkEmailService {}
+export class ConsoleEmailService extends PostmarkEmailService {
+  override async enqueue<T extends TemplateName>(
+    input: EmailEnqueueInput<T>,
+  ): Promise<{ outboxId: string }> {
+    console.info(`[ConsoleEmailService] ${input.template} → ${input.to}`);
+    return super.enqueue(input);
+  }
+}

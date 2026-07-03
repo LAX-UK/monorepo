@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
+import { DrizzleLotRepository } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
-import { DrizzleLotRepository } from "../repositories/drizzle-lot.repository.js";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository } from "../services/interfaces/repositories.js";

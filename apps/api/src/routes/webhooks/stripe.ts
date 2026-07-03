@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import type Stripe from "stripe";
 import type { Container } from "../../container.js";
 import {
   StripeWebhookNotConfiguredError,
@@ -7,6 +6,7 @@ import {
 } from "../../lib/stripe-webhook-verifier.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import { StripeConnectNotConfiguredError } from "../../services/interfaces/stripe-connect.js";
+import { dispatchStripePaymentEvent } from "./stripe-payment-event-registry.js";
 
 function recordStripeWebhookHttpError(
   surface: "connect" | "transfers" | "payments",
@@ -94,63 +94,7 @@ export function createStripeWebhookRoutes(container: Container) {
     const signature = c.req.header("stripe-signature");
     try {
       const event = container.stripeWebhookVerifier.verify("payments", raw, signature);
-      let result: { processed: boolean; reason?: string; action?: string } = {
-        processed: false,
-      };
-
-      if (event.type === "payment_intent.succeeded") {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        result = await container.stripePaymentWebhookService.handlePaymentIntentSucceeded(
-          event,
-          paymentIntent,
-        );
-      } else if (event.type === "payment_intent.processing") {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        result = await container.stripePaymentWebhookService.handlePaymentIntentProcessing(
-          event,
-          paymentIntent,
-        );
-      } else if (event.type === "payment_intent.partially_funded") {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        result = await container.stripePaymentWebhookService.handlePaymentIntentPartiallyFunded(
-          event,
-          paymentIntent,
-        );
-      } else if (event.type === "payment_intent.payment_failed") {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        result = await container.stripePaymentWebhookService.handlePaymentIntentFailed(
-          event,
-          paymentIntent,
-        );
-      } else if (event.type === "payment_intent.canceled") {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        result = await container.stripePaymentWebhookService.handlePaymentIntentCanceled(
-          event,
-          paymentIntent,
-        );
-      } else if (event.type === "charge.dispute.created") {
-        const dispute = event.data.object as Stripe.Dispute;
-        result = await container.stripePaymentWebhookService.handleDisputeCreated(event, dispute);
-      } else if (event.type === "charge.dispute.funds_withdrawn") {
-        const dispute = event.data.object as Stripe.Dispute;
-        result = await container.stripePaymentWebhookService.handleDisputeFundsWithdrawn(
-          event,
-          dispute,
-        );
-      } else if (event.type === "charge.dispute.closed") {
-        const dispute = event.data.object as Stripe.Dispute;
-        result = await container.stripePaymentWebhookService.handleDisputeClosed(event, dispute);
-      } else if (event.type === "charge.refunded") {
-        const charge = event.data.object as Stripe.Charge;
-        result = await container.stripePaymentWebhookService.handleChargeRefunded(event, charge);
-      } else if (event.type === "checkout.session.async_payment_failed") {
-        const session = event.data.object as Stripe.Checkout.Session;
-        result =
-          await container.stripePaymentWebhookService.handleCheckoutSessionAsyncPaymentFailed(
-            event,
-            session,
-          );
-      }
+      const result = await dispatchStripePaymentEvent(container.stripePaymentWebhookService, event);
 
       if (
         !result.processed &&

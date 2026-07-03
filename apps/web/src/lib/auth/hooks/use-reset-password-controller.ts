@@ -1,7 +1,7 @@
 "use client";
 
 import { type ResetPasswordFormValues, resetPasswordFormSchema } from "@/lib/auth/schemas";
-import { resetPasswordService } from "@/lib/auth/services/reset-password.service";
+import { getAuthClientServices } from "@/lib/auth/auth-services.client";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -9,8 +9,9 @@ import { useForm } from "react-hook-form";
 
 export function useResetPasswordController(token: string) {
   const router = useRouter();
+  const resetPassword = getAuthClientServices().resetPassword;
   const { run, loading, bannerError, lastErrorCode } = useAuthSubmit(
-    resetPasswordService.submit.bind(resetPasswordService),
+    resetPassword.submit.bind(resetPassword),
   );
   const form = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordFormSchema),

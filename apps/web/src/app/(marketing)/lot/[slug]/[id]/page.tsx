@@ -26,7 +26,7 @@ import { MarketingBidBarChromeProvider } from "@/lib/context/marketing-bid-bar-c
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
 import { getServerLotById } from "@/lib/data/http/lots.server";
-import { lotPageDataService } from "@/lib/marketing/lot-page-data.service";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildLotPageViewModel } from "@/lib/marketing/lot-page-vm";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { lotPath, salePath, slugify } from "@/lib/seo/url";
@@ -56,7 +56,8 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const sp = await searchParams;
   const serverNow = Date.now();
 
-  const shell = await lotPageDataService.loadShell(id);
+  const serverData = await getServerDataContainer();
+  const shell = await serverData.lotPage.loadShell(id);
   if (!shell) notFound();
 
   const canPreviewCatalog = viewerCanSeeNonPublicCatalog(
@@ -69,7 +70,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
-  const secondary = await lotPageDataService.loadSecondary(shell);
+  const secondary = await serverData.lotPage.loadSecondary(shell);
   const vm = buildLotPageViewModel({ shell, secondary, searchParams: sp, serverNow });
 
   const onlineBidPanel = (

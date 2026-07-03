@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type { Env } from "../env.js";
 import { NoOpErrorReporter } from "../infrastructure/no-op-error.reporter.js";
 import { SentryErrorReporter } from "../infrastructure/sentry-error.reporter.js";
+import { DrizzleLotFulfilmentRepository } from "../repositories/drizzle-lot-fulfilment.repository.js";
 import { DrizzlePaymentDomainEventsRepository } from "../repositories/drizzle-payment-domain-events.repository.js";
 import { NoOpAccountingProvider } from "../services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "../services/accounting/xero-accounting.provider.js";
@@ -157,7 +158,10 @@ export function createPaymentsServices(
       )
     : null;
 
-  const lotFulfilmentService = new LotFulfilmentService(db, lotRepo);
+  const lotFulfilmentService = new LotFulfilmentService(
+    lotRepo,
+    new DrizzleLotFulfilmentRepository(db),
+  );
 
   const paymentCaptureService = new PaymentCaptureService(
     db,

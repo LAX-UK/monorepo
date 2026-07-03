@@ -8,7 +8,10 @@ import { PaddleService } from "../services/paddle.service.js";
 import { SaleExpectedGuestsService } from "../services/sale-expected-guests.service.js";
 import { SaleroomCheckInEligibilityValidator } from "../services/saleroom-check-in-eligibility.validator.js";
 import { SaleroomCheckInService } from "../services/saleroom-check-in.service.js";
-import { TelephoneBidBookingService } from "../services/telephone-bid-booking.service.js";
+import {
+  type TelephoneBidBookingService,
+  buildTelephoneBidBookingService,
+} from "../services/telephone-bid-booking.service.js";
 import { TelephoneBookingNotifier } from "../services/telephone-booking-notifier.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -56,19 +59,19 @@ export function createSaleRegistrationServices(
     env.WEB_ORIGIN,
     env.OPS_SUPPORT_EMAIL,
   );
-  const telephoneBidBookingService = new TelephoneBidBookingService(
+  const telephoneBidBookingService = buildTelephoneBidBookingService({
     db,
-    telephoneBidBookingRepo,
-    new DrizzleTelephoneBidBookingDetailReader(db),
+    repo: telephoneBidBookingRepo,
+    detailReader: new DrizzleTelephoneBidBookingDetailReader(db),
     saleRepo,
     lotRepo,
-    new DrizzleTelephoneBookingUserPhoneReader(db),
+    userPhoneReader: new DrizzleTelephoneBookingUserPhoneReader(db),
     legalEntityRepository,
     kycService,
     amlHoldStore,
     domainEventPublisher,
-    telephoneBookingNotifier,
-  );
+    notifier: telephoneBookingNotifier,
+  });
 
   const paddleBidWindowReader = new DrizzlePaddleBidWindowReader(db);
   const paddleService = new PaddleService(paddleRepo, lotRepo, cache, (saleId, userId) =>

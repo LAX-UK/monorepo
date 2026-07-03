@@ -1,9 +1,7 @@
 import { randomUUID } from "node:crypto";
-import type { Database } from "@auction/db";
 import type { UserRole } from "@auction/types";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
-import { DrizzleUploadPersistenceRepository } from "../repositories/drizzle-upload-persistence.repository.js";
 import type { IUploadPersistenceRepository } from "../repositories/interfaces/upload-persistence.repository.js";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
 import type { IUploadAuthorizationService, IUploadService } from "./interfaces/upload-service.js";
@@ -37,27 +35,29 @@ export type { IUploadAuthorizationService, IUploadService };
 
 export class UploadService implements IUploadService {
   private readonly auth: IUploadAuthorizationService;
-  private readonly repo: IUploadPersistenceRepository | undefined;
+  private readonly repo: IUploadPersistenceRepository;
   private readonly rateLimit: UploadRateLimitPolicy;
   private readonly validation: UploadValidationDispatcher;
   private readonly redis: Redis | undefined;
 
   constructor(
     private readonly storage: IObjectStorage,
-    db?: Database,
     redis?: Redis,
     validationQueue?: Queue,
     private readonly mediaUrlResolver?: MediaUrlResolver,
     deps?: {
-      repo?: IUploadPersistenceRepository;
+      repo: IUploadPersistenceRepository;
       auth?: IUploadAuthorizationService;
       rateLimit?: UploadRateLimitPolicy;
       validation?: UploadValidationDispatcher;
     },
   ) {
     this.redis = redis;
-    this.repo = deps?.repo ?? (db ? new DrizzleUploadPersistenceRepository(db) : undefined);
-    this.auth = deps?.auth ?? new UploadAuthorizationService(this.repo);
+    if (!deps?.repo) {
+      throw new Error("UploadService requires deps.repo from the container");
+    }
+    this.repo = deps.repo;
+    this.auth = deps.auth ?? new UploadAuthorizationService(this.repo);
     this.rateLimit = deps?.rateLimit ?? new UploadRateLimitPolicy(redis);
     this.validation = deps?.validation ?? new UploadValidationDispatcher(validationQueue);
   }

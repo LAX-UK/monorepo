@@ -5,7 +5,11 @@ import { Button } from "@auction/ui/components/button";
 import type { ReactNode, TouchEvent } from "react";
 import { useRef } from "react";
 import { LotQuickLookDeckNav } from "./lot-quick-look-deck-nav";
-import { deckEnterClass, resolveQuickLookImages, type DeckDirection } from "./quick-look-dialog-utils";
+import {
+  type DeckDirection,
+  deckEnterClass,
+  resolveQuickLookImages,
+} from "./quick-look-dialog-utils";
 import type { LotQuickLookVM } from "./types";
 
 function PricingCard({

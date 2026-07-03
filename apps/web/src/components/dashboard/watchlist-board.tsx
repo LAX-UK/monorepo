@@ -8,7 +8,7 @@ import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboar
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { MediaImage } from "@/components/ui/media-image";
-import { clientApiBase } from "@/lib/api/client-api-base";
+import { removeWatchlistLot } from "@/lib/data/http/watchlist.client";
 import { lotPath } from "@/lib/seo/url";
 import { BulkActionBar } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -171,12 +171,7 @@ export function WatchlistBoard({
     setErrorMessage(null);
     try {
       const results = await Promise.allSettled(
-        selectedIds.map((lotId) =>
-          fetch(`${clientApiBase()}/users/me/watchlist/${encodeURIComponent(lotId)}`, {
-            method: "DELETE",
-            credentials: "include",
-          }),
-        ),
+        selectedIds.map((lotId) => removeWatchlistLot(lotId).then((ok) => ({ ok }))),
       );
       const failed = results.filter(
         (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok),

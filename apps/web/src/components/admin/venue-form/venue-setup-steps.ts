@@ -1,5 +1,5 @@
 import type { WizardStepSpec } from "@/components/admin/admin-form-wizard";
-import type { AdminVenueFormValues } from "./index";
+import type { AdminVenueFormValues } from "./venue-form-values";
 
 export const VENUE_SETUP_STEPS = [
   { id: "location", label: "Location" },

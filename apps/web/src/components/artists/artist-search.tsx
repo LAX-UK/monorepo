@@ -1,7 +1,7 @@
 "use client";
 
 import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
-import { apiBaseUrl } from "@/lib/auth/api-base";
+import { searchPublicArtists } from "@/lib/data/http/artist-search.client";
 import type { ArtistKind, ArtistStatus } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
@@ -75,20 +75,13 @@ export function ArtistSearch({
           return;
         }
 
-        const apiBase = apiBaseUrl();
-        const res = await fetch(
-          `${apiBase}/artists/search?q=${encodeURIComponent(trimmed)}&limit=20`,
-          {
-            credentials: "include",
-          },
-        );
+        const result = await searchPublicArtists(trimmed);
         if (requestId !== lastRequestId.current) return;
-        if (!res.ok) {
+        if (!result.ok) {
           setError("Search failed.");
           setHits([]);
         } else {
-          const body = (await res.json()) as { data: ArtistSearchHit[] };
-          setHits(body.data);
+          setHits(result.data);
         }
       } catch {
         if (requestId === lastRequestId.current) {

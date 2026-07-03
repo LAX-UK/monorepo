@@ -1,6 +1,6 @@
-import { paletteApiBase } from "@/components/layout/palette/api-base";
 import { paletteRecordHint } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteSource } from "@/components/layout/palette/types";
+import { paletteJsonFetch } from "@/lib/data/http/palette-search.client";
 
 const LIMIT = 5;
 
@@ -19,11 +19,8 @@ export const lotFulfilmentPaletteSource: PaletteSource = {
     const q = query.trim();
     if (q.length < 2) return [];
     const qs = new URLSearchParams({ q, limit: String(LIMIT), offset: "0" });
-    const res = await fetch(`${paletteApiBase()}/admin/lot-fulfilment?${qs.toString()}`, {
-      credentials: "include",
-    });
-    if (!res.ok) return [];
-    const body = (await res.json()) as { data: FulfilmentRow[] };
+    const body = await paletteJsonFetch<{ data: FulfilmentRow[] }>("/admin/lot-fulfilment", qs);
+    if (!body) return [];
     return body.data.map((row) => ({
       id: `fulfilment-${row.id}`,
       href: `/admin/lot-fulfilment?q=${encodeURIComponent(row.lotId)}`,

@@ -1,4 +1,4 @@
-import { EnsurePersonalLegalEntityService } from "@auction/db";
+import { EnsurePersonalLegalEntityService } from "../services/ensure-personal-legal-entity.service.js";
 import { domainEvent, projectorState } from "@auction/db/schema";
 import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";

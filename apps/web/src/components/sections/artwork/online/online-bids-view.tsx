@@ -14,6 +14,7 @@ import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
+import { getArtworkAuctionTypeProfile } from "@/lib/marketing/artwork/auction-type-profile";
 import type { Lot, LotEndedEvent } from "@auction/types";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
@@ -21,7 +22,9 @@ import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   lotId: string;
-  lot: Pick<Lot, "status" | "winnerId"> & { marketingDetails?: Lot["marketingDetails"] };
+  lot: Pick<Lot, "status" | "winnerId" | "auctionType"> & {
+    marketingDetails?: Lot["marketingDetails"];
+  };
   currentUserId: string | null;
   watcherCount?: number | null;
   /** Omit duplicate countdown in feed header (pricing header owns the clock). */
@@ -121,6 +124,8 @@ export function OnlineBidsView({
     );
   }, [onlineCtx, lotId, lotSnap, liveCurrentPrice, now, saleroomLive]);
 
+  const typeProfile = getArtworkAuctionTypeProfile(lot.auctionType);
+
   const countdownClock = useMemo(() => {
     if (now == null) return "";
     if (
@@ -134,20 +139,22 @@ export function OnlineBidsView({
 
   return (
     <div className={cn("flex w-full min-w-0 flex-col gap-6", className)}>
-      <LiveBidFeed
-        entries={entries}
-        currentUserId={currentUserId}
-        bidCurrency={resolveLotCurrency(lot)}
-        headerMode="watching"
-        watcherCount={watcherCount}
-        lifecycleKind={lifecycle.kind}
-        countdownClock={countdownClock}
-        compactHeader={compactFeedHeader}
-        listMaxHeightClass="max-h-[40vh] md:max-h-[50vh] lg:max-h-[min(55vh,520px)]"
-        className="lg:max-w-none"
-      />
+      {typeProfile.showLiveBidFeed ? (
+        <LiveBidFeed
+          entries={entries}
+          currentUserId={currentUserId}
+          bidCurrency={resolveLotCurrency(lot)}
+          headerMode="watching"
+          watcherCount={watcherCount}
+          lifecycleKind={lifecycle.kind}
+          countdownClock={countdownClock}
+          compactHeader={compactFeedHeader}
+          listMaxHeightClass="max-h-[40vh] md:max-h-[50vh] lg:max-h-[min(55vh,520px)]"
+          className="lg:max-w-none"
+        />
+      ) : null}
       {children}
-      {userBidsVm ? (
+      {typeProfile.showUserBidsHistory && userBidsVm ? (
         <UserBidsHistory vm={userBidsVm} defaultOpen={Boolean(userBidsVm.rows.length)} />
       ) : null}
     </div>

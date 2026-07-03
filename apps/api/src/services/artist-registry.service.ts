@@ -1,5 +1,3 @@
-import type { Database } from "@auction/db";
-import { DrizzleArtistRegistryRepository } from "../repositories/drizzle-artist-registry.repository.js";
 import type { IArtistRegistryRepository } from "../repositories/interfaces/artist-registry.repository.js";
 import { ArtistRegistryQueryService } from "./artist-registry/artist-registry-query.service.js";
 import { ArtistRegistryStaffCommandService } from "./artist-registry/artist-registry-staff-command.service.js";
@@ -31,15 +29,10 @@ export class ArtistRegistryService implements IArtistRegistryService {
   private readonly query: IArtistRegistryQueryService;
   private readonly staff: IArtistRegistryStaffCommandService;
 
-  constructor(
-    db: Database,
-    domainEvents: DomainEventPublisher | null = null,
-    repo?: IArtistRegistryRepository,
-  ) {
-    const registryRepo = repo ?? new DrizzleArtistRegistryRepository(db);
-    this.query = new ArtistRegistryQueryService(registryRepo);
+  constructor(repo: IArtistRegistryRepository, domainEvents: DomainEventPublisher | null = null) {
+    this.query = new ArtistRegistryQueryService(repo);
     this.staff = new ArtistRegistryStaffCommandService(
-      registryRepo,
+      repo,
       this.query as ArtistRegistryQueryService,
       domainEvents,
     );

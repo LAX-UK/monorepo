@@ -1,8 +1,7 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
-import { sofReopenAction } from "@/lib/actions/compliance";
+import { SofReopenButton } from "@/components/admin/compliance-sof-board/sof-reopen-button";
 import { type SofListStatus, buildSofCaseDetailHref } from "@/lib/admin/sof-list-query";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 import { Button } from "@auction/ui/components/button";
@@ -19,7 +18,6 @@ export function SofMobileCards({ rows, status, canReopen }: Props) {
     return (
       <ul className="space-y-2">
         {rows.map((row) => {
-          const formId = `sof-reopen-mobile-${row.id}`;
           return (
             <li key={row.id} className="rounded-lg border border-outline-variant/40 p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -45,20 +43,9 @@ export function SofMobileCards({ rows, status, canReopen }: Props) {
                   <Link href={buildSofCaseDetailHref(row.id, status)}>View case</Link>
                 </Button>
                 {canReopen ? (
-                  <form id={formId} action={sofReopenAction}>
-                    <input type="hidden" name="caseId" value={row.id} />
-                    <ConfirmFormSubmit
-                      formId={formId}
-                      variant="outline"
-                      size="sm"
-                      confirmTitle="Reopen rejected case?"
-                      confirmBody="Maker-checker fields will be cleared and the case returns to pending review."
-                      confirmLabel="Reopen for review"
-                      tone="warning"
-                    >
-                      Reopen for review
-                    </ConfirmFormSubmit>
-                  </form>
+                  <SofReopenButton caseId={row.id} variant="outline" size="sm">
+                    Reopen for review
+                  </SofReopenButton>
                 ) : null}
               </div>
             </li>

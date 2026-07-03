@@ -5,7 +5,7 @@ import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState, useTransition } from "react";
-import type { DefaultValues, FieldValues, UseFormProps } from "react-hook-form";
+import type { DefaultValues, FieldValues, Resolver, UseFormProps } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import type { ZodType } from "zod";
 
@@ -17,6 +17,13 @@ type ActionFormOptions<TFieldValues extends FieldValues, TData> = {
   successToast?: { title: string; description?: string };
   formOptions?: Omit<UseFormProps<TFieldValues>, "defaultValues" | "resolver">;
 };
+
+function actionFormResolver<TFieldValues extends FieldValues>(
+  schema: ZodType<TFieldValues>,
+): Resolver<TFieldValues> {
+  // @hookform/resolvers v5 expects Zod 4 `$ZodType`; we use Zod 3 schemas at call sites.
+  return zodResolver(schema as never);
+}
 
 /** RHF + server action: runs the action in a transition, maps `ActionResult` field errors to the form.
  */
@@ -32,8 +39,7 @@ export function useActionForm<TFieldValues extends FieldValues, TData = void>({
   const [rootError, setRootError] = useState<string | null>(null);
   const form = useForm<TFieldValues>({
     ...formOptions,
-    // biome-ignore lint/suspicious/noExplicitAny: RHF v7 + @hookform/resolvers + zod 3 generic variance
-    resolver: zodResolver(schema as any),
+    resolver: actionFormResolver(schema),
     defaultValues,
   });
 

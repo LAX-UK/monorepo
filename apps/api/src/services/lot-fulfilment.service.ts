@@ -1,5 +1,3 @@
-import type { Database } from "@auction/db";
-import { DrizzleLotFulfilmentRepository } from "../repositories/drizzle-lot-fulfilment.repository.js";
 import type { ILotFulfilmentRepository } from "../repositories/interfaces/lot-fulfilment.repository.js";
 import type { ILotFulfilmentService } from "./interfaces/lot-fulfilment-service.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
@@ -19,10 +17,9 @@ export class LotFulfilmentService implements ILotFulfilmentService {
   private readonly admin: LotFulfilmentAdminService;
   private readonly paymentSync: LotFulfilmentPaymentSyncService;
 
-  constructor(db: Database, lotRepo: ILotRepository, fulfilmentRepo?: ILotFulfilmentRepository) {
+  constructor(lotRepo: ILotRepository, fulfilmentRepo: ILotFulfilmentRepository) {
     const ctx = createLotFulfilmentContext({
-      db,
-      fulfilmentRepo: fulfilmentRepo ?? new DrizzleLotFulfilmentRepository(db),
+      fulfilmentRepo,
       lotRepo,
     });
     this.buyer = new LotFulfilmentBuyerService(ctx);

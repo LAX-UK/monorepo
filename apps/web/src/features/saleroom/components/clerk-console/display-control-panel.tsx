@@ -39,8 +39,6 @@ export function DisplayControlPanel({
   const { devices, isLoading, error, retry } = useClerkDisplayDevices(saleId);
   const { activeOverlay } = useDisplayOverlayState({ saleId, initialOverlay });
 
-  const approveFormId = `saleroom-display-approve-${saleId}`;
-
   useEffect(() => {
     setDisplayUrl(`${window.location.origin}/display/${saleId}`);
   }, [saleId]);
@@ -95,20 +93,11 @@ export function DisplayControlPanel({
         </Button>
       </div>
 
-      <form
-        id={approveFormId}
-        action={adminSaleroomDisplayApproveAction}
-        className="mt-4 flex flex-wrap items-end gap-2"
-        onSubmit={() => {
-          setPairingCode("");
-        }}
-      >
-        <input type="hidden" name="saleId" value={saleId} />
+      <div className="mt-4 flex flex-wrap items-end gap-2">
         <div className="min-w-[10rem] flex-1 space-y-1">
           <Label htmlFor={`display-code-${saleId}`}>Display code from TV</Label>
           <Input
             id={`display-code-${saleId}`}
-            name="userCode"
             value={pairingCode}
             onChange={(e) => setPairingCode(e.target.value)}
             placeholder="ABCD-1234"
@@ -118,13 +107,20 @@ export function DisplayControlPanel({
           />
         </div>
         <SaleroomPendingSubmit
-          formId={approveFormId}
           pendingLabel="Approving…"
           className="min-h-11"
+          disabled={pairingCode.trim().length < 4}
+          onRun={() =>
+            adminSaleroomDisplayApproveAction({
+              saleId,
+              userCode: pairingCode.trim(),
+            })
+          }
+          onSuccess={() => setPairingCode("")}
         >
           Approve display
         </SaleroomPendingSubmit>
-      </form>
+      </div>
 
       {activeOverlayLabel ? (
         <div
@@ -181,21 +177,19 @@ export function DisplayControlPanel({
                   ) : null}
                 </div>
                 {device.status === "paired" ? (
-                  <form
-                    id={`saleroom-display-revoke-${device.id}`}
-                    action={adminSaleroomDisplayRevokeAction}
+                  <SaleroomPendingSubmit
+                    pendingLabel="Revoking…"
+                    variant="ghost"
+                    className="min-h-11 text-error"
+                    onRun={() =>
+                      adminSaleroomDisplayRevokeAction({
+                        saleId,
+                        pairingId: device.id,
+                      })
+                    }
                   >
-                    <input type="hidden" name="saleId" value={saleId} />
-                    <input type="hidden" name="pairingId" value={device.id} />
-                    <SaleroomPendingSubmit
-                      formId={`saleroom-display-revoke-${device.id}`}
-                      pendingLabel="Revoking…"
-                      variant="ghost"
-                      className="min-h-11 text-error"
-                    >
-                      Revoke
-                    </SaleroomPendingSubmit>
-                  </form>
+                    Revoke
+                  </SaleroomPendingSubmit>
                 ) : null}
               </li>
             ))}

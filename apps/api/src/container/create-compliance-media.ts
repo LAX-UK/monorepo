@@ -238,7 +238,6 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
   const imageCleanupService = new ImageCleanupService(objectStorage, imageCleanupQueue);
   const uploadService = new UploadService(
     objectStorage,
-    db,
     redis,
     uploadValidationQueue,
     mediaUrlResolver,

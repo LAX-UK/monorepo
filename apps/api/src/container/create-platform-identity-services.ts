@@ -90,9 +90,8 @@ export function createPlatformIdentityServices(
       impersonationAuditService.recordSessionTimedOut(impersonationInput),
   });
   const artistRegistryService: IArtistRegistryService = new ArtistRegistryService(
-    db,
-    domainEventPublisher,
     artistRegistryRepository,
+    domainEventPublisher,
   );
   const memberManagementService: IMemberManagementService = new MemberManagementService(
     db,

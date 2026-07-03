@@ -6,10 +6,12 @@ import {
   sofDecideAction,
   sofTriageAction,
 } from "@/lib/actions/compliance";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Label } from "@auction/ui/components/label";
 import { Textarea } from "@auction/ui/components/textarea";
-import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 const NOTES_MAX = 2000;
 
@@ -18,30 +20,31 @@ function TriageSubmitButtons({
   blockLabel,
   clearValue,
   blockValue,
+  pending,
+  onChoose,
 }: {
   clearLabel: string;
   blockLabel: string;
   clearValue: string;
   blockValue: string;
+  pending: boolean;
+  onChoose: (recommendation: string) => void;
 }) {
-  const { pending } = useFormStatus();
   return (
     <div className="flex flex-wrap gap-2">
       <Button
-        type="submit"
-        name="recommendation"
-        value={clearValue}
+        type="button"
         variant="secondary"
         disabled={pending}
+        onClick={() => onChoose(clearValue)}
       >
         {pending ? "Saving…" : clearLabel}
       </Button>
       <Button
-        type="submit"
-        name="recommendation"
-        value={blockValue}
+        type="button"
         variant="outline"
         disabled={pending}
+        onClick={() => onChoose(blockValue)}
       >
         {pending ? "Saving…" : blockLabel}
       </Button>
@@ -54,24 +57,31 @@ function DecideSubmitButtons({
   blockLabel,
   clearValue,
   blockValue,
+  pending,
+  onChoose,
 }: {
   clearLabel: string;
   blockLabel: string;
   clearValue: string;
   blockValue: string;
+  pending: boolean;
+  onChoose: (decision: string) => void;
 }) {
-  const { pending } = useFormStatus();
   return (
     <div className="flex flex-wrap gap-2">
-      <Button type="submit" name="decision" value={clearValue} variant="default" disabled={pending}>
+      <Button
+        type="button"
+        variant="default"
+        disabled={pending}
+        onClick={() => onChoose(clearValue)}
+      >
         {pending ? "Saving…" : clearLabel}
       </Button>
       <Button
-        type="submit"
-        name="decision"
-        value={blockValue}
+        type="button"
         variant="destructive"
         disabled={pending}
+        onClick={() => onChoose(blockValue)}
       >
         {pending ? "Saving…" : blockLabel}
       </Button>
@@ -92,6 +102,10 @@ export function ComplianceTriageForm({
   canTriage,
   triageDone,
 }: TriageFormProps) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [notes, setNotes] = useState("");
+
   if (!canTriage) {
     return (
       <p className="text-sm text-on-surface-variant">
@@ -107,27 +121,51 @@ export function ComplianceTriageForm({
     );
   }
 
-  const action = entityKind === "aml" ? amlTriageAction : sofTriageAction;
-  const idField = entityKind === "aml" ? "screeningId" : "caseId";
   const clearLabel = entityKind === "aml" ? "Recommend clear" : "Recommend approve";
   const blockLabel = entityKind === "aml" ? "Recommend block" : "Recommend reject";
   const clearValue = entityKind === "aml" ? "clear" : "approve";
   const blockValue = entityKind === "aml" ? "block" : "reject";
+  const successMessage = "Triage recorded — awaiting MLRO decision";
+
+  const submitTriage = (recommendation: string) => {
+    startTransition(() => {
+      void (async () => {
+        const r =
+          entityKind === "aml"
+            ? await amlTriageAction({
+                screeningId: entityId,
+                recommendation: recommendation as "clear" | "block",
+                notes: notes.trim() || undefined,
+              })
+            : await sofTriageAction({
+                caseId: entityId,
+                recommendation: recommendation as "approve" | "reject",
+                notes: notes.trim() || undefined,
+              });
+        if (r.ok) {
+          notify.success(successMessage);
+          router.refresh();
+          return;
+        }
+        notify.error(r.error);
+      })();
+    });
+  };
 
   return (
-    <form action={action} className="space-y-3 rounded-lg border border-outline-variant/40 p-4">
+    <div className="space-y-3 rounded-lg border border-outline-variant/40 p-4">
       <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Step 1 · Analyst triage (maker)
       </p>
-      <input type="hidden" name={idField} value={entityId} />
       <div className="space-y-2">
         <Label htmlFor={`${entityKind}-triage-notes`}>Notes (optional)</Label>
         <Textarea
           id={`${entityKind}-triage-notes`}
-          name="notes"
           rows={3}
           maxLength={NOTES_MAX}
           className="resize-y"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
         />
       </div>
       <TriageSubmitButtons
@@ -135,8 +173,10 @@ export function ComplianceTriageForm({
         blockLabel={blockLabel}
         clearValue={clearValue}
         blockValue={blockValue}
+        pending={pending}
+        onChoose={submitTriage}
       />
-    </form>
+    </div>
   );
 }
 
@@ -157,6 +197,10 @@ export function ComplianceDecideForm({
   triagedByUserId,
   currentUserId,
 }: DecideFormProps) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [notes, setNotes] = useState("");
+
   if (!canDecide) {
     return (
       <p className="text-sm text-on-surface-variant">
@@ -184,30 +228,58 @@ export function ComplianceDecideForm({
     );
   }
 
-  const action = entityKind === "aml" ? amlDecideAction : sofDecideAction;
-  const idField = entityKind === "aml" ? "screeningId" : "caseId";
   const clearLabel = entityKind === "aml" ? "Clear (lift hold)" : "Approve";
   const blockLabel = entityKind === "aml" ? "Block (terminal)" : "Reject";
   const clearValue = entityKind === "aml" ? "clear" : "approve";
   const blockValue = entityKind === "aml" ? "block" : "reject";
 
+  const submitDecision = (decision: string) => {
+    startTransition(() => {
+      void (async () => {
+        const r =
+          entityKind === "aml"
+            ? await amlDecideAction({
+                screeningId: entityId,
+                decision: decision as "clear" | "block",
+                notes: notes.trim() || undefined,
+              })
+            : await sofDecideAction({
+                caseId: entityId,
+                decision: decision as "approve" | "reject",
+                notes: notes.trim() || undefined,
+              });
+        if (r.ok) {
+          const successMessage =
+            entityKind === "aml"
+              ? decision === "clear"
+                ? "Screening cleared — hold lifted"
+                : "Screening blocked"
+              : decision === "approve"
+                ? "Source of Funds approved"
+                : "Source of Funds rejected";
+          notify.success(successMessage);
+          router.refresh();
+          return;
+        }
+        notify.error(r.error);
+      })();
+    });
+  };
+
   return (
-    <form
-      action={action}
-      className="space-y-3 rounded-lg border border-primary/30 bg-primary-container/10 p-4"
-    >
+    <div className="space-y-3 rounded-lg border border-primary/30 bg-primary-container/10 p-4">
       <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         Step 2 · MLRO decision (checker)
       </p>
-      <input type="hidden" name={idField} value={entityId} />
       <div className="space-y-2">
         <Label htmlFor={`${entityKind}-decide-notes`}>Decision notes (optional)</Label>
         <Textarea
           id={`${entityKind}-decide-notes`}
-          name="notes"
           rows={3}
           maxLength={NOTES_MAX}
           className="resize-y"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
         />
       </div>
       <DecideSubmitButtons
@@ -215,10 +287,12 @@ export function ComplianceDecideForm({
         blockLabel={blockLabel}
         clearValue={clearValue}
         blockValue={blockValue}
+        pending={pending}
+        onChoose={submitDecision}
       />
       <p className="text-xs text-on-surface-variant">
         You must be a different user from the analyst who triaged (four-eyes).
       </p>
-    </form>
+    </div>
   );
 }

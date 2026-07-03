@@ -1,21 +1,14 @@
-/**
- * JSON-LD builders and helpers — re-exported from the legacy module for a stable import path.
- * Prefer `import { … } from "@/lib/seo/jsonld"` in new code.
- */
+export { breadcrumbJsonLd, faqPageJsonLd, itemListJsonLd } from "./catalog";
+export { brandOrOrganizationJsonLd, creatorJsonLd, visualArtistJsonLd } from "./creator";
+export { lotProductJsonLd } from "./lot";
+export { homeUpcomingItemListJsonLd, policyHubPageJsonLd, webPageJsonLd } from "./page";
 export {
-  brandOrOrganizationJsonLd,
-  breadcrumbJsonLd,
-  faqPageJsonLd,
-  homeUpcomingItemListJsonLd,
-  itemListJsonLd,
-  jsonLdScript,
-  localBusinessJsonLd,
-  lotProductJsonLd,
-  organizationJsonLd,
-  personJsonLd,
+  saleDayGalleryJsonLd,
   saleEventJsonLd,
-  visualArtistJsonLd,
-  webPageJsonLd,
-  websiteJsonLd,
-  policyHubPageJsonLd,
-} from "../structured-data";
+  saleRecordingVideoJsonLd,
+} from "./sale";
+export { jsonLdScript } from "./script";
+export { localBusinessJsonLd, organizationJsonLd, personJsonLd, websiteJsonLd } from "./site";
+
+/** Re-exported from the press SEO module for backward compatibility. */
+export { salePressJsonLd } from "@/lib/seo/press/jsonld";

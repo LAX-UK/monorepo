@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppSession } from "@/lib/auth/use-app-session";
+import { fetchClosingSoonBids } from "@/lib/data/http/me-bids.client";
 import { cn } from "@auction/ui";
 import { Clock } from "lucide-react";
 import Link from "next/link";
@@ -17,10 +18,12 @@ export function HeaderBidUrgencyChip({ className }: { className?: string }) {
       return;
     }
     let cancelled = false;
-    void fetch("/api/me/bids/closing-soon", { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : { count: 0 }))
-      .then((body: { count?: number }) => {
-        if (!cancelled) setCount(typeof body.count === "number" ? body.count : 0);
+    void fetchClosingSoonBids()
+      .then((body) => {
+        if (!cancelled) {
+          const count = body && typeof body === "object" && "count" in body ? body.count : 0;
+          setCount(typeof count === "number" ? count : 0);
+        }
       })
       .catch(() => {
         if (!cancelled) setCount(0);

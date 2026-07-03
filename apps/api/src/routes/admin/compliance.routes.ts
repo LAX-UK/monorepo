@@ -1,4 +1,5 @@
 import type { ContainerAdminRoutesSlice } from "../../container.js";
+import { respondComplianceRouteError } from "../../lib/compliance-route-errors.js";
 import { applyStaffPreviewFramingHeaders } from "../../lib/staff-preview-framing.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireAmlReview, requireMlroDecision } from "../../middleware/require-capability.js";
@@ -55,19 +56,8 @@ export function attachAdminComplianceRoutes(
         });
         return c.json({ ok: true, screening: record });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "aml_triage_failed";
-        if (message === "aml_triage_self_forbidden") {
-          return c.json({ error: "aml_triage_self_forbidden" }, 403);
-        }
-        if (message === "aml_screening_not_pending") {
-          return c.json({ error: "aml_screening_not_pending" }, 409);
-        }
-        if (message === "aml_triage_already_set") {
-          return c.json({ error: "aml_triage_already_set" }, 409);
-        }
-        if (message === "aml_screening_not_found") {
-          return c.json({ error: "aml_screening_not_found" }, 404);
-        }
+        const mapped = respondComplianceRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -93,19 +83,8 @@ export function attachAdminComplianceRoutes(
         });
         return c.json({ ok: true, screening: record });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "aml_review_failed";
-        if (message === "aml_review_self_forbidden" || message === "aml_review_same_as_triager") {
-          return c.json({ error: message }, 403);
-        }
-        if (message === "aml_triage_required") {
-          return c.json({ error: "aml_triage_required" }, 409);
-        }
-        if (message === "aml_screening_not_pending") {
-          return c.json({ error: "aml_screening_not_pending" }, 409);
-        }
-        if (message === "aml_screening_not_found") {
-          return c.json({ error: "aml_screening_not_found" }, 404);
-        }
+        const mapped = respondComplianceRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -160,19 +139,8 @@ export function attachAdminComplianceRoutes(
         });
         return c.json({ ok: true, sourceOfFunds: record });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "source_of_funds_triage_failed";
-        if (message === "source_of_funds_triage_self_forbidden") {
-          return c.json({ error: "source_of_funds_triage_self_forbidden" }, 403);
-        }
-        if (message === "source_of_funds_not_pending") {
-          return c.json({ error: "source_of_funds_not_pending" }, 409);
-        }
-        if (message === "source_of_funds_triage_already_set") {
-          return c.json({ error: "source_of_funds_triage_already_set" }, 409);
-        }
-        if (message === "source_of_funds_not_found") {
-          return c.json({ error: "source_of_funds_not_found" }, 404);
-        }
+        const mapped = respondComplianceRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -198,22 +166,8 @@ export function attachAdminComplianceRoutes(
         });
         return c.json({ ok: true, sourceOfFunds: record });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "source_of_funds_review_failed";
-        if (
-          message === "source_of_funds_review_self_forbidden" ||
-          message === "source_of_funds_review_same_as_triager"
-        ) {
-          return c.json({ error: message }, 403);
-        }
-        if (message === "source_of_funds_triage_required") {
-          return c.json({ error: "source_of_funds_triage_required" }, 409);
-        }
-        if (message === "source_of_funds_not_pending") {
-          return c.json({ error: "source_of_funds_not_pending" }, 409);
-        }
-        if (message === "source_of_funds_not_found") {
-          return c.json({ error: "source_of_funds_not_found" }, 404);
-        }
+        const mapped = respondComplianceRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -233,13 +187,8 @@ export function attachAdminComplianceRoutes(
         });
         return c.json({ ok: true, sourceOfFunds: record });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "source_of_funds_reopen_failed";
-        if (message === "source_of_funds_not_rejected") {
-          return c.json({ error: message }, 409);
-        }
-        if (message === "source_of_funds_not_found") {
-          return c.json({ error: message }, 404);
-        }
+        const mapped = respondComplianceRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -263,16 +212,8 @@ export function attachAdminComplianceRoutes(
         });
         return c.json({ ok: true, sourceOfFunds: record });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "source_of_funds_request_documents_failed";
-        if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
-        if (message === "source_of_funds_not_pending") return c.json({ error: message }, 409);
-        if (message === "source_of_funds_documents_already_requested") {
-          return c.json({ error: message }, 409);
-        }
-        if (message === "source_of_funds_document_types_required") {
-          return c.json({ error: message }, 400);
-        }
+        const mapped = respondComplianceRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },
@@ -370,16 +311,8 @@ export function attachAdminComplianceRoutes(
         });
         return c.json({ ok: true, data: row });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "source_of_funds_document_review_failed";
-        if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
-        if (message === "source_of_funds_not_pending") return c.json({ error: message }, 409);
-        if (
-          message === "source_of_funds_document_not_found" ||
-          message === "source_of_funds_document_superseded"
-        ) {
-          return c.json({ error: message }, 409);
-        }
+        const mapped = respondComplianceRouteError(c, err);
+        if (mapped) return mapped;
         throw err;
       }
     },

@@ -1,5 +1,5 @@
+import { DrizzleBidRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import { DrizzleBidRepository } from "./drizzle-bid.repository.js";
 
 describe("DrizzleBidRepository.markWinningBid", () => {
   it("clears the current winner then promotes the new bid in two execute calls", async () => {

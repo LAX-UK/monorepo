@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
+import { DrizzleArtistRegistryRepository } from "../repositories/drizzle-artist-registry.repository.js";
 import { ArtistRegistryService } from "./artist-registry.service.js";
 import { ArtistRegistryQueryService } from "./artist-registry/artist-registry-query.service.js";
 
@@ -54,10 +55,14 @@ function makeFluentDb(resultsQueue: unknown[][]) {
   return { db, chains };
 }
 
+function registryService(db: Database) {
+  return new ArtistRegistryService(new DrizzleArtistRegistryRepository(db));
+}
+
 describe("ArtistRegistryService.search (3-pass)", () => {
   it("returns [] for empty query", async () => {
     const { db } = makeFluentDb([]);
-    const svc = new ArtistRegistryService(db);
+    const svc = registryService(db);
     await expect(svc.search("")).resolves.toEqual([]);
     await expect(svc.search("   ")).resolves.toEqual([]);
   });
@@ -72,7 +77,7 @@ describe("ArtistRegistryService.search (3-pass)", () => {
     };
     // limit=1; one exact row should be returned without alias/fuzzy passes.
     const { db, chains } = makeFluentDb([[exactRow]]);
-    const svc = new ArtistRegistryService(db);
+    const svc = registryService(db);
     const hits = await svc.search("Picasso", 1);
     expect(hits).toEqual([
       {
@@ -108,7 +113,7 @@ describe("ArtistRegistryService.search (3-pass)", () => {
       score: 0.7,
     };
     const { db, chains } = makeFluentDb([[], [aliasRow], [], [fuzzyRow]]);
-    const svc = new ArtistRegistryService(db);
+    const svc = registryService(db);
     const hits = await svc.search("Picasso", 5);
 
     expect(chains).toHaveLength(4); // exact, alias, partial, fuzzy
@@ -127,7 +132,7 @@ describe("ArtistRegistryService.search (3-pass)", () => {
       alias: null,
     };
     const { db, chains } = makeFluentDb([[], [], [partialRow], []]);
-    const svc = new ArtistRegistryService(db);
+    const svc = registryService(db);
     const hits = await svc.search("Role", 5);
 
     expect(chains).toHaveLength(4);
@@ -155,7 +160,7 @@ describe("ArtistRegistryService.search (3-pass)", () => {
     };
     const aliasRow = { ...sharedRow, alias: "Picasso" };
     const { db } = makeFluentDb([[sharedRow], [aliasRow], [], []]);
-    const svc = new ArtistRegistryService(db);
+    const svc = registryService(db);
     const hits = await svc.search("Picasso", 5);
     expect(hits.map((h) => h.id)).toEqual(["a-1"]);
     expect(hits[0]?.matchType).toBe("exact");
@@ -164,7 +169,7 @@ describe("ArtistRegistryService.search (3-pass)", () => {
 
 describe("ArtistRegistryService.proposeMatches", () => {
   it("buckets search results by matchType and respects limit", async () => {
-    const svc = new ArtistRegistryService({} as Database);
+    const svc = registryService({} as Database);
     vi.spyOn(ArtistRegistryQueryService.prototype, "search").mockResolvedValue([
       {
         id: "1",
@@ -219,7 +224,7 @@ describe("ArtistRegistryService.proposeMatches", () => {
 describe("ArtistRegistryService.merge", () => {
   it("rejects self-merge before any DB work", async () => {
     const { db, chains } = makeFluentDb([]);
-    const svc = new ArtistRegistryService(db);
+    const svc = registryService(db);
     await expect(
       svc.merge("reviewer-1", {
         fromArtistId: "same",
@@ -278,7 +283,7 @@ describe("ArtistRegistryService.merge", () => {
       [],
     ]);
 
-    const svc = new ArtistRegistryService(db);
+    const svc = registryService(db);
     const result = await svc.merge("reviewer-1", {
       fromArtistId: "from",
       intoArtistId: "into",

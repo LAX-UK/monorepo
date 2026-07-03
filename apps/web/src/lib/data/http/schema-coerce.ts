@@ -1,11 +1,14 @@
 import { z } from "zod";
 
 /** Mirrors `toDate` in parse.ts — never throws on bad input. */
-export const zCoerceDate = z.preprocess((value) => {
-  if (value instanceof Date) return value;
-  if (typeof value === "string" || typeof value === "number") return new Date(value);
-  return new Date(Number.NaN);
-}, z.custom<Date>((value) => value instanceof Date));
+export const zCoerceDate = z.preprocess(
+  (value) => {
+    if (value instanceof Date) return value;
+    if (typeof value === "string" || typeof value === "number") return new Date(value);
+    return new Date(Number.NaN);
+  },
+  z.custom<Date>((value) => value instanceof Date),
+);
 
 /** `null` / `""` / missing → `null`; otherwise `String(value)`. */
 export const zNullableStringFromEmpty = z.preprocess((value) => {
