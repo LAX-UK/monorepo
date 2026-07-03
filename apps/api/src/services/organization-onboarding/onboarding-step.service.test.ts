@@ -33,7 +33,9 @@ const ENTITY_ROW = {
 
 function createCtx(overrides: Partial<OnboardingContext> = {}): OnboardingContext {
   return {
-    db: {} as OnboardingContext["db"],
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+    } as never,
     onboardingRepo: {
       findOrganisationById: vi.fn().mockResolvedValue(ENTITY_ROW),
       listCompletedStepKeys: vi.fn().mockResolvedValue([]),

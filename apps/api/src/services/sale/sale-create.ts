@@ -48,8 +48,8 @@ export async function createSale(
       if (!resolved.ok) {
         throw new LotError(resolved.message, 400);
       }
-      if (deps.db && deps.lotLifecycleRecording) {
-        const created = await deps.db.transaction(async (tx) => {
+      if (deps.transactionRunner && deps.lotLifecycleRecording) {
+        const created = await deps.transactionRunner.runInTransaction(async (tx) => {
           const lotRepo = txRepos(deps, tx).lot;
           const created = await lotRepo.create({
             ...lotFields,

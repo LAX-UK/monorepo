@@ -15,7 +15,12 @@ import {
 } from "../../lib/lot-schedule-jobs.js";
 import { findLotsMissingSellerConnect } from "../../lib/seller-connect-readiness.js";
 import type { ISalePublishService } from "../interfaces/sale-publish.js";
-import { publishSaleEvent, recordLotLifecycle, txRepos } from "./sale-mutation-context.js";
+import {
+  publishSaleEvent,
+  recordLotLifecycle,
+  scheduleRollbackDeps,
+  txRepos,
+} from "./sale-mutation-context.js";
 import { getByIdWithLots } from "./sale-read.js";
 import { SALE_CANCELLABLE } from "./sale-status-policy.js";
 import type { SaleServiceDeps } from "./sale-types.js";
@@ -111,8 +116,8 @@ export class SalePublishService implements ISalePublishService {
       }
     }
 
-    if (this.deps.db && this.deps.lotLifecycleRecording) {
-      await this.deps.db.transaction(async (tx) => {
+    if (this.deps.transactionRunner && this.deps.lotLifecycleRecording) {
+      await this.deps.transactionRunner.runInTransaction(async (tx) => {
         const saleRepo = txRepos(this.deps, tx).sale;
         const lotRepo = txRepos(this.deps, tx).lot;
         if (caps.inheritsLotTiming) {
@@ -175,12 +180,8 @@ export class SalePublishService implements ISalePublishService {
         scheduledLotIds.push(l.id);
       } catch {
         await rollbackSalePublishOnScheduleFailure({
-          jobScheduler: this.deps.jobScheduler,
-          lotRepo: this.deps.lotRepo,
+          ...scheduleRollbackDeps(this.deps),
           saleRepo: this.deps.saleRepo,
-          lotLifecycleRecording: this.deps.lotLifecycleRecording,
-          db: this.deps.db ?? null,
-          recordLotLifecycle: (fn) => recordLotLifecycle(this.deps, fn),
           saleId,
           lots,
           scheduledLotIds,
@@ -236,8 +237,8 @@ export class SalePublishService implements ISalePublishService {
     for (const l of lots) {
       await this.deps.jobScheduler?.cancelLotJobs(l.id);
     }
-    if (this.deps.db && this.deps.lotLifecycleRecording) {
-      await this.deps.db.transaction(async (tx) => {
+    if (this.deps.transactionRunner && this.deps.lotLifecycleRecording) {
+      await this.deps.transactionRunner.runInTransaction(async (tx) => {
         const lotRepo = txRepos(this.deps, tx).lot;
         const saleRepo = txRepos(this.deps, tx).sale;
         for (const l of lots) {
@@ -297,8 +298,8 @@ export class SalePublishService implements ISalePublishService {
         await this.deps.jobScheduler?.cancelLotJobs(l.id);
       }
     }
-    if (this.deps.db && this.deps.lotLifecycleRecording) {
-      await this.deps.db.transaction(async (tx) => {
+    if (this.deps.transactionRunner && this.deps.lotLifecycleRecording) {
+      await this.deps.transactionRunner.runInTransaction(async (tx) => {
         const lotRepo = txRepos(this.deps, tx).lot;
         const saleRepo = txRepos(this.deps, tx).sale;
         for (const l of lots) {

@@ -205,15 +205,15 @@ export async function releaseManualReviewForCapture(
       return err(new AuthzError(message, 403, { code }));
     }
   }
-  const db = deps.db;
+  const transactionRunner = deps.transactionRunner;
   const publisher = deps.domainEventPublisher;
-  if (!db || !publisher) {
+  if (!transactionRunner || !publisher) {
     await deps.payments.updateStatus(paymentId, "pending");
     return ok(undefined);
   }
 
   try {
-    await db.transaction(async (tx) => {
+    await transactionRunner.runInTransaction(async (tx) => {
       const released = await deps.payments.applyReleasedFromManualReviewInTransaction(
         tx,
         paymentId,

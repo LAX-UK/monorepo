@@ -46,7 +46,7 @@ export class OnboardingSubmitService implements IOnboardingSubmitService {
     }
 
     const op: LifecycleSelfOp = "submit_for_review";
-    const txnResult = await this.ctx.db.transaction(async (tx) => {
+    const txnResult = await this.ctx.transactionRunner.runInTransaction(async (tx) => {
       const locked = await this.ctx.onboardingRepo.lockOrganisationForUpdate(entityId, tx);
       if (!locked) return { ok: false as const, code: "not_found" as const };
 

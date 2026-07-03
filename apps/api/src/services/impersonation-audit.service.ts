@@ -1,15 +1,15 @@
-import type { Database } from "@auction/db";
-import { domainEvent } from "@auction/db/schema";
+import type { ITransactionRunner } from "@auction/persistence";
 import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence";
-import { and, desc, eq } from "drizzle-orm";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
+import type { IImpersonationDomainEventReader } from "../repositories/interfaces/impersonation-domain-event.reader.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 export { ADMIN_IMPERSONATION_AGGREGATE_TYPE };
 
 export class ImpersonationAuditService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
+    private readonly impersonationDomainEventReader: IImpersonationDomainEventReader,
     private readonly publisher: DomainEventPublisher,
   ) {}
 
@@ -21,19 +21,8 @@ export class ImpersonationAuditService {
     actorUserId: string;
     actingLegalEntityId: string;
   }): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      const ended = await tx
-        .select({ id: domainEvent.id })
-        .from(domainEvent)
-        .where(
-          and(
-            eq(domainEvent.aggregateType, ADMIN_IMPERSONATION_AGGREGATE_TYPE),
-            eq(domainEvent.aggregateId, input.sessionId),
-            eq(domainEvent.eventType, "admin.impersonation_ended"),
-          ),
-        )
-        .limit(1);
-      if (ended[0]) return;
+    await this.transactionRunner.runInTransaction(async (tx) => {
+      if (await this.impersonationDomainEventReader.hasEndedEvent(input.sessionId)) return;
 
       await this.publisher.publish(tx, {
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
@@ -69,49 +58,16 @@ export class ImpersonationAuditService {
   }
 
   private async recordLatestOpenSessionAsCookieCleared(actorUserId: string): Promise<void> {
-    const starters = await this.db
-      .select({
-        aggregateId: domainEvent.aggregateId,
-        actingLegalEntityId: domainEvent.actingLegalEntityId,
-      })
-      .from(domainEvent)
-      .where(
-        and(
-          eq(domainEvent.aggregateType, ADMIN_IMPERSONATION_AGGREGATE_TYPE),
-          eq(domainEvent.eventType, "admin.impersonation_started"),
-          eq(domainEvent.actorUserId, actorUserId),
-        ),
-      )
-      .orderBy(desc(domainEvent.id))
-      .limit(40);
+    const starters = await this.impersonationDomainEventReader.listRecentStartedForActor(
+      actorUserId,
+      40,
+    );
 
     for (const row of starters) {
-      const [ended] = await this.db
-        .select({ id: domainEvent.id })
-        .from(domainEvent)
-        .where(
-          and(
-            eq(domainEvent.aggregateType, ADMIN_IMPERSONATION_AGGREGATE_TYPE),
-            eq(domainEvent.aggregateId, row.aggregateId),
-            eq(domainEvent.eventType, "admin.impersonation_ended"),
-          ),
-        )
-        .limit(1);
-      if (ended) continue;
+      if (await this.impersonationDomainEventReader.hasEndedEvent(row.aggregateId)) continue;
 
-      await this.db.transaction(async (tx) => {
-        const [ended2] = await tx
-          .select({ id: domainEvent.id })
-          .from(domainEvent)
-          .where(
-            and(
-              eq(domainEvent.aggregateType, ADMIN_IMPERSONATION_AGGREGATE_TYPE),
-              eq(domainEvent.aggregateId, row.aggregateId),
-              eq(domainEvent.eventType, "admin.impersonation_ended"),
-            ),
-          )
-          .limit(1);
-        if (ended2) return;
+      await this.transactionRunner.runInTransaction(async (tx) => {
+        if (await this.impersonationDomainEventReader.hasEndedEvent(row.aggregateId)) return;
 
         await this.publisher.publish(tx, {
           aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,

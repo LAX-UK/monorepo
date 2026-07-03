@@ -1,12 +1,5 @@
-import type { domainEvent } from "@auction/db/schema";
-import type { DomainEventInput, DomainEventPublisher } from "./domain-event.publisher.js";
-
-/** Any connection that can insert domain events (root pool or transaction). */
-export type DomainEventConnection = {
-  insert: (table: typeof domainEvent) => {
-    values: (value: typeof domainEvent.$inferInsert) => Promise<unknown>;
-  };
-};
+import type { DomainEventConnection, DomainEventInput } from "@auction/persistence";
+import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 /**
  * Connection-owning event port (DIP). Services publish domain events without

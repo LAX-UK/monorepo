@@ -14,4 +14,13 @@ export class DrizzleUploadObjectReader implements IUploadObjectReader {
       .limit(1);
     return row?.status ?? null;
   }
+
+  async findKey(uploadObjectId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ key: uploadObject.key })
+      .from(uploadObject)
+      .where(eq(uploadObject.id, uploadObjectId))
+      .limit(1);
+    return row?.key ?? null;
+  }
 }

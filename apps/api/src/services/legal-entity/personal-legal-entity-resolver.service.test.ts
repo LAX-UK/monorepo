@@ -30,6 +30,7 @@ function makeRepo(ensurePersonalEntity: ILegalEntityRepository["ensurePersonalEn
     setStripeCustomerId: vi.fn(),
     findPrimaryAddressForXero: vi.fn().mockResolvedValue(null),
     findPreferredBillToLegalEntityAddress: vi.fn().mockResolvedValue(null),
+    advanceIndividualLeadsToConnectPendingAfterKyc: vi.fn().mockResolvedValue([]),
     ensurePersonalEntity,
   };
   return stub;

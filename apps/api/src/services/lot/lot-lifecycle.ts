@@ -64,8 +64,8 @@ export async function publishLot(
     }
   }
   let updated: Lot;
-  if (deps.db && deps.lotLifecycleRecording) {
-    updated = await deps.db.transaction(async (tx) => {
+  if (deps.transactionRunner && deps.lotLifecycleRecording) {
+    updated = await deps.transactionRunner.runInTransaction(async (tx) => {
       const lotRepo = txLot(deps, tx);
       if (alignedPatch) {
         await lotRepo.update(lotId, alignedPatch);
@@ -92,7 +92,8 @@ export async function publishLot(
     jobScheduler: deps.jobScheduler,
     lotRepo: deps.lotRepo,
     lotLifecycleRecording: deps.lotLifecycleRecording,
-    db: deps.db ?? null,
+    transactionRunner: deps.transactionRunner ?? null,
+    repoFactory: deps.repoFactory ?? null,
     recordLotLifecycle: (fn) => recordLifecycle(deps, fn),
     lotId,
     startTime: updated.startTime,
@@ -123,8 +124,8 @@ export async function cancelLot(
     return err(new LotError("This lot cannot be cancelled"));
   }
   let updated: Lot;
-  if (deps.db && deps.lotLifecycleRecording) {
-    updated = await deps.db.transaction(async (tx) => {
+  if (deps.transactionRunner && deps.lotLifecycleRecording) {
+    updated = await deps.transactionRunner.runInTransaction(async (tx) => {
       const lotRepo = txLot(deps, tx);
       await lotRepo.updateStatus(lotId, "cancelled");
       const row = await lotRepo.findById(lotId);

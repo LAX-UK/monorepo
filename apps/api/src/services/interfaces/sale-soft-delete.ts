@@ -24,14 +24,7 @@ export type SaleBulkSoftDeleteResult = {
   errors: SaleBulkSoftDeleteError[];
 };
 
-export interface ISaleSoftDeleteSideEffects {
-  softDeleteCascade(input: {
-    saleId: string;
-    actorUserId: string;
-    deletedAt: Date;
-    lotIds: string[];
-  }): Promise<void>;
-}
+export type { ISaleSoftDeleteSideEffects } from "@auction/persistence";
 
 export interface ISaleSoftDeleteService {
   getDeleteEligibility(saleId: string): Promise<SaleDeleteEligibility | null>;

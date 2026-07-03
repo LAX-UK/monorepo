@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
 import type { IInvitationRepository } from "../../repositories/interfaces/invitation.repository.js";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import { InvitationAcceptanceService } from "./invitation-acceptance.service.js";
 import type { InvitationNotificationService } from "./invitation-notification.service.js";
@@ -94,7 +95,7 @@ describe("InvitationAcceptanceService", () => {
       notifyInviteAccepted: vi.fn(async () => {}),
     } as unknown as InvitationNotificationService;
     const service = new InvitationAcceptanceService(
-      makeDb(),
+      transactionRunnerFromDb(makeDb()),
       repo,
       tokenService,
       notifications,
@@ -117,7 +118,7 @@ describe("InvitationAcceptanceService", () => {
       findByTokenHash: async () => null,
     });
     const service = new InvitationAcceptanceService(
-      makeDb(),
+      transactionRunnerFromDb(makeDb()),
       repo,
       tokenService,
       { notifyInviteAccepted: vi.fn() } as unknown as InvitationNotificationService,
@@ -134,7 +135,7 @@ describe("InvitationAcceptanceService", () => {
       notifyInviteDeclined: vi.fn(async () => {}),
     } as unknown as InvitationNotificationService;
     const service = new InvitationAcceptanceService(
-      makeDb(),
+      transactionRunnerFromDb(makeDb()),
       repo,
       tokenService,
       notifications,

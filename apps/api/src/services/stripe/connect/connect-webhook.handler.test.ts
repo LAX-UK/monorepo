@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../../../lib/stripe-processed-event.js";
+import { transactionRunnerFromDb } from "../../../test/transaction-runner-from-db.js";
 import type { ConnectAccountService } from "./connect-account.service.js";
 import { ConnectWebhookHandler } from "./connect-webhook.handler.js";
 
@@ -42,7 +43,11 @@ describe("ConnectWebhookHandler.handleConnectedAccountEvent", () => {
     };
     const applyAccountUpdate = vi.fn().mockResolvedValue(undefined);
     const accountService = { applyAccountUpdate } as unknown as ConnectAccountService;
-    const handler = new ConnectWebhookHandler(makeTransactionDb(), stripeFactory, accountService);
+    const handler = new ConnectWebhookHandler(
+      transactionRunnerFromDb(makeTransactionDb()),
+      stripeFactory,
+      accountService,
+    );
 
     const result = await handler.handleConnectedAccountEvent({
       id: "evt_acct_1",
@@ -70,7 +75,11 @@ describe("ConnectWebhookHandler.handleConnectedAccountEvent", () => {
     };
     const applyAccountUpdate = vi.fn().mockResolvedValue(undefined);
     const accountService = { applyAccountUpdate } as unknown as ConnectAccountService;
-    const handler = new ConnectWebhookHandler(makeTransactionDb(), stripeFactory, accountService);
+    const handler = new ConnectWebhookHandler(
+      transactionRunnerFromDb(makeTransactionDb()),
+      stripeFactory,
+      accountService,
+    );
 
     const result = await handler.handleConnectedAccountEvent({
       id: "evt_cap_1",
@@ -110,7 +119,11 @@ describe("ConnectWebhookHandler.handleConnectedAccountEvent", () => {
         return fn({} as Database);
       }),
     } as unknown as Database;
-    const handler = new ConnectWebhookHandler(db, stripeFactory, accountService);
+    const handler = new ConnectWebhookHandler(
+      transactionRunnerFromDb(db),
+      stripeFactory,
+      accountService,
+    );
 
     await handler.handleConnectedAccountEvent({
       id: "evt_acct_3",
@@ -133,7 +146,11 @@ describe("ConnectWebhookHandler.handleConnectedAccountEvent", () => {
       applyAccountDeauthorized,
       applyAccountUpdate: vi.fn(),
     } as unknown as ConnectAccountService;
-    const handler = new ConnectWebhookHandler(makeTransactionDb(), stripeFactory, accountService);
+    const handler = new ConnectWebhookHandler(
+      transactionRunnerFromDb(makeTransactionDb()),
+      stripeFactory,
+      accountService,
+    );
 
     const result = await handler.handleConnectedAccountEvent({
       id: "evt_deauth_1",
@@ -155,7 +172,7 @@ describe("ConnectWebhookHandler.handleConnectedAccountEvent", () => {
     };
     const transaction = vi.fn();
     const db = { transaction } as unknown as Database;
-    const handler = new ConnectWebhookHandler(db, stripeFactory, {
+    const handler = new ConnectWebhookHandler(transactionRunnerFromDb(db), stripeFactory, {
       applyAccountUpdate: vi.fn(),
     } as unknown as ConnectAccountService);
 

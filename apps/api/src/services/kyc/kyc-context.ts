@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { Env } from "../../env.js";
 import { VeriffClient } from "../../lib/veriff/veriff-client.js";
 import { VeriffWebhookVerifier } from "../../lib/veriff/veriff-webhook-verifier.js";
@@ -11,7 +11,7 @@ import { KycDecisionProcessor } from "./kyc-decision-processor.js";
 export type KycServiceDeps = {
   sessionRepo: IKycSessionRepository;
   repo: IKycRepository;
-  db: Database | null;
+  transactionRunner: ITransactionRunner | null;
   veriffClient: VeriffClient;
   webhookVerifier: VeriffWebhookVerifier;
   decisionProcessor: KycDecisionProcessor;
@@ -24,15 +24,15 @@ export type KycServiceDeps = {
 export function createKycServiceDeps(input: {
   env: Env;
   repo: IKycRepository;
-  db: Database | null;
+  transactionRunner: ITransactionRunner | null;
   marketingEvents: IMarketingEventService | null;
   veriffClient?: VeriffClient;
 }): KycServiceDeps {
-  const { env, repo, db, marketingEvents, veriffClient } = input;
+  const { env, repo, transactionRunner, marketingEvents, veriffClient } = input;
   return {
     sessionRepo: repo,
     repo,
-    db,
+    transactionRunner,
     veriffClient: veriffClient ?? VeriffClient.fromEnv(env),
     webhookVerifier: new VeriffWebhookVerifier(env.VERIFF_API_KEY, env.VERIFF_SHARED_SECRET),
     decisionProcessor: new KycDecisionProcessor(repo, marketingEvents),

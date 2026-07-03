@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeAttentionItems } from "./attention-feed.service.js";
+import { composeAttentionItems } from "./attention-feed.helpers.js";
 
 describe("composeAttentionItems", () => {
   it("combines admin attention sources and filters only stale payments / past draft lots", () => {

@@ -1,6 +1,5 @@
-import { persistQrCodeScan, truncateIp } from "@auction/db";
-import type { Database } from "@auction/db";
-import { DrizzleQrCodeRepository } from "@auction/persistence";
+import { truncateIp } from "@auction/db";
+import type { IQrCodeScanPersister } from "@auction/persistence";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 import type { AppLogger } from "../lib/logger.js";
@@ -21,27 +20,27 @@ export type {
   QrCodeStatus,
 } from "./qr-code/qr-code-types.js";
 export { decodeQrSequence, encodeQrSequence };
-export { persistQrCodeScan, truncateIp };
+export { truncateIp };
 
 export class QrCodeService implements IQrCodeService {
   private readonly admin: IQrCodeAdminService;
   private readonly publicResolve: IQrCodePublicResolveService;
 
   constructor(
-    db: Database,
+    scanPersister: IQrCodeScanPersister,
     redis: Redis,
     webOrigin: string,
-    logger?: AppLogger,
-    scanQueue?: Queue,
-    repo?: IQrCodeRepository,
+    logger: AppLogger | undefined,
+    scanQueue: Queue | undefined,
+    repo: IQrCodeRepository,
   ) {
-    const qrRepo = repo ?? new DrizzleQrCodeRepository(db);
+    const qrRepo = repo;
     this.admin = new QrCodeAdminCommandService(qrRepo, redis, webOrigin);
     this.publicResolve = new QrCodePublicResolveService(
       qrRepo,
       redis,
       webOrigin,
-      db,
+      scanPersister,
       logger,
       scanQueue,
     );

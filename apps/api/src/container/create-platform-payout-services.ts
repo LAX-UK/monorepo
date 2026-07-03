@@ -41,7 +41,7 @@ export type CreatePlatformPayoutServicesInput = {
 export function createPlatformPayoutServices(
   input: CreatePlatformPayoutServicesInput,
 ): ContainerPlatformPayoutServices {
-  const { env, db, infra, repos, core } = input;
+  const { env, infra, repos, core } = input;
   const { stripeClientFactory, redis } = infra;
   const {
     payoutRepository,
@@ -52,12 +52,15 @@ export function createPlatformPayoutServices(
     addressRepo,
     connectTransferRepository,
   } = repos;
-  const { domainEventPublisher } = core;
+  const { domainEventPublisher, domainEventSink } = core;
 
-  const payoutAdjustmentService = new PayoutAdjustmentService(db, payoutRepository);
+  const payoutAdjustmentService = new PayoutAdjustmentService(
+    core.transactionRunner,
+    payoutRepository,
+  );
   const payoutServiceInstance = new PayoutService(
     payoutRepository,
-    db,
+    core.transactionRunner,
     domainEventPublisher,
     payoutAdjustmentService,
   );
@@ -68,17 +71,17 @@ export function createPlatformPayoutServices(
   const payoutMaintenanceService: IPayoutMaintenanceService = payoutServiceInstance;
   const stripeConnectService: IStripeConnectService = new StripeConnectFacade(
     env,
-    db,
+    core.transactionRunner,
     payoutService,
     connectTransferRepository,
     repos.legalEntityConnectRepository,
     payoutRepository,
-    domainEventPublisher,
+    domainEventSink,
     stripeClientFactory,
     redis,
   );
   const paymentRefundReconcileService = new PaymentRefundReconcileService(
-    db,
+    core.transactionRunner,
     paymentRepo,
     payoutAdjustmentService,
     domainEventPublisher,

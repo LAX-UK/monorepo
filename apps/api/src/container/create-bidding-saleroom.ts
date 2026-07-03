@@ -74,17 +74,22 @@ export function createBiddingSaleroom(input: CreateBiddingSaleroomInput): Contai
     notificationOutboxService,
     notificationFactory,
     strategyFactory,
+    domainEventSink,
   } = platform;
   const { lotLifecycleService, lotLifecycleHooks } = lotLifecycle;
   const { kycService, mediaUrlResolver } = complianceMedia;
   const { lotJobScheduler, telephoneBidBookingService } = catalog;
   const { adminMetricsService } = payments;
 
-  const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository, saleRepo);
+  const saleRegistrationService = new SaleRegistrationService(
+    legalEntityRepository,
+    saleRepo,
+    repos.saleRegistrationRepository,
+  );
   const bidEligibilityService = createBidEligibility({ db, kycService, amlHoldStore });
 
   const bidIdempotencyStore = new RedisIdempotencyStore(redis);
-  const saleroomOnBlockPolicy = new SaleroomOnBlockPolicy(db);
+  const saleroomOnBlockPolicy = new SaleroomOnBlockPolicy(repos.saleroomOnBlockReader);
   const bidService = new BidService({
     repos: repoFactory,
     strategyFactory,
@@ -149,14 +154,12 @@ export function createBiddingSaleroom(input: CreateBiddingSaleroomInput): Contai
     saleRepo,
     tokenIssuer: displayTokenIssuer,
     redis,
-    domainEvents: domainEventPublisher,
-    db,
+    domainEventSink,
   });
   const displayOverlayService = new DisplayOverlayService({
-    db,
     saleroomDisplaySessionRepo: repos.saleroomDisplaySessionRepository,
     publisher: saleroomRealtimePublisher,
-    domainEvents: domainEventPublisher,
+    domainEventSink,
   });
   const displaySnapshotReader = new DisplaySnapshotReader({
     reader: repos.saleroomDisplaySnapshotReader,

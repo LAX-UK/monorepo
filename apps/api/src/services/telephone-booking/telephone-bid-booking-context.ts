@@ -1,9 +1,8 @@
-import type { Database } from "@auction/db";
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence";
 import type { ITelephoneBidBookingDetailReader } from "../../repositories/interfaces/telephone-bid-booking-detail.reader.js";
 import type { ITelephoneBidBookingRepository } from "../../repositories/interfaces/telephone-bid-booking.repository.js";
 import type { IAmlHoldStore } from "../aml/ports.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IKycService } from "../interfaces/kyc-service.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "../interfaces/repositories.js";
@@ -19,7 +18,6 @@ export type TelephoneBidBookingContext = {
 };
 
 export function createTelephoneBidBookingContext(input: {
-  db: Database;
   repo: ITelephoneBidBookingRepository;
   detailReader: ITelephoneBidBookingDetailReader;
   saleRepo: ISaleRepository;
@@ -28,14 +26,13 @@ export function createTelephoneBidBookingContext(input: {
   legalEntityRepository: ILegalEntityRepository;
   kycService: IKycService | null;
   amlHoldStore: IAmlHoldStore | null;
-  domainEventPublisher: DomainEventPublisher | null;
+  domainEventSink: IDomainEventSink | null;
   notifier: ITelephoneBookingNotifier | null;
 }): TelephoneBidBookingContext {
   return {
     repo: input.repo,
     detailReader: input.detailReader,
     validationDeps: {
-      db: input.db,
       repo: input.repo,
       legalEntityRepository: input.legalEntityRepository,
       kycService: input.kycService,
@@ -45,8 +42,7 @@ export function createTelephoneBidBookingContext(input: {
       userPhoneReader: input.userPhoneReader,
     },
     eventsDeps: {
-      db: input.db,
-      domainEventPublisher: input.domainEventPublisher,
+      domainEventSink: input.domainEventSink,
       notifier: input.notifier,
     },
   };

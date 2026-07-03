@@ -1,11 +1,9 @@
-import type { Database } from "@auction/db";
 import type { TelephoneBidBooking } from "@auction/types";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ITelephoneBookingNotifier } from "../interfaces/telephone-booking-notifier.js";
 
 export type TelephoneBookingEventsDeps = {
-  db: Database;
-  domainEventPublisher: DomainEventPublisher | null;
+  domainEventSink: IDomainEventSink | null;
   notifier: ITelephoneBookingNotifier | null;
 };
 
@@ -25,8 +23,8 @@ export async function publishTelephoneBookingEvent(
   booking: TelephoneBidBooking,
   extra?: object,
 ): Promise<void> {
-  if (!deps.domainEventPublisher) return;
-  await deps.domainEventPublisher.publish(deps.db, {
+  if (!deps.domainEventSink) return;
+  await deps.domainEventSink.publish({
     eventType,
     aggregateType: "telephone_bid_booking",
     aggregateId: booking.id,

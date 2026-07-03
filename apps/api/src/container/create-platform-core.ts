@@ -36,7 +36,7 @@ export function createPlatformCore(
   const lotLifecycleRecording: ILotLifecycleRecorder = new LotLifecycleRecording(
     lotLifecycleEventRecorder,
   );
-  const authAuditPublisher = new AuthAuditPublisher(domainEventPublisher, db);
+  const authAuditPublisher = new AuthAuditPublisher(domainEventSink);
   const strategyFactory = new LotStrategyFactory();
   const notificationFactory = new NotificationFactory();
 

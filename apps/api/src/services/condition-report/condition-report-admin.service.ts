@@ -46,8 +46,8 @@ export class ConditionReportAdminService implements IConditionReportAdminService
       return err({ message: "Could not update condition report request", status: 500 });
     }
 
-    if (this.ctx.domainEventPublisher) {
-      await this.ctx.domainEventPublisher.publish(this.ctx.db, {
+    if (this.ctx.domainEventSink) {
+      await this.ctx.domainEventSink.publish({
         aggregateType: "lot",
         aggregateId: reqRow.lotId,
         eventType: "condition_report.in_progress",

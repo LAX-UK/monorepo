@@ -1,6 +1,6 @@
-import type { Database } from "@auction/db";
 import type {
   IPaymentRefundReconcileRepository,
+  ITransactionRunner,
   PaymentRefundReconcilePayload,
 } from "@auction/persistence";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
@@ -10,7 +10,7 @@ import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.j
 
 export class PaymentRefundReconcileService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly payments: IPaymentWriteRepository,
     private readonly payoutAdjustments: IPayoutAdjustmentService | null,
     private readonly publisher: DomainEventPublisher,
@@ -32,7 +32,7 @@ export class PaymentRefundReconcileService {
     for (const row of rows) {
       const attempts = row.attempts + 1;
       try {
-        await this.db.transaction(async (tx) => {
+        await this.transactionRunner.runInTransaction(async (tx) => {
           const applied = await this.payments.applyRefundedInTransaction(
             tx,
             row.paymentId,

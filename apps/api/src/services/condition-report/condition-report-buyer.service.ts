@@ -65,8 +65,8 @@ export class ConditionReportBuyerService implements IConditionReportBuyerService
         requestNote: input.requestNote ?? null,
       });
 
-      if (this.ctx.domainEventPublisher) {
-        await this.ctx.domainEventPublisher.publish(this.ctx.db, {
+      if (this.ctx.domainEventSink) {
+        await this.ctx.domainEventSink.publish({
           aggregateType: "lot",
           aggregateId: input.lotId,
           eventType: "condition_report.requested",

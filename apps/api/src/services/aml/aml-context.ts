@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import { AmlMonitoringService, createAmlMonitoringContext } from "./aml-monitoring.service.js";
 import type {
@@ -11,7 +10,7 @@ import type {
 
 /** Shared AML service dependencies for ingest and review. */
 export type AmlServiceDeps = {
-  db: Database;
+  transactionRunner: import("@auction/persistence").ITransactionRunner;
   policy: IAmlDecisionPolicy;
   screeningWriter: IWatchlistScreeningWriter;
   screeningReader: IWatchlistScreeningReader;

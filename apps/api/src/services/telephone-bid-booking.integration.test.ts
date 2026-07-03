@@ -38,7 +38,6 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
   const saleRepo = new DrizzleSaleRepository(db);
   const lotRepo = new DrizzleLotRepository(db);
   const service = buildTelephoneBidBookingService({
-    db,
     repo,
     detailReader: new DrizzleTelephoneBidBookingDetailReader(db),
     saleRepo,

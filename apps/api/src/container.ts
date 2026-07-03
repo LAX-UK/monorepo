@@ -206,6 +206,7 @@ export function createContainer(env: Env): Container {
     addressService: userMisc.addressService,
     analyticsService: userMisc.analyticsService,
     domainEventPublisher: platform.domainEventPublisher,
+    transactionRunner: platform.transactionRunner,
     authAuditPublisher: platform.authAuditPublisher,
     legalEntityLifecycleAdminService: platform.legalEntityLifecycleAdminService,
     legalEntityDocumentAdminService: complianceMedia.legalEntityDocumentAdminService,

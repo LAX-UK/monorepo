@@ -145,7 +145,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
   const kycService: IKycService = new VeriffKycService(
     env,
     kycRepository,
-    db,
+    platform.transactionRunner,
     marketingEventService,
   );
   const kycResubmissionNotifier = new KycResubmissionNotifier(
@@ -155,7 +155,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     env.WEB_ORIGIN,
   );
   const amlService = new AmlService(
-    db,
+    platform.transactionRunner,
     new VeriffWebhookVerifier(env.VERIFF_API_KEY, env.VERIFF_SHARED_SECRET),
     new DefaultAmlDecisionPolicy(),
     amlScreeningRepository,
@@ -172,14 +172,13 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
       currency: env.SOF_THRESHOLD_CURRENCY,
       approvalValidityDays: env.SOF_APPROVAL_VALIDITY_DAYS,
     },
-    db,
+    platform.transactionRunner,
     domainEventPublisher,
   );
   const exportProviderDeps = createExportProviderDeps(db);
   const exportProviders = createExportProviders(exportProviderDeps);
   const exportJobRepo = new DrizzleExportJobRepository(db);
   const exportService = new ExportService(
-    db,
     exportJobRepo,
     new RedisExportProgressStore(redis),
     new ExportFileStorage(objectStorage),
@@ -189,7 +188,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
       syncMaxRows: env.EXPORT_SYNC_MAX_ROWS,
       staleProcessingMs: env.EXPORT_STALE_PROCESSING_MS,
     },
-    domainEventPublisher,
+    platform.domainEventSink,
   );
   const mediaUrlResolver = new MediaUrlResolver(
     objectStorage,
@@ -211,7 +210,8 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     sourceOfFundsRepository,
     sourceOfFundsDocumentRepository,
     sourceOfFundsDocumentReviewRepository,
-    db,
+    repos.uploadObjectReader,
+    platform.transactionRunner,
     domainEventPublisher,
     objectStorage,
     new PerRequestSigningPolicy(env.SOF_DOWNLOAD_TTL_SEC),
@@ -221,7 +221,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     sourceOfFundsRepository,
     sourceOfFundsDocumentRepository,
     sourceOfFundsDocumentReviewRepository,
-    db,
+    platform.transactionRunner,
     domainEventPublisher,
   );
   const catalogueMediaUrlResolver = new MediaUrlResolver(
@@ -229,7 +229,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     env.STORAGE_READ_MODE,
     new StableSigningPolicy(Math.max(env.SIGNED_GET_TTL_SEC, 86_400)),
   );
-  const mediaAssetEnricher = new MediaAssetEnricher(db, objectStorage);
+  const mediaAssetEnricher = new MediaAssetEnricher(repos.mediaAssetReader, objectStorage);
   const legalEntityDocumentAdminService = new LegalEntityDocumentAdminService(
     repos.legalEntityDocumentAdminRepository,
     objectStorage,

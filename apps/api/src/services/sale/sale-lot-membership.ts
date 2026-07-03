@@ -72,9 +72,9 @@ export async function addLotToSale(
     ...(lotNumber !== undefined ? { lotNumber } : {}),
   };
   let created: Lot;
-  if (deps.db && deps.lotLifecycleRecording) {
+  if (deps.transactionRunner && deps.lotLifecycleRecording) {
     try {
-      created = await deps.db.transaction(async (tx) => {
+      created = await deps.transactionRunner.runInTransaction(async (tx) => {
         const lotRepo = txRepos(deps, tx).lot;
         const row = await lotRepo.create(createFields);
         await deps.lotLifecycleRecording?.recordCreated(tx, { lot: row, source: createdSource });
@@ -151,8 +151,8 @@ export async function attachExistingLotToSale(
     return err(new LotError(resolved.message, 400));
   }
   let updated: Lot;
-  if (deps.db && deps.lotLifecycleRecording) {
-    updated = await deps.db.transaction(async (tx) => {
+  if (deps.transactionRunner && deps.lotLifecycleRecording) {
+    updated = await deps.transactionRunner.runInTransaction(async (tx) => {
       const lotRepo = txRepos(deps, tx).lot;
       const row = await lotRepo.update(lotId, {
         saleId,
@@ -218,8 +218,8 @@ export async function detachLotFromSale(
     return err(new LotError("Only draft lots can be moved between sales"));
   }
   const fromSaleId = l.saleId;
-  if (deps.db && deps.lotLifecycleRecording) {
-    await deps.db.transaction(async (tx) => {
+  if (deps.transactionRunner && deps.lotLifecycleRecording) {
+    await deps.transactionRunner.runInTransaction(async (tx) => {
       const lotRepo = txRepos(deps, tx).lot;
       await lotRepo.clearSaleId(lotId);
       await deps.lotLifecycleRecording?.recordDetached(tx, l, fromSaleId);

@@ -1,5 +1,6 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { LegalEntityStatus, UpdateItemSubmissionInput } from "@auction/types";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
 import type { ILegalEntityNotificationRecipientReader } from "../interfaces/legal-entity-notification-recipients.js";
@@ -24,7 +25,7 @@ export const INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES = new Set<LegalEntityStatus>
 
 /** Resolved deps record built once in ItemSubmissionService constructor. */
 export type ItemSubmissionServiceDeps = {
-  db: Database;
+  transactionRunner: ITransactionRunner;
   submissions: IItemSubmissionRepository;
   users: IUserRepository;
   dispatcher: NotificationDispatcher;
@@ -32,6 +33,7 @@ export type ItemSubmissionServiceDeps = {
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null;
   legalEntityRepository: ILegalEntityRepository | null;
   domainEventPublisher: DomainEventPublisher | null;
+  domainEventSink: IDomainEventSink | null;
   mediaUrlResolver: MediaUrlResolver | undefined;
   mediaAssetEnricher: MediaAssetEnricher | undefined;
   lotLifecycleRecording: ILotLifecycleRecorder | null;

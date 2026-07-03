@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import type {
   CreateNestedLotForSaleInput,
@@ -9,6 +9,7 @@ import type { LotAttachedToSalePayload } from "../domain/lot-events.js";
 import type { AuthzError, LotError } from "../lib/errors.js";
 import type { presentSaleAdminImages } from "../lib/media-presenters.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catalog-legal-entity.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
@@ -55,8 +56,9 @@ export type SaleServiceOptions = {
   catalogueMediaUrlResolver?: MediaUrlResolver;
   mediaAssetEnricher?: MediaAssetEnricher;
   englishOnlyAuctions?: boolean;
-  db?: Database;
+  transactionRunner?: ITransactionRunner | null;
   domainEventPublisher?: DomainEventPublisher | null;
+  domainEventSink?: IDomainEventSink | null;
   lotLifecycleRecording?: ILotLifecycleRecorder | null;
   legalEntityRepository?: ILegalEntityRepository | null;
   venueRepository?: IVenueRepository | null;
@@ -82,8 +84,9 @@ export class SaleService {
       catalogueMediaUrlResolver: opts.catalogueMediaUrlResolver ?? opts.mediaUrlResolver,
       mediaAssetEnricher: opts.mediaAssetEnricher,
       englishOnlyAuctions: opts.englishOnlyAuctions ?? false,
-      db: opts.db,
+      transactionRunner: opts.transactionRunner ?? null,
       domainEventPublisher: opts.domainEventPublisher ?? null,
+      domainEventSink: opts.domainEventSink ?? null,
       lotLifecycleRecording: opts.lotLifecycleRecording ?? null,
       legalEntityRepository: opts.legalEntityRepository ?? null,
       venueRepository: opts.venueRepository ?? null,

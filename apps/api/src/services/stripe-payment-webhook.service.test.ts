@@ -11,6 +11,14 @@ import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js
 import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 import { StripePaymentWebhookService } from "./stripe-payment-webhook.service.js";
 
+vi.mock("./payout/payout-helpers.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./payout/payout-helpers.js")>();
+  return {
+    ...actual,
+    payoutRepoForTx: (rootRepo: IPayoutRepository) => rootRepo,
+  };
+});
+
 vi.mock("../lib/stripe-processed-event.js", () => ({
   tryClaimProcessedStripeEvent: vi.fn(),
 }));
@@ -47,7 +55,18 @@ function mockDbWithPayment(paymentRow: {
 }
 
 function createWebhookService(deps: {
-  db: Database;
+  db?: Database;
+  transactionRunner?: {
+    runInTransaction: (fn: (tx: Database) => Promise<unknown>) => Promise<unknown>;
+  };
+  paymentWebhookLookup?: {
+    findPaymentRow: (where: unknown) => Promise<{
+      id: string;
+      sellerLegalEntityId: string;
+      status: string;
+      amount: string;
+    } | null>;
+  };
   payoutRepository?: Partial<IPayoutRepository>;
   publisher?: DomainEventPublisher;
   payoutAdjustments?: Partial<IPayoutAdjustmentService>;
@@ -80,8 +99,34 @@ function createWebhookService(deps: {
     updateStatus: vi.fn().mockResolvedValue(undefined),
     ...(deps.payments ?? {}),
   } as IPaymentWriteRepository;
+  const db = deps.db ?? ({} as Database);
+  const transactionRunner = deps.transactionRunner ?? {
+    runInTransaction: async (fn: (tx: Database) => Promise<unknown>) => fn(db),
+  };
+  const paymentWebhookLookup = deps.paymentWebhookLookup ?? {
+    findPaymentRow: vi.fn(async () => {
+      const [row] = await db
+        .select({
+          id: payment.id,
+          sellerLegalEntityId: payment.sellerLegalEntityId,
+          status: payment.status,
+          amount: payment.amount,
+        })
+        .from(payment)
+        .where(eq(payment.id, "pay_1"))
+        .limit(1);
+      if (!row?.sellerLegalEntityId) return null;
+      return {
+        id: row.id,
+        sellerLegalEntityId: row.sellerLegalEntityId,
+        status: row.status,
+        amount: String(row.amount),
+      };
+    }),
+  };
   const svc = new StripePaymentWebhookService(
-    deps.db,
+    transactionRunner as never,
+    paymentWebhookLookup as never,
     payments,
     payoutRepository,
     payoutAdjustments,

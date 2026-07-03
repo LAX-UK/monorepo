@@ -1,10 +1,9 @@
-import type { Database } from "@auction/db";
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence";
 import type { TelephoneBidBooking, TelephoneBidBookingStatus } from "@auction/types";
 import type { ITelephoneBidBookingDetailReader } from "../repositories/interfaces/telephone-bid-booking-detail.reader.js";
 import type { ITelephoneBidBookingRepository } from "../repositories/interfaces/telephone-bid-booking.repository.js";
 import type { IAmlHoldStore } from "./aml/ports.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IKycService } from "./interfaces/kyc-service.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
@@ -20,7 +19,6 @@ import { TelephoneBidBookingStaffService } from "./telephone-booking/telephone-b
 export type { TelephoneBidBookingServiceError } from "./interfaces/telephone-bid-booking-service-errors.js";
 
 export type TelephoneBidBookingServiceDeps = {
-  db: Database;
   repo: ITelephoneBidBookingRepository;
   detailReader: ITelephoneBidBookingDetailReader;
   saleRepo: ISaleRepository;
@@ -29,7 +27,7 @@ export type TelephoneBidBookingServiceDeps = {
   legalEntityRepository: ILegalEntityRepository;
   kycService?: IKycService | null;
   amlHoldStore?: IAmlHoldStore | null;
-  domainEventPublisher?: DomainEventPublisher | null;
+  domainEventSink?: IDomainEventSink | null;
   notifier?: ITelephoneBookingNotifier | null;
 };
 
@@ -38,7 +36,6 @@ export function buildTelephoneBidBookingService(
   deps: TelephoneBidBookingServiceDeps,
 ): TelephoneBidBookingService {
   const ctx = createTelephoneBidBookingContext({
-    db: deps.db,
     repo: deps.repo,
     detailReader: deps.detailReader,
     saleRepo: deps.saleRepo,
@@ -47,7 +44,7 @@ export function buildTelephoneBidBookingService(
     legalEntityRepository: deps.legalEntityRepository,
     kycService: deps.kycService ?? null,
     amlHoldStore: deps.amlHoldStore ?? null,
-    domainEventPublisher: deps.domainEventPublisher ?? null,
+    domainEventSink: deps.domainEventSink ?? null,
     notifier: deps.notifier ?? null,
   });
   return new TelephoneBidBookingService(

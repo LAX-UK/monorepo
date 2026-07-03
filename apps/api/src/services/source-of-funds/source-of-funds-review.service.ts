@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type {
   ISourceOfFundsReviewService,
@@ -20,7 +21,7 @@ export const SOURCE_OF_FUNDS_REVIEWED_EVENT = "source_of_funds.reviewed";
 export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
   constructor(
     private readonly repo: ISourceOfFundsRepository,
-    private readonly db: Database | null = null,
+    private readonly transactionRunner: ITransactionRunner | null = null,
     private readonly events: DomainEventPublisher | null = null,
   ) {}
 
@@ -72,7 +73,7 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
       return updated;
     };
 
-    if (this.db) return this.db.transaction((tx) => run(tx));
+    if (this.transactionRunner) return this.transactionRunner.runInTransaction((tx) => run(tx));
     return run();
   }
 
@@ -121,7 +122,7 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
       return updated;
     };
 
-    if (this.db) return this.db.transaction((tx) => run(tx));
+    if (this.transactionRunner) return this.transactionRunner.runInTransaction((tx) => run(tx));
     return run();
   }
 
@@ -159,7 +160,7 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
       return updated;
     };
 
-    if (this.db) return this.db.transaction((tx) => run(tx));
+    if (this.transactionRunner) return this.transactionRunner.runInTransaction((tx) => run(tx));
     return run();
   }
 }

@@ -1,12 +1,12 @@
-import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, user } from "@auction/db/schema";
 import type { IEmailService, TemplateVarsByName } from "@auction/email";
-import { and, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import type { ILegalEntityMemberRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 
-const NOTIFY_ROLES = ["owner", "admin"] as const;
+const NOTIFY_ROLES = new Set(["owner", "admin"]);
 
 export async function enqueueOrgLifecycleMemberEmails(args: {
-  db: Database;
+  legalEntityRepository: ILegalEntityRepository;
+  memberRepository: ILegalEntityMemberRepository;
   emailService: IEmailService;
   legalEntityId: string;
   template:
@@ -16,40 +16,21 @@ export async function enqueueOrgLifecycleMemberEmails(args: {
   vars: Record<string, string | null | undefined>;
   idempotencyPrefix: string;
 }): Promise<void> {
-  const [entityRow] = await args.db
-    .select({ displayName: legalEntity.displayName })
-    .from(legalEntity)
-    .where(eq(legalEntity.id, args.legalEntityId))
-    .limit(1);
-  const entityName = entityRow?.displayName ?? "Organisation";
+  const entity = await args.legalEntityRepository.findById(args.legalEntityId);
+  const entityName = entity?.displayName ?? "Organisation";
 
-  const members = await args.db
-    .selectDistinct({
-      email: user.email,
-      userId: user.id,
-      firstName: user.firstName,
-    })
-    .from(legalEntityMember)
-    .innerJoin(user, eq(user.id, legalEntityMember.userId))
-    .where(
-      and(
-        eq(legalEntityMember.legalEntityId, args.legalEntityId),
-        isNull(legalEntityMember.removedAt),
-        isNotNull(legalEntityMember.acceptedAt),
-        or(
-          inArray(legalEntityMember.role, [...NOTIFY_ROLES]),
-          eq(legalEntityMember.isPrimaryAdmin, true),
-        ),
-      ),
-    );
+  const members = await args.memberRepository.listMembersWithUsers(args.legalEntityId);
+  const recipients = members.filter(
+    (m) => !m.removedAt && m.acceptedAt && (NOTIFY_ROLES.has(m.role) || m.isPrimaryAdmin),
+  );
 
-  for (const m of members) {
+  for (const m of recipients) {
     await args.emailService.enqueue({
       template: args.template,
-      to: m.email,
+      to: m.user.email,
       userId: m.userId,
       vars: {
-        recipientFirstName: m.firstName,
+        recipientFirstName: m.user.name.split(" ")[0] ?? m.user.name,
         entityName,
         legalEntityId: args.legalEntityId,
         ...args.vars,
@@ -61,7 +42,6 @@ export async function enqueueOrgLifecycleMemberEmails(args: {
 }
 
 export async function enqueueOrgSubmittedAdminNotice(args: {
-  db: Database;
   emailService: IEmailService;
   legalEntityId: string;
   entityDisplayName: string;

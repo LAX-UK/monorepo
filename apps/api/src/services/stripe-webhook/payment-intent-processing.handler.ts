@@ -33,7 +33,7 @@ export class PaymentIntentProcessingHandler implements IPaymentIntentWebhookHand
       return { processed: false, action: "skipped", reason: "amount_mismatch" };
     }
 
-    return this.deps.db.transaction(async (tx) => {
+    return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
         tx,
         event.id,

@@ -16,7 +16,9 @@ function securityNotifyTestApp(opts: {
   const enqueue = opts.enqueue ?? vi.fn().mockResolvedValue(undefined);
   const container = {
     env: {},
-    db: {},
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+    } as never,
     userService: { getById },
     userSecurityReadService: {
       getTwoFactorEnabled: vi.fn().mockResolvedValue(opts.twoFactorEnabled ?? null),

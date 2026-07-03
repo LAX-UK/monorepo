@@ -1,10 +1,11 @@
-import type { lotFulfilment } from "@auction/db/schema";
+import type {
+  LotFulfilmentAddressSnapshot,
+  LotFulfilmentListRow,
+  LotFulfilmentRow,
+} from "@auction/persistence";
 import type { Result } from "neverthrow";
-import type { LotFulfilmentAddressSnapshot } from "./lot-fulfilment-payment-hook.js";
 
-export type LotFulfilmentRow = typeof lotFulfilment.$inferSelect;
-
-export type LotFulfilmentListRow = LotFulfilmentRow & { lotTitle: string | null };
+export type { LotFulfilmentListRow, LotFulfilmentRow } from "@auction/persistence";
 
 export type LotFulfilmentServiceError = { message: string; status: number; code?: string };
 

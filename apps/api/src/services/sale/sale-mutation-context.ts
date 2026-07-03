@@ -14,8 +14,8 @@ export async function recordLotLifecycle(
   deps: SaleServiceDeps,
   fn: (tx: Database) => Promise<void>,
 ): Promise<void> {
-  if (!deps.db || !deps.lotLifecycleRecording) return;
-  await deps.db.transaction(fn);
+  if (!deps.transactionRunner || !deps.lotLifecycleRecording) return;
+  await deps.transactionRunner.runInTransaction(fn);
 }
 
 export async function publishSaleEvent(
@@ -25,8 +25,8 @@ export async function publishSaleEvent(
   eventType: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  if (!deps.db || !deps.domainEventPublisher) return;
-  await deps.domainEventPublisher.publish(deps.db, {
+  if (!deps.domainEventSink) return;
+  await deps.domainEventSink.publish({
     aggregateType: "sale",
     aggregateId: saleId,
     eventType,
@@ -40,9 +40,21 @@ export function publishSingleLotDeps(deps: SaleServiceDeps) {
     lotRepo: deps.lotRepo,
     jobScheduler: deps.jobScheduler,
     lotLifecycleRecording: deps.lotLifecycleRecording,
-    db: deps.db ?? null,
+    transactionRunner: deps.transactionRunner ?? null,
+    repoFactory: deps.repoFactory ?? null,
     recordLotLifecycle: (fn: (tx: Database) => Promise<void>) => recordLotLifecycle(deps, fn),
     legalEntityRepository: deps.legalEntityRepository,
     enforceIndividualConnectOnPublish: deps.enforceIndividualConnectOnPublish,
+  };
+}
+
+export function scheduleRollbackDeps(deps: SaleServiceDeps) {
+  return {
+    jobScheduler: deps.jobScheduler,
+    lotRepo: deps.lotRepo,
+    lotLifecycleRecording: deps.lotLifecycleRecording,
+    transactionRunner: deps.transactionRunner ?? null,
+    repoFactory: deps.repoFactory ?? null,
+    recordLotLifecycle: (fn: (tx: Database) => Promise<void>) => recordLotLifecycle(deps, fn),
   };
 }

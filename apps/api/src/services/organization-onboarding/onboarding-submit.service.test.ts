@@ -39,8 +39,8 @@ const DOCS_REQUESTED_ROW = {
 
 function createCtx(overrides: Partial<OnboardingContext> = {}): OnboardingContext {
   return {
-    db: {
-      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
+    transactionRunner: {
+      runInTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
     } as never,
     onboardingRepo: {
       findOrganisationById: vi.fn().mockResolvedValue(DOCS_REQUESTED_ROW),

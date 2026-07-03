@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import type { IConnectTransferRepository } from "@auction/persistence";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
@@ -7,7 +6,7 @@ import { type AppLogger, createBaseLogger } from "../../../lib/logger.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { executeWithStripeRetries } from "../../../lib/stripe-retries.js";
 import { recordMoneyPathEvent } from "../../../middleware/metrics.js";
-import type { DomainEventPublisher } from "../../domain-event.publisher.js";
+import type { IDomainEventSink } from "../../domain-event-sink.js";
 import type { IPayoutRepository } from "../../interfaces/payout-repository.js";
 import type {
   IConnectAccountReadinessSync,
@@ -22,12 +21,11 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
 
   constructor(
     env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">,
-    private readonly db: Database,
     private readonly connectTransferRepository: IConnectTransferRepository,
     readonly stripeFactory: IStripeClientFactory,
     private readonly accountSync: IConnectAccountReadinessSync,
     private readonly payoutRepository: IPayoutRepository | undefined,
-    private readonly domainEventPublisher?: DomainEventPublisher,
+    private readonly domainEventSink?: IDomainEventSink,
   ) {
     this.logger = createBaseLogger(env);
   }
@@ -66,8 +64,8 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
         failureReason: "negative_net_amount",
       });
 
-      if (this.domainEventPublisher) {
-        await this.domainEventPublisher.publish(this.db, {
+      if (this.domainEventSink) {
+        await this.domainEventSink.publish({
           aggregateType: "payout",
           aggregateId: payoutId,
           eventType: "payout.clawback_required",
@@ -115,8 +113,8 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
     }
 
     if (!connectReady) {
-      if (this.domainEventPublisher) {
-        await this.domainEventPublisher.publish(this.db, {
+      if (this.domainEventSink) {
+        await this.domainEventSink.publish({
           aggregateType: "payout",
           aggregateId: payoutId,
           eventType: "payout.transfer_blocked",
@@ -194,8 +192,8 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
         };
       }
 
-      if (this.domainEventPublisher) {
-        await this.domainEventPublisher.publish(this.db, {
+      if (this.domainEventSink) {
+        await this.domainEventSink.publish({
           aggregateType: "payout",
           aggregateId: payoutId,
           eventType: "payout.transfer_initiated",
@@ -228,8 +226,8 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
         failureReason,
       });
 
-      if (this.domainEventPublisher) {
-        await this.domainEventPublisher.publish(this.db, {
+      if (this.domainEventSink) {
+        await this.domainEventSink.publish({
           aggregateType: "payout",
           aggregateId: payoutId,
           eventType: "payout.transfer_failed",

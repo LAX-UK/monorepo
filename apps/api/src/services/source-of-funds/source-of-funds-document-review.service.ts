@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type {
   ISourceOfFundsDocumentReviewRepository,
   SourceOfFundsDocumentReviewRow,
@@ -22,7 +23,7 @@ export class SourceOfFundsDocumentReviewService implements ISourceOfFundsDocumen
     private readonly caseRepo: ISourceOfFundsRepository,
     private readonly docRepo: ISourceOfFundsDocumentRepository,
     private readonly reviewRepo: ISourceOfFundsDocumentReviewRepository,
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly events: DomainEventPublisher | null,
   ) {}
 
@@ -78,7 +79,7 @@ export class SourceOfFundsDocumentReviewService implements ISourceOfFundsDocumen
       return row;
     };
 
-    return this.db.transaction((tx) => run(tx));
+    return this.transactionRunner.runInTransaction((tx) => run(tx));
   }
 }
 

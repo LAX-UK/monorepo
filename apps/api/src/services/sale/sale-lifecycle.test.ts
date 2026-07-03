@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ILotRepository, ISaleRepository } from "../interfaces/repositories.js";
 import { cancelSale } from "./sale-lifecycle.js";
 import { publishSaleEvent } from "./sale-mutation-context.js";
@@ -23,8 +23,9 @@ function baseDeps(overrides: Partial<SaleServiceDeps> = {}): SaleServiceDeps {
     catalogueMediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
     englishOnlyAuctions: false,
-    db: undefined,
+    transactionRunner: null,
     domainEventPublisher: null,
+    domainEventSink: null,
     lotLifecycleRecording: null,
     legalEntityRepository: null,
     venueRepository: null,
@@ -53,14 +54,15 @@ describe("cancelSale event payload", () => {
       lotRepo: {
         findBySaleId: vi.fn().mockResolvedValue([]),
       } as unknown as ILotRepository,
-      db: {} as never,
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      transactionRunner: {
+        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+      } as never,
+      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
     });
 
     const result = await cancelSale(deps, "admin-1", "staff", "sale-1", "super_admin");
     expect(result.isOk()).toBe(true);
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         eventType: "sale.cancelled",
         payload: {
@@ -82,14 +84,13 @@ describe("publishSaleEvent via lifecycle", () => {
     });
     // Direct call to verify shape (lifecycle uses same helper)
     const deps = baseDeps({
-      db: {} as never,
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
     });
     await publishSaleEvent(deps, "u1", "s1", "sale.unpublished", {
       from_status: "scheduled",
       to_status: "draft",
     });
-    expect(publish.mock.calls[0]?.[1]?.payload).toEqual({
+    expect(publish.mock.calls[0]?.[0]?.payload).toEqual({
       from_status: "scheduled",
       to_status: "draft",
     });

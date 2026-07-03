@@ -1,6 +1,6 @@
-import type { Database } from "@auction/db";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IStripeCheckoutService } from "../interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
@@ -45,8 +45,9 @@ export type PaymentServiceDeps = {
   accounting: IInvoiceAccountingProvider;
   paymentTierPolicy: PaymentTierPolicy;
   legalEntityRepository: ILegalEntityRepository | undefined;
-  db: Database | undefined;
+  transactionRunner: import("@auction/persistence").ITransactionRunner | undefined;
   domainEventPublisher: DomainEventPublisher | undefined;
+  domainEventSink: IDomainEventSink | undefined;
   stripePayments: IStripePaymentGateway | null;
   mediaUrlResolver: MediaUrlResolver | undefined;
   lotFulfilmentHooks: ILotFulfilmentPaymentHook | null;

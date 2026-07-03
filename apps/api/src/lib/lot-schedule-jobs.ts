@@ -1,10 +1,11 @@
 import type { Database } from "@auction/db";
-import { DrizzleLotRepository, DrizzleSaleRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository, ISaleRepository } from "../services/interfaces/repositories.js";
+import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
 import { LotError } from "./errors.js";
 
 export const SCHEDULE_JOBS_FAILED_MESSAGE =
@@ -18,7 +19,8 @@ export type ScheduleLotRollbackDeps = {
   jobScheduler: ILotJobScheduler | null;
   lotRepo: ILotRepository;
   lotLifecycleRecording?: ILotLifecycleRecorder | null;
-  db?: Database | null;
+  transactionRunner?: ITransactionRunner | null;
+  repoFactory?: IRepositoryFactory | null;
   recordLotLifecycle?: ((fn: (tx: Database) => Promise<void>) => Promise<void>) | null;
 };
 
@@ -32,9 +34,15 @@ export type ScheduleLotWithRollbackInput = ScheduleLotRollbackDeps & {
 
 async function revertLotToDraft(input: ScheduleLotWithRollbackInput): Promise<void> {
   const { lotId, unpublishReason, actorUserId } = input;
-  if (input.db && input.lotLifecycleRecording && unpublishReason) {
-    await input.db.transaction(async (tx) => {
-      const lotRepo = new DrizzleLotRepository(tx);
+  if (
+    input.transactionRunner &&
+    input.repoFactory &&
+    input.lotLifecycleRecording &&
+    unpublishReason
+  ) {
+    const repoFactory = input.repoFactory;
+    await input.transactionRunner.runInTransaction(async (tx) => {
+      const lotRepo = repoFactory.forTransaction(tx).lot;
       await lotRepo.updateStatus(lotId, "draft");
       const row = await lotRepo.findById(lotId);
       if (row) {
@@ -83,10 +91,11 @@ export async function rollbackSalePublishOnScheduleFailure(
   for (const lotId of input.scheduledLotIds) {
     await input.jobScheduler?.cancelLotJobs(lotId);
   }
-  if (input.db && input.lotLifecycleRecording) {
-    await input.db.transaction(async (tx) => {
-      const saleRepo = new DrizzleSaleRepository(tx);
-      const lotRepo = new DrizzleLotRepository(tx);
+  if (input.transactionRunner && input.repoFactory && input.lotLifecycleRecording) {
+    const repoFactory = input.repoFactory;
+    await input.transactionRunner.runInTransaction(async (tx) => {
+      const saleRepo = repoFactory.forTransaction(tx).sale;
+      const lotRepo = repoFactory.forTransaction(tx).lot;
       for (const l of input.lots) {
         await lotRepo.updateStatus(l.id, "draft");
         const row = await lotRepo.findById(l.id);

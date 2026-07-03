@@ -5,7 +5,7 @@ import type {
   ILotFulfilmentRepository,
   InsertLotFulfilmentInput,
   UpdateLotFulfilmentInput,
-} from "./interfaces/lot-fulfilment.repository.js";
+} from "../interfaces/lot-fulfilment.repository.js";
 
 function buildAdminWhereClause(options?: {
   status?: (typeof lotFulfilment.$inferSelect)["status"];

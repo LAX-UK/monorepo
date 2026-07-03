@@ -1,5 +1,4 @@
-import { persistQrCodeScan } from "@auction/db";
-import type { Database } from "@auction/db";
+import type { IQrCodeScanPersister } from "@auction/persistence";
 import type { QrCodeScanJobPayload } from "@auction/queues";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
@@ -16,7 +15,7 @@ export class QrCodePublicResolveService {
     private readonly repo: IQrCodeRepository,
     redis: Redis,
     private readonly webOrigin: string,
-    private readonly db: Database,
+    private readonly scanPersister: IQrCodeScanPersister,
     private readonly logger?: AppLogger,
     private readonly scanQueue?: Queue,
   ) {
@@ -49,7 +48,7 @@ export class QrCodePublicResolveService {
         await this.scanQueue.add("record-scan", input);
         return;
       }
-      await persistQrCodeScan(this.db, input);
+      await this.scanPersister.persist(input);
     } catch (error) {
       this.logger?.error(
         { err: error, qr_code_id: input.qrCodeId, request_id: input.requestId ?? undefined },

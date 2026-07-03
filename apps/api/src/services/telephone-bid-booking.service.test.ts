@@ -131,7 +131,6 @@ function createService(input: {
   };
 }) {
   return buildTelephoneBidBookingService({
-    db: {} as never,
     repo: input.repo ?? mockRepo(),
     detailReader: mockDetailReader(),
     saleRepo: mockSaleRepo(input.sale),

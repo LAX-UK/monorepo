@@ -1,4 +1,3 @@
-import { DrizzlePayoutRepository } from "@auction/persistence";
 import type { PayoutLine } from "@auction/types";
 import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
@@ -82,12 +81,12 @@ export async function createSettlement(
   input: CreateSettlementInput,
 ): Promise<CreateSettlementResult> {
   const publisher = deps.domainEventPublisher;
-  if (!deps.db || !publisher) {
+  if (!deps.transactionRunner || !publisher) {
     return await createSettlementCore(deps.repo, input);
   }
 
-  return await deps.db.transaction(async (tx) => {
-    const r = new DrizzlePayoutRepository(tx);
+  return await deps.transactionRunner.runInTransaction(async (tx) => {
+    const r = deps.payoutRepoForTx(tx);
     const result = await createSettlementCore(r, input);
     if (!result.ok) {
       return result;

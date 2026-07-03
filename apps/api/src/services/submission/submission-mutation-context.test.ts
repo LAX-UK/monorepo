@@ -5,7 +5,9 @@ import type { ItemSubmissionServiceDeps } from "./submission-types.js";
 
 function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmissionServiceDeps {
   return {
-    db: {} as never,
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+    } as never,
     submissions: {} as never,
     users: {} as never,
     dispatcher: {} as never,
@@ -13,6 +15,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     legalEntityNotificationRecipients: null,
     legalEntityRepository: null,
     domainEventPublisher: null,
+    domainEventSink: null,
     mediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
     lotLifecycleRecording: null,

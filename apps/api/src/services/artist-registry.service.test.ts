@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { describe, expect, it, vi } from "vitest";
 import { DrizzleArtistRegistryRepository } from "@auction/persistence";
+import { describe, expect, it, vi } from "vitest";
 import { ArtistRegistryService } from "./artist-registry.service.js";
 import { ArtistRegistryQueryService } from "./artist-registry/artist-registry-query.service.js";
 

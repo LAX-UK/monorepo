@@ -170,8 +170,8 @@ export async function createPendingForWinner(
     status: requiresManualReview ? "requires_manual_review" : "pending",
   });
 
-  if (requiresManualReview && deps.db && deps.domainEventPublisher && manualReviewReason) {
-    await deps.domainEventPublisher.publish(deps.db, {
+  if (requiresManualReview && deps.domainEventSink && manualReviewReason) {
+    await deps.domainEventSink.publish({
       aggregateType: "payment",
       aggregateId: created.id,
       eventType: "payment.requires_manual_review",
@@ -321,8 +321,8 @@ export async function cancelPendingAsBuyer(
   }
   await deps.payments.updateStatus(paymentId, "cancelled");
   await revokeOpenStripeCheckoutForPayment(deps.checkoutOrchestratorDeps, paymentId);
-  if (deps.db && deps.domainEventPublisher) {
-    await deps.domainEventPublisher.publish(deps.db, {
+  if (deps.domainEventSink) {
+    await deps.domainEventSink.publish({
       aggregateType: "payment",
       aggregateId: paymentId,
       eventType: "payment.cancelled",
@@ -368,8 +368,8 @@ async function cancelStalePayment(
 ): Promise<void> {
   await deps.payments.updateStatus(row.id, "cancelled");
   await revokeOpenStripeCheckoutForPayment(deps.checkoutOrchestratorDeps, row.id);
-  if (deps.db && deps.domainEventPublisher) {
-    await deps.domainEventPublisher.publish(deps.db, {
+  if (deps.domainEventSink) {
+    await deps.domainEventSink.publish({
       aggregateType: "payment",
       aggregateId: row.id,
       eventType: "payment.cancelled",

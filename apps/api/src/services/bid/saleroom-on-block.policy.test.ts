@@ -1,36 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
 import { SaleroomOnBlockPolicy } from "./saleroom-on-block.policy.js";
 
+function makeReader(session: { status: string; currentLotId: string | null } | null) {
+  const connReader = {
+    getSessionState: vi.fn().mockResolvedValue(session),
+  };
+  return {
+    getSessionState: vi.fn().mockResolvedValue(session),
+    forConnection: vi.fn().mockReturnValue(connReader),
+  };
+}
+
 describe("SaleroomOnBlockPolicy", () => {
   const saleId = "sale-1";
   const lotId = "lot-on-block";
 
   it("returns ok when session is live and lot matches currentLotId", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ status: "live", currentLotId: lotId }]),
-          }),
-        }),
-      }),
-    };
-    const policy = new SaleroomOnBlockPolicy(db as never);
+    const policy = new SaleroomOnBlockPolicy(
+      makeReader({ status: "live", currentLotId: lotId }) as never,
+    );
     const result = await policy.assertLotOnBlock(saleId, lotId);
     expect(result.isOk()).toBe(true);
   });
 
   it("rejects when lot is not on block", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ status: "live", currentLotId: "other-lot" }]),
-          }),
-        }),
-      }),
-    };
-    const policy = new SaleroomOnBlockPolicy(db as never);
+    const policy = new SaleroomOnBlockPolicy(
+      makeReader({ status: "live", currentLotId: "other-lot" }) as never,
+    );
     const result = await policy.assertLotOnBlock(saleId, lotId);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -39,16 +35,9 @@ describe("SaleroomOnBlockPolicy", () => {
   });
 
   it("rejects when session is paused", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ status: "paused", currentLotId: lotId }]),
-          }),
-        }),
-      }),
-    };
-    const policy = new SaleroomOnBlockPolicy(db as never);
+    const policy = new SaleroomOnBlockPolicy(
+      makeReader({ status: "paused", currentLotId: lotId }) as never,
+    );
     const result = await policy.assertLotOnBlock(saleId, lotId);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -57,16 +46,9 @@ describe("SaleroomOnBlockPolicy", () => {
   });
 
   it("rejects when session is not live", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ status: "scheduled", currentLotId: lotId }]),
-          }),
-        }),
-      }),
-    };
-    const policy = new SaleroomOnBlockPolicy(db as never);
+    const policy = new SaleroomOnBlockPolicy(
+      makeReader({ status: "scheduled", currentLotId: lotId }) as never,
+    );
     const result = await policy.assertLotOnBlock(saleId, lotId);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {

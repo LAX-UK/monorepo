@@ -1,26 +1,19 @@
 import type { Database } from "@auction/db";
-import { saleroomSession } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import type { ISaleroomOnBlockReader } from "@auction/persistence";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../../lib/errors.js";
 
 export class SaleroomOnBlockPolicy {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly reader: ISaleroomOnBlockReader) {}
 
   async assertLotOnBlock(
     saleId: string,
     lotId: string,
     tx?: Database,
   ): Promise<Result<void, BidError>> {
-    const conn = tx ?? this.db;
-    const [session] = await conn
-      .select({
-        status: saleroomSession.status,
-        currentLotId: saleroomSession.currentLotId,
-      })
-      .from(saleroomSession)
-      .where(eq(saleroomSession.saleId, saleId))
-      .limit(1);
+    const session = await (tx ? this.reader.forConnection(tx) : this.reader).getSessionState(
+      saleId,
+    );
 
     if (session?.status === "paused") {
       return err(

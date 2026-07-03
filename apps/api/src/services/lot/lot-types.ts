@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
@@ -44,7 +44,8 @@ export type LotServiceDeps = {
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null;
   legalEntityRepository: ILegalEntityRepository | null;
   enforceIndividualConnectOnPublish: boolean;
-  db: Database | null;
+  adminReviewTaskRepository: import("@auction/persistence").IAdminReviewTaskRepository | null;
+  transactionRunner: ITransactionRunner | null;
   domainEventPublisher: DomainEventPublisher | null;
   catalogueMediaUrlResolver: MediaUrlResolver | undefined;
   mediaAssetEnricher: MediaAssetEnricher | undefined;

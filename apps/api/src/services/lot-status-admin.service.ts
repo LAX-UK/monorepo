@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { canAdminOverrideLotStatus } from "@auction/domain";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { Lot, LotStatus, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
@@ -19,7 +20,7 @@ export class LotStatusAdminService implements ILotStatusAdminService {
     private readonly saleRepo: ISaleRepository,
     private readonly lotRepo: ILotRepository,
     private readonly jobScheduler: ILotJobScheduler | null,
-    private readonly db: Database | null = null,
+    private readonly transactionRunner: ITransactionRunner | null = null,
     private readonly lotLifecycleRecording: ILotLifecycleRecorder | null = null,
     private readonly legalEntityRepository: ILegalEntityRepository | null = null,
     private readonly enforceIndividualConnectOnPublish = false,
@@ -28,14 +29,14 @@ export class LotStatusAdminService implements ILotStatusAdminService {
 
   private txRepos(tx: Database) {
     if (!this.repoFactory) {
-      throw new Error("sale_status_transition_repo_factory_required");
+      throw new Error("lot_status_admin_repo_factory_required");
     }
     return this.repoFactory.forTransaction(tx);
   }
 
   private async recordLot(fn: (tx: Database) => Promise<void>): Promise<void> {
-    if (!this.db || !this.lotLifecycleRecording) return;
-    await this.db.transaction(fn);
+    if (!this.transactionRunner || !this.lotLifecycleRecording) return;
+    await this.transactionRunner.runInTransaction(fn);
   }
 
   async setLotStatus(
@@ -121,8 +122,8 @@ export class LotStatusAdminService implements ILotStatusAdminService {
       }
     }
     let updated: Lot;
-    if (this.db && this.lotLifecycleRecording) {
-      updated = await this.db.transaction(async (tx) => {
+    if (this.transactionRunner && this.lotLifecycleRecording) {
+      updated = await this.transactionRunner.runInTransaction(async (tx) => {
         const lotRepo = this.txRepos(tx).lot;
         await lotRepo.updateStatus(lotId, status);
         const row = await lotRepo.findById(lotId);
@@ -168,7 +169,8 @@ export class LotStatusAdminService implements ILotStatusAdminService {
         jobScheduler: this.jobScheduler,
         lotRepo: this.lotRepo,
         lotLifecycleRecording: this.lotLifecycleRecording,
-        db: this.db ?? null,
+        transactionRunner: this.transactionRunner,
+        repoFactory: this.repoFactory,
         recordLotLifecycle: (fn) => this.recordLot(fn),
         lotId,
         startTime: updated.startTime,

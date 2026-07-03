@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import type { IUploadPersistenceRepository } from "@auction/persistence";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import type { LegalEntityDocumentUploadInput } from "@auction/validators";
@@ -15,7 +14,7 @@ import type {
 } from "./org-onboarding-mappers.js";
 
 export type OnboardingContext = {
-  db: Database;
+  transactionRunner: import("@auction/persistence").ITransactionRunner;
   onboardingRepo: ILegalEntityOnboardingRepository;
   uploadPersistenceRepository: IUploadPersistenceRepository;
   legalEntityRepository: ILegalEntityRepository;
@@ -26,7 +25,7 @@ export type OnboardingContext = {
 };
 
 export function createOnboardingContext(input: {
-  db: Database;
+  transactionRunner: import("@auction/persistence").ITransactionRunner;
   onboardingRepo: ILegalEntityOnboardingRepository;
   uploadPersistenceRepository: IUploadPersistenceRepository;
   legalEntityRepository: ILegalEntityRepository;

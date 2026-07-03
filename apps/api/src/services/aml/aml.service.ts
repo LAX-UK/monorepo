@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { VeriffWebhookVerifier } from "../../lib/veriff/veriff-webhook-verifier.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import { createAmlServiceDeps } from "./aml-context.js";
@@ -35,7 +35,7 @@ export class AmlService implements IAmlService {
   private readonly monitoring: AmlMonitoringService;
 
   constructor(
-    db: Database,
+    transactionRunner: ITransactionRunner,
     verifier: VeriffWebhookVerifier,
     policy: IAmlDecisionPolicy,
     screeningWriter: IWatchlistScreeningWriter,
@@ -46,7 +46,7 @@ export class AmlService implements IAmlService {
     fetcher: IWatchlistScreeningFetcher | null = null,
   ) {
     const deps = createAmlServiceDeps({
-      db,
+      transactionRunner,
       policy,
       screeningWriter,
       screeningReader,

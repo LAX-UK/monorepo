@@ -1,26 +1,14 @@
 import { domainEvent } from "@auction/db/schema";
+import type {
+  DomainEventConnection,
+  DomainEventInput,
+  IDomainEventPublisher,
+} from "@auction/persistence";
 
-export type DomainEventInput = {
-  aggregateType: string;
-  aggregateId: string;
-  eventType: string;
-  payload: Record<string, unknown>;
-  producer?: string;
-  actorUserId?: string | null;
-  /** Optional acting legal entity (matches `domain_events.acting_legal_entity_id`). */
-  actingLegalEntityId?: string | null;
-  schemaVersion?: number;
-};
+export type { DomainEventConnection, DomainEventInput } from "@auction/persistence";
 
-export class DomainEventPublisher {
-  async publish(
-    tx: {
-      insert: (table: typeof domainEvent) => {
-        values: (value: typeof domainEvent.$inferInsert) => Promise<unknown>;
-      };
-    },
-    event: DomainEventInput,
-  ): Promise<void> {
+export class DomainEventPublisher implements IDomainEventPublisher {
+  async publish(tx: DomainEventConnection, event: DomainEventInput): Promise<void> {
     await tx.insert(domainEvent).values({
       aggregateType: event.aggregateType,
       aggregateId: event.aggregateId,

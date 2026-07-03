@@ -1,9 +1,8 @@
-import type { Database } from "@auction/db";
 import type { CreateVenueInput, UpdateVenueInput, Venue } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { VenueError } from "../lib/errors.js";
 import { findPostgresError } from "../lib/pg-error.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IVenueRepository, ListVenuesFilter, VenueListRow } from "./interfaces/venue.js";
 
 type VenueMutationContext = {
@@ -35,8 +34,7 @@ function mapVenueDbError(error: unknown): VenueError | null {
 export class VenueService {
   constructor(
     private readonly venues: IVenueRepository,
-    private readonly db?: Database,
-    private readonly domainEvents?: DomainEventPublisher | null,
+    private readonly domainEventSink?: IDomainEventSink | null,
   ) {}
 
   async list(filter: ListVenuesFilter = {}): Promise<ListVenuesResult> {
@@ -188,8 +186,8 @@ export class VenueService {
     payload: Record<string, unknown>;
     actorUserId?: string | null;
   }): Promise<void> {
-    if (!this.domainEvents || !this.db) return;
-    await this.domainEvents.publish(this.db, {
+    if (!this.domainEventSink) return;
+    await this.domainEventSink.publish({
       aggregateType: "venue",
       aggregateId: input.aggregateId,
       eventType: input.eventType,

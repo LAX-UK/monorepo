@@ -1,6 +1,6 @@
-import { DrizzlePayoutRepository } from "@auction/persistence";
 import type Stripe from "stripe";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
+import { payoutRepoForTx } from "../payout/payout-helpers.js";
 import { type StripePaymentWebhookDeps, findPaymentRow } from "./payment-webhook-lookup.js";
 import {
   PAYMENT_WEBHOOK_EVENT_SOURCE,
@@ -12,7 +12,7 @@ export async function handleChargeRefunded(
   event: Stripe.Event,
   charge: Stripe.Charge,
 ): Promise<PaymentWebhookResult> {
-  return deps.db.transaction(async (tx) => {
+  return deps.transactionRunner.runInTransaction(async (tx) => {
     const { claimed } = await tryClaimProcessedStripeEvent(
       tx,
       event.id,
@@ -22,7 +22,7 @@ export async function handleChargeRefunded(
       return { processed: false, action: "skipped", reason: "duplicate_event" };
     }
 
-    const paymentRow = await findPaymentRow(deps, tx, {
+    const paymentRow = await findPaymentRow(deps, {
       chargeId: charge.id,
       paymentIntentId:
         typeof charge.payment_intent === "string"
@@ -34,7 +34,7 @@ export async function handleChargeRefunded(
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
     }
 
-    const payoutRepo = tx === deps.db ? deps.payoutRepository : new DrizzlePayoutRepository(tx);
+    const payoutRepo = payoutRepoForTx(deps.payoutRepository, tx);
     const cumulativeRefundedCents = charge.amount_refunded ?? charge.amount ?? 0;
     const priorRefundedCents = await payoutRepo.sumRefundLineCentsForPayment(paymentRow.id);
     const deltaCents = cumulativeRefundedCents - priorRefundedCents;

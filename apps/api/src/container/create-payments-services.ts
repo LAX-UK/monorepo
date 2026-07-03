@@ -1,9 +1,11 @@
 import type { Database } from "@auction/db";
+import {
+  DrizzleLotFulfilmentRepository,
+  DrizzlePaymentDomainEventsRepository,
+} from "@auction/persistence";
 import type { Env } from "../env.js";
 import { NoOpErrorReporter } from "../infrastructure/no-op-error.reporter.js";
 import { SentryErrorReporter } from "../infrastructure/sentry-error.reporter.js";
-import { DrizzleLotFulfilmentRepository } from "../repositories/drizzle-lot-fulfilment.repository.js";
-import { DrizzlePaymentDomainEventsRepository } from "../repositories/drizzle-payment-domain-events.repository.js";
 import { NoOpAccountingProvider } from "../services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "../services/accounting/xero-accounting.provider.js";
 import { XeroPaymentRecorder } from "../services/accounting/xero-payment-recorder.js";
@@ -83,6 +85,7 @@ export function createPaymentsServices(
   const {
     invoiceAddressingService,
     domainEventPublisher,
+    domainEventSink,
     notificationDispatcher,
     notificationFactory,
     payoutAdjustmentService,
@@ -164,7 +167,7 @@ export function createPaymentsServices(
   );
 
   const paymentCaptureService = new PaymentCaptureService(
-    db,
+    platform.transactionRunner,
     paymentRepo,
     lotRepo,
     userRepo,
@@ -218,7 +221,7 @@ export function createPaymentsServices(
     accountingProvider,
     paymentTierPolicy,
     legalEntityRepository,
-    db,
+    platform.transactionRunner,
     domainEventPublisher,
     stripePaymentGateway,
     mediaUrlResolver,
@@ -240,6 +243,7 @@ export function createPaymentsServices(
     settlementCompliancePolicy,
     env.XERO_INVOICE_BLOCKING,
     paymentDomainEventsRepository,
+    domainEventSink,
   );
 
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(
@@ -252,7 +256,7 @@ export function createPaymentsServices(
     accountingProvider,
     notificationOutboxService,
     notificationFactory,
-    domainEventPublisher,
+    domainEventSink,
     {
       ensureAwaitingPayment: (lotId, paymentId, addressSnapshot) =>
         lotFulfilmentService.ensureAwaitingPayment(lotId, paymentId, addressSnapshot),
@@ -261,13 +265,13 @@ export function createPaymentsServices(
     },
     legalEntityRepository,
     userRepo,
-    db,
   );
 
   const stripePaymentWebhookService: StripePaymentWebhookService | null =
     env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET
       ? new StripePaymentWebhookService(
-          db,
+          platform.transactionRunner,
+          repos.paymentWebhookLookupReader,
           paymentRepo,
           payoutRepository,
           payoutAdjustmentService,

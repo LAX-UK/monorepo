@@ -36,7 +36,7 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
 
     const chargeId = chargeIdFromPaymentIntent(paymentIntent);
 
-    return this.deps.db.transaction(async (tx) => {
+    return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
         tx,
         event.id,

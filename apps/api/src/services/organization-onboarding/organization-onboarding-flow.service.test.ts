@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { OrganizationOnboardingFlowService } from "./organization-onboarding-flow.service.js";
 
 const ENTITY_ROW = {
@@ -57,13 +58,17 @@ describe("OrganizationOnboardingFlowService.submitForReview", () => {
     const publisher = { publish: vi.fn() } as never;
 
     const uploadPersistenceRepository = { findByIdForOwner: vi.fn() } as never;
+    const onboardingRepo = {
+      findOrganisationById: vi.fn().mockResolvedValue(ENTITY_ROW),
+    } as never;
 
     const svc = new OrganizationOnboardingFlowService(
-      db,
+      transactionRunnerFromDb(db),
       legalEntityRepository,
       organizationOnboardingService,
       publisher,
       uploadPersistenceRepository,
+      onboardingRepo,
     );
 
     const res = await svc.submitForReview("u1", ENTITY_ROW.id);
@@ -132,13 +137,21 @@ describe("OrganizationOnboardingFlowService.submitForReview", () => {
     const publisher = { publish: vi.fn().mockResolvedValue(undefined) } as never;
     const onSubmittedForReview = vi.fn().mockResolvedValue(undefined);
     const uploadPersistenceRepository = { findByIdForOwner: vi.fn() } as never;
+    const onboardingRepo = {
+      findOrganisationById: vi.fn().mockResolvedValue(DOCS_REQUESTED_ROW),
+      listCompletedStepKeys: vi.fn().mockResolvedValue(progressRows.map((row) => row.stepKey)),
+      findUserKycStatus: vi.fn().mockResolvedValue("approved"),
+      lockOrganisationForUpdate: vi.fn().mockResolvedValue(DOCS_REQUESTED_ROW),
+      transitionOrganisationStatus: vi.fn().mockResolvedValue(undefined),
+    } as never;
 
     const svc = new OrganizationOnboardingFlowService(
-      db,
+      transactionRunnerFromDb(db),
       legalEntityRepository,
       organizationOnboardingService,
       publisher,
       uploadPersistenceRepository,
+      onboardingRepo,
       null,
       { onSubmittedForReview },
     );

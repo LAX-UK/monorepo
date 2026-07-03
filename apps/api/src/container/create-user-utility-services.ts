@@ -50,7 +50,7 @@ export type CreateUserUtilityServicesInput = {
 export function createUserUtilityServices(
   input: CreateUserUtilityServicesInput,
 ): ContainerUserUtilityServices {
-  const { env, db, authDb, infra, repos, payments } = input;
+  const { env, authDb, infra, repos, payments } = input;
   const {
     redis,
     bullConnection,
@@ -75,6 +75,7 @@ export function createUserUtilityServices(
     newsletterSignupRepository,
     notificationPreferenceRepository,
     userRepo,
+    failedJobRepository,
   } = repos;
   const { errorReporter } = payments;
 
@@ -99,7 +100,13 @@ export function createUserUtilityServices(
     redis,
     queueRuntimeEnvFromApiEnv(env),
   );
-  const queueMutator = new BullMQQueueMutator(bullConnection, redis, db, queueAudit, env.APP_ENV);
+  const queueMutator = new BullMQQueueMutator(
+    bullConnection,
+    redis,
+    failedJobRepository,
+    queueAudit,
+    env.APP_ENV,
+  );
   const queueAdmin = {
     inspector: queueInspector,
     mutator: queueMutator,

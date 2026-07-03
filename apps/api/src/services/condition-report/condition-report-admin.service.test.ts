@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
 import type { IConditionReportRequestRepository } from "../../repositories/interfaces/condition-report-request.repository.js";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";
@@ -44,11 +43,13 @@ function adminServiceForMarkInProgress(
   } as unknown as IConditionReportRequestRepository;
 
   const ctx = createConditionReportContext({
-    db: {} as Database,
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+    } as never,
     requestRepo,
     lotRepo: { findById: vi.fn() } as unknown as ILotRepository,
     legalEntityRepository: null,
-    domainEventPublisher: { publish } as never,
+    domainEventSink: { publish, withTx: vi.fn() } as never,
     notificationDispatcher: null,
     notificationFactory: new NotificationFactory(),
   });
@@ -104,11 +105,13 @@ describe("ConditionReportAdminService.listForAdmin", () => {
       total: 1,
     }));
     const ctx = createConditionReportContext({
-      db: {} as Database,
+      transactionRunner: {
+        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+      } as never,
       requestRepo: { listForAdmin } as unknown as IConditionReportRequestRepository,
       lotRepo: { findById: vi.fn() } as unknown as ILotRepository,
       legalEntityRepository: null,
-      domainEventPublisher: null,
+      domainEventSink: null,
       notificationDispatcher: null,
       notificationFactory: new NotificationFactory(),
     });

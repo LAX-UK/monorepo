@@ -9,14 +9,12 @@ describe("DisplayOverlayService", () => {
     };
 
     const publisher = { publishDisplayControl: vi.fn().mockResolvedValue(undefined) };
-    const domainEvents = { publish: vi.fn().mockResolvedValue(undefined) };
-    const db = {} as never;
+    const domainEventSink = { publish: vi.fn().mockResolvedValue(undefined), withTx: vi.fn() };
 
     const service = new DisplayOverlayService({
-      db,
       saleroomDisplaySessionRepo,
       publisher: publisher as never,
-      domainEvents: domainEvents as never,
+      domainEventSink: domainEventSink as never,
     });
 
     const result = await service.setOverlay({
@@ -34,8 +32,7 @@ describe("DisplayOverlayService", () => {
       "sale-1",
       expect.objectContaining({ kind: "fair_warning" }),
     );
-    expect(domainEvents.publish).toHaveBeenCalledWith(
-      db,
+    expect(domainEventSink.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "saleroom.display.overlay_set",
         actorUserId: "staff-1",
@@ -50,14 +47,12 @@ describe("DisplayOverlayService", () => {
     };
 
     const publisher = { publishDisplayControl: vi.fn().mockResolvedValue(undefined) };
-    const domainEvents = { publish: vi.fn().mockResolvedValue(undefined) };
-    const db = {} as never;
+    const domainEventSink = { publish: vi.fn().mockResolvedValue(undefined), withTx: vi.fn() };
 
     const service = new DisplayOverlayService({
-      db,
       saleroomDisplaySessionRepo,
       publisher: publisher as never,
-      domainEvents: domainEvents as never,
+      domainEventSink: domainEventSink as never,
     });
 
     const result = await service.clearOverlay({
@@ -71,8 +66,7 @@ describe("DisplayOverlayService", () => {
       "sale-1",
       expect.objectContaining({ kind: "clear" }),
     );
-    expect(domainEvents.publish).toHaveBeenCalledWith(
-      db,
+    expect(domainEventSink.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "saleroom.display.overlay_clear",
         actorUserId: "staff-1",

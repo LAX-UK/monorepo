@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import { PaymentService } from "./payment.service.js";
@@ -48,7 +49,7 @@ describe("PaymentService.refundPayment admin clawback", () => {
       },
       defaultTierPolicy,
       undefined,
-      db as never,
+      transactionRunnerFromDb(db as never),
       { publish: vi.fn().mockResolvedValue(undefined) } as never,
       {
         isConfigured: () => true,
@@ -127,7 +128,7 @@ describe("PaymentService.refundManualReviewPayment admin clawback", () => {
       },
       defaultTierPolicy,
       undefined,
-      db as never,
+      transactionRunnerFromDb(db as never),
       { publish: vi.fn().mockResolvedValue(undefined) } as never,
       {
         isConfigured: () => true,

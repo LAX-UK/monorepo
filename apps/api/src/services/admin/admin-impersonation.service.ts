@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { IImpersonationSessionRepository } from "@auction/persistence";
 import { encodeActingContextCookie } from "@auction/types";
 import { parseActingLegalEntityCookieFromHeader } from "../../lib/impersonation-cookie.js";
@@ -15,7 +15,7 @@ import type { ILegalEntityRepository } from "../interfaces/legal-entity-reposito
 
 export class AdminImpersonationService implements IAdminImpersonationService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly legalEntityRepository: ILegalEntityRepository,
     private readonly impersonationSessionRepository: IImpersonationSessionRepository,
     private readonly impersonationDomainEventReader: IImpersonationDomainEventReader,
@@ -58,7 +58,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
     const prevSessionId = prev?.i?.sid;
     const prevEntityId = prev?.e;
 
-    const session = await this.db.transaction(async (tx) => {
+    const session = await this.transactionRunner.runInTransaction(async (tx) => {
       const txRepo = this.impersonationSessionRepository.forConnection(tx);
       if (prevSessionId && prevEntityId) {
         await txRepo.end(prevSessionId, "session_replaced");
@@ -120,7 +120,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
     if (!imp?.sid || !cookiePayload?.e) {
       return { ok: false, error: "no_active_impersonation" };
     }
-    await this.db.transaction(async (tx) => {
+    await this.transactionRunner.runInTransaction(async (tx) => {
       await this.impersonationSessionRepository.forConnection(tx).end(imp.sid, "manual");
       await this.domainEventPublisher.publish(tx, {
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
@@ -160,7 +160,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
       return { ok: true, alreadyEnded: true };
     }
 
-    await this.db.transaction(async (tx) => {
+    await this.transactionRunner.runInTransaction(async (tx) => {
       await this.impersonationSessionRepository
         .forConnection(tx)
         .end(sessionId, "cookie_cleared_after_failed_end");

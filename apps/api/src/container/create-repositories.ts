@@ -13,6 +13,7 @@ import {
   DrizzleAdminMarketingEventOutboxRepository,
   DrizzleAdminOnboardingIssuesReader,
   DrizzleAdminReviewTaskReader,
+  DrizzleAdminReviewTaskRepository,
   DrizzleAdminSaleOperationsSnapshotReader,
   DrizzleAdminUserActivityReader,
   DrizzleAdminUserBidsReader,
@@ -24,14 +25,15 @@ import {
   DrizzleAntiShillingRepository,
   DrizzleArtistWatchlistRepository,
   DrizzleCategoryRepository,
+  DrizzleConditionReportRequestRepository,
   DrizzleConnectTransferRepository,
   DrizzleDisplayPairingRepository,
   DrizzleEmailObservabilityRepository,
   DrizzleEmailSuppressionRepository,
   DrizzleEmailWebhookIngestRepository,
+  DrizzleFailedJobRepository,
   DrizzleImpersonationSessionRepository,
   DrizzleInvitationRepository,
-  DrizzleItemSubmissionRepository,
   DrizzleKycRepository,
   DrizzleLegalEntityConnectRepository,
   DrizzleLegalEntityDocumentAdminRepository,
@@ -43,6 +45,7 @@ import {
   DrizzleLotLifecycleSnapshotRepository,
   DrizzleLotLifecycleTimelineReader,
   DrizzleLotMetricsReader,
+  DrizzleMediaAssetReader,
   DrizzleNewsletterSignupRepository,
   DrizzleNotificationOutboxRepository,
   DrizzleNotificationPreferenceRepository,
@@ -57,20 +60,26 @@ import {
   DrizzlePaymentMetricsReader,
   DrizzlePaymentRefundReconcileRepository,
   DrizzlePaymentRepository,
+  DrizzlePaymentWebhookLookupReader,
   DrizzlePayoutRepository,
   DrizzlePendingInvitationsReader,
+  DrizzlePlatformCatalogLegalEntityReader,
   DrizzleProfileRepository,
   DrizzlePushSubscriptionRepository,
   DrizzleQrCodeAnalyticsReader,
+  DrizzleQrCodeRepository,
+  DrizzleQrCodeScanPersister,
   DrizzleRepositoryFactory,
   DrizzleSaleBiddersReader,
   DrizzleSaleDocumentRepository,
   DrizzleSaleExpectedGuestsReader,
   DrizzleSaleFollowRepository,
   DrizzleSaleModeLookup,
-  DrizzleSaleRepository,
+  DrizzleSaleRegistrationRepository,
   DrizzleSaleroomCheckInRepository,
   DrizzleSaleroomDisplaySessionRepository,
+  DrizzleSaleroomLiveSessionCounter,
+  DrizzleSaleroomOnBlockReader,
   DrizzleSaleroomSessionLookup,
   DrizzleSavedSearchRepository,
   DrizzleSourceOfFundsDocumentRepository,
@@ -82,6 +91,7 @@ import {
   DrizzleUploadObjectReader,
   DrizzleUploadPersistenceRepository,
   DrizzleUserEmailChangeRepository,
+  DrizzleUserEmailVerifiedPublisher,
   DrizzleUserInvitationRepository,
   DrizzleUserMetricsReader,
   DrizzleUserRepository,
@@ -101,12 +111,14 @@ import {
   type IAdminSaleOperationsSnapshotReader,
   type IAdminUserActivityReader,
   type IAdminUserBidsReader,
+  type IAdminUserKycReader,
   type IAdminUserReader,
   type IAdminUserRoleManager,
   type IAmlHoldStore,
   type IAntiShillingGuard,
   type IArtistWatchlistRepository,
   type ICategoryRepository,
+  type IConditionReportRequestRepository,
   type IConnectTransferRepository,
   type IDisplayPairingRepository,
   type IEmailObservabilityRepository,
@@ -147,11 +159,13 @@ import {
   type IProfileWriter,
   type IPushSubscriptionRepository,
   type IQrCodeAnalyticsReader,
+  type IQrCodeRepository,
   type ISaleBiddersReader,
   type ISaleDocumentRepository,
   type ISaleExpectedGuestsReader,
   type ISaleFollowRepository,
   type ISaleModeLookup,
+  type ISaleRegistrationRepository,
   type ISaleroomCheckInRepository,
   type ISaleroomDisplaySessionRepository,
   type ISaleroomSessionLookup,
@@ -178,7 +192,10 @@ import {
   type IXeroWebhookEventRepository,
   createDrizzleLegalEntityRepository,
 } from "@auction/persistence";
-import { DrizzleTelephoneBidBookingRepository } from "@auction/persistence";
+import {
+  DrizzleTelephoneBidBookingRepository,
+  type ITelephoneBidBookingRepository,
+} from "@auction/persistence";
 import {
   DrizzleArtistRegistryRepository,
   type IAdminLegalEntityBrowseReader,
@@ -187,27 +204,32 @@ import {
   type IAdminManualReviewPaymentReader,
   type IAdminOnboardingIssuesReader,
   type IAdminReviewTaskReader,
+  type IAdminReviewTaskRepository,
+  type IArtistDeleteGuards,
+  type IArtistDeleteRepository,
   type IArtistProfileAdminReader,
   type IArtistProfileCommandRepository,
   type IArtistProfileDirectoryReader,
   type IArtistRegistryRepository,
+  type IFailedJobRepository,
+  type IMediaAssetReader,
+  type IPaymentWebhookLookupReader,
+  type IPlatformCatalogLegalEntityReader,
+  type IQrCodeScanPersister,
+  type ISaleroomLiveSessionCounter,
+  type ISaleroomOnBlockReader,
+  type IUserEmailVerifiedPublisher,
   createDrizzleArtistProfileRepository,
 } from "@auction/persistence";
 import {
+  DrizzleAttentionFeedReader,
   DrizzleImpersonationDomainEventReader,
   DrizzleSaleroomDisplaySnapshotReader,
+  type IAttentionFeedReader,
   type IImpersonationDomainEventReader,
   type ISaleroomDisplaySnapshotReader,
 } from "@auction/persistence";
-import { DrizzleAttentionFeedReader } from "../repositories/drizzle-attention-feed.reader.js";
 import type { IInvitationRepository } from "../repositories/interfaces/invitation.repository.js";
-import type { ITelephoneBidBookingRepository } from "../repositories/interfaces/telephone-bid-booking.repository.js";
-import type { IAdminUserKycReader } from "../services/interfaces/admin-user.js";
-import type {
-  IArtistDeleteGuards,
-  IArtistDeleteRepository,
-} from "../services/interfaces/artist-delete.js";
-import type { IAttentionFeedReader } from "../services/interfaces/attention-feed.js";
 import type { IItemSubmissionRepository } from "../services/interfaces/repositories.js";
 import type { ISaleRepository } from "../services/interfaces/repositories.js";
 import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
@@ -230,6 +252,9 @@ export type ContainerRepositories = {
   userRepo: IUserRepository;
   userEmailChangeRepository: IUserEmailChangeRepository;
   itemSubmissionRepository: IItemSubmissionRepository;
+  saleRegistrationRepository: ISaleRegistrationRepository;
+  conditionReportRequestRepository: IConditionReportRequestRepository;
+  qrCodeRepository: IQrCodeRepository;
   legalEntityRepository: ILegalEntityRepository;
   legalEntityOnboardingRepository: ILegalEntityOnboardingRepository;
   legalEntityConnectRepository: ILegalEntityConnectRepository;
@@ -308,6 +333,15 @@ export type ContainerRepositories = {
   adminFinanceIssueSnapshotReader: IAdminFinanceIssueSnapshotReader;
   adminOnboardingIssuesReader: IAdminOnboardingIssuesReader;
   adminReviewTaskReader: IAdminReviewTaskReader;
+  adminReviewTaskRepository: IAdminReviewTaskRepository;
+  mediaAssetReader: IMediaAssetReader;
+  qrCodeScanPersister: IQrCodeScanPersister;
+  saleroomOnBlockReader: ISaleroomOnBlockReader;
+  platformCatalogLegalEntityReader: IPlatformCatalogLegalEntityReader;
+  paymentWebhookLookupReader: IPaymentWebhookLookupReader;
+  failedJobRepository: IFailedJobRepository;
+  saleroomLiveSessionCounter: ISaleroomLiveSessionCounter;
+  userEmailVerifiedPublisher: IUserEmailVerifiedPublisher;
   adminLegalEntityBrowseReader: IAdminLegalEntityBrowseReader;
   adminManualReviewPaymentReader: IAdminManualReviewPaymentReader;
   adminManualReviewPaymentEnrichmentReader: IAdminManualReviewPaymentEnrichmentReader;
@@ -330,10 +364,13 @@ export type ContainerRepositories = {
 export function createRepositories(db: Database): ContainerRepositories {
   const repoFactory: IRepositoryFactory = new DrizzleRepositoryFactory(db);
   const lotRepo = repoFactory.root.lot;
-  const saleRepo = new DrizzleSaleRepository(db);
+  const { sale: saleRepo, itemSubmission: itemSubmissionRepository } =
+    repoFactory.forTransaction(db);
+  const saleRegistrationRepository = new DrizzleSaleRegistrationRepository(db);
+  const conditionReportRequestRepository = new DrizzleConditionReportRequestRepository(db);
+  const qrCodeRepository = new DrizzleQrCodeRepository(db);
   const userRepo = new DrizzleUserRepository(db);
   const userEmailChangeRepository = new DrizzleUserEmailChangeRepository(db);
-  const itemSubmissionRepository = new DrizzleItemSubmissionRepository(db);
   const legalEntityRepository = createDrizzleLegalEntityRepository(db);
   const legalEntityOnboardingRepository = new DrizzleLegalEntityOnboardingRepository(db);
   const legalEntityConnectRepository = new DrizzleLegalEntityConnectRepository(db);
@@ -418,6 +455,15 @@ export function createRepositories(db: Database): ContainerRepositories {
   const adminFinanceIssueSnapshotReader = new DrizzleAdminFinanceIssueSnapshotReader(db);
   const adminOnboardingIssuesReader = new DrizzleAdminOnboardingIssuesReader(db);
   const adminReviewTaskReader = new DrizzleAdminReviewTaskReader(db);
+  const adminReviewTaskRepository = new DrizzleAdminReviewTaskRepository(db);
+  const mediaAssetReader = new DrizzleMediaAssetReader(db);
+  const qrCodeScanPersister = new DrizzleQrCodeScanPersister(db);
+  const saleroomOnBlockReader = new DrizzleSaleroomOnBlockReader(db);
+  const platformCatalogLegalEntityReader = new DrizzlePlatformCatalogLegalEntityReader(db);
+  const paymentWebhookLookupReader = new DrizzlePaymentWebhookLookupReader(db);
+  const failedJobRepository = new DrizzleFailedJobRepository(db);
+  const saleroomLiveSessionCounter = new DrizzleSaleroomLiveSessionCounter(db);
+  const userEmailVerifiedPublisher = new DrizzleUserEmailVerifiedPublisher(db);
   const adminLegalEntityBrowseReader = new DrizzleAdminLegalEntityBrowseReader(db);
   const adminManualReviewPaymentReader = new DrizzleAdminManualReviewPaymentReader(db);
   const adminManualReviewPaymentEnrichmentReader =
@@ -444,6 +490,9 @@ export function createRepositories(db: Database): ContainerRepositories {
     userRepo,
     userEmailChangeRepository,
     itemSubmissionRepository,
+    saleRegistrationRepository,
+    conditionReportRequestRepository,
+    qrCodeRepository,
     legalEntityRepository,
     legalEntityOnboardingRepository,
     legalEntityConnectRepository,
@@ -522,6 +571,15 @@ export function createRepositories(db: Database): ContainerRepositories {
     adminFinanceIssueSnapshotReader,
     adminOnboardingIssuesReader,
     adminReviewTaskReader,
+    adminReviewTaskRepository,
+    mediaAssetReader,
+    qrCodeScanPersister,
+    saleroomOnBlockReader,
+    platformCatalogLegalEntityReader,
+    paymentWebhookLookupReader,
+    failedJobRepository,
+    saleroomLiveSessionCounter,
+    userEmailVerifiedPublisher,
     adminLegalEntityBrowseReader,
     adminManualReviewPaymentReader,
     adminManualReviewPaymentEnrichmentReader,

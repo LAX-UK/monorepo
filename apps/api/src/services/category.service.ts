@@ -1,8 +1,7 @@
-import type { Database } from "@auction/db";
 import type { AdminCategory, Category } from "@auction/types";
 import { normalizeCategoryHierarchy, validateCategoryParent } from "@auction/validators";
 import { CategoryError } from "../lib/errors.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type {
   CreateCategoryInput,
   ICategoryRepository,
@@ -25,8 +24,7 @@ type CategoryMutationContext = {
 export class CategoryService {
   constructor(
     private readonly categories: ICategoryRepository,
-    private readonly db?: Database,
-    private readonly domainEvents?: DomainEventPublisher | null,
+    private readonly domainEventSink?: IDomainEventSink | null,
   ) {}
 
   async list(): Promise<Category[]> {
@@ -133,8 +131,8 @@ export class CategoryService {
     payload: Record<string, unknown>;
     actorUserId?: string | null;
   }): Promise<void> {
-    if (!this.domainEvents || !this.db) return;
-    await this.domainEvents.publish(this.db, {
+    if (!this.domainEventSink) return;
+    await this.domainEventSink.publish({
       aggregateType: "category",
       aggregateId: input.aggregateId,
       eventType: input.eventType,

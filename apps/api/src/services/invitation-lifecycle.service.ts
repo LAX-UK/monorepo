@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { IInvitationRepository } from "../repositories/interfaces/invitation.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
@@ -19,7 +19,7 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
   private readonly acceptanceService: InvitationAcceptanceService;
 
   constructor(
-    db: Database,
+    transactionRunner: ITransactionRunner,
     invitationRepository: IInvitationRepository,
     domainEventPublisher: DomainEventPublisher,
     membershipInviteNotifier: IMembershipInviteNotifier,
@@ -34,7 +34,7 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
     );
 
     this.inviteService = new InvitationInviteService(
-      db,
+      transactionRunner,
       invitationRepository,
       tokenService,
       notifications,
@@ -42,7 +42,7 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
       membershipGuard,
     );
     this.acceptanceService = new InvitationAcceptanceService(
-      db,
+      transactionRunner,
       invitationRepository,
       tokenService,
       notifications,

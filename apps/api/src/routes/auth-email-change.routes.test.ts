@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { createEmailChangeToken } from "../lib/email-change-token.js";
 import { createAuthRoutes } from "./auth.js";
-
 /** Deterministic HMAC input for tests only (not a production credential). */
 const fixtureHmacKey = ["vitest", "email-change", "routes", "fixture"].join(":");
 

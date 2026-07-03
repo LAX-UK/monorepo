@@ -1,26 +1,13 @@
-import type { Database } from "@auction/db";
-import { mediaAsset } from "@auction/db";
+import type { IMediaAssetReader, MediaAssetRecord } from "@auction/persistence";
 import type { GalleryImage } from "@auction/types";
-import { inArray } from "drizzle-orm";
-import { findPostgresError } from "../lib/pg-error.js";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
 
-/** Postgres `undefined_table` (42P01): schema not yet migrated for this table. */
-function isUndefinedTableError(error: unknown): boolean {
-  return findPostgresError(error)?.code === "42P01";
-}
-
-export type MediaAssetRecord = {
-  key: string;
-  width: number;
-  height: number;
-  blurDataURL: string;
-};
+export type { MediaAssetRecord };
 
 /** Joins `media_asset` rows to catalogue image keys (SRP: metadata lookup only). */
 export class MediaAssetEnricher {
   constructor(
-    private readonly db: Database,
+    private readonly mediaAssetReader: IMediaAssetReader,
     private readonly storage?: IObjectStorage,
   ) {}
 
@@ -34,23 +21,7 @@ export class MediaAssetEnricher {
   async lookupByKeys(keys: readonly string[]): Promise<Map<string, MediaAssetRecord>> {
     const normalized = [...new Set(keys.map((key) => this.normalizeKey(key)).filter(Boolean))];
     if (normalized.length === 0) return new Map();
-
-    try {
-      const rows = await this.db
-        .select({
-          key: mediaAsset.key,
-          width: mediaAsset.width,
-          height: mediaAsset.height,
-          blurDataURL: mediaAsset.blurDataURL,
-        })
-        .from(mediaAsset)
-        .where(inArray(mediaAsset.key, normalized));
-
-      return new Map(rows.map((row) => [row.key, row]));
-    } catch (error) {
-      if (isUndefinedTableError(error)) return new Map();
-      throw error;
-    }
+    return this.mediaAssetReader.lookupByKeys(normalized);
   }
 
   async buildGalleryImages(

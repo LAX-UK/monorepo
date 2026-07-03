@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import {
   SOURCE_OF_FUNDS_DOCUMENT_REVIEWED_EVENT,
   SourceOfFundsDocumentReviewService,
@@ -58,7 +59,7 @@ describe("SourceOfFundsDocumentReviewService", () => {
       caseRepo as never,
       docRepo as never,
       reviewRepo as never,
-      mockDb,
+      transactionRunnerFromDb(mockDb),
       events,
     );
   }

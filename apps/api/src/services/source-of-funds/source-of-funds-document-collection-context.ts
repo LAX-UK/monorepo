@@ -1,5 +1,7 @@
-import type { Database } from "@auction/db";
-import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
+import type {
+  ISourceOfFundsDocumentReviewRepository,
+  IUploadObjectReader,
+} from "@auction/persistence";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/interfaces/source-of-funds-document.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
@@ -11,7 +13,8 @@ export type SourceOfFundsDocumentCollectionContext = {
   caseRepo: ISourceOfFundsRepository;
   docRepo: ISourceOfFundsDocumentRepository;
   reviewRepo: ISourceOfFundsDocumentReviewRepository;
-  db: Database;
+  uploadObjectReader: IUploadObjectReader;
+  transactionRunner: import("@auction/persistence").ITransactionRunner;
   events: DomainEventPublisher | null;
   storage: IObjectStorage;
   downloadSigningPolicy: ISignedUrlPolicy;
@@ -22,7 +25,8 @@ export function createSourceOfFundsDocumentCollectionContext(input: {
   caseRepo: ISourceOfFundsRepository;
   docRepo: ISourceOfFundsDocumentRepository;
   reviewRepo: ISourceOfFundsDocumentReviewRepository;
-  db: Database;
+  uploadObjectReader: IUploadObjectReader;
+  transactionRunner: import("@auction/persistence").ITransactionRunner;
   events: DomainEventPublisher | null;
   storage: IObjectStorage;
   downloadSigningPolicy: ISignedUrlPolicy;

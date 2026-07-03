@@ -1,10 +1,11 @@
 import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { Lot, LotStatus, Sale, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
@@ -21,8 +22,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     private readonly saleRepo: ISaleRepository,
     private readonly lotRepo: ILotRepository,
     private readonly jobScheduler: ILotJobScheduler | null,
-    private readonly db: Database | null = null,
-    private readonly domainEventPublisher: DomainEventPublisher | null = null,
+    private readonly transactionRunner: ITransactionRunner | null = null,
+    private readonly domainEventSink: IDomainEventSink | null = null,
     private readonly lotLifecycleRecording: ILotLifecycleRecorder | null = null,
     legalEntityRepository: ILegalEntityRepository | null = null,
     enforceIndividualConnectOnPublish = false,
@@ -35,7 +36,7 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
         saleRepo,
         lotRepo,
         jobScheduler,
-        db,
+        transactionRunner,
         lotLifecycleRecording,
         legalEntityRepository,
         enforceIndividualConnectOnPublish,
@@ -51,8 +52,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
   }
 
   private async recordLot(fn: (tx: Database) => Promise<void>): Promise<void> {
-    if (!this.db || !this.lotLifecycleRecording) return;
-    await this.db.transaction(fn);
+    if (!this.transactionRunner || !this.lotLifecycleRecording) return;
+    await this.transactionRunner.runInTransaction(fn);
   }
 
   async markOnsiteSaleEnded(
@@ -87,8 +88,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     for (const l of endingLots) {
       await this.jobScheduler?.cancelLotJobs(l.id);
     }
-    if (this.db && this.lotLifecycleRecording) {
-      await this.db.transaction(async (tx) => {
+    if (this.transactionRunner && this.lotLifecycleRecording) {
+      await this.transactionRunner.runInTransaction(async (tx) => {
         const lotRepo = this.txRepos(tx).lot;
         const saleRepo = this.txRepos(tx).sale;
         for (const l of endingLots) {
@@ -107,8 +108,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
           });
         }
         await saleRepo.updateStatus(saleId, "ended");
-        if (this.domainEventPublisher) {
-          await this.domainEventPublisher.publish(tx, {
+        if (this.domainEventSink) {
+          await this.domainEventSink.withTx(tx).publish({
             aggregateType: "sale",
             aggregateId: saleId,
             eventType: "sale.ended",
@@ -138,8 +139,8 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
         });
       }
       await this.saleRepo.updateStatus(saleId, "ended");
-      if (this.db && this.domainEventPublisher) {
-        await this.domainEventPublisher.publish(this.db, {
+      if (this.domainEventSink) {
+        await this.domainEventSink.publish({
           aggregateType: "sale",
           aggregateId: saleId,
           eventType: "sale.ended",

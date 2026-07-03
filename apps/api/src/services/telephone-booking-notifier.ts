@@ -1,20 +1,13 @@
-import type { Database } from "@auction/db";
-import { sale, user } from "@auction/db/schema";
+import type { IUserRepository } from "@auction/persistence";
 import type { TelephoneBidBooking } from "@auction/types";
-import { eq } from "drizzle-orm";
 import type { INotificationWriteRepository } from "./interfaces/notification-write.js";
+import type { ISaleRepository } from "./interfaces/repositories.js";
 import type { ITransactionalMailer } from "./interfaces/transactional-mail.js";
-
-async function listStaffOpsEmails(db: Database, fallback?: string): Promise<string[]> {
-  const rows = await db.select({ email: user.email }).from(user).where(eq(user.role, "staff"));
-  const emails = rows.map((r) => r.email).filter((e): e is string => Boolean(e?.trim()));
-  if (emails.length > 0) return [...new Set(emails)];
-  return fallback ? [fallback] : [];
-}
 
 export class TelephoneBookingNotifier {
   constructor(
-    private readonly db: Database,
+    private readonly userRepo: IUserRepository,
+    private readonly saleRepo: ISaleRepository,
     private readonly mailer: ITransactionalMailer,
     private readonly notifications: INotificationWriteRepository,
     private readonly webOrigin: string,
@@ -32,21 +25,19 @@ export class TelephoneBookingNotifier {
   }
 
   private async saleTitle(saleId: string): Promise<string> {
-    const [row] = await this.db
-      .select({ title: sale.title })
-      .from(sale)
-      .where(eq(sale.id, saleId))
-      .limit(1);
+    const row = await this.saleRepo.findById(saleId);
     return row?.title ?? "Sale";
   }
 
   private async buyerEmail(userId: string): Promise<string | null> {
-    const [row] = await this.db
-      .select({ email: user.email })
-      .from(user)
-      .where(eq(user.id, userId))
-      .limit(1);
+    const row = await this.userRepo.findById(userId);
     return row?.email?.trim() ?? null;
+  }
+
+  private async staffOpsEmails(): Promise<string[]> {
+    const emails = await this.userRepo.listStaffEmails();
+    if (emails.length > 0) return emails;
+    return this.opsSupportEmail ? [this.opsSupportEmail] : [];
   }
 
   async notifyRequested(booking: TelephoneBidBooking): Promise<void> {
@@ -57,7 +48,7 @@ export class TelephoneBookingNotifier {
         ? `${booking.lotIds.length} lot(s) of interest`
         : "Sale-wide line (no lots specified yet)";
 
-    const recipients = await listStaffOpsEmails(this.db, this.opsSupportEmail);
+    const recipients = await this.staffOpsEmails();
     await Promise.all(
       recipients.map((to) =>
         this.mailer.send({

@@ -63,6 +63,13 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
   ensurePersonalEntity(userId: string): Promise<LegalEntitySummary> {
     return this.membership.ensurePersonalEntity(userId);
   }
+
+  advanceIndividualLeadsToConnectPendingAfterKyc(
+    userId: string,
+    tx: import("../interfaces/artist-delete.repository.js").DbTransaction,
+  ): Promise<{ id: string }[]> {
+    return this.entities.advanceIndividualLeadsToConnectPendingAfterKyc(userId, tx);
+  }
 }
 
 export function createDrizzleLegalEntityRepository(db: Database) {

@@ -1,10 +1,9 @@
-import type { Database } from "@auction/db";
-import { DrizzleConditionReportRequestRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { IConditionReportRequestRepository } from "../repositories/interfaces/condition-report-request.repository.js";
 import { ConditionReportAdminService } from "./condition-report/condition-report-admin.service.js";
 import { ConditionReportBuyerService } from "./condition-report/condition-report-buyer.service.js";
 import { createConditionReportContext } from "./condition-report/condition-report-context.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IConditionReportService } from "./interfaces/condition-report.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
@@ -16,20 +15,20 @@ export class ConditionReportService implements IConditionReportService {
   private readonly admin: ConditionReportAdminService;
 
   constructor(
-    db: Database,
+    transactionRunner: ITransactionRunner,
     lotRepo: ILotRepository,
     legalEntityRepository: ILegalEntityRepository | null,
-    domainEventPublisher: DomainEventPublisher | null,
+    domainEventSink: IDomainEventSink | null,
     notificationDispatcher: NotificationDispatcher | null,
     notificationFactory: NotificationFactory,
-    requestRepo?: IConditionReportRequestRepository,
+    requestRepo: IConditionReportRequestRepository,
   ) {
     const ctx = createConditionReportContext({
-      db,
-      requestRepo: requestRepo ?? new DrizzleConditionReportRequestRepository(db),
+      transactionRunner,
+      requestRepo,
       lotRepo,
       legalEntityRepository,
-      domainEventPublisher,
+      domainEventSink,
       notificationDispatcher,
       notificationFactory,
     });

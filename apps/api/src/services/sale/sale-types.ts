@@ -1,5 +1,6 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
 import type { ILotJobScheduler } from "../interfaces/job-scheduler.js";
@@ -29,8 +30,9 @@ export type SaleServiceDeps = {
   catalogueMediaUrlResolver: MediaUrlResolver | undefined;
   mediaAssetEnricher: MediaAssetEnricher | undefined;
   englishOnlyAuctions: boolean;
-  db: Database | undefined;
+  transactionRunner: ITransactionRunner | null;
   domainEventPublisher: DomainEventPublisher | null;
+  domainEventSink: IDomainEventSink | null;
   lotLifecycleRecording: ILotLifecycleRecorder | null;
   legalEntityRepository: ILegalEntityRepository | null;
   venueRepository: IVenueRepository | null;

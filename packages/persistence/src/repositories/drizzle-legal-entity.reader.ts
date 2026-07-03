@@ -1,7 +1,8 @@
 import type { Database } from "@auction/db";
 import { legalEntity, legalEntityAddress } from "@auction/db/schema";
 import type { LegalEntity } from "@auction/types";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import type { DbTransaction } from "../interfaces/artist-delete.repository.js";
 import type { ILegalEntityReader } from "../interfaces/legal-entity.reader.js";
 import { legalEntityRowToDomain } from "../lib/legal-entity-row-mapper.js";
 
@@ -115,5 +116,27 @@ export class DrizzleLegalEntityReader implements ILegalEntityReader {
       postalCode: r.postalCode,
       country: r.country,
     };
+  }
+
+  async advanceIndividualLeadsToConnectPendingAfterKyc(
+    userId: string,
+    tx: DbTransaction,
+  ): Promise<{ id: string }[]> {
+    const bumped = await tx
+      .update(legalEntity)
+      .set({
+        status: "connect_pending",
+        statusChangedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(legalEntity.createdByUserId, userId),
+          eq(legalEntity.kind, "individual"),
+          eq(legalEntity.status, "lead"),
+        ),
+      )
+      .returning({ id: legalEntity.id });
+    return bumped;
   }
 }

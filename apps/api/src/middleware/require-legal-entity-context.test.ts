@@ -32,6 +32,7 @@ function repo(
     findPrimaryAddressForXero: vi.fn().mockResolvedValue(null),
     findPreferredBillToLegalEntityAddress: vi.fn().mockResolvedValue(null),
     ensurePersonalEntity: ensurePersonalEntity ?? vi.fn(),
+    advanceIndividualLeadsToConnectPendingAfterKyc: vi.fn().mockResolvedValue([]),
   };
   return { stub, findActiveMembership };
 }

@@ -1,7 +1,6 @@
 import type { Venue } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { VenueError } from "../lib/errors.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IVenueRepository } from "./interfaces/venue.js";
 import { VenueService } from "./venue.service.js";
 
@@ -66,9 +65,12 @@ describe("VenueService.create", () => {
       create: vi.fn().mockResolvedValue(created),
     } as unknown as IVenueRepository;
     const publish = vi.fn().mockResolvedValue(undefined);
-    const db = {} as never;
+    const domainEventSink = {
+      publish,
+      withTx: vi.fn().mockReturnValue({ publish }),
+    };
 
-    const svc = new VenueService(venues, db, { publish } as DomainEventPublisher);
+    const svc = new VenueService(venues, domainEventSink as never);
     const result = await svc.create(
       {
         legalEntityId: LEGAL_ENTITY_ID,
@@ -86,7 +88,6 @@ describe("VenueService.create", () => {
       expect.objectContaining({ slug: "lax-mayfair-saleroom" }),
     );
     expect(publish).toHaveBeenCalledWith(
-      db,
       expect.objectContaining({
         aggregateType: "venue",
         eventType: "venue.created",

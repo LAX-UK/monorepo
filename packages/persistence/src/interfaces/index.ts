@@ -53,6 +53,15 @@ export type { INewsletterSignupRepository } from "./newsletter-signup.repository
 
 export type { IWebhookEventRepository } from "./webhook-event.repository.js";
 
+export type { IFailedJobRepository, FailedJobReplayRow } from "./failed-job.repository.js";
+
+export type { ISaleroomLiveSessionCounter } from "./saleroom-live-session-counter.js";
+
+export type {
+  IUserEmailVerifiedPublisher,
+  PublishUserEmailVerifiedInput,
+} from "./user-email-verified.publisher.js";
+
 export type { IUploadObjectReader } from "./upload-object.reader.js";
 
 export type {
@@ -488,6 +497,21 @@ export type { IAdminManualReviewPaymentReader } from "./admin-manual-review-paym
 export type { IAdminManualReviewPaymentEnrichmentReader } from "./admin-manual-review-payment-enrichment.reader.js";
 
 export type { IAdminReviewTaskReader } from "./admin-review-task.reader.js";
+export type { IAdminReviewTaskRepository } from "./admin-review-task.repository.js";
+export type { IMediaAssetReader, MediaAssetRecord } from "./media-asset.reader.js";
+export type { IQrCodeScanPersister, QrCodeScanInput } from "./qr-code-scan.persister.js";
+export type {
+  ISaleroomOnBlockReader,
+  SaleroomOnBlockSession,
+} from "./saleroom-on-block.reader.js";
+export type {
+  IPlatformCatalogLegalEntityReader,
+  PlatformCatalogLegalEntityIdProvider,
+} from "./platform-catalog-legal-entity.reader.js";
+export type {
+  IPaymentWebhookLookupReader,
+  PaymentWebhookRow,
+} from "./payment-webhook-lookup.reader.js";
 
 export type {
   AdminActivityEntry,
@@ -675,3 +699,30 @@ export type {
   ListPressArchiveFilter,
   PressCoveragePageResult,
 } from "./press-archive.repository.js";
+
+export type { IPaymentDomainEventsRepository } from "./payment-domain-events.repository.js";
+
+export type { ILotCancelledLifecycleRecorder } from "./lot-cancelled-lifecycle-recorder.js";
+
+export type { ILotSoftDeleteSideEffects } from "./lot-soft-delete.js";
+
+export type { ISaleSoftDeleteSideEffects } from "./sale-soft-delete.js";
+
+export type {
+  ILotFulfilmentPaymentHook,
+  ILotFulfilmentRepository,
+  InsertLotFulfilmentInput,
+  LotFulfilmentAddressSnapshot,
+  LotFulfilmentListRow,
+  LotFulfilmentRow,
+  UpdateLotFulfilmentInput,
+} from "./lot-fulfilment.repository.js";
+
+export type {
+  AttentionItem,
+  AttentionItemKind,
+  DraftLotAttentionRow,
+  IAttentionFeedReader,
+  PaymentAttentionRow,
+  SubmissionAttentionRow,
+} from "./attention-feed.reader.js";

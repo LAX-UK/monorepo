@@ -65,8 +65,11 @@ function webhookErrorResponse(
 async function runKycProgression(container: Container, userId: string): Promise<string[]> {
   return (
     (await progressIndividualsAfterKycApproval(
-      container.db,
-      container.domainEventPublisher,
+      {
+        transactionRunner: container.transactionRunner,
+        legalEntityRepository: container.legalEntityRepository,
+        domainEventPublisher: container.domainEventPublisher,
+      },
       userId,
     )) ?? []
   );

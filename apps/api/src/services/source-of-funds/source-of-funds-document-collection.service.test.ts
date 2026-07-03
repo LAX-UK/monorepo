@@ -80,7 +80,8 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       caseRepo,
       {} as ISourceOfFundsDocumentRepository,
       {} as ISourceOfFundsDocumentReviewRepository,
-      { transaction: (fn: (tx: unknown) => unknown) => fn({}) } as never,
+      { findKey: vi.fn().mockResolvedValue(null) } as never,
+      { runInTransaction: async (fn: (tx: unknown) => unknown) => fn({}) } as never,
       null,
       {} as never,
       new PerRequestSigningPolicy(90),
@@ -131,7 +132,8 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       caseRepo,
       docRepo,
       reviewRepo,
-      { transaction: (fn: (tx: unknown) => unknown) => fn(conn) } as never,
+      { findKey: vi.fn().mockResolvedValue(null) } as never,
+      { runInTransaction: async (fn: (tx: unknown) => unknown) => fn(conn) } as never,
       null,
       {} as never,
       new PerRequestSigningPolicy(90),
@@ -184,7 +186,8 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       caseRepo,
       docRepo,
       reviewRepo,
-      { transaction: (fn: (tx: unknown) => unknown) => fn(conn) } as never,
+      { findKey: vi.fn().mockResolvedValue(null) } as never,
+      { runInTransaction: async (fn: (tx: unknown) => unknown) => fn(conn) } as never,
       null,
       {} as never,
       new PerRequestSigningPolicy(90),
@@ -219,7 +222,8 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       caseRepo,
       {} as ISourceOfFundsDocumentRepository,
       {} as ISourceOfFundsDocumentReviewRepository,
-      { transaction: (fn: (tx: unknown) => unknown) => fn({}) } as never,
+      { findKey: vi.fn().mockResolvedValue(null) } as never,
+      { runInTransaction: async (fn: (tx: unknown) => unknown) => fn({}) } as never,
       null,
       {} as never,
       new PerRequestSigningPolicy(90),
@@ -243,23 +247,12 @@ describe("SourceOfFundsDocumentCollectionService", () => {
     const createPresignedGet = vi.fn().mockResolvedValue({ url: "https://signed.example/doc" });
     const publish = vi.fn().mockResolvedValue(undefined);
 
-    const uploadSelect = {
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue([{ key: "uploads/active/source-of-funds/x.pdf" }]),
-        }),
-      }),
-    };
-    const db = {
-      select: vi.fn().mockReturnValue(uploadSelect),
-      transaction: (fn: (tx: unknown) => Promise<void>) => fn({}),
-    };
-
     const service = new SourceOfFundsDocumentCollectionService(
       { findById: vi.fn().mockResolvedValue(caseRecord) } as never,
       { findById: vi.fn().mockResolvedValue(doc) } as never,
       {} as ISourceOfFundsDocumentReviewRepository,
-      db as never,
+      { findKey: vi.fn().mockResolvedValue("uploads/active/source-of-funds/x.pdf") } as never,
+      { runInTransaction: async (fn: (tx: unknown) => Promise<void>) => fn({}) } as never,
       { publish } as never,
       { createPresignedGet } as never,
       new PerRequestSigningPolicy(90),
@@ -305,7 +298,8 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       { findById: vi.fn().mockResolvedValue(caseRecord) } as never,
       { findById: vi.fn().mockResolvedValue(doc) } as never,
       {} as ISourceOfFundsDocumentReviewRepository,
-      { select: vi.fn() } as never,
+      { findKey: vi.fn() } as never,
+      { runInTransaction: async (fn: (tx: unknown) => unknown) => fn({}) } as never,
       { publish: vi.fn() } as never,
       { createPresignedGet } as never,
       new PerRequestSigningPolicy(90),

@@ -2,8 +2,8 @@ import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
 import { itemSubmission, lot, payment } from "@auction/db/schema";
 import { and, desc, eq, inArray, lt } from "drizzle-orm";
-import { composeAttentionItems } from "../services/attention-feed.service.js";
-import type { AttentionItem, IAttentionFeedReader } from "../services/interfaces/attention-feed.js";
+import type { AttentionItem, IAttentionFeedReader } from "../interfaces/attention-feed.reader.js";
+import { composeAttentionItems } from "../lib/attention-feed.helpers.js";
 
 export class DrizzleAttentionFeedReader implements IAttentionFeedReader {
   constructor(private readonly db: Database) {}

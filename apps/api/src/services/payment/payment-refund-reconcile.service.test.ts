@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import type { IPaymentRefundReconcileRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
@@ -32,7 +33,7 @@ describe("PaymentRefundReconcileService", () => {
       transaction: vi.fn(async (fn: (tx: Database) => Promise<void>) => fn({} as Database)),
     } as unknown as Database;
     const svc = new PaymentRefundReconcileService(
-      db,
+      transactionRunnerFromDb(db),
       payments,
       null,
       { publish: vi.fn() } as unknown as DomainEventPublisher,
@@ -70,7 +71,7 @@ describe("PaymentRefundReconcileService", () => {
       transaction: vi.fn(async (fn: (tx: Database) => Promise<void>) => fn({} as Database)),
     } as unknown as Database;
     const svc = new PaymentRefundReconcileService(
-      db,
+      transactionRunnerFromDb(db),
       payments,
       null,
       { publish: vi.fn() } as unknown as DomainEventPublisher,

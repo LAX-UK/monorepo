@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import { VERIFF_WATCHLIST_MATCH_FOUND } from "../../lib/veriff/veriff-watchlist-fixtures.js";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { DefaultAmlDecisionPolicy } from "./aml-decision.policy.js";
 import { AmlService } from "./aml.service.js";
 import type {
@@ -127,7 +128,7 @@ function makeService(initial: WatchlistScreeningRecord): Harness {
   };
 
   const service = new AmlService(
-    db,
+    transactionRunnerFromDb(db),
     { verify: () => {} } as never,
     policy,
     writer,
@@ -367,7 +368,7 @@ describe("AmlService watchlist webhook ingest", () => {
     };
 
     const service = new AmlService(
-      db,
+      transactionRunnerFromDb(db),
       { verify: () => {} } as never,
       new DefaultAmlDecisionPolicy(),
       writer,

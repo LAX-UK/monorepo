@@ -68,7 +68,13 @@ function makeContainer(overrides: Partial<Container> = {}): Container {
       }),
       handleEventWebhook: vi.fn().mockResolvedValue(undefined),
     },
-    db: { transaction: vi.fn(async (fn) => fn({})) },
+    db: {} as never,
+    transactionRunner: {
+      runInTransaction: vi.fn(async (fn: (tx: never) => Promise<unknown>) => fn({} as never)),
+    },
+    legalEntityRepository: {
+      advanceIndividualLeadsToConnectPendingAfterKyc: vi.fn().mockResolvedValue([]),
+    } as never,
     domainEventPublisher: {},
     marketingEventService: { enqueue: vi.fn() },
     kycResubmissionNotifier: { notify: vi.fn().mockResolvedValue(undefined) },
@@ -175,8 +181,11 @@ describe("POST /webhooks/veriff/decision", () => {
 
     expect(res.status).toBe(200);
     expect(mocks.progressIndividualsAfterKycApproval).toHaveBeenCalledWith(
-      container.db,
-      container.domainEventPublisher,
+      {
+        transactionRunner: container.transactionRunner,
+        legalEntityRepository: container.legalEntityRepository,
+        domainEventPublisher: container.domainEventPublisher,
+      },
       "u1",
     );
   });
@@ -205,7 +214,9 @@ describe("POST /webhooks/veriff/decision", () => {
     const notify = vi.fn().mockResolvedValue(undefined);
     const container = makeContainer({
       kycResubmissionNotifier: { notify } as never,
-      db: {} as never,
+      transactionRunner: {
+        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+      } as never,
     });
     vi.mocked(container.kycService.handleDecisionWebhook).mockResolvedValue({
       verification: null,
@@ -250,7 +261,9 @@ describe("POST /webhooks/veriff/decision", () => {
     const notify = vi.fn().mockResolvedValue(undefined);
     const container = makeContainer({
       kycResubmissionNotifier: { notify } as never,
-      db: {} as never,
+      transactionRunner: {
+        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+      } as never,
     });
     vi.mocked(container.kycService.handleDecisionWebhook).mockResolvedValue({
       verification: null,

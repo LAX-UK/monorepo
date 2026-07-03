@@ -1,4 +1,5 @@
 import type { LegalEntity, LegalEntitySummary } from "@auction/types";
+import type { DbTransaction } from "./artist-delete.repository.js";
 
 /** Active membership row used to validate `X-Legal-Entity-Id` headers. */
 export type ActiveMembership = {
@@ -68,4 +69,10 @@ export interface ILegalEntityRepository {
    * the user. Idempotent — used by acting-context default selection.
    */
   ensurePersonalEntity(userId: string): Promise<LegalEntitySummary>;
+
+  /** After KYC approval, advance sole-trader individuals stuck in `lead`. Idempotent. */
+  advanceIndividualLeadsToConnectPendingAfterKyc(
+    userId: string,
+    tx: DbTransaction,
+  ): Promise<{ id: string }[]>;
 }

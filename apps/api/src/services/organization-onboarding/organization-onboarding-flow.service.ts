@@ -1,6 +1,5 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { IUploadPersistenceRepository } from "@auction/persistence";
-import { DrizzleLegalEntityOnboardingRepository } from "@auction/persistence";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import type { LegalEntityDocumentUploadInput } from "@auction/validators";
 import type { ILegalEntityOnboardingRepository } from "../../repositories/interfaces/legal-entity-onboarding.repository.js";
@@ -49,22 +48,20 @@ export class OrganizationOnboardingFlowService implements IOrganizationOnboardin
   private readonly submit: OnboardingSubmitService;
 
   constructor(
-    db: Database,
+    transactionRunner: ITransactionRunner,
     legalEntityRepository: ILegalEntityRepository,
     organizationOnboardingService: IOrganizationOnboardingService,
     domainEventPublisher: DomainEventPublisher,
     uploadPersistenceRepository: IUploadPersistenceRepository,
+    onboardingRepo: ILegalEntityOnboardingRepository,
     stripeConnect:
       | (IConnectAccountSync & Pick<IConnectSessionProvider, "isConfigured">)
       | null = null,
     options: OrganizationOnboardingFlowOptions = {},
-    onboardingRepo?: ILegalEntityOnboardingRepository,
   ) {
-    const resolvedOnboardingRepo = onboardingRepo ?? new DrizzleLegalEntityOnboardingRepository(db);
-
     this.deps = {
       legalEntityRepository,
-      onboardingRepo: resolvedOnboardingRepo,
+      onboardingRepo,
       uploadPersistenceRepository,
       organizationOnboardingService,
       domainEventPublisher,
@@ -73,8 +70,8 @@ export class OrganizationOnboardingFlowService implements IOrganizationOnboardin
     };
 
     const ctx = createOnboardingContext({
-      db,
-      onboardingRepo: resolvedOnboardingRepo,
+      transactionRunner,
+      onboardingRepo,
       uploadPersistenceRepository,
       legalEntityRepository,
       organizationOnboardingService,

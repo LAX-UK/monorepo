@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type Stripe from "stripe";
 import { tryClaimProcessedStripeEvent } from "../../../lib/stripe-processed-event.js";
 import type { IPayoutMaintenanceService } from "../../interfaces/payout.js";
@@ -11,7 +11,7 @@ import {
 /** Reconciles Stripe transfer webhooks into payout ledger state. */
 export class ConnectTransferWebhookService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly payoutService: IPayoutMaintenanceService,
   ) {}
 
@@ -25,7 +25,7 @@ export class ConnectTransferWebhookService {
     const isReversal = eventType === "transfer.reversed";
     const isMetadataOnly = eventType === "transfer.updated";
 
-    return this.db.transaction(async (tx) => {
+    return this.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
         tx,
         event.id,

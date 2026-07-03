@@ -1,6 +1,9 @@
-import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import type { ILegalEntityLifecycleAdminRepository } from "@auction/persistence";
+import type {
+  ILegalEntityLifecycleAdminRepository,
+  ILegalEntityMemberRepository,
+  ITransactionRunner,
+} from "@auction/persistence";
 import type { LegalEntityStatus } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import {
@@ -9,6 +12,7 @@ import {
 } from "../lib/legal-entity-lifecycle-transitions.js";
 import { enqueueOrgLifecycleMemberEmails } from "../lib/org-lifecycle-notifications.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 
 /** Distinct `domain_events.event_type` per admin lifecycle operation.
  * `start_review` maps to `legal_entity.review_started` (past-tense, matches
@@ -47,6 +51,8 @@ export type LegalEntityLifecycleAdminOptions = {
   /** after approve when entity lands in `connect_pending`, refresh Stripe Connect state. */
   onApproveToConnectPending?: (legalEntityId: string) => Promise<void>;
   emailService?: IEmailService;
+  legalEntityRepository?: ILegalEntityRepository;
+  memberRepository?: ILegalEntityMemberRepository;
   webOrigin?: string;
   supportContactEmail?: string;
 };
@@ -70,7 +76,7 @@ function resolveStatusReason(
 
 export class LegalEntityLifecycleAdminService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly lifecycleRepo: ILegalEntityLifecycleAdminRepository,
     private readonly publisher: DomainEventPublisher,
     private readonly options: LegalEntityLifecycleAdminOptions = {},
@@ -107,7 +113,7 @@ export class LegalEntityLifecycleAdminService {
       }
     }
 
-    const result = await this.db.transaction(async (tx) => {
+    const result = await this.transactionRunner.runInTransaction(async (tx) => {
       const row = await this.lifecycleRepo.findByIdForUpdate(tx, entityId);
       if (!row) {
         return err({ code: "not_found", message: "Legal entity not found", status: 404 });
@@ -167,12 +173,18 @@ export class LegalEntityLifecycleAdminService {
       await this.options.onApproveToConnectPending(entityId);
     }
 
-    if (result.isOk() && this.options.emailService) {
+    if (
+      result.isOk() &&
+      this.options.emailService &&
+      this.options.legalEntityRepository &&
+      this.options.memberRepository
+    ) {
       const webOrigin = this.options.webOrigin?.replace(/\/$/, "") ?? "";
       const supportContactEmail = this.options.supportContactEmail ?? "";
       if (op === "approve") {
         await enqueueOrgLifecycleMemberEmails({
-          db: this.db,
+          legalEntityRepository: this.options.legalEntityRepository,
+          memberRepository: this.options.memberRepository,
           emailService: this.options.emailService,
           legalEntityId: entityId,
           template: "legal-entity-approved-notice",
@@ -186,7 +198,8 @@ export class LegalEntityLifecycleAdminService {
       }
       if (op === "reject") {
         await enqueueOrgLifecycleMemberEmails({
-          db: this.db,
+          legalEntityRepository: this.options.legalEntityRepository,
+          memberRepository: this.options.memberRepository,
           emailService: this.options.emailService,
           legalEntityId: entityId,
           template: "legal-entity-rejected-notice",
@@ -200,7 +213,8 @@ export class LegalEntityLifecycleAdminService {
       }
       if (op === "request_docs") {
         await enqueueOrgLifecycleMemberEmails({
-          db: this.db,
+          legalEntityRepository: this.options.legalEntityRepository,
+          memberRepository: this.options.memberRepository,
           emailService: this.options.emailService,
           legalEntityId: entityId,
           template: "legal-entity-docs-requested-notice",

@@ -1,11 +1,11 @@
 import type { Database } from "@auction/db";
-import type { DomainEventInput, DomainEventPublisher } from "../services/domain-event.publisher.js";
-import type { IPaymentDomainEventsRepository } from "./interfaces/payment-domain-events.repository.js";
+import type { IPaymentDomainEventsRepository } from "../interfaces/payment-domain-events.repository.js";
+import type { DomainEventInput, IDomainEventPublisher } from "../lib/domain-event.types.js";
 
 export class DrizzlePaymentDomainEventsRepository implements IPaymentDomainEventsRepository {
   constructor(
     private readonly db: Database,
-    private readonly publisher: DomainEventPublisher,
+    private readonly publisher: IDomainEventPublisher,
   ) {}
 
   publish(event: DomainEventInput): Promise<void> {

@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { ArtistDeleteEligibility, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { artistDeleteConfirmationPhrase } from "@auction/validators";
@@ -21,7 +21,7 @@ export class ArtistDeleteService {
   constructor(
     private readonly guards: IArtistDeleteGuards,
     private readonly repo: IArtistDeleteRepository,
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly domainEvents: DomainEventPublisher | null,
   ) {}
 
@@ -67,7 +67,7 @@ export class ArtistDeleteService {
     }
 
     try {
-      return await this.db.transaction(async (tx) =>
+      return await this.transactionRunner.runInTransaction(async (tx) =>
         this.executeDeleteInTx(tx, {
           actorUserId,
           artistId,

@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
 import type { ISourceOfFundsDocumentRepository } from "../../repositories/interfaces/source-of-funds-document.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
@@ -34,7 +34,8 @@ export class SourceOfFundsDocumentCollectionService
     caseRepo: ISourceOfFundsRepository,
     docRepo: ISourceOfFundsDocumentRepository,
     reviewRepo: ISourceOfFundsDocumentReviewRepository,
-    db: Database,
+    uploadObjectReader: import("@auction/persistence").IUploadObjectReader,
+    transactionRunner: ITransactionRunner,
     events: DomainEventPublisher | null,
     storage: IObjectStorage,
     downloadSigningPolicy: ISignedUrlPolicy,
@@ -44,7 +45,8 @@ export class SourceOfFundsDocumentCollectionService
       caseRepo,
       docRepo,
       reviewRepo,
-      db,
+      uploadObjectReader,
+      transactionRunner,
       events,
       storage,
       downloadSigningPolicy,

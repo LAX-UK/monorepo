@@ -43,7 +43,6 @@ export type CreateCronServicesInput = {
 export function createCronServices(input: CreateCronServicesInput): ContainerCronServices {
   const {
     env,
-    db,
     authDb,
     infra,
     repos,
@@ -65,10 +64,11 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
   );
 
   const accountingReplayCronService = new AccountingReplayCronService(
-    db,
+    repos.paymentRefundReconcileRepository,
     infra.redis,
     env,
     repos.xeroWebhookEventRepository,
+    repos.xeroConnRepo,
     payments.accountingProvider,
     payments.xeroPaymentRecorder,
     payments.paymentService,

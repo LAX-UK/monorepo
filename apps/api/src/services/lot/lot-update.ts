@@ -82,10 +82,10 @@ export async function updateLot(
     if (
       patch.saleId !== undefined &&
       patch.saleId !== a.saleId &&
-      deps.db &&
+      deps.transactionRunner &&
       deps.lotLifecycleRecording
     ) {
-      updated = await deps.db.transaction(async (tx) => {
+      updated = await deps.transactionRunner.runInTransaction(async (tx) => {
         const lotRepo = txLot(deps, tx);
         const row = await lotRepo.update(lotId, patch);
         if (a.saleId && patch.saleId !== a.saleId) {

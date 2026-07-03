@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
@@ -35,7 +34,7 @@ import {
   reconcileStripeTransfer,
 } from "./payout/payout-admin.js";
 import { runBulkSettlementWithTransfers } from "./payout/payout-bulk-transfer.js";
-import type { PayoutServiceDeps } from "./payout/payout-helpers.js";
+import { type PayoutServiceDeps, payoutRepoForTx } from "./payout/payout-helpers.js";
 import { createSettlement, runBulkSettlement } from "./payout/payout-settlement.js";
 
 export class PayoutService implements IPayoutService {
@@ -43,15 +42,16 @@ export class PayoutService implements IPayoutService {
 
   constructor(
     repo: IPayoutRepository,
-    db?: Database,
+    transactionRunner?: import("@auction/persistence").ITransactionRunner,
     domainEventPublisher?: DomainEventPublisher,
     payoutAdjustments?: IPayoutAdjustmentService,
   ) {
     this.deps = {
       repo,
-      db,
+      transactionRunner: transactionRunner ?? null,
       domainEventPublisher,
       payoutAdjustments,
+      payoutRepoForTx: transactionRunner ? (tx) => payoutRepoForTx(repo, tx) : () => repo,
     };
   }
 

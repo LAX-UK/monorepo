@@ -43,7 +43,7 @@ export type CreateAdminServicesInput = {
 };
 
 export function createAdminServices(input: CreateAdminServicesInput): ContainerAdminServices {
-  const { env, db, infra, repos, platform, complianceMedia, catalog, payments, bidding, userMisc } =
+  const { env, infra, repos, platform, complianceMedia, catalog, payments, bidding, userMisc } =
     input;
   const { redis, cache } = infra;
   const {
@@ -123,7 +123,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
   } = userMisc;
 
   const adminBase = createAdminRouteServices({
-    db,
+    transactionRunner: platform.transactionRunner,
     domainEventPublisher,
     impersonationSessionRepository,
     impersonationDomainEventReader,
@@ -203,7 +203,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
 
   const adminNavCountsService = new AdminNavCountsService(
     createAdminNavCountsDeps({
-      db,
+      saleroomLiveSessionCounter: repos.saleroomLiveSessionCounter,
       admin: adminBase,
       repoFactory,
       conditionReportService,

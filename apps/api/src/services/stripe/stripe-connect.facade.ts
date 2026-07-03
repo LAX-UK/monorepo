@@ -1,11 +1,11 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { IConnectTransferRepository } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../env.js";
 import { StripeClientFactory } from "../../lib/stripe-client.js";
 import type { ILegalEntityConnectRepository } from "../../repositories/interfaces/legal-entity-connect.repository.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
 import type {
@@ -36,23 +36,23 @@ export class StripeConnectFacade implements IStripeConnectService {
 
   constructor(
     env: Env,
-    db: Database,
+    transactionRunner: ITransactionRunner,
     payoutService: IPayoutService,
     connectTransferRepository: IConnectTransferRepository,
     legalEntityConnectRepository: ILegalEntityConnectRepository,
     payoutRepository?: IPayoutRepository,
-    domainEventPublisher?: DomainEventPublisher,
+    domainEventSink?: IDomainEventSink,
     stripeFactory?: StripeClientFactory,
     redis?: Redis,
   ) {
     const factory = stripeFactory ?? new StripeClientFactory(env);
     const lifecyclePromoter = new ConnectLifecyclePromoter(
       legalEntityConnectRepository,
-      domainEventPublisher,
+      domainEventSink,
     );
     this.accountService = new ConnectAccountService(
       env,
-      db,
+      transactionRunner,
       legalEntityConnectRepository,
       legalEntityConnectRepository,
       factory,
@@ -61,16 +61,20 @@ export class StripeConnectFacade implements IStripeConnectService {
     );
     this.sessionService = new ConnectSessionService(env, legalEntityConnectRepository, factory);
     this.linkService = new ConnectLinkService(env, legalEntityConnectRepository, factory);
-    this.webhookHandler = new ConnectWebhookHandler(db, factory, this.accountService);
+    this.webhookHandler = new ConnectWebhookHandler(
+      transactionRunner,
+      factory,
+      this.accountService,
+    );
     this.transferService = new ConnectTransferService(
       env,
-      db,
+      transactionRunner,
       factory,
       this.accountService,
       payoutService,
       connectTransferRepository,
       payoutRepository,
-      domainEventPublisher,
+      domainEventSink,
     );
   }
 
@@ -102,12 +106,18 @@ export class StripeConnectFacade implements IStripeConnectService {
     return this.accountService.syncAccountFromStripe(legalEntityId);
   }
 
-  applyAccountUpdate(account: Stripe.Account, db?: Database): Promise<void> {
-    return this.accountService.applyAccountUpdate(account, db);
+  applyAccountUpdate(
+    account: Stripe.Account,
+    tx?: import("@auction/persistence").DbTransaction,
+  ): Promise<void> {
+    return this.accountService.applyAccountUpdate(account, tx);
   }
 
-  applyAccountDeauthorized(stripeAccountId: string, db?: Database): Promise<void> {
-    return this.accountService.applyAccountDeauthorized(stripeAccountId, db);
+  applyAccountDeauthorized(
+    stripeAccountId: string,
+    tx?: import("@auction/persistence").DbTransaction,
+  ): Promise<void> {
+    return this.accountService.applyAccountDeauthorized(stripeAccountId, tx);
   }
 
   createOnboardingLink(

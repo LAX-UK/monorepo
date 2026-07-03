@@ -1,11 +1,9 @@
-import { adminReviewTask } from "@auction/db/schema";
 import type { Lot, UserRole } from "@auction/types";
 import {
   normalizeUserRoleOrClient,
   normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
-import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import { cancelLot } from "./lot-lifecycle.js";
@@ -16,10 +14,14 @@ export async function requestWithdrawal(
   sellerUserId: string,
   lotId: string,
 ): Promise<Result<{ taskId: string; alreadyPending: boolean }, LotError | AuthzError>> {
-  const db = deps.db;
   const publisher = deps.domainEventPublisher;
   const legalEntityRepository = deps.legalEntityRepository;
-  if (!db || !legalEntityRepository || (!deps.lotLifecycleRecording && !publisher)) {
+  const adminReviewTaskRepository = deps.adminReviewTaskRepository;
+  if (
+    !adminReviewTaskRepository ||
+    !legalEntityRepository ||
+    (!deps.lotLifecycleRecording && !publisher)
+  ) {
     return err(new LotError("Withdrawal requests are not available", 503));
   }
   const lotRow = await deps.lotRepo.findById(lotId);
@@ -39,32 +41,21 @@ export async function requestWithdrawal(
     return err(new AuthzError("Only seller organisation admins can request withdrawal", 403));
   }
 
-  const existing = await db
-    .select({ id: adminReviewTask.id })
-    .from(adminReviewTask)
-    .where(
-      and(
-        eq(adminReviewTask.targetLotId, lotId),
-        eq(adminReviewTask.kind, "lot_withdrawal_request"),
-        eq(adminReviewTask.status, "pending"),
-      ),
-    )
-    .limit(1);
-  if (existing[0]) {
-    return ok({ taskId: existing[0].id, alreadyPending: true });
+  const existing = await adminReviewTaskRepository.findPendingLotWithdrawal(lotId);
+  if (existing) {
+    return ok({ taskId: existing.id, alreadyPending: true });
   }
 
-  const taskId = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(adminReviewTask)
-      .values({
-        kind: "lot_withdrawal_request",
-        status: "pending",
-        targetLotId: lotId,
-        payload: { requestedByUserId: sellerUserId },
-      })
-      .returning({ id: adminReviewTask.id });
-    if (!row) throw new Error("admin_review_task_insert_failed");
+  if (!deps.transactionRunner) {
+    return err(new LotError("Withdrawal requests are not available", 503));
+  }
+
+  const taskId = await deps.transactionRunner.runInTransaction(async (tx) => {
+    const taskRepo = adminReviewTaskRepository.forConnection(tx);
+    const row = await taskRepo.createLotWithdrawalRequest({
+      lotId,
+      requestedByUserId: sellerUserId,
+    });
     if (deps.lotLifecycleRecording) {
       await deps.lotLifecycleRecording.recordWithdrawalRequested(
         tx,
@@ -95,7 +86,8 @@ export async function approveWithdrawalRequest(
   lotId: string,
   adminStaffRole?: string | null,
 ): Promise<Result<Lot, LotError | AuthzError>> {
-  if (!deps.db) {
+  const adminReviewTaskRepository = deps.adminReviewTaskRepository;
+  if (!adminReviewTaskRepository) {
     return err(new LotError("Withdrawal approvals are not available", 503));
   }
   const role = normalizeUserRoleOrClient(adminRole);
@@ -103,18 +95,8 @@ export async function approveWithdrawalRequest(
   if (!roleHasCapability(role, "auction.manage", staff)) {
     return err(new AuthzError("Only staff with auction.manage can approve withdrawals", 403));
   }
-  const pending = await deps.db
-    .select({ id: adminReviewTask.id })
-    .from(adminReviewTask)
-    .where(
-      and(
-        eq(adminReviewTask.targetLotId, lotId),
-        eq(adminReviewTask.kind, "lot_withdrawal_request"),
-        eq(adminReviewTask.status, "pending"),
-      ),
-    )
-    .limit(1);
-  if (!pending[0]) {
+  const pending = await adminReviewTaskRepository.findPendingLotWithdrawal(lotId);
+  if (!pending) {
     return err(new LotError("No pending withdrawal request for this lot", 404));
   }
   const cancelRes = await cancelLot(
@@ -126,14 +108,10 @@ export async function approveWithdrawalRequest(
     "withdrawal",
   );
   if (cancelRes.isErr()) return cancelRes;
-  await deps.db
-    .update(adminReviewTask)
-    .set({
-      status: "resolved",
-      resolvedByUserId: adminUserId,
-      resolvedAt: new Date(),
-      resolutionNotes: "Seller withdrawal approved; lot cancelled.",
-    })
-    .where(eq(adminReviewTask.id, pending[0].id));
+  await adminReviewTaskRepository.resolveLotWithdrawal({
+    taskId: pending.id,
+    resolvedByUserId: adminUserId,
+    resolutionNotes: "Seller withdrawal approved; lot cancelled.",
+  });
   return cancelRes;
 }

@@ -32,7 +32,8 @@ function baseDeps(overrides: Partial<LotServiceDeps> = {}): LotServiceDeps {
     legalEntityNotificationRecipients: null,
     legalEntityRepository: null,
     enforceIndividualConnectOnPublish: false,
-    db: null,
+    adminReviewTaskRepository: null,
+    transactionRunner: null,
     domainEventPublisher: null,
     catalogueMediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
@@ -92,8 +93,8 @@ describe("cancelLot", () => {
     const txLotRepo = { updateStatus, findById: vi.fn().mockResolvedValue(cancelledLot) };
     const deps = baseDeps({
       lotRepo: { findById } as unknown as ILotRepository,
-      db: {
-        transaction: vi.fn(async (cb: (tx: never) => Promise<Lot>) => cb({} as never)),
+      transactionRunner: {
+        runInTransaction: vi.fn(async (cb) => cb({} as never)),
       } as never,
       repoFactory: {
         forConnection: vi.fn().mockReturnValue({ lot: txLotRepo }),
@@ -134,8 +135,8 @@ describe("bulkPublishOrCancel", () => {
     };
     const deps = baseDeps({
       lotRepo: { findById } as unknown as ILotRepository,
-      db: {
-        transaction: vi.fn(async (cb: (tx: never) => Promise<Lot>) => cb({} as never)),
+      transactionRunner: {
+        runInTransaction: vi.fn(async (cb) => cb({} as never)),
       } as never,
       repoFactory: {
         forConnection: vi.fn().mockReturnValue({ lot: txLotRepo }),

@@ -43,7 +43,9 @@ function sessionsTestApp(opts: {
     sessionRevocation,
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     authAuditPublisher: { publish: vi.fn().mockResolvedValue(undefined) },
-    db: {},
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+    } as never,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", staffRole: null }),
@@ -131,7 +133,9 @@ describe("POST /users/me/sessions/revoke-all", () => {
       },
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       authAuditPublisher: { publish: vi.fn().mockResolvedValue(undefined) },
-      db: {},
+      transactionRunner: {
+        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+      } as never,
     } as unknown as Container;
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", staffRole: null }),

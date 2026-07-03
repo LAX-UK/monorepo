@@ -1,9 +1,8 @@
-import type { Database } from "@auction/db";
-import type { IConnectTransferRepository } from "@auction/persistence";
+import type { IConnectTransferRepository, ITransactionRunner } from "@auction/persistence";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
-import type { DomainEventPublisher } from "../../domain-event.publisher.js";
+import type { IDomainEventSink } from "../../domain-event-sink.js";
 import type { IPayoutRepository } from "../../interfaces/payout-repository.js";
 import type { IPayoutService } from "../../interfaces/payout.js";
 import type {
@@ -21,23 +20,22 @@ export class ConnectTransferService {
 
   constructor(
     env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">,
-    db: Database,
+    transactionRunner: ITransactionRunner,
     stripeFactory: IStripeClientFactory,
     accountSync: IConnectAccountReadinessSync,
     payoutService: IPayoutService,
     connectTransferRepository: IConnectTransferRepository,
     payoutRepository?: IPayoutRepository,
-    domainEventPublisher?: DomainEventPublisher,
+    domainEventSink?: IDomainEventSink,
   ) {
-    this.webhookService = new ConnectTransferWebhookService(db, payoutService);
+    this.webhookService = new ConnectTransferWebhookService(transactionRunner, payoutService);
     this.initiationService = new ConnectTransferInitiationService(
       env,
-      db,
       connectTransferRepository,
       stripeFactory,
       accountSync,
       payoutRepository,
-      domainEventPublisher,
+      domainEventSink,
     );
   }
 

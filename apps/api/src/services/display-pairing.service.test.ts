@@ -30,8 +30,10 @@ function createService(deps: {
     ...deps.pairingRepo,
   } satisfies IDisplayPairingRepository;
 
-  const domainEvents = { publish: vi.fn().mockResolvedValue(undefined) };
-  const db = { insert: vi.fn() };
+  const domainEventSink = {
+    publish: vi.fn().mockResolvedValue(undefined),
+    withTx: vi.fn(),
+  };
 
   const service = new DisplayPairingService({
     pairingRepo,
@@ -44,11 +46,10 @@ function createService(deps: {
       set: vi.fn(),
       del: vi.fn(),
     } as never,
-    domainEvents: domainEvents as never,
-    db: db as never,
+    domainEventSink: domainEventSink as never,
   });
 
-  return { service, pairingRepo, domainEvents, tokenIssuer };
+  return { service, pairingRepo, domainEventSink, tokenIssuer };
 }
 
 describe("DisplayPairingService.pollPairing", () => {
@@ -94,7 +95,7 @@ describe("DisplayPairingService.pollPairing", () => {
 describe("DisplayPairingService.approvePairing", () => {
   it("records a domain event with actorUserId", async () => {
     const approve = vi.fn().mockResolvedValue({ id: "pair-1" });
-    const { service, domainEvents } = createService({
+    const { service, domainEventSink } = createService({
       sale: { id: "sale-1", deliveryMode: "hybrid", status: "active" },
       pairingRepo: {
         findPendingByUserCode: vi.fn().mockResolvedValue({
@@ -114,8 +115,7 @@ describe("DisplayPairingService.approvePairing", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(domainEvents.publish).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(domainEventSink.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "saleroom.display.paired",
         actorUserId: "staff-1",

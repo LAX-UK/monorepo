@@ -1,18 +1,22 @@
-import type { Database } from "@auction/db";
+import type { IPaymentRefundReconcileRepository } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { Env } from "../../env.js";
 import { proactiveRefreshXeroTokens } from "../accounting/xero-auth-runtime.js";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
 import type { IPaymentMaintenanceService } from "../interfaces/payment-service.js";
-import type { IXeroWebhookEventRepository } from "../interfaces/xero-repositories.js";
+import type {
+  IXeroConnectionRepository,
+  IXeroWebhookEventRepository,
+} from "../interfaces/xero-repositories.js";
 
 export class AccountingReplayCronService {
   constructor(
-    private readonly db: Database,
+    private readonly paymentRefundReconcileRepository: IPaymentRefundReconcileRepository,
     private readonly redis: Redis,
     private readonly env: Env,
     private readonly xeroWebhookEventRepository: IXeroWebhookEventRepository,
+    private readonly xeroConnectionRepository: IXeroConnectionRepository,
     private readonly accountingProvider: IInvoiceAccountingProvider,
     private readonly xeroPaymentRecorder: IXeroPaymentRecorder | null,
     private readonly paymentMaintenanceService: IPaymentMaintenanceService,
@@ -43,11 +47,9 @@ export class AccountingReplayCronService {
     if (!this.env.XERO_CLIENT_ID || !this.env.XERO_CLIENT_SECRET || !this.env.XERO_REDIRECT_URI) {
       return { ok: false as const, error: "xero_not_configured" };
     }
-    const { DrizzleXeroConnectionRepository } = await import("@auction/persistence");
-    const connections = new DrizzleXeroConnectionRepository(this.db);
     const result = await proactiveRefreshXeroTokens({
       env: this.env,
-      connections,
+      connections: this.xeroConnectionRepository,
       redis: this.redis,
     });
     if (!result.ok) {
@@ -60,8 +62,7 @@ export class AccountingReplayCronService {
     if (!this.xeroPaymentRecorder) {
       return { ok: false as const, error: "xero_payment_recorder_disabled" };
     }
-    const { listPendingStripeCaptureSync } = await import("@auction/persistence");
-    const rows = await listPendingStripeCaptureSync(this.db, 25);
+    const rows = await this.paymentRefundReconcileRepository.listPendingStripeCaptureSync(25);
     let synced = 0;
     for (const row of rows) {
       const result = await this.xeroPaymentRecorder.recordStripeCapture(row.paymentId, row.amount);
@@ -74,8 +75,7 @@ export class AccountingReplayCronService {
     if (!this.accountingProvider.isConfigured()) {
       return { ok: false as const, error: "xero_not_configured" };
     }
-    const { listPaymentsMissingXeroInvoice } = await import("@auction/persistence");
-    const rows = await listPaymentsMissingXeroInvoice(this.db, 25);
+    const rows = await this.paymentRefundReconcileRepository.listPaymentsMissingXeroInvoice(25);
     let created = 0;
     for (const row of rows) {
       const result = await this.paymentMaintenanceService.backfillXeroInvoiceForPayment(

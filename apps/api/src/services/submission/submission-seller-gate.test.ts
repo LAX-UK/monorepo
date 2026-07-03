@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import {
   assertSellerEntityAllowsSubmissions,
@@ -9,7 +9,9 @@ import type { ItemSubmissionServiceDeps } from "./submission-types.js";
 
 function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmissionServiceDeps {
   return {
-    db: {} as never,
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+    } as never,
     submissions: {} as never,
     users: {} as never,
     dispatcher: {} as never,
@@ -17,6 +19,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     legalEntityNotificationRecipients: null,
     legalEntityRepository: null,
     domainEventPublisher: null,
+    domainEventSink: null,
     mediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
     lotLifecycleRecording: null,
@@ -66,19 +69,16 @@ describe("assertSellerEntityAllowsSubmissions", () => {
 });
 
 describe("maybeLogRestrictedSellerWrite", () => {
-  it("publishes on deps.db when entity is restricted", async () => {
+  it("publishes when entity is restricted", async () => {
     const publish = vi.fn().mockResolvedValue(undefined);
-    const db = {} as never;
     const deps = baseDeps({
-      db,
       legalEntityRepository: {
         findById: vi.fn().mockResolvedValue({ status: "restricted" }),
       } as unknown as ILegalEntityRepository,
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
     });
     await maybeLogRestrictedSellerWrite(deps, "le-1", "sub-1", "create_draft");
     expect(publish).toHaveBeenCalledWith(
-      db,
       expect.objectContaining({
         eventType: "item_submission.restricted_entity_write",
         payload: { legalEntityId: "le-1", submissionId: "sub-1", action: "create_draft" },
@@ -92,7 +92,7 @@ describe("maybeLogRestrictedSellerWrite", () => {
       legalEntityRepository: {
         findById: vi.fn().mockResolvedValue({ status: "approved" }),
       } as unknown as ILegalEntityRepository,
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
     });
     await maybeLogRestrictedSellerWrite(deps, "le-1", "sub-1", "create_draft");
     expect(publish).not.toHaveBeenCalled();

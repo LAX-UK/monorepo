@@ -1,6 +1,7 @@
 import { DrizzleLegalEntityLifecycleAdminRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { LifecycleAdminOp } from "../lib/legal-entity-lifecycle-transitions.js";
+import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import {
   LegalEntityLifecycleAdminService,
   lifecycleDomainEventTypeForOp,
@@ -104,7 +105,7 @@ describe("LegalEntityLifecycleAdminService", () => {
 
       const lifecycleRepo = new DrizzleLegalEntityLifecycleAdminRepository(db as never);
       const svc = new LegalEntityLifecycleAdminService(
-        db as never,
+        transactionRunnerFromDb(db as never),
         lifecycleRepo,
         publisher as never,
       );
@@ -146,7 +147,7 @@ describe("LegalEntityLifecycleAdminService", () => {
 
     const lifecycleRepo = new DrizzleLegalEntityLifecycleAdminRepository(db as never);
     const svc = new LegalEntityLifecycleAdminService(
-      db as never,
+      transactionRunnerFromDb(db as never),
       lifecycleRepo,
       publisher as never,
     );
@@ -175,7 +176,7 @@ describe("LegalEntityLifecycleAdminService", () => {
     const publisher = { publish: vi.fn() };
     const lifecycleRepo = new DrizzleLegalEntityLifecycleAdminRepository(db as never);
     const svc = new LegalEntityLifecycleAdminService(
-      db as never,
+      transactionRunnerFromDb(db as never),
       lifecycleRepo,
       publisher as never,
     );

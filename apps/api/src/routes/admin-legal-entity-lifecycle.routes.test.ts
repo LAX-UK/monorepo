@@ -7,6 +7,7 @@ import type { Container } from "../container.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
 import { AdminLegalEntityLifecycleApplicationService } from "../services/admin/admin-legal-entity-lifecycle-application.service.js";
 import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifecycle-admin.service.js";
+import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
 
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
@@ -103,7 +104,7 @@ function buildAppWithRealLifecycleServiceStatusPair(outerStatus: string, lockedR
     transaction: vi.fn(async (fn: (tx: typeof txHandle) => Promise<unknown>) => fn(txHandle)),
   };
   const service = new LegalEntityLifecycleAdminService(
-    db as never,
+    transactionRunnerFromDb(db as never),
     new DrizzleLegalEntityLifecycleAdminRepository(db as never),
     { publish } as never,
   );

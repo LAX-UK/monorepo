@@ -1,5 +1,6 @@
+import type { ITransactionRunner } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ILotRepository, ISaleRepository } from "../interfaces/repositories.js";
 import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
@@ -18,8 +19,9 @@ function baseDeps(overrides: Partial<SaleServiceDeps> = {}): SaleServiceDeps {
     catalogueMediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
     englishOnlyAuctions: false,
-    db: undefined,
+    transactionRunner: null,
     domainEventPublisher: null,
+    domainEventSink: null,
     lotLifecycleRecording: null,
     legalEntityRepository: null,
     venueRepository: null,
@@ -37,7 +39,7 @@ describe("txRepos", () => {
 });
 
 describe("recordLotLifecycle", () => {
-  it("no-ops when db or lotLifecycleRecording missing", async () => {
+  it("no-ops when transactionRunner or lotLifecycleRecording missing", async () => {
     const fn = vi.fn();
     await recordLotLifecycle(baseDeps(), fn);
     expect(fn).not.toHaveBeenCalled();
@@ -45,24 +47,24 @@ describe("recordLotLifecycle", () => {
 
   it("runs fn inside transaction when configured", async () => {
     const fn = vi.fn().mockResolvedValue(undefined);
-    const db = {
-      transaction: vi.fn(async (cb: (tx: never) => Promise<void>) => cb({} as never)),
+    const transactionRunner: ITransactionRunner = {
+      runInTransaction: vi.fn(async (cb) => cb({} as never)),
     };
     const deps = baseDeps({
-      db: db as never,
+      transactionRunner,
       lotLifecycleRecording: {} as LotLifecycleRecording,
     });
     await recordLotLifecycle(deps, fn);
-    expect(db.transaction).toHaveBeenCalled();
+    expect(transactionRunner.runInTransaction).toHaveBeenCalled();
     expect(fn).toHaveBeenCalled();
   });
 });
 
 describe("publishSaleEvent", () => {
-  it("no-ops when db or domainEventPublisher missing", async () => {
+  it("no-ops when domainEventSink missing", async () => {
     const publish = vi.fn();
     await publishSaleEvent(
-      baseDeps({ domainEventPublisher: { publish } as unknown as DomainEventPublisher }),
+      baseDeps({ domainEventSink: null }),
       "admin-1",
       "sale-1",
       "sale.created",
@@ -73,10 +75,8 @@ describe("publishSaleEvent", () => {
 
   it("publishes sale aggregate event with exact payload", async () => {
     const publish = vi.fn().mockResolvedValue(undefined);
-    const db = {} as never;
     const deps = baseDeps({
-      db: db as never,
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
     });
     await publishSaleEvent(deps, "admin-1", "sale-1", "sale.published", {
       from_status: "draft",
@@ -84,7 +84,7 @@ describe("publishSaleEvent", () => {
       lotCount: 3,
       deliveryMode: "online",
     });
-    expect(publish).toHaveBeenCalledWith(db, {
+    expect(publish).toHaveBeenCalledWith({
       aggregateType: "sale",
       aggregateId: "sale-1",
       eventType: "sale.published",
@@ -103,19 +103,19 @@ describe("publishSingleLotDeps", () => {
   it("wires recordLotLifecycle closure", async () => {
     const { publishSingleLotDeps: buildDeps } = await import("./sale-mutation-context.js");
     const fn = vi.fn().mockResolvedValue(undefined);
-    const db = {
-      transaction: vi.fn(async (cb: (tx: never) => Promise<void>) => cb({} as never)),
+    const transactionRunner: ITransactionRunner = {
+      runInTransaction: vi.fn(async (cb) => cb({} as never)),
     };
     const deps = baseDeps({
-      db: db as never,
+      transactionRunner,
       lotLifecycleRecording: {} as LotLifecycleRecording,
       repoFactory: {
         forTransaction: vi.fn(),
       } as unknown as IRepositoryFactory,
     });
     const lotDeps = buildDeps(deps);
-    expect(lotDeps.db).toBe(deps.db);
-    await lotDeps.recordLotLifecycle(fn);
+    expect(lotDeps.transactionRunner).toBe(deps.transactionRunner);
+    await lotDeps.recordLotLifecycle?.(fn);
     expect(fn).toHaveBeenCalled();
   });
 });

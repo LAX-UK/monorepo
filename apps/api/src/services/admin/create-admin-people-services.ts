@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import type { IImpersonationSessionRepository } from "@auction/persistence";
 import type { IImpersonationDomainEventReader } from "../../repositories/interfaces/impersonation-domain-event.reader.js";
 import type { AdminUserService } from "../admin-user.service.js";
@@ -12,7 +11,7 @@ import { AdminInvitationApplicationService } from "./admin-invitation-applicatio
 import { AdminUserApplicationService } from "./admin-user-application.service.js";
 
 export type CreateAdminPeopleServicesInput = {
-  db: Database;
+  transactionRunner: import("@auction/persistence").ITransactionRunner;
   domainEventPublisher: DomainEventPublisher;
   impersonationSessionRepository: IImpersonationSessionRepository;
   impersonationDomainEventReader: IImpersonationDomainEventReader;
@@ -27,7 +26,7 @@ export function createAdminPeopleServices(
 ): AdminPeopleRouteServices {
   return {
     impersonation: new AdminImpersonationService(
-      input.db,
+      input.transactionRunner,
       input.legalEntityRepository,
       input.impersonationSessionRepository,
       input.impersonationDomainEventReader,

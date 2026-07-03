@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
@@ -8,6 +8,7 @@ import type {
 import type { UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../lib/errors.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type {
@@ -73,7 +74,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
   private readonly deps: ItemSubmissionServiceDeps;
 
   constructor(
-    db: Database,
+    transactionRunner: ITransactionRunner,
     submissions: IItemSubmissionRepository,
     users: IUserRepository,
     dispatcher: NotificationDispatcher,
@@ -81,13 +82,14 @@ export class ItemSubmissionService implements IItemSubmissionService {
     legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null = null,
     legalEntityRepository: ILegalEntityRepository | null = null,
     domainEventPublisher: DomainEventPublisher | null = null,
+    domainEventSink: IDomainEventSink | null = null,
     mediaUrlResolver: MediaUrlResolver | undefined = undefined,
     mediaAssetEnricher: MediaAssetEnricher | undefined = undefined,
     lotLifecycleRecording: ILotLifecycleRecorder | null = null,
     repoFactory: IRepositoryFactory | null = null,
   ) {
     this.deps = {
-      db,
+      transactionRunner,
       submissions,
       users,
       dispatcher,
@@ -95,6 +97,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
       legalEntityNotificationRecipients,
       legalEntityRepository,
       domainEventPublisher,
+      domainEventSink,
       mediaUrlResolver,
       mediaAssetEnricher,
       lotLifecycleRecording,

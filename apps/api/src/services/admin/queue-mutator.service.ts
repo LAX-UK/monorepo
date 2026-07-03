@@ -1,5 +1,4 @@
-import type { createDb } from "@auction/db";
-import { failedJobs } from "@auction/db/schema";
+import type { IFailedJobRepository } from "@auction/persistence";
 import {
   type AppEnv,
   DEAD_LETTER_QUEUE_NAME,
@@ -10,7 +9,6 @@ import {
   isQueueName,
 } from "@auction/queues";
 import { type ConnectionOptions, Queue } from "bullmq";
-import { and, eq, isNull } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type { ActorContext, IQueueMutator } from "../interfaces/queue-inspector.js";
 import type { IQueueAuditService } from "./queue-audit.service.js";
@@ -29,7 +27,7 @@ export class BullMQQueueMutator implements IQueueMutator {
   constructor(
     private readonly connection: ConnectionOptions,
     private readonly redis: Redis,
-    private readonly db: ReturnType<typeof createDb>,
+    private readonly failedJobs: IFailedJobRepository,
     private readonly audit: IQueueAuditService,
     private readonly appEnv: AppEnv,
   ) {}
@@ -119,11 +117,7 @@ export class BullMQQueueMutator implements IQueueMutator {
     try {
       await this.assertRateLimit(actor);
 
-      const [auditRow] = await this.db
-        .select()
-        .from(failedJobs)
-        .where(eq(failedJobs.id, dlqJobId))
-        .limit(1);
+      const auditRow = await this.failedJobs.findById(dlqJobId);
 
       if (!auditRow) throw new Error("dlq_job_not_found");
       if (auditRow.replayedAt) throw new Error("already_replayed");
@@ -139,11 +133,7 @@ export class BullMQQueueMutator implements IQueueMutator {
         throw new Error("invalid_payload");
       }
 
-      const [claimed] = await this.db
-        .update(failedJobs)
-        .set({ replayedAt: new Date(), replayedBy: actor.userId })
-        .where(and(eq(failedJobs.id, dlqJobId), isNull(failedJobs.replayedAt)))
-        .returning();
+      const claimed = await this.failedJobs.claimReplay(dlqJobId, actor.userId);
 
       if (!claimed) throw new Error("already_replayed");
 
@@ -169,10 +159,7 @@ export class BullMQQueueMutator implements IQueueMutator {
             .map((job) => job.remove()),
         );
       } catch (enqueueErr) {
-        await this.db
-          .update(failedJobs)
-          .set({ replayedAt: null, replayedBy: null })
-          .where(eq(failedJobs.id, dlqJobId));
+        await this.failedJobs.clearReplayClaim(dlqJobId);
         throw enqueueErr;
       }
 

@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
 import type { Env } from "../../../env.js";
 import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
+import { transactionRunnerFromDb } from "../../../test/transaction-runner-from-db.js";
 import { ConnectAccountService } from "./connect-account.service.js";
 import type { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";
 
@@ -37,7 +38,7 @@ describe("ConnectAccountService.getStatus", () => {
 
     const svc = new ConnectAccountService(
       baseEnv(),
-      db,
+      transactionRunnerFromDb(db),
       connectReader as never,
       connectRepository,
       stripeFactory as never,

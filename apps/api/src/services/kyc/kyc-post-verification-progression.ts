@@ -1,7 +1,12 @@
-import type { Database } from "@auction/db";
-import { legalEntity } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
+import type { ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
+
+export type KycPostVerificationProgressionDeps = {
+  transactionRunner: ITransactionRunner;
+  legalEntityRepository: ILegalEntityRepository;
+  domainEventPublisher: DomainEventPublisher | undefined;
+};
 
 /**
  * After KYC approval, advance sole-trader individuals stuck in `lead`. Idempotent.
@@ -9,34 +14,19 @@ import type { DomainEventPublisher } from "../domain-event.publisher.js";
  * Stripe Connect accounts outside this transaction (best-effort).
  */
 export async function progressIndividualsAfterKycApproval(
-  db: Database,
-  publisher: DomainEventPublisher | undefined,
+  deps: KycPostVerificationProgressionDeps,
   userId: string,
 ): Promise<string[]> {
-  return db.transaction(async (tx) => {
-    const bumped = await tx
-      .update(legalEntity)
-      .set({
-        status: "connect_pending",
-        statusChangedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(legalEntity.createdByUserId, userId),
-          eq(legalEntity.kind, "individual"),
-          eq(legalEntity.status, "lead"),
-        ),
-      )
-      .returning({ id: legalEntity.id });
+  return deps.transactionRunner.runInTransaction(async (tx) => {
+    const advancedIds = (
+      await deps.legalEntityRepository.advanceIndividualLeadsToConnectPendingAfterKyc(userId, tx)
+    ).map((row) => row.id);
 
-    const advancedIds = bumped.map((b) => b.id);
-
-    if (!publisher || bumped.length === 0) {
+    if (!deps.domainEventPublisher || advancedIds.length === 0) {
       return advancedIds;
     }
 
-    await publisher.publish(tx, {
+    await deps.domainEventPublisher.publish(tx, {
       aggregateType: "user",
       aggregateId: userId,
       eventType: "kyc.verified",
@@ -47,10 +37,10 @@ export async function progressIndividualsAfterKycApproval(
       actingLegalEntityId: null,
     });
 
-    for (const row of bumped) {
-      await publisher.publish(tx, {
+    for (const legalEntityId of advancedIds) {
+      await deps.domainEventPublisher.publish(tx, {
         aggregateType: "legal_entity",
-        aggregateId: row.id,
+        aggregateId: legalEntityId,
         eventType: "legal_entity.lifecycle_progressed",
         payload: {
           from_status: "lead",
@@ -58,7 +48,7 @@ export async function progressIndividualsAfterKycApproval(
           reason: "kyc_approved",
         },
         actorUserId: null,
-        actingLegalEntityId: row.id,
+        actingLegalEntityId: legalEntityId,
       });
     }
 

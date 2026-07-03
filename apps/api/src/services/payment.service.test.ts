@@ -3,6 +3,7 @@ import type { Lot, Sale } from "@auction/types";
 import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import { LotError, PaymentProviderError } from "../lib/errors.js";
+import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
@@ -187,7 +188,7 @@ describe("PaymentService", () => {
       accounting,
       defaultTierPolicy,
       undefined,
-      db,
+      transactionRunnerFromDb(db),
       publisher,
       null,
       undefined,
@@ -276,7 +277,7 @@ describe("PaymentService", () => {
       mockAccounting(),
       defaultTierPolicy,
       undefined,
-      db,
+      transactionRunnerFromDb(db),
       publisher,
       stripe,
       undefined,
@@ -339,7 +340,7 @@ describe("PaymentService", () => {
       mockAccounting(),
       defaultTierPolicy,
       undefined,
-      db,
+      transactionRunnerFromDb(db),
       publisher,
       stripe,
     );
@@ -403,7 +404,7 @@ describe("PaymentService", () => {
       mockAccounting(),
       defaultTierPolicy,
       undefined,
-      db,
+      transactionRunnerFromDb(db),
       publisher,
       stripe,
     );
@@ -464,7 +465,7 @@ describe("PaymentService", () => {
       mockAccounting(),
       defaultTierPolicy,
       undefined,
-      db,
+      transactionRunnerFromDb(db),
       publisher,
       stripe,
     );
@@ -513,7 +514,7 @@ describe("PaymentService", () => {
       mockAccounting(),
       defaultTierPolicy,
       undefined,
-      db,
+      transactionRunnerFromDb(db),
       publisher,
       stripe,
     );
@@ -572,7 +573,14 @@ describe("PaymentService", () => {
       }),
     } as unknown as IPaymentWriteRepository;
     const accounting = mockAccounting({ isConfigured: vi.fn().mockReturnValue(true) });
-    const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const domainEventSink = {
+      publish,
+      withTx: vi.fn().mockReturnValue({ publish }),
+    };
+    const db = {
+      transaction: vi.fn(async (fn: (tx: unknown) => Promise<void>) => fn({})),
+    } as never;
     const legalEntities: ILegalEntityRepository = {
       findById: vi.fn().mockResolvedValue({
         id: lot.sellerLegalEntityId,
@@ -588,8 +596,8 @@ describe("PaymentService", () => {
       accounting,
       defaultTierPolicy,
       legalEntities,
-      {} as never,
-      publisher as never,
+      transactionRunnerFromDb(db),
+      { publish: vi.fn() } as never,
       undefined,
       undefined,
       undefined,
@@ -602,6 +610,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      domainEventSink as never,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -611,8 +623,7 @@ describe("PaymentService", () => {
       expect.objectContaining({ status: "requires_manual_review" }),
     );
     expect(accounting.ensureInvoiceForPayment).not.toHaveBeenCalled();
-    expect(publisher.publish).toHaveBeenCalledWith(
-      {},
+    expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "payment.requires_manual_review",
         payload: expect.objectContaining({ reason: "seller_archived" }),
@@ -928,7 +939,7 @@ describe("PaymentService", () => {
       mockAccounting(),
       defaultTierPolicy,
       undefined,
-      db as never,
+      transactionRunnerFromDb(db as never),
       publisher as never,
     );
 

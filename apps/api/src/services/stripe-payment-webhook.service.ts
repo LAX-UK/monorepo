@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { IPaymentWebhookLookupReader, ITransactionRunner } from "@auction/persistence";
 import type Stripe from "stripe";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
@@ -23,7 +23,8 @@ export class StripePaymentWebhookService {
   private readonly handlers: ReturnType<typeof createPaymentWebhookHandlers>;
 
   constructor(
-    db: Database,
+    transactionRunner: ITransactionRunner,
+    paymentWebhookLookup: IPaymentWebhookLookupReader,
     payments: IPaymentWriteRepository,
     payoutRepository: IPayoutRepository,
     payoutAdjustments: IPayoutAdjustmentService,
@@ -31,7 +32,8 @@ export class StripePaymentWebhookService {
     domainEventPublisher: DomainEventPublisher,
   ) {
     this.deps = {
-      db,
+      transactionRunner,
+      paymentWebhookLookup,
       payments,
       payoutRepository,
       payoutAdjustments,

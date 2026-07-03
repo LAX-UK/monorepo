@@ -144,8 +144,8 @@ export async function updateDraftSale(
         }
       }
     };
-    if (deps.db) {
-      const updated = await deps.db.transaction(async (tx) => {
+    if (deps.transactionRunner && deps.repoFactory) {
+      const updated = await deps.transactionRunner.runInTransaction(async (tx) => {
         const lotRepo = txRepos(deps, tx).lot;
         const saleRepo = txRepos(deps, tx).sale;
         await syncDraftLots(lotRepo);

@@ -19,9 +19,10 @@ describe("BullMQQueueMutator production policy", () => {
     incr: vi.fn().mockResolvedValue(1),
     expire: vi.fn().mockResolvedValue(1),
   };
-  const db = {
-    select: vi.fn(),
-    update: vi.fn(),
+  const failedJobs = {
+    findById: vi.fn(),
+    claimReplay: vi.fn(),
+    clearReplayClaim: vi.fn(),
   };
 
   beforeEach(() => {
@@ -32,7 +33,7 @@ describe("BullMQQueueMutator production policy", () => {
     const mutator = new BullMQQueueMutator(
       {} as never,
       redis as never,
-      db as never,
+      failedJobs as never,
       audit,
       "production",
     );
@@ -46,7 +47,7 @@ describe("BullMQQueueMutator production policy", () => {
     const mutator = new BullMQQueueMutator(
       {} as never,
       redis as never,
-      db as never,
+      failedJobs as never,
       audit,
       "production",
     );
@@ -59,7 +60,7 @@ describe("BullMQQueueMutator production policy", () => {
     const mutator = new BullMQQueueMutator(
       {} as never,
       redis as never,
-      db as never,
+      failedJobs as never,
       audit,
       "production",
     );
@@ -75,32 +76,29 @@ describe("BullMQQueueMutator DLQ replay", () => {
     expire: vi.fn().mockResolvedValue(1),
   };
 
+  const baseRow = {
+    id: "dlq:email:1",
+    originalQueue: "email",
+    originalJobName: "publish",
+    originalJobId: "1",
+    payloadJson: '{"outboxId":"x"}',
+    replayedAt: null as Date | null,
+  };
+
   it("uses stable replay job id without colons", () => {
     expect(dlqReplayJobId("dlq:email:job-1")).toBe("replay-dlq-email-job-1");
   });
 
   it("rejects replay when already replayed", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([
-              {
-                id: "dlq:email:1",
-                originalQueue: "email",
-                payloadJson: '{"outboxId":"x"}',
-                replayedAt: new Date(),
-              },
-            ]),
-          }),
-        }),
-      }),
-      update: vi.fn(),
+    const failedJobs = {
+      findById: vi.fn().mockResolvedValue({ ...baseRow, replayedAt: new Date() }),
+      claimReplay: vi.fn(),
+      clearReplayClaim: vi.fn(),
     };
     const mutator = new BullMQQueueMutator(
       {} as never,
       redis as never,
-      db as never,
+      failedJobs as never,
       audit,
       "development",
     );
@@ -110,35 +108,15 @@ describe("BullMQQueueMutator DLQ replay", () => {
   });
 
   it("rejects replay when atomic claim fails", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([
-              {
-                id: "dlq:email:1",
-                originalQueue: "email",
-                payloadJson: '{"outboxId":"x"}',
-                replayedAt: null,
-                originalJobName: "publish",
-                originalJobId: "1",
-              },
-            ]),
-          }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            returning: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      }),
+    const failedJobs = {
+      findById: vi.fn().mockResolvedValue(baseRow),
+      claimReplay: vi.fn().mockResolvedValue(null),
+      clearReplayClaim: vi.fn(),
     };
     const mutator = new BullMQQueueMutator(
       {} as never,
       redis as never,
-      db as never,
+      failedJobs as never,
       audit,
       "development",
     );
@@ -149,29 +127,15 @@ describe("BullMQQueueMutator DLQ replay", () => {
   });
 
   it("rejects replay when payload JSON is malformed", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([
-              {
-                id: "dlq:email:1",
-                originalQueue: "email",
-                payloadJson: "{not-json",
-                replayedAt: null,
-                originalJobName: "publish",
-                originalJobId: "1",
-              },
-            ]),
-          }),
-        }),
-      }),
-      update: vi.fn(),
+    const failedJobs = {
+      findById: vi.fn().mockResolvedValue({ ...baseRow, payloadJson: "{not-json" }),
+      claimReplay: vi.fn(),
+      clearReplayClaim: vi.fn(),
     };
     const mutator = new BullMQQueueMutator(
       {} as never,
       redis as never,
-      db as never,
+      failedJobs as never,
       audit,
       "development",
     );
@@ -183,39 +147,16 @@ describe("BullMQQueueMutator DLQ replay", () => {
   it("claims replay before enqueue and uses stable job id", async () => {
     mockQueue.add.mockResolvedValue(undefined);
     mockQueue.getJobs.mockResolvedValue([]);
-    const claimReturning = vi
-      .fn()
-      .mockResolvedValue([{ id: "dlq:email:1", originalQueue: "email", replayedAt: new Date() }]);
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([
-              {
-                id: "dlq:email:1",
-                originalQueue: "email",
-                payloadJson: '{"outboxId":"x"}',
-                replayedAt: null,
-                originalJobName: "publish",
-                originalJobId: "1",
-              },
-            ]),
-          }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            returning: claimReturning,
-          }),
-        }),
-      }),
+    const failedJobs = {
+      findById: vi.fn().mockResolvedValue(baseRow),
+      claimReplay: vi.fn().mockResolvedValue({ ...baseRow, replayedAt: new Date() }),
+      clearReplayClaim: vi.fn(),
     };
 
     const mutator = new BullMQQueueMutator(
       {} as never,
       redis as never,
-      db as never,
+      failedJobs as never,
       audit,
       "development",
     );
@@ -235,46 +176,17 @@ describe("BullMQQueueMutator DLQ replay", () => {
   it("reverts replay claim when enqueue fails", async () => {
     mockQueue.add.mockRejectedValue(new Error("redis down"));
     mockQueue.getJobs.mockResolvedValue([]);
-    const revertWhere = vi.fn().mockResolvedValue(undefined);
-    const claimReturning = vi
-      .fn()
-      .mockResolvedValue([{ id: "dlq:email:1", originalQueue: "email", replayedAt: new Date() }]);
-    const revertSet = vi.fn().mockReturnValue({ where: revertWhere });
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([
-              {
-                id: "dlq:email:1",
-                originalQueue: "email",
-                payloadJson: '{"outboxId":"x"}',
-                replayedAt: null,
-                originalJobName: "publish",
-                originalJobId: "1",
-              },
-            ]),
-          }),
-        }),
-      }),
-      update: vi
-        .fn()
-        .mockReturnValueOnce({
-          set: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              returning: claimReturning,
-            }),
-          }),
-        })
-        .mockReturnValueOnce({
-          set: revertSet,
-        }),
+    const clearReplayClaim = vi.fn().mockResolvedValue(undefined);
+    const failedJobs = {
+      findById: vi.fn().mockResolvedValue(baseRow),
+      claimReplay: vi.fn().mockResolvedValue({ ...baseRow, replayedAt: new Date() }),
+      clearReplayClaim,
     };
 
     const mutator = new BullMQQueueMutator(
       {} as never,
       redis as never,
-      db as never,
+      failedJobs as never,
       audit,
       "development",
     );
@@ -282,7 +194,6 @@ describe("BullMQQueueMutator DLQ replay", () => {
       mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRole: "super_admin" }, true),
     ).rejects.toThrow("redis down");
 
-    expect(revertSet).toHaveBeenCalledWith({ replayedAt: null, replayedBy: null });
-    expect(revertWhere).toHaveBeenCalled();
+    expect(clearReplayClaim).toHaveBeenCalledWith("dlq:email:1");
   });
 });

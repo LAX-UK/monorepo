@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { IBidRepository } from "@auction/persistence";
 import type {
   IAdminDisputeCaseEnrichmentReader,
@@ -84,7 +84,7 @@ import type { LegalEntityDocumentAdminService } from "./legal-entity-document-ad
 export type AdminRouteServicesCore = Omit<AdminRouteServices, "dashboardMetrics">;
 
 export type CreateAdminRouteServicesInput = {
-  db: Database;
+  transactionRunner: ITransactionRunner;
   domainEventPublisher: DomainEventPublisher;
   impersonationSessionRepository: IImpersonationSessionRepository;
   impersonationDomainEventReader: IImpersonationDomainEventReader;
@@ -239,7 +239,7 @@ export function createAdminRouteServices(
   });
 
   const people = createAdminPeopleServices({
-    db: input.db,
+    transactionRunner: input.transactionRunner,
     domainEventPublisher: input.domainEventPublisher,
     impersonationSessionRepository: input.impersonationSessionRepository,
     impersonationDomainEventReader: input.impersonationDomainEventReader,

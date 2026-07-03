@@ -2,7 +2,8 @@ import type { Database } from "@auction/db";
 import type { Lot, Sale, Venue } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
@@ -37,7 +38,7 @@ function saleServiceOpts(
     resolvePlatformCatalogLegalEntityId: testResolvePlatformCatalogLegalEntityId,
     ...overrides,
   };
-  if (opts.db && opts.lotRepo && opts.saleRepo && !opts.repoFactory) {
+  if (opts.transactionRunner && opts.lotRepo && opts.saleRepo && !opts.repoFactory) {
     opts.repoFactory = testRepoFactory(opts.lotRepo, opts.saleRepo);
   }
   return opts;
@@ -766,7 +767,14 @@ describe("SaleService.publish domain events", () => {
     } as unknown as ILotRepository;
 
     const publish = vi.fn().mockResolvedValue(undefined);
-    const db = {} as Database;
+    const domainEventSink = {
+      publish,
+      withTx: vi.fn().mockReturnValue({ publish }),
+    } as unknown as IDomainEventSink;
+    const db = {
+      transaction: vi.fn(async (fn: (tx: Database) => Promise<unknown>) => fn({} as Database)),
+    } as unknown as Database;
+    const transactionRunner = transactionRunnerFromDb(db);
 
     const svc = new SaleService(
       saleServiceOpts({
@@ -778,8 +786,8 @@ describe("SaleService.publish domain events", () => {
           cancelLotEndJob: vi.fn(),
           rescheduleEnd: vi.fn(),
         } as ILotJobScheduler,
-        db,
-        domainEventPublisher: { publish } as DomainEventPublisher,
+        transactionRunner,
+        domainEventSink,
       }),
     );
 
@@ -788,7 +796,6 @@ describe("SaleService.publish domain events", () => {
       throw new Error(`publish failed: ${result.error.message}`);
     }
     expect(publish).toHaveBeenCalledWith(
-      db,
       expect.objectContaining({
         aggregateType: "sale",
         aggregateId: "s-pub",

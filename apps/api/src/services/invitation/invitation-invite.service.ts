@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { IInvitationRepository } from "../../repositories/interfaces/invitation.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { InviteOutcome } from "../interfaces/invitation-lifecycle.js";
@@ -11,7 +11,7 @@ import type { InvitationTokenService } from "./invitation-token.service.js";
 
 export class InvitationInviteService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly repo: IInvitationRepository,
     private readonly tokenService: InvitationTokenService,
     private readonly notifications: InvitationNotificationService,
@@ -27,7 +27,7 @@ export class InvitationInviteService {
     await this.membershipGuard.assertActorIsAdmin(actingUserId, legalEntityId);
     const email = this.tokenService.normalizeEmail(input.email);
 
-    const token = await this.db.transaction(async (tx) => {
+    const token = await this.transactionRunner.runInTransaction(async (tx) => {
       const txRepo = this.repo.forConnection(tx);
       const existingUserId = await txRepo.findUserIdByEmail(email);
 

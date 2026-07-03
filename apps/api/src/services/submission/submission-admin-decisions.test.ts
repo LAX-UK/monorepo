@@ -46,7 +46,9 @@ const approved = qualityPassingSubmission({ id: "sub-1", status: "approved" });
 
 function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmissionServiceDeps {
   return {
-    db: {} as never,
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+    } as never,
     submissions: {} as never,
     users: {} as never,
     dispatcher: {
@@ -56,6 +58,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     legalEntityNotificationRecipients: null,
     legalEntityRepository: null,
     domainEventPublisher: null,
+    domainEventSink: null,
     mediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
     lotLifecycleRecording: null,

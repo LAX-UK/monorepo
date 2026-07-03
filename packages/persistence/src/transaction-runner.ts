@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { DbTransaction } from "./interfaces/artist-delete.repository.js";
 
 /**
  * Minimal transaction boundary port (DIP). Services that only need "run this
@@ -7,13 +8,13 @@ import type { Database } from "@auction/db";
  * (via each repo's connection-scoped constructor or a scoped-repo helper).
  */
 export interface ITransactionRunner {
-  runInTransaction<T>(fn: (tx: Database) => Promise<T>): Promise<T>;
+  runInTransaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T>;
 }
 
 export class DrizzleTransactionRunner implements ITransactionRunner {
   constructor(private readonly db: Database) {}
 
-  runInTransaction<T>(fn: (tx: Database) => Promise<T>): Promise<T> {
+  runInTransaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promise<T> {
     return this.db.transaction((tx) => fn(tx));
   }
 }

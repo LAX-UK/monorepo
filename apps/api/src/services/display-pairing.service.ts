@@ -1,10 +1,9 @@
-import type { Database } from "@auction/db";
 import type { SaleroomDisplayDeviceRow, SaleroomDisplayPairPollResult } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { Redis } from "ioredis";
 import { type Result, err, ok } from "neverthrow";
 import type { DisplayTokenIssuer } from "../lib/display-token.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IDisplayPairingRepository } from "./interfaces/display-pairing-repository.js";
 import type {
   DisplayServiceError,
@@ -25,8 +24,7 @@ export type DisplayPairingServiceOptions = {
   saleRepo: ISaleRepository;
   tokenIssuer: DisplayTokenIssuer;
   redis: Redis;
-  domainEvents: DomainEventPublisher;
-  db: Database;
+  domainEventSink: IDomainEventSink;
 };
 
 export class DisplayPairingService implements IDisplayPairingService {
@@ -34,16 +32,14 @@ export class DisplayPairingService implements IDisplayPairingService {
   private readonly saleRepo: ISaleRepository;
   private readonly tokenIssuer: DisplayTokenIssuer;
   private readonly redis: Redis;
-  private readonly domainEvents: DomainEventPublisher;
-  private readonly db: Database;
+  private readonly domainEventSink: IDomainEventSink;
 
   constructor(opts: DisplayPairingServiceOptions) {
     this.pairingRepo = opts.pairingRepo;
     this.saleRepo = opts.saleRepo;
     this.tokenIssuer = opts.tokenIssuer;
     this.redis = opts.redis;
-    this.domainEvents = opts.domainEvents;
-    this.db = opts.db;
+    this.domainEventSink = opts.domainEventSink;
   }
 
   async startPairing() {
@@ -140,7 +136,7 @@ export class DisplayPairingService implements IDisplayPairingService {
       DISPLAY_TOKEN_REDIS_TTL_SEC,
     );
 
-    await this.domainEvents.publish(this.db, {
+    await this.domainEventSink.publish({
       aggregateType: "sale",
       aggregateId: input.saleId,
       eventType: "saleroom.display.paired",
@@ -166,7 +162,7 @@ export class DisplayPairingService implements IDisplayPairingService {
     }
     await this.pairingRepo.revoke(input.pairingId);
 
-    await this.domainEvents.publish(this.db, {
+    await this.domainEventSink.publish({
       aggregateType: "sale",
       aggregateId: input.saleId,
       eventType: "saleroom.display.revoked",

@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
 import type { IConditionReportRequestRepository } from "../../repositories/interfaces/condition-report-request.repository.js";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";
 import type { ILotRepository } from "../interfaces/repositories.js";
 import { NotificationFactory } from "../notification.factory.js";
@@ -49,11 +50,11 @@ describe("ConditionReportFulfilmentService notifications on decline", () => {
     } as unknown as ILotRepository;
 
     const ctx = createConditionReportContext({
-      db,
+      transactionRunner: transactionRunnerFromDb(db),
       requestRepo,
       lotRepo,
       legalEntityRepository: null,
-      domainEventPublisher: null,
+      domainEventSink: null,
       notificationDispatcher: { dispatch } as never,
       notificationFactory: new NotificationFactory(),
     });

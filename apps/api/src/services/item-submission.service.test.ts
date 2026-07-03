@@ -29,6 +29,7 @@ function testRepoFactory(): IRepositoryFactory {
   } as unknown as IRepositoryFactory;
 }
 
+import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import { ItemSubmissionService } from "./item-submission.service.js";
 
 const catId = "c1000001-0000-4000-8000-000000000001";
@@ -73,7 +74,12 @@ describe("ItemSubmissionService", () => {
     } as unknown as IItemSubmissionRepository;
     const users = {} as unknown as IUserRepository;
     const dispatcher = { dispatch: vi.fn() } as unknown as NotificationDispatcher;
-    const svc = new ItemSubmissionService(stubDb, submissions, users, dispatcher);
+    const svc = new ItemSubmissionService(
+      transactionRunnerFromDb(stubDb),
+      submissions,
+      users,
+      dispatcher,
+    );
     const r = await svc.createDraft("seller-1", {
       title: "Work",
       categoryId: catId,
@@ -94,7 +100,7 @@ describe("ItemSubmissionService", () => {
     } as unknown as ILegalEntityRepository;
     const dispatcher = { dispatch: vi.fn() } as unknown as NotificationDispatcher;
     const svc = new ItemSubmissionService(
-      stubDb,
+      transactionRunnerFromDb(stubDb),
       submissions,
       {} as IUserRepository,
       dispatcher,
@@ -119,7 +125,7 @@ describe("ItemSubmissionService", () => {
     } as unknown as ILegalEntityRepository;
     const dispatcher = { dispatch: vi.fn() } as unknown as NotificationDispatcher;
     const svc = new ItemSubmissionService(
-      stubDb,
+      transactionRunnerFromDb(stubDb),
       submissions,
       {} as IUserRepository,
       dispatcher,
@@ -150,7 +156,12 @@ describe("ItemSubmissionService", () => {
     const dispatcher = {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
-    const svc = new ItemSubmissionService(stubDb, submissions, users, dispatcher);
+    const svc = new ItemSubmissionService(
+      transactionRunnerFromDb(stubDb),
+      submissions,
+      users,
+      dispatcher,
+    );
     const r = await svc.submitForReview("u1", "sub-1");
     expect(r.isOk()).toBe(true);
     expect(dispatcher.dispatch).toHaveBeenCalledTimes(2);
@@ -230,7 +241,7 @@ describe("ItemSubmissionService", () => {
     } as unknown as IItemSubmissionRepository;
 
     const svc = new ItemSubmissionService(
-      db,
+      transactionRunnerFromDb(db),
       submissions,
       {} as unknown as IUserRepository,
       dispatcher,
@@ -238,6 +249,7 @@ describe("ItemSubmissionService", () => {
       legalEntityRecipients,
       undefined,
       undefined,
+      null,
       undefined,
       undefined,
       undefined,
@@ -338,7 +350,7 @@ describe("ItemSubmissionService", () => {
     } as unknown as IItemSubmissionRepository;
 
     const svc = new ItemSubmissionService(
-      db,
+      transactionRunnerFromDb(db),
       submissions,
       {} as unknown as IUserRepository,
       dispatcher,
@@ -346,6 +358,7 @@ describe("ItemSubmissionService", () => {
       legalEntityRecipients,
       undefined,
       undefined,
+      null,
       undefined,
       undefined,
       undefined,
@@ -375,7 +388,7 @@ describe("ItemSubmissionService", () => {
       findById: vi.fn().mockResolvedValue(under),
     } as unknown as IItemSubmissionRepository;
     const svc = new ItemSubmissionService(
-      db,
+      transactionRunnerFromDb(db),
       submissions,
       {} as unknown as IUserRepository,
       { dispatch: vi.fn() } as unknown as NotificationDispatcher,
@@ -383,9 +396,10 @@ describe("ItemSubmissionService", () => {
       null,
       null,
       null,
-      undefined,
-      undefined,
       null,
+      undefined,
+      undefined,
+      undefined,
       testRepoFactory(),
     );
     const r = await svc.approve("admin-1", "sub-3", {
@@ -421,7 +435,7 @@ describe("ItemSubmissionService", () => {
       listUserIdsForAudience: vi.fn().mockResolvedValue(["admin-entity-1"]),
     };
     const svc = new ItemSubmissionService(
-      stubDb,
+      transactionRunnerFromDb(stubDb),
       submissions,
       {} as unknown as IUserRepository,
       dispatcher,
@@ -429,6 +443,7 @@ describe("ItemSubmissionService", () => {
       legalEntityRecipients,
       undefined,
       undefined,
+      null,
       undefined,
       undefined,
       undefined,
@@ -456,7 +471,7 @@ describe("ItemSubmissionService", () => {
         .mockResolvedValue(mkSubmission({ id: "s1", status: "draft", legalEntityId: "alice" })),
     } as unknown as IItemSubmissionRepository;
     const svc = new ItemSubmissionService(
-      stubDb,
+      transactionRunnerFromDb(stubDb),
       submissions,
       {} as unknown as IUserRepository,
       {} as NotificationDispatcher,
@@ -469,7 +484,7 @@ describe("ItemSubmissionService", () => {
 
   it("bulkApproveOrReject rejects when reject op missing reason", async () => {
     const svc = new ItemSubmissionService(
-      stubDb,
+      transactionRunnerFromDb(stubDb),
       {} as unknown as IItemSubmissionRepository,
       {} as unknown as IUserRepository,
       {} as NotificationDispatcher,
@@ -493,7 +508,7 @@ describe("ItemSubmissionService", () => {
       transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
     } as unknown as Database;
     const svc = new ItemSubmissionService(
-      db,
+      transactionRunnerFromDb(db),
       submissions,
       {} as unknown as IUserRepository,
       {} as NotificationDispatcher,
@@ -517,7 +532,7 @@ describe("ItemSubmissionService", () => {
       findById: vi.fn().mockResolvedValue(row),
     } as unknown as IItemSubmissionRepository;
     const svc = new ItemSubmissionService(
-      stubDb,
+      transactionRunnerFromDb(stubDb),
       submissions,
       {} as unknown as IUserRepository,
       {} as NotificationDispatcher,
@@ -537,7 +552,7 @@ describe("ItemSubmissionService", () => {
       countAdminForLegalEntityIds,
     } as unknown as IItemSubmissionRepository;
     const svc = new ItemSubmissionService(
-      stubDb,
+      transactionRunnerFromDb(stubDb),
       submissions,
       {} as unknown as IUserRepository,
       {} as NotificationDispatcher,

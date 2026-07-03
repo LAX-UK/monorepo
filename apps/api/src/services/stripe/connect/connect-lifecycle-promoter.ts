@@ -1,20 +1,20 @@
 import { isStripeAccountConfigured } from "@auction/connect";
-import type { Database } from "@auction/db";
+import type { DbTransaction } from "@auction/persistence";
 import type Stripe from "stripe";
 import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
 import type { LegalEntityConnectRow } from "../../../repositories/legal-entity-connect.types.js";
-import type { DomainEventPublisher } from "../../domain-event.publisher.js";
+import type { IDomainEventSink } from "../../domain-event-sink.js";
 
 export class ConnectLifecyclePromoter {
   constructor(
     private readonly connectRepository: ILegalEntityConnectRepository,
-    private readonly domainEventPublisher?: DomainEventPublisher,
+    private readonly domainEventSink?: IDomainEventSink,
   ) {}
 
   async applyStripeAccountFlags(
     account: Stripe.Account,
     row: LegalEntityConnectRow,
-    db: Database,
+    tx: DbTransaction,
   ): Promise<void> {
     const requirementsCurrentlyDue = (account.requirements?.currently_due ?? []) as string[];
     const disabledReason =
@@ -49,9 +49,9 @@ export class ConnectLifecyclePromoter {
       stripeConnectDisabledReason: disabledReason,
     };
 
-    const repo = this.connectRepository.forConnection(db);
+    const repo = this.connectRepository.forConnection(tx);
     if (nextStatus === row.status) {
-      await repo.updateStripeConnectFlags(row.id, flags, db);
+      await repo.updateStripeConnectFlags(row.id, flags, tx);
       return;
     }
 
@@ -62,17 +62,13 @@ export class ConnectLifecyclePromoter {
         nextStatus,
         flags,
       },
-      db,
+      tx,
     );
 
     if (!updated) return;
 
-    if (
-      this.domainEventPublisher &&
-      nextStatus === "approved" &&
-      row.status === "connect_pending"
-    ) {
-      await this.domainEventPublisher.publish(db, {
+    if (this.domainEventSink && nextStatus === "approved" && row.status === "connect_pending") {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: "legal_entity",
         aggregateId: row.id as string,
         eventType: "legal_entity.lifecycle_progressed",
@@ -88,12 +84,8 @@ export class ConnectLifecyclePromoter {
       });
     }
 
-    if (
-      this.domainEventPublisher &&
-      nextStatus === "connect_pending" &&
-      row.status === "approved"
-    ) {
-      await this.domainEventPublisher.publish(db, {
+    if (this.domainEventSink && nextStatus === "connect_pending" && row.status === "approved") {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: "legal_entity",
         aggregateId: row.id as string,
         eventType: "legal_entity.lifecycle_progressed",

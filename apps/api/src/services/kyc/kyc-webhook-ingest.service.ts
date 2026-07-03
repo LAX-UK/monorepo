@@ -64,11 +64,11 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
 
     const eventId = `${verification.id}:${verification.attemptId ?? "none"}:decision`;
 
-    if (!this.deps.db) {
+    if (!this.deps.transactionRunner) {
       return this.applyDecision(verification, parsed as Record<string, unknown>, null);
     }
 
-    return this.deps.db.transaction(async (tx) => {
+    return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const existing = await this.deps.sessionRepo.findByProviderSessionId(verification.id, tx);
       if (!existing) {
         return {
@@ -154,12 +154,12 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
       }
     };
 
-    if (!this.deps.db) {
+    if (!this.deps.transactionRunner) {
       await applyEvent(null);
       return;
     }
 
-    await this.deps.db.transaction(async (tx) => {
+    await this.deps.transactionRunner.runInTransaction(async (tx) => {
       const existing = await this.deps.sessionRepo.findByProviderSessionId(parsed.id, tx);
       if (!existing) return;
 

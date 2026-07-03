@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { IImpersonationDomainEventReader } from "../interfaces/impersonation-domain-event.reader.js";
 import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "../lib/impersonation-audit.constants.js";
 
@@ -41,5 +41,23 @@ export class DrizzleImpersonationDomainEventReader implements IImpersonationDoma
       )
       .limit(1);
     return Boolean(ended);
+  }
+
+  async listRecentStartedForActor(actorUserId: string, limit: number) {
+    return this.db
+      .select({
+        aggregateId: domainEvent.aggregateId,
+        actingLegalEntityId: domainEvent.actingLegalEntityId,
+      })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.aggregateType, ADMIN_IMPERSONATION_AGGREGATE_TYPE),
+          eq(domainEvent.eventType, "admin.impersonation_started"),
+          eq(domainEvent.actorUserId, actorUserId),
+        ),
+      )
+      .orderBy(desc(domainEvent.id))
+      .limit(limit);
   }
 }

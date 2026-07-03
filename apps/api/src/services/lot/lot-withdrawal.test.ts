@@ -1,5 +1,7 @@
+import type { Database } from "@auction/db";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { ILotRepository } from "../interfaces/repositories.js";
@@ -16,6 +18,24 @@ const activeLot: Lot = {
   endTime: new Date("2030-01-01T11:00:00Z"),
 } as Lot;
 
+function makeAdminReviewTaskRepo(
+  overrides: Partial<{
+    findPendingLotWithdrawal: ReturnType<typeof vi.fn>;
+    createLotWithdrawalRequest: ReturnType<typeof vi.fn>;
+    resolveLotWithdrawal: ReturnType<typeof vi.fn>;
+  }> = {},
+) {
+  const repo = {
+    findPendingLotWithdrawal: vi.fn().mockResolvedValue(null),
+    createLotWithdrawalRequest: vi.fn().mockResolvedValue({ id: "task-1" }),
+    resolveLotWithdrawal: vi.fn().mockResolvedValue(undefined),
+    forConnection: vi.fn(),
+    ...overrides,
+  };
+  repo.forConnection.mockReturnValue(repo);
+  return repo;
+}
+
 function baseDeps(overrides: Partial<LotServiceDeps> = {}): LotServiceDeps {
   return {
     lotRepo: {} as ILotRepository,
@@ -28,7 +48,8 @@ function baseDeps(overrides: Partial<LotServiceDeps> = {}): LotServiceDeps {
     legalEntityNotificationRecipients: null,
     legalEntityRepository: null,
     enforceIndividualConnectOnPublish: false,
-    db: null,
+    adminReviewTaskRepository: null,
+    transactionRunner: null,
     domainEventPublisher: null,
     catalogueMediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
@@ -44,26 +65,15 @@ function baseDeps(overrides: Partial<LotServiceDeps> = {}): LotServiceDeps {
 describe("requestWithdrawal", () => {
   it("publishes fallback event inside task insert transaction when lifecycle absent", async () => {
     const publish = vi.fn().mockResolvedValue(undefined);
-    const tx = {
-      insert: vi.fn().mockReturnValue({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: "task-1" }]),
-        }),
-      }),
-    };
+    const tx = {} as Database;
     const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      }),
       transaction: vi.fn(async (cb: (txArg: typeof tx) => Promise<string>) => cb(tx)),
     };
+    const adminReviewTaskRepository = makeAdminReviewTaskRepo();
     const deps = baseDeps({
-      db: db as never,
+      transactionRunner: transactionRunnerFromDb(db as unknown as Database),
       domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      adminReviewTaskRepository: adminReviewTaskRepository as never,
       legalEntityRepository: {
         findActiveMembership: vi.fn().mockResolvedValue({ role: "owner" }),
       } as unknown as ILegalEntityRepository,
@@ -84,26 +94,14 @@ describe("requestWithdrawal", () => {
   it("uses lifecycle recording when configured instead of publisher", async () => {
     const publish = vi.fn().mockResolvedValue(undefined);
     const recordWithdrawalRequested = vi.fn().mockResolvedValue(undefined);
-    const tx = {
-      insert: vi.fn().mockReturnValue({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: "task-1" }]),
-        }),
-      }),
-    };
+    const tx = {} as Database;
     const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      }),
       transaction: vi.fn(async (cb: (txArg: typeof tx) => Promise<string>) => cb(tx)),
     };
     const deps = baseDeps({
-      db: db as never,
+      transactionRunner: transactionRunnerFromDb(db as unknown as Database),
       domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      adminReviewTaskRepository: makeAdminReviewTaskRepo() as never,
       legalEntityRepository: {
         findActiveMembership: vi.fn().mockResolvedValue({ role: "admin" }),
       } as unknown as ILegalEntityRepository,
@@ -122,24 +120,13 @@ describe("requestWithdrawal", () => {
 describe("approveWithdrawalRequest", () => {
   it("updates task outside cancel transaction", async () => {
     const cancelledLot = { ...activeLot, status: "cancelled" as const };
-    const update = vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(undefined),
-      }),
-    });
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ id: "task-1" }]),
-          }),
-        }),
-      }),
-      update,
-    };
+    const resolveLotWithdrawal = vi.fn().mockResolvedValue(undefined);
     const findById = vi.fn().mockResolvedValueOnce(activeLot).mockResolvedValueOnce(cancelledLot);
     const deps = baseDeps({
-      db: db as never,
+      adminReviewTaskRepository: makeAdminReviewTaskRepo({
+        findPendingLotWithdrawal: vi.fn().mockResolvedValue({ id: "task-1" }),
+        resolveLotWithdrawal,
+      }) as never,
       lotRepo: {
         findById,
         updateStatus: vi.fn().mockResolvedValue(undefined),
@@ -148,6 +135,6 @@ describe("approveWithdrawalRequest", () => {
 
     const result = await approveWithdrawalRequest(deps, "admin-1", "staff", "lot-1", "super_admin");
     expect(result.isOk()).toBe(true);
-    expect(update).toHaveBeenCalled();
+    expect(resolveLotWithdrawal).toHaveBeenCalled();
   });
 });

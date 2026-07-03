@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { DrizzlePayoutRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { PayoutLineKind } from "@auction/types";
 import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import type {
@@ -7,6 +7,7 @@ import type {
   IPayoutAdjustmentService,
 } from "../interfaces/payout-adjustment.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
+import { payoutRepoForTx } from "./payout-helpers.js";
 
 const DEFAULT_CURRENCY = "GBP";
 
@@ -14,7 +15,7 @@ const AGGREGATED_LINE_KINDS: PayoutLineKind[] = ["refund", "dispute"];
 
 export class PayoutAdjustmentService implements IPayoutAdjustmentService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly repo: IPayoutRepository,
   ) {}
 
@@ -22,7 +23,7 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentService {
     input: AddPaymentPayoutLineInput,
   ): Promise<void> {
     const run = async (tx: Database) => {
-      const r = tx === this.db ? this.repo : new DrizzlePayoutRepository(tx);
+      const r = payoutRepoForTx(this.repo, tx);
       const openPayout = await r.findOpenPayoutForEntity(input.legalEntityId);
 
       if (openPayout) {
@@ -81,7 +82,7 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentService {
       await run(input.tx);
       return;
     }
-    await this.db.transaction(run);
+    await this.transactionRunner.runInTransaction(run);
   }
 
   /** Sum line amounts → gross; net = gross - platformFee - stripeFee. */

@@ -7,7 +7,8 @@ import type { Env } from "../../env.js";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { ILegalEntityConnectRepository } from "../../repositories/interfaces/legal-entity-connect.repository.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
 import { StripeConnectFacade as StripeConnectService } from "./stripe-connect.facade.js";
@@ -65,10 +66,12 @@ function makePayoutService(result: Payout | null): IPayoutService {
   } as unknown as IPayoutService;
 }
 
-function makeDomainEventPublisher(): DomainEventPublisher {
+function makeDomainEventSink(): IDomainEventSink {
+  const publish = vi.fn().mockResolvedValue(undefined);
   return {
-    publish: vi.fn().mockResolvedValue(undefined),
-  } as unknown as DomainEventPublisher;
+    publish,
+    withTx: vi.fn().mockReturnValue({ publish }),
+  };
 }
 
 function makeStripeFactory(stripe: Stripe): IStripeClientFactory {
@@ -162,7 +165,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
     const payoutService = makePayoutService(payout());
     const svc = new StripeConnectService(
       baseEnv(),
-      makeTransactionDb(),
+      transactionRunnerFromDb(makeTransactionDb()),
       payoutService,
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
@@ -195,7 +198,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
     const payoutService = makePayoutService(null);
     const svc = new StripeConnectService(
       baseEnv(),
-      makeTransactionDb(),
+      transactionRunnerFromDb(makeTransactionDb()),
       payoutService,
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
@@ -227,7 +230,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
     const payoutService = makePayoutService(payout());
     const svc = new StripeConnectService(
       baseEnv(),
-      makeTransactionDb(),
+      transactionRunnerFromDb(makeTransactionDb()),
       payoutService,
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
@@ -254,7 +257,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
     const payoutService = makePayoutService(payout({ status: "reversed" }));
     const svc = new StripeConnectService(
       baseEnv(),
-      makeTransactionDb(),
+      transactionRunnerFromDb(makeTransactionDb()),
       payoutService,
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
@@ -327,7 +330,7 @@ describe("StripeConnectService.initiateTransfer", () => {
   it("returns stripe_not_configured when Stripe SDK is not available", async () => {
     const svc = new StripeConnectService(
       { ...baseEnv(), STRIPE_SECRET_KEY: undefined } as Env,
-      makeMockDb(),
+      transactionRunnerFromDb(makeMockDb()),
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
@@ -342,12 +345,12 @@ describe("StripeConnectService.initiateTransfer", () => {
     const payoutRepo = makePayoutRepository(null);
     const svc = new StripeConnectService(
       baseEnv(),
-      makeMockDb(),
+      transactionRunnerFromDb(makeMockDb()),
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
       payoutRepo,
-      makeDomainEventPublisher(),
+      makeDomainEventSink(),
     );
 
     const result = await svc.initiateTransfer("missing_payout");
@@ -359,12 +362,12 @@ describe("StripeConnectService.initiateTransfer", () => {
     const payoutRepo = makePayoutRepository(payout({ status: "paid" }));
     const svc = new StripeConnectService(
       baseEnv(),
-      makeMockDb(),
+      transactionRunnerFromDb(makeMockDb()),
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
       payoutRepo,
-      makeDomainEventPublisher(),
+      makeDomainEventSink(),
     );
 
     const result = await svc.initiateTransfer("po1");
@@ -382,12 +385,12 @@ describe("StripeConnectService.initiateTransfer", () => {
     });
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      transactionRunnerFromDb(db),
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
       payoutRepo,
-      makeDomainEventPublisher(),
+      makeDomainEventSink(),
     );
 
     const result = await svc.initiateTransfer("po1");
@@ -398,7 +401,7 @@ describe("StripeConnectService.initiateTransfer", () => {
   it("returns connect_not_ready when Connect payouts are disabled", async () => {
     const payoutRepo = makePayoutRepository(payout({ status: "scheduled" }));
     const db = makeMockDb();
-    const publisher = makeDomainEventPublisher();
+    const publisher = makeDomainEventSink();
     const connectTransferRepository = makeEntityConnectTransferRepository({
       id: "le1",
       stripeConnectAccountId: "acct_123",
@@ -406,7 +409,7 @@ describe("StripeConnectService.initiateTransfer", () => {
     });
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      transactionRunnerFromDb(db),
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
@@ -417,7 +420,7 @@ describe("StripeConnectService.initiateTransfer", () => {
     const result = await svc.initiateTransfer("po1");
 
     expect(result).toEqual({ ok: false, reason: "connect_not_ready" });
-    expect(publisher.publish).toHaveBeenCalledWith(db, {
+    expect(publisher.publish).toHaveBeenCalledWith({
       aggregateType: "payout",
       aggregateId: "po1",
       eventType: "payout.transfer_blocked",
@@ -440,12 +443,12 @@ describe("StripeConnectService.initiateTransfer", () => {
     });
     const svc = new StripeConnectService(
       baseEnv(),
-      makeMockDb(),
+      transactionRunnerFromDb(makeMockDb()),
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
       payoutRepo,
-      makeDomainEventPublisher(),
+      makeDomainEventSink(),
     );
 
     const result = await svc.initiateTransfer("po1");
@@ -459,11 +462,11 @@ describe("StripeConnectService.initiateTransfer", () => {
 
   it("marks negative net payouts as clawback_pending without loading Stripe Connect", async () => {
     const payoutRepo = makePayoutRepository(payout({ status: "scheduled", netAmount: "-100.00" }));
-    const publisher = makeDomainEventPublisher();
+    const publisher = makeDomainEventSink();
     const db = makeMockDb();
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      transactionRunnerFromDb(db),
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
@@ -482,7 +485,7 @@ describe("StripeConnectService.initiateTransfer", () => {
         failureReason: "negative_net_amount",
       }),
     );
-    expect(publisher.publish).toHaveBeenCalledWith(db, {
+    expect(publisher.publish).toHaveBeenCalledWith({
       aggregateType: "payout",
       aggregateId: "po1",
       eventType: "payout.clawback_required",
@@ -528,10 +531,10 @@ describe("StripeConnectService.initiateTransfer", () => {
       stripeConnectAccountId: "acct_123",
       stripeConnectPayoutsEnabled: true,
     });
-    const publisher = makeDomainEventPublisher();
+    const publisher = makeDomainEventSink();
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      transactionRunnerFromDb(db),
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
@@ -560,7 +563,6 @@ describe("StripeConnectService.initiateTransfer", () => {
       ),
     ).toBe(true);
     expect(publisher.publish).toHaveBeenCalledWith(
-      db,
       expect.objectContaining({ eventType: "payout.transfer_failed", aggregateId: "po1" }),
     );
   });
@@ -601,12 +603,12 @@ describe("StripeConnectService.initiateTransfer", () => {
     const chargesRetrieve = vi.fn().mockResolvedValue({ currency: "eur" });
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      transactionRunnerFromDb(db),
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
       payoutRepo,
-      makeDomainEventPublisher(),
+      makeDomainEventSink(),
     );
     injectStripeOnService(svc, {
       transfers: { create: transfersCreate },
@@ -672,10 +674,10 @@ describe("StripeConnectService.initiateTransfer", () => {
     });
 
     const transfersCreate = vi.fn().mockResolvedValue({ id: "tr_1" });
-    const publisher = makeDomainEventPublisher();
+    const publisher = makeDomainEventSink();
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      transactionRunnerFromDb(db),
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
@@ -816,7 +818,7 @@ describe("StripeConnectService.ensureAccount", () => {
 
     const svc = new StripeConnectService(
       baseEnv(),
-      {} as Database,
+      transactionRunnerFromDb({} as Database),
       makePayoutService(null),
       makeConnectTransferRepository(),
       connectRepository,
@@ -909,7 +911,7 @@ describe("StripeConnectService.ensureAccount", () => {
 
     const svc = new StripeConnectService(
       baseEnv(),
-      {} as Database,
+      transactionRunnerFromDb({} as Database),
       makePayoutService(null),
       makeConnectTransferRepository(),
       connectRepository,
@@ -977,7 +979,7 @@ describe("StripeConnectService.ensureAccount", () => {
 
     const svc = new StripeConnectService(
       baseEnv(),
-      {} as Database,
+      transactionRunnerFromDb({} as Database),
       makePayoutService(null),
       makeConnectTransferRepository(),
       connectRepository,
@@ -1005,7 +1007,7 @@ describe("StripeConnectService.handleConnectedAccountEvent dedup", () => {
 
   it("skips applyAccountUpdate when event was already processed", async () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValueOnce({ claimed: false });
-    const publisher = makeDomainEventPublisher();
+    const publisher = makeDomainEventSink();
     const db = makeTransactionDb({
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -1019,7 +1021,7 @@ describe("StripeConnectService.handleConnectedAccountEvent dedup", () => {
 
     const svc = new StripeConnectService(
       baseEnv(),
-      db,
+      transactionRunnerFromDb(db),
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),

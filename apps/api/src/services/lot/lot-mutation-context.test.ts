@@ -1,3 +1,4 @@
+import type { ITransactionRunner } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type {
   IBidRepository,
@@ -21,7 +22,8 @@ function baseDeps(overrides: Partial<LotServiceDeps> = {}): LotServiceDeps {
     legalEntityNotificationRecipients: null,
     legalEntityRepository: null,
     enforceIndividualConnectOnPublish: false,
-    db: null,
+    adminReviewTaskRepository: null,
+    transactionRunner: null,
     domainEventPublisher: null,
     catalogueMediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
@@ -54,7 +56,7 @@ describe("txLot", () => {
 });
 
 describe("recordLifecycle", () => {
-  it("no-ops when db or lotLifecycleRecording missing", async () => {
+  it("no-ops when transactionRunner or lotLifecycleRecording missing", async () => {
     const fn = vi.fn();
     await recordLifecycle(baseDeps(), fn);
     expect(fn).not.toHaveBeenCalled();
@@ -62,33 +64,33 @@ describe("recordLifecycle", () => {
 
   it("runs fn inside transaction when configured", async () => {
     const fn = vi.fn().mockResolvedValue(undefined);
-    const db = {
-      transaction: vi.fn(async (cb: (tx: never) => Promise<void>) => cb({} as never)),
+    const transactionRunner: ITransactionRunner = {
+      runInTransaction: vi.fn(async (cb) => cb({} as never)),
     };
     const deps = baseDeps({
-      db: db as never,
+      transactionRunner,
       lotLifecycleRecording: {} as LotLifecycleRecording,
     });
     await recordLifecycle(deps, fn);
-    expect(db.transaction).toHaveBeenCalled();
+    expect(transactionRunner.runInTransaction).toHaveBeenCalled();
     expect(fn).toHaveBeenCalled();
   });
 });
 
 describe("publishSingleLotDeps", () => {
-  it("wires db ?? null and recordLotLifecycle closure", async () => {
+  it("wires transactionRunner and recordLotLifecycle closure", async () => {
     const fn = vi.fn().mockResolvedValue(undefined);
-    const db = {
-      transaction: vi.fn(async (cb: (tx: never) => Promise<void>) => cb({} as never)),
+    const transactionRunner: ITransactionRunner = {
+      runInTransaction: vi.fn(async (cb) => cb({} as never)),
     };
     const deps = baseDeps({
-      db: db as never,
+      transactionRunner,
       lotLifecycleRecording: {} as LotLifecycleRecording,
       saleRepo: {} as ISaleRepository,
     });
     const lotDeps = publishSingleLotDeps(deps);
-    expect(lotDeps.db).toBe(deps.db);
-    await lotDeps.recordLotLifecycle(fn);
+    expect(lotDeps.transactionRunner).toBe(deps.transactionRunner);
+    await lotDeps.recordLotLifecycle?.(fn);
     expect(fn).toHaveBeenCalled();
   });
 });

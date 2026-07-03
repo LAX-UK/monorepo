@@ -1,13 +1,9 @@
-import type { Database } from "@auction/db";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IAuthAuditPublisher } from "./interfaces/auth-audit-publisher.js";
 
 /** Emits `auth.*` rows into `domain_events` (same pipeline as money-path events). */
 export class AuthAuditPublisher implements IAuthAuditPublisher {
-  constructor(
-    private readonly inner: DomainEventPublisher,
-    private readonly db: Database,
-  ) {}
+  constructor(private readonly domainEventSink: IDomainEventSink) {}
 
   async publish(input: {
     eventType: string;
@@ -16,7 +12,7 @@ export class AuthAuditPublisher implements IAuthAuditPublisher {
     payload: Record<string, unknown>;
     actorUserId?: string | null;
   }): Promise<void> {
-    await this.inner.publish(this.db, {
+    await this.domainEventSink.publish({
       aggregateType: input.aggregateType ?? "user",
       aggregateId: input.aggregateId,
       eventType: input.eventType,

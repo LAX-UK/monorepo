@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
 import type { IInvitationRepository } from "../../repositories/interfaces/invitation.repository.js";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import { MemberPermissionError } from "../interfaces/member-management.js";
 import type { LegalEntityMembershipGuard } from "../legal-entity-membership.guard.js";
@@ -62,7 +63,7 @@ describe("InvitationInviteService", () => {
       assertActorIsAdmin: vi.fn(async () => ({})),
     } as unknown as LegalEntityMembershipGuard;
     const service = new InvitationInviteService(
-      makeDb(),
+      transactionRunnerFromDb(makeDb()),
       repo,
       tokenService,
       notifications,
@@ -88,7 +89,7 @@ describe("InvitationInviteService", () => {
       hasActiveMember: async () => true,
     });
     const service = new InvitationInviteService(
-      makeDb(),
+      transactionRunnerFromDb(makeDb()),
       repo,
       tokenService,
       { notifyInviteSent: vi.fn() } as unknown as InvitationNotificationService,

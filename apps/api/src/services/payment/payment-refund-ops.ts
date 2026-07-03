@@ -51,7 +51,7 @@ export async function refundPayment(
       new PaymentProviderError("Stripe is not configured for this environment", 503, undefined),
     );
   }
-  if (!deps.db || !deps.domainEventPublisher) {
+  if (!deps.transactionRunner || !deps.domainEventPublisher) {
     return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
   }
 
@@ -73,7 +73,7 @@ export async function refundPayment(
   return executePaymentRefundLedger(
     {
       payments: deps.payments,
-      db: deps.db,
+      transactionRunner: deps.transactionRunner,
       domainEventPublisher: deps.domainEventPublisher,
       payoutAdjustments: deps.payoutAdjustments,
       paymentRefundReconcile: deps.paymentRefundReconcile,
@@ -114,7 +114,7 @@ export async function refundManualReviewPayment(
   if (p.status !== "requires_manual_review") {
     return err(new AuthzError("Payment is not in manual review", 409));
   }
-  if (!deps.db || !deps.domainEventPublisher) {
+  if (!deps.transactionRunner || !deps.domainEventPublisher) {
     return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
   }
 
@@ -135,7 +135,7 @@ export async function refundManualReviewPayment(
   return executePaymentRefundLedger(
     {
       payments: deps.payments,
-      db: deps.db,
+      transactionRunner: deps.transactionRunner,
       domainEventPublisher: deps.domainEventPublisher,
       payoutAdjustments: deps.payoutAdjustments,
       paymentRefundReconcile: deps.paymentRefundReconcile,

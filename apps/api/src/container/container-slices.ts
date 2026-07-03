@@ -113,6 +113,7 @@ export type ContainerRepositoriesSlice = ContainerRepositories;
 export type ContainerPlatformSlice = Pick<
   ContainerPlatformServices,
   | "domainEventPublisher"
+  | "transactionRunner"
   | "authAuditPublisher"
   | "notificationFactory"
   | "organizationOnboardingService"

@@ -1,5 +1,3 @@
-import type { Database } from "@auction/db";
-import { DrizzleSaleRegistrationRepository } from "@auction/persistence";
 import type { ISaleRegistrationRepository } from "../repositories/interfaces/sale-registration.repository.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ISaleRepository } from "./interfaces/repositories.js";
@@ -19,14 +17,12 @@ export class SaleRegistrationService implements ISaleRegistrationService {
   private readonly admin: SaleRegistrationAdminService;
 
   constructor(
-    db: Database,
     legalEntityRepository: ILegalEntityRepository,
     saleRepo: ISaleRepository,
-    registrationRepo?: ISaleRegistrationRepository,
+    registrationRepo: ISaleRegistrationRepository,
   ) {
     const ctx = createSaleRegistrationContext({
-      db,
-      registrationRepo: registrationRepo ?? new DrizzleSaleRegistrationRepository(db),
+      registrationRepo,
       saleRepo,
       legalEntityRepository,
     });

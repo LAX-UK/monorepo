@@ -31,4 +31,17 @@ export interface IPaymentRefundReconcileRepository {
   markReconciled(paymentId: string): Promise<void>;
 
   markFailed(paymentId: string, error: string, attempts: number): Promise<void>;
+
+  listPendingStripeCaptureSync(
+    limit: number,
+  ): Promise<Array<{ paymentId: string; amount: string }>>;
+
+  listPaymentsMissingXeroInvoice(limit: number): Promise<
+    Array<{
+      paymentId: string;
+      lotId: string;
+      buyerId: string;
+      amount: string;
+    }>
+  >;
 }

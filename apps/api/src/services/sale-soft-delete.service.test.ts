@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { ISaleSoftDeleteGuardReader } from "../repositories/interfaces/sale-soft-delete-guard.reader.js";
 import { CatalogSoftDeleteOrchestrator } from "./catalog/catalog-soft-delete-orchestrator.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { ISaleSoftDeleteSideEffects } from "./interfaces/sale-soft-delete.js";
@@ -84,16 +84,11 @@ function createService(input: {
   sideEffects?: ISaleSoftDeleteSideEffects;
   jobScheduler?: ILotJobScheduler | null;
   db?: unknown;
-  domainEventPublisher?: DomainEventPublisher | null;
+  domainEventSink?: IDomainEventSink | null;
 }) {
   const jobScheduler = input.jobScheduler ?? null;
-  const db = input.db ?? null;
-  const domainEventPublisher = input.domainEventPublisher ?? null;
-  const orchestrator = new CatalogSoftDeleteOrchestrator(
-    jobScheduler,
-    db as never,
-    domainEventPublisher,
-  );
+  const domainEventSink = input.domainEventSink ?? null;
+  const orchestrator = new CatalogSoftDeleteOrchestrator(jobScheduler, domainEventSink as never);
   return new SaleSoftDeleteService(
     input.saleRepo ?? ({} as ISaleRepository),
     input.lotRepo ?? ({} as ILotRepository),
@@ -124,7 +119,10 @@ describe("SaleSoftDeleteService", () => {
     } as unknown as ISaleSoftDeleteGuardReader;
     const sideEffects = { softDeleteCascade } as unknown as ISaleSoftDeleteSideEffects;
     const jobScheduler = { cancelLotJobs } as unknown as ILotJobScheduler;
-    const domainEventPublisher = { publish } as unknown as DomainEventPublisher;
+    const domainEventSink = {
+      publish,
+      withTx: vi.fn().mockReturnValue({ publish }),
+    } as unknown as IDomainEventSink;
 
     const svc = createService({
       saleRepo,
@@ -132,8 +130,7 @@ describe("SaleSoftDeleteService", () => {
       guardReader,
       sideEffects,
       jobScheduler,
-      db: {},
-      domainEventPublisher,
+      domainEventSink,
     });
 
     const result = await svc.softDelete(
@@ -149,7 +146,6 @@ describe("SaleSoftDeleteService", () => {
       expect.objectContaining({ saleId: "s1", actorUserId: "admin-1", lotIds: ["l1"] }),
     );
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({ eventType: "sale.soft_deleted", aggregateId: "s1" }),
     );
   });
@@ -253,7 +249,10 @@ describe("SaleSoftDeleteService", () => {
         cancelLotJobs: vi.fn(),
         cancelLotEndJob: vi.fn(),
       } as unknown as ILotJobScheduler,
-      domainEventPublisher: { publish: vi.fn() } as unknown as DomainEventPublisher,
+      domainEventSink: {
+        publish: vi.fn(),
+        withTx: vi.fn().mockReturnValue({ publish: vi.fn() }),
+      } as unknown as IDomainEventSink,
     });
 
     const result = await svc.bulkSoftDelete(

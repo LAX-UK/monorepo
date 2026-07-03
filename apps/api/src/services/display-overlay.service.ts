@@ -1,8 +1,7 @@
-import type { Database } from "@auction/db";
 import type { ISaleroomDisplaySessionRepository } from "@auction/persistence";
 import type { SaleroomDisplayOverlay } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type {
   DisplayServiceError,
   IDisplayOverlayService,
@@ -10,23 +9,20 @@ import type {
 import type { ISaleroomRealtimePublisher } from "./interfaces/saleroom-realtime-publisher.js";
 
 export type DisplayOverlayServiceOptions = {
-  db: Database;
   saleroomDisplaySessionRepo: ISaleroomDisplaySessionRepository;
   publisher: ISaleroomRealtimePublisher;
-  domainEvents: DomainEventPublisher;
+  domainEventSink: IDomainEventSink;
 };
 
 export class DisplayOverlayService implements IDisplayOverlayService {
-  private readonly db: Database;
   private readonly saleroomDisplaySessionRepo: ISaleroomDisplaySessionRepository;
   private readonly publisher: ISaleroomRealtimePublisher;
-  private readonly domainEvents: DomainEventPublisher;
+  private readonly domainEventSink: IDomainEventSink;
 
   constructor(opts: DisplayOverlayServiceOptions) {
-    this.db = opts.db;
     this.saleroomDisplaySessionRepo = opts.saleroomDisplaySessionRepo;
     this.publisher = opts.publisher;
-    this.domainEvents = opts.domainEvents;
+    this.domainEventSink = opts.domainEventSink;
   }
 
   async setOverlay(input: {
@@ -62,7 +58,7 @@ export class DisplayOverlayService implements IDisplayOverlayService {
       emittedAt: overlay.emittedAt,
     });
 
-    await this.domainEvents.publish(this.db, {
+    await this.domainEventSink.publish({
       aggregateType: "sale",
       aggregateId: input.saleId,
       eventType: "saleroom.display.overlay_set",
@@ -93,7 +89,7 @@ export class DisplayOverlayService implements IDisplayOverlayService {
       emittedAt,
     });
 
-    await this.domainEvents.publish(this.db, {
+    await this.domainEventSink.publish({
       aggregateType: "sale",
       aggregateId: input.saleId,
       eventType: "saleroom.display.overlay_clear",

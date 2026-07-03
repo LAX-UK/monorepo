@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import type { Database } from "@auction/db";
 import { type ExportEntityType, type ExportFormat, exportFilename } from "@auction/exports";
 import { AuthzError } from "@auction/exports/providers";
 import { DATA_EXPORT_QUEUE_NAME } from "@auction/queues";
@@ -7,7 +6,7 @@ import type { CreateExportBody, ExportPreviewBody } from "@auction/validators";
 import type { Queue } from "bullmq";
 import type { ExportProvider } from "../../exports/types.js";
 import type { IExportJobRepository } from "../../repositories/interfaces/export-job.repository.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ExportFileStorage } from "./export-file-storage.js";
 import { ExportJobViewMapper } from "./export-job-view.mapper.js";
 import type { IExportProgressStore } from "./export-progress.store.js";
@@ -29,14 +28,13 @@ export class ExportService {
   private readonly syncRunner: SyncExportRunner;
 
   constructor(
-    private readonly db: Database,
     private readonly repo: IExportJobRepository,
     private readonly progressStore: IExportProgressStore,
     private readonly fileStorage: ExportFileStorage,
     private readonly dataExportQueue: Queue,
     private readonly providers: Map<ExportEntityType, ExportProvider>,
     private readonly config: ExportServiceConfig,
-    private readonly domainEventPublisher?: DomainEventPublisher,
+    private readonly domainEventSink?: IDomainEventSink,
   ) {
     this.rateLimitPolicy = new ExportRateLimitPolicy(repo, config.staleProcessingMs);
     this.jobViewMapper = new ExportJobViewMapper(progressStore, providers);
@@ -315,8 +313,8 @@ export class ExportService {
     mode: "sync" | "async";
     totalRows: number;
   }): Promise<void> {
-    if (!this.domainEventPublisher) return;
-    await this.domainEventPublisher.publish(this.db, {
+    if (!this.domainEventSink) return;
+    await this.domainEventSink.publish({
       aggregateType: "data_export",
       aggregateId: input.exportId,
       eventType: "export.requested",

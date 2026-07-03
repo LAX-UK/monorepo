@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { ILotSoftDeleteGuardReader } from "../repositories/interfaces/lot-soft-delete-guard.reader.js";
 import { CatalogSoftDeleteOrchestrator } from "./catalog/catalog-soft-delete-orchestrator.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotSoftDeleteSideEffects } from "./interfaces/lot-soft-delete.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
@@ -81,16 +81,11 @@ function createService(input: {
   sideEffects?: ILotSoftDeleteSideEffects;
   jobScheduler?: ILotJobScheduler | null;
   db?: unknown;
-  domainEventPublisher?: DomainEventPublisher | null;
+  domainEventSink?: IDomainEventSink | null;
 }) {
   const jobScheduler = input.jobScheduler ?? null;
-  const db = input.db ?? null;
-  const domainEventPublisher = input.domainEventPublisher ?? null;
-  const orchestrator = new CatalogSoftDeleteOrchestrator(
-    jobScheduler,
-    db as never,
-    domainEventPublisher,
-  );
+  const domainEventSink = input.domainEventSink ?? null;
+  const orchestrator = new CatalogSoftDeleteOrchestrator(jobScheduler, domainEventSink as never);
   return new LotSoftDeleteService(
     input.lotRepo ?? ({} as ILotRepository),
     input.saleRepo ?? ({} as ISaleRepository),
@@ -107,6 +102,10 @@ describe("LotSoftDeleteService", () => {
     const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
     const softDeleteLot = vi.fn().mockResolvedValue(undefined);
     const publish = vi.fn().mockResolvedValue(undefined);
+    const domainEventSink = {
+      publish,
+      withTx: vi.fn().mockReturnValue({ publish }),
+    } as unknown as IDomainEventSink;
 
     const lotRepo = {
       findById: vi.fn().mockResolvedValue(lotRow),
@@ -121,7 +120,6 @@ describe("LotSoftDeleteService", () => {
     } as unknown as ILotSoftDeleteGuardReader;
     const sideEffects = { softDeleteLot } as unknown as ILotSoftDeleteSideEffects;
     const jobScheduler = { cancelLotJobs } as unknown as ILotJobScheduler;
-    const domainEventPublisher = { publish } as unknown as DomainEventPublisher;
 
     const svc = createService({
       lotRepo,
@@ -129,8 +127,7 @@ describe("LotSoftDeleteService", () => {
       guardReader,
       sideEffects,
       jobScheduler,
-      db: {},
-      domainEventPublisher,
+      domainEventSink,
     });
 
     const result = await svc.softDelete(
@@ -146,7 +143,6 @@ describe("LotSoftDeleteService", () => {
       expect.objectContaining({ lotId: "l1", actorUserId: "admin-1" }),
     );
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({ eventType: "lot.soft_deleted", aggregateId: "l1" }),
     );
   });
@@ -222,7 +218,10 @@ describe("LotSoftDeleteService", () => {
       guardReader,
       sideEffects,
       jobScheduler: { cancelLotJobs } as unknown as ILotJobScheduler,
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: {
+        publish,
+        withTx: vi.fn().mockReturnValue({ publish }),
+      } as unknown as IDomainEventSink,
     });
 
     const result = await svc.softDelete(
@@ -296,7 +295,10 @@ describe("LotSoftDeleteService", () => {
         cancelLotJobs: vi.fn(),
         cancelLotEndJob: vi.fn(),
       } as unknown as ILotJobScheduler,
-      domainEventPublisher: { publish: vi.fn() } as unknown as DomainEventPublisher,
+      domainEventSink: {
+        publish: vi.fn(),
+        withTx: vi.fn().mockReturnValue({ publish: vi.fn() }),
+      } as unknown as IDomainEventSink,
     });
 
     const result = await svc.bulkSoftDelete(

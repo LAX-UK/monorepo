@@ -15,11 +15,19 @@ function makeConnectRepositoryMocks() {
   return { connectRepository, updateStripeConnectFlags, applyConnectStatusTransition, repo };
 }
 
+function makeDomainEventSink() {
+  const publish = vi.fn().mockResolvedValue(undefined);
+  return {
+    publish,
+    withTx: vi.fn().mockReturnValue({ publish }),
+  };
+}
+
 describe("ConnectLifecyclePromoter", () => {
   it("promotes connect_pending to approved when Stripe account is configured", async () => {
-    const publish = vi.fn();
+    const domainEventSink = makeDomainEventSink();
     const { connectRepository, applyConnectStatusTransition } = makeConnectRepositoryMocks();
-    const promoter = new ConnectLifecyclePromoter(connectRepository, { publish } as never);
+    const promoter = new ConnectLifecyclePromoter(connectRepository, domainEventSink as never);
     const db = {} as never;
 
     await promoter.applyStripeAccountFlags(
@@ -47,8 +55,8 @@ describe("ConnectLifecyclePromoter", () => {
       }),
       db,
     );
-    expect(publish).toHaveBeenCalledWith(
-      db,
+    expect(domainEventSink.withTx).toHaveBeenCalledWith(db);
+    expect(domainEventSink.withTx(db).publish).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "legal_entity.lifecycle_progressed",
         payload: expect.objectContaining({ reason: "stripe_connect_ready" }),
@@ -57,10 +65,10 @@ describe("ConnectLifecyclePromoter", () => {
   });
 
   it("demotes approved to connect_pending when requirements become due", async () => {
-    const publish = vi.fn();
+    const domainEventSink = makeDomainEventSink();
     const { connectRepository, applyConnectStatusTransition } = makeConnectRepositoryMocks();
     applyConnectStatusTransition.mockResolvedValue({ id: "e1", status: "connect_pending" });
-    const promoter = new ConnectLifecyclePromoter(connectRepository, { publish } as never);
+    const promoter = new ConnectLifecyclePromoter(connectRepository, domainEventSink as never);
     const db = {} as never;
 
     await promoter.applyStripeAccountFlags(
@@ -90,8 +98,7 @@ describe("ConnectLifecyclePromoter", () => {
       }),
       db,
     );
-    expect(publish).toHaveBeenCalledWith(
-      db,
+    expect(domainEventSink.withTx(db).publish).toHaveBeenCalledWith(
       expect.objectContaining({
         payload: expect.objectContaining({ reason: "stripe_connect_requirements_due" }),
       }),
@@ -99,9 +106,9 @@ describe("ConnectLifecyclePromoter", () => {
   });
 
   it("updates flags only when status unchanged", async () => {
-    const publish = vi.fn();
+    const domainEventSink = makeDomainEventSink();
     const { connectRepository, updateStripeConnectFlags } = makeConnectRepositoryMocks();
-    const promoter = new ConnectLifecyclePromoter(connectRepository, { publish } as never);
+    const promoter = new ConnectLifecyclePromoter(connectRepository, domainEventSink as never);
     const db = {} as never;
 
     await promoter.applyStripeAccountFlags(
@@ -122,6 +129,7 @@ describe("ConnectLifecyclePromoter", () => {
     );
 
     expect(updateStripeConnectFlags).toHaveBeenCalled();
-    expect(publish).not.toHaveBeenCalled();
+    expect(domainEventSink.publish).not.toHaveBeenCalled();
+    expect(domainEventSink.withTx).not.toHaveBeenCalled();
   });
 });

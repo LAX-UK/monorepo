@@ -26,7 +26,7 @@ export class PaymentIntentFailedHandler implements IPaymentIntentWebhookHandler 
       return { processed: false, action: "skipped", reason: "payment_not_found" };
     }
 
-    return this.deps.db.transaction(async (tx) => {
+    return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
         tx,
         event.id,

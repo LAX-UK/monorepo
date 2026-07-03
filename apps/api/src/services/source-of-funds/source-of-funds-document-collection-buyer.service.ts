@@ -95,7 +95,7 @@ export class SourceOfFundsDocumentCollectionBuyerService
       return doc;
     };
 
-    return this.ctx.db.transaction((tx) => run(tx));
+    return this.ctx.transactionRunner.runInTransaction((tx) => run(tx));
   }
 
   async submitDocuments(command: {
@@ -133,7 +133,7 @@ export class SourceOfFundsDocumentCollectionBuyerService
       return updated;
     };
 
-    return this.ctx.db.transaction((tx) => run(tx));
+    return this.ctx.transactionRunner.runInTransaction((tx) => run(tx));
   }
 
   async getBuyerView(buyerUserId: string): Promise<BuyerSourceOfFundsViewDto | null> {

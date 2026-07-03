@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { CreateLotInput, Lot, PublicLotView, UserRole } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err } from "neverthrow";
@@ -51,7 +51,8 @@ export type LotServiceOptions = {
   legalEntityRepository?: ILegalEntityRepository | null;
   /** When false (e.g. Stripe Connect not configured), individual Connect readiness is not enforced on publish. */
   enforceIndividualConnectOnPublish?: boolean;
-  db?: Database | null;
+  adminReviewTaskRepository?: import("@auction/persistence").IAdminReviewTaskRepository | null;
+  transactionRunner?: ITransactionRunner | null;
   domainEventPublisher?: DomainEventPublisher | null;
   mediaUrlResolver?: MediaUrlResolver;
   catalogueMediaUrlResolver?: MediaUrlResolver;
@@ -80,7 +81,8 @@ export class LotService {
       legalEntityNotificationRecipients: opts.legalEntityNotificationRecipients ?? null,
       legalEntityRepository: opts.legalEntityRepository ?? null,
       enforceIndividualConnectOnPublish: opts.enforceIndividualConnectOnPublish ?? false,
-      db: opts.db ?? null,
+      adminReviewTaskRepository: opts.adminReviewTaskRepository ?? null,
+      transactionRunner: opts.transactionRunner ?? null,
       domainEventPublisher: opts.domainEventPublisher ?? null,
       catalogueMediaUrlResolver: opts.catalogueMediaUrlResolver ?? opts.mediaUrlResolver,
       mediaAssetEnricher: opts.mediaAssetEnricher,

@@ -1,8 +1,5 @@
-import { saleNotDeleted } from "@auction/db";
-import type { Database } from "@auction/db";
-import { sale, saleroomSession } from "@auction/db/schema";
+import type { ISaleroomLiveSessionCounter } from "@auction/persistence";
 import type { Sale } from "@auction/types";
-import { and, eq, inArray, sql } from "drizzle-orm";
 import type { AmlService } from "../aml/aml.service.js";
 import type { IConditionReportAdminService } from "../interfaces/condition-report.js";
 import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
@@ -15,7 +12,7 @@ import type { AdminNavCountsDeps } from "./admin-nav-counts.service.js";
 import type { AdminRouteServicesCore } from "./create-admin-route-services.js";
 
 export type CreateAdminNavCountsDepsInput = {
-  db: Database;
+  saleroomLiveSessionCounter: ISaleroomLiveSessionCounter;
   admin: AdminRouteServicesCore;
   repoFactory: IRepositoryFactory;
   conditionReportService: IConditionReportAdminService;
@@ -101,20 +98,7 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
       const finance = await input.admin.dashboard.getFinanceIssueSnapshot();
       return finance.failedPayoutCount;
     },
-    getSaleroomLiveCount: async () => {
-      const [row] = await input.db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(saleroomSession)
-        .innerJoin(sale, eq(saleroomSession.saleId, sale.id))
-        .where(
-          and(
-            inArray(saleroomSession.status, ["live", "paused"]),
-            eq(sale.status, "active"),
-            saleNotDeleted(),
-          ),
-        );
-      return row?.n ?? 0;
-    },
+    getSaleroomLiveCount: () => input.saleroomLiveSessionCounter.countLiveOrPausedOnActiveSales(),
     getInvitationsPending: async () => {
       const { pendingTotal } = await input.invitationService.listInvitations(
         {},

@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentCaptureNotAppliedError } from "../../lib/errors.js";
 import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
@@ -29,7 +30,7 @@ const XERO_CAPTURE_VIAS: CapturePaymentInput["via"][] = [
 
 export class PaymentCaptureService implements IPaymentCaptureService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly payments: IPaymentWriteRepository,
     private readonly lots: ILotRepository,
     private readonly users: IUserRepository,
@@ -108,7 +109,7 @@ export class PaymentCaptureService implements IPaymentCaptureService {
     if (input.tx) {
       await apply(input.tx);
     } else {
-      await this.db.transaction(apply);
+      await this.transactionRunner.runInTransaction(apply);
     }
 
     if (!captured) {

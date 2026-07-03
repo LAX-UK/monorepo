@@ -335,6 +335,22 @@ export type {
   IAdminManualReviewPaymentReader,
   IAdminManualReviewPaymentEnrichmentReader,
   IAdminReviewTaskReader,
+  IAdminReviewTaskRepository,
+  IMediaAssetReader,
+  MediaAssetRecord,
+  IQrCodeScanPersister,
+  QrCodeScanInput,
+  ISaleroomOnBlockReader,
+  SaleroomOnBlockSession,
+  ISaleroomLiveSessionCounter,
+  IFailedJobRepository,
+  FailedJobReplayRow,
+  IUserEmailVerifiedPublisher,
+  PublishUserEmailVerifiedInput,
+  IPlatformCatalogLegalEntityReader,
+  PlatformCatalogLegalEntityIdProvider,
+  IPaymentWebhookLookupReader,
+  PaymentWebhookRow,
   IAdminDomainEventReader,
   IAdminFinanceIssueSnapshotReader,
   AmlDecision,
@@ -407,6 +423,23 @@ export type {
   IPressArchiveRepository,
   ListPressArchiveFilter,
   PressCoveragePageResult,
+  IPaymentDomainEventsRepository,
+  ILotCancelledLifecycleRecorder,
+  ILotSoftDeleteSideEffects,
+  ISaleSoftDeleteSideEffects,
+  ILotFulfilmentPaymentHook,
+  ILotFulfilmentRepository,
+  InsertLotFulfilmentInput,
+  LotFulfilmentAddressSnapshot,
+  LotFulfilmentListRow,
+  LotFulfilmentRow,
+  UpdateLotFulfilmentInput,
+  AttentionItem,
+  AttentionItemKind,
+  DraftLotAttentionRow,
+  IAttentionFeedReader,
+  PaymentAttentionRow,
+  SubmissionAttentionRow,
 } from "./interfaces/index.js";
 
 export {
@@ -477,6 +510,11 @@ export {
   DrizzleSaleroomDisplaySnapshotReader,
   DrizzleImpersonationDomainEventReader,
   SalePressArchiveRepository,
+  DrizzlePaymentDomainEventsRepository,
+  DrizzleLotSoftDeleteSideEffects,
+  DrizzleSaleSoftDeleteSideEffects,
+  DrizzleLotFulfilmentRepository,
+  DrizzleAttentionFeedReader,
   DrizzleSourceOfFundsDocumentReviewRepository,
   DrizzleSourceOfFundsSettlementReader,
   DrizzleLegalEntityDocumentAdminRepository,
@@ -528,6 +566,16 @@ export {
   DrizzleAdminManualReviewPaymentReader,
   DrizzleAdminManualReviewPaymentEnrichmentReader,
   DrizzleAdminReviewTaskReader,
+  DrizzleAdminReviewTaskRepository,
+  DrizzleMediaAssetReader,
+  DrizzleQrCodeScanPersister,
+  DrizzleSaleroomOnBlockReader,
+  DrizzleSaleroomLiveSessionCounter,
+  DrizzleFailedJobRepository,
+  DrizzleUserEmailVerifiedPublisher,
+  DrizzlePlatformCatalogLegalEntityReader,
+  PLATFORM_CATALOG_SLUG,
+  DrizzlePaymentWebhookLookupReader,
   DrizzleLotDocumentRepository,
   DrizzleSaleDocumentRepository,
   DrizzleSubmissionDocumentRepository,
@@ -625,6 +673,15 @@ export { summarizeVeriffDecision } from "./lib/kyc-decision-summary.js";
 export type { KycDecisionSummary } from "./lib/kyc-decision-summary.js";
 
 export { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "./lib/impersonation-audit.constants.js";
+
+export { LotError } from "./lib/lot.error.js";
+export type {
+  DomainEventConnection,
+  DomainEventInput,
+  IDomainEventPublisher,
+} from "./lib/domain-event.types.js";
+
+export { composeAttentionItems } from "./lib/attention-feed.helpers.js";
 
 export {
   addMoneyStrings,

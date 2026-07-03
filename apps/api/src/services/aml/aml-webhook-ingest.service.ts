@@ -110,7 +110,7 @@ export class AmlWebhookIngestService implements IAmlWebhookIngestService {
     const decision = this.deps.policy.evaluate(result);
     const reviewStatus = reviewStatusFor(decision);
 
-    const txResult = await this.deps.db.transaction(async (tx) => {
+    const txResult = await this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedWebhookEvent(tx, eventId, eventSource);
       if (!claimed) {
         return {

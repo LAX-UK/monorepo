@@ -24,8 +24,8 @@ export async function convert(
     return err(new SubmissionError("Provide either artistId or newArtist, not both", 400));
   }
   try {
-    const { lot, submission, legalEntityId, title, readinessPercent } = await deps.db.transaction(
-      async (tx) => {
+    const { lot, submission, legalEntityId, title, readinessPercent } =
+      await deps.transactionRunner.runInTransaction(async (tx) => {
         const subRepo = txRepos(deps, tx).itemSubmission;
         const lotRepo = txRepos(deps, tx).lot;
         const s = await subRepo.findById(id);
@@ -78,8 +78,7 @@ export async function convert(
           title: s.title,
           readinessPercent: readiness.percent,
         };
-      },
-    );
+      });
     const recipients = await resolveLegalEntityNotificationRecipients(
       deps.legalEntityNotificationRecipients,
       { legalEntityId, fallbackUserId: legalEntityId, audience: "seller" },

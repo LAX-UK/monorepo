@@ -37,7 +37,7 @@ export class PaymentIntentPartiallyFundedHandler implements IPaymentIntentWebhoo
       paymentIntent.next_action?.display_bank_transfer_instructions?.amount_remaining ??
       Math.max(0, paymentIntent.amount - (paymentIntent.amount_received ?? 0));
 
-    return this.deps.db.transaction(async (tx) => {
+    return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
         tx,
         event.id,

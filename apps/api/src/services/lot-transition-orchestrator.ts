@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { canAdminOverrideLotStatus, canLotTransition } from "@auction/domain";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { ILotTransitionGuardReader, ILotTransitionRepository } from "@auction/persistence";
 import type { Lot, LotStatus, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
@@ -17,7 +18,7 @@ export type ReturnToInventoryInput = {
 
 export class LotTransitionOrchestrator {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly transitions: ILotTransitionRepository,
     private readonly guards: ILotTransitionGuardReader,
     private readonly recording: ILotLifecycleRecorder,
@@ -85,7 +86,7 @@ export class LotTransitionOrchestrator {
     const fromStatus = row.status as "ended" | "cancelled" | "voided";
     const lastSaleId = row.saleId;
 
-    await this.db.transaction(async (tx) => {
+    await this.transactionRunner.runInTransaction(async (tx) => {
       await this.transitions.resetLotForInventoryReturn(tx, lotId, fromStatus);
       await this.recording.recordReturnedToInventory(
         tx,

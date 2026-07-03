@@ -107,7 +107,7 @@ export function createUserProfileServices(
     complianceMedia;
   const { dashboardQueryService, saleService, artistProfileService } = catalog;
 
-  const userService = new UserService(userRepo, db, domainEventPublisher);
+  const userService = new UserService(userRepo, platform.transactionRunner, domainEventPublisher);
   const personalLegalEntityResolver = new PersonalLegalEntityResolver(
     legalEntityRepository,
     ensurePersonalLegalEntityService,
@@ -121,7 +121,12 @@ export function createUserProfileServices(
       resolvePersonalEntity: (userId) => personalLegalEntityResolver.resolveForUser(userId),
     },
   );
-  const watchlistService = new WatchlistService(watchlistRepo, lotRepo, db, marketingEventService);
+  const watchlistService = new WatchlistService(
+    watchlistRepo,
+    lotRepo,
+    platform.transactionRunner,
+    marketingEventService,
+  );
   const userDashboardReadService = new UserDashboardReadService(
     dashboardQueryService,
     watchlistService,

@@ -29,7 +29,7 @@ export type CreateCatalogAdminReadersInput = {
 export function createCatalogAdminReaders(
   input: CreateCatalogAdminReadersInput,
 ): ContainerCatalogAdminReaders {
-  const { env, db, infra, repos } = input;
+  const { env, infra, repos } = input;
   const { redis, qrCodeScanQueue } = infra;
   const {
     repoFactory,
@@ -44,11 +44,12 @@ export function createCatalogAdminReaders(
   );
   const adminLotBrowseService = new AdminLotBrowseService(repos.adminLotBrowseReader);
   const qrCodeService = new QrCodeService(
-    db,
+    repos.qrCodeScanPersister,
     redis,
     env.WEB_ORIGIN,
     createBaseLogger(env).child({ component: "qr_code" }),
     qrCodeScanQueue,
+    repos.qrCodeRepository,
   );
   const qrCodeAnalytics = new QrCodeAnalyticsService(repos.qrCodeAnalyticsReader);
   const dashboardQueryService = new DashboardQueryService(repoFactory);

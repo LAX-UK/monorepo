@@ -1,7 +1,5 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
 import { LEGAL_ENTITY_ARCHIVE_JOB_NAME } from "@auction/queues";
-import { and, eq, isNull } from "drizzle-orm";
 import type { Env } from "../env.js";
 import { CachedUserSuspensionChecker } from "../infrastructure/cached-user-suspension.checker.js";
 import { createTransactionalMailer } from "../infrastructure/transactional-mailer.js";
@@ -59,7 +57,7 @@ export type CreatePlatformIdentityServicesInput = {
 export function createPlatformIdentityServices(
   input: CreatePlatformIdentityServicesInput,
 ): ContainerPlatformIdentityServices {
-  const { env, db, infra, repos, core, stripeConnectService } = input;
+  const { env, infra, repos, core, stripeConnectService } = input;
   const { cache, emailService, legalEntityArchiveQueue } = infra;
   const {
     legalEntityRepository,
@@ -75,7 +73,11 @@ export function createPlatformIdentityServices(
 
   const organizationOnboardingService: IOrganizationOnboardingService =
     new OrganizationOnboardingService(legalEntityOnboardingRepository, domainEventPublisher);
-  const impersonationAuditService = new ImpersonationAuditService(db, domainEventPublisher);
+  const impersonationAuditService = new ImpersonationAuditService(
+    core.transactionRunner,
+    repos.impersonationDomainEventReader,
+    domainEventPublisher,
+  );
   const impersonationSessionService = new ImpersonationSessionService(
     repos.impersonationSessionRepository,
   );
@@ -94,16 +96,16 @@ export function createPlatformIdentityServices(
     domainEventPublisher,
   );
   const memberManagementService: IMemberManagementService = new MemberManagementService(
-    db,
+    core.transactionRunner,
     repos.legalEntityMemberRepository,
-    domainEventPublisher,
+    core.domainEventSink,
     repoFactory,
   );
   const transactionalMailer: ITransactionalMailer = createTransactionalMailer(env);
   const membershipInviteNotifier = new EmailMembershipInviteNotifier(transactionalMailer);
   const membershipGuard = new LegalEntityMembershipGuard(repos.legalEntityMemberRepository);
   const invitationLifecycleService: IInvitationLifecycleService = new InvitationLifecycleService(
-    db,
+    core.transactionRunner,
     entityInvitationRepository,
     domainEventPublisher,
     membershipInviteNotifier,
@@ -111,23 +113,19 @@ export function createPlatformIdentityServices(
     membershipGuard,
   );
   const organizationOnboardingFlowService = new OrganizationOnboardingFlowService(
-    db,
+    core.transactionRunner,
     legalEntityRepository,
     organizationOnboardingService,
     domainEventPublisher,
     uploadPersistenceRepository,
+    legalEntityOnboardingRepository,
     stripeConnectService,
     {
       onSubmittedForReview: async ({ legalEntityId, displayName }) => {
-        const staffRows = await db
-          .select({ email: user.email })
-          .from(user)
-          .where(and(eq(user.role, "staff"), isNull(user.suspendedAt)));
-        const adminRecipients = staffRows.map((r) => r.email).filter(Boolean);
+        const adminRecipients = await repos.userRepo.listStaffEmails();
         if (adminRecipients.length === 0) return;
         const webOrigin = env.WEB_ORIGIN.replace(/\/$/, "");
         await enqueueOrgSubmittedAdminNotice({
-          db,
           emailService,
           legalEntityId,
           entityDisplayName: displayName,
@@ -138,10 +136,9 @@ export function createPlatformIdentityServices(
         });
       },
     },
-    legalEntityOnboardingRepository,
   );
   const legalEntityLifecycleAdminService = new LegalEntityLifecycleAdminService(
-    db,
+    core.transactionRunner,
     repos.legalEntityLifecycleAdminRepository,
     domainEventPublisher,
     {
@@ -158,6 +155,8 @@ export function createPlatformIdentityServices(
         }
       },
       emailService,
+      legalEntityRepository,
+      memberRepository: repos.legalEntityMemberRepository,
       webOrigin: env.WEB_ORIGIN,
       supportContactEmail: env.OPS_SUPPORT_EMAIL ?? "events@lax.bid",
     },

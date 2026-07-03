@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import type { ISourceOfFundsGate } from "../aml/settlement-compliance.policy.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type {
@@ -29,11 +28,11 @@ export class SourceOfFundsService implements ISourceOfFundsService, ISourceOfFun
   constructor(
     repo: ISourceOfFundsRepository,
     config: SourceOfFundsConfig,
-    db: Database | null = null,
+    transactionRunner: import("@auction/persistence").ITransactionRunner | null = null,
     events: DomainEventPublisher | null = null,
   ) {
-    this.gate = new SourceOfFundsGateService(repo, config, db, events);
-    this.review = new SourceOfFundsReviewService(repo, db, events);
+    this.gate = new SourceOfFundsGateService(repo, config, transactionRunner, events);
+    this.review = new SourceOfFundsReviewService(repo, transactionRunner, events);
   }
 
   requiresSourceOfFunds(...args: Parameters<SourceOfFundsGateService["requiresSourceOfFunds"]>) {

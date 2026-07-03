@@ -1,8 +1,7 @@
-import type { Database } from "@auction/db";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
@@ -45,7 +44,7 @@ function buildService(
     legalEntities?: Partial<ILegalEntityRepository>;
     outbox?: Partial<INotificationOutboxService>;
     accounting?: Partial<IInvoiceAccountingProvider>;
-    domainEvents?: Partial<DomainEventPublisher>;
+    domainEvents?: Partial<IDomainEventSink>;
   } = {},
 ) {
   const stageDispatch = vi.fn().mockResolvedValue(undefined);
@@ -90,7 +89,8 @@ function buildService(
     new NotificationFactory(),
     {
       publish: overrides.domainEvents?.publish ?? publish,
-    } as unknown as DomainEventPublisher,
+      withTx: vi.fn().mockReturnValue({ publish: overrides.domainEvents?.publish ?? publish }),
+    } as IDomainEventSink,
     {
       ensureAwaitingPayment: vi.fn().mockResolvedValue(undefined),
       onPaymentCaptured: vi.fn().mockResolvedValue(undefined),
@@ -106,7 +106,6 @@ function buildService(
         .fn()
         .mockResolvedValue({ id: "buyer-1", email: "buyer@example.com", name: "Buyer" }),
     } as unknown as IUserRepository,
-    {} as Database,
   );
 
   return {
@@ -173,7 +172,6 @@ describe("LotInvoiceInitiationService.ensureForLot", () => {
     const result = await service.ensureForLot(baseLot.id);
     expect(result.created).toBe(true);
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({ eventType: "payment.requires_manual_review" }),
     );
     expect(stageDispatch).not.toHaveBeenCalled();

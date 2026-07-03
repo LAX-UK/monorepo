@@ -1,4 +1,5 @@
 import { persistQrCodeScan, truncateIp } from "@auction/db";
+import { DrizzleQrCodeRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import { QrCodeService, decodeQrSequence, encodeQrSequence } from "./qr-code.service.js";
 import { resolveFromCached } from "./qr-code/qr-code-cache.js";
@@ -55,6 +56,7 @@ describe("QR code helpers", () => {
       "https://www.example.test",
       undefined,
       { add } as never,
+      {} as never,
     );
 
     await service.enqueueScan({
@@ -133,7 +135,14 @@ describe("QR code helpers", () => {
       transaction: vi.fn(async (fn) => fn(tx)),
     };
     const redis = { incr: vi.fn().mockResolvedValue(103n), del: vi.fn().mockResolvedValue(1) };
-    const service = new QrCodeService(db as never, redis as never, "https://www.example.test");
+    const service = new QrCodeService(
+      db as never,
+      redis as never,
+      "https://www.example.test",
+      undefined,
+      undefined,
+      new DrizzleQrCodeRepository(db as never),
+    );
 
     const result = await service.regenerateDefault({
       entityType: "lot",

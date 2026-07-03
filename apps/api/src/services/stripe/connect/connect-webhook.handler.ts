@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type Stripe from "stripe";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../../../lib/stripe-processed-event.js";
@@ -14,7 +14,7 @@ const CONNECT_ACCOUNT_EVENT_TYPES = new Set([
 
 export class ConnectWebhookHandler {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly stripeFactory: IStripeClientFactory,
     private readonly accountPort: IConnectAccountWebhookPort,
   ) {}
@@ -52,7 +52,7 @@ export class ConnectWebhookHandler {
         return { processed: false };
       }
 
-      return this.db.transaction(async (tx) => {
+      return this.transactionRunner.runInTransaction(async (tx) => {
         const { claimed } = await tryClaimProcessedStripeEvent(tx, event.id, "stripe_connect");
         if (!claimed) {
           return { processed: true };
@@ -71,7 +71,7 @@ export class ConnectWebhookHandler {
     const stripe = this.requireStripe();
     const account = await stripe.accounts.retrieve(accountId);
 
-    return this.db.transaction(async (tx) => {
+    return this.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(tx, event.id, "stripe_connect");
       if (!claimed) {
         return { processed: true };

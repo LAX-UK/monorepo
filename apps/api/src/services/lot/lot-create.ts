@@ -49,10 +49,10 @@ export async function createLot(
       createPayload = { ...createPayload, lotNumber };
     }
   }
-  if (deps.db && deps.lotLifecycleRecording) {
+  if (deps.transactionRunner && deps.lotLifecycleRecording) {
     let created: Lot;
     try {
-      created = await deps.db.transaction(async (tx) => {
+      created = await deps.transactionRunner.runInTransaction(async (tx) => {
         const lotRepo = txLot(deps, tx);
         const row = await lotRepo.create(createPayload);
         await deps.lotLifecycleRecording?.recordCreated(tx, {

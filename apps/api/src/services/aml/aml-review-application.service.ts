@@ -27,7 +27,7 @@ export class AmlReviewApplicationService implements IAmlReviewApplicationService
   }
 
   async triage(input: AmlTriageInput): Promise<WatchlistScreeningRecord> {
-    return this.deps.db.transaction(async (tx) => {
+    return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const record = await this.deps.screeningReader.findById(input.screeningId, tx);
       if (!record) throw new Error("aml_screening_not_found");
       if (record.userId === input.analystUserId) {
@@ -56,7 +56,7 @@ export class AmlReviewApplicationService implements IAmlReviewApplicationService
   }
 
   async decide(input: AmlReviewInput): Promise<WatchlistScreeningRecord> {
-    const updated = await this.deps.db.transaction(async (tx) => {
+    const updated = await this.deps.transactionRunner.runInTransaction(async (tx) => {
       const record = await this.deps.screeningReader.findById(input.screeningId, tx);
       if (!record) throw new Error("aml_screening_not_found");
       if (record.userId === input.reviewerUserId) {

@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { IConditionReportRequestRepository } from "../repositories/interfaces/condition-report-request.repository.js";
 import { ConditionReportService } from "./condition-report.service.js";
@@ -41,7 +41,7 @@ describe("ConditionReportService facade", () => {
     } as unknown as IConditionReportRequestRepository;
 
     const svc = new ConditionReportService(
-      {} as Database,
+      { runInTransaction: async (fn) => fn({} as never) } as ITransactionRunner,
       { findById: vi.fn() } as unknown as ILotRepository,
       null,
       null,

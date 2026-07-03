@@ -42,7 +42,6 @@ function createBuyerService(input: {
   legalEntityRepository: ILegalEntityRepository;
 }) {
   const ctx = createSaleRegistrationContext({
-    db: {} as never,
     saleRepo: input.saleRepo,
     registrationRepo: input.registrationRepo,
     legalEntityRepository: input.legalEntityRepository,

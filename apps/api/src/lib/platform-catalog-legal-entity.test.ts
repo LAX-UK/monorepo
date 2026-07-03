@@ -1,20 +1,29 @@
+import type { IPlatformCatalogLegalEntityReader } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import { createPlatformCatalogLegalEntityIdProvider } from "./platform-catalog-legal-entity.js";
 
 const PLATFORM_ID = "30000000-0000-4000-9000-000000000001";
 
-function dbWithRows(rows: Array<{ id: string; kind: string; status: string }>) {
-  const limit = vi.fn().mockResolvedValue(rows);
-  const where = vi.fn().mockReturnValue({ limit });
-  const from = vi.fn().mockReturnValue({ where });
-  const select = vi.fn().mockReturnValue({ from });
-  return { select } as never;
+function reader(
+  overrides: Partial<IPlatformCatalogLegalEntityReader> = {},
+): IPlatformCatalogLegalEntityReader {
+  return {
+    findConfigured: vi.fn().mockResolvedValue(null),
+    findLaxManaged: vi.fn().mockResolvedValue(null),
+    findBySlug: vi.fn().mockResolvedValue(null),
+    findUsableById: vi.fn().mockResolvedValue(null),
+    ...overrides,
+  };
 }
 
 describe("createPlatformCatalogLegalEntityIdProvider", () => {
   it("returns configured UUID when env id validates in DB", async () => {
+    const mockReader = reader({
+      findConfigured: vi.fn().mockResolvedValue(PLATFORM_ID),
+      findUsableById: vi.fn().mockResolvedValue(PLATFORM_ID),
+    });
     const provider = createPlatformCatalogLegalEntityIdProvider({
-      db: dbWithRows([{ id: PLATFORM_ID, kind: "organisation", status: "approved" }]),
+      reader: mockReader,
       configuredId: PLATFORM_ID,
     });
 
@@ -24,7 +33,7 @@ describe("createPlatformCatalogLegalEntityIdProvider", () => {
 
   it("falls back to lax-managed org when env is unset", async () => {
     const provider = createPlatformCatalogLegalEntityIdProvider({
-      db: dbWithRows([{ id: PLATFORM_ID, kind: "organisation", status: "approved" }]),
+      reader: reader({ findLaxManaged: vi.fn().mockResolvedValue(PLATFORM_ID) }),
     });
 
     await expect(provider()).resolves.toBe(PLATFORM_ID);
@@ -32,25 +41,19 @@ describe("createPlatformCatalogLegalEntityIdProvider", () => {
 
   it("returns null when no platform candidate exists", async () => {
     const provider = createPlatformCatalogLegalEntityIdProvider({
-      db: dbWithRows([]),
+      reader: reader(),
     });
 
     await expect(provider()).resolves.toBeNull();
   });
 
   it("ignores invalid configured id and falls back to DB lookup", async () => {
-    let call = 0;
-    const limit = vi.fn().mockImplementation(() => {
-      call += 1;
-      if (call === 1) return Promise.resolve([]);
-      return Promise.resolve([{ id: PLATFORM_ID, kind: "organisation", status: "approved" }]);
+    const mockReader = reader({
+      findConfigured: vi.fn().mockResolvedValue(null),
+      findLaxManaged: vi.fn().mockResolvedValue(PLATFORM_ID),
     });
-    const where = vi.fn().mockReturnValue({ limit });
-    const from = vi.fn().mockReturnValue({ where });
-    const select = vi.fn().mockReturnValue({ from });
-
     const provider = createPlatformCatalogLegalEntityIdProvider({
-      db: { select } as never,
+      reader: mockReader,
       configuredId: "00000000-0000-4000-8000-000000000099",
     });
 
@@ -59,23 +62,11 @@ describe("createPlatformCatalogLegalEntityIdProvider", () => {
 
   it("re-resolves when a cached platform id disappears from the database", async () => {
     const staleId = "20000000-0000-4000-8000-000000000005";
-    let call = 0;
-    const limit = vi.fn().mockImplementation(() => {
-      call += 1;
-      if (call === 1) {
-        return Promise.resolve([{ id: staleId, kind: "organisation", status: "approved" }]);
-      }
-      if (call === 2) {
-        return Promise.resolve([]);
-      }
-      return Promise.resolve([{ id: PLATFORM_ID, kind: "organisation", status: "approved" }]);
-    });
-    const where = vi.fn().mockReturnValue({ limit });
-    const from = vi.fn().mockReturnValue({ where });
-    const select = vi.fn().mockReturnValue({ from });
+    const findUsableById = vi.fn().mockResolvedValueOnce(null);
+    const findLaxManaged = vi.fn().mockResolvedValueOnce(staleId).mockResolvedValue(PLATFORM_ID);
 
     const provider = createPlatformCatalogLegalEntityIdProvider({
-      db: { select } as never,
+      reader: reader({ findUsableById, findLaxManaged }),
     });
 
     await expect(provider()).resolves.toBe(staleId);

@@ -1,14 +1,21 @@
 import type { Database } from "@auction/db";
+import { DrizzlePayoutRepository } from "@auction/persistence";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 
+/** Resolve payout repo for a transaction scope. */
+export function payoutRepoForTx(_rootRepo: IPayoutRepository, tx: Database): IPayoutRepository {
+  return new DrizzlePayoutRepository(tx);
+}
+
 /** Resolved deps record built once in PayoutService constructor (post-default coalescing). */
 export type PayoutServiceDeps = {
   repo: IPayoutRepository;
-  db: Database | undefined;
+  transactionRunner: import("@auction/persistence").ITransactionRunner | null;
   domainEventPublisher: DomainEventPublisher | undefined;
   payoutAdjustments: IPayoutAdjustmentService | undefined;
+  payoutRepoForTx: (tx: Database) => IPayoutRepository;
 };
 
 export const DEFAULT_CURRENCY = "GBP";

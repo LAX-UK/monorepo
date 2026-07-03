@@ -11,7 +11,7 @@ export async function handleDisputeCreated(
   event: Stripe.Event,
   dispute: Stripe.Dispute,
 ): Promise<PaymentWebhookResult> {
-  return deps.db.transaction(async (tx) => {
+  return deps.transactionRunner.runInTransaction(async (tx) => {
     const { claimed } = await tryClaimProcessedStripeEvent(
       tx,
       event.id,
@@ -26,7 +26,7 @@ export async function handleDisputeCreated(
       return { processed: false, reason: "missing_charge_id" };
     }
 
-    const paymentRow = await findPaymentRow(deps, tx, { chargeId });
+    const paymentRow = await findPaymentRow(deps, { chargeId });
     if (!paymentRow) {
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
     }
@@ -56,7 +56,7 @@ export async function handleDisputeFundsWithdrawn(
   event: Stripe.Event,
   dispute: Stripe.Dispute,
 ): Promise<PaymentWebhookResult> {
-  return deps.db.transaction(async (tx) => {
+  return deps.transactionRunner.runInTransaction(async (tx) => {
     const { claimed } = await tryClaimProcessedStripeEvent(
       tx,
       event.id,
@@ -71,7 +71,7 @@ export async function handleDisputeFundsWithdrawn(
       return { processed: false, reason: "missing_charge_id" };
     }
 
-    const paymentRow = await findPaymentRow(deps, tx, { chargeId });
+    const paymentRow = await findPaymentRow(deps, { chargeId });
     if (!paymentRow) {
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
     }
@@ -111,7 +111,7 @@ export async function handleDisputeClosed(
   event: Stripe.Event,
   dispute: Stripe.Dispute,
 ): Promise<PaymentWebhookResult> {
-  return deps.db.transaction(async (tx) => {
+  return deps.transactionRunner.runInTransaction(async (tx) => {
     const { claimed } = await tryClaimProcessedStripeEvent(
       tx,
       event.id,
@@ -126,7 +126,7 @@ export async function handleDisputeClosed(
       return { processed: false, reason: "missing_charge_id" };
     }
 
-    const paymentRow = await findPaymentRow(deps, tx, { chargeId });
+    const paymentRow = await findPaymentRow(deps, { chargeId });
     if (!paymentRow) {
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
     }

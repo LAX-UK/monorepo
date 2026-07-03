@@ -1,6 +1,4 @@
 import type { Database } from "@auction/db";
-import { uploadObject } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
 import { zipSync } from "fflate";
 import type {
   AdminSourceOfFundsDocumentDto,
@@ -65,7 +63,7 @@ export class SourceOfFundsDocumentCollectionStaffService
       return updated;
     };
 
-    return this.ctx.db.transaction((tx) => run(tx));
+    return this.ctx.transactionRunner.runInTransaction((tx) => run(tx));
   }
 
   async getStaffDownloadUrl(command: {
@@ -82,15 +80,11 @@ export class SourceOfFundsDocumentCollectionStaffService
     if (!doc || doc.sourceOfFundsId !== command.caseId) return null;
     if (doc.reviewStatus === "superseded") return null;
 
-    const [upload] = await this.ctx.db
-      .select({ key: uploadObject.key })
-      .from(uploadObject)
-      .where(eq(uploadObject.id, doc.uploadObjectId))
-      .limit(1);
-    if (!upload) return null;
+    const uploadKey = await this.ctx.uploadObjectReader.findKey(doc.uploadObjectId);
+    if (!uploadKey) return null;
 
     const signed = await this.ctx.storage.createPresignedGet({
-      key: upload.key,
+      key: uploadKey,
       expiresInSec: this.ctx.downloadSigningPolicy.expiresInSec,
       responseContentDisposition: command.preview
         ? `inline; filename="${sanitizeSourceOfFundsFilename(doc.fileName ?? "document")}"`
@@ -115,18 +109,14 @@ export class SourceOfFundsDocumentCollectionStaffService
     if (!doc || doc.sourceOfFundsId !== command.caseId) return null;
     if (doc.reviewStatus === "superseded") return null;
 
-    const [upload] = await this.ctx.db
-      .select({ key: uploadObject.key })
-      .from(uploadObject)
-      .where(eq(uploadObject.id, doc.uploadObjectId))
-      .limit(1);
-    if (!upload) return null;
+    const uploadKey = await this.ctx.uploadObjectReader.findKey(doc.uploadObjectId);
+    if (!uploadKey) return null;
 
-    const head = await this.ctx.storage.headObject(upload.key);
+    const head = await this.ctx.storage.headObject(uploadKey);
     if (!head) return null;
 
     const maxBytes = command.maxBytes ?? 25 * 1024 * 1024;
-    const bytes = await this.ctx.storage.getObjectBytes(upload.key, maxBytes);
+    const bytes = await this.ctx.storage.getObjectBytes(uploadKey, maxBytes);
     if (!bytes) return null;
 
     await this.auditDownload({ ...command, preview: true });
@@ -153,14 +143,10 @@ export class SourceOfFundsDocumentCollectionStaffService
     const maxBytes = 25 * 1024 * 1024;
 
     for (const doc of docs) {
-      const [upload] = await this.ctx.db
-        .select({ key: uploadObject.key })
-        .from(uploadObject)
-        .where(eq(uploadObject.id, doc.uploadObjectId))
-        .limit(1);
-      if (!upload) continue;
+      const uploadKey = await this.ctx.uploadObjectReader.findKey(doc.uploadObjectId);
+      if (!uploadKey) continue;
 
-      const bytes = await this.ctx.storage.getObjectBytes(upload.key, maxBytes);
+      const bytes = await this.ctx.storage.getObjectBytes(uploadKey, maxBytes);
       if (!bytes) continue;
 
       const safeType = doc.requestedType.replace(/[^\w\s.-]/g, "_").slice(0, 80);
@@ -203,7 +189,7 @@ export class SourceOfFundsDocumentCollectionStaffService
   }): Promise<void> {
     const events = this.ctx.events;
     if (!events) return;
-    await this.ctx.db.transaction(async (tx) => {
+    await this.ctx.transactionRunner.runInTransaction(async (tx) => {
       await events.publish(tx, {
         aggregateType: "source_of_funds",
         aggregateId: command.caseId,
@@ -225,7 +211,7 @@ export class SourceOfFundsDocumentCollectionStaffService
   ): Promise<void> {
     const events = this.ctx.events;
     if (!events) return;
-    await this.ctx.db.transaction(async (tx) => {
+    await this.ctx.transactionRunner.runInTransaction(async (tx) => {
       await events.publish(tx, {
         aggregateType: "source_of_funds",
         aggregateId: command.caseId,

@@ -21,7 +21,9 @@ function makeContainer(overrides: Partial<Container> = {}): Container {
     },
     stripeConnectService,
     stripePaymentWebhookService: null,
-    db: {},
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+    } as never,
     domainEventPublisher: {},
     marketingEventService: { enqueue: vi.fn() },
     ...overrides,

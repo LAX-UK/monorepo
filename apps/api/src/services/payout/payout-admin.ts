@@ -1,4 +1,3 @@
-import { DrizzlePayoutRepository } from "@auction/persistence";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import { addDecimal, subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
@@ -87,7 +86,7 @@ export async function markPaid(
   input: MarkPaidInput,
 ): Promise<Payout> {
   const publisher = deps.domainEventPublisher;
-  if (!deps.db || !publisher) {
+  if (!deps.transactionRunner || !publisher) {
     const found = await deps.repo.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
     if (found.status === "paid") {
@@ -104,8 +103,8 @@ export async function markPaid(
     });
   }
 
-  return await deps.db.transaction(async (tx) => {
-    const r = new DrizzlePayoutRepository(tx);
+  return await deps.transactionRunner.runInTransaction(async (tx) => {
+    const r = deps.payoutRepoForTx(tx);
     const found = await r.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
     if (found.status === "paid") {
@@ -164,12 +163,12 @@ export async function reconcileStripeTransfer(
   };
 
   const publisher = deps.domainEventPublisher;
-  if (!deps.db || !publisher) {
+  if (!deps.transactionRunner || !publisher) {
     return await deps.repo.reconcileStripeTransfer(found.id, patch);
   }
 
-  return await deps.db.transaction(async (tx) => {
-    const r = new DrizzlePayoutRepository(tx);
+  return await deps.transactionRunner.runInTransaction(async (tx) => {
+    const r = deps.payoutRepoForTx(tx);
     const row = await r.findById(found.id);
     if (!row) return null;
     const previousStatus = row.status;
@@ -248,7 +247,7 @@ export async function adminManualReverse(
   input: { reason: string },
 ): Promise<Payout> {
   const publisher = deps.domainEventPublisher;
-  if (!deps.db || !publisher) {
+  if (!deps.transactionRunner || !publisher) {
     const found = await deps.repo.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
     if (found.status !== "paid" && found.status !== "in_transit") {
@@ -260,8 +259,8 @@ export async function adminManualReverse(
     });
   }
 
-  return await deps.db.transaction(async (tx) => {
-    const r = new DrizzlePayoutRepository(tx);
+  return await deps.transactionRunner.runInTransaction(async (tx) => {
+    const r = deps.payoutRepoForTx(tx);
     const found = await r.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
     if (found.status !== "paid" && found.status !== "in_transit") {

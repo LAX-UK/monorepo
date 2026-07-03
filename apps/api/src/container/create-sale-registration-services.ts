@@ -51,18 +51,18 @@ export function createSaleRegistrationServices(
     legalEntityRepository,
     amlHoldStore,
   } = repos;
-  const { transactionalMailer, domainEventPublisher } = platform;
+  const { transactionalMailer, domainEventSink } = platform;
   const { kycService } = complianceMedia;
 
   const telephoneBookingNotifier = new TelephoneBookingNotifier(
-    db,
+    repos.userRepo,
+    repos.saleRepo,
     transactionalMailer,
     repos.notificationWriteRepo,
     env.WEB_ORIGIN,
     env.OPS_SUPPORT_EMAIL,
   );
   const telephoneBidBookingService = buildTelephoneBidBookingService({
-    db,
     repo: telephoneBidBookingRepo,
     detailReader: new DrizzleTelephoneBidBookingDetailReader(db),
     saleRepo,
@@ -71,7 +71,7 @@ export function createSaleRegistrationServices(
     legalEntityRepository,
     kycService,
     amlHoldStore,
-    domainEventPublisher,
+    domainEventSink,
     notifier: telephoneBookingNotifier,
   });
 

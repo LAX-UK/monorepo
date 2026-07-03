@@ -77,6 +77,52 @@ export class DrizzlePaymentRefundReconcileRepository implements IPaymentRefundRe
       })
       .where(eq(paymentRefundReconcile.paymentId, paymentId));
   }
+
+  async listPendingStripeCaptureSync(limit: number) {
+    const rows = await this.db
+      .select({
+        paymentId: paymentExternalRef.paymentId,
+        amount: payment.amount,
+      })
+      .from(paymentExternalRef)
+      .innerJoin(payment, eq(payment.id, paymentExternalRef.paymentId))
+      .where(
+        and(
+          sql`${paymentExternalRef.xeroInvoiceId} IS NOT NULL`,
+          isNull(paymentExternalRef.xeroPaymentId),
+          eq(payment.status, "captured"),
+        ),
+      )
+      .orderBy(paymentExternalRef.updatedAt)
+      .limit(limit);
+    return rows.map((r) => ({ paymentId: r.paymentId, amount: String(r.amount) }));
+  }
+
+  async listPaymentsMissingXeroInvoice(limit: number) {
+    const rows = await this.db
+      .select({
+        paymentId: payment.id,
+        lotId: payment.lotId,
+        buyerId: payment.buyerId,
+        amount: payment.amount,
+      })
+      .from(payment)
+      .leftJoin(paymentExternalRef, eq(paymentExternalRef.paymentId, payment.id))
+      .where(
+        and(
+          inArray(payment.status, ["pending", "authorized", "captured"]),
+          isNull(paymentExternalRef.xeroInvoiceId),
+        ),
+      )
+      .orderBy(payment.createdAt)
+      .limit(limit);
+    return rows.map((r) => ({
+      paymentId: r.paymentId,
+      lotId: r.lotId,
+      buyerId: r.buyerId,
+      amount: String(r.amount),
+    }));
+  }
 }
 
 export type PendingStripeCaptureSyncRow = {
@@ -88,23 +134,7 @@ export async function listPendingStripeCaptureSync(
   db: Database,
   limit: number,
 ): Promise<PendingStripeCaptureSyncRow[]> {
-  const rows = await db
-    .select({
-      paymentId: paymentExternalRef.paymentId,
-      amount: payment.amount,
-    })
-    .from(paymentExternalRef)
-    .innerJoin(payment, eq(payment.id, paymentExternalRef.paymentId))
-    .where(
-      and(
-        sql`${paymentExternalRef.xeroInvoiceId} IS NOT NULL`,
-        isNull(paymentExternalRef.xeroPaymentId),
-        eq(payment.status, "captured"),
-      ),
-    )
-    .orderBy(paymentExternalRef.updatedAt)
-    .limit(limit);
-  return rows.map((r) => ({ paymentId: r.paymentId, amount: String(r.amount) }));
+  return new DrizzlePaymentRefundReconcileRepository(db).listPendingStripeCaptureSync(limit);
 }
 
 export type MissingXeroInvoiceRow = {
@@ -126,27 +156,5 @@ export async function listPaymentsMissingXeroInvoice(
   db: Database,
   limit: number,
 ): Promise<MissingXeroInvoiceRow[]> {
-  const rows = await db
-    .select({
-      paymentId: payment.id,
-      lotId: payment.lotId,
-      buyerId: payment.buyerId,
-      amount: payment.amount,
-    })
-    .from(payment)
-    .leftJoin(paymentExternalRef, eq(paymentExternalRef.paymentId, payment.id))
-    .where(
-      and(
-        inArray(payment.status, ["pending", "authorized", "captured"]),
-        isNull(paymentExternalRef.xeroInvoiceId),
-      ),
-    )
-    .orderBy(payment.createdAt)
-    .limit(limit);
-  return rows.map((r) => ({
-    paymentId: r.paymentId,
-    lotId: r.lotId,
-    buyerId: r.buyerId,
-    amount: String(r.amount),
-  }));
+  return new DrizzlePaymentRefundReconcileRepository(db).listPaymentsMissingXeroInvoice(limit);
 }

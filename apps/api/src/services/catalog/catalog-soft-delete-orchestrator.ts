@@ -1,9 +1,8 @@
-import type { Database } from "@auction/db";
 import type { Lot, Sale, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../../lib/errors.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ILotJobScheduler } from "../interfaces/job-scheduler.js";
 import type { ILotSoftDeleteSideEffects } from "../interfaces/lot-soft-delete.js";
 import type { ISaleSoftDeleteSideEffects } from "../interfaces/sale-soft-delete.js";
@@ -13,8 +12,7 @@ import { type SaleSoftDeleteContext, validateSaleSoftDelete } from "../sale-soft
 export class CatalogSoftDeleteOrchestrator {
   constructor(
     private readonly jobScheduler: ILotJobScheduler | null,
-    private readonly db: Database | null,
-    private readonly domainEventPublisher: DomainEventPublisher | null,
+    private readonly domainEventSink: IDomainEventSink | null,
   ) {}
 
   assertAuctionManageCapability(
@@ -107,8 +105,8 @@ export class CatalogSoftDeleteOrchestrator {
     lot: Lot,
     deletedAt: Date,
   ): Promise<void> {
-    if (!this.db || !this.domainEventPublisher) return;
-    await this.domainEventPublisher.publish(this.db, {
+    if (!this.domainEventSink) return;
+    await this.domainEventSink.publish({
       aggregateType: "lot",
       aggregateId: lot.id,
       eventType: "lot.soft_deleted",
@@ -128,8 +126,8 @@ export class CatalogSoftDeleteOrchestrator {
     lotCount: number,
     deletedAt: Date,
   ): Promise<void> {
-    if (!this.db || !this.domainEventPublisher) return;
-    await this.domainEventPublisher.publish(this.db, {
+    if (!this.domainEventSink) return;
+    await this.domainEventSink.publish({
       aggregateType: "sale",
       aggregateId: sale.id,
       eventType: "sale.soft_deleted",

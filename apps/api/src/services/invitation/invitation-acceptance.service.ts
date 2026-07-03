@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { IInvitationRepository } from "../../repositories/interfaces/invitation.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
@@ -11,7 +11,7 @@ type AcceptVia = "invitation_token" | "invitation_id";
 
 export class InvitationAcceptanceService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly repo: IInvitationRepository,
     private readonly tokenService: InvitationTokenService,
     private readonly notifications: InvitationNotificationService,
@@ -68,7 +68,7 @@ export class InvitationAcceptanceService {
   ): Promise<InvitationOutcome> {
     const emailNorm = this.tokenService.normalizeEmail(userEmail);
 
-    const txResult = await this.db.transaction(async (tx) => {
+    const txResult = await this.transactionRunner.runInTransaction(async (tx) => {
       const txRepo = this.repo.forConnection(tx);
       const invite = await loadInvite(txRepo);
       const validation = this.validatePendingEntityInvitation(invite, emailNorm, true);
@@ -152,7 +152,7 @@ export class InvitationAcceptanceService {
       return { ok: false, code: "invitation_not_entity_scoped" };
     }
 
-    await this.db.transaction(async (tx) => {
+    await this.transactionRunner.runInTransaction(async (tx) => {
       const txRepo = this.repo.forConnection(tx);
       await txRepo.markInvitationRevoked(invitationId);
 

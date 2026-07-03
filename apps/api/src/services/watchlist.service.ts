@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { DbTransaction, ITransactionRunner } from "@auction/persistence";
 import type { MarketingEvent } from "@auction/types";
 import type { Lot } from "@auction/types";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
@@ -24,8 +24,8 @@ export class WatchlistService {
   constructor(
     private readonly watchlist: IWatchlistRepository,
     private readonly lots: ILotRepository,
-    private readonly db?: Database,
-    private readonly marketingEvents?: IMarketingEventService,
+    private readonly transactionRunner: ITransactionRunner,
+    private readonly marketingEvents: IMarketingEventService,
   ) {}
 
   async addWithMarketingEvent(
@@ -33,14 +33,10 @@ export class WatchlistService {
     lotId: string,
     event: MarketingEvent,
   ): Promise<WatchlistRow> {
-    if (!this.db || !this.marketingEvents) {
-      throw new Error("watchlist_marketing_not_configured");
-    }
-    const marketingEvents = this.marketingEvents;
-    return this.db.transaction(async (tx) => {
+    return this.transactionRunner.runInTransaction(async (tx) => {
       const added = await this.add(userId, lotId, tx);
       if (!added) throw new Error("watchlist_insert_failed");
-      await marketingEvents.stage(event, tx);
+      await this.marketingEvents.stage(event, tx);
       return added;
     });
   }
@@ -50,23 +46,19 @@ export class WatchlistService {
     lotId: string,
     event: MarketingEvent,
   ): Promise<void> {
-    if (!this.db || !this.marketingEvents) {
-      throw new Error("watchlist_marketing_not_configured");
-    }
-    const marketingEvents = this.marketingEvents;
-    await this.db.transaction(async (tx) => {
+    await this.transactionRunner.runInTransaction(async (tx) => {
       await this.remove(userId, lotId, tx);
-      await marketingEvents.stage(event, tx);
+      await this.marketingEvents.stage(event, tx);
     });
   }
 
-  async add(userId: string, lotId: string, conn?: Database): Promise<WatchlistRow | null> {
+  async add(userId: string, lotId: string, conn?: DbTransaction): Promise<WatchlistRow | null> {
     const lot = await this.lots.findById(lotId);
     if (!lot) return null;
     return this.watchlist.add(userId, lotId, conn);
   }
 
-  remove(userId: string, lotId: string, conn?: Database): Promise<void> {
+  remove(userId: string, lotId: string, conn?: DbTransaction): Promise<void> {
     return this.watchlist.remove(userId, lotId, conn);
   }
 

@@ -13,8 +13,8 @@ export async function recordLifecycle(
   deps: LotServiceDeps,
   fn: (tx: Database) => Promise<void>,
 ): Promise<void> {
-  if (!deps.db || !deps.lotLifecycleRecording) return;
-  await deps.db.transaction(async (tx) => fn(tx));
+  if (!deps.transactionRunner || !deps.lotLifecycleRecording) return;
+  await deps.transactionRunner.runInTransaction(fn);
 }
 
 export function publishSingleLotDeps(deps: LotServiceDeps) {
@@ -22,7 +22,8 @@ export function publishSingleLotDeps(deps: LotServiceDeps) {
     lotRepo: deps.lotRepo,
     jobScheduler: deps.jobScheduler,
     lotLifecycleRecording: deps.lotLifecycleRecording,
-    db: deps.db ?? null,
+    transactionRunner: deps.transactionRunner ?? null,
+    repoFactory: deps.repoFactory ?? null,
     recordLotLifecycle: (fn: (tx: Database) => Promise<void>) => recordLifecycle(deps, fn),
     legalEntityRepository: deps.legalEntityRepository,
     enforceIndividualConnectOnPublish: deps.enforceIndividualConnectOnPublish,

@@ -2,6 +2,7 @@ import { type Auth, DEFAULT_JWT_AUDIENCE, createAuth } from "@auction/auth/serve
 import { publishUserRegistered } from "@auction/db";
 import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
+import { DrizzleUserEmailVerifiedPublisher } from "@auction/persistence";
 import {
   ConsolePhoneVerificationService,
   type IPhoneVerificationService,
@@ -79,7 +80,8 @@ export function createContainerAuth(input: CreateAuthInput): ContainerAuth {
       const { publishUserEmailVerified } = await import(
         "../services/publish-user-email-verified.js"
       );
-      await publishUserEmailVerified(db, {
+      const publisher = new DrizzleUserEmailVerifiedPublisher(db);
+      await publishUserEmailVerified(publisher, {
         userId: authUser.id,
         email: authUser.email,
       });

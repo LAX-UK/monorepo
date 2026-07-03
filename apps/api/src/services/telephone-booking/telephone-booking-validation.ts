@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence";
 import type { TelephoneBidBooking } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
@@ -27,7 +26,6 @@ export function telephoneBookingErr(
 }
 
 export type TelephoneBookingValidationDeps = {
-  db: Database;
   repo: ITelephoneBidBookingRepository;
   legalEntityRepository: ILegalEntityRepository;
   kycService: IKycService | null;

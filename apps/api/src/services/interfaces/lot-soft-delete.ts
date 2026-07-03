@@ -23,13 +23,7 @@ export type LotBulkSoftDeleteResult = {
   orphanDraftSales: Array<{ id: string; title: string }>;
 };
 
-export interface ILotSoftDeleteSideEffects {
-  softDeleteLot(input: {
-    lotId: string;
-    actorUserId: string;
-    deletedAt: Date;
-  }): Promise<void>;
-}
+export type { ILotSoftDeleteSideEffects } from "@auction/persistence";
 
 export interface ILotSoftDeleteService {
   getDeleteEligibility(lotId: string): Promise<LotDeleteEligibility | null>;

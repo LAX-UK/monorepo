@@ -1,20 +1,21 @@
 import type { Database } from "@auction/db";
 import {
-  DrizzleConditionReportRequestRepository,
   DrizzleLotSoftDeleteGuardReader,
+  DrizzleLotSoftDeleteSideEffects,
   DrizzleLotTransitionGuardReader,
   DrizzleSaleSoftDeleteGuardReader,
+  DrizzleSaleSoftDeleteSideEffects,
+  type ILotCancelledLifecycleRecorder,
   SalePressArchiveRepository,
   createDrizzleLotTransitionRepository,
 } from "@auction/persistence";
+import type { LotCancelledPayload } from "../domain/lot-events.js";
 import type { Env } from "../env.js";
 import { LotJobScheduler } from "../jobs/lot-job-scheduler.js";
 import {
   type PlatformCatalogLegalEntityIdProvider,
   createPlatformCatalogLegalEntityIdProvider,
 } from "../lib/platform-catalog-legal-entity.js";
-import { DrizzleLotSoftDeleteSideEffects } from "../repositories/drizzle-lot-soft-delete.side-effects.js";
-import { DrizzleSaleSoftDeleteSideEffects } from "../repositories/drizzle-sale-soft-delete.side-effects.js";
 import { ArtistDeleteService } from "../services/artist-delete.service.js";
 import { ArtistProfileService } from "../services/artist-profile.service.js";
 import { CatalogSoftDeleteOrchestrator } from "../services/catalog/catalog-soft-delete-orchestrator.js";
@@ -52,6 +53,16 @@ import type { ContainerLotLifecycle } from "./create-lot-lifecycle.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 import type { ContainerSaleRegistrationServices } from "./create-sale-registration-services.js";
+
+function asLotCancelledRecorder(
+  recorder: ContainerPlatformServices["lotLifecycleRecording"],
+): ILotCancelledLifecycleRecorder | null {
+  if (!recorder) return null;
+  return {
+    recordCancelled: (tx, lot, reason, actorUserId) =>
+      recorder.recordCancelled(tx, lot, reason as LotCancelledPayload["reason"], actorUserId),
+  };
+}
 
 export type ContainerLotCatalogServices = {
   lotJobScheduler: ILotJobScheduler;
@@ -121,6 +132,8 @@ export function createLotCatalogServices(
   const {
     userNotificationPublisher,
     domainEventPublisher,
+    domainEventSink,
+    transactionRunner,
     notificationDispatcher,
     notificationFactory,
     lotLifecycleRecording,
@@ -142,7 +155,7 @@ export function createLotCatalogServices(
   const lotTransitionGuardReader = new DrizzleLotTransitionGuardReader(db);
   const lotTransitionRepository = createDrizzleLotTransitionRepository(db);
   const lotTransitionOrchestrator = new LotTransitionOrchestrator(
-    db,
+    transactionRunner,
     lotTransitionRepository,
     lotTransitionGuardReader,
     lotLifecycleRecording,
@@ -166,7 +179,7 @@ export function createLotCatalogServices(
     legalEntityNotificationRecipients,
     legalEntityRepository,
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
-    db,
+    transactionRunner,
     domainEventPublisher,
     mediaUrlResolver,
     catalogueMediaUrlResolver,
@@ -179,20 +192,19 @@ export function createLotCatalogServices(
     repoFactory,
   });
 
-  const conditionReportRequestRepo = new DrizzleConditionReportRequestRepository(db);
   const conditionReportService = new ConditionReportService(
-    db,
+    transactionRunner,
     lotRepo,
     legalEntityRepository,
-    domainEventPublisher,
+    domainEventSink,
     notificationDispatcher,
     notificationFactory,
-    conditionReportRequestRepo,
+    repos.conditionReportRequestRepository,
   );
 
   const saleFollowService = new SaleFollowService(saleFollowRepo, saleRepo);
   const resolvePlatformCatalogLegalEntityId = createPlatformCatalogLegalEntityIdProvider({
-    db,
+    reader: repos.platformCatalogLegalEntityReader,
     configuredId: env.PLATFORM_CATALOG_LEGAL_ENTITY_ID,
   });
   const salePublishService: ISalePublishService = new SalePublishService({
@@ -206,8 +218,9 @@ export function createLotCatalogServices(
     catalogueMediaUrlResolver,
     mediaAssetEnricher,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
-    db,
+    transactionRunner,
     domainEventPublisher,
+    domainEventSink,
     lotLifecycleRecording,
     legalEntityRepository,
     venueRepository: venueRepo,
@@ -226,8 +239,9 @@ export function createLotCatalogServices(
     catalogueMediaUrlResolver,
     mediaAssetEnricher,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
-    db,
+    transactionRunner,
     domainEventPublisher,
+    domainEventSink,
     lotLifecycleRecording,
     legalEntityRepository,
     venueRepository: venueRepo,
@@ -247,12 +261,12 @@ export function createLotCatalogServices(
   );
   const catalogSoftDeleteOrchestrator = new CatalogSoftDeleteOrchestrator(
     lotJobScheduler,
-    db,
-    domainEventPublisher,
+    domainEventSink,
   );
   const lotSoftDeleteGuardReader = new DrizzleLotSoftDeleteGuardReader(db);
   const saleSoftDeleteGuardReader = new DrizzleSaleSoftDeleteGuardReader(db);
-  const saleSoftDeleteSideEffects = new DrizzleSaleSoftDeleteSideEffects(db, lotLifecycleRecording);
+  const lotCancelledRecorder = asLotCancelledRecorder(lotLifecycleRecording);
+  const saleSoftDeleteSideEffects = new DrizzleSaleSoftDeleteSideEffects(db, lotCancelledRecorder);
   const saleSoftDeleteService = new SaleSoftDeleteService(
     saleRepo,
     lotRepo,
@@ -260,7 +274,7 @@ export function createLotCatalogServices(
     saleSoftDeleteSideEffects,
     catalogSoftDeleteOrchestrator,
   );
-  const lotSoftDeleteSideEffects = new DrizzleLotSoftDeleteSideEffects(db, lotLifecycleRecording);
+  const lotSoftDeleteSideEffects = new DrizzleLotSoftDeleteSideEffects(db, lotCancelledRecorder);
   const lotSoftDeleteService = new LotSoftDeleteService(
     lotRepo,
     saleRepo,
@@ -272,7 +286,7 @@ export function createLotCatalogServices(
     saleRepo,
     lotRepo,
     lotJobScheduler,
-    db,
+    transactionRunner,
     lotLifecycleRecording,
     legalEntityRepository,
     stripeConnectService.isConfigured(),
@@ -282,8 +296,8 @@ export function createLotCatalogServices(
     saleRepo,
     lotRepo,
     lotJobScheduler,
-    db,
-    domainEventPublisher,
+    transactionRunner,
+    domainEventSink,
     lotLifecycleRecording,
     legalEntityRepository,
     stripeConnectService.isConfigured(),
@@ -293,7 +307,7 @@ export function createLotCatalogServices(
 
   const saleBiddersService = new SaleBiddersService(saleBiddersReader, saleRepo);
   const itemSubmissionService = new ItemSubmissionService(
-    db,
+    transactionRunner,
     itemSubmissionRepository,
     userRepo,
     notificationDispatcher,
@@ -301,19 +315,20 @@ export function createLotCatalogServices(
     legalEntityNotificationRecipients,
     legalEntityRepository,
     domainEventPublisher,
+    domainEventSink,
     mediaUrlResolver,
     mediaAssetEnricher,
     lotLifecycleRecording,
     repoFactory,
   );
 
-  const categoryService = new CategoryService(categoryRepo, db, domainEventPublisher);
-  const venueService = new VenueService(venueRepo, db, domainEventPublisher);
+  const categoryService = new CategoryService(categoryRepo, domainEventSink);
+  const venueService = new VenueService(venueRepo, domainEventSink);
   const artistProfileService = new ArtistProfileService(artistProfileRepo, artistRegistryService);
   const artistDeleteService = new ArtistDeleteService(
     artistProfileRepo,
     artistProfileRepo,
-    db,
+    transactionRunner,
     domainEventPublisher,
   );
 

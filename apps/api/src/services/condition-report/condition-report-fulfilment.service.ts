@@ -46,7 +46,7 @@ export class ConditionReportFulfilmentService implements IConditionReportFulfilm
     const lotId = reqRow.lotId;
 
     try {
-      await this.ctx.db.transaction(async (tx) => {
+      await this.ctx.transactionRunner.runInTransaction(async (tx) => {
         const [current] = await tx
           .select()
           .from(lot)
@@ -79,8 +79,8 @@ export class ConditionReportFulfilmentService implements IConditionReportFulfilm
           tx,
         );
 
-        if (this.ctx.domainEventPublisher) {
-          await this.ctx.domainEventPublisher.publish(tx, {
+        if (this.ctx.domainEventSink) {
+          await this.ctx.domainEventSink.withTx(tx).publish({
             aggregateType: "lot",
             aggregateId: lotId,
             eventType: "condition_report.fulfilled",
@@ -125,7 +125,7 @@ export class ConditionReportFulfilmentService implements IConditionReportFulfilm
       return err({ message: "Request is not awaiting fulfilment", status: 400 });
     }
 
-    await this.ctx.db.transaction(async (tx) => {
+    await this.ctx.transactionRunner.runInTransaction(async (tx) => {
       await this.ctx.requestRepo.updateById(
         input.id,
         {
@@ -137,8 +137,8 @@ export class ConditionReportFulfilmentService implements IConditionReportFulfilm
         tx,
       );
 
-      if (this.ctx.domainEventPublisher) {
-        await this.ctx.domainEventPublisher.publish(tx, {
+      if (this.ctx.domainEventSink) {
+        await this.ctx.domainEventSink.withTx(tx).publish({
           aggregateType: "lot",
           aggregateId: reqRow.lotId,
           eventType: "condition_report.declined",

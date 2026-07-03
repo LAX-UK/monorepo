@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ILegalEntityNotificationRecipientReader } from "../interfaces/legal-entity-notification-recipients.js";
@@ -93,11 +92,10 @@ function testRepoFactory(): IRepositoryFactory {
 }
 
 function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmissionServiceDeps {
-  const db = {
-    transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
-  } as unknown as Database;
   return {
-    db,
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({}),
+    } as never,
     submissions: {} as never,
     users: {} as never,
     dispatcher: {
@@ -107,6 +105,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     legalEntityNotificationRecipients: null,
     legalEntityRepository: null,
     domainEventPublisher: null,
+    domainEventSink: null,
     mediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
     lotLifecycleRecording: {

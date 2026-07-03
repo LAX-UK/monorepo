@@ -1,7 +1,16 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import { PayoutAdjustmentService } from "./payout-adjustment.service.js";
+
+vi.mock("./payout-helpers.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./payout-helpers.js")>();
+  return {
+    ...actual,
+    payoutRepoForTx: (rootRepo: IPayoutRepository) => rootRepo,
+  };
+});
 
 describe("PayoutAdjustmentService aggregated refund lines", () => {
   it("updates an existing refund line instead of inserting a duplicate", async () => {
@@ -72,7 +81,7 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
     const db = {
       transaction: vi.fn(async (fn: (tx: Database) => Promise<void>) => fn(db as Database)),
     } as unknown as Database;
-    const svc = new PayoutAdjustmentService(db, repo);
+    const svc = new PayoutAdjustmentService(transactionRunnerFromDb(db), repo);
 
     await svc.addPaymentLineToOpenPayoutOrCreateClawback({
       legalEntityId: openPayout.legalEntityId,

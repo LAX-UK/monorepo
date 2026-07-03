@@ -22,7 +22,9 @@ function mountAuth(opts: {
     authCredentialReader: {
       hasCredentialAccount: vi.fn(async () => opts.hasCredential ?? false),
     },
-    db: {},
+    transactionRunner: {
+      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+    } as never,
     emailService: { enqueue: vi.fn() },
     userService: {},
   };

@@ -1,5 +1,6 @@
 import { statusFromLegalEntityRow } from "@auction/connect";
-import type { Database } from "@auction/db";
+import type { DbTransaction } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
@@ -31,7 +32,7 @@ export class ConnectAccountService {
 
   constructor(
     env: Pick<Env, "LOG_LEVEL" | "NODE_ENV">,
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly connectReader: ILegalEntityConnectReader,
     private readonly connectRepository: ILegalEntityConnectRepository,
     private readonly stripeFactory: IStripeClientFactory,
@@ -177,22 +178,42 @@ export class ConnectAccountService {
     return this.statusFromRow(refreshed);
   }
 
-  async applyAccountUpdate(account: Stripe.Account, db: Database = this.db): Promise<void> {
+  async applyAccountUpdate(account: Stripe.Account, tx?: DbTransaction): Promise<void> {
+    if (tx) {
+      await this.applyAccountUpdateInConnection(account, tx);
+      return;
+    }
+    await this.transactionRunner.runInTransaction(async (conn) => {
+      await this.applyAccountUpdateInConnection(account, conn);
+    });
+  }
+
+  private async applyAccountUpdateInConnection(
+    account: Stripe.Account,
+    conn: DbTransaction,
+  ): Promise<void> {
     const row = await this.connectReader.findLegalEntityRowByStripeAccountId(account.id);
     if (!row) {
       recordMoneyPathEvent("stripe_connect_webhook_orphan_account");
       return;
     }
-    await this.lifecyclePromoter.applyStripeAccountFlags(account, row, db);
+    await this.lifecyclePromoter.applyStripeAccountFlags(account, row, conn);
   }
 
-  async applyAccountDeauthorized(stripeAccountId: string, db: Database = this.db): Promise<void> {
-    const repo = this.connectRepository.forConnection(db);
-    const updated = await repo.applyDeauthorized(stripeAccountId, db);
-    if (!updated) {
-      recordMoneyPathEvent("stripe_connect_webhook_orphan_account");
+  async applyAccountDeauthorized(stripeAccountId: string, tx?: DbTransaction): Promise<void> {
+    const run = async (conn: DbTransaction) => {
+      const repo = this.connectRepository.forConnection(conn);
+      const updated = await repo.applyDeauthorized(stripeAccountId, conn);
+      if (!updated) {
+        recordMoneyPathEvent("stripe_connect_webhook_orphan_account");
+        return;
+      }
+      recordMoneyPathEvent("stripe_connect_account_deauthorized");
+    };
+    if (tx) {
+      await run(tx);
       return;
     }
-    recordMoneyPathEvent("stripe_connect_account_deauthorized");
+    await this.transactionRunner.runInTransaction(run);
   }
 }

@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { Env } from "../../env.js";
 import type { VeriffClient } from "../../lib/veriff/veriff-client.js";
 import { VeriffWebhookSignatureError } from "../../lib/veriff/veriff-webhook-verifier.js";
@@ -22,14 +22,14 @@ export class VeriffKycService implements IKycService {
   constructor(
     env: Env,
     repo: IKycRepository,
-    db: Database | null = null,
+    transactionRunner: ITransactionRunner | null = null,
     marketingEvents: IMarketingEventService | null = null,
     veriffClient?: VeriffClient,
   ) {
     const deps = createKycServiceDeps({
       env,
       repo,
-      db,
+      transactionRunner,
       marketingEvents,
       ...(veriffClient !== undefined ? { veriffClient } : {}),
     });

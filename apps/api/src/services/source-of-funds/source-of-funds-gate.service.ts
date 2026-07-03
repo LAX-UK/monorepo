@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { SettlementComplianceInput } from "../aml/settlement-compliance.policy.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type {
@@ -34,7 +35,7 @@ export class SourceOfFundsGateService implements ISourceOfFundsGateService {
   constructor(
     private readonly repo: ISourceOfFundsRepository,
     private readonly config: SourceOfFundsConfig,
-    private readonly db: Database | null = null,
+    private readonly transactionRunner: ITransactionRunner | null = null,
     private readonly events: DomainEventPublisher | null = null,
   ) {}
 
@@ -131,7 +132,7 @@ export class SourceOfFundsGateService implements ISourceOfFundsGateService {
       return created;
     };
 
-    if (this.db) return this.db.transaction((tx) => run(tx));
+    if (this.transactionRunner) return this.transactionRunner.runInTransaction((tx) => run(tx));
     return run();
   }
 }

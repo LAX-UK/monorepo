@@ -26,8 +26,8 @@ function baseDeps(overrides: Partial<RefundLedgerDeps> = {}): RefundLedgerDeps {
     payments: {
       applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     } as unknown as IPaymentWriteRepository,
-    db: {
-      transaction: vi.fn(async (fn: (t: never) => Promise<void>) => fn(tx)),
+    transactionRunner: {
+      runInTransaction: vi.fn(async (fn: (t: never) => Promise<void>) => fn(tx)),
     } as never,
     domainEventPublisher: {
       publish: vi.fn().mockResolvedValue(undefined),
@@ -133,8 +133,8 @@ describe("executePaymentRefundLedger", () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const deps = baseDeps({
-      db: {
-        transaction: vi.fn().mockRejectedValue(new Error("tx failed")),
+      transactionRunner: {
+        runInTransaction: vi.fn().mockRejectedValue(new Error("tx failed")),
       } as never,
       paymentRefundReconcile: { enqueue } as unknown as PaymentRefundReconcileService,
     });

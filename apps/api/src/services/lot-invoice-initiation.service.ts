@@ -1,9 +1,8 @@
-import type { Database } from "@auction/db";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../lib/decimal-money.js";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
@@ -41,11 +40,10 @@ export class LotInvoiceInitiationService {
     private readonly accounting: IInvoiceAccountingProvider,
     private readonly notificationOutbox: INotificationOutboxService,
     private readonly notificationFactory: NotificationFactory,
-    private readonly domainEventPublisher: DomainEventPublisher,
+    private readonly domainEventSink: IDomainEventSink,
     private readonly lotFulfilmentHooks: ILotFulfilmentPaymentHook | null,
     private readonly legalEntityRepository: ILegalEntityRepository | null,
     private readonly users: IUserRepository,
-    private readonly db: Database,
   ) {}
 
   async ensureForLot(lotId: string): Promise<EnsureLotInvoiceResult> {
@@ -140,7 +138,7 @@ export class LotInvoiceInitiationService {
     }
 
     if (reviewDecision.requiresManualReview && reviewDecision.manualReviewReason) {
-      await this.domainEventPublisher.publish(this.db, {
+      await this.domainEventSink.publish({
         aggregateType: "payment",
         aggregateId: created.id,
         eventType: "payment.requires_manual_review",

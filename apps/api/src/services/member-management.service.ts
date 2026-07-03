@@ -1,7 +1,7 @@
-import type { Database } from "@auction/db";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { LegalEntityMember } from "@auction/types";
 import type { ILegalEntityMemberRepository } from "../repositories/interfaces/legal-entity-member.repository.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import {
   type IMemberManagementService,
   MemberPermissionError,
@@ -12,9 +12,9 @@ import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
 export class MemberManagementService implements IMemberManagementService {
   constructor(
-    private readonly db: Database,
+    private readonly transactionRunner: ITransactionRunner,
     private readonly memberRepo: ILegalEntityMemberRepository,
-    private readonly domainEventPublisher: DomainEventPublisher,
+    private readonly domainEventSink: IDomainEventSink,
     private readonly repoFactory: IRepositoryFactory,
   ) {}
 
@@ -43,7 +43,7 @@ export class MemberManagementService implements IMemberManagementService {
     const prevRole = target.role;
     const updated = await this.memberRepo.updateRole(memberId, input.role);
     if (prevRole !== input.role) {
-      await this.domainEventPublisher.publish(this.db, {
+      await this.domainEventSink.publish({
         aggregateType: "legal_entity",
         aggregateId: legalEntityId,
         eventType: "legal_entity.member_role_changed",
@@ -72,7 +72,7 @@ export class MemberManagementService implements IMemberManagementService {
       throw new MemberPermissionError("cannot_remove_primary_admin");
     }
 
-    await this.db.transaction(async (tx) => {
+    await this.transactionRunner.runInTransaction(async (tx) => {
       const bids = this.repoFactory.forConnection(tx).bid;
       const pairs = await bids.listActiveProxyBidPairsForMemberOnEntity(
         target.userId,
@@ -81,7 +81,7 @@ export class MemberManagementService implements IMemberManagementService {
       for (const { lotId, bidderId } of pairs) {
         const cleared = await bids.clearProxyAutoBidForBidderOnLot(lotId, bidderId);
         if (cleared > 0) {
-          await this.domainEventPublisher.publish(tx, {
+          await this.domainEventSink.withTx(tx).publish({
             aggregateType: "lot",
             aggregateId: lotId,
             eventType: "bid.proxy_cancelled",
@@ -101,7 +101,7 @@ export class MemberManagementService implements IMemberManagementService {
 
       await this.memberRepo.markRemoved(tx, memberId);
 
-      await this.domainEventPublisher.publish(tx, {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: "legal_entity",
         aggregateId: legalEntityId,
         eventType: "legal_entity.member_removed",
@@ -132,7 +132,7 @@ export class MemberManagementService implements IMemberManagementService {
       throw new MemberPermissionError("cannot_transfer_to_self");
     }
 
-    return await this.db.transaction(async (tx) => {
+    return await this.transactionRunner.runInTransaction(async (tx) => {
       const from = await this.memberRepo.demotePrimaryAdmin(tx, me.id);
       const to = await this.memberRepo.promotePrimaryAdmin(tx, toMemberId);
       return { from, to };

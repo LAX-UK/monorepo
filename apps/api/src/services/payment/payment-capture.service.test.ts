@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { PaymentCaptureNotAppliedError } from "../../lib/errors.js";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { PaymentCaptureService } from "./payment-capture.service.js";
+
+function makeTxRunner() {
+  return transactionRunnerFromDb({
+    transaction: (fn: (tx: unknown) => unknown) => fn({}),
+  } as never);
+}
 
 function makeCaptureService(deps: {
   payments: Record<string, unknown>;
@@ -11,7 +18,7 @@ function makeCaptureService(deps: {
   } | null;
 }) {
   return new PaymentCaptureService(
-    { transaction: (fn: (tx: unknown) => unknown) => fn({}) } as never,
+    makeTxRunner(),
     deps.payments as never,
     { findById: vi.fn() } as never,
     { findById: vi.fn() } as never,
@@ -59,7 +66,7 @@ describe("PaymentCaptureService", () => {
     };
 
     const svc = new PaymentCaptureService(
-      { transaction: (fn: (tx: unknown) => unknown) => fn({}) } as never,
+      makeTxRunner(),
       payments as never,
       {
         findById: vi.fn().mockResolvedValue({ id: "lot1", sellerLegalEntityId: "le_seller" }),
@@ -149,7 +156,7 @@ describe("PaymentCaptureService", () => {
     };
 
     const svc = new PaymentCaptureService(
-      { transaction: (fn: (tx: unknown) => unknown) => fn({}) } as never,
+      makeTxRunner(),
       payments as never,
       { findById: vi.fn() } as never,
       { findById: vi.fn().mockResolvedValue({ name: "Buyer", email: "b@test.com" }) } as never,
@@ -239,7 +246,7 @@ describe("PaymentCaptureService", () => {
     };
 
     const svc = new PaymentCaptureService(
-      { transaction: (fn: (tx: unknown) => unknown) => fn({}) } as never,
+      makeTxRunner(),
       payments as never,
       { findById: vi.fn() } as never,
       { findById: vi.fn() } as never,

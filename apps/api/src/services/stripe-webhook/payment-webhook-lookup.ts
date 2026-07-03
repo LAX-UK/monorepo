@@ -1,5 +1,6 @@
-import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
+import type { IPaymentWebhookLookupReader } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence";
 import { eq } from "drizzle-orm";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPaymentCaptureService } from "../interfaces/payment-capture.js";
@@ -8,7 +9,8 @@ import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.j
 import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 
 export type StripePaymentWebhookDeps = {
-  db: Database;
+  transactionRunner: ITransactionRunner;
+  paymentWebhookLookup: IPaymentWebhookLookupReader;
   payments: IPaymentWriteRepository;
   payoutRepository: IPayoutRepository;
   payoutAdjustments: IPayoutAdjustmentService;
@@ -25,7 +27,6 @@ export type PaymentRowLookup = {
 
 export async function findPaymentRow(
   deps: StripePaymentWebhookDeps,
-  db: Database,
   opts: {
     chargeId?: string | null;
     paymentIntentId?: string | null;
@@ -33,44 +34,20 @@ export async function findPaymentRow(
   },
 ): Promise<PaymentRowLookup | null> {
   if (opts.paymentId) {
-    const byId = await selectPaymentRow(deps, db, eq(payment.id, opts.paymentId));
+    const byId = await deps.paymentWebhookLookup.findPaymentRow(eq(payment.id, opts.paymentId));
     if (byId) return byId;
   }
   if (opts.chargeId) {
-    const byCharge = await selectPaymentRow(deps, db, eq(payment.stripeChargeId, opts.chargeId));
+    const byCharge = await deps.paymentWebhookLookup.findPaymentRow(
+      eq(payment.stripeChargeId, opts.chargeId),
+    );
     if (byCharge) return byCharge;
   }
   if (opts.paymentIntentId) {
-    const byPi = await selectPaymentRow(
-      deps,
-      db,
+    const byPi = await deps.paymentWebhookLookup.findPaymentRow(
       eq(payment.stripePaymentIntentId, opts.paymentIntentId),
     );
     if (byPi) return byPi;
   }
   return null;
-}
-
-async function selectPaymentRow(
-  _deps: StripePaymentWebhookDeps,
-  db: Database,
-  where: ReturnType<typeof eq>,
-) {
-  const [row] = await db
-    .select({
-      id: payment.id,
-      sellerLegalEntityId: payment.sellerLegalEntityId,
-      status: payment.status,
-      amount: payment.amount,
-    })
-    .from(payment)
-    .where(where)
-    .limit(1);
-  if (!row || !row.sellerLegalEntityId) return null;
-  return {
-    id: row.id,
-    sellerLegalEntityId: row.sellerLegalEntityId,
-    status: row.status,
-    amount: String(row.amount),
-  };
 }

@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
+import { transactionRunnerFromDb } from "../../../test/transaction-runner-from-db.js";
 import type { IPayoutService } from "../../interfaces/payout.js";
 import { ConnectTransferWebhookService } from "./connect-transfer-webhook.service.js";
 
@@ -18,7 +19,10 @@ describe("ConnectTransferWebhookService", () => {
     const payoutService = {
       reconcileStripeTransfer: vi.fn(),
     } as unknown as IPayoutService;
-    const svc = new ConnectTransferWebhookService(makeTransactionDb(), payoutService);
+    const svc = new ConnectTransferWebhookService(
+      transactionRunnerFromDb(makeTransactionDb()),
+      payoutService,
+    );
 
     const result = await svc.handleTransferEvent({
       id: "evt_1",
@@ -33,7 +37,10 @@ describe("ConnectTransferWebhookService", () => {
   it("no-ops transfer.updated without reconciling", async () => {
     const reconcileStripeTransfer = vi.fn();
     const payoutService = { reconcileStripeTransfer } as unknown as IPayoutService;
-    const svc = new ConnectTransferWebhookService(makeTransactionDb(), payoutService);
+    const svc = new ConnectTransferWebhookService(
+      transactionRunnerFromDb(makeTransactionDb()),
+      payoutService,
+    );
 
     const result = await svc.handleTransferEvent({
       id: "evt_2",

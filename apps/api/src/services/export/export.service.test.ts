@@ -56,14 +56,13 @@ function createService(input: {
   existingRow?: unknown;
   finalRow?: unknown;
   listRows?: unknown[];
-  domainEventPublisher?: { publish: ReturnType<typeof vi.fn> };
+  domainEventSink?: { publish: ReturnType<typeof vi.fn> };
   repo?: IExportJobRepository;
   redis?: { set: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
 }) {
   const provider = input.provider ?? mockProvider();
   const providers = new Map([["lots", provider]]);
   const repo = input.repo ?? mockRepo(input);
-  const db = {} as never;
   const redis = input.redis ?? {
     set: vi.fn().mockResolvedValue("OK"),
     get: vi.fn().mockResolvedValue(null),
@@ -72,7 +71,6 @@ function createService(input: {
   const queue = { add: vi.fn(), getJob: vi.fn() };
 
   const service = new ExportService(
-    db,
     repo,
     new RedisExportProgressStore(redis as never),
     new ExportFileStorage(objectStorage as never),
@@ -82,7 +80,7 @@ function createService(input: {
       syncMaxRows: input.syncMaxRows ?? 5000,
       staleProcessingMs: input.staleProcessingMs ?? 1_800_000,
     },
-    input.domainEventPublisher as never,
+    input.domainEventSink as never,
   );
 
   return { service, provider, repo, queue, redis };
@@ -276,7 +274,7 @@ describe("ExportService", () => {
     const publish = vi.fn().mockResolvedValue(undefined);
     const { service } = createService({
       syncMaxRows: 10,
-      domainEventPublisher: { publish },
+      domainEventSink: { publish },
     });
 
     await service.createExport({
@@ -287,7 +285,6 @@ describe("ExportService", () => {
     });
 
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         aggregateType: "data_export",
         eventType: "export.requested",
@@ -320,7 +317,7 @@ describe("ExportService", () => {
       completedAt: new Date(),
       cancelledAt: null,
     };
-    const { service } = createService({ existingRow, domainEventPublisher: { publish } });
+    const { service } = createService({ existingRow, domainEventSink: { publish } });
 
     await service.createExport({
       userId: "user-1",

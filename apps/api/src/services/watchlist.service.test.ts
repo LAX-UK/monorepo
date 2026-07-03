@@ -21,7 +21,12 @@ describe("WatchlistService.listWithLots", () => {
       ]),
     } as unknown as IWatchlistRepository;
 
-    const service = new WatchlistService(watchlist, lots);
+    const service = new WatchlistService(
+      watchlist,
+      lots,
+      { runInTransaction: async (fn) => fn({} as never) },
+      { stage: vi.fn(), emit: vi.fn(), enqueue: vi.fn() },
+    );
     const rows = await service.listWithLots("user-1");
 
     expect(findByIds).toHaveBeenCalledTimes(1);

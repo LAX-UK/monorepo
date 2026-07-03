@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { user } from "@auction/db/schema";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import type { DbTransaction } from "../interfaces/artist-delete.repository.js";
 import type { IUserRepository } from "../interfaces/user.repository.js";
 
 export class DrizzleUserRepository implements IUserRepository {
@@ -61,6 +62,14 @@ export class DrizzleUserRepository implements IUserRepository {
     return rows.map((r) => r.id);
   }
 
+  async listStaffEmails(): Promise<string[]> {
+    const rows = await this.db
+      .select({ email: user.email })
+      .from(user)
+      .where(eq(user.role, "staff"));
+    return [...new Set(rows.map((r) => r.email).filter((e): e is string => Boolean(e?.trim())))];
+  }
+
   async listPublicProfiles(params: { limit: number; offset: number }) {
     const rows = await this.db
       .select({ id: user.id, name: user.name, image: user.image })
@@ -75,6 +84,13 @@ export class DrizzleUserRepository implements IUserRepository {
     await this.db
       .update(user)
       .set({ hasSeenActingContextTooltip: seen })
+      .where(eq(user.id, userId));
+  }
+
+  async markDeletionRequested(userId: string, tx: DbTransaction): Promise<void> {
+    await tx
+      .update(user)
+      .set({ deletionRequestedAt: new Date(), updatedAt: new Date() })
       .where(eq(user.id, userId));
   }
 }

@@ -1,9 +1,10 @@
 import type { Database } from "@auction/db";
-import { DrizzleLotRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
 import type { ILotRepository } from "../services/interfaces/repositories.js";
+import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
 import { LotError } from "./errors.js";
 
 export function nextLotNumberForSale(lots: readonly Lot[]): number {
@@ -29,7 +30,8 @@ export type RollbackEmergencyLotAddDeps = {
   lotRepo: ILotRepository;
   jobScheduler: ILotJobScheduler | null;
   lotLifecycleRecording?: ILotLifecycleRecorder | null;
-  db?: Database | null;
+  transactionRunner?: ITransactionRunner | null;
+  repoFactory?: IRepositoryFactory | null;
   recordLotLifecycle?: ((fn: (tx: Database) => Promise<void>) => Promise<void>) | null;
 };
 
@@ -43,9 +45,10 @@ export async function rollbackFailedEmergencyLotAdd(
   await deps.jobScheduler?.cancelLotJobs(lot.id);
   const fromSaleId = lot.saleId;
 
-  if (deps.db && deps.lotLifecycleRecording) {
-    await deps.db.transaction(async (tx) => {
-      const lotRepo = new DrizzleLotRepository(tx);
+  if (deps.transactionRunner && deps.repoFactory && deps.lotLifecycleRecording) {
+    const repoFactory = deps.repoFactory;
+    await deps.transactionRunner.runInTransaction(async (tx) => {
+      const lotRepo = repoFactory.forTransaction(tx).lot;
       await lotRepo.clearSaleId(lot.id);
       await deps.lotLifecycleRecording?.recordDetached(tx, lot, fromSaleId);
     });

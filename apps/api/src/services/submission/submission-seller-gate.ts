@@ -41,10 +41,10 @@ export async function maybeLogRestrictedSellerWrite(
   submissionId: string,
   action: string,
 ): Promise<void> {
-  if (!deps.legalEntityRepository || !deps.domainEventPublisher) return;
+  if (!deps.legalEntityRepository || !deps.domainEventSink) return;
   const e = await deps.legalEntityRepository.findById(legalEntityId);
   if (e?.status !== "restricted") return;
-  await deps.domainEventPublisher.publish(deps.db, {
+  await deps.domainEventSink.publish({
     aggregateType: "item_submission",
     aggregateId: submissionId,
     eventType: "item_submission.restricted_entity_write",

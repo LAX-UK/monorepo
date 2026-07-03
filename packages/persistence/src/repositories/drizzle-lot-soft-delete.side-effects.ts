@@ -1,16 +1,16 @@
 import type { Database } from "@auction/db";
 import { absenteeBid, lot, lotDocument } from "@auction/db/schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { LotError } from "../lib/errors.js";
-import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
-import type { ILotSoftDeleteSideEffects } from "../services/interfaces/lot-soft-delete.js";
+import type { ILotCancelledLifecycleRecorder } from "../interfaces/lot-cancelled-lifecycle-recorder.js";
+import type { ILotSoftDeleteSideEffects } from "../interfaces/lot-soft-delete.js";
+import { LotError } from "../lib/lot.error.js";
 
 const VOIDABLE_ABSENTEE_STATUSES = ["scheduled", "executing"] as const;
 
 export class DrizzleLotSoftDeleteSideEffects implements ILotSoftDeleteSideEffects {
   constructor(
     private readonly db: Database,
-    private readonly lotLifecycleRecording: ILotLifecycleRecorder | null = null,
+    private readonly lotLifecycleRecording: ILotCancelledLifecycleRecorder | null = null,
   ) {}
 
   async softDeleteLot(input: {

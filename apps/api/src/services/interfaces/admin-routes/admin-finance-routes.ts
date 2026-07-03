@@ -1,3 +1,4 @@
+import type { FinanceIssueSnapshot, StripeConnectRequirementEntityRow } from "@auction/persistence";
 import type { Result } from "neverthrow";
 import type { AuthzError } from "../../../lib/errors.js";
 import type { AdminNavCounts } from "../../admin/admin-nav-counts.service.js";
@@ -79,10 +80,7 @@ export interface IAdminDashboardMetricsService {
   getPayoutsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
 }
 
-export type FinanceIssueSnapshot = import("@auction/persistence").FinanceIssueSnapshot;
-
-export type StripeConnectRequirementEntityRow =
-  import("@auction/persistence").StripeConnectRequirementEntityRow;
+export type { FinanceIssueSnapshot, StripeConnectRequirementEntityRow };
 
 export interface IAdminFinanceIssueSnapshotQueryService {
   getFinanceIssueSnapshot(): Promise<FinanceIssueSnapshot>;

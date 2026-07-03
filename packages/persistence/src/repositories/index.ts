@@ -112,6 +112,18 @@ export { DrizzleAdminLotBrowseReader } from "./drizzle-admin-lot-browse.reader.j
 export { DrizzleAdminManualReviewPaymentReader } from "./drizzle-admin-manual-review-payment.reader.js";
 export { DrizzleAdminManualReviewPaymentEnrichmentReader } from "./drizzle-admin-manual-review-payment-enrichment.reader.js";
 export { DrizzleAdminReviewTaskReader } from "./drizzle-admin-review-task.reader.js";
+export { DrizzleAdminReviewTaskRepository } from "./drizzle-admin-review-task.repository.js";
+export { DrizzleMediaAssetReader } from "./drizzle-media-asset.reader.js";
+export { DrizzleQrCodeScanPersister } from "./drizzle-qr-code-scan.persister.js";
+export { DrizzleSaleroomOnBlockReader } from "./drizzle-saleroom-on-block.reader.js";
+export { DrizzleSaleroomLiveSessionCounter } from "./drizzle-saleroom-live-session-counter.js";
+export { DrizzleFailedJobRepository } from "./drizzle-failed-job.repository.js";
+export { DrizzleUserEmailVerifiedPublisher } from "./drizzle-user-email-verified.publisher.js";
+export {
+  DrizzlePlatformCatalogLegalEntityReader,
+  PLATFORM_CATALOG_SLUG,
+} from "./drizzle-platform-catalog-legal-entity.reader.js";
+export { DrizzlePaymentWebhookLookupReader } from "./drizzle-payment-webhook-lookup.reader.js";
 export { DrizzleLotDocumentRepository } from "./drizzle-lot-document.repository.js";
 export { DrizzleSaleDocumentRepository } from "./drizzle-sale-document.repository.js";
 export { DrizzleSubmissionDocumentRepository } from "./drizzle-submission-document.repository.js";
@@ -161,3 +173,8 @@ export { DrizzleExportJobRepository } from "./drizzle-export-job.repository.js";
 export { DrizzleSaleroomDisplaySnapshotReader } from "./drizzle-saleroom-display-snapshot.reader.js";
 export { DrizzleImpersonationDomainEventReader } from "./drizzle-impersonation-domain-event.reader.js";
 export { SalePressArchiveRepository } from "./sale-press-archive.repository.js";
+export { DrizzlePaymentDomainEventsRepository } from "./drizzle-payment-domain-events.repository.js";
+export { DrizzleLotSoftDeleteSideEffects } from "./drizzle-lot-soft-delete.side-effects.js";
+export { DrizzleSaleSoftDeleteSideEffects } from "./drizzle-sale-soft-delete.side-effects.js";
+export { DrizzleLotFulfilmentRepository } from "./drizzle-lot-fulfilment.repository.js";
+export { DrizzleAttentionFeedReader } from "./drizzle-attention-feed.reader.js";

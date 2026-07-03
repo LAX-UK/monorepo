@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
@@ -11,7 +10,7 @@ import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.s
 
 export type RefundLedgerDeps = {
   payments: IPaymentWriteRepository;
-  db: Database;
+  transactionRunner: import("@auction/persistence").ITransactionRunner;
   domainEventPublisher: DomainEventPublisher;
   payoutAdjustments: IPayoutAdjustmentService | null;
   paymentRefundReconcile: PaymentRefundReconcileService | null;
@@ -49,7 +48,7 @@ export async function executePaymentRefundLedger(
   const paymentId = payment.id;
 
   try {
-    await deps.db.transaction(async (tx) => {
+    await deps.transactionRunner.runInTransaction(async (tx) => {
       const refunded = await deps.payments.applyRefundedInTransaction(
         tx,
         paymentId,

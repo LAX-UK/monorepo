@@ -12,9 +12,9 @@ import {
   telephoneBidBooking,
 } from "@auction/db/schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { LotError } from "../lib/errors.js";
-import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
-import type { ISaleSoftDeleteSideEffects } from "../services/interfaces/sale-soft-delete.js";
+import type { ILotCancelledLifecycleRecorder } from "../interfaces/lot-cancelled-lifecycle-recorder.js";
+import type { ISaleSoftDeleteSideEffects } from "../interfaces/sale-soft-delete.js";
+import { LotError } from "../lib/lot.error.js";
 
 const WITHDRAWABLE_REGISTRATION_STATUSES = ["pending", "approved"] as const;
 const VOIDABLE_ABSENTEE_STATUSES = ["scheduled", "executing"] as const;
@@ -24,7 +24,7 @@ const OPEN_SALEROOM_STATUSES = ["pending", "live", "paused"] as const;
 export class DrizzleSaleSoftDeleteSideEffects implements ISaleSoftDeleteSideEffects {
   constructor(
     private readonly db: Database,
-    private readonly lotLifecycleRecording: ILotLifecycleRecorder | null = null,
+    private readonly lotLifecycleRecording: ILotCancelledLifecycleRecorder | null = null,
   ) {}
 
   async softDeleteCascade(input: {

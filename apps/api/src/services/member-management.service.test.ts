@@ -1,12 +1,15 @@
 import type { Database } from "@auction/db";
 import { DrizzleLegalEntityMemberRepository } from "@auction/persistence";
 import { describe, expect, it } from "vitest";
+import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
+import { DomainEventSink } from "./domain-event-sink.js";
 import { DomainEventPublisher } from "./domain-event.publisher.js";
 import { MemberPermissionError } from "./interfaces/member-management.js";
 import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import { MemberManagementService } from "./member-management.service.js";
 
 const testPublisher = new DomainEventPublisher();
+const testDomainEventSink = new DomainEventSink(testPublisher, {} as Database);
 
 function testRepoFactory(): IRepositoryFactory {
   const bid = {
@@ -99,9 +102,9 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
     });
     const { db } = makeFluentDb([[meRow]]);
     const svc = new MemberManagementService(
-      db,
+      transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
-      testPublisher,
+      testDomainEventSink,
       testRepoFactory(),
     );
 
@@ -119,9 +122,9 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
     const meRow = memberRow({});
     const { db } = makeFluentDb([[meRow], []]);
     const svc = new MemberManagementService(
-      db,
+      transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
-      testPublisher,
+      testDomainEventSink,
       testRepoFactory(),
     );
 
@@ -137,9 +140,9 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
       [meRow], // target lookup returns same row
     ]);
     const svc = new MemberManagementService(
-      db,
+      transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
-      testPublisher,
+      testDomainEventSink,
       testRepoFactory(),
     );
 
@@ -176,9 +179,9 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
     const { db, chains } = makeFluentDb([[meRow], [targetRow], [fromAfter], [toAfter]]);
 
     const svc = new MemberManagementService(
-      db,
+      transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
-      testPublisher,
+      testDomainEventSink,
       testRepoFactory(),
     );
     const result = await svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID);
@@ -209,9 +212,9 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
     ]);
 
     const svc = new MemberManagementService(
-      db,
+      transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
-      testPublisher,
+      testDomainEventSink,
       testRepoFactory(),
     );
     await expect(
@@ -232,9 +235,9 @@ describe("MemberManagementService.removeMember", () => {
     });
     const { db } = makeFluentDb([[meRow], [targetRow]]);
     const svc = new MemberManagementService(
-      db,
+      transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
-      testPublisher,
+      testDomainEventSink,
       testRepoFactory(),
     );
 
@@ -255,9 +258,9 @@ describe("MemberManagementService.updateRole", () => {
     });
     const { db } = makeFluentDb([[meRow], [targetRow]]);
     const svc = new MemberManagementService(
-      db,
+      transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
-      testPublisher,
+      testDomainEventSink,
       testRepoFactory(),
     );
 

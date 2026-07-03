@@ -15,6 +15,16 @@ function createMockTx(session: { status: string; currentLotId: string | null } |
   };
 }
 
+function makeReader(session: { status: string; currentLotId: string | null } | null) {
+  const connReader = {
+    getSessionState: vi.fn().mockResolvedValue(session),
+  };
+  return {
+    getSessionState: vi.fn().mockResolvedValue(session),
+    forConnection: vi.fn().mockReturnValue(connReader),
+  };
+}
+
 function createLookup(enforceOnBlock: boolean): ISaleroomSessionLookup {
   return {
     shouldSkipAntiSnipeForLot: vi.fn(),
@@ -28,7 +38,10 @@ describe("SaleroomBidGate", () => {
   const lotId = "lot-on-block";
 
   it("skips on-block checks when lookup does not enforce gate", async () => {
-    const gate = new SaleroomBidGate(createLookup(false), new SaleroomOnBlockPolicy({} as never));
+    const gate = new SaleroomBidGate(
+      createLookup(false),
+      new SaleroomOnBlockPolicy(makeReader(null) as never),
+    );
     const result = await gate.assertCanBidOnLot({
       lotId,
       saleId,
@@ -38,8 +51,9 @@ describe("SaleroomBidGate", () => {
   });
 
   it("delegates to SaleroomOnBlockPolicy with active tx when gate is enforced", async () => {
-    const tx = createMockTx({ status: "live", currentLotId: lotId });
-    const policy = new SaleroomOnBlockPolicy({} as never);
+    const session = { status: "live", currentLotId: lotId };
+    const tx = createMockTx(session);
+    const policy = new SaleroomOnBlockPolicy(makeReader(session) as never);
     const gate = new SaleroomBidGate(createLookup(true), policy);
     const result = await gate.assertCanBidOnLot({ lotId, saleId, tx: tx as never });
     expect(result.isOk()).toBe(true);
@@ -75,7 +89,7 @@ describe("SaleroomBidGate parity with SaleroomOnBlockPolicy", () => {
 
   it.each(cases)("$label", async ({ session, expectedCode }) => {
     const tx = createMockTx(session);
-    const policy = new SaleroomOnBlockPolicy({} as never);
+    const policy = new SaleroomOnBlockPolicy(makeReader(session) as never);
     const gate = new SaleroomBidGate(createLookup(true), policy);
 
     const direct = await policy.assertLotOnBlock(saleId, lotId, tx as never);
