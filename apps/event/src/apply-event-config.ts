@@ -1,24 +1,6 @@
 import { setEventCountdownFromIso } from "./event-countdown.js";
+import { formatEventDateLondon, formatEventDoorsTimeLondon } from "./event-date-format.js";
 import type { OnsiteEventPublicConfig } from "./rsvp-api.js";
-
-function formatEventDateLondon(startsAt: Date): string {
-  return startsAt.toLocaleString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/London",
-  });
-}
-
-function formatEventDoorsTimeLondon(startsAt: Date): string {
-  const time = startsAt.toLocaleString("en-GB", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "Europe/London",
-  });
-  return `Doors ${time}`;
-}
 
 function applyEventSchedule(config: OnsiteEventPublicConfig): void {
   setEventCountdownFromIso(config.startsAt);

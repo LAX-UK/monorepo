@@ -1,4 +1,23 @@
-export const EVENT_SLUG = "lax001";
+export const DEFAULT_EVENT_SLUG = "lax001";
+
+/** Resolve event slug from URL path (`/events/:slug`, `/:slug`) or build-time override. Returns null at bare root for the events hub. */
+export function resolveEventSlug(): string | null {
+  const envSlug = import.meta.env.VITE_EVENT_SLUG as string | undefined;
+  if (typeof window === "undefined") {
+    return envSlug ?? null;
+  }
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts[0] === "events" && parts[1]) return parts[1];
+  if (parts[0] && parts[0] !== "pass") {
+    const passIdx = parts.indexOf("pass");
+    if (passIdx > 0) return parts[0] ?? null;
+    if (passIdx === -1) return parts[0] ?? null;
+  }
+  return envSlug ?? null;
+}
+
+/** @deprecated Prefer {@link resolveEventSlug} for multi-event routing. */
+export const EVENT_SLUG = DEFAULT_EVENT_SLUG;
 
 const cdnBase =
   (import.meta.env.VITE_CDN_BASE as string | undefined)?.replace(/\/$/, "") ??
@@ -30,12 +49,15 @@ export const EVENT_ORIGIN = eventOrigin;
 export const EVENTS_EMAIL = "events@lax.bid";
 export const MAPS_URL = "https://maps.app.goo.gl/dYYx2hUYBzgtEVZ18";
 
-/** Bundled under public/events/lax001; CDN used when VITE_EVENT_ASSETS_CDN=true at build time. */
-export function eventAssetPath(filename: string): string {
+/** Bundled under public/events/{slug}; CDN used when VITE_EVENT_ASSETS_CDN=true at build time. */
+export function eventAssetPath(
+  filename: string,
+  slug = resolveEventSlug() ?? DEFAULT_EVENT_SLUG,
+): string {
   if (import.meta.env.VITE_EVENT_ASSETS_CDN === "true") {
-    return `${CDN_BASE}/events/lax001/${filename}`;
+    return `${CDN_BASE}/events/${slug}/${filename}`;
   }
-  return `/events/lax001/${filename}`;
+  return `/events/${slug}/${filename}`;
 }
 
 /** Static SVG brand marks in public/black and public/white. */

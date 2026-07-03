@@ -1,20 +1,38 @@
 import type { CatalogLot } from "./catalog-lot.js";
 import { buildCarouselLots, modelTHighlight } from "./featured-lots.js";
-import { fetchOnsiteCatalog } from "./sale-catalog-api.js";
+import { fetchLinkedSaleCatalog, fetchOnsiteCatalog } from "./sale-catalog-api.js";
 
-export async function initLotCarousel(): Promise<void> {
+export type LotCarouselOptions = {
+  saleId?: string | null;
+  saleTitle?: string | null;
+  includeModelTHighlight?: boolean;
+};
+
+export async function initLotCarousel(opts?: LotCarouselOptions): Promise<void> {
   const root = document.getElementById("lot-carousel");
   if (!root) return;
 
   root.setAttribute("aria-busy", "true");
   root.classList.add("lot-carousel--loading");
 
+  const includeModelTHighlight = opts?.includeModelTHighlight !== false;
   let lots: CatalogLot[];
   try {
-    const catalog = await fetchOnsiteCatalog();
-    lots = buildCarouselLots(catalog.lots, catalog.modelTHref);
+    if (opts?.saleId && opts?.saleTitle) {
+      const catalog = await fetchLinkedSaleCatalog(opts.saleId, opts.saleTitle);
+      lots = buildCarouselLots(catalog.lots, {
+        modelTHref: catalog.modelTHref,
+        includeModelTHighlight,
+      });
+    } else {
+      const catalog = await fetchOnsiteCatalog();
+      lots = buildCarouselLots(catalog.lots, {
+        modelTHref: catalog.modelTHref,
+        includeModelTHighlight,
+      });
+    }
   } catch {
-    lots = [modelTHighlight()];
+    lots = includeModelTHighlight ? [modelTHighlight()] : [];
   }
 
   renderLotCarousel(root, lots);

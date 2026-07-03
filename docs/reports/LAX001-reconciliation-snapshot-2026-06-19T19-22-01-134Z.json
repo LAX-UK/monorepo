@@ -1,0 +1,859 @@
+{
+  "lots": [
+    {
+      "id": "b2afd08d-09f4-4c2c-9b2c-574f5f58bb59",
+      "lot_number": 1,
+      "winner_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "current_price": "750.00",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "status": "ended"
+    },
+    {
+      "id": "d79301d1-8360-4658-ae40-4f3bdfa15627",
+      "lot_number": 2,
+      "winner_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "current_price": "450.00",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "status": "ended"
+    },
+    {
+      "id": "e92a4fcd-52e7-4345-9b38-21f14b18fc5b",
+      "lot_number": 3,
+      "winner_id": "x5oRuIDKPDyAXXH2SaQU8UZd6FUJdNBU",
+      "current_price": "30000.00",
+      "buyer_legal_entity_id": "63c6a1cf-20e2-419a-af4e-d371e23489cb",
+      "status": "ended"
+    },
+    {
+      "id": "829dd169-7b51-426d-965f-04401a2c1ef3",
+      "lot_number": 4,
+      "winner_id": null,
+      "current_price": "33000.00",
+      "buyer_legal_entity_id": null,
+      "status": "ended"
+    },
+    {
+      "id": "971b2246-165e-48f3-9e1a-b1ca24ae72e2",
+      "lot_number": 5,
+      "winner_id": "x5oRuIDKPDyAXXH2SaQU8UZd6FUJdNBU",
+      "current_price": "14000.00",
+      "buyer_legal_entity_id": "63c6a1cf-20e2-419a-af4e-d371e23489cb",
+      "status": "ended"
+    },
+    {
+      "id": "72d22d49-8a50-4ba2-8c7f-c9ce7b1c58d3",
+      "lot_number": 6,
+      "winner_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "current_price": "10000.00",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "status": "ended"
+    },
+    {
+      "id": "b2c360f5-af69-54f0-8e70-d3ac3fa36cfe",
+      "lot_number": 7,
+      "winner_id": "x5oRuIDKPDyAXXH2SaQU8UZd6FUJdNBU",
+      "current_price": "1001.00",
+      "buyer_legal_entity_id": "63c6a1cf-20e2-419a-af4e-d371e23489cb",
+      "status": "ended"
+    },
+    {
+      "id": "689369f3-ee4e-4e7b-9aae-af91481e0f61",
+      "lot_number": 8,
+      "winner_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "current_price": "9900.00",
+      "buyer_legal_entity_id": "9fad2d31-a676-4173-a261-de9703e539ff",
+      "status": "ended"
+    },
+    {
+      "id": "f27652ce-de41-5f34-9716-fe2d28a02142",
+      "lot_number": 9,
+      "winner_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "current_price": "2001.00",
+      "buyer_legal_entity_id": "813d8995-9a77-40df-bd1f-41c47db70cb4",
+      "status": "ended"
+    },
+    {
+      "id": "a6011e73-f0bf-5f50-8655-9347df88cd6a",
+      "lot_number": 10,
+      "winner_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "current_price": "1200.00",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "status": "ended"
+    },
+    {
+      "id": "33aa23a4-afd6-5827-b815-2bffc5b83e3d",
+      "lot_number": 11,
+      "winner_id": null,
+      "current_price": "1100.00",
+      "buyer_legal_entity_id": null,
+      "status": "ended"
+    },
+    {
+      "id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "lot_number": 12,
+      "winner_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "current_price": "5050.00",
+      "buyer_legal_entity_id": "9fad2d31-a676-4173-a261-de9703e539ff",
+      "status": "ended"
+    },
+    {
+      "id": "db960b2a-0602-4a95-8d21-55b1fd513418",
+      "lot_number": 13,
+      "winner_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "current_price": "10000.00",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "status": "ended"
+    },
+    {
+      "id": "c9ae2073-2023-4b22-8738-d924ac33163c",
+      "lot_number": 14,
+      "winner_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "current_price": "153000.00",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "status": "ended"
+    },
+    {
+      "id": "bda7c3bd-eb30-4ff0-a4ab-7463c08c0fa6",
+      "lot_number": 15,
+      "winner_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "current_price": "7000.00",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "status": "ended"
+    }
+  ],
+  "bids": [
+    {
+      "id": "55d0f56d-1e1b-411a-b9f4-c2fe0e6cffe9",
+      "lot_id": "b2afd08d-09f4-4c2c-9b2c-574f5f58bb59",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "550.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:10:33.959Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "851ba841-e740-4c4e-a704-64b30b611a9b",
+      "lot_id": "b2afd08d-09f4-4c2c-9b2c-574f5f58bb59",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "650.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:10:57.036Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "9069e797-c709-47ff-b15c-491cfb905c8b",
+      "lot_id": "b2afd08d-09f4-4c2c-9b2c-574f5f58bb59",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "750.00",
+      "is_winning": true,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:11:04.396Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "06864088-f3cb-4dc6-ba32-a24409deb47f",
+      "lot_id": "829dd169-7b51-426d-965f-04401a2c1ef3",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "31000.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:19:57.456Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "7d5f2400-2269-4fa0-8198-029c7bd81245",
+      "lot_id": "829dd169-7b51-426d-965f-04401a2c1ef3",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "32000.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:20:21.818Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "91a6e953-424b-4a63-99e6-1b48a4565824",
+      "lot_id": "829dd169-7b51-426d-965f-04401a2c1ef3",
+      "bidder_id": "x5oRuIDKPDyAXXH2SaQU8UZd6FUJdNBU",
+      "amount": "33000.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:20:34.522Z",
+      "buyer_legal_entity_id": "63c6a1cf-20e2-419a-af4e-d371e23489cb",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "bf17e9fe-06e9-4c35-a8f6-755e9cca96d0",
+      "lot_id": "689369f3-ee4e-4e7b-9aae-af91481e0f61",
+      "bidder_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "amount": "5101.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:34:49.435Z",
+      "buyer_legal_entity_id": "9fad2d31-a676-4173-a261-de9703e539ff",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "dfdba66d-45ad-4002-b21f-7d922d6f67b7",
+      "lot_id": "689369f3-ee4e-4e7b-9aae-af91481e0f61",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "7000.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:35:38.166Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "207ea5fe-fa65-4785-b776-09086318bb1d",
+      "lot_id": "689369f3-ee4e-4e7b-9aae-af91481e0f61",
+      "bidder_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "amount": "9900.00",
+      "is_winning": true,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:36:06.850Z",
+      "buyer_legal_entity_id": "9fad2d31-a676-4173-a261-de9703e539ff",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "9bd48c55-3be1-4509-adc9-7b66d6246e39",
+      "lot_id": "f27652ce-de41-5f34-9716-fe2d28a02142",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "501.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:57:51.960Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "467008eb-54d3-4120-aa34-b16e6627ccb3",
+      "lot_id": "f27652ce-de41-5f34-9716-fe2d28a02142",
+      "bidder_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "amount": "751.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:58:07.305Z",
+      "buyer_legal_entity_id": "813d8995-9a77-40df-bd1f-41c47db70cb4",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "5879105a-c6b3-45fd-859b-cfd9137b271c",
+      "lot_id": "f27652ce-de41-5f34-9716-fe2d28a02142",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "1001.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:58:31.237Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "7f861472-992c-4276-9802-3b1c83dc3cd6",
+      "lot_id": "f27652ce-de41-5f34-9716-fe2d28a02142",
+      "bidder_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "amount": "1251.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:58:38.131Z",
+      "buyer_legal_entity_id": "813d8995-9a77-40df-bd1f-41c47db70cb4",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "edb180f2-fa54-44a8-83d2-fc36ead4d16b",
+      "lot_id": "f27652ce-de41-5f34-9716-fe2d28a02142",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "1751.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:59:18.084Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "c477ab92-dbc7-4036-8b65-a08ab750d781",
+      "lot_id": "f27652ce-de41-5f34-9716-fe2d28a02142",
+      "bidder_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "amount": "2001.00",
+      "is_winning": true,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T18:59:25.235Z",
+      "buyer_legal_entity_id": "813d8995-9a77-40df-bd1f-41c47db70cb4",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "702c4771-7fa5-4fa6-86e8-498d6cc521a3",
+      "lot_id": "a6011e73-f0bf-5f50-8655-9347df88cd6a",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "100.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:01:39.215Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "8729102f-13a4-4b7a-99f6-12a395175f83",
+      "lot_id": "a6011e73-f0bf-5f50-8655-9347df88cd6a",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "700.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:01:54.261Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "cf8f4706-d4f8-460c-b4b3-1de2df893fd9",
+      "lot_id": "a6011e73-f0bf-5f50-8655-9347df88cd6a",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "800.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:02:02.500Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "cfb375c8-2dea-49ec-bea2-9e82e9150899",
+      "lot_id": "a6011e73-f0bf-5f50-8655-9347df88cd6a",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "1000.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:02:27.167Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "c468909d-b700-48a2-801f-ccf07290b051",
+      "lot_id": "a6011e73-f0bf-5f50-8655-9347df88cd6a",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "1100.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:02:38.783Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "8ac5e15e-92cd-450e-a536-cf92a0347680",
+      "lot_id": "a6011e73-f0bf-5f50-8655-9347df88cd6a",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "1200.00",
+      "is_winning": true,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:02:51.325Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "ad05b48d-1857-4f50-b404-bf4ea6df1e31",
+      "lot_id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "900.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:06:53.272Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "881f228f-f78c-45e8-9436-56e3cfd54082",
+      "lot_id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "1400.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:07:07.251Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "22c5a4d2-0efb-48cc-ae3b-e745672477ce",
+      "lot_id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "1800.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:07:30.843Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "469fea17-f235-4ed9-aab6-206f475a0726",
+      "lot_id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "bidder_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "amount": "2300.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:07:33.341Z",
+      "buyer_legal_entity_id": "813d8995-9a77-40df-bd1f-41c47db70cb4",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "d5bb07e3-2a60-4641-a397-1a1af468c834",
+      "lot_id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "2550.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:07:54.879Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "fea46e92-8eed-4d3a-86c0-580d6d7c2423",
+      "lot_id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "bidder_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "amount": "3800.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:08:05.005Z",
+      "buyer_legal_entity_id": "9fad2d31-a676-4173-a261-de9703e539ff",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "737fd280-091d-495d-a6c4-d0239a542ae8",
+      "lot_id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "bidder_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "amount": "4050.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:08:09.566Z",
+      "buyer_legal_entity_id": "813d8995-9a77-40df-bd1f-41c47db70cb4",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "0c3f80be-b4d7-4591-8f55-f0b16f46d016",
+      "lot_id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "bidder_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "amount": "5050.00",
+      "is_winning": true,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:08:40.575Z",
+      "buyer_legal_entity_id": "9fad2d31-a676-4173-a261-de9703e539ff",
+      "placed_via": null,
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": null
+    },
+    {
+      "id": "3fc711af-67f5-4ef3-a4a0-aeb6a50ca7d2",
+      "lot_id": "db960b2a-0602-4a95-8d21-55b1fd513418",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "8000.00",
+      "is_winning": false,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:10:26.335Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    },
+    {
+      "id": "73f6517d-e4b9-477b-859b-f5df0fe7a5c5",
+      "lot_id": "db960b2a-0602-4a95-8d21-55b1fd513418",
+      "bidder_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "amount": "10000.00",
+      "is_winning": true,
+      "is_auto_bid": false,
+      "max_auto_bid_amount": null,
+      "created_at": "2026-06-18T19:10:51.470Z",
+      "buyer_legal_entity_id": "5a26e6c6-8978-4645-b0ef-a25f19ae2e92",
+      "placed_via": "saleroom",
+      "telephone_booking_id": null,
+      "auto_bid_step_amount": null,
+      "clerk_user_id": "prod-bootstrap-admin-001"
+    }
+  ],
+  "events": [
+    {
+      "id": "2157",
+      "aggregate_id": "b2afd08d-09f4-4c2c-9b2c-574f5f58bb59",
+      "event_type": "lot.ended",
+      "payload": {
+        "saleId": "f8ba4c6a-f07a-4bb8-b506-fda0985a4aab",
+        "endedAt": "2026-06-18T18:12:26.042Z",
+        "outcome": "sold",
+        "trigger": "clerk_hammer",
+        "winnerId": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+        "hadWinner": true,
+        "hammerPrice": "750.00"
+      }
+    },
+    {
+      "id": "2160",
+      "aggregate_id": "829dd169-7b51-426d-965f-04401a2c1ef3",
+      "event_type": "lot.ended",
+      "payload": {
+        "saleId": "f8ba4c6a-f07a-4bb8-b506-fda0985a4aab",
+        "endedAt": "2026-06-18T18:21:43.912Z",
+        "outcome": "no_sale",
+        "trigger": "clerk_hammer",
+        "winnerId": null,
+        "hadWinner": false,
+        "hammerPrice": null
+      }
+    },
+    {
+      "id": "2164",
+      "aggregate_id": "689369f3-ee4e-4e7b-9aae-af91481e0f61",
+      "event_type": "lot.ended",
+      "payload": {
+        "saleId": "f8ba4c6a-f07a-4bb8-b506-fda0985a4aab",
+        "endedAt": "2026-06-18T18:36:14.259Z",
+        "outcome": "sold",
+        "trigger": "clerk_hammer",
+        "winnerId": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+        "hadWinner": true,
+        "hammerPrice": "9900.00"
+      }
+    },
+    {
+      "id": "2171",
+      "aggregate_id": "f27652ce-de41-5f34-9716-fe2d28a02142",
+      "event_type": "lot.ended",
+      "payload": {
+        "saleId": "f8ba4c6a-f07a-4bb8-b506-fda0985a4aab",
+        "endedAt": "2026-06-18T19:00:49.235Z",
+        "outcome": "sold",
+        "trigger": "clerk_hammer",
+        "winnerId": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+        "hadWinner": true,
+        "hammerPrice": "2001.00"
+      }
+    },
+    {
+      "id": "2172",
+      "aggregate_id": "a6011e73-f0bf-5f50-8655-9347df88cd6a",
+      "event_type": "lot.ended",
+      "payload": {
+        "saleId": "f8ba4c6a-f07a-4bb8-b506-fda0985a4aab",
+        "endedAt": "2026-06-18T19:03:06.713Z",
+        "outcome": "sold",
+        "trigger": "clerk_hammer",
+        "winnerId": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+        "hadWinner": true,
+        "hammerPrice": "1200.00"
+      }
+    },
+    {
+      "id": "2174",
+      "aggregate_id": "4fd71f85-20f0-5956-a289-31fbdbf5b7a3",
+      "event_type": "lot.ended",
+      "payload": {
+        "saleId": "f8ba4c6a-f07a-4bb8-b506-fda0985a4aab",
+        "endedAt": "2026-06-18T19:09:51.565Z",
+        "outcome": "sold",
+        "trigger": "clerk_hammer",
+        "winnerId": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+        "hadWinner": true,
+        "hammerPrice": "5050.00"
+      }
+    },
+    {
+      "id": "2176",
+      "aggregate_id": "db960b2a-0602-4a95-8d21-55b1fd513418",
+      "event_type": "lot.ended",
+      "payload": {
+        "saleId": "f8ba4c6a-f07a-4bb8-b506-fda0985a4aab",
+        "endedAt": "2026-06-18T19:11:32.687Z",
+        "outcome": "sold",
+        "trigger": "clerk_hammer",
+        "winnerId": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+        "hadWinner": true,
+        "hammerPrice": "10000.00"
+      }
+    }
+  ],
+  "outbox": [
+    {
+      "id": "22e15663-f26c-442e-9b57-d06cc680c610",
+      "idempotency_key": "lot_won:b2afd08d-09f4-4c2c-9b2c-574f5f58bb59:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "b3c0d369-97a2-4611-86c8-d4d7b0b31361",
+      "idempotency_key": "outbid:689369f3-ee4e-4e7b-9aae-af91481e0f61:dfdba66d-45ad-4002-b21f-7d922d6f67b7:lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "state": "sent",
+      "user_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT"
+    },
+    {
+      "id": "142d2170-875f-4ef3-ae76-e8998a5e7b50",
+      "idempotency_key": "outbid:f27652ce-de41-5f34-9716-fe2d28a02142:5879105a-c6b3-45fd-859b-cfd9137b271c:0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "state": "sent",
+      "user_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU"
+    },
+    {
+      "id": "0a885500-11c0-4121-87fa-d1f07995d772",
+      "idempotency_key": "lot_won:a6011e73-f0bf-5f50-8655-9347df88cd6a:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "d50bd24d-9fbf-4368-84fe-fce1b609dbcc",
+      "idempotency_key": "outbid:4fd71f85-20f0-5956-a289-31fbdbf5b7a3:469fea17-f235-4ed9-aab6-206f475a0726:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "1beb48be-07fe-41e1-ad03-78beb0d4e184",
+      "idempotency_key": "outbid:4fd71f85-20f0-5956-a289-31fbdbf5b7a3:d5bb07e3-2a60-4641-a397-1a1af468c834:0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "state": "sent",
+      "user_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU"
+    },
+    {
+      "id": "d7ec7728-d7b5-46e8-9b77-6c052ab87c76",
+      "idempotency_key": "outbid:689369f3-ee4e-4e7b-9aae-af91481e0f61:207ea5fe-fa65-4785-b776-09086318bb1d:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "246def3c-064b-4d71-a498-638e68fff3f8",
+      "idempotency_key": "lot_won:689369f3-ee4e-4e7b-9aae-af91481e0f61:lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "state": "sent",
+      "user_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT"
+    },
+    {
+      "id": "ab2f0cf6-538a-4d62-b07b-1f62b66638fd",
+      "idempotency_key": "lot_lost:689369f3-ee4e-4e7b-9aae-af91481e0f61:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "3f8ed649-0f4f-4d6c-ba59-a079e2e9d0bf",
+      "idempotency_key": "outbid:f27652ce-de41-5f34-9716-fe2d28a02142:7f861472-992c-4276-9802-3b1c83dc3cd6:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "be9e631a-ce17-44fb-a320-c4973043ac27",
+      "idempotency_key": "outbid:f27652ce-de41-5f34-9716-fe2d28a02142:edb180f2-fa54-44a8-83d2-fc36ead4d16b:0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "state": "sent",
+      "user_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU"
+    },
+    {
+      "id": "0cbaad71-c2ff-4cdf-9843-2b3cc5a06b81",
+      "idempotency_key": "lot_lost:f27652ce-de41-5f34-9716-fe2d28a02142:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "161a8652-b12c-43c1-8789-b065a43e2aa3",
+      "idempotency_key": "outbid:4fd71f85-20f0-5956-a289-31fbdbf5b7a3:fea46e92-8eed-4d3a-86c0-580d6d7c2423:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "f1644b2b-ff50-4bd1-9c74-85ac0d356bba",
+      "idempotency_key": "outbid:4fd71f85-20f0-5956-a289-31fbdbf5b7a3:737fd280-091d-495d-a6c4-d0239a542ae8:lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "state": "sent",
+      "user_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT"
+    },
+    {
+      "id": "56d65d7a-fe43-4634-84f9-3b15caec8d2d",
+      "idempotency_key": "outbid:829dd169-7b51-426d-965f-04401a2c1ef3:91a6e953-424b-4a63-99e6-1b48a4565824:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "3fcba2e4-9f0a-4823-abb4-696c31d2e239",
+      "idempotency_key": "lot_lost:829dd169-7b51-426d-965f-04401a2c1ef3:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "8ef54162-ba15-4e7e-920b-7f7091d357c8",
+      "idempotency_key": "lot_lost:829dd169-7b51-426d-965f-04401a2c1ef3:x5oRuIDKPDyAXXH2SaQU8UZd6FUJdNBU",
+      "state": "sent",
+      "user_id": "x5oRuIDKPDyAXXH2SaQU8UZd6FUJdNBU"
+    },
+    {
+      "id": "d6ea1450-41c3-48c3-8d82-57175704776e",
+      "idempotency_key": "outbid:f27652ce-de41-5f34-9716-fe2d28a02142:467008eb-54d3-4120-aa34-b16e6627ccb3:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "3155e666-cdbd-410b-a7c5-7f04950c9247",
+      "idempotency_key": "outbid:f27652ce-de41-5f34-9716-fe2d28a02142:c477ab92-dbc7-4036-8b65-a08ab750d781:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "f38692e3-f412-4207-9de3-040f6493c5bb",
+      "idempotency_key": "lot_won:f27652ce-de41-5f34-9716-fe2d28a02142:0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "state": "sent",
+      "user_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU"
+    },
+    {
+      "id": "04df49f3-b7a2-4f15-8a94-6525ba76602c",
+      "idempotency_key": "outbid:4fd71f85-20f0-5956-a289-31fbdbf5b7a3:0c3f80be-b4d7-4591-8f55-f0b16f46d016:0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "state": "sent",
+      "user_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU"
+    },
+    {
+      "id": "d71be1bb-09d6-4e44-897d-ae760fb7b87d",
+      "idempotency_key": "lot_won:4fd71f85-20f0-5956-a289-31fbdbf5b7a3:lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT",
+      "state": "sent",
+      "user_id": "lXeqUrsE1DV3aCMIRzNwze1Yn6t76SmT"
+    },
+    {
+      "id": "037d645d-77d0-4f3f-9ce8-517944540648",
+      "idempotency_key": "lot_lost:4fd71f85-20f0-5956-a289-31fbdbf5b7a3:0VM7RBs863VGvIzhAD0O44WxYv7IAqjU",
+      "state": "sent",
+      "user_id": "0VM7RBs863VGvIzhAD0O44WxYv7IAqjU"
+    },
+    {
+      "id": "2de22e74-a152-439c-aea9-cd15e21d330a",
+      "idempotency_key": "lot_lost:4fd71f85-20f0-5956-a289-31fbdbf5b7a3:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    },
+    {
+      "id": "3b4a7552-501a-4686-bc8c-a9f44a017dc3",
+      "idempotency_key": "lot_won:db960b2a-0602-4a95-8d21-55b1fd513418:iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ",
+      "state": "sent",
+      "user_id": "iahjhIm9JlR5Y6bywI7QxD8GfF8BJOfQ"
+    }
+  ],
+  "session": [
+    {
+      "id": "09c0cc82-5b4d-4d66-af07-2f5a99c7b2a3",
+      "sale_id": "f8ba4c6a-f07a-4bb8-b506-fda0985a4aab",
+      "status": "live",
+      "current_lot_id": null,
+      "started_at": "2026-06-18T18:00:32.906Z",
+      "ended_at": null,
+      "clerk_user_id": "prod-bootstrap-admin-001",
+      "auctioneer_user_id": null,
+      "created_at": "2026-06-18T18:00:32.903Z",
+      "updated_at": "2026-06-18T19:27:51.146Z",
+      "display_overlay": null,
+      "display_overlay_at": null
+    }
+  ]
+}

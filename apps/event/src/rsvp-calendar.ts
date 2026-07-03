@@ -1,3 +1,5 @@
+import { DEFAULT_EVENT_SLUG, resolveEventSlug } from "./config.js";
+
 function escapeIcsText(s: string): string {
   return s.replaceAll("\\", "\\\\").replaceAll("\n", "\\n").replaceAll(",", "\\,");
 }
@@ -18,7 +20,8 @@ export function downloadOpeningEventCalendar(segment = "full_evening"): void {
         ? new Date("2026-06-18T19:00:00.000Z")
         : new Date("2026-06-19T00:30:00.000Z");
 
-  const uid = "lax001-opening@lax.bid";
+  const slug = resolveEventSlug() ?? DEFAULT_EVENT_SLUG;
+  const uid = `${slug}-opening@lax.bid`;
   const dtStamp = formatIcsUtc(new Date());
   const lines = [
     "BEGIN:VCALENDAR",

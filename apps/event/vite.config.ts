@@ -2,7 +2,10 @@ import { defineConfig } from "vite";
 
 /** API routes only — static invitation art lives under public/events/. */
 function isOnsiteEventApiRequest(url: string): boolean {
+  const path = url.split("?")[0] ?? url;
   return (
+    path === "/events" ||
+    /^\/events\/pass\/[^/]+$/.test(path) ||
     /^\/events\/[^/]+\/(config|lookup|rsvp)(?:\?.*)?$/.test(url) ||
     /^\/events\/[^/]+\/pass\/[^/]+(?:\/qr\.svg)?(?:\?.*)?$/.test(url)
   );

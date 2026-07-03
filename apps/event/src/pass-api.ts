@@ -3,7 +3,7 @@ import {
   normalizeApiErrorMessage,
   parseApiErrorCodeFromBody,
 } from "./api-error-body.js";
-import { API_BASE, EVENT_SLUG } from "./config.js";
+import { API_BASE, resolveEventSlug } from "./config.js";
 import type { OnsiteEventPassView } from "./pass-types.js";
 
 const PASS_FETCH_TIMEOUT_MS = 15_000;
@@ -26,10 +26,19 @@ export class PassFetchError extends Error {
   }
 }
 
+function passFetchUrl(token: string): string {
+  const slug = resolveEventSlug();
+  const encoded = encodeURIComponent(token);
+  if (slug) {
+    return `${API_BASE}/events/${slug}/pass/${encoded}`;
+  }
+  return `${API_BASE}/events/pass/${encoded}`;
+}
+
 export async function fetchPass(token: string): Promise<OnsiteEventPassView> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/events/${EVENT_SLUG}/pass/${encodeURIComponent(token)}`, {
+    res = await fetch(passFetchUrl(token), {
       signal: AbortSignal.timeout(PASS_FETCH_TIMEOUT_MS),
     });
   } catch (error) {
@@ -51,6 +60,7 @@ export async function fetchPass(token: string): Promise<OnsiteEventPassView> {
 
 export function parsePassTokenFromPath(): string | null {
   const segments = window.location.pathname.split("/").filter(Boolean);
-  if (segments[0] !== "pass" || !segments[1]) return null;
-  return decodeURIComponent(segments[1]);
+  const passIdx = segments.indexOf("pass");
+  if (passIdx === -1 || !segments[passIdx + 1]) return null;
+  return decodeURIComponent(segments[passIdx + 1] ?? "");
 }

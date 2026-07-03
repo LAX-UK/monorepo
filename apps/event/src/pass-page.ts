@@ -142,6 +142,9 @@ function renderPass(mount: HTMLElement, pass: OnsiteEventPassView, onRefresh: ()
   addRow("Date", formatPassDate(pass.startsAt));
   addRow("Venue", pass.venue?.trim() || EVENT_DETAILS.venue);
   addRow("Dress code", pass.dressCode?.trim() || EVENT_DETAILS.dressCode);
+  if (pass.paddleNumber != null) {
+    addRow("In-room paddle", String(pass.paddleNumber));
+  }
   card.append(details);
 
   const qrWrap = el("div", "pass-qr-wrap");

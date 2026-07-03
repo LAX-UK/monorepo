@@ -1,7 +1,7 @@
 import { EVENTS_EMAIL, SOCIAL_LINKS, WEB_ORIGIN } from "./config.js";
 
 /** Wire footer social + site links from build-time config. */
-export function applyFooterLinks(): void {
+export function applyFooterLinks(opsEmail?: string | null): void {
   for (const [key, href] of Object.entries(SOCIAL_LINKS)) {
     for (const anchor of document.querySelectorAll<HTMLAnchorElement>(`a[data-social="${key}"]`)) {
       anchor.href = href;
@@ -13,8 +13,9 @@ export function applyFooterLinks(): void {
     anchor.textContent = new URL(WEB_ORIGIN).host;
   }
 
+  const email = opsEmail?.trim() || EVENTS_EMAIL;
   for (const anchor of document.querySelectorAll<HTMLAnchorElement>("a[data-events-email]")) {
-    anchor.href = `mailto:${EVENTS_EMAIL}`;
-    anchor.textContent = EVENTS_EMAIL;
+    anchor.href = `mailto:${email}`;
+    anchor.textContent = email;
   }
 }

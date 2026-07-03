@@ -16,4 +16,5 @@ export type OnsiteEventPassView = {
   qrImageUrl: string;
   checkedInAt: string | null;
   eventClosed: boolean;
+  paddleNumber: number | null;
 };

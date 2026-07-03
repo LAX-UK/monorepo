@@ -897,6 +897,20 @@
       "when": 1788000004000,
       "tag": "0128_user_role_active_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1788000005000,
+      "tag": "0129_onsite_event_sale_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1788000006000,
+      "tag": "0130_onsite_event_sale_id_unique",
+      "breakpoints": true
     }
   ]
 }

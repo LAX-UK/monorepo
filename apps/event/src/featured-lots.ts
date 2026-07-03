@@ -17,7 +17,8 @@ export function modelTHighlight(href?: string | null): CatalogLot {
 
 export function buildCarouselLots(
   catalogLots: CatalogLot[],
-  modelTHref?: string | null,
+  opts?: { modelTHref?: string | null; includeModelTHighlight?: boolean },
 ): CatalogLot[] {
-  return [modelTHighlight(modelTHref), ...catalogLots];
+  if (opts?.includeModelTHighlight === false) return catalogLots;
+  return [modelTHighlight(opts?.modelTHref), ...catalogLots];
 }

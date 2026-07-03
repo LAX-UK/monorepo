@@ -1,8 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+// @vitest-environment jsdom
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RsvpApiError } from "./rsvp-api-error.js";
 import { submitRsvp } from "./rsvp-api.js";
 
 describe("submitRsvp", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "location", {
+      value: { pathname: "/lax001", search: "" },
+      writable: true,
+    });
+  });
+
   it("surfaces validation_failed from errorCode with API message", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

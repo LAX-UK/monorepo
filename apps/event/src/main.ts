@@ -1,9 +1,11 @@
 import { lookupErrorMessage, submitErrorMessage } from "./api-error-messages.js";
 import { applyPublicConfig, setRsvpCallToActionsVisible } from "./apply-event-config.js";
-import { applyEventSeo } from "./apply-event-seo.js";
+import { applyEventContent, resolveEventTemplate } from "./apply-event-content.js";
+import { applyEventHubSeo, applyEventSeo } from "./apply-event-seo.js";
 import { applyFooterLinks } from "./apply-footer-links.js";
 import { applyPageAssets } from "./apply-page-assets.js";
-import { clearEmailFromUrl, parseEmailFromUrl } from "./config.js";
+import { clearEmailFromUrl, parseEmailFromUrl, resolveEventSlug } from "./config.js";
+import { renderEventHub } from "./event-hub.js";
 import { initLotCarousel } from "./lot-carousel.js";
 import { initPageEffects } from "./page-effects.js";
 import { parsePassTokenFromPath } from "./pass-api.js";
@@ -146,6 +148,15 @@ async function initRsvpPanel(
   }
 }
 
+function showEventHub(): void {
+  const eventPage = document.querySelector(".event-page");
+  if (eventPage instanceof HTMLElement) eventPage.hidden = true;
+  const sticky = document.getElementById("sticky-rsvp");
+  if (sticky) sticky.hidden = true;
+  const hubRoot = document.getElementById("event-hub-root");
+  if (hubRoot) hubRoot.hidden = false;
+}
+
 async function bootstrap() {
   const passToken = parsePassTokenFromPath();
   if (passToken) {
@@ -156,19 +167,38 @@ async function bootstrap() {
     return;
   }
 
-  applyEventSeo();
-  applyPageAssets();
-  applyFooterLinks();
-  initPageEffects();
-  void initLotCarousel();
+  const eventSlug = resolveEventSlug();
+  if (!eventSlug) {
+    showEventHub();
+    applyEventHubSeo();
+    applyFooterLinks();
+    const hubMount = document.getElementById("event-hub-root");
+    if (hubMount) {
+      await renderEventHub(hubMount);
+    }
+    return;
+  }
 
   let eventConfig: OnsiteEventPublicConfig | null = null;
   try {
     eventConfig = await fetchEventConfigWithRetry();
     applyPublicConfig(eventConfig);
+    applyEventContent(eventConfig);
   } catch {
     /* countdown and hero copy keep bundled fallbacks */
   }
+
+  applyEventSeo(eventConfig ?? undefined);
+  applyPageAssets(eventConfig?.slug);
+  applyFooterLinks(eventConfig?.opsEmail);
+  initPageEffects();
+  void initLotCarousel({
+    saleId: eventConfig?.saleId ?? null,
+    saleTitle: eventConfig?.linkedSaleTitle ?? null,
+    includeModelTHighlight: eventConfig
+      ? resolveEventTemplate(eventConfig.slug) === "lax001"
+      : true,
+  });
 
   const mount = document.getElementById("rsvp-panel");
   if (!mount) return;

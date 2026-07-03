@@ -96,6 +96,25 @@ export type OnsiteCatalog = {
   modelTHref: string | null;
 };
 
+export async function fetchLinkedSaleCatalog(
+  saleId: string,
+  saleTitle: string,
+): Promise<OnsiteCatalog> {
+  const saleLots = await fetchSaleLots(saleId);
+  const lots: CatalogLot[] = [];
+  let modelTHref: string | null = null;
+
+  for (const lot of saleLots) {
+    if (isModelTLot(lot)) {
+      modelTHref = lotHref(lot);
+      continue;
+    }
+    lots.push(mapApiLot(lot, saleTitle));
+  }
+
+  return { lots, modelTHref };
+}
+
 export async function fetchOnsiteCatalog(): Promise<OnsiteCatalog> {
   const res = await fetch(
     `${API_BASE}/sales?deliveryMode=onsite&statuses=scheduled,active&limit=20&offset=0`,

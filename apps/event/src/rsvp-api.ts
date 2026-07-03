@@ -3,7 +3,7 @@ import {
   normalizeApiErrorMessage,
   parseApiErrorCodeFromBody,
 } from "./api-error-body.js";
-import { API_BASE, EVENT_SLUG } from "./config.js";
+import { API_BASE, resolveEventSlug } from "./config.js";
 import { RsvpApiError } from "./rsvp-api-error.js";
 
 const RSVP_FETCH_TIMEOUT_MS = 15_000;
@@ -25,6 +25,20 @@ export type OnsiteEventPublicConfig = {
   venue: string | null;
   dressCode: string | null;
   arrivalNote: string | null;
+  opsEmail: string | null;
+  saleId: string | null;
+  linkedSaleTitle: string | null;
+  status: "published" | "closed";
+};
+
+export type OnsiteEventPublicListItem = {
+  slug: string;
+  title: string;
+  startsAt: string | null;
+  venue: string | null;
+  dressCode: string | null;
+  micrositeUrl: string | null;
+  deliveryMode: "onsite" | "hybrid" | null;
 };
 
 export type OnsiteEventEmailLookup =
@@ -61,6 +75,14 @@ export type SubmitRsvpResult = {
   isUpdate: boolean;
   passUrl: string;
 };
+
+function requireEventSlug(): string {
+  const slug = resolveEventSlug();
+  if (!slug) {
+    throw new RsvpApiError("event_slug_required", "Open a specific event invitation to RSVP.");
+  }
+  return slug;
+}
 
 async function parseJson<T>(res: Response): Promise<T> {
   try {
@@ -99,8 +121,35 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   }
 }
 
+export async function fetchUpcomingEvents(): Promise<OnsiteEventPublicListItem[]> {
+  const res = await fetchWithTimeout(`${API_BASE}/events`);
+  if (!res.ok) {
+    throw new Error(`events_list_failed_${res.status}`);
+  }
+  const body = await parseJson<{ data: OnsiteEventPublicListItem[] }>(res);
+  return body.data;
+}
+
+const UPCOMING_EVENTS_RETRY_DELAYS_MS = [0, 600, 1500];
+
+export async function fetchUpcomingEventsWithRetry(): Promise<OnsiteEventPublicListItem[]> {
+  let lastError: unknown;
+  for (const delay of UPCOMING_EVENTS_RETRY_DELAYS_MS) {
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    try {
+      return await fetchUpcomingEvents();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 export async function fetchEventConfig(): Promise<OnsiteEventPublicConfig> {
-  const res = await fetchWithTimeout(`${API_BASE}/events/${EVENT_SLUG}/config`);
+  const slug = requireEventSlug();
+  const res = await fetchWithTimeout(`${API_BASE}/events/${slug}/config`);
   if (!res.ok) {
     throw new Error(`config_failed_${res.status}`);
   }
@@ -126,7 +175,8 @@ export async function fetchEventConfigWithRetry(): Promise<OnsiteEventPublicConf
 }
 
 export async function lookupByEmail(email: string): Promise<OnsiteEventEmailLookup> {
-  const res = await fetchWithTimeout(`${API_BASE}/events/${EVENT_SLUG}/lookup`, {
+  const slug = requireEventSlug();
+  const res = await fetchWithTimeout(`${API_BASE}/events/${slug}/lookup`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -142,7 +192,8 @@ export async function lookupByEmail(email: string): Promise<OnsiteEventEmailLook
 }
 
 export async function submitRsvp(input: SubmitRsvpInput): Promise<SubmitRsvpResult> {
-  const res = await fetchWithTimeout(`${API_BASE}/events/${EVENT_SLUG}/rsvp`, {
+  const slug = requireEventSlug();
+  const res = await fetchWithTimeout(`${API_BASE}/events/${slug}/rsvp`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
