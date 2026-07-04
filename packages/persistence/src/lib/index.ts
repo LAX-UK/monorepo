@@ -97,3 +97,25 @@ export {
   pushPreferenceKey,
   whatsappPreferenceKey,
 } from "./notification-preference-keys.js";
+
+export {
+  EnsurePersonalLegalEntityService,
+  type EnsurePersonalLegalEntityInput,
+  type EnsurePersonalLegalEntityResult,
+  type IEnsurePersonalLegalEntityService,
+} from "../services/ensure-personal-legal-entity.js";
+
+export { PLATFORM_CATALOG_SLUG } from "../repositories/drizzle-platform-catalog-legal-entity.reader.js";
+export { isPaddleUniqueViolation } from "../repositories/drizzle-paddle.repository.js";
+export {
+  insertArtistInTx,
+  replaceArtistCategoriesInTx,
+  resolveUniqueArtistSlug,
+} from "../repositories/artist-registry-mutations.js";
+export { searchArtists } from "../repositories/artist-registry-search.js";
+export {
+  FUZZY_THRESHOLD,
+  partialSearchPattern,
+  rowToRecord,
+  slugify,
+} from "../repositories/artist-registry.helpers.js";

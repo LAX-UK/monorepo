@@ -1,4 +1,4 @@
-import type { ILotRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { CreateSaleInput, Sale, UserRole } from "@auction/types";
 import { normalizeUserStaffRole } from "@auction/types";
 import { getSaleModeCapabilities } from "@auction/validators";

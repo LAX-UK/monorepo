@@ -3,7 +3,7 @@ import {
   isSellerConnectReady as isSellerConnectReadyImpl,
   shouldSkipConnect,
 } from "@auction/connect";
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { LegalEntity } from "@auction/types";
 
 export type SellerConnectFields = ConnectLegalEntityFields;

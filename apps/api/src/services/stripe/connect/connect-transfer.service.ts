@@ -1,5 +1,5 @@
-import type { IConnectTransferRepository, ITransactionRunner } from "@auction/persistence";
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IConnectTransferRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";

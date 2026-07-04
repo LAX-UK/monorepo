@@ -1,8 +1,5 @@
-import type {
-  ISourceOfFundsDocumentReviewRepository,
-  ITransactionRunner,
-} from "@auction/persistence";
-import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
+import type { ISourceOfFundsDocumentReviewRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ISourceOfFundsDocumentRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
 import type { ISourceOfFundsDocumentCollectionService } from "../interfaces/source-of-funds-document-collection.js";
@@ -36,7 +33,7 @@ export class SourceOfFundsDocumentCollectionService
     caseRepo: ISourceOfFundsRepository,
     docRepo: ISourceOfFundsDocumentRepository,
     reviewRepo: ISourceOfFundsDocumentReviewRepository,
-    uploadObjectReader: import("@auction/persistence").IUploadObjectReader,
+    uploadObjectReader: import("@auction/persistence/interfaces").IUploadObjectReader,
     transactionRunner: ITransactionRunner,
     events: IDomainEventSink | null,
     storage: IObjectStorage,

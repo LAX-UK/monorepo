@@ -1,5 +1,5 @@
-import type { ILotFulfilmentRepository } from "@auction/persistence";
-import type { ILotRepository } from "@auction/persistence";
+import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentService } from "./interfaces/lot-fulfilment-service.js";
 import { LotFulfilmentAdminService } from "./lot-fulfilment/lot-fulfilment-admin.service.js";
 import { LotFulfilmentBuyerService } from "./lot-fulfilment/lot-fulfilment-buyer.service.js";

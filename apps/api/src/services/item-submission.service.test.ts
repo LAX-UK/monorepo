@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { IItemSubmissionRepository, IUserRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IItemSubmissionRepository, IUserRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";

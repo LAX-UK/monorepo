@@ -178,3 +178,16 @@ export { DrizzleLotSoftDeleteSideEffects } from "./drizzle-lot-soft-delete.side-
 export { DrizzleSaleSoftDeleteSideEffects } from "./drizzle-sale-soft-delete.side-effects.js";
 export { DrizzleLotFulfilmentRepository } from "./drizzle-lot-fulfilment.repository.js";
 export { DrizzleAttentionFeedReader } from "./drizzle-attention-feed.reader.js";
+
+export { DrizzleRepositoryFactory } from "../drizzle-repository.factory.js";
+export { DrizzleTransactionRunner } from "../transaction-runner.js";
+export { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
+export {
+  endYearBoundsUtc,
+  publicParentSaleExists,
+  listWhere as lotListWhere,
+  catalogSalePageOrderBy,
+  catalogLotsBySaleWhere,
+  listOrderBy as lotListOrderBy,
+  type ListWhereInput,
+} from "./lot/lot-list-filters.js";

@@ -1,5 +1,2 @@
-export {
-  mapSaleRegistrationRow,
-  toBidLimitString,
-  type SaleRegistrationDbRow,
-} from "@auction/persistence";
+export { mapSaleRegistrationRow, toBidLimitString } from "@auction/persistence/lib";
+export type { SaleRegistrationDbRow } from "@auction/persistence/lib";

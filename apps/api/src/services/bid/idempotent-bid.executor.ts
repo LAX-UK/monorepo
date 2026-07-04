@@ -1,4 +1,4 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { Bid } from "@auction/types";
 import type { Result } from "neverthrow";
 import { Counter, Histogram } from "prom-client";

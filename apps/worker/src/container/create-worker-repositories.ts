@@ -1,10 +1,6 @@
 import type { IMarketingProfileReader } from "@auction/marketing-events";
-import type {
-  INotificationWriteRepository,
-  IQrCodeScanPersister,
-  ITransactionRunner,
-} from "@auction/persistence";
-import { DrizzleTransactionRunner } from "@auction/persistence";
+import type { INotificationWriteRepository, IQrCodeScanPersister, ITransactionRunner } from "@auction/persistence/interfaces";
+import { DrizzleTransactionRunner } from "@auction/persistence/repositories";
 import {
   DrizzleNotificationWriteRepository,
   DrizzleQrCodeScanPersister,

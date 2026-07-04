@@ -1,4 +1,4 @@
-import type { IAdminDisputeCaseEnrichmentReader } from "@auction/persistence";
+import type { IAdminDisputeCaseEnrichmentReader } from "@auction/persistence/interfaces";
 import {
   type AdminDisputeCaseRow,
   type DisputeCaseListFilter,

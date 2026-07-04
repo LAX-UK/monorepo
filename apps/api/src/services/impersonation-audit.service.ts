@@ -1,8 +1,5 @@
-import {
-  ADMIN_IMPERSONATION_AGGREGATE_TYPE,
-  type IImpersonationDomainEventReader,
-  type ITransactionRunner,
-} from "@auction/persistence";
+import type { IImpersonationDomainEventReader, ITransactionRunner } from "@auction/persistence/interfaces";
+import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence/lib";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 

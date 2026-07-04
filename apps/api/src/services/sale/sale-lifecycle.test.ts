@@ -1,4 +1,4 @@
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";

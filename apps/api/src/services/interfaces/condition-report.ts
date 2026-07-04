@@ -1,8 +1,4 @@
-import type {
-  BuyerConditionReportListRow,
-  ConditionReportRequestListRow,
-  ConditionReportRequestRow,
-} from "@auction/persistence";
+import type { BuyerConditionReportListRow, ConditionReportRequestListRow, ConditionReportRequestRow } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import type { Result } from "neverthrow";

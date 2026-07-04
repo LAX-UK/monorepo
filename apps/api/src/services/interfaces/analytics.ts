@@ -1,22 +1,6 @@
-import type {
-  DateRange,
-  ILotMetricsReader,
-  IPaymentMetricsReader,
-  IUserMetricsReader,
-  LotMetricPoint,
-  RevenueMetricPoint,
-  UserMetricPoint,
-} from "@auction/persistence";
+import type { DateRange, ILotMetricsReader, IPaymentMetricsReader, IUserMetricsReader, LotMetricPoint, RevenueMetricPoint, UserMetricPoint } from "@auction/persistence/interfaces";
 
-export type {
-  DateRange,
-  ILotMetricsReader,
-  IPaymentMetricsReader,
-  IUserMetricsReader,
-  LotMetricPoint,
-  RevenueMetricPoint,
-  UserMetricPoint,
-} from "@auction/persistence";
+export type { DateRange, ILotMetricsReader, IPaymentMetricsReader, IUserMetricsReader, LotMetricPoint, RevenueMetricPoint, UserMetricPoint } from "@auction/persistence/interfaces";
 
 export type AdminAnalyticsDashboard = {
   activeLots: number;

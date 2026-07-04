@@ -1,4 +1,4 @@
-import { DrizzleAdminDisputeCaseEnrichmentReader } from "@auction/persistence";
+import { DrizzleAdminDisputeCaseEnrichmentReader } from "@auction/persistence/repositories";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IAdminDomainEventQueryService } from "../interfaces/admin-routes.js";
 import { AdminDisputeCaseQueryService } from "./admin-dispute-case-query.service.js";

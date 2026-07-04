@@ -1,4 +1,4 @@
-import type { ISaleRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import { buildBuyerPremiumPolicy } from "@auction/validators";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";

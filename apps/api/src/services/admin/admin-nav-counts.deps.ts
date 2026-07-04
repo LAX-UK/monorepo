@@ -1,5 +1,5 @@
-import type { ISaleroomLiveSessionCounter } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { ISaleroomLiveSessionCounter } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Sale } from "@auction/types";
 import type { AmlService } from "../aml/aml.service.js";
 import type { IConditionReportAdminService } from "../interfaces/condition-report.js";

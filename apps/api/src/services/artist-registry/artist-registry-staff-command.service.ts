@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { IArtistRegistryRepository } from "@auction/persistence";
+import type { IArtistRegistryRepository } from "@auction/persistence/interfaces";
 import { artistMergeConfirmationPhrase } from "@auction/validators";
 import { ArtistError } from "../../lib/errors.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";

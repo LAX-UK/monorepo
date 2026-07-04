@@ -1,12 +1,9 @@
 import type { Database } from "@auction/db";
-import type {
-  ILotLifecycleSnapshotRepository,
-  LotLifecycleSnapshotPatch,
-} from "@auction/persistence";
+import type { ILotLifecycleSnapshotRepository, LotLifecycleSnapshotPatch } from "@auction/persistence/interfaces";
 import type { LotEventType } from "../domain/lot-events.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 
-export type { LotLifecycleSnapshotPatch } from "@auction/persistence";
+export type { LotLifecycleSnapshotPatch } from "@auction/persistence/interfaces";
 
 export type RecordLotLifecycleInput = {
   lotId: string;

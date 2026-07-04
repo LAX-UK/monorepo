@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { IUserInvitationRepository, InvitationRow } from "@auction/persistence";
+import type { IUserInvitationRepository, InvitationRow } from "@auction/persistence/interfaces";
 import type { UserRole } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { InvitationError } from "./invitation.service.js";

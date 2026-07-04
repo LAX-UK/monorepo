@@ -1,4 +1,4 @@
-import type { ActiveMembership, ILegalEntityRepository } from "@auction/persistence";
+import type { ActiveMembership, ILegalEntityRepository } from "@auction/persistence/interfaces";
 import { ACTING_LEGAL_ENTITY_COOKIE_NAME, encodeActingContextCookie } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";

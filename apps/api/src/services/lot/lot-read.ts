@@ -1,4 +1,4 @@
-import type { ArchiveEndedAggregateFilter, ListLotsFilter } from "@auction/persistence";
+import type { ArchiveEndedAggregateFilter, ListLotsFilter } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { LotServiceDeps } from "./lot-types.js";
 

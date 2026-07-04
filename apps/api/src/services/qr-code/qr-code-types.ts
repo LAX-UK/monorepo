@@ -1,6 +1,6 @@
-import type { QrCodeEntityType, QrCodeStatus } from "@auction/persistence";
+import type { QrCodeEntityType, QrCodeStatus } from "@auction/persistence/interfaces";
 
-export type { QrCodeEntityType, QrCodeStatus } from "@auction/persistence";
+export type { QrCodeEntityType, QrCodeStatus } from "@auction/persistence/interfaces";
 
 export type QrCodeDto = {
   id: string;

@@ -1,9 +1,5 @@
-import type { IUserRepository } from "@auction/persistence";
-import type {
-  IPaymentExternalRefRepository,
-  IXeroConnectionRepository,
-  IXeroWebhookEventRepository,
-} from "@auction/persistence";
+import type { IUserRepository } from "@auction/persistence/interfaces";
+import type { IPaymentExternalRefRepository, IXeroConnectionRepository, IXeroWebhookEventRepository } from "@auction/persistence/interfaces";
 import { canonicalizeXeroCallbackUrl } from "@auction/validators";
 import type { Env } from "../../env.js";
 import type {

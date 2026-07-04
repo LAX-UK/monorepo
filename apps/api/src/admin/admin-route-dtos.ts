@@ -2,19 +2,7 @@ import type { adminCreateArtistBodySchema, adminUpdateArtistBodySchema } from "@
 import type { z } from "zod";
 import type { SourceOfFundsCase } from "../services/source-of-funds/source-of-funds.types.js";
 
-export type {
-  AdminOnboardingLegalEntityRow,
-  AdminOnboardingArtistRow,
-  AdminOnboardingKycSessionRow,
-  AdminOnboardingDocumentRow,
-  AdminOnboardingStaleLeadRow,
-  AdminOnboardingIssues,
-  AdminManualReviewPaymentRow,
-  AdminReviewTaskRow,
-  AdminArtistListLinkedFilter,
-  AdminArtistListOptions,
-  AdminArtistListSort,
-} from "@auction/persistence";
+export type { AdminOnboardingLegalEntityRow, AdminOnboardingArtistRow, AdminOnboardingKycSessionRow, AdminOnboardingDocumentRow, AdminOnboardingStaleLeadRow, AdminOnboardingIssues, AdminManualReviewPaymentRow, AdminReviewTaskRow, AdminArtistListLinkedFilter, AdminArtistListOptions, AdminArtistListSort } from "@auction/persistence/interfaces";
 
 export type AdminCatalogCreateArtistBody = z.infer<typeof adminCreateArtistBodySchema>;
 export type AdminCatalogUpdateArtistBody = z.infer<typeof adminUpdateArtistBodySchema>;

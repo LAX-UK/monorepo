@@ -1,5 +1,5 @@
-import type { IOnsiteEventRsvpRepository } from "@auction/persistence";
-import type { IOnsiteEventRepository } from "@auction/persistence";
+import type { IOnsiteEventRsvpRepository } from "@auction/persistence/interfaces";
+import type { IOnsiteEventRepository } from "@auction/persistence/interfaces";
 import type {
   OnsiteEvent,
   OnsiteEventAdminDetail,

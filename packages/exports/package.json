@@ -11,6 +11,10 @@
     "./providers": {
       "types": "./dist/providers/index.d.ts",
       "default": "./dist/providers/index.js"
+    },
+    "./infrastructure": {
+      "types": "./dist/infrastructure/index.d.ts",
+      "default": "./dist/infrastructure/index.js"
     }
   },
   "scripts": {

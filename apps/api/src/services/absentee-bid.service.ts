@@ -1,6 +1,6 @@
-import type { IAbsenteeBidRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotRepository } from "@auction/persistence";
+import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type {

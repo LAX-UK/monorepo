@@ -1,4 +1,4 @@
-import type { IXeroConnectionRepository, XeroConnectionRow } from "@auction/persistence";
+import type { IXeroConnectionRepository, XeroConnectionRow } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type { TokenSet } from "xero-node";
 import type { XeroClient } from "xero-node";

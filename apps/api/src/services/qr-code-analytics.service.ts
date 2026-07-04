@@ -1,4 +1,4 @@
-import type { IQrCodeAnalyticsReader } from "@auction/persistence";
+import type { IQrCodeAnalyticsReader } from "@auction/persistence/interfaces";
 import type { QrCodeDetailedAnalytics, ResolvedQrCodeAnalyticsQuery } from "@auction/validators";
 import {
   fillTrendGaps,

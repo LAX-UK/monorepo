@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { PayoutLineKind } from "@auction/types";
 
 export type AddPaymentPayoutLineInput = {

@@ -1,5 +1,5 @@
-import type { IBidRepository, ILotRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";

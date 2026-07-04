@@ -1,9 +1,9 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { IBidRepository, ILotRepository, ISaleRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { IWatchlistRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IBidRepository, ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IWatchlistRepository } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
@@ -40,7 +40,7 @@ export type LotServiceDeps = {
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null;
   legalEntityRepository: ILegalEntityRepository | null;
   enforceIndividualConnectOnPublish: boolean;
-  adminReviewTaskRepository: import("@auction/persistence").IAdminReviewTaskRepository | null;
+  adminReviewTaskRepository: import("@auction/persistence/interfaces").IAdminReviewTaskRepository | null;
   transactionRunner: ITransactionRunner | null;
   domainEventSink: IDomainEventSink | null;
   catalogueMediaUrlResolver: MediaUrlResolver | undefined;

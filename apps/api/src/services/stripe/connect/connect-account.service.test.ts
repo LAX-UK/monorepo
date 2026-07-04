@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { ILegalEntityConnectRepository } from "@auction/persistence";
+import type { ILegalEntityConnectRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { Env } from "../../../env.js";
 import { transactionRunnerFromDb } from "../../../test/transaction-runner-from-db.js";

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import type { IConditionReportRequestRepository } from "@auction/persistence";
-import type { ILotRepository } from "@auction/persistence";
+import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";

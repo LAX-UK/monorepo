@@ -1,5 +1,5 @@
-import type { LotFulfilmentAddressSnapshot } from "@auction/persistence";
-import type { IAddressRepository } from "@auction/persistence";
+import type { LotFulfilmentAddressSnapshot } from "@auction/persistence/interfaces";
+import type { IAddressRepository } from "@auction/persistence/interfaces";
 import { LotError } from "../../lib/errors.js";
 
 export function toFulfilmentAddressSnapshot(row: {

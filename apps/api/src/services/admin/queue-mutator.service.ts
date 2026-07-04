@@ -1,4 +1,4 @@
-import type { IFailedJobRepository } from "@auction/persistence";
+import type { IFailedJobRepository } from "@auction/persistence/interfaces";
 import {
   type AppEnv,
   DEAD_LETTER_QUEUE_NAME,

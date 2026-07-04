@@ -1,8 +1,5 @@
-import type {
-  ISourceOfFundsDocumentReviewRepository,
-  IUploadObjectReader,
-} from "@auction/persistence";
-import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
+import type { ISourceOfFundsDocumentReviewRepository, IUploadObjectReader } from "@auction/persistence/interfaces";
+import type { ISourceOfFundsDocumentRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
 import type { ISignedUrlPolicy } from "../signed-url-policy.js";
@@ -14,7 +11,7 @@ export type SourceOfFundsDocumentCollectionContext = {
   docRepo: ISourceOfFundsDocumentRepository;
   reviewRepo: ISourceOfFundsDocumentReviewRepository;
   uploadObjectReader: IUploadObjectReader;
-  transactionRunner: import("@auction/persistence").ITransactionRunner;
+  transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner;
   events: IDomainEventSink | null;
   storage: IObjectStorage;
   downloadSigningPolicy: ISignedUrlPolicy;
@@ -26,7 +23,7 @@ export function createSourceOfFundsDocumentCollectionContext(input: {
   docRepo: ISourceOfFundsDocumentRepository;
   reviewRepo: ISourceOfFundsDocumentReviewRepository;
   uploadObjectReader: IUploadObjectReader;
-  transactionRunner: import("@auction/persistence").ITransactionRunner;
+  transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner;
   events: IDomainEventSink | null;
   storage: IObjectStorage;
   downloadSigningPolicy: ISignedUrlPolicy;

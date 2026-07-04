@@ -1,4 +1,4 @@
-import type { PaymentRecord } from "@auction/persistence";
+import type { PaymentRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { gbpAmountToPence } from "../lib/decimal-money.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";

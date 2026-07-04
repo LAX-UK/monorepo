@@ -1,7 +1,7 @@
 import type { createDb } from "@auction/db";
 import { domainEvent, legalEntity, legalEntityMember, user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type pino from "pino";
 

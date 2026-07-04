@@ -1,5 +1,5 @@
-import type { IBidRepository, ILotRepository } from "@auction/persistence";
-import type { IWatchlistRepository } from "@auction/persistence";
+import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
+import type { IWatchlistRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../../lib/errors.js";

@@ -2,7 +2,7 @@ import type { adminUserListQuerySchema } from "@auction/validators";
 import type { z } from "zod";
 
 type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
-import type { AdminUserListFilter } from "@auction/persistence";
+import type { AdminUserListFilter } from "@auction/persistence/interfaces";
 
 function isoDateStart(iso: string): Date {
   return new Date(`${iso}T00:00:00.000Z`);

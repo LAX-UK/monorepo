@@ -1,5 +1,5 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import {
   listAllowedAutoBidSteps,

@@ -1,5 +1,5 @@
-import type { ILotRepository } from "@auction/persistence";
-import type { IWatchlistRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence/interfaces";
+import type { IWatchlistRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { WatchlistService } from "./watchlist.service.js";

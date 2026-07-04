@@ -1,4 +1,4 @@
-import type { CheckInCandidateRow } from "@auction/persistence";
+import type { CheckInCandidateRow } from "@auction/persistence/interfaces";
 import type { Result } from "neverthrow";
 
 export type SaleroomCheckInServiceError = {

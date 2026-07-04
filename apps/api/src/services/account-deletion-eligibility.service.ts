@@ -1,4 +1,4 @@
-import type { IAccountDeletionEligibilityReader } from "@auction/persistence";
+import type { IAccountDeletionEligibilityReader } from "@auction/persistence/interfaces";
 
 export type AccountDeletionEligibilityResult =
   | { ok: true }

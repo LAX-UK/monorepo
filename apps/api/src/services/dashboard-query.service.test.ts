@@ -1,4 +1,4 @@
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { DashboardQueryService } from "./dashboard-query.service.js";

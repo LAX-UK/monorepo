@@ -1,4 +1,4 @@
-import type { IBidRepository } from "@auction/persistence";
+import type { IBidRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import { type Result, err } from "neverthrow";
 import { BidError } from "../../lib/errors.js";

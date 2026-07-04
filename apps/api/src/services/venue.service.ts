@@ -1,4 +1,4 @@
-import type { IVenueRepository, ListVenuesFilter, VenueListRow } from "@auction/persistence";
+import type { IVenueRepository, ListVenuesFilter, VenueListRow } from "@auction/persistence/interfaces";
 import type { CreateVenueInput, UpdateVenueInput, Venue } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { VenueError } from "../lib/errors.js";

@@ -1,6 +1,6 @@
-import type { IConnectTransferRepository, ITransactionRunner } from "@auction/persistence";
-import type { ILegalEntityConnectRepository } from "@auction/persistence";
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IConnectTransferRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILegalEntityConnectRepository } from "@auction/persistence/interfaces";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../env.js";
@@ -107,14 +107,14 @@ export class StripeConnectFacade implements IStripeConnectService {
 
   applyAccountUpdate(
     account: Stripe.Account,
-    tx?: import("@auction/persistence").DbTransaction,
+    tx?: import("@auction/persistence/interfaces").DbTransaction,
   ): Promise<void> {
     return this.accountService.applyAccountUpdate(account, tx);
   }
 
   applyAccountDeauthorized(
     stripeAccountId: string,
-    tx?: import("@auction/persistence").DbTransaction,
+    tx?: import("@auction/persistence/interfaces").DbTransaction,
   ): Promise<void> {
     return this.accountService.applyAccountDeauthorized(stripeAccountId, tx);
   }

@@ -2,7 +2,7 @@ import type { Lot } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 
-export type { LotSoftDeleteGuardCounts } from "@auction/persistence";
+export type { LotSoftDeleteGuardCounts } from "@auction/persistence/interfaces";
 
 export type LotDeleteEligibility = {
   canDelete: boolean;
@@ -23,7 +23,7 @@ export type LotBulkSoftDeleteResult = {
   orphanDraftSales: Array<{ id: string; title: string }>;
 };
 
-export type { ILotSoftDeleteSideEffects } from "@auction/persistence";
+export type { ILotSoftDeleteSideEffects } from "@auction/persistence/interfaces";
 
 export interface ILotSoftDeleteService {
   getDeleteEligibility(lotId: string): Promise<LotDeleteEligibility | null>;

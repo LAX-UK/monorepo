@@ -1,7 +1,7 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { IPaymentWriteRepository } from "@auction/persistence";
-import type { IAddressRepository } from "@auction/persistence";
-import type { IProfileReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
+import type { IAddressRepository } from "@auction/persistence/interfaces";
+import type { IProfileReader } from "@auction/persistence/interfaces";
 import type { LegalEntity } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { AppLogger } from "../lib/logger.js";

@@ -1,5 +1,1 @@
-export {
-  mapTelephoneBidBookingRow,
-  moneyToDbString,
-  parseAuthorizedMaxCap,
-} from "@auction/persistence";
+export { mapTelephoneBidBookingRow, moneyToDbString, parseAuthorizedMaxCap } from "@auction/persistence/lib";

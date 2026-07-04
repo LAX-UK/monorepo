@@ -1,5 +1,5 @@
-import type { ISaleSoftDeleteGuardReader } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { ISaleSoftDeleteGuardReader } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import {
   bulkSaleDeleteConfirmationPhrase,

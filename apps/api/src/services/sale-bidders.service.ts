@@ -1,4 +1,4 @@
-import type { ISaleBiddersReader, SaleBidderRow } from "@auction/persistence";
+import type { ISaleBiddersReader, SaleBidderRow } from "@auction/persistence/interfaces";
 import type { ISaleExistenceReader } from "./interfaces/sale-follow.js";
 
 export type SaleBiddersPage = {

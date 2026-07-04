@@ -1,7 +1,7 @@
-import type { MemberWithUser } from "@auction/persistence";
+import type { MemberWithUser } from "@auction/persistence/interfaces";
 import type { LegalEntityMember, LegalEntityMemberRole } from "@auction/types";
-export type { MemberWithUser } from "@auction/persistence";
-export { MemberPermissionError } from "@auction/persistence";
+export type { MemberWithUser } from "@auction/persistence/interfaces";
+export { MemberPermissionError } from "@auction/persistence/lib";
 
 export type InviteMemberInput = {
   email: string;

@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
-import type { ISaleRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { IWatchlistRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IWatchlistRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import type { ICacheProvider } from "../interfaces/cache.js";

@@ -1,4 +1,4 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BidError } from "../../lib/errors.js";
 import type { IIdempotencyStore } from "../interfaces/idempotency-store.js";

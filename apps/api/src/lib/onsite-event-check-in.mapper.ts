@@ -1,4 +1,4 @@
-import type { OnsiteEventRsvpWithGuest } from "@auction/persistence";
+import type { OnsiteEventRsvpWithGuest } from "@auction/persistence/interfaces";
 import type { OnsiteEvent, OnsiteEventCheckInGuestSummary } from "@auction/types";
 import { segmentLabelFor } from "./onsite-event.mapper.js";
 

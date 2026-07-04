@@ -1,8 +1,8 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotFulfilmentPaymentHook } from "@auction/persistence";
-import type { IPaymentWriteRepository } from "@auction/persistence";
-import type { IAddressRepository } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
+import type { IAddressRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence/interfaces";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
@@ -40,7 +40,7 @@ export type PaymentServiceDeps = {
   accounting: IInvoiceAccountingProvider;
   paymentTierPolicy: PaymentTierPolicy;
   legalEntityRepository: ILegalEntityRepository | undefined;
-  transactionRunner: import("@auction/persistence").ITransactionRunner | undefined;
+  transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner | undefined;
   domainEventSink: IDomainEventSink | undefined;
   stripePayments: IStripePaymentGateway | null;
   mediaUrlResolver: MediaUrlResolver | undefined;

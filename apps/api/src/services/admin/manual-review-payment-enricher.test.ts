@@ -1,4 +1,4 @@
-import { DrizzleAdminManualReviewPaymentEnrichmentReader } from "@auction/persistence";
+import { DrizzleAdminManualReviewPaymentEnrichmentReader } from "@auction/persistence/repositories";
 import { describe, expect, it, vi } from "vitest";
 
 describe("DrizzleAdminManualReviewPaymentEnrichmentReader", () => {

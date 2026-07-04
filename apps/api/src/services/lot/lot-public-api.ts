@@ -1,4 +1,4 @@
-import type { ListLotsFilter } from "@auction/persistence";
+import type { ListLotsFilter } from "@auction/persistence/interfaces";
 import type { Lot, PublicLotView, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { resolvePublicLotListFilter, viewerCanSeeNonPublicCatalog } from "@auction/validators";

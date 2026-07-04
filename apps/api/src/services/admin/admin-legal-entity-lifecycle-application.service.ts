@@ -1,4 +1,4 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { LegalEntityStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { LifecycleAdminOp } from "../../lib/legal-entity-lifecycle-transitions.js";

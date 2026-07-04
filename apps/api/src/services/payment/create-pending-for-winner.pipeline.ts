@@ -1,5 +1,5 @@
-import type { LotFulfilmentAddressSnapshot } from "@auction/persistence";
-import type { PaymentRecord } from "@auction/persistence";
+import type { LotFulfilmentAddressSnapshot } from "@auction/persistence/interfaces";
+import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";

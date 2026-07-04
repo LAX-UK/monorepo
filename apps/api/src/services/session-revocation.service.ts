@@ -1,4 +1,4 @@
-import type { AuthSessionListRow, ISessionRepository } from "@auction/persistence";
+import type { AuthSessionListRow, ISessionRepository } from "@auction/persistence/interfaces";
 
 /** Deletes Better Auth `session` rows (auth DB). Used after password reset / email change / suspension. */
 export class SessionRevocationService {

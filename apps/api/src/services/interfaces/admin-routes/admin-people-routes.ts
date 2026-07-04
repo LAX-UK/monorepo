@@ -1,11 +1,5 @@
-import type {
-  AdminActivityEntry,
-  AdminUserDetail,
-  AdminUserListFilter,
-  AdminUserListResult,
-  AdminUserListRow,
-} from "@auction/persistence";
-import type { InvitationAdminListFilters, InvitationAdminListRow } from "@auction/persistence";
+import type { AdminActivityEntry, AdminUserDetail, AdminUserListFilter, AdminUserListResult, AdminUserListRow } from "@auction/persistence/interfaces";
+import type { InvitationAdminListFilters, InvitationAdminListRow } from "@auction/persistence/interfaces";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { CreateInvitationInput, InvitationError } from "../../invitation.service.js";
@@ -101,13 +95,13 @@ export interface IAdminUserApplicationService {
     actorStaffRole: string | null | undefined,
     userId: string,
     limit?: number,
-  ): Promise<import("@auction/persistence").AdminKycSession[]>;
+  ): Promise<import("@auction/persistence/interfaces").AdminKycSession[]>;
   bidsFor(
     actorRole: string,
     actorStaffRole: string | null | undefined,
     userId: string,
     page: { limit: number; offset: number },
-  ): Promise<import("@auction/persistence").AdminUserBidListResult>;
+  ): Promise<import("@auction/persistence/interfaces").AdminUserBidListResult>;
   bulkSuspendOrUnsuspend(input: {
     actorRole: string;
     actorStaffRole: string | null | undefined;

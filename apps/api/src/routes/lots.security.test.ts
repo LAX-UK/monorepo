@@ -1,5 +1,5 @@
-import type { IBidRepository, ILotRepository } from "@auction/persistence";
-import type { IWatchlistRepository } from "@auction/persistence";
+import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
+import type { IWatchlistRepository } from "@auction/persistence/interfaces";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";

@@ -1,4 +1,4 @@
-import type { ReconcileStripeTransferPatch } from "@auction/persistence";
+import type { ReconcileStripeTransferPatch } from "@auction/persistence/interfaces";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import { addDecimal, subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";

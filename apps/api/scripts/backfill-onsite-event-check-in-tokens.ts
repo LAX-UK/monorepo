@@ -4,7 +4,7 @@
  */
 import { createDb } from "@auction/db";
 import { onsiteEventRsvp } from "@auction/db/schema";
-import { DrizzleOnsiteEventRepository } from "@auction/persistence";
+import { DrizzleOnsiteEventRepository } from "@auction/persistence/repositories";
 import { and, eq, isNull } from "drizzle-orm";
 import { encryptCheckInToken } from "../src/lib/check-in-token-ciphertext.js";
 import { buildPassUrl, issueCheckInToken } from "../src/lib/onsite-event-check-in-token.js";

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { type ExportEntityType, type ExportFormat, exportFilename } from "@auction/exports";
 import { AuthzError } from "@auction/exports/providers";
-import type { IExportJobRepository } from "@auction/persistence";
+import type { IExportJobRepository } from "@auction/persistence/interfaces";
 import { DATA_EXPORT_QUEUE_NAME } from "@auction/queues";
 import type { CreateExportBody, ExportPreviewBody } from "@auction/validators";
 import type { Queue } from "bullmq";

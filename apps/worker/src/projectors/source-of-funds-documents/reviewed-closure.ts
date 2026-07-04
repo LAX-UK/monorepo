@@ -1,6 +1,6 @@
 import { sourceOfFunds, user } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import type { INotificationWriteRepository } from "@auction/persistence";
+import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
 import { eq } from "drizzle-orm";
 import type pino from "pino";
 import type { Db } from "../lib/projector.types.js";

@@ -1,6 +1,6 @@
-import type { IUploadPersistenceRepository } from "@auction/persistence";
-import type { ILegalEntityOnboardingRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IUploadPersistenceRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityOnboardingRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IOrganizationOnboardingService } from "../interfaces/organization-onboarding.js";
 import type { IConnectAccountSync, IConnectSessionProvider } from "../interfaces/stripe-connect.js";

@@ -1,25 +1,25 @@
 import { AuthzError } from "@auction/exports/providers";
 import { describe, expect, it, vi } from "vitest";
 import { resolveIncludePii } from "./auth.js";
-import { type ExportProviderDeps, createExportProviders } from "./registry.js";
+import { type IExportProviderDeps, createExportProviders } from "./registry.js";
 
-function baseDeps(overrides: Partial<ExportProviderDeps> = {}): ExportProviderDeps {
+function baseDeps(overrides: Partial<IExportProviderDeps> = {}): IExportProviderDeps {
   return {
     lotRepo: {
       countMatching: vi.fn().mockResolvedValue(0),
       list: vi.fn().mockResolvedValue([]),
-    } as unknown as ExportProviderDeps["lotRepo"],
+    } as unknown as IExportProviderDeps["lotRepo"],
     saleRepo: {
       countMatching: vi.fn().mockResolvedValue(0),
       list: vi.fn().mockResolvedValue([]),
-    } as unknown as ExportProviderDeps["saleRepo"],
+    } as unknown as IExportProviderDeps["saleRepo"],
     submissionRepo: {
       countAdmin: vi.fn().mockResolvedValue(0),
       listForAdmin: vi.fn().mockResolvedValue([]),
-    } as unknown as ExportProviderDeps["submissionRepo"],
+    } as unknown as IExportProviderDeps["submissionRepo"],
     adminUserReader: {
       list: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
-    } as unknown as ExportProviderDeps["adminUserReader"],
+    } as unknown as IExportProviderDeps["adminUserReader"],
     paymentRepo: {
       countForExport: vi.fn().mockResolvedValue(0),
       listForExport: vi.fn().mockResolvedValue([]),
@@ -27,21 +27,21 @@ function baseDeps(overrides: Partial<ExportProviderDeps> = {}): ExportProviderDe
     domainEvents: {
       countForExport: vi.fn().mockResolvedValue(0),
       listRedacted: vi.fn().mockResolvedValue([]),
-    } as unknown as ExportProviderDeps["domainEvents"],
+    } as unknown as IExportProviderDeps["domainEvents"],
     payoutRepo: {
       countMatching: vi.fn().mockResolvedValue(0),
       list: vi.fn().mockResolvedValue([]),
-    } as unknown as ExportProviderDeps["payoutRepo"],
+    } as unknown as IExportProviderDeps["payoutRepo"],
     legalEntityRepo: {
       findActiveMembership: vi.fn().mockResolvedValue(null),
-    } as unknown as ExportProviderDeps["legalEntityRepo"],
+    } as unknown as IExportProviderDeps["legalEntityRepo"],
     analytics: {
       getDashboard: vi.fn().mockResolvedValue({
         revenueSeries: [{ date: "2026-01-01", total: "100" }],
         lotCompletedSeries: [{ date: "2026-01-01", count: 2 }],
         registrationSeries: [{ date: "2026-01-01", count: 3 }],
       }),
-    } as unknown as ExportProviderDeps["analytics"],
+    } as unknown as IExportProviderDeps["analytics"],
     ...overrides,
   };
 }
@@ -85,7 +85,9 @@ describe("createExportProviders", () => {
   it("requires membership for client payout export", async () => {
     const findActiveMembership = vi.fn().mockResolvedValue(null);
     const deps = baseDeps({
-      legalEntityRepo: { findActiveMembership } as unknown as ExportProviderDeps["legalEntityRepo"],
+      legalEntityRepo: {
+        findActiveMembership,
+      } as unknown as IExportProviderDeps["legalEntityRepo"],
     });
     const providers = createExportProviders(deps);
     const payouts = providers.get("payouts");
@@ -193,10 +195,10 @@ describe("createExportProviders", () => {
       payoutRepo: {
         countMatching: vi.fn().mockResolvedValue(1),
         list,
-      } as unknown as ExportProviderDeps["payoutRepo"],
+      } as unknown as IExportProviderDeps["payoutRepo"],
       legalEntityRepo: {
         findActiveMembership: vi.fn().mockResolvedValue({ id: "m1" }),
-      } as unknown as ExportProviderDeps["legalEntityRepo"],
+      } as unknown as IExportProviderDeps["legalEntityRepo"],
     });
     const providers = createExportProviders(deps);
     const payouts = providers.get("payouts");

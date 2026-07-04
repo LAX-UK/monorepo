@@ -1,10 +1,4 @@
-import type {
-  IPayoutAnalyticsRepository,
-  IPayoutLifecycleRepository,
-  IPayoutReadRepository,
-  IPayoutRepository,
-  IPayoutWriteRepository,
-} from "@auction/persistence";
+import type { IPayoutAnalyticsRepository, IPayoutLifecycleRepository, IPayoutReadRepository, IPayoutRepository, IPayoutWriteRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it } from "vitest";
 import { defineCompileTimeContract } from "../../testing/compile-time-contract.js";
 

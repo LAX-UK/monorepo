@@ -1,12 +1,8 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type {
-  IItemSubmissionRepository,
-  IUserRepository,
-  ListSubmissionsFilter,
-} from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IItemSubmissionRepository, IUserRepository, ListSubmissionsFilter } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,

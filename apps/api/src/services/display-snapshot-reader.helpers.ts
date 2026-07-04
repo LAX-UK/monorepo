@@ -1,6 +1,2 @@
-export {
-  addMoneyStrings,
-  computeLotQueue,
-  parseDisplayLotEstimate,
-  type CatalogLotRow,
-} from "@auction/persistence";
+export { addMoneyStrings, computeLotQueue, parseDisplayLotEstimate } from "@auction/persistence/lib";
+export type { CatalogLotRow } from "@auction/persistence/lib";

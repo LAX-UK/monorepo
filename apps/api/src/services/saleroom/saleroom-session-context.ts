@@ -1,5 +1,5 @@
-import type { ISaleroomSessionRepository } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { ISaleroomSessionRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type { ILotJobScheduler } from "../interfaces/job-scheduler.js";
 import type { ISaleroomRealtimePublisher } from "../interfaces/saleroom-realtime-publisher.js";

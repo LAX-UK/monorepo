@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
-import type { ITransactionRunner } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";

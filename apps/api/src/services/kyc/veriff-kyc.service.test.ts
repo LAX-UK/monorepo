@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import type { IKycRepository } from "@auction/persistence";
+import type { IKycRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { Env } from "../../env.js";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";

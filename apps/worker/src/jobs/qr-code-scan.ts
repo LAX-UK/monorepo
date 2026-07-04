@@ -1,4 +1,4 @@
-import type { IQrCodeScanPersister } from "@auction/persistence";
+import type { IQrCodeScanPersister } from "@auction/persistence/interfaces";
 import type { QrCodeScanJobPayload } from "@auction/queues";
 import type pino from "pino";
 

@@ -1,10 +1,7 @@
 import type { Database } from "@auction/db";
-import type { ITransactionRunner } from "@auction/persistence";
-import type {
-  ISourceOfFundsDocumentReviewRepository,
-  SourceOfFundsDocumentReviewRow,
-} from "@auction/persistence";
-import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ISourceOfFundsDocumentReviewRepository, SourceOfFundsDocumentReviewRow } from "@auction/persistence/interfaces";
+import type { ISourceOfFundsDocumentRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
   ISourceOfFundsDocumentReviewService,

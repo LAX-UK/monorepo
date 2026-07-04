@@ -1,4 +1,4 @@
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Queue } from "bullmq";
 import { Hono } from "hono";
 import { z } from "zod";

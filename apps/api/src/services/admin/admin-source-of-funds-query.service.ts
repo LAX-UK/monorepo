@@ -1,6 +1,6 @@
-import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
-import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
-import type { IAdminUserReader } from "@auction/persistence";
+import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence/interfaces";
+import type { ISourceOfFundsDocumentRepository } from "@auction/persistence/interfaces";
+import type { IAdminUserReader } from "@auction/persistence/interfaces";
 import type {
   AdminSourceOfFundsDetailDto,
   AdminSourceOfFundsListRowDto,

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";

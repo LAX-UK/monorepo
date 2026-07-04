@@ -1,4 +1,4 @@
-import type { IAdminOnboardingIssuesReader } from "@auction/persistence";
+import type { IAdminOnboardingIssuesReader } from "@auction/persistence/interfaces";
 import type { AdminOnboardingIssues } from "../../admin/admin-route-dtos.js";
 import type { IAdminOnboardingIssuesQueryService } from "../interfaces/admin-routes.js";
 

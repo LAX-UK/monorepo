@@ -1,4 +1,4 @@
-import type { SaleRegistrationAdminRow, SaleRegistrationRow } from "@auction/persistence";
+import type { SaleRegistrationAdminRow, SaleRegistrationRow } from "@auction/persistence/interfaces";
 import type { Result } from "neverthrow";
 
 export type { SaleRegistrationAdminRow, SaleRegistrationRow };

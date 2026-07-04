@@ -1,11 +1,7 @@
-import type {
-  LotFulfilmentAddressSnapshot,
-  LotFulfilmentListRow,
-  LotFulfilmentRow,
-} from "@auction/persistence";
+import type { LotFulfilmentAddressSnapshot, LotFulfilmentListRow, LotFulfilmentRow } from "@auction/persistence/interfaces";
 import type { Result } from "neverthrow";
 
-export type { LotFulfilmentListRow, LotFulfilmentRow } from "@auction/persistence";
+export type { LotFulfilmentListRow, LotFulfilmentRow } from "@auction/persistence/interfaces";
 
 export type LotFulfilmentServiceError = { message: string; status: number; code?: string };
 

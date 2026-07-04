@@ -118,11 +118,17 @@ function isAllowedDrizzleSite(rel) {
   if (/^apps\/[^/]+\/src\/container\//.test(rel)) return true;
   if (/^apps\/[^/]+\/src\/container\.ts$/.test(rel)) return true;
   if (rel === "apps/api/src/services/payout/payout-helpers.ts") return true;
-  if (rel === "packages/exports/src/providers/deps.ts") return true;
+  if (rel === "apps/api/src/services/lot-transition-guards.ts") return true;
   if (isTestSource(rel)) return true;
   if (rel.startsWith("apps/api/src/repositories/")) return true;
+  if (rel.startsWith("apps/api/src/exports/")) return true;
   if (/\/scripts\//.test(rel)) return true;
   return false;
+}
+
+/** @param {string} rel */
+function isAllowedRepositoriesImportSite(rel) {
+  return isAllowedDrizzleSite(rel);
 }
 
 /** @param {string} dir @returns {string[]} */
@@ -173,6 +179,50 @@ if (invariantViolations.length > 0) {
     console.error(`  ${v}`);
   }
   console.error("\nSee scripts/check-layers.mjs for allowed Drizzle and publish(tx) sites.");
+  process.exit(1);
+}
+
+// ─── Persistence subpath imports (Phase F3) ─────────────────────────────────
+
+const ROOT_PERSISTENCE_RE = /^@auction\/persistence$/;
+const REPOSITORIES_PERSISTENCE_RE = /^@auction\/persistence\/repositories$/;
+
+/** @param {string} rel */
+function isAppSource(rel) {
+  return /^apps\/[^/]+\//.test(rel);
+}
+
+/** @type {string[]} */
+const persistenceImportViolations = [];
+
+for (const file of listAllSources(join(root, "apps"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  if (isTestSource(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (!specifier) continue;
+    if (ROOT_PERSISTENCE_RE.test(specifier)) {
+      persistenceImportViolations.push(
+        `${rel}: root barrel \`@auction/persistence\` — use @auction/persistence/interfaces, /lib, or /repositories (container only)`,
+      );
+    }
+    if (REPOSITORIES_PERSISTENCE_RE.test(specifier) && !isAllowedRepositoriesImportSite(rel)) {
+      persistenceImportViolations.push(
+        `${rel}: \`@auction/persistence/repositories\` outside container/tests/integration support`,
+      );
+    }
+  }
+}
+
+if (persistenceImportViolations.length > 0) {
+  console.error("Persistence import violations detected:\n");
+  for (const v of persistenceImportViolations) {
+    console.error(`  ${v}`);
+  }
+  console.error(
+    "\nUse subpath imports: interfaces for ports, lib for mappers/helpers, repositories only in container/**.",
+  );
   process.exit(1);
 }
 

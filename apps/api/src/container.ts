@@ -1,5 +1,5 @@
 import { createDb } from "@auction/db";
-import { DrizzleSessionRepository } from "@auction/persistence";
+import { DrizzleSessionRepository } from "@auction/persistence/repositories";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuth } from "./container/create-auth.js";

@@ -1,5 +1,5 @@
 import { isStripeAccountConfigured } from "@auction/connect";
-import type { OnboardingOrganisationRow } from "@auction/persistence";
+import type { OnboardingOrganisationRow } from "@auction/persistence/interfaces";
 
 export type ConnectStepFailureCode =
   | "connect_not_started"

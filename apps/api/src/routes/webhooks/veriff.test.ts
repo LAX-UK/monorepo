@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import type { IKycRepository } from "@auction/persistence";
+import type { IKycRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../../container.js";
 import type { Env } from "../../env.js";

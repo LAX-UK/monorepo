@@ -1,8 +1,4 @@
-import type {
-  IPaymentExternalRefRepository,
-  IXeroConnectionRepository,
-  XeroConnectionRow,
-} from "@auction/persistence";
+import type { IPaymentExternalRefRepository, IXeroConnectionRepository, XeroConnectionRow } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import {
   type Account,

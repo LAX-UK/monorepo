@@ -1,4 +1,4 @@
-import type { TelephoneBidBookingAdminRow } from "@auction/persistence";
+import type { TelephoneBidBookingAdminRow } from "@auction/persistence/interfaces";
 import type { TelephoneBidBooking, TelephoneBidBookingStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type {

@@ -1,5 +1,5 @@
 import { notificationPreference } from "@auction/db/schema";
-import { emailPreferenceKey, notificationTypeToTemplate } from "@auction/persistence";
+import { emailPreferenceKey, notificationTypeToTemplate } from "@auction/persistence/lib";
 import { describe, expect, it } from "vitest";
 import { createUnsubscribeToken, verifyUnsubscribeToken } from "./email-unsubscribe-token.js";
 

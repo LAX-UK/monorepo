@@ -1,8 +1,8 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { IVenueRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IVenueRepository } from "@auction/persistence/interfaces";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";

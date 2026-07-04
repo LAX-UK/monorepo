@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
-import type { ITransactionRunner } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import { getSaleModeCapabilities } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";

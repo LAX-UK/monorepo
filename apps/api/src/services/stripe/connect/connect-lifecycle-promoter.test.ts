@@ -1,4 +1,4 @@
-import type { ILegalEntityConnectRepository } from "@auction/persistence";
+import type { ILegalEntityConnectRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";
 

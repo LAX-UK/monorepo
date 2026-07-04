@@ -1,4 +1,4 @@
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Env } from "../../env.js";
 import { createBaseLogger } from "../../lib/logger.js";
 import type { XeroPayoutBillWriter } from "../accounting/xero-payout-bill.writer.js";

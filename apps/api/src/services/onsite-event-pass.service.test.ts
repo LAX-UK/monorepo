@@ -1,6 +1,6 @@
-import type { IGuestPaddleReader } from "@auction/persistence";
-import type { IOnsiteEventRsvpRepository } from "@auction/persistence";
-import type { IOnsiteEventRepository } from "@auction/persistence";
+import type { IGuestPaddleReader } from "@auction/persistence/interfaces";
+import type { IOnsiteEventRsvpRepository } from "@auction/persistence/interfaces";
+import type { IOnsiteEventRepository } from "@auction/persistence/interfaces";
 import type { OnsiteEvent, OnsiteEventRsvp } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { issueCheckInToken } from "../lib/onsite-event-check-in-token.js";

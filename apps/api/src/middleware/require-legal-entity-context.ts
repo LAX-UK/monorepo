@@ -1,5 +1,5 @@
 import { X_LEGAL_ENTITY_ID_HEADER } from "@auction/http-headers";
-import type { ActiveMembership, ILegalEntityRepository } from "@auction/persistence";
+import type { ActiveMembership, ILegalEntityRepository } from "@auction/persistence/interfaces";
 import {
   canAccessPlatformAdminRoutes,
   normalizeUserRoleOrClient,

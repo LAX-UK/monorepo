@@ -1,5 +1,5 @@
-import type { ISaleRepository } from "@auction/persistence";
-import type { IOnsiteEventRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence/interfaces";
+import type { IOnsiteEventRepository } from "@auction/persistence/interfaces";
 import type { OnsiteEvent, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { OnsiteEventSaleLinkService } from "./onsite-event-sale-link.service.js";

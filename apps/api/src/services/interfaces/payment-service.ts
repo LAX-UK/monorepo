@@ -1,4 +1,4 @@
-import type { PaymentRecord } from "@auction/persistence";
+import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type { PaymentStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../../lib/errors.js";

@@ -1,4 +1,4 @@
-import type { ITransactionRunner } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { VeriffWebhookVerifier } from "../../lib/veriff/veriff-webhook-verifier.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import { createAmlServiceDeps } from "./aml-context.js";

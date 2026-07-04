@@ -1,5 +1,4 @@
 import type { IEmailService } from "@auction/email";
-import { createExportProviderDeps } from "@auction/exports/providers";
 import {
   DATA_EXPORT_QUEUE_NAME,
   IMPERSONATION_SWEEPER_QUEUE_NAME,
@@ -47,7 +46,7 @@ export function registerComplianceWorkers(
   } = deps;
   const { emailOutboxService } = options;
 
-  const exportProviderDeps = createExportProviderDeps(db);
+  const exportProviderDeps = deps.exportProviderDeps;
   const dataExportQueue = new Queue(DATA_EXPORT_QUEUE_NAME, queueOpts(DATA_EXPORT_QUEUE_NAME));
   const dataExportWorker = new Worker(
     DATA_EXPORT_QUEUE_NAME,

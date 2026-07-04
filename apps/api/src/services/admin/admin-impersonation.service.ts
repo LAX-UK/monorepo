@@ -1,7 +1,7 @@
-import type { IImpersonationSessionRepository, ITransactionRunner } from "@auction/persistence";
-import type { IImpersonationDomainEventReader } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence";
+import type { IImpersonationSessionRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IImpersonationDomainEventReader } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence/lib";
 import { encodeActingContextCookie } from "@auction/types";
 import { parseActingLegalEntityCookieFromHeader } from "../../lib/impersonation-cookie.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";

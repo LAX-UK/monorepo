@@ -1,4 +1,4 @@
-import type { ILotLifecycleTimelineReader } from "@auction/persistence";
+import type { ILotLifecycleTimelineReader } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { LotLifecycleQueryService } from "./lot-lifecycle-query.service.js";
 

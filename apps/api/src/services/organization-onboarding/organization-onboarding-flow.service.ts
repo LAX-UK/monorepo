@@ -1,6 +1,6 @@
-import type { ITransactionRunner, IUploadPersistenceRepository } from "@auction/persistence";
-import type { ILegalEntityOnboardingRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ITransactionRunner, IUploadPersistenceRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityOnboardingRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import type { LegalEntityDocumentUploadInput } from "@auction/validators";
 import type { IDomainEventSink } from "../domain-event-sink.js";

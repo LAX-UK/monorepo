@@ -1,5 +1,5 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { LegalEntity, Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { LotError } from "../lib/errors.js";

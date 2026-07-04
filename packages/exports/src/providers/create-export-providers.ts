@@ -20,7 +20,7 @@ import { createSalesProvider } from "./sales.provider.js";
 import { createSubmissionsProvider } from "./submissions.provider.js";
 import type { ExportProvider } from "./types.js";
 
-export type ExportProviderDeps = {
+export interface IExportProviderDeps {
   lotRepo: ILotRepository;
   saleRepo: ISaleRepository;
   submissionRepo: IItemSubmissionRepository;
@@ -30,10 +30,13 @@ export type ExportProviderDeps = {
   payoutRepo: Pick<IPayoutRepository, "list" | "countMatching">;
   legalEntityRepo: Pick<ILegalEntityRepository, "findActiveMembership">;
   analytics: IAnalyticsService;
-};
+}
+
+/** @deprecated Use `IExportProviderDeps`. */
+export type ExportProviderDeps = IExportProviderDeps;
 
 export function createExportProviders(
-  deps: ExportProviderDeps,
+  deps: IExportProviderDeps,
 ): Map<ExportEntityType, ExportProvider> {
   return new Map([
     ["lots", createLotsProvider(deps.lotRepo) as ExportProvider],

@@ -1,4 +1,4 @@
-import type { IAdminReviewTaskReader } from "@auction/persistence";
+import type { IAdminReviewTaskReader } from "@auction/persistence/interfaces";
 import type { AdminReviewTaskRow } from "../../admin/admin-route-dtos.js";
 import type { IAdminReviewTaskQueryService } from "../interfaces/admin-routes.js";
 

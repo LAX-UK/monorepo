@@ -1,4 +1,4 @@
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type { IItemSubmissionAdminApi } from "./interfaces/item-submission-apis.js";
 import type { IPaymentMaintenanceService } from "./interfaces/payment-service.js";

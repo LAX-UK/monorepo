@@ -1,4 +1,4 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { LegalEntity } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { ImpersonationAuditService } from "./impersonation-audit.service.js";

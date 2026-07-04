@@ -6,10 +6,16 @@ import type {
 } from "./interfaces/repository-factory.js";
 import {
   DrizzleBidRepository,
+} from "./repositories/drizzle-bid.repository.js";
+import {
   DrizzleItemSubmissionRepository,
+} from "./repositories/drizzle-item-submission.repository.js";
+import {
   DrizzleLotRepository,
+} from "./repositories/drizzle-lot.repository.js";
+import {
   DrizzleSaleRepository,
-} from "./repositories/index.js";
+} from "./repositories/drizzle-sale.repository.js";
 
 export class DrizzleRepositoryFactory implements IRepositoryFactory {
   readonly root: LotBidRepos;

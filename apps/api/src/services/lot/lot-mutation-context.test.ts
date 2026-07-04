@@ -1,6 +1,6 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IBidRepository, ILotRepository, ISaleRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IBidRepository, ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
 import { publishSingleLotDeps, recordLifecycle, txLot } from "./lot-mutation-context.js";

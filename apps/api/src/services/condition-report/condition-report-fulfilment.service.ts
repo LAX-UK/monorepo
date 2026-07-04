@@ -1,6 +1,6 @@
 import { lotNotDeleted } from "@auction/db";
 import { lot } from "@auction/db/schema";
-import { mergeLotMarketingDetailsPatch } from "@auction/persistence";
+import { mergeLotMarketingDetailsPatch } from "@auction/persistence/lib";
 import type { Lot } from "@auction/types";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";

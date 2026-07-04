@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { IUploadPersistenceRepository } from "@auction/persistence";
+import type { IUploadPersistenceRepository } from "@auction/persistence/interfaces";
 import type { UserRole } from "@auction/types";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";

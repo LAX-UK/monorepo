@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import type { IPaymentRefundReconcileRepository } from "@auction/persistence";
-import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IPaymentRefundReconcileRepository } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";

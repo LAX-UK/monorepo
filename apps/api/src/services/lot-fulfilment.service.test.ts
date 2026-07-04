@@ -1,4 +1,4 @@
-import type { ILotFulfilmentRepository } from "@auction/persistence";
+import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { LotFulfilmentService } from "./lot-fulfilment.service.js";
 

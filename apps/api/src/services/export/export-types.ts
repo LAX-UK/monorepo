@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import type { ExportEntityType, ExportFormat, ExportPhase, ExportStatus } from "@auction/exports";
-import type { ExportJobRow } from "@auction/persistence";
+import type { ExportJobRow } from "@auction/persistence/interfaces";
 
-export type { ExportJobRow } from "@auction/persistence";
+export type { ExportJobRow } from "@auction/persistence/interfaces";
 
 export type ExportServiceConfig = {
   syncMaxRows: number;

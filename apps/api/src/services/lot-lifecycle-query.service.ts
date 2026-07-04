@@ -1,10 +1,6 @@
-import type {
-  ILotLifecycleSnapshotReader,
-  ILotLifecycleTimelineReader,
-  LotLifecycleSnapshotRow,
-} from "@auction/persistence";
+import type { ILotLifecycleSnapshotReader, ILotLifecycleTimelineReader, LotLifecycleSnapshotRow } from "@auction/persistence/interfaces";
 
-export type { LotLifecycleSnapshotRow } from "@auction/persistence";
+export type { LotLifecycleSnapshotRow } from "@auction/persistence/interfaces";
 
 export type LotLifecycleTimelineEvent = {
   id: number;

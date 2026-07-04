@@ -1,4 +1,4 @@
-import type { IXeroConnectionRepository } from "@auction/persistence";
+import type { IXeroConnectionRepository } from "@auction/persistence/interfaces";
 import type { XeroClient } from "xero-node";
 
 /** Fetch organisation short code and base currency after OAuth connect. Non-fatal on failure. */

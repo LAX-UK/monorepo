@@ -1,6 +1,6 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { IPayoutRepository } from "@auction/persistence";
-import type { IXeroConnectionRepository, XeroConnectionRow } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
+import type { IXeroConnectionRepository, XeroConnectionRow } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import {
   Contact,

@@ -10,7 +10,7 @@ import type {
 
 /** Shared AML service dependencies for ingest and review. */
 export type AmlServiceDeps = {
-  transactionRunner: import("@auction/persistence").ITransactionRunner;
+  transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner;
   policy: IAmlDecisionPolicy;
   screeningWriter: IWatchlistScreeningWriter;
   screeningReader: IWatchlistScreeningReader;

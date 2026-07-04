@@ -1,5 +1,5 @@
-import type { IDisplayPairingRepository } from "@auction/persistence";
-import type { ISaleRepository } from "@auction/persistence";
+import type { IDisplayPairingRepository } from "@auction/persistence/interfaces";
+import type { ISaleRepository } from "@auction/persistence/interfaces";
 import type { SaleroomDisplayDeviceRow, SaleroomDisplayPairPollResult } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { Redis } from "ioredis";

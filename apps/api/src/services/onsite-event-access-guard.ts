@@ -1,4 +1,4 @@
-import type { IOnsiteEventRepository } from "@auction/persistence";
+import type { IOnsiteEventRepository } from "@auction/persistence/interfaces";
 import type { OnsiteEvent } from "@auction/types";
 import type { OnsiteEventRsvpServiceError } from "./interfaces/onsite-event-service-errors.js";
 

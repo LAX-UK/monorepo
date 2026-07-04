@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { IVenueRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IVenueRepository } from "@auction/persistence/interfaces";
 import type { Lot, Sale, Venue } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";

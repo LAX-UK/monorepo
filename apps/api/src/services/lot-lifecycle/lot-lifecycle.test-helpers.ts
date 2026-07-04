@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
-import type { IAntiShillingGuard } from "@auction/persistence";
-import type { ISaleRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { ISaleroomSessionLookup } from "@auction/persistence";
-import type { IWatchlistRepository } from "@auction/persistence";
+import type { IAntiShillingGuard } from "@auction/persistence/interfaces";
+import type { ISaleRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { ISaleroomSessionLookup } from "@auction/persistence/interfaces";
+import type { IWatchlistRepository } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import { vi } from "vitest";
 import type { IDomainEventSink } from "../domain-event-sink.js";
@@ -122,13 +122,13 @@ export function baseLot(overrides: Partial<Lot> = {}): Lot {
 }
 
 export function createFactory(
-  lots: import("@auction/persistence").ILotRepository,
-  bids: Partial<import("@auction/persistence").IBidRepository>,
+  lots: import("@auction/persistence/interfaces").ILotRepository,
+  bids: Partial<import("@auction/persistence/interfaces").IBidRepository>,
 ): IRepositoryFactory {
   const bidRepo = {
     clearWinningBid: vi.fn(),
     ...bids,
-  } as unknown as import("@auction/persistence").IBidRepository;
+  } as unknown as import("@auction/persistence/interfaces").IBidRepository;
   const root = { lot: lots, bid: bidRepo };
   return {
     root,

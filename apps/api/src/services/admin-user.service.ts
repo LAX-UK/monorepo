@@ -1,13 +1,4 @@
-import type {
-  AdminKycSession,
-  AdminUserListFilter,
-  IAdminUserActivityReader,
-  IAdminUserBidsReader,
-  IAdminUserKycReader,
-  IAdminUserReader,
-  IAdminUserRoleManager,
-  IAdminUserSuspender,
-} from "@auction/persistence";
+import type { AdminKycSession, AdminUserListFilter, IAdminUserActivityReader, IAdminUserBidsReader, IAdminUserKycReader, IAdminUserReader, IAdminUserRoleManager, IAdminUserSuspender } from "@auction/persistence/interfaces";
 import {
   CLIENT_ACTIVITY_ACCESS,
   CLIENT_BIDS_ACCESS,

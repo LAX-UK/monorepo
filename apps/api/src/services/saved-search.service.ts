@@ -1,6 +1,6 @@
-import type { ISavedSearchRepository, SavedSearchRow } from "@auction/persistence";
+import type { ISavedSearchRepository, SavedSearchRow } from "@auction/persistence/interfaces";
 
-export type { SavedSearchRow } from "@auction/persistence";
+export type { SavedSearchRow } from "@auction/persistence/interfaces";
 
 export class SavedSearchService {
   constructor(private readonly savedSearches: ISavedSearchRepository) {}

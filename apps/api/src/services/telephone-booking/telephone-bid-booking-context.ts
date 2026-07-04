@@ -1,8 +1,8 @@
-import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence";
-import type { ITelephoneBidBookingDetailReader } from "@auction/persistence";
-import type { ITelephoneBidBookingRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence/interfaces";
+import type { ITelephoneBidBookingDetailReader } from "@auction/persistence/interfaces";
+import type { ITelephoneBidBookingRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { IAmlHoldStore } from "../aml/ports.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IKycService } from "../interfaces/kyc-service.js";

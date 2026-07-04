@@ -1,4 +1,4 @@
-import type { IUserInvitationRepository } from "@auction/persistence";
+import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvitationConsumptionService } from "./invitation-consumption.service.js";
 

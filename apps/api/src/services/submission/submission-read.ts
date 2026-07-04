@@ -1,4 +1,4 @@
-import type { ListSubmissionsFilter } from "@auction/persistence";
+import type { ListSubmissionsFilter } from "@auction/persistence/interfaces";
 import type { ItemSubmission } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../../lib/errors.js";

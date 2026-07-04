@@ -1,1 +1,1 @@
-export { mapOnsiteEventRow, segmentLabelFor } from "@auction/persistence";
+export { mapOnsiteEventRow, segmentLabelFor } from "@auction/persistence/lib";

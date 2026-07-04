@@ -1,4 +1,4 @@
-import type { CreateNotificationRow } from "@auction/persistence";
+import type { CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 
 /** SRP: builds persisted notification rows from domain events. */

@@ -1,4 +1,4 @@
-export { LotError } from "@auction/persistence";
+export { LotError } from "@auction/persistence/lib";
 
 export class BidError extends Error {
   readonly code?: string | undefined;

@@ -1,7 +1,7 @@
-import type { NotificationPayload } from "@auction/persistence";
+import type { NotificationPayload } from "@auction/persistence/interfaces";
 
 /** Row-level payload type lives with the outbox port in @auction/persistence. */
-export type { NotificationPayload } from "@auction/persistence";
+export type { NotificationPayload } from "@auction/persistence/interfaces";
 
 export type NotificationChannelKind = "in_app" | "push" | "email" | "whatsapp";
 

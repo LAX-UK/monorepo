@@ -1,5 +1,5 @@
-import type { IAntiShillingGuard } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { IAntiShillingGuard } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import { moneyGte } from "@auction/validators";
 import type { IDomainEventSink } from "../domain-event-sink.js";

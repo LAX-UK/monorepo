@@ -1,5 +1,5 @@
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";

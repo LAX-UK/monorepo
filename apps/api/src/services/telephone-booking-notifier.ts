@@ -1,6 +1,6 @@
-import type { IUserRepository } from "@auction/persistence";
-import type { INotificationWriteRepository } from "@auction/persistence";
-import type { ISaleRepository } from "@auction/persistence";
+import type { IUserRepository } from "@auction/persistence/interfaces";
+import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
+import type { ISaleRepository } from "@auction/persistence/interfaces";
 import type { TelephoneBidBooking } from "@auction/types";
 import type { ITransactionalMailer } from "./interfaces/transactional-mail.js";
 

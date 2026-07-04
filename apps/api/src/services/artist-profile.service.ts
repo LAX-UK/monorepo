@@ -1,6 +1,6 @@
-import type { IArtistProfileAdminReader } from "@auction/persistence";
-import type { IArtistProfileDirectoryReader } from "@auction/persistence";
-import type { IArtistProfileCommandRepository } from "@auction/persistence";
+import type { IArtistProfileAdminReader } from "@auction/persistence/interfaces";
+import type { IArtistProfileDirectoryReader } from "@auction/persistence/interfaces";
+import type { IArtistProfileCommandRepository } from "@auction/persistence/interfaces";
 import type {
   AdminArtistListResult,
   AdminArtistStats,

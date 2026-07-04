@@ -1,5 +1,5 @@
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { ISaleroomSessionLookup } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { ISaleroomSessionLookup } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
 import type { ClerkLotOutcomeService } from "./clerk-lot-outcome.service.js";

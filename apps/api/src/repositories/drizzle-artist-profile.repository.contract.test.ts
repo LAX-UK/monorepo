@@ -1,10 +1,6 @@
-import type {
-  DrizzleArtistProfileRepository,
-  IArtistProfileAdminReader,
-  IArtistProfileCommandRepository,
-  IArtistProfileDirectoryReader,
-} from "@auction/persistence";
-import type { IArtistDeleteGuards, IArtistDeleteRepository } from "@auction/persistence";
+import type { IArtistProfileAdminReader, IArtistProfileCommandRepository, IArtistProfileDirectoryReader } from "@auction/persistence/interfaces";
+import type { DrizzleArtistProfileRepository } from "@auction/persistence/repositories";
+import type { IArtistDeleteGuards, IArtistDeleteRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it } from "vitest";
 import { defineCompileTimeContract } from "../testing/compile-time-contract.js";
 

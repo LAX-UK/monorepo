@@ -1,5 +1,5 @@
-import type { IAttentionFeedReader } from "@auction/persistence";
-import type { ListSubmissionsFilter } from "@auction/persistence";
+import type { IAttentionFeedReader } from "@auction/persistence/interfaces";
+import type { ListSubmissionsFilter } from "@auction/persistence/interfaces";
 import type { AdminMetricsService, AdminTodayMetrics } from "../admin-metrics.service.js";
 import type { IAdminOpsReadService } from "../interfaces/admin-routes.js";
 import type { DateRange, IAnalyticsService } from "../interfaces/analytics.js";

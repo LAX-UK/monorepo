@@ -1,4 +1,4 @@
-import type { IOnsiteEventRepository } from "@auction/persistence";
+import type { IOnsiteEventRepository } from "@auction/persistence/interfaces";
 import type { OnsiteEvent } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { OnsiteEventAccessGuard } from "./onsite-event-access-guard.js";

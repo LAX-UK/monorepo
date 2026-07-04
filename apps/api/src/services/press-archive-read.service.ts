@@ -1,4 +1,4 @@
-import type { IPressArchiveRepository } from "@auction/persistence";
+import type { IPressArchiveRepository } from "@auction/persistence/interfaces";
 import { PUBLIC_SALE_STATUSES, viewerCanSeeNonPublicCatalog } from "@auction/validators";
 import type {
   IPressArchiveReadService,

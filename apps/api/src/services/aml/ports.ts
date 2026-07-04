@@ -1,20 +1,7 @@
-import type {
-  AmlDecision,
-  AmlDecisionOutcome,
-  AmlScreeningResult,
-  WatchlistScreeningRecord,
-} from "@auction/persistence";
+import type { AmlDecision, AmlDecisionOutcome, AmlScreeningResult, WatchlistScreeningRecord } from "@auction/persistence/interfaces";
 import type { NormalizedWatchlistScreening } from "../../lib/veriff/veriff-watchlist-normalizer.js";
 
-export type {
-  IAmlHoldStore,
-  IWatchlistScreeningReader,
-  IWatchlistScreeningWriter,
-  UpsertWatchlistScreeningInput,
-  WatchlistReviewOutcomeInput,
-  WatchlistScreeningRecord,
-  WatchlistTriageInput,
-} from "@auction/persistence";
+export type { IAmlHoldStore, IWatchlistScreeningReader, IWatchlistScreeningWriter, UpsertWatchlistScreeningInput, WatchlistReviewOutcomeInput, WatchlistScreeningRecord, WatchlistTriageInput } from "@auction/persistence/interfaces";
 
 /**
  * Provider abstraction for the ongoing-monitoring lifecycle (Dependency

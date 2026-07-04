@@ -1,15 +1,9 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type {
-  ArchiveEndedAggregateFilter,
-  IBidRepository,
-  ILotRepository,
-  ISaleRepository,
-  ListLotsFilter,
-} from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { IWatchlistRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ArchiveEndedAggregateFilter, IBidRepository, ILotRepository, ISaleRepository, ListLotsFilter } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IWatchlistRepository } from "@auction/persistence/interfaces";
 import type { CreateLotInput, Lot, PublicLotView, UserRole } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err } from "neverthrow";
@@ -51,7 +45,7 @@ export type LotServiceOptions = {
   legalEntityRepository?: ILegalEntityRepository | null;
   /** When false (e.g. Stripe Connect not configured), individual Connect readiness is not enforced on publish. */
   enforceIndividualConnectOnPublish?: boolean;
-  adminReviewTaskRepository?: import("@auction/persistence").IAdminReviewTaskRepository | null;
+  adminReviewTaskRepository?: import("@auction/persistence/interfaces").IAdminReviewTaskRepository | null;
   transactionRunner?: ITransactionRunner | null;
   domainEventSink?: IDomainEventSink | null;
   mediaUrlResolver?: MediaUrlResolver;

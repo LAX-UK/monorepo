@@ -1,6 +1,6 @@
 import { domainEvent, projectorState } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import type { INotificationWriteRepository } from "@auction/persistence";
+import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";

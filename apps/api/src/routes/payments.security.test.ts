@@ -1,4 +1,4 @@
-import type { PaymentRecord } from "@auction/persistence";
+import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type { UserRole } from "@auction/types";
 import type { UserStaffRole } from "@auction/types";
 import { Hono } from "hono";

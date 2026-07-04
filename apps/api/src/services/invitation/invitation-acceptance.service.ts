@@ -1,6 +1,6 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IEntityInvitationRepository } from "@auction/persistence";
-import type { InvitationRow } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
+import type { InvitationRow } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { InvitationOutcome } from "../interfaces/invitation-lifecycle.js";

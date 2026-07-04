@@ -9,7 +9,6 @@ import {
 } from "@auction/marketing-events";
 import { DrizzleExportJobRepository } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
-import { createExportProviderDeps } from "../exports/deps.js";
 import { createExportProviders } from "../exports/registry.js";
 import { BullmqMarketingEventQueue } from "../infrastructure/bullmq-marketing-event.queue.js";
 import { CachedClickIdStore } from "../infrastructure/cached-click-id.store.js";
@@ -47,6 +46,7 @@ import { SourceOfFundsDocumentReviewService } from "../services/source-of-funds/
 import { SourceOfFundsSettlementReadService } from "../services/source-of-funds/source-of-funds-settlement-read.service.js";
 import { SourceOfFundsService } from "../services/source-of-funds/source-of-funds.service.js";
 import { UploadService } from "../services/upload.service.js";
+import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
@@ -175,7 +175,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     platform.transactionRunner,
     domainEventSink,
   );
-  const exportProviderDeps = createExportProviderDeps(db);
+  const exportProviderDeps = createExportProviderDeps(db, repos);
   const exportProviders = createExportProviders(exportProviderDeps);
   const exportJobRepo = new DrizzleExportJobRepository(db);
   const exportService = new ExportService(

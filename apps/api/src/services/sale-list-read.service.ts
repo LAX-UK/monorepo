@@ -1,4 +1,4 @@
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { Lot, LotSummary, Sale } from "@auction/types";
 import {
   isPublicCatalogLot,

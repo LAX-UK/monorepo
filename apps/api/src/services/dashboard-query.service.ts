@@ -1,4 +1,4 @@
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 
 /** SRP: read models for dashboard views that join bids + lots.

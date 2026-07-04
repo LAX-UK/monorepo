@@ -1,4 +1,4 @@
-import type { AuthSessionListRow, ISessionRepository } from "@auction/persistence";
+import type { AuthSessionListRow, ISessionRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { SessionRevocationService } from "./session-revocation.service.js";
 

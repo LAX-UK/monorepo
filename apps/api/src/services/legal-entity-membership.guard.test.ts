@@ -1,4 +1,4 @@
-import type { ILegalEntityMemberRepository } from "@auction/persistence";
+import type { ILegalEntityMemberRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { LegalEntityMembershipGuard } from "./legal-entity-membership.guard.js";
 

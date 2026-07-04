@@ -1,5 +1,5 @@
-import type { ILegalEntityOnboardingRepository } from "@auction/persistence";
-import type { OnboardingOrganisationRow } from "@auction/persistence";
+import type { ILegalEntityOnboardingRepository } from "@auction/persistence/interfaces";
+import type { OnboardingOrganisationRow } from "@auction/persistence/interfaces";
 import type { LegalEntity } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 import { PUBLIC_ORG_SUBKIND_META } from "@auction/validators";

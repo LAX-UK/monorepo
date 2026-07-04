@@ -1,9 +1,5 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type {
-  DbTransaction,
-  IArtistDeleteGuards,
-  IArtistDeleteRepository,
-} from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { DbTransaction, IArtistDeleteGuards, IArtistDeleteRepository } from "@auction/persistence/interfaces";
 import type { ArtistDeleteEligibility, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { artistDeleteConfirmationPhrase } from "@auction/validators";

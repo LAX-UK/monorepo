@@ -1,9 +1,5 @@
-import type {
-  DrizzleLotTransitionGuardReader,
-  DrizzleLotTransitionRepository,
-  ILotTransitionGuardReader,
-  ILotTransitionRepository,
-} from "@auction/persistence";
+import type { ILotTransitionGuardReader, ILotTransitionRepository } from "@auction/persistence/interfaces";
+import type { DrizzleLotTransitionGuardReader, DrizzleLotTransitionRepository } from "@auction/persistence/repositories";
 import { describe, expect, it } from "vitest";
 import { defineCompileTimeContract } from "../testing/compile-time-contract.js";
 import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js";

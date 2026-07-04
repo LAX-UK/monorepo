@@ -1,4 +1,4 @@
-import type { IAdminFinanceIssueSnapshotReader } from "@auction/persistence";
+import type { IAdminFinanceIssueSnapshotReader } from "@auction/persistence/interfaces";
 import type {
   FinanceIssueSnapshot,
   IAdminFinanceIssueSnapshotQueryService,

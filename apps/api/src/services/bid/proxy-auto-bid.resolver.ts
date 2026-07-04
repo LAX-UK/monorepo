@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import type { IAntiShillingGuard } from "@auction/persistence";
-import type { IBidRepository } from "@auction/persistence";
+import type { IAntiShillingGuard } from "@auction/persistence/interfaces";
+import type { IBidRepository } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import { parseMoneyToMinorUnits } from "@auction/validators";
 import { Counter } from "prom-client";

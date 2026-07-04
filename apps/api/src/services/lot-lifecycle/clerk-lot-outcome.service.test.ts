@@ -1,4 +1,4 @@
-import type { IBidRepository, ILotRepository } from "@auction/persistence";
+import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { INotificationOutboxService } from "../interfaces/notification-outbox.js";
 import {

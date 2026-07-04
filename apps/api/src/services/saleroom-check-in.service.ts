@@ -1,8 +1,5 @@
-import {
-  type CheckInCandidateRow,
-  type ISaleroomCheckInRepository,
-  PaddleTakenError,
-} from "@auction/persistence";
+import type { CheckInCandidateRow, ISaleroomCheckInRepository } from "@auction/persistence/interfaces";
+import { PaddleTakenError } from "@auction/persistence/interfaces";
 import { type Result, err, ok } from "neverthrow";
 import { Counter } from "prom-client";
 import type {

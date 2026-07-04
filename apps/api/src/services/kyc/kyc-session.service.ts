@@ -1,4 +1,4 @@
-import type { IKycSessionRepository } from "@auction/persistence";
+import type { IKycSessionRepository } from "@auction/persistence/interfaces";
 import type { KycVerification } from "@auction/types";
 import type { VeriffClient } from "../../lib/veriff/veriff-client.js";
 import {

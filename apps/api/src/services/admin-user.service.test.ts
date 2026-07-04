@@ -1,10 +1,4 @@
-import type {
-  IAdminUserActivityReader,
-  IAdminUserBidsReader,
-  IAdminUserReader,
-  IAdminUserRoleManager,
-  IAdminUserSuspender,
-} from "@auction/persistence";
+import type { IAdminUserActivityReader, IAdminUserBidsReader, IAdminUserReader, IAdminUserRoleManager, IAdminUserSuspender } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError } from "../lib/errors.js";
 import { AdminUserService } from "./admin-user.service.js";

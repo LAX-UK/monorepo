@@ -1,4 +1,4 @@
-import type { ILegalEntityMemberRepository } from "@auction/persistence";
+import type { ILegalEntityMemberRepository } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { MemberPermissionError } from "./interfaces/member-management.js";
 

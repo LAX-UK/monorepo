@@ -1,4 +1,4 @@
-import type { ILegalEntityConnectReader } from "@auction/persistence";
+import type { ILegalEntityConnectReader } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";

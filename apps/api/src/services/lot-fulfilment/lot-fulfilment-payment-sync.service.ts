@@ -1,4 +1,4 @@
-import type { LotFulfilmentAddressSnapshot } from "@auction/persistence";
+import type { LotFulfilmentAddressSnapshot } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentSyncService } from "../interfaces/lot-fulfilment-service.js";
 import type { LotFulfilmentContext } from "./lot-fulfilment-context.js";
 

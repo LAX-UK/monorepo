@@ -1,9 +1,9 @@
-import type { IAntiShillingGuard } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ISaleRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { ISaleModeLookup } from "@auction/persistence";
-import type { ISaleroomSessionLookup } from "@auction/persistence";
+import type { IAntiShillingGuard } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ISaleRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { ISaleModeLookup } from "@auction/persistence/interfaces";
+import type { ISaleroomSessionLookup } from "@auction/persistence/interfaces";
 import type { Bid } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";

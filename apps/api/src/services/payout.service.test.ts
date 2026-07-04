@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { IPayoutRepository, PendingPaymentRow } from "@auction/persistence";
+import type { IPayoutRepository, PendingPaymentRow } from "@auction/persistence/interfaces";
 import type { Payout, PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";

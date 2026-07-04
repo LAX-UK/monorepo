@@ -1,7 +1,7 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IConditionReportRequestRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import { ConditionReportAdminService } from "./condition-report/condition-report-admin.service.js";
 import { ConditionReportBuyerService } from "./condition-report/condition-report-buyer.service.js";
 import { createConditionReportContext } from "./condition-report/condition-report-context.js";

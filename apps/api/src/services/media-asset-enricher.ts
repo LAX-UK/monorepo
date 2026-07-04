@@ -1,4 +1,4 @@
-import type { IMediaAssetReader, MediaAssetRecord } from "@auction/persistence";
+import type { IMediaAssetReader, MediaAssetRecord } from "@auction/persistence/interfaces";
 import type { GalleryImage } from "@auction/types";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
 

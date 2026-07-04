@@ -1,4 +1,4 @@
-import type { ILegalEntityDocumentAdminRepository } from "@auction/persistence";
+import type { ILegalEntityDocumentAdminRepository } from "@auction/persistence/interfaces";
 import type { ReviewLegalEntityDocumentInput } from "@auction/validators";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";

@@ -1,4 +1,4 @@
-import type { IBuyerAgentAuthorisationReader } from "@auction/persistence";
+import type { IBuyerAgentAuthorisationReader } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../../lib/errors.js";

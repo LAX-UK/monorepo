@@ -1,6 +1,6 @@
 import type { IEmailService } from "@auction/email";
-import type { INotificationWriteRepository } from "@auction/persistence";
-import type { IUserRepository } from "@auction/persistence";
+import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
+import type { IUserRepository } from "@auction/persistence/interfaces";
 import type { KycUserFeedback } from "../interfaces/kyc-service.js";
 
 export class KycResubmissionNotifier {

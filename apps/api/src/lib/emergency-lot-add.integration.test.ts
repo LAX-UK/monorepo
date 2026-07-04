@@ -1,6 +1,6 @@
 import { createDb } from "@auction/db";
 import { legalEntity, lot, sale, user } from "@auction/db/schema";
-import { DrizzleRepositoryFactory } from "@auction/persistence";
+import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { rollbackFailedEmergencyLotAdd } from "./emergency-lot-add.js";

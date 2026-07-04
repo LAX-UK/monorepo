@@ -1,4 +1,4 @@
-import type { ILegalEntityConnectReader } from "@auction/persistence";
+import type { ILegalEntityConnectReader } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { ConnectSessionService } from "./connect-session.service.js";
 

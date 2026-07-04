@@ -1,6 +1,6 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IConditionReportRequestRepository } from "@auction/persistence";
-import type { ILotRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { ConditionReportService } from "./condition-report.service.js";
 import type { ConditionReportRequestRow } from "./interfaces/condition-report.js";

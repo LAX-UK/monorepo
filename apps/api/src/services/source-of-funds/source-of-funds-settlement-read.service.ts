@@ -1,4 +1,4 @@
-import type { ISourceOfFundsSettlementReader } from "@auction/persistence";
+import type { ISourceOfFundsSettlementReader } from "@auction/persistence/interfaces";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import { mapLotRow, mapSaleRow } from "../../lib/mappers.js";
 

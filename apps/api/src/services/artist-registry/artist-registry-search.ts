@@ -1,1 +1,1 @@
-export { searchArtists } from "@auction/persistence";
+export { searchArtists } from "@auction/persistence/lib";

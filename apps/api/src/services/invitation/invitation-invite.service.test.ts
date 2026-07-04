@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { IEntityInvitationRepository } from "@auction/persistence";
+import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";

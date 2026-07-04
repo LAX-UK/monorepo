@@ -1,5 +1,5 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IKycRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IKycRepository } from "@auction/persistence/interfaces";
 import type { Env } from "../../env.js";
 import type { VeriffClient } from "../../lib/veriff/veriff-client.js";
 import { VeriffWebhookSignatureError } from "../../lib/veriff/veriff-webhook-verifier.js";

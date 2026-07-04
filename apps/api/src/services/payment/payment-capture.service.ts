@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
-import type { ITransactionRunner } from "@auction/persistence";
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
-import type { ILotFulfilmentPaymentHook } from "@auction/persistence";
-import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
-import type { ILotRepository, IUserRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
+import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
+import type { ILotRepository, IUserRepository } from "@auction/persistence/interfaces";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentCaptureNotAppliedError } from "../../lib/errors.js";
 import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";

@@ -1,5 +1,5 @@
-import type { IPaymentDomainEventsRepository } from "@auction/persistence";
-import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";

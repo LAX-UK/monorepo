@@ -5,9 +5,11 @@ export {
   EDITABLE_ORG_STATUSES,
   isOwnerOrAdmin,
   rowToEntity,
-  type OrganizationOnboardingDocumentDto,
-  type OrganizationOnboardingFlowOptions,
-  type OrganizationOnboardingGetResult,
-  type OrganizationOnboardingProfileInput,
-  type SubmitForReviewResult,
-} from "@auction/persistence";
+} from "@auction/persistence/lib";
+export type {
+  OrganizationOnboardingDocumentDto,
+  OrganizationOnboardingFlowOptions,
+  OrganizationOnboardingGetResult,
+  OrganizationOnboardingProfileInput,
+  SubmitForReviewResult,
+} from "@auction/persistence/lib";

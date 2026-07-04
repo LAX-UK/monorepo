@@ -1,4 +1,4 @@
-import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import type { Env } from "../../env.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type {

@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { ILotRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { BuyItNowAuctionStrategy } from "../../strategies/buy-it-now.strategy.js";

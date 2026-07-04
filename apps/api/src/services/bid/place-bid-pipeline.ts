@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
-import type { IAntiShillingGuard } from "@auction/persistence";
-import type { IBidRepository, ILotRepository } from "@auction/persistence";
-import type { ISaleroomSessionLookup } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type { IAntiShillingGuard } from "@auction/persistence/interfaces";
+import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
+import type { ISaleroomSessionLookup } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import { BidError } from "../../lib/errors.js";
 import type { ILotStrategyFactory } from "../interfaces/auction-strategy.js";

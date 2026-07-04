@@ -1,7 +1,4 @@
-import {
-  DrizzleAdminManualReviewPaymentEnrichmentReader,
-  DrizzleAdminManualReviewPaymentReader,
-} from "@auction/persistence";
+import { DrizzleAdminManualReviewPaymentEnrichmentReader, DrizzleAdminManualReviewPaymentReader } from "@auction/persistence/repositories";
 import { describe, expect, it, vi } from "vitest";
 import { AdminManualReviewPaymentQueryService } from "./admin-manual-review-payment-query.service.js";
 

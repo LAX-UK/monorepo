@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import { formatCsvHeader, formatCsvRow } from "@auction/exports";
-import type { IExportJobRepository } from "@auction/persistence";
+import type { IExportJobRepository } from "@auction/persistence/interfaces";
 import type { ExportProvider } from "../../exports/types.js";
 import type { ExportAuthContext } from "./export-types.js";
 

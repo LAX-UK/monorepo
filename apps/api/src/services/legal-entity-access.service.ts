@@ -1,4 +1,4 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ActingContextCookieV1 } from "@auction/types";
 import type { LegalEntity, LegalEntityMemberRole } from "@auction/types";
 import {

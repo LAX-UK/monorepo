@@ -1,5 +1,5 @@
 import { AuthzError } from "@auction/exports/providers";
-import type { IExportJobRepository } from "@auction/persistence";
+import type { IExportJobRepository } from "@auction/persistence/interfaces";
 import { utcDayStart } from "./export-types.js";
 
 const MAX_CONCURRENT_EXPORTS = 5;

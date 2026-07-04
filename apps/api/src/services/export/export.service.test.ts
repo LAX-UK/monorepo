@@ -1,6 +1,6 @@
 import type { ExportEntityType } from "@auction/exports";
 import { AuthzError } from "@auction/exports/providers";
-import type { IExportJobRepository } from "@auction/persistence";
+import type { IExportJobRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { ExportProvider } from "../../exports/types.js";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";

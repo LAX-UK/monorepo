@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { DrizzleRepositoryFactory } from "@auction/persistence";
+import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import type {
   IAbsenteeBidRepository,
   IAntiShillingGuard,

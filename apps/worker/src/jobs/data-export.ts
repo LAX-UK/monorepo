@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { finished } from "node:stream/promises";
 import { type ExportFormat, formatCsvHeader, formatCsvRow } from "@auction/exports";
 import {
-  type ExportProviderDeps,
+  type IExportProviderDeps,
   createExportProviders,
   exportAuthContextFromRow,
 } from "@auction/exports/providers";
@@ -55,7 +55,7 @@ export type DataExportJobContext = {
   dataExportRepo: IDataExportJobRepository;
   redis: Redis;
   storage: UploadStorage;
-  providerDeps: ExportProviderDeps;
+  providerDeps: IExportProviderDeps;
   log: { info: (o: unknown, msg?: string) => void; error: (o: unknown, msg?: string) => void };
 };
 

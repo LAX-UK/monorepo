@@ -1,4 +1,4 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import { Contact, Contacts, type XeroClient } from "xero-node";
 import type { Env } from "../../env.js";
 import type { InvoiceAccountingContext } from "../interfaces/invoice-accounting.js";

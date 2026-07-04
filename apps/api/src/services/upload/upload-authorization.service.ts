@@ -1,4 +1,4 @@
-import type { IUploadPersistenceRepository } from "@auction/persistence";
+import type { IUploadPersistenceRepository } from "@auction/persistence/interfaces";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import type { IUploadAuthorizationService } from "../interfaces/upload-service.js";

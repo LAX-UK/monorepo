@@ -1,4 +1,4 @@
-import type { SaleroomEventKind } from "@auction/persistence";
+import type { SaleroomEventKind } from "@auction/persistence/interfaces";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type {

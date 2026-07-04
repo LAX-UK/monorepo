@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import { EmailChangeConfirmError, type IUserEmailChangeRepository } from "@auction/persistence";
+import { EmailChangeConfirmError, type IUserEmailChangeRepository } from "@auction/persistence/interfaces";
 import type { RequestEmailChangeInput } from "@auction/validators";
 import type { Env } from "../../env.js";
 import { createEmailChangeToken, verifyEmailChangeToken } from "../../lib/email-change-token.js";

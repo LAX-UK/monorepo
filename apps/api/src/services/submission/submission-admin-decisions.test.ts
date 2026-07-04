@@ -1,5 +1,5 @@
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
-import type { IItemSubmissionRepository } from "@auction/persistence";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
+import type { IItemSubmissionRepository } from "@auction/persistence/interfaces";
 import type { ItemSubmission } from "@auction/types";
 import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";

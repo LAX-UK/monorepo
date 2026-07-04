@@ -1,6 +1,6 @@
-import type { IUploadPersistenceRepository } from "@auction/persistence";
-import type { ILegalEntityOnboardingRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IUploadPersistenceRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityOnboardingRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import type { LegalEntityDocumentUploadInput } from "@auction/validators";
 import type { IDomainEventSink } from "../domain-event-sink.js";
@@ -14,7 +14,7 @@ import type {
 } from "./org-onboarding-mappers.js";
 
 export type OnboardingContext = {
-  transactionRunner: import("@auction/persistence").ITransactionRunner;
+  transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner;
   onboardingRepo: ILegalEntityOnboardingRepository;
   uploadPersistenceRepository: IUploadPersistenceRepository;
   legalEntityRepository: ILegalEntityRepository;
@@ -25,7 +25,7 @@ export type OnboardingContext = {
 };
 
 export function createOnboardingContext(input: {
-  transactionRunner: import("@auction/persistence").ITransactionRunner;
+  transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner;
   onboardingRepo: ILegalEntityOnboardingRepository;
   uploadPersistenceRepository: IUploadPersistenceRepository;
   legalEntityRepository: ILegalEntityRepository;

@@ -1,5 +1,5 @@
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
-import { legalEntityNotificationAudienceRoles } from "@auction/persistence";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
+import { legalEntityNotificationAudienceRoles } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 

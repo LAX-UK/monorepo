@@ -1,4 +1,4 @@
-import type { PaymentRecord } from "@auction/persistence";
+import type { PaymentRecord } from "@auction/persistence/interfaces";
 import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type Stripe from "stripe";

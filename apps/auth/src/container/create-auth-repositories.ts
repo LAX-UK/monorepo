@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { IUserEmailVerifiedPublisher } from "@auction/persistence";
+import type { IUserEmailVerifiedPublisher } from "@auction/persistence/interfaces";
 import { DrizzleUserEmailVerifiedPublisher } from "@auction/persistence/repositories";
 
 export type AuthRepositories = {

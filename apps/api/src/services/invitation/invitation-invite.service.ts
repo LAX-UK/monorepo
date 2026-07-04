@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IEntityInvitationRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { InviteOutcome } from "../interfaces/invitation-lifecycle.js";
 import type { InviteMemberInput } from "../interfaces/member-management.js";

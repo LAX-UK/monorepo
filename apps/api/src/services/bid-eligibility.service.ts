@@ -1,4 +1,4 @@
-import type { IBidLotRulesReader, IBidMembershipReader } from "@auction/persistence";
+import type { IBidLotRulesReader, IBidMembershipReader } from "@auction/persistence/interfaces";
 import { type AutoBidLotRules, validateAutoBidStepAmount } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";

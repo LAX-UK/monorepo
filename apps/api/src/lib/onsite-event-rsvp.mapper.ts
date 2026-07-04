@@ -1,1 +1,1 @@
-export { mapOnsiteEventRsvpRow } from "@auction/persistence";
+export { mapOnsiteEventRsvpRow } from "@auction/persistence/lib";

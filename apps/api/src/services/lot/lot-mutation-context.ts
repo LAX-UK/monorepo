@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { ILotRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { LotServiceDeps } from "./lot-types.js";
 
 export function txLot(deps: LotServiceDeps, tx: Database): ILotRepository {

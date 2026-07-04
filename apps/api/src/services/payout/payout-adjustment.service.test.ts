@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { PayoutAdjustmentService } from "./payout-adjustment.service.js";

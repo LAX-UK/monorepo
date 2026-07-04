@@ -1,7 +1,7 @@
-import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence";
-import type { ITelephoneBidBookingRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence/interfaces";
+import type { ITelephoneBidBookingRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { TelephoneBidBooking } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";

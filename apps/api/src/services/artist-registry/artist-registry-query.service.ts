@@ -1,4 +1,4 @@
-import type { IArtistRegistryRepository } from "@auction/persistence";
+import type { IArtistRegistryRepository } from "@auction/persistence/interfaces";
 import type {
   ArtistRecord,
   ArtistSearchHit,

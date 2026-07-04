@@ -1,4 +1,4 @@
-import type { INotificationPreferenceReader } from "@auction/persistence";
+import type { INotificationPreferenceReader } from "@auction/persistence/interfaces";
 import type {
   INotificationChannel,
   NotificationChannelKind,

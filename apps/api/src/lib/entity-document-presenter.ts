@@ -1,9 +1,9 @@
-import type { EntityDocumentPersistedRow } from "@auction/persistence";
+import type { EntityDocumentPersistedRow } from "@auction/persistence/interfaces";
 import type { DocumentEntityKind, EntityDocument } from "@auction/types";
 import type { IObjectStorage } from "../services/interfaces/object-storage.js";
 import type { MediaUrlResolver } from "../services/media-url-resolver.js";
 
-export type { EntityDocumentPersistedRow } from "@auction/persistence";
+export type { EntityDocumentPersistedRow } from "@auction/persistence/interfaces";
 
 export async function presentEntityDocumentsBatch(
   entityKind: DocumentEntityKind,

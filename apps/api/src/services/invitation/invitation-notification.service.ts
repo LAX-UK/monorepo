@@ -1,4 +1,4 @@
-import type { IEntityInvitationRepository } from "@auction/persistence";
+import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { IMembershipInviteNotifier } from "../interfaces/membership-invite-notification.js";
 

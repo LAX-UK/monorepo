@@ -1,8 +1,5 @@
-import type {
-  IPlatformCatalogLegalEntityReader,
-  PlatformCatalogLegalEntityIdProvider,
-} from "@auction/persistence";
-import { PLATFORM_CATALOG_SLUG } from "@auction/persistence";
+import type { IPlatformCatalogLegalEntityReader, PlatformCatalogLegalEntityIdProvider } from "@auction/persistence/interfaces";
+import { PLATFORM_CATALOG_SLUG } from "@auction/persistence/lib";
 
 export type { PlatformCatalogLegalEntityIdProvider };
 

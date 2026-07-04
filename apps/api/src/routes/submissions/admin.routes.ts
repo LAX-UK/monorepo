@@ -1,4 +1,4 @@
-import type { ListSubmissionsFilter } from "@auction/persistence";
+import type { ListSubmissionsFilter } from "@auction/persistence/interfaces";
 import type { ItemSubmissionStatus } from "@auction/types";
 import {
   adminAssignSubmissionBodySchema,

@@ -1,4 +1,4 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { LegalEntitySummary } from "@auction/types";
 import type { IEnsurePersonalLegalEntityService } from "./ensure-personal-legal-entity.service.js";
 

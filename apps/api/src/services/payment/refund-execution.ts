@@ -1,4 +1,4 @@
-import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
@@ -10,7 +10,7 @@ import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.s
 
 export type RefundLedgerDeps = {
   payments: IPaymentWriteRepository;
-  transactionRunner: import("@auction/persistence").ITransactionRunner;
+  transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner;
   domainEventSink: IDomainEventSink;
   payoutAdjustments: IPayoutAdjustmentService | null;
   paymentRefundReconcile: PaymentRefundReconcileService | null;

@@ -1,1 +1,1 @@
-export { legalEntityRowToDomain } from "@auction/persistence";
+export { legalEntityRowToDomain } from "@auction/persistence/lib";

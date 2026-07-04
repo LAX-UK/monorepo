@@ -1,4 +1,4 @@
-import type { ISaleRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { computeTotalDuePence } from "./total-due.js";

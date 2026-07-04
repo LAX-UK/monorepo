@@ -1,6 +1,6 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { IPaymentWriteRepository } from "@auction/persistence";
-import type { IAddressRepository, IProfileReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
+import type { IAddressRepository, IProfileReader } from "@auction/persistence/interfaces";
 import type { BillToContext } from "@auction/types";
 import type { AppLogger } from "../lib/logger.js";
 

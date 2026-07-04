@@ -1,9 +1,9 @@
-import type { SaleSoftDeleteGuardCounts } from "@auction/persistence";
+import type { SaleSoftDeleteGuardCounts } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 
-export type { SaleSoftDeleteGuardCounts } from "@auction/persistence";
+export type { SaleSoftDeleteGuardCounts } from "@auction/persistence/interfaces";
 
 export type SaleDeleteEligibility = {
   canDelete: boolean;
@@ -24,7 +24,7 @@ export type SaleBulkSoftDeleteResult = {
   errors: SaleBulkSoftDeleteError[];
 };
 
-export type { ISaleSoftDeleteSideEffects } from "@auction/persistence";
+export type { ISaleSoftDeleteSideEffects } from "@auction/persistence/interfaces";
 
 export interface ISaleSoftDeleteService {
   getDeleteEligibility(saleId: string): Promise<SaleDeleteEligibility | null>;

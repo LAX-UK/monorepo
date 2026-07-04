@@ -1,6 +1,6 @@
-import type { IImpersonationSessionRepository } from "@auction/persistence";
-import type { IImpersonationDomainEventReader } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IImpersonationSessionRepository } from "@auction/persistence/interfaces";
+import type { IImpersonationDomainEventReader } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { AdminUserService } from "../admin-user.service.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { AdminPeopleRouteServices } from "../interfaces/admin-routes/admin-people-routes.js";
@@ -11,7 +11,7 @@ import { AdminInvitationApplicationService } from "./admin-invitation-applicatio
 import { AdminUserApplicationService } from "./admin-user-application.service.js";
 
 export type CreateAdminPeopleServicesInput = {
-  transactionRunner: import("@auction/persistence").ITransactionRunner;
+  transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner;
   domainEventSink: IDomainEventSink;
   impersonationSessionRepository: IImpersonationSessionRepository;
   impersonationDomainEventReader: IImpersonationDomainEventReader;

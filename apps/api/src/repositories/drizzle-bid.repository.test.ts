@@ -1,4 +1,4 @@
-import { DrizzleBidRepository } from "@auction/persistence";
+import { DrizzleBidRepository } from "@auction/persistence/repositories";
 import { describe, expect, it, vi } from "vitest";
 
 describe("DrizzleBidRepository.markWinningBid", () => {

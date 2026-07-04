@@ -1,9 +1,9 @@
-import type { IPaymentDomainEventsRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ILotFulfilmentPaymentHook } from "@auction/persistence";
-import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
-import type { IAddressRepository } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence";
+import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
+import type { IAddressRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence/interfaces";
 import type { PaymentStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
@@ -68,7 +68,7 @@ export class PaymentService implements IPaymentService {
     accounting: IInvoiceAccountingProvider,
     paymentTierPolicy: PaymentTierPolicy,
     legalEntityRepository?: ILegalEntityRepository,
-    transactionRunner?: import("@auction/persistence").ITransactionRunner,
+    transactionRunner?: import("@auction/persistence/interfaces").ITransactionRunner,
     domainEventSink?: IDomainEventSink,
     stripePayments: IStripePaymentGateway | null = null,
     mediaUrlResolver?: MediaUrlResolver,

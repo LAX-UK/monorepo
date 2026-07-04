@@ -1,6 +1,6 @@
-import type { IOnsiteEventCheckInLogRepository } from "@auction/persistence";
-import type { IOnsiteEventRsvpRepository, OnsiteEventRsvpWithGuest } from "@auction/persistence";
-import type { IOnsiteEventRepository } from "@auction/persistence";
+import type { IOnsiteEventCheckInLogRepository } from "@auction/persistence/interfaces";
+import type { IOnsiteEventRsvpRepository, OnsiteEventRsvpWithGuest } from "@auction/persistence/interfaces";
+import type { IOnsiteEventRepository } from "@auction/persistence/interfaces";
 import type { OnsiteEvent } from "@auction/types";
 import type { OnsiteEventCheckInResult, OnsiteEventCheckInSearchRow } from "@auction/types";
 import { type AppLogger, createBaseLogger } from "../lib/logger.js";

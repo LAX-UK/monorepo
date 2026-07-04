@@ -1,5 +1,5 @@
-import { defaultNotificationPreference } from "@auction/persistence";
-import type { NotificationPreferenceInput } from "@auction/persistence";
+import { defaultNotificationPreference } from "@auction/persistence/lib";
+import type { NotificationPreferenceInput } from "@auction/persistence/interfaces";
 import {
   biddingPreferencesPatchSchema,
   notificationPreferencePatchSchema,

@@ -1,4 +1,4 @@
-import type { IDisplayPairingRepository } from "@auction/persistence";
+import type { IDisplayPairingRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { DisplayTokenIssuer } from "../lib/display-token.js";
 import { DisplayPairingService } from "./display-pairing.service.js";

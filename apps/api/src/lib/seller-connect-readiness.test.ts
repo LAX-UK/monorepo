@@ -1,4 +1,4 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { findLotsMissingSellerConnect, isSellerConnectReady } from "./seller-connect-readiness.js";
 

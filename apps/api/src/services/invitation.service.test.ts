@@ -1,6 +1,6 @@
 import type { IEmailService } from "@auction/email";
-import type { IUserInvitationRepository, InvitationRow } from "@auction/persistence";
-import type { IUserRepository } from "@auction/persistence";
+import type { IUserInvitationRepository, InvitationRow } from "@auction/persistence/interfaces";
+import type { IUserRepository } from "@auction/persistence/interfaces";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvitationService } from "./invitation.service.js";
 

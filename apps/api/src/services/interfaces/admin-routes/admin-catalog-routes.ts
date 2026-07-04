@@ -1,4 +1,4 @@
-import type { CreateCategoryInput, UpdateCategoryInput } from "@auction/persistence";
+import type { CreateCategoryInput, UpdateCategoryInput } from "@auction/persistence/interfaces";
 import type {
   AdminArtistListResult,
   AdminArtistStats,

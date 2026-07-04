@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IPayoutRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { PayoutLineKind } from "@auction/types";
 import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import type {

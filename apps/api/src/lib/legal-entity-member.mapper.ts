@@ -1,1 +1,1 @@
-export { rowToLegalEntityMember } from "@auction/persistence";
+export { rowToLegalEntityMember } from "@auction/persistence/lib";

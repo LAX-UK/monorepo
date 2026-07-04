@@ -28,7 +28,7 @@ export class SourceOfFundsService implements ISourceOfFundsService, ISourceOfFun
   constructor(
     repo: ISourceOfFundsRepository,
     config: SourceOfFundsConfig,
-    transactionRunner: import("@auction/persistence").ITransactionRunner | null = null,
+    transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner | null = null,
     events: IDomainEventSink | null = null,
   ) {
     this.gate = new SourceOfFundsGateService(repo, config, transactionRunner, events);

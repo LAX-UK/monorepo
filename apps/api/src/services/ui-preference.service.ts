@@ -1,4 +1,4 @@
-import type { IUiPreferenceRepository, UiPreferenceRow } from "@auction/persistence";
+import type { IUiPreferenceRepository, UiPreferenceRow } from "@auction/persistence/interfaces";
 import { DEFAULT_THEME_PREFERENCE, type UiPreferencePatch } from "@auction/validators";
 
 const DEFAULT_THEME = DEFAULT_THEME_PREFERENCE;

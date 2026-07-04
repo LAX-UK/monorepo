@@ -1,5 +1,5 @@
-import type { IUploadObjectReader } from "@auction/persistence";
-import type { IEntityDocumentRepository } from "@auction/persistence";
+import type { IUploadObjectReader } from "@auction/persistence/interfaces";
+import type { IEntityDocumentRepository } from "@auction/persistence/interfaces";
 import type { DocumentEntityKind, EntityDocument } from "@auction/types";
 import { presentEntityDocumentsBatch } from "../lib/entity-document-presenter.js";
 import type { IObjectStorage } from "./interfaces/object-storage.js";

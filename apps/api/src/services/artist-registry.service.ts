@@ -1,4 +1,4 @@
-import type { IArtistRegistryRepository } from "@auction/persistence";
+import type { IArtistRegistryRepository } from "@auction/persistence/interfaces";
 import { ArtistRegistryQueryService } from "./artist-registry/artist-registry-query.service.js";
 import { ArtistRegistryStaffCommandService } from "./artist-registry/artist-registry-staff-command.service.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
@@ -8,11 +8,7 @@ import type {
   IArtistRegistryStaffCommandService,
 } from "./interfaces/artist-registry.js";
 
-export {
-  insertArtistInTx,
-  replaceArtistCategoriesInTx,
-  resolveUniqueArtistSlug,
-} from "@auction/persistence";
+export { insertArtistInTx, replaceArtistCategoriesInTx, resolveUniqueArtistSlug } from "@auction/persistence/lib";
 
 export type {
   IArtistRegistryQueryService,

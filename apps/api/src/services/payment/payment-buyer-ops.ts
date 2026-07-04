@@ -10,7 +10,7 @@ export { createPendingForWinner } from "./create-pending-for-winner.pipeline.js"
 export async function listForBuyer(
   deps: PaymentServiceDeps,
   buyerId: string,
-): Promise<import("@auction/persistence").PaymentRecord[]> {
+): Promise<import("@auction/persistence/interfaces").PaymentRecord[]> {
   return deps.payments.listByBuyerId(buyerId);
 }
 

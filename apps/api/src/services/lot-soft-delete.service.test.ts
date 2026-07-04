@@ -1,5 +1,5 @@
-import type { ILotSoftDeleteGuardReader } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { ILotSoftDeleteGuardReader } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";

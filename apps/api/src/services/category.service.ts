@@ -1,8 +1,4 @@
-import type {
-  CreateCategoryInput,
-  ICategoryRepository,
-  UpdateCategoryInput,
-} from "@auction/persistence";
+import type { CreateCategoryInput, ICategoryRepository, UpdateCategoryInput } from "@auction/persistence/interfaces";
 import type { AdminCategory, Category } from "@auction/types";
 import { normalizeCategoryHierarchy, validateCategoryParent } from "@auction/validators";
 import { CategoryError } from "../lib/errors.js";

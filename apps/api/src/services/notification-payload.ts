@@ -1,4 +1,4 @@
-import type { CreateNotificationRow } from "@auction/persistence";
+import type { CreateNotificationRow } from "@auction/persistence/interfaces";
 import { lotPath } from "@auction/types";
 import type { NotificationPayload } from "./interfaces/notification-channel.js";
 

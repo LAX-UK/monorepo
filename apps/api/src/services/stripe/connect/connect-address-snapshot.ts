@@ -1,1 +1,1 @@
-export type { ConnectAddressSnapshot } from "@auction/persistence";
+export type { ConnectAddressSnapshot } from "@auction/persistence/lib";

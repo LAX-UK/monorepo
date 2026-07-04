@@ -1,9 +1,5 @@
-import type {
-  DrizzleLegalEntityRepository,
-  ILegalEntityMembershipReader,
-  ILegalEntityReader,
-  ILegalEntityRepository,
-} from "@auction/persistence";
+import type { ILegalEntityMembershipReader, ILegalEntityReader, ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { DrizzleLegalEntityRepository } from "@auction/persistence/repositories";
 import { describe, expect, it } from "vitest";
 import { defineCompileTimeContract } from "../testing/compile-time-contract.js";
 

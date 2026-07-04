@@ -1,4 +1,4 @@
-import type { AdminUserListFilter } from "@auction/persistence";
+import type { AdminUserListFilter } from "@auction/persistence/interfaces";
 import type { ExportClientsFilters } from "@auction/validators";
 
 function isoDateStart(iso: string): Date {

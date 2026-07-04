@@ -1,4 +1,4 @@
-import type { IAdminLotBrowseReader } from "@auction/persistence";
+import type { IAdminLotBrowseReader } from "@auction/persistence/interfaces";
 import type { AdminAttachableLotRow, AdminLotBrowseInput } from "./admin-lot-browse.types.js";
 
 export type {

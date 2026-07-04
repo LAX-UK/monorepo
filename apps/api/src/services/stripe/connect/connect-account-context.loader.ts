@@ -1,5 +1,5 @@
-import type { ILegalEntityConnectReader } from "@auction/persistence";
-import type { ConnectAccountCreationContextRow } from "@auction/persistence";
+import type { ILegalEntityConnectReader } from "@auction/persistence/interfaces";
+import type { ConnectAccountCreationContextRow } from "@auction/persistence/lib";
 import { throwConnectError } from "./connect-service-errors.js";
 
 export type ConnectAccountCreationContext = ConnectAccountCreationContextRow;

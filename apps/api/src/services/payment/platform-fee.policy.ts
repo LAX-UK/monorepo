@@ -1,4 +1,4 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
 import type { IPlatformFeePolicy } from "../interfaces/platform-fee.js";
 

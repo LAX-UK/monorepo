@@ -1,4 +1,4 @@
-import { DrizzleLegalEntityLifecycleAdminRepository } from "@auction/persistence";
+import { DrizzleLegalEntityLifecycleAdminRepository } from "@auction/persistence/repositories";
 import { describe, expect, it, vi } from "vitest";
 import type { LifecycleAdminOp } from "../lib/legal-entity-lifecycle-transitions.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";

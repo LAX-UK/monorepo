@@ -1,4 +1,4 @@
-import type { DomainEventConnection, DomainEventInput } from "@auction/persistence";
+import type { DomainEventConnection, DomainEventInput } from "@auction/persistence/lib";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 
 /**

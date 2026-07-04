@@ -1,5 +1,5 @@
-import type { ISaleRegistrationCheckInReader } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ISaleRegistrationCheckInReader } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { SaleDeliveryMode } from "@auction/types";
 import { PADDLE_NUMBER_MIN, saleAllowsInRoomCheckIn } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";

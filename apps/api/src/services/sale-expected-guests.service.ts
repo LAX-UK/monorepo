@@ -1,4 +1,4 @@
-import type { ISaleExpectedGuestsReader } from "@auction/persistence";
+import type { ISaleExpectedGuestsReader } from "@auction/persistence/interfaces";
 import type { SaleExpectedGuestsSummary } from "@auction/types";
 
 export class SaleExpectedGuestsService {

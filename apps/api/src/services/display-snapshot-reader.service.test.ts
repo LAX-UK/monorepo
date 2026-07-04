@@ -1,4 +1,4 @@
-import { DrizzleSaleroomDisplaySnapshotReader } from "@auction/persistence";
+import { DrizzleSaleroomDisplaySnapshotReader } from "@auction/persistence/repositories";
 import { describe, expect, it, vi } from "vitest";
 import { DisplaySnapshotReader } from "./display-snapshot-reader.service.js";
 

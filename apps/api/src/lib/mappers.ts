@@ -1,5 +1,5 @@
 import type { lot, payment } from "@auction/db/schema";
-import { mapBidRow, mapItemSubmissionRow, mapLotRow, mapSaleRow } from "@auction/persistence";
+import { mapBidRow, mapItemSubmissionRow, mapLotRow, mapSaleRow } from "@auction/persistence/lib";
 import type { Lot, LotSummary, Payment, PaymentStatus, PublicLotView } from "@auction/types";
 import type { InferSelectModel } from "drizzle-orm";
 

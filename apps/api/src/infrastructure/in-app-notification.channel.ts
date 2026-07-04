@@ -1,4 +1,4 @@
-import type { INotificationWriteRepository } from "@auction/persistence";
+import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
 import type { ICacheProvider } from "../services/interfaces/cache.js";
 import type {
   INotificationChannel,

@@ -1,6 +1,6 @@
-import type { ISaleRepository } from "@auction/persistence";
-import type { IOnsiteEventRsvpRepository } from "@auction/persistence";
-import type { IOnsiteEventRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence/interfaces";
+import type { IOnsiteEventRsvpRepository } from "@auction/persistence/interfaces";
+import type { IOnsiteEventRepository } from "@auction/persistence/interfaces";
 import type { OnsiteEvent, OnsiteEventRsvp, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { encryptCheckInToken } from "../lib/check-in-token-ciphertext.js";

@@ -1,4 +1,4 @@
-import type { ITransactionRunner } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../../../lib/stripe-processed-event.js";

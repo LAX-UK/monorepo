@@ -1,4 +1,4 @@
-import type { INotificationWriteRepository } from "@auction/persistence";
+import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
 import type { IUserNotificationPublisher } from "./interfaces/user-notification-publisher.js";
 

@@ -1,4 +1,4 @@
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { PayoutLine } from "@auction/types";
 import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import type {

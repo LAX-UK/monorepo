@@ -1,5 +1,5 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IUserRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IUserRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 
 export class UserService {

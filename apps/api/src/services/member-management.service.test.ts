@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { DrizzleLegalEntityMemberRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
+import { DrizzleLegalEntityMemberRepository } from "@auction/persistence/repositories";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import { describe, expect, it } from "vitest";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import { DomainEventSink } from "./domain-event-sink.js";

@@ -1,4 +1,4 @@
-import type { IVenueRepository } from "@auction/persistence";
+import type { IVenueRepository } from "@auction/persistence/interfaces";
 import type { CreateSaleInput, Venue } from "@auction/types";
 import { formatPostalAddress } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";

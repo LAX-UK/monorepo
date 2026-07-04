@@ -1,4 +1,4 @@
-import type { INotificationReadRepository, NotificationListFilter } from "@auction/persistence";
+import type { INotificationReadRepository, NotificationListFilter } from "@auction/persistence/interfaces";
 import type { UserNotification } from "@auction/types";
 
 /** SRP: persisted notification reads for the dashboard / header. */

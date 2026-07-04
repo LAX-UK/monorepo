@@ -1,5 +1,5 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IEntityInvitationRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type {
   IInvitationLifecycleService,

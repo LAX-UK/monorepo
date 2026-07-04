@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
-import type { IConnectTransferRepository } from "@auction/persistence";
-import type { ILegalEntityConnectRepository } from "@auction/persistence";
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IConnectTransferRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityConnectRepository } from "@auction/persistence/interfaces";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Payout } from "@auction/types";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";

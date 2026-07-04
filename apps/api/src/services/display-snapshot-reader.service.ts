@@ -1,4 +1,4 @@
-import type { ISaleroomDisplaySnapshotReader } from "@auction/persistence";
+import type { ISaleroomDisplaySnapshotReader } from "@auction/persistence/interfaces";
 import type { SaleroomDisplayNextLot, SaleroomDisplaySnapshot } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { MediaUrlResolver } from "../services/media-url-resolver.js";

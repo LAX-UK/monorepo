@@ -1,4 +1,4 @@
-import type { ProfileMeRow } from "@auction/persistence";
+import type { ProfileMeRow } from "@auction/persistence/interfaces";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";

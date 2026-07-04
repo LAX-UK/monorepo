@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
-import type { IAntiShillingGuard } from "@auction/persistence";
-import type { IBidRepository, ILotRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { ISaleModeLookup } from "@auction/persistence";
-import type { ISaleroomSessionLookup } from "@auction/persistence";
+import type { IAntiShillingGuard } from "@auction/persistence/interfaces";
+import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { ISaleModeLookup } from "@auction/persistence/interfaces";
+import type { ISaleroomSessionLookup } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";

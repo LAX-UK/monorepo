@@ -1,4 +1,4 @@
-import type { IPlatformCatalogLegalEntityReader } from "@auction/persistence";
+import type { IPlatformCatalogLegalEntityReader } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { createPlatformCatalogLegalEntityIdProvider } from "./platform-catalog-legal-entity.js";
 

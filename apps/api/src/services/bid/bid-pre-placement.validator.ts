@@ -1,5 +1,5 @@
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { ISaleModeLookup } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { ISaleModeLookup } from "@auction/persistence/interfaces";
 import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { buyerEntityCanBid } from "../../lib/buyer-entity-bid-eligibility.js";

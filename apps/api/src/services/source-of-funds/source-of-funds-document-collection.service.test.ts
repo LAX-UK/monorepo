@@ -1,5 +1,5 @@
-import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
-import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
+import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence/interfaces";
+import type { ISourceOfFundsDocumentRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { PerRequestSigningPolicy } from "../signed-url-policy.js";

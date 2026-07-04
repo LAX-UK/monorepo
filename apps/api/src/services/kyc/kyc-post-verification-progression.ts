@@ -1,5 +1,5 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 
 export type KycPostVerificationProgressionDeps = {

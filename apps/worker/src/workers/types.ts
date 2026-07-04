@@ -1,11 +1,7 @@
 import type { createDb } from "@auction/db";
+import type { IExportProviderDeps } from "@auction/exports/providers";
 import type { IMarketingProfileReader } from "@auction/marketing-events";
-import type {
-  INotificationWriteRepository,
-  IQrCodeScanPersister,
-  IRepositoryFactory,
-  ITransactionRunner,
-} from "@auction/persistence";
+import type { INotificationWriteRepository, IQrCodeScanPersister, IRepositoryFactory, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { QueueName } from "@auction/queues";
 import type { QueueOptions, WorkerOptions } from "bullmq";
 import type { Redis } from "ioredis";
@@ -69,6 +65,7 @@ export type WorkerBootstrapDeps = {
   notificationWriteRepo: INotificationWriteRepository;
   transactionRunner: ITransactionRunner;
   adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
+  exportProviderDeps: IExportProviderDeps;
   sentryMonitorSlugs: Record<string, string>;
   heartbeat: (queue: string) => Promise<void>;
   reportWorkerJobFailure: (queue: string, job: { id?: string } | undefined, err: Error) => void;

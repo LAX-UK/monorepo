@@ -1,4 +1,4 @@
-import type { IAdminLegalEntityBrowseReader } from "@auction/persistence";
+import type { IAdminLegalEntityBrowseReader } from "@auction/persistence/interfaces";
 import type {
   AdminLegalEntityBrowseParams,
   AdminLegalEntityBrowseResult,

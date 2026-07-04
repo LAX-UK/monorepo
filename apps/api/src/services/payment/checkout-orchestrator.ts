@@ -1,7 +1,7 @@
-import type { IPaymentDomainEventsRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { IPaymentWriteRepository } from "@auction/persistence";
-import type { IUserRepository } from "@auction/persistence";
+import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
+import type { IUserRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";

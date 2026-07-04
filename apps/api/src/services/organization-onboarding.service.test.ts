@@ -1,4 +1,4 @@
-import type { ILegalEntityOnboardingRepository } from "@auction/persistence";
+import type { ILegalEntityOnboardingRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { OrganizationOnboardingService } from "./organization-onboarding.service.js";
 

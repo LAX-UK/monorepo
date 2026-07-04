@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { ISaleroomOnBlockReader } from "@auction/persistence";
+import type { ISaleroomOnBlockReader } from "@auction/persistence/interfaces";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../../lib/errors.js";
 

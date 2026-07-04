@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { ITransactionRunner } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { SettlementComplianceInput } from "../aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {

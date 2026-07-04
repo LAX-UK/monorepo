@@ -1,4 +1,4 @@
-import type { IAdminSaleOperationsSnapshotReader } from "@auction/persistence";
+import type { IAdminSaleOperationsSnapshotReader } from "@auction/persistence/interfaces";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { ISaleRegistrationService } from "./interfaces/sale-registration-service.js";
 import type { ITelephoneBidBookingQueryService } from "./interfaces/telephone-bid-booking-service.js";

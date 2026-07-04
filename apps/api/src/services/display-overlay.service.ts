@@ -1,4 +1,4 @@
-import type { ISaleroomDisplaySessionRepository } from "@auction/persistence";
+import type { ISaleroomDisplaySessionRepository } from "@auction/persistence/interfaces";
 import type { SaleroomDisplayOverlay } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { IDomainEventSink } from "./domain-event-sink.js";

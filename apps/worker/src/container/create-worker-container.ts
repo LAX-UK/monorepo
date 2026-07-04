@@ -1,6 +1,6 @@
 import { closeDb, createDb } from "@auction/db";
 import { getBullMqTelemetry, initNodeSentry } from "@auction/observability";
-import { DrizzleRepositoryFactory } from "@auction/persistence";
+import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import {
   DEAD_LETTER_QUEUE_NAME,
   QUEUE_REGISTRY,
@@ -42,6 +42,7 @@ import {
   createReportWorkerJobFailure,
   registerWorkerErrorHandlers,
 } from "../workers/worker-utils.js";
+import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
 
 export type WorkerContainer = {
@@ -89,6 +90,7 @@ export function createWorkerContainer(): WorkerContainer {
   const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
   const repoFactory = new DrizzleRepositoryFactory(db);
   const repositories = createWorkerRepositories(db);
+  const exportProviderDeps = createExportProviderDeps(db);
   const redis = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
     enableReadyCheck: true,
@@ -169,6 +171,7 @@ export function createWorkerContainer(): WorkerContainer {
     notificationWriteRepo: repositories.notificationWriteRepo,
     transactionRunner: repositories.transactionRunner,
     adminReviewTaskProjectorRepo: repositories.adminReviewTaskProjectorRepo,
+    exportProviderDeps,
     sentryMonitorSlugs,
     heartbeat,
     reportWorkerJobFailure,

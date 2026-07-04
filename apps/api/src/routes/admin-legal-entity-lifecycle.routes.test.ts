@@ -1,4 +1,4 @@
-import { DrizzleLegalEntityLifecycleAdminRepository } from "@auction/persistence";
+import { DrizzleLegalEntityLifecycleAdminRepository } from "@auction/persistence/repositories";
 import * as AuctionTypes from "@auction/types";
 import { Hono } from "hono";
 import { err } from "neverthrow";

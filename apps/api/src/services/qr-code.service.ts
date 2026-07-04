@@ -1,6 +1,6 @@
 import { truncateIp } from "@auction/db";
-import type { IQrCodeScanPersister } from "@auction/persistence";
-import type { IQrCodeRepository } from "@auction/persistence";
+import type { IQrCodeScanPersister } from "@auction/persistence/interfaces";
+import type { IQrCodeRepository } from "@auction/persistence/interfaces";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 import type { AppLogger } from "../lib/logger.js";

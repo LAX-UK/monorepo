@@ -1,5 +1,5 @@
 import type { legalEntity } from "@auction/db/schema";
-import type { ConnectAddressSnapshot, ConnectKycSnapshot } from "@auction/persistence";
+import type { ConnectAddressSnapshot, ConnectKycSnapshot } from "@auction/persistence/lib";
 import type Stripe from "stripe";
 import { normalizeConnectCountryCode } from "./connect-country-resolver.js";
 

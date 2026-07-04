@@ -1,4 +1,4 @@
-import type { PaymentRecord } from "@auction/persistence";
+import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
 import type { ManualReviewReason, PaymentTierPolicy } from "./payment-tier.policy.js";
 

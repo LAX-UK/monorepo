@@ -1,4 +1,4 @@
-import type { IUserEmailVerifiedPublisher } from "@auction/persistence";
+import type { IUserEmailVerifiedPublisher } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { publishUserEmailVerified } from "./publish-user-email-verified.js";
 

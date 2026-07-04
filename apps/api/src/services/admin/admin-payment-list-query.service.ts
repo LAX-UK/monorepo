@@ -1,9 +1,4 @@
-import type {
-  AdminPaymentTableRowDto,
-  AdminPaymentsSummaryStats,
-  IPaymentWriteRepository,
-  ListPaymentsAdminTableFilter,
-} from "@auction/persistence";
+import type { AdminPaymentTableRowDto, AdminPaymentsSummaryStats, IPaymentWriteRepository, ListPaymentsAdminTableFilter } from "@auction/persistence/interfaces";
 
 export type AdminPaymentListPage = {
   rows: AdminPaymentTableRowDto[];

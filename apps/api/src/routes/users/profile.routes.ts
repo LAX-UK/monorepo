@@ -1,4 +1,4 @@
-import type { UpdateAddressInput } from "@auction/persistence";
+import type { UpdateAddressInput } from "@auction/persistence/interfaces";
 import {
   addressIdParamSchema,
   createAddressBodySchema,

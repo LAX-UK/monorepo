@@ -1,5 +1,5 @@
-import type { IConditionReportRequestRepository } from "@auction/persistence";
-import type { ILotRepository } from "@auction/persistence";
+import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";
 import { NotificationFactory } from "../notification.factory.js";

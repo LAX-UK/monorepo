@@ -1,4 +1,4 @@
-import type { InvitationAdminListFilters, InvitationAdminListRow } from "@auction/persistence";
+import type { InvitationAdminListFilters, InvitationAdminListRow } from "@auction/persistence/interfaces";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { IAdminInvitationApplicationService } from "../interfaces/admin-routes.js";

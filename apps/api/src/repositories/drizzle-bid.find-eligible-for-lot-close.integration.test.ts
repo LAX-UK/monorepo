@@ -1,6 +1,6 @@
 import { createDb } from "@auction/db";
 import { bid, legalEntity, legalEntityMember, lot, user } from "@auction/db/schema";
-import { DrizzleBidRepository } from "@auction/persistence";
+import { DrizzleBidRepository } from "@auction/persistence/repositories";
 import { describe, expect, it } from "vitest";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);

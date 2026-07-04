@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
-import type { IAddressRepository } from "@auction/persistence";
-import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
+import type { IAddressRepository } from "@auction/persistence/interfaces";
+import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";

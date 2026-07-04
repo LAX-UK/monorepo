@@ -1,4 +1,4 @@
-import { DrizzleAdminFinanceIssueSnapshotReader } from "@auction/persistence";
+import { DrizzleAdminFinanceIssueSnapshotReader } from "@auction/persistence/repositories";
 import { describe, expect, it, vi } from "vitest";
 import { AdminFinanceIssueSnapshotQueryService } from "./admin-finance-issue-snapshot-query.service.js";
 

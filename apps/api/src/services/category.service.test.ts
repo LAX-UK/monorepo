@@ -1,4 +1,4 @@
-import type { ICategoryRepository } from "@auction/persistence";
+import type { ICategoryRepository } from "@auction/persistence/interfaces";
 import type { Category } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { CategoryError } from "../lib/errors.js";

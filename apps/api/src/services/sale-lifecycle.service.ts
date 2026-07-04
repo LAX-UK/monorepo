@@ -1,4 +1,4 @@
-import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 
 /** Keeps umbrella `sale` rows aligned with child lots (no per-lot Bull jobs on the sale).

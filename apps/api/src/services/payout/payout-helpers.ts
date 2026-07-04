@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { DrizzlePayoutRepository } from "@auction/persistence";
-import type { IPayoutRepository } from "@auction/persistence";
+import { DrizzlePayoutRepository } from "@auction/persistence/repositories";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 
@@ -12,7 +12,7 @@ export function payoutRepoForTx(_rootRepo: IPayoutRepository, tx: Database): IPa
 /** Resolved deps record built once in PayoutService constructor (post-default coalescing). */
 export type PayoutServiceDeps = {
   repo: IPayoutRepository;
-  transactionRunner: import("@auction/persistence").ITransactionRunner | null;
+  transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner | null;
   domainEventSink: IDomainEventSink | undefined;
   payoutAdjustments: IPayoutAdjustmentService | undefined;
   payoutRepoForTx: (tx: Database) => IPayoutRepository;

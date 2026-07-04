@@ -1,8 +1,8 @@
 import { payment } from "@auction/db/schema";
-import type { IPaymentWebhookLookupReader } from "@auction/persistence";
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IPaymentWriteRepository } from "@auction/persistence";
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IPaymentWebhookLookupReader } from "@auction/persistence/interfaces";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import { eq } from "drizzle-orm";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPaymentCaptureService } from "../interfaces/payment-capture.js";

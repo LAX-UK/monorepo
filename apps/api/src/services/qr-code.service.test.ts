@@ -1,5 +1,5 @@
 import { persistQrCodeScan, truncateIp } from "@auction/db";
-import { DrizzleQrCodeRepository } from "@auction/persistence";
+import { DrizzleQrCodeRepository } from "@auction/persistence/repositories";
 import { describe, expect, it, vi } from "vitest";
 import { QrCodeService, decodeQrSequence, encodeQrSequence } from "./qr-code.service.js";
 import { resolveFromCached } from "./qr-code/qr-code-cache.js";

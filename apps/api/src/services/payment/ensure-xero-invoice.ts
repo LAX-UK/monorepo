@@ -1,4 +1,4 @@
-import type { IUserRepository } from "@auction/persistence";
+import type { IUserRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
 

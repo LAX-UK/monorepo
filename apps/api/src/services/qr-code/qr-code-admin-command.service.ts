@@ -1,4 +1,4 @@
-import type { IQrCodeRepository } from "@auction/persistence";
+import type { IQrCodeRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import { QrCodeCache } from "./qr-code-cache.js";
 import { encodeQrSequence } from "./qr-code-encoding.js";

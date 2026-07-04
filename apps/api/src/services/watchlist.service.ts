@@ -1,6 +1,6 @@
-import type { DbTransaction, ITransactionRunner } from "@auction/persistence";
-import type { ILotRepository } from "@auction/persistence";
-import type { IWatchlistRepository, WatchlistRow } from "@auction/persistence";
+import type { DbTransaction, ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILotRepository } from "@auction/persistence/interfaces";
+import type { IWatchlistRepository, WatchlistRow } from "@auction/persistence/interfaces";
 import type { MarketingEvent } from "@auction/types";
 import type { Lot } from "@auction/types";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";

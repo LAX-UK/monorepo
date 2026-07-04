@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
-import type { IPaymentWriteRepository } from "@auction/persistence";
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";

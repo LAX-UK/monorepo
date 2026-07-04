@@ -1,4 +1,4 @@
-import { mergeLotMarketingDetailsPatch } from "@auction/persistence";
+import { mergeLotMarketingDetailsPatch } from "@auction/persistence/lib";
 import type { LotMarketingDetails } from "@auction/types";
 import { describe, expect, it } from "vitest";
 

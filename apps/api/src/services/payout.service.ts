@@ -1,4 +1,4 @@
-import type { IPayoutRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
@@ -42,7 +42,7 @@ export class PayoutService implements IPayoutService {
 
   constructor(
     repo: IPayoutRepository,
-    transactionRunner?: import("@auction/persistence").ITransactionRunner,
+    transactionRunner?: import("@auction/persistence/interfaces").ITransactionRunner,
     domainEventSink?: IDomainEventSink,
     payoutAdjustments?: IPayoutAdjustmentService,
   ) {

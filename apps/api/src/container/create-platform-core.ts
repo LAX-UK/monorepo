@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { DrizzleTransactionRunner } from "@auction/persistence";
+import { DrizzleTransactionRunner } from "@auction/persistence/repositories";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import { DomainEventSink, type IDomainEventSink } from "../services/domain-event-sink.js";

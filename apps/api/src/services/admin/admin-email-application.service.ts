@@ -1,4 +1,4 @@
-import type { IEmailObservabilityRepository } from "@auction/persistence";
+import type { IEmailObservabilityRepository } from "@auction/persistence/interfaces";
 import type { IAdminEmailApplicationService } from "../interfaces/admin-routes.js";
 
 export class AdminEmailApplicationService implements IAdminEmailApplicationService {

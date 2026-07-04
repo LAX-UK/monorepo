@@ -1,8 +1,8 @@
 import { statusFromLegalEntityRow } from "@auction/connect";
-import type { DbTransaction, ITransactionRunner } from "@auction/persistence";
-import type { ILegalEntityConnectReader } from "@auction/persistence";
-import type { ILegalEntityConnectRepository } from "@auction/persistence";
-import type { LegalEntityConnectRow } from "@auction/persistence";
+import type { DbTransaction, ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ILegalEntityConnectReader } from "@auction/persistence/interfaces";
+import type { ILegalEntityConnectRepository } from "@auction/persistence/interfaces";
+import type { LegalEntityConnectRow } from "@auction/persistence/lib";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
