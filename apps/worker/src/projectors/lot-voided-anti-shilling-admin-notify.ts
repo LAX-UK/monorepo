@@ -1,12 +1,8 @@
-import { domainEvent, lot, projectorState } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
-import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 const PROJECTOR_NAME = "lot_voided_anti_shilling_admin_notify";
-
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 
 type VoidedPayload = {
   reason?: string;
@@ -14,46 +10,22 @@ type VoidedPayload = {
 };
 
 export async function processLotVoidedAntiShillingAdminNotify(options: {
-  db: Db;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
   emailService: IEmailService;
-  staffOpsRecipientReader: IStaffOpsRecipientReader;
   supportContactEmail: string;
-  adminEmailAddress?: string | undefined;
   webOrigin: string;
 }): Promise<void> {
-  const {
-    db,
-    log,
-    emailService,
-    supportContactEmail,
-    adminEmailAddress,
-    webOrigin,
-    staffOpsRecipientReader,
-  } = options;
+  const { ctx, log, emailService, supportContactEmail, webOrigin } = options;
+  const { projectorStateRepo, domainEventReader, lotNotifyReader, staffOpsRecipientReader, adminEmailAddress } =
+    ctx;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: PROJECTOR_NAME, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(PROJECTOR_NAME);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, PROJECTOR_NAME))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      aggregateId: domainEvent.aggregateId,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(and(gt(domainEvent.id, cursor), eq(domainEvent.eventType, "lot.voided")))
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: ["lot.voided"],
+    limit: 50,
+  });
 
   if (rows.length === 0) {
     return;
@@ -71,12 +43,7 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
 
     const lotId = row.aggregateId;
     try {
-      const [lotRow] = await db
-        .select({ title: lot.title })
-        .from(lot)
-        .where(eq(lot.id, lotId))
-        .limit(1);
-      const lotTitle = lotRow?.title ?? "Lot";
+      const lotTitle = (await lotNotifyReader.getLotTitle(lotId)) ?? "Lot";
 
       const staffOps = await staffOpsRecipientReader.listRecipients();
       if (staffOps.length > 0) {
@@ -118,9 +85,6 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, PROJECTOR_NAME));
+    await projectorStateRepo.advanceCursor(PROJECTOR_NAME, maxId);
   }
 }

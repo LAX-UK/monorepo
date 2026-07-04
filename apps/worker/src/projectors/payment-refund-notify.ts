@@ -1,20 +1,8 @@
-import {
-  domainEvent,
-  legalEntity,
-  legalEntityMember,
-  lot,
-  payment,
-  projectorState,
-  user,
-} from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
-import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 const PROJECTOR_NAME = "payment_refund_notify";
-
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 
 type RefundPayload = {
   stripeChargeId?: string;
@@ -25,38 +13,21 @@ type RefundPayload = {
 };
 
 export async function processPaymentRefundNotify(options: {
-  db: Db;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
   emailService: IEmailService;
-  staffOpsRecipientReader: IStaffOpsRecipientReader;
   supportContactEmail: string;
-  adminEmailAddress?: string | undefined;
 }): Promise<void> {
-  const { db, log, emailService, supportContactEmail, adminEmailAddress } = options;
+  const { ctx, log, emailService, supportContactEmail } = options;
+  const { projectorStateRepo, domainEventReader, paymentRefundNotifyReader, staffOpsRecipientReader, adminEmailAddress } =
+    ctx;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: PROJECTOR_NAME, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(PROJECTOR_NAME);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, PROJECTOR_NAME))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      aggregateId: domainEvent.aggregateId,
-      eventType: domainEvent.eventType,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(and(gt(domainEvent.id, cursor), eq(domainEvent.eventType, "payment.refunded")))
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: ["payment.refunded"],
+    limit: 50,
+  });
 
   if (rows.length === 0) {
     return;
@@ -74,39 +45,16 @@ export async function processPaymentRefundNotify(options: {
 
     try {
       const paymentId = row.aggregateId;
-      const [paymentRow] = await db
-        .select({
-          lotId: payment.lotId,
-          amount: payment.amount,
-        })
-        .from(payment)
-        .where(eq(payment.id, paymentId))
-        .limit(1);
+      const context = await paymentRefundNotifyReader.getRefundContext(
+        paymentId,
+        sellerLegalEntityId,
+      );
 
-      if (!paymentRow) {
+      if (!context) {
         log.warn({ eventId: row.id, paymentId }, "payment_refund_notify_skipped_no_payment");
         maxId = row.id;
         continue;
       }
-
-      const [lotRow] = await db
-        .select({
-          title: lot.title,
-          lotNumber: lot.lotNumber,
-        })
-        .from(lot)
-        .where(eq(lot.id, paymentRow.lotId))
-        .limit(1);
-
-      const lotTitle = lotRow?.title ?? "Unknown Lot";
-      const lotReference = lotRow?.lotNumber != null ? String(lotRow.lotNumber) : null;
-
-      const [entityRow] = await db
-        .select({ displayName: legalEntity.displayName })
-        .from(legalEntity)
-        .where(eq(legalEntity.id, sellerLegalEntityId))
-        .limit(1);
-      const entityName = entityRow?.displayName ?? "Unknown Organisation";
 
       const amountCents = payload.amountCents;
       const refundAmount = (amountCents / 100).toFixed(2);
@@ -114,36 +62,16 @@ export async function processPaymentRefundNotify(options: {
       const eventKind = "refund";
       const reason: string | null = null;
 
-      const sellerMembers = await db
-        .selectDistinct({
-          email: user.email,
-          userId: user.id,
-          firstName: user.firstName,
-        })
-        .from(legalEntityMember)
-        .innerJoin(user, eq(user.id, legalEntityMember.userId))
-        .where(
-          and(
-            eq(legalEntityMember.legalEntityId, sellerLegalEntityId),
-            isNull(legalEntityMember.removedAt),
-            isNotNull(legalEntityMember.acceptedAt),
-            or(
-              inArray(legalEntityMember.role, ["owner", "admin"]),
-              eq(legalEntityMember.isPrimaryAdmin, true),
-            ),
-          ),
-        );
-
-      for (const m of sellerMembers) {
+      for (const m of context.sellerMembers) {
         await emailService.enqueue({
           template: "payment-refund-notice",
           to: m.email,
           userId: m.userId,
           vars: {
             recipientFirstName: m.firstName,
-            entityName,
-            lotTitle,
-            lotReference,
+            entityName: context.entityName,
+            lotTitle: context.lotTitle,
+            lotReference: context.lotReference,
             refundAmount,
             refundCurrency,
             eventKind,
@@ -155,7 +83,7 @@ export async function processPaymentRefundNotify(options: {
         });
       }
 
-      const staffOps = await options.staffOpsRecipientReader.listRecipients();
+      const staffOps = await staffOpsRecipientReader.listRecipients();
       if (staffOps.length > 0) {
         for (const s of staffOps) {
           await emailService.enqueue({
@@ -164,9 +92,9 @@ export async function processPaymentRefundNotify(options: {
             userId: s.id,
             vars: {
               recipientFirstName: s.firstName ?? "Team",
-              entityName,
-              lotTitle,
-              lotReference,
+              entityName: context.entityName,
+              lotTitle: context.lotTitle,
+              lotReference: context.lotReference,
               refundAmount,
               refundCurrency,
               eventKind,
@@ -184,9 +112,9 @@ export async function processPaymentRefundNotify(options: {
           recipientResolution: "snapshot",
           vars: {
             recipientFirstName: "Ops Team",
-            entityName,
-            lotTitle,
-            lotReference,
+            entityName: context.entityName,
+            lotTitle: context.lotTitle,
+            lotReference: context.lotReference,
             refundAmount,
             refundCurrency,
             eventKind,
@@ -206,9 +134,6 @@ export async function processPaymentRefundNotify(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, PROJECTOR_NAME));
+    await projectorStateRepo.advanceCursor(PROJECTOR_NAME, maxId);
   }
 }

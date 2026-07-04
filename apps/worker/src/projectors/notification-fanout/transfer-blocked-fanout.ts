@@ -1,14 +1,12 @@
-import { legalEntity, legalEntityMember, payout, user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { and, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
 import {
-  type Db,
   type TransferBlockedPayload,
   formatReason,
 } from "./notification-fanout-helpers.js";
 
 export async function fanoutPayoutTransferBlocked(options: {
-  db: Db;
+  notificationFanoutReader: INotificationFanoutReader;
   emailService: IEmailService;
   supportContactEmail: string;
   adminPayoutsUrl: string;
@@ -16,44 +14,16 @@ export async function fanoutPayoutTransferBlocked(options: {
   payoutId: string;
   payload: TransferBlockedPayload;
 }): Promise<void> {
-  const { db, emailService, supportContactEmail, adminPayoutsUrl, eventId, payoutId, payload } =
+  const { notificationFanoutReader, emailService, supportContactEmail, adminPayoutsUrl, eventId, payoutId, payload } =
     options;
   if (!payload?.legalEntityId) return;
 
-  const [entityRow] = await db
-    .select({ displayName: legalEntity.displayName })
-    .from(legalEntity)
-    .where(eq(legalEntity.id, payload.legalEntityId))
-    .limit(1);
-  const entityName = entityRow?.displayName ?? "Unknown Organisation";
-
-  const [payoutRow] = await db
-    .select({ netAmount: payout.netAmount, currency: payout.currency })
-    .from(payout)
-    .where(eq(payout.id, payoutId))
-    .limit(1);
+  const entityName = await notificationFanoutReader.getEntityDisplayName(payload.legalEntityId);
+  const payoutRow = await notificationFanoutReader.getPayoutAmounts(payoutId);
   const payoutAmount = payoutRow?.netAmount ?? "0.00";
   const payoutCurrency = payoutRow?.currency ?? "GBP";
 
-  const recipients = await db
-    .selectDistinct({
-      email: user.email,
-      userId: user.id,
-      firstName: user.firstName,
-    })
-    .from(legalEntityMember)
-    .innerJoin(user, eq(user.id, legalEntityMember.userId))
-    .where(
-      and(
-        eq(legalEntityMember.legalEntityId, payload.legalEntityId),
-        isNull(legalEntityMember.removedAt),
-        isNotNull(legalEntityMember.acceptedAt),
-        or(
-          inArray(legalEntityMember.role, ["owner", "admin", "finance"]),
-          eq(legalEntityMember.isPrimaryAdmin, true),
-        ),
-      ),
-    );
+  const recipients = await notificationFanoutReader.listEntityRecipients(payload.legalEntityId);
 
   for (const recipient of recipients) {
     await emailService.enqueue({

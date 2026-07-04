@@ -1,14 +1,12 @@
 import type { IEmailService } from "@auction/email";
+import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
 import {
-  type Db,
   type SellerMoneyPayload,
   centsToAmount,
-  entityName,
-  listEntityRecipients,
 } from "./notification-fanout-helpers.js";
 
 export async function fanoutPayoutInitiated(options: {
-  db: Db;
+  notificationFanoutReader: INotificationFanoutReader;
   emailService: IEmailService;
   adminPayoutsUrl: string;
   eventId: number;
@@ -17,8 +15,8 @@ export async function fanoutPayoutInitiated(options: {
 }) {
   const legalEntityId = options.payload.legalEntityId;
   if (!legalEntityId) return;
-  const name = await entityName(options.db, legalEntityId);
-  const recipients = await listEntityRecipients(options.db, legalEntityId);
+  const name = await options.notificationFanoutReader.getEntityDisplayName(legalEntityId);
+  const recipients = await options.notificationFanoutReader.listEntityRecipients(legalEntityId);
   for (const recipient of recipients) {
     await options.emailService.enqueue({
       template: "payout-initiated-notice",

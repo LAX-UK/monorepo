@@ -19,11 +19,12 @@ export type PurgeWorkersHandle = {
 export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHandle {
   const {
     env,
-    db,
     log,
     bullConnection,
     queueOpts,
     qrCodeScanPurgeRepo,
+    verificationPurgeRepo,
+    userPiiPurgeRepo,
     sentryMonitorSlugs,
     heartbeat,
     reportWorkerJobFailure,
@@ -37,7 +38,7 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor("purge-expired-verifications", sentryMonitorSlugs, async () => {
-        const { deleted } = await purgeExpiredVerifications(db, { log });
+        const { deleted } = await purgeExpiredVerifications(verificationPurgeRepo, { log });
         log.info({ deleted }, "purge-expired-verifications: done");
         await heartbeat("purge-expired-verifications");
       });
@@ -63,7 +64,7 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     PURGE_SOFT_DELETED_USERS_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor("purge-soft-deleted-users", sentryMonitorSlugs, async () => {
-        const { processed } = await purgeSoftDeletedUsers(db, { log });
+        const { processed } = await purgeSoftDeletedUsers(userPiiPurgeRepo, { log });
         log.info({ processed }, "purge-soft-deleted-users: done");
       });
     },

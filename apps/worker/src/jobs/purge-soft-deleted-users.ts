@@ -1,9 +1,5 @@
-import type { createDb } from "@auction/db";
-import { user } from "@auction/db/schema";
-import { and, isNotNull, lt, sql } from "drizzle-orm";
 import type { Logger } from "pino";
-
-type Db = ReturnType<typeof createDb>;
+import type { IUserPiiPurgeRepository } from "../interfaces/user-pii-purge.repository.js";
 
 /**
  * GDPR / data-retention purge after account deletion cooling-off.
@@ -12,7 +8,7 @@ type Db = ReturnType<typeof createDb>;
  * {@link user_pii_purge} (migration `0058_user_pii_purge.sql`) per row.
  */
 export async function purgeSoftDeletedUsers(
-  db: Db,
+  userPiiPurgeRepo: IUserPiiPurgeRepository,
   options: {
     graceDays?: number;
     batchLimit?: number;
@@ -22,26 +18,21 @@ export async function purgeSoftDeletedUsers(
 ): Promise<{ processed: number }> {
   const graceDays = options.graceDays ?? 30;
   const limit = options.batchLimit ?? 100;
-  const cutoff = new Date(Date.now() - graceDays * 24 * 60 * 60 * 1000);
 
-  const candidates = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(and(isNotNull(user.deletionRequestedAt), lt(user.deletionRequestedAt, cutoff)))
-    .limit(limit);
+  const candidates = await userPiiPurgeRepo.listDeletionCandidates(graceDays, limit);
 
   let processed = 0;
-  for (const row of candidates) {
+  for (const userId of candidates) {
     try {
       if (options.onPurgeUser) {
-        await options.onPurgeUser(row.id);
+        await options.onPurgeUser(userId);
       } else {
-        await db.execute(sql`SELECT user_pii_purge(${row.id})`);
+        await userPiiPurgeRepo.purgeUser(userId);
       }
       processed++;
     } catch (err) {
       options.log?.error(
-        { userId: row.id, error: err instanceof Error ? err.message : String(err) },
+        { userId, error: err instanceof Error ? err.message : String(err) },
         "purge-soft-deleted-users: failed to purge user",
       );
     }

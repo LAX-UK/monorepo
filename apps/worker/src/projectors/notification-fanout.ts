@@ -1,15 +1,11 @@
-import { domainEvent, projectorState } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { and, eq, gt, inArray } from "drizzle-orm";
 import type pino from "pino";
-import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
-import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { fanoutPayoutClawbackRequired } from "./notification-fanout/clawback-fanout.js";
 import { fanoutDisputeClosed, fanoutDisputeOpened } from "./notification-fanout/dispute-fanout.js";
 import { fanoutLotVoided } from "./notification-fanout/lot-voided-fanout.js";
 import { fanoutPaymentManualReview } from "./notification-fanout/manual-review-fanout.js";
 import {
-  type Db,
   type LotVoidedPayload,
   type ManualReviewPayload,
   type ProxyCancelledPayload,
@@ -24,43 +20,22 @@ import { fanoutPayoutTransferBlocked } from "./notification-fanout/transfer-bloc
 export const NOTIFICATION_FANOUT_PROJECTOR = "notification_fanout";
 
 export async function processNotificationFanout(options: {
-  db: Db;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
   emailService: IEmailService;
   supportContactEmail: string;
   adminPayoutsUrl: string;
-  staffOpsRecipientReader: IStaffOpsRecipientReader;
-  adminEmailAddress?: string | undefined;
-  webOrigin?: string | undefined;
 }): Promise<void> {
-  const { db, log, emailService, supportContactEmail, adminPayoutsUrl, staffOpsRecipientReader } =
-    options;
+  const { ctx, log, emailService, supportContactEmail, adminPayoutsUrl } = options;
+  const { projectorStateRepo, domainEventReader, projectorFailureRecorder, notificationFanoutReader } =
+    ctx;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: NOTIFICATION_FANOUT_PROJECTOR, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(NOTIFICATION_FANOUT_PROJECTOR);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, NOTIFICATION_FANOUT_PROJECTOR))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      aggregateId: domainEvent.aggregateId,
-      eventType: domainEvent.eventType,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(
-      and(gt(domainEvent.id, cursor), inArray(domainEvent.eventType, [...SUPPORTED_EVENT_TYPES])),
-    )
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: [...SUPPORTED_EVENT_TYPES],
+    limit: 50,
+  });
 
   if (rows.length === 0) {
     return;
@@ -71,7 +46,7 @@ export async function processNotificationFanout(options: {
     try {
       if (row.eventType === "payout.transfer_blocked") {
         await fanoutPayoutTransferBlocked({
-          db,
+          notificationFanoutReader,
           emailService,
           supportContactEmail,
           adminPayoutsUrl,
@@ -82,27 +57,25 @@ export async function processNotificationFanout(options: {
       }
       if (row.eventType === "payment.requires_manual_review") {
         const manualReviewArgs: Parameters<typeof fanoutPaymentManualReview>[0] = {
-          db,
-          staffOpsRecipientReader,
+          notificationFanoutReader,
+          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
           emailService,
           supportContactEmail,
           eventId: row.id,
           paymentId: row.aggregateId,
           payload: row.payload as ManualReviewPayload,
         };
-        if (options.adminEmailAddress) {
-          manualReviewArgs.adminEmailAddress = options.adminEmailAddress;
+        if (ctx.adminEmailAddress) {
+          manualReviewArgs.adminEmailAddress = ctx.adminEmailAddress;
         }
-        if (options.webOrigin) {
-          manualReviewArgs.webOrigin = options.webOrigin;
+        if (ctx.webOrigin) {
+          manualReviewArgs.webOrigin = ctx.webOrigin;
         }
-        await fanoutPaymentManualReview({
-          ...manualReviewArgs,
-        });
+        await fanoutPaymentManualReview(manualReviewArgs);
       }
       if (row.eventType === "payout.transfer_initiated") {
         await fanoutPayoutInitiated({
-          db,
+          notificationFanoutReader,
           emailService,
           adminPayoutsUrl,
           eventId: row.id,
@@ -112,18 +85,18 @@ export async function processNotificationFanout(options: {
       }
       if (row.eventType === "payment.dispute_opened") {
         await fanoutDisputeOpened({
-          db,
-          staffOpsRecipientReader,
+          notificationFanoutReader,
+          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
           emailService,
           supportContactEmail,
-          adminEmailAddress: options.adminEmailAddress,
+          adminEmailAddress: ctx.adminEmailAddress,
           eventId: row.id,
           payload: row.payload as SellerMoneyPayload,
         });
       }
       if (row.eventType === "payment.dispute_closed") {
         await fanoutDisputeClosed({
-          db,
+          notificationFanoutReader,
           emailService,
           supportContactEmail,
           eventId: row.id,
@@ -132,7 +105,7 @@ export async function processNotificationFanout(options: {
       }
       if (row.eventType === "bid.proxy_cancelled") {
         await fanoutProxyCancelled({
-          db,
+          notificationFanoutReader,
           emailService,
           supportContactEmail,
           eventId: row.id,
@@ -141,7 +114,7 @@ export async function processNotificationFanout(options: {
       }
       if (row.eventType === "lot.voided") {
         await fanoutLotVoided({
-          db,
+          notificationFanoutReader,
           emailService,
           supportContactEmail,
           eventId: row.id,
@@ -151,11 +124,11 @@ export async function processNotificationFanout(options: {
       }
       if (row.eventType === "payout.clawback_required") {
         await fanoutPayoutClawbackRequired({
-          db,
-          staffOpsRecipientReader,
+          notificationFanoutReader,
+          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
           emailService,
           adminPayoutsUrl,
-          adminEmailAddress: options.adminEmailAddress,
+          adminEmailAddress: ctx.adminEmailAddress,
           eventId: row.id,
           payoutId: row.aggregateId,
           payload: row.payload as SellerMoneyPayload,
@@ -163,8 +136,7 @@ export async function processNotificationFanout(options: {
       }
       maxId = row.id;
     } catch (err) {
-      const outcome = await recordProjectorEventFailure({
-        db,
+      const outcome = await projectorFailureRecorder.record({
         log,
         projectorName: NOTIFICATION_FANOUT_PROJECTOR,
         eventId: row.id,
@@ -179,9 +151,6 @@ export async function processNotificationFanout(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, NOTIFICATION_FANOUT_PROJECTOR));
+    await projectorStateRepo.advanceCursor(NOTIFICATION_FANOUT_PROJECTOR, maxId);
   }
 }

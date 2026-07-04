@@ -1,73 +1,37 @@
-import { domainEvent, projectorState } from "@auction/db";
-import type { IEmailService } from "@auction/email";
-import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
-import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
-import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
-import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { escalateSourceOfFundsRequiredCase } from "./source-of-funds-review/escalate-required-case.js";
 import { manageSourceOfFundsReviewTask } from "./source-of-funds-review/manage-review-task.js";
 import type { SourceOfFundsRequiredPayload } from "./source-of-funds-review/sof-review-helpers.js";
 
 export const SOURCE_OF_FUNDS_REVIEW_PROJECTOR = "source_of_funds_review";
 
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
-
-/**
- * Projects `source_of_funds.required` outbox events into durable MLRO/finance
- * review work items (`admin_review_task` of kind `source_of_funds_review`).
- * Settlement is already gated for the buyer (the case is `pending`), so this
- * projector guarantees a queryable task exists for the SoF disposition.
- *
- * Idempotent: at most one task per SoF case id; the cursor only advances past
- * events that were fully handled.
- */
 export async function processSourceOfFundsReview(options: {
-  db: Db;
-  adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
-  complianceRecipientReader: IComplianceRecipientReader;
-  /** When set, an MLRO escalation email is enqueued per SoF case. */
-  emailService?: IEmailService | undefined;
-  supportContactEmail?: string | undefined;
-  webOrigin?: string | undefined;
-  adminEmailAddress?: string | undefined;
 }): Promise<void> {
+  const { ctx, log } = options;
   const {
-    db,
+    projectorStateRepo,
+    domainEventReader,
+    projectorFailureRecorder,
     adminReviewTaskProjectorRepo,
-    log,
     emailService,
     supportContactEmail,
     webOrigin,
     adminEmailAddress,
     complianceRecipientReader,
-  } = options;
+    sourceOfFundsBuyerReader,
+  } = ctx;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
   const adminReviewUrl = `${base}/admin/compliance/source-of-funds`;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: SOURCE_OF_FUNDS_REVIEW_PROJECTOR, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(SOURCE_OF_FUNDS_REVIEW_PROJECTOR);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, SOURCE_OF_FUNDS_REVIEW_PROJECTOR))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      aggregateId: domainEvent.aggregateId,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(and(gt(domainEvent.id, cursor), eq(domainEvent.eventType, "source_of_funds.required")))
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: ["source_of_funds.required"],
+    limit: 50,
+  });
 
   if (rows.length === 0) return;
 
@@ -84,10 +48,9 @@ export async function processSourceOfFundsReview(options: {
         sourceOfFundsId,
       });
 
-      // Active MLRO escalation (CDD Section 6). Idempotent via idempotencyKey.
       if (createdTask && emailService && supportContactEmail) {
         await escalateSourceOfFundsRequiredCase({
-          db,
+          sourceOfFundsBuyerReader,
           complianceRecipientReader,
           emailService,
           supportContactEmail,
@@ -99,8 +62,7 @@ export async function processSourceOfFundsReview(options: {
       }
       maxId = row.id;
     } catch (err) {
-      const outcome = await recordProjectorEventFailure({
-        db,
+      const outcome = await projectorFailureRecorder.record({
         log,
         projectorName: SOURCE_OF_FUNDS_REVIEW_PROJECTOR,
         eventId: row.id,
@@ -115,9 +77,6 @@ export async function processSourceOfFundsReview(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, SOURCE_OF_FUNDS_REVIEW_PROJECTOR));
+    await projectorStateRepo.advanceCursor(SOURCE_OF_FUNDS_REVIEW_PROJECTOR, maxId);
   }
 }

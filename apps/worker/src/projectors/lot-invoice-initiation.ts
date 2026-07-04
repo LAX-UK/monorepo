@@ -1,50 +1,27 @@
-import { domainEvent, projectorState } from "@auction/db";
-import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
-import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 export const LOT_INVOICE_INITIATION_PROJECTOR = "lot_invoice_initiation";
-
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 
 type LotEndedPayload = {
   outcome?: string;
   winnerId?: string | null;
 };
 
-/**
- * Consumes `lot.ended` (sold + winner) and triggers idempotent invoice creation
- * via `POST /internal/jobs/ensure-lot-invoice`.
- */
 export async function processLotInvoiceInitiation(options: {
-  db: Db;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
   ensureLotInvoice: (lotId: string) => Promise<void>;
 }): Promise<void> {
-  const { db, log, ensureLotInvoice } = options;
+  const { ctx, log, ensureLotInvoice } = options;
+  const { projectorStateRepo, domainEventReader, projectorFailureRecorder } = ctx;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: LOT_INVOICE_INITIATION_PROJECTOR, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(LOT_INVOICE_INITIATION_PROJECTOR);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, LOT_INVOICE_INITIATION_PROJECTOR))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      aggregateId: domainEvent.aggregateId,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(and(gt(domainEvent.id, cursor), eq(domainEvent.eventType, "lot.ended")))
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: ["lot.ended"],
+    limit: 50,
+  });
 
   if (rows.length === 0) return;
 
@@ -60,8 +37,7 @@ export async function processLotInvoiceInitiation(options: {
       await ensureLotInvoice(row.aggregateId);
       maxId = row.id;
     } catch (err) {
-      const outcome = await recordProjectorEventFailure({
-        db,
+      const outcome = await projectorFailureRecorder.record({
         log,
         projectorName: LOT_INVOICE_INITIATION_PROJECTOR,
         eventId: row.id,
@@ -76,9 +52,6 @@ export async function processLotInvoiceInitiation(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, LOT_INVOICE_INITIATION_PROJECTOR));
+    await projectorStateRepo.advanceCursor(LOT_INVOICE_INITIATION_PROJECTOR, maxId);
   }
 }

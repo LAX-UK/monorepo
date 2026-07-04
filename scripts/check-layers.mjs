@@ -221,4 +221,40 @@ if (persistenceImportViolations.length > 0) {
   process.exit(1);
 }
 
+// ─── Worker job DIP (Phase F6) ───────────────────────────────────────────────
+
+const WORKER_JOB_DB_PARAM_RE = /\bdb\s*:\s*(?:Db|Database|WorkerDb)\b/;
+
+/** @param {string} rel */
+function isWorkerJobSource(rel) {
+  return (
+    rel.startsWith("apps/worker/src/jobs/") &&
+    !isTestSource(rel) &&
+    !rel.startsWith("apps/worker/src/container/")
+  );
+}
+
+/** @type {string[]} */
+const workerJobDbViolations = [];
+
+for (const file of listAllSources(join(root, "apps/worker/src/jobs"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  if (!isWorkerJobSource(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  if (WORKER_JOB_DB_PARAM_RE.test(text)) {
+    workerJobDbViolations.push(
+      `${rel}: raw \`db: Db\` in worker job — inject a repository port from create-worker-repositories.ts`,
+    );
+  }
+}
+
+if (workerJobDbViolations.length > 0) {
+  console.error("Worker job DIP violations detected:\n");
+  for (const v of workerJobDbViolations) {
+    console.error(`  ${v}`);
+  }
+  console.error("\nWorker jobs must use ports wired from apps/worker/src/container/.");
+  process.exit(1);
+}
+
 console.log("check-layers: ok (no layering violations)");

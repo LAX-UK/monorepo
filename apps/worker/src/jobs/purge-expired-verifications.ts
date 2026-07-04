@@ -1,9 +1,5 @@
-import type { createDb } from "@auction/db";
-import { verification } from "@auction/db/schema";
-import { lt } from "drizzle-orm";
 import type { Logger } from "pino";
-
-type Db = ReturnType<typeof createDb>;
+import type { IVerificationPurgeRepository } from "../interfaces/verification-purge.repository.js";
 
 /**
  * Deletes rows from `verification` where `expires_at < cutoff`.
@@ -11,19 +7,14 @@ type Db = ReturnType<typeof createDb>;
  * indefinitely; this sweeper removes them to keep the table lean.
  */
 export async function purgeExpiredVerifications(
-  db: Db,
+  verificationPurgeRepo: IVerificationPurgeRepository,
   options: { cutoff?: Date; log?: Logger },
 ): Promise<{ deleted: number }> {
   const cutoff = options.cutoff ?? new Date();
+  const { deleted } = await verificationPurgeRepo.purgeBefore(cutoff);
 
-  const deleted = await db
-    .delete(verification)
-    .where(lt(verification.expiresAt, cutoff))
-    .returning({ id: verification.id });
-
-  const count = deleted.length;
-  if (count > 0) {
-    options.log?.info({ count, cutoff }, "purge-expired-verifications: rows deleted");
+  if (deleted > 0) {
+    options.log?.info({ count: deleted, cutoff }, "purge-expired-verifications: rows deleted");
   }
-  return { deleted: count };
+  return { deleted };
 }

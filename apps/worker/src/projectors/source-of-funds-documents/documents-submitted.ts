@@ -1,13 +1,11 @@
-import { adminReviewTask } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import { and, eq, sql } from "drizzle-orm";
 import type pino from "pino";
 import type { IComplianceRecipientReader } from "../../interfaces/compliance-recipient.reader.js";
-import type { Db } from "../lib/projector.types.js";
+import type { ISourceOfFundsDocumentsTaskRepository } from "../../interfaces/source-of-funds-projector.repository.js";
 import type { DocumentsSubmittedPayload } from "./sof-documents-helpers.js";
 
 export async function handleDocumentsSubmitted(args: {
-  db: Db;
+  sourceOfFundsDocumentsTaskRepo: ISourceOfFundsDocumentsTaskRepository;
   log: pino.Logger;
   complianceRecipientReader: IComplianceRecipientReader;
   emailService?: IEmailService | undefined;
@@ -20,24 +18,7 @@ export async function handleDocumentsSubmitted(args: {
 }): Promise<void> {
   const sourceOfFundsId = args.payload.sourceOfFundsId ?? args.sourceOfFundsId;
 
-  const existing = await args.db
-    .select({ id: adminReviewTask.id, status: adminReviewTask.status })
-    .from(adminReviewTask)
-    .where(
-      and(
-        eq(adminReviewTask.kind, "source_of_funds_review"),
-        sql`${adminReviewTask.payload} ->> 'sourceOfFundsId' = ${sourceOfFundsId}`,
-      ),
-    )
-    .limit(1);
-
-  const task = existing[0];
-  if (task && task.status === "resolved") {
-    await args.db
-      .update(adminReviewTask)
-      .set({ status: "pending", resolvedAt: null, resolvedByUserId: null })
-      .where(eq(adminReviewTask.id, task.id));
-  }
+  await args.sourceOfFundsDocumentsTaskRepo.reopenResolvedReviewTask(sourceOfFundsId);
 
   if (!args.emailService || !args.supportContactEmail) return;
 

@@ -171,6 +171,11 @@ export function createWorkerContainer(): WorkerContainer {
     notificationWriteRepo: repositories.notificationWriteRepo,
     transactionRunner: repositories.transactionRunner,
     adminReviewTaskProjectorRepo: repositories.adminReviewTaskProjectorRepo,
+    impersonationSweepRepo: repositories.impersonationSweepRepo,
+    verificationPurgeRepo: repositories.verificationPurgeRepo,
+    userPiiPurgeRepo: repositories.userPiiPurgeRepo,
+    legalEntityArchiveCascadeReader: repositories.legalEntityArchiveCascadeReader,
+    domainEventSink: repositories.domainEventSink,
     exportProviderDeps,
     sentryMonitorSlugs,
     heartbeat,
@@ -253,59 +258,78 @@ export function createWorkerContainer(): WorkerContainer {
   const adminPayoutsUrl = `${env.WEB_ORIGIN.replace(/\/$/, "")}/admin/payouts`;
   const adminEmailAddress = env.ADMIN_EMAIL_ADDRESS ?? "admin@lax.bid";
   const projectorRunner = createProjectorRunner({
-    db,
     transactionRunner: repositories.transactionRunner,
     notificationWriteRepo: repositories.notificationWriteRepo,
-    adminReviewTaskProjectorRepo: repositories.adminReviewTaskProjectorRepo,
     log,
     heartbeat: () => heartbeat("domain-events"),
-    emailService: emailWorkers.emailOutboxService,
-    supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",
-    adminPayoutsUrl,
-    adminEmailAddress,
-    webOrigin: env.WEB_ORIGIN,
-    staffOpsRecipientReader: repositories.staffOpsRecipientReader,
-    complianceRecipientReader: repositories.complianceRecipientReader,
-    ...(marketingWorkers.marketingContactSync
-      ? {
-          enqueueMarketingContactSync: async (data: {
-            userId: string;
-            reason: string;
-            eventId: number;
-          }) => {
-            await marketingWorkers.marketingSyncQueue.add(
-              "marketing-contact-sync",
-              { userId: data.userId, reason: data.reason } satisfies MarketingContactSyncJobData,
-              {
-                jobId: `marketing-contact-sync-${data.eventId}`,
-                attempts: 5,
-                backoff: { type: "exponential", delay: 30_000 },
-                removeOnComplete: 1000,
-                removeOnFail: 5000,
-              },
-            );
-          },
-        }
-      : {}),
-    ...(internalCronSecret
-      ? {
-          syncXeroPayoutBill: async (payoutId: string) =>
-            syncXeroPayoutBillViaApi({
-              apiBaseUrl: env.API_INTERNAL_BASE_URL,
-              cronSecret: internalCronSecret,
-              payoutId,
-              log,
-            }),
-          ensureLotInvoice: async (lotId: string) =>
-            postInternalCronJob({
-              apiBaseUrl: env.API_INTERNAL_BASE_URL,
-              cronSecret: internalCronSecret,
-              path: "ensure-lot-invoice",
-              body: { lotId },
-              log,
-            }),
-        }
-      : {}),
+    buildContext: () => ({
+      projectorStateRepo: repositories.projectorStateRepo,
+      domainEventReader: repositories.domainEventReader,
+      projectorFailureRecorder: repositories.projectorFailureRecorder,
+      transactionRunner: repositories.transactionRunner,
+      notificationWriteRepo: repositories.notificationWriteRepo,
+      adminReviewTaskProjectorRepo: repositories.adminReviewTaskProjectorRepo,
+      notificationFanoutReader: repositories.notificationFanoutReader,
+      adminImpersonationNotifyReader: repositories.adminImpersonationNotifyReader,
+      paymentRefundNotifyReader: repositories.paymentRefundNotifyReader,
+      payoutTransferFailedNotifyReader: repositories.payoutTransferFailedNotifyReader,
+      clearArtistBlocksRepo: repositories.clearArtistBlocksRepo,
+      ensurePersonalLegalEntity: repositories.ensurePersonalLegalEntity,
+      sourceOfFundsSettlementReader: repositories.sourceOfFundsSettlementReader,
+      sourceOfFundsBuyerReader: repositories.sourceOfFundsBuyerReader,
+      sourceOfFundsDocumentsTaskRepo: repositories.sourceOfFundsDocumentsTaskRepo,
+      sourceOfFundsDocumentReviewRepo: repositories.sourceOfFundsDocumentReviewRepo,
+      sourceOfFundsReviewResolutionRepo: repositories.sourceOfFundsReviewResolutionRepo,
+      lotNotifyReader: repositories.lotNotifyReader,
+      log,
+      emailService: emailWorkers.emailOutboxService,
+      supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",
+      adminPayoutsUrl,
+      adminEmailAddress,
+      webOrigin: env.WEB_ORIGIN,
+      staffOpsRecipientReader: repositories.staffOpsRecipientReader,
+      complianceRecipientReader: repositories.complianceRecipientReader,
+      ...(marketingWorkers.marketingContactSync
+        ? {
+            enqueueMarketingContactSync: async (data: {
+              userId: string;
+              reason: string;
+              eventId: number;
+            }) => {
+              await marketingWorkers.marketingSyncQueue.add(
+                "marketing-contact-sync",
+                { userId: data.userId, reason: data.reason } satisfies MarketingContactSyncJobData,
+                {
+                  jobId: `marketing-contact-sync-${data.eventId}`,
+                  attempts: 5,
+                  backoff: { type: "exponential", delay: 30_000 },
+                  removeOnComplete: 1000,
+                  removeOnFail: 5000,
+                },
+              );
+            },
+          }
+        : {}),
+      ...(internalCronSecret
+        ? {
+            syncXeroPayoutBill: async (payoutId: string) =>
+              syncXeroPayoutBillViaApi({
+                apiBaseUrl: env.API_INTERNAL_BASE_URL,
+                cronSecret: internalCronSecret,
+                payoutId,
+                log,
+              }),
+            ensureLotInvoice: async (lotId: string) =>
+              postInternalCronJob({
+                apiBaseUrl: env.API_INTERNAL_BASE_URL,
+                cronSecret: internalCronSecret,
+                path: "ensure-lot-invoice",
+                body: { lotId },
+                log,
+              }),
+          }
+        : {}),
+    }),
   });
   void projectorRunner.start();
 

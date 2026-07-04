@@ -1,34 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import { describe, expect, it, vi } from "vitest";
 import { processAmlMatchReview } from "./aml-match-review.js";
-
-/**
- * Builds a chainable Drizzle-like fake whose terminal awaits resolve, in call
- * order, from `results`. Every query-builder method returns the same proxy so
- * `.from().where().limit()` etc. all chain, and awaiting shifts the next result.
- */
-function fakeDb(results: unknown[]) {
-  const make = () => {
-    const proxy: unknown = new Proxy(() => {}, {
-      get(_t, prop) {
-        if (prop === "then") {
-          const value = results.shift();
-          return (resolve: (v: unknown) => void) => resolve(value);
-        }
-        return () => proxy;
-      },
-    });
-    return proxy;
-  };
-  return new Proxy(
-    {},
-    {
-      get() {
-        return () => make();
-      },
-    },
-  ) as never;
-}
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as never;
 
@@ -36,10 +9,53 @@ function makeEmail(): IEmailService {
   return { enqueue: vi.fn().mockResolvedValue(undefined) } as unknown as IEmailService;
 }
 
+function makeCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {
+  return {
+    projectorStateRepo: {
+      ensureCursor: vi.fn(),
+      getCursor: vi.fn().mockResolvedValue(0),
+      advanceCursor: vi.fn(),
+      advanceCursorLiteralName: vi.fn(),
+      recordError: vi.fn(),
+    },
+    domainEventReader: {
+      listAfterCursor: vi.fn().mockResolvedValue([]),
+      listLockedForProjector: vi.fn(),
+    },
+    projectorFailureRecorder: { record: vi.fn() },
+    transactionRunner: { runInTransaction: vi.fn() },
+    notificationWriteRepo: { createMany: vi.fn() },
+    adminReviewTaskProjectorRepo: {
+      findAmlScreeningReview: vi.fn(),
+      createAmlScreeningReview: vi.fn(),
+      findSourceOfFundsReview: vi.fn(),
+      reactivateSourceOfFundsReview: vi.fn(),
+      createSourceOfFundsReview: vi.fn(),
+    },
+    notificationFanoutReader: {} as never,
+    adminImpersonationNotifyReader: {} as never,
+    paymentRefundNotifyReader: {} as never,
+    payoutTransferFailedNotifyReader: {} as never,
+    clearArtistBlocksRepo: {} as never,
+    ensurePersonalLegalEntity: { ensure: vi.fn() },
+    sourceOfFundsSettlementReader: {} as never,
+    sourceOfFundsBuyerReader: {} as never,
+    sourceOfFundsDocumentsTaskRepo: {} as never,
+    sourceOfFundsDocumentReviewRepo: {} as never,
+    sourceOfFundsReviewResolutionRepo: {} as never,
+    lotNotifyReader: {} as never,
+    log,
+    staffOpsRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
+    complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
+    ...overrides,
+  };
+}
+
 describe("processAmlMatchReview MLRO escalation", () => {
   it("enqueues exactly one idempotent compliance email per recipient", async () => {
     const eventRow = {
       id: 7,
+      eventType: "aml.match_flagged",
       aggregateId: "scr_1",
       payload: {
         screeningId: "scr_1",
@@ -55,25 +71,25 @@ describe("processAmlMatchReview MLRO escalation", () => {
     const adminReviewTaskProjectorRepo = {
       findAmlScreeningReview: vi.fn().mockResolvedValue(null),
       createAmlScreeningReview: vi.fn().mockResolvedValue(undefined),
+      findSourceOfFundsReview: vi.fn(),
+      reactivateSourceOfFundsReview: vi.fn(),
+      createSourceOfFundsReview: vi.fn(),
     };
-    const db = fakeDb([
-      undefined, // insert projectorState ... onConflictDoNothing
-      [{ last: 0 }], // cursor select
-      [eventRow], // events select
-      undefined, // update projectorState cursor
-    ]);
     const emailService = makeEmail();
-
-    await processAmlMatchReview({
-      db,
+    const ctx = makeCtx({
+      domainEventReader: {
+        listAfterCursor: vi.fn().mockResolvedValue([eventRow]),
+        listLockedForProjector: vi.fn(),
+      },
       adminReviewTaskProjectorRepo: adminReviewTaskProjectorRepo as never,
-      log,
       complianceRecipientReader,
       emailService,
       supportContactEmail: "compliance@example.com",
       webOrigin: "https://app.example.com",
       adminEmailAddress: "ops@example.com",
     });
+
+    await processAmlMatchReview({ ctx, log });
 
     expect(adminReviewTaskProjectorRepo.createAmlScreeningReview).toHaveBeenCalled();
     expect(emailService.enqueue).toHaveBeenCalledTimes(1);
@@ -90,55 +106,57 @@ describe("processAmlMatchReview MLRO escalation", () => {
   it("does not enqueue email when the review task already exists", async () => {
     const eventRow = {
       id: 8,
+      eventType: "aml.match_flagged",
       aggregateId: "scr_2",
       payload: { screeningId: "scr_2", userId: "u2", matchStatus: "possible_match" },
     };
     const adminReviewTaskProjectorRepo = {
       findAmlScreeningReview: vi.fn().mockResolvedValue({ id: "task_existing" }),
       createAmlScreeningReview: vi.fn(),
+      findSourceOfFundsReview: vi.fn(),
+      reactivateSourceOfFundsReview: vi.fn(),
+      createSourceOfFundsReview: vi.fn(),
     };
-    const db = fakeDb([
-      undefined,
-      [{ last: 0 }],
-      [eventRow],
-      undefined, // cursor update
-    ]);
     const emailService = makeEmail();
-
-    await processAmlMatchReview({
-      db,
+    const ctx = makeCtx({
+      domainEventReader: {
+        listAfterCursor: vi.fn().mockResolvedValue([eventRow]),
+        listLockedForProjector: vi.fn(),
+      },
       adminReviewTaskProjectorRepo: adminReviewTaskProjectorRepo as never,
-      log,
       complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,
       supportContactEmail: "compliance@example.com",
       webOrigin: "https://app.example.com",
     });
+
+    await processAmlMatchReview({ ctx, log });
 
     expect(adminReviewTaskProjectorRepo.createAmlScreeningReview).not.toHaveBeenCalled();
     expect(emailService.enqueue).not.toHaveBeenCalled();
   });
 
   it("does not send when there are no flagged events", async () => {
-    const db = fakeDb([
-      undefined, // insert projectorState
-      [{ last: 0 }], // cursor select
-      [], // events select (none) → early return
-    ]);
     const emailService = makeEmail();
-
-    await processAmlMatchReview({
-      db,
+    const ctx = makeCtx({
+      domainEventReader: {
+        listAfterCursor: vi.fn().mockResolvedValue([]),
+        listLockedForProjector: vi.fn(),
+      },
       adminReviewTaskProjectorRepo: {
         findAmlScreeningReview: vi.fn(),
         createAmlScreeningReview: vi.fn(),
+        findSourceOfFundsReview: vi.fn(),
+        reactivateSourceOfFundsReview: vi.fn(),
+        createSourceOfFundsReview: vi.fn(),
       } as never,
-      log,
       complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,
       supportContactEmail: "compliance@example.com",
       webOrigin: "https://app.example.com",
     });
+
+    await processAmlMatchReview({ ctx, log });
 
     expect(emailService.enqueue).not.toHaveBeenCalled();
   });

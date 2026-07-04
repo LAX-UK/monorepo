@@ -1,13 +1,7 @@
-import { domainEvent, projectorState } from "@auction/db";
-import type { IEmailService } from "@auction/email";
-import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
-import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
-import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 export const AML_MATCH_REVIEW_PROJECTOR = "aml_match_review";
-
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 
 type AmlMatchFlaggedPayload = {
   screeningId?: string;
@@ -19,60 +13,30 @@ type AmlMatchFlaggedPayload = {
   reasons?: string;
 };
 
-/**
- * Projects `aml.match_flagged` outbox events into durable MLRO review work
- * items (`admin_review_task` of kind `aml_screening_review`). The subject is
- * already on an AML hold (set transactionally at ingest), so this projector is
- * the escalation surface: it guarantees a queryable task exists for compliance.
- *
- * Idempotent: a task is created at most once per screening id, and the cursor
- * only advances past events that were fully handled.
- */
 export async function processAmlMatchReview(options: {
-  db: Db;
-  adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
-  complianceRecipientReader: IComplianceRecipientReader;
-  /** When set, an MLRO escalation email is enqueued per flagged screening. */
-  emailService?: IEmailService | undefined;
-  supportContactEmail?: string | undefined;
-  webOrigin?: string | undefined;
-  adminEmailAddress?: string | undefined;
 }): Promise<void> {
+  const { ctx, log } = options;
   const {
-    db,
+    projectorStateRepo,
+    domainEventReader,
     adminReviewTaskProjectorRepo,
-    log,
     emailService,
     supportContactEmail,
     webOrigin,
     adminEmailAddress,
-  } = options;
+    complianceRecipientReader,
+  } = ctx;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
   const adminReviewUrl = `${base}/admin/compliance/aml`;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: AML_MATCH_REVIEW_PROJECTOR, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(AML_MATCH_REVIEW_PROJECTOR);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, AML_MATCH_REVIEW_PROJECTOR))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      aggregateId: domainEvent.aggregateId,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(and(gt(domainEvent.id, cursor), eq(domainEvent.eventType, "aml.match_flagged")))
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: ["aml.match_flagged"],
+    limit: 50,
+  });
 
   if (rows.length === 0) return;
 
@@ -106,14 +70,11 @@ export async function processAmlMatchReview(options: {
         );
       }
 
-      // Active MLRO escalation (CDD Section 5). Idempotent via idempotencyKey so
-      // re-processing after a transient failure never double-sends. Only enqueue
-      // when a new review task was created (avoids duplicate enqueue on replay).
       if (createdTask && emailService && supportContactEmail) {
         const detail =
           [payload.matchStatus, payload.categories].filter(Boolean).join(" · ") ||
           "Watchlist match flagged";
-        const recipients = await options.complianceRecipientReader.listRecipients();
+        const recipients = await complianceRecipientReader.listRecipients();
         if (recipients.length > 0) {
           for (const r of recipients) {
             await emailService.enqueue({
@@ -158,9 +119,6 @@ export async function processAmlMatchReview(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, AML_MATCH_REVIEW_PROJECTOR));
+    await projectorStateRepo.advanceCursor(AML_MATCH_REVIEW_PROJECTOR, maxId);
   }
 }

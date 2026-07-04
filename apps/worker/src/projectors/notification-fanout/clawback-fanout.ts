@@ -1,14 +1,10 @@
 import type { IEmailService } from "@auction/email";
+import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
 import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
-import {
-  type Db,
-  type SellerMoneyPayload,
-  entityName,
-  listEntityRecipients,
-} from "./notification-fanout-helpers.js";
+import { type SellerMoneyPayload } from "./notification-fanout-helpers.js";
 
 export async function fanoutPayoutClawbackRequired(options: {
-  db: Db;
+  notificationFanoutReader: INotificationFanoutReader;
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   emailService: IEmailService;
   adminPayoutsUrl: string;
@@ -19,8 +15,8 @@ export async function fanoutPayoutClawbackRequired(options: {
 }) {
   const legalEntityId = options.payload.legalEntityId;
   if (!legalEntityId) return;
-  const name = await entityName(options.db, legalEntityId);
-  const recipients = await listEntityRecipients(options.db, legalEntityId);
+  const name = await options.notificationFanoutReader.getEntityDisplayName(legalEntityId);
+  const recipients = await options.notificationFanoutReader.listEntityRecipients(legalEntityId);
   for (const recipient of recipients) {
     await options.emailService.enqueue({
       template: "payout-clawback-required-notice",

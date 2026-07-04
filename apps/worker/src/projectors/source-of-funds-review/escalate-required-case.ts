@@ -1,12 +1,10 @@
-import { user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { eq } from "drizzle-orm";
 import type { IComplianceRecipientReader } from "../../interfaces/compliance-recipient.reader.js";
-import type { Db } from "../lib/projector.types.js";
+import type { ISourceOfFundsBuyerReader } from "../../interfaces/source-of-funds-projector.repository.js";
 import type { SourceOfFundsRequiredPayload } from "./sof-review-helpers.js";
 
 export async function escalateSourceOfFundsRequiredCase(args: {
-  db: Db;
+  sourceOfFundsBuyerReader: ISourceOfFundsBuyerReader;
   complianceRecipientReader: IComplianceRecipientReader;
   emailService: IEmailService;
   supportContactEmail: string;
@@ -16,7 +14,7 @@ export async function escalateSourceOfFundsRequiredCase(args: {
   sourceOfFundsId: string;
 }): Promise<void> {
   const {
-    db,
+    sourceOfFundsBuyerReader,
     complianceRecipientReader,
     emailService,
     supportContactEmail,
@@ -74,11 +72,7 @@ export async function escalateSourceOfFundsRequiredCase(args: {
 
   const buyerId = payload.userId;
   if (buyerId) {
-    const [buyerRow] = await db
-      .select({ email: user.email, firstName: user.firstName })
-      .from(user)
-      .where(eq(user.id, buyerId))
-      .limit(1);
+    const buyerRow = await sourceOfFundsBuyerReader.getBuyerContact(buyerId);
     if (buyerRow?.email) {
       await emailService.enqueue({
         template: "source-of-funds-buyer-notice",

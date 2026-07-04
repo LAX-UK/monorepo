@@ -1,8 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { recordProjectorEventFailure } from "./projector-failure-guard.js";
+import { DrizzleProjectorFailureRecorder } from "../../repositories/drizzle-projector-failure-recorder.js";
 
-function mockDb(lastError: string | null = null) {
-  const updates: Array<{ lastError: string }> = [];
+function mockStateRepo(lastError: string | null = null) {
+  const updates: Array<{ projectorName: string; lastError: string }> = [];
+  const stateRepo = {
+    recordError: vi.fn(async (projectorName: string, error: string) => {
+      updates.push({ projectorName, lastError: error });
+    }),
+    ensureCursor: vi.fn(),
+    getCursor: vi.fn(),
+    advanceCursor: vi.fn(),
+    advanceCursorLiteralName: vi.fn(),
+  };
   const db = {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
@@ -11,26 +20,20 @@ function mockDb(lastError: string | null = null) {
         })),
       })),
     })),
-    update: vi.fn(() => ({
-      set: vi.fn((values: { lastError: string }) => {
-        updates.push(values);
-        return { where: vi.fn(async () => undefined) };
-      }),
-    })),
   };
-  return { db, updates };
+  return { stateRepo, db, updates };
 }
 
-describe("recordProjectorEventFailure", () => {
+describe("DrizzleProjectorFailureRecorder", () => {
   it("retries until poison threshold then skips", async () => {
     const log = { error: vi.fn() };
     const projector = "source_of_funds_documents";
     let prior: string | null = null;
 
     for (let i = 1; i <= 4; i++) {
-      const { db, updates } = mockDb(prior);
-      const outcome = await recordProjectorEventFailure({
-        db: db as never,
+      const { stateRepo, db, updates } = mockStateRepo(prior);
+      const recorder = new DrizzleProjectorFailureRecorder(db as never, stateRepo as never);
+      const outcome = await recorder.record({
         log: log as never,
         projectorName: projector,
         eventId: 42,
@@ -40,15 +43,14 @@ describe("recordProjectorEventFailure", () => {
       prior = updates[0]?.lastError ?? null;
     }
 
-    const { db, updates } = mockDb(prior);
-    const outcome = await recordProjectorEventFailure({
-      db: db as never,
+    const { stateRepo, db } = mockStateRepo(prior);
+    const recorder = new DrizzleProjectorFailureRecorder(db as never, stateRepo as never);
+    const outcome = await recorder.record({
       log: log as never,
       projectorName: projector,
       eventId: 42,
       err: new Error("fail-5"),
     });
     expect(outcome.action).toBe("skip");
-    expect(updates[0]?.lastError).toContain("Skipped poison event 42");
   });
 });

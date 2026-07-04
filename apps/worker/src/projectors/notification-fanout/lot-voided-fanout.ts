@@ -1,14 +1,9 @@
-import { lot, user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { eq } from "drizzle-orm";
-import {
-  type Db,
-  type LotVoidedPayload,
-  listEntityRecipients,
-} from "./notification-fanout-helpers.js";
+import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
+import { type LotVoidedPayload } from "./notification-fanout-helpers.js";
 
 export async function fanoutLotVoided(options: {
-  db: Db;
+  notificationFanoutReader: INotificationFanoutReader;
   emailService: IEmailService;
   supportContactEmail: string;
   eventId: number;
@@ -16,19 +11,13 @@ export async function fanoutLotVoided(options: {
   payload: LotVoidedPayload;
 }) {
   const lotId = options.payload.lotId ?? options.lotId;
-  const [lotRow] = await options.db
-    .select({
-      title: lot.title,
-      winnerId: lot.winnerId,
-      sellerLegalEntityId: lot.sellerLegalEntityId,
-    })
-    .from(lot)
-    .where(eq(lot.id, lotId))
-    .limit(1);
+  const lotRow = await options.notificationFanoutReader.getLotForVoided(lotId);
   if (!lotRow) return;
-  const lotTitle = lotRow.title ?? "Unknown Lot";
+  const lotTitle = lotRow.title;
   if (lotRow.sellerLegalEntityId) {
-    const recipients = await listEntityRecipients(options.db, lotRow.sellerLegalEntityId);
+    const recipients = await options.notificationFanoutReader.listEntityRecipients(
+      lotRow.sellerLegalEntityId,
+    );
     for (const recipient of recipients) {
       await options.emailService.enqueue({
         template: "lot-voided-notice",
@@ -46,11 +35,7 @@ export async function fanoutLotVoided(options: {
     }
   }
   if (lotRow.winnerId) {
-    const [winner] = await options.db
-      .select({ email: user.email, firstName: user.firstName })
-      .from(user)
-      .where(eq(user.id, lotRow.winnerId))
-      .limit(1);
+    const winner = await options.notificationFanoutReader.getWinnerContact(lotRow.winnerId);
     if (winner?.email) {
       await options.emailService.enqueue({
         template: "lot-voided-notice",

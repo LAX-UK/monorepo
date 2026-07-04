@@ -1,10 +1,5 @@
-import { domainEvent, projectorState } from "@auction/db";
-import type { IEmailService } from "@auction/email";
-import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
-import { and, eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
-import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
-import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { handleDocumentsRequested } from "./source-of-funds-documents/documents-requested.js";
 import { handleDocumentsSubmitted } from "./source-of-funds-documents/documents-submitted.js";
 import { handleReviewedClosure } from "./source-of-funds-documents/reviewed-closure.js";
@@ -16,68 +11,41 @@ import type {
 
 export const SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR = "source_of_funds_documents";
 
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
+const SOF_DOCUMENT_EVENT_TYPES = [
+  "source_of_funds.documents_requested",
+  "source_of_funds.documents_submitted",
+  "source_of_funds.reviewed",
+] as const;
 
-/**
- * Projects SoF document lifecycle events: buyer notification on request,
- * staff alert on submit, buyer closure on approve/reject.
- */
 export async function processSourceOfFundsDocuments(options: {
-  db: Db;
-  notificationWriteRepo: INotificationWriteRepository;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
-  complianceRecipientReader: IComplianceRecipientReader;
-  emailService?: IEmailService | undefined;
-  supportContactEmail?: string | undefined;
-  webOrigin?: string | undefined;
-  adminEmailAddress?: string | undefined;
 }): Promise<void> {
+  const { ctx, log } = options;
   const {
-    db,
+    projectorStateRepo,
+    domainEventReader,
+    projectorFailureRecorder,
     notificationWriteRepo,
-    log,
     emailService,
     supportContactEmail,
     webOrigin,
     adminEmailAddress,
     complianceRecipientReader,
-  } = options;
+    sourceOfFundsSettlementReader,
+    sourceOfFundsBuyerReader,
+    sourceOfFundsDocumentsTaskRepo,
+  } = ctx;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
   const buyerSofUrl = `${base}/dashboard/compliance/source-of-funds`;
   const adminReviewUrl = `${base}/admin/compliance/source-of-funds`;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      eventType: domainEvent.eventType,
-      aggregateId: domainEvent.aggregateId,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(
-      and(
-        gt(domainEvent.id, cursor),
-        sql`${domainEvent.eventType} IN (
-          'source_of_funds.documents_requested',
-          'source_of_funds.documents_submitted',
-          'source_of_funds.reviewed'
-        )`,
-      ),
-    )
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: [...SOF_DOCUMENT_EVENT_TYPES],
+    limit: 50,
+  });
 
   if (rows.length === 0) return;
 
@@ -86,7 +54,8 @@ export async function processSourceOfFundsDocuments(options: {
     try {
       if (row.eventType === "source_of_funds.documents_requested") {
         await handleDocumentsRequested({
-          db,
+          sourceOfFundsBuyerReader,
+          sourceOfFundsSettlementReader,
           notificationWriteRepo,
           log,
           emailService,
@@ -98,7 +67,7 @@ export async function processSourceOfFundsDocuments(options: {
         });
       } else if (row.eventType === "source_of_funds.documents_submitted") {
         await handleDocumentsSubmitted({
-          db,
+          sourceOfFundsDocumentsTaskRepo,
           log,
           complianceRecipientReader,
           emailService,
@@ -111,7 +80,8 @@ export async function processSourceOfFundsDocuments(options: {
         });
       } else if (row.eventType === "source_of_funds.reviewed") {
         await handleReviewedClosure({
-          db,
+          sourceOfFundsSettlementReader,
+          sourceOfFundsBuyerReader,
           notificationWriteRepo,
           log,
           emailService,
@@ -124,8 +94,7 @@ export async function processSourceOfFundsDocuments(options: {
       }
       maxId = row.id;
     } catch (err) {
-      const outcome = await recordProjectorEventFailure({
-        db,
+      const outcome = await projectorFailureRecorder.record({
         log,
         projectorName: SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR,
         eventId: row.id,
@@ -140,9 +109,6 @@ export async function processSourceOfFundsDocuments(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR));
+    await projectorStateRepo.advanceCursor(SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR, maxId);
   }
 }

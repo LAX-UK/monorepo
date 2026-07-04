@@ -1,13 +1,15 @@
-import { sourceOfFunds, user } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
-import { eq } from "drizzle-orm";
 import type pino from "pino";
-import type { Db } from "../lib/projector.types.js";
-import { type ReviewedPayload, loadSettlementContext } from "./sof-documents-helpers.js";
+import type {
+  ISourceOfFundsBuyerReader,
+  ISourceOfFundsSettlementReader,
+} from "../../interfaces/source-of-funds-projector.repository.js";
+import { type ReviewedPayload } from "./sof-documents-helpers.js";
 
 export async function handleReviewedClosure(args: {
-  db: Db;
+  sourceOfFundsSettlementReader: ISourceOfFundsSettlementReader;
+  sourceOfFundsBuyerReader: ISourceOfFundsBuyerReader;
   notificationWriteRepo: INotificationWriteRepository;
   log: pino.Logger;
   emailService?: IEmailService | undefined;
@@ -20,22 +22,13 @@ export async function handleReviewedClosure(args: {
   const buyerId = args.payload.userId;
   if (!buyerId) return;
 
-  const [caseRow] = await args.db
-    .select({ status: sourceOfFunds.status })
-    .from(sourceOfFunds)
-    .where(eq(sourceOfFunds.id, args.sourceOfFundsId))
-    .limit(1);
-  const status = caseRow?.status;
+  const status = await args.sourceOfFundsSettlementReader.getCaseStatus(args.sourceOfFundsId);
   if (status !== "approved" && status !== "rejected") return;
 
-  const [buyerRow] = await args.db
-    .select({ email: user.email, firstName: user.firstName })
-    .from(user)
-    .where(eq(user.id, buyerId))
-    .limit(1);
+  const buyerRow = await args.sourceOfFundsBuyerReader.getBuyerContact(buyerId);
   if (!buyerRow?.email) return;
 
-  const settlement = await loadSettlementContext(args.db, buyerId);
+  const settlement = await args.sourceOfFundsSettlementReader.loadSettlementContext(buyerId);
   const notifType = status === "approved" ? "source_of_funds_approved" : "source_of_funds_rejected";
   const title =
     status === "approved" ? "Source of funds verified" : "Source of funds review outcome";

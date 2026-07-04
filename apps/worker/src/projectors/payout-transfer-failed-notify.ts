@@ -1,18 +1,8 @@
-import {
-  domainEvent,
-  legalEntity,
-  legalEntityMember,
-  payout,
-  projectorState,
-  user,
-} from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 const PROJECTOR_NAME = "payout_transfer_failed_notify";
-
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 
 type TransferFailedPayload = {
   legalEntityId: string;
@@ -23,36 +13,21 @@ type TransferFailedPayload = {
 };
 
 export async function processPayoutTransferFailedNotify(options: {
-  db: Db;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
   emailService: IEmailService;
   supportContactEmail: string;
   adminPayoutsUrl: string;
 }): Promise<void> {
-  const { db, log, emailService, supportContactEmail, adminPayoutsUrl } = options;
+  const { ctx, log, emailService, supportContactEmail, adminPayoutsUrl } = options;
+  const { projectorStateRepo, domainEventReader, payoutTransferFailedNotifyReader } = ctx;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: PROJECTOR_NAME, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(PROJECTOR_NAME);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, PROJECTOR_NAME))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      aggregateId: domainEvent.aggregateId,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(and(gt(domainEvent.id, cursor), eq(domainEvent.eventType, "payout.transfer_failed")))
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: ["payout.transfer_failed"],
+    limit: 50,
+  });
 
   if (rows.length === 0) {
     return;
@@ -68,62 +43,34 @@ export async function processPayoutTransferFailedNotify(options: {
     }
 
     try {
-      const [entityRow] = await db
-        .select({ displayName: legalEntity.displayName, kind: legalEntity.kind })
-        .from(legalEntity)
-        .where(eq(legalEntity.id, payload.legalEntityId))
-        .limit(1);
-      const entityName = entityRow?.displayName ?? "Unknown Organisation";
-      const webOrigin = process.env.WEB_ORIGIN?.replace(/\/$/, "") ?? "https://lax.bid";
+      const context = await payoutTransferFailedNotifyReader.getTransferFailedContext(
+        payload.legalEntityId,
+        row.aggregateId,
+        payload.amountCents,
+        payload.currency,
+      );
+
+      const webOrigin = ctx.webOrigin?.replace(/\/$/, "") ?? "https://lax.bid";
       const sellerPayoutSetupUrl =
-        entityRow?.kind === "organisation"
+        context.entityKind === "organisation"
           ? `${webOrigin}/dashboard/organisations/${payload.legalEntityId}/connect`
           : `${webOrigin}/dashboard/seller/connect`;
-
-      const [payoutRow] = await db
-        .select({ netAmount: payout.netAmount, currency: payout.currency })
-        .from(payout)
-        .where(eq(payout.id, row.aggregateId))
-        .limit(1);
-
-      const payoutAmount = payoutRow?.netAmount ?? (payload.amountCents / 100).toFixed(2);
-      const payoutCurrency = payoutRow?.currency ?? payload.currency ?? "GBP";
-
-      const financeMembers = await db
-        .selectDistinct({
-          email: user.email,
-          userId: user.id,
-          firstName: user.firstName,
-        })
-        .from(legalEntityMember)
-        .innerJoin(user, eq(user.id, legalEntityMember.userId))
-        .where(
-          and(
-            eq(legalEntityMember.legalEntityId, payload.legalEntityId),
-            isNull(legalEntityMember.removedAt),
-            isNotNull(legalEntityMember.acceptedAt),
-            or(
-              inArray(legalEntityMember.role, ["owner", "admin"]),
-              eq(legalEntityMember.isPrimaryAdmin, true),
-            ),
-          ),
-        );
 
       const failureReason = payload.stripeErrorMessage
         ? `${payload.stripeErrorCode}: ${payload.stripeErrorMessage}`
         : (payload.stripeErrorCode ?? "Unknown error");
 
-      for (const m of financeMembers) {
+      for (const m of context.financeMembers) {
         await emailService.enqueue({
           template: "payout-transfer-failed-notice",
           to: m.email,
           userId: m.userId,
           vars: {
             recipientFirstName: m.firstName,
-            entityName,
+            entityName: context.entityName,
             payoutId: row.aggregateId,
-            payoutAmount,
-            payoutCurrency,
+            payoutAmount: context.payoutAmount,
+            payoutCurrency: context.payoutCurrency,
             failureReason,
             supportContactEmail,
             adminPayoutsUrl,
@@ -144,9 +91,6 @@ export async function processPayoutTransferFailedNotify(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, PROJECTOR_NAME));
+    await projectorStateRepo.advanceCursor(PROJECTOR_NAME, maxId);
   }
 }

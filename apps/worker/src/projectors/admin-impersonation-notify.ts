@@ -1,11 +1,8 @@
-import { domainEvent, legalEntityMember, projectorState, user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 const PROJECTOR_NAME = "admin_impersonation_notify";
-
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 
 type StartedPayload = {
   impersonating_user_id: string;
@@ -16,36 +13,20 @@ type StartedPayload = {
 };
 
 export async function processAdminImpersonationNotify(options: {
-  db: Db;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
   emailService: IEmailService;
   supportContactEmail: string;
 }): Promise<void> {
-  const { db, log, emailService, supportContactEmail } = options;
+  const { ctx, log, emailService, supportContactEmail } = options;
+  const { projectorStateRepo, domainEventReader, adminImpersonationNotifyReader } = ctx;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: PROJECTOR_NAME, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(PROJECTOR_NAME);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, PROJECTOR_NAME))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(
-      and(gt(domainEvent.id, cursor), eq(domainEvent.eventType, "admin.impersonation_started")),
-    )
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: ["admin.impersonation_started"],
+    limit: 50,
+  });
 
   if (rows.length === 0) {
     return;
@@ -66,33 +47,12 @@ export async function processAdminImpersonationNotify(options: {
     }
 
     try {
-      const [adminUser] = await db
-        .select({ name: user.name, firstName: user.firstName })
-        .from(user)
-        .where(eq(user.id, payload.impersonating_user_id))
-        .limit(1);
-      const adminDisplayName =
-        adminUser?.firstName?.trim() || adminUser?.name?.trim() || "LAX support";
-
-      const members = await db
-        .selectDistinct({
-          email: user.email,
-          userId: user.id,
-          firstName: user.firstName,
-        })
-        .from(legalEntityMember)
-        .innerJoin(user, eq(user.id, legalEntityMember.userId))
-        .where(
-          and(
-            eq(legalEntityMember.legalEntityId, payload.target_legal_entity_id),
-            isNull(legalEntityMember.removedAt),
-            isNotNull(legalEntityMember.acceptedAt),
-            or(
-              inArray(legalEntityMember.role, ["owner", "admin"]),
-              eq(legalEntityMember.isPrimaryAdmin, true),
-            ),
-          ),
-        );
+      const adminDisplayName = await adminImpersonationNotifyReader.getAdminDisplayName(
+        payload.impersonating_user_id,
+      );
+      const members = await adminImpersonationNotifyReader.listEntityOwnerAdmins(
+        payload.target_legal_entity_id,
+      );
 
       const windowEnd = new Date(payload.expires_at);
       const windowEndDisplay = Number.isNaN(windowEnd.getTime())
@@ -130,9 +90,6 @@ export async function processAdminImpersonationNotify(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, PROJECTOR_NAME));
+    await projectorStateRepo.advanceCursor(PROJECTOR_NAME, maxId);
   }
 }

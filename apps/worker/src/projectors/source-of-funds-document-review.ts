@@ -1,11 +1,7 @@
-import { domainEvent, projectorState, sourceOfFundsDocumentReview } from "@auction/db/schema";
-import { eq, sql } from "drizzle-orm";
 import type pino from "pino";
-import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 export const SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR = "source_of_funds_document_review";
-
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 
 type DocumentReviewedPayload = {
   sourceOfFundsId?: string;
@@ -16,41 +12,20 @@ type DocumentReviewedPayload = {
   reviewedAt?: string;
 };
 
-/**
- * Folds `source_of_funds.document_reviewed` events into the read-model table.
- * Idempotent upsert — safe to replay.
- */
 export async function processSourceOfFundsDocumentReview(options: {
-  db: Db;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
 }): Promise<void> {
-  const { db, log } = options;
+  const { ctx, log } = options;
+  const { projectorStateRepo, domainEventReader, projectorFailureRecorder, sourceOfFundsDocumentReviewRepo } =
+    ctx;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  const cursor = await projectorStateRepo.getCursor(SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
-
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      eventType: domainEvent.eventType,
-      aggregateId: domainEvent.aggregateId,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(
-      sql`${domainEvent.id} > ${cursor} AND ${domainEvent.eventType} = 'source_of_funds.document_reviewed'`,
-    )
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: ["source_of_funds.document_reviewed"],
+    limit: 50,
+  });
 
   if (rows.length === 0) return;
 
@@ -71,40 +46,23 @@ export async function processSourceOfFundsDocumentReview(options: {
       const checks =
         rawChecks && typeof rawChecks === "object" && !Array.isArray(rawChecks) ? rawChecks : {};
 
-      await db
-        .insert(sourceOfFundsDocumentReview)
-        .values({
-          documentId,
-          sourceOfFundsId,
-          reviewedByUserId,
-          reviewedAt: new Date(reviewedAtRaw),
-          checks: {
-            matchesDeclaredSource: Boolean(checks.matchesDeclaredSource),
-            coversExposure: Boolean(checks.coversExposure),
-            recentEnough: Boolean(checks.recentEnough),
-            legibleComplete: Boolean(checks.legibleComplete),
-          },
-          note: payload.note == null ? null : String(payload.note),
-        })
-        .onConflictDoUpdate({
-          target: sourceOfFundsDocumentReview.documentId,
-          set: {
-            reviewedByUserId,
-            reviewedAt: new Date(reviewedAtRaw),
-            checks: {
-              matchesDeclaredSource: Boolean(checks.matchesDeclaredSource),
-              coversExposure: Boolean(checks.coversExposure),
-              recentEnough: Boolean(checks.recentEnough),
-              legibleComplete: Boolean(checks.legibleComplete),
-            },
-            note: payload.note == null ? null : String(payload.note),
-          },
-        });
+      await sourceOfFundsDocumentReviewRepo.upsertReview({
+        documentId,
+        sourceOfFundsId,
+        reviewedByUserId,
+        reviewedAt: new Date(reviewedAtRaw),
+        checks: {
+          matchesDeclaredSource: Boolean(checks.matchesDeclaredSource),
+          coversExposure: Boolean(checks.coversExposure),
+          recentEnough: Boolean(checks.recentEnough),
+          legibleComplete: Boolean(checks.legibleComplete),
+        },
+        note: payload.note == null ? null : String(payload.note),
+      });
 
       maxId = row.id;
     } catch (err) {
-      const outcome = await recordProjectorEventFailure({
-        db,
+      const outcome = await projectorFailureRecorder.record({
         log,
         projectorName: SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR,
         eventId: row.id,
@@ -119,9 +77,6 @@ export async function processSourceOfFundsDocumentReview(options: {
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR));
+    await projectorStateRepo.advanceCursor(SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR, maxId);
   }
 }

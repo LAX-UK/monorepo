@@ -1,21 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
-import { sweepStaleImpersonationSessions } from "./impersonation-sweep-core.js";
+import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
+import { runImpersonationSweeperJob } from "./impersonation-sweeper.js";
 
-describe("sweepStaleImpersonationSessions", () => {
-  it("returns zero when no candidates", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      }),
+describe("runImpersonationSweeperJob", () => {
+  it("logs when sessions are swept", async () => {
+    const impersonationSweepRepo: IImpersonationSweepRepository = {
+      sweepStaleSessions: vi.fn().mockResolvedValue(2),
     };
-    const n = await sweepStaleImpersonationSessions(db as never, {
-      cutoff: new Date(),
-      batchLimit: 500,
+    const log = { info: vi.fn() };
+    await runImpersonationSweeperJob({
+      impersonationSweepRepo,
+      log: log as never,
     });
-    expect(n).toBe(0);
+    expect(impersonationSweepRepo.sweepStaleSessions).toHaveBeenCalled();
+    expect(log.info).toHaveBeenCalledWith({ inserted: 2 }, "impersonation_sweeper_inserted_timeout_ends");
   });
 });

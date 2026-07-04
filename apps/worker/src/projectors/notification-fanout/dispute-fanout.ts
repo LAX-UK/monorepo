@@ -1,15 +1,10 @@
 import type { IEmailService } from "@auction/email";
+import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
 import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
-import {
-  type Db,
-  type SellerMoneyPayload,
-  centsToAmount,
-  entityName,
-  listEntityRecipients,
-} from "./notification-fanout-helpers.js";
+import { type SellerMoneyPayload, centsToAmount } from "./notification-fanout-helpers.js";
 
 export async function fanoutDisputeOpened(options: {
-  db: Db;
+  notificationFanoutReader: INotificationFanoutReader;
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   emailService: IEmailService;
   supportContactEmail: string;
@@ -19,9 +14,9 @@ export async function fanoutDisputeOpened(options: {
 }) {
   const sellerId = options.payload.sellerLegalEntityId;
   if (!sellerId) return;
-  const name = await entityName(options.db, sellerId);
+  const name = await options.notificationFanoutReader.getEntityDisplayName(sellerId);
   const amount = centsToAmount(options.payload.amountCents);
-  const recipients = await listEntityRecipients(options.db, sellerId);
+  const recipients = await options.notificationFanoutReader.listEntityRecipients(sellerId);
   for (const recipient of recipients) {
     await options.emailService.enqueue({
       template: "dispute-opened-notice",
@@ -78,7 +73,7 @@ export async function fanoutDisputeOpened(options: {
 }
 
 export async function fanoutDisputeClosed(options: {
-  db: Db;
+  notificationFanoutReader: INotificationFanoutReader;
   emailService: IEmailService;
   supportContactEmail: string;
   eventId: number;
@@ -86,8 +81,8 @@ export async function fanoutDisputeClosed(options: {
 }) {
   const sellerId = options.payload.sellerLegalEntityId;
   if (!sellerId) return;
-  const name = await entityName(options.db, sellerId);
-  const recipients = await listEntityRecipients(options.db, sellerId);
+  const name = await options.notificationFanoutReader.getEntityDisplayName(sellerId);
+  const recipients = await options.notificationFanoutReader.listEntityRecipients(sellerId);
   for (const recipient of recipients) {
     await options.emailService.enqueue({
       template: "dispute-closed-notice",

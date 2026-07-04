@@ -1,22 +1,54 @@
 import type { IEmailService } from "@auction/email";
+import type { IEnsurePersonalLegalEntityService } from "@auction/persistence/lib";
 import type {
   INotificationWriteRepository,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type pino from "pino";
+import type { IAdminImpersonationNotifyReader } from "../../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";
+import type { IClearArtistBlocksRepository } from "../../interfaces/clear-artist-blocks.repository.js";
 import type { IComplianceRecipientReader } from "../../interfaces/compliance-recipient.reader.js";
+import type { IDomainEventProjectorReader } from "../../interfaces/domain-event-projector.reader.js";
+import type { ILotNotifyReader } from "../../interfaces/lot-notify.reader.js";
+import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
+import type { IPaymentRefundNotifyReader } from "../../interfaces/payment-refund-notify.reader.js";
+import type { IPayoutTransferFailedNotifyReader } from "../../interfaces/payout-transfer-failed-notify.reader.js";
+import type { IProjectorFailureRecorder } from "../../interfaces/projector-failure-recorder.js";
+import type { IProjectorStateRepository } from "../../interfaces/projector-state.repository.js";
+import type {
+  ISourceOfFundsBuyerReader,
+  ISourceOfFundsDocumentsTaskRepository,
+  ISourceOfFundsSettlementReader,
+} from "../../interfaces/source-of-funds-projector.repository.js";
+import type {
+  ISourceOfFundsDocumentReviewRepository,
+  ISourceOfFundsReviewResolutionRepository,
+} from "../../interfaces/source-of-funds-review-projector.repository.js";
 import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
+import type { Db, ProjectorDbConnection } from "../../interfaces/worker-db.types.js";
 
-export type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
-
-export type ProjectorDbConnection = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
+export type { Db, ProjectorDbConnection };
 
 export type ProjectorRunContext = {
-  db: Db;
+  projectorStateRepo: IProjectorStateRepository;
+  domainEventReader: IDomainEventProjectorReader;
+  projectorFailureRecorder: IProjectorFailureRecorder;
   transactionRunner: ITransactionRunner;
   notificationWriteRepo: INotificationWriteRepository;
   adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
+  notificationFanoutReader: INotificationFanoutReader;
+  adminImpersonationNotifyReader: IAdminImpersonationNotifyReader;
+  paymentRefundNotifyReader: IPaymentRefundNotifyReader;
+  payoutTransferFailedNotifyReader: IPayoutTransferFailedNotifyReader;
+  clearArtistBlocksRepo: IClearArtistBlocksRepository;
+  ensurePersonalLegalEntity: IEnsurePersonalLegalEntityService;
+  sourceOfFundsSettlementReader: ISourceOfFundsSettlementReader;
+  sourceOfFundsBuyerReader: ISourceOfFundsBuyerReader;
+  sourceOfFundsDocumentsTaskRepo: ISourceOfFundsDocumentsTaskRepository;
+  sourceOfFundsDocumentReviewRepo: ISourceOfFundsDocumentReviewRepository;
+  sourceOfFundsReviewResolutionRepo: ISourceOfFundsReviewResolutionRepository;
+  lotNotifyReader: ILotNotifyReader;
   log: pino.Logger;
   emailService?: IEmailService | undefined;
   supportContactEmail?: string | undefined;

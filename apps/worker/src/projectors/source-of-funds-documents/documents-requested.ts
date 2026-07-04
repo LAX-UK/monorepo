@@ -1,13 +1,13 @@
-import { user } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
-import { eq } from "drizzle-orm";
 import type pino from "pino";
-import type { Db } from "../lib/projector.types.js";
-import { type DocumentsRequestedPayload, loadSettlementContext } from "./sof-documents-helpers.js";
+import type { ISourceOfFundsBuyerReader } from "../../interfaces/source-of-funds-projector.repository.js";
+import type { ISourceOfFundsSettlementReader } from "../../interfaces/source-of-funds-projector.repository.js";
+import { type DocumentsRequestedPayload } from "./sof-documents-helpers.js";
 
 export async function handleDocumentsRequested(args: {
-  db: Db;
+  sourceOfFundsBuyerReader: ISourceOfFundsBuyerReader;
+  sourceOfFundsSettlementReader: ISourceOfFundsSettlementReader;
   notificationWriteRepo: INotificationWriteRepository;
   log: pino.Logger;
   emailService?: IEmailService | undefined;
@@ -20,15 +20,11 @@ export async function handleDocumentsRequested(args: {
   const buyerId = args.payload.userId;
   if (!buyerId) return;
 
-  const [buyerRow] = await args.db
-    .select({ email: user.email, firstName: user.firstName })
-    .from(user)
-    .where(eq(user.id, buyerId))
-    .limit(1);
+  const buyerRow = await args.sourceOfFundsBuyerReader.getBuyerContact(buyerId);
   if (!buyerRow?.email) return;
 
   const types = args.payload.documentTypes ?? [];
-  const settlement = await loadSettlementContext(args.db, buyerId);
+  const settlement = await args.sourceOfFundsSettlementReader.loadSettlementContext(buyerId);
 
   await args.notificationWriteRepo.createMany([
     {

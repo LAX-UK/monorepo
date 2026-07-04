@@ -1,26 +1,11 @@
-import { domainEvent, projectorState } from "@auction/db";
-import { eq, gt } from "drizzle-orm";
-import type { ProjectorStateRepository } from "./lib/projector-state.repository.js";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
 
 export const XERO_PROJECTOR = "xero";
 
-export async function processXeroProjector(
-  ctx: ProjectorRunContext,
-  stateRepo: ProjectorStateRepository,
-): Promise<void> {
-  const cursor = await stateRepo.getCursor(XERO_PROJECTOR);
+export async function processXeroProjector(ctx: ProjectorRunContext): Promise<void> {
+  const cursor = await ctx.projectorStateRepo.getCursor(XERO_PROJECTOR);
 
-  const rows = await ctx.db
-    .select({
-      id: domainEvent.id,
-      eventType: domainEvent.eventType,
-      aggregateId: domainEvent.aggregateId,
-    })
-    .from(domainEvent)
-    .where(gt(domainEvent.id, cursor))
-    .orderBy(domainEvent.id)
-    .limit(100);
+  const rows = await ctx.domainEventReader.listAfterCursor(cursor, { limit: 100 });
 
   if (rows.length === 0) {
     return;
@@ -42,19 +27,16 @@ export async function processXeroProjector(
   }
 
   if (maxId > cursor) {
-    await ctx.db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, XERO_PROJECTOR));
+    await ctx.projectorStateRepo.advanceCursor(XERO_PROJECTOR, maxId);
   }
 }
 
-export function createXeroProjector(stateRepo: ProjectorStateRepository): Projector {
+export function createXeroProjector(): Projector {
   return {
     name: XERO_PROJECTOR,
     async run(ctx) {
-      await stateRepo.ensureCursor(XERO_PROJECTOR);
-      await processXeroProjector(ctx, stateRepo);
+      await ctx.projectorStateRepo.ensureCursor(XERO_PROJECTOR);
+      await processXeroProjector(ctx);
     },
   };
 }

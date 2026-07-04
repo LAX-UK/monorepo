@@ -1,17 +1,14 @@
-import type { createDb } from "@auction/db";
-import { domainEvent, legalEntity, legalEntityMember, user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import type { IRepositoryFactory } from "@auction/persistence/interfaces";
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import type { IRepositoryFactory, ITransactionRunner } from "@auction/persistence/interfaces";
 import type pino from "pino";
-
-type Db = ReturnType<typeof createDb>;
-
-const NOTIFY_ROLES = ["owner", "admin", "finance", "consignor", "buyer_agent"] as const;
+import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
+import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 
 export type LegalEntityArchiveCascadeJobInput = {
-  db: Db;
+  transactionRunner: ITransactionRunner;
   repoFactory: IRepositoryFactory;
+  domainEventSink: IWorkerDomainEventSink;
+  archiveCascadeReader: ILegalEntityArchiveCascadeReader;
   emailService: IEmailService;
   log: pino.Logger;
   webOrigin: string;
@@ -25,29 +22,34 @@ export type LegalEntityArchiveCascadeJobInput = {
 export async function runLegalEntityArchiveCascadeJob(
   input: LegalEntityArchiveCascadeJobInput,
 ): Promise<void> {
-  const { db, repoFactory, emailService, log, webOrigin, supportContactEmail, legalEntityId } =
-    input;
+  const {
+    transactionRunner,
+    repoFactory,
+    domainEventSink,
+    archiveCascadeReader,
+    emailService,
+    log,
+    webOrigin,
+    supportContactEmail,
+    legalEntityId,
+  } = input;
 
-  const [entityRow] = await db
-    .select({ displayName: legalEntity.displayName })
-    .from(legalEntity)
-    .where(eq(legalEntity.id, legalEntityId))
-    .limit(1);
-  const entityName = entityRow?.displayName ?? "Organisation";
+  const entityName = await archiveCascadeReader.getEntityDisplayName(legalEntityId);
 
   let proxiesCancelled = 0;
   let proxyEvents = 0;
   let lotsFlagged = 0;
 
-  await db.transaction(async (tx) => {
+  await transactionRunner.runInTransaction(async (tx) => {
     const repos = repoFactory.forTransaction(tx);
+    const events = domainEventSink.withTx(tx);
     const pairs = await repos.bid.listActiveProxyBidPairsForBuyerEntity(legalEntityId);
     for (const { lotId, bidderId } of pairs) {
       const cleared = await repos.bid.clearProxyAutoBidForBidderOnLot(lotId, bidderId);
       if (cleared > 0) {
         proxiesCancelled += cleared;
         proxyEvents += 1;
-        await tx.insert(domainEvent).values({
+        await events.publish({
           aggregateType: "lot",
           aggregateId: lotId,
           eventType: "bid.proxy_cancelled",
@@ -67,22 +69,7 @@ export async function runLegalEntityArchiveCascadeJob(
 
     lotsFlagged = await repos.lot.markArchivedSellerOnDraftScheduledLots(legalEntityId);
 
-    const members = await tx
-      .selectDistinct({
-        email: user.email,
-        userId: user.id,
-        firstName: user.firstName,
-      })
-      .from(legalEntityMember)
-      .innerJoin(user, eq(user.id, legalEntityMember.userId))
-      .where(
-        and(
-          eq(legalEntityMember.legalEntityId, legalEntityId),
-          isNull(legalEntityMember.removedAt),
-          isNotNull(legalEntityMember.acceptedAt),
-          inArray(legalEntityMember.role, [...NOTIFY_ROLES]),
-        ),
-      );
+    const members = await archiveCascadeReader.listNotifyMembers(legalEntityId);
 
     for (const m of members) {
       await emailService.enqueue({
@@ -101,7 +88,7 @@ export async function runLegalEntityArchiveCascadeJob(
       });
     }
 
-    await tx.insert(domainEvent).values({
+    await events.publish({
       aggregateType: "legal_entity",
       aggregateId: legalEntityId,
       eventType: "legal_entity.archive_cascaded",

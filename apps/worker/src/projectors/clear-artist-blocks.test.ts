@@ -1,81 +1,52 @@
 import { describe, expect, it, vi } from "vitest";
+import type { IClearArtistBlocksRepository } from "../interfaces/clear-artist-blocks.repository.js";
 import { applyClearArtistBlocksEvent } from "./clear-artist-blocks.js";
 
 describe("applyClearArtistBlocksEvent", () => {
   it("clears lots on artist.reviewed + approved", async () => {
-    const update = vi.fn().mockReturnValue({
-      where: vi.fn().mockResolvedValue(undefined),
-    });
-    const db = {
-      update: vi.fn(() => ({ set: update })),
-    } as unknown as import("@auction/db").Database;
+    const repo: IClearArtistBlocksRepository = {
+      getArtistStatus: vi.fn(),
+      clearLotsArtistReviewRequired: vi.fn().mockResolvedValue(undefined),
+    };
 
-    await applyClearArtistBlocksEvent(db, {
+    await applyClearArtistBlocksEvent(repo, {
       id: 1,
       eventType: "artist.reviewed",
       aggregateId: "artist-1",
       payload: { decision: "approved" },
     });
 
-    expect(db.update).toHaveBeenCalled();
-    expect(update).toHaveBeenCalledWith({ artistReviewRequired: false });
+    expect(repo.clearLotsArtistReviewRequired).toHaveBeenCalledWith("artist-1");
   });
 
   it("skips artist.reviewed when not approved", async () => {
-    const db = { update: vi.fn() } as unknown as import("@auction/db").Database;
-    await applyClearArtistBlocksEvent(db, {
+    const repo: IClearArtistBlocksRepository = {
+      getArtistStatus: vi.fn(),
+      clearLotsArtistReviewRequired: vi.fn(),
+    };
+    await applyClearArtistBlocksEvent(repo, {
       id: 1,
       eventType: "artist.reviewed",
       aggregateId: "artist-1",
       payload: { decision: "rejected" },
     });
-    expect(db.update).not.toHaveBeenCalled();
+    expect(repo.clearLotsArtistReviewRequired).not.toHaveBeenCalled();
   });
 
   it("clears lots on artist.merged when canonical is approved", async () => {
-    const update = vi.fn().mockReturnValue({
-      where: vi.fn().mockResolvedValue(undefined),
-    });
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ status: "approved" }]),
-          }),
-        }),
-      }),
-      update: vi.fn(() => ({ set: update })),
-    } as unknown as import("@auction/db").Database;
+    const repo: IClearArtistBlocksRepository = {
+      getArtistStatus: vi.fn().mockResolvedValue("approved"),
+      clearLotsArtistReviewRequired: vi.fn().mockResolvedValue(undefined),
+    };
 
-    await applyClearArtistBlocksEvent(db, {
-      id: 2,
+    await applyClearArtistBlocksEvent(repo, {
+      id: 1,
       eventType: "artist.merged",
-      aggregateId: "from-artist",
-      payload: { intoArtistId: "into-1" },
+      aggregateId: "artist-old",
+      payload: { intoArtistId: "artist-new" },
     });
 
-    expect(db.update).toHaveBeenCalled();
-  });
-
-  it("does not clear on artist.merged when canonical is pending", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ status: "pending" }]),
-          }),
-        }),
-      }),
-      update: vi.fn(),
-    } as unknown as import("@auction/db").Database;
-
-    await applyClearArtistBlocksEvent(db, {
-      id: 2,
-      eventType: "artist.merged",
-      aggregateId: "from-artist",
-      payload: { intoArtistId: "into-1" },
-    });
-
-    expect(db.update).not.toHaveBeenCalled();
+    expect(repo.getArtistStatus).toHaveBeenCalledWith("artist-new");
+    expect(repo.clearLotsArtistReviewRequired).toHaveBeenCalledWith("artist-new");
   });
 });

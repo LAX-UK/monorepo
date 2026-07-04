@@ -32,14 +32,17 @@ export function registerComplianceWorkers(
 ): ComplianceWorkersHandle {
   const {
     env,
-    db,
     redis,
     log,
     bullConnection,
     queueOpts,
     uploadStorage,
     repoFactory,
+    transactionRunner,
     dataExportRepo,
+    impersonationSweepRepo,
+    legalEntityArchiveCascadeReader,
+    domainEventSink,
     sentryMonitorSlugs,
     heartbeat,
     reportWorkerJobFailure,
@@ -97,8 +100,10 @@ export function registerComplianceWorkers(
         throw new Error("legal-entity-archive job is missing legalEntityId");
       }
       await runLegalEntityArchiveCascadeJob({
-        db,
+        transactionRunner,
         repoFactory,
+        domainEventSink,
+        archiveCascadeReader: legalEntityArchiveCascadeReader,
         emailService: emailOutboxService,
         log,
         webOrigin: env.WEB_ORIGIN,
@@ -119,7 +124,7 @@ export function registerComplianceWorkers(
     IMPERSONATION_SWEEPER_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor("impersonation-sweeper", sentryMonitorSlugs, async () => {
-        await runImpersonationSweeperJob({ db, log });
+        await runImpersonationSweeperJob({ impersonationSweepRepo, log });
         await heartbeat("impersonation-sweeper");
       });
     },

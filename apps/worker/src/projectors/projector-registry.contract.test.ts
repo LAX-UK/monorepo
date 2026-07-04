@@ -5,7 +5,6 @@ import {
   defineCompileTimeContract,
 } from "../testing/compile-time-contract.js";
 import { AML_MATCH_REVIEW_PROJECTOR } from "./aml-match-review.js";
-import { ProjectorStateRepository } from "./lib/projector-state.repository.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { LOT_INVOICE_INITIATION_PROJECTOR } from "./lot-invoice-initiation.js";
 import { MARKETING_CONTACTS_PROJECTOR } from "./marketing-contacts-projector.js";
@@ -46,7 +45,18 @@ defineCompileTimeContract<_RegistryContract>();
 
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {
   return {
-    db: {} as ProjectorRunContext["db"],
+    projectorStateRepo: {
+      ensureCursor: vi.fn(),
+      getCursor: vi.fn().mockResolvedValue(0),
+      advanceCursor: vi.fn(),
+      advanceCursorLiteralName: vi.fn(),
+      recordError: vi.fn(),
+    },
+    domainEventReader: {
+      listAfterCursor: vi.fn().mockResolvedValue([]),
+      listLockedForProjector: vi.fn().mockResolvedValue([]),
+    },
+    projectorFailureRecorder: { record: vi.fn() },
     transactionRunner: { runInTransaction: vi.fn(async (fn) => fn({} as never)) },
     notificationWriteRepo: { createMany: vi.fn().mockResolvedValue([]) },
     adminReviewTaskProjectorRepo: {
@@ -56,6 +66,36 @@ function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
       reactivateSourceOfFundsReview: vi.fn(),
       createSourceOfFundsReview: vi.fn(),
     },
+    notificationFanoutReader: {
+      listEntityRecipients: vi.fn().mockResolvedValue([]),
+      getEntityDisplayName: vi.fn().mockResolvedValue("Org"),
+      getPayoutAmounts: vi.fn(),
+      getLotForVoided: vi.fn(),
+      getLotTitle: vi.fn(),
+      getUserForProxyNotice: vi.fn(),
+      getWinnerContact: vi.fn(),
+      getManualReviewContext: vi.fn(),
+    },
+    adminImpersonationNotifyReader: {
+      getAdminDisplayName: vi.fn(),
+      listEntityOwnerAdmins: vi.fn().mockResolvedValue([]),
+    },
+    paymentRefundNotifyReader: { getRefundContext: vi.fn() },
+    payoutTransferFailedNotifyReader: { getTransferFailedContext: vi.fn() },
+    clearArtistBlocksRepo: {
+      getArtistStatus: vi.fn(),
+      clearLotsArtistReviewRequired: vi.fn(),
+    },
+    ensurePersonalLegalEntity: { ensure: vi.fn() },
+    sourceOfFundsSettlementReader: {
+      loadSettlementContext: vi.fn(),
+      getCaseStatus: vi.fn(),
+    },
+    sourceOfFundsBuyerReader: { getBuyerContact: vi.fn() },
+    sourceOfFundsDocumentsTaskRepo: { reopenResolvedReviewTask: vi.fn() },
+    sourceOfFundsDocumentReviewRepo: { upsertReview: vi.fn() },
+    sourceOfFundsReviewResolutionRepo: { resolveIfTerminal: vi.fn() },
+    lotNotifyReader: { getLotTitle: vi.fn() },
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as unknown as ProjectorRunContext["log"],
     staffOpsRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
     complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
@@ -64,8 +104,7 @@ function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
 }
 
 describe("createDefaultProjectorRegistry", () => {
-  const stateRepo = new ProjectorStateRepository({} as ProjectorRunContext["db"]);
-  const registry = createDefaultProjectorRegistry(stateRepo);
+  const registry = createDefaultProjectorRegistry();
 
   it("registers projectors in the legacy tick order", () => {
     expect(registry.listProjectorNames()).toEqual([...EXPECTED_PROJECTOR_ORDER]);

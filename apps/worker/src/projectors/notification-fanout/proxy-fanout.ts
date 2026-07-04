@@ -1,26 +1,20 @@
-import { lot, user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { eq } from "drizzle-orm";
-import type { Db, ProxyCancelledPayload } from "./notification-fanout-helpers.js";
+import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
+import type { ProxyCancelledPayload } from "./notification-fanout-helpers.js";
 
 export async function fanoutProxyCancelled(options: {
-  db: Db;
+  notificationFanoutReader: INotificationFanoutReader;
   emailService: IEmailService;
   supportContactEmail: string;
   eventId: number;
   payload: ProxyCancelledPayload;
 }) {
   if (!options.payload?.bidderUserId || !options.payload?.lotId) return;
-  const [lotRow] = await options.db
-    .select({ title: lot.title })
-    .from(lot)
-    .where(eq(lot.id, options.payload.lotId))
-    .limit(1);
-  const [bidder] = await options.db
-    .select({ email: user.email, name: user.name, firstName: user.firstName })
-    .from(user)
-    .where(eq(user.id, options.payload.bidderUserId))
-    .limit(1);
+  const lotTitle =
+    (await options.notificationFanoutReader.getLotTitle(options.payload.lotId)) ?? "Unknown Lot";
+  const bidder = await options.notificationFanoutReader.getUserForProxyNotice(
+    options.payload.bidderUserId,
+  );
   if (!bidder?.email) return;
   await options.emailService.enqueue({
     template: "proxy-cancelled-notice",
@@ -28,7 +22,7 @@ export async function fanoutProxyCancelled(options: {
     userId: options.payload.bidderUserId,
     vars: {
       userName: bidder.firstName ?? bidder.name,
-      lotTitle: lotRow?.title ?? "Unknown Lot",
+      lotTitle,
       reason: options.payload.reason,
       supportContactEmail: options.supportContactEmail,
     },

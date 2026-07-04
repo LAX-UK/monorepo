@@ -1,11 +1,8 @@
-import { domainEvent, projectorState } from "@auction/db/schema";
-import { and, eq, gt } from "drizzle-orm";
+import type { IEnsurePersonalLegalEntityService } from "@auction/persistence/lib";
 import type pino from "pino";
-import { EnsurePersonalLegalEntityService } from "../services/ensure-personal-legal-entity.service.js";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 export const LEGAL_ENTITY_PROVISIONING_PROJECTOR = "legal_entity_provisioning";
-
-type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 
 type UserRegisteredPayload = {
   userId?: string;
@@ -15,7 +12,7 @@ type UserRegisteredPayload = {
 };
 
 export async function applyUserRegisteredEvent(
-  ensure: EnsurePersonalLegalEntityService,
+  ensure: IEnsurePersonalLegalEntityService,
   event: { id: number; payload: unknown },
   log: pino.Logger,
 ): Promise<void> {
@@ -32,33 +29,20 @@ export async function applyUserRegisteredEvent(
 }
 
 export async function processLegalEntityProvisioning(options: {
-  db: Db;
+  ctx: ProjectorRunContext;
   log: pino.Logger;
 }): Promise<void> {
-  const { db, log } = options;
-  const ensure = new EnsurePersonalLegalEntityService(db);
+  const { ctx, log } = options;
+  const { projectorStateRepo, domainEventReader, ensurePersonalLegalEntity } = ctx;
 
-  await db
-    .insert(projectorState)
-    .values({ projectorName: LEGAL_ENTITY_PROVISIONING_PROJECTOR, lastProcessedEventId: 0 })
-    .onConflictDoNothing();
+  await projectorStateRepo.ensureCursor(LEGAL_ENTITY_PROVISIONING_PROJECTOR);
 
-  const [cursorRow] = await db
-    .select({ last: projectorState.lastProcessedEventId })
-    .from(projectorState)
-    .where(eq(projectorState.projectorName, LEGAL_ENTITY_PROVISIONING_PROJECTOR))
-    .limit(1);
-  const cursor = cursorRow?.last ?? 0;
+  const cursor = await projectorStateRepo.getCursor(LEGAL_ENTITY_PROVISIONING_PROJECTOR);
 
-  const rows = await db
-    .select({
-      id: domainEvent.id,
-      payload: domainEvent.payload,
-    })
-    .from(domainEvent)
-    .where(and(gt(domainEvent.id, cursor), eq(domainEvent.eventType, "user.registered")))
-    .orderBy(domainEvent.id)
-    .limit(50);
+  const rows = await domainEventReader.listAfterCursor(cursor, {
+    eventTypes: ["user.registered"],
+    limit: 50,
+  });
 
   if (rows.length === 0) {
     return;
@@ -67,23 +51,17 @@ export async function processLegalEntityProvisioning(options: {
   let maxId = cursor;
   for (const row of rows) {
     try {
-      await applyUserRegisteredEvent(ensure, row, log);
+      await applyUserRegisteredEvent(ensurePersonalLegalEntity, row, log);
       maxId = row.id;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       log.error({ err, eventId: row.id }, "legal_entity_provisioning_failed");
-      await db
-        .update(projectorState)
-        .set({ lastError: message, updatedAt: new Date() })
-        .where(eq(projectorState.projectorName, LEGAL_ENTITY_PROVISIONING_PROJECTOR));
+      await projectorStateRepo.recordError(LEGAL_ENTITY_PROVISIONING_PROJECTOR, message);
       return;
     }
   }
 
   if (maxId > cursor) {
-    await db
-      .update(projectorState)
-      .set({ lastProcessedEventId: maxId, updatedAt: new Date(), lastError: null })
-      .where(eq(projectorState.projectorName, LEGAL_ENTITY_PROVISIONING_PROJECTOR));
+    await projectorStateRepo.advanceCursor(LEGAL_ENTITY_PROVISIONING_PROJECTOR, maxId);
   }
 }

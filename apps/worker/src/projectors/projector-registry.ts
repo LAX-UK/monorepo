@@ -2,7 +2,6 @@ import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js
 import { AML_MATCH_REVIEW_PROJECTOR, processAmlMatchReview } from "./aml-match-review.js";
 import { processClearArtistBlocks } from "./clear-artist-blocks.js";
 import { processLegalEntityProvisioning } from "./legal-entity-provisioning.js";
-import type { ProjectorStateRepository } from "./lib/projector-state.repository.js";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
 import {
   LOT_INVOICE_INITIATION_PROJECTOR,
@@ -57,27 +56,25 @@ export class ProjectorRegistry {
 
 function emailProjectorArgs(ctx: ProjectorRunContext) {
   return {
-    db: ctx.db,
+    ctx,
     log: ctx.log,
     emailService: ctx.emailService as NonNullable<ProjectorRunContext["emailService"]>,
     supportContactEmail: ctx.supportContactEmail as string,
   };
 }
 
-export function createDefaultProjectorRegistry(
-  stateRepo: ProjectorStateRepository,
-): ProjectorRegistry {
+export function createDefaultProjectorRegistry(): ProjectorRegistry {
   const projectors: Projector[] = [
-    createZohoProjector(stateRepo),
-    createXeroProjector(stateRepo),
-    createMarketingContactsProjector(stateRepo),
+    createZohoProjector(),
+    createXeroProjector(),
+    createMarketingContactsProjector(),
     {
       name: "admin_impersonation_notify",
       isEnabled(ctx) {
         return Boolean(ctx.emailService && ctx.supportContactEmail);
       },
       async run(ctx) {
-        await stateRepo.ensureCursor("admin_impersonation_notify");
+        await ctx.projectorStateRepo.ensureCursor("admin_impersonation_notify");
         await processAdminImpersonationNotify({
           ...emailProjectorArgs(ctx),
         });
@@ -89,7 +86,7 @@ export function createDefaultProjectorRegistry(
         return Boolean(ctx.emailService && ctx.supportContactEmail && ctx.adminPayoutsUrl);
       },
       async run(ctx) {
-        await stateRepo.ensureCursor("payout_transfer_failed_notify");
+        await ctx.projectorStateRepo.ensureCursor("payout_transfer_failed_notify");
         await processPayoutTransferFailedNotify({
           ...emailProjectorArgs(ctx),
           adminPayoutsUrl: ctx.adminPayoutsUrl as string,
@@ -102,13 +99,10 @@ export function createDefaultProjectorRegistry(
         return Boolean(ctx.emailService && ctx.supportContactEmail && ctx.adminPayoutsUrl);
       },
       async run(ctx) {
-        await stateRepo.ensureCursor(NOTIFICATION_FANOUT_PROJECTOR);
+        await ctx.projectorStateRepo.ensureCursor(NOTIFICATION_FANOUT_PROJECTOR);
         await processNotificationFanout({
           ...emailProjectorArgs(ctx),
           adminPayoutsUrl: ctx.adminPayoutsUrl as string,
-          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
-          adminEmailAddress: ctx.adminEmailAddress,
-          webOrigin: ctx.webOrigin,
         });
       },
     },
@@ -118,11 +112,9 @@ export function createDefaultProjectorRegistry(
         return Boolean(ctx.emailService && ctx.supportContactEmail);
       },
       async run(ctx) {
-        await stateRepo.ensureCursor("payment_refund_notify");
+        await ctx.projectorStateRepo.ensureCursor("payment_refund_notify");
         await processPaymentRefundNotify({
           ...emailProjectorArgs(ctx),
-          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
-          adminEmailAddress: ctx.adminEmailAddress,
         });
       },
     },
@@ -132,11 +124,9 @@ export function createDefaultProjectorRegistry(
         return Boolean(ctx.emailService && ctx.supportContactEmail && ctx.webOrigin);
       },
       async run(ctx) {
-        await stateRepo.ensureCursor("lot_voided_anti_shilling_admin_notify");
+        await ctx.projectorStateRepo.ensureCursor("lot_voided_anti_shilling_admin_notify");
         await processLotVoidedAntiShillingAdminNotify({
           ...emailProjectorArgs(ctx),
-          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
-          adminEmailAddress: ctx.adminEmailAddress,
           webOrigin: ctx.webOrigin as string,
         });
       },
@@ -144,82 +134,49 @@ export function createDefaultProjectorRegistry(
     {
       name: "clear_artist_blocks",
       async run(ctx) {
-        await stateRepo.ensureCursor("clear_artist_blocks");
-        await processClearArtistBlocks({ db: ctx.db, log: ctx.log });
+        await ctx.projectorStateRepo.ensureCursor("clear_artist_blocks");
+        await processClearArtistBlocks({ ctx, log: ctx.log });
       },
     },
     {
       name: "legal_entity_provisioning",
       async run(ctx) {
-        await processLegalEntityProvisioning({ db: ctx.db, log: ctx.log });
+        await processLegalEntityProvisioning({ ctx, log: ctx.log });
       },
     },
     {
       name: AML_MATCH_REVIEW_PROJECTOR,
       async run(ctx) {
-        await stateRepo.ensureCursor(AML_MATCH_REVIEW_PROJECTOR);
-        await processAmlMatchReview({
-          db: ctx.db,
-          adminReviewTaskProjectorRepo: ctx.adminReviewTaskProjectorRepo,
-          log: ctx.log,
-          complianceRecipientReader: ctx.complianceRecipientReader,
-          emailService: ctx.emailService,
-          supportContactEmail: ctx.supportContactEmail,
-          webOrigin: ctx.webOrigin,
-          adminEmailAddress: ctx.adminEmailAddress,
-        });
+        await ctx.projectorStateRepo.ensureCursor(AML_MATCH_REVIEW_PROJECTOR);
+        await processAmlMatchReview({ ctx, log: ctx.log });
       },
     },
     {
       name: SOURCE_OF_FUNDS_REVIEW_PROJECTOR,
       async run(ctx) {
-        await stateRepo.ensureCursor(SOURCE_OF_FUNDS_REVIEW_PROJECTOR);
-        await processSourceOfFundsReview({
-          db: ctx.db,
-          adminReviewTaskProjectorRepo: ctx.adminReviewTaskProjectorRepo,
-          log: ctx.log,
-          complianceRecipientReader: ctx.complianceRecipientReader,
-          emailService: ctx.emailService,
-          supportContactEmail: ctx.supportContactEmail,
-          webOrigin: ctx.webOrigin,
-          adminEmailAddress: ctx.adminEmailAddress,
-        });
+        await ctx.projectorStateRepo.ensureCursor(SOURCE_OF_FUNDS_REVIEW_PROJECTOR);
+        await processSourceOfFundsReview({ ctx, log: ctx.log });
       },
     },
     {
       name: SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR,
       async run(ctx) {
-        await stateRepo.ensureCursor(SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR);
-        await processSourceOfFundsReviewResolution({
-          db: ctx.db,
-          log: ctx.log,
-        });
+        await ctx.projectorStateRepo.ensureCursor(SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR);
+        await processSourceOfFundsReviewResolution({ ctx, log: ctx.log });
       },
     },
     {
       name: SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR,
       async run(ctx) {
-        await stateRepo.ensureCursor(SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR);
-        await processSourceOfFundsDocuments({
-          db: ctx.db,
-          notificationWriteRepo: ctx.notificationWriteRepo,
-          log: ctx.log,
-          complianceRecipientReader: ctx.complianceRecipientReader,
-          emailService: ctx.emailService,
-          supportContactEmail: ctx.supportContactEmail,
-          webOrigin: ctx.webOrigin,
-          adminEmailAddress: ctx.adminEmailAddress,
-        });
+        await ctx.projectorStateRepo.ensureCursor(SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR);
+        await processSourceOfFundsDocuments({ ctx, log: ctx.log });
       },
     },
     {
       name: SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR,
       async run(ctx) {
-        await stateRepo.ensureCursor(SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR);
-        await processSourceOfFundsDocumentReview({
-          db: ctx.db,
-          log: ctx.log,
-        });
+        await ctx.projectorStateRepo.ensureCursor(SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR);
+        await processSourceOfFundsDocumentReview({ ctx, log: ctx.log });
       },
     },
     {
@@ -228,9 +185,9 @@ export function createDefaultProjectorRegistry(
         return ctx.ensureLotInvoice != null;
       },
       async run(ctx) {
-        await stateRepo.ensureCursor(LOT_INVOICE_INITIATION_PROJECTOR);
+        await ctx.projectorStateRepo.ensureCursor(LOT_INVOICE_INITIATION_PROJECTOR);
         await processLotInvoiceInitiation({
-          db: ctx.db,
+          ctx,
           log: ctx.log,
           ensureLotInvoice: ctx.ensureLotInvoice as NonNullable<
             ProjectorRunContext["ensureLotInvoice"]
