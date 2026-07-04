@@ -4,6 +4,7 @@ import {
   parseSaleListRowApiPayload,
   resolveSaleLotCount,
 } from "@/lib/sale-list-row";
+import { saleListRowSchema } from "@/lib/data/http/sales.schema";
 import { describe, expect, it } from "vitest";
 
 describe("resolveSaleLotCount", () => {
@@ -75,5 +76,29 @@ describe("parseSaleListRowApiPayload", () => {
       lots: [{ id: "a", lotNumber: 1, title: "A", status: "scheduled" }],
     });
     expect(row.lotCount).toBe(1);
+  });
+});
+
+describe("saleListRowSchema", () => {
+  it("returns parsed sale rows with Date timing fields", () => {
+    const row = saleListRowSchema.parse({
+      sale: {
+        id: "s1",
+        title: "Test",
+        status: "scheduled",
+        deliveryMode: "online",
+        startTime: "2026-04-09T10:00:00Z",
+        endTime: "2026-04-16T18:00:00Z",
+        coverImages: [],
+        buyerPremiumRate: "0",
+        createdAt: "2026-04-09T10:00:00Z",
+        updatedAt: "2026-04-09T10:00:00Z",
+      },
+      lots: [],
+      lotCount: 3,
+    });
+    expect(row.sale.startTime).toBeInstanceOf(Date);
+    expect(row.sale.endTime).toBeInstanceOf(Date);
+    expect(row.lotCount).toBe(3);
   });
 });

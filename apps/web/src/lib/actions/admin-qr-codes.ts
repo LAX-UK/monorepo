@@ -17,14 +17,12 @@ import {
 } from "@auction/validators";
 import { z } from "zod";
 
-export type { AdminQrCodeItem };
-
-export type AdminQrCodeDialogData = {
+type AdminQrCodeDialogData = {
   item: AdminQrCodeItem;
   analytics: QrCodeDetailedAnalytics | null;
 };
 
-export type AdminLotQrPrintRow = {
+type AdminLotQrPrintRow = {
   id: string;
   title: string;
   lotNumber: number | null;

@@ -118,9 +118,9 @@ export const saleRegistrationItemsSchema = z.object({
   items: z.array(z.unknown()),
 });
 
-export const saleListRowSchema = z.custom<SaleListRow>((row) =>
-  parseSaleListRowApiPayload(row),
-) as z.ZodType<SaleListRow>;
+export const saleListRowSchema = z
+  .unknown()
+  .transform((row) => parseSaleListRowApiPayload(row)) as z.ZodType<SaleListRow>;
 
 export const sitemapSaleRowSchema = z
   .preprocess(toObjectRecord, z.record(z.unknown()))

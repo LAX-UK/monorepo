@@ -10,7 +10,6 @@ import {
 } from "@/components/admin/catalog";
 import { CatalogPostCreateSessionRoot } from "@/components/admin/catalog/catalog-post-create-session";
 import { CatalogWhatsNextBanner } from "@/components/admin/catalog/catalog-whats-next-banner";
-import { QuickActionsRail } from "@/components/admin/detail-rail";
 import { AdminLotEditableTitle } from "@/components/admin/editable-titles";
 import { ReturnToInventoryButton } from "@/components/admin/lot-actions/return-to-inventory-button";
 import { LotDetailMobilePublishCancel } from "@/components/admin/lot-detail-mobile-publish-cancel";
@@ -149,8 +148,6 @@ export function LotDetailShell({
     },
   ];
 
-  const quickActions = <QuickActionsRail actions={lotNav.quickRailItems} />;
-
   return (
     <CatalogPostCreateSessionRoot>
       <CatalogDetailShell
@@ -261,7 +258,7 @@ export function LotDetailShell({
             canManageAuction={canManageAuction}
             status={<AdminStatusBadge domain="lot" status={auction.status} />}
             publicHref={publicHref}
-            quickActions={quickActions}
+            quickRailItems={lotNav.quickRailItems}
           />
         }
         stickySubnav={

@@ -7,8 +7,10 @@ import { CatalogReadinessChecklist } from "@/components/admin/catalog/catalog-re
 import {
   ActivitySnapshotRail,
   KpiStackRail,
+  QuickActionsRail,
   RelatedEntitiesRail,
 } from "@/components/admin/detail-rail";
+import type { QuickActionItem } from "@/components/admin/detail-rail/quick-actions-rail";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { shouldShowCatalogReadinessRail } from "@/lib/admin/catalog-detail-readiness-surface";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
@@ -32,7 +34,7 @@ type Props = {
   canManageAuction?: boolean;
   status?: ReactNode;
   publicHref?: string;
-  quickActions?: ReactNode;
+  quickRailItems?: readonly QuickActionItem[];
 };
 
 export function LotContextRail({
@@ -46,7 +48,7 @@ export function LotContextRail({
   canManageAuction = false,
   status,
   publicHref,
-  quickActions,
+  quickRailItems = [],
 }: Props) {
   const { isPostCreateBannerActive } = useCatalogPostCreateSession();
   const readiness = publishReadiness;
@@ -121,7 +123,7 @@ export function LotContextRail({
             },
           ]}
         />
-        {quickActions}
+        <QuickActionsRail actions={quickRailItems} />
         <RelatedEntitiesRail items={related} />
         {showRailReadiness && readiness ? (
           <CatalogReadinessChecklist

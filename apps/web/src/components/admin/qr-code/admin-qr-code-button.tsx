@@ -2,10 +2,10 @@
 
 import { QrAnalyticsPanel } from "@/components/admin/qr-code/qr-analytics-panel";
 import {
-  type AdminQrCodeItem as QrCodeItem,
   adminLoadQrCodeDialogResultAction,
   adminRegenerateQrCodeResultAction,
 } from "@/lib/actions/admin-qr-codes";
+import type { AdminQrCodeItem as QrCodeItem } from "@/lib/services/interfaces/admin-qr-codes-service";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import {
