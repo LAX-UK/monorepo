@@ -11,7 +11,8 @@ export function registerMarketingPurgeWorkers(deps: WorkerBootstrapDeps): {
   worker: Worker;
   queue: Queue;
 } {
-  const { db, log, bullConnection, sentryMonitorSlugs, reportWorkerJobFailure } = deps;
+  const { log, bullConnection, sentryMonitorSlugs, reportWorkerJobFailure } = deps;
+  const { marketingClickIdPurgeRepo, marketingEventOutboxWorker } = deps;
 
   const purgeMarketingClickIdsQueue = new Queue(
     PURGE_MARKETING_CLICK_IDS_QUEUE_NAME,
@@ -21,8 +22,8 @@ export function registerMarketingPurgeWorkers(deps: WorkerBootstrapDeps): {
     PURGE_MARKETING_CLICK_IDS_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor("purge-marketing-click-ids", sentryMonitorSlugs, async () => {
-        await purgeStaleMarketingClickIds({ db, log });
-        await purgeStaleMarketingOutbox({ db, log });
+        await purgeStaleMarketingClickIds({ marketingClickIdPurgeRepo, log });
+        await purgeStaleMarketingOutbox({ marketingEventOutboxWorker, log });
       });
     },
     bullConnection,

@@ -52,18 +52,21 @@ describe("processAmlMatchReview MLRO escalation", () => {
     const complianceRecipientReader = {
       listRecipients: vi.fn().mockResolvedValue([recipient]),
     };
+    const adminReviewTaskProjectorRepo = {
+      findAmlScreeningReview: vi.fn().mockResolvedValue(null),
+      createAmlScreeningReview: vi.fn().mockResolvedValue(undefined),
+    };
     const db = fakeDb([
       undefined, // insert projectorState ... onConflictDoNothing
       [{ last: 0 }], // cursor select
       [eventRow], // events select
-      [], // existing admin_review_task select (none)
-      undefined, // insert admin_review_task
       undefined, // update projectorState cursor
     ]);
     const emailService = makeEmail();
 
     await processAmlMatchReview({
       db,
+      adminReviewTaskProjectorRepo: adminReviewTaskProjectorRepo as never,
       log,
       complianceRecipientReader,
       emailService,
@@ -72,6 +75,7 @@ describe("processAmlMatchReview MLRO escalation", () => {
       adminEmailAddress: "ops@example.com",
     });
 
+    expect(adminReviewTaskProjectorRepo.createAmlScreeningReview).toHaveBeenCalled();
     expect(emailService.enqueue).toHaveBeenCalledTimes(1);
     expect(emailService.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -89,17 +93,21 @@ describe("processAmlMatchReview MLRO escalation", () => {
       aggregateId: "scr_2",
       payload: { screeningId: "scr_2", userId: "u2", matchStatus: "possible_match" },
     };
+    const adminReviewTaskProjectorRepo = {
+      findAmlScreeningReview: vi.fn().mockResolvedValue({ id: "task_existing" }),
+      createAmlScreeningReview: vi.fn(),
+    };
     const db = fakeDb([
       undefined,
       [{ last: 0 }],
       [eventRow],
-      [{ id: "task_existing" }], // existing admin_review_task
       undefined, // cursor update
     ]);
     const emailService = makeEmail();
 
     await processAmlMatchReview({
       db,
+      adminReviewTaskProjectorRepo: adminReviewTaskProjectorRepo as never,
       log,
       complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,
@@ -107,6 +115,7 @@ describe("processAmlMatchReview MLRO escalation", () => {
       webOrigin: "https://app.example.com",
     });
 
+    expect(adminReviewTaskProjectorRepo.createAmlScreeningReview).not.toHaveBeenCalled();
     expect(emailService.enqueue).not.toHaveBeenCalled();
   });
 
@@ -120,6 +129,10 @@ describe("processAmlMatchReview MLRO escalation", () => {
 
     await processAmlMatchReview({
       db,
+      adminReviewTaskProjectorRepo: {
+        findAmlScreeningReview: vi.fn(),
+        createAmlScreeningReview: vi.fn(),
+      } as never,
       log,
       complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,

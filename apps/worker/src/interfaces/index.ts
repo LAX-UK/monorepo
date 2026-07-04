@@ -42,3 +42,12 @@ export type {
   ComplianceRecipient,
   IComplianceRecipientReader,
 } from "./compliance-recipient.reader.js";
+export type {
+  AmlScreeningReviewPayload,
+  IAdminReviewTaskProjectorRepository,
+  SourceOfFundsReviewPayload,
+} from "./admin-review-task-projector.repository.js";
+export type { IMediaAssetCleanupRepository } from "./media-asset-cleanup.repository.js";
+export type { IMediaAssetProcessorRepository } from "./media-asset-processor.repository.js";
+export type { IMarketingClickIdPurgeRepository } from "./marketing-click-id-purge.repository.js";
+export type { IQrCodeScanPurgeRepository } from "./qr-code-scan-purge.repository.js";

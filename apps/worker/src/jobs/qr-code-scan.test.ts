@@ -1,29 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { recordQrCodeScanJob } from "./qr-code-scan.js";
 
-const { persistQrCodeScan } = vi.hoisted(() => ({
-  persistQrCodeScan: vi.fn(),
-}));
-
-vi.mock("@auction/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@auction/db")>()),
-  persistQrCodeScan,
-}));
-
 describe("recordQrCodeScanJob", () => {
+  const persist = vi.fn().mockResolvedValue(undefined);
+  const qrCodeScanPersister = { persist };
+
   beforeEach(() => {
-    persistQrCodeScan.mockReset();
+    persist.mockClear();
   });
 
   it("persists QR scan payloads", async () => {
     await recordQrCodeScanJob({
-      db: {} as never,
+      qrCodeScanPersister,
       data: { qrCodeId: " qr_1 ", requestId: "req_1" },
       log: { debug: vi.fn() } as never,
     });
 
-    expect(persistQrCodeScan).toHaveBeenCalledWith(
-      {},
+    expect(persist).toHaveBeenCalledWith(
       expect.objectContaining({ qrCodeId: "qr_1", requestId: "req_1" }),
     );
   });
@@ -31,7 +24,7 @@ describe("recordQrCodeScanJob", () => {
   it("rejects jobs without a QR code id", async () => {
     await expect(
       recordQrCodeScanJob({
-        db: {} as never,
+        qrCodeScanPersister,
         data: { qrCodeId: "" },
         log: { debug: vi.fn() } as never,
       }),

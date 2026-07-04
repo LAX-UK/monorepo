@@ -16,4 +16,5 @@ export interface IMarketingEventOutboxWorker {
     event: MarketingEvent,
     outcome: PublishOutcome,
   ): Promise<MarketingFailureOutcome | null>;
+  purgeStaleTerminal(staleBefore: Date): Promise<number>;
 }

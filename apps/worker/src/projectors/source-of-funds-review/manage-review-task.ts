@@ -1,52 +1,32 @@
-import { adminReviewTask } from "@auction/db";
-import { and, eq, sql } from "drizzle-orm";
 import type pino from "pino";
-import type { Db } from "../lib/projector.types.js";
+import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";
 import type { SourceOfFundsRequiredPayload } from "./sof-review-helpers.js";
 
 export async function manageSourceOfFundsReviewTask(args: {
-  db: Db;
+  adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
   log: pino.Logger;
   payload: SourceOfFundsRequiredPayload;
   sourceOfFundsId: string;
 }): Promise<{ createdTask: boolean }> {
-  const { db, log, payload, sourceOfFundsId } = args;
+  const { adminReviewTaskProjectorRepo, log, payload, sourceOfFundsId } = args;
 
-  const existing = await db
-    .select({ id: adminReviewTask.id, status: adminReviewTask.status })
-    .from(adminReviewTask)
-    .where(
-      and(
-        eq(adminReviewTask.kind, "source_of_funds_review"),
-        sql`${adminReviewTask.payload} ->> 'sourceOfFundsId' = ${sourceOfFundsId}`,
-      ),
-    )
-    .limit(1);
+  const existingTask = await adminReviewTaskProjectorRepo.findSourceOfFundsReview(sourceOfFundsId);
 
   const reopened = Boolean(payload.reopened);
-  const existingTask = existing[0];
   if (existingTask && reopened) {
-    await db
-      .update(adminReviewTask)
-      .set({ status: "pending", resolvedAt: null, resolvedByUserId: null })
-      .where(eq(adminReviewTask.id, existingTask.id));
+    await adminReviewTaskProjectorRepo.reactivateSourceOfFundsReview(existingTask.id);
     log.warn({ sourceOfFundsId }, "source_of_funds_review_task_reactivated");
   }
 
-  const createdTask = existing.length === 0;
+  const createdTask = existingTask == null;
   if (createdTask) {
-    await db.insert(adminReviewTask).values({
-      kind: "source_of_funds_review",
-      status: "pending",
-      targetLotId: null,
-      payload: {
-        sourceOfFundsId,
-        userId: payload.userId ?? null,
-        trigger: payload.trigger ?? null,
-        thresholdAmount: payload.thresholdAmount ?? null,
-        exposureAmount: payload.exposureAmount ?? null,
-        currency: payload.currency ?? null,
-      },
+    await adminReviewTaskProjectorRepo.createSourceOfFundsReview({
+      sourceOfFundsId,
+      userId: payload.userId ?? null,
+      trigger: payload.trigger ?? null,
+      thresholdAmount: payload.thresholdAmount ?? null,
+      exposureAmount: payload.exposureAmount ?? null,
+      currency: payload.currency ?? null,
     });
     log.warn(
       {

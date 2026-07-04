@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { dataExport } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, lt } from "drizzle-orm";
 import type {
   DataExportJobRow,
   DataExportProgressSnapshot,
@@ -85,5 +85,52 @@ export class DrizzleDataExportJobRepository implements IDataExportJobRepository 
         errorMessage: null,
       })
       .where(eq(dataExport.id, exportId));
+  }
+
+  async findStuckProcessing(staleCutoff: Date, limit: number): Promise<DataExportJobRow[]> {
+    const rows = await this.db
+      .select()
+      .from(dataExport)
+      .where(
+        and(
+          inArray(dataExport.status, ["pending", "processing"]),
+          lt(dataExport.createdAt, staleCutoff),
+        ),
+      )
+      .limit(limit);
+    return rows.map(mapRow);
+  }
+
+  async markTimedOut(exportId: string): Promise<void> {
+    await this.db
+      .update(dataExport)
+      .set({
+        status: "failed",
+        errorMessage: "Export timed out",
+        phase: null,
+      })
+      .where(eq(dataExport.id, exportId));
+  }
+
+  async findExpired(now: Date, limit: number): Promise<DataExportJobRow[]> {
+    const rows = await this.db
+      .select()
+      .from(dataExport)
+      .where(lt(dataExport.expiresAt, now))
+      .limit(limit);
+    return rows.map(mapRow);
+  }
+
+  async findOlderThan(retentionCutoff: Date, limit: number): Promise<DataExportJobRow[]> {
+    const rows = await this.db
+      .select()
+      .from(dataExport)
+      .where(lt(dataExport.createdAt, retentionCutoff))
+      .limit(limit);
+    return rows.map(mapRow);
+  }
+
+  async deleteById(exportId: string): Promise<void> {
+    await this.db.delete(dataExport).where(eq(dataExport.id, exportId));
   }
 }

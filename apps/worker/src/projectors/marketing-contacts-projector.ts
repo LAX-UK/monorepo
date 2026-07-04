@@ -30,7 +30,7 @@ export async function processMarketingContactsProjector(
   if (!enqueue) return;
 
   await stateRepo.ensureCursor(MARKETING_CONTACTS_PROJECTOR);
-  await ctx.db.transaction(async (tx) => {
+  await ctx.transactionRunner.runInTransaction(async (tx) => {
     const rows = await tx.execute(sql`
       select id, event_type, aggregate_id, payload
       from ${domainEvent}

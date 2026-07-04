@@ -7,7 +7,10 @@ import type {
 } from "../interfaces/user-email-verified.publisher.js";
 
 export class DrizzleUserEmailVerifiedPublisher implements IUserEmailVerifiedPublisher {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly producer = "apps/api",
+  ) {}
 
   async publishIfAbsent(input: PublishUserEmailVerifiedInput): Promise<void> {
     const [existing] = await this.db
@@ -30,7 +33,7 @@ export class DrizzleUserEmailVerifiedPublisher implements IUserEmailVerifiedPubl
         aggregateType: "user",
         aggregateId: input.userId,
         eventType: "user.email_verified",
-        producer: "apps/api",
+        producer: this.producer,
         payload: {
           userId: input.userId,
           email: input.email,

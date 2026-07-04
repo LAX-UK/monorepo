@@ -1,11 +1,9 @@
-import type { Database } from "@auction/db";
-import { dataExport } from "@auction/db/schema";
 import { DEFAULT_EXPORT_STALE_PROCESSING_MS } from "@auction/exports";
-import { and, eq, inArray, lt } from "drizzle-orm";
+import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
 
 export async function purgeExpiredExportsJob(input: {
-  db: Database;
+  dataExportRepo: IDataExportJobRepository;
   storage: UploadStorage;
   log: { info: (o: unknown, msg?: string) => void };
   staleProcessingMs?: number;
@@ -14,35 +12,15 @@ export async function purgeExpiredExportsJob(input: {
   const staleProcessingMs = input.staleProcessingMs ?? DEFAULT_EXPORT_STALE_PROCESSING_MS;
   const staleCutoff = new Date(now.getTime() - staleProcessingMs);
 
-  const stuck = await input.db
-    .select()
-    .from(dataExport)
-    .where(
-      and(
-        inArray(dataExport.status, ["pending", "processing"]),
-        lt(dataExport.createdAt, staleCutoff),
-      ),
-    )
-    .limit(200);
+  const stuck = await input.dataExportRepo.findStuckProcessing(staleCutoff, 200);
 
   let markedFailed = 0;
   for (const row of stuck) {
-    await input.db
-      .update(dataExport)
-      .set({
-        status: "failed",
-        errorMessage: "Export timed out",
-        phase: null,
-      })
-      .where(eq(dataExport.id, row.id));
+    await input.dataExportRepo.markTimedOut(row.id);
     markedFailed += 1;
   }
 
-  const stale = await input.db
-    .select()
-    .from(dataExport)
-    .where(lt(dataExport.expiresAt, now))
-    .limit(200);
+  const stale = await input.dataExportRepo.findExpired(now, 200);
 
   let deleted = 0;
   for (const row of stale) {
@@ -53,16 +31,12 @@ export async function purgeExpiredExportsJob(input: {
         /* best-effort object cleanup */
       }
     }
-    await input.db.delete(dataExport).where(eq(dataExport.id, row.id));
+    await input.dataExportRepo.deleteById(row.id);
     deleted += 1;
   }
 
   const retentionCutoff = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
-  const oldRows = await input.db
-    .select()
-    .from(dataExport)
-    .where(lt(dataExport.createdAt, retentionCutoff))
-    .limit(500);
+  const oldRows = await input.dataExportRepo.findOlderThan(retentionCutoff, 500);
   for (const row of oldRows) {
     if (row.s3Key) {
       try {
@@ -71,7 +45,7 @@ export async function purgeExpiredExportsJob(input: {
         /* ignore */
       }
     }
-    await input.db.delete(dataExport).where(eq(dataExport.id, row.id));
+    await input.dataExportRepo.deleteById(row.id);
     deleted += 1;
   }
 

@@ -2,6 +2,7 @@ import { domainEvent, projectorState } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
+import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
 import { escalateSourceOfFundsRequiredCase } from "./source-of-funds-review/escalate-required-case.js";
@@ -23,6 +24,7 @@ type Db = typeof import("@auction/db").createDb extends (url: string) => infer T
  */
 export async function processSourceOfFundsReview(options: {
   db: Db;
+  adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
   log: pino.Logger;
   complianceRecipientReader: IComplianceRecipientReader;
   /** When set, an MLRO escalation email is enqueued per SoF case. */
@@ -33,6 +35,7 @@ export async function processSourceOfFundsReview(options: {
 }): Promise<void> {
   const {
     db,
+    adminReviewTaskProjectorRepo,
     log,
     emailService,
     supportContactEmail,
@@ -75,7 +78,7 @@ export async function processSourceOfFundsReview(options: {
       const sourceOfFundsId = payload.sourceOfFundsId ?? row.aggregateId;
 
       const { createdTask } = await manageSourceOfFundsReviewTask({
-        db,
+        adminReviewTaskProjectorRepo,
         log,
         payload,
         sourceOfFundsId,

@@ -1,18 +1,28 @@
 import type { createDb } from "@auction/db";
 import type { IMarketingProfileReader } from "@auction/marketing-events";
-import type { IRepositoryFactory } from "@auction/persistence";
+import type {
+  INotificationWriteRepository,
+  IQrCodeScanPersister,
+  IRepositoryFactory,
+  ITransactionRunner,
+} from "@auction/persistence";
 import type { QueueName } from "@auction/queues";
 import type { QueueOptions, WorkerOptions } from "bullmq";
 import type { Redis } from "ioredis";
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
+import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
+import type { IMarketingClickIdPurgeRepository } from "../interfaces/marketing-click-id-purge.repository.js";
 import type { IMarketingContactSyncRepository } from "../interfaces/marketing-contact-sync.repository.js";
 import type { IMarketingEventOutboxWorker } from "../interfaces/marketing-event-outbox.worker.js";
+import type { IMediaAssetCleanupRepository } from "../interfaces/media-asset-cleanup.repository.js";
+import type { IMediaAssetProcessorRepository } from "../interfaces/media-asset-processor.repository.js";
 import type { INewsletterSignupSyncRepository } from "../interfaces/newsletter-signup-sync.repository.js";
 import type { IPayoutStatementRepository } from "../interfaces/payout-statement.repository.js";
+import type { IQrCodeScanPurgeRepository } from "../interfaces/qr-code-scan-purge.repository.js";
 import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source-of-funds-document-purge.repository.js";
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
@@ -51,6 +61,14 @@ export type WorkerBootstrapDeps = {
   marketingContactSyncRepo: IMarketingContactSyncRepository;
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;
+  mediaAssetProcessorRepo: IMediaAssetProcessorRepository;
+  mediaAssetCleanupRepo: IMediaAssetCleanupRepository;
+  qrCodeScanPersister: IQrCodeScanPersister;
+  qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;
+  marketingClickIdPurgeRepo: IMarketingClickIdPurgeRepository;
+  notificationWriteRepo: INotificationWriteRepository;
+  transactionRunner: ITransactionRunner;
+  adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
   sentryMonitorSlugs: Record<string, string>;
   heartbeat: (queue: string) => Promise<void>;
   reportWorkerJobFailure: (queue: string, job: { id?: string } | undefined, err: Error) => void;

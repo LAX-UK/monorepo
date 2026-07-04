@@ -11,7 +11,7 @@ export async function processZohoProjector(
   ctx: ProjectorRunContext,
   stateRepo: ProjectorStateRepository,
 ): Promise<void> {
-  await ctx.db.transaction(async (tx) => {
+  await ctx.transactionRunner.runInTransaction(async (tx) => {
     const rows = await tx.execute(sql`
       select id, event_type, payload
       from ${domainEvent}

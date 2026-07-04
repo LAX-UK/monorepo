@@ -38,18 +38,17 @@ describe("processSourceOfFundsReview", () => {
         reopened: true,
       },
     };
-    const db = fakeDb([
-      undefined,
-      [{ last: 0 }],
-      [eventRow],
-      [{ id: "task_1", status: "resolved" }],
-      undefined,
-      undefined,
-    ]);
+    const adminReviewTaskProjectorRepo = {
+      findSourceOfFundsReview: vi.fn().mockResolvedValue({ id: "task_1", status: "resolved" }),
+      reactivateSourceOfFundsReview: vi.fn().mockResolvedValue(undefined),
+      createSourceOfFundsReview: vi.fn(),
+    };
+    const db = fakeDb([undefined, [{ last: 0 }], [eventRow], undefined]);
     const emailService = { enqueue: vi.fn() } as unknown as IEmailService;
 
     await processSourceOfFundsReview({
       db,
+      adminReviewTaskProjectorRepo: adminReviewTaskProjectorRepo as never,
       log,
       complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,
@@ -57,6 +56,9 @@ describe("processSourceOfFundsReview", () => {
       webOrigin: "https://app.example.com",
     });
 
+    expect(adminReviewTaskProjectorRepo.reactivateSourceOfFundsReview).toHaveBeenCalledWith(
+      "task_1",
+    );
     expect(emailService.enqueue).not.toHaveBeenCalled();
   });
 
@@ -72,12 +74,15 @@ describe("processSourceOfFundsReview", () => {
         currency: "GBP",
       },
     };
+    const adminReviewTaskProjectorRepo = {
+      findSourceOfFundsReview: vi.fn().mockResolvedValue(null),
+      reactivateSourceOfFundsReview: vi.fn(),
+      createSourceOfFundsReview: vi.fn().mockResolvedValue(undefined),
+    };
     const db = fakeDb([
       undefined, // insert projectorState (onConflictDoNothing)
       [{ last: 0 }], // cursor
       [eventRow], // domain events
-      [], // existing task lookup -> none -> createdTask
-      undefined, // insert adminReviewTask
       [{ email: "buyer@example.com", firstName: "Bee" }], // buyer lookup
       undefined, // update cursor
     ]);
@@ -85,6 +90,7 @@ describe("processSourceOfFundsReview", () => {
 
     await processSourceOfFundsReview({
       db,
+      adminReviewTaskProjectorRepo: adminReviewTaskProjectorRepo as never,
       log,
       complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,
@@ -92,6 +98,7 @@ describe("processSourceOfFundsReview", () => {
       webOrigin: "https://app.example.com",
     });
 
+    expect(adminReviewTaskProjectorRepo.createSourceOfFundsReview).toHaveBeenCalled();
     expect(emailService.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         template: "source-of-funds-buyer-notice",

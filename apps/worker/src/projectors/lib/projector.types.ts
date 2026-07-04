@@ -1,5 +1,7 @@
 import type { IEmailService } from "@auction/email";
+import type { INotificationWriteRepository, ITransactionRunner } from "@auction/persistence";
 import type pino from "pino";
+import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";
 import type { IComplianceRecipientReader } from "../../interfaces/compliance-recipient.reader.js";
 import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
 
@@ -9,6 +11,9 @@ export type ProjectorDbConnection = Db | Parameters<Parameters<Db["transaction"]
 
 export type ProjectorRunContext = {
   db: Db;
+  transactionRunner: ITransactionRunner;
+  notificationWriteRepo: INotificationWriteRepository;
+  adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
   log: pino.Logger;
   emailService?: IEmailService | undefined;
   supportContactEmail?: string | undefined;

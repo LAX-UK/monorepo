@@ -160,6 +160,7 @@ export function createDefaultProjectorRegistry(
         await stateRepo.ensureCursor(AML_MATCH_REVIEW_PROJECTOR);
         await processAmlMatchReview({
           db: ctx.db,
+          adminReviewTaskProjectorRepo: ctx.adminReviewTaskProjectorRepo,
           log: ctx.log,
           complianceRecipientReader: ctx.complianceRecipientReader,
           emailService: ctx.emailService,
@@ -175,6 +176,7 @@ export function createDefaultProjectorRegistry(
         await stateRepo.ensureCursor(SOURCE_OF_FUNDS_REVIEW_PROJECTOR);
         await processSourceOfFundsReview({
           db: ctx.db,
+          adminReviewTaskProjectorRepo: ctx.adminReviewTaskProjectorRepo,
           log: ctx.log,
           complianceRecipientReader: ctx.complianceRecipientReader,
           emailService: ctx.emailService,
@@ -200,6 +202,7 @@ export function createDefaultProjectorRegistry(
         await stateRepo.ensureCursor(SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR);
         await processSourceOfFundsDocuments({
           db: ctx.db,
+          notificationWriteRepo: ctx.notificationWriteRepo,
           log: ctx.log,
           complianceRecipientReader: ctx.complianceRecipientReader,
           emailService: ctx.emailService,

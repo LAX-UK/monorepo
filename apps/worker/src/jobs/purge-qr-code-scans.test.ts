@@ -3,25 +3,13 @@ import { purgeQrCodeScans } from "./purge-qr-code-scans.js";
 
 describe("purgeQrCodeScans", () => {
   it("deletes stale raw scan rows in batches", async () => {
-    const returning = vi.fn().mockResolvedValue([{ id: "scan-1" }, { id: "scan-2" }]);
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi
-              .fn()
-              .mockResolvedValueOnce([{ id: "scan-1" }, { id: "scan-2" }])
-              .mockResolvedValueOnce([]),
-          }),
-        }),
-      }),
-      delete: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({ returning }),
-      }),
-    };
+    const purgeBefore = vi
+      .fn()
+      .mockResolvedValueOnce({ deleted: 2, batchCount: 2 })
+      .mockResolvedValueOnce({ deleted: 0, batchCount: 0 });
 
     const result = await purgeQrCodeScans({
-      db: db as never,
+      qrCodeScanPurgeRepo: { purgeBefore },
       log: { info: vi.fn() } as never,
       retentionDays: 90,
       batchSize: 2,
@@ -29,7 +17,7 @@ describe("purgeQrCodeScans", () => {
     });
 
     expect(result.deleted).toBe(2);
-    expect(db.delete).toHaveBeenCalledTimes(1);
+    expect(purgeBefore).toHaveBeenCalledTimes(2);
     expect(result.cutoff.toISOString()).toBe("2026-03-02T00:00:00.000Z");
   });
 });

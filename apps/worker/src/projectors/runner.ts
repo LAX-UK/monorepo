@@ -1,5 +1,7 @@
 import type { IEmailService } from "@auction/email";
+import type { INotificationWriteRepository, ITransactionRunner } from "@auction/persistence";
 import type pino from "pino";
+import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import { ProjectorStateRepository } from "./lib/projector-state.repository.js";
@@ -8,6 +10,9 @@ import { createDefaultProjectorRegistry } from "./projector-registry.js";
 
 export function createProjectorRunner(options: {
   db: Db;
+  transactionRunner: ITransactionRunner;
+  notificationWriteRepo: INotificationWriteRepository;
+  adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
   log: pino.Logger;
   heartbeat: () => Promise<void>;
   staffOpsRecipientReader: IStaffOpsRecipientReader;
@@ -40,6 +45,9 @@ export function createProjectorRunner(options: {
   async function tick() {
     const ctx: ProjectorRunContext = {
       db: options.db,
+      transactionRunner: options.transactionRunner,
+      notificationWriteRepo: options.notificationWriteRepo,
+      adminReviewTaskProjectorRepo: options.adminReviewTaskProjectorRepo,
       log: options.log,
       emailService: options.emailService,
       supportContactEmail: options.supportContactEmail,

@@ -47,6 +47,15 @@ defineCompileTimeContract<_RegistryContract>();
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {
   return {
     db: {} as ProjectorRunContext["db"],
+    transactionRunner: { runInTransaction: vi.fn(async (fn) => fn({} as never)) },
+    notificationWriteRepo: { createMany: vi.fn().mockResolvedValue([]) },
+    adminReviewTaskProjectorRepo: {
+      findAmlScreeningReview: vi.fn(),
+      createAmlScreeningReview: vi.fn(),
+      findSourceOfFundsReview: vi.fn(),
+      reactivateSourceOfFundsReview: vi.fn(),
+      createSourceOfFundsReview: vi.fn(),
+    },
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as unknown as ProjectorRunContext["log"],
     staffOpsRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
     complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },

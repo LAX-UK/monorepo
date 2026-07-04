@@ -9,34 +9,22 @@ describe("purgeExpiredExportsJob", () => {
       createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
       s3Key: null,
     };
-    const set = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi
-            .fn()
-            .mockReturnValueOnce({ limit: vi.fn().mockResolvedValue([staleRow]) })
-            .mockReturnValueOnce({ limit: vi.fn().mockResolvedValue([]) })
-            .mockReturnValueOnce({ limit: vi.fn().mockResolvedValue([]) }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({ set }),
-      delete: vi.fn(),
+    const markTimedOut = vi.fn().mockResolvedValue(undefined);
+    const dataExportRepo = {
+      findStuckProcessing: vi.fn().mockResolvedValue([staleRow]),
+      markTimedOut,
+      findExpired: vi.fn().mockResolvedValue([]),
+      findOlderThan: vi.fn().mockResolvedValue([]),
     };
 
     const result = await purgeExpiredExportsJob({
-      db: db as never,
+      dataExportRepo: dataExportRepo as never,
       storage: { deleteObject: vi.fn() } as never,
       log: { info: vi.fn() },
       staleProcessingMs: 1_800_000,
     });
 
     expect(result.markedFailed).toBe(1);
-    expect(set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "failed",
-        errorMessage: "Export timed out",
-      }),
-    );
+    expect(markTimedOut).toHaveBeenCalledWith("exp-stale");
   });
 });

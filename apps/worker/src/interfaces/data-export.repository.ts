@@ -43,4 +43,9 @@ export interface IDataExportJobRepository {
       expiresAt: Date;
     },
   ): Promise<void>;
+  findStuckProcessing(staleCutoff: Date, limit: number): Promise<DataExportJobRow[]>;
+  markTimedOut(exportId: string): Promise<void>;
+  findExpired(now: Date, limit: number): Promise<DataExportJobRow[]>;
+  findOlderThan(retentionCutoff: Date, limit: number): Promise<DataExportJobRow[]>;
+  deleteById(exportId: string): Promise<void>;
 }

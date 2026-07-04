@@ -16,6 +16,7 @@
     "@auction/db": "workspace:*",
     "@auction/email": "workspace:^",
     "@auction/observability": "workspace:*",
+    "@auction/persistence": "workspace:*",
     "@auction/queues": "workspace:*",
     "@auction/sms": "workspace:^",
     "@hono/node-server": "^1.13.7",

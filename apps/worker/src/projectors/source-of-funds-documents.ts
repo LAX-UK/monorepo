@@ -1,5 +1,6 @@
 import { domainEvent, projectorState } from "@auction/db";
 import type { IEmailService } from "@auction/email";
+import type { INotificationWriteRepository } from "@auction/persistence";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
@@ -23,6 +24,7 @@ type Db = typeof import("@auction/db").createDb extends (url: string) => infer T
  */
 export async function processSourceOfFundsDocuments(options: {
   db: Db;
+  notificationWriteRepo: INotificationWriteRepository;
   log: pino.Logger;
   complianceRecipientReader: IComplianceRecipientReader;
   emailService?: IEmailService | undefined;
@@ -32,6 +34,7 @@ export async function processSourceOfFundsDocuments(options: {
 }): Promise<void> {
   const {
     db,
+    notificationWriteRepo,
     log,
     emailService,
     supportContactEmail,
@@ -84,6 +87,7 @@ export async function processSourceOfFundsDocuments(options: {
       if (row.eventType === "source_of_funds.documents_requested") {
         await handleDocumentsRequested({
           db,
+          notificationWriteRepo,
           log,
           emailService,
           supportContactEmail,
@@ -108,6 +112,7 @@ export async function processSourceOfFundsDocuments(options: {
       } else if (row.eventType === "source_of_funds.reviewed") {
         await handleReviewedClosure({
           db,
+          notificationWriteRepo,
           log,
           emailService,
           supportContactEmail,

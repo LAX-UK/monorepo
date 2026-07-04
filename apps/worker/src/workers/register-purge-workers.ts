@@ -23,6 +23,7 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     log,
     bullConnection,
     queueOpts,
+    qrCodeScanPurgeRepo,
     sentryMonitorSlugs,
     heartbeat,
     reportWorkerJobFailure,
@@ -91,7 +92,7 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     async () => {
       await withSentryCronMonitor("purge-qr-code-scans", sentryMonitorSlugs, async () => {
         const { deleted } = await purgeQrCodeScans({
-          db,
+          qrCodeScanPurgeRepo,
           log,
           retentionDays: env.QR_SCAN_RETENTION_DAYS,
         });

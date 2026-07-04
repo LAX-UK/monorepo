@@ -25,13 +25,15 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
   const {
     bullConnection,
     queueOpts,
-    db,
     uploadValidationRepo,
     uploadStorage,
     log,
     malwareScanner,
     imageProcessor,
     publicUploadBase,
+    mediaAssetProcessorRepo,
+    mediaAssetCleanupRepo,
+    qrCodeScanPersister,
     sentryMonitorSlugs,
     heartbeat,
     reportWorkerJobFailure,
@@ -75,7 +77,13 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
       if (!key) {
         throw new Error("process-image job is missing key");
       }
-      await processImageJob({ db, storage: uploadStorage, processor: imageProcessor, key, log });
+      await processImageJob({
+        mediaAssetProcessorRepo,
+        storage: uploadStorage,
+        processor: imageProcessor,
+        key,
+        log,
+      });
       await heartbeat("process-image");
     },
     bullConnection,
@@ -93,7 +101,7 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
         throw new Error("image-cleanup job is missing key");
       }
       await cleanupImageJob({
-        db,
+        mediaAssetCleanupRepo,
         storage: uploadStorage,
         key,
         publicBaseUrl: publicUploadBase,
@@ -111,7 +119,7 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
   const qrCodeScanWorker = new Worker<QrCodeScanJobPayload>(
     QR_CODE_SCAN_QUEUE_NAME,
     async (job) => {
-      await recordQrCodeScanJob({ db, data: job.data, log });
+      await recordQrCodeScanJob({ qrCodeScanPersister, data: job.data, log });
       await heartbeat("qr-code-scan");
     },
     {

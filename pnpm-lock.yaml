@@ -198,6 +198,9 @@ importers:
       '@auction/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@auction/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
       '@auction/queues':
         specifier: workspace:*
         version: link:../../packages/queues

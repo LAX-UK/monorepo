@@ -124,4 +124,17 @@ export class DrizzleMarketingEventOutboxWorker implements IMarketingEventOutboxW
 
     return { nextAttempts, attemptsExceeded, shouldRetry: retryable };
   }
+
+  async purgeStaleTerminal(staleBefore: Date): Promise<number> {
+    const deleted = await this.db
+      .delete(marketingEventOutbox)
+      .where(
+        and(
+          inArray(marketingEventOutbox.state, ["sent", "skipped", "failed"]),
+          lt(marketingEventOutbox.createdAt, staleBefore),
+        ),
+      )
+      .returning({ id: marketingEventOutbox.id });
+    return deleted.length;
+  }
 }

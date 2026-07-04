@@ -1,14 +1,12 @@
-import type { Database } from "@auction/db";
-import { qrCodeScan } from "@auction/db/schema";
-import { inArray, lt } from "drizzle-orm";
 import type { Logger } from "pino";
+import type { IQrCodeScanPurgeRepository } from "../interfaces/qr-code-scan-purge.repository.js";
 
 const DEFAULT_RETENTION_DAYS = 90;
 const DEFAULT_BATCH_SIZE = 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function purgeQrCodeScans(input: {
-  db: Database;
+  qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;
   log: Logger;
   retentionDays?: number;
   batchSize?: number;
@@ -20,25 +18,13 @@ export async function purgeQrCodeScans(input: {
   let deleted = 0;
 
   for (;;) {
-    const rows = await input.db
-      .select({ id: qrCodeScan.id })
-      .from(qrCodeScan)
-      .where(lt(qrCodeScan.scannedAt, cutoff))
-      .limit(batchSize);
-    if (rows.length === 0) break;
-
-    const removed = await input.db
-      .delete(qrCodeScan)
-      .where(
-        inArray(
-          qrCodeScan.id,
-          rows.map((row) => row.id),
-        ),
-      )
-      .returning({ id: qrCodeScan.id });
-    deleted += removed.length;
-
-    if (rows.length < batchSize) break;
+    const { deleted: batchDeleted, batchCount } = await input.qrCodeScanPurgeRepo.purgeBefore(
+      cutoff,
+      batchSize,
+    );
+    if (batchCount === 0) break;
+    deleted += batchDeleted;
+    if (batchCount < batchSize) break;
   }
 
   if (deleted > 0) {

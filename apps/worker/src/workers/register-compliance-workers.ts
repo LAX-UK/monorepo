@@ -53,7 +53,11 @@ export function registerComplianceWorkers(
     DATA_EXPORT_QUEUE_NAME,
     async (job) => {
       if (job.name === "purge-expired") {
-        await purgeExpiredExportsJob({ db, storage: uploadStorage, log });
+        await purgeExpiredExportsJob({
+          dataExportRepo,
+          storage: uploadStorage,
+          log,
+        });
         return;
       }
       await dataExportJob(

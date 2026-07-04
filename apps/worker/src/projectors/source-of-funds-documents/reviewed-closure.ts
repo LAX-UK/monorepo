@@ -1,5 +1,6 @@
-import { notification, sourceOfFunds, user } from "@auction/db";
+import { sourceOfFunds, user } from "@auction/db";
 import type { IEmailService } from "@auction/email";
+import type { INotificationWriteRepository } from "@auction/persistence";
 import { eq } from "drizzle-orm";
 import type pino from "pino";
 import type { Db } from "../lib/projector.types.js";
@@ -7,6 +8,7 @@ import { type ReviewedPayload, loadSettlementContext } from "./sof-documents-hel
 
 export async function handleReviewedClosure(args: {
   db: Db;
+  notificationWriteRepo: INotificationWriteRepository;
   log: pino.Logger;
   emailService?: IEmailService | undefined;
   supportContactEmail?: string | undefined;
@@ -42,12 +44,14 @@ export async function handleReviewedClosure(args: {
       ? "Your source of funds has been verified. You can now complete checkout."
       : "We were unable to verify your source of funds. Please check your email for next steps.";
 
-  await args.db.insert(notification).values({
-    userId: buyerId,
-    type: notifType,
-    title,
-    message,
-  });
+  await args.notificationWriteRepo.createMany([
+    {
+      userId: buyerId,
+      type: notifType,
+      title,
+      message,
+    },
+  ]);
 
   if (args.emailService && args.supportContactEmail) {
     const template =

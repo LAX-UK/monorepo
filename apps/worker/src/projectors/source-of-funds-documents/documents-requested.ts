@@ -1,5 +1,6 @@
-import { notification, user } from "@auction/db";
+import { user } from "@auction/db";
 import type { IEmailService } from "@auction/email";
+import type { INotificationWriteRepository } from "@auction/persistence";
 import { eq } from "drizzle-orm";
 import type pino from "pino";
 import type { Db } from "../lib/projector.types.js";
@@ -7,6 +8,7 @@ import { type DocumentsRequestedPayload, loadSettlementContext } from "./sof-doc
 
 export async function handleDocumentsRequested(args: {
   db: Db;
+  notificationWriteRepo: INotificationWriteRepository;
   log: pino.Logger;
   emailService?: IEmailService | undefined;
   supportContactEmail?: string | undefined;
@@ -28,14 +30,16 @@ export async function handleDocumentsRequested(args: {
   const types = args.payload.documentTypes ?? [];
   const settlement = await loadSettlementContext(args.db, buyerId);
 
-  await args.db.insert(notification).values({
-    userId: buyerId,
-    type: "source_of_funds_documents_requested",
-    title: "Documents requested for source of funds",
-    message: settlement.summary
-      ? `Please upload the requested documents for ${settlement.summary}.`
-      : "Our compliance team has requested documents to verify your source of funds.",
-  });
+  await args.notificationWriteRepo.createMany([
+    {
+      userId: buyerId,
+      type: "source_of_funds_documents_requested",
+      title: "Documents requested for source of funds",
+      message: settlement.summary
+        ? `Please upload the requested documents for ${settlement.summary}.`
+        : "Our compliance team has requested documents to verify your source of funds.",
+    },
+  ]);
 
   if (args.emailService && args.supportContactEmail) {
     await args.emailService.enqueue({

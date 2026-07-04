@@ -28,6 +28,7 @@ import { loadWorkerEnv } from "../env.js";
 import { processImageJob } from "../jobs/process-image.js";
 import { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import { createUploadStorage } from "../lib/upload-storage.js";
+import { DrizzleMediaAssetProcessorRepository } from "../repositories/drizzle-media-asset-processor.repository.js";
 
 function parseArgs(argv: string[]) {
   const apply = argv.includes("--apply");
@@ -99,6 +100,7 @@ async function main() {
   const env = loadWorkerEnv();
   const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
   const storage = createUploadStorage(env);
+  const mediaAssetProcessorRepo = new DrizzleMediaAssetProcessorRepository(db);
   const processor = new SharpImageProcessor();
   const log = pino({ level: "info" });
 
@@ -138,7 +140,7 @@ async function main() {
   let failed = 0;
   for (const key of keys) {
     try {
-      await processImageJob({ db, storage, processor, key, log });
+      await processImageJob({ mediaAssetProcessorRepo, storage, processor, key, log });
       processed += 1;
       if (processed % 25 === 0) {
         console.log(`processed ${processed}/${keys.length}...`);

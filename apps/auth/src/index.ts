@@ -27,6 +27,7 @@ import { cors } from "hono/cors";
 import { Redis } from "ioredis";
 import pino from "pino";
 import { Registry, collectDefaultMetrics } from "prom-client";
+import { createAuthRepositories } from "./container/create-auth-repositories.js";
 import { loadAuthEnv } from "./env.js";
 import { trustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
@@ -54,6 +55,7 @@ const log = pino({
 });
 
 const db = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
+const authRepositories = createAuthRepositories(db);
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 redis.on("error", (err: Error) => {
   log.error({ err }, "redis connection error");
@@ -120,7 +122,7 @@ const auth = createAuth({
     );
   },
   onEmailVerified: async (authUser) => {
-    await publishUserEmailVerified(db, {
+    await publishUserEmailVerified(authRepositories.userEmailVerifiedPublisher, {
       userId: authUser.id,
       email: authUser.email,
     });

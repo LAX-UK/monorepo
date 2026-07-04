@@ -1,7 +1,8 @@
-import { adminReviewTask, domainEvent, projectorState } from "@auction/db";
+import { domainEvent, projectorState } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
+import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 
 export const AML_MATCH_REVIEW_PROJECTOR = "aml_match_review";
@@ -29,6 +30,7 @@ type AmlMatchFlaggedPayload = {
  */
 export async function processAmlMatchReview(options: {
   db: Db;
+  adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
   log: pino.Logger;
   complianceRecipientReader: IComplianceRecipientReader;
   /** When set, an MLRO escalation email is enqueued per flagged screening. */
@@ -37,7 +39,15 @@ export async function processAmlMatchReview(options: {
   webOrigin?: string | undefined;
   adminEmailAddress?: string | undefined;
 }): Promise<void> {
-  const { db, log, emailService, supportContactEmail, webOrigin, adminEmailAddress } = options;
+  const {
+    db,
+    adminReviewTaskProjectorRepo,
+    log,
+    emailService,
+    supportContactEmail,
+    webOrigin,
+    adminEmailAddress,
+  } = options;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
   const adminReviewUrl = `${base}/admin/compliance/aml`;
 
@@ -72,32 +82,18 @@ export async function processAmlMatchReview(options: {
       const payload = (row.payload ?? {}) as AmlMatchFlaggedPayload;
       const screeningId = payload.screeningId ?? row.aggregateId;
 
-      const existing = await db
-        .select({ id: adminReviewTask.id })
-        .from(adminReviewTask)
-        .where(
-          and(
-            eq(adminReviewTask.kind, "aml_screening_review"),
-            sql`${adminReviewTask.payload} ->> 'screeningId' = ${screeningId}`,
-          ),
-        )
-        .limit(1);
+      const existing = await adminReviewTaskProjectorRepo.findAmlScreeningReview(screeningId);
 
-      const createdTask = existing.length === 0;
+      const createdTask = existing == null;
       if (createdTask) {
-        await db.insert(adminReviewTask).values({
-          kind: "aml_screening_review",
-          status: "pending",
-          targetLotId: null,
-          payload: {
-            screeningId,
-            userId: payload.userId ?? null,
-            providerSessionId: payload.providerSessionId ?? null,
-            outcome: payload.outcome ?? null,
-            matchStatus: payload.matchStatus ?? null,
-            categories: payload.categories ?? null,
-            reasons: payload.reasons ?? null,
-          },
+        await adminReviewTaskProjectorRepo.createAmlScreeningReview({
+          screeningId,
+          userId: payload.userId ?? null,
+          providerSessionId: payload.providerSessionId ?? null,
+          outcome: payload.outcome ?? null,
+          matchStatus: payload.matchStatus ?? null,
+          categories: payload.categories ?? null,
+          reasons: payload.reasons ?? null,
         });
         log.warn(
           {
