@@ -6,7 +6,7 @@ import type { ISaleroomSessionLookup } from "@auction/persistence";
 import type { IWatchlistRepository } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { vi } from "vitest";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ICacheProvider } from "../interfaces/cache.js";
 import type { INotificationOutboxService } from "../interfaces/notification-outbox.js";
 import type { ILotNotificationSender } from "../interfaces/notifications.js";
@@ -27,7 +27,7 @@ export type LotLifecycleTestDeps = {
   notificationDispatcher?: NotificationDispatcher | null;
   notificationFactory?: NotificationFactory;
   antiShillingGuard?: IAntiShillingGuard | null;
-  domainEventPublisher?: DomainEventPublisher | null;
+  domainEventSink?: IDomainEventSink | null;
   onLotActivated?: ((lotId: string) => Promise<void>) | null;
   lotLifecycleRecording?: LotLifecycleRecording | null;
   lotNotifications?: ILotNotificationSender | null;
@@ -52,7 +52,7 @@ export function createLotLifecycleTestStack(deps: LotLifecycleTestDeps): LotLife
     deps.repos,
     notifications,
     deps.antiShillingGuard ?? null,
-    deps.domainEventPublisher ?? null,
+    deps.domainEventSink ?? null,
     deps.lotLifecycleRecording ?? null,
   );
   const timedRunner = new TimedLotTransitionRunner(
@@ -155,7 +155,7 @@ export function createTimedRunnerStack(deps: LotLifecycleTestDeps) {
     deps.repos,
     notifications,
     deps.antiShillingGuard ?? null,
-    deps.domainEventPublisher ?? null,
+    deps.domainEventSink ?? null,
     deps.lotLifecycleRecording ?? null,
   );
   const timedRunner = new TimedLotTransitionRunner(
@@ -185,7 +185,7 @@ export function createClerkOutcomeStack(deps: LotLifecycleTestDeps) {
     deps.repos,
     notifications,
     deps.antiShillingGuard ?? null,
-    deps.domainEventPublisher ?? null,
+    deps.domainEventSink ?? null,
     deps.lotLifecycleRecording ?? null,
   );
   return { clerkOutcomes, notifications };

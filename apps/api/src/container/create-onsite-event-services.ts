@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { DrizzleGuestPaddleReader } from "@auction/persistence";
+import { DrizzleGuestPaddleReader } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { createBaseLogger } from "../lib/logger.js";
 import type { IOnsiteEventAdminService } from "../services/interfaces/onsite-event-admin-service.js";

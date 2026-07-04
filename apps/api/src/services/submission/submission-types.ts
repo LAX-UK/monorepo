@@ -9,7 +9,6 @@ import type {
 import type { IRepositoryFactory } from "@auction/persistence";
 import type { LegalEntityStatus, UpdateItemSubmissionInput } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
@@ -32,7 +31,6 @@ export type ItemSubmissionServiceDeps = {
   imageCleanup: ImageCleanupService | undefined;
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null;
   legalEntityRepository: ILegalEntityRepository | null;
-  domainEventPublisher: DomainEventPublisher | null;
   domainEventSink: IDomainEventSink | null;
   mediaUrlResolver: MediaUrlResolver | undefined;
   mediaAssetEnricher: MediaAssetEnricher | undefined;

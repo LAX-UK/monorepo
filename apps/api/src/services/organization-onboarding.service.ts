@@ -3,7 +3,7 @@ import type { OnboardingOrganisationRow } from "@auction/persistence";
 import type { LegalEntity } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 import { PUBLIC_ORG_SUBKIND_META } from "@auction/validators";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type {
   CheckNameResult,
   CreateOrganizationResult,
@@ -112,7 +112,7 @@ function isUniqueViolation(err: unknown): boolean {
 export class OrganizationOnboardingService implements IOrganizationOnboardingService {
   constructor(
     private readonly onboardingRepo: ILegalEntityOnboardingRepository,
-    private readonly domainEventPublisher?: DomainEventPublisher,
+    private readonly domainEventSink?: IDomainEventSink,
   ) {}
 
   async createOrganization(
@@ -157,8 +157,8 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
             tx,
           );
 
-          if (this.domainEventPublisher) {
-            await this.domainEventPublisher.publish(tx, {
+          if (this.domainEventSink) {
+            await this.domainEventSink.withTx(tx).publish({
               aggregateType: "legal_entity",
               aggregateId: created.id as string,
               eventType: "legal_entity.created",

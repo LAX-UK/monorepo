@@ -1,6 +1,7 @@
 import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
 import { type RefundLedgerDeps, executePaymentRefundLedger } from "./refund-execution.js";
@@ -29,9 +30,8 @@ function baseDeps(overrides: Partial<RefundLedgerDeps> = {}): RefundLedgerDeps {
     transactionRunner: {
       runInTransaction: vi.fn(async (fn: (t: never) => Promise<void>) => fn(tx)),
     } as never,
-    domainEventPublisher: {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher,
+    domainEventSink: mockDomainEventSink(vi.fn().mockResolvedValue(undefined),
+    ),
     payoutAdjustments: null,
     paymentRefundReconcile: null,
     xeroPaymentRecorder: null,
@@ -43,7 +43,7 @@ describe("executePaymentRefundLedger", () => {
   it("publishes admin_manual refund event without reason key", async () => {
     const publish = vi.fn().mockResolvedValue(undefined);
     const deps = baseDeps({
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
     });
 
     const result = await executePaymentRefundLedger(deps, {
@@ -58,7 +58,6 @@ describe("executePaymentRefundLedger", () => {
 
     expect(result.isOk()).toBe(true);
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         eventType: "payment.refunded",
         payload: {
@@ -70,13 +69,13 @@ describe("executePaymentRefundLedger", () => {
         },
       }),
     );
-    expect(publish.mock.calls[0]?.[1]?.payload).not.toHaveProperty("reason");
+    expect(publish.mock.calls[0]?.[0]?.payload).not.toHaveProperty("reason");
   });
 
   it("publishes admin_manual_review refund event with seller_archived reason", async () => {
     const publish = vi.fn().mockResolvedValue(undefined);
     const deps = baseDeps({
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
     });
 
     const result = await executePaymentRefundLedger(deps, {
@@ -92,7 +91,6 @@ describe("executePaymentRefundLedger", () => {
 
     expect(result.isOk()).toBe(true);
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         payload: expect.objectContaining({
           via: "admin_manual_review",
@@ -167,7 +165,7 @@ describe("executePaymentRefundLedger", () => {
       payments: {
         applyRefundedInTransaction: vi.fn().mockResolvedValue(false),
       } as unknown as IPaymentWriteRepository,
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
     });
 
     const result = await executePaymentRefundLedger(deps, {

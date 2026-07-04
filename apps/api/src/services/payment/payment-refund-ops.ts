@@ -51,7 +51,7 @@ export async function refundPayment(
       new PaymentProviderError("Stripe is not configured for this environment", 503, undefined),
     );
   }
-  if (!deps.transactionRunner || !deps.domainEventPublisher) {
+  if (!deps.transactionRunner || !deps.domainEventSink) {
     return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
   }
 
@@ -74,7 +74,7 @@ export async function refundPayment(
     {
       payments: deps.payments,
       transactionRunner: deps.transactionRunner,
-      domainEventPublisher: deps.domainEventPublisher,
+      domainEventSink: deps.domainEventSink,
       payoutAdjustments: deps.payoutAdjustments,
       paymentRefundReconcile: deps.paymentRefundReconcile,
       xeroPaymentRecorder: deps.xeroPaymentRecorder,
@@ -114,7 +114,7 @@ export async function refundManualReviewPayment(
   if (p.status !== "requires_manual_review") {
     return err(new AuthzError("Payment is not in manual review", 409));
   }
-  if (!deps.transactionRunner || !deps.domainEventPublisher) {
+  if (!deps.transactionRunner || !deps.domainEventSink) {
     return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
   }
 
@@ -136,7 +136,7 @@ export async function refundManualReviewPayment(
     {
       payments: deps.payments,
       transactionRunner: deps.transactionRunner,
-      domainEventPublisher: deps.domainEventPublisher,
+      domainEventSink: deps.domainEventSink,
       payoutAdjustments: deps.payoutAdjustments,
       paymentRefundReconcile: deps.paymentRefundReconcile,
       xeroPaymentRecorder: deps.xeroPaymentRecorder,

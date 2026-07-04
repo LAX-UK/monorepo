@@ -69,14 +69,14 @@ export function createPlatformIdentityServices(
     entityInvitationRepository,
     uploadPersistenceRepository,
   } = repos;
-  const { domainEventPublisher } = core;
+  const { domainEventSink } = core;
 
   const organizationOnboardingService: IOrganizationOnboardingService =
-    new OrganizationOnboardingService(legalEntityOnboardingRepository, domainEventPublisher);
+    new OrganizationOnboardingService(legalEntityOnboardingRepository, domainEventSink);
   const impersonationAuditService = new ImpersonationAuditService(
     core.transactionRunner,
     repos.impersonationDomainEventReader,
-    domainEventPublisher,
+    domainEventSink,
   );
   const impersonationSessionService = new ImpersonationSessionService(
     repos.impersonationSessionRepository,
@@ -93,7 +93,7 @@ export function createPlatformIdentityServices(
   });
   const artistRegistryService: IArtistRegistryService = new ArtistRegistryService(
     artistRegistryRepository,
-    domainEventPublisher,
+    domainEventSink,
   );
   const memberManagementService: IMemberManagementService = new MemberManagementService(
     core.transactionRunner,
@@ -107,7 +107,7 @@ export function createPlatformIdentityServices(
   const invitationLifecycleService: IInvitationLifecycleService = new InvitationLifecycleService(
     core.transactionRunner,
     entityInvitationRepository,
-    domainEventPublisher,
+    domainEventSink,
     membershipInviteNotifier,
     env.WEB_ORIGIN,
     membershipGuard,
@@ -116,7 +116,7 @@ export function createPlatformIdentityServices(
     core.transactionRunner,
     legalEntityRepository,
     organizationOnboardingService,
-    domainEventPublisher,
+    domainEventSink,
     uploadPersistenceRepository,
     legalEntityOnboardingRepository,
     stripeConnectService,
@@ -140,7 +140,7 @@ export function createPlatformIdentityServices(
   const legalEntityLifecycleAdminService = new LegalEntityLifecycleAdminService(
     core.transactionRunner,
     repos.legalEntityLifecycleAdminRepository,
-    domainEventPublisher,
+    domainEventSink,
     {
       enqueueArchiveCascade: async (legalEntityId: string) => {
         await legalEntityArchiveQueue.add(

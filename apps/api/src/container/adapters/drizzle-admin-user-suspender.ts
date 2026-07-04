@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import type { IAdminUserSuspender } from "@auction/persistence";
+import type { IAdminUserSuspender } from "@auction/persistence/interfaces";
 import { eq } from "drizzle-orm";
 import type { IAuthAuditPublisher } from "../../services/interfaces/auth-audit-publisher.js";
 

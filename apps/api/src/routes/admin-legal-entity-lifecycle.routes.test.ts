@@ -3,6 +3,7 @@ import * as AuctionTypes from "@auction/types";
 import { Hono } from "hono";
 import { err } from "neverthrow";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import type { Container } from "../container.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
 import { AdminLegalEntityLifecycleApplicationService } from "../services/admin/admin-legal-entity-lifecycle-application.service.js";
@@ -106,7 +107,7 @@ function buildAppWithRealLifecycleServiceStatusPair(outerStatus: string, lockedR
   const service = new LegalEntityLifecycleAdminService(
     transactionRunnerFromDb(db as never),
     new DrizzleLegalEntityLifecycleAdminRepository(db as never),
-    { publish } as never,
+    mockDomainEventSink(publish) as never,
   );
   const app = lifecycleApp(
     minimalContainer({ legalEntityLifecycleAdminService: service, legalEntityRepository }),
@@ -166,7 +167,7 @@ describe("POST /admin/legal-entities/:id/request-docs (legal_entity.write)", () 
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(200);
     expect(publish).toHaveBeenCalledTimes(1);
-    const event = publish.mock.calls[0]?.[1] as {
+    const event = publish.mock.calls[0]?.[0] as {
       eventType: string;
       payload: { to_status: string };
     };
@@ -235,7 +236,7 @@ describe("POST /admin/legal-entities/:id/start-review (legal_entity.write)", () 
     const { app, publish } = buildAppWithRealLifecycleService("docs_received");
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(200);
-    const event = publish.mock.calls[0]?.[1] as { eventType: string };
+    const event = publish.mock.calls[0]?.[0] as { eventType: string };
     expect(event.eventType).toBe("legal_entity.review_started");
   });
 });
@@ -269,7 +270,7 @@ describe("POST /admin/legal-entities/:id/approve (legal_entity.approve)", () => 
     const { app, publish } = buildAppWithRealLifecycleService("under_review");
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(200);
-    const event = publish.mock.calls[0]?.[1] as { eventType: string };
+    const event = publish.mock.calls[0]?.[0] as { eventType: string };
     expect(event.eventType).toBe("legal_entity.approved");
   });
 });
@@ -303,7 +304,7 @@ describe("POST /admin/legal-entities/:id/restrict (legal_entity.write)", () => {
     const { app, publish } = buildAppWithRealLifecycleService("approved");
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(200);
-    const event = publish.mock.calls[0]?.[1] as { eventType: string };
+    const event = publish.mock.calls[0]?.[0] as { eventType: string };
     expect(event.eventType).toBe("legal_entity.restricted");
   });
 });
@@ -357,7 +358,7 @@ describe("POST /admin/legal-entities/:id/reject (legal_entity.approve)", () => {
       }),
     });
     expect(res.status).toBe(200);
-    const event = publish.mock.calls[0]?.[1] as { eventType: string; payload: { reason: string } };
+    const event = publish.mock.calls[0]?.[0] as { eventType: string; payload: { reason: string } };
     expect(event.eventType).toBe("legal_entity.rejected");
     expect(event.payload.reason).toBe("Does not meet documentation standards.");
   });
@@ -441,7 +442,7 @@ describe("POST /admin/legal-entities/:id/archive (legal_entity.archive)", () => 
       }),
     });
     expect(res.status).toBe(200);
-    const event = publish.mock.calls[0]?.[1] as { eventType: string };
+    const event = publish.mock.calls[0]?.[0] as { eventType: string };
     expect(event.eventType).toBe("legal_entity.archived");
   });
 

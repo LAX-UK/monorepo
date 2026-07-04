@@ -1,6 +1,7 @@
 import type { IConditionReportRequestRepository } from "@auction/persistence";
 import type { ILotRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";
 import { NotificationFactory } from "../notification.factory.js";
 import { ConditionReportAdminService } from "./condition-report-admin.service.js";
@@ -49,7 +50,7 @@ function adminServiceForMarkInProgress(
     requestRepo,
     lotRepo: { findById: vi.fn() } as unknown as ILotRepository,
     legalEntityRepository: null,
-    domainEventSink: { publish, withTx: vi.fn() } as never,
+    domainEventSink: mockDomainEventSink(publish) as never,
     notificationDispatcher: null,
     notificationFactory: new NotificationFactory(),
   });

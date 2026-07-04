@@ -4,7 +4,7 @@ import type {
   IItemSubmissionAdminApi,
   IItemSubmissionSellerApi,
   IItemSubmissionService,
-} from "./interfaces/item-submission-service.js";
+} from "./interfaces/item-submission-apis.js";
 import type { ItemSubmissionService } from "./item-submission.service.js";
 
 /**

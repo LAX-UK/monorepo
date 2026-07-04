@@ -726,3 +726,11 @@ export type {
   PaymentAttentionRow,
   SubmissionAttentionRow,
 } from "./attention-feed.reader.js";
+
+export type {
+  IRepositoryFactory,
+  LotBidRepos,
+  TransactionRepos,
+} from "./repository-factory.js";
+
+export type { ITransactionRunner } from "../transaction-runner.js";

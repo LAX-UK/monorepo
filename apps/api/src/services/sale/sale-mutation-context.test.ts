@@ -2,6 +2,7 @@ import type { ITransactionRunner } from "@auction/persistence";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import type { IRepositoryFactory } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
 import { publishSaleEvent, recordLotLifecycle, txRepos } from "./sale-mutation-context.js";
@@ -20,7 +21,6 @@ function baseDeps(overrides: Partial<SaleServiceDeps> = {}): SaleServiceDeps {
     mediaAssetEnricher: undefined,
     englishOnlyAuctions: false,
     transactionRunner: null,
-    domainEventPublisher: null,
     domainEventSink: null,
     lotLifecycleRecording: null,
     legalEntityRepository: null,
@@ -76,7 +76,7 @@ describe("publishSaleEvent", () => {
   it("publishes sale aggregate event with exact payload", async () => {
     const publish = vi.fn().mockResolvedValue(undefined);
     const deps = baseDeps({
-      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
     });
     await publishSaleEvent(deps, "admin-1", "sale-1", "sale.published", {
       from_status: "draft",

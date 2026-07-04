@@ -47,7 +47,7 @@ export class SourceOfFundsDocumentCollectionStaffService
       if (!updated) throw new Error("source_of_funds_request_failed");
 
       if (this.ctx.events) {
-        await this.ctx.events.publish(conn, {
+        await this.ctx.events.withTx(conn).publish({
           aggregateType: "source_of_funds",
           aggregateId: updated.id,
           eventType: SOURCE_OF_FUNDS_DOCUMENTS_REQUESTED_EVENT,
@@ -190,7 +190,7 @@ export class SourceOfFundsDocumentCollectionStaffService
     const events = this.ctx.events;
     if (!events) return;
     await this.ctx.transactionRunner.runInTransaction(async (tx) => {
-      await events.publish(tx, {
+      await events.withTx(tx).publish({
         aggregateType: "source_of_funds",
         aggregateId: command.caseId,
         eventType: SOURCE_OF_FUNDS_DOCUMENT_DOWNLOADED_EVENT,
@@ -212,7 +212,7 @@ export class SourceOfFundsDocumentCollectionStaffService
     const events = this.ctx.events;
     if (!events) return;
     await this.ctx.transactionRunner.runInTransaction(async (tx) => {
-      await events.publish(tx, {
+      await events.withTx(tx).publish({
         aggregateType: "source_of_funds",
         aggregateId: command.caseId,
         eventType: SOURCE_OF_FUNDS_DOCUMENT_DOWNLOADED_EVENT,

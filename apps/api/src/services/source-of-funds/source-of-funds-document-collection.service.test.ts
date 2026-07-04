@@ -1,6 +1,7 @@
 import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
 import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { PerRequestSigningPolicy } from "../signed-url-policy.js";
 import {
   SOURCE_OF_FUNDS_DOCUMENT_DOWNLOADED_EVENT,
@@ -253,7 +254,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       {} as ISourceOfFundsDocumentReviewRepository,
       { findKey: vi.fn().mockResolvedValue("uploads/active/source-of-funds/x.pdf") } as never,
       { runInTransaction: async (fn: (tx: unknown) => Promise<void>) => fn({}) } as never,
-      { publish } as never,
+      mockDomainEventSink(publish) as never,
       { createPresignedGet } as never,
       new PerRequestSigningPolicy(90),
       makeSettlementReadMock(),
@@ -273,7 +274,6 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       responseContentDisposition: 'attachment; filename="statement.pdf"',
     });
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         eventType: SOURCE_OF_FUNDS_DOCUMENT_DOWNLOADED_EVENT,
         actorUserId: "staff-2",
@@ -300,7 +300,7 @@ describe("SourceOfFundsDocumentCollectionService", () => {
       {} as ISourceOfFundsDocumentReviewRepository,
       { findKey: vi.fn() } as never,
       { runInTransaction: async (fn: (tx: unknown) => unknown) => fn({}) } as never,
-      { publish: vi.fn() } as never,
+      mockDomainEventSink(vi.fn()) as never,
       { createPresignedGet } as never,
       new PerRequestSigningPolicy(90),
       makeSettlementReadMock(),

@@ -1,5 +1,6 @@
 import type { IBidRepository, ILotRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import {
   baseLot,
   bid,
@@ -114,12 +115,12 @@ describe("TimedLotTransitionRunner", () => {
     };
 
     const publish = vi.fn().mockResolvedValue(undefined);
-    const publisher = { publish } as import("../domain-event.publisher.js").DomainEventPublisher;
+    const publisher = mockDomainEventSink(publish);
 
     const { timedRunner } = createTimedRunnerStack({
       repos: createFactory(lots, bids),
       antiShillingGuard: guard,
-      domainEventPublisher: publisher,
+      domainEventSink: publisher,
     });
     await timedRunner.runTransitions(new Date());
 
@@ -133,7 +134,6 @@ describe("TimedLotTransitionRunner", () => {
       sort: "english",
     });
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         eventType: "lot.voided",
         payload: expect.objectContaining({ reason: "no_valid_winner" }),

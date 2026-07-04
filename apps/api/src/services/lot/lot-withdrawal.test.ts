@@ -3,8 +3,8 @@ import type { ILegalEntityRepository } from "@auction/persistence";
 import type { ILotRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
 import type { LotServiceDeps } from "./lot-types.js";
 import { approveWithdrawalRequest, requestWithdrawal } from "./lot-withdrawal.js";
@@ -50,7 +50,7 @@ function baseDeps(overrides: Partial<LotServiceDeps> = {}): LotServiceDeps {
     enforceIndividualConnectOnPublish: false,
     adminReviewTaskRepository: null,
     transactionRunner: null,
-    domainEventPublisher: null,
+    domainEventSink: null,
     catalogueMediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
     englishOnlyAuctions: false,
@@ -72,7 +72,7 @@ describe("requestWithdrawal", () => {
     const adminReviewTaskRepository = makeAdminReviewTaskRepo();
     const deps = baseDeps({
       transactionRunner: transactionRunnerFromDb(db as unknown as Database),
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: mockDomainEventSink(publish),
       adminReviewTaskRepository: adminReviewTaskRepository as never,
       legalEntityRepository: {
         findActiveMembership: vi.fn().mockResolvedValue({ role: "owner" }),
@@ -83,7 +83,6 @@ describe("requestWithdrawal", () => {
     const result = await requestWithdrawal(deps, "seller-1", "lot-1");
     expect(result.isOk()).toBe(true);
     expect(publish).toHaveBeenCalledWith(
-      tx,
       expect.objectContaining({
         eventType: "lot.withdrawal_requested",
         payload: { sellerLegalEntityId: "le-1" },
@@ -100,7 +99,7 @@ describe("requestWithdrawal", () => {
     };
     const deps = baseDeps({
       transactionRunner: transactionRunnerFromDb(db as unknown as Database),
-      domainEventPublisher: { publish } as unknown as DomainEventPublisher,
+      domainEventSink: mockDomainEventSink(publish),
       adminReviewTaskRepository: makeAdminReviewTaskRepo() as never,
       legalEntityRepository: {
         findActiveMembership: vi.fn().mockResolvedValue({ role: "admin" }),

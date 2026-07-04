@@ -7,7 +7,7 @@ import {
   MetaCapiMarketingEventPublisher,
   SgtmMarketingEventPublisher,
 } from "@auction/marketing-events";
-import { DrizzleExportJobRepository } from "@auction/persistence";
+import { DrizzleExportJobRepository } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { createExportProviderDeps } from "../exports/deps.js";
 import { createExportProviders } from "../exports/registry.js";
@@ -108,7 +108,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     saleDocumentRepo,
     submissionDocumentRepo,
   } = repos;
-  const { domainEventPublisher } = platform;
+  const { domainEventSink } = platform;
 
   const marketingConfig = getMarketingEventsConfig(env);
   const marketingEnabled = marketingConfig !== undefined;
@@ -161,7 +161,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     amlScreeningRepository,
     amlScreeningRepository,
     amlHoldStore,
-    domainEventPublisher,
+    domainEventSink,
     VeriffScreeningProvider.fromEnv(env),
     VeriffWatchlistFetcher.fromEnv(env),
   );
@@ -173,7 +173,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
       approvalValidityDays: env.SOF_APPROVAL_VALIDITY_DAYS,
     },
     platform.transactionRunner,
-    domainEventPublisher,
+    domainEventSink,
   );
   const exportProviderDeps = createExportProviderDeps(db);
   const exportProviders = createExportProviders(exportProviderDeps);
@@ -212,7 +212,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     sourceOfFundsDocumentReviewRepository,
     repos.uploadObjectReader,
     platform.transactionRunner,
-    domainEventPublisher,
+    domainEventSink,
     objectStorage,
     new PerRequestSigningPolicy(env.SOF_DOWNLOAD_TTL_SEC),
     sourceOfFundsSettlementReadService,
@@ -222,7 +222,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     sourceOfFundsDocumentRepository,
     sourceOfFundsDocumentReviewRepository,
     platform.transactionRunner,
-    domainEventPublisher,
+    domainEventSink,
   );
   const catalogueMediaUrlResolver = new MediaUrlResolver(
     objectStorage,

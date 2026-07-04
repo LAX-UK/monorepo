@@ -8,8 +8,10 @@ import type { ArtistProfile } from "@auction/types";
 import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { ArtistError, AuthzError } from "../lib/errors.js";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import { ArtistDeleteService } from "./artist-delete.service.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 
 function artist(overrides: Partial<ArtistProfile> = {}): ArtistProfile {
   return {
@@ -52,7 +54,7 @@ function createService(overrides: {
   guards?: Partial<IArtistDeleteGuards>;
   repo?: Partial<IArtistDeleteRepository>;
   db?: { transaction: ReturnType<typeof vi.fn> };
-  domainEvents?: { publish: ReturnType<typeof vi.fn> } | null;
+  domainEvents?: IDomainEventSink | null;
 }) {
   const tx = {} as DbTransaction;
   const guards: IArtistDeleteGuards = {
@@ -68,7 +70,8 @@ function createService(overrides: {
   const db = overrides.db ?? {
     transaction: vi.fn(async (fn: (t: DbTransaction) => Promise<unknown>) => fn(tx)),
   };
-  const domainEvents = overrides.domainEvents ?? null;
+  const domainEvents =
+    overrides.domainEvents === undefined ? null : (overrides.domainEvents ?? mockDomainEventSink());
   const transactionRunner = transactionRunnerFromDb(db as never);
   const svc = new ArtistDeleteService(guards, repo, transactionRunner, domainEvents);
   return { svc, guards, repo, transactionRunner, tx, domainEvents };
@@ -134,13 +137,12 @@ describe("ArtistDeleteService.delete", () => {
     const deleteById = vi.fn().mockResolvedValue(true);
     const { svc, repo } = createService({
       repo: { deleteById },
-      domainEvents: { publish },
+      domainEvents: mockDomainEventSink(publish),
     });
     const result = await svc.delete("u1", "staff", "a1", "DELETE Test Artist", "catalogue_manager");
     expect(result.isOk()).toBe(true);
     expect(deleteById).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({ eventType: "artist.deleted", aggregateId: "a1" }),
     );
     expect(repo.findByIdForUpdate).toHaveBeenCalled();

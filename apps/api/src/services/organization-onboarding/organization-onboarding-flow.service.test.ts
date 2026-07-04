@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { OrganizationOnboardingFlowService } from "./organization-onboarding-flow.service.js";
 
@@ -55,7 +56,7 @@ describe("OrganizationOnboardingFlowService.submitForReview", () => {
       getRequirements: vi.fn(),
     } as never;
 
-    const publisher = { publish: vi.fn() } as never;
+    const publisher = mockDomainEventSink(vi.fn()) as never;
 
     const uploadPersistenceRepository = { findByIdForOwner: vi.fn() } as never;
     const onboardingRepo = {
@@ -134,7 +135,7 @@ describe("OrganizationOnboardingFlowService.submitForReview", () => {
       findActiveMembership: vi.fn().mockResolvedValue({ role: "owner" }),
     } as never;
     const organizationOnboardingService = { getRequirements: vi.fn() } as never;
-    const publisher = { publish: vi.fn().mockResolvedValue(undefined) } as never;
+    const publisher = mockDomainEventSink(vi.fn().mockResolvedValue(undefined)) as never;
     const onSubmittedForReview = vi.fn().mockResolvedValue(undefined);
     const uploadPersistenceRepository = { findByIdForOwner: vi.fn() } as never;
     const onboardingRepo = {

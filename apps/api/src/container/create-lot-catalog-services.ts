@@ -1,14 +1,14 @@
 import type { Database } from "@auction/db";
+import type { ILotCancelledLifecycleRecorder } from "@auction/persistence/interfaces";
 import {
   DrizzleLotSoftDeleteGuardReader,
   DrizzleLotSoftDeleteSideEffects,
   DrizzleLotTransitionGuardReader,
   DrizzleSaleSoftDeleteGuardReader,
   DrizzleSaleSoftDeleteSideEffects,
-  type ILotCancelledLifecycleRecorder,
   SalePressArchiveRepository,
   createDrizzleLotTransitionRepository,
-} from "@auction/persistence";
+} from "@auction/persistence/repositories";
 import type { LotCancelledPayload } from "../domain/lot-events.js";
 import type { Env } from "../env.js";
 import { LotJobScheduler } from "../jobs/lot-job-scheduler.js";
@@ -25,7 +25,7 @@ import type {
   IItemSubmissionAdminApi,
   IItemSubmissionSellerApi,
   IItemSubmissionService,
-} from "../services/interfaces/item-submission-service.js";
+} from "../services/interfaces/item-submission-apis.js";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 import type { ILotSoftDeleteService } from "../services/interfaces/lot-soft-delete.js";
 import type { ILotStatusAdminService } from "../services/interfaces/lot-status-admin.js";
@@ -131,7 +131,6 @@ export function createLotCatalogServices(
   } = repos;
   const {
     userNotificationPublisher,
-    domainEventPublisher,
     domainEventSink,
     transactionRunner,
     notificationDispatcher,
@@ -180,7 +179,7 @@ export function createLotCatalogServices(
     legalEntityRepository,
     enforceIndividualConnectOnPublish: stripeConnectService.isConfigured(),
     transactionRunner,
-    domainEventPublisher,
+    domainEventSink,
     mediaUrlResolver,
     catalogueMediaUrlResolver,
     mediaAssetEnricher,
@@ -219,7 +218,6 @@ export function createLotCatalogServices(
     mediaAssetEnricher,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
     transactionRunner,
-    domainEventPublisher,
     domainEventSink,
     lotLifecycleRecording,
     legalEntityRepository,
@@ -240,7 +238,6 @@ export function createLotCatalogServices(
     mediaAssetEnricher,
     englishOnlyAuctions: env.ENGLISH_ONLY_AUCTIONS,
     transactionRunner,
-    domainEventPublisher,
     domainEventSink,
     lotLifecycleRecording,
     legalEntityRepository,
@@ -314,7 +311,6 @@ export function createLotCatalogServices(
     imageCleanupService,
     legalEntityNotificationRecipients,
     legalEntityRepository,
-    domainEventPublisher,
     domainEventSink,
     mediaUrlResolver,
     mediaAssetEnricher,
@@ -329,7 +325,7 @@ export function createLotCatalogServices(
     artistProfileRepo,
     artistProfileRepo,
     transactionRunner,
-    domainEventPublisher,
+    domainEventSink,
   );
 
   return {

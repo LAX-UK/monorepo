@@ -31,7 +31,7 @@ import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { BidService } from "../bid.service.js";
 import type { SaleroomOnBlockPolicy } from "../bid/saleroom-on-block.policy.js";
 import type { CategoryService } from "../category.service.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImpersonationAuditService } from "../impersonation-audit.service.js";
 import type { AdminRouteServices } from "../interfaces/admin-routes.js";
 import type { IAnalyticsService } from "../interfaces/analytics.js";
@@ -39,7 +39,7 @@ import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
 import type { IConditionReportService } from "../interfaces/condition-report.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
-import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-service.js";
+import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-apis.js";
 import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
 import type { ISaleRegistrationService } from "../interfaces/sale-registration-service.js";
@@ -84,7 +84,7 @@ export type AdminRouteServicesCore = Omit<AdminRouteServices, "dashboardMetrics"
 
 export type CreateAdminRouteServicesInput = {
   transactionRunner: ITransactionRunner;
-  domainEventPublisher: DomainEventPublisher;
+  domainEventSink: IDomainEventSink;
   impersonationSessionRepository: IImpersonationSessionRepository;
   impersonationDomainEventReader: IImpersonationDomainEventReader;
   impersonationAuditService: ImpersonationAuditService;
@@ -239,7 +239,7 @@ export function createAdminRouteServices(
 
   const people = createAdminPeopleServices({
     transactionRunner: input.transactionRunner,
-    domainEventPublisher: input.domainEventPublisher,
+    domainEventSink: input.domainEventSink,
     impersonationSessionRepository: input.impersonationSessionRepository,
     impersonationDomainEventReader: input.impersonationDomainEventReader,
     legalEntityRepository: input.legalEntityRepository,

@@ -36,7 +36,7 @@ export class PaymentIntentFailedHandler implements IPaymentIntentWebhookHandler 
         return { processed: false, action: "skipped", reason: "duplicate_event" };
       }
 
-      await this.deps.domainEventPublisher.publish(tx, {
+      await this.deps.domainEventSink.withTx(tx).publish({
         aggregateType: "payment",
         aggregateId: paymentId,
         eventType: "payment.checkout_failed",

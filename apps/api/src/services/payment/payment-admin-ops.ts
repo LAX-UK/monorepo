@@ -206,7 +206,7 @@ export async function releaseManualReviewForCapture(
     }
   }
   const transactionRunner = deps.transactionRunner;
-  const publisher = deps.domainEventPublisher;
+  const publisher = deps.domainEventSink;
   if (!transactionRunner || !publisher) {
     await deps.payments.updateStatus(paymentId, "pending");
     return ok(undefined);
@@ -221,7 +221,7 @@ export async function releaseManualReviewForCapture(
       if (!released) {
         throw new Error("payment_not_in_manual_review");
       }
-      await publisher.publish(tx, {
+      await publisher.withTx(tx).publish({
         aggregateType: "payment",
         aggregateId: paymentId,
         eventType: "payment.manual_review_released",

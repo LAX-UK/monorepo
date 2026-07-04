@@ -34,7 +34,7 @@ function baseDeps(overrides: Partial<LotServiceDeps> = {}): LotServiceDeps {
     enforceIndividualConnectOnPublish: false,
     adminReviewTaskRepository: null,
     transactionRunner: null,
-    domainEventPublisher: null,
+    domainEventSink: null,
     catalogueMediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
     englishOnlyAuctions: false,

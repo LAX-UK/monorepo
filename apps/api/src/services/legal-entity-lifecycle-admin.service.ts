@@ -12,7 +12,7 @@ import {
   nextStatusForLifecycleOp,
 } from "../lib/legal-entity-lifecycle-transitions.js";
 import { enqueueOrgLifecycleMemberEmails } from "../lib/org-lifecycle-notifications.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 
 /** Distinct `domain_events.event_type` per admin lifecycle operation.
  * `start_review` maps to `legal_entity.review_started` (past-tense, matches
@@ -78,7 +78,7 @@ export class LegalEntityLifecycleAdminService {
   constructor(
     private readonly transactionRunner: ITransactionRunner,
     private readonly lifecycleRepo: ILegalEntityLifecycleAdminRepository,
-    private readonly publisher: DomainEventPublisher,
+    private readonly publisher: IDomainEventSink,
     private readonly options: LegalEntityLifecycleAdminOptions = {},
   ) {}
 
@@ -143,7 +143,7 @@ export class LegalEntityLifecycleAdminService {
         statusReason: resolveStatusReason(op, navLocked, reason),
       });
 
-      await this.publisher.publish(tx, {
+      await this.publisher.withTx(tx).publish({
         aggregateType: "legal_entity",
         aggregateId: entityId,
         eventType: lifecycleDomainEventTypeForOp(op),

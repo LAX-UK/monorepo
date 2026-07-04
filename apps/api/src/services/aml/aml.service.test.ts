@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import { VERIFF_WATCHLIST_MATCH_FOUND } from "../../lib/veriff/veriff-watchlist-fixtures.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
@@ -120,7 +121,7 @@ function makeService(initial: WatchlistScreeningRecord): Harness {
     },
   };
 
-  const events = { publish: async () => {} } as never;
+  const events = mockDomainEventSink(vi.fn().mockResolvedValue(undefined)) as never;
   const provider: IScreeningProvider = {
     isConfigured: () => false,
     async enableOngoingMonitoring() {},
@@ -374,7 +375,7 @@ describe("AmlService watchlist webhook ingest", () => {
       writer,
       reader,
       holdStore,
-      { publish: async () => {} } as never,
+      mockDomainEventSink(vi.fn().mockResolvedValue(undefined)) as never,
       provider,
       null,
     );

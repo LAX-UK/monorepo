@@ -4,7 +4,7 @@ import type { ILegalEntityRepository } from "@auction/persistence";
 import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence";
 import { encodeActingContextCookie } from "@auction/types";
 import { parseActingLegalEntityCookieFromHeader } from "../../lib/impersonation-cookie.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
   AdminImpersonationLookupResult,
   AdminImpersonationRecordFailedEndResult,
@@ -18,7 +18,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
     private readonly legalEntityRepository: ILegalEntityRepository,
     private readonly impersonationSessionRepository: IImpersonationSessionRepository,
     private readonly impersonationDomainEventReader: IImpersonationDomainEventReader,
-    private readonly domainEventPublisher: DomainEventPublisher,
+    private readonly domainEventSink: IDomainEventSink,
   ) {}
 
   async lookupForImpersonation(legalEntityId: string): Promise<AdminImpersonationLookupResult> {
@@ -61,7 +61,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
       const txRepo = this.impersonationSessionRepository.forConnection(tx);
       if (prevSessionId && prevEntityId) {
         await txRepo.end(prevSessionId, "session_replaced");
-        await this.domainEventPublisher.publish(tx, {
+        await this.domainEventSink.withTx(tx).publish({
           aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
           aggregateId: prevSessionId,
           eventType: "admin.impersonation_ended",
@@ -75,7 +75,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
         });
       }
       const row = await txRepo.start(actorUserId, entity.id);
-      await this.domainEventPublisher.publish(tx, {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
         aggregateId: row.id,
         eventType: "admin.impersonation_started",
@@ -121,7 +121,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
     }
     await this.transactionRunner.runInTransaction(async (tx) => {
       await this.impersonationSessionRepository.forConnection(tx).end(imp.sid, "manual");
-      await this.domainEventPublisher.publish(tx, {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
         aggregateId: imp.sid,
         eventType: "admin.impersonation_ended",
@@ -163,7 +163,7 @@ export class AdminImpersonationService implements IAdminImpersonationService {
       await this.impersonationSessionRepository
         .forConnection(tx)
         .end(sessionId, "cookie_cleared_after_failed_end");
-      await this.domainEventPublisher.publish(tx, {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
         aggregateId: sessionId,
         eventType: "admin.impersonation_ended",

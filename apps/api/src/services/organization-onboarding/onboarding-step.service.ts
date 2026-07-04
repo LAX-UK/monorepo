@@ -67,7 +67,7 @@ export class OnboardingStepService implements IOnboardingStepService {
       onboardingRepo: this.ctx.onboardingRepo,
       uploadPersistenceRepository: this.ctx.uploadPersistenceRepository,
       organizationOnboardingService: this.ctx.organizationOnboardingService,
-      domainEventPublisher: this.ctx.domainEventPublisher,
+      domainEventSink: this.ctx.domainEventSink,
       stripeConnect: this.ctx.stripeConnect,
       options: this.ctx.options,
     };

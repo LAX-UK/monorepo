@@ -1,4 +1,4 @@
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import { AmlMonitoringService, createAmlMonitoringContext } from "./aml-monitoring.service.js";
 import type {
   IAmlDecisionPolicy,
@@ -15,7 +15,7 @@ export type AmlServiceDeps = {
   screeningWriter: IWatchlistScreeningWriter;
   screeningReader: IWatchlistScreeningReader;
   holdStore: IAmlHoldStore;
-  events: DomainEventPublisher;
+  events: IDomainEventSink;
   monitoring: AmlMonitoringService;
 };
 

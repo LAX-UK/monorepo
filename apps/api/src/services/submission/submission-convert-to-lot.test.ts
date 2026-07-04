@@ -104,7 +104,6 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     imageCleanup: undefined,
     legalEntityNotificationRecipients: null,
     legalEntityRepository: null,
-    domainEventPublisher: null,
     domainEventSink: null,
     mediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,

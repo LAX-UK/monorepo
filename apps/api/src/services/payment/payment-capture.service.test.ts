@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { PaymentCaptureNotAppliedError } from "../../lib/errors.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { PaymentCaptureService } from "./payment-capture.service.js";
@@ -22,7 +23,7 @@ function makeCaptureService(deps: {
     deps.payments as never,
     { findById: vi.fn() } as never,
     { findById: vi.fn() } as never,
-    { publish: vi.fn().mockResolvedValue(undefined) } as never,
+    mockDomainEventSink(vi.fn().mockResolvedValue(undefined)) as never,
     null,
     { createPaymentReceived: vi.fn(), createSellerPaymentReceived: vi.fn() } as never,
     null,
@@ -72,7 +73,7 @@ describe("PaymentCaptureService", () => {
         findById: vi.fn().mockResolvedValue({ id: "lot1", sellerLegalEntityId: "le_seller" }),
       } as never,
       { findById: vi.fn().mockResolvedValue({ name: "Buyer", email: "b@test.com" }) } as never,
-      { publish } as never,
+      mockDomainEventSink(publish) as never,
       null,
       { createPaymentReceived: vi.fn(), createSellerPaymentReceived: vi.fn() } as never,
       null,
@@ -92,7 +93,6 @@ describe("PaymentCaptureService", () => {
       stripeChargeId: "ch_1",
     });
     expect(publish).toHaveBeenCalledWith(
-      {},
       expect.objectContaining({ eventType: "payment.captured" }),
     );
     expect(onPaymentCaptured).toHaveBeenCalledWith("lot1", "pay1");
@@ -160,7 +160,7 @@ describe("PaymentCaptureService", () => {
       payments as never,
       { findById: vi.fn() } as never,
       { findById: vi.fn().mockResolvedValue({ name: "Buyer", email: "b@test.com" }) } as never,
-      { publish } as never,
+      mockDomainEventSink(publish) as never,
       null,
       { createPaymentReceived: vi.fn(), createSellerPaymentReceived: vi.fn() } as never,
       null,
@@ -183,7 +183,6 @@ describe("PaymentCaptureService", () => {
       stripeChargeId: "ch_1",
     });
     expect(publish).toHaveBeenCalledWith(
-      {},
       expect.objectContaining({ eventType: "payment.captured" }),
     );
   });
@@ -250,7 +249,7 @@ describe("PaymentCaptureService", () => {
       payments as never,
       { findById: vi.fn() } as never,
       { findById: vi.fn() } as never,
-      { publish: vi.fn() } as never,
+      mockDomainEventSink(vi.fn()) as never,
       null,
       { createPaymentReceived: vi.fn(), createSellerPaymentReceived: vi.fn() } as never,
       null,

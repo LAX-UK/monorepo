@@ -4,7 +4,7 @@ import {
   DrizzleSaleRegistrationCheckInReader,
   DrizzleTelephoneBidBookingDetailReader,
   DrizzleTelephoneBookingUserPhoneReader,
-} from "@auction/persistence";
+} from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { PaddleService } from "../services/paddle.service.js";
 import { SaleExpectedGuestsService } from "../services/sale-expected-guests.service.js";

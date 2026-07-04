@@ -5,7 +5,6 @@ import type { IRepositoryFactory } from "@auction/persistence";
 import type { IVenueRepository } from "@auction/persistence";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
 import type { ILotJobScheduler } from "../interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
@@ -31,7 +30,6 @@ export type SaleServiceDeps = {
   mediaAssetEnricher: MediaAssetEnricher | undefined;
   englishOnlyAuctions: boolean;
   transactionRunner: ITransactionRunner | null;
-  domainEventPublisher: DomainEventPublisher | null;
   domainEventSink: IDomainEventSink | null;
   lotLifecycleRecording: ILotLifecycleRecorder | null;
   legalEntityRepository: ILegalEntityRepository | null;

@@ -52,7 +52,7 @@ export function createPlatformPayoutServices(
     addressRepo,
     connectTransferRepository,
   } = repos;
-  const { domainEventPublisher, domainEventSink } = core;
+  const { domainEventSink } = core;
 
   const payoutAdjustmentService = new PayoutAdjustmentService(
     core.transactionRunner,
@@ -61,7 +61,7 @@ export function createPlatformPayoutServices(
   const payoutServiceInstance = new PayoutService(
     payoutRepository,
     core.transactionRunner,
-    domainEventPublisher,
+    domainEventSink,
     payoutAdjustmentService,
   );
   const payoutService: IPayoutService = payoutServiceInstance;
@@ -84,7 +84,7 @@ export function createPlatformPayoutServices(
     core.transactionRunner,
     paymentRepo,
     payoutAdjustmentService,
-    domainEventPublisher,
+    domainEventSink,
     paymentRefundReconcileRepository,
   );
   const invoiceAddressingService = new InvoiceAddressingService(

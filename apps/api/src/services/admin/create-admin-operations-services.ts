@@ -18,7 +18,7 @@ import type { AdminOperationsRouteServices } from "../interfaces/admin-routes/ad
 import type { IAnalyticsService } from "../interfaces/analytics.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
-import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-service.js";
+import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-apis.js";
 import type { IUserSuspensionChecker } from "../interfaces/user-suspension.js";
 import type { PaddleService } from "../paddle.service.js";
 import type { SaleExpectedGuestsService } from "../sale-expected-guests.service.js";

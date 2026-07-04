@@ -1,5 +1,6 @@
 import { DrizzleLegalEntityLifecycleAdminRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import type { LifecycleAdminOp } from "../lib/legal-entity-lifecycle-transitions.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import {
@@ -101,7 +102,7 @@ describe("LegalEntityLifecycleAdminService", () => {
         }),
         transaction: vi.fn(async (fn: (tx: typeof txHandle) => Promise<unknown>) => fn(txHandle)),
       };
-      const publisher = { publish };
+      const publisher = mockDomainEventSink(publish);
 
       const lifecycleRepo = new DrizzleLegalEntityLifecycleAdminRepository(db as never);
       const svc = new LegalEntityLifecycleAdminService(
@@ -117,8 +118,7 @@ describe("LegalEntityLifecycleAdminService", () => {
       }
       expect(db.transaction).toHaveBeenCalledTimes(1);
       expect(publish).toHaveBeenCalledTimes(1);
-      expect(publish.mock.calls[0]?.[0]).toBe(txHandle);
-      const event = publish.mock.calls[0]?.[1] as {
+      const event = publish.mock.calls[0]?.[0] as {
         eventType: string;
         payload: Record<string, unknown>;
         actorUserId: string;
@@ -143,7 +143,7 @@ describe("LegalEntityLifecycleAdminService", () => {
       }),
       transaction: vi.fn(),
     };
-    const publisher = { publish: vi.fn() };
+    const publisher = mockDomainEventSink(vi.fn());
 
     const lifecycleRepo = new DrizzleLegalEntityLifecycleAdminRepository(db as never);
     const svc = new LegalEntityLifecycleAdminService(
@@ -173,7 +173,7 @@ describe("LegalEntityLifecycleAdminService", () => {
       }),
       transaction: vi.fn(),
     };
-    const publisher = { publish: vi.fn() };
+    const publisher = mockDomainEventSink(vi.fn());
     const lifecycleRepo = new DrizzleLegalEntityLifecycleAdminRepository(db as never);
     const svc = new LegalEntityLifecycleAdminService(
       transactionRunnerFromDb(db as never),

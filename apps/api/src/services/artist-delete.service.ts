@@ -15,14 +15,14 @@ import {
   listArtistDeleteWarnings,
   validateArtistDelete,
 } from "./artist-delete.policy.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 
 export class ArtistDeleteService {
   constructor(
     private readonly guards: IArtistDeleteGuards,
     private readonly repo: IArtistDeleteRepository,
     private readonly transactionRunner: ITransactionRunner,
-    private readonly domainEvents: DomainEventPublisher | null,
+    private readonly domainEvents: IDomainEventSink | null,
   ) {}
 
   async getDeleteEligibility(artistId: string): Promise<ArtistDeleteEligibility | null> {
@@ -126,7 +126,7 @@ export class ArtistDeleteService {
     guards: Awaited<ReturnType<IArtistDeleteGuards["countDeleteGuards"]>>,
   ): Promise<void> {
     if (!this.domainEvents) return;
-    await this.domainEvents.publish(tx, {
+    await this.domainEvents.withTx(tx).publish({
       aggregateType: "artist",
       aggregateId: artist.id,
       eventType: "artist.deleted",

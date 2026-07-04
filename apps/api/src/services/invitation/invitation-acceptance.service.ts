@@ -2,7 +2,7 @@ import type { ITransactionRunner } from "@auction/persistence";
 import type { IEntityInvitationRepository } from "@auction/persistence";
 import type { InvitationRow } from "@auction/persistence";
 import type { LegalEntityMemberRole } from "@auction/types";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { InvitationOutcome } from "../interfaces/invitation-lifecycle.js";
 import type { InvitationNotificationService } from "./invitation-notification.service.js";
 import type { InvitationTokenService } from "./invitation-token.service.js";
@@ -15,7 +15,7 @@ export class InvitationAcceptanceService {
     private readonly repo: IEntityInvitationRepository,
     private readonly tokenService: InvitationTokenService,
     private readonly notifications: InvitationNotificationService,
-    private readonly domainEventPublisher: DomainEventPublisher,
+    private readonly domainEventSink: IDomainEventSink,
   ) {}
 
   async accept(userId: string, userEmail: string, token: string): Promise<InvitationOutcome> {
@@ -92,7 +92,7 @@ export class InvitationAcceptanceService {
 
       await txRepo.markInvitationAccepted(validInvite.id, userId);
 
-      await this.domainEventPublisher.publish(tx, {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: "legal_entity",
         aggregateId: legalEntityId,
         eventType: "legal_entity.member_accepted",
@@ -156,7 +156,7 @@ export class InvitationAcceptanceService {
       const txRepo = this.repo.forConnection(tx);
       await txRepo.markInvitationRevoked(invitationId);
 
-      await this.domainEventPublisher.publish(tx, {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: "legal_entity",
         aggregateId: legalEntityId,
         eventType: "legal_entity.member_declined",

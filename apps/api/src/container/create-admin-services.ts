@@ -71,7 +71,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     impersonationDomainEventReader,
   } = repos;
   const {
-    domainEventPublisher,
+    domainEventSink,
     impersonationAuditService,
     cachedUserSuspensionChecker,
     legalEntityLifecycleAdminService,
@@ -124,7 +124,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
 
   const adminBase = createAdminRouteServices({
     transactionRunner: platform.transactionRunner,
-    domainEventPublisher,
+    domainEventSink,
     impersonationSessionRepository,
     impersonationDomainEventReader,
     impersonationAuditService,

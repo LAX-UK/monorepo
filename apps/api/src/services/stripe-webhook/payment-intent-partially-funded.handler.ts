@@ -49,7 +49,7 @@ export class PaymentIntentPartiallyFundedHandler implements IPaymentIntentWebhoo
 
       await this.deps.payments.applyAuthorizedInTransaction(tx, paymentId);
 
-      await this.deps.domainEventPublisher.publish(tx, {
+      await this.deps.domainEventSink.withTx(tx).publish({
         aggregateType: "payment",
         aggregateId: paymentId,
         eventType: "payment.bank_transfer_partially_funded",

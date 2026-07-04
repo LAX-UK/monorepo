@@ -9,7 +9,7 @@ import { PaymentCaptureNotAppliedError } from "../../lib/errors.js";
 import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import type {
   CapturePaymentInput,
@@ -34,7 +34,7 @@ export class PaymentCaptureService implements IPaymentCaptureService {
     private readonly payments: IPaymentWriteRepository,
     private readonly lots: ILotRepository,
     private readonly users: IUserRepository,
-    private readonly domainEventPublisher: DomainEventPublisher,
+    private readonly domainEventSink: IDomainEventSink,
     private readonly notificationDispatcher: NotificationDispatcher | null,
     private readonly notificationFactory: NotificationFactory,
     private readonly legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null,
@@ -82,7 +82,7 @@ export class PaymentCaptureService implements IPaymentCaptureService {
       }
       captured = await this.payments.applyCapturedInTransaction(tx, input.paymentId, captureOpts);
       if (!captured) return;
-      await this.domainEventPublisher.publish(tx, {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: "payment",
         aggregateId: input.paymentId,
         eventType: "payment.captured",

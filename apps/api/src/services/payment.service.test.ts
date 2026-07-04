@@ -6,10 +6,11 @@ import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/
 import type { Lot, Sale } from "@auction/types";
 import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { LotError, PaymentProviderError } from "../lib/errors.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
@@ -123,7 +124,7 @@ const payment: PaymentRecord = {
 function makeDelegatingPaymentCapture(
   db: Database,
   payments: IPaymentWriteRepository,
-  publisher: DomainEventPublisher,
+  publisher: IDomainEventSink,
 ): IPaymentCaptureService {
   return {
     capture: vi.fn().mockImplementation(async (input) => {
@@ -131,7 +132,7 @@ function makeDelegatingPaymentCapture(
         const opts: { stripeChargeId?: string } = {};
         if (input.stripeChargeId) opts.stripeChargeId = input.stripeChargeId;
         await payments.applyCapturedInTransaction?.(tx, input.paymentId, opts);
-        await publisher.publish(tx, {
+        await publisher.withTx(tx).publish({
           aggregateType: "payment",
           aggregateId: input.paymentId,
           eventType: "payment.captured",
@@ -169,9 +170,8 @@ describe("PaymentService", () => {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
     const accounting = mockAccounting();
-    const publisher: DomainEventPublisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher;
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn().mockResolvedValue(undefined),
+    );
     const paymentCapture = makeDelegatingPaymentCapture(db, payments, publisher);
     const service = new PaymentService(
       lots,
@@ -217,7 +217,6 @@ describe("PaymentService", () => {
       expect.any(Object),
     );
     expect(publisher.publish).toHaveBeenCalledWith(
-      tx,
       expect.objectContaining({
         eventType: "payment.captured",
         aggregateId: payment.id,
@@ -258,9 +257,8 @@ describe("PaymentService", () => {
         }),
       applyCapturedInTransaction: vi.fn().mockResolvedValue(undefined),
     } as unknown as IPaymentWriteRepository;
-    const publisher: DomainEventPublisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher;
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn().mockResolvedValue(undefined),
+    );
     const paymentCapture = makeDelegatingPaymentCapture(db, payments, publisher);
     const service = new PaymentService(
       { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
@@ -298,7 +296,6 @@ describe("PaymentService", () => {
       stripeChargeId: "ch_from_pi",
     });
     expect(publisher.publish).toHaveBeenCalledWith(
-      tx,
       expect.objectContaining({ eventType: "payment.captured" }),
     );
   });
@@ -326,7 +323,7 @@ describe("PaymentService", () => {
       findById: vi.fn().mockResolvedValue(pay),
       applyCapturedInTransaction: vi.fn(),
     } as unknown as IPaymentWriteRepository;
-    const publisher: DomainEventPublisher = { publish: vi.fn() } as unknown as DomainEventPublisher;
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn() );
     const service = new PaymentService(
       { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
       payments,
@@ -385,11 +382,10 @@ describe("PaymentService", () => {
         return true;
       }),
     } as unknown as IPaymentWriteRepository;
-    const publisher: DomainEventPublisher = {
-      publish: vi.fn().mockImplementation(async () => {
-        order.push("event");
-      }),
-    } as unknown as DomainEventPublisher;
+    const publish = vi.fn().mockImplementation(async () => {
+      order.push("event");
+    });
+    const publisher = mockDomainEventSink(publish);
 
     const service = new PaymentService(
       { findById: vi.fn() } as unknown as ILotRepository,
@@ -421,7 +417,6 @@ describe("PaymentService", () => {
     expect(order).toEqual(["stripe_refund", "db_refund", "event"]);
     expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, pay.id, "re_abc");
     expect(publisher.publish).toHaveBeenCalledWith(
-      tx,
       expect.objectContaining({ eventType: "payment.refunded" }),
     );
   });
@@ -450,7 +445,7 @@ describe("PaymentService", () => {
       findById: vi.fn().mockResolvedValue(pay),
       applyRefundedInTransaction: vi.fn(),
     } as unknown as IPaymentWriteRepository;
-    const publisher: DomainEventPublisher = { publish: vi.fn() } as unknown as DomainEventPublisher;
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn() );
 
     const service = new PaymentService(
       { findById: vi.fn() } as unknown as ILotRepository,
@@ -497,9 +492,8 @@ describe("PaymentService", () => {
       findById: vi.fn().mockResolvedValue(pay),
       applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     } as unknown as IPaymentWriteRepository;
-    const publisher: DomainEventPublisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as DomainEventPublisher;
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn().mockResolvedValue(undefined),
+    );
 
     const service = new PaymentService(
       { findById: vi.fn() } as unknown as ILotRepository,
@@ -525,7 +519,6 @@ describe("PaymentService", () => {
     expect(result.isOk()).toBe(true);
     expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, pay.id, null);
     expect(publisher.publish).toHaveBeenCalledWith(
-      tx,
       expect.objectContaining({ eventType: "payment.refunded" }),
     );
   });
@@ -593,7 +586,7 @@ describe("PaymentService", () => {
       defaultTierPolicy,
       legalEntities,
       transactionRunnerFromDb(db),
-      { publish: vi.fn() } as never,
+      domainEventSink,
       undefined,
       undefined,
       undefined,
@@ -609,7 +602,6 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       undefined,
-      domainEventSink as never,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -698,7 +690,7 @@ describe("PaymentService", () => {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
       peek: vi.fn().mockResolvedValue({ hold: true, reason: "aml_hold" }),
     };
-    const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
+    const publisher = mockDomainEventSink(vi.fn().mockResolvedValue(undefined));
     const accounting = mockAccounting({ isConfigured: vi.fn().mockReturnValue(true) });
     const stripeCheckout = mockStripeCheckout();
     const service = new PaymentService(
@@ -777,7 +769,7 @@ describe("PaymentService", () => {
         findById: vi.fn().mockResolvedValue({ status: "archived" }),
       } as unknown as ILegalEntityRepository,
       {} as never,
-      { publish: vi.fn() } as never,
+      mockDomainEventSink(vi.fn()) as never,
       stripePayments,
       undefined,
       undefined,
@@ -925,7 +917,7 @@ describe("PaymentService", () => {
       findById: vi.fn().mockResolvedValue({ ...payment, status: "requires_manual_review" }),
       applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     } as unknown as IPaymentWriteRepository;
-    const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
+    const publisher = mockDomainEventSink(vi.fn().mockResolvedValue(undefined));
     const service = new PaymentService(
       { findById: vi.fn() } as unknown as ILotRepository,
       payments,
@@ -949,7 +941,6 @@ describe("PaymentService", () => {
     expect(result.isOk()).toBe(true);
     expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, payment.id, null);
     expect(publisher.publish).toHaveBeenCalledWith(
-      tx,
       expect.objectContaining({
         eventType: "payment.refunded",
         payload: expect.objectContaining({ reason: "seller_archived" }),
@@ -1002,7 +993,7 @@ describe("PaymentService", () => {
       create: vi.fn().mockResolvedValue({ ...payment, id: "pay-tier", status: "pending" }),
     } as unknown as IPaymentWriteRepository;
     const accounting = mockAccounting();
-    const publisher = { publish: vi.fn().mockResolvedValue(undefined) };
+    const publisher = mockDomainEventSink(vi.fn().mockResolvedValue(undefined));
     const legalEntities: ILegalEntityRepository = {
       findById: vi.fn().mockResolvedValue({ id: tieredLot.sellerLegalEntityId, status: "active" }),
     } as unknown as ILegalEntityRepository;
@@ -1157,7 +1148,7 @@ describe("PaymentService", () => {
         findById: vi.fn().mockResolvedValue({ status: "active" }),
       } as unknown as ILegalEntityRepository,
       {} as never,
-      { publish: vi.fn() } as never,
+      mockDomainEventSink(vi.fn()) as never,
       null,
       undefined,
       undefined,

@@ -71,11 +71,11 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
     repos.xeroConnRepo,
     payments.accountingProvider,
     payments.xeroPaymentRecorder,
-    payments.paymentService,
+    payments.paymentMaintenanceService,
   );
 
   const paymentMaintenanceCronService = new PaymentMaintenanceCronService(
-    payments.paymentService,
+    payments.paymentMaintenanceService,
     platform.paymentRefundReconcileService,
   );
 

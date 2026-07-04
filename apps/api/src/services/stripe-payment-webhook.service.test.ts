@@ -6,7 +6,8 @@ import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import { StripePaymentWebhookService } from "./stripe-payment-webhook.service.js";
@@ -68,7 +69,7 @@ function createWebhookService(deps: {
     } | null>;
   };
   payoutRepository?: Partial<IPayoutRepository>;
-  publisher?: DomainEventPublisher;
+  publisher?: IDomainEventSink;
   payoutAdjustments?: Partial<IPayoutAdjustmentService>;
   paymentCapture?: Partial<IPaymentCaptureService>;
   payments?: Partial<IPaymentWriteRepository>;
@@ -85,8 +86,7 @@ function createWebhookService(deps: {
     sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
     ...deps.payoutRepository,
   } as IPayoutRepository;
-  const publisher =
-    deps.publisher ?? ({ publish: vi.fn().mockResolvedValue(undefined) } as DomainEventPublisher);
+  const publisher = deps.publisher ?? mockDomainEventSink();
   const payments = {
     applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     applyAuthorizedInTransaction: vi.fn().mockResolvedValue(true),
@@ -169,7 +169,6 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
     expect(result).toEqual({ processed: true, action: "dispute_closed" });
     expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
     expect(publisher.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ select: expect.any(Function) }),
       expect.objectContaining({
         eventType: "payment.dispute_closed",
       }),
@@ -549,7 +548,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     const { svc } = createWebhookService({
       db,
       paymentCapture: { capture },
-      publisher: { publish } as DomainEventPublisher,
+      publisher: mockDomainEventSink(publish),
       payments: {
         findById: vi.fn().mockResolvedValue({
           id: "pay_1",
@@ -578,7 +577,6 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     });
     expect(capture).not.toHaveBeenCalled();
     expect(publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         eventType: "payment.capture_blocked_terminal_status",
         aggregateId: "pay_1",
@@ -703,7 +701,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     const { svc, publisher } = createWebhookService({
       db,
       paymentCapture: { capture },
-      publisher: { publish } as DomainEventPublisher,
+      publisher: mockDomainEventSink(publish),
       payments: {
         findById: vi.fn().mockResolvedValue({
           id: "pay_1",
@@ -737,7 +735,6 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     expect(capture).not.toHaveBeenCalled();
     expect(applyAuthorized).toHaveBeenCalledWith(expect.anything(), "pay_1");
     expect(publisher.publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({ eventType: "payment.bank_transfer_partially_funded" }),
     );
   });
@@ -756,7 +753,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     const { svc, publisher } = createWebhookService({
       db,
       paymentCapture: { capture },
-      publisher: { publish } as DomainEventPublisher,
+      publisher: mockDomainEventSink(publish),
       payments: {
         findById: vi.fn().mockResolvedValue({
           id: "pay_1",
@@ -782,7 +779,6 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     expect(capture).not.toHaveBeenCalled();
     expect(updateStatus).not.toHaveBeenCalled();
     expect(publisher.publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         eventType: "payment.checkout_failed",
         payload: expect.objectContaining({
@@ -809,7 +805,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     const { svc, publisher } = createWebhookService({
       db,
       paymentCapture: { capture },
-      publisher: { publish } as DomainEventPublisher,
+      publisher: mockDomainEventSink(publish),
       payments: {
         findById: vi.fn().mockResolvedValue({
           id: "pay_1",
@@ -835,7 +831,6 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     expect(capture).not.toHaveBeenCalled();
     expect(applyCancelled).toHaveBeenCalledWith(expect.anything(), "pay_1");
     expect(publisher.publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         eventType: "payment.cancelled",
         payload: expect.objectContaining({
@@ -858,7 +853,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     });
     const { svc, publisher } = createWebhookService({
       db,
-      publisher: { publish } as DomainEventPublisher,
+      publisher: mockDomainEventSink(publish),
       payments: {
         findById: vi.fn().mockResolvedValue({
           id: "pay_1",
@@ -887,7 +882,6 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     });
     expect(applyCancelled).toHaveBeenCalledWith(expect.anything(), "pay_1");
     expect(publisher.publish).toHaveBeenCalledWith(
-      expect.anything(),
       expect.objectContaining({
         eventType: "payment.cancelled",
         payload: expect.objectContaining({ reason: "stripe_checkout_async_payment_failed" }),

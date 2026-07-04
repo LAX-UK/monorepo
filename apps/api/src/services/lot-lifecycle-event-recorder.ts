@@ -4,7 +4,7 @@ import type {
   LotLifecycleSnapshotPatch,
 } from "@auction/persistence";
 import type { LotEventType } from "../domain/lot-events.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 
 export type { LotLifecycleSnapshotPatch } from "@auction/persistence";
 
@@ -21,12 +21,12 @@ export type RecordLotLifecycleInput = {
 /** Tx-bound facade: append domain event + upsert lot_lifecycle_snapshot in one transaction. */
 export class LotLifecycleEventRecorder {
   constructor(
-    private readonly inner: DomainEventPublisher,
+    private readonly inner: IDomainEventSink,
     private readonly snapshotRepository: ILotLifecycleSnapshotRepository,
   ) {}
 
   async record(tx: Database, input: RecordLotLifecycleInput): Promise<void> {
-    await this.inner.publish(tx, {
+    await this.inner.withTx(tx).publish({
       aggregateType: "lot",
       aggregateId: input.lotId,
       eventType: input.eventType,

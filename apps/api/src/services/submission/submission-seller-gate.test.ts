@@ -1,5 +1,6 @@
 import type { ILegalEntityRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import {
   assertSellerEntityAllowsSubmissions,
@@ -18,7 +19,6 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     imageCleanup: undefined,
     legalEntityNotificationRecipients: null,
     legalEntityRepository: null,
-    domainEventPublisher: null,
     domainEventSink: null,
     mediaUrlResolver: undefined,
     mediaAssetEnricher: undefined,
@@ -75,7 +75,7 @@ describe("maybeLogRestrictedSellerWrite", () => {
       legalEntityRepository: {
         findById: vi.fn().mockResolvedValue({ status: "restricted" }),
       } as unknown as ILegalEntityRepository,
-      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
     });
     await maybeLogRestrictedSellerWrite(deps, "le-1", "sub-1", "create_draft");
     expect(publish).toHaveBeenCalledWith(
@@ -92,7 +92,7 @@ describe("maybeLogRestrictedSellerWrite", () => {
       legalEntityRepository: {
         findById: vi.fn().mockResolvedValue({ status: "approved" }),
       } as unknown as ILegalEntityRepository,
-      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
     });
     await maybeLogRestrictedSellerWrite(deps, "le-1", "sub-1", "create_draft");
     expect(publish).not.toHaveBeenCalled();

@@ -65,7 +65,7 @@ export class OnboardingSubmitService implements IOnboardingSubmitService {
         tx,
       );
 
-      await this.ctx.domainEventPublisher.publish(tx, {
+      await this.ctx.domainEventSink.withTx(tx).publish({
         aggregateType: "legal_entity",
         aggregateId: entityId,
         eventType: "legal_entity.lifecycle_progressed",

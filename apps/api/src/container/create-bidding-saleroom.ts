@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { DrizzleSaleroomSessionRepository } from "@auction/persistence";
+import { DrizzleSaleroomSessionRepository } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { RedisIdempotencyStore } from "../infrastructure/redis-idempotency.store.js";
 import { RedisSaleroomRealtimePublisher } from "../infrastructure/redis-saleroom-realtime.publisher.js";
@@ -69,12 +69,11 @@ export function createBiddingSaleroom(input: CreateBiddingSaleroomInput): Contai
   } = repos;
   const {
     notificationService,
-    domainEventPublisher,
+    domainEventSink,
     lotLifecycleRecording,
     notificationOutboxService,
     notificationFactory,
     strategyFactory,
-    domainEventSink,
   } = platform;
   const { lotLifecycleService, lotLifecycleHooks } = lotLifecycle;
   const { kycService, mediaUrlResolver } = complianceMedia;
@@ -101,7 +100,7 @@ export function createBiddingSaleroom(input: CreateBiddingSaleroomInput): Contai
     saleroomSessionLookup,
     saleroomOnBlockPolicy,
     antiShillingGuard,
-    domainEventPublisher,
+    domainEventSink,
     legalEntityRepository,
     idempotencyStore: bidIdempotencyStore,
     bidEligibility: bidEligibilityService,

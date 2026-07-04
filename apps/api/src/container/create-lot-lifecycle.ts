@@ -39,7 +39,7 @@ export function createLotLifecycle(input: CreateLotLifecycleInput): ContainerLot
   const {
     notificationDispatcher,
     notificationFactory,
-    domainEventPublisher,
+    domainEventSink,
     lotLifecycleRecording,
     notificationService,
     notificationOutboxService,
@@ -64,7 +64,7 @@ export function createLotLifecycle(input: CreateLotLifecycleInput): ContainerLot
     repoFactory,
     lotLifecycleNotifications,
     antiShillingGuard,
-    domainEventPublisher,
+    domainEventSink,
     lotLifecycleRecording,
   );
 

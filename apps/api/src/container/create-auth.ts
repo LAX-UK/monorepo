@@ -2,7 +2,7 @@ import { type Auth, DEFAULT_JWT_AUDIENCE, createAuth } from "@auction/auth/serve
 import { publishUserRegistered } from "@auction/db";
 import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import { DrizzleUserEmailVerifiedPublisher } from "@auction/persistence";
+import { DrizzleUserEmailVerifiedPublisher } from "@auction/persistence/repositories";
 import {
   ConsolePhoneVerificationService,
   type IPhoneVerificationService,

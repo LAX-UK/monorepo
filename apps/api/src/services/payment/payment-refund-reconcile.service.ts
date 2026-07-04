@@ -5,7 +5,7 @@ import type {
 } from "@auction/persistence";
 import type { IPaymentWriteRepository } from "@auction/persistence";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 
 export class PaymentRefundReconcileService {
@@ -13,7 +13,7 @@ export class PaymentRefundReconcileService {
     private readonly transactionRunner: ITransactionRunner,
     private readonly payments: IPaymentWriteRepository,
     private readonly payoutAdjustments: IPayoutAdjustmentService | null,
-    private readonly publisher: DomainEventPublisher,
+    private readonly publisher: IDomainEventSink,
     private readonly repo: IPaymentRefundReconcileRepository,
   ) {}
 
@@ -51,7 +51,7 @@ export class PaymentRefundReconcileService {
               tx,
             });
           }
-          await this.publisher.publish(tx, {
+          await this.publisher.withTx(tx).publish({
             aggregateType: "payment",
             aggregateId: row.paymentId,
             eventType: "payment.refunded",

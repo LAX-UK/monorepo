@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
   ISourceOfFundsReviewService,
   SourceOfFundsDecideCommand,
@@ -22,7 +22,7 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
   constructor(
     private readonly repo: ISourceOfFundsRepository,
     private readonly transactionRunner: ITransactionRunner | null = null,
-    private readonly events: DomainEventPublisher | null = null,
+    private readonly events: IDomainEventSink | null = null,
   ) {}
 
   async listPending(limit = 50): Promise<SourceOfFundsCase[]> {
@@ -106,7 +106,7 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
       if (!updated) throw new Error("source_of_funds_not_pending");
 
       if (conn && this.events) {
-        await this.events.publish(conn, {
+        await this.events.withTx(conn).publish({
           aggregateType: "source_of_funds",
           aggregateId: updated.id,
           eventType: SOURCE_OF_FUNDS_REVIEWED_EVENT,
@@ -141,7 +141,7 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
       await this.repo.resetDocumentCycle(command.caseId, conn);
 
       if (conn && this.events) {
-        await this.events.publish(conn, {
+        await this.events.withTx(conn).publish({
           aggregateType: "source_of_funds",
           aggregateId: updated.id,
           eventType: SOURCE_OF_FUNDS_REQUIRED_EVENT,

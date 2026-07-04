@@ -1,5 +1,6 @@
 import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import { cancelSale } from "./sale-lifecycle.js";
 import { publishSaleEvent } from "./sale-mutation-context.js";
@@ -24,7 +25,6 @@ function baseDeps(overrides: Partial<SaleServiceDeps> = {}): SaleServiceDeps {
     mediaAssetEnricher: undefined,
     englishOnlyAuctions: false,
     transactionRunner: null,
-    domainEventPublisher: null,
     domainEventSink: null,
     lotLifecycleRecording: null,
     legalEntityRepository: null,
@@ -57,7 +57,7 @@ describe("cancelSale event payload", () => {
       transactionRunner: {
         runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
       } as never,
-      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
     });
 
     const result = await cancelSale(deps, "admin-1", "staff", "sale-1", "super_admin");
@@ -84,7 +84,7 @@ describe("publishSaleEvent via lifecycle", () => {
     });
     // Direct call to verify shape (lifecycle uses same helper)
     const deps = baseDeps({
-      domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
     });
     await publishSaleEvent(deps, "u1", "s1", "sale.unpublished", {
       from_status: "scheduled",

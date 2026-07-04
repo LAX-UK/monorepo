@@ -75,7 +75,7 @@ function makeContainer(overrides: Partial<Container> = {}): Container {
     legalEntityRepository: {
       advanceIndividualLeadsToConnectPendingAfterKyc: vi.fn().mockResolvedValue([]),
     } as never,
-    domainEventPublisher: {},
+    domainEventSink: {},
     marketingEventService: { enqueue: vi.fn() },
     kycResubmissionNotifier: { notify: vi.fn().mockResolvedValue(undefined) },
     ...overrides,
@@ -184,7 +184,7 @@ describe("POST /webhooks/veriff/decision", () => {
       {
         transactionRunner: container.transactionRunner,
         legalEntityRepository: container.legalEntityRepository,
-        domainEventPublisher: container.domainEventPublisher,
+        domainEventSink: container.domainEventSink,
       },
       "u1",
     );

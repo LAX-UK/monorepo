@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
 import type { IEntityInvitationRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import { MemberPermissionError } from "../interfaces/member-management.js";
 import type { LegalEntityMembershipGuard } from "../legal-entity-membership.guard.js";
 import { InvitationInviteService } from "./invitation-invite.service.js";
@@ -12,7 +12,9 @@ import { InvitationTokenService } from "./invitation-token.service.js";
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
 const ACTOR_ID = "user-admin";
 
-function makeRepo(overrides: Partial<IEntityInvitationRepository> = {}): IEntityInvitationRepository {
+function makeRepo(
+  overrides: Partial<IEntityInvitationRepository> = {},
+): IEntityInvitationRepository {
   const txRepo: IEntityInvitationRepository = {
     forConnection: () => txRepo,
     findUserIdByEmail: async () => null,
@@ -44,7 +46,7 @@ function makeDb(): Database {
 }
 
 function makePublisher() {
-  return { publish: vi.fn(async () => {}) } as unknown as DomainEventPublisher;
+  return mockDomainEventSink(vi.fn(async () => {}));
 }
 
 describe("InvitationInviteService", () => {

@@ -2,6 +2,8 @@ import type { ExportEntityType } from "@auction/exports";
 import { AuthzError } from "@auction/exports/providers";
 import type { IExportJobRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ExportProvider } from "../../exports/types.js";
 import { ExportFileStorage } from "./export-file-storage.js";
 import { RedisExportProgressStore } from "./export-progress.store.js";
@@ -56,7 +58,7 @@ function createService(input: {
   existingRow?: unknown;
   finalRow?: unknown;
   listRows?: unknown[];
-  domainEventSink?: { publish: ReturnType<typeof vi.fn> };
+  domainEventSink?: IDomainEventSink;
   repo?: IExportJobRepository;
   redis?: { set: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
 }) {
@@ -274,7 +276,7 @@ describe("ExportService", () => {
     const publish = vi.fn().mockResolvedValue(undefined);
     const { service } = createService({
       syncMaxRows: 10,
-      domainEventSink: { publish },
+      domainEventSink: mockDomainEventSink(publish),
     });
 
     await service.createExport({
@@ -317,7 +319,7 @@ describe("ExportService", () => {
       completedAt: new Date(),
       cancelledAt: null,
     };
-    const { service } = createService({ existingRow, domainEventSink: { publish } });
+    const { service } = createService({ existingRow, domainEventSink: mockDomainEventSink(publish) });
 
     await service.createExport({
       userId: "user-1",

@@ -4,7 +4,7 @@ import type { ITransactionRunner } from "@auction/persistence";
 import type { IPaymentWriteRepository } from "@auction/persistence";
 import type { IPayoutRepository } from "@auction/persistence";
 import { eq } from "drizzle-orm";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPaymentCaptureService } from "../interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 
@@ -15,7 +15,7 @@ export type StripePaymentWebhookDeps = {
   payoutRepository: IPayoutRepository;
   payoutAdjustments: IPayoutAdjustmentService;
   paymentCapture: IPaymentCaptureService;
-  domainEventPublisher: DomainEventPublisher;
+  domainEventSink: IDomainEventSink;
 };
 
 export type PaymentRowLookup = {

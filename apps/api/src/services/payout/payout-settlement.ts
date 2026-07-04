@@ -80,7 +80,7 @@ export async function createSettlement(
   actorUserId: string | null,
   input: CreateSettlementInput,
 ): Promise<CreateSettlementResult> {
-  const publisher = deps.domainEventPublisher;
+  const publisher = deps.domainEventSink;
   if (!deps.transactionRunner || !publisher) {
     return await createSettlementCore(deps.repo, input);
   }
@@ -92,7 +92,7 @@ export async function createSettlement(
       return result;
     }
     const source = actorUserId ? "admin" : "bulk_cron";
-    await publisher.publish(tx, {
+    await publisher.withTx(tx).publish({
       aggregateType: "payout",
       aggregateId: result.payout.id,
       eventType: "payout.settlement_created",

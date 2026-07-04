@@ -2,7 +2,7 @@ import type { IAntiShillingGuard } from "@auction/persistence";
 import type { IRepositoryFactory } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { moneyGte } from "@auction/validators";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
 import type { LotLifecycleNotificationCoordinator } from "./lot-lifecycle-notification.coordinator.js";
 import type { LotCloseOutcome } from "./lot-lifecycle-types.js";
@@ -12,7 +12,7 @@ export class ClerkLotOutcomeService {
     private readonly repos: IRepositoryFactory,
     private readonly notifications: LotLifecycleNotificationCoordinator,
     private readonly antiShillingGuard: IAntiShillingGuard | null = null,
-    private readonly domainEventPublisher: DomainEventPublisher | null = null,
+    private readonly domainEventSink: IDomainEventSink | null = null,
     private readonly lotLifecycleRecording: ILotLifecycleRecorder | null = null,
   ) {}
 
@@ -147,8 +147,8 @@ export class ClerkLotOutcomeService {
         voided = true;
         if (this.lotLifecycleRecording) {
           await this.lotLifecycleRecording.recordVoided(tx, row, "no_valid_winner");
-        } else if (this.domainEventPublisher) {
-          await this.domainEventPublisher.publish(tx, {
+        } else if (this.domainEventSink) {
+          await this.domainEventSink.withTx(tx).publish({
             aggregateType: "lot",
             aggregateId: row.id,
             eventType: "lot.voided",

@@ -17,7 +17,6 @@ import type { UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../lib/errors.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type {
   ApproveSubmissionInput,
@@ -81,7 +80,6 @@ export class ItemSubmissionService implements IItemSubmissionService {
     imageCleanup?: ImageCleanupService,
     legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null = null,
     legalEntityRepository: ILegalEntityRepository | null = null,
-    domainEventPublisher: DomainEventPublisher | null = null,
     domainEventSink: IDomainEventSink | null = null,
     mediaUrlResolver: MediaUrlResolver | undefined = undefined,
     mediaAssetEnricher: MediaAssetEnricher | undefined = undefined,
@@ -96,7 +94,6 @@ export class ItemSubmissionService implements IItemSubmissionService {
       imageCleanup,
       legalEntityNotificationRecipients,
       legalEntityRepository,
-      domainEventPublisher,
       domainEventSink,
       mediaUrlResolver,
       mediaAssetEnricher,

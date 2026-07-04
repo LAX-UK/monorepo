@@ -15,7 +15,7 @@ import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err } from "neverthrow";
 import type { LotCancelledPayload } from "../domain/lot-events.js";
 import { type AuthzError, LotError } from "../lib/errors.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
@@ -53,7 +53,7 @@ export type LotServiceOptions = {
   enforceIndividualConnectOnPublish?: boolean;
   adminReviewTaskRepository?: import("@auction/persistence").IAdminReviewTaskRepository | null;
   transactionRunner?: ITransactionRunner | null;
-  domainEventPublisher?: DomainEventPublisher | null;
+  domainEventSink?: IDomainEventSink | null;
   mediaUrlResolver?: MediaUrlResolver;
   catalogueMediaUrlResolver?: MediaUrlResolver;
   mediaAssetEnricher?: MediaAssetEnricher;
@@ -83,7 +83,7 @@ export class LotService {
       enforceIndividualConnectOnPublish: opts.enforceIndividualConnectOnPublish ?? false,
       adminReviewTaskRepository: opts.adminReviewTaskRepository ?? null,
       transactionRunner: opts.transactionRunner ?? null,
-      domainEventPublisher: opts.domainEventPublisher ?? null,
+      domainEventSink: opts.domainEventSink ?? null,
       catalogueMediaUrlResolver: opts.catalogueMediaUrlResolver ?? opts.mediaUrlResolver,
       mediaAssetEnricher: opts.mediaAssetEnricher,
       englishOnlyAuctions: opts.englishOnlyAuctions ?? false,

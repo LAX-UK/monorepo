@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import {
   DrizzleLotFulfilmentRepository,
   DrizzlePaymentDomainEventsRepository,
-} from "@auction/persistence";
+} from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { NoOpErrorReporter } from "../infrastructure/no-op-error.reporter.js";
 import { SentryErrorReporter } from "../infrastructure/sentry-error.reporter.js";
@@ -14,7 +14,10 @@ import { AdminMetricsService } from "../services/admin-metrics.service.js";
 import { AmlSettlementCompliancePolicy } from "../services/aml/settlement-compliance.policy.js";
 import type { IErrorReporter } from "../services/interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "../services/interfaces/invoice-accounting.js";
-import type { IPaymentService } from "../services/interfaces/payment-service.js";
+import type {
+  IPaymentMaintenanceService,
+  IPaymentService,
+} from "../services/interfaces/payment-service.js";
 import { LotFulfilmentService } from "../services/lot-fulfilment.service.js";
 import { LotInvoiceInitiationService } from "../services/lot-invoice-initiation.service.js";
 import { PaymentService } from "../services/payment.service.js";
@@ -47,6 +50,7 @@ export type ContainerPaymentsServices = {
   paymentCaptureService: PaymentCaptureService;
   stripeCheckoutService: StripeCheckoutService | null;
   paymentService: IPaymentService;
+  paymentMaintenanceService: IPaymentMaintenanceService;
   lotInvoiceInitiationService: LotInvoiceInitiationService;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   xeroOAuthService: XeroOAuthService | null;
@@ -84,7 +88,6 @@ export function createPaymentsServices(
   } = repos;
   const {
     invoiceAddressingService,
-    domainEventPublisher,
     domainEventSink,
     notificationDispatcher,
     notificationFactory,
@@ -171,7 +174,7 @@ export function createPaymentsServices(
     paymentRepo,
     lotRepo,
     userRepo,
-    domainEventPublisher,
+    domainEventSink,
     notificationDispatcher,
     notificationFactory,
     legalEntityNotificationRecipients,
@@ -208,10 +211,9 @@ export function createPaymentsServices(
     amlHoldStore,
     sourceOfFundsService,
   );
-  const paymentDomainEventsRepository = new DrizzlePaymentDomainEventsRepository(
-    db,
-    domainEventPublisher,
-  );
+  const paymentDomainEventsRepository = new DrizzlePaymentDomainEventsRepository(db, {
+    publish: (conn, event) => domainEventSink.withTx(conn).publish(event),
+  });
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -222,7 +224,7 @@ export function createPaymentsServices(
     paymentTierPolicy,
     legalEntityRepository,
     platform.transactionRunner,
-    domainEventPublisher,
+    domainEventSink,
     stripePaymentGateway,
     mediaUrlResolver,
     {
@@ -243,7 +245,6 @@ export function createPaymentsServices(
     settlementCompliancePolicy,
     env.XERO_INVOICE_BLOCKING,
     paymentDomainEventsRepository,
-    domainEventSink,
   );
 
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(
@@ -276,7 +277,7 @@ export function createPaymentsServices(
           payoutRepository,
           payoutAdjustmentService,
           paymentCaptureService,
-          domainEventPublisher,
+          domainEventSink,
         )
       : null;
 
@@ -299,6 +300,7 @@ export function createPaymentsServices(
     paymentCaptureService,
     stripeCheckoutService,
     paymentService,
+    paymentMaintenanceService: paymentService,
     lotInvoiceInitiationService,
     stripePaymentWebhookService,
     xeroOAuthService,

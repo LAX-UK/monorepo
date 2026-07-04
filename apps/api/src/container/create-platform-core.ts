@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
-import { DrizzleTransactionRunner, type ITransactionRunner } from "@auction/persistence";
+import { DrizzleTransactionRunner } from "@auction/persistence";
+import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import { DomainEventSink, type IDomainEventSink } from "../services/domain-event-sink.js";
 import { DomainEventPublisher } from "../services/domain-event.publisher.js";
@@ -12,7 +13,6 @@ import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 
 export type ContainerPlatformCore = {
-  domainEventPublisher: DomainEventPublisher;
   domainEventSink: IDomainEventSink;
   transactionRunner: ITransactionRunner;
   lotLifecycleEventRecorder: LotLifecycleEventRecorder;
@@ -30,7 +30,7 @@ export function createPlatformCore(
   const domainEventSink: IDomainEventSink = new DomainEventSink(domainEventPublisher, db);
   const transactionRunner: ITransactionRunner = new DrizzleTransactionRunner(db);
   const lotLifecycleEventRecorder = new LotLifecycleEventRecorder(
-    domainEventPublisher,
+    domainEventSink,
     repos.lotLifecycleSnapshotRepository,
   );
   const lotLifecycleRecording: ILotLifecycleRecorder = new LotLifecycleRecording(
@@ -41,7 +41,6 @@ export function createPlatformCore(
   const notificationFactory = new NotificationFactory();
 
   return {
-    domainEventPublisher,
     domainEventSink,
     transactionRunner,
     lotLifecycleEventRecorder,

@@ -26,7 +26,7 @@ import {
 } from "./bid/proxy-auto-bid.resolver.js";
 import { SaleroomBidGate } from "./bid/saleroom-bid.gate.js";
 import type { SaleroomOnBlockPolicy } from "./bid/saleroom-on-block.policy.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
@@ -55,7 +55,7 @@ export type BidServiceOptions = {
   saleroomSessionLookup?: ISaleroomSessionLookup | null;
   saleroomOnBlockPolicy?: SaleroomOnBlockPolicy | null;
   antiShillingGuard?: IAntiShillingGuard | null;
-  domainEventPublisher?: DomainEventPublisher | null;
+  domainEventSink?: IDomainEventSink | null;
   legalEntityRepository?: ILegalEntityRepository | null;
   idempotencyStore?: IIdempotencyStore | null;
   bidEligibility?: IBidEligibility | null;
@@ -119,7 +119,7 @@ export class BidService implements IBidPlacerWithIdempotency {
     this.proxyResolver = new ProxyAutoBidResolver(
       opts.antiShillingGuard ?? null,
       opts.notifications,
-      opts.domainEventPublisher ?? null,
+      opts.domainEventSink ?? null,
     );
 
     this.earlyCloseHandler = new EarlyCloseHandler(opts.lotLifecycleRecording ?? null);

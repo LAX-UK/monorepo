@@ -5,7 +5,7 @@ import {
   DrizzleLotRepository,
   DrizzleSaleRepository,
 } from "./repositories/index.js";
-import type { IRepositoryFactory, LotBidRepos, TransactionRepos } from "./repository-factory.js";
+import type { IRepositoryFactory, LotBidRepos, TransactionRepos } from "./interfaces/repository-factory.js";
 
 export class DrizzleRepositoryFactory implements IRepositoryFactory {
   readonly root: LotBidRepos;

@@ -5,7 +5,7 @@ import {
   DrizzleBuyerAgentAuthorisationReader,
   DrizzleOperatorPlacementReader,
   DrizzleSaleRegistrationBidReader,
-} from "@auction/persistence";
+} from "@auction/persistence/repositories";
 import type { IAmlHoldStore } from "../services/aml/ports.js";
 import { BidEligibilityService } from "../services/bid-eligibility.service.js";
 import { AmlBidGate, NoOpAmlBidGate } from "../services/bid/aml-bid.gate.js";

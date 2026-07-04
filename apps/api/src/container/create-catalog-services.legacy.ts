@@ -9,7 +9,7 @@ import type {
   IItemSubmissionAdminApi,
   IItemSubmissionSellerApi,
   IItemSubmissionService,
-} from "../services/interfaces/item-submission-service.js";
+} from "../services/interfaces/item-submission-apis.js";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 import type { ILotSoftDeleteService } from "../services/interfaces/lot-soft-delete.js";
 import type { IOnsiteEventAdminService } from "../services/interfaces/onsite-event-admin-service.js";

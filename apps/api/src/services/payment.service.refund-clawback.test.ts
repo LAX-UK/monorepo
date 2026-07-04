@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
@@ -50,7 +51,7 @@ describe("PaymentService.refundPayment admin clawback", () => {
       defaultTierPolicy,
       undefined,
       transactionRunnerFromDb(db as never),
-      { publish: vi.fn().mockResolvedValue(undefined) } as never,
+      mockDomainEventSink(vi.fn().mockResolvedValue(undefined)) as never,
       {
         isConfigured: () => true,
         capturePaymentIntent: vi.fn(),
@@ -129,7 +130,7 @@ describe("PaymentService.refundManualReviewPayment admin clawback", () => {
       defaultTierPolicy,
       undefined,
       transactionRunnerFromDb(db as never),
-      { publish: vi.fn().mockResolvedValue(undefined) } as never,
+      mockDomainEventSink(vi.fn().mockResolvedValue(undefined)) as never,
       {
         isConfigured: () => true,
         capturePaymentIntent: vi.fn(),

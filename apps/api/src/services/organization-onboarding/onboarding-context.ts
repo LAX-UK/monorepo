@@ -3,7 +3,7 @@ import type { ILegalEntityOnboardingRepository } from "@auction/persistence";
 import type { ILegalEntityRepository } from "@auction/persistence";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import type { LegalEntityDocumentUploadInput } from "@auction/validators";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IOrganizationOnboardingService } from "../interfaces/organization-onboarding.js";
 import type { IConnectAccountSync, IConnectSessionProvider } from "../interfaces/stripe-connect.js";
 import type {
@@ -19,7 +19,7 @@ export type OnboardingContext = {
   uploadPersistenceRepository: IUploadPersistenceRepository;
   legalEntityRepository: ILegalEntityRepository;
   organizationOnboardingService: IOrganizationOnboardingService;
-  domainEventPublisher: DomainEventPublisher;
+  domainEventSink: IDomainEventSink;
   stripeConnect: (IConnectAccountSync & Pick<IConnectSessionProvider, "isConfigured">) | null;
   options: OrganizationOnboardingFlowOptions;
 };
@@ -30,7 +30,7 @@ export function createOnboardingContext(input: {
   uploadPersistenceRepository: IUploadPersistenceRepository;
   legalEntityRepository: ILegalEntityRepository;
   organizationOnboardingService: IOrganizationOnboardingService;
-  domainEventPublisher: DomainEventPublisher;
+  domainEventSink: IDomainEventSink;
   stripeConnect: (IConnectAccountSync & Pick<IConnectSessionProvider, "isConfigured">) | null;
   options?: OrganizationOnboardingFlowOptions;
 }): OnboardingContext {

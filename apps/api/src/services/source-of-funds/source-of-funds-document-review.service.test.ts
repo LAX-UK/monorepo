@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import {
   SOURCE_OF_FUNDS_DOCUMENT_REVIEWED_EVENT,
@@ -9,7 +10,7 @@ describe("SourceOfFundsDocumentReviewService", () => {
   const mockTransaction = vi.fn();
   const mockDb = { transaction: mockTransaction } as never;
   const publish = vi.fn().mockResolvedValue(undefined);
-  const events = { publish } as never;
+  const events = mockDomainEventSink(publish);
 
   let caseRepo: {
     findById: ReturnType<typeof vi.fn>;
@@ -108,7 +109,7 @@ describe("SourceOfFundsDocumentReviewService", () => {
 
     expect(reviewRepo.upsertLatest).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledTimes(1);
-    expect(publish.mock.calls[0]?.[1]).toMatchObject({
+    expect(publish.mock.calls[0]?.[0]).toMatchObject({
       eventType: SOURCE_OF_FUNDS_DOCUMENT_REVIEWED_EVENT,
       aggregateId: "sof-1",
     });

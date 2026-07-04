@@ -2,7 +2,7 @@ import type { IImpersonationSessionRepository } from "@auction/persistence";
 import type { IImpersonationDomainEventReader } from "@auction/persistence";
 import type { ILegalEntityRepository } from "@auction/persistence";
 import type { AdminUserService } from "../admin-user.service.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { AdminPeopleRouteServices } from "../interfaces/admin-routes/admin-people-routes.js";
 import type { InvitationService } from "../invitation.service.js";
 import type { ProfileService } from "../profile.service.js";
@@ -12,7 +12,7 @@ import { AdminUserApplicationService } from "./admin-user-application.service.js
 
 export type CreateAdminPeopleServicesInput = {
   transactionRunner: import("@auction/persistence").ITransactionRunner;
-  domainEventPublisher: DomainEventPublisher;
+  domainEventSink: IDomainEventSink;
   impersonationSessionRepository: IImpersonationSessionRepository;
   impersonationDomainEventReader: IImpersonationDomainEventReader;
   legalEntityRepository: ILegalEntityRepository;
@@ -30,7 +30,7 @@ export function createAdminPeopleServices(
       input.legalEntityRepository,
       input.impersonationSessionRepository,
       input.impersonationDomainEventReader,
-      input.domainEventPublisher,
+      input.domainEventSink,
     ),
     users: new AdminUserApplicationService(input.adminUserService, input.profileService),
     invitations: new AdminInvitationApplicationService(input.invitationService),

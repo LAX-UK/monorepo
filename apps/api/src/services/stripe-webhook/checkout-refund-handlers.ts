@@ -59,7 +59,7 @@ export async function handleChargeRefunded(
       tx,
     });
 
-    await deps.domainEventPublisher.publish(tx, {
+    await deps.domainEventSink.withTx(tx).publish({
       aggregateType: "payment",
       aggregateId: paymentRow.id,
       eventType: "payment.refunded",

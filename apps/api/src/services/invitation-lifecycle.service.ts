@@ -1,6 +1,6 @@
 import type { ITransactionRunner } from "@auction/persistence";
 import type { IEntityInvitationRepository } from "@auction/persistence";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type {
   IInvitationLifecycleService,
   InvitationOutcome,
@@ -21,7 +21,7 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
   constructor(
     transactionRunner: ITransactionRunner,
     invitationRepository: IEntityInvitationRepository,
-    domainEventPublisher: DomainEventPublisher,
+    domainEventSink: IDomainEventSink,
     membershipInviteNotifier: IMembershipInviteNotifier,
     webOrigin: string,
     membershipGuard: LegalEntityMembershipGuard,
@@ -38,7 +38,7 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
       invitationRepository,
       tokenService,
       notifications,
-      domainEventPublisher,
+      domainEventSink,
       membershipGuard,
     );
     this.acceptanceService = new InvitationAcceptanceService(
@@ -46,7 +46,7 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
       invitationRepository,
       tokenService,
       notifications,
-      domainEventPublisher,
+      domainEventSink,
     );
   }
 

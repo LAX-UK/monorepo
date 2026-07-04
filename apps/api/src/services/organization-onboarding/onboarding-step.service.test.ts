@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { OnboardingContext } from "./onboarding-context.js";
 import { OnboardingStepService } from "./onboarding-step.service.js";
 
@@ -62,7 +63,7 @@ function createCtx(overrides: Partial<OnboardingContext> = {}): OnboardingContex
         vatRequired: true,
       }),
     } as never,
-    domainEventPublisher: { publish: vi.fn() } as never,
+    domainEventSink: mockDomainEventSink(vi.fn()) as never,
     stripeConnect: null,
     options: {},
     ...overrides,

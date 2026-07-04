@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
-import { DrizzleAuthCredentialReader, type IAuthCredentialReader } from "@auction/persistence";
+import type { IAuthCredentialReader } from "@auction/persistence/interfaces";
+import { DrizzleAuthCredentialReader } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { CompositeErrorClassifier } from "../infrastructure/composite-error.classifier.js";
 import { ConsoleErrorLogger } from "../infrastructure/console-error.logger.js";

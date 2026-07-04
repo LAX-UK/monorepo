@@ -79,7 +79,7 @@ export class SourceOfFundsDocumentCollectionBuyerService
       );
 
       if (this.ctx.events) {
-        await this.ctx.events.publish(conn, {
+        await this.ctx.events.withTx(conn).publish({
           aggregateType: "source_of_funds",
           aggregateId: command.caseId,
           eventType: SOURCE_OF_FUNDS_DOCUMENT_UPLOADED_EVENT,
@@ -118,7 +118,7 @@ export class SourceOfFundsDocumentCollectionBuyerService
       if (!updated) throw new Error("source_of_funds_submit_failed");
 
       if (this.ctx.events) {
-        await this.ctx.events.publish(conn, {
+        await this.ctx.events.withTx(conn).publish({
           aggregateType: "source_of_funds",
           aggregateId: updated.id,
           eventType: SOURCE_OF_FUNDS_DOCUMENTS_SUBMITTED_EVENT,

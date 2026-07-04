@@ -6,7 +6,6 @@ import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IStripeCheckoutService } from "../interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
 import type { IPaymentCaptureService } from "../interfaces/payment-capture.js";
@@ -42,7 +41,6 @@ export type PaymentServiceDeps = {
   paymentTierPolicy: PaymentTierPolicy;
   legalEntityRepository: ILegalEntityRepository | undefined;
   transactionRunner: import("@auction/persistence").ITransactionRunner | undefined;
-  domainEventPublisher: DomainEventPublisher | undefined;
   domainEventSink: IDomainEventSink | undefined;
   stripePayments: IStripePaymentGateway | null;
   mediaUrlResolver: MediaUrlResolver | undefined;

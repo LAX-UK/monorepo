@@ -86,7 +86,7 @@ export class AmlReviewApplicationService implements IAmlReviewApplicationService
         await this.deps.holdStore.setHold(record.userId, "blocked", "sanctions_match", tx);
       }
 
-      await this.deps.events.publish(tx, {
+      await this.deps.events.withTx(tx).publish({
         aggregateType: "aml_screening",
         aggregateId: updated.id,
         eventType: AML_SCREENING_EVALUATED_EVENT,

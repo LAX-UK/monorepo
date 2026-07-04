@@ -38,7 +38,7 @@ export class CheckoutSessionAsyncPaymentFailedHandler implements ICheckoutSessio
 
       const cancelled = await this.deps.payments.applyCancelledInTransaction(tx, paymentId);
       if (cancelled) {
-        await this.deps.domainEventPublisher.publish(tx, {
+        await this.deps.domainEventSink.withTx(tx).publish({
           aggregateType: "payment",
           aggregateId: paymentId,
           eventType: "payment.cancelled",

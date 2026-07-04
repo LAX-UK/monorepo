@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { IArtistRegistryRepository } from "@auction/persistence";
 import { artistMergeConfirmationPhrase } from "@auction/validators";
 import { ArtistError } from "../../lib/errors.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
   ArtistRecord,
   CreateArtistInput,
@@ -21,7 +21,7 @@ export class ArtistRegistryStaffCommandService implements IArtistRegistryStaffCo
   constructor(
     private readonly repo: IArtistRegistryRepository,
     private readonly query: ArtistRegistryQueryService,
-    private readonly domainEvents: DomainEventPublisher | null = null,
+    private readonly domainEvents: IDomainEventSink | null = null,
   ) {}
 
   create(creatorUserId: string | null, input: CreateArtistInput): Promise<ArtistRecord> {
@@ -39,7 +39,7 @@ export class ArtistRegistryStaffCommandService implements IArtistRegistryStaffCo
     return await this.repo.runTransaction(async (txRepo, tx) => {
       const { result, performed } = await txRepo.merge(reviewerUserId, input);
       if (this.domainEvents && performed) {
-        await this.domainEvents.publish(tx, {
+        await this.domainEvents.withTx(tx).publish({
           aggregateType: "artist",
           aggregateId: input.fromArtistId,
           eventType: "artist.merged",
@@ -85,7 +85,7 @@ export class ArtistRegistryStaffCommandService implements IArtistRegistryStaffCo
     return await this.repo.runTransaction(async (txRepo, tx) => {
       const updated = await txRepo.review(reviewerUserId, artistId, input);
       if (this.domainEvents) {
-        await this.domainEvents.publish(tx, {
+        await this.domainEvents.withTx(tx).publish({
           aggregateType: "artist",
           aggregateId: artistId,
           eventType: "artist.reviewed",
@@ -118,7 +118,7 @@ export class ArtistRegistryStaffCommandService implements IArtistRegistryStaffCo
     const publisher = this.domainEvents;
     if (!publisher) return result;
     await this.repo.runTransaction(async (_txRepo, tx) => {
-      await publisher.publish(tx, {
+      await publisher.withTx(tx).publish({
         aggregateType: "artist",
         aggregateId: randomUUID(),
         eventType: "artist.propose_matches",

@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence";
 import type { SettlementComplianceInput } from "../aml/settlement-compliance.policy.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
   ISourceOfFundsGateService,
   SourceOfFundsConfig,
@@ -36,7 +36,7 @@ export class SourceOfFundsGateService implements ISourceOfFundsGateService {
     private readonly repo: ISourceOfFundsRepository,
     private readonly config: SourceOfFundsConfig,
     private readonly transactionRunner: ITransactionRunner | null = null,
-    private readonly events: DomainEventPublisher | null = null,
+    private readonly events: IDomainEventSink | null = null,
   ) {}
 
   private thresholdPence(): number {
@@ -114,7 +114,7 @@ export class SourceOfFundsGateService implements ISourceOfFundsGateService {
       }
 
       if (conn && this.events) {
-        await this.events.publish(conn, {
+        await this.events.withTx(conn).publish({
           aggregateType: "source_of_funds",
           aggregateId: created.id,
           eventType: SOURCE_OF_FUNDS_REQUIRED_EVENT,

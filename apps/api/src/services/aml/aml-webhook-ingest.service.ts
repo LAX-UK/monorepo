@@ -195,7 +195,7 @@ export class AmlWebhookIngestService implements IAmlWebhookIngestService {
       reasons: decision.reasons.join(","),
     };
 
-    await this.deps.events.publish(tx, {
+    await this.deps.events.withTx(tx).publish({
       aggregateType: "aml_screening",
       aggregateId: record.id,
       eventType: AML_SCREENING_EVALUATED_EVENT,
@@ -204,7 +204,7 @@ export class AmlWebhookIngestService implements IAmlWebhookIngestService {
     });
 
     if (decision.outcome !== "clear") {
-      await this.deps.events.publish(tx, {
+      await this.deps.events.withTx(tx).publish({
         aggregateType: "aml_screening",
         aggregateId: record.id,
         eventType: AML_MATCH_FLAGGED_EVENT,

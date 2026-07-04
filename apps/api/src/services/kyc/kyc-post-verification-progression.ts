@@ -1,11 +1,11 @@
 import type { ITransactionRunner } from "@auction/persistence";
 import type { ILegalEntityRepository } from "@auction/persistence";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 
 export type KycPostVerificationProgressionDeps = {
   transactionRunner: ITransactionRunner;
   legalEntityRepository: ILegalEntityRepository;
-  domainEventPublisher: DomainEventPublisher | undefined;
+  domainEventSink: IDomainEventSink | undefined;
 };
 
 /**
@@ -22,11 +22,11 @@ export async function progressIndividualsAfterKycApproval(
       await deps.legalEntityRepository.advanceIndividualLeadsToConnectPendingAfterKyc(userId, tx)
     ).map((row) => row.id);
 
-    if (!deps.domainEventPublisher || advancedIds.length === 0) {
+    if (!deps.domainEventSink || advancedIds.length === 0) {
       return advancedIds;
     }
 
-    await deps.domainEventPublisher.publish(tx, {
+    await deps.domainEventSink.withTx(tx).publish({
       aggregateType: "user",
       aggregateId: userId,
       eventType: "kyc.verified",
@@ -38,7 +38,7 @@ export async function progressIndividualsAfterKycApproval(
     });
 
     for (const legalEntityId of advancedIds) {
-      await deps.domainEventPublisher.publish(tx, {
+      await deps.domainEventSink.withTx(tx).publish({
         aggregateType: "legal_entity",
         aggregateId: legalEntityId,
         eventType: "legal_entity.lifecycle_progressed",

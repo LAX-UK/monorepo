@@ -1,5 +1,6 @@
 import type { ISaleroomSessionRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { SaleroomService } from "./saleroom.service.js";
 
 function mockSessionRepo(
@@ -43,7 +44,7 @@ function createService(
   return {
     service: new SaleroomService({
       sessionRepo,
-      redis: { publish: redisPublish } as never,
+      redis: mockDomainEventSink(redisPublish) as never,
       lotLifecycle: (overrides.lotLifecycle ?? {}) as never,
       saleRepo: (overrides.saleRepo ?? { findById: vi.fn() }) as never,
       lotRepo: (overrides.lotRepo ?? { findById: vi.fn(), findBySaleId: vi.fn() }) as never,

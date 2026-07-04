@@ -4,7 +4,7 @@ import {
   type ITransactionRunner,
 } from "@auction/persistence";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 
 export { ADMIN_IMPERSONATION_AGGREGATE_TYPE };
 
@@ -12,7 +12,7 @@ export class ImpersonationAuditService {
   constructor(
     private readonly transactionRunner: ITransactionRunner,
     private readonly impersonationDomainEventReader: IImpersonationDomainEventReader,
-    private readonly publisher: DomainEventPublisher,
+    private readonly publisher: IDomainEventSink,
   ) {}
 
   /** Idempotent: skips if an `admin.impersonation_ended` row already exists for
@@ -26,7 +26,7 @@ export class ImpersonationAuditService {
     await this.transactionRunner.runInTransaction(async (tx) => {
       if (await this.impersonationDomainEventReader.hasEndedEvent(input.sessionId)) return;
 
-      await this.publisher.publish(tx, {
+      await this.publisher.withTx(tx).publish({
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
         aggregateId: input.sessionId,
         eventType: "admin.impersonation_ended",
@@ -71,7 +71,7 @@ export class ImpersonationAuditService {
       await this.transactionRunner.runInTransaction(async (tx) => {
         if (await this.impersonationDomainEventReader.hasEndedEvent(row.aggregateId)) return;
 
-        await this.publisher.publish(tx, {
+        await this.publisher.withTx(tx).publish({
           aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
           aggregateId: row.aggregateId,
           eventType: "admin.impersonation_ended",

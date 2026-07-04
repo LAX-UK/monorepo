@@ -1,6 +1,6 @@
 import type { ITransactionRunner } from "@auction/persistence";
 import type { VeriffWebhookVerifier } from "../../lib/veriff/veriff-webhook-verifier.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import { createAmlServiceDeps } from "./aml-context.js";
 import type { AmlMonitoringService } from "./aml-monitoring.service.js";
 import { AmlReviewApplicationService } from "./aml-review-application.service.js";
@@ -41,7 +41,7 @@ export class AmlService implements IAmlService {
     screeningWriter: IWatchlistScreeningWriter,
     screeningReader: IWatchlistScreeningReader,
     holdStore: IAmlHoldStore,
-    events: DomainEventPublisher,
+    events: IDomainEventSink,
     provider: IScreeningProvider,
     fetcher: IWatchlistScreeningFetcher | null = null,
   ) {

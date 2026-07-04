@@ -4,14 +4,14 @@ import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
 
 export type RefundLedgerDeps = {
   payments: IPaymentWriteRepository;
   transactionRunner: import("@auction/persistence").ITransactionRunner;
-  domainEventPublisher: DomainEventPublisher;
+  domainEventSink: IDomainEventSink;
   payoutAdjustments: IPayoutAdjustmentService | null;
   paymentRefundReconcile: PaymentRefundReconcileService | null;
   xeroPaymentRecorder: IXeroPaymentRecorder | null;
@@ -86,7 +86,7 @@ export async function executePaymentRefundLedger(
       if (input.eventReason !== undefined) {
         payload.reason = input.eventReason;
       }
-      await deps.domainEventPublisher.publish(tx, {
+      await deps.domainEventSink.withTx(tx).publish({
         aggregateType: "payment",
         aggregateId: paymentId,
         eventType: "payment.refunded",

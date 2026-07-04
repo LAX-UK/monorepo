@@ -1,5 +1,5 @@
 import type { ISourceOfFundsGate } from "../aml/settlement-compliance.policy.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
   ISourceOfFundsService,
   SourceOfFundsConfig,
@@ -29,7 +29,7 @@ export class SourceOfFundsService implements ISourceOfFundsService, ISourceOfFun
     repo: ISourceOfFundsRepository,
     config: SourceOfFundsConfig,
     transactionRunner: import("@auction/persistence").ITransactionRunner | null = null,
-    events: DomainEventPublisher | null = null,
+    events: IDomainEventSink | null = null,
   ) {
     this.gate = new SourceOfFundsGateService(repo, config, transactionRunner, events);
     this.review = new SourceOfFundsReviewService(repo, transactionRunner, events);

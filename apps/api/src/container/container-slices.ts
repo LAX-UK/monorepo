@@ -1,18 +1,21 @@
 import type { Auth } from "@auction/auth/server";
 import type { createDb } from "@auction/db";
-import type { IUserEmailChangeRepository, IWebhookEventRepository } from "@auction/persistence";
-import type { IAttentionFeedReader } from "@auction/persistence";
-import type { IEmailObservabilityRepository } from "@auction/persistence";
-import type { IKycRepository } from "@auction/persistence";
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
-import type { ILegalEntityRepository } from "@auction/persistence";
-import type { INotificationPreferenceRepository } from "@auction/persistence";
-import type { IPayoutRepository } from "@auction/persistence";
-import type { IPendingInvitationsReader } from "@auction/persistence";
-import type { IItemSubmissionRepository } from "@auction/persistence";
-import type { IRepositoryFactory } from "@auction/persistence";
-import type { IUiPreferenceRepository } from "@auction/persistence";
-import type { IXeroWebhookEventRepository } from "@auction/persistence";
+import type {
+  IAttentionFeedReader,
+  IEmailObservabilityRepository,
+  IItemSubmissionRepository,
+  IKycRepository,
+  ILegalEntityNotificationRecipientReader,
+  ILegalEntityRepository,
+  INotificationPreferenceRepository,
+  IPayoutRepository,
+  IPendingInvitationsReader,
+  IRepositoryFactory,
+  IUiPreferenceRepository,
+  IUserEmailChangeRepository,
+  IWebhookEventRepository,
+  IXeroWebhookEventRepository,
+} from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -112,7 +115,7 @@ export type ContainerRepositoriesSlice = ContainerRepositories;
 
 export type ContainerPlatformSlice = Pick<
   ContainerPlatformServices,
-  | "domainEventPublisher"
+  | "domainEventSink"
   | "transactionRunner"
   | "authAuditPublisher"
   | "notificationFactory"

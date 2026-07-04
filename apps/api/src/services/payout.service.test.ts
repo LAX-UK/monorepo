@@ -3,7 +3,7 @@ import type { IPayoutRepository, PendingPaymentRow } from "@auction/persistence"
 import type { Payout, PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import {
   PayoutNotFoundError,
   PayoutPermissionError,
@@ -520,9 +520,7 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     const db = {
       transaction: vi.fn().mockImplementation(async (fn) => fn(mockTx)),
     };
-    const svc = new PayoutService(repo, transactionRunnerFromDb(db as unknown as Database), {
-      publish,
-    } as unknown as DomainEventPublisher);
+    const svc = new PayoutService(repo, transactionRunnerFromDb(db as unknown as Database), mockDomainEventSink(publish));
 
     const result = await svc.reconcileStripeTransfer({
       stripeTransferId: "tr_1",
@@ -534,7 +532,7 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     expect(result?.status).toBe("reversed");
     expect(mockInsert).toHaveBeenCalled();
     expect(publish).toHaveBeenCalledTimes(1);
-    const publishCall = publish.mock.calls[0]?.[1];
+    const publishCall = publish.mock.calls[0]?.[0];
     expect(publishCall).toBeDefined();
     expect(publishCall.eventType).toBe("payout.transfer_reversed");
     expect(publishCall.aggregateId).toBe("po1");

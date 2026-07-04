@@ -14,7 +14,7 @@ export async function requestWithdrawal(
   sellerUserId: string,
   lotId: string,
 ): Promise<Result<{ taskId: string; alreadyPending: boolean }, LotError | AuthzError>> {
-  const publisher = deps.domainEventPublisher;
+  const publisher = deps.domainEventSink;
   const legalEntityRepository = deps.legalEntityRepository;
   const adminReviewTaskRepository = deps.adminReviewTaskRepository;
   if (
@@ -64,7 +64,7 @@ export async function requestWithdrawal(
         sellerUserId,
       );
     } else if (publisher) {
-      await publisher.publish(tx, {
+      await publisher.withTx(tx).publish({
         aggregateType: "lot",
         aggregateId: lotId,
         eventType: "lot.withdrawal_requested",

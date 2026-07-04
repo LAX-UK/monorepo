@@ -3,7 +3,7 @@ import type {
   IUploadObjectReader,
 } from "@auction/persistence";
 import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
 import type { ISignedUrlPolicy } from "../signed-url-policy.js";
 import type { SourceOfFundsSettlementReadService } from "./source-of-funds-settlement-read.service.js";
@@ -15,7 +15,7 @@ export type SourceOfFundsDocumentCollectionContext = {
   reviewRepo: ISourceOfFundsDocumentReviewRepository;
   uploadObjectReader: IUploadObjectReader;
   transactionRunner: import("@auction/persistence").ITransactionRunner;
-  events: DomainEventPublisher | null;
+  events: IDomainEventSink | null;
   storage: IObjectStorage;
   downloadSigningPolicy: ISignedUrlPolicy;
   settlementRead: SourceOfFundsSettlementReadService;
@@ -27,7 +27,7 @@ export function createSourceOfFundsDocumentCollectionContext(input: {
   reviewRepo: ISourceOfFundsDocumentReviewRepository;
   uploadObjectReader: IUploadObjectReader;
   transactionRunner: import("@auction/persistence").ITransactionRunner;
-  events: DomainEventPublisher | null;
+  events: IDomainEventSink | null;
   storage: IObjectStorage;
   downloadSigningPolicy: ISignedUrlPolicy;
   settlementRead: SourceOfFundsSettlementReadService;

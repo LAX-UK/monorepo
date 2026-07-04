@@ -5,7 +5,7 @@ import type {
   SourceOfFundsDocumentReviewRow,
 } from "@auction/persistence";
 import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
   ISourceOfFundsDocumentReviewService,
   ReviewSourceOfFundsDocumentCommand,
@@ -24,7 +24,7 @@ export class SourceOfFundsDocumentReviewService implements ISourceOfFundsDocumen
     private readonly docRepo: ISourceOfFundsDocumentRepository,
     private readonly reviewRepo: ISourceOfFundsDocumentReviewRepository,
     private readonly transactionRunner: ITransactionRunner,
-    private readonly events: DomainEventPublisher | null,
+    private readonly events: IDomainEventSink | null,
   ) {}
 
   async reviewDocument(
@@ -60,7 +60,7 @@ export class SourceOfFundsDocumentReviewService implements ISourceOfFundsDocumen
       );
 
       if (this.events) {
-        await this.events.publish(conn, {
+        await this.events.withTx(conn).publish({
           aggregateType: "source_of_funds",
           aggregateId: command.caseId,
           eventType: SOURCE_OF_FUNDS_DOCUMENT_REVIEWED_EVENT,

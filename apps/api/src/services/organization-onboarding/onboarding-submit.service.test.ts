@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { OnboardingContext } from "./onboarding-context.js";
 import { OnboardingSubmitService } from "./onboarding-submit.service.js";
 
@@ -63,7 +64,7 @@ function createCtx(overrides: Partial<OnboardingContext> = {}): OnboardingContex
       findActiveMembership: vi.fn().mockResolvedValue({ role: "owner" }),
     } as never,
     organizationOnboardingService: { getRequirements: vi.fn() } as never,
-    domainEventPublisher: { publish: vi.fn().mockResolvedValue(undefined) } as never,
+    domainEventSink: mockDomainEventSink(vi.fn().mockResolvedValue(undefined)) as never,
     stripeConnect: null,
     options: {},
     ...overrides,

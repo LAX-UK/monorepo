@@ -68,7 +68,7 @@ async function runKycProgression(container: Container, userId: string): Promise<
       {
         transactionRunner: container.transactionRunner,
         legalEntityRepository: container.legalEntityRepository,
-        domainEventPublisher: container.domainEventPublisher,
+        domainEventSink: container.domainEventSink,
       },
       userId,
     )) ?? []

@@ -5,7 +5,7 @@ import type { IBidRepository, ILotRepository, ISaleRepository } from "@auction/p
 import type { IRepositoryFactory } from "@auction/persistence";
 import type { IWatchlistRepository } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
 import type { ILotJobScheduler } from "../interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
@@ -42,7 +42,7 @@ export type LotServiceDeps = {
   enforceIndividualConnectOnPublish: boolean;
   adminReviewTaskRepository: import("@auction/persistence").IAdminReviewTaskRepository | null;
   transactionRunner: ITransactionRunner | null;
-  domainEventPublisher: DomainEventPublisher | null;
+  domainEventSink: IDomainEventSink | null;
   catalogueMediaUrlResolver: MediaUrlResolver | undefined;
   mediaAssetEnricher: MediaAssetEnricher | undefined;
   englishOnlyAuctions: boolean;

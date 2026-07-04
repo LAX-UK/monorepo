@@ -3,7 +3,7 @@ import type { ILegalEntityOnboardingRepository } from "@auction/persistence";
 import type { ILegalEntityRepository } from "@auction/persistence";
 import type { OrgOnboardingStepKey } from "@auction/types";
 import type { LegalEntityDocumentUploadInput } from "@auction/validators";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IOrganizationOnboardingService } from "../interfaces/organization-onboarding.js";
 import type { IConnectAccountSync, IConnectSessionProvider } from "../interfaces/stripe-connect.js";
 import {
@@ -50,7 +50,7 @@ export class OrganizationOnboardingFlowService implements IOrganizationOnboardin
     transactionRunner: ITransactionRunner,
     legalEntityRepository: ILegalEntityRepository,
     organizationOnboardingService: IOrganizationOnboardingService,
-    domainEventPublisher: DomainEventPublisher,
+    domainEventSink: IDomainEventSink,
     uploadPersistenceRepository: IUploadPersistenceRepository,
     onboardingRepo: ILegalEntityOnboardingRepository,
     stripeConnect:
@@ -63,7 +63,7 @@ export class OrganizationOnboardingFlowService implements IOrganizationOnboardin
       onboardingRepo,
       uploadPersistenceRepository,
       organizationOnboardingService,
-      domainEventPublisher,
+      domainEventSink,
       stripeConnect,
       options,
     };
@@ -74,7 +74,7 @@ export class OrganizationOnboardingFlowService implements IOrganizationOnboardin
       uploadPersistenceRepository,
       legalEntityRepository,
       organizationOnboardingService,
-      domainEventPublisher,
+      domainEventSink,
       stripeConnect,
       options,
     });

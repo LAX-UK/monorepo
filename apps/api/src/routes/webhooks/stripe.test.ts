@@ -24,7 +24,7 @@ function makeContainer(overrides: Partial<Container> = {}): Container {
     transactionRunner: {
       runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
     } as never,
-    domainEventPublisher: {},
+    domainEventSink: {},
     marketingEventService: { enqueue: vi.fn() },
     ...overrides,
   } as unknown as Container;

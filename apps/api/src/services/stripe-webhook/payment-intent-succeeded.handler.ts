@@ -58,7 +58,7 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
             stripeChargeId: chargeId,
           }),
         );
-        await this.deps.domainEventPublisher.publish(tx, {
+        await this.deps.domainEventSink.withTx(tx).publish({
           aggregateType: "payment",
           aggregateId: paymentId,
           eventType: "payment.capture_blocked_terminal_status",

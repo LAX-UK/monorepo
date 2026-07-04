@@ -2,7 +2,7 @@ import type { IPaymentWebhookLookupReader, ITransactionRunner } from "@auction/p
 import type { IPaymentWriteRepository } from "@auction/persistence";
 import type { IPayoutRepository } from "@auction/persistence";
 import type Stripe from "stripe";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import { handleChargeRefunded } from "./stripe-webhook/checkout-refund-handlers.js";
@@ -29,7 +29,7 @@ export class StripePaymentWebhookService {
     payoutRepository: IPayoutRepository,
     payoutAdjustments: IPayoutAdjustmentService,
     paymentCapture: IPaymentCaptureService,
-    domainEventPublisher: DomainEventPublisher,
+    domainEventSink: IDomainEventSink,
   ) {
     this.deps = {
       transactionRunner,
@@ -38,7 +38,7 @@ export class StripePaymentWebhookService {
       payoutRepository,
       payoutAdjustments,
       paymentCapture,
-      domainEventPublisher,
+      domainEventSink,
     };
     this.handlers = createPaymentWebhookHandlers(this.deps);
   }

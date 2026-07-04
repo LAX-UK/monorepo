@@ -31,7 +31,7 @@ export async function handleDisputeCreated(
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
     }
 
-    await deps.domainEventPublisher.publish(tx, {
+    await deps.domainEventSink.withTx(tx).publish({
       aggregateType: "payment",
       aggregateId: paymentRow.id,
       eventType: "payment.dispute_opened",
@@ -87,7 +87,7 @@ export async function handleDisputeFundsWithdrawn(
       tx,
     });
 
-    await deps.domainEventPublisher.publish(tx, {
+    await deps.domainEventSink.withTx(tx).publish({
       aggregateType: "payment",
       aggregateId: paymentRow.id,
       eventType: "payment.dispute_funds_withdrawn",
@@ -147,7 +147,7 @@ export async function handleDisputeClosed(
       });
     }
 
-    await deps.domainEventPublisher.publish(tx, {
+    await deps.domainEventSink.withTx(tx).publish({
       aggregateType: "payment",
       aggregateId: paymentRow.id,
       eventType: "payment.dispute_closed",

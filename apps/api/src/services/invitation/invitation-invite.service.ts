@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { ITransactionRunner } from "@auction/persistence";
 import type { IEntityInvitationRepository } from "@auction/persistence";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { InviteOutcome } from "../interfaces/invitation-lifecycle.js";
 import type { InviteMemberInput } from "../interfaces/member-management.js";
 import { MemberPermissionError } from "../interfaces/member-management.js";
@@ -15,7 +15,7 @@ export class InvitationInviteService {
     private readonly repo: IEntityInvitationRepository,
     private readonly tokenService: InvitationTokenService,
     private readonly notifications: InvitationNotificationService,
-    private readonly domainEventPublisher: DomainEventPublisher,
+    private readonly domainEventSink: IDomainEventSink,
     private readonly membershipGuard: LegalEntityMembershipGuard,
   ) {}
 
@@ -52,7 +52,7 @@ export class InvitationInviteService {
         memberRole: input.role,
         createdByUserId: actingUserId,
       });
-      await this.domainEventPublisher.publish(tx, {
+      await this.domainEventSink.withTx(tx).publish({
         aggregateType: "legal_entity",
         aggregateId: legalEntityId,
         eventType: "legal_entity.member_invited",

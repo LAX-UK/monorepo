@@ -4,7 +4,7 @@ import type { IBidRepository } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { parseMoneyToMinorUnits } from "@auction/validators";
 import { Counter } from "prom-client";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { NotificationService } from "../notification.service.js";
 import { effectiveBidderStepMoney, moneyStringGtCurrent, settleProxyPrice } from "./bid-money.js";
 
@@ -31,7 +31,7 @@ export class ProxyAutoBidResolver {
   constructor(
     private readonly antiShillingGuard: IAntiShillingGuard | null,
     private readonly notifications: NotificationService,
-    private readonly domainEventPublisher: DomainEventPublisher | null,
+    private readonly domainEventSink: IDomainEventSink | null,
   ) {}
 
   async resolve(
@@ -116,8 +116,8 @@ export class ProxyAutoBidResolver {
       ) {
         await bids.clearProxyAutoBidForBidderOnLot(lotId, s.bidderId);
         this.queueProxyCancelled(lotId, s.bidderId, "anti_shilling_violation", pendingProxyCancels);
-        if (this.domainEventPublisher) {
-          await this.domainEventPublisher.publish(tx, {
+        if (this.domainEventSink) {
+          await this.domainEventSink.withTx(tx).publish({
             aggregateType: "lot",
             aggregateId: lotId,
             eventType: "bid.proxy_cancelled",
@@ -174,8 +174,8 @@ export class ProxyAutoBidResolver {
             "anti_shilling_violation",
             pendingProxyCancels,
           );
-          if (this.domainEventPublisher) {
-            await this.domainEventPublisher.publish(tx, {
+          if (this.domainEventSink) {
+            await this.domainEventSink.withTx(tx).publish({
               aggregateType: "lot",
               aggregateId: lotId,
               eventType: "bid.proxy_cancelled",

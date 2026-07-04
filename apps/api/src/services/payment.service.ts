@@ -10,7 +10,6 @@ import type { AuthzError, LotError, PaymentProviderError } from "../lib/errors.j
 import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
@@ -70,7 +69,7 @@ export class PaymentService implements IPaymentService {
     paymentTierPolicy: PaymentTierPolicy,
     legalEntityRepository?: ILegalEntityRepository,
     transactionRunner?: import("@auction/persistence").ITransactionRunner,
-    domainEventPublisher?: DomainEventPublisher,
+    domainEventSink?: IDomainEventSink,
     stripePayments: IStripePaymentGateway | null = null,
     mediaUrlResolver?: MediaUrlResolver,
     lotFulfilmentHooks: ILotFulfilmentPaymentHook | null = null,
@@ -86,7 +85,6 @@ export class PaymentService implements IPaymentService {
     settlementCompliance: ISettlementCompliancePolicy | null = null,
     xeroInvoiceBlocking = true,
     paymentDomainEvents: IPaymentDomainEventsRepository | null = null,
-    domainEventSink?: IDomainEventSink,
   ) {
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
@@ -110,7 +108,6 @@ export class PaymentService implements IPaymentService {
       paymentTierPolicy,
       legalEntityRepository,
       transactionRunner,
-      domainEventPublisher,
       domainEventSink,
       stripePayments,
       mediaUrlResolver,

@@ -14,7 +14,6 @@ import type { AuthzError, LotError } from "../lib/errors.js";
 import type { presentSaleAdminImages } from "../lib/media-presenters.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catalog-legal-entity.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
@@ -57,7 +56,6 @@ export type SaleServiceOptions = {
   mediaAssetEnricher?: MediaAssetEnricher;
   englishOnlyAuctions?: boolean;
   transactionRunner?: ITransactionRunner | null;
-  domainEventPublisher?: DomainEventPublisher | null;
   domainEventSink?: IDomainEventSink | null;
   lotLifecycleRecording?: ILotLifecycleRecorder | null;
   legalEntityRepository?: ILegalEntityRepository | null;
@@ -85,7 +83,6 @@ export class SaleService {
       mediaAssetEnricher: opts.mediaAssetEnricher,
       englishOnlyAuctions: opts.englishOnlyAuctions ?? false,
       transactionRunner: opts.transactionRunner ?? null,
-      domainEventPublisher: opts.domainEventPublisher ?? null,
       domainEventSink: opts.domainEventSink ?? null,
       lotLifecycleRecording: opts.lotLifecycleRecording ?? null,
       legalEntityRepository: opts.legalEntityRepository ?? null,

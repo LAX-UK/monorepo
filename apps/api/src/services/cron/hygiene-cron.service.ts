@@ -4,7 +4,7 @@ import { probeSentryConnectivity } from "@auction/observability";
 import { inArray, lt } from "drizzle-orm";
 import type { AmlService } from "../aml/aml.service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
-import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-service.js";
+import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-apis.js";
 
 export class HygieneCronService {
   constructor(

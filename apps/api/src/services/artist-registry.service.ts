@@ -1,7 +1,7 @@
 import type { IArtistRegistryRepository } from "@auction/persistence";
 import { ArtistRegistryQueryService } from "./artist-registry/artist-registry-query.service.js";
 import { ArtistRegistryStaffCommandService } from "./artist-registry/artist-registry-staff-command.service.js";
-import type { DomainEventPublisher } from "./domain-event.publisher.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type {
   IArtistRegistryQueryService,
   IArtistRegistryService,
@@ -29,7 +29,7 @@ export class ArtistRegistryService implements IArtistRegistryService {
   private readonly query: IArtistRegistryQueryService;
   private readonly staff: IArtistRegistryStaffCommandService;
 
-  constructor(repo: IArtistRegistryRepository, domainEvents: DomainEventPublisher | null = null) {
+  constructor(repo: IArtistRegistryRepository, domainEvents: IDomainEventSink | null = null) {
     this.query = new ArtistRegistryQueryService(repo);
     this.staff = new ArtistRegistryStaffCommandService(
       repo,

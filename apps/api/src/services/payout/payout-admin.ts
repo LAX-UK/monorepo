@@ -85,7 +85,7 @@ export async function markPaid(
   payoutId: string,
   input: MarkPaidInput,
 ): Promise<Payout> {
-  const publisher = deps.domainEventPublisher;
+  const publisher = deps.domainEventSink;
   if (!deps.transactionRunner || !publisher) {
     const found = await deps.repo.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
@@ -119,7 +119,7 @@ export async function markPaid(
       processedAt: new Date(),
       failureReason: null,
     });
-    await publisher.publish(tx, {
+    await publisher.withTx(tx).publish({
       aggregateType: "payout",
       aggregateId: updated.id,
       eventType: "payout.paid",
@@ -162,7 +162,7 @@ export async function reconcileStripeTransfer(
     failureReason: null,
   };
 
-  const publisher = deps.domainEventPublisher;
+  const publisher = deps.domainEventSink;
   if (!deps.transactionRunner || !publisher) {
     return await deps.repo.reconcileStripeTransfer(found.id, patch);
   }
@@ -175,7 +175,7 @@ export async function reconcileStripeTransfer(
     const updated = await r.reconcileStripeTransfer(row.id, patch);
 
     if (updated.status === "paid" && previousStatus !== "paid") {
-      await publisher.publish(tx, {
+      await publisher.withTx(tx).publish({
         aggregateType: "payout",
         aggregateId: updated.id,
         eventType: "payout.paid",
@@ -216,7 +216,7 @@ export async function reconcileStripeTransfer(
         await deps.payoutAdjustments.recalculateTotalsFromLines(r, updated.id);
       }
 
-      await publisher.publish(tx, {
+      await publisher.withTx(tx).publish({
         aggregateType: "payout",
         aggregateId: updated.id,
         eventType: "payout.transfer_reversed",
@@ -246,7 +246,7 @@ export async function adminManualReverse(
   payoutId: string,
   input: { reason: string },
 ): Promise<Payout> {
-  const publisher = deps.domainEventPublisher;
+  const publisher = deps.domainEventSink;
   if (!deps.transactionRunner || !publisher) {
     const found = await deps.repo.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
@@ -283,7 +283,7 @@ export async function adminManualReverse(
       status: "reversed",
       failureReason: input.reason,
     });
-    await publisher.publish(tx, {
+    await publisher.withTx(tx).publish({
       aggregateType: "payout",
       aggregateId: updated.id,
       eventType: "payout.reversed",
