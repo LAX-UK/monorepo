@@ -23,3 +23,6 @@ apps/event/.upload/
 
 # Pre-go-live audit artifact — keep local only (do not commit or stage).
 docs/audits/pre-go-live-audit.md
+
+# Local refactor scorecard — keep out of GitHub history.
+progress.md
