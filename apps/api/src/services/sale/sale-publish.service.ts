@@ -1,19 +1,11 @@
 import type { Lot, Sale, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
-import {
-  getSaleModeCapabilities,
-  isOnsiteLocationPopulated,
-  isStartInFutureForPublish,
-} from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../../lib/errors.js";
-import { assertLotPublishable } from "../../lib/lot-publish-policy.js";
-import { resolveLotTimingForSale } from "../../lib/lot-sale-timing.js";
 import {
   rollbackSalePublishOnScheduleFailure,
   scheduleJobsFailedError,
 } from "../../lib/lot-schedule-jobs.js";
-import { findLotsMissingSellerConnect } from "../../lib/seller-connect-readiness.js";
 import type { ISalePublishService } from "../interfaces/sale-publish.js";
 import {
   publishSaleEvent,
@@ -21,10 +13,15 @@ import {
   scheduleRollbackDeps,
   txRepos,
 } from "./sale-mutation-context.js";
-import { getByIdWithLots } from "./sale-read.js";
+import {
+  applyVenueSnapshotForPublish,
+  assertCanPublishSale,
+  lotScheduleWindowForPublish,
+  scheduleSaleLotsForPublish,
+  validatePublishReadiness,
+} from "./sale-publish.pipeline.js";
 import { SALE_CANCELLABLE } from "./sale-status-policy.js";
 import type { SaleServiceDeps } from "./sale-types.js";
-import { applyVenueSnapshot } from "./venue-snapshot.js";
 
 export class SalePublishService implements ISalePublishService {
   constructor(private readonly deps: SaleServiceDeps) {}
@@ -35,146 +32,21 @@ export class SalePublishService implements ISalePublishService {
     saleId: string,
     userStaffRole?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
-      return err(new AuthzError("Only staff with auction.manage can publish sales", 403));
-    }
-    const bundle = await getByIdWithLots(this.deps, saleId);
-    if (!bundle) return err(new LotError("Sale not found", 404));
-    let { sale, lots } = bundle;
-    if (sale.status !== "draft") {
-      return err(new LotError("Only draft sales can be published"));
-    }
-    if (!isStartInFutureForPublish(sale.startTime)) {
-      return err(new LotError("startTime must be in the future to publish"));
-    }
-    if (lots.length === 0) {
-      return err(new LotError("Sale must have at least one lot to publish"));
-    }
-    const caps = getSaleModeCapabilities(sale.deliveryMode);
-    if (caps.allowsLocation && sale.venueId) {
-      const saleLegalEntityId =
-        sale.createdByLegalEntityId ?? (await this.deps.resolvePlatformCatalogLegalEntityId());
-      if (!saleLegalEntityId) {
-        return err(new LotError("Sale legal entity is not configured", 400));
-      }
-      const snapshot = await applyVenueSnapshot(
-        this.deps.venueRepository,
-        { venueId: sale.venueId },
-        {
-          saleLegalEntityId,
-          existingVenueId: sale.venueId,
-          snapshotAddress: true,
-        },
-      );
-      if (snapshot.isErr()) return err(snapshot.error);
-      sale = await this.deps.saleRepo.update(saleId, snapshot.value);
-      lots = await this.deps.lotRepo.findBySaleId(saleId);
-    }
-    if (caps.allowsLocation && !isOnsiteLocationPopulated(sale)) {
-      return err(
-        new LotError(
-          "Onsite sales require a saved venue or venue name with address before publish",
-          400,
-          "onsite_location_required",
-        ),
-      );
-    }
-    for (const l of lots) {
-      if (l.status !== "draft") {
-        return err(new LotError("All lots in the sale must be draft to publish"));
-      }
-      const publishable = assertLotPublishable(l, {
-        sale,
-        requireCatalogue: true,
-        rejectDraftSale: false,
-      });
-      if (!publishable.ok) {
-        const error = publishable.error;
-        return err(new LotError(`${error.message} (lot "${l.title}")`, error.status, error.code));
-      }
-    }
+    const authz = await assertCanPublishSale(userRole, userStaffRole);
+    if (authz.isErr()) return err(authz.error);
 
-    if (this.deps.enforceIndividualConnectOnPublish && this.deps.legalEntityRepository) {
-      const blocked = await findLotsMissingSellerConnect(lots, this.deps.legalEntityRepository);
-      if (blocked.length > 0) {
-        const titles = blocked.map((l) => `"${l.title}"`).join(", ");
-        return err(
-          new LotError(
-            blocked.length === 1
-              ? `This seller must complete Stripe Connect onboarding before the lot can be scheduled. (lot ${titles})`
-              : `Sellers must complete Stripe Connect onboarding before publish (${blocked.length} lots: ${titles})`,
-            409,
-            "connect_required",
-          ),
-        );
-      }
-    }
+    const readiness = await validatePublishReadiness(this.deps, saleId);
+    if (readiness.isErr()) return err(readiness.error);
 
-    if (this.deps.transactionRunner && this.deps.lotLifecycleRecording) {
-      await this.deps.transactionRunner.runInTransaction(async (tx) => {
-        const saleRepo = txRepos(this.deps, tx).sale;
-        const lotRepo = txRepos(this.deps, tx).lot;
-        if (caps.inheritsLotTiming) {
-          for (const l of lots) {
-            const resolved = resolveLotTimingForSale(sale, l.startTime, l.endTime);
-            if (
-              resolved.ok &&
-              (resolved.startTime.getTime() !== l.startTime.getTime() ||
-                resolved.endTime.getTime() !== l.endTime.getTime())
-            ) {
-              await lotRepo.update(l.id, {
-                startTime: resolved.startTime,
-                endTime: resolved.endTime,
-              });
-            }
-          }
-        }
-        await saleRepo.updateStatus(saleId, "scheduled");
-        for (const l of lots) {
-          await lotRepo.updateStatus(l.id, "scheduled");
-          const row = await lotRepo.findById(l.id);
-          if (!row) throw new LotError("Lot not found", 404);
-          await this.deps.lotLifecycleRecording?.recordPublished(tx, row, userId);
-        }
-      });
-    } else {
-      if (caps.inheritsLotTiming) {
-        for (const l of lots) {
-          const resolved = resolveLotTimingForSale(sale, l.startTime, l.endTime);
-          if (
-            resolved.ok &&
-            (resolved.startTime.getTime() !== l.startTime.getTime() ||
-              resolved.endTime.getTime() !== l.endTime.getTime())
-          ) {
-            await this.deps.lotRepo.update(l.id, {
-              startTime: resolved.startTime,
-              endTime: resolved.endTime,
-            });
-          }
-        }
-      }
-      await this.deps.saleRepo.updateStatus(saleId, "scheduled");
-      for (const l of lots) {
-        await this.deps.lotRepo.updateStatus(l.id, "scheduled");
-        await recordLotLifecycle(this.deps, async (tx) => {
-          await this.deps.lotLifecycleRecording?.recordPublished(
-            tx,
-            { ...l, status: "scheduled" },
-            userId,
-          );
-        });
-      }
-    }
+    const withVenue = await applyVenueSnapshotForPublish(this.deps, saleId, readiness.value);
+    if (withVenue.isErr()) return err(withVenue.error);
+
+    const { lots } = withVenue.value;
+    await scheduleSaleLotsForPublish(this.deps, saleId, userId, withVenue.value);
+
     const scheduledLotIds: string[] = [];
     for (const l of lots) {
-      const lotStart = caps.inheritsLotTiming ? sale.startTime : l.startTime;
-      const lotEnd = caps.inheritsLotTiming ? sale.endTime : l.endTime;
+      const { lotStart, lotEnd } = lotScheduleWindowForPublish(withVenue.value, l);
       try {
         await this.deps.jobScheduler?.scheduleLot(l.id, lotStart, lotEnd);
         scheduledLotIds.push(l.id);

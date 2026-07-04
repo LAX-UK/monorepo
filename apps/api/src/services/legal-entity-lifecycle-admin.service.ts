@@ -13,31 +13,9 @@ import {
 } from "../lib/legal-entity-lifecycle-transitions.js";
 import { enqueueOrgLifecycleMemberEmails } from "../lib/org-lifecycle-notifications.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
+import { lifecycleDomainEventTypeForOp } from "./legal-entity-lifecycle-domain-events.js";
 
-/** Distinct `domain_events.event_type` per admin lifecycle operation.
- * `start_review` maps to `legal_entity.review_started` (past-tense, matches
- * `artist.reviewed` / `legal_entity.docs_requested`).
- */
-export function lifecycleDomainEventTypeForOp(op: LifecycleAdminOp): string {
-  switch (op) {
-    case "request_docs":
-      return "legal_entity.docs_requested";
-    case "start_review":
-      return "legal_entity.review_started";
-    case "approve":
-      return "legal_entity.approved";
-    case "restrict":
-      return "legal_entity.restricted";
-    case "reject":
-      return "legal_entity.rejected";
-    case "archive":
-      return "legal_entity.archived";
-    default: {
-      const _exhaustive: never = op;
-      return _exhaustive;
-    }
-  }
-}
+export { lifecycleDomainEventTypeForOp } from "./legal-entity-lifecycle-domain-events.js";
 
 export type LegalEntityLifecycleFailure = {
   code: string;

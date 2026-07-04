@@ -4,12 +4,11 @@ import type { ISaleRepository } from "@auction/persistence";
 import type { IRepositoryFactory } from "@auction/persistence";
 import type { ISaleModeLookup } from "@auction/persistence";
 import type { ISaleroomSessionLookup } from "@auction/persistence";
-import type { Bid, Lot } from "@auction/types";
+import type { Bid } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import type { AdminMetricsService } from "./admin-metrics.service.js";
 import { BidCriticalNotificationStager } from "./bid/bid-critical-notification.stager.js";
-import { numberToMoneyString } from "./bid/bid-money.js";
 import { BidNotificationCoordinator } from "./bid/bid-notification.coordinator.js";
 import {
   type BidPolicyConfig,
@@ -20,6 +19,11 @@ import { BidPrePlacementValidator } from "./bid/bid-pre-placement.validator.js";
 import { EarlyCloseHandler } from "./bid/early-close.handler.js";
 import { IdempotentBidExecutor } from "./bid/idempotent-bid.executor.js";
 import type { PlaceBidWithIdempotencyOutcome } from "./bid/place-bid-idempotency.js";
+import {
+  type PlaceBidPipelineDeps,
+  notifyAfterBidCommitted,
+  runPlaceBidInTransaction,
+} from "./bid/place-bid-pipeline.js";
 import {
   ProxyAutoBidResolver,
   type ProxyCancelNotification,
@@ -131,229 +135,38 @@ export class BidService implements IBidPlacerWithIdempotency {
     );
   }
 
+  private placeBidPipelineDeps(): PlaceBidPipelineDeps {
+    return {
+      strategyFactory: this.strategyFactory,
+      saleroomBidGate: this.saleroomBidGate,
+      saleroomSessionLookup: this.saleroomSessionLookup,
+      antiShillingGuard: this.antiShillingGuard,
+      proxyResolver: this.proxyResolver,
+      earlyCloseHandler: this.earlyCloseHandler,
+      criticalNotificationStager: this.criticalNotificationStager,
+      notificationCoordinator: this.notificationCoordinator,
+      repos: this.repos,
+      englishOnlyAuctions: this.englishOnlyAuctions,
+      bidPolicy: this.bidPolicy,
+    };
+  }
+
   async placeBid(input: PlaceBidInput): Promise<Result<Bid, BidError>> {
-    const {
-      placedByUserId,
-      buyerLegalEntityId,
-      lotId,
-      amount,
-      maxAutoBidAmount,
-      autoBidStepAmount,
-      placement: bidPlacement,
-    } = input;
     try {
       const preCheck = await this.prePlacementValidator.validate(input);
       if (preCheck.isErr()) {
         return err(preCheck.error);
       }
 
-      let prevWinnerId: string | null = null;
       const pendingProxyCancels: ProxyCancelNotification[] = [];
-      const { created, lot, nextEnd, endedEarly } = await this.repos.runInTransaction(
-        async ({ lot: lots, bid: bids }, tx) => {
-          const lotRow = await lots.findByIdForUpdate(lotId);
-          if (!lotRow) {
-            throw new BidError("Lot not found", 404);
-          }
-          if (lotRow.status !== "active") {
-            throw new BidError("Lot is not accepting bids", 400);
-          }
-
-          const skipCatalogEndTime =
-            this.saleroomSessionLookup != null &&
-            (await this.saleroomSessionLookup.shouldSkipAntiSnipeForLot(lotId));
-          if (!skipCatalogEndTime && Date.now() > lotRow.endTime.getTime()) {
-            throw new BidError("Lot has ended", 400);
-          }
-
-          const onBlock = await this.saleroomBidGate.assertCanBidOnLot({
-            lotId,
-            saleId: lotRow.saleId,
-            tx,
-          });
-          if (onBlock.isErr()) {
-            throw onBlock.error;
-          }
-
-          const strategy = this.strategyFactory.create(lotRow.auctionType);
-          const selfService = strategy.validateSelfServiceAllowed?.(
-            lotRow,
-            this.englishOnlyAuctions,
-          );
-          if (selfService?.isErr()) {
-            throw selfService.error;
-          }
-
-          if (
-            this.antiShillingGuard &&
-            (await this.antiShillingGuard.violatesAntiShilling({
-              bidderUserId: placedByUserId,
-              buyerLegalEntityId,
-              lot: lotRow,
-            }))
-          ) {
-            throw new BidError("Seller cannot bid on own lot", 400, "seller_cannot_bid");
-          }
-
-          const prevWinning = await bids.findWinningBid(lotId);
-          prevWinnerId = prevWinning?.placedByUserId ?? prevWinning?.bidderId ?? null;
-
-          const validation = strategy.validateBid(
-            lotRow,
-            {
-              placedByUserId,
-              buyerLegalEntityId,
-              amount,
-              bidderId: placedByUserId,
-            },
-            {
-              currentWinnerId: prevWinnerId,
-              placedVia: bidPlacement?.placedVia ?? null,
-            },
-          );
-          if (validation.isErr()) {
-            throw validation.error;
-          }
-
-          const nextPrice = strategy.getNextPrice(lotRow, amount);
-          const amountStr = numberToMoneyString(nextPrice);
-
-          const hasMax =
-            maxAutoBidAmount !== undefined &&
-            Number.isFinite(maxAutoBidAmount) &&
-            maxAutoBidAmount >= amount;
-          const maxStr = hasMax ? numberToMoneyString(maxAutoBidAmount) : null;
-          const hasStep =
-            hasMax &&
-            autoBidStepAmount !== undefined &&
-            Number.isFinite(autoBidStepAmount) &&
-            autoBidStepAmount > 0;
-          const stepStr = hasStep ? numberToMoneyString(autoBidStepAmount) : null;
-
-          let lastBid = await bids.create({
-            lotId,
-            placedByUserId,
-            buyerLegalEntityId,
-            amount: amountStr,
-            isWinning: false,
-            isAutoBid: hasMax,
-            maxAutoBidAmount: maxStr,
-            autoBidStepAmount: stepStr,
-            ...(bidPlacement?.placedVia != null ? { placedVia: bidPlacement.placedVia } : {}),
-            ...(bidPlacement?.telephoneBookingId != null
-              ? { telephoneBookingId: bidPlacement.telephoneBookingId }
-              : {}),
-            ...(bidPlacement?.clerkUserId != null ? { clerkUserId: bidPlacement.clerkUserId } : {}),
-          });
-
-          if (this.antiShillingGuard) {
-            await this.proxyResolver.cancelViolatingProxyBids(
-              lotId,
-              lotRow,
-              bids,
-              tx,
-              pendingProxyCancels,
-            );
-          }
-
-          if (lotRow.auctionType === "english" || lotRow.auctionType === "buy_it_now") {
-            lastBid = await this.proxyResolver.resolve(
-              bids,
-              lotId,
-              lotRow,
-              lastBid,
-              tx,
-              pendingProxyCancels,
-            );
-          }
-
-          await bids.markWinningBid(lotId, lastBid.id);
-          if (lotRow.auctionType === "sealed") {
-            await lots.updateCurrentPrice(lotId, lotRow.startingPrice);
-          } else {
-            await lots.updateCurrentPrice(lotId, lastBid.amount);
-          }
-
-          let nextEnd = lotRow.endTime;
-          const skipAntiSnipe =
-            this.saleroomSessionLookup != null &&
-            (await this.saleroomSessionLookup.shouldSkipAntiSnipeForLot(lotId));
-          if (
-            !skipAntiSnipe &&
-            strategy.shouldExtendTime(
-              lotRow,
-              {
-                placedByUserId,
-                buyerLegalEntityId,
-                amount: nextPrice,
-                bidderId: placedByUserId,
-              },
-              this.bidPolicy,
-            )
-          ) {
-            nextEnd = new Date(lotRow.endTime.getTime() + this.bidPolicy.antiSnipingExtensionMs);
-            await lots.updateEndTime(lotId, nextEnd);
-          }
-
-          const earlyClose = await this.earlyCloseHandler.tryEarlyClose({
-            strategy,
-            lots,
-            lotRow,
-            lastBid,
-            buyerLegalEntityId,
-            placedByUserId,
-            tx,
-          });
-          const endedEarly = earlyClose != null;
-
-          await this.criticalNotificationStager.stageInTransaction({
-            lotId,
-            lotRow,
-            created: lastBid,
-            prevWinnerId,
-            endedEarly,
-            bids,
-            tx,
-          });
-
-          return { created: lastBid, lot: lotRow, nextEnd, endedEarly };
-        },
+      const pipelineDeps = this.placeBidPipelineDeps();
+      const txOutcome = await this.repos.runInTransaction(async ({ lot: lots, bid: bids }, tx) =>
+        runPlaceBidInTransaction(pipelineDeps, { ...input, pendingProxyCancels }, lots, bids, tx),
       );
 
-      const displayPrice =
-        lot.auctionType === "sealed" && !endedEarly ? lot.startingPrice : created.amount;
-      const createdUserId = created.placedByUserId ?? created.bidderId ?? null;
+      await notifyAfterBidCommitted(pipelineDeps, input, txOutcome, pendingProxyCancels);
 
-      const updatedLot: Lot = endedEarly
-        ? {
-            ...lot,
-            endTime: nextEnd,
-            currentPrice: created.amount,
-            status: "ended",
-            winnerId: createdUserId,
-            ...(created.buyerLegalEntityId
-              ? { buyerLegalEntityId: created.buyerLegalEntityId }
-              : {}),
-          }
-        : nextEnd.getTime() !== lot.endTime.getTime()
-          ? { ...lot, endTime: nextEnd, currentPrice: displayPrice }
-          : { ...lot, currentPrice: displayPrice };
-
-      await this.proxyResolver.flushPendingProxyCancels(pendingProxyCancels);
-
-      await this.notificationCoordinator.afterBidCommitted({
-        lotId,
-        displayPrice,
-        updatedLot,
-        created,
-        prevWinnerId,
-        nextEnd,
-        lotEndBefore: lot.endTime,
-        endedEarly,
-        bidCount: await this.repos.root.bid.countForLot(lotId),
-      });
-
-      return ok(created);
+      return ok(txOutcome.created);
     } catch (e) {
       if (e instanceof BidError) {
         return err(e);
