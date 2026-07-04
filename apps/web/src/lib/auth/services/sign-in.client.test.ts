@@ -1,5 +1,5 @@
 import { AUTH_ERROR_MESSAGES, mapBetterAuthClientFailure } from "@/lib/auth/auth-error-code";
-import { signInService } from "@/lib/auth/services/sign-in.service";
+import { signInService } from "@/lib/auth/services/sign-in.client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/auth-client", () => ({

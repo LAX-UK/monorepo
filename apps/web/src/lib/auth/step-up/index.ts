@@ -9,7 +9,7 @@ export {
   httpStepUpAuthenticator,
   type IStepUpAuthenticator,
   type StepUpAuthOutcome,
-} from "./step-up-authenticator";
+} from "./step-up-authenticator.client";
 export { withStepUp } from "./with-step-up";
 export { actionResultToStepUpVoid } from "./action-result-from-server";
 export {

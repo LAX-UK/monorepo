@@ -3,7 +3,7 @@
 import {
   type IResetPasswordService,
   ResetPasswordService,
-} from "@/lib/auth/services/reset-password.service";
+} from "@/lib/auth/services/reset-password.client";
 
 export type AuthClientServices = {
   resetPassword: IResetPasswordService;

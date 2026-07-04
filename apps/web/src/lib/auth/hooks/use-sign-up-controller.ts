@@ -7,7 +7,7 @@ import { notifySignUpRegistrationError } from "@/lib/auth/notify-sign-up-error";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 /** After email/password registration we always send users to verify-pending (product copy). */
 import { type SignUpFormValues, signUpFormSchema } from "@/lib/auth/schemas";
-import { signUpService } from "@/lib/auth/services/sign-up.service";
+import { signUpService } from "@/lib/auth/services/sign-up.client";
 import type { SignUpWizardStep } from "@/lib/auth/sign-up-types";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";

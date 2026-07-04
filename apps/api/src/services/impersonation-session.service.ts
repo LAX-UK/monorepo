@@ -1,4 +1,8 @@
-import type { IImpersonationSessionRepository, ImpersonationEndReason, ImpersonationSessionRow } from "@auction/persistence/interfaces";
+import type {
+  IImpersonationSessionRepository,
+  ImpersonationEndReason,
+  ImpersonationSessionRow,
+} from "@auction/persistence/interfaces";
 
 export type { ImpersonationEndReason, ImpersonationSessionRow };
 

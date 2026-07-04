@@ -1,4 +1,4 @@
-import { apiBaseUrl } from "@/lib/auth/api-base";
+import { forwardNewsletterSubscribe } from "@/lib/data/http/newsletter-subscribe.server";
 import { newsletterSubscribeSchema } from "@auction/validators";
 import { NextResponse } from "next/server";
 
@@ -18,11 +18,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const res = await fetch(`${apiBaseUrl()}/newsletter/subscribe`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...parsed.data, source: parsed.data.source ?? "web_newsletter_form" }),
-    cache: "no-store",
+  const res = await forwardNewsletterSubscribe({
+    ...parsed.data,
+    source: parsed.data.source ?? "web_newsletter_form",
   });
   if (!res.ok) {
     return NextResponse.json(

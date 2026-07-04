@@ -1,4 +1,7 @@
-import type { SourceOfFundsDocumentChecks, SourceOfFundsDocumentReviewRow } from "@auction/persistence/interfaces";
+import type {
+  SourceOfFundsDocumentChecks,
+  SourceOfFundsDocumentReviewRow,
+} from "@auction/persistence/interfaces";
 
 export type ReviewSourceOfFundsDocumentCommand = {
   caseId: string;

@@ -1,11 +1,26 @@
-import type { ArtistRecord, ArtistSearchHit, CreateArtistInput, MergeArtistInput, MergeArtistResult, ReviewArtistInput } from "@auction/persistence/interfaces";
+import type {
+  ArtistRecord,
+  ArtistSearchHit,
+  CreateArtistInput,
+  MergeArtistInput,
+  MergeArtistResult,
+  ReviewArtistInput,
+} from "@auction/persistence/interfaces";
 import type { ArtistKind, ArtistStatus } from "@auction/types";
 
 // Re-export so existing consumers importing from this module keep working,
 // while @auction/types stays the single source of truth for the taxonomy.
 export type { ArtistKind, ArtistStatus };
 
-export type { ArtistRecord, ArtistSearchHit, ArtistSearchMatchType, CreateArtistInput, MergeArtistInput, MergeArtistResult, ReviewArtistInput } from "@auction/persistence/interfaces";
+export type {
+  ArtistRecord,
+  ArtistSearchHit,
+  ArtistSearchMatchType,
+  CreateArtistInput,
+  MergeArtistInput,
+  MergeArtistResult,
+  ReviewArtistInput,
+} from "@auction/persistence/interfaces";
 
 export type ProposeMatchesInput = {
   /** Free-text artist name from a lot. */

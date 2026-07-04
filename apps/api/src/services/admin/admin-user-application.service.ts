@@ -1,4 +1,12 @@
-import type { AdminActivityEntry, AdminKycSession, AdminUserBidListResult, AdminUserDetail, AdminUserListFilter, AdminUserListResult, AdminUserListRow } from "@auction/persistence/interfaces";
+import type {
+  AdminActivityEntry,
+  AdminKycSession,
+  AdminUserBidListResult,
+  AdminUserDetail,
+  AdminUserListFilter,
+  AdminUserListResult,
+  AdminUserListRow,
+} from "@auction/persistence/interfaces";
 import { AuthzError } from "../../lib/errors.js";
 import type { AdminUserService } from "../admin-user.service.js";
 import type { IAdminUserApplicationService } from "../interfaces/admin-routes.js";

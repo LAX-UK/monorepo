@@ -3,7 +3,11 @@ import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
 import type { IAddressRepository } from "@auction/persistence/interfaces";
-import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleRepository,
+  IUserRepository,
+} from "@auction/persistence/interfaces";
 import type { PaymentStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";

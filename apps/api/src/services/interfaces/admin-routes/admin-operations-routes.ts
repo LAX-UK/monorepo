@@ -1,5 +1,12 @@
 import type { EmailOutboxStatus } from "@auction/db/schema";
-import type { AttentionItem, EmailEventRow, EmailOutboxRow, EmailSuppressionRow, ListSubmissionsFilter } from "@auction/persistence/interfaces";
+import type {
+  AttentionItem,
+  EmailEventRow,
+  EmailOutboxRow,
+  EmailSuppressionRow,
+  ListSubmissionsFilter,
+  RedactedDomainEventRow,
+} from "@auction/persistence/interfaces";
 import type { Result } from "neverthrow";
 import type { AdminOnboardingIssues, AdminReviewTaskRow } from "../../../admin/admin-route-dtos.js";
 import type {
@@ -17,7 +24,7 @@ import type { IDisplayOverlayService } from "../display-overlay-service.js";
 import type { IDisplayPairingService } from "../display-pairing-service.js";
 import type { IAdminFinanceDashboardQueryService } from "./admin-finance-routes.js";
 
-export type RedactedDomainEventRow = import("@auction/persistence/interfaces").RedactedDomainEventRow;
+export type { RedactedDomainEventRow };
 
 export interface IAdminDomainEventQueryService {
   listRedacted(input: {

@@ -1,4 +1,8 @@
-import type { CreateAddressInput, IAddressRepository, UpdateAddressInput } from "@auction/persistence/interfaces";
+import type {
+  CreateAddressInput,
+  IAddressRepository,
+  UpdateAddressInput,
+} from "@auction/persistence/interfaces";
 
 export class AddressService {
   constructor(private readonly addresses: IAddressRepository) {}

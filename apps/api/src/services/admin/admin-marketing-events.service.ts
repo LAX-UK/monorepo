@@ -1,4 +1,7 @@
-import type { IAdminMarketingEventOutboxRepository, MarketingEventOutboxState } from "@auction/persistence/interfaces";
+import type {
+  IAdminMarketingEventOutboxRepository,
+  MarketingEventOutboxState,
+} from "@auction/persistence/interfaces";
 import type { adminMarketingEventsReplayBodySchema } from "@auction/validators";
 import type { z } from "zod";
 

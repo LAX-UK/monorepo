@@ -1,5 +1,9 @@
 import type { IEmailService } from "@auction/email";
-import type { ILegalEntityLifecycleAdminRepository, ILegalEntityMemberRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  ILegalEntityLifecycleAdminRepository,
+  ILegalEntityMemberRepository,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { LegalEntityStatus } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";

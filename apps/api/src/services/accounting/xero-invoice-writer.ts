@@ -1,4 +1,7 @@
-import type { IPaymentExternalRefRepository, IXeroConnectionRepository } from "@auction/persistence/interfaces";
+import type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+} from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { Contact, Invoice, Invoices, LineAmountTypes, LineItem } from "xero-node";
 import type { Env } from "../../env.js";

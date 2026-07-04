@@ -8,7 +8,14 @@ import {
   telephoneBidBooking,
   user,
 } from "@auction/db/schema";
-import { DrizzleLotRepository, DrizzleSaleRepository, DrizzleTelephoneBidBookingDetailReader, DrizzleTelephoneBidBookingRepository, DrizzleTelephoneBookingUserPhoneReader, createDrizzleLegalEntityRepository } from "@auction/persistence/repositories";
+import {
+  DrizzleLotRepository,
+  DrizzleSaleRepository,
+  DrizzleTelephoneBidBookingDetailReader,
+  DrizzleTelephoneBidBookingRepository,
+  DrizzleTelephoneBookingUserPhoneReader,
+  createDrizzleLegalEntityRepository,
+} from "@auction/persistence/repositories";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildTelephoneBidBookingService } from "./telephone-bid-booking.service.js";

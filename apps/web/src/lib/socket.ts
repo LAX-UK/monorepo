@@ -1,4 +1,4 @@
-import { fetchAuthJwtForSocket } from "@/lib/socket-auth";
+import { fetchAuthJwtForSocket } from "@/lib/socket-auth.client";
 import { type Socket, io } from "socket.io-client";
 
 let socket: Socket | null = null;

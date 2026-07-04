@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ResetPasswordService } from "./reset-password.service";
+import { ResetPasswordService } from "./reset-password.client";
 
 const resetPasswordService = new ResetPasswordService();
 

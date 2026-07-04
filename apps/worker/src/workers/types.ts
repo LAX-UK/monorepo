@@ -1,7 +1,12 @@
 import type { createDb } from "@auction/db";
 import type { IExportProviderDeps } from "@auction/exports/providers";
 import type { IMarketingProfileReader } from "@auction/marketing-events";
-import type { INotificationWriteRepository, IQrCodeScanPersister, IRepositoryFactory, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  INotificationWriteRepository,
+  IQrCodeScanPersister,
+  IRepositoryFactory,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type { QueueName } from "@auction/queues";
 import type { QueueOptions, WorkerOptions } from "bullmq";
 import type { Redis } from "ioredis";

@@ -1,7 +1,7 @@
 "use client";
 
 import { AUTH_FOOTER_LINK_ROW } from "@/lib/auth/auth-link-classes";
-import { confirmUnsubscribe } from "@/lib/email/unsubscribe.service";
+import { confirmUnsubscribe } from "@/lib/data/http/email-unsubscribe.client";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useState, useTransition } from "react";

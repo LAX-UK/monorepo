@@ -1,4 +1,8 @@
-import type { ILotLifecycleSnapshotReader, ILotLifecycleTimelineReader, LotLifecycleSnapshotRow } from "@auction/persistence/interfaces";
+import type {
+  ILotLifecycleSnapshotReader,
+  ILotLifecycleTimelineReader,
+  LotLifecycleSnapshotRow,
+} from "@auction/persistence/interfaces";
 
 export type { LotLifecycleSnapshotRow } from "@auction/persistence/interfaces";
 

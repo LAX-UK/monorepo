@@ -1,5 +1,8 @@
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
-import type { IPaymentExternalRefRepository, IXeroConnectionRepository } from "@auction/persistence/interfaces";
+import type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+} from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type { XeroClient } from "xero-node";
 import type { Env } from "../../env.js";

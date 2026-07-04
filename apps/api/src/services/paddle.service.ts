@@ -1,6 +1,6 @@
 import type { IPaddleRepository } from "@auction/persistence/interfaces";
-import { isPaddleUniqueViolation } from "@auction/persistence/lib";
 import type { ILotRepository } from "@auction/persistence/interfaces";
+import { isPaddleUniqueViolation } from "@auction/persistence/lib";
 import { type Result, err, ok } from "neverthrow";
 import { Counter, Histogram } from "prom-client";
 import { BidError } from "../lib/errors.js";

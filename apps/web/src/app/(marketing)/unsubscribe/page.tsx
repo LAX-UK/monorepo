@@ -1,6 +1,6 @@
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { UnsubscribeForm } from "@/components/auth/unsubscribe-form";
-import { getUnsubscribePreview } from "@/lib/email/unsubscribe.service";
+import { getUnsubscribePreview } from "@/lib/data/http/email-unsubscribe.server";
 import { maskEmail } from "@/lib/format/mask-email";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";

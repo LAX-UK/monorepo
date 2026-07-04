@@ -1,1 +1,6 @@
-export { EnsurePersonalLegalEntityService, type EnsurePersonalLegalEntityInput, type EnsurePersonalLegalEntityResult, type IEnsurePersonalLegalEntityService } from "@auction/persistence/lib";
+export {
+  EnsurePersonalLegalEntityService,
+  type EnsurePersonalLegalEntityInput,
+  type EnsurePersonalLegalEntityResult,
+  type IEnsurePersonalLegalEntityService,
+} from "@auction/persistence/lib";

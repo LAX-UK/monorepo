@@ -1,4 +1,7 @@
-import type { IUserEmailVerifiedPublisher, PublishUserEmailVerifiedInput } from "@auction/persistence/interfaces";
+import type {
+  IUserEmailVerifiedPublisher,
+  PublishUserEmailVerifiedInput,
+} from "@auction/persistence/interfaces";
 
 export type { PublishUserEmailVerifiedInput };
 

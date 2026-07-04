@@ -1,1 +1,5 @@
-export { insertArtistInTx, replaceArtistCategoriesInTx, resolveUniqueArtistSlug } from "@auction/persistence/lib";
+export {
+  insertArtistInTx,
+  replaceArtistCategoriesInTx,
+  resolveUniqueArtistSlug,
+} from "@auction/persistence/lib";

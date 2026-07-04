@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { DrizzlePayoutRepository } from "@auction/persistence/repositories";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
+import { DrizzlePayoutRepository } from "@auction/persistence/repositories";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 

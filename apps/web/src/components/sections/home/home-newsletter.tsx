@@ -2,7 +2,7 @@
 
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { MARKETING_PAGE_SHELL, MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
-import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.service";
+import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.client";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
 import { LabelCaps, cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";

@@ -1,4 +1,12 @@
-import type { PostmarkWebhookPayload } from "./postmark-webhook.service.js";
+export type PostmarkWebhookPayload = Record<string, unknown> & {
+  RecordType?: string;
+  MessageID?: string;
+  MessageId?: string;
+  Type?: string;
+  Email?: string;
+  OriginalRecipient?: string;
+  To?: string;
+};
 
 export type PostmarkIngestEventType =
   | "delivered"

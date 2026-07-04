@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchAuthJwtForSocket } from "./socket-auth";
+import { fetchAuthJwtForSocket } from "./socket-auth.client";
 
 describe("fetchAuthJwtForSocket", () => {
   const fetchMock = vi.fn();

@@ -1,4 +1,7 @@
-import type { FinanceIssueSnapshot, StripeConnectRequirementEntityRow } from "@auction/persistence/interfaces";
+import type {
+  FinanceIssueSnapshot,
+  StripeConnectRequirementEntityRow,
+} from "@auction/persistence/interfaces";
 import type { ListPaymentsAdminTableFilter } from "@auction/persistence/interfaces";
 import type { Result } from "neverthrow";
 import type { AuthzError } from "../../../lib/errors.js";

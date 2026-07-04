@@ -1,4 +1,7 @@
-import type { ITransactionRunner, IUploadPersistenceRepository } from "@auction/persistence/interfaces";
+import type {
+  ITransactionRunner,
+  IUploadPersistenceRepository,
+} from "@auction/persistence/interfaces";
 import type { ILegalEntityOnboardingRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { OrgOnboardingStepKey } from "@auction/types";

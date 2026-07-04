@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
-import { DrizzleAbsenteeBidRepository } from "@auction/persistence/repositories";
 import type { ILotRepository } from "@auction/persistence/interfaces";
+import { DrizzleAbsenteeBidRepository } from "@auction/persistence/repositories";
 import type { Lot } from "@auction/types";
 import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";

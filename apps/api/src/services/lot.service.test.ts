@@ -1,6 +1,10 @@
 import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
-import type { IBidRepository, ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type {
+  IBidRepository,
+  ILotRepository,
+  ISaleRepository,
+} from "@auction/persistence/interfaces";
 import type { IWatchlistRepository } from "@auction/persistence/interfaces";
 import type { Bid, CreateLotInput, LegalEntity, Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";

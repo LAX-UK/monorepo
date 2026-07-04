@@ -1,4 +1,7 @@
-import type { IConnectTransferRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  IConnectTransferRepository,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type { ILegalEntityConnectRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";

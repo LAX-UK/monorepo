@@ -1,1 +1,5 @@
-export type { AdminAttachableLotRow, AdminLotBrowseInput, AdminLotBrowseState } from "@auction/persistence/interfaces";
+export type {
+  AdminAttachableLotRow,
+  AdminLotBrowseInput,
+  AdminLotBrowseState,
+} from "@auction/persistence/interfaces";

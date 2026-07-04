@@ -2,7 +2,7 @@
  * One-shot F3: rewrite apps/** imports from @auction/persistence root barrel to subpaths.
  */
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -13,8 +13,7 @@ const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", "coverage"]);
 const ROOT_SPECIFIER = "@auction/persistence";
 const IMPORT_RE =
   /import\s+(type\s+)?(\*\s+as\s+\w+\s+from\s+|(\{[^}]*\})\s+from\s+)["']@auction\/persistence["'];?/g;
-const EXPORT_FROM_RE =
-  /export\s+(type\s+)?(\{[^}]*\})\s+from\s+["']@auction\/persistence["'];?/g;
+const EXPORT_FROM_RE = /export\s+(type\s+)?(\{[^}]*\})\s+from\s+["']@auction\/persistence["'];?/g;
 
 /** @param {string} content @returns {Set<string>} */
 function parseNamedExports(content) {
@@ -24,7 +23,10 @@ function parseNamedExports(content) {
     for (const part of match[1].split(",")) {
       const trimmed = part.trim();
       if (!trimmed) continue;
-      const name = trimmed.replace(/^type\s+/, "").split(/\s+as\s+/)[0].trim();
+      const name = trimmed
+        .replace(/^type\s+/, "")
+        .split(/\s+as\s+/)[0]
+        .trim();
       if (name) names.add(name);
     }
   }
@@ -61,14 +63,18 @@ function classifySymbol(name) {
   const subpath = symbolToSubpath.get(name);
   if (subpath) return subpath;
   if (name.startsWith("Drizzle") || name.startsWith("createDrizzle")) return "repositories";
-  if (name.startsWith("I") && name.length > 1 && name[1] === name[1].toUpperCase()) return "interfaces";
+  if (name.startsWith("I") && name.length > 1 && name[1] === name[1].toUpperCase())
+    return "interfaces";
   console.warn(`Unknown symbol "${name}" — defaulting to interfaces`);
   return "interfaces";
 }
 
 /** @param {string} clause @returns {{ name: string, alias?: string, isType: boolean }[]} */
 function parseImportClause(clause) {
-  const inner = clause.trim().replace(/^\{|\}$/g, "").trim();
+  const inner = clause
+    .trim()
+    .replace(/^\{|\}$/g, "")
+    .trim();
   if (!inner) return [];
   /** @type {{ name: string, alias?: string, isType: boolean }[]} */
   const specs = [];
@@ -121,7 +127,7 @@ function rewriteImportStatement(full, typeKeyword, clause) {
   return rewriteClause(braceMatch[1], wholeTypeImport).join("\n");
 }
 
-function rewriteExportFrom(full, typeKeyword, clause) {
+function rewriteExportFrom(_full, typeKeyword, clause) {
   const wholeTypeExport = Boolean(typeKeyword);
   const specs = parseImportClause(clause);
   /** @type {Map<string, typeof specs>} */

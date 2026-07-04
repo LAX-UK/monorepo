@@ -1,5 +1,5 @@
-import { defaultNotificationPreference } from "@auction/persistence/lib";
 import type { INotificationPreferenceReader } from "@auction/persistence/interfaces";
+import { defaultNotificationPreference } from "@auction/persistence/lib";
 import { describe, expect, it, vi } from "vitest";
 import type {
   INotificationChannel,

@@ -1,4 +1,8 @@
-import type { ArtistWatchlistRow, IArtistExistenceReader, IArtistWatchlistRepository } from "@auction/persistence/interfaces";
+import type {
+  ArtistWatchlistRow,
+  IArtistExistenceReader,
+  IArtistWatchlistRepository,
+} from "@auction/persistence/interfaces";
 
 export class ArtistWatchlistService {
   constructor(

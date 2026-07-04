@@ -1,4 +1,7 @@
-import type { IPaymentWebhookLookupReader, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  IPaymentWebhookLookupReader,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";

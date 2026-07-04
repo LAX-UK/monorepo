@@ -1,4 +1,7 @@
-import type { IImpersonationSessionRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  IImpersonationSessionRepository,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type { IImpersonationDomainEventReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence/lib";

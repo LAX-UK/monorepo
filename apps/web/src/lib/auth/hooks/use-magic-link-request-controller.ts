@@ -3,7 +3,7 @@
 import { parseAuthEmailParam } from "@/lib/auth/auth-route-links";
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
 import { type ForgotPasswordFormValues, forgotPasswordFormSchema } from "@/lib/auth/schemas";
-import { requestMagicLinkService } from "@/lib/auth/services/request-magic-link.service";
+import { requestMagicLinkService } from "@/lib/auth/services/request-magic-link.client";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { zodResolver } from "@hookform/resolvers/zod";

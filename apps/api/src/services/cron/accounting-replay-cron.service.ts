@@ -1,5 +1,8 @@
 import type { IPaymentRefundReconcileRepository } from "@auction/persistence/interfaces";
-import type { IXeroConnectionRepository, IXeroWebhookEventRepository } from "@auction/persistence/interfaces";
+import type {
+  IXeroConnectionRepository,
+  IXeroWebhookEventRepository,
+} from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type { Env } from "../../env.js";
 import { proactiveRefreshXeroTokens } from "../accounting/xero-auth-runtime.js";

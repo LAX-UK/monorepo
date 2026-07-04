@@ -1,4 +1,8 @@
-import type { LotFulfilmentAddressSnapshot, LotFulfilmentListRow, LotFulfilmentRow } from "@auction/persistence/interfaces";
+import type {
+  LotFulfilmentAddressSnapshot,
+  LotFulfilmentListRow,
+  LotFulfilmentRow,
+} from "@auction/persistence/interfaces";
 import type { Result } from "neverthrow";
 
 export type { LotFulfilmentListRow, LotFulfilmentRow } from "@auction/persistence/interfaces";

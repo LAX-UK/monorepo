@@ -54,7 +54,7 @@ vi.mock("@/lib/auth/use-auth-submit", () => ({
 
 const requestMagicLinkService = vi.fn();
 
-vi.mock("@/lib/auth/services/request-magic-link.service", () => ({
+vi.mock("@/lib/auth/services/request-magic-link.client", () => ({
   requestMagicLinkService: (...args: unknown[]) => requestMagicLinkService(...args),
 }));
 

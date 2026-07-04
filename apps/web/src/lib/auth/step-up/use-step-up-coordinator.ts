@@ -2,8 +2,8 @@
 
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
 import { useCallback, useRef, useState } from "react";
-import type { IStepUpAuthenticator, StepUpAuthOutcome } from "./step-up-authenticator";
-import { httpStepUpAuthenticator } from "./step-up-authenticator";
+import type { IStepUpAuthenticator, StepUpAuthOutcome } from "./step-up-authenticator.client";
+import { httpStepUpAuthenticator } from "./step-up-authenticator.client";
 import type { StepUpRequirement } from "./types";
 
 export type StepUpCoordinatorMode = "idle" | "password" | "no_credential";

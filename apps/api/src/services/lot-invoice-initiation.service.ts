@@ -1,7 +1,11 @@
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
-import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleRepository,
+  IUserRepository,
+} from "@auction/persistence/interfaces";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../lib/decimal-money.js";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";

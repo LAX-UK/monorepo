@@ -1,4 +1,7 @@
-import type { IOnsiteEventClientReader, OnsiteEventClientRow } from "@auction/persistence/interfaces";
+import type {
+  IOnsiteEventClientReader,
+  OnsiteEventClientRow,
+} from "@auction/persistence/interfaces";
 import type { IOnsiteEventRsvpRepository } from "@auction/persistence/interfaces";
 import type { IOnsiteEventRepository } from "@auction/persistence/interfaces";
 import type {

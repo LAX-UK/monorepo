@@ -1,5 +1,8 @@
 import type { IBidRepository, ITransactionRunner } from "@auction/persistence/interfaces";
-import type { IAdminDisputeCaseEnrichmentReader, IImpersonationSessionRepository } from "@auction/persistence/interfaces";
+import type {
+  IAdminDisputeCaseEnrichmentReader,
+  IImpersonationSessionRepository,
+} from "@auction/persistence/interfaces";
 import type { IAdminDomainEventReader } from "@auction/persistence/interfaces";
 import type { IAdminFinanceIssueSnapshotReader } from "@auction/persistence/interfaces";
 import type { IAdminLegalEntityBrowseReader } from "@auction/persistence/interfaces";
@@ -12,7 +15,11 @@ import type { IAttentionFeedReader } from "@auction/persistence/interfaces";
 import type { IEmailObservabilityRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IUserRepository } from "@auction/persistence/interfaces";
-import type { IPaymentExternalRefRepository, IXeroConnectionRepository, IXeroWebhookEventRepository } from "@auction/persistence/interfaces";
+import type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+  IXeroWebhookEventRepository,
+} from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type { Env } from "../../env.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";

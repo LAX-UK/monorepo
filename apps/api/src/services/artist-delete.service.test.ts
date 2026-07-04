@@ -1,4 +1,9 @@
-import type { ArtistDeleteGuardCounts, DbTransaction, IArtistDeleteGuards, IArtistDeleteRepository } from "@auction/persistence/interfaces";
+import type {
+  ArtistDeleteGuardCounts,
+  DbTransaction,
+  IArtistDeleteGuards,
+  IArtistDeleteRepository,
+} from "@auction/persistence/interfaces";
 import type { ArtistProfile } from "@auction/types";
 import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";

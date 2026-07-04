@@ -8,7 +8,11 @@ import type {
   IArtistRegistryStaffCommandService,
 } from "./interfaces/artist-registry.js";
 
-export { insertArtistInTx, replaceArtistCategoriesInTx, resolveUniqueArtistSlug } from "@auction/persistence/lib";
+export {
+  insertArtistInTx,
+  replaceArtistCategoriesInTx,
+  resolveUniqueArtistSlug,
+} from "@auction/persistence/lib";
 
 export type {
   IArtistRegistryQueryService,

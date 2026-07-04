@@ -1,7 +1,10 @@
 import type { Database } from "@auction/db";
 import { canAdminOverrideLotStatus, canLotTransition } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
-import type { ILotTransitionGuardReader, ILotTransitionRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotTransitionGuardReader,
+  ILotTransitionRepository,
+} from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { Lot, LotStatus, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";

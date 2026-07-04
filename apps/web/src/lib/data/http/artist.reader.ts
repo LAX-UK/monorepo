@@ -192,3 +192,15 @@ export const getServerArtistById = cache(async function getServerArtistById(
   const reader = await getServerArtistReader();
   return reader.getById(id);
 });
+
+/** Canonical slug redirect helper for legacy `/artist/[slug]` URLs. */
+export async function fetchArtistBySlug(
+  slug: string,
+): Promise<{ id: string; displayName: string } | null> {
+  const res = await fetch(`${getServerApiBase()}/artists/by-slug/${encodeURIComponent(slug)}`, {
+    next: { revalidate: 120 },
+  });
+  if (!res.ok) return null;
+  const body = (await res.json()) as { data?: { id: string; displayName: string } };
+  return body.data ?? null;
+}

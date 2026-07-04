@@ -1,6 +1,10 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { IEmailService } from "@auction/email";
-import type { IUserInvitationRepository, InvitationAdminListFilters, InvitationAdminListRow } from "@auction/persistence/interfaces";
+import type {
+  IUserInvitationRepository,
+  InvitationAdminListFilters,
+  InvitationAdminListRow,
+} from "@auction/persistence/interfaces";
 import type { IUserRepository } from "@auction/persistence/interfaces";
 import {
   type UserRole,

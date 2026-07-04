@@ -3,6 +3,7 @@
 import { readConsentFromDocument } from "@/lib/analytics/consent-headers";
 import { useConsent } from "@/lib/analytics/consent/context";
 import { trackPageView } from "@/lib/analytics/events";
+import { pingGtmHealth } from "@/lib/analytics/gtm-health.client";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
 import { Button } from "@auction/ui/components/button";
 import { useEffect, useMemo, useState } from "react";
@@ -124,9 +125,7 @@ export function AnalyticsDebugPanel() {
           variant="outline"
           className="h-auto min-h-0 rounded px-2 py-1 font-sans text-xs"
           onClick={() => {
-            void fetch("https://gtm.lax.bid/healthy")
-              .then((r) => setNetworkHint(`gtm.lax.bid/healthy → ${r.status}`))
-              .catch((e: unknown) => setNetworkHint(`gtm.lax.bid fetch failed: ${String(e)}`));
+            void pingGtmHealth().then(setNetworkHint);
           }}
         >
           Ping gtm.lax.bid

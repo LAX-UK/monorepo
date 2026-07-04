@@ -3,17 +3,12 @@ import type {
   IEmailSuppressionRepository,
   IEmailWebhookIngestRepository,
 } from "@auction/persistence/interfaces";
-import { mapPostmarkRecordType } from "./postmark-webhook-event-registry.js";
+import {
+  type PostmarkWebhookPayload,
+  mapPostmarkRecordType,
+} from "./postmark-webhook-event-registry.js";
 
-export type PostmarkWebhookPayload = Record<string, unknown> & {
-  RecordType?: string;
-  MessageID?: string;
-  MessageId?: string;
-  Type?: string;
-  Email?: string;
-  OriginalRecipient?: string;
-  To?: string;
-};
+export type { PostmarkWebhookPayload } from "./postmark-webhook-event-registry.js";
 
 export class PostmarkWebhookService {
   constructor(

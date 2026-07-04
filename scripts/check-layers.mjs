@@ -187,11 +187,6 @@ if (invariantViolations.length > 0) {
 const ROOT_PERSISTENCE_RE = /^@auction\/persistence$/;
 const REPOSITORIES_PERSISTENCE_RE = /^@auction\/persistence\/repositories$/;
 
-/** @param {string} rel */
-function isAppSource(rel) {
-  return /^apps\/[^/]+\//.test(rel);
-}
-
 /** @type {string[]} */
 const persistenceImportViolations = [];
 

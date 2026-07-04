@@ -1,4 +1,8 @@
-import type { IProfileReader, IProfileWriter, ProfileUpdateInput } from "@auction/persistence/interfaces";
+import type {
+  IProfileReader,
+  IProfileWriter,
+  ProfileUpdateInput,
+} from "@auction/persistence/interfaces";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 
 export class ProfileService {

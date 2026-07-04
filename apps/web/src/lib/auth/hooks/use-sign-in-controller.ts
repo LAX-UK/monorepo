@@ -11,8 +11,8 @@ import {
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { type SignInFormValues, signInFormSchema } from "@/lib/auth/schemas";
-import { requestMagicLinkService } from "@/lib/auth/services/request-magic-link.service";
-import { signInService } from "@/lib/auth/services/sign-in.service";
+import { requestMagicLinkService } from "@/lib/auth/services/request-magic-link.client";
+import { signInService } from "@/lib/auth/services/sign-in.client";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";

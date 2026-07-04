@@ -1,6 +1,10 @@
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
-import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleRepository,
+  IUserRepository,
+} from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";

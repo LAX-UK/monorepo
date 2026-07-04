@@ -1,7 +1,11 @@
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
-import type { IItemSubmissionRepository, IUserRepository, ItemSubmissionUpdatePatch } from "@auction/persistence/interfaces";
+import type {
+  IItemSubmissionRepository,
+  IUserRepository,
+  ItemSubmissionUpdatePatch,
+} from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { LegalEntityStatus, UpdateItemSubmissionInput } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";

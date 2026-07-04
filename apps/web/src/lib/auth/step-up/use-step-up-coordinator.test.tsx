@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { IStepUpAuthenticator } from "./step-up-authenticator";
+import type { IStepUpAuthenticator } from "./step-up-authenticator.client";
 import { useStepUpCoordinator } from "./use-step-up-coordinator";
 
 describe("useStepUpCoordinator", () => {

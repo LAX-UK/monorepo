@@ -1,4 +1,8 @@
-import type { IQrCodeAnalyticsReader, QrCodeDailyAggregates, QrCodeRawAggregates } from "@auction/persistence/interfaces";
+import type {
+  IQrCodeAnalyticsReader,
+  QrCodeDailyAggregates,
+  QrCodeRawAggregates,
+} from "@auction/persistence/interfaces";
 import { describe, expect, it } from "vitest";
 import { QrCodeAnalyticsService } from "./qr-code-analytics.service.js";
 

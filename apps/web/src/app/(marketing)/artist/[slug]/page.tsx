@@ -1,4 +1,4 @@
-import { getServerApiBase } from "@/lib/data/http/hc-server";
+import { fetchArtistBySlug } from "@/lib/data/http/artist.server";
 import { metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { artistPath } from "@/lib/seo/url";
 import type { Metadata } from "next";
@@ -17,11 +17,8 @@ export default async function ArtistSlugRedirectPage({
   const { slug } = await params;
   if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") notFound();
 
-  const res = await fetch(`${getServerApiBase()}/artists/by-slug/${encodeURIComponent(slug)}`, {
-    next: { revalidate: 120 },
-  });
-  if (!res.ok) notFound();
+  const artist = await fetchArtistBySlug(slug);
+  if (!artist) notFound();
 
-  const body = (await res.json()) as { data: { id: string; displayName: string } };
-  redirect(artistPath({ id: body.data.id, name: body.data.displayName }));
+  redirect(artistPath({ id: artist.id, name: artist.displayName }));
 }

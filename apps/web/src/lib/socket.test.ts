@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const fetchAuthJwtForSocket = vi.fn();
 const io = vi.fn();
 
-vi.mock("@/lib/socket-auth", () => ({
+vi.mock("@/lib/socket-auth.client", () => ({
   fetchAuthJwtForSocket,
 }));
 

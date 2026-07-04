@@ -1,4 +1,7 @@
-import type { ISourceOfFundsDocumentReviewRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  ISourceOfFundsDocumentReviewRepository,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type { ISourceOfFundsDocumentRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";

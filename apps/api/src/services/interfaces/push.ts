@@ -1,4 +1,7 @@
-export type { CreatePushSubscriptionRow, IPushSubscriptionRepository } from "@auction/persistence/interfaces";
+export type {
+  CreatePushSubscriptionRow,
+  IPushSubscriptionRepository,
+} from "@auction/persistence/interfaces";
 
 export type PushPayload = {
   title: string;

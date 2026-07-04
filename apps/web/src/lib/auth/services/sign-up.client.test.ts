@@ -1,5 +1,5 @@
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
-import { signUpService } from "@/lib/auth/services/sign-up.service";
+import { signUpService } from "@/lib/auth/services/sign-up.client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("signUpService", () => {

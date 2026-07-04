@@ -1,9 +1,9 @@
 import { emailHash } from "@auction/email";
 import type { IEmailSuppressionRepository } from "@auction/persistence/interfaces";
-import { emailPreferenceKey } from "@auction/persistence/lib";
 import type { NotificationPreferenceInput } from "@auction/persistence/interfaces";
 import type { INotificationPreferenceRepository } from "@auction/persistence/interfaces";
 import type { IUserRepository } from "@auction/persistence/interfaces";
+import { emailPreferenceKey } from "@auction/persistence/lib";
 import type { Env } from "../env.js";
 import { verifyUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
 

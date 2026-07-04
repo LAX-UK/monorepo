@@ -1,5 +1,8 @@
 import type { IEmailService } from "@auction/email";
-import type { INotificationWriteRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  INotificationWriteRepository,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type pino from "pino";
 import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";

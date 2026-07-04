@@ -1,5 +1,8 @@
 import type { IOnsiteEventCheckInLogRepository } from "@auction/persistence/interfaces";
-import type { IOnsiteEventRsvpRepository, OnsiteEventRsvpWithGuest } from "@auction/persistence/interfaces";
+import type {
+  IOnsiteEventRsvpRepository,
+  OnsiteEventRsvpWithGuest,
+} from "@auction/persistence/interfaces";
 import type { IOnsiteEventRepository } from "@auction/persistence/interfaces";
 import type { OnsiteEvent, OnsiteEventRsvp } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";

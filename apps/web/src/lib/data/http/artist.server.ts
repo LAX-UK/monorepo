@@ -6,5 +6,6 @@ export {
   fetchRegistryArtistById,
   getServerArtistById,
   getServerArtistReader,
+  fetchArtistBySlug,
   portraitForPublicArtist,
 } from "@/lib/data/http/artist.reader";
