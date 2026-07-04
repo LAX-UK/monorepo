@@ -17,8 +17,13 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
   webOrigin: string;
 }): Promise<void> {
   const { ctx, log, emailService, supportContactEmail, webOrigin } = options;
-  const { projectorStateRepo, domainEventReader, lotNotifyReader, staffOpsRecipientReader, adminEmailAddress } =
-    ctx;
+  const {
+    projectorStateRepo,
+    domainEventReader,
+    lotNotifyReader,
+    staffOpsRecipientReader,
+    adminEmailAddress,
+  } = ctx;
 
   const cursor = await projectorStateRepo.getCursor(PROJECTOR_NAME);
 

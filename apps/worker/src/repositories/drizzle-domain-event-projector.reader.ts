@@ -7,8 +7,8 @@ import type {
   IDomainEventProjectorReader,
   ListDomainEventsAfterCursorOptions,
 } from "../interfaces/domain-event-projector.reader.js";
-import { rowsFromExecuteResult } from "../projectors/lib/projector-event-rows.js";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
+import { rowsFromExecuteResult } from "../projectors/lib/projector-event-rows.js";
 
 export class DrizzleDomainEventProjectorReader implements IDomainEventProjectorReader {
   constructor(private readonly db: Database) {}

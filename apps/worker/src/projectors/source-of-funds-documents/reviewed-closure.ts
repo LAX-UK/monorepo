@@ -5,7 +5,7 @@ import type {
   ISourceOfFundsBuyerReader,
   ISourceOfFundsSettlementReader,
 } from "../../interfaces/source-of-funds-projector.repository.js";
-import { type ReviewedPayload } from "./sof-documents-helpers.js";
+import type { ReviewedPayload } from "./sof-documents-helpers.js";
 
 export async function handleReviewedClosure(args: {
   sourceOfFundsSettlementReader: ISourceOfFundsSettlementReader;

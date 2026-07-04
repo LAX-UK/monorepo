@@ -4,14 +4,15 @@ import type {
   IQrCodeScanPersister,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
-import { EnsurePersonalLegalEntityService, type IEnsurePersonalLegalEntityService } from "@auction/persistence/lib";
+import {
+  EnsurePersonalLegalEntityService,
+  type IEnsurePersonalLegalEntityService,
+} from "@auction/persistence/lib";
 import { DrizzleTransactionRunner } from "@auction/persistence/repositories";
 import {
   DrizzleNotificationWriteRepository,
   DrizzleQrCodeScanPersister,
 } from "@auction/persistence/repositories";
-import { WorkerDomainEventPublisher } from "../lib/domain-event-publisher.js";
-import { WorkerDomainEventSink } from "../lib/worker-domain-event-sink.js";
 import type { IAdminImpersonationNotifyReader } from "../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IClearArtistBlocksRepository } from "../interfaces/clear-artist-blocks.repository.js";
@@ -35,12 +36,12 @@ import type { IPayoutTransferFailedNotifyReader } from "../interfaces/payout-tra
 import type { IProjectorFailureRecorder } from "../interfaces/projector-failure-recorder.js";
 import type { IProjectorStateRepository } from "../interfaces/projector-state.repository.js";
 import type { IQrCodeScanPurgeRepository } from "../interfaces/qr-code-scan-purge.repository.js";
+import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source-of-funds-document-purge.repository.js";
 import type {
   ISourceOfFundsBuyerReader,
   ISourceOfFundsDocumentsTaskRepository,
   ISourceOfFundsSettlementReader,
 } from "../interfaces/source-of-funds-projector.repository.js";
-import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source-of-funds-document-purge.repository.js";
 import type {
   ISourceOfFundsDocumentReviewRepository,
   ISourceOfFundsReviewResolutionRepository,
@@ -50,6 +51,8 @@ import type { IUploadValidationRepository } from "../interfaces/upload-validatio
 import type { IUserPiiPurgeRepository } from "../interfaces/user-pii-purge.repository.js";
 import type { IVerificationPurgeRepository } from "../interfaces/verification-purge.repository.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
+import { WorkerDomainEventPublisher } from "../lib/domain-event-publisher.js";
+import { WorkerDomainEventSink } from "../lib/worker-domain-event-sink.js";
 import { DrizzleProfileMarketingReader } from "../marketing/drizzle-profile.reader.js";
 import { DrizzleAdminImpersonationNotifyReader } from "../repositories/drizzle-admin-impersonation-notify.reader.js";
 import { DrizzleAdminReviewTaskProjectorRepository } from "../repositories/drizzle-admin-review-task-projector.repository.js";
@@ -74,12 +77,12 @@ import { DrizzlePayoutTransferFailedNotifyReader } from "../repositories/drizzle
 import { DrizzleProjectorFailureRecorder } from "../repositories/drizzle-projector-failure-recorder.js";
 import { DrizzleProjectorStateRepository } from "../repositories/drizzle-projector-state.repository.js";
 import { DrizzleQrCodeScanPurgeRepository } from "../repositories/drizzle-qr-code-scan-purge.repository.js";
+import { DrizzleSourceOfFundsDocumentPurgeRepository } from "../repositories/drizzle-source-of-funds-document-purge.repository.js";
 import {
   DrizzleSourceOfFundsBuyerReader,
   DrizzleSourceOfFundsDocumentsTaskRepository,
   DrizzleSourceOfFundsSettlementReader,
 } from "../repositories/drizzle-source-of-funds-projector.repository.js";
-import { DrizzleSourceOfFundsDocumentPurgeRepository } from "../repositories/drizzle-source-of-funds-document-purge.repository.js";
 import {
   DrizzleSourceOfFundsDocumentReviewRepository,
   DrizzleSourceOfFundsReviewResolutionRepository,

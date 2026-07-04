@@ -1,7 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
 import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
-import { type SellerMoneyPayload } from "./notification-fanout-helpers.js";
+import type { SellerMoneyPayload } from "./notification-fanout-helpers.js";
 
 export async function fanoutPayoutClawbackRequired(options: {
   notificationFanoutReader: INotificationFanoutReader;

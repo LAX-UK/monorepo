@@ -1,9 +1,9 @@
 import type { IEmailService } from "@auction/email";
-import type { IEnsurePersonalLegalEntityService } from "@auction/persistence/lib";
 import type {
   INotificationWriteRepository,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
+import type { IEnsurePersonalLegalEntityService } from "@auction/persistence/lib";
 import type pino from "pino";
 import type { IAdminImpersonationNotifyReader } from "../../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";

@@ -1,7 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import { describe, expect, it, vi } from "vitest";
-import { processSourceOfFundsReview } from "./source-of-funds-review.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
+import { processSourceOfFundsReview } from "./source-of-funds-review.js";
 
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as never;
 

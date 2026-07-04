@@ -1,5 +1,5 @@
-import type { IClearArtistBlocksRepository } from "../interfaces/clear-artist-blocks.repository.js";
 import type pino from "pino";
+import type { IClearArtistBlocksRepository } from "../interfaces/clear-artist-blocks.repository.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 const PROJECTOR_NAME = "clear_artist_blocks";

@@ -15,9 +15,7 @@ export class DrizzleImpersonationSweepRepository implements IImpersonationSweepR
         targetLegalEntityId: impersonationSession.targetLegalEntityId,
       })
       .from(impersonationSession)
-      .where(
-        and(isNull(impersonationSession.endedAt), lt(impersonationSession.expiresAt, cutoff)),
-      )
+      .where(and(isNull(impersonationSession.endedAt), lt(impersonationSession.expiresAt, cutoff)))
       .limit(batchLimit);
 
     let inserted = 0;
@@ -26,9 +24,7 @@ export class DrizzleImpersonationSweepRepository implements IImpersonationSweepR
         const [updated] = await tx
           .update(impersonationSession)
           .set({ endedAt: new Date(), endReason: "timeout_swept" })
-          .where(
-            and(eq(impersonationSession.id, row.id), isNull(impersonationSession.endedAt)),
-          )
+          .where(and(eq(impersonationSession.id, row.id), isNull(impersonationSession.endedAt)))
           .returning({ id: impersonationSession.id });
         if (!updated) return;
 

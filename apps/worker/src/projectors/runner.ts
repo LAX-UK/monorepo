@@ -4,8 +4,8 @@ import type {
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type pino from "pino";
-import { createDefaultProjectorRegistry } from "./projector-registry.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
+import { createDefaultProjectorRegistry } from "./projector-registry.js";
 
 export function createProjectorRunner(options: {
   transactionRunner: ITransactionRunner;

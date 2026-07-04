@@ -27,13 +27,9 @@ export const lotCountBodySchema = z.object({ count: z.coerce.number().optional()
 
 export const watchCountSchema = z.object({ count: z.coerce.number().optional() });
 
-export const bidEnvelopeSchema = z
-  .unknown()
-  .transform((val) => parseBid(val)) as z.ZodType<Bid>;
+export const bidEnvelopeSchema = z.unknown().transform((val) => parseBid(val)) as z.ZodType<Bid>;
 
-export const lotEnvelopeSchema = z
-  .unknown()
-  .transform((val) => parseLot(val)) as z.ZodType<Lot>;
+export const lotEnvelopeSchema = z.unknown().transform((val) => parseLot(val)) as z.ZodType<Lot>;
 
 export const publicLotViewEnvelopeSchema = z
   .unknown()

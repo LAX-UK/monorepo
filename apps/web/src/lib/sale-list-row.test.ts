@@ -1,10 +1,10 @@
+import { saleListRowSchema } from "@/lib/data/http/sales.schema";
 import {
   formatSaleItemsLabel,
   formatSaleLotsLabel,
   parseSaleListRowApiPayload,
   resolveSaleLotCount,
 } from "@/lib/sale-list-row";
-import { saleListRowSchema } from "@/lib/data/http/sales.schema";
 import { describe, expect, it } from "vitest";
 
 describe("resolveSaleLotCount", () => {

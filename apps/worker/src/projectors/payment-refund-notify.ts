@@ -19,8 +19,13 @@ export async function processPaymentRefundNotify(options: {
   supportContactEmail: string;
 }): Promise<void> {
   const { ctx, log, emailService, supportContactEmail } = options;
-  const { projectorStateRepo, domainEventReader, paymentRefundNotifyReader, staffOpsRecipientReader, adminEmailAddress } =
-    ctx;
+  const {
+    projectorStateRepo,
+    domainEventReader,
+    paymentRefundNotifyReader,
+    staffOpsRecipientReader,
+    adminEmailAddress,
+  } = ctx;
 
   const cursor = await projectorStateRepo.getCursor(PROJECTOR_NAME);
 

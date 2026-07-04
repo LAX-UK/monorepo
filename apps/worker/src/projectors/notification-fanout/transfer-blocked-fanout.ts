@@ -1,9 +1,6 @@
 import type { IEmailService } from "@auction/email";
 import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
-import {
-  type TransferBlockedPayload,
-  formatReason,
-} from "./notification-fanout-helpers.js";
+import { type TransferBlockedPayload, formatReason } from "./notification-fanout-helpers.js";
 
 export async function fanoutPayoutTransferBlocked(options: {
   notificationFanoutReader: INotificationFanoutReader;
@@ -14,8 +11,15 @@ export async function fanoutPayoutTransferBlocked(options: {
   payoutId: string;
   payload: TransferBlockedPayload;
 }): Promise<void> {
-  const { notificationFanoutReader, emailService, supportContactEmail, adminPayoutsUrl, eventId, payoutId, payload } =
-    options;
+  const {
+    notificationFanoutReader,
+    emailService,
+    supportContactEmail,
+    adminPayoutsUrl,
+    eventId,
+    payoutId,
+    payload,
+  } = options;
   if (!payload?.legalEntityId) return;
 
   const entityName = await notificationFanoutReader.getEntityDisplayName(payload.legalEntityId);

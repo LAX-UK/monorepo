@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ProjectorRunContext } from "./lib/projector.types.js";
 import {
   LOT_INVOICE_INITIATION_PROJECTOR,
   processLotInvoiceInitiation,
 } from "./lot-invoice-initiation.js";
-import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as never;
 

@@ -1,7 +1,7 @@
 import type pino from "pino";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { processSourceOfFundsReviewResolution } from "./source-of-funds-review-resolution.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
+import { processSourceOfFundsReviewResolution } from "./source-of-funds-review-resolution.js";
 
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as unknown as pino.Logger;
 

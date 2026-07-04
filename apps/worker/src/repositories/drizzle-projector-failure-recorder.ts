@@ -6,9 +6,9 @@ import type pino from "pino";
 import type { IProjectorFailureRecorder } from "../interfaces/projector-failure-recorder.js";
 import type { IProjectorStateRepository } from "../interfaces/projector-state.repository.js";
 import {
+  POISON_EVENT_THRESHOLD,
   type ProjectorFailureOutcome,
   parseStuckMeta,
-  POISON_EVENT_THRESHOLD,
 } from "../projectors/lib/projector-failure-guard.js";
 
 export class DrizzleProjectorFailureRecorder implements IProjectorFailureRecorder {

@@ -16,6 +16,8 @@ import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-re
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
+import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
+import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
 import type { IMarketingClickIdPurgeRepository } from "../interfaces/marketing-click-id-purge.repository.js";
 import type { IMarketingContactSyncRepository } from "../interfaces/marketing-contact-sync.repository.js";
 import type { IMarketingEventOutboxWorker } from "../interfaces/marketing-event-outbox.worker.js";
@@ -26,12 +28,10 @@ import type { IPayoutStatementRepository } from "../interfaces/payout-statement.
 import type { IQrCodeScanPurgeRepository } from "../interfaces/qr-code-scan-purge.repository.js";
 import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source-of-funds-document-purge.repository.js";
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
-import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
-import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
+import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
 import type { IUserPiiPurgeRepository } from "../interfaces/user-pii-purge.repository.js";
 import type { IVerificationPurgeRepository } from "../interfaces/verification-purge.repository.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
-import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
 import type { IMalwareScanner } from "../lib/malware-scanner.js";
 import type { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import type { createUploadStorage } from "../lib/upload-storage.js";

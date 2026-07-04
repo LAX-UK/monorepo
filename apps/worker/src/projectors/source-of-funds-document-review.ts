@@ -17,8 +17,12 @@ export async function processSourceOfFundsDocumentReview(options: {
   log: pino.Logger;
 }): Promise<void> {
   const { ctx, log } = options;
-  const { projectorStateRepo, domainEventReader, projectorFailureRecorder, sourceOfFundsDocumentReviewRepo } =
-    ctx;
+  const {
+    projectorStateRepo,
+    domainEventReader,
+    projectorFailureRecorder,
+    sourceOfFundsDocumentReviewRepo,
+  } = ctx;
 
   const cursor = await projectorStateRepo.getCursor(SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR);
 

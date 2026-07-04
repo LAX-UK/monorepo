@@ -3,7 +3,7 @@ import type { INotificationWriteRepository } from "@auction/persistence/interfac
 import type pino from "pino";
 import type { ISourceOfFundsBuyerReader } from "../../interfaces/source-of-funds-projector.repository.js";
 import type { ISourceOfFundsSettlementReader } from "../../interfaces/source-of-funds-projector.repository.js";
-import { type DocumentsRequestedPayload } from "./sof-documents-helpers.js";
+import type { DocumentsRequestedPayload } from "./sof-documents-helpers.js";
 
 export async function handleDocumentsRequested(args: {
   sourceOfFundsBuyerReader: ISourceOfFundsBuyerReader;

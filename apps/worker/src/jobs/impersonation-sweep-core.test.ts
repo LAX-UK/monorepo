@@ -13,6 +13,9 @@ describe("runImpersonationSweeperJob", () => {
       log: log as never,
     });
     expect(impersonationSweepRepo.sweepStaleSessions).toHaveBeenCalled();
-    expect(log.info).toHaveBeenCalledWith({ inserted: 2 }, "impersonation_sweeper_inserted_timeout_ends");
+    expect(log.info).toHaveBeenCalledWith(
+      { inserted: 2 },
+      "impersonation_sweeper_inserted_timeout_ends",
+    );
   });
 });

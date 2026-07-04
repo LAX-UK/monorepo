@@ -27,8 +27,12 @@ export async function processNotificationFanout(options: {
   adminPayoutsUrl: string;
 }): Promise<void> {
   const { ctx, log, emailService, supportContactEmail, adminPayoutsUrl } = options;
-  const { projectorStateRepo, domainEventReader, projectorFailureRecorder, notificationFanoutReader } =
-    ctx;
+  const {
+    projectorStateRepo,
+    domainEventReader,
+    projectorFailureRecorder,
+    notificationFanoutReader,
+  } = ctx;
 
   const cursor = await projectorStateRepo.getCursor(NOTIFICATION_FANOUT_PROJECTOR);
 

@@ -7,20 +7,14 @@ import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 export class DrizzleProjectorStateRepository implements IProjectorStateRepository {
   constructor(private readonly db: Database) {}
 
-  async ensureCursor(
-    projectorName: string,
-    conn: ProjectorDbConnection = this.db,
-  ): Promise<void> {
+  async ensureCursor(projectorName: string, conn: ProjectorDbConnection = this.db): Promise<void> {
     await conn
       .insert(projectorState)
       .values({ projectorName, lastProcessedEventId: 0 })
       .onConflictDoNothing();
   }
 
-  async getCursor(
-    projectorName: string,
-    conn: ProjectorDbConnection = this.db,
-  ): Promise<number> {
+  async getCursor(projectorName: string, conn: ProjectorDbConnection = this.db): Promise<number> {
     const [cursorRow] = await conn
       .select({ last: projectorState.lastProcessedEventId })
       .from(projectorState)
