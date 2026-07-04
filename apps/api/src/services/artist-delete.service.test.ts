@@ -1,15 +1,15 @@
+import type {
+  ArtistDeleteGuardCounts,
+  DbTransaction,
+  IArtistDeleteGuards,
+  IArtistDeleteRepository,
+} from "@auction/persistence";
 import type { ArtistProfile } from "@auction/types";
 import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { ArtistError, AuthzError } from "../lib/errors.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import { ArtistDeleteService } from "./artist-delete.service.js";
-import type {
-  ArtistDeleteGuardCounts,
-  DbTransaction,
-  IArtistDeleteGuards,
-  IArtistDeleteRepository,
-} from "./interfaces/artist-delete.js";
 
 function artist(overrides: Partial<ArtistProfile> = {}): ArtistProfile {
   return {

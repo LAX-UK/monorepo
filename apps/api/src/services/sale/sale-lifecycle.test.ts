@@ -1,6 +1,6 @@
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { ILotRepository, ISaleRepository } from "../interfaces/repositories.js";
 import { cancelSale } from "./sale-lifecycle.js";
 import { publishSaleEvent } from "./sale-mutation-context.js";
 import type { SaleServiceDeps } from "./sale-types.js";

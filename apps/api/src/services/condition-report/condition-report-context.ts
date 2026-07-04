@@ -1,7 +1,7 @@
-import type { IConditionReportRequestRepository } from "../../repositories/interfaces/condition-report-request.repository.js";
+import type { IConditionReportRequestRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { ILotRepository } from "../interfaces/repositories.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";
 

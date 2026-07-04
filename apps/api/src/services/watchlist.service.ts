@@ -1,9 +1,9 @@
 import type { DbTransaction, ITransactionRunner } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
+import type { IWatchlistRepository, WatchlistRow } from "@auction/persistence";
 import type { MarketingEvent } from "@auction/types";
 import type { Lot } from "@auction/types";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
-import type { ILotRepository } from "./interfaces/repositories.js";
-import type { IWatchlistRepository, WatchlistRow } from "./interfaces/watchlist.js";
 
 export type WatchlistWithLot = {
   watchlistId: string;

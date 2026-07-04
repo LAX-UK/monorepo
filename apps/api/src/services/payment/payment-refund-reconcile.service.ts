@@ -3,9 +3,9 @@ import type {
   ITransactionRunner,
   PaymentRefundReconcilePayload,
 } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 
 export class PaymentRefundReconcileService {

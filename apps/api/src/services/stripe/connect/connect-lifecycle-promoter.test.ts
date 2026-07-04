@@ -1,5 +1,5 @@
+import type { ILegalEntityConnectRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
 import { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";
 
 function makeConnectRepositoryMocks() {

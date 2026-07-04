@@ -1,9 +1,9 @@
 import { truncateIp } from "@auction/db";
 import type { IQrCodeScanPersister } from "@auction/persistence";
+import type { IQrCodeRepository } from "@auction/persistence";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 import type { AppLogger } from "../lib/logger.js";
-import type { IQrCodeRepository } from "../repositories/interfaces/qr-code.repository.js";
 import type {
   IQrCodeAdminService,
   IQrCodePublicResolveService,

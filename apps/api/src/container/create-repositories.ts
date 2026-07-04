@@ -229,10 +229,10 @@ import {
   type IImpersonationDomainEventReader,
   type ISaleroomDisplaySnapshotReader,
 } from "@auction/persistence";
-import type { IInvitationRepository } from "../repositories/interfaces/invitation.repository.js";
-import type { IItemSubmissionRepository } from "../services/interfaces/repositories.js";
-import type { ISaleRepository } from "../services/interfaces/repositories.js";
-import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
+import type { IEntityInvitationRepository } from "@auction/persistence";
+import type { IItemSubmissionRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 
 export type IArtistProfileRepository = IArtistProfileDirectoryReader &
   IArtistProfileAdminReader &
@@ -310,7 +310,7 @@ export type ContainerRepositories = {
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
   displayPairingRepository: IDisplayPairingRepository;
   invitationRepository: IUserInvitationRepository;
-  entityInvitationRepository: IInvitationRepository;
+  entityInvitationRepository: IEntityInvitationRepository;
   saleModeLookup: ISaleModeLookup;
   lotMetrics: ILotMetricsReader;
   paymentMetrics: IPaymentMetricsReader;

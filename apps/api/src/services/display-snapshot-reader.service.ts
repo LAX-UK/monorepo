@@ -1,6 +1,6 @@
+import type { ISaleroomDisplaySnapshotReader } from "@auction/persistence";
 import type { SaleroomDisplayNextLot, SaleroomDisplaySnapshot } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
-import type { ISaleroomDisplaySnapshotReader } from "../repositories/interfaces/saleroom-display-snapshot.reader.js";
 import type { MediaUrlResolver } from "../services/media-url-resolver.js";
 import {
   type CatalogLotRow,

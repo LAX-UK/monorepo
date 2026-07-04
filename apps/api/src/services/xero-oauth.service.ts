@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
+import type { IXeroConnectionRepository } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { TokenSet } from "xero-node";
 import type { Env } from "../env.js";
 import { fetchAndCacheXeroOrganisationMetadata } from "./accounting/xero-organisation-metadata.js";
 import { createXeroClientForOAuth } from "./accounting/xero-token.service.js";
-import type { IXeroConnectionRepository } from "./interfaces/xero-repositories.js";
 
 function tokenExpiryFromSeconds(expiresAt: unknown): Date {
   if (expiresAt == null) return new Date(Date.now() + 25 * 60_000);

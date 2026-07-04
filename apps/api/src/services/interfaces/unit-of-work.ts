@@ -7,4 +7,4 @@ export type {
   IRepositoryFactory as IUnitOfWork,
   LotBidRepos,
   TransactionRepos,
-} from "./repository-factory.js";
+} from "@auction/persistence";

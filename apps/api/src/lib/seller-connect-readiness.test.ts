@@ -1,5 +1,5 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 import { findLotsMissingSellerConnect, isSellerConnectReady } from "./seller-connect-readiness.js";
 
 describe("isSellerConnectReady", () => {

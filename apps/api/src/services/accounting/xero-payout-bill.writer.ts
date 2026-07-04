@@ -1,3 +1,6 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
+import type { IXeroConnectionRepository, XeroConnectionRow } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import {
   Contact,
@@ -10,12 +13,6 @@ import {
 } from "xero-node";
 import type { Env } from "../../env.js";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { IPayoutRepository } from "../interfaces/payout-repository.js";
-import type {
-  IXeroConnectionRepository,
-  XeroConnectionRow,
-} from "../interfaces/xero-repositories.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { ensureXeroContactForLegalEntity } from "./xero-legal-entity-contact.js";
 import { getXeroScopes } from "./xero-token.service.js";

@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
+import type { IAntiShillingGuard } from "@auction/persistence";
+import type { IBidRepository } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import type { IAntiShillingGuard } from "../interfaces/anti-shilling.js";
-import type { IBidRepository } from "../interfaces/repositories.js";
 import type { NotificationService } from "../notification.service.js";
 import { ProxyAutoBidResolver } from "./proxy-auto-bid.resolver.js";
 

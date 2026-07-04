@@ -1,7 +1,7 @@
+import type { ILotRepository } from "@auction/persistence";
+import type { IWatchlistRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import type { ILotRepository } from "./interfaces/repositories.js";
-import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { WatchlistService } from "./watchlist.service.js";
 
 const lotA = { id: "lot-a", status: "active", categoryIds: ["cat-1"] } as Lot;

@@ -1,9 +1,9 @@
 import type { IQrCodeScanPersister } from "@auction/persistence";
+import type { IQrCodeRepository } from "@auction/persistence";
 import type { QrCodeScanJobPayload } from "@auction/queues";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 import type { AppLogger } from "../../lib/logger.js";
-import type { IQrCodeRepository } from "../../repositories/interfaces/qr-code.repository.js";
 import { QrCodeCache, resolveFromCached } from "./qr-code-cache.js";
 import { absoluteWebUrl } from "./qr-code-mapper.js";
 import type { QrCodeCachedResolve, QrCodeResolveResult } from "./qr-code-types.js";

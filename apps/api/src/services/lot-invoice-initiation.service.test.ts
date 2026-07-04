@@ -1,17 +1,13 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
-import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type { IPlatformFeePolicy } from "./interfaces/platform-fee.js";
-import type {
-  ILotRepository,
-  ISaleRepository,
-  IUserRepository,
-} from "./interfaces/repositories.js";
 import { LotInvoiceInitiationService } from "./lot-invoice-initiation.service.js";
 import { NotificationFactory } from "./notification.factory.js";
 import { PaymentTierPolicy, parsePaymentTierLimits } from "./payment/payment-tier.policy.js";

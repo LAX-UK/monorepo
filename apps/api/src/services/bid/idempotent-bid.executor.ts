@@ -1,10 +1,10 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { Bid } from "@auction/types";
 import type { Result } from "neverthrow";
 import { Counter, Histogram } from "prom-client";
 import { BidError } from "../../lib/errors.js";
 import type { IIdempotencyStore } from "../interfaces/idempotency-store.js";
 import { IDEMPOTENCY_PENDING_VALUE } from "../interfaces/idempotency-store.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IBidPlacer, PlaceBidWithIdempotencyInput } from "../interfaces/place-bid.js";
 import type { PlaceBidWithIdempotencyOutcome } from "./place-bid-idempotency.js";
 

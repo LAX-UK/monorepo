@@ -1,8 +1,8 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { LegalEntity } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { ImpersonationAuditService } from "./impersonation-audit.service.js";
 import type { ImpersonationSessionService } from "./impersonation-session.service.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import { LegalEntityAccessService } from "./legal-entity-access.service.js";
 
 const entityId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";

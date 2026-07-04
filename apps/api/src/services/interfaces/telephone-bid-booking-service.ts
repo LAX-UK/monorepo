@@ -1,6 +1,6 @@
+import type { TelephoneBidBookingAdminRow } from "@auction/persistence";
 import type { TelephoneBidBooking, TelephoneBidBookingStatus } from "@auction/types";
 import type { Result } from "neverthrow";
-import type { TelephoneBidBookingAdminRow } from "../../repositories/interfaces/telephone-bid-booking.repository.js";
 import type {
   TelephoneBidBookingDetail,
   TelephoneBidBookingServiceError,

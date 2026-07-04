@@ -67,9 +67,10 @@ function buildProfile(auctionType: LotAuctionType): ArtworkAuctionTypeProfile {
   }
 }
 
-const profiles = Object.fromEntries(
-  lotAuctionTypes.map((t) => [t, buildProfile(t)]),
-) as Record<LotAuctionType, ArtworkAuctionTypeProfile>;
+const profiles = Object.fromEntries(lotAuctionTypes.map((t) => [t, buildProfile(t)])) as Record<
+  LotAuctionType,
+  ArtworkAuctionTypeProfile
+>;
 
 const profileCache = new Map<LotAuctionType, ArtworkAuctionTypeProfile>(
   lotAuctionTypes.map((t) => [t, profiles[t]]),

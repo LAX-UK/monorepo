@@ -1,6 +1,8 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
-import type { ISourceOfFundsDocumentRepository } from "../../repositories/interfaces/source-of-funds-document.repository.js";
+import type {
+  ISourceOfFundsDocumentReviewRepository,
+  ITransactionRunner,
+} from "@auction/persistence";
+import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
 import type { ISourceOfFundsDocumentCollectionService } from "../interfaces/source-of-funds-document-collection.js";

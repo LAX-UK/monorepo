@@ -1,5 +1,5 @@
+import type { IUserInvitationRepository } from "@auction/persistence";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IUserInvitationRepository } from "./interfaces/invitation.js";
 import { InvitationConsumptionService } from "./invitation-consumption.service.js";
 
 function makeRepo() {

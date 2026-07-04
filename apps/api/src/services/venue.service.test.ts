@@ -1,7 +1,7 @@
+import type { IVenueRepository } from "@auction/persistence";
 import type { Venue } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { VenueError } from "../lib/errors.js";
-import type { IVenueRepository } from "./interfaces/venue.js";
 import { VenueService } from "./venue.service.js";
 
 const LEGAL_ENTITY_ID = "30000000-0000-4000-9000-000000000001";

@@ -1,4 +1,8 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
+import type { IVenueRepository } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import type {
   CreateNestedLotForSaleInput,
@@ -13,12 +17,8 @@ import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISalePublishService } from "./interfaces/sale-publish.js";
-import type { IVenueRepository } from "./interfaces/venue.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { QrCodeService } from "./qr-code.service.js";

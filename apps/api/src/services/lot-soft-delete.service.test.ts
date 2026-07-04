@@ -1,13 +1,13 @@
+import type { ILotSoftDeleteGuardReader } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
-import type { ILotSoftDeleteGuardReader } from "../repositories/interfaces/lot-soft-delete-guard.reader.js";
 import { CatalogSoftDeleteOrchestrator } from "./catalog/catalog-soft-delete-orchestrator.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotSoftDeleteSideEffects } from "./interfaces/lot-soft-delete.js";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import { LotSoftDeleteService } from "./lot-soft-delete.service.js";
 
 function baseLot(overrides: Partial<Lot> = {}): Lot {

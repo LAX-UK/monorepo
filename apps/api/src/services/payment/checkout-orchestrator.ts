@@ -1,15 +1,15 @@
+import type { IPaymentDomainEventsRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IUserRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
-import type { IPaymentDomainEventsRepository } from "../../repositories/interfaces/payment-domain-events.repository.js";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
 import type { IStripeCheckoutService } from "../interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
-import type { IUserRepository } from "../interfaces/repositories.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
 import type {

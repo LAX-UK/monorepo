@@ -1,5 +1,5 @@
+import type { IQrCodeRepository } from "@auction/persistence";
 import type { Redis } from "ioredis";
-import type { IQrCodeRepository } from "../../repositories/interfaces/qr-code.repository.js";
 import { QrCodeCache } from "./qr-code-cache.js";
 import { encodeQrSequence } from "./qr-code-encoding.js";
 import { type QrCodeUpdateInput, toQrCodeDto, toUpdatePatch } from "./qr-code-mapper.js";

@@ -1,8 +1,8 @@
+import type { ProfileMeRow } from "@auction/persistence";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
-import type { ProfileMeRow } from "../services/interfaces/profile.js";
 import { createUserRoutes } from "./users.js";
 
 function baseProfile(over: Partial<ProfileMeRow> = {}): ProfileMeRow {

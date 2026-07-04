@@ -1,5 +1,5 @@
+import type { ISaleroomSessionLookup } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ISaleroomSessionLookup } from "../interfaces/saleroom-session-lookup.js";
 import { SaleroomBidGate } from "./saleroom-bid.gate.js";
 import { SaleroomOnBlockPolicy } from "./saleroom-on-block.policy.js";
 

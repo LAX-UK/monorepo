@@ -1,12 +1,12 @@
-import type { AdminCategory, Category } from "@auction/types";
-import { normalizeCategoryHierarchy, validateCategoryParent } from "@auction/validators";
-import { CategoryError } from "../lib/errors.js";
-import type { IDomainEventSink } from "./domain-event-sink.js";
 import type {
   CreateCategoryInput,
   ICategoryRepository,
   UpdateCategoryInput,
-} from "./interfaces/category.js";
+} from "@auction/persistence";
+import type { AdminCategory, Category } from "@auction/types";
+import { normalizeCategoryHierarchy, validateCategoryParent } from "@auction/validators";
+import { CategoryError } from "../lib/errors.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 
 function slugify(value: string): string {
   return value

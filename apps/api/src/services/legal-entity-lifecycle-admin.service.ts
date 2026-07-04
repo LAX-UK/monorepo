@@ -4,6 +4,7 @@ import type {
   ILegalEntityMemberRepository,
   ITransactionRunner,
 } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { LegalEntityStatus } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import {
@@ -12,7 +13,6 @@ import {
 } from "../lib/legal-entity-lifecycle-transitions.js";
 import { enqueueOrgLifecycleMemberEmails } from "../lib/org-lifecycle-notifications.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 
 /** Distinct `domain_events.event_type` per admin lifecycle operation.
  * `start_review` maps to `legal_entity.review_started` (past-tense, matches

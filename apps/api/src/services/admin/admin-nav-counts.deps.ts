@@ -1,9 +1,9 @@
 import type { ISaleroomLiveSessionCounter } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Sale } from "@auction/types";
 import type { AmlService } from "../aml/aml.service.js";
 import type { IConditionReportAdminService } from "../interfaces/condition-report.js";
 import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
-import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
 import type { ITelephoneBidBookingQueryService } from "../interfaces/telephone-bid-booking-service.js";
 import type { InvitationService } from "../invitation.service.js";
 import type { SaleService } from "../sale.service.js";

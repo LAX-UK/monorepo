@@ -1,6 +1,6 @@
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import { legalEntityNotificationAudienceRoles } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
-import { legalEntityNotificationAudienceRoles } from "./interfaces/legal-entity-notification-recipients.js";
 import { resolveLegalEntityNotificationRecipients } from "./legal-entity-notification-routing.js";
 
 describe("legal entity notification routing", () => {

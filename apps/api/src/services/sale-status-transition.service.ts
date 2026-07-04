@@ -1,5 +1,8 @@
 import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Lot, LotStatus, Sale, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
@@ -7,11 +10,8 @@ import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { ILotStatusAdminService } from "./interfaces/lot-status-admin.js";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ISaleStatusTransitionService } from "./interfaces/sale-status-transition.js";
 import { LotStatusAdminService } from "./lot-status-admin.service.js";
 

@@ -1,9 +1,9 @@
 import { type IPaddleRepository, isPaddleUniqueViolation } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
 import { type Result, err, ok } from "neverthrow";
 import { Counter, Histogram } from "prom-client";
 import { BidError } from "../lib/errors.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
-import type { ILotRepository } from "./interfaces/repositories.js";
 
 const PADDLE_START = 100;
 const ROSTER_CACHE_TTL_SEC = 5;

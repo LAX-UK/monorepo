@@ -1,4 +1,4 @@
-import type { IAdminDomainEventReader } from "../../repositories/interfaces/admin-domain-event.reader.js";
+import type { IAdminDomainEventReader } from "@auction/persistence";
 import type {
   IAdminDomainEventQueryService,
   RedactedDomainEventRow,

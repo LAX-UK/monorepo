@@ -1,7 +1,7 @@
-import type { ILegalEntityNotificationRecipientReader } from "../interfaces/legal-entity-notification-recipients.js";
-import type { ILotFulfilmentPaymentHook } from "../interfaces/lot-fulfilment-payment-hook.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
-import type { ILotRepository } from "../interfaces/repositories.js";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import type { ILotFulfilmentPaymentHook } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
 import { resolveLegalEntityNotificationRecipients } from "../legal-entity-notification-routing.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";

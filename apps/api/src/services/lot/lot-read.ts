@@ -1,5 +1,5 @@
+import type { ArchiveEndedAggregateFilter, ListLotsFilter } from "@auction/persistence";
 import type { Lot } from "@auction/types";
-import type { ArchiveEndedAggregateFilter, ListLotsFilter } from "../interfaces/repositories.js";
 import type { LotServiceDeps } from "./lot-types.js";
 
 export function clampLotBidsLimitQuery(raw: string | undefined): number {

@@ -1,3 +1,4 @@
+import type { ListSubmissionsFilter } from "@auction/persistence";
 import type { ItemSubmissionStatus } from "@auction/types";
 import {
   adminAssignSubmissionBodySchema,
@@ -10,7 +11,6 @@ import {
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requirePlatformShell } from "../../middleware/require-capability.js";
-import type { ListSubmissionsFilter } from "../../services/interfaces/repositories.js";
 import type { SubmissionHono, SubmissionRouteDeps } from "./_shared.js";
 
 function submissionsAdminListFilter(

@@ -1,5 +1,5 @@
-import type { EnsurePersonalLegalEntityService } from "../services/ensure-personal-legal-entity.service.js";
 import { describe, expect, it, vi } from "vitest";
+import type { EnsurePersonalLegalEntityService } from "../services/ensure-personal-legal-entity.service.js";
 import { applyUserRegisteredEvent } from "./legal-entity-provisioning.js";
 
 describe("applyUserRegisteredEvent", () => {

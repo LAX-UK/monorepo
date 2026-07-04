@@ -1,6 +1,6 @@
-import type { ISaleRegistrationRepository } from "../repositories/interfaces/sale-registration.repository.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { ISaleRepository } from "./interfaces/repositories.js";
+import type { ISaleRegistrationRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence";
 import type { ISaleRegistrationService } from "./interfaces/sale-registration-service.js";
 import { SaleRegistrationAdminService } from "./sale-registration/sale-registration-admin.service.js";
 import { SaleRegistrationBuyerService } from "./sale-registration/sale-registration-buyer.service.js";

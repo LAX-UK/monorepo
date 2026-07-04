@@ -1,4 +1,11 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import type { IEmailService } from "@auction/email";
+import type {
+  IUserInvitationRepository,
+  InvitationAdminListFilters,
+  InvitationAdminListRow,
+} from "@auction/persistence";
+import type { IUserRepository } from "@auction/persistence";
 import {
   type UserRole,
   type UserStaffRole,
@@ -6,13 +13,6 @@ import {
   roleHasCapability,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
-import type { IEmailService } from "./interfaces/email.js";
-import type {
-  IUserInvitationRepository,
-  InvitationAdminListFilters,
-  InvitationAdminListRow,
-} from "./interfaces/invitation.js";
-import type { IUserRepository } from "./interfaces/repositories.js";
 
 export type InvitationError = { message: string; status: number };
 

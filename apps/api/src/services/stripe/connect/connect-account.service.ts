@@ -1,6 +1,8 @@
 import { statusFromLegalEntityRow } from "@auction/connect";
-import type { DbTransaction } from "@auction/persistence";
-import type { ITransactionRunner } from "@auction/persistence";
+import type { DbTransaction, ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityConnectReader } from "@auction/persistence";
+import type { ILegalEntityConnectRepository } from "@auction/persistence";
+import type { LegalEntityConnectRow } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
@@ -9,9 +11,6 @@ import { legalEntityRowToDomain } from "../../../lib/legal-entity-row-mapper.js"
 import { type AppLogger, createBaseLogger } from "../../../lib/logger.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { recordMoneyPathEvent } from "../../../middleware/metrics.js";
-import type { ILegalEntityConnectReader } from "../../../repositories/interfaces/legal-entity-connect.reader.js";
-import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
-import type { LegalEntityConnectRow } from "../../../repositories/legal-entity-connect.types.js";
 import type { ConnectAccountStatus, CreateAccountResult } from "../../interfaces/stripe-connect.js";
 import { loadConnectAccountCreationContext } from "./connect-account-context.loader.js";
 import {

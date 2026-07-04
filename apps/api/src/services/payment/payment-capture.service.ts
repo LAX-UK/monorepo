@@ -1,21 +1,21 @@
 import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import type { ILotFulfilmentPaymentHook } from "@auction/persistence";
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
+import type { ILotRepository, IUserRepository } from "@auction/persistence";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentCaptureNotAppliedError } from "../../lib/errors.js";
 import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { ILegalEntityNotificationRecipientReader } from "../interfaces/legal-entity-notification-recipients.js";
-import type { ILotFulfilmentPaymentHook } from "../interfaces/lot-fulfilment-payment-hook.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import type {
   CapturePaymentInput,
   CapturePaymentResult,
   IPaymentCaptureService,
 } from "../interfaces/payment-capture.js";
-import type { IPaymentWriteRepository, PaymentRecord } from "../interfaces/payment-write.js";
-import type { ILotRepository, IUserRepository } from "../interfaces/repositories.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";
 import { chargeIdFromPaymentIntent } from "../stripe/stripe-charge-id.js";

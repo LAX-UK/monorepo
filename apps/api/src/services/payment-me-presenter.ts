@@ -1,7 +1,7 @@
+import type { PaymentRecord } from "@auction/persistence";
 import type { Lot, PaymentStatus } from "@auction/types";
 import { gbpAmountToPence } from "../lib/decimal-money.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
-import type { PaymentRecord } from "./interfaces/payment-write.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { ManualReviewReason, PaymentTierPolicy } from "./payment/payment-tier.policy.js";
 import { resolveManualReviewReason } from "./payment/resolve-manual-review-reason.js";

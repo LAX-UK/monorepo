@@ -1,13 +1,13 @@
 import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import { getSaleModeCapabilities } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
-import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
 import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
-import type { ILotRepository } from "../services/interfaces/repositories.js";
-import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
 import { LotError } from "./errors.js";
 import { assertLotPublishable } from "./lot-publish-policy.js";
 import { resolveLotTimingForSale } from "./lot-sale-timing.js";

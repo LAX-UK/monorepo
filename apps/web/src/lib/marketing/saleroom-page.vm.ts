@@ -1,3 +1,17 @@
+import type { SessionUser } from "@/lib/data/contracts";
+import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import type {
+  SaleLotsPage,
+  SaleRegistrationMineRow,
+  SaleShell,
+} from "@/lib/data/http/sales.server";
+import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
+import type { SaleroomSecondaryData } from "@/lib/marketing/saleroom-page-data.service";
+import { SALE_CATALOG_LOAD_ALL_CAP } from "@/lib/marketing/saleroom-page-data.service";
+import {
+  SALEROOM_CATALOG_PAGE_SIZE,
+  type SaleroomPageQuery,
+} from "@/lib/marketing/saleroom-page.query";
 import {
   aggregateSaleEstimateTotal,
   computeEndedSaleSummary,
@@ -14,20 +28,6 @@ import type {
   SaleLotCardVM,
   SaleOverviewVM,
 } from "@/lib/marketing/saleroom/view-models";
-import type { SessionUser } from "@/lib/data/contracts";
-import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
-import type {
-  SaleLotsPage,
-  SaleRegistrationMineRow,
-  SaleShell,
-} from "@/lib/data/http/sales.server";
-import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
-import type { SaleroomSecondaryData } from "@/lib/marketing/saleroom-page-data.service";
-import { SALE_CATALOG_LOAD_ALL_CAP } from "@/lib/marketing/saleroom-page-data.service";
-import {
-  SALEROOM_CATALOG_PAGE_SIZE,
-  type SaleroomPageQuery,
-} from "@/lib/marketing/saleroom-page.query";
 import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";

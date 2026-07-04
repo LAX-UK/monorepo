@@ -1,12 +1,12 @@
 import type { Database } from "@auction/db";
+import type { ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
+import type { IWatchlistRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import type { ICacheProvider } from "../interfaces/cache.js";
 import type { INotificationOutboxService } from "../interfaces/notification-outbox.js";
 import type { ILotNotificationSender } from "../interfaces/notifications.js";
-import type { ISaleRepository } from "../interfaces/repositories.js";
-import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
-import type { IWatchlistRepository } from "../interfaces/watchlist.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";

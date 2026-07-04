@@ -1,6 +1,6 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import {
   assertSellerEntityAllowsSubmissions,
   maybeLogRestrictedSellerWrite,

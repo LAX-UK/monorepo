@@ -1,17 +1,16 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IImpersonationSessionRepository } from "@auction/persistence";
+import type { IImpersonationSessionRepository, ITransactionRunner } from "@auction/persistence";
+import type { IImpersonationDomainEventReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence";
 import { encodeActingContextCookie } from "@auction/types";
 import { parseActingLegalEntityCookieFromHeader } from "../../lib/impersonation-cookie.js";
-import type { IImpersonationDomainEventReader } from "../../repositories/interfaces/impersonation-domain-event.reader.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "../impersonation-audit.service.js";
 import type {
   AdminImpersonationLookupResult,
   AdminImpersonationRecordFailedEndResult,
   AdminImpersonationStartResult,
   IAdminImpersonationService,
 } from "../interfaces/admin-routes.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 
 export class AdminImpersonationService implements IAdminImpersonationService {
   constructor(

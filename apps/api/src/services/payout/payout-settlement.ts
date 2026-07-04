@@ -1,6 +1,6 @@
+import type { IPayoutRepository } from "@auction/persistence";
 import type { PayoutLine } from "@auction/types";
 import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
-import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type {
   BulkPayoutSettlementResult,
   CreateSettlementInput,

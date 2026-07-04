@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
+import type { IUserInvitationRepository, InvitationRow } from "@auction/persistence";
 import type { UserRole } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
-import type { IUserInvitationRepository, InvitationRow } from "./interfaces/invitation.js";
 import type { InvitationError } from "./invitation.service.js";
 
 function hashToken(token: string): string {

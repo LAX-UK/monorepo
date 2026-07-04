@@ -1,5 +1,5 @@
+import type { AdminUserListRow, IAdminUserReader } from "@auction/persistence";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AdminUserListRow, IAdminUserReader } from "../interfaces/admin-user.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { SourceOfFundsSettlementReadService } from "../source-of-funds/source-of-funds-settlement-read.service.js";
 import type {

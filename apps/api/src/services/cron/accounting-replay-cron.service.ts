@@ -1,14 +1,11 @@
 import type { IPaymentRefundReconcileRepository } from "@auction/persistence";
+import type { IXeroConnectionRepository, IXeroWebhookEventRepository } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { Env } from "../../env.js";
 import { proactiveRefreshXeroTokens } from "../accounting/xero-auth-runtime.js";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
 import type { IPaymentMaintenanceService } from "../interfaces/payment-service.js";
-import type {
-  IXeroConnectionRepository,
-  IXeroWebhookEventRepository,
-} from "../interfaces/xero-repositories.js";
 
 export class AccountingReplayCronService {
   constructor(

@@ -1,7 +1,7 @@
+import type { ILegalEntityConnectReader } from "@auction/persistence";
+import type { LegalEntityConnectRow } from "@auction/persistence";
 import type Stripe from "stripe";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
-import type { ILegalEntityConnectReader } from "../../../repositories/interfaces/legal-entity-connect.reader.js";
-import type { LegalEntityConnectRow } from "../../../repositories/legal-entity-connect.types.js";
 import { StripeConnectNotConfiguredError } from "../../interfaces/stripe-connect.js";
 import { throwConnectError } from "./connect-service-errors.js";
 

@@ -1,6 +1,7 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityMemberRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { LegalEntityMember } from "@auction/types";
-import type { ILegalEntityMemberRepository } from "../repositories/interfaces/legal-entity-member.repository.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import {
   type IMemberManagementService,
@@ -8,7 +9,6 @@ import {
   type MemberWithUser,
   type UpdateMemberRoleInput,
 } from "./interfaces/member-management.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
 export class MemberManagementService implements IMemberManagementService {
   constructor(

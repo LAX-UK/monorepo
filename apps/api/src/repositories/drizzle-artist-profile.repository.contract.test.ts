@@ -4,11 +4,8 @@ import type {
   IArtistProfileCommandRepository,
   IArtistProfileDirectoryReader,
 } from "@auction/persistence";
+import type { IArtistDeleteGuards, IArtistDeleteRepository } from "@auction/persistence";
 import { describe, expect, it } from "vitest";
-import type {
-  IArtistDeleteGuards,
-  IArtistDeleteRepository,
-} from "../services/interfaces/artist-delete.js";
 import { defineCompileTimeContract } from "../testing/compile-time-contract.js";
 
 type AssertAssignable<T extends U, U> = T;

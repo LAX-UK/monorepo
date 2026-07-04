@@ -1,8 +1,8 @@
+import type { ICategoryRepository } from "@auction/persistence";
 import type { Category } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { CategoryError } from "../lib/errors.js";
 import { CategoryService } from "./category.service.js";
-import type { ICategoryRepository } from "./interfaces/category.js";
 
 const rootId = "00000000-0000-4000-8000-000000000001";
 const childId = "00000000-0000-4000-8000-000000000002";

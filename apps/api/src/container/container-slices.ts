@@ -1,33 +1,33 @@
 import type { Auth } from "@auction/auth/server";
 import type { createDb } from "@auction/db";
 import type { IUserEmailChangeRepository, IWebhookEventRepository } from "@auction/persistence";
+import type { IAttentionFeedReader } from "@auction/persistence";
+import type { IEmailObservabilityRepository } from "@auction/persistence";
+import type { IKycRepository } from "@auction/persistence";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { INotificationPreferenceRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
+import type { IPendingInvitationsReader } from "@auction/persistence";
+import type { IItemSubmissionRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
+import type { IUiPreferenceRepository } from "@auction/persistence";
+import type { IXeroWebhookEventRepository } from "@auction/persistence";
 import type { Env } from "../env.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
-import type { IAttentionFeedReader } from "../services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { BiddingRouteServices } from "../services/interfaces/bidding-routes.js";
-import type { IEmailObservabilityRepository } from "../services/interfaces/email-observability.js";
-import type { IKycRepository } from "../services/interfaces/kyc-repository.js";
-import type { ILegalEntityNotificationRecipientReader } from "../services/interfaces/legal-entity-notification-recipients.js";
-import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
-import type { INotificationPreferenceRepository } from "../services/interfaces/notification-preference.js";
 import type {
   IPaymentAdminService,
   IPaymentBuyerService,
   IPaymentMaintenanceService,
   IPaymentService,
 } from "../services/interfaces/payment-service.js";
-import type { IPayoutRepository } from "../services/interfaces/payout-repository.js";
-import type { IPendingInvitationsReader } from "../services/interfaces/pending-invitations-reader.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
-import type { IItemSubmissionRepository } from "../services/interfaces/repositories.js";
-import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
-import type { IUiPreferenceRepository } from "../services/interfaces/ui-preference.js";
 import type {
   IUserSuspensionCacheInvalidator,
   IUserSuspensionChecker,
 } from "../services/interfaces/user-suspension.js";
-import type { IXeroWebhookEventRepository } from "../services/interfaces/xero-repositories.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
 import type { ContainerAdminServices } from "./create-admin-services.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";

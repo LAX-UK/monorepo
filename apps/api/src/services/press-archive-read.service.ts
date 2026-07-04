@@ -1,9 +1,9 @@
+import type { IPressArchiveRepository } from "@auction/persistence";
 import { PUBLIC_SALE_STATUSES, viewerCanSeeNonPublicCatalog } from "@auction/validators";
 import type {
   IPressArchiveReadService,
   PressArchiveListResult,
 } from "./interfaces/press-archive-read.service.js";
-import type { IPressArchiveRepository } from "./interfaces/press-archive.repository.js";
 
 const DEFAULT_ARCHIVE_STATUSES = ["ended"] as const;
 

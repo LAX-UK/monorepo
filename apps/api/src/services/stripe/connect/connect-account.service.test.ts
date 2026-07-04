@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
+import type { ILegalEntityConnectRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { Env } from "../../../env.js";
-import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
 import { transactionRunnerFromDb } from "../../../test/transaction-runner-from-db.js";
 import { ConnectAccountService } from "./connect-account.service.js";
 import type { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";

@@ -1,7 +1,7 @@
+import type { INotificationWriteRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import { InAppNotificationChannel } from "../infrastructure/in-app-notification.channel.js";
 import type { NotificationPayload } from "../services/interfaces/notification-channel.js";
-import type { INotificationWriteRepository } from "../services/interfaces/notification-write.js";
 import type { IUserNotificationPublisher } from "../services/interfaces/user-notification-publisher.js";
 
 describe("InAppNotificationChannel", () => {

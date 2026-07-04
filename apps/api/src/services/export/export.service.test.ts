@@ -1,8 +1,8 @@
 import type { ExportEntityType } from "@auction/exports";
 import { AuthzError } from "@auction/exports/providers";
+import type { IExportJobRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { ExportProvider } from "../../exports/types.js";
-import type { IExportJobRepository } from "../../repositories/interfaces/export-job.repository.js";
 import { ExportFileStorage } from "./export-file-storage.js";
 import { RedisExportProgressStore } from "./export-progress.store.js";
 import { ExportService } from "./export.service.js";

@@ -1,4 +1,5 @@
 import { X_LEGAL_ENTITY_ID_HEADER } from "@auction/http-headers";
+import type { ActiveMembership, ILegalEntityRepository } from "@auction/persistence";
 import {
   canAccessPlatformAdminRoutes,
   normalizeUserRoleOrClient,
@@ -8,10 +9,6 @@ import type { LegalEntitySummary } from "@auction/types";
 import { createMiddleware } from "hono/factory";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
 import type { ImpersonationSessionService } from "../services/impersonation-session.service.js";
-import type {
-  ActiveMembership,
-  ILegalEntityRepository,
-} from "../services/interfaces/legal-entity-repository.js";
 import { PersonalLegalEntityUnavailableError } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 
 export { X_LEGAL_ENTITY_ID_HEADER };

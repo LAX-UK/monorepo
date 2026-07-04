@@ -1,5 +1,5 @@
+import type { IProfileReader, IProfileWriter, ProfileUpdateInput } from "@auction/persistence";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
-import type { IProfileReader, IProfileWriter, ProfileUpdateInput } from "./interfaces/profile.js";
 
 export class ProfileService {
   constructor(

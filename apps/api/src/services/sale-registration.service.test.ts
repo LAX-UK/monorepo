@@ -1,8 +1,8 @@
+import type { ISaleRegistrationRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence";
 import type { LegalEntity } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import type { ISaleRegistrationRepository } from "../repositories/interfaces/sale-registration.repository.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { ISaleRepository } from "./interfaces/repositories.js";
 import { SaleRegistrationBuyerService } from "./sale-registration/sale-registration-buyer.service.js";
 import { createSaleRegistrationContext } from "./sale-registration/sale-registration-context.js";
 

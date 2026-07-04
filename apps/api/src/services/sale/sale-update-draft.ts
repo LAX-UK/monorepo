@@ -1,3 +1,4 @@
+import type { ILotRepository } from "@auction/persistence";
 import type { CreateSaleInput, Sale, UserRole } from "@auction/types";
 import { normalizeUserStaffRole } from "@auction/types";
 import { getSaleModeCapabilities } from "@auction/validators";
@@ -8,7 +9,6 @@ import { canManageCatalogue } from "../../lib/catalogue-auth.js";
 import { type AuthzError, LotError, missingCatalogueCapabilityError } from "../../lib/errors.js";
 import { lotTimingViolationForSale } from "../../lib/lot-sale-timing.js";
 import { enrichPressCoverageWithOpenGraphImages } from "../../lib/press-coverage-enrichment.js";
-import type { ILotRepository } from "../interfaces/repositories.js";
 import { txRepos } from "./sale-mutation-context.js";
 import type { SaleServiceDeps } from "./sale-types.js";
 import { applyVenueSnapshot } from "./venue-snapshot.js";

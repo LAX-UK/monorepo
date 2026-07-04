@@ -1,10 +1,10 @@
+import type { PaymentRecord } from "@auction/persistence";
 import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type Stripe from "stripe";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { AuthzError, PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
-import type { PaymentRecord } from "../interfaces/payment-write.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
 import { paymentProviderErrorFromUnknown } from "./payment-service-errors.js";
 import type { PaymentServiceDeps } from "./payment-service-types.js";

@@ -1,6 +1,6 @@
+import type { ISaleRepository } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import type { ISaleRepository } from "../interfaces/repositories.js";
 import { computeTotalDuePence } from "./total-due.js";
 
 const baseLot = (overrides: Partial<Lot> = {}): Lot =>

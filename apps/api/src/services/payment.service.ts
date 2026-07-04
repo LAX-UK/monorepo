@@ -1,27 +1,23 @@
+import type { IPaymentDomainEventsRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotFulfilmentPaymentHook } from "@auction/persistence";
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
+import type { IAddressRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence";
 import type { PaymentStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
-import type { IPaymentDomainEventsRepository } from "../repositories/interfaces/payment-domain-events.repository.js";
 import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPaymentService } from "./interfaces/payment-service.js";
-import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import type { IPlatformFeePolicy } from "./interfaces/platform-fee.js";
-import type { IAddressRepository } from "./interfaces/profile.js";
-import type {
-  ILotRepository,
-  ISaleRepository,
-  IUserRepository,
-} from "./interfaces/repositories.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";

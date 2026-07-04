@@ -1,15 +1,15 @@
+import type { IDisplayPairingRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence";
 import type { SaleroomDisplayDeviceRow, SaleroomDisplayPairPollResult } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { Redis } from "ioredis";
 import { type Result, err, ok } from "neverthrow";
 import type { DisplayTokenIssuer } from "../lib/display-token.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
-import type { IDisplayPairingRepository } from "./interfaces/display-pairing-repository.js";
 import type {
   DisplayServiceError,
   IDisplayPairingService,
 } from "./interfaces/display-pairing-service.js";
-import type { ISaleRepository } from "./interfaces/repositories.js";
 
 const PAIRING_EXPIRY_SEC = 900;
 const POLL_INTERVAL_SEC = 5;

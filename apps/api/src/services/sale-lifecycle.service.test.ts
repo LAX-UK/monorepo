@@ -1,6 +1,6 @@
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import { SaleLifecycleService } from "./sale-lifecycle.service.js";
 
 function sale(overrides: Partial<Sale> = {}): Sale {

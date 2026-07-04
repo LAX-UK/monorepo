@@ -1,3 +1,9 @@
+import type { IUserRepository } from "@auction/persistence";
+import type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+  IXeroWebhookEventRepository,
+} from "@auction/persistence";
 import { canonicalizeXeroCallbackUrl } from "@auction/validators";
 import type { Env } from "../../env.js";
 import type {
@@ -5,12 +11,6 @@ import type {
   XeroConnectionHealth,
   XeroStatusPayload,
 } from "../interfaces/admin-routes.js";
-import type { IUserRepository } from "../interfaces/repositories.js";
-import type {
-  IPaymentExternalRefRepository,
-  IXeroConnectionRepository,
-  IXeroWebhookEventRepository,
-} from "../interfaces/xero-repositories.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
 
 const WEBHOOK_ERROR_WINDOW_MS = 24 * 60 * 60 * 1000;

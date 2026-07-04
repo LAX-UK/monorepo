@@ -1,3 +1,13 @@
+import type {
+  AdminKycSession,
+  AdminUserListFilter,
+  IAdminUserActivityReader,
+  IAdminUserBidsReader,
+  IAdminUserKycReader,
+  IAdminUserReader,
+  IAdminUserRoleManager,
+  IAdminUserSuspender,
+} from "@auction/persistence";
 import {
   CLIENT_ACTIVITY_ACCESS,
   CLIENT_BIDS_ACCESS,
@@ -13,16 +23,6 @@ import {
   userHasAccessTo,
 } from "@auction/types";
 import { AuthzError } from "../lib/errors.js";
-import type {
-  AdminKycSession,
-  AdminUserListFilter,
-  IAdminUserActivityReader,
-  IAdminUserBidsReader,
-  IAdminUserKycReader,
-  IAdminUserReader,
-  IAdminUserRoleManager,
-  IAdminUserSuspender,
-} from "./interfaces/admin-user.js";
 import type { IUserSuspensionCacheInvalidator } from "./interfaces/user-suspension.js";
 
 function assertAdminAccess(

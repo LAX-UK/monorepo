@@ -1,3 +1,8 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+} from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { XeroClient } from "xero-node";
 import type { Env } from "../../env.js";
@@ -6,11 +11,6 @@ import type {
   IInvoiceAccountingProvider,
   InvoiceAccountingContext,
 } from "../interfaces/invoice-accounting.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type {
-  IPaymentExternalRefRepository,
-  IXeroConnectionRepository,
-} from "../interfaces/xero-repositories.js";
 import type { InvoiceAddressingService } from "../invoice-addressing.js";
 import { XeroContactSync } from "./xero-contact-sync.js";
 import { XeroInvoiceWriter } from "./xero-invoice-writer.js";

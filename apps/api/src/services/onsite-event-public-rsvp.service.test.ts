@@ -1,10 +1,10 @@
 import type { IOnsiteEventClientReader } from "@auction/persistence";
+import type { IOnsiteEventRsvpRepository } from "@auction/persistence";
+import type { IOnsiteEventRepository } from "@auction/persistence";
 import type { OnsiteEvent, OnsiteEventRsvp } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { encryptCheckInToken } from "../lib/check-in-token-ciphertext.js";
 import { issueCheckInToken } from "../lib/onsite-event-check-in-token.js";
-import type { IOnsiteEventRsvpRepository } from "../repositories/interfaces/onsite-event-rsvp.repository.js";
-import type { IOnsiteEventRepository } from "../repositories/interfaces/onsite-event.repository.js";
 import { OnsiteEventPassTokenService } from "./onsite-event-pass-token.service.js";
 import { OnsiteEventPublicRsvpService } from "./onsite-event-public-rsvp.service.js";
 import { OnsiteEventSaleLinkService } from "./onsite-event-sale-link.service.js";

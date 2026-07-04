@@ -1,6 +1,6 @@
+import type { IVenueRepository } from "@auction/persistence";
 import type { Venue } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import type { IVenueRepository } from "../interfaces/venue.js";
 import { applyVenueSnapshot, venueLocationSnapshot } from "./venue-snapshot.js";
 
 const venue: Venue = {

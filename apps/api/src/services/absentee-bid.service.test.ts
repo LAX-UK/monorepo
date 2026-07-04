@@ -1,11 +1,11 @@
 import type { Database } from "@auction/db";
 import { DrizzleAbsenteeBidRepository, type IAbsenteeBidRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { AbsenteeBidService } from "./absentee-bid.service.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
-import type { ILotRepository } from "./interfaces/repositories.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
 

@@ -1,5 +1,5 @@
 import type { ITransactionRunner } from "@auction/persistence";
-import type { IInvitationRepository } from "../repositories/interfaces/invitation.repository.js";
+import type { IEntityInvitationRepository } from "@auction/persistence";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
   IInvitationLifecycleService,
@@ -20,7 +20,7 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
 
   constructor(
     transactionRunner: ITransactionRunner,
-    invitationRepository: IInvitationRepository,
+    invitationRepository: IEntityInvitationRepository,
     domainEventPublisher: DomainEventPublisher,
     membershipInviteNotifier: IMembershipInviteNotifier,
     webOrigin: string,

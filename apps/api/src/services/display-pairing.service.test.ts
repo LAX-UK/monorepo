@@ -1,7 +1,7 @@
+import type { IDisplayPairingRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { DisplayTokenIssuer } from "../lib/display-token.js";
 import { DisplayPairingService } from "./display-pairing.service.js";
-import type { IDisplayPairingRepository } from "./interfaces/display-pairing-repository.js";
 
 function createService(deps: {
   pairingRepo: Partial<IDisplayPairingRepository>;

@@ -1,14 +1,14 @@
-import type { UserRole, UserStaffRole } from "@auction/types";
-import type { Result } from "neverthrow";
-import type { CreateInvitationInput, InvitationError } from "../../invitation.service.js";
 import type {
   AdminActivityEntry,
   AdminUserDetail,
   AdminUserListFilter,
   AdminUserListResult,
   AdminUserListRow,
-} from "../admin-user.js";
-import type { InvitationAdminListFilters, InvitationAdminListRow } from "../invitation.js";
+} from "@auction/persistence";
+import type { InvitationAdminListFilters, InvitationAdminListRow } from "@auction/persistence";
+import type { UserRole, UserStaffRole } from "@auction/types";
+import type { Result } from "neverthrow";
+import type { CreateInvitationInput, InvitationError } from "../../invitation.service.js";
 
 export type AdminImpersonationLookupResult =
   | { ok: true; data: { id: string; displayName: string; status: string } }
@@ -101,13 +101,13 @@ export interface IAdminUserApplicationService {
     actorStaffRole: string | null | undefined,
     userId: string,
     limit?: number,
-  ): Promise<import("../admin-user.js").AdminKycSession[]>;
+  ): Promise<import("@auction/persistence").AdminKycSession[]>;
   bidsFor(
     actorRole: string,
     actorStaffRole: string | null | undefined,
     userId: string,
     page: { limit: number; offset: number },
-  ): Promise<import("../admin-user.js").AdminUserBidListResult>;
+  ): Promise<import("@auction/persistence").AdminUserBidListResult>;
   bulkSuspendOrUnsuspend(input: {
     actorRole: string;
     actorStaffRole: string | null | undefined;

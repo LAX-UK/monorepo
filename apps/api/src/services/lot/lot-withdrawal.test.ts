@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { ILotRepository } from "../interfaces/repositories.js";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
 import type { LotServiceDeps } from "./lot-types.js";
 import { approveWithdrawalRequest, requestWithdrawal } from "./lot-withdrawal.js";

@@ -1,10 +1,10 @@
 import type { ISaleRegistrationCheckInReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { SaleDeliveryMode } from "@auction/types";
 import { PADDLE_NUMBER_MIN, saleAllowsInRoomCheckIn } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { buyerEntityCanBid } from "../lib/buyer-entity-bid-eligibility.js";
 import { memberEligibleForStaffInRoomCheckIn } from "../lib/sale-registration-policy.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { SaleroomCheckInServiceError } from "./interfaces/saleroom-check-in-service.js";
 
 export class SaleroomCheckInEligibilityValidator {

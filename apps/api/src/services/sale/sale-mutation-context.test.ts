@@ -1,8 +1,8 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { ILotRepository, ISaleRepository } from "../interfaces/repositories.js";
-import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
 import { publishSaleEvent, recordLotLifecycle, txRepos } from "./sale-mutation-context.js";
 import type { SaleServiceDeps } from "./sale-types.js";

@@ -1,6 +1,6 @@
+import type { IAdminManualReviewPaymentEnrichmentReader } from "@auction/persistence";
+import type { IAdminManualReviewPaymentReader } from "@auction/persistence";
 import type { AdminManualReviewPaymentRow } from "../../admin/admin-route-dtos.js";
-import type { IAdminManualReviewPaymentEnrichmentReader } from "../../repositories/interfaces/admin-manual-review-payment-enrichment.reader.js";
-import type { IAdminManualReviewPaymentReader } from "../../repositories/interfaces/admin-manual-review-payment.reader.js";
 import type { IAdminManualReviewPaymentQueryService } from "../interfaces/admin-routes.js";
 
 export class AdminManualReviewPaymentQueryService implements IAdminManualReviewPaymentQueryService {

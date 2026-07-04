@@ -1,15 +1,15 @@
 import type { Database } from "@auction/db";
 import type { IConnectTransferRepository } from "@auction/persistence";
+import type { ILegalEntityConnectRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
 import type { Payout } from "@auction/types";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../../env.js";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
-import type { ILegalEntityConnectRepository } from "../../repositories/interfaces/legal-entity-connect.repository.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
 import { StripeConnectFacade as StripeConnectService } from "./stripe-connect.facade.js";
 

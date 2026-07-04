@@ -1,9 +1,9 @@
+import type { IBidRepository, ILotRepository } from "@auction/persistence";
+import type { IWatchlistRepository } from "@auction/persistence";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
-import type { IBidRepository, ILotRepository } from "../services/interfaces/repositories.js";
-import type { IWatchlistRepository } from "../services/interfaces/watchlist.js";
 import { LotService } from "../services/lot.service.js";
 import { createLotRoutes } from "./lots.js";
 

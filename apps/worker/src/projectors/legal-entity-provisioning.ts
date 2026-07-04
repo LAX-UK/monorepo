@@ -1,7 +1,7 @@
-import { EnsurePersonalLegalEntityService } from "../services/ensure-personal-legal-entity.service.js";
 import { domainEvent, projectorState } from "@auction/db/schema";
 import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
+import { EnsurePersonalLegalEntityService } from "../services/ensure-personal-legal-entity.service.js";
 
 export const LEGAL_ENTITY_PROVISIONING_PROJECTOR = "legal_entity_provisioning";
 

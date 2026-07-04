@@ -1,4 +1,11 @@
 import type { EmailOutboxStatus } from "@auction/db/schema";
+import type {
+  AttentionItem,
+  EmailEventRow,
+  EmailOutboxRow,
+  EmailSuppressionRow,
+  ListSubmissionsFilter,
+} from "@auction/persistence";
 import type { Result } from "neverthrow";
 import type { AdminOnboardingIssues, AdminReviewTaskRow } from "../../../admin/admin-route-dtos.js";
 import type {
@@ -12,11 +19,8 @@ import type { PaddleService, PaddleServiceError } from "../../paddle.service.js"
 import type { SaleroomCheckInService } from "../../saleroom-check-in.service.js";
 import type { SaleroomService } from "../../saleroom.service.js";
 import type { AdminAnalyticsDashboard, DateRange } from "../analytics.js";
-import type { AttentionItem } from "../attention-feed.js";
 import type { IDisplayOverlayService } from "../display-overlay-service.js";
 import type { IDisplayPairingService } from "../display-pairing-service.js";
-import type { EmailEventRow, EmailOutboxRow, EmailSuppressionRow } from "../email-observability.js";
-import type { ListSubmissionsFilter } from "../repositories.js";
 import type { IAdminFinanceDashboardQueryService } from "./admin-finance-routes.js";
 
 export type RedactedDomainEventRow = import("@auction/persistence").RedactedDomainEventRow;

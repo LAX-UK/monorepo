@@ -1,3 +1,9 @@
+import type { IAntiShillingGuard } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
+import type { ISaleModeLookup } from "@auction/persistence";
+import type { ISaleroomSessionLookup } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
@@ -21,12 +27,10 @@ import {
 import { SaleroomBidGate } from "./bid/saleroom-bid.gate.js";
 import type { SaleroomOnBlockPolicy } from "./bid/saleroom-on-block.policy.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
-import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { ILotStrategyFactory } from "./interfaces/auction-strategy.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
 import type {
@@ -34,10 +38,6 @@ import type {
   PlaceBidInput,
   PlaceBidWithIdempotencyInput,
 } from "./interfaces/place-bid.js";
-import type { ISaleRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
-import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
-import type { ISaleroomSessionLookup } from "./interfaces/saleroom-session-lookup.js";
 import { NotificationFactory } from "./notification.factory.js";
 import type { NotificationService } from "./notification.service.js";
 

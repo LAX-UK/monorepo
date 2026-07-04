@@ -1,4 +1,15 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type {
+  ArchiveEndedAggregateFilter,
+  IBidRepository,
+  ILotRepository,
+  ISaleRepository,
+  ListLotsFilter,
+} from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
+import type { IWatchlistRepository } from "@auction/persistence";
 import type { CreateLotInput, Lot, PublicLotView, UserRole } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err } from "neverthrow";
@@ -7,20 +18,9 @@ import { type AuthzError, LotError } from "../lib/errors.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
-import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
-import type {
-  ArchiveEndedAggregateFilter,
-  IBidRepository,
-  ILotRepository,
-  ISaleRepository,
-  ListLotsFilter,
-} from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { ITelephoneBidBookingSaleroomBridge } from "./interfaces/telephone-bid-booking-service.js";
-import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js";
 import { createLot } from "./lot/lot-create.js";
 import { bulkPublishOrCancel, cancelLot, publishLot } from "./lot/lot-lifecycle.js";

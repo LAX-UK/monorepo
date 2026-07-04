@@ -1,10 +1,10 @@
 import type { IPaymentWebhookLookupReader, ITransactionRunner } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
 import type Stripe from "stripe";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
-import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
-import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 import { handleChargeRefunded } from "./stripe-webhook/checkout-refund-handlers.js";
 import { createPaymentWebhookHandlers } from "./stripe-webhook/create-payment-webhook-handlers.js";
 import {

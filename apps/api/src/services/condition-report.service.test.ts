@@ -1,9 +1,9 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type { IConditionReportRequestRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { IConditionReportRequestRepository } from "../repositories/interfaces/condition-report-request.repository.js";
 import { ConditionReportService } from "./condition-report.service.js";
 import type { ConditionReportRequestRow } from "./interfaces/condition-report.js";
-import type { ILotRepository } from "./interfaces/repositories.js";
 import { NotificationFactory } from "./notification.factory.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";

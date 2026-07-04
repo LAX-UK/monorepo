@@ -1,10 +1,10 @@
 import { createHmac } from "node:crypto";
+import type { IKycRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../../container.js";
 import type { Env } from "../../env.js";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import { VeriffWebhookSignatureError } from "../../lib/veriff/veriff-webhook-verifier.js";
-import type { IKycRepository } from "../../services/interfaces/kyc-repository.js";
 import { VeriffWebhookPayloadError } from "../../services/interfaces/kyc-service.js";
 import { VeriffKycService } from "../../services/kyc/veriff-kyc.service.js";
 import { createVeriffWebhookRoutes } from "./veriff.js";

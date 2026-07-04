@@ -1,5 +1,5 @@
+import type { IEmailObservabilityRepository } from "@auction/persistence";
 import type { IAdminEmailApplicationService } from "../interfaces/admin-routes.js";
-import type { IEmailObservabilityRepository } from "../interfaces/email-observability.js";
 
 export class AdminEmailApplicationService implements IAdminEmailApplicationService {
   constructor(private readonly emailObservabilityRepository: IEmailObservabilityRepository) {}

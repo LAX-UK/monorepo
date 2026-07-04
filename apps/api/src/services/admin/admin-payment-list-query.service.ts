@@ -3,7 +3,7 @@ import type {
   AdminPaymentsSummaryStats,
   IPaymentWriteRepository,
   ListPaymentsAdminTableFilter,
-} from "../interfaces/payment-write.js";
+} from "@auction/persistence";
 
 export type AdminPaymentListPage = {
   rows: AdminPaymentTableRowDto[];

@@ -1,8 +1,8 @@
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Env } from "../../env.js";
 import { createBaseLogger } from "../../lib/logger.js";
 import type { XeroPayoutBillWriter } from "../accounting/xero-payout-bill.writer.js";
 import type { IPayoutSettlementService } from "../interfaces/payout.js";
-import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 import type { LotInvoiceInitiationService } from "../lot-invoice-initiation.service.js";
 

@@ -1,8 +1,8 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import type { LegalEntity, Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { LotError } from "../lib/errors.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import { SaleStatusTransitionService } from "./sale-status-transition.service.js";
 
 const saleId = "10000000-0000-4000-8000-000000000001";

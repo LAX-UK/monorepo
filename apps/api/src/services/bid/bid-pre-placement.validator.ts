@@ -1,12 +1,12 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ISaleModeLookup } from "@auction/persistence";
 import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { buyerEntityCanBid } from "../../lib/buyer-entity-bid-eligibility.js";
 import { BidError } from "../../lib/errors.js";
 import { isOperatorPlacement } from "../interfaces/auction-strategy.js";
 import type { IBidEligibility } from "../interfaces/bid-eligibility.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { PlaceBidInput } from "../interfaces/place-bid.js";
-import type { ISaleModeLookup } from "../interfaces/sale-mode-lookup.js";
 
 export class BidPrePlacementValidator {
   constructor(

@@ -1,5 +1,5 @@
+import type { ILotFulfilmentRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ILotFulfilmentRepository } from "../repositories/interfaces/lot-fulfilment.repository.js";
 import { LotFulfilmentService } from "./lot-fulfilment.service.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";

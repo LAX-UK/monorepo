@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
+import type { IPayoutRepository } from "@auction/persistence";
 import type { PayoutLineKind } from "@auction/types";
-import type { IPayoutRepository } from "./payout-repository.js";
 
 export type AddPaymentPayoutLineInput = {
   legalEntityId: string;

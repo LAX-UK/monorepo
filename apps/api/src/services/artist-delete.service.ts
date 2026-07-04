@@ -1,4 +1,9 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type {
+  DbTransaction,
+  IArtistDeleteGuards,
+  IArtistDeleteRepository,
+} from "@auction/persistence";
 import type { ArtistDeleteEligibility, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { artistDeleteConfirmationPhrase } from "@auction/validators";
@@ -11,11 +16,6 @@ import {
   validateArtistDelete,
 } from "./artist-delete.policy.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
-import type {
-  DbTransaction,
-  IArtistDeleteGuards,
-  IArtistDeleteRepository,
-} from "./interfaces/artist-delete.js";
 
 export class ArtistDeleteService {
   constructor(

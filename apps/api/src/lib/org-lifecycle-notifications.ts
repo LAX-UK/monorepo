@@ -1,6 +1,6 @@
 import type { IEmailService, TemplateVarsByName } from "@auction/email";
 import type { ILegalEntityMemberRepository } from "@auction/persistence";
-import type { ILegalEntityRepository } from "../services/interfaces/legal-entity-repository.js";
+import type { ILegalEntityRepository } from "@auction/persistence";
 
 const NOTIFY_ROLES = new Set(["owner", "admin"]);
 

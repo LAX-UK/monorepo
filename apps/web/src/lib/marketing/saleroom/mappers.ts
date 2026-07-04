@@ -3,6 +3,15 @@ import { formatEstimateRange, formatMoney, resolveLotCurrency } from "@/lib/form
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
+import type {
+  DayGalleryVM,
+  EndedSaleSummaryVM,
+  PressCoverageVM,
+  RelatedSaleVM,
+  SaleHeroVM,
+  SaleLotCardVM,
+  SaleOverviewVM,
+} from "@/lib/marketing/saleroom/view-models";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import { formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
@@ -18,15 +27,6 @@ import {
   isSaleroomDeliveryMode,
   resolveOnsiteMapUrl,
 } from "@auction/validators";
-import type {
-  DayGalleryVM,
-  EndedSaleSummaryVM,
-  PressCoverageVM,
-  RelatedSaleVM,
-  SaleHeroVM,
-  SaleLotCardVM,
-  SaleOverviewVM,
-} from "@/lib/marketing/saleroom/view-models";
 
 const DATE_OPTS: Intl.DateTimeFormatOptions = {
   day: "2-digit",

@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
+import type { IConditionReportRequestRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { IConditionReportRequestRepository } from "../../repositories/interfaces/condition-report-request.repository.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";
-import type { ILotRepository } from "../interfaces/repositories.js";
 import { NotificationFactory } from "../notification.factory.js";
 import { createConditionReportContext } from "./condition-report-context.js";
 import { ConditionReportFulfilmentService } from "./condition-report-fulfilment.service.js";

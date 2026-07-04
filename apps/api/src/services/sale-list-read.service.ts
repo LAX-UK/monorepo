@@ -1,3 +1,4 @@
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import type { Lot, LotSummary, Sale } from "@auction/types";
 import {
   isPublicCatalogLot,
@@ -7,7 +8,6 @@ import {
 } from "@auction/validators";
 import { mapLotToSummary } from "../lib/mappers.js";
 import { presentSalesWithLotsImages } from "../lib/media-presenters.js";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 

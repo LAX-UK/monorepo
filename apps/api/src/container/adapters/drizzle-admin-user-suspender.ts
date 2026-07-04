@@ -3,7 +3,7 @@ import { user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import type { IAdminUserSuspender } from "@auction/persistence";
 import { eq } from "drizzle-orm";
-import type { IAuthAuditPublisher } from "../services/interfaces/auth-audit-publisher.js";
+import type { IAuthAuditPublisher } from "../../services/interfaces/auth-audit-publisher.js";
 
 export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
   constructor(

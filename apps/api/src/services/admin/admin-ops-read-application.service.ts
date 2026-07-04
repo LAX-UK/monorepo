@@ -1,9 +1,9 @@
+import type { IAttentionFeedReader } from "@auction/persistence";
+import type { ListSubmissionsFilter } from "@auction/persistence";
 import type { AdminMetricsService, AdminTodayMetrics } from "../admin-metrics.service.js";
 import type { IAdminOpsReadService } from "../interfaces/admin-routes.js";
 import type { DateRange, IAnalyticsService } from "../interfaces/analytics.js";
-import type { IAttentionFeedReader } from "../interfaces/attention-feed.js";
 import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-service.js";
-import type { ListSubmissionsFilter } from "../interfaces/repositories.js";
 
 export class AdminOpsReadApplicationService implements IAdminOpsReadService {
   constructor(

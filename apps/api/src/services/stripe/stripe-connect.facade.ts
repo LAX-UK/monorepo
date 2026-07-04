@@ -1,12 +1,11 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IConnectTransferRepository } from "@auction/persistence";
+import type { IConnectTransferRepository, ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityConnectRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../env.js";
 import { StripeClientFactory } from "../../lib/stripe-client.js";
-import type { ILegalEntityConnectRepository } from "../../repositories/interfaces/legal-entity-connect.repository.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import type { IPayoutService } from "../interfaces/payout.js";
 import type {
   AccountLink,

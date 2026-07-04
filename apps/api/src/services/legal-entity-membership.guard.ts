@@ -1,5 +1,5 @@
+import type { ILegalEntityMemberRepository } from "@auction/persistence";
 import type { LegalEntityMemberRole } from "@auction/types";
-import type { ILegalEntityMemberRepository } from "../repositories/interfaces/legal-entity-member.repository.js";
 import { MemberPermissionError } from "./interfaces/member-management.js";
 
 const ADMIN_ROLES: LegalEntityMemberRole[] = ["owner", "admin"];

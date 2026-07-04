@@ -1,3 +1,4 @@
+import type { UpdateAddressInput } from "@auction/persistence";
 import {
   addressIdParamSchema,
   createAddressBodySchema,
@@ -6,7 +7,6 @@ import {
   updateProfileSchema,
 } from "@auction/validators";
 import { zValidator } from "../../lib/z-validator.js";
-import type { UpdateAddressInput } from "../../services/interfaces/profile.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
 
 export function attachUserProfileRoutes(r: UserHono, deps: UserRouteDeps): void {

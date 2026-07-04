@@ -1,5 +1,5 @@
-import type { ILotFulfilmentRepository } from "../../repositories/interfaces/lot-fulfilment.repository.js";
-import type { ILotRepository } from "../interfaces/repositories.js";
+import type { ILotFulfilmentRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
 
 export type LotFulfilmentContext = {
   fulfilmentRepo: ILotFulfilmentRepository;

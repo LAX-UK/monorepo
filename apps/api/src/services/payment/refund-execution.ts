@@ -1,10 +1,10 @@
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { IPaymentWriteRepository, PaymentRecord } from "../interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
 

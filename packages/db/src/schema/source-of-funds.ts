@@ -100,4 +100,3 @@ export const sourceOfFunds = pgTable(
       .where(sql`${table.status} = 'pending'`),
   ],
 );
-

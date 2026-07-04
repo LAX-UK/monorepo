@@ -1,8 +1,8 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IAddressRepository, IProfileReader } from "@auction/persistence";
 import type { BillToContext } from "@auction/types";
 import type { AppLogger } from "../lib/logger.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
-import type { IAddressRepository, IProfileReader } from "./interfaces/profile.js";
 
 export type InvoiceAddressingResult = {
   billTo: BillToContext;

@@ -1,4 +1,6 @@
 import type { IOnsiteEventClientReader, OnsiteEventClientRow } from "@auction/persistence";
+import type { IOnsiteEventRsvpRepository } from "@auction/persistence";
+import type { IOnsiteEventRepository } from "@auction/persistence";
 import type {
   OnsiteEvent,
   OnsiteEventEmailLookup,
@@ -10,8 +12,6 @@ import type {
 import type { SubmitOnsiteEventRsvpBody } from "@auction/validators";
 import { type AppLogger, createBaseLogger } from "../lib/logger.js";
 import { buildPassUrl } from "../lib/onsite-event-check-in-token.js";
-import type { IOnsiteEventRsvpRepository } from "../repositories/interfaces/onsite-event-rsvp.repository.js";
-import type { IOnsiteEventRepository } from "../repositories/interfaces/onsite-event.repository.js";
 import type { IOnsiteEventNotifier } from "./interfaces/onsite-event-notifier.js";
 import type { IOnsiteEventPublicRsvpService } from "./interfaces/onsite-event-public-rsvp-service.js";
 import type { OnsiteEventRsvpServiceError } from "./interfaces/onsite-event-service-errors.js";

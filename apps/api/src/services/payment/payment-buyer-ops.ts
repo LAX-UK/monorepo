@@ -1,9 +1,9 @@
+import type { LotFulfilmentAddressSnapshot } from "@auction/persistence";
 import type { PaymentStatus } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
 import { AuthzError, LotError, type PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
-import type { LotFulfilmentAddressSnapshot } from "../interfaces/lot-fulfilment-payment-hook.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import { type MyPaymentRowDTO, presentMyPayments } from "../payment-me-presenter.js";
 import { resolveCheckoutAddressSnapshot } from "./checkout-address.js";
@@ -241,7 +241,7 @@ export async function createPendingForWinner(
 export async function listForBuyer(
   deps: PaymentServiceDeps,
   buyerId: string,
-): Promise<import("../interfaces/payment-write.js").PaymentRecord[]> {
+): Promise<import("@auction/persistence").PaymentRecord[]> {
   return deps.payments.listByBuyerId(buyerId);
 }
 

@@ -1,4 +1,4 @@
-import type { IArtistRegistryRepository } from "../../repositories/interfaces/artist-registry.repository.js";
+import type { IArtistRegistryRepository } from "@auction/persistence";
 import type {
   ArtistRecord,
   ArtistSearchHit,

@@ -2,7 +2,7 @@ import type {
   CreateAddressInput,
   IAddressRepository,
   UpdateAddressInput,
-} from "./interfaces/profile.js";
+} from "@auction/persistence";
 
 export class AddressService {
   constructor(private readonly addresses: IAddressRepository) {}

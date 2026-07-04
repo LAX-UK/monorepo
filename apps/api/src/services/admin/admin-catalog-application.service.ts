@@ -1,3 +1,4 @@
+import type { CreateCategoryInput, UpdateCategoryInput } from "@auction/persistence";
 import type {
   AdminArtistListOptions,
   AdminCatalogCreateArtistBody,
@@ -8,7 +9,6 @@ import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { CategoryService } from "../category.service.js";
 import type { IAdminCatalogApplicationService } from "../interfaces/admin-routes.js";
 import type { ArtistSearchHit, IArtistRegistryService } from "../interfaces/artist-registry.js";
-import type { CreateCategoryInput, UpdateCategoryInput } from "../interfaces/category.js";
 
 export class AdminCatalogApplicationService implements IAdminCatalogApplicationService {
   constructor(

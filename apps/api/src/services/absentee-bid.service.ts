@@ -1,13 +1,13 @@
 import type { IAbsenteeBidRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type {
   AbsenteeBidServiceError,
   IAbsenteeBidService,
 } from "./interfaces/absentee-bid-service.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
-import type { ILotRepository } from "./interfaces/repositories.js";
 
 export type { AbsenteeBidServiceError } from "./interfaces/absentee-bid-service.js";
 

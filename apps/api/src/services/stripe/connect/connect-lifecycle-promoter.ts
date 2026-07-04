@@ -1,8 +1,8 @@
 import { isStripeAccountConfigured } from "@auction/connect";
 import type { DbTransaction } from "@auction/persistence";
+import type { ILegalEntityConnectRepository } from "@auction/persistence";
+import type { LegalEntityConnectRow } from "@auction/persistence";
 import type Stripe from "stripe";
-import type { ILegalEntityConnectRepository } from "../../../repositories/interfaces/legal-entity-connect.repository.js";
-import type { LegalEntityConnectRow } from "../../../repositories/legal-entity-connect.types.js";
 import type { IDomainEventSink } from "../../domain-event-sink.js";
 
 export class ConnectLifecyclePromoter {

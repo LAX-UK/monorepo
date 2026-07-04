@@ -61,9 +61,9 @@ import type {
 } from "@/lib/data/readers/dashboard-readers";
 import type { LiveSaleReader } from "@/lib/data/readers/marketing-readers";
 import {
+  LotPageDataService,
   type LotPageSecondaryData,
   type LotPageShellData,
-  LotPageDataService,
 } from "@/lib/marketing/lot-page-data.service";
 
 export type ServerDataContainer = {

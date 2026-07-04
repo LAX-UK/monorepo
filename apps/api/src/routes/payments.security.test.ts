@@ -1,3 +1,4 @@
+import type { PaymentRecord } from "@auction/persistence";
 import type { UserRole } from "@auction/types";
 import type { UserStaffRole } from "@auction/types";
 import { Hono } from "hono";
@@ -7,7 +8,6 @@ import type { Container } from "../container.js";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { X_LEGAL_ENTITY_ID_HEADER } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
-import type { PaymentRecord } from "../services/interfaces/payment-write.js";
 import type { MyPaymentRowDTO } from "../services/payment-me-presenter.js";
 import { createPaymentRoutes } from "./payments.js";
 

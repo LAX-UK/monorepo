@@ -1,13 +1,13 @@
-import type { Env } from "../../env.js";
-import type { AdminFinanceRouteServices } from "../interfaces/admin-routes/admin-finance-routes.js";
-import type { IPaymentAdminService } from "../interfaces/payment-service.js";
-import type { IUserRepository } from "../interfaces/repositories.js";
-import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
+import type { IUserRepository } from "@auction/persistence";
 import type {
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
   IXeroWebhookEventRepository,
-} from "../interfaces/xero-repositories.js";
+} from "@auction/persistence";
+import type { Env } from "../../env.js";
+import type { AdminFinanceRouteServices } from "../interfaces/admin-routes/admin-finance-routes.js";
+import type { IPaymentAdminService } from "../interfaces/payment-service.js";
+import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
 import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
 import { AdminPaymentsApplicationService } from "./admin-payments-application.service.js";

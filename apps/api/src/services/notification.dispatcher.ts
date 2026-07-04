@@ -1,9 +1,9 @@
+import type { INotificationPreferenceReader } from "@auction/persistence";
 import type {
   INotificationChannel,
   NotificationChannelKind,
   NotificationPayload,
 } from "./interfaces/notification-channel.js";
-import type { INotificationPreferenceReader } from "./interfaces/notification-preference.js";
 import type { IQuietHoursChecker } from "./quiet-hours.checker.js";
 
 export class NotificationDispatchError extends Error {

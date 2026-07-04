@@ -1,13 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
-import { AuthzError } from "../lib/errors.js";
-import { AdminUserService } from "./admin-user.service.js";
 import type {
   IAdminUserActivityReader,
   IAdminUserBidsReader,
   IAdminUserReader,
   IAdminUserRoleManager,
   IAdminUserSuspender,
-} from "./interfaces/admin-user.js";
+} from "@auction/persistence";
+import { describe, expect, it, vi } from "vitest";
+import { AuthzError } from "../lib/errors.js";
+import { AdminUserService } from "./admin-user.service.js";
 
 function makeService(bids: IAdminUserBidsReader) {
   const reader = {

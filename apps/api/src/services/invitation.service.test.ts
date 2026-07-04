@@ -1,7 +1,7 @@
+import type { IEmailService } from "@auction/email";
+import type { IUserInvitationRepository, InvitationRow } from "@auction/persistence";
+import type { IUserRepository } from "@auction/persistence";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IEmailService } from "./interfaces/email.js";
-import type { IUserInvitationRepository, InvitationRow } from "./interfaces/invitation.js";
-import type { IUserRepository } from "./interfaces/repositories.js";
 import { InvitationService } from "./invitation.service.js";
 
 const SUPER_ADMIN = {

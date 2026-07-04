@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
+import type { IKycSessionRepository } from "@auction/persistence";
 import type { KycVerification, MarketingEvent, UserKycStatus } from "@auction/types";
 import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
-import type { IKycSessionRepository } from "../interfaces/kyc-repository.js";
 import type { KycWebhookHandleResult } from "../interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import { buildKycUserFeedback, mergeKycDecisionPayload } from "./kyc-user-feedback.js";

@@ -1,6 +1,3 @@
-import { AuthzError } from "../../lib/errors.js";
-import type { AdminUserService } from "../admin-user.service.js";
-import type { IAdminUserApplicationService } from "../interfaces/admin-routes.js";
 import type {
   AdminActivityEntry,
   AdminKycSession,
@@ -9,7 +6,10 @@ import type {
   AdminUserListFilter,
   AdminUserListResult,
   AdminUserListRow,
-} from "../interfaces/admin-user.js";
+} from "@auction/persistence";
+import { AuthzError } from "../../lib/errors.js";
+import type { AdminUserService } from "../admin-user.service.js";
+import type { IAdminUserApplicationService } from "../interfaces/admin-routes.js";
 import type { ProfileService } from "../profile.service.js";
 
 export class AdminUserApplicationService implements IAdminUserApplicationService {

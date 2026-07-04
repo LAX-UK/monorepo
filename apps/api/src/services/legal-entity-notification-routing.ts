@@ -1,7 +1,7 @@
 import type {
   ILegalEntityNotificationRecipientReader,
   LegalEntityNotificationAudience,
-} from "./interfaces/legal-entity-notification-recipients.js";
+} from "@auction/persistence";
 
 export async function resolveLegalEntityNotificationRecipients(
   reader: ILegalEntityNotificationRecipientReader | null,

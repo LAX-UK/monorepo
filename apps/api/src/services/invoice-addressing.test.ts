@@ -1,10 +1,10 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IAddressRepository } from "@auction/persistence";
+import type { IProfileReader } from "@auction/persistence";
 import type { LegalEntity } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { AppLogger } from "../lib/logger.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
-import type { IAddressRepository } from "./interfaces/profile.js";
-import type { IProfileReader } from "./interfaces/profile.js";
 import { InvoiceAddressingService } from "./invoice-addressing.js";
 
 function silentLogger(): AppLogger {

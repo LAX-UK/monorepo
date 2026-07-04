@@ -1,7 +1,7 @@
+import type { IPayoutRepository } from "@auction/persistence";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
-import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 import type {
   AdminListPayoutsFilter,
   BulkPayoutSettlementResult,

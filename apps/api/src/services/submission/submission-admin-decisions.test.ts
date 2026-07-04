@@ -1,9 +1,9 @@
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import type { IItemSubmissionRepository } from "@auction/persistence";
 import type { ItemSubmission } from "@auction/types";
 import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { SubmissionError } from "../../lib/errors.js";
-import type { ILegalEntityNotificationRecipientReader } from "../interfaces/legal-entity-notification-recipients.js";
-import type { IItemSubmissionRepository } from "../interfaces/repositories.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import { accept, approve, bulkApproveOrReject, reject } from "./submission-admin-decisions.js";
 import { convert } from "./submission-convert-to-lot.js";

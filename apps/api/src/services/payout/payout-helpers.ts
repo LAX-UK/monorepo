@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
 import { DrizzlePayoutRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
-import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 
 /** Resolve payout repo for a transaction scope. */
 export function payoutRepoForTx(_rootRepo: IPayoutRepository, tx: Database): IPayoutRepository {

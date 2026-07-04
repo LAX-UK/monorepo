@@ -1,10 +1,7 @@
+import type { ActiveMembership, ILegalEntityRepository } from "@auction/persistence";
 import { ACTING_LEGAL_ENTITY_COOKIE_NAME, encodeActingContextCookie } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
-import type {
-  ActiveMembership,
-  ILegalEntityRepository,
-} from "../services/interfaces/legal-entity-repository.js";
 import { PersonalLegalEntityUnavailableError } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 import {
   X_LEGAL_ENTITY_ID_HEADER,

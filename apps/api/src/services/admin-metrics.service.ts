@@ -1,7 +1,7 @@
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { IItemSubmissionAdminApi } from "./interfaces/item-submission-service.js";
 import type { IPaymentMaintenanceService } from "./interfaces/payment-service.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
 const BIDS_1M_KEY = "admin:metrics:bids:1m";
 

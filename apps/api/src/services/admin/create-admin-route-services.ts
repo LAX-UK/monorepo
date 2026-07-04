@@ -1,20 +1,28 @@
-import type { ITransactionRunner } from "@auction/persistence";
-import type { IBidRepository } from "@auction/persistence";
+import type { IBidRepository, ITransactionRunner } from "@auction/persistence";
 import type {
   IAdminDisputeCaseEnrichmentReader,
   IImpersonationSessionRepository,
 } from "@auction/persistence";
+import type { IAdminDomainEventReader } from "@auction/persistence";
+import type { IAdminFinanceIssueSnapshotReader } from "@auction/persistence";
+import type { IAdminLegalEntityBrowseReader } from "@auction/persistence";
+import type { IAdminManualReviewPaymentEnrichmentReader } from "@auction/persistence";
+import type { IAdminManualReviewPaymentReader } from "@auction/persistence";
+import type { IAdminOnboardingIssuesReader } from "@auction/persistence";
+import type { IAdminReviewTaskReader } from "@auction/persistence";
+import type { IImpersonationDomainEventReader } from "@auction/persistence";
+import type { IAttentionFeedReader } from "@auction/persistence";
+import type { IEmailObservabilityRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IUserRepository } from "@auction/persistence";
+import type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+  IXeroWebhookEventRepository,
+} from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { Env } from "../../env.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
-import type { IAdminDomainEventReader } from "../../repositories/interfaces/admin-domain-event.reader.js";
-import type { IAdminFinanceIssueSnapshotReader } from "../../repositories/interfaces/admin-finance-issue-snapshot.reader.js";
-import type { IAdminLegalEntityBrowseReader } from "../../repositories/interfaces/admin-legal-entity-browse.reader.js";
-import type { IAdminManualReviewPaymentEnrichmentReader } from "../../repositories/interfaces/admin-manual-review-payment-enrichment.reader.js";
-import type { IAdminManualReviewPaymentReader } from "../../repositories/interfaces/admin-manual-review-payment.reader.js";
-import type { IAdminOnboardingIssuesReader } from "../../repositories/interfaces/admin-onboarding-issues.reader.js";
-import type { IAdminReviewTaskReader } from "../../repositories/interfaces/admin-review-task.reader.js";
-import type { IImpersonationDomainEventReader } from "../../repositories/interfaces/impersonation-domain-event.reader.js";
 import type { AdminMetricsService } from "../admin-metrics.service.js";
 import type { AdminSaleOperationsSnapshotService } from "../admin-sale-operations-snapshot.service.js";
 import type { AdminUserService } from "../admin-user.service.js";
@@ -28,24 +36,15 @@ import type { ImpersonationAuditService } from "../impersonation-audit.service.j
 import type { AdminRouteServices } from "../interfaces/admin-routes.js";
 import type { IAnalyticsService } from "../interfaces/analytics.js";
 import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
-import type { IAttentionFeedReader } from "../interfaces/attention-feed.js";
 import type { IConditionReportService } from "../interfaces/condition-report.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
-import type { IEmailObservabilityRepository } from "../interfaces/email-observability.js";
 import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-service.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
-import type { IUserRepository } from "../interfaces/repositories.js";
 import type { ISaleRegistrationService } from "../interfaces/sale-registration-service.js";
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 import type { IUserSuspensionChecker } from "../interfaces/user-suspension.js";
-import type {
-  IPaymentExternalRefRepository,
-  IXeroConnectionRepository,
-  IXeroWebhookEventRepository,
-} from "../interfaces/xero-repositories.js";
 import type { InvitationService } from "../invitation.service.js";
 import type { LegalEntityLifecycleAdminService } from "../legal-entity-lifecycle-admin.service.js";
 import type { LotLifecycleQueryService } from "../lot-lifecycle-query.service.js";

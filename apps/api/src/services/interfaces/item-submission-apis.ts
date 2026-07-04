@@ -1,3 +1,4 @@
+import type { ListSubmissionsFilter } from "@auction/persistence";
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
@@ -8,7 +9,6 @@ import type {
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
 import type { ApproveSubmissionInput } from "./item-submission-shared.js";
-import type { ListSubmissionsFilter } from "./repositories.js";
 
 export type UpdateSubmissionActorInput = {
   actorId: string;

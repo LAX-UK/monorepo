@@ -1,3 +1,6 @@
+import type { IArtistProfileAdminReader } from "@auction/persistence";
+import type { IArtistProfileDirectoryReader } from "@auction/persistence";
+import type { IArtistProfileCommandRepository } from "@auction/persistence";
 import type {
   AdminArtistListResult,
   AdminArtistStats,
@@ -11,9 +14,6 @@ import type { adminCreateArtistBodySchema, adminUpdateArtistBodySchema } from "@
 import type { z } from "zod";
 import type { AdminArtistListOptions } from "../admin/admin-route-dtos.js";
 import { CategoryError } from "../lib/errors.js";
-import type { IArtistProfileAdminReader } from "../repositories/interfaces/artist-profile-admin.reader.js";
-import type { IArtistProfileDirectoryReader } from "../repositories/interfaces/artist-profile-directory.reader.js";
-import type { IArtistProfileCommandRepository } from "../repositories/interfaces/artist-profile.repository.js";
 import type { ArtistSearchHit, IArtistRegistryService } from "./interfaces/artist-registry.js";
 
 type CreateArtistInput = z.infer<typeof adminCreateArtistBodySchema>;

@@ -1,10 +1,10 @@
 import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistence";
+import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
+import type { IAdminUserReader } from "@auction/persistence";
 import type {
   AdminSourceOfFundsDetailDto,
   AdminSourceOfFundsListRowDto,
 } from "../../admin/admin-route-dtos.js";
-import type { ISourceOfFundsDocumentRepository } from "../../repositories/interfaces/source-of-funds-document.repository.js";
-import type { IAdminUserReader } from "../interfaces/admin-user.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { SourceOfFundsSettlementReadService } from "../source-of-funds/source-of-funds-settlement-read.service.js";
 import type { ISourceOfFundsRepository } from "../source-of-funds/source-of-funds.types.js";

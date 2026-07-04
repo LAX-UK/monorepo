@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { defineCompileTimeContract } from "../../testing/compile-time-contract.js";
 import type {
   IPaymentAnalyticsRepository,
   IPaymentLifecycleRepository,
   IPaymentMutationRepository,
   IPaymentReadRepository,
   IPaymentWriteRepository,
-} from "./payment-write.js";
+} from "@auction/persistence";
+import { describe, expect, it } from "vitest";
+import { defineCompileTimeContract } from "../../testing/compile-time-contract.js";
 
 type AssertAssignable<T extends U, U> = T;
 

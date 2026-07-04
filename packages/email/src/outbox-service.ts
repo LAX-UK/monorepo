@@ -4,8 +4,8 @@ import { emailOutbox, emailSuppression } from "@auction/db/schema";
 import type { JobsOptions, Queue } from "bullmq";
 import { eq } from "drizzle-orm";
 import stringify from "safe-stable-stringify";
-import type { TemplateName } from "./types.js";
 import type { EmailEnqueueInput, IEmailService } from "./service.js";
+import type { TemplateName } from "./types.js";
 import { RECIPIENT_RESOLUTION } from "./types.js";
 
 export type EmailQueuePayload = {

@@ -1,3 +1,4 @@
+import type { ISaleRepository } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import {
   PUBLIC_LOT_STATUSES,
@@ -12,7 +13,6 @@ import {
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../../lib/media-presenters.js";
-import type { ISaleRepository } from "../interfaces/repositories.js";
 import type { SaleServiceDeps } from "./sale-types.js";
 
 export async function getByIdWithLots(

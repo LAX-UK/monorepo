@@ -1,5 +1,5 @@
+import type { INotificationWriteRepository } from "@auction/persistence";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
-import type { INotificationWriteRepository } from "./interfaces/notification-write.js";
 import type { IUserNotificationPublisher } from "./interfaces/user-notification-publisher.js";
 
 export class LotNotificationCoordinator implements ILotNotificationCoordinator {

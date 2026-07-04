@@ -1,3 +1,5 @@
+import type { IOnsiteEventRsvpRepository } from "@auction/persistence";
+import type { IOnsiteEventRepository } from "@auction/persistence";
 import type {
   OnsiteEvent,
   OnsiteEventAdminDetail,
@@ -9,8 +11,6 @@ import type { CreateOnsiteEventBody, UpdateOnsiteEventBody } from "@auction/vali
 import { type AppLogger, createBaseLogger } from "../lib/logger.js";
 import { buildPassUrl } from "../lib/onsite-event-check-in-token.js";
 import { onsiteEventRsvpsToCsv } from "../lib/onsite-event-rsvp-csv.js";
-import type { IOnsiteEventRsvpRepository } from "../repositories/interfaces/onsite-event-rsvp.repository.js";
-import type { IOnsiteEventRepository } from "../repositories/interfaces/onsite-event.repository.js";
 import type { IOnsiteEventAdminService } from "./interfaces/onsite-event-admin-service.js";
 import type { IOnsiteEventNotifier } from "./interfaces/onsite-event-notifier.js";
 import type { OnsiteEventRsvpServiceError } from "./interfaces/onsite-event-service-errors.js";

@@ -1,10 +1,7 @@
+import type { IXeroConnectionRepository, XeroConnectionRow } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { XeroClient } from "xero-node";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
-import type {
-  IXeroConnectionRepository,
-  XeroConnectionRow,
-} from "../interfaces/xero-repositories.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { type XeroEnvConfig, createXeroClientForOAuth } from "./xero-client-factory.js";
 

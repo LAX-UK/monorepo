@@ -1,9 +1,9 @@
 import { createHmac } from "node:crypto";
+import type { IKycRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { Env } from "../../env.js";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
-import type { IKycRepository } from "../interfaces/kyc-repository.js";
 import { KycAlreadyApprovedError, VeriffWebhookPayloadError } from "../interfaces/kyc-service.js";
 import { KycDecisionProcessor } from "./kyc-decision-processor.js";
 import { VeriffKycService } from "./veriff-kyc.service.js";

@@ -1,5 +1,5 @@
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
 /** SRP: read models for dashboard views that join bids + lots.
  */

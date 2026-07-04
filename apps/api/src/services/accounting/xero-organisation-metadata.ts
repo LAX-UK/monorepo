@@ -1,5 +1,5 @@
+import type { IXeroConnectionRepository } from "@auction/persistence";
 import type { XeroClient } from "xero-node";
-import type { IXeroConnectionRepository } from "../interfaces/xero-repositories.js";
 
 /** Fetch organisation short code and base currency after OAuth connect. Non-fatal on failure. */
 export async function fetchAndCacheXeroOrganisationMetadata(

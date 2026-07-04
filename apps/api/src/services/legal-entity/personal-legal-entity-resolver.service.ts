@@ -1,5 +1,5 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { LegalEntitySummary } from "@auction/types";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IEnsurePersonalLegalEntityService } from "./ensure-personal-legal-entity.service.js";
 
 /** Thrown when a user's personal legal entity cannot be found or provisioned. */

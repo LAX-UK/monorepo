@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
+import type { IBidRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import type { INotificationOutboxService } from "../interfaces/notification-outbox.js";
-import type { IBidRepository } from "../interfaces/repositories.js";
-import type { ISaleRepository } from "../interfaces/repositories.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import type { NotificationFactory } from "../notification.factory.js";
 

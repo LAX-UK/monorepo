@@ -1,3 +1,4 @@
+import type { IPaymentWriteRepository } from "@auction/persistence";
 import type { Env } from "../../env.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type {
@@ -5,7 +6,6 @@ import type {
   PaymentCheckoutContext,
   PaymentCheckoutResult,
 } from "../interfaces/checkout-rail.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import { createOrRenewCheckoutSession } from "../stripe/stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";

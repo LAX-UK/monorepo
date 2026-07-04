@@ -1,7 +1,7 @@
 import type { ISaleRegistrationCheckInReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { LegalEntity } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import { SaleroomCheckInEligibilityValidator } from "./saleroom-check-in-eligibility.validator.js";
 
 const saleId = "00000000-0000-4000-8000-000000000002";

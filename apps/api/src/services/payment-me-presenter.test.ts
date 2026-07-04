@@ -1,7 +1,7 @@
+import type { PaymentRecord } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import { gbpAmountToPence } from "../lib/decimal-money.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
-import type { PaymentRecord } from "./interfaces/payment-write.js";
 import { presentMyPayments } from "./payment-me-presenter.js";
 import { PaymentTierPolicy, parsePaymentTierLimits } from "./payment/payment-tier.policy.js";
 

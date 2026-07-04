@@ -1,5 +1,5 @@
+import type { IAdminLegalEntityBrowseReader } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { IAdminLegalEntityBrowseReader } from "../../repositories/interfaces/admin-legal-entity-browse.reader.js";
 import { AdminLegalEntityBrowseQueryService } from "./admin-legal-entity-browse-query.service.js";
 
 describe("AdminLegalEntityBrowseQueryService", () => {

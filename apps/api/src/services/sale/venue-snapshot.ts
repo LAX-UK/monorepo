@@ -1,8 +1,8 @@
+import type { IVenueRepository } from "@auction/persistence";
 import type { CreateSaleInput, Venue } from "@auction/types";
 import { formatPostalAddress } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { LotError } from "../../lib/errors.js";
-import type { IVenueRepository } from "../interfaces/venue.js";
 
 export function venueLocationSnapshot(venue: Venue): Partial<CreateSaleInput> {
   const locationAddressLine1 = venue.addressLine1;

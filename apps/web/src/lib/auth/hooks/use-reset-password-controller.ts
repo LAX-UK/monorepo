@@ -1,7 +1,7 @@
 "use client";
 
-import { type ResetPasswordFormValues, resetPasswordFormSchema } from "@/lib/auth/schemas";
 import { getAuthClientServices } from "@/lib/auth/auth-services.client";
+import { type ResetPasswordFormValues, resetPasswordFormSchema } from "@/lib/auth/schemas";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";

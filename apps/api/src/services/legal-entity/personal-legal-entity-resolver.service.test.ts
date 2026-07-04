@@ -1,5 +1,5 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IEnsurePersonalLegalEntityService } from "./ensure-personal-legal-entity.service.js";
 import {
   PersonalLegalEntityResolver,

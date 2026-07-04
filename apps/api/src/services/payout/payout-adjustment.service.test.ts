@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
+import type { IPayoutRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
-import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import { PayoutAdjustmentService } from "./payout-adjustment.service.js";
 
 vi.mock("./payout-helpers.js", async (importOriginal) => {

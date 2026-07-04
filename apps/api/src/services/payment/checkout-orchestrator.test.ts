@@ -1,8 +1,8 @@
+import type { IPaymentDomainEventsRepository } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import type { IPaymentDomainEventsRepository } from "../../repositories/interfaces/payment-domain-events.repository.js";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import {
   type CheckoutOrchestratorDeps,

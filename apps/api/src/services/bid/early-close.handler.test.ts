@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
+import type { ILotRepository } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { BuyItNowAuctionStrategy } from "../../strategies/buy-it-now.strategy.js";
 import { DutchAuctionStrategy } from "../../strategies/dutch.strategy.js";
-import type { ILotRepository } from "../interfaces/repositories.js";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
 import { EarlyCloseHandler } from "./early-close.handler.js";
 

@@ -1,9 +1,9 @@
 import type { FinanceIssueSnapshot, StripeConnectRequirementEntityRow } from "@auction/persistence";
+import type { ListPaymentsAdminTableFilter } from "@auction/persistence";
 import type { Result } from "neverthrow";
 import type { AuthzError } from "../../../lib/errors.js";
 import type { AdminNavCounts } from "../../admin/admin-nav-counts.service.js";
 import type { AdminKpiPeriodDays, AdminKpiTrendBundle } from "../admin-kpi-trend.js";
-import type { ListPaymentsAdminTableFilter } from "../payment-write.js";
 import type { IStripeConnectService } from "../stripe-connect.js";
 
 export interface IAdminPaymentsApplicationService {

@@ -1,11 +1,11 @@
 import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
-import type { ILotRepository, ISaleRepository } from "../services/interfaces/repositories.js";
-import type { IRepositoryFactory } from "../services/interfaces/repository-factory.js";
 import { LotError } from "./errors.js";
 
 export const SCHEDULE_JOBS_FAILED_MESSAGE =

@@ -1,8 +1,9 @@
+import type { ILotSoftDeleteGuardReader } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { type AuthzError, LotError } from "../lib/errors.js";
-import type { ILotSoftDeleteGuardReader } from "../repositories/interfaces/lot-soft-delete-guard.reader.js";
 import type { CatalogSoftDeleteOrchestrator } from "./catalog/catalog-soft-delete-orchestrator.js";
 import type {
   ILotSoftDeleteService,
@@ -11,7 +12,6 @@ import type {
   LotBulkSoftDeleteResult,
   LotDeleteEligibility,
 } from "./interfaces/lot-soft-delete.js";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import {
   type LotSoftDeleteContext,
   canLotSoftDelete,

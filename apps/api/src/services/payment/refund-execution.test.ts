@@ -1,6 +1,6 @@
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { IPaymentWriteRepository, PaymentRecord } from "../interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
 import { type RefundLedgerDeps, executePaymentRefundLedger } from "./refund-execution.js";

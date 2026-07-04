@@ -1,10 +1,7 @@
+import type { IXeroConnectionRepository, XeroConnectionRow } from "@auction/persistence";
 import type { Redis } from "ioredis";
 import type { TokenSet } from "xero-node";
 import type { XeroClient } from "xero-node";
-import type {
-  IXeroConnectionRepository,
-  XeroConnectionRow,
-} from "../interfaces/xero-repositories.js";
 import { createXeroClientForOAuth } from "./xero-client-factory.js";
 
 export function tokenExpiryDate(tokenSet: TokenSet): Date {

@@ -1,9 +1,9 @@
+import type { PaymentRecord } from "@auction/persistence";
 import type { PaymentStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../../lib/errors.js";
 import type { MyPaymentRowDTO } from "../payment-me-presenter.js";
 import type { CreatePendingPaymentResult } from "../payment/payment-service-types.js";
-import type { PaymentRecord } from "./payment-write.js";
 
 export type { CreatePendingPaymentResult } from "../payment/payment-service-types.js";
 

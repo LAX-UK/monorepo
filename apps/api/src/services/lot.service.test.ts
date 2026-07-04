@@ -1,14 +1,14 @@
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IBidRepository, ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { IWatchlistRepository } from "@auction/persistence";
 import type { Bid, CreateLotInput, LegalEntity, Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { lotBidderRef } from "../lib/lot-bidder-ref.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
-import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
-import type { IBidRepository, ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
-import type { IWatchlistRepository } from "./interfaces/watchlist.js";
 import { LotService } from "./lot.service.js";
 
 const lotId = "00000000-0000-4000-8000-000000000001";

@@ -1,4 +1,4 @@
-import type { QrCodeRow } from "../../repositories/interfaces/qr-code.repository.js";
+import type { QrCodeRow } from "@auction/persistence";
 import type { QrCodeDto, QrCodeEntityType, QrCodeStatus } from "./qr-code-types.js";
 
 export function toQrCodeDto(row: QrCodeRow, destinationPath: string, webOrigin: string): QrCodeDto {

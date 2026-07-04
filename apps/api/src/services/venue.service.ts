@@ -1,9 +1,9 @@
+import type { IVenueRepository, ListVenuesFilter, VenueListRow } from "@auction/persistence";
 import type { CreateVenueInput, UpdateVenueInput, Venue } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { VenueError } from "../lib/errors.js";
 import { findPostgresError } from "../lib/pg-error.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
-import type { IVenueRepository, ListVenuesFilter, VenueListRow } from "./interfaces/venue.js";
 
 type VenueMutationContext = {
   actorUserId?: string | null;

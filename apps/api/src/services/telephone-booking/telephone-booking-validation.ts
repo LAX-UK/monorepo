@@ -1,14 +1,14 @@
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence";
+import type { ITelephoneBidBookingRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import type { TelephoneBidBooking } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { buyerEntityCanBid } from "../../lib/buyer-entity-bid-eligibility.js";
-import type { ITelephoneBidBookingRepository } from "../../repositories/interfaces/telephone-bid-booking.repository.js";
 import type { IAmlHoldStore } from "../aml/ports.js";
 import type { IKycService } from "../interfaces/kyc-service.js";
 import { KycRequiredError } from "../interfaces/kyc-service.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { ILotRepository, ISaleRepository } from "../interfaces/repositories.js";
 import type { TelephoneBidBookingServiceError } from "../interfaces/telephone-bid-booking-service-errors.js";
 
 export const EDITABLE_LOT_STATUSES = ["requested", "confirmed"] as const;

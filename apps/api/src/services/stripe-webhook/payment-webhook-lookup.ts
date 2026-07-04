@@ -1,12 +1,12 @@
 import { payment } from "@auction/db/schema";
 import type { IPaymentWebhookLookupReader } from "@auction/persistence";
 import type { ITransactionRunner } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
 import { eq } from "drizzle-orm";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IPaymentCaptureService } from "../interfaces/payment-capture.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
-import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 
 export type StripePaymentWebhookDeps = {
   transactionRunner: ITransactionRunner;

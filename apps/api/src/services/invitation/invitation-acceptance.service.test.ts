@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
+import type { IEntityInvitationRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { IInvitationRepository } from "../../repositories/interfaces/invitation.repository.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import { InvitationAcceptanceService } from "./invitation-acceptance.service.js";
@@ -51,8 +51,8 @@ function member() {
   };
 }
 
-function makeRepo(overrides: Partial<IInvitationRepository> = {}): IInvitationRepository {
-  const txRepo: IInvitationRepository = {
+function makeRepo(overrides: Partial<IEntityInvitationRepository> = {}): IEntityInvitationRepository {
+  const txRepo: IEntityInvitationRepository = {
     forConnection: () => txRepo,
     findUserIdByEmail: async () => null,
     userExistsByEmail: async () => false,

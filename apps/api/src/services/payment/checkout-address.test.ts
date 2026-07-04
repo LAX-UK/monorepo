@@ -1,6 +1,6 @@
+import type { IAddressRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import { LotError } from "../../lib/errors.js";
-import type { IAddressRepository } from "../interfaces/profile.js";
 import { resolveCheckoutAddressSnapshot } from "./checkout-address.js";
 
 describe("resolveCheckoutAddressSnapshot", () => {

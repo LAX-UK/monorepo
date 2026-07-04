@@ -1,7 +1,7 @@
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { DashboardQueryService } from "./dashboard-query.service.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
 describe("DashboardQueryService.listBidsWithLotsForBidder", () => {
   it("loads lots in a single findByIds call", async () => {

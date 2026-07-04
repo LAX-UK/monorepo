@@ -1,5 +1,5 @@
+import type { IPressArchiveRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { IPressArchiveRepository } from "./interfaces/press-archive.repository.js";
 import { PressArchiveReadService } from "./press-archive-read.service.js";
 
 describe("PressArchiveReadService", () => {

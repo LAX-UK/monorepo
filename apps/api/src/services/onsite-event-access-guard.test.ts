@@ -1,6 +1,6 @@
+import type { IOnsiteEventRepository } from "@auction/persistence";
 import type { OnsiteEvent } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import type { IOnsiteEventRepository } from "../repositories/interfaces/onsite-event.repository.js";
 import { OnsiteEventAccessGuard } from "./onsite-event-access-guard.js";
 
 const baseEvent = (overrides: Partial<OnsiteEvent> = {}): OnsiteEvent => ({

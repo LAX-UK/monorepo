@@ -1,5 +1,5 @@
 import { isStripeAccountConfigured } from "@auction/connect";
-import type { OnboardingOrganisationRow } from "../../repositories/interfaces/legal-entity-onboarding.repository.js";
+import type { OnboardingOrganisationRow } from "@auction/persistence";
 
 export type ConnectStepFailureCode =
   | "connect_not_started"

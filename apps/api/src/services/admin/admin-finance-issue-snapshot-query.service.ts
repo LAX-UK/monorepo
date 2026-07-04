@@ -1,4 +1,4 @@
-import type { IAdminFinanceIssueSnapshotReader } from "../../repositories/interfaces/admin-finance-issue-snapshot.reader.js";
+import type { IAdminFinanceIssueSnapshotReader } from "@auction/persistence";
 import type {
   FinanceIssueSnapshot,
   IAdminFinanceIssueSnapshotQueryService,

@@ -1,5 +1,5 @@
+import type { OnsiteEventRsvpWithGuest } from "@auction/persistence";
 import type { OnsiteEvent, OnsiteEventCheckInGuestSummary } from "@auction/types";
-import type { OnsiteEventRsvpWithGuest } from "../repositories/interfaces/onsite-event-rsvp.repository.js";
 import { segmentLabelFor } from "./onsite-event.mapper.js";
 
 export function partySize(rsvp: { plusOne: number }): number {

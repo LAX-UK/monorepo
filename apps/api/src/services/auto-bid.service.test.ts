@@ -1,11 +1,11 @@
+import type { IBidRepository, ILotRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { AutoBidService } from "./auto-bid.service.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
-import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
 

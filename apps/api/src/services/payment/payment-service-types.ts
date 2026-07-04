@@ -1,21 +1,17 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotFulfilmentPaymentHook } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IAddressRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IStripeCheckoutService } from "../interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { ILotFulfilmentPaymentHook } from "../interfaces/lot-fulfilment-payment-hook.js";
 import type { IPaymentCaptureService } from "../interfaces/payment-capture.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 import type { IPlatformFeePolicy } from "../interfaces/platform-fee.js";
-import type { IAddressRepository } from "../interfaces/profile.js";
-import type {
-  ILotRepository,
-  ISaleRepository,
-  IUserRepository,
-} from "../interfaces/repositories.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";

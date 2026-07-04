@@ -1,4 +1,8 @@
 import type { Database } from "@auction/db";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
+import type { IVenueRepository } from "@auction/persistence";
 import type { Lot, Sale, Venue } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
@@ -6,10 +10,6 @@ import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
-import type { IVenueRepository } from "./interfaces/venue.js";
 import { SaleService, type SaleServiceOptions } from "./sale.service.js";
 
 const TEST_ADMIN_USER_ID = "admin-1";

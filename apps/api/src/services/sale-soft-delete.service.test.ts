@@ -1,3 +1,5 @@
+import type { ISaleSoftDeleteGuardReader } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import {
   bulkSaleDeleteConfirmationPhrase,
@@ -5,11 +7,9 @@ import {
 } from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../lib/errors.js";
-import type { ISaleSoftDeleteGuardReader } from "../repositories/interfaces/sale-soft-delete-guard.reader.js";
 import { CatalogSoftDeleteOrchestrator } from "./catalog/catalog-soft-delete-orchestrator.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
 import type { ISaleSoftDeleteSideEffects } from "./interfaces/sale-soft-delete.js";
 import { SaleSoftDeleteService } from "./sale-soft-delete.service.js";
 

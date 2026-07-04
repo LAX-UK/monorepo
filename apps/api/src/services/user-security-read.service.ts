@@ -1,4 +1,4 @@
-import type { IProfileReader } from "./interfaces/profile.js";
+import type { IProfileReader } from "@auction/persistence";
 
 export class UserSecurityReadService {
   constructor(private readonly profiles: IProfileReader) {}

@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
+import type { ILotRepository } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import type { ILotStrategy } from "../interfaces/auction-strategy.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
-import type { ILotRepository } from "../interfaces/repositories.js";
 
 export type EarlyCloseOutcome = {
   endedEarly: true;

@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
+import type { ISaleroomSessionLookup } from "@auction/persistence";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../../lib/errors.js";
-import type { ISaleroomSessionLookup } from "../interfaces/saleroom-session-lookup.js";
 import type { SaleroomOnBlockPolicy } from "./saleroom-on-block.policy.js";
 
 export class SaleroomBidGate {

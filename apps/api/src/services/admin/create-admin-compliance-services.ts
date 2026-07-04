@@ -1,9 +1,9 @@
 import type { IAdminDisputeCaseEnrichmentReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { Env } from "../../env.js";
 import type { AmlService } from "../aml/aml.service.js";
 import type { AdminComplianceRouteServices } from "../interfaces/admin-routes/admin-compliance-routes.js";
 import type { IAdminDomainEventQueryService } from "../interfaces/admin-routes/admin-operations-routes.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { LegalEntityLifecycleAdminService } from "../legal-entity-lifecycle-admin.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../source-of-funds/source-of-funds-document-collection.service.js";
 import type { SourceOfFundsDocumentReviewService } from "../source-of-funds/source-of-funds-document-review.service.js";

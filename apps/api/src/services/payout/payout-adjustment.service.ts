@@ -1,12 +1,12 @@
 import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
 import type { PayoutLineKind } from "@auction/types";
 import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import type {
   AddPaymentPayoutLineInput,
   IPayoutAdjustmentService,
 } from "../interfaces/payout-adjustment.js";
-import type { IPayoutRepository } from "../interfaces/payout-repository.js";
 import { payoutRepoForTx } from "./payout-helpers.js";
 
 const DEFAULT_CURRENCY = "GBP";

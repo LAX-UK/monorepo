@@ -1,6 +1,6 @@
+import type { IKycSessionRepository } from "@auction/persistence";
 import type { KycVerification } from "@auction/types";
 import type { VeriffClient } from "../../lib/veriff/veriff-client.js";
-import type { IKycSessionRepository } from "../interfaces/kyc-repository.js";
 import {
   type CreateKycSessionResult,
   KycAlreadyApprovedError,

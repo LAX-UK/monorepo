@@ -1,5 +1,5 @@
+import type { ILegalEntityMemberRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ILegalEntityMemberRepository } from "../repositories/interfaces/legal-entity-member.repository.js";
 import { LegalEntityMembershipGuard } from "./legal-entity-membership.guard.js";
 
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";

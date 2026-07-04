@@ -1,8 +1,8 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type { IKycRepository } from "@auction/persistence";
 import type { Env } from "../../env.js";
 import type { VeriffClient } from "../../lib/veriff/veriff-client.js";
 import { VeriffWebhookSignatureError } from "../../lib/veriff/veriff-webhook-verifier.js";
-import type { IKycRepository } from "../interfaces/kyc-repository.js";
 import type { IKycService } from "../interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import { createKycServiceDeps } from "./kyc-context.js";

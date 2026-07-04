@@ -1,14 +1,14 @@
 import type { Database } from "@auction/db";
 import { payment } from "@auction/db/schema";
+import type { IPaymentWriteRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
-import type { IPaymentWriteRepository } from "./interfaces/payment-write.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
-import type { IPayoutRepository } from "./interfaces/payout-repository.js";
 import { StripePaymentWebhookService } from "./stripe-payment-webhook.service.js";
 
 vi.mock("./payout/payout-helpers.js", async (importOriginal) => {

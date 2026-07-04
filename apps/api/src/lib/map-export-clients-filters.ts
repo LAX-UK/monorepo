@@ -1,5 +1,5 @@
+import type { AdminUserListFilter } from "@auction/persistence";
 import type { ExportClientsFilters } from "@auction/validators";
-import type { AdminUserListFilter } from "../services/interfaces/admin-user.js";
 
 function isoDateStart(iso: string): Date {
   return new Date(`${iso}T00:00:00.000Z`);

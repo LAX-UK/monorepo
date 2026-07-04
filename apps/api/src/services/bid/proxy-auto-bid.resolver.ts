@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
+import type { IAntiShillingGuard } from "@auction/persistence";
+import type { IBidRepository } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { parseMoneyToMinorUnits } from "@auction/validators";
 import { Counter } from "prom-client";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { IAntiShillingGuard } from "../interfaces/anti-shilling.js";
-import type { IBidRepository } from "../interfaces/repositories.js";
 import type { NotificationService } from "../notification.service.js";
 import { effectiveBidderStepMoney, moneyStringGtCurrent, settleProxyPrice } from "./bid-money.js";
 

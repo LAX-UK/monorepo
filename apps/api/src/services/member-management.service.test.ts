@@ -1,11 +1,11 @@
 import type { Database } from "@auction/db";
 import { DrizzleLegalEntityMemberRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import { describe, expect, it } from "vitest";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import { DomainEventSink } from "./domain-event-sink.js";
 import { DomainEventPublisher } from "./domain-event.publisher.js";
 import { MemberPermissionError } from "./interfaces/member-management.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import { MemberManagementService } from "./member-management.service.js";
 
 const testPublisher = new DomainEventPublisher();

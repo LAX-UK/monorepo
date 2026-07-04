@@ -1,20 +1,16 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IBidRepository, ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
+import type { IWatchlistRepository } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
 import type { ILotJobScheduler } from "../interfaces/job-scheduler.js";
-import type { ILegalEntityNotificationRecipientReader } from "../interfaces/legal-entity-notification-recipients.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
 import type { ILotNotificationCoordinator } from "../interfaces/lot-notifications.js";
-import type {
-  IBidRepository,
-  ILotRepository,
-  ISaleRepository,
-} from "../interfaces/repositories.js";
-import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
 import type { ITelephoneBidBookingSaleroomBridge } from "../interfaces/telephone-bid-booking-service.js";
-import type { IWatchlistRepository } from "../interfaces/watchlist.js";
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { QrCodeService } from "../qr-code.service.js";

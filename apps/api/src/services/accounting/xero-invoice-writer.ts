@@ -1,3 +1,7 @@
+import type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+} from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { Contact, Invoice, Invoices, LineAmountTypes, LineItem } from "xero-node";
 import type { Env } from "../../env.js";
@@ -6,10 +10,6 @@ import type {
   IInvoiceAccountingProvider,
   InvoiceAccountingContext,
 } from "../interfaces/invoice-accounting.js";
-import type {
-  IPaymentExternalRefRepository,
-  IXeroConnectionRepository,
-} from "../interfaces/xero-repositories.js";
 import type { InvoiceAddressingService } from "../invoice-addressing.js";
 import type { XeroContactSync } from "./xero-contact-sync.js";
 import type { XeroTokenService } from "./xero-token.service.js";

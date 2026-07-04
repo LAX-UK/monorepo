@@ -1,4 +1,5 @@
 import type { IConnectTransferRepository } from "@auction/persistence";
+import type { IPayoutRepository } from "@auction/persistence";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
 import type { Env } from "../../../env.js";
@@ -7,7 +8,6 @@ import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
 import { executeWithStripeRetries } from "../../../lib/stripe-retries.js";
 import { recordMoneyPathEvent } from "../../../middleware/metrics.js";
 import type { IDomainEventSink } from "../../domain-event-sink.js";
-import type { IPayoutRepository } from "../../interfaces/payout-repository.js";
 import type {
   IConnectAccountReadinessSync,
   IConnectTransferInitiationService,

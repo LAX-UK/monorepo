@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ITransactionRunner } from "@auction/persistence";
-import type { IInvitationRepository } from "../../repositories/interfaces/invitation.repository.js";
+import type { IEntityInvitationRepository } from "@auction/persistence";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { InviteOutcome } from "../interfaces/invitation-lifecycle.js";
 import type { InviteMemberInput } from "../interfaces/member-management.js";
@@ -12,7 +12,7 @@ import type { InvitationTokenService } from "./invitation-token.service.js";
 export class InvitationInviteService {
   constructor(
     private readonly transactionRunner: ITransactionRunner,
-    private readonly repo: IInvitationRepository,
+    private readonly repo: IEntityInvitationRepository,
     private readonly tokenService: InvitationTokenService,
     private readonly notifications: InvitationNotificationService,
     private readonly domainEventPublisher: DomainEventPublisher,

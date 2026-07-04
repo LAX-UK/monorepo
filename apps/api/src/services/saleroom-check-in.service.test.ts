@@ -1,8 +1,8 @@
 import type { ISaleRegistrationCheckInReader } from "@auction/persistence";
 import { type ISaleroomCheckInRepository, PaddleTakenError } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { LegalEntity } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { PaddleService } from "./paddle.service.js";
 import { SaleroomCheckInEligibilityValidator } from "./saleroom-check-in-eligibility.validator.js";
 import { SaleroomCheckInService } from "./saleroom-check-in.service.js";

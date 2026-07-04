@@ -1,5 +1,5 @@
-import type { LotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
+import type { LotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 
 export type BidStickyMobileBarVisibilityInput = {

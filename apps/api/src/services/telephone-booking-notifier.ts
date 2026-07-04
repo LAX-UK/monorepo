@@ -1,7 +1,7 @@
 import type { IUserRepository } from "@auction/persistence";
+import type { INotificationWriteRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence";
 import type { TelephoneBidBooking } from "@auction/types";
-import type { INotificationWriteRepository } from "./interfaces/notification-write.js";
-import type { ISaleRepository } from "./interfaces/repositories.js";
 import type { ITransactionalMailer } from "./interfaces/transactional-mail.js";
 
 export class TelephoneBookingNotifier {

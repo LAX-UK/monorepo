@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IItemSubmissionRepository, IUserRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ILegalEntityNotificationRecipientReader } from "./interfaces/legal-entity-notification-recipients.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { IItemSubmissionRepository, IUserRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 
 const hoisted = vi.hoisted(() => ({

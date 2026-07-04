@@ -1,12 +1,9 @@
 import type { IOnsiteEventCheckInLogRepository } from "@auction/persistence";
+import type { IOnsiteEventRsvpRepository, OnsiteEventRsvpWithGuest } from "@auction/persistence";
+import type { IOnsiteEventRepository } from "@auction/persistence";
 import type { OnsiteEvent, OnsiteEventRsvp } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hashCheckInToken, issueCheckInToken } from "../lib/onsite-event-check-in-token.js";
-import type {
-  IOnsiteEventRsvpRepository,
-  OnsiteEventRsvpWithGuest,
-} from "../repositories/interfaces/onsite-event-rsvp.repository.js";
-import type { IOnsiteEventRepository } from "../repositories/interfaces/onsite-event.repository.js";
 import { OnsiteEventStaffCheckInService } from "./onsite-event-staff-check-in.service.js";
 
 const lax001Event = (): OnsiteEvent => ({

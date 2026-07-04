@@ -1,9 +1,9 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type { IEntityInvitationRepository } from "@auction/persistence";
+import type { InvitationRow } from "@auction/persistence";
 import type { LegalEntityMemberRole } from "@auction/types";
-import type { IInvitationRepository } from "../../repositories/interfaces/invitation.repository.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { InvitationOutcome } from "../interfaces/invitation-lifecycle.js";
-import type { InvitationRow } from "../interfaces/invitation.js";
 import type { InvitationNotificationService } from "./invitation-notification.service.js";
 import type { InvitationTokenService } from "./invitation-token.service.js";
 
@@ -12,7 +12,7 @@ type AcceptVia = "invitation_token" | "invitation_id";
 export class InvitationAcceptanceService {
   constructor(
     private readonly transactionRunner: ITransactionRunner,
-    private readonly repo: IInvitationRepository,
+    private readonly repo: IEntityInvitationRepository,
     private readonly tokenService: InvitationTokenService,
     private readonly notifications: InvitationNotificationService,
     private readonly domainEventPublisher: DomainEventPublisher,
@@ -63,7 +63,7 @@ export class InvitationAcceptanceService {
   private async acceptInvitation(
     userId: string,
     userEmail: string,
-    loadInvite: (repo: IInvitationRepository) => Promise<InvitationRow | null>,
+    loadInvite: (repo: IEntityInvitationRepository) => Promise<InvitationRow | null>,
     via: AcceptVia = "invitation_token",
   ): Promise<InvitationOutcome> {
     const emailNorm = this.tokenService.normalizeEmail(userEmail);

@@ -1,5 +1,5 @@
+import type { ISaleBiddersReader, SaleBidderRow } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ISaleBiddersReader, SaleBidderRow } from "./interfaces/sale-bidders.js";
 import type { ISaleExistenceReader } from "./interfaces/sale-follow.js";
 import { SaleBiddersService } from "./sale-bidders.service.js";
 

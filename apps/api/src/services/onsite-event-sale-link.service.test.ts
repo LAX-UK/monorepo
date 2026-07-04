@@ -1,7 +1,7 @@
 import type { ISaleRepository } from "@auction/persistence";
+import type { IOnsiteEventRepository } from "@auction/persistence";
 import type { OnsiteEvent, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import type { IOnsiteEventRepository } from "../repositories/interfaces/onsite-event.repository.js";
 import { OnsiteEventSaleLinkService } from "./onsite-event-sale-link.service.js";
 
 function mockSaleRepo(row: Pick<Sale, "id" | "title" | "deliveryMode"> | null): ISaleRepository {

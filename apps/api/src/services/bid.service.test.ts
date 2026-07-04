@@ -1,4 +1,9 @@
 import type { Database } from "@auction/db";
+import type { IAntiShillingGuard } from "@auction/persistence";
+import type { IBidRepository, ILotRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
+import type { ISaleModeLookup } from "@auction/persistence";
+import type { ISaleroomSessionLookup } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
@@ -7,15 +12,10 @@ import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import { BidService } from "./bid.service.js";
 import { SaleroomOnBlockPolicy } from "./bid/saleroom-on-block.policy.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
-import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
 import type { PlaceBidInput } from "./interfaces/place-bid.js";
-import type { IBidRepository, ILotRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
-import type { ISaleModeLookup } from "./interfaces/sale-mode-lookup.js";
-import type { ISaleroomSessionLookup } from "./interfaces/saleroom-session-lookup.js";
 import { NotificationService } from "./notification.service.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";

@@ -1,5 +1,5 @@
+import type { IAdminReviewTaskReader } from "@auction/persistence";
 import type { AdminReviewTaskRow } from "../../admin/admin-route-dtos.js";
-import type { IAdminReviewTaskReader } from "../../repositories/interfaces/admin-review-task.reader.js";
 import type { IAdminReviewTaskQueryService } from "../interfaces/admin-routes.js";
 
 export class AdminReviewTaskQueryService implements IAdminReviewTaskQueryService {

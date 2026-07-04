@@ -1,6 +1,13 @@
-import { shouldShowBidStickyMobileBar } from "@/lib/bid/bid-sticky-mobile-bar.logic";
+import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
+import { shouldShowBidStickyMobileBar } from "@/lib/bid/bid-sticky-mobile-bar.logic";
+import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
+import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
+import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
+import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
+import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
+import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import {
   mapAuctionSessionHeaderVM,
   mapLotToHeroVM,
@@ -10,21 +17,12 @@ import {
 } from "@/lib/marketing/artwork/artwork-view-models";
 import { buildArtworkPageAccordionBlocks } from "@/lib/marketing/artwork/build-artwork-accordion-blocks";
 import {
-  mapSaleToOverviewVM,
-} from "@/lib/marketing/saleroom/mappers";
-import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
-import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
-import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
-import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
-import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
-import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
-import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
-import {
   catalogLotLinkParamsFromSearchParams,
   lotCatalogBackHref,
   lotCatalogBackLabel,
 } from "@/lib/marketing/catalog-links";
 import type { LotPageSecondaryData, LotPageShellData } from "@/lib/marketing/lot-page-data.service";
+import { mapSaleToOverviewVM } from "@/lib/marketing/saleroom/mappers";
 import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";

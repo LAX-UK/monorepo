@@ -1,3 +1,4 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type { ActingContextCookieV1 } from "@auction/types";
 import type { LegalEntity, LegalEntityMemberRole } from "@auction/types";
 import {
@@ -7,7 +8,6 @@ import {
 } from "@auction/types";
 import type { ImpersonationAuditService } from "./impersonation-audit.service.js";
 import type { ImpersonationSessionService } from "./impersonation-session.service.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 
 export type LegalEntityDetailMemberPayload = LegalEntity & {
   membership: { role: LegalEntityMemberRole; isPrimaryAdmin: boolean };

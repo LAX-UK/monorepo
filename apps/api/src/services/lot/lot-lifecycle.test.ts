@@ -1,9 +1,9 @@
+import type { IBidRepository, ILotRepository } from "@auction/persistence";
+import type { IWatchlistRepository } from "@auction/persistence";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import type { ILotNotificationCoordinator } from "../interfaces/lot-notifications.js";
-import type { IBidRepository, ILotRepository } from "../interfaces/repositories.js";
-import type { IWatchlistRepository } from "../interfaces/watchlist.js";
 import type { LotLifecycleRecording } from "../lot-lifecycle-recording.service.js";
 import { bulkPublishOrCancel, cancelLot, publishLot } from "./lot-lifecycle.js";
 import type { LotServiceDeps } from "./lot-types.js";

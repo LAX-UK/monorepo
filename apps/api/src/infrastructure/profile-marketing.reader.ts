@@ -1,5 +1,5 @@
 import type { IMarketingProfileReader } from "@auction/marketing-events";
-import type { IProfileReader } from "../services/interfaces/profile.js";
+import type { IProfileReader } from "@auction/persistence";
 
 export class ProfileMarketingReader implements IMarketingProfileReader {
   constructor(private readonly profiles: IProfileReader) {}

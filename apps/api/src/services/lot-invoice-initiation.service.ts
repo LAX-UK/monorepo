@@ -1,19 +1,15 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotFulfilmentPaymentHook } from "@auction/persistence";
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../lib/decimal-money.js";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
-import type { ILotFulfilmentPaymentHook } from "./interfaces/lot-fulfilment-payment-hook.js";
 import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
-import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
 import type { IPlatformFeePolicy } from "./interfaces/platform-fee.js";
-import type {
-  ILotRepository,
-  ISaleRepository,
-  IUserRepository,
-} from "./interfaces/repositories.js";
 import { notificationRowToPayload } from "./notification-payload.js";
 import type { NotificationFactory } from "./notification.factory.js";
 import { ensureXeroInvoiceForPayment } from "./payment/ensure-xero-invoice.js";

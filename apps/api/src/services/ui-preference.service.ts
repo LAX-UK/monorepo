@@ -1,5 +1,5 @@
+import type { IUiPreferenceRepository, UiPreferenceRow } from "@auction/persistence";
 import { DEFAULT_THEME_PREFERENCE, type UiPreferencePatch } from "@auction/validators";
-import type { IUiPreferenceRepository, UiPreferenceRow } from "./interfaces/ui-preference.js";
 
 const DEFAULT_THEME = DEFAULT_THEME_PREFERENCE;
 const DEFAULT_VIEW = "auto" as const;

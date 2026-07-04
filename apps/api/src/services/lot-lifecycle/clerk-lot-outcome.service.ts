@@ -1,9 +1,9 @@
+import type { IAntiShillingGuard } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { moneyGte } from "@auction/validators";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { IAntiShillingGuard } from "../interfaces/anti-shilling.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
-import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
 import type { LotLifecycleNotificationCoordinator } from "./lot-lifecycle-notification.coordinator.js";
 import type { LotCloseOutcome } from "./lot-lifecycle-types.js";
 

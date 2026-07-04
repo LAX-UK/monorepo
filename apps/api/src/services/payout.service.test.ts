@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
+import type { IPayoutRepository, PendingPaymentRow } from "@auction/persistence";
 import type { Payout, PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
-import type { IPayoutRepository, PendingPaymentRow } from "./interfaces/payout-repository.js";
 import {
   PayoutNotFoundError,
   PayoutPermissionError,

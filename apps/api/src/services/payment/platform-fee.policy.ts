@@ -1,5 +1,5 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IPlatformFeePolicy } from "../interfaces/platform-fee.js";
 
 const DEFAULT_PLATFORM_FEE_BPS = 500;

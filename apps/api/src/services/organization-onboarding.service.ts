@@ -1,8 +1,8 @@
+import type { ILegalEntityOnboardingRepository } from "@auction/persistence";
+import type { OnboardingOrganisationRow } from "@auction/persistence";
 import type { LegalEntity } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 import { PUBLIC_ORG_SUBKIND_META } from "@auction/validators";
-import type { ILegalEntityOnboardingRepository } from "../repositories/interfaces/legal-entity-onboarding.repository.js";
-import type { OnboardingOrganisationRow } from "../repositories/interfaces/legal-entity-onboarding.repository.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type {
   CheckNameResult,

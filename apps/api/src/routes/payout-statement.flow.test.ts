@@ -1,6 +1,6 @@
+import type { IPayoutRepository } from "@auction/persistence";
 import type { Queue } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
-import type { IPayoutRepository } from "../services/interfaces/payout-repository.js";
 import { ensureStatementQueued } from "./payout-statements.js";
 
 describe("payout statement queue ", () => {

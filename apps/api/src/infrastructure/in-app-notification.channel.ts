@@ -1,9 +1,9 @@
+import type { INotificationWriteRepository } from "@auction/persistence";
 import type { ICacheProvider } from "../services/interfaces/cache.js";
 import type {
   INotificationChannel,
   NotificationPayload,
 } from "../services/interfaces/notification-channel.js";
-import type { INotificationWriteRepository } from "../services/interfaces/notification-write.js";
 import type { IUserNotificationPublisher } from "../services/interfaces/user-notification-publisher.js";
 
 const OUTBOX_DEDUPE_TTL_SEC = 7 * 86_400;

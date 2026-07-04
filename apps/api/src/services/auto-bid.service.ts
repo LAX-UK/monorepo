@@ -1,3 +1,5 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import {
   listAllowedAutoBidSteps,
@@ -9,9 +11,7 @@ import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
 import { lotMinIncrementMoney, minBidAmountMoney, numberToMoneyString } from "./bid/bid-money.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IBidPlacer, IBidPlacerWithIdempotency } from "./interfaces/place-bid.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 import type { NotificationService } from "./notification.service.js";
 
 function minNextBidAmountMoney(lot: Lot): string {

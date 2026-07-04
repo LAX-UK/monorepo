@@ -1,9 +1,9 @@
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type Stripe from "stripe";
 import type { Env } from "../../env.js";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { StripeClientFactory } from "../../lib/stripe-client.js";
 import { executeWithStripeRetries } from "../../lib/stripe-retries.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
 import type { IStripeCustomerGateway } from "../interfaces/stripe-customer.js";
 
 export class StripeCustomerGateway implements IStripeCustomerGateway {

@@ -1,6 +1,6 @@
 import type { ITransactionRunner } from "@auction/persistence";
+import type { IUserRepository } from "@auction/persistence";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
-import type { IUserRepository } from "./interfaces/repositories.js";
 
 export class UserService {
   constructor(

@@ -1,5 +1,5 @@
+import type { ILegalEntityConnectReader } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ILegalEntityConnectReader } from "../../../repositories/interfaces/legal-entity-connect.reader.js";
 import { ConnectSessionService } from "./connect-session.service.js";
 
 function makeReader(row: { id: string; stripeConnectAccountId: string | null } | null) {

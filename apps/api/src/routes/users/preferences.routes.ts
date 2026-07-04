@@ -1,4 +1,5 @@
 import { defaultNotificationPreference } from "@auction/persistence";
+import type { NotificationPreferenceInput } from "@auction/persistence";
 import {
   biddingPreferencesPatchSchema,
   notificationPreferencePatchSchema,
@@ -7,7 +8,6 @@ import {
   uiPreferencePatchSchema,
 } from "@auction/validators";
 import { zValidator } from "../../lib/z-validator.js";
-import type { NotificationPreferenceInput } from "../../services/interfaces/notification-preference.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
 
 export function attachUserPreferencesRoutes(r: UserHono, deps: UserRouteDeps): void {

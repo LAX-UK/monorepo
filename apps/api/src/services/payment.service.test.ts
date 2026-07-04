@@ -1,4 +1,8 @@
 import type { Database } from "@auction/db";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence";
+import type { IAddressRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
@@ -8,15 +12,7 @@ import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.po
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
-import type { IPaymentWriteRepository, PaymentRecord } from "./interfaces/payment-write.js";
-import type { IAddressRepository } from "./interfaces/profile.js";
-import type {
-  ILotRepository,
-  ISaleRepository,
-  IUserRepository,
-} from "./interfaces/repositories.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import { NotificationFactory } from "./notification.factory.js";
 import { PaymentService } from "./payment.service.js";

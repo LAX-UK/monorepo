@@ -1,4 +1,4 @@
-import type { IKycRepository } from "../interfaces/kyc-repository.js";
+import type { IKycRepository } from "@auction/persistence";
 import { KycRequiredError, type KycStatusSummary } from "../interfaces/kyc-service.js";
 import { buildKycUserFeedback } from "./kyc-user-feedback.js";
 import type { IKycGateService } from "./ports.js";

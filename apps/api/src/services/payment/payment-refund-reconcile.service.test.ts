@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
 import type { IPaymentRefundReconcileRepository } from "@auction/persistence";
+import type { IPaymentWriteRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
 
 describe("PaymentRefundReconcileService", () => {

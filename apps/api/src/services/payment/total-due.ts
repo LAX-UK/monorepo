@@ -1,7 +1,7 @@
+import type { ISaleRepository } from "@auction/persistence";
 import type { Lot, Sale } from "@auction/types";
 import { buildBuyerPremiumPolicy } from "@auction/validators";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
-import type { ISaleRepository } from "../interfaces/repositories.js";
 
 /**
  * Hammer + buyer's premium, in pence.

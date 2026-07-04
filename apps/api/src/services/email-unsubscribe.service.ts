@@ -1,11 +1,11 @@
 import { emailHash } from "@auction/email";
 import type { IEmailSuppressionRepository } from "@auction/persistence";
 import { emailPreferenceKey } from "@auction/persistence";
+import type { NotificationPreferenceInput } from "@auction/persistence";
+import type { INotificationPreferenceRepository } from "@auction/persistence";
+import type { IUserRepository } from "@auction/persistence";
 import type { Env } from "../env.js";
 import { verifyUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
-import type { NotificationPreferenceInput } from "./interfaces/notification-preference.js";
-import type { INotificationPreferenceRepository } from "./interfaces/notification-preference.js";
-import type { IUserRepository } from "./interfaces/repositories.js";
 
 export class EmailUnsubscribeService {
   constructor(

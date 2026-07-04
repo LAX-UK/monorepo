@@ -1,8 +1,8 @@
+import type { ListPaymentsAdminTableFilter } from "@auction/persistence";
 import type { Result } from "neverthrow";
 import type { AuthzError } from "../../lib/errors.js";
 import type { IAdminPaymentsApplicationService } from "../interfaces/admin-routes.js";
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
-import type { ListPaymentsAdminTableFilter } from "../interfaces/payment-write.js";
 import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
 
 export class AdminPaymentsApplicationService implements IAdminPaymentsApplicationService {

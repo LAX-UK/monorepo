@@ -1,3 +1,4 @@
+import type { CreateCategoryInput, UpdateCategoryInput } from "@auction/persistence";
 import type {
   AdminArtistListResult,
   AdminArtistStats,
@@ -23,7 +24,6 @@ import type { LotTransitionOrchestrator } from "../../lot-transition-orchestrato
 import type { QrCodeAnalyticsService } from "../../qr-code-analytics.service.js";
 import type { QrCodeService } from "../../qr-code.service.js";
 import type { ArtistSearchHit } from "../artist-registry.js";
-import type { CreateCategoryInput, UpdateCategoryInput } from "../category.js";
 import type {
   ConditionReportServiceError,
   FulfillConditionReportInput,

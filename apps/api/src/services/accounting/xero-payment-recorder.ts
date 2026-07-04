@@ -1,3 +1,8 @@
+import type {
+  IPaymentExternalRefRepository,
+  IXeroConnectionRepository,
+  XeroConnectionRow,
+} from "@auction/persistence";
 import type { Redis } from "ioredis";
 import {
   type Account,
@@ -12,11 +17,6 @@ import {
 } from "xero-node";
 import type { Env } from "../../env.js";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
-import type {
-  IPaymentExternalRefRepository,
-  IXeroConnectionRepository,
-  XeroConnectionRow,
-} from "../interfaces/xero-repositories.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { getXeroScopes } from "./xero-token.service.js";
 

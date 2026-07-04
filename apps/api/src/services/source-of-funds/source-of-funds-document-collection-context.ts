@@ -2,7 +2,7 @@ import type {
   ISourceOfFundsDocumentReviewRepository,
   IUploadObjectReader,
 } from "@auction/persistence";
-import type { ISourceOfFundsDocumentRepository } from "../../repositories/interfaces/source-of-funds-document.repository.js";
+import type { ISourceOfFundsDocumentRepository } from "@auction/persistence";
 import type { DomainEventPublisher } from "../domain-event.publisher.js";
 import type { IObjectStorage } from "../interfaces/object-storage.js";
 import type { ISignedUrlPolicy } from "../signed-url-policy.js";

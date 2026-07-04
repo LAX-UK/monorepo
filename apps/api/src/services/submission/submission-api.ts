@@ -1,3 +1,4 @@
+import type { ListSubmissionsFilter } from "@auction/persistence";
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
@@ -16,7 +17,6 @@ import { type Result, ok } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
 import { presentSubmissionImages, presentSubmissionsImages } from "../../lib/media-presenters.js";
 import type { ApproveSubmissionInput } from "../interfaces/item-submission-service.js";
-import type { ListSubmissionsFilter } from "../interfaces/repositories.js";
 import { resolveLegalEntityNotificationRecipients } from "../legal-entity-notification-routing.js";
 import { accept, approve, reject } from "./submission-admin-decisions.js";
 import { assignForAdmin, startReview } from "./submission-admin-review.js";

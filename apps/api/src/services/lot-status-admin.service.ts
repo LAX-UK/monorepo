@@ -1,6 +1,9 @@
 import type { Database } from "@auction/db";
 import { canAdminOverrideLotStatus } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ILotRepository, ISaleRepository } from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
 import type { Lot, LotStatus, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
@@ -9,11 +12,8 @@ import { assertLotPublishable } from "../lib/lot-publish-policy.js";
 import { scheduleLotWithDraftRollback } from "../lib/lot-schedule-jobs.js";
 import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
-import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { ILotStatusAdminService } from "./interfaces/lot-status-admin.js";
-import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
-import type { IRepositoryFactory } from "./interfaces/repository-factory.js";
 
 export class LotStatusAdminService implements ILotStatusAdminService {
   constructor(

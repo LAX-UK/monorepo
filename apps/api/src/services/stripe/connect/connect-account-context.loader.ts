@@ -1,5 +1,5 @@
-import type { ILegalEntityConnectReader } from "../../../repositories/interfaces/legal-entity-connect.reader.js";
-import type { ConnectAccountCreationContextRow } from "../../../repositories/legal-entity-connect.types.js";
+import type { ILegalEntityConnectReader } from "@auction/persistence";
+import type { ConnectAccountCreationContextRow } from "@auction/persistence";
 import { throwConnectError } from "./connect-service-errors.js";
 
 export type ConnectAccountCreationContext = ConnectAccountCreationContextRow;

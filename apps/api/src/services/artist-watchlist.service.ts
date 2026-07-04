@@ -2,7 +2,7 @@ import type {
   ArtistWatchlistRow,
   IArtistExistenceReader,
   IArtistWatchlistRepository,
-} from "./interfaces/artist-watchlist.js";
+} from "@auction/persistence";
 
 export class ArtistWatchlistService {
   constructor(

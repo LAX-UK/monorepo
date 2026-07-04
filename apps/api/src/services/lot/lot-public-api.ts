@@ -1,10 +1,10 @@
+import type { ListLotsFilter } from "@auction/persistence";
 import type { Lot, PublicLotView, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import { resolvePublicLotListFilter, viewerCanSeeNonPublicCatalog } from "@auction/validators";
 import { lotBidderRef } from "../../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../../lib/lot-public-view.js";
 import { presentLotsImages } from "../../lib/media-presenters.js";
-import type { ListLotsFilter } from "../interfaces/repositories.js";
 import { clampLotBidsLimitQuery } from "./lot-read.js";
 import type {
   ListBidsForPublicApiResult,

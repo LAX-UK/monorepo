@@ -1,5 +1,5 @@
+import type { ILegalEntityOnboardingRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { ILegalEntityOnboardingRepository } from "../repositories/interfaces/legal-entity-onboarding.repository.js";
 import { OrganizationOnboardingService } from "./organization-onboarding.service.js";
 
 describe("OrganizationOnboardingService", () => {

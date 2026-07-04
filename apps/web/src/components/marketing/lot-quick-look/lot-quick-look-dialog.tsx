@@ -46,7 +46,7 @@ export function LotQuickLookDialog() {
   });
 
   useEffect(() => {
-    if (activeVm) setImageIndex(0);
+    if (activeVm?.id) setImageIndex(0);
   }, [activeVm?.id]);
 
   const handleOpenChange = useCallback(

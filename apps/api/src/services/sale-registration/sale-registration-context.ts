@@ -1,6 +1,6 @@
-import type { ISaleRegistrationRepository } from "../../repositories/interfaces/sale-registration.repository.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { ISaleRepository } from "../interfaces/repositories.js";
+import type { ISaleRegistrationRepository } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
+import type { ISaleRepository } from "@auction/persistence";
 
 export type SaleRegistrationContext = {
   registrationRepo: ISaleRegistrationRepository;

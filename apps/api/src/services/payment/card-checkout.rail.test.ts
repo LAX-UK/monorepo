@@ -1,6 +1,6 @@
+import type { IPaymentWriteRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type { PaymentCheckoutContext } from "../interfaces/checkout-rail.js";
-import type { IPaymentWriteRepository } from "../interfaces/payment-write.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { CardCheckoutRail } from "./card-checkout.rail.js";

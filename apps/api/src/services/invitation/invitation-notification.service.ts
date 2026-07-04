@@ -1,10 +1,10 @@
+import type { IEntityInvitationRepository } from "@auction/persistence";
 import type { LegalEntityMemberRole } from "@auction/types";
-import type { IInvitationRepository } from "../../repositories/interfaces/invitation.repository.js";
 import type { IMembershipInviteNotifier } from "../interfaces/membership-invite-notification.js";
 
 export class InvitationNotificationService {
   constructor(
-    private readonly repo: IInvitationRepository,
+    private readonly repo: IEntityInvitationRepository,
     private readonly notifier: IMembershipInviteNotifier,
     private readonly webOrigin: string,
   ) {}

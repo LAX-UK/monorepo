@@ -1,17 +1,17 @@
 import type { ITransactionRunner } from "@auction/persistence";
-import type { LegalEntityStatus, UpdateItemSubmissionInput } from "@auction/types";
-import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { DomainEventPublisher } from "../domain-event.publisher.js";
-import type { ImageCleanupService } from "../image-cleanup.service.js";
-import type { ILegalEntityNotificationRecipientReader } from "../interfaces/legal-entity-notification-recipients.js";
-import type { ILegalEntityRepository } from "../interfaces/legal-entity-repository.js";
-import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
+import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence";
+import type { ILegalEntityRepository } from "@auction/persistence";
 import type {
   IItemSubmissionRepository,
   IUserRepository,
   ItemSubmissionUpdatePatch,
-} from "../interfaces/repositories.js";
-import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
+} from "@auction/persistence";
+import type { IRepositoryFactory } from "@auction/persistence";
+import type { LegalEntityStatus, UpdateItemSubmissionInput } from "@auction/types";
+import type { IDomainEventSink } from "../domain-event-sink.js";
+import type { DomainEventPublisher } from "../domain-event.publisher.js";
+import type { ImageCleanupService } from "../image-cleanup.service.js";
+import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";

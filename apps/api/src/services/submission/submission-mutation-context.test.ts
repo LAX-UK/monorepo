@@ -1,5 +1,5 @@
+import type { IRepositoryFactory } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
-import type { IRepositoryFactory } from "../interfaces/repository-factory.js";
 import { txRepos } from "./submission-mutation-context.js";
 import type { ItemSubmissionServiceDeps } from "./submission-types.js";
 

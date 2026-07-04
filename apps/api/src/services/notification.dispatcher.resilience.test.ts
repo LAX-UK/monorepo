@@ -1,10 +1,10 @@
 import { defaultNotificationPreference } from "@auction/persistence";
+import type { INotificationPreferenceReader } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
 import type {
   INotificationChannel,
   NotificationPayload,
 } from "./interfaces/notification-channel.js";
-import type { INotificationPreferenceReader } from "./interfaces/notification-preference.js";
 import { NotificationDispatcher } from "./notification.dispatcher.js";
 
 class FailingChannel implements INotificationChannel {
