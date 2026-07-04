@@ -1,5 +1,10 @@
-import type { IVenueRepository, ListVenuesFilter, VenueListRow } from "@auction/persistence/interfaces";
+import type {
+  IVenueRepository,
+  ListVenuesFilter,
+  VenueListRow,
+} from "@auction/persistence/interfaces";
 import type { CreateVenueInput, UpdateVenueInput, Venue } from "@auction/types";
+import { slugifyRecordKey } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { VenueError } from "../lib/errors.js";
 import { findPostgresError } from "../lib/pg-error.js";
@@ -13,15 +18,6 @@ export type ListVenuesResult = {
   venues: VenueListRow[];
   total: number;
 };
-
-function slugify(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
-}
 
 function mapVenueDbError(error: unknown): VenueError | null {
   const pg = findPostgresError(error);
@@ -164,7 +160,7 @@ export class VenueService {
     value: string,
     ignoreId?: string,
   ): Promise<Result<string, VenueError>> {
-    const base = slugify(value);
+    const base = slugifyRecordKey(value);
     if (!base) {
       return err(new VenueError("Venue slug cannot be empty", 400, "venue_slug_empty"));
     }

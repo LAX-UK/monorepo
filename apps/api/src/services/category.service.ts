@@ -1,17 +1,13 @@
-import type { CreateCategoryInput, ICategoryRepository, UpdateCategoryInput } from "@auction/persistence/interfaces";
+import type {
+  CreateCategoryInput,
+  ICategoryRepository,
+  UpdateCategoryInput,
+} from "@auction/persistence/interfaces";
 import type { AdminCategory, Category } from "@auction/types";
+import { slugifyRecordKey } from "@auction/types";
 import { normalizeCategoryHierarchy, validateCategoryParent } from "@auction/validators";
 import { CategoryError } from "../lib/errors.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
-
-function slugify(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
-}
 
 type CategoryMutationContext = {
   actorUserId?: string | null;
@@ -138,7 +134,7 @@ export class CategoryService {
   }
 
   private async uniqueSlug(value: string, ignoreId?: string): Promise<string> {
-    const base = slugify(value);
+    const base = slugifyRecordKey(value);
     if (!base) throw new CategoryError("Category slug cannot be empty");
 
     for (let index = 0; index < 100; index += 1) {

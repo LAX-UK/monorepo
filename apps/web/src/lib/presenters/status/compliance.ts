@@ -1,4 +1,5 @@
 import type { StatusBadgeVariant } from "./core";
+import { badgeVariantFromRegistry } from "./core";
 
 export type LegalEntityStatus =
   | "lead"
@@ -23,26 +24,23 @@ export const legalEntityStatusLabel: Record<LegalEntityStatus, string> = {
   archived: "Archived",
 };
 
+export const legalEntityStatusBadgeVariant: Partial<Record<LegalEntityStatus, StatusBadgeVariant>> =
+  {
+    approved: "success",
+    connect_pending: "success",
+    rejected: "danger",
+    archived: "danger",
+    restricted: "danger",
+    under_review: "info",
+    docs_received: "info",
+    docs_requested: "warning",
+    lead: "warning",
+  };
+
 export function legalEntityStatusToBadgeVariant(
   status: LegalEntityStatus | string,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "approved":
-    case "connect_pending":
-      return "success";
-    case "rejected":
-    case "archived":
-    case "restricted":
-      return "danger";
-    case "under_review":
-    case "docs_received":
-      return "info";
-    case "docs_requested":
-    case "lead":
-      return "warning";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(legalEntityStatusBadgeVariant, status);
 }
 
 export type DisputeStatus =
@@ -62,22 +60,17 @@ export const disputeStatusLabel: Record<DisputeStatus, string> = {
   under_review: "Under review",
 };
 
+export const disputeStatusBadgeVariant: Partial<Record<DisputeStatus, StatusBadgeVariant>> = {
+  won: "success",
+  lost: "danger",
+  closed: "neutral",
+  open: "warning",
+  warning_needs_response: "warning",
+  under_review: "info",
+};
+
 export function disputeStatusToBadgeVariant(status: DisputeStatus | string): StatusBadgeVariant {
-  switch (status) {
-    case "won":
-      return "success";
-    case "lost":
-      return "danger";
-    case "closed":
-      return "neutral";
-    case "open":
-    case "warning_needs_response":
-      return "warning";
-    case "under_review":
-      return "info";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(disputeStatusBadgeVariant, status);
 }
 
 export type AmlMatchStatus =
@@ -97,21 +90,17 @@ export const amlMatchStatusLabel: Record<string, string> = {
   true_positive: "Confirmed match",
 };
 
+export const amlMatchStatusBadgeVariant: Partial<Record<string, StatusBadgeVariant>> = {
+  confirmed_match: "danger",
+  true_positive: "danger",
+  possible_match: "warning",
+  potential_match: "warning",
+  false_positive: "success",
+  no_match: "neutral",
+};
+
 export function amlMatchStatusToBadgeVariant(status: string): StatusBadgeVariant {
-  switch (status) {
-    case "confirmed_match":
-    case "true_positive":
-      return "danger";
-    case "possible_match":
-    case "potential_match":
-      return "warning";
-    case "false_positive":
-      return "success";
-    case "no_match":
-      return "neutral";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(amlMatchStatusBadgeVariant, status);
 }
 
 export type AmlMonitorStatus =
@@ -129,19 +118,16 @@ export const amlMonitorStatusLabel: Record<string, string> = {
   disabled: "Not monitored",
 };
 
+export const amlMonitorStatusBadgeVariant: Partial<Record<string, StatusBadgeVariant>> = {
+  monitored: "info",
+  enabled: "info",
+  monitoring_paused: "warning",
+  not_monitored: "neutral",
+  disabled: "neutral",
+};
+
 export function amlMonitorStatusToBadgeVariant(status: string): StatusBadgeVariant {
-  switch (status) {
-    case "monitored":
-    case "enabled":
-      return "info";
-    case "monitoring_paused":
-      return "warning";
-    case "not_monitored":
-    case "disabled":
-      return "neutral";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(amlMonitorStatusBadgeVariant, status);
 }
 
 export type AmlDecisionOutcome = "pending" | "clear" | "block" | "review" | "escalate";
@@ -154,20 +140,16 @@ export const amlDecisionOutcomeLabel: Record<string, string> = {
   escalate: "Escalated",
 };
 
+export const amlDecisionOutcomeBadgeVariant: Partial<Record<string, StatusBadgeVariant>> = {
+  clear: "success",
+  block: "danger",
+  review: "warning",
+  escalate: "warning",
+  pending: "info",
+};
+
 export function amlDecisionOutcomeToBadgeVariant(status: string): StatusBadgeVariant {
-  switch (status) {
-    case "clear":
-      return "success";
-    case "block":
-      return "danger";
-    case "review":
-    case "escalate":
-      return "warning";
-    case "pending":
-      return "info";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(amlDecisionOutcomeBadgeVariant, status);
 }
 
 export const amlWatchlistCategoryLabel: Record<string, string> = {
@@ -201,15 +183,14 @@ export const amlHoldReasonLabel: Record<string, string> = {
   screening_review: "Screening review",
 };
 
+export const amlHoldStatusBadgeVariant: Partial<Record<string, StatusBadgeVariant>> = {
+  blocked: "danger",
+  hold: "warning",
+  none: "neutral",
+};
+
 export function amlHoldStatusToBadgeVariant(status: string): StatusBadgeVariant {
-  switch (status) {
-    case "blocked":
-      return "danger";
-    case "hold":
-      return "warning";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(amlHoldStatusBadgeVariant, status);
 }
 
 export function formatAmlHoldReason(reason: string | null | undefined): string | null {
@@ -226,17 +207,13 @@ export const sofCaseStatusLabel: Record<string, string> = {
   rejected: "Rejected",
 };
 
+export const sofCaseStatusBadgeVariant: Partial<Record<string, StatusBadgeVariant>> = {
+  approved: "success",
+  rejected: "danger",
+  awaiting_decision: "info",
+  pending: "warning",
+};
+
 export function sofCaseStatusToBadgeVariant(status: string): StatusBadgeVariant {
-  switch (status) {
-    case "approved":
-      return "success";
-    case "rejected":
-      return "danger";
-    case "awaiting_decision":
-      return "info";
-    case "pending":
-      return "warning";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(sofCaseStatusBadgeVariant, status);
 }

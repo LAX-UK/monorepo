@@ -1,5 +1,6 @@
 import type { ArtistStatus, ItemSubmissionStatus, LotStatus, SaleStatus } from "@auction/types";
 import type { StatusBadgeVariant } from "./core";
+import { badgeVariantFromRegistry } from "./core";
 
 export const lotStatusLabel: Record<LotStatus, string> = {
   draft: "Draft",
@@ -35,71 +36,55 @@ export const submissionStatusLabel: Record<ItemSubmissionStatus, string> = {
   converted: "Converted",
 };
 
+export const lotStatusBadgeVariant: Partial<Record<LotStatus, StatusBadgeVariant>> = {
+  active: "live",
+  scheduled: "info",
+  draft: "neutral",
+  ended: "success",
+  cancelled: "danger",
+  voided: "danger",
+};
+
 /** Maps catalog lot lifecycle to `StatusBadge` variants (OCP: extend map, not callers). */
 export function lotStatusToBadgeVariant(status: LotStatus | string): StatusBadgeVariant {
-  switch (status) {
-    case "active":
-      return "live";
-    case "scheduled":
-      return "info";
-    case "draft":
-      return "neutral";
-    case "ended":
-      return "success";
-    case "cancelled":
-    case "voided":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(lotStatusBadgeVariant, status);
 }
+
+export const saleStatusBadgeVariant: Partial<Record<SaleStatus, StatusBadgeVariant>> = {
+  active: "live",
+  scheduled: "info",
+  draft: "neutral",
+  ended: "success",
+  cancelled: "danger",
+};
 
 export function saleStatusToBadgeVariant(status: SaleStatus): StatusBadgeVariant {
-  switch (status) {
-    case "active":
-      return "live";
-    case "scheduled":
-      return "info";
-    case "draft":
-      return "neutral";
-    case "ended":
-      return "success";
-    case "cancelled":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(saleStatusBadgeVariant, status);
 }
+
+export const artistStatusBadgeVariant: Partial<Record<ArtistStatus, StatusBadgeVariant>> = {
+  approved: "success",
+  pending: "warning",
+  rejected: "danger",
+  merged_into: "neutral",
+};
 
 export function artistStatusToBadgeVariant(status: ArtistStatus): StatusBadgeVariant {
-  switch (status) {
-    case "approved":
-      return "success";
-    case "pending":
-      return "warning";
-    case "rejected":
-      return "danger";
-    case "merged_into":
-      return "neutral";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(artistStatusBadgeVariant, status);
 }
 
+export const submissionStatusBadgeVariant: Partial<
+  Record<ItemSubmissionStatus, StatusBadgeVariant>
+> = {
+  approved: "success",
+  converted: "success",
+  submitted: "info",
+  under_review: "warning",
+  rejected: "danger",
+};
+
 export function submissionStatusToBadgeVariant(status: ItemSubmissionStatus): StatusBadgeVariant {
-  switch (status) {
-    case "approved":
-    case "converted":
-      return "success";
-    case "submitted":
-      return "info";
-    case "under_review":
-      return "warning";
-    case "rejected":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(submissionStatusBadgeVariant, status);
 }
 
 export type CategoryLifecycleStatus = "active" | "archived";
@@ -109,15 +94,15 @@ export const categoryLifecycleLabel: Record<CategoryLifecycleStatus, string> = {
   archived: "Archived",
 };
 
+export const categoryLifecycleBadgeVariant: Partial<
+  Record<CategoryLifecycleStatus, StatusBadgeVariant>
+> = {
+  archived: "danger",
+  active: "success",
+};
+
 export function categoryLifecycleToBadgeVariant(
   status: CategoryLifecycleStatus,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "archived":
-      return "danger";
-    case "active":
-      return "success";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(categoryLifecycleBadgeVariant, status);
 }

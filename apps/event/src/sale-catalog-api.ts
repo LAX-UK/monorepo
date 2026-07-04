@@ -1,3 +1,4 @@
+import { slugifyRecordKey } from "@auction/types";
 import type { CatalogLot } from "./catalog-lot.js";
 import { API_BASE, WEB_ORIGIN } from "./config.js";
 
@@ -29,13 +30,7 @@ type ApiSaleLotsPage = {
 export const MODEL_T_TITLE = "1926/27 Ford Model T Touring Car";
 
 export function slugifyTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/\p{M}+/gu, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
+  return slugifyRecordKey(title);
 }
 
 export function lotHref(lot: Pick<ApiLot, "id" | "title">): string {

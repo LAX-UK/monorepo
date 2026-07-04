@@ -1,4 +1,5 @@
 import type { StatusBadgeVariant } from "./core";
+import { badgeVariantFromRegistry } from "./core";
 
 export type EmailOutboxStatus = "queued" | "sending" | "sent" | "failed" | "suppressed";
 
@@ -10,22 +11,19 @@ export const emailOutboxStatusLabel: Record<EmailOutboxStatus, string> = {
   suppressed: "Suppressed",
 };
 
+export const emailOutboxStatusBadgeVariant: Partial<Record<EmailOutboxStatus, StatusBadgeVariant>> =
+  {
+    sent: "success",
+    failed: "danger",
+    suppressed: "danger",
+    sending: "warning",
+    queued: "neutral",
+  };
+
 export function emailOutboxStatusToBadgeVariant(
   status: EmailOutboxStatus | string,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "sent":
-      return "success";
-    case "failed":
-    case "suppressed":
-      return "danger";
-    case "sending":
-      return "warning";
-    case "queued":
-      return "neutral";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(emailOutboxStatusBadgeVariant, status);
 }
 
 export type SuppressionReason = "hard_bounce" | "complaint" | "manual" | "unsubscribe";
@@ -37,20 +35,18 @@ export const suppressionReasonLabel: Record<SuppressionReason, string> = {
   unsubscribe: "Unsubscribe",
 };
 
+export const suppressionReasonBadgeVariant: Partial<Record<SuppressionReason, StatusBadgeVariant>> =
+  {
+    complaint: "danger",
+    hard_bounce: "warning",
+    manual: "warning",
+    unsubscribe: "neutral",
+  };
+
 export function suppressionReasonToBadgeVariant(
   reason: SuppressionReason | string,
 ): StatusBadgeVariant {
-  switch (reason) {
-    case "complaint":
-      return "danger";
-    case "hard_bounce":
-    case "manual":
-      return "warning";
-    case "unsubscribe":
-      return "neutral";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(suppressionReasonBadgeVariant, reason);
 }
 
 export type LotFulfilmentStatus =
@@ -72,24 +68,22 @@ export const lotFulfilmentStatusLabel: Record<LotFulfilmentStatus, string> = {
   cancelled: "Cancelled",
 };
 
+export const lotFulfilmentStatusBadgeVariant: Partial<
+  Record<LotFulfilmentStatus | "pending", StatusBadgeVariant>
+> = {
+  delivered: "success",
+  in_transit: "info",
+  released: "info",
+  awaiting_payment: "warning",
+  awaiting_release: "warning",
+  ready_for_collection: "warning",
+  cancelled: "danger",
+};
+
 export function lotFulfilmentStatusToBadgeVariant(
   status: LotFulfilmentStatus | string,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "delivered":
-      return "success";
-    case "in_transit":
-    case "released":
-      return "info";
-    case "awaiting_payment":
-    case "awaiting_release":
-    case "ready_for_collection":
-      return "warning";
-    case "cancelled":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(lotFulfilmentStatusBadgeVariant, status);
 }
 
 export type ConditionReportStatus = "requested" | "in_progress" | "fulfilled" | "declined";
@@ -101,22 +95,20 @@ export const conditionReportStatusLabel: Record<ConditionReportStatus, string> =
   declined: "Declined",
 };
 
+export const conditionReportStatusBadgeVariant: Partial<
+  Record<ConditionReportStatus | "pending", StatusBadgeVariant>
+> = {
+  fulfilled: "success",
+  in_progress: "info",
+  requested: "warning",
+  pending: "warning",
+  declined: "danger",
+};
+
 export function conditionReportStatusToBadgeVariant(
   status: ConditionReportStatus | string,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "fulfilled":
-      return "success";
-    case "in_progress":
-      return "info";
-    case "requested":
-    case "pending":
-      return "warning";
-    case "declined":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(conditionReportStatusBadgeVariant, status);
 }
 
 export type SaleroomSessionStatus = "idle" | "live" | "paused" | "closed";
@@ -128,19 +120,19 @@ export const saleroomSessionStatusLabel: Record<SaleroomSessionStatus, string> =
   closed: "Closed",
 };
 
+export const saleroomSessionStatusBadgeVariant: Partial<
+  Record<SaleroomSessionStatus, StatusBadgeVariant>
+> = {
+  live: "live",
+  paused: "warning",
+  closed: "neutral",
+  idle: "neutral",
+};
+
 export function saleroomSessionStatusToBadgeVariant(
   status: SaleroomSessionStatus | string,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "live":
-      return "live";
-    case "paused":
-      return "warning";
-    case "closed":
-      return "neutral";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(saleroomSessionStatusBadgeVariant, status);
 }
 
 export const onsiteEventStatusLabel: Record<string, string> = {
@@ -149,15 +141,12 @@ export const onsiteEventStatusLabel: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+export const onsiteEventStatusBadgeVariant: Partial<Record<string, StatusBadgeVariant>> = {
+  published: "success",
+  draft: "neutral",
+  cancelled: "danger",
+};
+
 export function onsiteEventStatusToBadgeVariant(status: string): StatusBadgeVariant {
-  switch (status) {
-    case "published":
-      return "success";
-    case "draft":
-      return "neutral";
-    case "cancelled":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(onsiteEventStatusBadgeVariant, status);
 }

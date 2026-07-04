@@ -1,6 +1,7 @@
 import type { ILegalEntityOnboardingRepository } from "@auction/persistence/interfaces";
 import type { OnboardingOrganisationRow } from "@auction/persistence/interfaces";
 import type { LegalEntity } from "@auction/types";
+import { slugifyRecordKey } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 import { PUBLIC_ORG_SUBKIND_META } from "@auction/validators";
 import type { IDomainEventSink } from "./domain-event-sink.js";
@@ -55,18 +56,6 @@ const SUBKIND_REQUIREMENTS: Record<PublicOrganisationSubkind, OrgRequirements> =
     vatRequired: false,
   },
 };
-
-/** Generates a URL-safe slug. Lowercase, alphanumeric and hyphens, ≤80 chars.
- * The DB has a unique partial index on `legal_entity.slug` so we suffix
- * collisions with `-2`, `-3`, ... while inserting.
- */
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
 
 function rowToEntity(row: OnboardingOrganisationRow): LegalEntity {
   return {
@@ -124,7 +113,7 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
       throw new Error("organization_limit_reached");
     }
 
-    const baseSlug = slugify(input.displayName);
+    const baseSlug = slugifyRecordKey(input.displayName);
     let entity: OnboardingOrganisationRow | undefined;
     let slugAttempt = 1;
 
@@ -199,7 +188,7 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
   }
 
   async checkNameAvailability(displayName: string): Promise<CheckNameResult> {
-    const slug = slugify(displayName);
+    const slug = slugifyRecordKey(displayName);
     if (!slug) return { available: false, suggestions: [] };
 
     const taken = await this.onboardingRepo.existsOrganisationSlug(slug);

@@ -1,5 +1,9 @@
 import { emailHash } from "@auction/email";
-import type { IEmailSuppressionRepository, IEmailWebhookIngestRepository } from "@auction/persistence/interfaces";
+import type {
+  IEmailSuppressionRepository,
+  IEmailWebhookIngestRepository,
+} from "@auction/persistence/interfaces";
+import { mapPostmarkRecordType } from "./postmark-webhook-event-registry.js";
 
 export type PostmarkWebhookPayload = Record<string, unknown> & {
   RecordType?: string;
@@ -21,7 +25,7 @@ export class PostmarkWebhookService {
   async handle(payload: PostmarkWebhookPayload): Promise<void> {
     const recordType = String(payload.RecordType ?? "");
     const messageId = String(payload.MessageID ?? payload.MessageId ?? "");
-    const eventType = mapRecordType(recordType, payload);
+    const eventType = mapPostmarkRecordType(recordType, payload);
 
     await this.emailWebhookIngest.insertEmailEvent({
       messageId: messageId || null,
@@ -90,29 +94,6 @@ function extractUnsubscribeToken(payload: PostmarkWebhookPayload): string | null
   }
   const token = payload.unsubscribe_token ?? payload.UnsubscribeToken;
   return typeof token === "string" ? token : null;
-}
-
-function mapRecordType(recordType: string, payload: PostmarkWebhookPayload) {
-  switch (recordType) {
-    case "Delivery":
-      return "delivered" as const;
-    case "Bounce":
-      return String(payload.Type ?? "")
-        .toLowerCase()
-        .includes("transient")
-        ? ("soft_bounce" as const)
-        : ("bounce" as const);
-    case "SpamComplaint":
-      return "complaint" as const;
-    case "SubscriptionChange":
-      return "unsubscribe" as const;
-    case "Open":
-      return "open" as const;
-    case "Click":
-      return "click" as const;
-    default:
-      return "delivered" as const;
-  }
 }
 
 function recipientEmailFromPostmarkPayload(payload: PostmarkWebhookPayload): string | null {

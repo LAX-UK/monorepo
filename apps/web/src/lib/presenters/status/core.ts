@@ -32,6 +32,22 @@ export type StatusPresentation = {
   dot?: boolean;
 };
 
+export function badgeVariantFromRegistry<T extends string>(
+  registry: Partial<Record<T, StatusBadgeVariant>>,
+  status: T | string,
+  fallback: StatusBadgeVariant = "neutral",
+): StatusBadgeVariant {
+  return registry[status as T] ?? fallback;
+}
+
+export function labelFromRegistry<T extends string>(
+  registry: Partial<Record<T, string>>,
+  status: T | string,
+  fallback: (status: string) => string = (value) => value.replaceAll("_", " "),
+): string {
+  return registry[status as T] ?? fallback(String(status));
+}
+
 export type LotStatusContext = {
   /** When set, `ended` resolves to Sold vs Unsold; when omitted, falls back to Ended. */
   winnerId?: string | null | undefined;

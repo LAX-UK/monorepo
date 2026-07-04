@@ -1,4 +1,9 @@
-import { type ArtistKind, artistKinds, getCreatorKindConfig } from "@auction/types";
+import {
+  type ArtistKind,
+  artistKinds,
+  getCreatorKindConfig,
+  slugifyRecordKey,
+} from "@auction/types";
 
 /** A single, declarative description of a public directory slice (OCP).
  * Adding a new slice means adding one entry here, not branching JSX or
@@ -330,10 +335,7 @@ export function slugifyNationality(label: string): string {
   const trimmed = label.trim();
   const found = NATIONALITY_SEGMENTS.find((n) => n.label.toLowerCase() === trimmed.toLowerCase());
   if (found) return found.slug;
-  return trimmed
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
+  return slugifyRecordKey(trimmed);
 }
 
 /** Build a nationality-locked preset with crawlable copy and a canonical path. */

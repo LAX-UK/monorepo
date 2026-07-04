@@ -1,4 +1,5 @@
 import type { StatusBadgeVariant } from "./core";
+import { badgeVariantFromRegistry } from "./core";
 
 export type InvitationStatus = "pending" | "accepted" | "expired" | "revoked";
 
@@ -9,21 +10,17 @@ export const invitationStatusLabel: Record<InvitationStatus, string> = {
   revoked: "Revoked",
 };
 
+export const invitationStatusBadgeVariant: Partial<Record<InvitationStatus, StatusBadgeVariant>> = {
+  accepted: "success",
+  pending: "warning",
+  expired: "neutral",
+  revoked: "danger",
+};
+
 export function invitationStatusToBadgeVariant(
   status: InvitationStatus | string,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "accepted":
-      return "success";
-    case "pending":
-      return "warning";
-    case "expired":
-      return "neutral";
-    case "revoked":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(invitationStatusBadgeVariant, status);
 }
 
 /** Admin invitations table — UX lifecycle distinct from DB enum. */
@@ -37,23 +34,20 @@ export const inviteLifecycleLabel: Record<InviteLifecycleStatus, string> = {
   bounced: "Bounced",
 };
 
+export const inviteLifecycleBadgeVariant: Partial<
+  Record<InviteLifecycleStatus, StatusBadgeVariant>
+> = {
+  accepted: "success",
+  opened: "info",
+  sent: "neutral",
+  expired: "warning",
+  bounced: "danger",
+};
+
 export function inviteLifecycleToBadgeVariant(
   status: InviteLifecycleStatus | string,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "accepted":
-      return "success";
-    case "opened":
-      return "info";
-    case "sent":
-      return "neutral";
-    case "expired":
-      return "warning";
-    case "bounced":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(inviteLifecycleBadgeVariant, status);
 }
 
 export type UserAccountStatus = "active" | "suspended";
@@ -63,17 +57,16 @@ export const userAccountStatusLabel: Record<UserAccountStatus, string> = {
   suspended: "Suspended",
 };
 
+export const userAccountStatusBadgeVariant: Partial<Record<UserAccountStatus, StatusBadgeVariant>> =
+  {
+    active: "success",
+    suspended: "danger",
+  };
+
 export function userAccountStatusToBadgeVariant(
   status: UserAccountStatus | string,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "active":
-      return "success";
-    case "suspended":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(userAccountStatusBadgeVariant, status);
 }
 
 export type RegistrationStatus = "pending" | "approved" | "rejected" | "withdrawn";
@@ -85,52 +78,46 @@ export const registrationStatusLabel: Record<RegistrationStatus, string> = {
   withdrawn: "Withdrawn",
 };
 
+export const registrationStatusBadgeVariant: Partial<
+  Record<RegistrationStatus, StatusBadgeVariant>
+> = {
+  approved: "success",
+  pending: "warning",
+  rejected: "danger",
+  withdrawn: "neutral",
+};
+
 export function registrationStatusToBadgeVariant(
   status: RegistrationStatus | string,
 ): StatusBadgeVariant {
-  switch (status) {
-    case "approved":
-      return "success";
-    case "pending":
-      return "warning";
-    case "rejected":
-      return "danger";
-    case "withdrawn":
-      return "neutral";
-    default:
-      return "neutral";
-  }
+  return badgeVariantFromRegistry(registrationStatusBadgeVariant, status);
 }
 
 export type KycStatus = "approved" | "pending" | "rejected" | null | undefined;
 
+export const kycStatusLabelRegistry: Partial<Record<string, string>> = {
+  approved: "Verified",
+  pending: "Submitted",
+  submitted: "Submitted",
+  under_review: "In review",
+  rejected: "Rejected",
+  expired: "Expired",
+};
+
 export function kycStatusLabel(status: string | null | undefined): string {
-  switch (status) {
-    case "approved":
-      return "Verified";
-    case "pending":
-    case "submitted":
-      return "Submitted";
-    case "under_review":
-      return "In review";
-    case "rejected":
-      return "Rejected";
-    case "expired":
-      return "Expired";
-    default:
-      return status ? status.replaceAll("_", " ") : "Not verified";
-  }
+  if (!status) return "Not verified";
+  const mapped = kycStatusLabelRegistry[status];
+  if (mapped) return mapped;
+  return status.replaceAll("_", " ");
 }
 
+export const kycStatusBadgeVariant: Partial<Record<string, StatusBadgeVariant>> = {
+  approved: "success",
+  pending: "warning",
+  rejected: "danger",
+};
+
 export function kycStatusToBadgeVariant(status: string | null | undefined): StatusBadgeVariant {
-  switch (status) {
-    case "approved":
-      return "success";
-    case "pending":
-      return "warning";
-    case "rejected":
-      return "danger";
-    default:
-      return "neutral";
-  }
+  if (!status) return "neutral";
+  return badgeVariantFromRegistry(kycStatusBadgeVariant, status);
 }

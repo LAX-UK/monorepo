@@ -64,45 +64,46 @@ const VERIFF_HARD_FAILURE_REASON_CODES = new Set([
   575, 576, 577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 602, 620, 621, 622, 623,
 ]);
 
+const VERIFF_DECISION_TO_VERIFICATION_STATUS: Record<string, KycVerification["status"]> = {
+  approved: "verified",
+  resubmission_requested: "requires_input",
+  declined: "canceled",
+  expired: "canceled",
+  abandoned: "canceled",
+  review: "processing",
+  submitted: "processing",
+};
+
 function mapVerificationStatus(status: string): KycVerification["status"] {
-  switch (status) {
-    case "approved":
-      return "verified";
-    case "resubmission_requested":
-      return "requires_input";
-    case "declined":
-    case "expired":
-    case "abandoned":
-      return "canceled";
-    case "review":
-    case "submitted":
-      return "processing";
-    default:
-      return "created";
-  }
+  return VERIFF_DECISION_TO_VERIFICATION_STATUS[status] ?? "created";
 }
+
+type UserKycUpdate = KycDecisionApplyInput["userKycUpdate"];
+
+const VERIFF_DECISION_TO_USER_KYC_UPDATE: Record<string, UserKycUpdate> = {
+  approved: { setStatus: "approved", verifiedAt: new Date(), incrementRetry: false },
+  resubmission_requested: { setStatus: "pending", verifiedAt: null, incrementRetry: false },
+  review: { setStatus: "pending", verifiedAt: null, incrementRetry: false },
+  submitted: { setStatus: "pending", verifiedAt: null, incrementRetry: false },
+  expired: { setStatus: "unverified", verifiedAt: null, incrementRetry: false },
+  abandoned: { setStatus: "unverified", verifiedAt: null, incrementRetry: false },
+};
 
 function userKycUpdateFromVeriffDecision(
   status: string,
   reasonCode: number | null | undefined,
-): KycDecisionApplyInput["userKycUpdate"] {
-  if (status === "approved") {
-    return { setStatus: "approved", verifiedAt: new Date(), incrementRetry: false };
-  }
-  if (status === "resubmission_requested") {
-    return { setStatus: "pending", verifiedAt: null, incrementRetry: false };
-  }
-  if (status === "review" || status === "submitted") {
-    return { setStatus: "pending", verifiedAt: null, incrementRetry: false };
-  }
+): UserKycUpdate {
   if (status === "declined") {
     const incrementRetry = reasonCode != null && VERIFF_HARD_FAILURE_REASON_CODES.has(reasonCode);
     return { setStatus: "rejected", verifiedAt: null, incrementRetry };
   }
-  if (status === "expired" || status === "abandoned") {
-    return { setStatus: "unverified", verifiedAt: null, incrementRetry: false };
-  }
-  return { setStatus: "pending", verifiedAt: null, incrementRetry: false };
+  return (
+    VERIFF_DECISION_TO_USER_KYC_UPDATE[status] ?? {
+      setStatus: "pending",
+      verifiedAt: null,
+      incrementRetry: false,
+    }
+  );
 }
 
 export function mapVeriffDecisionToApplyInput(
@@ -135,16 +136,22 @@ export function mapVeriffDecisionToApplyInput(
   };
 }
 
+const VERIFF_EVENT_TO_VERIFICATION_STATUS: Record<string, KycVerification["status"]> = {
+  submitted: "processing",
+  started: "created",
+};
+
+const VERIFF_EVENT_TO_USER_STATUS: Record<string, UserKycStatus> = {
+  submitted: "pending",
+};
+
 /** Maps Veriff event webhook `action` to verification status update (optional UX path). */
 export function mapVeriffEventToVerificationStatus(
   action: string,
 ): KycVerification["status"] | null {
-  if (action === "submitted") return "processing";
-  if (action === "started") return "created";
-  return null;
+  return VERIFF_EVENT_TO_VERIFICATION_STATUS[action] ?? null;
 }
 
 export function mapVeriffEventToUserStatus(action: string): UserKycStatus | null {
-  if (action === "submitted") return "pending";
-  return null;
+  return VERIFF_EVENT_TO_USER_STATUS[action] ?? null;
 }
