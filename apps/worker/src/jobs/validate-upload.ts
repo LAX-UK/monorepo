@@ -1,7 +1,7 @@
 import type pino from "pino";
+import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
 import type { IMalwareScanner } from "../lib/malware-scanner.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
-import type { IUploadValidationRepository } from "../repositories/interfaces/upload-validation.repository.js";
 import { pickValidator } from "./content-type-validators.js";
 
 const MALWARE_SCAN_KINDS = new Set(["source_of_funds_document"]);

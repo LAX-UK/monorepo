@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source-of-funds-document-purge.repository.js";
 import { purgeSourceOfFundsDocumentsJob } from "./purge-source-of-funds-documents.js";
 
 describe("purgeSourceOfFundsDocumentsJob", () => {
@@ -11,34 +12,16 @@ describe("purgeSourceOfFundsDocumentsJob", () => {
       key: "uploads/active/source-of-funds/secret.pdf",
     };
 
-    const set = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
-    const deleteWhere = vi.fn().mockResolvedValue(undefined);
-    const db = {
-      select: vi
-        .fn()
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([{ id: "sof-1", reviewedAt }]),
-            }),
-          }),
-        })
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            innerJoin: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([doc]),
-              }),
-            }),
-          }),
-        }),
-      update: vi.fn().mockReturnValue({ set }),
-      delete: vi.fn().mockReturnValue({ where: deleteWhere }),
-    };
+    const sourceOfFundsDocumentPurgeRepo = {
+      findTerminalCasesPastRetention: vi.fn().mockResolvedValue([{ id: "sof-1", reviewedAt }]),
+      findDocumentsToPurge: vi.fn().mockResolvedValue([doc]),
+      anonymizeDocument: vi.fn().mockResolvedValue(undefined),
+      deleteDocumentReviews: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ISourceOfFundsDocumentPurgeRepository;
     const deleteObject = vi.fn().mockResolvedValue(undefined);
 
     const result = await purgeSourceOfFundsDocumentsJob({
-      db: db as never,
+      sourceOfFundsDocumentPurgeRepo,
       storage: { deleteObject } as never,
       log: { info: vi.fn() },
       retentionYears: 5,
@@ -47,29 +30,20 @@ describe("purgeSourceOfFundsDocumentsJob", () => {
 
     expect(result.purged).toBe(1);
     expect(deleteObject).toHaveBeenCalledWith(doc.key);
-    expect(deleteWhere).toHaveBeenCalledTimes(1);
-    expect(set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        anonymizedAt: now,
-        label: null,
-        reviewStatus: "superseded",
-      }),
-    );
+    expect(sourceOfFundsDocumentPurgeRepo.deleteDocumentReviews).toHaveBeenCalledWith(doc.id);
+    expect(sourceOfFundsDocumentPurgeRepo.anonymizeDocument).toHaveBeenCalledWith(doc.id, now);
   });
 
   it("returns zero when no terminal cases exceed retention", async () => {
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      }),
-    };
+    const sourceOfFundsDocumentPurgeRepo = {
+      findTerminalCasesPastRetention: vi.fn().mockResolvedValue([]),
+      findDocumentsToPurge: vi.fn(),
+      anonymizeDocument: vi.fn(),
+      deleteDocumentReviews: vi.fn(),
+    } as unknown as ISourceOfFundsDocumentPurgeRepository;
 
     const result = await purgeSourceOfFundsDocumentsJob({
-      db: db as never,
+      sourceOfFundsDocumentPurgeRepo,
       storage: { deleteObject: vi.fn() } as never,
       log: { info: vi.fn() },
       now: new Date("2026-06-01T00:00:00.000Z"),

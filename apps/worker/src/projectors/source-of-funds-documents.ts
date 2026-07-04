@@ -2,6 +2,7 @@ import { domainEvent, projectorState } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
+import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
 import { handleDocumentsRequested } from "./source-of-funds-documents/documents-requested.js";
 import { handleDocumentsSubmitted } from "./source-of-funds-documents/documents-submitted.js";
@@ -23,12 +24,21 @@ type Db = typeof import("@auction/db").createDb extends (url: string) => infer T
 export async function processSourceOfFundsDocuments(options: {
   db: Db;
   log: pino.Logger;
+  complianceRecipientReader: IComplianceRecipientReader;
   emailService?: IEmailService | undefined;
   supportContactEmail?: string | undefined;
   webOrigin?: string | undefined;
   adminEmailAddress?: string | undefined;
 }): Promise<void> {
-  const { db, log, emailService, supportContactEmail, webOrigin, adminEmailAddress } = options;
+  const {
+    db,
+    log,
+    emailService,
+    supportContactEmail,
+    webOrigin,
+    adminEmailAddress,
+    complianceRecipientReader,
+  } = options;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
   const buyerSofUrl = `${base}/dashboard/compliance/source-of-funds`;
   const adminReviewUrl = `${base}/admin/compliance/source-of-funds`;
@@ -86,6 +96,7 @@ export async function processSourceOfFundsDocuments(options: {
         await handleDocumentsSubmitted({
           db,
           log,
+          complianceRecipientReader,
           emailService,
           supportContactEmail,
           adminReviewUrl,

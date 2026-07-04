@@ -2,7 +2,7 @@ import { adminReviewTask, domainEvent, projectorState } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type pino from "pino";
-import { listComplianceRecipients } from "../lib/compliance-email-recipients.js";
+import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 
 export const AML_MATCH_REVIEW_PROJECTOR = "aml_match_review";
 
@@ -30,6 +30,7 @@ type AmlMatchFlaggedPayload = {
 export async function processAmlMatchReview(options: {
   db: Db;
   log: pino.Logger;
+  complianceRecipientReader: IComplianceRecipientReader;
   /** When set, an MLRO escalation email is enqueued per flagged screening. */
   emailService?: IEmailService | undefined;
   supportContactEmail?: string | undefined;
@@ -116,7 +117,7 @@ export async function processAmlMatchReview(options: {
         const detail =
           [payload.matchStatus, payload.categories].filter(Boolean).join(" · ") ||
           "Watchlist match flagged";
-        const recipients = await listComplianceRecipients(db);
+        const recipients = await options.complianceRecipientReader.listRecipients();
         if (recipients.length > 0) {
           for (const r of recipients) {
             await emailService.enqueue({

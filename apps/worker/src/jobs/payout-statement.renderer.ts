@@ -5,7 +5,7 @@ import type {
   PayoutStatementEntityRow,
   PayoutStatementLineRow,
   PayoutStatementPayoutRow,
-} from "../repositories/interfaces/payout-statement.repository.js";
+} from "../interfaces/payout-statement.repository.js";
 
 export type PayoutStatementRenderInput = {
   payout: PayoutStatementPayoutRow;

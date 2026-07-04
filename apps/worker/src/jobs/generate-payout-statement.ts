@@ -1,8 +1,8 @@
 import type { Job } from "bullmq";
 import type pino from "pino";
 import type { WorkerEnv } from "../env.js";
+import type { IPayoutStatementRepository } from "../interfaces/payout-statement.repository.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
-import type { IPayoutStatementRepository } from "../repositories/interfaces/payout-statement.repository.js";
 import { payoutStatementObjectKey, renderPayoutStatementPdf } from "./payout-statement.renderer.js";
 
 export type GeneratePayoutStatementJobData = {

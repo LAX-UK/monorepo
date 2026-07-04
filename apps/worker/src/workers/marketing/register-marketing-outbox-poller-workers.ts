@@ -18,7 +18,13 @@ export function registerMarketingOutboxPollerWorkers(
   worker: Worker;
   queue: Queue;
 } {
-  const { db, log, bullConnection, sentryMonitorSlugs, reportWorkerJobFailure } = deps;
+  const {
+    marketingEventOutboxWorker,
+    log,
+    bullConnection,
+    sentryMonitorSlugs,
+    reportWorkerJobFailure,
+  } = deps;
 
   const marketingOutboxPollerQueue = new Queue(
     MARKETING_OUTBOX_POLLER_QUEUE_NAME,
@@ -29,7 +35,7 @@ export function registerMarketingOutboxPollerWorkers(
     async () => {
       await withSentryCronMonitor("marketing-outbox-poller", sentryMonitorSlugs, async () => {
         await runMarketingEventOutboxPoller({
-          db,
+          marketingEventOutboxWorker,
           log,
           enqueue: async (event) => {
             await ctx.marketingEventsQueue.add("publish", event, {

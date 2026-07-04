@@ -1,12 +1,9 @@
-import type { Database } from "@auction/db";
-import { marketingContactSyncLog, user } from "@auction/db/schema";
-import type { MarketingContactSyncStatus } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
 import type pino from "pino";
-import {
-  isEmailSuppressed,
-  marketingContactSkipReason,
-} from "../lib/marketing-contact-sync/eligibility.js";
+import type {
+  IMarketingContactSyncRepository,
+  MarketingContactSyncAuditInput,
+} from "../interfaces/marketing-contact-sync.repository.js";
+import { marketingContactSkipReason } from "../lib/marketing-contact-sync/eligibility.js";
 import type {
   IMarketingContactSync,
   MarketingContact,
@@ -19,17 +16,6 @@ export type MarketingContactSyncJobData = {
   reason: string;
 };
 
-type AuditInput = {
-  userId: string;
-  provider: string;
-  action: string;
-  status: MarketingContactSyncStatus;
-  reason: string;
-  providerContactId?: string | null;
-  responseCode?: number | null;
-  error?: string | null;
-};
-
 /**
  * Sync a single registered user into the marketing ESP.
  *
@@ -40,35 +26,17 @@ type AuditInput = {
  * terminal 4xx rejections as a recorded no-retry outcome.
  */
 export async function marketingContactSyncJob({
-  db,
+  marketingContactSyncRepo,
   sync,
   log,
   data,
 }: {
-  db: Database;
+  marketingContactSyncRepo: IMarketingContactSyncRepository;
   sync: IMarketingContactSync;
   log: pino.Logger;
   data: MarketingContactSyncJobData;
 }): Promise<void> {
-  const [row] = await db
-    .select({
-      id: user.id,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      country: user.mobileCountry,
-      kycStatus: user.kycStatus,
-      signupPersona: user.signupPersona,
-      emailStatus: user.emailStatus,
-      suspendedAt: user.suspendedAt,
-      deletionRequestedAt: user.deletionRequestedAt,
-      createdAt: user.createdAt,
-    })
-    .from(user)
-    .where(eq(user.id, data.userId))
-    .limit(1);
+  const row = await marketingContactSyncRepo.findUserById(data.userId);
 
   if (!row) {
     log.warn({ userId: data.userId, reason: data.reason }, "marketing_contact_sync_user_missing");
@@ -78,15 +46,19 @@ export async function marketingContactSyncJob({
   // GDPR erasure: archive the contact in the ESP rather than continuing to sync it.
   if (row.deletionRequestedAt) {
     const result = await sync.archiveContact(row.email);
-    await writeAudit(db, log, resultToAudit(result, sync.provider, row.id, data.reason, "archive"));
+    await writeAudit(
+      marketingContactSyncRepo,
+      log,
+      resultToAudit(result, sync.provider, row.id, data.reason, "archive"),
+    );
     throwIfRetryable(result, "archive");
     return;
   }
 
-  const suppressed = await isEmailSuppressed(db, row.email);
+  const suppressed = await marketingContactSyncRepo.isEmailSuppressed(row.email);
   const skip = marketingContactSkipReason(row, suppressed);
   if (skip) {
-    await writeAudit(db, log, {
+    await writeAudit(marketingContactSyncRepo, log, {
       userId: row.id,
       provider: sync.provider,
       action: "skipped",
@@ -109,7 +81,11 @@ export async function marketingContactSyncJob({
   };
 
   const result = await sync.upsertContact(contact);
-  await writeAudit(db, log, resultToAudit(result, sync.provider, row.id, data.reason, "upsert"));
+  await writeAudit(
+    marketingContactSyncRepo,
+    log,
+    resultToAudit(result, sync.provider, row.id, data.reason, "upsert"),
+  );
   throwIfRetryable(result, "upsert");
 }
 
@@ -119,7 +95,7 @@ function resultToAudit(
   userId: string,
   reason: string,
   attemptedAction: "upsert" | "archive",
-): AuditInput {
+): MarketingContactSyncAuditInput {
   if (result.ok) {
     return {
       userId,
@@ -147,18 +123,13 @@ function throwIfRetryable(result: SyncResult, action: string): void {
   }
 }
 
-async function writeAudit(db: Database, log: pino.Logger, input: AuditInput): Promise<void> {
+async function writeAudit(
+  marketingContactSyncRepo: IMarketingContactSyncRepository,
+  log: pino.Logger,
+  input: MarketingContactSyncAuditInput,
+): Promise<void> {
   try {
-    await db.insert(marketingContactSyncLog).values({
-      userId: input.userId,
-      provider: input.provider,
-      action: input.action,
-      status: input.status,
-      reason: input.reason,
-      providerContactId: input.providerContactId ?? null,
-      responseCode: input.responseCode ?? null,
-      error: input.error ?? null,
-    });
+    await marketingContactSyncRepo.writeAuditLog(input);
   } catch (err) {
     // Audit logging must never mask the sync outcome (retry decision).
     log.error({ err, userId: input.userId }, "marketing_contact_sync_audit_write_failed");

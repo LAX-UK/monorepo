@@ -3,8 +3,6 @@ import { unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { finished } from "node:stream/promises";
-import type { Database } from "@auction/db";
-import { dataExport } from "@auction/db/schema";
 import { type ExportFormat, formatCsvHeader, formatCsvRow } from "@auction/exports";
 import {
   type ExportProviderDeps,
@@ -13,8 +11,8 @@ import {
 } from "@auction/exports/providers";
 import type { DataExportJobPayload } from "@auction/queues";
 import type { Job } from "bullmq";
-import { eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
+import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
 
 const EXPORT_PROGRESS_TTL_SEC = 3600;
@@ -24,7 +22,7 @@ function progressKey(exportId: string): string {
 }
 
 async function setProgress(
-  db: Database,
+  dataExportRepo: IDataExportJobRepository,
   redis: Redis,
   exportId: string,
   snapshot: {
@@ -46,17 +44,7 @@ async function setProgress(
   if (snapshot.errorMessage) payload.errorMessage = snapshot.errorMessage;
 
   await redis.set(progressKey(exportId), JSON.stringify(payload), "EX", EXPORT_PROGRESS_TTL_SEC);
-  await db
-    .update(dataExport)
-    .set({
-      status: snapshot.status,
-      phase: snapshot.phase ?? null,
-      progress: snapshot.progress,
-      processedRows: snapshot.processedRows ?? null,
-      totalRows: snapshot.totalRows ?? null,
-      errorMessage: snapshot.errorMessage ?? null,
-    })
-    .where(eq(dataExport.id, exportId));
+  await dataExportRepo.updateProgress(exportId, snapshot);
 }
 
 function objectKey(exportId: string, format: ExportFormat): string {
@@ -64,7 +52,7 @@ function objectKey(exportId: string, format: ExportFormat): string {
 }
 
 export type DataExportJobContext = {
-  db: Database;
+  dataExportRepo: IDataExportJobRepository;
   redis: Redis;
   storage: UploadStorage;
   providerDeps: ExportProviderDeps;
@@ -80,7 +68,7 @@ export async function dataExportJob(
   const provider = providers.get(entityType);
   if (!provider) throw new Error(`unknown_export_entity:${entityType}`);
 
-  const [row] = await ctx.db.select().from(dataExport).where(eq(dataExport.id, exportId));
+  const row = await ctx.dataExportRepo.findById(exportId);
   if (!row || row.status === "cancelled") return;
 
   const authCtx = exportAuthContextFromRow(row);
@@ -89,7 +77,7 @@ export async function dataExportJob(
   try {
     await provider.authorize(authCtx, filterRecord);
 
-    await setProgress(ctx.db, ctx.redis, exportId, {
+    await setProgress(ctx.dataExportRepo, ctx.redis, exportId, {
       status: "processing",
       phase: "fetching",
       progress: 5,
@@ -106,11 +94,8 @@ export async function dataExportJob(
     const totalRows = row.totalRows ?? 0;
 
     for await (const exportRow of provider.streamRows(authCtx, filterRecord)) {
-      const [current] = await ctx.db
-        .select({ status: dataExport.status })
-        .from(dataExport)
-        .where(eq(dataExport.id, exportId));
-      if (current?.status === "cancelled") {
+      const currentStatus = await ctx.dataExportRepo.getStatus(exportId);
+      if (currentStatus === "cancelled") {
         writeStream.end();
         await finished(writeStream).catch(() => undefined);
         await unlink(tmpPath).catch(() => undefined);
@@ -122,7 +107,7 @@ export async function dataExportJob(
       if (processedRows % 500 === 0) {
         const progress =
           totalRows > 0 ? Math.min(95, Math.round((processedRows / totalRows) * 90) + 5) : 50;
-        await setProgress(ctx.db, ctx.redis, exportId, {
+        await setProgress(ctx.dataExportRepo, ctx.redis, exportId, {
           status: "processing",
           phase: "writing",
           progress,
@@ -135,7 +120,7 @@ export async function dataExportJob(
     writeStream.end();
     await finished(writeStream);
 
-    await setProgress(ctx.db, ctx.redis, exportId, {
+    await setProgress(ctx.dataExportRepo, ctx.redis, exportId, {
       status: "processing",
       phase: "uploading",
       progress: 96,
@@ -148,21 +133,13 @@ export async function dataExportJob(
     await unlink(tmpPath).catch(() => undefined);
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
-    await ctx.db
-      .update(dataExport)
-      .set({
-        status: "completed",
-        phase: null,
-        progress: 100,
-        processedRows,
-        s3Key: key,
-        fileSizeBytes: uploaded.byteLength,
-        expiresAt,
-        completedAt: new Date(),
-        errorMessage: null,
-      })
-      .where(eq(dataExport.id, exportId));
-    await setProgress(ctx.db, ctx.redis, exportId, {
+    await ctx.dataExportRepo.markCompleted(exportId, {
+      processedRows,
+      s3Key: key,
+      fileSizeBytes: uploaded.byteLength,
+      expiresAt,
+    });
+    await setProgress(ctx.dataExportRepo, ctx.redis, exportId, {
       status: "completed",
       progress: 100,
       processedRows,
@@ -171,7 +148,7 @@ export async function dataExportJob(
     ctx.log.info({ exportId, processedRows, entityType }, "data_export_completed");
   } catch (err) {
     const message = err instanceof Error ? err.message : "Export failed";
-    await setProgress(ctx.db, ctx.redis, exportId, {
+    await setProgress(ctx.dataExportRepo, ctx.redis, exportId, {
       status: "failed",
       progress: 0,
       errorMessage: message,

@@ -1,11 +1,12 @@
 import { legalEntity, lot, user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { eq } from "drizzle-orm";
-import { listStaffOpsRecipients } from "../../lib/staff-ops-email-recipients.js";
+import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
 import type { Db, ManualReviewPayload } from "./notification-fanout-helpers.js";
 
 export async function fanoutPaymentManualReview(options: {
   db: Db;
+  staffOpsRecipientReader: IStaffOpsRecipientReader;
   emailService: IEmailService;
   supportContactEmail: string;
   adminEmailAddress?: string | undefined;
@@ -16,6 +17,7 @@ export async function fanoutPaymentManualReview(options: {
 }): Promise<void> {
   const {
     db,
+    staffOpsRecipientReader,
     emailService,
     supportContactEmail,
     adminEmailAddress,
@@ -62,7 +64,7 @@ export async function fanoutPaymentManualReview(options: {
     });
   }
 
-  const staffOps = await listStaffOpsRecipients(db);
+  const staffOps = await staffOpsRecipientReader.listRecipients();
   const base = webOrigin?.replace(/\/$/, "") ?? "";
   if (staffOps.length > 0) {
     for (const s of staffOps) {

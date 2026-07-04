@@ -49,13 +49,15 @@ describe("processAmlMatchReview MLRO escalation", () => {
       },
     };
     const recipient = { id: "mlro_1", email: "mlro@example.com", firstName: "M" };
+    const complianceRecipientReader = {
+      listRecipients: vi.fn().mockResolvedValue([recipient]),
+    };
     const db = fakeDb([
       undefined, // insert projectorState ... onConflictDoNothing
       [{ last: 0 }], // cursor select
       [eventRow], // events select
       [], // existing admin_review_task select (none)
       undefined, // insert admin_review_task
-      [recipient], // listComplianceRecipients select
       undefined, // update projectorState cursor
     ]);
     const emailService = makeEmail();
@@ -63,6 +65,7 @@ describe("processAmlMatchReview MLRO escalation", () => {
     await processAmlMatchReview({
       db,
       log,
+      complianceRecipientReader,
       emailService,
       supportContactEmail: "compliance@example.com",
       webOrigin: "https://app.example.com",
@@ -98,6 +101,7 @@ describe("processAmlMatchReview MLRO escalation", () => {
     await processAmlMatchReview({
       db,
       log,
+      complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,
       supportContactEmail: "compliance@example.com",
       webOrigin: "https://app.example.com",
@@ -117,6 +121,7 @@ describe("processAmlMatchReview MLRO escalation", () => {
     await processAmlMatchReview({
       db,
       log,
+      complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,
       supportContactEmail: "compliance@example.com",
       webOrigin: "https://app.example.com",

@@ -18,7 +18,6 @@ import {
 } from "../../jobs/marketing-event-processor.js";
 import { getMarketingEventsConfig } from "../../lib/marketing-events-enabled.js";
 import { CachedClickIdStore } from "../../marketing/cached-click-id.store.js";
-import { DrizzleProfileMarketingReader } from "../../marketing/drizzle-profile.reader.js";
 import { MetaCapiBatchCollector } from "../../marketing/meta-capi-batch-collector.js";
 import { PostgresClickIdStore } from "../../marketing/postgres-click-id.store.js";
 import { RedisClickIdStore } from "../../marketing/redis-click-id.store.js";
@@ -36,7 +35,8 @@ export type MarketingEventsContext = {
 export function createMarketingEventsContext(
   deps: WorkerBootstrapDeps,
 ): MarketingEventsContext | undefined {
-  const { env, db, redis, log, queueOpts } = deps;
+  const { env, db, redis, log, queueOpts, profileMarketingReader, marketingEventOutboxWorker } =
+    deps;
   const marketingConfig = getMarketingEventsConfig(env);
   if (!marketingConfig) return undefined;
 
@@ -46,7 +46,7 @@ export function createMarketingEventsContext(
     new RedisClickIdStore(redis),
   );
   const identityResolver = new ProfileUserIdentityResolver(
-    new DrizzleProfileMarketingReader(db),
+    profileMarketingReader,
     clickIdStore,
     hasher,
   );
@@ -69,7 +69,7 @@ export function createMarketingEventsContext(
   const marketingCapiBatchCollector = new MetaCapiBatchCollector(
     metaPublisher,
     async (event, outcome) => {
-      await applyMarketingPublishOutcome({ db, env, log, event, outcome });
+      await applyMarketingPublishOutcome({ marketingEventOutboxWorker, env, log, event, outcome });
     },
     100,
     1000,
@@ -117,10 +117,10 @@ export function registerMarketingEventsWorkers(
   deps: WorkerBootstrapDeps,
   ctx: MarketingEventsContext,
 ): { errorHandlers: WorkerErrorHandlerEntry[]; worker: Worker<MarketingEvent> } {
-  const { db, log, bullConnection, heartbeat } = deps;
+  const { marketingEventOutboxWorker, log, bullConnection, heartbeat } = deps;
 
   const marketingProcessorDeps = {
-    db,
+    marketingEventOutboxWorker,
     env: ctx.env,
     log,
     identityResolver: ctx.identityResolver,

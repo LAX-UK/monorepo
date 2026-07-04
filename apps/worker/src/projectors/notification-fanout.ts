@@ -2,6 +2,7 @@ import { domainEvent, projectorState } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, inArray } from "drizzle-orm";
 import type pino from "pino";
+import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
 import { fanoutPayoutClawbackRequired } from "./notification-fanout/clawback-fanout.js";
 import { fanoutDisputeClosed, fanoutDisputeOpened } from "./notification-fanout/dispute-fanout.js";
@@ -28,10 +29,12 @@ export async function processNotificationFanout(options: {
   emailService: IEmailService;
   supportContactEmail: string;
   adminPayoutsUrl: string;
+  staffOpsRecipientReader: IStaffOpsRecipientReader;
   adminEmailAddress?: string | undefined;
   webOrigin?: string | undefined;
 }): Promise<void> {
-  const { db, log, emailService, supportContactEmail, adminPayoutsUrl } = options;
+  const { db, log, emailService, supportContactEmail, adminPayoutsUrl, staffOpsRecipientReader } =
+    options;
 
   await db
     .insert(projectorState)
@@ -80,6 +83,7 @@ export async function processNotificationFanout(options: {
       if (row.eventType === "payment.requires_manual_review") {
         const manualReviewArgs: Parameters<typeof fanoutPaymentManualReview>[0] = {
           db,
+          staffOpsRecipientReader,
           emailService,
           supportContactEmail,
           eventId: row.id,
@@ -109,6 +113,7 @@ export async function processNotificationFanout(options: {
       if (row.eventType === "payment.dispute_opened") {
         await fanoutDisputeOpened({
           db,
+          staffOpsRecipientReader,
           emailService,
           supportContactEmail,
           adminEmailAddress: options.adminEmailAddress,
@@ -147,6 +152,7 @@ export async function processNotificationFanout(options: {
       if (row.eventType === "payout.clawback_required") {
         await fanoutPayoutClawbackRequired({
           db,
+          staffOpsRecipientReader,
           emailService,
           adminPayoutsUrl,
           adminEmailAddress: options.adminEmailAddress,

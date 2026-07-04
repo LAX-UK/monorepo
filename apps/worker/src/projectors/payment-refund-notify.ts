@@ -10,7 +10,7 @@ import {
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
-import { listStaffOpsRecipients } from "../lib/staff-ops-email-recipients.js";
+import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 
 const PROJECTOR_NAME = "payment_refund_notify";
 
@@ -28,6 +28,7 @@ export async function processPaymentRefundNotify(options: {
   db: Db;
   log: pino.Logger;
   emailService: IEmailService;
+  staffOpsRecipientReader: IStaffOpsRecipientReader;
   supportContactEmail: string;
   adminEmailAddress?: string | undefined;
 }): Promise<void> {
@@ -154,7 +155,7 @@ export async function processPaymentRefundNotify(options: {
         });
       }
 
-      const staffOps = await listStaffOpsRecipients(db);
+      const staffOps = await options.staffOpsRecipientReader.listRecipients();
       if (staffOps.length > 0) {
         for (const s of staffOps) {
           await emailService.enqueue({

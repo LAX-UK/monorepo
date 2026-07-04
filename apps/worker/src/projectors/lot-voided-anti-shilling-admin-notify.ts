@@ -2,7 +2,7 @@ import { domainEvent, lot, projectorState } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
-import { listStaffOpsRecipients } from "../lib/staff-ops-email-recipients.js";
+import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 
 const PROJECTOR_NAME = "lot_voided_anti_shilling_admin_notify";
 
@@ -17,11 +17,20 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
   db: Db;
   log: pino.Logger;
   emailService: IEmailService;
+  staffOpsRecipientReader: IStaffOpsRecipientReader;
   supportContactEmail: string;
   adminEmailAddress?: string | undefined;
   webOrigin: string;
 }): Promise<void> {
-  const { db, log, emailService, supportContactEmail, adminEmailAddress, webOrigin } = options;
+  const {
+    db,
+    log,
+    emailService,
+    supportContactEmail,
+    adminEmailAddress,
+    webOrigin,
+    staffOpsRecipientReader,
+  } = options;
 
   await db
     .insert(projectorState)
@@ -69,7 +78,7 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
         .limit(1);
       const lotTitle = lotRow?.title ?? "Lot";
 
-      const staffOps = await listStaffOpsRecipients(db);
+      const staffOps = await staffOpsRecipientReader.listRecipients();
       if (staffOps.length > 0) {
         for (const s of staffOps) {
           await emailService.enqueue({

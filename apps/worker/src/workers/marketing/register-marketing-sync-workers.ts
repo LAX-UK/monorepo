@@ -24,7 +24,16 @@ export type MarketingSyncWorkersHandle = {
 export function registerMarketingSyncWorkers(
   deps: WorkerBootstrapDeps,
 ): MarketingSyncWorkersHandle {
-  const { env, db, log, bullConnection, queueOpts, heartbeat, reportWorkerJobFailure } = deps;
+  const {
+    env,
+    log,
+    bullConnection,
+    queueOpts,
+    heartbeat,
+    reportWorkerJobFailure,
+    newsletterSignupSyncRepo,
+    marketingContactSyncRepo,
+  } = deps;
 
   const marketingContactSync = createMarketingContactSync(env);
   const marketingSyncQueue = new Queue<MarketingSyncJobData>(
@@ -35,7 +44,12 @@ export function registerMarketingSyncWorkers(
     MARKETING_SYNC_QUEUE_NAME,
     async (job) => {
       if (job.name === "zoho-campaigns-sync") {
-        await zohoCampaignsSyncJob({ db, env, log, data: job.data as ZohoCampaignsSyncJobData });
+        await zohoCampaignsSyncJob({
+          newsletterSignupSyncRepo,
+          env,
+          log,
+          data: job.data as ZohoCampaignsSyncJobData,
+        });
       } else if (job.name === "marketing-contact-sync") {
         if (!marketingContactSync) {
           log.warn(
@@ -44,7 +58,7 @@ export function registerMarketingSyncWorkers(
           );
         } else {
           await marketingContactSyncJob({
-            db,
+            marketingContactSyncRepo,
             sync: marketingContactSync,
             log,
             data: job.data as MarketingContactSyncJobData,

@@ -51,6 +51,7 @@ describe("processSourceOfFundsReview", () => {
     await processSourceOfFundsReview({
       db,
       log,
+      complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,
       supportContactEmail: "compliance@example.com",
       webOrigin: "https://app.example.com",
@@ -77,7 +78,6 @@ describe("processSourceOfFundsReview", () => {
       [eventRow], // domain events
       [], // existing task lookup -> none -> createdTask
       undefined, // insert adminReviewTask
-      [], // listComplianceRecipients -> none
       [{ email: "buyer@example.com", firstName: "Bee" }], // buyer lookup
       undefined, // update cursor
     ]);
@@ -86,6 +86,7 @@ describe("processSourceOfFundsReview", () => {
     await processSourceOfFundsReview({
       db,
       log,
+      complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
       emailService,
       supportContactEmail: "compliance@example.com",
       webOrigin: "https://app.example.com",

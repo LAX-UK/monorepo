@@ -153,6 +153,14 @@ export function createWorkerContainer(): WorkerContainer {
     uploadValidationRepo: repositories.uploadValidationRepo,
     emailOutboxRepo: repositories.emailOutboxRepo,
     payoutStatementRepo: repositories.payoutStatementRepo,
+    profileMarketingReader: repositories.profileMarketingReader,
+    marketingEventOutboxWorker: repositories.marketingEventOutboxWorker,
+    dataExportRepo: repositories.dataExportRepo,
+    newsletterSignupSyncRepo: repositories.newsletterSignupSyncRepo,
+    sourceOfFundsDocumentPurgeRepo: repositories.sourceOfFundsDocumentPurgeRepo,
+    marketingContactSyncRepo: repositories.marketingContactSyncRepo,
+    staffOpsRecipientReader: repositories.staffOpsRecipientReader,
+    complianceRecipientReader: repositories.complianceRecipientReader,
     sentryMonitorSlugs,
     heartbeat,
     reportWorkerJobFailure,
@@ -242,6 +250,8 @@ export function createWorkerContainer(): WorkerContainer {
     adminPayoutsUrl,
     adminEmailAddress,
     webOrigin: env.WEB_ORIGIN,
+    staffOpsRecipientReader: repositories.staffOpsRecipientReader,
+    complianceRecipientReader: repositories.complianceRecipientReader,
     ...(marketingWorkers.marketingContactSync
       ? {
           enqueueMarketingContactSync: async (data: {

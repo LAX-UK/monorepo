@@ -1,12 +1,13 @@
 import { user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { eq } from "drizzle-orm";
-import { listComplianceRecipients } from "../../lib/compliance-email-recipients.js";
+import type { IComplianceRecipientReader } from "../../interfaces/compliance-recipient.reader.js";
 import type { Db } from "../lib/projector.types.js";
 import type { SourceOfFundsRequiredPayload } from "./sof-review-helpers.js";
 
 export async function escalateSourceOfFundsRequiredCase(args: {
   db: Db;
+  complianceRecipientReader: IComplianceRecipientReader;
   emailService: IEmailService;
   supportContactEmail: string;
   adminReviewUrl: string;
@@ -16,6 +17,7 @@ export async function escalateSourceOfFundsRequiredCase(args: {
 }): Promise<void> {
   const {
     db,
+    complianceRecipientReader,
     emailService,
     supportContactEmail,
     adminReviewUrl,
@@ -33,7 +35,7 @@ export async function escalateSourceOfFundsRequiredCase(args: {
     ]
       .filter(Boolean)
       .join(" · ") || "Source-of-Funds threshold crossed";
-  const recipients = await listComplianceRecipients(db);
+  const recipients = await complianceRecipientReader.listRecipients();
   if (recipients.length > 0) {
     for (const r of recipients) {
       await emailService.enqueue({

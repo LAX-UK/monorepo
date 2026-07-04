@@ -1,11 +1,15 @@
 import type { Database } from "@auction/db";
+import type {
+  IRepositoryFactory,
+  LotBidRepos,
+  TransactionRepos,
+} from "./interfaces/repository-factory.js";
 import {
   DrizzleBidRepository,
   DrizzleItemSubmissionRepository,
   DrizzleLotRepository,
   DrizzleSaleRepository,
 } from "./repositories/index.js";
-import type { IRepositoryFactory, LotBidRepos, TransactionRepos } from "./interfaces/repository-factory.js";
 
 export class DrizzleRepositoryFactory implements IRepositoryFactory {
   readonly root: LotBidRepos;

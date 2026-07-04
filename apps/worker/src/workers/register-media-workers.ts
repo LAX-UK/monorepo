@@ -134,7 +134,11 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     async () => {
       await withSentryCronMonitor("gc-pending-uploads", sentryMonitorSlugs, async () => {
         await gcPendingUploads({ uploadValidationRepo, storage: uploadStorage, log });
-        await purgeSourceOfFundsDocumentsJob({ db, storage: uploadStorage, log });
+        await purgeSourceOfFundsDocumentsJob({
+          sourceOfFundsDocumentPurgeRepo: deps.sourceOfFundsDocumentPurgeRepo,
+          storage: uploadStorage,
+          log,
+        });
         await heartbeat("gc-pending-uploads");
       });
     },

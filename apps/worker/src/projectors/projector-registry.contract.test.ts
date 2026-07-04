@@ -48,6 +48,8 @@ function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
   return {
     db: {} as ProjectorRunContext["db"],
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as unknown as ProjectorRunContext["log"],
+    staffOpsRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
+    complianceRecipientReader: { listRecipients: vi.fn().mockResolvedValue([]) },
     ...overrides,
   };
 }

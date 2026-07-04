@@ -2,13 +2,14 @@ import { adminReviewTask } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import { and, eq, sql } from "drizzle-orm";
 import type pino from "pino";
-import { listComplianceRecipients } from "../../lib/compliance-email-recipients.js";
+import type { IComplianceRecipientReader } from "../../interfaces/compliance-recipient.reader.js";
 import type { Db } from "../lib/projector.types.js";
 import type { DocumentsSubmittedPayload } from "./sof-documents-helpers.js";
 
 export async function handleDocumentsSubmitted(args: {
   db: Db;
   log: pino.Logger;
+  complianceRecipientReader: IComplianceRecipientReader;
   emailService?: IEmailService | undefined;
   supportContactEmail?: string | undefined;
   adminReviewUrl: string;
@@ -41,7 +42,7 @@ export async function handleDocumentsSubmitted(args: {
   if (!args.emailService || !args.supportContactEmail) return;
 
   const detail = `Buyer submitted ${args.payload.documentCount ?? "new"} document(s) for review`;
-  const recipients = await listComplianceRecipients(args.db);
+  const recipients = await args.complianceRecipientReader.listRecipients();
   const targets =
     recipients.length > 0
       ? recipients

@@ -2,6 +2,7 @@ import { domainEvent, projectorState } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt } from "drizzle-orm";
 import type pino from "pino";
+import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 import { recordProjectorEventFailure } from "./lib/projector-failure-guard.js";
 import { escalateSourceOfFundsRequiredCase } from "./source-of-funds-review/escalate-required-case.js";
 import { manageSourceOfFundsReviewTask } from "./source-of-funds-review/manage-review-task.js";
@@ -23,13 +24,22 @@ type Db = typeof import("@auction/db").createDb extends (url: string) => infer T
 export async function processSourceOfFundsReview(options: {
   db: Db;
   log: pino.Logger;
+  complianceRecipientReader: IComplianceRecipientReader;
   /** When set, an MLRO escalation email is enqueued per SoF case. */
   emailService?: IEmailService | undefined;
   supportContactEmail?: string | undefined;
   webOrigin?: string | undefined;
   adminEmailAddress?: string | undefined;
 }): Promise<void> {
-  const { db, log, emailService, supportContactEmail, webOrigin, adminEmailAddress } = options;
+  const {
+    db,
+    log,
+    emailService,
+    supportContactEmail,
+    webOrigin,
+    adminEmailAddress,
+    complianceRecipientReader,
+  } = options;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
   const adminReviewUrl = `${base}/admin/compliance/source-of-funds`;
 
@@ -75,6 +85,7 @@ export async function processSourceOfFundsReview(options: {
       if (createdTask && emailService && supportContactEmail) {
         await escalateSourceOfFundsRequiredCase({
           db,
+          complianceRecipientReader,
           emailService,
           supportContactEmail,
           adminReviewUrl,

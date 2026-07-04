@@ -5,7 +5,7 @@ import type {
   IUploadValidationRepository,
   ObjectHead,
   UploadValidationRow,
-} from "./interfaces/upload-validation.repository.js";
+} from "../interfaces/upload-validation.repository.js";
 
 function mapRow(row: typeof uploadObject.$inferSelect): UploadValidationRow {
   return {

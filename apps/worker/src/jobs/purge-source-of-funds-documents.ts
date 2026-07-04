@@ -1,18 +1,11 @@
-import type { Database } from "@auction/db";
-import {
-  sourceOfFunds,
-  sourceOfFundsDocument,
-  sourceOfFundsDocumentReview,
-  uploadObject,
-} from "@auction/db/schema";
-import { and, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source-of-funds-document-purge.repository.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
 
 /** Default AML retention: 5 years after case resolution. */
 const DEFAULT_RETENTION_YEARS = 5;
 
 export async function purgeSourceOfFundsDocumentsJob(input: {
-  db: Database;
+  sourceOfFundsDocumentPurgeRepo: ISourceOfFundsDocumentPurgeRepository;
   storage: UploadStorage;
   log: { info: (o: unknown, msg?: string) => void };
   retentionYears?: number;
@@ -23,16 +16,10 @@ export async function purgeSourceOfFundsDocumentsJob(input: {
     (input.retentionYears ?? DEFAULT_RETENTION_YEARS) * 365.25 * 24 * 60 * 60 * 1000;
   const cutoff = new Date(now.getTime() - retentionMs);
 
-  const terminalCases = await input.db
-    .select({ id: sourceOfFunds.id, reviewedAt: sourceOfFunds.reviewedAt })
-    .from(sourceOfFunds)
-    .where(
-      and(
-        or(eq(sourceOfFunds.status, "approved"), eq(sourceOfFunds.status, "rejected")),
-        lt(sourceOfFunds.reviewedAt, cutoff),
-      ),
-    )
-    .limit(100);
+  const terminalCases = await input.sourceOfFundsDocumentPurgeRepo.findTerminalCasesPastRetention(
+    cutoff,
+    100,
+  );
 
   if (terminalCases.length === 0) {
     input.log.info({ purged: 0 }, "purge_source_of_funds_documents");
@@ -40,21 +27,7 @@ export async function purgeSourceOfFundsDocumentsJob(input: {
   }
 
   const caseIds = terminalCases.map((c) => c.id);
-  const docs = await input.db
-    .select({
-      id: sourceOfFundsDocument.id,
-      uploadObjectId: sourceOfFundsDocument.uploadObjectId,
-      key: uploadObject.key,
-    })
-    .from(sourceOfFundsDocument)
-    .innerJoin(uploadObject, eq(uploadObject.id, sourceOfFundsDocument.uploadObjectId))
-    .where(
-      and(
-        inArray(sourceOfFundsDocument.sourceOfFundsId, caseIds),
-        isNull(sourceOfFundsDocument.anonymizedAt),
-      ),
-    )
-    .limit(500);
+  const docs = await input.sourceOfFundsDocumentPurgeRepo.findDocumentsToPurge(caseIds, 500);
 
   let purged = 0;
   for (const doc of docs) {
@@ -63,17 +36,8 @@ export async function purgeSourceOfFundsDocumentsJob(input: {
     } catch {
       /* best-effort */
     }
-    await input.db
-      .update(sourceOfFundsDocument)
-      .set({
-        anonymizedAt: now,
-        label: null,
-        reviewStatus: "superseded",
-      })
-      .where(eq(sourceOfFundsDocument.id, doc.id));
-    await input.db
-      .delete(sourceOfFundsDocumentReview)
-      .where(eq(sourceOfFundsDocumentReview.documentId, doc.id));
+    await input.sourceOfFundsDocumentPurgeRepo.anonymizeDocument(doc.id, now);
+    await input.sourceOfFundsDocumentPurgeRepo.deleteDocumentReviews(doc.id);
     purged += 1;
   }
 

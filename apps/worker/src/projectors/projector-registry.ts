@@ -106,6 +106,7 @@ export function createDefaultProjectorRegistry(
         await processNotificationFanout({
           ...emailProjectorArgs(ctx),
           adminPayoutsUrl: ctx.adminPayoutsUrl as string,
+          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
           adminEmailAddress: ctx.adminEmailAddress,
           webOrigin: ctx.webOrigin,
         });
@@ -120,6 +121,7 @@ export function createDefaultProjectorRegistry(
         await stateRepo.ensureCursor("payment_refund_notify");
         await processPaymentRefundNotify({
           ...emailProjectorArgs(ctx),
+          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
           adminEmailAddress: ctx.adminEmailAddress,
         });
       },
@@ -133,6 +135,7 @@ export function createDefaultProjectorRegistry(
         await stateRepo.ensureCursor("lot_voided_anti_shilling_admin_notify");
         await processLotVoidedAntiShillingAdminNotify({
           ...emailProjectorArgs(ctx),
+          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
           adminEmailAddress: ctx.adminEmailAddress,
           webOrigin: ctx.webOrigin as string,
         });
@@ -158,6 +161,7 @@ export function createDefaultProjectorRegistry(
         await processAmlMatchReview({
           db: ctx.db,
           log: ctx.log,
+          complianceRecipientReader: ctx.complianceRecipientReader,
           emailService: ctx.emailService,
           supportContactEmail: ctx.supportContactEmail,
           webOrigin: ctx.webOrigin,
@@ -172,6 +176,7 @@ export function createDefaultProjectorRegistry(
         await processSourceOfFundsReview({
           db: ctx.db,
           log: ctx.log,
+          complianceRecipientReader: ctx.complianceRecipientReader,
           emailService: ctx.emailService,
           supportContactEmail: ctx.supportContactEmail,
           webOrigin: ctx.webOrigin,
@@ -196,6 +201,7 @@ export function createDefaultProjectorRegistry(
         await processSourceOfFundsDocuments({
           db: ctx.db,
           log: ctx.log,
+          complianceRecipientReader: ctx.complianceRecipientReader,
           emailService: ctx.emailService,
           supportContactEmail: ctx.supportContactEmail,
           webOrigin: ctx.webOrigin,

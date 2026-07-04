@@ -40,6 +40,7 @@ export function registerComplianceWorkers(
     queueOpts,
     uploadStorage,
     repoFactory,
+    dataExportRepo,
     sentryMonitorSlugs,
     heartbeat,
     reportWorkerJobFailure,
@@ -56,7 +57,7 @@ export function registerComplianceWorkers(
         return;
       }
       await dataExportJob(
-        { db, redis, storage: uploadStorage, providerDeps: exportProviderDeps, log },
+        { dataExportRepo, redis, storage: uploadStorage, providerDeps: exportProviderDeps, log },
         job as Job<DataExportJobPayload>,
       );
       await heartbeat("data-export");

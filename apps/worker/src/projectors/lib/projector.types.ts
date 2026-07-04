@@ -1,5 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import type pino from "pino";
+import type { IComplianceRecipientReader } from "../../interfaces/compliance-recipient.reader.js";
+import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
 
 export type Db = typeof import("@auction/db").createDb extends (url: string) => infer T ? T : never;
 
@@ -13,6 +15,8 @@ export type ProjectorRunContext = {
   adminPayoutsUrl?: string | undefined;
   adminEmailAddress?: string | undefined;
   webOrigin?: string | undefined;
+  staffOpsRecipientReader: IStaffOpsRecipientReader;
+  complianceRecipientReader: IComplianceRecipientReader;
   syncXeroPayoutBill?: ((payoutId: string) => Promise<boolean>) | undefined;
   ensureLotInvoice?: ((lotId: string) => Promise<void>) | undefined;
   enqueueMarketingContactSync?:

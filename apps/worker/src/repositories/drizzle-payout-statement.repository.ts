@@ -6,7 +6,7 @@ import type {
   PayoutStatementEntityRow,
   PayoutStatementLineRow,
   PayoutStatementPayoutRow,
-} from "./interfaces/payout-statement.repository.js";
+} from "../interfaces/payout-statement.repository.js";
 
 export class DrizzlePayoutStatementRepository implements IPayoutStatementRepository {
   constructor(private readonly db: Database) {}

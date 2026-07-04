@@ -1,5 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import type pino from "pino";
+import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
+import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import { ProjectorStateRepository } from "./lib/projector-state.repository.js";
 import type { Db, ProjectorRunContext } from "./lib/projector.types.js";
 import { createDefaultProjectorRegistry } from "./projector-registry.js";
@@ -8,6 +10,8 @@ export function createProjectorRunner(options: {
   db: Db;
   log: pino.Logger;
   heartbeat: () => Promise<void>;
+  staffOpsRecipientReader: IStaffOpsRecipientReader;
+  complianceRecipientReader: IComplianceRecipientReader;
   /** when set, `payout.paid` events trigger Xero bill sync via API. */
   syncXeroPayoutBill?: (payoutId: string) => Promise<boolean>;
   /** when set, `lot.ended` (sold) triggers auto-invoice creation via API. */
@@ -42,6 +46,8 @@ export function createProjectorRunner(options: {
       adminPayoutsUrl: options.adminPayoutsUrl,
       adminEmailAddress: options.adminEmailAddress,
       webOrigin: options.webOrigin,
+      staffOpsRecipientReader: options.staffOpsRecipientReader,
+      complianceRecipientReader: options.complianceRecipientReader,
       syncXeroPayoutBill: options.syncXeroPayoutBill,
       ensureLotInvoice: options.ensureLotInvoice,
       enqueueMarketingContactSync: options.enqueueMarketingContactSync,

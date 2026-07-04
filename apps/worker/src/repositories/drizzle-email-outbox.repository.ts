@@ -5,7 +5,7 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import type {
   EmailOutboxRow,
   IEmailOutboxRepository,
-} from "./interfaces/email-outbox.repository.js";
+} from "../interfaces/email-outbox.repository.js";
 
 function mapRow(row: typeof emailOutbox.$inferSelect): EmailOutboxRow {
   return {

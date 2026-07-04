@@ -2,6 +2,7 @@ import type { ExportEntityType } from "@auction/exports";
 import type { DataExportJobPayload } from "@auction/queues";
 import type { Job } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
+import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 
 const rowFilters = { status: "captured" };
 const authorize = vi.fn();
@@ -63,19 +64,12 @@ describe("dataExportJob", () => {
       cancelledAt: null,
     };
 
-    const selectQueue: unknown[][] = [[row], [{ status: "pending" }]];
-    const db = {
-      select: vi.fn(() => ({
-        from: vi.fn(() => ({
-          where: vi.fn(async () => selectQueue.shift() ?? []),
-        })),
-      })),
-      update: vi.fn(() => ({
-        set: vi.fn(() => ({
-          where: vi.fn().mockResolvedValue(undefined),
-        })),
-      })),
-    };
+    const dataExportRepo = {
+      findById: vi.fn().mockResolvedValue(row),
+      getStatus: vi.fn().mockResolvedValue("pending"),
+      updateProgress: vi.fn().mockResolvedValue(undefined),
+      markCompleted: vi.fn().mockResolvedValue(undefined),
+    } as unknown as IDataExportJobRepository;
 
     const storage = {
       putObjectFromFile: vi.fn().mockResolvedValue({
@@ -89,7 +83,7 @@ describe("dataExportJob", () => {
 
     await dataExportJob(
       {
-        db: db as never,
+        dataExportRepo,
         redis: { set: vi.fn().mockResolvedValue("OK") } as never,
         storage: storage as never,
         providerDeps: {} as never,

@@ -3,7 +3,7 @@ import type pino from "pino";
 import type {
   EmailOutboxRow,
   IEmailOutboxRepository,
-} from "../repositories/interfaces/email-outbox.repository.js";
+} from "../interfaces/email-outbox.repository.js";
 
 export type SendEmailJobData = {
   outboxId: string;

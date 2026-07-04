@@ -1,5 +1,5 @@
 import type { Queue } from "bullmq";
-import type { IEmailOutboxRepository } from "../repositories/interfaces/email-outbox.repository.js";
+import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
 import { type SendEmailJobData, sendEmailUseCase } from "../services/send-email.use-case.js";
 
 export type { SendEmailJobData };

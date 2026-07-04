@@ -1,8 +1,6 @@
-import type { Database } from "@auction/db";
-import { newsletterSignupLog } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
 import type pino from "pino";
 import type { WorkerEnv } from "../env.js";
+import type { INewsletterSignupSyncRepository } from "../interfaces/newsletter-signup-sync.repository.js";
 
 export type ZohoCampaignsSyncJobData = {
   signupLogId: string;
@@ -10,22 +8,19 @@ export type ZohoCampaignsSyncJobData = {
 };
 
 export async function zohoCampaignsSyncJob({
-  db,
+  newsletterSignupSyncRepo,
   env,
   log,
   data,
 }: {
-  db: Database;
+  newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
   env: WorkerEnv;
   log: pino.Logger;
   data: ZohoCampaignsSyncJobData;
 }) {
   if (!env.ZOHO_CAMPAIGNS_API_KEY || !env.ZOHO_CAMPAIGNS_LIST_KEY) {
     log.warn({ signupLogId: data.signupLogId }, "Zoho Campaigns env not configured");
-    await db
-      .update(newsletterSignupLog)
-      .set({ status: "failed", zohoResponseCode: null })
-      .where(eq(newsletterSignupLog.id, data.signupLogId));
+    await newsletterSignupSyncRepo.markFailed(data.signupLogId);
     return;
   }
 
@@ -45,18 +40,12 @@ export async function zohoCampaignsSyncJob({
   });
 
   if (res.ok) {
-    await db
-      .update(newsletterSignupLog)
-      .set({ status: "pushed", zohoResponseCode: res.status })
-      .where(eq(newsletterSignupLog.id, data.signupLogId));
+    await newsletterSignupSyncRepo.markPushed(data.signupLogId, res.status);
     return;
   }
 
   if (res.status >= 400 && res.status < 500) {
-    await db
-      .update(newsletterSignupLog)
-      .set({ status: "rejected", zohoResponseCode: res.status })
-      .where(eq(newsletterSignupLog.id, data.signupLogId));
+    await newsletterSignupSyncRepo.markRejected(data.signupLogId, res.status);
     return;
   }
 

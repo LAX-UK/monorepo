@@ -1,26 +1,13 @@
-import type { Database } from "@auction/db";
 import type pino from "pino";
 import { describe, expect, it, vi } from "vitest";
+import type {
+  IMarketingContactSyncRepository,
+  MarketingContactSyncUserRow,
+} from "../interfaces/marketing-contact-sync.repository.js";
 import type { IMarketingContactSync, SyncResult } from "../lib/marketing-contact-sync/index.js";
 import { marketingContactSyncJob } from "./marketing-contact-sync.js";
 
-type UserRow = {
-  id: string;
-  email: string;
-  emailVerified: boolean;
-  firstName: string | null;
-  lastName: string | null;
-  country: string | null;
-  role: string;
-  kycStatus: string;
-  signupPersona: string | null;
-  emailStatus: string;
-  suspendedAt: Date | null;
-  deletionRequestedAt: Date | null;
-  createdAt: Date;
-};
-
-const baseUser: UserRow = {
+const baseUser: MarketingContactSyncUserRow = {
   id: "user-1",
   email: "buyer@example.com",
   emailVerified: true,
@@ -36,16 +23,15 @@ const baseUser: UserRow = {
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
 };
 
-function makeDb(opts: { userRow?: UserRow | null; suppressed?: boolean }) {
-  const limit = vi
-    .fn()
-    .mockResolvedValueOnce(opts.userRow ? [opts.userRow] : [])
-    .mockResolvedValueOnce(opts.suppressed ? [{ emailHash: "hash" }] : []);
-  const select = vi.fn(() => ({ from: () => ({ where: () => ({ limit }) }) }));
-  const values = vi.fn().mockResolvedValue(undefined);
-  const insert = vi.fn(() => ({ values }));
-  const db = { select, insert } as unknown as Database;
-  return { db, insertValues: values };
+function makeRepo(opts: {
+  userRow?: MarketingContactSyncUserRow | null;
+  suppressed?: boolean;
+}): IMarketingContactSyncRepository & { writeAuditLog: ReturnType<typeof vi.fn> } {
+  return {
+    findUserById: vi.fn().mockResolvedValue(opts.userRow ?? null),
+    isEmailSuppressed: vi.fn().mockResolvedValue(Boolean(opts.suppressed)),
+    writeAuditLog: vi.fn().mockResolvedValue(undefined),
+  };
 }
 
 function makeSync(result: SyncResult): IMarketingContactSync & {
@@ -64,43 +50,47 @@ const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as unknown as pino.
 
 describe("marketingContactSyncJob", () => {
   it("upserts an eligible user and records a synced audit row", async () => {
-    const { db, insertValues } = makeDb({ userRow: baseUser });
+    const marketingContactSyncRepo = makeRepo({ userRow: baseUser });
     const sync = makeSync({ ok: true, action: "upsert", providerContactId: "42" });
 
     await marketingContactSyncJob({
-      db,
+      marketingContactSyncRepo,
       sync,
       log,
       data: { userId: "user-1", reason: "registered" },
     });
 
     expect(sync.upsertContact).toHaveBeenCalledOnce();
-    expect(insertValues).toHaveBeenCalledWith(
+    expect(marketingContactSyncRepo.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ status: "synced", action: "upsert", providerContactId: "42" }),
     );
   });
 
   it("skips a suppressed address without calling the provider", async () => {
-    const { db, insertValues } = makeDb({ userRow: baseUser, suppressed: true });
+    const marketingContactSyncRepo = makeRepo({ userRow: baseUser, suppressed: true });
     const sync = makeSync({ ok: true, action: "upsert" });
 
     await marketingContactSyncJob({
-      db,
+      marketingContactSyncRepo,
       sync,
       log,
       data: { userId: "user-1", reason: "registered" },
     });
 
     expect(sync.upsertContact).not.toHaveBeenCalled();
-    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ status: "skipped" }));
+    expect(marketingContactSyncRepo.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "skipped" }),
+    );
   });
 
   it("upserts unverified users with emailVerified false", async () => {
-    const { db, insertValues } = makeDb({ userRow: { ...baseUser, emailVerified: false } });
+    const marketingContactSyncRepo = makeRepo({
+      userRow: { ...baseUser, emailVerified: false },
+    });
     const sync = makeSync({ ok: true, action: "upsert", providerContactId: "42" });
 
     await marketingContactSyncJob({
-      db,
+      marketingContactSyncRepo,
       sync,
       log,
       data: { userId: "user-1", reason: "registered" },
@@ -109,15 +99,17 @@ describe("marketingContactSyncJob", () => {
     expect(sync.upsertContact).toHaveBeenCalledWith(
       expect.objectContaining({ emailVerified: false }),
     );
-    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ status: "synced" }));
+    expect(marketingContactSyncRepo.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "synced" }),
+    );
   });
 
   it("skips staff accounts", async () => {
-    const { db } = makeDb({ userRow: { ...baseUser, role: "staff" } });
+    const marketingContactSyncRepo = makeRepo({ userRow: { ...baseUser, role: "staff" } });
     const sync = makeSync({ ok: true, action: "upsert" });
 
     await marketingContactSyncJob({
-      db,
+      marketingContactSyncRepo,
       sync,
       log,
       data: { userId: "user-1", reason: "registered" },
@@ -127,11 +119,11 @@ describe("marketingContactSyncJob", () => {
   });
 
   it("skips a non-ok email_status user", async () => {
-    const { db } = makeDb({ userRow: { ...baseUser, emailStatus: "bounced" } });
+    const marketingContactSyncRepo = makeRepo({ userRow: { ...baseUser, emailStatus: "bounced" } });
     const sync = makeSync({ ok: true, action: "upsert" });
 
     await marketingContactSyncJob({
-      db,
+      marketingContactSyncRepo,
       sync,
       log,
       data: { userId: "user-1", reason: "registered" },
@@ -141,13 +133,13 @@ describe("marketingContactSyncJob", () => {
   });
 
   it("archives a user pending deletion", async () => {
-    const { db, insertValues } = makeDb({
+    const marketingContactSyncRepo = makeRepo({
       userRow: { ...baseUser, deletionRequestedAt: new Date() },
     });
     const sync = makeSync({ ok: true, action: "archive" });
 
     await marketingContactSyncJob({
-      db,
+      marketingContactSyncRepo,
       sync,
       log,
       data: { userId: "user-1", reason: "registered" },
@@ -155,46 +147,53 @@ describe("marketingContactSyncJob", () => {
 
     expect(sync.archiveContact).toHaveBeenCalledWith("buyer@example.com");
     expect(sync.upsertContact).not.toHaveBeenCalled();
-    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ status: "archived" }));
+    expect(marketingContactSyncRepo.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "archived" }),
+    );
   });
 
   it("throws on a retryable provider failure so BullMQ retries", async () => {
-    const { db } = makeDb({ userRow: baseUser });
+    const marketingContactSyncRepo = makeRepo({ userRow: baseUser });
     const sync = makeSync({ ok: false, retryable: true, code: 503, message: "boom" });
 
     await expect(
-      marketingContactSyncJob({ db, sync, log, data: { userId: "user-1", reason: "registered" } }),
+      marketingContactSyncJob({
+        marketingContactSyncRepo,
+        sync,
+        log,
+        data: { userId: "user-1", reason: "registered" },
+      }),
     ).rejects.toThrow(/retryable/);
   });
 
   it("does not throw on a terminal rejection but records it", async () => {
-    const { db, insertValues } = makeDb({ userRow: baseUser });
+    const marketingContactSyncRepo = makeRepo({ userRow: baseUser });
     const sync = makeSync({ ok: false, retryable: false, code: 400, message: "bad" });
 
     await marketingContactSyncJob({
-      db,
+      marketingContactSyncRepo,
       sync,
       log,
       data: { userId: "user-1", reason: "registered" },
     });
 
-    expect(insertValues).toHaveBeenCalledWith(
+    expect(marketingContactSyncRepo.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ status: "rejected", responseCode: 400 }),
     );
   });
 
   it("no-ops when the user no longer exists", async () => {
-    const { db, insertValues } = makeDb({ userRow: null });
+    const marketingContactSyncRepo = makeRepo({ userRow: null });
     const sync = makeSync({ ok: true, action: "upsert" });
 
     await marketingContactSyncJob({
-      db,
+      marketingContactSyncRepo,
       sync,
       log,
       data: { userId: "gone", reason: "registered" },
     });
 
     expect(sync.upsertContact).not.toHaveBeenCalled();
-    expect(insertValues).not.toHaveBeenCalled();
+    expect(marketingContactSyncRepo.writeAuditLog).not.toHaveBeenCalled();
   });
 });

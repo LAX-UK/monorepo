@@ -1,5 +1,5 @@
 import type { IEmailService } from "@auction/email";
-import { listStaffOpsRecipients } from "../../lib/staff-ops-email-recipients.js";
+import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
 import {
   type Db,
   type SellerMoneyPayload,
@@ -10,6 +10,7 @@ import {
 
 export async function fanoutDisputeOpened(options: {
   db: Db;
+  staffOpsRecipientReader: IStaffOpsRecipientReader;
   emailService: IEmailService;
   supportContactEmail: string;
   adminEmailAddress?: string | undefined;
@@ -38,7 +39,7 @@ export async function fanoutDisputeOpened(options: {
       idempotencyKey: `dispute-opened-notice:${options.eventId}:${recipient.userId}`,
     });
   }
-  const staffOps = await listStaffOpsRecipients(options.db);
+  const staffOps = await options.staffOpsRecipientReader.listRecipients();
   if (staffOps.length > 0) {
     for (const s of staffOps) {
       await options.emailService.enqueue({
