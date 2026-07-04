@@ -2,6 +2,7 @@
 
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { megaMenuSectionActive } from "@/components/layout/header-nav-config";
+import { fetchLiveStreamsStatus } from "@/lib/data/http/live-streams.client";
 import {
   type SiteHeaderTone,
   headerMegaNavChevronClass,
@@ -43,17 +44,14 @@ export function HeaderMegaNav({
 
   useEffect(() => {
     const checkStreams = async () => {
-      try {
-        const res = await fetch("/api/sales/live-streams");
-        const data = await res.json();
-        setLiveStreamActive(Boolean(data.active));
-      } catch (_err) {
-        // Ignored
-      }
+      const data = await fetchLiveStreamsStatus();
+      setLiveStreamActive(data.active);
     };
-    checkStreams();
+    void checkStreams();
 
-    const interval = setInterval(checkStreams, 30000);
+    const interval = setInterval(() => {
+      void checkStreams();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 

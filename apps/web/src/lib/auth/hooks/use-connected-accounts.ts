@@ -1,8 +1,7 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
-import { apiBaseUrl } from "@/lib/auth/api-base";
-import { normalizeApiErrorMessage } from "@auction/validators";
+import { setupPasswordOnServer } from "@/lib/auth/setup-password.client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 /** Provider identifiers we surface in the UI. */
@@ -171,25 +170,10 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
 
   const setupPassword = useCallback<UseConnectedAccountsReturn["setupPassword"]>(
     async (password) => {
-      try {
-        const res = await fetch(`${apiBaseUrl()}/auth/setup-password`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password }),
-        });
-        if (!res.ok) {
-          const body = (await res.json().catch(() => ({}))) as { error?: unknown };
-          return {
-            ok: false,
-            error: normalizeApiErrorMessage(body.error, `Could not set password (${res.status}).`),
-          };
-        }
-        await refresh();
-        return { ok: true, value: undefined };
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : "Could not set password." };
-      }
+      const result = await setupPasswordOnServer(password);
+      if (!result.ok) return { ok: false, error: result.error };
+      await refresh();
+      return { ok: true, value: undefined };
     },
     [refresh],
   );

@@ -7,8 +7,8 @@ import { SessionsEmptyState, SessionsList } from "@/components/settings/sessions
 import { toSessionView } from "@/lib/auth/sessions/session-view";
 import { useStepUpCoordinator, withStepUp } from "@/lib/auth/step-up";
 import type { UserSessionRow } from "@/lib/data/user-session-row";
-import type { ISessionsApi } from "@/lib/services/client/sessions.api";
-import { httpSessionsApi } from "@/lib/services/client/sessions.api";
+import type { ISessionsApi } from "@/lib/services/client/sessions.client";
+import { httpSessionsApi } from "@/lib/services/client/sessions.client";
 import { notify } from "@/lib/ui/notify";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";

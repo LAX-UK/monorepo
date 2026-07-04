@@ -10,7 +10,7 @@ import { lotPath } from "@/lib/seo/url";
 import {
   patchNotificationRead,
   patchNotificationsReadAll,
-} from "@/lib/services/client/notifications-inbox.api";
+} from "@/lib/services/client/notifications-inbox.client";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Bell } from "lucide-react";

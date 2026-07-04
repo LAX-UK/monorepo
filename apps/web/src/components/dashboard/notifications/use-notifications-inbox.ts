@@ -10,7 +10,7 @@ import {
   patchNotificationRead,
   patchNotificationsReadAll,
   patchNotificationsReadBulk,
-} from "@/lib/services/client/notifications-inbox.api";
+} from "@/lib/services/client/notifications-inbox.client";
 import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
 import { useCallback, useEffect, useRef, useState } from "react";

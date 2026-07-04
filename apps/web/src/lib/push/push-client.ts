@@ -1,5 +1,10 @@
-import { pushApiBase } from "@/lib/push/api-base";
 import { getNotificationPermission, isPushSupported } from "@/lib/push/capability";
+import {
+  fetchPushSubscriptionStatus,
+  fetchPushVapidPublicKey,
+  removePushSubscriptionOnServer,
+  savePushSubscriptionOnServer,
+} from "@/lib/push/push-subscription.client";
 import { urlBase64ToUint8Array } from "@/lib/push/url-base64";
 
 export type PushServerStatus = {
@@ -27,37 +32,6 @@ export interface PushClient {
 const SW_PATH = "/sw.js";
 const SW_OPTIONS: RegistrationOptions = { scope: "/", updateViaCache: "none" };
 
-async function saveSubscriptionOnServer(sub: PushSubscription): Promise<void> {
-  const json = sub.toJSON();
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-    throw new Error("Invalid push subscription.");
-  }
-  const res = await fetch(`${pushApiBase()}/users/me/push-subscription`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      endpoint: json.endpoint,
-      keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-    }),
-  });
-  if (!res.ok) {
-    throw new Error("Failed to save subscription on server.");
-  }
-}
-
-async function removeSubscriptionOnServer(endpoint: string): Promise<void> {
-  const res = await fetch(`${pushApiBase()}/users/me/push-subscription/remove`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ endpoint }),
-  });
-  if (!res.ok) {
-    throw new Error("Failed to remove subscription on server.");
-  }
-}
-
 export function createWebPushClient(): PushClient {
   return {
     async registerServiceWorker() {
@@ -74,23 +48,11 @@ export function createWebPushClient(): PushClient {
     },
 
     async getServerStatus() {
-      const res = await fetch(`${pushApiBase()}/users/me/push-subscription/status`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load push subscription status.");
-      }
-      const body = (await res.json()) as { data?: PushServerStatus };
-      return body.data ?? { hasServerSubscription: false };
+      return fetchPushSubscriptionStatus();
     },
 
     async fetchVapidPublicKey() {
-      const res = await fetch(`${pushApiBase()}/users/me/push/vapid-key`, {
-        credentials: "include",
-      });
-      if (!res.ok) return null;
-      const body = (await res.json()) as { data?: { publicKey?: string | null } };
-      return body.data?.publicKey ?? null;
+      return fetchPushVapidPublicKey();
     },
 
     async subscribe(vapidPublicKey) {
@@ -110,7 +72,14 @@ export function createWebPushClient(): PushClient {
           keyBytes.byteOffset + keyBytes.byteLength,
         ) as ArrayBuffer,
       });
-      await saveSubscriptionOnServer(sub);
+      const json = sub.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+        throw new Error("Invalid push subscription.");
+      }
+      await savePushSubscriptionOnServer({
+        endpoint: json.endpoint,
+        keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+      });
     },
 
     async unsubscribe() {
@@ -119,7 +88,7 @@ export function createWebPushClient(): PushClient {
       const endpoint = sub.endpoint;
       await sub.unsubscribe();
       try {
-        await removeSubscriptionOnServer(endpoint);
+        await removePushSubscriptionOnServer(endpoint);
       } catch {
         // Browser is already unsubscribed; server 410 cleanup handles stale rows on next send.
       }
@@ -131,7 +100,12 @@ export function createWebPushClient(): PushClient {
       const sub = await reg.pushManager.getSubscription();
       // Never auto-subscribe here — browsers require a user gesture for new subscriptions.
       if (!sub) return;
-      await saveSubscriptionOnServer(sub);
+      const json = sub.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
+      await savePushSubscriptionOnServer({
+        endpoint: json.endpoint,
+        keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+      });
     },
 
     async getSnapshot() {
