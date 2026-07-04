@@ -3,11 +3,11 @@ import * as AuctionTypes from "@auction/types";
 import { Hono } from "hono";
 import { err } from "neverthrow";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import type { Container } from "../container.js";
 import { createRequireCapability } from "../middleware/require-capability.js";
 import { AdminLegalEntityLifecycleApplicationService } from "../services/admin/admin-legal-entity-lifecycle-application.service.js";
 import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifecycle-admin.service.js";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
 

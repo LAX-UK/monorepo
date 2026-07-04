@@ -2,6 +2,7 @@
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminAmlTableRow } from "@/lib/data/view-models/admin-aml-table.vm";
+import { Button } from "@auction/ui/components/button";
 
 type Props = {
   rows: AdminAmlTableRow[];
@@ -13,9 +14,10 @@ export function AmlMobileCards({ rows, onOpen }: Props) {
     <ul className="space-y-2">
       {rows.map((row) => (
         <li key={row.id}>
-          <button
+          <Button
             type="button"
-            className="w-full rounded-lg border border-outline-variant/40 p-4 text-left"
+            variant="ghost"
+            className="h-auto w-full justify-start rounded-lg border border-outline-variant/40 p-4 text-left whitespace-normal"
             onClick={() => onOpen(row)}
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -26,7 +28,7 @@ export function AmlMobileCards({ rows, onOpen }: Props) {
             <p className="mt-1 font-body text-xs text-on-surface-variant">
               {row.categoriesLabel} · {row.totalHits} hit{row.totalHits === 1 ? "" : "s"}
             </p>
-          </button>
+          </Button>
         </li>
       ))}
     </ul>

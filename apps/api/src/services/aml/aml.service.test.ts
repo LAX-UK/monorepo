@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import { VERIFF_WATCHLIST_MATCH_FOUND } from "../../lib/veriff/veriff-watchlist-fixtures.js";
+import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { DefaultAmlDecisionPolicy } from "./aml-decision.policy.js";
 import { AmlService } from "./aml.service.js";

@@ -2,9 +2,9 @@ import type { ExportEntityType } from "@auction/exports";
 import { AuthzError } from "@auction/exports/providers";
 import type { IExportJobRepository } from "@auction/persistence";
 import { describe, expect, it, vi } from "vitest";
+import type { ExportProvider } from "../../exports/types.js";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { ExportProvider } from "../../exports/types.js";
 import { ExportFileStorage } from "./export-file-storage.js";
 import { RedisExportProgressStore } from "./export-progress.store.js";
 import { ExportService } from "./export.service.js";
@@ -319,7 +319,10 @@ describe("ExportService", () => {
       completedAt: new Date(),
       cancelledAt: null,
     };
-    const { service } = createService({ existingRow, domainEventSink: mockDomainEventSink(publish) });
+    const { service } = createService({
+      existingRow,
+      domainEventSink: mockDomainEventSink(publish),
+    });
 
     await service.createExport({
       userId: "user-1",

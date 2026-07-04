@@ -1,6 +1,5 @@
 import type { Database } from "@auction/db";
 import { payment, payout, payoutLine } from "@auction/db/schema";
-import { queryCreatedAtDailyCounts } from "@auction/persistence";
 import type { Payout, PayoutLine, PayoutLineKind, PayoutStatus } from "@auction/types";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type {
@@ -11,6 +10,7 @@ import type {
   PendingPaymentRow,
   ReconcileStripeTransferPatch,
 } from "../interfaces/payout.repository.js";
+import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 type PayoutRow = typeof payout.$inferSelect;
 type PayoutLineRow = typeof payoutLine.$inferSelect;

@@ -62,6 +62,17 @@ export type { KycDecisionSummary } from "./kyc-decision-summary.js";
 
 export { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "./impersonation-audit.constants.js";
 
+export {
+  EXPORT_ENTITY_TYPES,
+  EXPORT_FORMATS,
+  EXPORT_PHASES,
+  EXPORT_STATUSES,
+  type ExportEntityType,
+  type ExportFormat,
+  type ExportPhase,
+  type ExportStatus,
+} from "./export-types.js";
+
 export { LotError } from "./lot.error.js";
 export type {
   DomainEventConnection,

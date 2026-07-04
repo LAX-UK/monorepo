@@ -1,6 +1,7 @@
 "use client";
 
 import type { SaleroomDisplayPairingStart } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 
 type Props = {
   saleId: string;
@@ -34,37 +35,37 @@ export function SaleroomDisplayPairing({ saleId, start, phase, message, onBegin 
       ) : phase === "expired" ? (
         <div className="text-center">
           <p className="text-2xl">Pairing code expired</p>
-          <button
+          <Button
             type="button"
             onClick={onBegin}
-            className="mt-6 rounded-lg bg-neutral-100 px-6 py-3 text-sm font-semibold text-neutral-950"
+            className="mt-6 rounded-lg bg-neutral-100 px-6 py-3 text-sm font-semibold text-neutral-950 hover:bg-neutral-100"
           >
             Try again
-          </button>
+          </Button>
         </div>
       ) : phase === "error" ? (
         <div className="text-center">
           <p className="text-2xl text-red-300">{message ?? "Something went wrong"}</p>
-          <button
+          <Button
             type="button"
             onClick={onBegin}
-            className="mt-6 rounded-lg bg-neutral-100 px-6 py-3 text-sm font-semibold text-neutral-950"
+            className="mt-6 rounded-lg bg-neutral-100 px-6 py-3 text-sm font-semibold text-neutral-950 hover:bg-neutral-100"
           >
             Retry
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="text-center">
           <p className="text-3xl font-light">Venue display</p>
           <p className="mt-3 text-white/50">Pair this screen with the clerk console</p>
-          <button
+          <Button
             type="button"
             onClick={onBegin}
             disabled={phase === "starting"}
-            className="mt-8 rounded-lg bg-neutral-100 px-8 py-3 text-sm font-semibold text-neutral-950 disabled:opacity-60"
+            className="mt-8 rounded-lg bg-neutral-100 px-8 py-3 text-sm font-semibold text-neutral-950 hover:bg-neutral-100 disabled:opacity-60"
           >
             {phase === "starting" ? "Starting…" : "Connect display"}
-          </button>
+          </Button>
         </div>
       )}
     </div>

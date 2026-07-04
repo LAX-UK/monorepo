@@ -1,6 +1,6 @@
 import type { TemplateName, TemplateVarsByName } from "@auction/email";
-import { notificationTypeToTemplate } from "@auction/persistence";
 import type { IEmailService } from "@auction/email";
+import { notificationTypeToTemplate } from "@auction/persistence";
 import type { IUserRepository } from "@auction/persistence";
 import type { BillToContext } from "@auction/types";
 import { createUnsubscribeToken } from "../lib/email-unsubscribe-token.js";

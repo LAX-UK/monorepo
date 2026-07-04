@@ -1,32 +1,23 @@
-export const EXPORT_FORMATS = ["csv"] as const;
-export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+import type {
+  ExportEntityType,
+  ExportFormat,
+  ExportPhase,
+  ExportStatus,
+} from "@auction/persistence/lib";
 
-export const EXPORT_ENTITY_TYPES = [
-  "lots",
-  "sales",
-  "submissions",
-  "clients",
-  "payments",
-  "domain-events",
-  "payouts",
-  "analytics",
-] as const;
+export {
+  EXPORT_ENTITY_TYPES,
+  EXPORT_FORMATS,
+  EXPORT_PHASES,
+  EXPORT_STATUSES,
+  type ExportEntityType,
+  type ExportFormat,
+  type ExportPhase,
+  type ExportStatus,
+} from "@auction/persistence/lib";
 
 /** In-flight exports older than this are not deduped and may be marked failed by purge job. */
 export const DEFAULT_EXPORT_STALE_PROCESSING_MS = 1_800_000;
-export type ExportEntityType = (typeof EXPORT_ENTITY_TYPES)[number];
-
-export const EXPORT_STATUSES = [
-  "pending",
-  "processing",
-  "completed",
-  "failed",
-  "cancelled",
-] as const;
-export type ExportStatus = (typeof EXPORT_STATUSES)[number];
-
-export const EXPORT_PHASES = ["counting", "fetching", "writing", "uploading"] as const;
-export type ExportPhase = (typeof EXPORT_PHASES)[number];
 
 export type ExportColumn = {
   key: string;

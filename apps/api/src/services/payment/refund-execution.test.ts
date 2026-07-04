@@ -30,8 +30,7 @@ function baseDeps(overrides: Partial<RefundLedgerDeps> = {}): RefundLedgerDeps {
     transactionRunner: {
       runInTransaction: vi.fn(async (fn: (t: never) => Promise<void>) => fn(tx)),
     } as never,
-    domainEventSink: mockDomainEventSink(vi.fn().mockResolvedValue(undefined),
-    ),
+    domainEventSink: mockDomainEventSink(vi.fn().mockResolvedValue(undefined)),
     payoutAdjustments: null,
     paymentRefundReconcile: null,
     xeroPaymentRecorder: null,

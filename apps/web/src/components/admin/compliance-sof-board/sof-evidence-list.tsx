@@ -47,14 +47,16 @@ function SubmittedDocumentRow({
         <span className="shrink-0 font-label text-[9px] uppercase tracking-wide text-on-surface-variant">
           {doc.reviewStatus}
         </span>
-        <button
+        <Button
           type="button"
-          onClick={handleDownload}
+          variant="link"
+          size="link"
           disabled={pending}
-          className="shrink-0 text-link underline disabled:opacity-60"
+          onClick={handleDownload}
+          className="h-auto shrink-0 p-0 text-link underline"
         >
           {pending ? "Preparing…" : "Download"}
-        </button>
+        </Button>
       </div>
       <SofDocumentThumbnail doc={doc} downloadUrl={doc.downloadUrl} />
       {error ? (

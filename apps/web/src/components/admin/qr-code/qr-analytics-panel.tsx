@@ -7,6 +7,7 @@ import {
 import { ChartRenderer } from "@/components/charts/chart-renderer";
 import { formatDateTime } from "@/lib/ui/format";
 import { SegmentToggle } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { DateRangePicker } from "@auction/ui/components/date-range-picker";
 import { Skeleton } from "@auction/ui/components/skeleton";
 import { AUCTION_ZONE_LABEL } from "@auction/ui/lib/datetime";
@@ -76,13 +77,15 @@ export function QrAnalyticsPanel({ qrCodeId, initialAnalytics }: Props) {
       {!loading && error ? (
         <div className="rounded-md border border-error/30 bg-error-container/20 p-3 text-sm">
           <p className="text-on-surface-variant">{error}</p>
-          <button
+          <Button
             type="button"
-            className="mt-2 text-sm font-medium text-primary underline-offset-2 hover:underline"
+            variant="link"
+            size="link"
+            className="mt-2 h-auto p-0"
             onClick={retry}
           >
             Try again
-          </button>
+          </Button>
         </div>
       ) : null}
       {analytics && !error ? (

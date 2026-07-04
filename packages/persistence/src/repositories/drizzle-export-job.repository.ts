@@ -1,8 +1,8 @@
 import type { Database } from "@auction/db";
 import { dataExport } from "@auction/db/schema";
-import type { ExportPhase, ExportStatus } from "@auction/exports";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { ExportJobInsert, IExportJobRepository } from "../interfaces/export-job.repository.js";
+import type { ExportPhase, ExportStatus } from "../lib/export-types.js";
 
 export class DrizzleExportJobRepository implements IExportJobRepository {
   constructor(private readonly db: Database) {}

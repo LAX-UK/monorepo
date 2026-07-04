@@ -1,5 +1,10 @@
-import type { ExportEntityType, ExportFormat, ExportPhase, ExportStatus } from "@auction/exports";
 import type { ExportJobRow } from "../lib/export-job.types.js";
+import type {
+  ExportEntityType,
+  ExportFormat,
+  ExportPhase,
+  ExportStatus,
+} from "../lib/export-types.js";
 
 export type ExportJobInsert = {
   id: string;

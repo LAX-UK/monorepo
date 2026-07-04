@@ -12,6 +12,7 @@ import {
   buildDisplayBoardVM,
   defaultDisplayBidCurrency,
 } from "@/features/saleroom/lib/display-bid-ticks";
+import { Button } from "@auction/ui/components/button";
 
 type Props = {
   saleId: string;
@@ -100,13 +101,14 @@ function SaleroomDisplayConnected({
         lastHammer={live.lastHammer}
         priceCurrency={priceCurrency}
       />
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={onDisconnect}
-        className="fixed bottom-4 right-4 z-50 rounded bg-neutral-100/10 px-3 py-1 text-xs text-white/40 opacity-0 hover:opacity-100 focus:opacity-100"
+        className="fixed bottom-4 right-4 z-50 h-auto rounded bg-neutral-100/10 px-3 py-1 text-xs text-white/40 opacity-0 hover:bg-neutral-100/10 hover:text-white/40 hover:opacity-100 focus:opacity-100"
       >
         Disconnect
-      </button>
+      </Button>
     </>
   );
 }

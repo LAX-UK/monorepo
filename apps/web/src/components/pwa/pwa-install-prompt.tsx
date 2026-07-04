@@ -84,14 +84,16 @@ export function PwaInstallPrompt() {
             Add LAX to your home screen for faster access and outbid alerts.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onDismiss}
-          className="shrink-0 rounded p-1 text-on-surface-variant hover:bg-surface-container-high"
+          className="shrink-0 text-on-surface-variant"
           aria-label="Dismiss install prompt"
         >
           <X className="size-4" aria-hidden />
-        </button>
+        </Button>
       </div>
       <div className="mt-3 flex gap-2">
         <Button type="button" size="sm" disabled={busy} onClick={() => void onInstall()}>

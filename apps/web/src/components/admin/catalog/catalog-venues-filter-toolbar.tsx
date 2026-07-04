@@ -9,6 +9,7 @@ import {
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
 import { CatalogFilterBar } from "@/components/admin/catalog/catalog-filter-bar";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { Button } from "@auction/ui/components/button";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Props = {
@@ -65,13 +66,15 @@ export function CatalogVenuesFilterToolbar({
               searchPlaceholder="Filter by organisation…"
             />
             {legalEntityId ? (
-              <button
+              <Button
                 type="button"
-                className="font-label text-xs text-secondary hover:underline"
+                variant="link"
+                size="link"
+                className="h-auto p-0 font-label text-xs text-secondary"
                 onClick={() => setLegalEntityFilter(null)}
               >
                 Clear organisation filter
-              </button>
+              </Button>
             ) : (
               <p className="font-body text-xs text-on-surface-variant">
                 Leave empty to show all venues across organisations.

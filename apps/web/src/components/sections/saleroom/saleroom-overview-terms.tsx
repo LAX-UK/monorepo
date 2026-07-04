@@ -1,6 +1,7 @@
 "use client";
 
 import { useHydrated } from "@/lib/hooks/use-hydrated";
+import { Button } from "@auction/ui/components/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -22,16 +23,17 @@ export function SaleroomOverviewTerms({ overview }: Props) {
   if (!hydrated) {
     return (
       <div className="group mt-6 rounded border border-outline-variant/30 bg-surface-container-low/30 p-4 dark:bg-surface-container-low/30">
-        <button
+        <Button
           type="button"
-          className="flex w-full cursor-pointer items-center justify-between text-lg font-semibold text-on-surface"
+          variant="ghost"
+          className="flex h-auto w-full cursor-pointer items-center justify-between p-0 text-lg font-semibold text-on-surface hover:bg-transparent"
           aria-expanded={false}
         >
           <span className="underline decoration-outline-variant/50 underline-offset-2">
             Terms &amp; conditions
           </span>
           <ChevronDownIcon className="size-5" />
-        </button>
+        </Button>
       </div>
     );
   }

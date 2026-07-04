@@ -36,7 +36,7 @@ describe("PaymentRefundReconcileService", () => {
       transactionRunnerFromDb(db),
       payments,
       null,
-      mockDomainEventSink(vi.fn() ),
+      mockDomainEventSink(vi.fn()),
       repo,
     );
 
@@ -74,7 +74,7 @@ describe("PaymentRefundReconcileService", () => {
       transactionRunnerFromDb(db),
       payments,
       null,
-      mockDomainEventSink(vi.fn() ),
+      mockDomainEventSink(vi.fn()),
       repo,
     );
 

@@ -4,6 +4,7 @@ import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { useViewQueryNavigation } from "@/lib/hooks/use-view-query-navigation";
 import { salesBrowseViewCookieValue } from "@/lib/preferences/view-query-navigation";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { CalendarDays, LayoutGrid, Rows3 } from "lucide-react";
 
 export type SalesBrowseView = "grid" | "list" | "calendar";
@@ -47,9 +48,11 @@ export function SalesViewSwitcher({
         {MODES.map(({ value: m, label, Icon }) => {
           const selected = liveView === m;
           return (
-            <button
+            <Button
               key={m}
               type="button"
+              variant="ghost"
+              size="icon"
               // biome-ignore lint/a11y/useSemanticElements: icon toggle uses button radios to match the shared ViewSwitcher
               role="radio"
               aria-checked={selected}
@@ -57,15 +60,15 @@ export function SalesViewSwitcher({
               onClick={() => navigate(m)}
               title={label}
               className={cn(
-                "flex size-9 items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 md:size-8",
+                "size-9 rounded-full md:size-8",
                 selected
-                  ? "bg-primary text-on-primary"
+                  ? "bg-primary text-on-primary hover:bg-primary"
                   : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
               )}
             >
               <Icon className="size-4 shrink-0" aria-hidden />
               <span className="sr-only">{label}</span>
-            </button>
+            </Button>
           );
         })}
       </div>

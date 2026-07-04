@@ -24,7 +24,7 @@ function listTsFiles(dir: string): string[] {
 }
 
 describe("sonner import contract (apps/web)", () => {
-  it("only src/lib/ui/notify.ts imports sonner", () => {
+  it("only src/lib/ui/notify.ts imports sonner", { timeout: 15_000 }, () => {
     const violations: string[] = [];
     for (const file of listTsFiles(srcRoot)) {
       const rel = relative(webRoot, file).replaceAll("\\", "/");

@@ -1,6 +1,5 @@
 import type { Database } from "@auction/db";
 import { lot, lotFulfilment, payment, paymentExternalRef, user } from "@auction/db/schema";
-import { queryCreatedAtDailyCounts } from "@auction/persistence";
 import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type {
@@ -12,6 +11,7 @@ import type {
   ListPaymentsExportFilter,
   PaymentRecord,
 } from "../interfaces/payment-write.repository.js";
+import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 type Row = InferSelectModel<typeof payment>;
 

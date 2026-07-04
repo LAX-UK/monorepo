@@ -21,6 +21,7 @@ import {
 } from "@/lib/upload-limits";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { Surface } from "@auction/ui/components/surface";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -46,6 +47,7 @@ export function SofComplianceClient({ initial }: Props) {
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [perTypeState, setPerTypeState] = useState<Record<string, PerTypeUploadState>>({});
+  const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
   const errorRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
 
   useEffect(() => {
@@ -147,13 +149,6 @@ export function SofComplianceClient({ initial }: Props) {
 
   function submitForReview() {
     if (submitBlockReason) return;
-    if (
-      !window.confirm(
-        "Submit all uploaded documents for review? You won't be able to add more files after submitting.",
-      )
-    ) {
-      return;
-    }
     setGlobalError(null);
     startTransition(async () => {
       try {
@@ -337,7 +332,7 @@ export function SofComplianceClient({ initial }: Props) {
                 type="button"
                 variant="primary"
                 disabled={pending || uploadInFlight || !completion.allUploaded}
-                onClick={submitForReview}
+                onClick={() => setSubmitConfirmOpen(true)}
               >
                 Submit for review
               </Button>
@@ -354,6 +349,18 @@ export function SofComplianceClient({ initial }: Props) {
           {globalError}
         </p>
       ) : null}
+      <ConfirmDialog
+        open={submitConfirmOpen}
+        onOpenChange={setSubmitConfirmOpen}
+        title="Submit for review?"
+        body="Submit all uploaded documents for review? You won't be able to add more files after submitting."
+        confirmLabel="Submit"
+        loading={pending}
+        onConfirm={() => {
+          setSubmitConfirmOpen(false);
+          submitForReview();
+        }}
+      />
     </div>
   );
 }

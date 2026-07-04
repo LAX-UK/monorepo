@@ -2,8 +2,8 @@ import type { Database } from "@auction/db";
 import type { IPayoutRepository, PendingPaymentRow } from "@auction/persistence";
 import type { Payout, PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
+import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import {
   PayoutNotFoundError,
   PayoutPermissionError,
@@ -520,7 +520,11 @@ describe("PayoutService.reconcileStripeTransfer", () => {
     const db = {
       transaction: vi.fn().mockImplementation(async (fn) => fn(mockTx)),
     };
-    const svc = new PayoutService(repo, transactionRunnerFromDb(db as unknown as Database), mockDomainEventSink(publish));
+    const svc = new PayoutService(
+      repo,
+      transactionRunnerFromDb(db as unknown as Database),
+      mockDomainEventSink(publish),
+    );
 
     const result = await svc.reconcileStripeTransfer({
       stripeTransferId: "tr_1",

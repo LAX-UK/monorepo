@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import { artistProfile, legalEntity, lot, user } from "@auction/db/schema";
 import { createDrizzleArtistProfileRepository } from "@auction/persistence";
@@ -14,11 +15,11 @@ describe.skipIf(!HAS_DB)(
       const db = createDb(databaseUrl);
       const rollback = new Error("rollback_browse_lot_count");
 
-      const artistId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-      const sellerUserId = "lot-count-int-seller";
-      const sellerLeId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
-      const activeLotId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
-      const endedLotId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+      const artistId = randomUUID();
+      const sellerUserId = randomUUID();
+      const sellerLeId = randomUUID();
+      const activeLotId = randomUUID();
+      const endedLotId = randomUUID();
 
       try {
         await db.transaction(async (tx) => {
@@ -26,7 +27,7 @@ describe.skipIf(!HAS_DB)(
           await tx.insert(user).values({
             id: sellerUserId,
             name: "Lot Count Seller",
-            email: "lot-count-int-seller@integration.test",
+            email: `lot-count-int-${sellerUserId}@integration.test`,
             emailVerified: true,
             createdAt: t,
             updatedAt: t,
@@ -44,7 +45,7 @@ describe.skipIf(!HAS_DB)(
           await tx.insert(artistProfile).values({
             id: artistId,
             displayName: "BrowseCountTest Artist",
-            slug: "browse-count-test-artist",
+            slug: `browse-count-test-${artistId.slice(0, 8)}`,
             status: "approved",
             createdAt: t,
             updatedAt: t,

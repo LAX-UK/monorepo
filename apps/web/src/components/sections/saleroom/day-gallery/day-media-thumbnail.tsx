@@ -4,6 +4,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { SaleDayMedia } from "@auction/types";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { PlayCircleIcon } from "lucide-react";
 
 export type DayMediaThumbnailVariant = "inline" | "sheet";
@@ -48,10 +49,11 @@ export function DayMediaThumbnail({
   const imageSizes = isSheet ? "120px" : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw";
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       className={cn(
-        "group relative w-full overflow-hidden bg-surface-container-low",
+        "group relative h-auto w-full overflow-hidden bg-surface-container-low p-0 hover:bg-surface-container-low",
         isSheet ? "rounded-md" : "rounded-lg",
         FOCUS_RING,
       )}
@@ -116,6 +118,6 @@ export function DayMediaThumbnail({
           {item.caption}
         </p>
       ) : null}
-    </button>
+    </Button>
   );
 }

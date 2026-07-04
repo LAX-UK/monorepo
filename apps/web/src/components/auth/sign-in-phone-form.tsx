@@ -8,6 +8,7 @@ import { PhoneNumberField } from "@/components/forms/phone-number-field";
 import { signInWithPhoneService } from "@/lib/auth/services/phone-verification.service";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { notify } from "@/lib/ui/notify";
+import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem } from "@auction/ui/components/form";
 import { normalizePhoneInput, phoneInputSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -112,21 +113,25 @@ export function SignInPhoneForm({
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-1">
             {onUseEmail ? (
-              <button
+              <Button
                 type="button"
-                className="font-label text-sm font-semibold text-on-surface underline-offset-2 hover:underline"
+                variant="link"
+                size="link"
+                className="font-label text-sm font-semibold text-on-surface"
                 onClick={onUseEmail}
               >
                 Sign in with email instead
-              </button>
+              </Button>
             ) : null}
-            <button
+            <Button
               type="button"
-              className="font-footer-links text-sm text-on-surface-variant underline-offset-2 hover:underline"
+              variant="link"
+              size="link"
+              className="font-footer-links text-sm text-on-surface-variant"
               onClick={() => setShowVerifyPrompt(false)}
             >
               Try a different number
-            </button>
+            </Button>
           </div>
           {next ? (
             <div className="pt-1">
@@ -187,13 +192,15 @@ export function SignInPhoneForm({
             <span className="h-px flex-1 bg-outline-variant/40" />
           </div>
           {next ? <SocialSignInButtons next={next} /> : null}
-          <button
+          <Button
             type="button"
-            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            variant="link"
+            size="link"
+            className="font-footer-links text-sm"
             onClick={onUseEmail}
           >
             Sign in with email instead
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

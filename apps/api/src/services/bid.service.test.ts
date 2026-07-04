@@ -7,9 +7,9 @@ import type { ISaleroomSessionLookup } from "@auction/persistence";
 import type { Bid, Lot } from "@auction/types";
 import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
-import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { BidError } from "../lib/errors.js";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { BidService } from "./bid.service.js";
 import { SaleroomOnBlockPolicy } from "./bid/saleroom-on-block.policy.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
@@ -634,7 +634,7 @@ describe("BidService.placeBid", () => {
       notifications,
       lotJobs: null,
       antiShillingGuard,
-      domainEventSink: mockDomainEventSink(domainPublish ),
+      domainEventSink: mockDomainEventSink(domainPublish),
     });
 
     const result = await service.placeBid(personalBid("buyer-1", "auc-1", 150, 200));

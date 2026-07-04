@@ -359,13 +359,15 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
               Sign In
             </AuthSubmitButton>
           )}
-          <button
+          <Button
             type="button"
-            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            variant="link"
+            size="link"
+            className="font-footer-links text-sm"
             onClick={() => setSignInMode("phone")}
           >
             Sign in with phone number
-          </button>
+          </Button>
           {sellIntent ? (
             <p className="text-center font-footer-links text-sm text-on-surface-variant">
               New to LAX? Create an account to start your submission in about 3 minutes.
@@ -431,13 +433,15 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
       {step === "email" ? (
         <>
           <SignInEmailStep control={form.control} onContinue={goToCredentials} next={next} />
-          <button
+          <Button
             type="button"
-            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            variant="link"
+            size="link"
+            className="font-footer-links text-sm"
             onClick={() => setSignInMode("phone")}
           >
             Sign in with phone number
-          </button>
+          </Button>
           {!sellIntent ? (
             <AuthFooterLink
               prefix="Don't have an account?"
@@ -483,13 +487,15 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
             sellIntent={sellIntent}
             sellRegisterHref={sellRegisterHref}
           />
-          <button
+          <Button
             type="button"
-            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            variant="link"
+            size="link"
+            className="font-footer-links text-sm"
             onClick={() => setSignInMode("phone")}
           >
             Sign in with phone number
-          </button>
+          </Button>
           {!sellIntent ? (
             <AuthFooterLink
               prefix="Don't have an account?"

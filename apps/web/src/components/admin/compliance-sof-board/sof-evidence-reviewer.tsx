@@ -15,6 +15,7 @@ import { isImageFileName } from "@/lib/upload-limits";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { Textarea } from "@auction/ui/components/textarea";
 import { cn } from "@auction/ui/lib/utils";
 import Image from "next/image";
@@ -76,6 +77,8 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
   const [previewFailed, setPreviewFailed] = useState(false);
   const [pending, startTransition] = useTransition();
   const [downloadPending, startDownload] = useTransition();
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const [pendingDoc, setPendingDoc] = useState<Doc | null>(null);
   const dirty = isReviewDirty(selected, checks, note);
 
   useEffect(() => {
@@ -108,8 +111,19 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
 
   function selectDoc(doc: Doc) {
     if (doc.id === selectedId) return;
-    if (dirty && !window.confirm("Discard unsaved review changes for this document?")) return;
+    if (dirty) {
+      setPendingDoc(doc);
+      setDiscardConfirmOpen(true);
+      return;
+    }
     applyDoc(doc);
+  }
+
+  function confirmDiscardAndSelect() {
+    if (!pendingDoc) return;
+    applyDoc(pendingDoc);
+    setPendingDoc(null);
+    setDiscardConfirmOpen(false);
   }
 
   function saveReview() {
@@ -176,12 +190,13 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
             const reviewed = doc.staffReview != null;
             return (
               <li key={doc.id}>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   className={cn(
-                    "w-full rounded-md px-2 py-2 text-left text-sm transition-colors",
+                    "h-auto w-full justify-start rounded-md px-2 py-2 text-left text-sm whitespace-normal",
                     selectedId === doc.id
-                      ? "bg-primary/10 text-on-surface"
+                      ? "bg-primary/10 text-on-surface hover:bg-primary/10"
                       : "hover:bg-surface-container-low",
                   )}
                   onClick={() => selectDoc(doc)}
@@ -194,7 +209,7 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
                     {formatDateTime(doc.uploadedAt)}
                     {reviewed ? " · Reviewed" : ""}
                   </span>
-                </button>
+                </Button>
               </li>
             );
           })}
@@ -348,6 +363,18 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
           </div>
         ) : null}
       </div>
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        onOpenChange={(open) => {
+          setDiscardConfirmOpen(open);
+          if (!open) setPendingDoc(null);
+        }}
+        title="Discard unsaved changes?"
+        body="Discard unsaved review changes for this document?"
+        confirmLabel="Discard"
+        tone="danger"
+        onConfirm={confirmDiscardAndSelect}
+      />
     </section>
   );
 }

@@ -76,13 +76,15 @@ export function SubmissionsMobileCards({
             </div>
           }
         >
-          <button
+          <Button
             type="button"
-            className="text-left font-headline text-sm text-on-surface hover:text-link"
+            variant="link"
+            size="link"
+            className="h-auto p-0 text-left font-headline text-sm text-on-surface hover:text-link"
             onClick={() => onOpen(r)}
           >
             {r.title}
-          </button>
+          </Button>
           <p className="mt-1 font-body text-xs text-on-surface-variant">{r.sellerPreview}</p>
         </CatalogMobileCardShell>
       ))}

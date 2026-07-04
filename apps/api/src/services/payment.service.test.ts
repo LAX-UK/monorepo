@@ -6,8 +6,8 @@ import type { ILotRepository, ISaleRepository, IUserRepository } from "@auction/
 import type { Lot, Sale } from "@auction/types";
 import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
-import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { LotError, PaymentProviderError } from "../lib/errors.js";
+import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
@@ -170,8 +170,7 @@ describe("PaymentService", () => {
       dispatch: vi.fn().mockResolvedValue(undefined),
     } as unknown as NotificationDispatcher;
     const accounting = mockAccounting();
-    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn().mockResolvedValue(undefined),
-    );
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn().mockResolvedValue(undefined));
     const paymentCapture = makeDelegatingPaymentCapture(db, payments, publisher);
     const service = new PaymentService(
       lots,
@@ -257,8 +256,7 @@ describe("PaymentService", () => {
         }),
       applyCapturedInTransaction: vi.fn().mockResolvedValue(undefined),
     } as unknown as IPaymentWriteRepository;
-    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn().mockResolvedValue(undefined),
-    );
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn().mockResolvedValue(undefined));
     const paymentCapture = makeDelegatingPaymentCapture(db, payments, publisher);
     const service = new PaymentService(
       { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
@@ -323,7 +321,7 @@ describe("PaymentService", () => {
       findById: vi.fn().mockResolvedValue(pay),
       applyCapturedInTransaction: vi.fn(),
     } as unknown as IPaymentWriteRepository;
-    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn() );
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn());
     const service = new PaymentService(
       { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
       payments,
@@ -445,7 +443,7 @@ describe("PaymentService", () => {
       findById: vi.fn().mockResolvedValue(pay),
       applyRefundedInTransaction: vi.fn(),
     } as unknown as IPaymentWriteRepository;
-    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn() );
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn());
 
     const service = new PaymentService(
       { findById: vi.fn() } as unknown as ILotRepository,
@@ -492,8 +490,7 @@ describe("PaymentService", () => {
       findById: vi.fn().mockResolvedValue(pay),
       applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     } as unknown as IPaymentWriteRepository;
-    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn().mockResolvedValue(undefined),
-    );
+    const publisher: IDomainEventSink = mockDomainEventSink(vi.fn().mockResolvedValue(undefined));
 
     const service = new PaymentService(
       { findById: vi.fn() } as unknown as ILotRepository,

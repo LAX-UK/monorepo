@@ -81,14 +81,16 @@ export function SofRequestDocumentsForm({ caseId, disabled }: Props) {
           {customOnly.map((type) => (
             <li key={type} className="flex items-center justify-between gap-2 font-body text-sm">
               <span>{type}</span>
-              <button
+              <Button
                 type="button"
-                className="text-xs text-link underline"
+                variant="link"
+                size="link"
+                className="h-auto p-0 text-xs text-link underline"
                 disabled={disabled || pending}
                 onClick={() => toggle(type)}
               >
                 Remove
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

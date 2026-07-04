@@ -96,13 +96,15 @@ export function SignInCredentialsStep({
         >
           {linkCooldown > 0 ? `Resend available in ${linkCooldown}s` : "Resend sign-in link"}
         </Button>
-        <button
+        <Button
           type="button"
-          className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+          variant="link"
+          size="link"
+          className="font-footer-links text-sm"
           onClick={onChangeEmail}
         >
           Use a different email
-        </button>
+        </Button>
       </div>
     );
   }
@@ -125,13 +127,15 @@ export function SignInCredentialsStep({
         </span>
         <div className="flex items-center justify-between gap-4">
           <span className="font-footer-links text-sm text-on-surface">{email}</span>
-          <button
+          <Button
             type="button"
-            className="shrink-0 font-footer-links text-sm font-medium text-link underline-offset-2 hover:underline"
+            variant="link"
+            size="link"
+            className="shrink-0 font-footer-links text-sm font-medium"
             onClick={onChangeEmail}
           >
             Change
-          </button>
+          </Button>
         </div>
       </div>
       <RHFPasswordField

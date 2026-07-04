@@ -3,6 +3,7 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminDisputeTableRow } from "@/lib/data/view-models/admin-disputes-table.vm";
 import { formatDateTime } from "@/lib/ui/format";
+import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 
 type Props = {
@@ -15,7 +16,12 @@ export function DisputesMobileCards({ rows, onOpen }: Props) {
     <ul className="space-y-3">
       {rows.map((row) => (
         <li key={row.stripeDisputeId}>
-          <button type="button" className="w-full text-left" onClick={() => onOpen(row)}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto w-full justify-start p-0 text-left whitespace-normal hover:bg-transparent"
+            onClick={() => onOpen(row)}
+          >
             <Surface variant="quiet" padding="md" className="space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-body text-sm font-medium text-on-surface">
@@ -28,7 +34,7 @@ export function DisputesMobileCards({ rows, onOpen }: Props) {
                 {row.reasonLabel} · opened {formatDateTime(row.openedAt)}
               </p>
             </Surface>
-          </button>
+          </Button>
         </li>
       ))}
     </ul>

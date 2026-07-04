@@ -1,6 +1,7 @@
 "use client";
 
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
+import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 
@@ -61,10 +62,11 @@ export function SaleroomCheckInSearch({
             )?.existingRegistration?.paddleNumber;
             return (
               <li key={c.userId}>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   aria-pressed={selected}
-                  className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
+                  className={`h-auto w-full justify-start rounded-md border px-3 py-2 text-left whitespace-normal ${
                     selected
                       ? "border-primary bg-primary/5"
                       : "border-border-hairline hover:bg-surface-container-low/60"
@@ -77,7 +79,7 @@ export function SaleroomCheckInSearch({
                     KYC: {c.kycStatus}
                     {existingPaddle != null ? <> · Already paddle #{existingPaddle}</> : null}
                   </p>
-                </button>
+                </Button>
               </li>
             );
           })}

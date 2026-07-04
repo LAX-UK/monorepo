@@ -102,4 +102,78 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
+// ─── Architecture invariants (Phase E6) ─────────────────────────────────────
+
+const DRIZZLE_NEW_RE = /new\s+Drizzle\w+/;
+const PUBLISH_TX_RE = /publish\s*\(\s*tx\b/;
+
+/** @param {string} rel POSIX path relative to repo root */
+function isTestSource(rel) {
+  return /\.(test|spec|integration\.test)\.(ts|tsx)$/.test(rel);
+}
+
+/** @param {string} rel */
+function isAllowedDrizzleSite(rel) {
+  if (rel.startsWith("packages/persistence/")) return true;
+  if (/^apps\/[^/]+\/src\/container\//.test(rel)) return true;
+  if (/^apps\/[^/]+\/src\/container\.ts$/.test(rel)) return true;
+  if (rel === "apps/api/src/services/payout/payout-helpers.ts") return true;
+  if (rel === "packages/exports/src/providers/deps.ts") return true;
+  if (isTestSource(rel)) return true;
+  if (rel.startsWith("apps/api/src/repositories/")) return true;
+  if (/\/scripts\//.test(rel)) return true;
+  return false;
+}
+
+/** @param {string} dir @returns {string[]} */
+function listAllSources(dir) {
+  /** @type {string[]} */
+  const out = [];
+  for (const entry of readdirSync(dir)) {
+    if (SKIP_DIRS.has(entry)) continue;
+    const full = join(dir, entry);
+    const st = statSync(full);
+    if (st.isDirectory()) {
+      out.push(...listAllSources(full));
+    } else if (SOURCE_RE.test(entry)) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+/** @type {string[]} */
+const invariantViolations = [];
+
+for (const file of listAllSources(root)) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  const text = readFileSync(file, "utf8");
+
+  if (DRIZZLE_NEW_RE.test(text) && !isAllowedDrizzleSite(rel)) {
+    invariantViolations.push(
+      `${rel}: \`new Drizzle*\` outside allowed sites — use @auction/persistence or apps/*/src/container/`,
+    );
+  }
+
+  if (
+    rel.startsWith("apps/api/src/services/") &&
+    !isTestSource(rel) &&
+    rel !== "apps/api/src/services/domain-event.publisher.ts" &&
+    PUBLISH_TX_RE.test(text)
+  ) {
+    invariantViolations.push(
+      `${rel}: transactional \`publish(tx)\` — route through IDomainEventSink / domain-event.publisher.ts`,
+    );
+  }
+}
+
+if (invariantViolations.length > 0) {
+  console.error("Architecture invariant violations detected:\n");
+  for (const v of invariantViolations) {
+    console.error(`  ${v}`);
+  }
+  console.error("\nSee scripts/check-layers.mjs for allowed Drizzle and publish(tx) sites.");
+  process.exit(1);
+}
+
 console.log("check-layers: ok (no layering violations)");
