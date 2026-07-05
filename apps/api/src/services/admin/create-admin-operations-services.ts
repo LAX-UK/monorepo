@@ -19,12 +19,12 @@ import type { IAnalyticsService } from "../interfaces/analytics.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
 import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-apis.js";
+import type { SaleroomServicePort } from "../interfaces/saleroom-service.js";
+import type { ITelephoneBidBookingBidPolicy } from "../interfaces/telephone-bid-booking-service.js";
 import type { IUserSuspensionChecker } from "../interfaces/user-suspension.js";
 import type { PaddleService } from "../paddle.service.js";
 import type { SaleExpectedGuestsService } from "../sale-expected-guests.service.js";
 import type { SaleroomCheckInService } from "../saleroom-check-in.service.js";
-import type { SaleroomService } from "../saleroom.service.js";
-import type { TelephoneBidBookingService } from "../telephone-bid-booking.service.js";
 import { AdminDashboardQueryService } from "./admin-dashboard-query.service.js";
 import { AdminDomainEventQueryService } from "./admin-domain-event-query.service.js";
 import { AdminEmailApplicationService } from "./admin-email-application.service.js";
@@ -50,14 +50,14 @@ export type CreateAdminOperationsServicesInput = {
   emailObservabilityRepository: IEmailObservabilityRepository;
   displayPairingService: IDisplayPairingService;
   displayOverlayService: IDisplayOverlayService;
-  saleroomService: SaleroomService;
+  saleroomService: SaleroomServicePort;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   saleroomCheckInService: SaleroomCheckInService;
   saleExpectedGuestsService: SaleExpectedGuestsService;
   bidService: BidService;
   saleroomOnBlockPolicy: SaleroomOnBlockPolicy;
   paddleService: PaddleService;
-  telephoneBidBookingService: TelephoneBidBookingService;
+  telephoneBidBookingService: ITelephoneBidBookingBidPolicy;
   redis: Redis;
   findLotById: (lotId: string) => Promise<{ id: string; saleId: string } | null>;
   adminDomainEventReader: IAdminDomainEventReader;
@@ -109,6 +109,8 @@ export function createAdminOperationsServices(
       input.displayOverlayService,
     ),
     saleroom: new AdminSaleroomApplicationService(
+      input.saleroomService,
+      input.saleroomService,
       input.saleroomService,
       input.adminSaleOperationsSnapshotService,
     ),

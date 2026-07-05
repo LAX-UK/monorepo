@@ -10,9 +10,9 @@ import { CATALOGUE_WRITE_CAPABILITIES } from "../../lib/errors.js";
 import { respondMissingCapability } from "../../lib/forbidden-response.js";
 import { buildConnectRequiredByLotId } from "../../lib/seller-connect-readiness.js";
 import { zValidator } from "../../lib/z-validator.js";
-import type { SaleHono, SaleRouteDeps } from "./_shared.js";
+import type { SaleHono, SaleReadRouteDeps } from "./_shared.js";
 
-export function attachSaleReadRoutes(r: SaleHono, deps: SaleRouteDeps): void {
+export function attachSaleReadRoutes(r: SaleHono, deps: SaleReadRouteDeps): void {
   const { container, optionalAuth, requireAuth } = deps;
 
   r.get("/", optionalAuth, zValidator("query", listSalesQuerySchema), async (c) => {

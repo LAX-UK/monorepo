@@ -45,6 +45,14 @@ export const LOT_TRANSITIONS: readonly LotTransitionDef[] = [
   },
 ] as const;
 
+const cancelTransition = LOT_TRANSITIONS.find((t) => t.kind === "cancel");
+if (!cancelTransition) {
+  throw new Error("LOT_TRANSITIONS must define cancel");
+}
+
+/** Statuses from which a lot may be cancelled (derived from {@link LOT_TRANSITIONS}). */
+export const LOT_CANCELLABLE_STATUSES: ReadonlySet<LotStatus> = new Set(cancelTransition.from);
+
 const ADMIN_OVERRIDE_TARGETS: Partial<Record<LotStatus, ReadonlySet<LotStatus>>> = {
   draft: new Set(["scheduled", "cancelled"]),
   scheduled: new Set(["cancelled"]),

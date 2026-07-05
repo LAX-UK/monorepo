@@ -8,7 +8,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IWatchlistRepository } from "@auction/persistence/interfaces";
-import type { Bid, Lot } from "@auction/types";
+import type { Bid } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IImageCleanup } from "../interfaces/image-cleanup.js";
 import type { ILotJobScheduler } from "../interfaces/job-scheduler.js";
@@ -19,7 +19,9 @@ import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
 import type { IQrCodeService } from "../interfaces/qr-code-service.js";
 import type { ITelephoneBidBookingSaleroomBridge } from "../interfaces/telephone-bid-booking-service.js";
 
-export const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
+import { LOT_CANCELLABLE_STATUSES } from "@auction/domain";
+
+export const CANCELLABLE = LOT_CANCELLABLE_STATUSES;
 
 export const SELLER_WITHDRAW_ROLES = new Set(["owner", "admin"]);
 

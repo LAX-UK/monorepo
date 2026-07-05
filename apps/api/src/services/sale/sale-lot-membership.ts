@@ -1,3 +1,9 @@
+import {
+  LOT_ADD_BLOCKED_MESSAGE,
+  canAddLotToSale,
+  canAttachLotToSale,
+  canDetachLotFromSale,
+} from "@auction/domain";
 import type { Lot } from "@auction/types";
 import { normalizeUserRoleOrClient, normalizeUserStaffRole } from "@auction/types";
 import type { CreateNestedLotForSaleInput } from "@auction/validators";
@@ -14,7 +20,7 @@ import { type AuthzError, LotError, missingCatalogueCapabilityError } from "../.
 import { resolveLotTimingForSale } from "../../lib/lot-sale-timing.js";
 import { publishSingleLot } from "../../lib/publish-single-lot.js";
 import { publishSingleLotDeps, recordLotLifecycle, txRepos } from "./sale-mutation-context.js";
-import { SALE_STATUSES_ALLOWING_LOT_ADD, mapSaleAddLotDbError } from "./sale-status-policy.js";
+import { mapSaleAddLotDbError } from "./sale-status-policy.js";
 import type { SaleServiceDeps } from "./sale-types.js";
 
 export async function addLotToSale(
@@ -37,8 +43,8 @@ export async function addLotToSale(
   }
   const sale = await deps.saleRepo.findById(saleId);
   if (!sale) return err(new LotError("Sale not found", 404));
-  if (!SALE_STATUSES_ALLOWING_LOT_ADD.has(sale.status)) {
-    return err(new LotError("Lots can only be added while the sale is draft"));
+  if (!canAddLotToSale(sale)) {
+    return err(new LotError(LOT_ADD_BLOCKED_MESSAGE));
   }
   const { sellerId, ...lotFields } = row;
   const resolved = resolveLotTimingForSale(sale, lotFields.startTime, lotFields.endTime);
@@ -132,7 +138,7 @@ export async function attachExistingLotToSale(
   }
   const sale = await deps.saleRepo.findById(saleId);
   if (!sale) return err(new LotError("Sale not found", 404));
-  if (sale.status !== "draft") {
+  if (!canAttachLotToSale(sale)) {
     return err(new LotError("Lots can only be attached while the sale is draft"));
   }
   const existingLot = await deps.lotRepo.findById(lotId);
@@ -207,7 +213,7 @@ export async function detachLotFromSale(
   }
   const sale = await deps.saleRepo.findById(saleId);
   if (!sale) return err(new LotError("Sale not found", 404));
-  if (sale.status !== "draft") {
+  if (!canDetachLotFromSale(sale)) {
     return err(new LotError("Lots can only be detached while the sale is draft"));
   }
   const l = await deps.lotRepo.findById(lotId);

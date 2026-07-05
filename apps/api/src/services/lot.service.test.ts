@@ -1314,7 +1314,9 @@ describe("LotService.create sale membership", () => {
     const result = await svc.create("seller-1", createInput);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("Lots can only be added while the sale is draft");
+      expect(result.error.message).toContain(
+        "Lots cannot be added once the sale has ended or been cancelled",
+      );
     }
     expect(lotRepo.create).not.toHaveBeenCalled();
   });

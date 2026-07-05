@@ -2,9 +2,9 @@ import { registerForSaleBodySchema, saleIdParamSchema } from "@auction/validator
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireBuyerRole } from "../../middleware/require-buyer-role.js";
-import type { SaleHono, SaleRouteDeps } from "./_shared.js";
+import type { SaleAuxRouteDeps, SaleHono } from "./_shared.js";
 
-export function attachSaleRegistrationRoutes(r: SaleHono, deps: SaleRouteDeps): void {
+export function attachSaleRegistrationRoutes(r: SaleHono, deps: SaleAuxRouteDeps): void {
   const { container, requireAuth, kycGate } = deps;
 
   r.post(

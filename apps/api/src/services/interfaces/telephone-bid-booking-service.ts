@@ -122,3 +122,10 @@ export interface ITelephoneBidBookingBidPolicy {
     maxAutoBidAmount?: number;
   }): Promise<Result<TelephoneBidBooking, TelephoneBidBookingServiceError>>;
 }
+
+/** Full telephone booking facade port exposed on the container. */
+export type TelephoneBidBookingServicePort = ITelephoneBidBookingBuyerService &
+  ITelephoneBidBookingStaffService &
+  ITelephoneBidBookingQueryService &
+  ITelephoneBidBookingSaleroomBridge &
+  ITelephoneBidBookingBidPolicy;

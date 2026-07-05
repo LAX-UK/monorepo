@@ -13,9 +13,9 @@ import { serviceErrorJsonBody } from "../../lib/forbidden-response.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { presentSaleImages, presentSalesWithLotsImages } from "../../lib/media-presenters.js";
 import { zValidator } from "../../lib/z-validator.js";
-import type { SaleHono, SaleRouteDeps } from "./_shared.js";
+import type { SaleHono, SaleLifecycleWriteRouteDeps } from "./_shared.js";
 
-export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleRouteDeps): void {
+export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteRouteDeps): void {
   const { container, requireAuth } = deps;
 
   r.post("/bulk", requireAuth, zValidator("json", bulkSalesBodySchema), async (c) => {

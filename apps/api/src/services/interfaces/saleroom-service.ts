@@ -65,3 +65,8 @@ export interface ISaleroomDisplayControlService {
   }): Promise<void>;
   clearDisplayOverlayIfAny(saleId: string): Promise<void>;
 }
+
+/** Full saleroom facade port exposed on the container (read + control + display). */
+export type SaleroomServicePort = ISaleroomSessionReadService &
+  ISaleroomSessionControlService &
+  ISaleroomDisplayControlService;

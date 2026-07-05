@@ -1,8 +1,8 @@
 import { saleIdParamSchema } from "@auction/validators";
 import { zValidator } from "../../lib/z-validator.js";
-import type { SaleHono, SaleRouteDeps } from "./_shared.js";
+import type { SaleAuxRouteDeps, SaleHono } from "./_shared.js";
 
-export function attachSaleFollowRoutes(r: SaleHono, deps: SaleRouteDeps): void {
+export function attachSaleFollowRoutes(r: SaleHono, deps: SaleAuxRouteDeps): void {
   const { container, requireAuth } = deps;
 
   r.post("/:id/follow", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {

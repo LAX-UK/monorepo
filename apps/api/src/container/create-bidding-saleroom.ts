@@ -16,6 +16,7 @@ import { DisplaySnapshotReader } from "../services/display-snapshot-reader.servi
 import type { IDisplayOverlayService } from "../services/interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../services/interfaces/display-pairing-service.js";
 import type { IDisplaySnapshotReader } from "../services/interfaces/display-snapshot-reader.js";
+import type { SaleroomServicePort } from "../services/interfaces/saleroom-service.js";
 import { SaleRegistrationService } from "../services/sale-registration.service.js";
 import { SaleroomService } from "../services/saleroom.service.js";
 import { createBidEligibility } from "./create-bid-eligibility.js";
@@ -33,7 +34,7 @@ export type ContainerBiddingSaleroom = {
   absenteeBidService: AbsenteeBidService;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   autoBidService: AutoBidService;
-  saleroomService: SaleroomService;
+  saleroomService: SaleroomServicePort;
   displayPairingService: IDisplayPairingService;
   displayOverlayService: IDisplayOverlayService;
   displaySnapshotReader: IDisplaySnapshotReader;

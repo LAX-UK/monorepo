@@ -11,9 +11,9 @@ import { serviceErrorJsonBody } from "../../lib/forbidden-response.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
 import { zValidator } from "../../lib/z-validator.js";
-import type { SaleHono, SaleRouteDeps } from "./_shared.js";
+import type { SaleHono, SaleLotMembershipRouteDeps } from "./_shared.js";
 
-export function attachSaleLotsRoutes(r: SaleHono, deps: SaleRouteDeps): void {
+export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDeps): void {
   const { container, requireAuth } = deps;
 
   r.post(

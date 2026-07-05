@@ -14,7 +14,11 @@ import { AdminMetricsService } from "../services/admin-metrics.service.js";
 import { AmlSettlementCompliancePolicy } from "../services/aml/settlement-compliance.policy.js";
 import type { IErrorReporter } from "../services/interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "../services/interfaces/invoice-accounting.js";
-import type { IPaymentMaintenanceService } from "../services/interfaces/payment-service.js";
+import type {
+  IPaymentAdminService,
+  IPaymentBuyerService,
+  IPaymentMaintenanceService,
+} from "../services/interfaces/payment-service.js";
 import { LotFulfilmentService } from "../services/lot-fulfilment.service.js";
 import { LotInvoiceInitiationService } from "../services/lot-invoice-initiation.service.js";
 import { PaymentService } from "../services/payment.service.js";
@@ -46,8 +50,8 @@ export type ContainerPaymentsServices = {
   lotFulfilmentService: LotFulfilmentService;
   paymentCaptureService: PaymentCaptureService;
   stripeCheckoutService: StripeCheckoutService | null;
-  paymentBuyerService: PaymentService;
-  paymentAdminService: PaymentService;
+  paymentBuyerService: IPaymentBuyerService;
+  paymentAdminService: IPaymentAdminService;
   paymentMaintenanceService: IPaymentMaintenanceService;
   lotInvoiceInitiationService: LotInvoiceInitiationService;
   stripePaymentWebhookService: StripePaymentWebhookService | null;

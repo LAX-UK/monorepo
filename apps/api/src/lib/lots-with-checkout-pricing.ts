@@ -1,8 +1,10 @@
 import type { Lot, PublicLotView, Sale } from "@auction/types";
-import type { Container } from "../container.js";
+import type { SaleLookupPort } from "../container/container-slices.js";
 import { computeLotCheckoutPricing } from "./lot-checkout-pricing.js";
 
-type LotsWithCheckoutPricingDeps = Pick<Container, "saleService">;
+type LotsWithCheckoutPricingDeps = {
+  saleService: SaleLookupPort;
+};
 
 /** Batch-load sales and attach `checkoutPricing` for dashboard / list consumers. */
 export async function lotsWithCheckoutPricing(

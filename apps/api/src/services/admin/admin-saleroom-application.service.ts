@@ -1,53 +1,61 @@
 import type { AdminSaleOperationsSnapshotService } from "../admin-sale-operations-snapshot.service.js";
 import type { IAdminSaleroomApplicationService } from "../interfaces/admin-routes.js";
-import type { SaleroomService } from "../saleroom.service.js";
+import type {
+  ISaleroomDisplayControlService,
+  ISaleroomSessionControlService,
+  ISaleroomSessionReadService,
+} from "../interfaces/saleroom-service.js";
 
 export class AdminSaleroomApplicationService implements IAdminSaleroomApplicationService {
   constructor(
-    private readonly saleroom: SaleroomService,
+    private readonly sessionRead: ISaleroomSessionReadService,
+    private readonly sessionControl: ISaleroomSessionControlService,
+    private readonly displayControl: ISaleroomDisplayControlService,
     private readonly operationsSnapshot: AdminSaleOperationsSnapshotService,
   ) {}
 
-  goLive(...args: Parameters<SaleroomService["goLive"]>) {
-    return this.saleroom.goLive(...args);
+  goLive(...args: Parameters<ISaleroomSessionControlService["goLive"]>) {
+    return this.sessionControl.goLive(...args);
   }
 
-  pause(...args: Parameters<SaleroomService["pause"]>) {
-    return this.saleroom.pause(...args);
+  pause(...args: Parameters<ISaleroomSessionControlService["pause"]>) {
+    return this.sessionControl.pause(...args);
   }
 
-  resume(...args: Parameters<SaleroomService["resume"]>) {
-    return this.saleroom.resume(...args);
+  resume(...args: Parameters<ISaleroomSessionControlService["resume"]>) {
+    return this.sessionControl.resume(...args);
   }
 
-  advanceToLot(...args: Parameters<SaleroomService["advanceToLot"]>) {
-    return this.saleroom.advanceToLot(...args);
+  advanceToLot(...args: Parameters<ISaleroomSessionControlService["advanceToLot"]>) {
+    return this.sessionControl.advanceToLot(...args);
   }
 
-  hammerCurrentLot(...args: Parameters<SaleroomService["hammerCurrentLot"]>) {
-    return this.saleroom.hammerCurrentLot(...args);
+  hammerCurrentLot(...args: Parameters<ISaleroomSessionControlService["hammerCurrentLot"]>) {
+    return this.sessionControl.hammerCurrentLot(...args);
   }
 
-  noSaleCurrentLot(...args: Parameters<SaleroomService["noSaleCurrentLot"]>) {
-    return this.saleroom.noSaleCurrentLot(...args);
+  noSaleCurrentLot(...args: Parameters<ISaleroomSessionControlService["noSaleCurrentLot"]>) {
+    return this.sessionControl.noSaleCurrentLot(...args);
   }
 
-  closeSession(...args: Parameters<SaleroomService["closeSession"]>) {
-    return this.saleroom.closeSession(...args);
+  closeSession(...args: Parameters<ISaleroomSessionControlService["closeSession"]>) {
+    return this.sessionControl.closeSession(...args);
   }
 
-  getSessionStatuses(...args: Parameters<SaleroomService["getSessionStatuses"]>) {
-    return this.saleroom.getSessionStatuses(...args);
+  getSessionStatuses(...args: Parameters<ISaleroomSessionReadService["getSessionStatuses"]>) {
+    return this.sessionRead.getSessionStatuses(...args);
   }
 
-  getSessionWithRecentEvents(...args: Parameters<SaleroomService["getSessionWithRecentEvents"]>) {
-    return this.saleroom.getSessionWithRecentEvents(...args);
+  getSessionWithRecentEvents(
+    ...args: Parameters<ISaleroomSessionReadService["getSessionWithRecentEvents"]>
+  ) {
+    return this.sessionRead.getSessionWithRecentEvents(...args);
   }
 
   publishClerkPaddleBidSummary(
-    ...args: Parameters<SaleroomService["publishClerkPaddleBidSummary"]>
+    ...args: Parameters<ISaleroomDisplayControlService["publishClerkPaddleBidSummary"]>
   ) {
-    return this.saleroom.publishClerkPaddleBidSummary(...args);
+    return this.displayControl.publishClerkPaddleBidSummary(...args);
   }
 
   getOperationsSnapshot(saleId: string) {

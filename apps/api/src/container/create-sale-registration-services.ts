@@ -6,14 +6,12 @@ import {
   DrizzleTelephoneBookingUserPhoneReader,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
+import type { TelephoneBidBookingServicePort } from "../services/interfaces/telephone-bid-booking-service.js";
 import { PaddleService } from "../services/paddle.service.js";
 import { SaleExpectedGuestsService } from "../services/sale-expected-guests.service.js";
 import { SaleroomCheckInEligibilityValidator } from "../services/saleroom-check-in-eligibility.validator.js";
 import { SaleroomCheckInService } from "../services/saleroom-check-in.service.js";
-import {
-  type TelephoneBidBookingService,
-  buildTelephoneBidBookingService,
-} from "../services/telephone-bid-booking.service.js";
+import { buildTelephoneBidBookingService } from "../services/telephone-bid-booking.service.js";
 import { TelephoneBookingNotifier } from "../services/telephone-booking-notifier.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -21,7 +19,7 @@ import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 
 export type ContainerSaleRegistrationServices = {
-  telephoneBidBookingService: TelephoneBidBookingService;
+  telephoneBidBookingService: TelephoneBidBookingServicePort;
   paddleService: PaddleService;
   saleroomCheckInService: SaleroomCheckInService;
   saleExpectedGuestsService: SaleExpectedGuestsService;

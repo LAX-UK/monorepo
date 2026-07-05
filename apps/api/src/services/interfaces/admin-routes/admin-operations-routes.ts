@@ -18,10 +18,14 @@ import type { AdminSaleOperationsSnapshotService } from "../../admin-sale-operat
 import type { PlaceBidWithIdempotencyOutcome } from "../../bid/place-bid-idempotency.js";
 import type { PaddleService, PaddleServiceError } from "../../paddle.service.js";
 import type { SaleroomCheckInService } from "../../saleroom-check-in.service.js";
-import type { SaleroomService } from "../../saleroom.service.js";
 import type { AdminAnalyticsDashboard, DateRange } from "../analytics.js";
 import type { IDisplayOverlayService } from "../display-overlay-service.js";
 import type { IDisplayPairingService } from "../display-pairing-service.js";
+import type {
+  ISaleroomDisplayControlService,
+  ISaleroomSessionControlService,
+  ISaleroomSessionReadService,
+} from "../saleroom-service.js";
 import type { IAdminFinanceDashboardQueryService } from "./admin-finance-routes.js";
 
 export type { RedactedDomainEventRow };
@@ -99,16 +103,16 @@ export interface IAdminRequestLifecycleService {
 }
 
 export interface IAdminSaleroomApplicationService {
-  goLive: SaleroomService["goLive"];
-  pause: SaleroomService["pause"];
-  resume: SaleroomService["resume"];
-  advanceToLot: SaleroomService["advanceToLot"];
-  hammerCurrentLot: SaleroomService["hammerCurrentLot"];
-  noSaleCurrentLot: SaleroomService["noSaleCurrentLot"];
-  closeSession: SaleroomService["closeSession"];
-  getSessionStatuses: SaleroomService["getSessionStatuses"];
-  getSessionWithRecentEvents: SaleroomService["getSessionWithRecentEvents"];
-  publishClerkPaddleBidSummary: SaleroomService["publishClerkPaddleBidSummary"];
+  goLive: ISaleroomSessionControlService["goLive"];
+  pause: ISaleroomSessionControlService["pause"];
+  resume: ISaleroomSessionControlService["resume"];
+  advanceToLot: ISaleroomSessionControlService["advanceToLot"];
+  hammerCurrentLot: ISaleroomSessionControlService["hammerCurrentLot"];
+  noSaleCurrentLot: ISaleroomSessionControlService["noSaleCurrentLot"];
+  closeSession: ISaleroomSessionControlService["closeSession"];
+  getSessionStatuses: ISaleroomSessionReadService["getSessionStatuses"];
+  getSessionWithRecentEvents: ISaleroomSessionReadService["getSessionWithRecentEvents"];
+  publishClerkPaddleBidSummary: ISaleroomDisplayControlService["publishClerkPaddleBidSummary"];
   getOperationsSnapshot: AdminSaleOperationsSnapshotService["getSnapshot"];
 }
 

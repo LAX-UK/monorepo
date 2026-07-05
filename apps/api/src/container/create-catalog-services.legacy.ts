@@ -19,6 +19,7 @@ import type { IOnsiteEventPublicRsvpService } from "../services/interfaces/onsit
 import type { IOnsiteEventStaffCheckInService } from "../services/interfaces/onsite-event-staff-check-in-service.js";
 import type { ISaleService } from "../services/interfaces/sale-service.js";
 import type { ISaleSoftDeleteService } from "../services/interfaces/sale-soft-delete.js";
+import type { TelephoneBidBookingServicePort } from "../services/interfaces/telephone-bid-booking-service.js";
 import type { LotLifecycleQueryService } from "../services/lot-lifecycle-query.service.js";
 import type { LotTransitionOrchestrator } from "../services/lot-transition-orchestrator.js";
 import type { NotificationQueryService } from "../services/notification-query.service.js";
@@ -32,7 +33,6 @@ import type { SaleFollowService } from "../services/sale-follow.service.js";
 import type { SaleListReadService } from "../services/sale-list-read.service.js";
 import type { SaleStatusTransitionService } from "../services/sale-status-transition.service.js";
 import type { SaleroomCheckInService } from "../services/saleroom-check-in.service.js";
-import type { TelephoneBidBookingService } from "../services/telephone-bid-booking.service.js";
 import type { VenueService } from "../services/venue.service.js";
 
 /** @deprecated Prefer sub-slice types from create-*-services.ts for narrow deps. */
@@ -43,7 +43,7 @@ export type ContainerCatalogServicesLegacy = {
   adminLotBrowseService: AdminLotBrowseService;
   qrCodeService: QrCodeService;
   qrCodeAnalytics: QrCodeAnalyticsService;
-  telephoneBidBookingService: TelephoneBidBookingService;
+  telephoneBidBookingService: TelephoneBidBookingServicePort;
   paddleService: PaddleService;
   saleroomCheckInService: SaleroomCheckInService;
   saleExpectedGuestsService: SaleExpectedGuestsService;

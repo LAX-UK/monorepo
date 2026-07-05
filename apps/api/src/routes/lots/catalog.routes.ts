@@ -16,9 +16,9 @@ import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js
 import { mapLotToStaffListRow, mapLotToSummary } from "../../lib/mappers.js";
 import { buildConnectRequiredByLotId } from "../../lib/seller-connect-readiness.js";
 import { zValidator } from "../../lib/z-validator.js";
-import type { LotHono, LotRouteDeps } from "./_shared.js";
+import type { LotHono, LotReadRouteDeps } from "./_shared.js";
 
-export function attachLotCatalogRoutes(r: LotHono, deps: LotRouteDeps): void {
+export function attachLotCatalogRoutes(r: LotHono, deps: LotReadRouteDeps): void {
   const { container, optionalAuth } = deps;
 
   r.get("/", optionalAuth, zValidator("query", listLotsQuerySchema), async (c) => {

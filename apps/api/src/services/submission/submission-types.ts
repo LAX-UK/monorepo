@@ -7,7 +7,7 @@ import type {
   ItemSubmissionUpdatePatch,
 } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
-import type { LegalEntityStatus, UpdateItemSubmissionInput } from "@auction/types";
+import type { UpdateItemSubmissionInput } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
@@ -15,12 +15,10 @@ import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 
-export const SELLER_ENTITY_WRITE_STATUSES = new Set<LegalEntityStatus>(["approved", "restricted"]);
-
-export const INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES = new Set<LegalEntityStatus>([
-  "rejected",
-  "archived",
-]);
+export {
+  INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES,
+  SELLER_ENTITY_WRITE_STATUSES,
+} from "@auction/domain";
 
 /** Resolved deps record built once in ItemSubmissionService constructor. */
 export type ItemSubmissionServiceDeps = {

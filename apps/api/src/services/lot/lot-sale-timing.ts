@@ -1,4 +1,4 @@
-import { SALE_STATUSES_ALLOWING_LOT_ADD } from "@auction/domain";
+import { LOT_ADD_BLOCKED_MESSAGE, canAddLotToSale } from "@auction/domain";
 import type { CreateLotInput, Lot, Sale } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { LotError } from "../../lib/errors.js";
@@ -22,8 +22,8 @@ export async function applySaleTimingPolicyToInput(
   if (!sale) {
     return err(new LotError("Sale not found", 404));
   }
-  if (!SALE_STATUSES_ALLOWING_LOT_ADD.has(sale.status)) {
-    return err(new LotError("Lots can only be added while the sale is draft"));
+  if (!canAddLotToSale(sale)) {
+    return err(new LotError(LOT_ADD_BLOCKED_MESSAGE));
   }
   const resolved = resolveLotTimingForSale(sale, input.startTime, input.endTime);
   if (!resolved.ok) {

@@ -1,6 +1,14 @@
+import {
+  type ManualReviewReason,
+  isComplianceCheckoutBlockCode,
+  manualReviewReasonFromCheckoutBlockCode,
+} from "@auction/domain";
 import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
-import type { ManualReviewReason, PaymentTierPolicy } from "./payment-tier.policy.js";
+import type { PaymentTierPolicy } from "./payment-tier.policy.js";
+
+export type { ManualReviewReason } from "@auction/domain";
+export { isComplianceCheckoutBlockCode, manualReviewReasonFromCheckoutBlockCode };
 
 export type ResolveManualReviewReasonInput = {
   buyerUserId: string;
@@ -48,21 +56,6 @@ export async function resolveManualReviewReason(
   }
 
   return { manualReviewReason: null, complianceHold: false };
-}
-
-export function isComplianceCheckoutBlockCode(code: string | undefined): boolean {
-  return (
-    code === "payment_checkout_blocked_aml_hold" ||
-    code === "payment_checkout_blocked_source_of_funds"
-  );
-}
-
-export function manualReviewReasonFromCheckoutBlockCode(
-  code: string | undefined,
-): ManualReviewReason | null {
-  if (code === "payment_checkout_blocked_aml_hold") return "aml_hold";
-  if (code === "payment_checkout_blocked_source_of_funds") return "source_of_funds_required";
-  return null;
 }
 
 export type NewPaymentReviewDecision = {

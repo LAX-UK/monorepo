@@ -21,11 +21,33 @@ import type { AdminRouteServices } from "../services/interfaces/admin-routes.js"
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { BiddingRouteServices } from "../services/interfaces/bidding-routes.js";
 import type {
+  ILotLifecycleService,
+  ILotReadService,
+  ILotService,
+} from "../services/interfaces/lot-service.js";
+import type {
   IPaymentAdminService,
   IPaymentBuyerService,
   IPaymentMaintenanceService,
 } from "../services/interfaces/payment-service.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
+import type {
+  ISaleLifecycleService,
+  ISaleLotMembershipService,
+  ISaleReadService,
+  ISaleService,
+  ISaleWriteService,
+} from "../services/interfaces/sale-service.js";
+import type {
+  ISaleroomSessionReadService,
+  SaleroomServicePort,
+} from "../services/interfaces/saleroom-service.js";
+import type {
+  ITelephoneBidBookingBuyerService,
+  ITelephoneBidBookingQueryService,
+  ITelephoneBidBookingStaffService,
+  TelephoneBidBookingServicePort,
+} from "../services/interfaces/telephone-bid-booking-service.js";
 import type {
   IUserSuspensionCacheInvalidator,
   IUserSuspensionChecker,
@@ -47,6 +69,19 @@ import type { ContainerSaleRegistrationServices } from "./create-sale-registrati
 import type { ContainerUserMiscServices } from "./create-user-misc-services.js";
 import type { ContainerUserProfileServices } from "./create-user-profile-services.js";
 import type { ContainerUserUtilityServices } from "./create-user-utility-services.js";
+
+/** Segregated lot/sale ports for route-level ISP narrowing. */
+export type LotReadPort = ILotReadService;
+export type LotLifecyclePort = ILotReadService & ILotLifecycleService;
+export type SaleReadPort = ISaleReadService;
+export type SaleLookupPort = Pick<ISaleReadService, "findByIds">;
+export type SaleLifecycleWritePort = ISaleWriteService & ISaleLifecycleService;
+export type SaleLotMembershipPort = ISaleLotMembershipService;
+export type SaleroomReadPort = ISaleroomSessionReadService;
+export type { SaleroomServicePort, TelephoneBidBookingServicePort };
+export type TelephoneBookingRoutePort = ITelephoneBidBookingBuyerService &
+  ITelephoneBidBookingStaffService &
+  ITelephoneBidBookingQueryService;
 
 /** Runtime wiring owned by `createContainer()` (not a factory module). */
 export type ContainerRootSlice = {
@@ -244,25 +279,64 @@ export type ContainerComposedSlices = ContainerRootSlice &
 export type Container = ContainerComposedSlices;
 
 /** Public sale catalogue HTTP handlers. */
-export type ContainerSaleRoutesSlice = Pick<
-  Container,
-  | "saleService"
-  | "saleListReadService"
-  | "saleFollowService"
-  | "saleRegistrationService"
-  | "saleBiddersService"
-  | "saleStatusTransitionService"
-  | "saleSoftDeleteService"
-  | "lotService"
-  | "cachedCatalogueListService"
-  | "repoFactory"
-  | "saleroomService"
-  | "stripeConnectService"
-  | "legalEntityRepository"
-  | "userSuspensionChecker"
-  | "kycService"
-  | "mediaUrlResolver"
-  | "mediaAssetEnricher"
+export type ContainerSaleRoutesSlice = Omit<
+  Pick<
+    Container,
+    | "saleService"
+    | "saleListReadService"
+    | "saleFollowService"
+    | "saleRegistrationService"
+    | "saleBiddersService"
+    | "saleStatusTransitionService"
+    | "saleSoftDeleteService"
+    | "lotService"
+    | "cachedCatalogueListService"
+    | "repoFactory"
+    | "saleroomService"
+    | "stripeConnectService"
+    | "legalEntityRepository"
+    | "userSuspensionChecker"
+    | "kycService"
+    | "mediaUrlResolver"
+    | "mediaAssetEnricher"
+  >,
+  "saleService" | "lotService" | "saleroomService"
+> & {
+  saleService: ISaleService;
+  lotService: LotLifecyclePort;
+  saleroomService: SaleroomServicePort;
+};
+
+/** Sale read routes — public/admin catalogue detail only. */
+export type ContainerSaleReadRoutesSlice = Omit<
+  ContainerSaleRoutesSlice,
+  "saleService" | "lotService" | "saleroomService"
+> & {
+  saleService: SaleReadPort;
+  saleroomService: SaleroomReadPort;
+};
+
+/** Sale lifecycle write routes — create, draft update, publish/unpublish/cancel. */
+export type ContainerSaleLifecycleWriteRoutesSlice = Omit<
+  ContainerSaleRoutesSlice,
+  "saleService" | "lotService"
+> & {
+  saleService: SaleLifecycleWritePort;
+};
+
+/** Sale lot membership routes — add/attach/detach lots and cancel lots on a sale. */
+export type ContainerSaleLotMembershipRoutesSlice = Omit<
+  ContainerSaleRoutesSlice,
+  "saleService" | "lotService"
+> & {
+  saleService: SaleLotMembershipPort;
+  lotService: LotLifecyclePort;
+};
+
+/** Sale follow/registration routes — no lot/sale catalogue service ports. */
+export type ContainerSaleAuxRoutesSlice = Omit<
+  ContainerSaleRoutesSlice,
+  "saleService" | "lotService"
 >;
 
 /** Minimal catalog + bidding route dependencies for lot HTTP handlers. */
@@ -277,26 +351,41 @@ export type ContainerLotRoutesSlice = Pick<
 >;
 
 /** Lot route wiring shared by `routes/lots/*` submodules. */
-export type ContainerLotRouteDepsSlice = ContainerLotRoutesSlice &
-  ContainerBiddingRoutesSlice &
-  Pick<
-    Container,
-    | "env"
-    | "redis"
-    | "db"
-    | "kycService"
-    | "userSuspensionChecker"
-    | "requireSubmissionsLegalEntityContext"
-    | "lotSoftDeleteService"
-    | "lotLifecycleQueryService"
-    | "saleService"
-    | "mediaUrlResolver"
-    | "mediaAssetEnricher"
-    | "objectStorage"
-    | "cachedCatalogueListService"
-    | "stripeConnectService"
-    | "legalEntityRepository"
-  >;
+export type ContainerLotRouteDepsSlice = Omit<
+  ContainerLotRoutesSlice &
+    ContainerBiddingRoutesSlice &
+    Pick<
+      Container,
+      | "env"
+      | "redis"
+      | "db"
+      | "kycService"
+      | "userSuspensionChecker"
+      | "requireSubmissionsLegalEntityContext"
+      | "lotSoftDeleteService"
+      | "lotLifecycleQueryService"
+      | "saleService"
+      | "mediaUrlResolver"
+      | "mediaAssetEnricher"
+      | "objectStorage"
+      | "cachedCatalogueListService"
+      | "stripeConnectService"
+      | "legalEntityRepository"
+    >,
+  "lotService" | "saleService"
+> & {
+  lotService: ILotService;
+  saleService: SaleReadPort;
+};
+
+/** Lot read routes — public catalogue/detail only. */
+export type ContainerLotReadRoutesSlice = Omit<
+  ContainerLotRouteDepsSlice,
+  "lotService" | "saleService"
+> & {
+  lotService: LotReadPort;
+  saleService: SaleReadPort;
+};
 
 /** Minimal payment route dependencies. */
 export type ContainerPaymentRoutesSlice = Pick<
@@ -406,38 +495,44 @@ export type ContainerSaleroomDisplayRoutesSlice = Pick<
 >;
 
 /** User account routes (`routes/users/*`). */
-export type ContainerUserRoutesSlice = Pick<
-  Container,
-  | "userSuspensionChecker"
-  | "env"
-  | "authDb"
-  | "conditionReportService"
-  | "userDashboardReadService"
-  | "lotService"
-  | "paymentBuyerService"
-  | "mediaUrlResolver"
-  | "mediaAssetEnricher"
-  | "notificationQueryService"
-  | "watchlistService"
-  | "repoFactory"
-  | "marketingEventService"
-  | "artistWatchlistService"
-  | "savedSearchService"
-  | "vapidPublicKey"
-  | "pushSubscriptionRepository"
-  | "notificationPreferenceRepository"
-  | "uiPreferenceService"
-  | "profileService"
-  | "addressService"
-  | "sessionRevocation"
-  | "authAuditPublisher"
-  | "userSecurityReadService"
-  | "userService"
-  | "emailService"
-  | "accountDeletionEligibilityService"
-  | "registrationService"
-  | "saleService"
->;
+export type ContainerUserRoutesSlice = Omit<
+  Pick<
+    Container,
+    | "userSuspensionChecker"
+    | "env"
+    | "authDb"
+    | "conditionReportService"
+    | "userDashboardReadService"
+    | "lotService"
+    | "paymentBuyerService"
+    | "mediaUrlResolver"
+    | "mediaAssetEnricher"
+    | "notificationQueryService"
+    | "watchlistService"
+    | "repoFactory"
+    | "marketingEventService"
+    | "artistWatchlistService"
+    | "savedSearchService"
+    | "vapidPublicKey"
+    | "pushSubscriptionRepository"
+    | "notificationPreferenceRepository"
+    | "uiPreferenceService"
+    | "profileService"
+    | "addressService"
+    | "sessionRevocation"
+    | "authAuditPublisher"
+    | "userSecurityReadService"
+    | "userService"
+    | "emailService"
+    | "accountDeletionEligibilityService"
+    | "registrationService"
+    | "saleService"
+  >,
+  "lotService" | "saleService"
+> & {
+  lotService: LotReadPort;
+  saleService: SaleLookupPort;
+};
 
 /** Auth email/password flows. */
 export type ContainerAuthRoutesSlice = Pick<
@@ -594,10 +689,12 @@ export type ContainerXeroWebhookRoutesSlice = Pick<
 >;
 
 /** Telephone bid booking (buyer + staff). */
-export type ContainerTelephoneBookingRoutesSlice = Pick<
-  Container,
-  "telephoneBidBookingService" | "userSuspensionChecker" | "kycService"
->;
+export type ContainerTelephoneBookingRoutesSlice = Omit<
+  Pick<Container, "telephoneBidBookingService" | "userSuspensionChecker" | "kycService">,
+  "telephoneBidBookingService"
+> & {
+  telephoneBidBookingService: TelephoneBookingRoutePort;
+};
 
 /** Internal cron tick endpoints. */
 export type ContainerInternalCronRoutesSlice = Pick<

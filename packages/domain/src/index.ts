@@ -8,6 +8,53 @@ export {
 } from "./sale-status-policy.js";
 export { buyerEntityCanBid } from "./buyer-entity-bid-eligibility.js";
 export {
+  bidAmountBelowMinimum,
+  effectiveBidderStepMoney,
+  lotDefaultAutoBidStepMin,
+  lotMinIncrementMoney,
+  minBidAmountMoney,
+  moneyStringGtCurrent,
+  settleProxyPrice,
+} from "./bid-money.js";
+export { minPositiveCap, parseMoneyCap } from "./bid-cap.js";
+export { isOperatorPlacement } from "./operator-placement.js";
+export { determineHighestBid } from "./highest-bid-winner.js";
+export {
+  majorGbpToPence,
+  needsManualReviewGate,
+  parsePaymentTierLimits,
+  resolveCheckoutRail,
+  resolveManualReviewReason,
+  validateCheckoutAmountPence,
+  STRIPE_GBP_MIN_PENCE,
+  type CheckoutRailKind,
+  type ManualReviewReason,
+  type PaymentTierKind,
+  type PaymentTierLimits,
+} from "./payment-tier-policy.js";
+export {
+  isComplianceCheckoutBlockCode,
+  manualReviewReasonFromCheckoutBlockCode,
+} from "./payment-manual-review.js";
+export {
+  evaluateAmlScreeningResult,
+  type AmlDecision,
+  type AmlDecisionOutcome,
+  type AmlScreeningDecisionInput,
+  type AmlScreeningMatchStatus,
+} from "./aml-decision.js";
+export {
+  nextStatusForLifecycleOp,
+  nextStatusForSelfOp,
+  type LifecycleAdminOp,
+  type LifecycleSelfOp,
+  type LifecycleTransitionResult,
+} from "./legal-entity-lifecycle.js";
+export {
+  INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES,
+  SELLER_ENTITY_WRITE_STATUSES,
+} from "./submission-policy.js";
+export {
   addMoneyStrings,
   minMoneyStrings,
   minorUnitsToMoneyString,
@@ -52,6 +99,25 @@ export {
   canAdminOverrideLotStatus,
   targetStatusForKind,
   LOT_TRANSITIONS,
+  LOT_CANCELLABLE_STATUSES,
   type LotTransitionKind,
   type LotTransitionDef,
 } from "./lot-transitions.js";
+export {
+  canAddLotToSale,
+  canAttachLotToSale,
+  canDetachLotFromSale,
+  LOT_ADD_BLOCKED_MESSAGE,
+} from "./sale-lot-membership-policy.js";
+export {
+  canLotSoftDelete,
+  listLotSoftDeleteBlockers,
+  type LotSoftDeleteContext,
+  type LotSoftDeleteGuardCounts,
+} from "./lot-soft-delete-policy.js";
+export {
+  canSaleSoftDelete,
+  listSaleSoftDeleteBlockers,
+  type SaleSoftDeleteContext,
+  type SaleSoftDeleteGuardCounts,
+} from "./sale-soft-delete-policy.js";

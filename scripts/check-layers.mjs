@@ -310,4 +310,41 @@ if (fullContainerRouteViolations.length > 0) {
   process.exit(1);
 }
 
+// ─── API routes must not import concrete service facades (DIP at HTTP edge) ──
+
+/** Concrete facade classes — routes must depend on segregated interfaces / slices. */
+const ROUTE_FACADE_CLASS_NAMES = [
+  "SaleroomService",
+  "TelephoneBidBookingService",
+  "PaymentService",
+  "LotService",
+  "SaleService",
+];
+
+/** @type {string[]} */
+const concreteFacadeRouteViolations = [];
+
+for (const file of listAllSources(join(root, "apps/api/src/routes"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  if (isTestSource(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  for (const className of ROUTE_FACADE_CLASS_NAMES) {
+    const importRe = new RegExp(`import\\s+(?:type\\s+)?\\{[^}]*\\b${className}\\b`);
+    if (importRe.test(text)) {
+      concreteFacadeRouteViolations.push(
+        `${rel}: imports concrete \`${className}\` — use a segregated interface or Container*RoutesSlice`,
+      );
+      break;
+    }
+  }
+}
+
+if (concreteFacadeRouteViolations.length > 0) {
+  console.error("Concrete service facade route import violations detected:\n");
+  for (const v of concreteFacadeRouteViolations) {
+    console.error(`  ${v}`);
+  }
+  process.exit(1);
+}
+
 console.log("check-layers: ok (no layering violations)");

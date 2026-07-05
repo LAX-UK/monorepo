@@ -14,9 +14,9 @@ import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import { maskLotForPublicView } from "../../lib/lot-public-view.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
 import { zValidator } from "../../lib/z-validator.js";
-import type { LotHono, LotRouteDeps } from "./_shared.js";
+import type { LotHono, LotReadRouteDeps } from "./_shared.js";
 
-export function attachLotDetailRoutes(r: LotHono, deps: LotRouteDeps): void {
+export function attachLotDetailRoutes(r: LotHono, deps: LotReadRouteDeps): void {
   const { container, optionalAuth } = deps;
 
   r.get("/:id/bids", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
