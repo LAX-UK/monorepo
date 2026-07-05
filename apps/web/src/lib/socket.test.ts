@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const fetchAuthJwtForSocket = vi.fn();
+const resolveSocketHandshakeAuth = vi.fn();
 const io = vi.fn();
 
 vi.mock("@/lib/socket-auth.client", () => ({
-  fetchAuthJwtForSocket,
+  resolveSocketHandshakeAuth,
 }));
 
 vi.mock("socket.io-client", () => ({
@@ -15,7 +15,7 @@ describe("getSocket", () => {
   beforeEach(() => {
     vi.resetModules();
     io.mockReset();
-    fetchAuthJwtForSocket.mockReset();
+    resolveSocketHandshakeAuth.mockReset();
     io.mockReturnValue({ id: "mock-socket" });
   });
 
@@ -23,8 +23,8 @@ describe("getSocket", () => {
     vi.unstubAllEnvs();
   });
 
-  it("passes an auth callback that resolves the fetched JWT before connect", async () => {
-    fetchAuthJwtForSocket.mockResolvedValue("fresh-jwt");
+  it("passes an auth callback that resolves handshake auth before connect", async () => {
+    resolveSocketHandshakeAuth.mockResolvedValue({ token: "fresh-jwt" });
     vi.stubEnv("NEXT_PUBLIC_WS_URL", "https://ws.test");
 
     const { getSocket } = await import("./socket");
@@ -41,11 +41,11 @@ describe("getSocket", () => {
     await vi.waitFor(() => {
       expect(cb).toHaveBeenCalledWith({ token: "fresh-jwt" });
     });
-    expect(fetchAuthJwtForSocket).toHaveBeenCalledTimes(1);
+    expect(resolveSocketHandshakeAuth).toHaveBeenCalledTimes(1);
   });
 
-  it("passes empty auth when token fetch returns null", async () => {
-    fetchAuthJwtForSocket.mockResolvedValue(null);
+  it("passes empty auth when handshake resolver returns anonymous auth", async () => {
+    resolveSocketHandshakeAuth.mockResolvedValue({});
 
     const { getSocket } = await import("./socket");
     getSocket();

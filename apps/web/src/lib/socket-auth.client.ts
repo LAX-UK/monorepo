@@ -1,8 +1,19 @@
 import { getAuthIssuerBaseUrl } from "@/lib/auth-client";
+import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 
 type AuthTokenResponse = {
   token?: string;
 };
+
+export type SocketHandshakeAuth = Record<string, never> | { token: string };
+
+/** Socket.IO auth payload: JWT when a session cookie exists, else anonymous. */
+export async function resolveSocketHandshakeAuth(): Promise<SocketHandshakeAuth> {
+  if (typeof window === "undefined") return {};
+  if (!hasAuthSessionCookie(document.cookie)) return {};
+  const token = await fetchAuthJwtForSocket();
+  return token ? { token } : {};
+}
 
 /** Fetch a short-lived JWT for Socket.IO handshake (better-auth jwt plugin). */
 export async function fetchAuthJwtForSocket(): Promise<string | null> {

@@ -1,4 +1,4 @@
-import { fetchAuthJwtForSocket } from "@/lib/socket-auth.client";
+import { resolveSocketHandshakeAuth } from "@/lib/socket-auth.client";
 import { type Socket, io } from "socket.io-client";
 
 let socket: Socket | null = null;
@@ -11,7 +11,7 @@ export function getSocket(): Socket {
       transports: ["websocket"],
       withCredentials: true,
       auth: (cb) => {
-        void fetchAuthJwtForSocket().then((token) => cb(token ? { token } : {}));
+        void resolveSocketHandshakeAuth().then(cb);
       },
     });
   }
