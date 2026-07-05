@@ -13,6 +13,6 @@ describe("staff workspace route matching", () => {
     expect(isPlatformAdminPath("/admin")).toBe(true);
     expect(isPlatformAdminPath("/admin/lots")).toBe(true);
     expect(isPlatformAdminPath("/admin/finance")).toBe(false);
-    expect(isPlatformAdminPath("/admin/payments/manual-review")).toBe(false);
+    expect(isPlatformAdminPath("/admin/payments")).toBe(false);
   });
 });

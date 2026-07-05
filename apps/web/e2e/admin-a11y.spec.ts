@@ -410,7 +410,7 @@ test.describe("admin a11y smoke", () => {
   test("manual review queue has no serious axe violations in main", async ({ page }) => {
     test.skip(!enabled || !staffEmail, skipReason);
     await staffLogin(page);
-    await page.goto("/admin/payments/manual-review");
+    await page.goto("/admin/payments?manualReview=1");
     await expect(page.locator("#main-content")).toBeVisible();
 
     const axe = await new AxeBuilder({ page })

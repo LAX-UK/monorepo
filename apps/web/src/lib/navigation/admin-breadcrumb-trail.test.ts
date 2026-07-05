@@ -30,7 +30,7 @@ describe("buildAdminBreadcrumbTrail", () => {
 
   it("builds trails for finance payments and platform saleroom", () => {
     const payments = buildAdminBreadcrumbTrail(
-      "/admin/payments/manual-review",
+      "/admin/payments?manualReview=1",
       "finance",
       sessionUser,
     );

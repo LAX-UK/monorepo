@@ -173,10 +173,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/lots",
           label: "Lots",
           icon: Package,
-          match: (pathname) =>
-            pathname === "/admin/lots" ||
-            (pathname.startsWith("/admin/lots/") &&
-              !pathname.startsWith("/admin/lots/withdrawals")),
+          match: (pathname) => pathname === "/admin/lots" || pathname.startsWith("/admin/lots/"),
           requirement: LOTS_ACCESS,
           ...navBadge(navCounts.withdrawalsPending, "warning"),
         },
@@ -270,9 +267,7 @@ function buildStaffNavGroupSpecs(
           label: "Payments",
           icon: WalletCards,
           match: (pathname) =>
-            pathname === "/admin/payments" ||
-            (pathname.startsWith("/admin/payments/") &&
-              !pathname.startsWith("/admin/payments/manual-review")),
+            pathname === "/admin/payments" || pathname.startsWith("/admin/payments/"),
           requirement: FINANCE_ACCESS,
           ...navBadge(navCounts.manualReviewCount, "danger"),
         },

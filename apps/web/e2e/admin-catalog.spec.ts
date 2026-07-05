@@ -409,7 +409,7 @@ test.describe("admin category create flow", () => {
   test("can navigate to new category form and create", async ({ page }) => {
     test.skip(!enabled, skipReason);
     await staffLogin(page);
-    await page.goto("/admin/categories/new");
+    await page.goto("/admin/categories?new=1");
 
     const nameInput = page.getByLabel(/name/i).first();
     await nameInput.fill(`E2E Test Category ${Date.now()}`);
