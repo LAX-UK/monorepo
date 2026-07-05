@@ -66,6 +66,7 @@ export interface ISaleroomDisplayControlService {
   clearDisplayOverlayIfAny(saleId: string): Promise<void>;
 }
 
+/** @deprecated Prefer ISaleroomSessionReadService, ISaleroomSessionControlService, or ISaleroomDisplayControlService. */
 export interface ISaleroomService
   extends ISaleroomSessionReadService,
     ISaleroomSessionControlService,

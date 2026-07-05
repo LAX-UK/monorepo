@@ -14,20 +14,20 @@ import type { AuthzError, LotError } from "../lib/errors.js";
 import type { presentSaleAdminImages } from "../lib/media-presenters.js";
 import type { PlatformCatalogLegalEntityIdProvider } from "../lib/platform-catalog-legal-entity.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
-import type { ImageCleanupService } from "./image-cleanup.service.js";
+import type { IImageCleanup } from "./interfaces/image-cleanup.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
+import type { IMediaAssetEnricher } from "./interfaces/media-asset-enricher.js";
+import type { IMediaUrlResolver } from "./interfaces/media-url-resolver.js";
+import type { IQrCodeService } from "./interfaces/qr-code-service.js";
 import type { ISalePublishService } from "./interfaces/sale-publish.js";
-import type { MediaAssetEnricher } from "./media-asset-enricher.js";
-import type { MediaUrlResolver } from "./media-url-resolver.js";
-import type { QrCodeService } from "./qr-code.service.js";
+import type { ISaleService } from "./interfaces/sale-service.js";
 import { createSale } from "./sale/sale-create.js";
 import {
   addLotToSale,
   attachExistingLotToSale,
   detachLotFromSale,
 } from "./sale/sale-lot-membership.js";
-import { SalePublishService } from "./sale/sale-publish.service.js";
 import {
   findByIds,
   getById,
@@ -49,11 +49,11 @@ export type SaleServiceOptions = {
   lotRepo: ILotRepository;
   jobScheduler: ILotJobScheduler | null;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
-  imageCleanup?: ImageCleanupService;
+  imageCleanup?: IImageCleanup;
   saleFollowReader?: SaleFollowReader | null;
-  mediaUrlResolver?: MediaUrlResolver;
-  catalogueMediaUrlResolver?: MediaUrlResolver;
-  mediaAssetEnricher?: MediaAssetEnricher;
+  mediaUrlResolver?: IMediaUrlResolver;
+  catalogueMediaUrlResolver?: IMediaUrlResolver;
+  mediaAssetEnricher?: IMediaAssetEnricher;
   englishOnlyAuctions?: boolean;
   transactionRunner?: ITransactionRunner | null;
   domainEventSink?: IDomainEventSink | null;
@@ -61,12 +61,12 @@ export type SaleServiceOptions = {
   legalEntityRepository?: ILegalEntityRepository | null;
   venueRepository?: IVenueRepository | null;
   enforceIndividualConnectOnPublish?: boolean;
-  qrCodeService?: QrCodeService | null;
+  qrCodeService?: IQrCodeService | null;
   repoFactory?: IRepositoryFactory | null;
-  salePublishService?: ISalePublishService;
+  salePublishService: ISalePublishService;
 };
 
-export class SaleService {
+export class SaleService implements ISaleService {
   private readonly deps: SaleServiceDeps;
   private readonly publishService: ISalePublishService;
 
@@ -91,7 +91,7 @@ export class SaleService {
       qrCodeService: opts.qrCodeService ?? null,
       repoFactory: opts.repoFactory ?? null,
     };
-    this.publishService = opts.salePublishService ?? new SalePublishService(this.deps);
+    this.publishService = opts.salePublishService;
   }
 
   async create(adminId: string, input: ValidatorCreateSale): Promise<Sale> {

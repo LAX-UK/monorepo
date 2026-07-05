@@ -1,3 +1,4 @@
+export { buyerEntityCanBid } from "./buyer-entity-bid-eligibility.js";
 export {
   addMoneyStrings,
   minMoneyStrings,

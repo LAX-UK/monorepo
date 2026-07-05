@@ -1,4 +1,4 @@
-import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
+import { kycLinkActionLabel } from "@/lib/kyc/kyc-link-action-copy";
 import type { BidErrorMatcher, BidErrorPresentation, MapBidErrorOptions } from "../types";
 
 function verifyIdentityHref(returnPath?: string): string {

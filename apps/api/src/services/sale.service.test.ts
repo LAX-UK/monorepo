@@ -10,7 +10,9 @@ import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
+import type { ISalePublishService } from "./interfaces/sale-publish.js";
 import { SaleService, type SaleServiceOptions } from "./sale.service.js";
+import { SalePublishService } from "./sale/sale-publish.service.js";
 
 const TEST_ADMIN_USER_ID = "admin-1";
 const TEST_PLATFORM_CATALOG_LEGAL_ENTITY_ID = "30000000-0000-4000-9000-000000000001";
@@ -30,18 +32,53 @@ function testRepoFactory(lotRepo: ILotRepository, saleRepo: ISaleRepository): IR
   } as unknown as IRepositoryFactory;
 }
 
-function saleServiceOpts(
-  overrides: Omit<SaleServiceOptions, "resolvePlatformCatalogLegalEntityId"> &
-    Partial<Pick<SaleServiceOptions, "resolvePlatformCatalogLegalEntityId">>,
-): SaleServiceOptions {
-  const opts: SaleServiceOptions = {
+type SaleServiceTestInput = Omit<
+  SaleServiceOptions,
+  "resolvePlatformCatalogLegalEntityId" | "salePublishService"
+> &
+  Partial<Pick<SaleServiceOptions, "resolvePlatformCatalogLegalEntityId" | "salePublishService">>;
+
+function testSalePublishService(
+  opts: SaleServiceTestInput & Pick<SaleServiceOptions, "saleRepo" | "lotRepo">,
+): ISalePublishService {
+  return new SalePublishService({
+    saleRepo: opts.saleRepo,
+    lotRepo: opts.lotRepo,
+    jobScheduler: opts.jobScheduler ?? null,
+    resolvePlatformCatalogLegalEntityId:
+      opts.resolvePlatformCatalogLegalEntityId ?? testResolvePlatformCatalogLegalEntityId,
+    imageCleanup: opts.imageCleanup,
+    saleFollowReader: opts.saleFollowReader ?? null,
+    mediaUrlResolver: opts.mediaUrlResolver,
+    catalogueMediaUrlResolver: opts.catalogueMediaUrlResolver ?? opts.mediaUrlResolver,
+    mediaAssetEnricher: opts.mediaAssetEnricher,
+    englishOnlyAuctions: opts.englishOnlyAuctions ?? false,
+    transactionRunner: opts.transactionRunner ?? null,
+    domainEventSink: opts.domainEventSink ?? null,
+    lotLifecycleRecording: opts.lotLifecycleRecording ?? null,
+    legalEntityRepository: opts.legalEntityRepository ?? null,
+    venueRepository: opts.venueRepository ?? null,
+    enforceIndividualConnectOnPublish: opts.enforceIndividualConnectOnPublish ?? false,
+    qrCodeService: opts.qrCodeService ?? null,
+    repoFactory: opts.repoFactory ?? null,
+  });
+}
+
+function saleServiceOpts(overrides: SaleServiceTestInput): SaleServiceOptions {
+  const base: SaleServiceTestInput & {
+    resolvePlatformCatalogLegalEntityId: SaleServiceOptions["resolvePlatformCatalogLegalEntityId"];
+  } = {
     resolvePlatformCatalogLegalEntityId: testResolvePlatformCatalogLegalEntityId,
     ...overrides,
   };
-  if (opts.transactionRunner && opts.lotRepo && opts.saleRepo && !opts.repoFactory) {
-    opts.repoFactory = testRepoFactory(opts.lotRepo, opts.saleRepo);
+  if (base.transactionRunner && base.lotRepo && base.saleRepo && !base.repoFactory) {
+    base.repoFactory = testRepoFactory(base.lotRepo, base.saleRepo);
   }
-  return opts;
+  const salePublishService = base.salePublishService ?? testSalePublishService(base);
+  return {
+    ...base,
+    salePublishService,
+  };
 }
 
 function baseSale(overrides: Partial<Sale> = {}): Sale {

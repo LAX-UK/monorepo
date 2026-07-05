@@ -123,6 +123,7 @@ export interface ITelephoneBidBookingBidPolicy {
   }): Promise<Result<TelephoneBidBooking, TelephoneBidBookingServiceError>>;
 }
 
+/** @deprecated Prefer ITelephoneBidBookingBuyerService, ITelephoneBidBookingStaffService, or ITelephoneBidBookingQueryService. */
 export type ITelephoneBidBookingService = ITelephoneBidBookingBuyerService &
   ITelephoneBidBookingStaffService &
   ITelephoneBidBookingQueryService &

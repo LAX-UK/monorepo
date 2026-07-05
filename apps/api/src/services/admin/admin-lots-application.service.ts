@@ -2,14 +2,14 @@ import type { UserRole } from "@auction/types";
 import type { Lot } from "@auction/types";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import type { IAdminLotsApplicationService } from "../interfaces/admin-routes.js";
+import type { ILotService } from "../interfaces/lot-service.js";
 import type { LotLifecycleQueryService } from "../lot-lifecycle-query.service.js";
 import type { LotTransitionOrchestrator } from "../lot-transition-orchestrator.js";
-import type { LotService } from "../lot.service.js";
 import type { AdminLotBrowseService } from "./admin-lot-browse.service.js";
 
 export class AdminLotsApplicationService implements IAdminLotsApplicationService {
   constructor(
-    private readonly lots: LotService,
+    private readonly lots: ILotService,
     private readonly lotBrowse: AdminLotBrowseService,
     private readonly lotTransitions: LotTransitionOrchestrator,
     private readonly lotLifecycleQuery: LotLifecycleQueryService,

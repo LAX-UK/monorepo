@@ -10,14 +10,14 @@ import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IWatchlistRepository } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { ImageCleanupService } from "../image-cleanup.service.js";
+import type { IImageCleanup } from "../interfaces/image-cleanup.js";
 import type { ILotJobScheduler } from "../interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
 import type { ILotNotificationCoordinator } from "../interfaces/lot-notifications.js";
+import type { IMediaAssetEnricher } from "../interfaces/media-asset-enricher.js";
+import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
+import type { IQrCodeService } from "../interfaces/qr-code-service.js";
 import type { ITelephoneBidBookingSaleroomBridge } from "../interfaces/telephone-bid-booking-service.js";
-import type { MediaAssetEnricher } from "../media-asset-enricher.js";
-import type { MediaUrlResolver } from "../media-url-resolver.js";
-import type { QrCodeService } from "../qr-code.service.js";
 
 export const CANCELLABLE: ReadonlySet<Lot["status"]> = new Set(["draft", "scheduled", "active"]);
 
@@ -40,7 +40,7 @@ export type LotServiceDeps = {
   watchlist: IWatchlistRepository;
   jobScheduler: ILotJobScheduler | null;
   lotNotifications: ILotNotificationCoordinator | null;
-  imageCleanup: ImageCleanupService | undefined;
+  imageCleanup: IImageCleanup | undefined;
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null;
   legalEntityRepository: ILegalEntityRepository | null;
   enforceIndividualConnectOnPublish: boolean;
@@ -49,11 +49,11 @@ export type LotServiceDeps = {
     | null;
   transactionRunner: ITransactionRunner | null;
   domainEventSink: IDomainEventSink | null;
-  catalogueMediaUrlResolver: MediaUrlResolver | undefined;
-  mediaAssetEnricher: MediaAssetEnricher | undefined;
+  catalogueMediaUrlResolver: IMediaUrlResolver | undefined;
+  mediaAssetEnricher: IMediaAssetEnricher | undefined;
   englishOnlyAuctions: boolean;
   lotLifecycleRecording: ILotLifecycleRecorder | null;
-  qrCodeService: QrCodeService | null;
+  qrCodeService: IQrCodeService | null;
   telephoneBidBookingService: ITelephoneBidBookingSaleroomBridge | null;
   repoFactory: IRepositoryFactory | null;
 };

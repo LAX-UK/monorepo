@@ -5,10 +5,10 @@ import type { AdminCatalogRouteServices } from "../interfaces/admin-routes/admin
 import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
 import type { IConditionReportService } from "../interfaces/condition-report.js";
 import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
+import type { ILotService } from "../interfaces/lot-service.js";
 import type { ISaleRegistrationService } from "../interfaces/sale-registration-service.js";
 import type { LotLifecycleQueryService } from "../lot-lifecycle-query.service.js";
 import type { LotTransitionOrchestrator } from "../lot-transition-orchestrator.js";
-import type { LotService } from "../lot.service.js";
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
@@ -26,7 +26,7 @@ export type CreateAdminCatalogServicesInput = {
   artistProfileService: ArtistProfileService;
   artistRegistryService: IArtistRegistryService;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
-  lotService: LotService;
+  lotService: ILotService;
   adminLotBrowseService: AdminLotBrowseService;
   lotTransitionOrchestrator: LotTransitionOrchestrator;
   lotLifecycleQueryService: LotLifecycleQueryService;

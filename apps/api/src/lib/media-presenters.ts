@@ -7,8 +7,9 @@ import type {
   SaleDayMediaRef,
   SaleDayPhoto,
 } from "@auction/types";
-import type { MediaAssetEnricher, MediaAssetRecord } from "../services/media-asset-enricher.js";
-import type { MediaUrlResolver } from "../services/media-url-resolver.js";
+import type { IMediaAssetEnricher } from "../services/interfaces/media-asset-enricher.js";
+import type { IMediaUrlResolver } from "../services/interfaces/media-url-resolver.js";
+import type { MediaAssetRecord } from "../services/media-asset-enricher.js";
 
 function collectUniqueKeys(keys: readonly string[]): string[] {
   const out = new Set<string>();
@@ -78,7 +79,7 @@ function mergeDayMediaAssets(
 }
 
 async function enrichImageAssets(
-  enricher: MediaAssetEnricher | undefined,
+  enricher: IMediaAssetEnricher | undefined,
   keys: readonly string[],
   resolved: readonly string[],
 ) {
@@ -87,7 +88,7 @@ async function enrichImageAssets(
 }
 
 async function buildGalleryFromBatch(
-  enricher: MediaAssetEnricher | undefined,
+  enricher: IMediaAssetEnricher | undefined,
   keys: readonly string[],
   resolvedUrls: readonly string[],
   assetLookup: Map<string, MediaAssetRecord>,
@@ -97,7 +98,7 @@ async function buildGalleryFromBatch(
 }
 
 async function resolveKeysBatch(
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   keys: readonly string[],
 ): Promise<Map<string, string>> {
   if (!keys.length) return new Map();
@@ -112,9 +113,9 @@ function applyResolvedKeys(keys: readonly string[], resolved: Map<string, string
 }
 
 export async function presentLotImages(
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   row: Lot,
-  enricher?: MediaAssetEnricher,
+  enricher?: IMediaAssetEnricher,
 ): Promise<Lot> {
   const keys = row.images;
   if (!resolver) {
@@ -128,9 +129,9 @@ export async function presentLotImages(
 }
 
 export async function presentLotsImages(
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   rows: Lot[],
-  enricher?: MediaAssetEnricher,
+  enricher?: IMediaAssetEnricher,
 ): Promise<Lot[]> {
   if (rows.length === 0) return [];
   const allKeys = collectLotImageKeys(rows);
@@ -154,9 +155,9 @@ export async function presentLotsImages(
 }
 
 export async function presentSaleImages(
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   row: Sale,
-  enricher?: MediaAssetEnricher,
+  enricher?: IMediaAssetEnricher,
 ): Promise<Sale> {
   const coverKeys = row.coverImages;
   const dayRefs = row.dayImages ?? [];
@@ -198,9 +199,9 @@ export type SaleAdminImages = Sale & {
 };
 
 export async function presentSaleAdminImages(
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   row: Sale,
-  enricher?: MediaAssetEnricher,
+  enricher?: IMediaAssetEnricher,
 ): Promise<SaleAdminImages> {
   const coverKeys = row.coverImages;
   const dayRefs = row.dayImages ?? [];
@@ -250,9 +251,9 @@ export type LotAdminImages = Lot & {
 };
 
 export async function presentLotAdminImages(
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   row: Lot,
-  enricher?: MediaAssetEnricher,
+  enricher?: IMediaAssetEnricher,
 ): Promise<LotAdminImages> {
   const keys = row.images;
   const resolvedMap = await resolveKeysBatch(resolver, keys);
@@ -267,9 +268,9 @@ export async function presentLotAdminImages(
 }
 
 export async function presentSalesWithLotsImages(
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   rows: { sale: Sale; lots: Lot[] }[],
-  enricher?: MediaAssetEnricher,
+  enricher?: IMediaAssetEnricher,
 ): Promise<{ sale: Sale; lots: Lot[] }[]> {
   if (!resolver && !enricher) return rows;
   if (rows.length === 0) return [];
@@ -346,9 +347,9 @@ export async function presentSalesWithLotsImages(
 }
 
 export async function presentSubmissionImages(
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   row: ItemSubmission,
-  enricher?: MediaAssetEnricher,
+  enricher?: IMediaAssetEnricher,
 ): Promise<ItemSubmission> {
   const keys = row.images;
   if (!resolver) {
@@ -362,9 +363,9 @@ export async function presentSubmissionImages(
 }
 
 export async function presentSubmissionsImages(
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   rows: ItemSubmission[],
-  enricher?: MediaAssetEnricher,
+  enricher?: IMediaAssetEnricher,
 ): Promise<ItemSubmission[]> {
   return Promise.all(rows.map((row) => presentSubmissionImages(resolver, row, enricher)));
 }

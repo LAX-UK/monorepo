@@ -11,15 +11,16 @@ import type {
   IItemSubmissionService,
 } from "../services/interfaces/item-submission-apis.js";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
+import type { ILotService } from "../services/interfaces/lot-service.js";
 import type { ILotSoftDeleteService } from "../services/interfaces/lot-soft-delete.js";
 import type { IOnsiteEventAdminService } from "../services/interfaces/onsite-event-admin-service.js";
 import type { IOnsiteEventPassService } from "../services/interfaces/onsite-event-pass-service.js";
 import type { IOnsiteEventPublicRsvpService } from "../services/interfaces/onsite-event-public-rsvp-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../services/interfaces/onsite-event-staff-check-in-service.js";
+import type { ISaleService } from "../services/interfaces/sale-service.js";
 import type { ISaleSoftDeleteService } from "../services/interfaces/sale-soft-delete.js";
 import type { LotLifecycleQueryService } from "../services/lot-lifecycle-query.service.js";
 import type { LotTransitionOrchestrator } from "../services/lot-transition-orchestrator.js";
-import type { LotService } from "../services/lot.service.js";
 import type { NotificationQueryService } from "../services/notification-query.service.js";
 import type { PaddleService } from "../services/paddle.service.js";
 import type { PressArchiveReadService } from "../services/press-archive-read.service.js";
@@ -30,7 +31,6 @@ import type { SaleExpectedGuestsService } from "../services/sale-expected-guests
 import type { SaleFollowService } from "../services/sale-follow.service.js";
 import type { SaleListReadService } from "../services/sale-list-read.service.js";
 import type { SaleStatusTransitionService } from "../services/sale-status-transition.service.js";
-import type { SaleService } from "../services/sale.service.js";
 import type { SaleroomCheckInService } from "../services/saleroom-check-in.service.js";
 import type { TelephoneBidBookingService } from "../services/telephone-bid-booking.service.js";
 import type { VenueService } from "../services/venue.service.js";
@@ -51,11 +51,11 @@ export type ContainerCatalogServicesLegacy = {
   onsiteEventAdminService: IOnsiteEventAdminService;
   onsiteEventPassService: IOnsiteEventPassService;
   onsiteEventStaffCheckInService: IOnsiteEventStaffCheckInService;
-  lotService: LotService;
+  lotService: ILotService;
   conditionReportService: ConditionReportService;
   saleFollowService: SaleFollowService;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
-  saleService: SaleService;
+  saleService: ISaleService;
   saleListReadService: SaleListReadService;
   pressArchiveReadService: PressArchiveReadService;
   saleSoftDeleteService: ISaleSoftDeleteService;

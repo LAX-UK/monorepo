@@ -87,6 +87,7 @@ export interface IPaymentMaintenanceService {
   ): Promise<number>;
 }
 
+/** @deprecated Prefer IPaymentBuyerService, IPaymentAdminService, or IPaymentMaintenanceService. */
 export interface IPaymentService
   extends IPaymentBuyerService,
     IPaymentAdminService,

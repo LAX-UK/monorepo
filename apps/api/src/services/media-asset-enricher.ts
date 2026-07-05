@@ -2,10 +2,12 @@ import type { IMediaAssetReader, MediaAssetRecord } from "@auction/persistence/i
 import type { GalleryImage } from "@auction/types";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
 
+import type { IMediaAssetEnricher } from "./interfaces/media-asset-enricher.js";
+
 export type { MediaAssetRecord };
 
 /** Joins `media_asset` rows to catalogue image keys (SRP: metadata lookup only). */
-export class MediaAssetEnricher {
+export class MediaAssetEnricher implements IMediaAssetEnricher {
   constructor(
     private readonly mediaAssetReader: IMediaAssetReader,
     private readonly storage?: IObjectStorage,

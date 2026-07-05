@@ -41,6 +41,7 @@ import type { IDisplayOverlayService } from "../interfaces/display-overlay-servi
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
 import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-apis.js";
 import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
+import type { ILotService } from "../interfaces/lot-service.js";
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
 import type { ISaleRegistrationService } from "../interfaces/sale-registration-service.js";
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
@@ -49,7 +50,6 @@ import type { InvitationService } from "../invitation.service.js";
 import type { LegalEntityLifecycleAdminService } from "../legal-entity-lifecycle-admin.service.js";
 import type { LotLifecycleQueryService } from "../lot-lifecycle-query.service.js";
 import type { LotTransitionOrchestrator } from "../lot-transition-orchestrator.js";
-import type { LotService } from "../lot.service.js";
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { PaddleService } from "../paddle.service.js";
@@ -103,7 +103,7 @@ export type CreateAdminRouteServicesInput = {
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   paymentService: IPaymentAdminService;
   adminPaymentListQueryService: AdminPaymentListQueryService;
-  lotService: LotService;
+  lotService: ILotService;
   adminLotBrowseService: AdminLotBrowseService;
   lotTransitionOrchestrator: LotTransitionOrchestrator;
   lotLifecycleQueryService: LotLifecycleQueryService;

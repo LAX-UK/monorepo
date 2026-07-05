@@ -27,9 +27,11 @@ import type {
   IItemSubmissionService,
 } from "../services/interfaces/item-submission-apis.js";
 import type { ILotJobScheduler } from "../services/interfaces/job-scheduler.js";
+import type { ILotService } from "../services/interfaces/lot-service.js";
 import type { ILotSoftDeleteService } from "../services/interfaces/lot-soft-delete.js";
 import type { ILotStatusAdminService } from "../services/interfaces/lot-status-admin.js";
 import type { ISalePublishService } from "../services/interfaces/sale-publish.js";
+import type { ISaleService } from "../services/interfaces/sale-service.js";
 import type { ISaleSoftDeleteService } from "../services/interfaces/sale-soft-delete.js";
 import { ItemSubmissionService } from "../services/item-submission.service.js";
 import { LotNotificationCoordinator } from "../services/lot-notification-coordinator.js";
@@ -67,11 +69,11 @@ function asLotCancelledRecorder(
 export type ContainerLotCatalogServices = {
   lotJobScheduler: ILotJobScheduler;
   lotTransitionOrchestrator: LotTransitionOrchestrator;
-  lotService: LotService;
+  lotService: ILotService;
   conditionReportService: ConditionReportService;
   saleFollowService: SaleFollowService;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
-  saleService: SaleService;
+  saleService: ISaleService;
   saleListReadService: SaleListReadService;
   pressArchiveReadService: PressArchiveReadService;
   saleSoftDeleteService: ISaleSoftDeleteService;

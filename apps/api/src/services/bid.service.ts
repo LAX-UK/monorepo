@@ -36,13 +36,13 @@ import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
+import type { INotificationFactory } from "./interfaces/notification-factory.js";
 import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
 import type {
   IBidPlacerWithIdempotency,
   PlaceBidInput,
   PlaceBidWithIdempotencyInput,
 } from "./interfaces/place-bid.js";
-import { NotificationFactory } from "./notification.factory.js";
 import type { NotificationService } from "./notification.service.js";
 
 export type { PlaceBidWithIdempotencyOutcome } from "./bid/place-bid-idempotency.js";
@@ -67,7 +67,7 @@ export type BidServiceOptions = {
   lotLifecycleRecording?: ILotLifecycleRecorder | null;
   bidPolicy?: BidPolicyConfig;
   notificationOutbox?: INotificationOutboxService | null;
-  notificationFactory?: NotificationFactory;
+  notificationFactory: INotificationFactory;
   saleRepo?: ISaleRepository | null;
 };
 
@@ -96,7 +96,7 @@ export class BidService implements IBidPlacerWithIdempotency {
     this.saleroomSessionLookup = opts.saleroomSessionLookup ?? null;
     this.antiShillingGuard = opts.antiShillingGuard ?? null;
 
-    const notificationFactory = opts.notificationFactory ?? new NotificationFactory();
+    const notificationFactory = opts.notificationFactory;
 
     this.prePlacementValidator = new BidPrePlacementValidator(
       opts.saleModeLookup ?? null,

@@ -2,9 +2,11 @@ import type { IObjectStorage } from "./interfaces/object-storage.js";
 import type { ISignedUrlPolicy } from "./signed-url-policy.js";
 import { PerRequestSigningPolicy } from "./signed-url-policy.js";
 
+import type { IMediaUrlResolver } from "./interfaces/media-url-resolver.js";
+
 export type StorageReadMode = "public" | "signed";
 
-export class MediaUrlResolver {
+export class MediaUrlResolver implements IMediaUrlResolver {
   constructor(
     private readonly storage: IObjectStorage,
     private readonly readMode: StorageReadMode,

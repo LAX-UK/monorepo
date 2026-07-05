@@ -10,15 +10,26 @@ import { describe, expect, it, vi } from "vitest";
 import { BidError } from "../lib/errors.js";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
-import { BidService } from "./bid.service.js";
+import { BidService, type BidServiceOptions } from "./bid.service.js";
 import { SaleroomOnBlockPolicy } from "./bid/saleroom-on-block.policy.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
 import type { PlaceBidInput } from "./interfaces/place-bid.js";
+import { NotificationFactory } from "./notification.factory.js";
 import { NotificationService } from "./notification.service.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
+
+function createBidService(
+  opts: Omit<BidServiceOptions, "notificationFactory"> &
+    Partial<Pick<BidServiceOptions, "notificationFactory">>,
+): BidService {
+  return new BidService({
+    notificationFactory: new NotificationFactory(),
+    ...opts,
+  });
+}
 
 function lot(overrides: Partial<Lot> = {}): Lot {
   const now = new Date();
@@ -224,7 +235,7 @@ describe("BidService.placeBid", () => {
       notifyProxyCancelled: vi.fn().mockResolvedValue(undefined),
     };
     const notifications = new NotificationService(bidNotif, lotNotif);
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -255,7 +266,7 @@ describe("BidService.placeBid", () => {
     const legalEntityRepository = {
       findById: vi.fn().mockResolvedValue({ id: "le-agent", status: "approved" }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, baseBidRepo()),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -300,7 +311,7 @@ describe("BidService.placeBid", () => {
     const legalEntityRepository = {
       findById: vi.fn().mockResolvedValue({ id: "le-collector", status: "connect_pending" }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -330,7 +341,7 @@ describe("BidService.placeBid", () => {
     const legalEntityRepository = {
       findById: vi.fn().mockResolvedValue({ id: "le-collector", status: "under_review" }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, baseBidRepo()),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -370,7 +381,7 @@ describe("BidService.placeBid", () => {
     const legalEntityRepository = {
       findById: vi.fn().mockResolvedValue({ id: "le-collector", status: "connect_pending" }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, baseBidRepo()),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -410,7 +421,7 @@ describe("BidService.placeBid", () => {
       notifyProxyCancelled: vi.fn().mockResolvedValue(undefined),
     };
     const notifications = new NotificationService(bidNotif, lotNotif);
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -436,7 +447,7 @@ describe("BidService.placeBid", () => {
       notifyProxyCancelled: vi.fn().mockResolvedValue(undefined),
     };
     const notifications = new NotificationService(bidNotif, lotNotif);
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -469,7 +480,7 @@ describe("BidService.placeBid", () => {
       { notifyBidPlaced },
       { notifyLotExtended, notifyLotEnded, notifyProxyCancelled: vi.fn() },
     );
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -506,7 +517,7 @@ describe("BidService.placeBid", () => {
       bidderSharesSellerLegalEntity: vi.fn(),
       violatesAntiShilling: vi.fn().mockResolvedValue(true),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -554,7 +565,7 @@ describe("BidService.placeBid", () => {
       bidderSharesSellerLegalEntity: vi.fn(),
       violatesAntiShilling: vi.fn().mockResolvedValue(false),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -627,7 +638,7 @@ describe("BidService.placeBid", () => {
         .fn()
         .mockImplementation((ctx) => Promise.resolve(ctx.bidderUserId === "seller-member")),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -708,7 +719,7 @@ describe("BidService.placeBid", () => {
       { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
       { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
     );
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -757,7 +768,7 @@ describe("BidService.placeBid", () => {
       { notifyBidPlaced: vi.fn().mockResolvedValue(undefined) },
       { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
     );
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -804,7 +815,7 @@ describe("BidService.placeBid", () => {
       { notifyLotExtended: vi.fn(), notifyLotEnded, notifyProxyCancelled: vi.fn() },
     );
     const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -836,7 +847,7 @@ describe("BidService.placeBid", () => {
       { notifyBidPlaced: vi.fn() },
       { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
     );
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -874,7 +885,7 @@ describe("BidService.placeBid", () => {
     const saleModeLookup: ISaleModeLookup = {
       findSaleModeForLot: vi.fn().mockResolvedValue("onsite"),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -908,7 +919,7 @@ describe("BidService.placeBid", () => {
     const saleModeLookup: ISaleModeLookup = {
       findSaleModeForLot: vi.fn().mockResolvedValue("onsite"),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -951,7 +962,7 @@ describe("BidService.placeBid", () => {
     const saleModeLookup: ISaleModeLookup = {
       findSaleModeForLot: vi.fn().mockResolvedValue("online"),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -980,7 +991,7 @@ describe("BidService.placeBid", () => {
     const saleModeLookup: ISaleModeLookup = {
       findSaleModeForLot: vi.fn().mockResolvedValue("hybrid"),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1024,7 +1035,7 @@ describe("BidService.placeBid", () => {
     );
     const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
     const stageDispatch = vi.fn().mockResolvedValue(undefined);
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -1071,7 +1082,7 @@ describe("BidService.placeBid", () => {
     });
     const notifyLotExtended = vi.fn().mockResolvedValue(undefined);
     const rescheduleEnd = vi.fn().mockResolvedValue(undefined);
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1112,7 +1123,7 @@ describe("BidService.placeBid", () => {
       skipAntiSnipe: true,
       enforceOnBlock: true,
     });
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(
         lotRepo,
         bidRepo,
@@ -1157,7 +1168,7 @@ describe("BidService.placeBid", () => {
       skipAntiSnipe: true,
       enforceOnBlock: true,
     });
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(
         lotRepo,
         bidRepo,
@@ -1191,7 +1202,7 @@ describe("BidService.placeBid", () => {
       skipAntiSnipe: true,
       enforceOnBlock: true,
     });
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(
         lotRepo,
         baseBidRepo(),
@@ -1230,7 +1241,7 @@ describe("BidService.placeBid", () => {
       skipAntiSnipe: true,
       enforceOnBlock: true,
     });
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(
         lotRepo,
         baseBidRepo(),
@@ -1269,7 +1280,7 @@ describe("BidService.placeBid", () => {
       skipAntiSnipe: false,
       enforceOnBlock: true,
     });
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, baseBidRepo(), createMockTxWithSaleroomSession(null)),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1307,7 +1318,7 @@ describe("BidService.placeBid", () => {
       skipAntiSnipe: false,
       enforceOnBlock: false,
     });
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo, createMockTxWithSaleroomSession(null)),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1346,7 +1357,7 @@ describe("BidService.placeBid", () => {
       markWinningBid: vi.fn(),
     });
     const rescheduleEnd = vi.fn().mockResolvedValue(undefined);
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1380,7 +1391,7 @@ describe("BidService.placeBid", () => {
     const bidRepo = baseBidRepo({
       findWinningBid: vi.fn().mockResolvedValue(previousWinner),
     });
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1415,7 +1426,7 @@ describe("BidService.placeBid", () => {
       findWinningBid: vi.fn().mockResolvedValue(previousWinner),
       markWinningBid: vi.fn().mockResolvedValue(undefined),
     });
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1455,7 +1466,7 @@ describe("BidService.placeBid", () => {
       markWinningBid: vi.fn(),
     });
     const stageDispatch = vi.fn().mockResolvedValue(undefined);
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1519,7 +1530,7 @@ describe("BidService.placeBid", () => {
         },
       ]),
     });
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1561,7 +1572,7 @@ describe("BidService.placeBidWithIdempotency", () => {
       { notifyBidPlaced: vi.fn() },
       { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
     );
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache,
@@ -1613,7 +1624,7 @@ describe("BidService.placeBidWithIdempotency", () => {
         status: "approved",
       }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1660,7 +1671,7 @@ describe("BidService.placeBidWithIdempotency", () => {
       ensurePersonalEntity: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
       findById: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1721,7 +1732,7 @@ describe("BidService.placeBidWithIdempotency", () => {
         status: "approved",
       }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, baseBidRepo()),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1767,7 +1778,7 @@ describe("BidService.placeBidWithIdempotency", () => {
         status: "approved",
       }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
@@ -1810,7 +1821,7 @@ describe("BidService.placeBidWithIdempotency", () => {
       ensurePersonalEntity: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
       findById: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, bidRepo),
       strategyFactory,
       cache: {
@@ -1853,7 +1864,7 @@ describe("BidService.placeBidWithIdempotency", () => {
       ensurePersonalEntity: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
       findById: vi.fn().mockResolvedValue({ id: "buyer-le", status: "approved" }),
     };
-    const service = new BidService({
+    const service = createBidService({
       repos: createMockFactory(lotRepo, baseBidRepo()),
       strategyFactory,
       cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },

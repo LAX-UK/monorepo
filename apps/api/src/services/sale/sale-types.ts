@@ -5,12 +5,12 @@ import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IVenueRepository } from "@auction/persistence/interfaces";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { ImageCleanupService } from "../image-cleanup.service.js";
+import type { IImageCleanup } from "../interfaces/image-cleanup.js";
 import type { ILotJobScheduler } from "../interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
-import type { MediaAssetEnricher } from "../media-asset-enricher.js";
-import type { MediaUrlResolver } from "../media-url-resolver.js";
-import type { QrCodeService } from "../qr-code.service.js";
+import type { IMediaAssetEnricher } from "../interfaces/media-asset-enricher.js";
+import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
+import type { IQrCodeService } from "../interfaces/qr-code-service.js";
 
 /** Optional follow state for public sale detail responses. */
 export type SaleFollowReader = {
@@ -23,11 +23,11 @@ export type SaleServiceDeps = {
   lotRepo: ILotRepository;
   jobScheduler: ILotJobScheduler | null;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
-  imageCleanup: ImageCleanupService | undefined;
+  imageCleanup: IImageCleanup | undefined;
   saleFollowReader: SaleFollowReader | null;
-  mediaUrlResolver: MediaUrlResolver | undefined;
-  catalogueMediaUrlResolver: MediaUrlResolver | undefined;
-  mediaAssetEnricher: MediaAssetEnricher | undefined;
+  mediaUrlResolver: IMediaUrlResolver | undefined;
+  catalogueMediaUrlResolver: IMediaUrlResolver | undefined;
+  mediaAssetEnricher: IMediaAssetEnricher | undefined;
   englishOnlyAuctions: boolean;
   transactionRunner: ITransactionRunner | null;
   domainEventSink: IDomainEventSink | null;
@@ -35,6 +35,6 @@ export type SaleServiceDeps = {
   legalEntityRepository: ILegalEntityRepository | null;
   venueRepository: IVenueRepository | null;
   enforceIndividualConnectOnPublish: boolean;
-  qrCodeService: QrCodeService | null;
+  qrCodeService: IQrCodeService | null;
   repoFactory: IRepositoryFactory | null;
 };

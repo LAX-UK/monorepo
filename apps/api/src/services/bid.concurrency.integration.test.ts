@@ -5,6 +5,7 @@ import { count, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import { BidService } from "./bid.service.js";
+import { NotificationFactory } from "./notification.factory.js";
 import { NotificationService } from "./notification.service.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -35,6 +36,7 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
         notifyProxyCancelled: async () => {},
       },
     ),
+    notificationFactory: new NotificationFactory(),
     lotJobs: null,
   });
 

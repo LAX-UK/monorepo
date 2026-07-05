@@ -1,7 +1,7 @@
 import { createDb } from "@auction/db";
-import { DrizzleSessionRepository } from "@auction/persistence/repositories";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
+import { createAuthRepositories } from "./container/create-auth-repositories.js";
 import { createContainerAuth } from "./container/create-auth.js";
 import { createBiddingRouteServices } from "./container/create-bidding-route-services.js";
 import { createBiddingSaleroom } from "./container/create-bidding-saleroom.js";
@@ -25,7 +25,7 @@ export function createContainer(env: Env): Container {
   const authDb = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
   const infra = createInfra(env, db, authDb);
 
-  const sessionRepository = new DrizzleSessionRepository(authDb);
+  const { sessionRepository } = createAuthRepositories(authDb);
   const sessionRevocation = new SessionRevocationService(sessionRepository);
   const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
   const { auth, authenticator } = createContainerAuth({
@@ -336,5 +336,6 @@ export type {
   ContainerUserProfileSlice,
   ContainerUserSuspensionExposureSlice,
   ContainerUserUtilitySlice,
+  ContainerSaleRoutesSlice,
   ContainerWellKnownRoutesSlice,
 } from "./container/container-slices.js";

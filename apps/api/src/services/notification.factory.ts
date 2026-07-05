@@ -1,8 +1,9 @@
 import type { CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
+import type { INotificationFactory } from "./interfaces/notification-factory.js";
 
 /** SRP: builds persisted notification rows from domain events. */
-export class NotificationFactory {
+export class NotificationFactory implements INotificationFactory {
   createOutbid(lot: Lot, outbidUserId: string): CreateNotificationRow {
     return {
       userId: outbidUserId,

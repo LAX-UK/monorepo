@@ -5,7 +5,9 @@ type ImageCleanupJob = {
   key: string;
 };
 
-export class ImageCleanupService {
+import type { IImageCleanup } from "./interfaces/image-cleanup.js";
+
+export class ImageCleanupService implements IImageCleanup {
   constructor(
     private readonly storage: IObjectStorage,
     private readonly queue: Queue<ImageCleanupJob>,

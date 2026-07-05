@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import type { Container } from "../container.js";
+import type { ContainerSaleRoutesSlice } from "../container.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { createRequireKyc } from "../middleware/require-kyc.js";
@@ -12,7 +12,10 @@ import { attachSaleLotsRoutes } from "./sales/lots.routes.js";
 import { attachSaleReadRoutes } from "./sales/read.routes.js";
 import { attachSaleRegistrationRoutes } from "./sales/registration.routes.js";
 
-export function createSaleRoutes(container: Container, authenticator: IAuthenticator) {
+export function createSaleRoutes(
+  container: ContainerSaleRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

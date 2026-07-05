@@ -257,4 +257,31 @@ if (workerJobDbViolations.length > 0) {
   process.exit(1);
 }
 
+// ─── API routes must not import @auction/db (SOLID DIP) ─────────────────────
+
+const DB_IMPORT_RE = /^@auction\/db(\/|$)/;
+
+/** @type {string[]} */
+const apiRouteDbViolations = [];
+
+for (const file of listAllSources(join(root, "apps/api/src/routes"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  if (isTestSource(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (specifier && DB_IMPORT_RE.test(specifier)) {
+      apiRouteDbViolations.push(`${rel}: imports "${specifier}" — routes must use container ports`);
+    }
+  }
+}
+
+if (apiRouteDbViolations.length > 0) {
+  console.error("API route DB import violations detected:\n");
+  for (const v of apiRouteDbViolations) {
+    console.error(`  ${v}`);
+  }
+  process.exit(1);
+}
+
 console.log("check-layers: ok (no layering violations)");

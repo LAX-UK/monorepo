@@ -81,6 +81,7 @@ export type ContainerExposedRepositoriesSlice = {
 
 /** Segregated payment HTTP ports mapped to the same runtime service instance. */
 export type ContainerPaymentExposureSlice = {
+  /** @deprecated Use paymentBuyerService, paymentAdminService, or paymentMaintenanceService. */
   paymentService: IPaymentService;
   paymentBuyerService: IPaymentBuyerService;
   paymentAdminService: IPaymentAdminService;
@@ -244,6 +245,28 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerBiddingRoutesSlice;
 
 export type Container = ContainerComposedSlices;
+
+/** Public sale catalogue HTTP handlers. */
+export type ContainerSaleRoutesSlice = Pick<
+  Container,
+  | "saleService"
+  | "saleListReadService"
+  | "saleFollowService"
+  | "saleRegistrationService"
+  | "saleBiddersService"
+  | "saleStatusTransitionService"
+  | "saleSoftDeleteService"
+  | "lotService"
+  | "cachedCatalogueListService"
+  | "repoFactory"
+  | "saleroomService"
+  | "stripeConnectService"
+  | "legalEntityRepository"
+  | "userSuspensionChecker"
+  | "kycService"
+  | "mediaUrlResolver"
+  | "mediaAssetEnricher"
+>;
 
 /** Minimal catalog + bidding route dependencies for lot HTTP handlers. */
 export type ContainerLotRoutesSlice = Pick<

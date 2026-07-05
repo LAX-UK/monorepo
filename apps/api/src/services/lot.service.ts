@@ -16,10 +16,14 @@ import { type Result, err } from "neverthrow";
 import type { LotCancelledPayload } from "../domain/lot-events.js";
 import { type AuthzError, LotError } from "../lib/errors.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
-import type { ImageCleanupService } from "./image-cleanup.service.js";
+import type { IImageCleanup } from "./interfaces/image-cleanup.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { ILotNotificationCoordinator } from "./interfaces/lot-notifications.js";
+import type { ILotService } from "./interfaces/lot-service.js";
+import type { IMediaAssetEnricher } from "./interfaces/media-asset-enricher.js";
+import type { IMediaUrlResolver } from "./interfaces/media-url-resolver.js";
+import type { IQrCodeService } from "./interfaces/qr-code-service.js";
 import type { ITelephoneBidBookingSaleroomBridge } from "./interfaces/telephone-bid-booking-service.js";
 import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js";
 import { createLot } from "./lot/lot-create.js";
@@ -33,9 +37,6 @@ import { archiveEndedSummary, countMatching, getById, list } from "./lot/lot-rea
 import type { ListBidsForPublicApiResult, LotServiceDeps } from "./lot/lot-types.js";
 import { updateLot, updateLotMarketingDetails } from "./lot/lot-update.js";
 import { approveWithdrawalRequest, requestWithdrawal } from "./lot/lot-withdrawal.js";
-import type { MediaAssetEnricher } from "./media-asset-enricher.js";
-import type { MediaUrlResolver } from "./media-url-resolver.js";
-import type { QrCodeService } from "./qr-code.service.js";
 
 export type { ListBidsForPublicApiResult, LotBidPublicApiRow } from "./lot/lot-types.js";
 
@@ -46,7 +47,7 @@ export type LotServiceOptions = {
   watchlist: IWatchlistRepository;
   jobScheduler: ILotJobScheduler | null;
   lotNotifications: ILotNotificationCoordinator | null;
-  imageCleanup?: ImageCleanupService;
+  imageCleanup?: IImageCleanup;
   legalEntityNotificationRecipients?: ILegalEntityNotificationRecipientReader | null;
   legalEntityRepository?: ILegalEntityRepository | null;
   /** When false (e.g. Stripe Connect not configured), individual Connect readiness is not enforced on publish. */
@@ -56,18 +57,18 @@ export type LotServiceOptions = {
     | null;
   transactionRunner?: ITransactionRunner | null;
   domainEventSink?: IDomainEventSink | null;
-  mediaUrlResolver?: MediaUrlResolver;
-  catalogueMediaUrlResolver?: MediaUrlResolver;
-  mediaAssetEnricher?: MediaAssetEnricher;
+  mediaUrlResolver?: IMediaUrlResolver;
+  catalogueMediaUrlResolver?: IMediaUrlResolver;
+  mediaAssetEnricher?: IMediaAssetEnricher;
   englishOnlyAuctions?: boolean;
   lotLifecycleRecording?: ILotLifecycleRecorder | null;
   lotTransitionOrchestrator?: LotTransitionOrchestrator | null;
-  qrCodeService?: QrCodeService | null;
+  qrCodeService?: IQrCodeService | null;
   telephoneBidBookingService?: ITelephoneBidBookingSaleroomBridge | null;
   repoFactory?: IRepositoryFactory | null;
 };
 
-export class LotService {
+export class LotService implements ILotService {
   private readonly deps: LotServiceDeps;
   private readonly _lotTransitionOrchestrator: LotTransitionOrchestrator | null;
 

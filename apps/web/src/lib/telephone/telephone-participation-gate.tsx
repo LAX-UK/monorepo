@@ -1,7 +1,7 @@
 "use client";
 
-import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import { kycLinkActionLabel } from "@/lib/kyc/kyc-link-action-copy";
 import {
   type TelephoneBookingSnapshot,
   telephoneBookingStatusLabel,
