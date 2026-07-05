@@ -24,9 +24,9 @@ import {
 import type { LotPageSecondaryData, LotPageShellData } from "@/lib/marketing/lot-page-data.service";
 import { mapSaleToOverviewVM } from "@/lib/marketing/saleroom/mappers";
 import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
-import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
+import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
