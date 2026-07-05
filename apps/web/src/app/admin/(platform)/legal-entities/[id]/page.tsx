@@ -2,6 +2,7 @@ import { LegalEntityDetailShell } from "@/components/admin/legal-entities/legal-
 import { statusLabel } from "@/lib/admin/legal-entity-list-presenter";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import {
+  getAdminDomainEventsForAggregate,
   getAdminLegalEntityById,
   getAdminLegalEntityDocuments,
   getAdminUserById,
@@ -37,7 +38,9 @@ export default async function AdminLegalEntityDetailPage({
   const error = safeDecodeAdminErrorParam(sp.error);
   const success = safeDecodeAdminErrorParam(sp.success);
   const activeTab =
-    sp.tab === "stripe" || sp.tab === "lifecycle" || sp.tab === "documents" ? sp.tab : "overview";
+    sp.tab === "stripe" || sp.tab === "lifecycle" || sp.tab === "documents" || sp.tab === "activity"
+      ? sp.tab
+      : "overview";
 
   let entity: Awaited<ReturnType<typeof getAdminLegalEntityById>> = null;
   try {
@@ -50,7 +53,14 @@ export default async function AdminLegalEntityDetailPage({
   }
 
   const creatorUser = await getAdminUserById(entity.createdByUserId).catch(() => null);
-  const documents = await getAdminLegalEntityDocuments(id).catch(() => []);
+  const [documents, activityEvents] = await Promise.all([
+    getAdminLegalEntityDocuments(id).catch(() => []),
+    getAdminDomainEventsForAggregate({
+      aggregateType: "legal_entity",
+      aggregateId: id,
+      limit: 100,
+    }).catch(() => []),
+  ]);
   const creator = creatorUser
     ? { id: creatorUser.id, name: creatorUser.name, email: creatorUser.email }
     : null;
@@ -61,6 +71,7 @@ export default async function AdminLegalEntityDetailPage({
       creator={creator}
       activeTab={activeTab}
       documents={documents}
+      activityEvents={activityEvents}
       error={error}
       success={success}
     />

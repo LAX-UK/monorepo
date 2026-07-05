@@ -15,6 +15,7 @@ export type AdminNavCounts = {
   amlScreeningsPending: number;
   sourceOfFundsPending: number;
   telephoneBookingsPending: number;
+  legalEntityStripeRequirementsCount: number;
 };
 
 export type AdminNavCountsDeps = {
@@ -34,6 +35,7 @@ export type AdminNavCountsDeps = {
   getAmlScreeningsPending: () => Promise<number>;
   getSourceOfFundsPending: () => Promise<number>;
   getTelephoneBookingsPending: () => Promise<number>;
+  getLegalEntityStripeRequirements: () => Promise<number>;
 };
 
 const NAV_COUNTS_CACHE_KEY = "admin:nav-counts:v1";
@@ -118,6 +120,7 @@ export class AdminNavCountsService {
       amlScreeningsPending,
       sourceOfFundsPending,
       telephoneBookingsPending,
+      legalEntityStripeRequirementsCount,
     ] = await Promise.all([
       wrapWithLogging("submissionsPending", this.deps.getSubmissionsPending),
       wrapWithLogging("artistsPending", this.deps.getArtistsPending),
@@ -135,6 +138,10 @@ export class AdminNavCountsService {
       wrapWithLogging("amlScreeningsPending", this.deps.getAmlScreeningsPending),
       wrapWithLogging("sourceOfFundsPending", this.deps.getSourceOfFundsPending),
       wrapWithLogging("telephoneBookingsPending", this.deps.getTelephoneBookingsPending),
+      wrapWithLogging(
+        "legalEntityStripeRequirementsCount",
+        this.deps.getLegalEntityStripeRequirements,
+      ),
     ]);
 
     return {
@@ -154,6 +161,7 @@ export class AdminNavCountsService {
       amlScreeningsPending,
       sourceOfFundsPending,
       telephoneBookingsPending,
+      legalEntityStripeRequirementsCount,
     };
   }
 }

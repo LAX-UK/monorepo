@@ -911,6 +911,13 @@
       "when": 1788000006000,
       "tag": "0130_onsite_event_sale_id_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1788000007000,
+      "tag": "0131_stripe_connect_requirements_errors",
+      "breakpoints": true
     }
   ]
 }

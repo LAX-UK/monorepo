@@ -18,6 +18,7 @@ const BASE_ROW = {
   stripeConnectChargesEnabled: false,
   stripeConnectPayoutsEnabled: false,
   stripeConnectRequirementsCurrentlyDue: [],
+  stripeConnectRequirementsErrors: [],
   stripeConnectDisabledReason: null,
   xeroContactId: null,
   vatNumber: null,

@@ -9,6 +9,8 @@ export type ConnectClientConfig = {
 
 export type ConnectSessionSurface = "onboarding" | "management";
 
+import type { StripeConnectRequirementError } from "@auction/types";
+
 export type ConnectAccountStatus = {
   /** Stripe account id (acct_…) when present. */
   stripeAccountId: string | null;
@@ -16,6 +18,8 @@ export type ConnectAccountStatus = {
   payoutsEnabled: boolean;
   /** Stripe `requirements.currently_due` field. */
   requirementsCurrentlyDue: string[];
+  /** Stripe `requirements.errors` from the last sync. */
+  requirementsErrors: StripeConnectRequirementError[];
   /** Stripe `requirements.disabled_reason` when the account is blocked. */
   disabledReason: string | null;
   /** True when the account is active and ready to receive payouts. */

@@ -150,6 +150,7 @@ export class ConnectAccountService {
         chargesEnabled: false,
         payoutsEnabled: false,
         requirementsCurrentlyDue: [],
+        requirementsErrors: [],
         disabledReason: null,
         ready: false,
       };
@@ -167,6 +168,7 @@ export class ConnectAccountService {
         chargesEnabled: false,
         payoutsEnabled: false,
         requirementsCurrentlyDue: [],
+        requirementsErrors: [],
         disabledReason: null,
         ready: false,
       };

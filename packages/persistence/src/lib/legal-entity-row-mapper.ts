@@ -18,6 +18,7 @@ export function legalEntityRowToDomain(row: typeof legalEntity.$inferSelect): Le
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
     stripeConnectPayoutsEnabled: row.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue ?? [],
+    stripeConnectRequirementsErrors: row.stripeConnectRequirementsErrors ?? [],
     stripeConnectDisabledReason: row.stripeConnectDisabledReason ?? null,
     xeroContactId: row.xeroContactId ?? null,
     vatNumber: row.vatNumber ?? null,

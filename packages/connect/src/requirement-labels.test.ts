@@ -28,4 +28,26 @@ describe("labelForRequirement", () => {
   it("formats unknown keys with dot separators", () => {
     expect(labelForRequirement("custom.unknown.key").label).toBe("custom · unknown · key");
   });
+
+  it("labels Stripe Person-scoped requirement keys", () => {
+    expect(labelForRequirement("person_1N9XNb2eZvKYlo2CjPX7xF6B.first_name").label).toBe(
+      "Representative first name",
+    );
+    expect(labelForRequirement("person_1N9XNb2eZvKYlo2CjPX7xF6B.verification.document").label).toBe(
+      "Representative ID",
+    );
+    expect(labelForRequirement("person_1N9XNb2eZvKYlo2CjPX7xF6B.proof_of_liveness").label).toBe(
+      "Identity verification (liveness)",
+    );
+    expect(labelForRequirement("person_1N9XNb2eZvKYlo2CjPX7xF6B.address.*").label).toBe(
+      "Business representative details",
+    );
+  });
+
+  it("labels account-level keys from Stripe verification examples", () => {
+    expect(labelForRequirement("business_type").label).toBe("Business type");
+    expect(
+      labelForRequirement("documents.proof_of_ultimate_beneficial_ownership.files").label,
+    ).toBe("Beneficial ownership document");
+  });
 });

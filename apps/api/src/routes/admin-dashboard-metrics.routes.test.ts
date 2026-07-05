@@ -38,6 +38,7 @@ describe("admin dashboard metrics routes", () => {
       amlScreeningsPending: 0,
       sourceOfFundsPending: 0,
       telephoneBookingsPending: 0,
+      legalEntityStripeRequirementsCount: 0,
     };
     const getNavCounts = vi.fn().mockResolvedValue(navCounts);
     const container = createDashboardMetricsContainer({ getNavCounts } as never);

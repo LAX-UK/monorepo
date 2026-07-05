@@ -120,5 +120,9 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
     getAmlScreeningsPending: () => input.amlService.countPendingReviews(),
     getSourceOfFundsPending: () => input.sourceOfFundsService.countPending(),
     getTelephoneBookingsPending: () => input.telephoneBidBookingService.countGlobalPending(),
+    getLegalEntityStripeRequirements: async () => {
+      const finance = await input.admin.dashboard.getFinanceIssueSnapshot();
+      return finance.legalEntitiesWithStripeConnectRequirementsCount;
+    },
   };
 }

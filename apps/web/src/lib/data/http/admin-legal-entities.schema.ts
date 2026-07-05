@@ -11,7 +11,12 @@ import type {
   LegalEntityStatus,
   LegalEntitySubkind,
 } from "@auction/types";
-import { legalEntityKinds, legalEntityStatuses, legalEntitySubkinds } from "@auction/types";
+import {
+  legalEntityKinds,
+  legalEntityStatuses,
+  legalEntitySubkinds,
+  normalizeStripeConnectRequirementErrors,
+} from "@auction/types";
 import { z } from "zod";
 
 export const adminStripeConnectRequirementRowSchema = z
@@ -114,6 +119,9 @@ export const adminLegalEntitySchema = z
     const stripeConnectRequirementsCurrentlyDue = Array.isArray(req)
       ? req.map((entry) => String(entry))
       : [];
+    const stripeConnectRequirementsErrors = normalizeStripeConnectRequirementErrors(
+      raw.stripeConnectRequirementsErrors,
+    );
     return {
       id: String(raw.id ?? ""),
       displayName: String(raw.displayName ?? ""),
@@ -132,6 +140,7 @@ export const adminLegalEntitySchema = z
       stripeConnectChargesEnabled: Boolean(raw.stripeConnectChargesEnabled ?? false),
       stripeConnectPayoutsEnabled: Boolean(raw.stripeConnectPayoutsEnabled ?? false),
       stripeConnectRequirementsCurrentlyDue,
+      stripeConnectRequirementsErrors,
       stripeConnectDisabledReason:
         raw.stripeConnectDisabledReason == null ? null : String(raw.stripeConnectDisabledReason),
       xeroContactId: raw.xeroContactId == null ? null : String(raw.xeroContactId),

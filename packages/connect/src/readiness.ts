@@ -1,8 +1,14 @@
+import type { StripeConnectRequirementsView } from "@auction/types";
 import {
   humanizeStripeDisabledReason,
   isActionableStripeDisabledReason,
 } from "./disabled-reason-labels.js";
-import { labelForRequirement } from "./requirement-labels.js";
+import {
+  buildConnectRequirementsView,
+  connectRequirementsAttentionCount,
+  mergeRequirementKeys,
+  resolveRequirementPresentation,
+} from "./stripe-requirement-errors.js";
 import type {
   ConnectAccountStatus,
   ConnectGapMissingItem,
@@ -36,9 +42,19 @@ function withEntityDisabledReason(
   };
 }
 
-function mapRequirementsToMissing(due: string[]): ConnectGapMissingItem[] {
-  return due.map((key) => {
-    const label = labelForRequirement(key);
+function requirementsViewFromEntity(
+  entity: ConnectLegalEntityFields,
+): StripeConnectRequirementsView {
+  return buildConnectRequirementsView(
+    entity.stripeConnectRequirementsCurrentlyDue,
+    entity.stripeConnectRequirementsErrors,
+  );
+}
+
+function mapRequirementsToMissing(view: StripeConnectRequirementsView): ConnectGapMissingItem[] {
+  const keys = mergeRequirementKeys(view.currentlyDue, view.errors);
+  return keys.map((key) => {
+    const label = resolveRequirementPresentation(key, view.errors);
     return { key, ...label };
   });
 }
@@ -61,9 +77,12 @@ export function isStripeAccountConfigured(entity: ConnectLegalEntityFields): boo
   if (shouldSkipConnect(entity)) return true;
 
   const due = entity.stripeConnectRequirementsCurrentlyDue ?? [];
+  const errors = entity.stripeConnectRequirementsErrors ?? [];
   const disabledReason = entity.stripeConnectDisabledReason?.trim();
 
-  if (!entity.stripeConnectPayoutsEnabled || due.length > 0) return false;
+  if (!entity.stripeConnectPayoutsEnabled || connectRequirementsAttentionCount(due, errors) > 0) {
+    return false;
+  }
   if (disabledReason) return false;
 
   return true;
@@ -82,6 +101,7 @@ export function statusFromLegalEntityRow(entity: ConnectLegalEntityFields): Conn
     chargesEnabled: entity.stripeConnectChargesEnabled ?? false,
     payoutsEnabled: entity.stripeConnectPayoutsEnabled,
     requirementsCurrentlyDue: entity.stripeConnectRequirementsCurrentlyDue ?? [],
+    requirementsErrors: entity.stripeConnectRequirementsErrors ?? [],
     disabledReason: entity.stripeConnectDisabledReason ?? null,
     ready: configured,
   };
@@ -111,12 +131,12 @@ export function getConnectGapState(
 
   const disabledReason = entity.stripeConnectDisabledReason?.trim();
   if (disabledReason) {
-    const due = entity.stripeConnectRequirementsCurrentlyDue ?? [];
+    const view = requirementsViewFromEntity(entity);
     if (isActionableStripeDisabledReason(disabledReason)) {
       const summary = humanizeStripeDisabledReason(disabledReason);
       const missing: ConnectGapMissingItem[] = [
         { key: "stripe_disabled", ...summary },
-        ...mapRequirementsToMissing(due),
+        ...mapRequirementsToMissing(view),
       ];
       return withEntityDisabledReason(entity, requirementsDueGapState(missing));
     }
@@ -149,12 +169,13 @@ export function getConnectGapState(
     });
   }
 
-  const due = entity.stripeConnectRequirementsCurrentlyDue ?? [];
-  const missing = mapRequirementsToMissing(due);
+  const view = requirementsViewFromEntity(entity);
+  const missing = mapRequirementsToMissing(view);
+  const outstanding = connectRequirementsAttentionCount(view.currentlyDue, view.errors);
 
-  if (due.length > 0 || !entity.stripeConnectPayoutsEnabled) {
+  if (outstanding > 0 || !entity.stripeConnectPayoutsEnabled) {
     return withEntityDisabledReason(entity, {
-      stage: due.length > 0 ? "requirements_due" : "onboarding_incomplete",
+      stage: outstanding > 0 ? "requirements_due" : "onboarding_incomplete",
       missing,
       canReceivePayouts: false,
       canPublish: false,

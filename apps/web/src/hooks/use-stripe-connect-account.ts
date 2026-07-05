@@ -13,6 +13,7 @@ import {
   shouldSkipConnect,
 } from "@auction/connect";
 import type { ConnectGapState } from "@auction/connect";
+import type { StripeConnectRequirementError } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
@@ -26,6 +27,7 @@ function mergeStatusFromSync(
     ready: boolean;
     payoutsEnabled: boolean;
     requirementsDue: string[];
+    requirementsErrors: StripeConnectRequirementError[];
     disabledReason: string | null;
   },
 ): StripeConnectStatus {
@@ -34,6 +36,7 @@ function mergeStatusFromSync(
     chargesEnabled: prev?.chargesEnabled ?? false,
     payoutsEnabled: synced.payoutsEnabled,
     requirementsCurrentlyDue: synced.requirementsDue,
+    requirementsErrors: synced.requirementsErrors,
     disabledReason: synced.disabledReason,
     ready: synced.ready,
     syncDegraded: false,
@@ -87,6 +90,7 @@ export function useStripeConnectAccount({
           stripeConnectAccountId: localStatus?.stripeAccountId ?? null,
           stripeConnectPayoutsEnabled: localStatus?.payoutsEnabled ?? false,
           stripeConnectRequirementsCurrentlyDue: localStatus?.requirementsCurrentlyDue ?? [],
+          stripeConnectRequirementsErrors: localStatus?.requirementsErrors ?? [],
           stripeConnectDisabledReason: localStatus?.disabledReason ?? null,
           isLaxManaged,
         },

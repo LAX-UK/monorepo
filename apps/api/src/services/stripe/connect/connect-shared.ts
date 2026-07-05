@@ -1,3 +1,4 @@
+import { connectRequirementsAttentionCount } from "@auction/connect";
 import type { ILegalEntityConnectReader } from "@auction/persistence/interfaces";
 import type { LegalEntityConnectRow } from "@auction/persistence/lib";
 import type Stripe from "stripe";
@@ -19,12 +20,14 @@ export function requireConnectStripe(stripeFactory: IStripeClientFactory): Strip
 
 /** Cached Connect readiness when live Stripe sync is unavailable. */
 export function connectReadyFromCachedEntity(entity: LegalEntityConnectRow): boolean {
-  const due = entity.stripeConnectRequirementsCurrentlyDue ?? [];
   const disabledReason = entity.stripeConnectDisabledReason?.trim();
   return (
     Boolean(entity.stripeConnectAccountId) &&
     entity.stripeConnectPayoutsEnabled &&
-    due.length === 0 &&
+    connectRequirementsAttentionCount(
+      entity.stripeConnectRequirementsCurrentlyDue,
+      entity.stripeConnectRequirementsErrors,
+    ) === 0 &&
     !disabledReason
   );
 }

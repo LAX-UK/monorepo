@@ -1,5 +1,7 @@
 import type { legalEntity } from "@auction/db/schema";
 
+import type { StripeConnectRequirementError } from "@auction/types";
+
 /** Normalized postal address used for Stripe Connect account prefill. */
 export type ConnectAddressSnapshot = {
   line1: string;
@@ -43,6 +45,7 @@ export type StripeConnectFlagPatch = {
   stripeConnectChargesEnabled: boolean;
   stripeConnectPayoutsEnabled: boolean;
   stripeConnectRequirementsCurrentlyDue: string[];
+  stripeConnectRequirementsErrors: StripeConnectRequirementError[];
   stripeConnectDisabledReason: string | null;
 };
 

@@ -19,6 +19,7 @@ const FULL_NAV_COUNTS: AdminNavCounts = {
   amlScreeningsPending: 1,
   sourceOfFundsPending: 2,
   telephoneBookingsPending: 1,
+  legalEntityStripeRequirementsCount: 0,
 };
 
 describe("buildSyntheticAttentionRows", () => {
@@ -94,6 +95,7 @@ describe("buildSyntheticAttentionRows", () => {
       amlScreeningsPending: 0,
       sourceOfFundsPending: 0,
       telephoneBookingsPending: 0,
+      legalEntityStripeRequirementsCount: 0,
     };
     const rows = buildSyntheticAttentionRows(emptyCounts, "staff", "super_admin");
     expect(rows).toHaveLength(0);

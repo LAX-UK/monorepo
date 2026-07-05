@@ -14,6 +14,7 @@ const readyEntity = {
   stripeConnectAccountId: "acct_1",
   stripeConnectPayoutsEnabled: true,
   stripeConnectRequirementsCurrentlyDue: [],
+  stripeConnectRequirementsErrors: [],
   isLaxManaged: false,
 };
 
@@ -52,6 +53,22 @@ describe("isStripeAccountConfigured", () => {
     expect(isStripeAccountConfigured({ ...readyEntity, stripeConnectPayoutsEnabled: false })).toBe(
       false,
     );
+  });
+
+  it("returns false when validation errors persist without currently_due keys", () => {
+    expect(
+      isStripeAccountConfigured({
+        ...readyEntity,
+        stripeConnectRequirementsCurrentlyDue: [],
+        stripeConnectRequirementsErrors: [
+          {
+            requirement: "company.tax_id",
+            code: "invalid_tax_id_format",
+            reason: "Tax IDs must be a unique set of 9 numbers without dashes.",
+          },
+        ],
+      }),
+    ).toBe(false);
   });
 
   it("returns false when disabledReason is set even if requirements arrays are empty", () => {
@@ -94,6 +111,7 @@ describe("statusFromLegalEntityRow", () => {
       chargesEnabled: false,
       payoutsEnabled: true,
       requirementsCurrentlyDue: [],
+      requirementsErrors: [],
       disabledReason: null,
       ready: true,
     });
@@ -171,13 +189,49 @@ describe("getConnectGapState", () => {
     expect(gap.missing.some((m) => m.label === "Bank account")).toBe(true);
   });
 
+  it("uses Stripe error reason as hint when persisted on entity", () => {
+    const gap = getConnectGapState({
+      ...readyEntity,
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectRequirementsCurrentlyDue: ["company.tax_id"],
+      stripeConnectRequirementsErrors: [
+        {
+          requirement: "company.tax_id",
+          code: "invalid_tax_id_format",
+          reason: "Tax IDs must be a unique set of 9 numbers without dashes.",
+        },
+      ],
+    });
+    expect(gap.missing.find((m) => m.label === "Company tax ID")?.hint).toBe(
+      "Tax IDs must be a unique set of 9 numbers without dashes.",
+    );
+  });
+
+  it("returns requirements_due when validation errors exist without currently_due keys", () => {
+    const gap = getConnectGapState({
+      ...readyEntity,
+      stripeConnectPayoutsEnabled: true,
+      stripeConnectRequirementsCurrentlyDue: [],
+      stripeConnectRequirementsErrors: [
+        {
+          requirement: "company.tax_id",
+          code: "invalid_tax_id_format",
+          reason: "Tax IDs must be a unique set of 9 numbers without dashes.",
+        },
+      ],
+    });
+    expect(gap.stage).toBe("requirements_due");
+    expect(gap.canReceivePayouts).toBe(false);
+    expect(gap.canPublish).toBe(false);
+  });
+
   it("returns restricted when stripeConnectDisabledReason is a hard block", () => {
     const gap = getConnectGapState({
       ...readyEntity,
       stripeConnectDisabledReason: "rejected.fraud",
     });
     expect(gap.stage).toBe("restricted");
-    expect(gap.missing[0]?.label).toBe("Account blocked");
+    expect(gap.missing[0]?.label).toBe("Account rejected (fraud)");
   });
 
   it("returns kyc_required when kyc not approved", () => {

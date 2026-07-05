@@ -15,6 +15,7 @@ export type AdminNavCounts = {
   amlScreeningsPending: number;
   sourceOfFundsPending: number;
   telephoneBookingsPending: number;
+  legalEntityStripeRequirementsCount: number;
 };
 
 export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
@@ -34,4 +35,5 @@ export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
   amlScreeningsPending: 0,
   sourceOfFundsPending: 0,
   telephoneBookingsPending: 0,
+  legalEntityStripeRequirementsCount: 0,
 };

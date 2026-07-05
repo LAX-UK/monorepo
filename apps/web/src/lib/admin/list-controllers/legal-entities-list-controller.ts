@@ -31,6 +31,8 @@ export const legalEntitiesListController: IAdminListController<
       offset: q.offset,
       ...(q.q ? { q: q.q } : {}),
       ...(q.status ? { status: q.status } : {}),
+      ...(q.kind ? { kind: q.kind } : {}),
+      ...(q.stripeLens ? { stripeDue: true } : {}),
     });
     return { rows: data.rows, total: data.total, offset: q.offset, limit: q.limit };
   },

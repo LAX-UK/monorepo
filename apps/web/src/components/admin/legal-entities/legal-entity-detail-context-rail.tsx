@@ -1,6 +1,7 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { KpiStackRail, QuickActionsRail } from "@/components/admin/detail-rail";
-import { statusLabel } from "@/lib/admin/legal-entity-list-presenter";
+import { formatLegalEntityKindSubkind, statusLabel } from "@/lib/admin/legal-entity-list-presenter";
+import { stripeRequirementsAttentionCountForEntity } from "@/lib/admin/stripe-connect-staff-presenter";
 import type { LegalEntity } from "@auction/types";
 
 type Props = {
@@ -14,7 +15,7 @@ export function LegalEntityDetailContextRail({ entity }: Props) {
       : "Payout setup in progress"
     : "Not connected";
 
-  const dueCount = entity.stripeConnectRequirementsCurrentlyDue.length;
+  const dueCount = stripeRequirementsAttentionCountForEntity(entity);
 
   return (
     <div className="space-y-6 rounded-xl border border-border-hairline bg-surface-container-low/60 p-5">
@@ -32,7 +33,11 @@ export function LegalEntityDetailContextRail({ entity }: Props) {
       <KpiStackRail
         title="Entity"
         items={[
-          { id: "kind", label: "Kind", value: `${entity.kind} / ${entity.subkind}` },
+          {
+            id: "kind",
+            label: "Kind",
+            value: formatLegalEntityKindSubkind(entity.kind, entity.subkind),
+          },
           { id: "stripe", label: "Stripe Connect", value: stripeSummary },
           ...(dueCount > 0
             ? [

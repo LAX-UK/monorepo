@@ -1,5 +1,6 @@
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { stripeSummaryLabel } from "@/lib/admin/legal-entity-list-presenter";
+import { stripeRequirementsAttentionCountForEntity } from "@/lib/admin/stripe-connect-staff-presenter";
 import type { LegalEntity } from "@auction/types";
 
 type Props = {
@@ -12,7 +13,7 @@ export function LegalEntitySummaryStrip({ entity }: Props) {
       ? "Payouts enabled"
       : "Setup in progress"
     : "Not connected";
-  const dueCount = entity.stripeConnectRequirementsCurrentlyDue.length;
+  const dueCount = stripeRequirementsAttentionCountForEntity(entity);
 
   return (
     <KpiRow

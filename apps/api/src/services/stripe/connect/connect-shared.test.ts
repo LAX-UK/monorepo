@@ -6,6 +6,7 @@ describe("connectReadyFromCachedEntity", () => {
     stripeConnectAccountId: "acct_1",
     stripeConnectPayoutsEnabled: true,
     stripeConnectRequirementsCurrentlyDue: [] as string[],
+    stripeConnectRequirementsErrors: [],
     stripeConnectDisabledReason: null,
   };
 
@@ -23,6 +24,21 @@ describe("connectReadyFromCachedEntity", () => {
       connectReadyFromCachedEntity({
         ...base,
         stripeConnectRequirementsCurrentlyDue: ["external_account"],
+      } as never),
+    ).toBe(false);
+  });
+
+  it("returns false when validation errors persist without currently_due keys", () => {
+    expect(
+      connectReadyFromCachedEntity({
+        ...base,
+        stripeConnectRequirementsErrors: [
+          {
+            requirement: "company.tax_id",
+            code: "invalid_tax_id_format",
+            reason: "Tax IDs must be a unique set of 9 numbers without dashes.",
+          },
+        ],
       } as never),
     ).toBe(false);
   });

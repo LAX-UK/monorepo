@@ -29,6 +29,7 @@ const orgEntity = (overrides: Partial<LegalEntity> = {}): LegalEntity => ({
   stripeConnectChargesEnabled: false,
   stripeConnectPayoutsEnabled: false,
   stripeConnectRequirementsCurrentlyDue: [],
+  stripeConnectRequirementsErrors: [],
   stripeConnectDisabledReason: null,
   xeroContactId: null,
   vatNumber: null,

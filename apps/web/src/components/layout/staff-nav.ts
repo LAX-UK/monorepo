@@ -322,6 +322,7 @@ function buildStaffNavGroupSpecs(
           icon: Building2,
           match: (pathname) => pathname.startsWith("/admin/legal-entities"),
           requirement: LEGAL_ENTITY_BROWSE_ACCESS,
+          ...navBadge(navCounts.legalEntityStripeRequirementsCount, "warning"),
         },
         {
           id: "invitations",

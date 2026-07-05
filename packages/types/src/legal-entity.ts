@@ -1,3 +1,5 @@
+import type { StripeConnectRequirementError } from "./stripe-connect.js";
+
 /** Legal Entity Kind - top-level taxonomy */
 export const legalEntityKinds = ["individual", "organisation"] as const;
 export type LegalEntityKind = (typeof legalEntityKinds)[number];
@@ -66,6 +68,7 @@ export type LegalEntity = {
   stripeConnectChargesEnabled: boolean;
   stripeConnectPayoutsEnabled: boolean;
   stripeConnectRequirementsCurrentlyDue: string[];
+  stripeConnectRequirementsErrors: StripeConnectRequirementError[];
   stripeConnectDisabledReason: string | null;
   xeroContactId: string | null;
   vatNumber: string | null;

@@ -1,7 +1,9 @@
 "use client";
 
 import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { adminPaymentXeroSyncResultAction } from "@/lib/actions/admin";
+import { xeroSyncStatusLabel } from "@/lib/admin/xero-sync-status-presenter";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
@@ -33,12 +35,12 @@ export function AdminPaymentXeroPanel(p: Props) {
       </p>
       {p.xeroInvoiceNumber ? (
         <p className="font-body text-sm text-on-surface">
-          Invoice <span className="font-mono text-xs">{p.xeroInvoiceNumber}</span>
+          Invoice <span className="font-medium">{p.xeroInvoiceNumber}</span>
         </p>
       ) : null}
       {p.xeroSyncStatus ? (
         <p className="font-body text-xs text-on-surface-variant">
-          Sync: <span className="font-mono">{p.xeroSyncStatus}</span>
+          Sync: <span className="text-on-surface">{xeroSyncStatusLabel(p.xeroSyncStatus)}</span>
         </p>
       ) : null}
       {p.xeroLastError ? (
@@ -74,6 +76,20 @@ export function AdminPaymentXeroPanel(p: Props) {
       >
         {pending ? "Syncing…" : "Sync from Xero"}
       </Button>
+      <AdminTechnicalIdDisclosure
+        triggerLabel="Show Xero reference IDs"
+        items={[
+          ...(p.xeroSyncStatus
+            ? [
+                {
+                  label: "Sync status code",
+                  value: p.xeroSyncStatus,
+                  copyLabel: "Xero sync status",
+                },
+              ]
+            : []),
+        ]}
+      />
     </div>
   );
 }

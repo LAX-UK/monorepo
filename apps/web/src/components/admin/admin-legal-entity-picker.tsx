@@ -77,23 +77,12 @@ export function AdminLegalEntityPicker({
         </>
       )}
       renderSelected={(row) => (
-        <>
-          <p className="truncate font-medium text-on-surface">{row.displayName}</p>
-          <p className="font-mono text-[11px] text-on-surface-variant">{row.id}</p>
-        </>
+        <p className="truncate font-medium text-on-surface">{row.displayName}</p>
       )}
       renderSelectedFallback={(id) => {
         const trimmedLabel = displayLabel?.trim();
         const title = trimmedLabel || id;
-        const showIdLine = Boolean(trimmedLabel) && trimmedLabel !== id;
-        return (
-          <>
-            <p className="truncate font-medium text-on-surface">{title}</p>
-            {showIdLine ? (
-              <p className="font-mono text-[11px] text-on-surface-variant">{id}</p>
-            ) : null}
-          </>
-        );
+        return <p className="truncate font-medium text-on-surface">{title}</p>;
       }}
     />
   );

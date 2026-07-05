@@ -52,6 +52,7 @@ export async function syncStripeConnectAction(entityId?: string): Promise<
       ready: boolean;
       payoutsEnabled: boolean;
       requirementsDue: string[];
+      requirementsErrors: import("@auction/types").StripeConnectRequirementError[];
       disabledReason: string | null;
     }
   | { ok: false; error: string }
@@ -78,6 +79,7 @@ export async function syncStripeConnectAction(entityId?: string): Promise<
       ready: Boolean(data.ready),
       payoutsEnabled: Boolean(data.payoutsEnabled),
       requirementsDue: data.requirementsCurrentlyDue ?? [],
+      requirementsErrors: data.requirementsErrors ?? [],
       disabledReason: data.disabledReason ?? null,
     };
   });

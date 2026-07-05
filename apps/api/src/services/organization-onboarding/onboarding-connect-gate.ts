@@ -1,4 +1,4 @@
-import { isStripeAccountConfigured } from "@auction/connect";
+import { connectRequirementsAttentionCount, isStripeAccountConfigured } from "@auction/connect";
 import type { OnboardingOrganisationRow } from "@auction/persistence/interfaces";
 
 export type ConnectStepFailureCode =
@@ -18,6 +18,7 @@ export function evaluateConnectStepReadiness(
     stripeConnectAccountId: row.stripeConnectAccountId,
     stripeConnectPayoutsEnabled: row.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue,
+    stripeConnectRequirementsErrors: row.stripeConnectRequirementsErrors,
     stripeConnectDisabledReason: row.stripeConnectDisabledReason,
     isLaxManaged: row.isLaxManaged,
     status: row.status,
@@ -27,7 +28,12 @@ export function evaluateConnectStepReadiness(
     return { ok: true };
   }
 
-  if ((row.stripeConnectRequirementsCurrentlyDue ?? []).length > 0) {
+  if (
+    connectRequirementsAttentionCount(
+      row.stripeConnectRequirementsCurrentlyDue,
+      row.stripeConnectRequirementsErrors,
+    ) > 0
+  ) {
     return { ok: false, code: "connect_requirements_pending" };
   }
 

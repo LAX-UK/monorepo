@@ -6,6 +6,7 @@ import { LegalEntityDetailTabs } from "@/components/admin/legal-entities/legal-e
 import { LegalEntitySummaryStrip } from "@/components/admin/legal-entities/legal-entity-summary-strip";
 import { formatLegalEntityKindSubkind } from "@/lib/admin/legal-entity-list-presenter";
 import { relativeFromIso } from "@/lib/admin/relative-time";
+import type { AdminDomainEventRow } from "@/lib/data/http/admin-audit.schema";
 import type { AdminLegalEntityDocument } from "@/lib/data/http/admin.server";
 import { formatDateTime } from "@/lib/ui/format";
 import type { LegalEntity } from "@auction/types";
@@ -21,6 +22,7 @@ type Props = {
   creator: CreatorInfo;
   activeTab: string;
   documents?: AdminLegalEntityDocument[];
+  activityEvents?: AdminDomainEventRow[];
   error?: string | null;
   success?: string | null;
 };
@@ -30,6 +32,7 @@ export function LegalEntityDetailShell({
   creator,
   activeTab,
   documents = [],
+  activityEvents = [],
   error,
   success,
 }: Props) {
@@ -64,6 +67,7 @@ export function LegalEntityDetailShell({
         creator={creator}
         activeTab={activeTab}
         documents={documents}
+        activityEvents={activityEvents}
         {...(error != null ? { error } : {})}
         {...(success != null ? { success } : {})}
       />

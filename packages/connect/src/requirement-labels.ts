@@ -107,6 +107,16 @@ export const REQUIREMENT_LABELS: Record<string, ConnectRequirementLabel> = {
     hint: "Select your business category.",
     severity: "info",
   },
+  business_type: {
+    label: "Business type",
+    hint: "Specify whether this account is an individual or company.",
+    severity: "warning",
+  },
+  "documents.proof_of_ultimate_beneficial_ownership.files": {
+    label: "Beneficial ownership document",
+    hint: "Upload a document proving ultimate beneficial ownership.",
+    severity: "warning",
+  },
   "representative.verification.document": {
     label: "Representative ID",
     hint: "Upload ID for the account representative.",
@@ -124,9 +134,71 @@ export const REQUIREMENT_LABELS: Record<string, ConnectRequirementLabel> = {
   },
 };
 
+/** Stripe Person-scoped keys use `person_{id}.field` — normalize to account-level field paths. */
+const PERSON_REQUIREMENT_PREFIX = /^person_[A-Za-z0-9]+\./;
+
+function personRequirementSuffix(key: string): string | null {
+  if (!PERSON_REQUIREMENT_PREFIX.test(key)) return null;
+  return key.replace(PERSON_REQUIREMENT_PREFIX, "");
+}
+
+function labelForPersonRequirement(suffix: string): ConnectRequirementLabel {
+  if (suffix === "proof_of_liveness") {
+    return {
+      label: "Identity verification (liveness)",
+      hint: "Complete Stripe Identity verification for this business representative.",
+      severity: "warning",
+    };
+  }
+  if (suffix === "id_number") {
+    return {
+      label: "ID number",
+      hint: "Provide the government ID number for this business representative.",
+      severity: "warning",
+    };
+  }
+  if (suffix.endsWith(".*")) {
+    const base = suffix.slice(0, -2);
+    if (base === "address" || base === "name") {
+      return {
+        label: "Business representative details",
+        hint: "Complete the requested information for this business representative.",
+        severity: "warning",
+      };
+    }
+  }
+
+  const representativeKey = `representative.${suffix}`;
+  const representativeLabel = REQUIREMENT_LABELS[representativeKey];
+  if (representativeLabel) return representativeLabel;
+
+  const individualKey = `individual.${suffix}`;
+  const individualLabel = REQUIREMENT_LABELS[individualKey];
+  if (individualLabel) return individualLabel;
+
+  if (suffix.startsWith("verification.")) {
+    return {
+      label: "Identity document",
+      hint: "Upload the requested verification document for this business representative.",
+      severity: "warning",
+    };
+  }
+
+  return {
+    label: "Business representative details",
+    hint: "Complete the requested information for this business representative.",
+    severity: "warning",
+  };
+}
+
 export function labelForRequirement(key: string): ConnectRequirementLabel {
   const exact = REQUIREMENT_LABELS[key];
   if (exact) return exact;
+
+  const personSuffix = personRequirementSuffix(key);
+  if (personSuffix) {
+    return labelForPersonRequirement(personSuffix);
+  }
 
   if (key.startsWith("individual.")) {
     return {
@@ -147,6 +219,13 @@ export function labelForRequirement(key: string): ConnectRequirementLabel {
       label: "Business profile",
       hint: "Complete your business profile details.",
       severity: "info",
+    };
+  }
+  if (key.startsWith("documents.")) {
+    return {
+      label: "Supporting document",
+      hint: "Upload the requested supporting document.",
+      severity: "warning",
     };
   }
 

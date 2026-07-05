@@ -1,4 +1,4 @@
-import { isStripeAccountConfigured } from "@auction/connect";
+import { buildStripeConnectFlagPatch, isStripeAccountConfigured } from "@auction/connect";
 import type { DbTransaction } from "@auction/persistence/interfaces";
 import type { ILegalEntityConnectRepository } from "@auction/persistence/interfaces";
 import type { LegalEntityConnectRow } from "@auction/persistence/lib";
@@ -16,20 +16,14 @@ export class ConnectLifecyclePromoter {
     row: LegalEntityConnectRow,
     tx: DbTransaction,
   ): Promise<void> {
-    const requirementsCurrentlyDue = (account.requirements?.currently_due ?? []) as string[];
-    const disabledReason =
-      typeof account.requirements?.disabled_reason === "string"
-        ? account.requirements.disabled_reason
-        : null;
-    const chargesEnabled = Boolean(account.charges_enabled);
-    const payoutsEnabled = Boolean(account.payouts_enabled);
+    const flags = buildStripeConnectFlagPatch(account);
 
     const configured = isStripeAccountConfigured({
       status: row.status,
       stripeConnectAccountId: row.stripeConnectAccountId,
-      stripeConnectPayoutsEnabled: payoutsEnabled,
-      stripeConnectRequirementsCurrentlyDue: requirementsCurrentlyDue,
-      stripeConnectDisabledReason: disabledReason,
+      stripeConnectPayoutsEnabled: flags.stripeConnectPayoutsEnabled,
+      stripeConnectRequirementsCurrentlyDue: flags.stripeConnectRequirementsCurrentlyDue,
+      stripeConnectDisabledReason: flags.stripeConnectDisabledReason,
       isLaxManaged: row.isLaxManaged,
     });
 
@@ -41,13 +35,6 @@ export class ConnectLifecyclePromoter {
         nextStatus = "connect_pending";
       }
     }
-
-    const flags = {
-      stripeConnectChargesEnabled: chargesEnabled,
-      stripeConnectPayoutsEnabled: payoutsEnabled,
-      stripeConnectRequirementsCurrentlyDue: requirementsCurrentlyDue,
-      stripeConnectDisabledReason: disabledReason,
-    };
 
     const repo = this.connectRepository.forConnection(tx);
     if (nextStatus === row.status) {

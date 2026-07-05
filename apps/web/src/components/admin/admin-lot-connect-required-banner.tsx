@@ -1,3 +1,4 @@
+import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { connectPublishBlockedTitle } from "@/lib/admin/sale-setup/field-copy";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
@@ -39,9 +40,10 @@ export function AdminLotConnectRequiredBanner({ sellerLegalEntityId, detail }: P
           </p>
         )}
         {detail ? (
-          <p className="border-t border-border-hairline pt-2 font-mono text-xs text-on-surface-variant">
-            {detail}
-          </p>
+          <AdminTechnicalIdDisclosure
+            triggerLabel="Show error details"
+            items={[{ label: "API detail", value: detail, copyLabel: "Error detail" }]}
+          />
         ) : null}
       </AlertDescription>
     </Alert>

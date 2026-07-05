@@ -116,7 +116,17 @@ describe("ConnectLifecyclePromoter", () => {
         id: "acct_1",
         charges_enabled: true,
         payouts_enabled: true,
-        requirements: { currently_due: [], disabled_reason: null },
+        requirements: {
+          currently_due: [],
+          disabled_reason: null,
+          errors: [
+            {
+              requirement: "company.tax_id",
+              code: "invalid_tax_id_format",
+              reason: "Tax IDs must be a unique set of 9 numbers without dashes.",
+            },
+          ],
+        },
       } as never,
       {
         id: "e1",
@@ -128,7 +138,19 @@ describe("ConnectLifecyclePromoter", () => {
       db,
     );
 
-    expect(updateStripeConnectFlags).toHaveBeenCalled();
+    expect(updateStripeConnectFlags).toHaveBeenCalledWith(
+      "e1",
+      expect.objectContaining({
+        stripeConnectRequirementsErrors: [
+          {
+            requirement: "company.tax_id",
+            code: "invalid_tax_id_format",
+            reason: "Tax IDs must be a unique set of 9 numbers without dashes.",
+          },
+        ],
+      }),
+      db,
+    );
     expect(domainEventSink.publish).not.toHaveBeenCalled();
     expect(domainEventSink.withTx).not.toHaveBeenCalled();
   });

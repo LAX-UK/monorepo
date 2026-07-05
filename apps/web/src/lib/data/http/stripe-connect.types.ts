@@ -1,8 +1,11 @@
+import type { StripeConnectRequirementError } from "@auction/types";
+
 export type StripeConnectStatus = {
   stripeAccountId: string | null;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   requirementsCurrentlyDue: string[];
+  requirementsErrors: StripeConnectRequirementError[];
   disabledReason: string | null;
   ready: boolean;
   syncDegraded?: boolean;

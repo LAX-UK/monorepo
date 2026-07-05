@@ -1,3 +1,5 @@
+import type { StripeConnectRequirementError } from "@auction/types";
+
 /** Minimal legal-entity fields for Connect readiness (isomorphic — API + web). */
 export type ConnectLegalEntityFields = {
   status: string;
@@ -5,6 +7,7 @@ export type ConnectLegalEntityFields = {
   stripeConnectChargesEnabled?: boolean;
   stripeConnectPayoutsEnabled: boolean;
   stripeConnectRequirementsCurrentlyDue?: string[] | null;
+  stripeConnectRequirementsErrors?: StripeConnectRequirementError[] | null;
   stripeConnectDisabledReason?: string | null;
   isLaxManaged?: boolean;
 };
@@ -14,6 +17,7 @@ export type ConnectAccountStatus = {
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   requirementsCurrentlyDue: string[];
+  requirementsErrors: StripeConnectRequirementError[];
   disabledReason: string | null;
   /** Stripe account configured for transfers (payouts + no due requirements). */
   ready: boolean;

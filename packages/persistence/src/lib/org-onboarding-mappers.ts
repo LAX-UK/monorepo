@@ -36,6 +36,7 @@ export function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
     stripeConnectPayoutsEnabled: row.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue ?? [],
+    stripeConnectRequirementsErrors: row.stripeConnectRequirementsErrors ?? [],
     stripeConnectDisabledReason: row.stripeConnectDisabledReason ?? null,
     xeroContactId: row.xeroContactId ?? null,
     vatNumber: row.vatNumber ?? null,

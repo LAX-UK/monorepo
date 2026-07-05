@@ -9,6 +9,7 @@ import {
 import { and, asc, eq, inArray, lt, sql } from "drizzle-orm";
 import type { IAdminFinanceIssueSnapshotReader } from "../interfaces/admin-finance-issue-snapshot.reader.js";
 import type { FinanceIssueSnapshot } from "../interfaces/admin-read-models.js";
+import { stripeConnectHasOutstandingExpr } from "../lib/stripe-connect-requirements-sql.js";
 
 export class DrizzleAdminFinanceIssueSnapshotReader implements IAdminFinanceIssueSnapshotReader {
   constructor(private readonly db: Database) {}
@@ -34,7 +35,7 @@ export class DrizzleAdminFinanceIssueSnapshotReader implements IAdminFinanceIssu
       this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(legalEntity)
-        .where(sql`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0`),
+        .where(stripeConnectHasOutstandingExpr),
       this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(payout)
@@ -45,7 +46,7 @@ export class DrizzleAdminFinanceIssueSnapshotReader implements IAdminFinanceIssu
             lt(payout.createdAt, staleBlockedPayoutCutoff),
             sql`(
                 ${legalEntity.stripeConnectPayoutsEnabled} = false
-                OR jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0
+                OR ${stripeConnectHasOutstandingExpr}
               )`,
           ),
         ),
@@ -102,7 +103,7 @@ export class DrizzleAdminFinanceIssueSnapshotReader implements IAdminFinanceIssu
         stripeConnectRequirementsCurrentlyDue: legalEntity.stripeConnectRequirementsCurrentlyDue,
       })
       .from(legalEntity)
-      .where(sql`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0`)
+      .where(stripeConnectHasOutstandingExpr)
       .orderBy(asc(legalEntity.displayName))
       .limit(200);
   }

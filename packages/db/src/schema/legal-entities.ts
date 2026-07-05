@@ -1,3 +1,4 @@
+import type { StripeConnectRequirementError } from "@auction/types";
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
@@ -70,6 +71,10 @@ export const legalEntity = pgTable(
     stripeConnectPayoutsEnabled: boolean("stripe_connect_payouts_enabled").notNull().default(false),
     stripeConnectRequirementsCurrentlyDue: jsonb("stripe_connect_requirements_currently_due")
       .$type<string[]>()
+      .notNull()
+      .default([]),
+    stripeConnectRequirementsErrors: jsonb("stripe_connect_requirements_errors")
+      .$type<StripeConnectRequirementError[]>()
       .notNull()
       .default([]),
     stripeConnectDisabledReason: text("stripe_connect_disabled_reason"),

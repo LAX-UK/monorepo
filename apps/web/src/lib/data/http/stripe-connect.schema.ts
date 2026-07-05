@@ -4,6 +4,7 @@ import type {
   StripeConnectClientConfig,
   StripeConnectStatus,
 } from "@/lib/data/http/stripe-connect.types";
+import { normalizeStripeConnectRequirementErrors } from "@auction/types";
 import { z } from "zod";
 
 export const stripeConnectStatusSchema = z
@@ -14,6 +15,7 @@ export const stripeConnectStatusSchema = z
       chargesEnabled: Boolean(row.chargesEnabled),
       payoutsEnabled: Boolean(row.payoutsEnabled),
       requirementsCurrentlyDue: zStringArrayFromUnknown.parse(row.requirementsCurrentlyDue),
+      requirementsErrors: normalizeStripeConnectRequirementErrors(row.requirementsErrors),
       disabledReason: row.disabledReason == null ? null : String(row.disabledReason),
       ready: Boolean(row.ready),
       ...(row.syncDegraded === true ? { syncDegraded: true as const } : {}),

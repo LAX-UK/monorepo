@@ -1,14 +1,19 @@
 import type { Database } from "@auction/db";
 import { legalEntity } from "@auction/db/schema";
-import { type SQL, and, asc, count, eq, ilike, sql } from "drizzle-orm";
+import { type SQL, and, asc, count, eq, ilike } from "drizzle-orm";
 import type { IAdminLegalEntityBrowseReader } from "../interfaces/admin-legal-entity-browse.reader.js";
 import type {
   AdminLegalEntityBrowseParams,
   AdminLegalEntityBrowseResult,
   AdminLegalEntityBrowseRow,
 } from "../lib/admin-legal-entity-browse.types.js";
+import {
+  stripeConnectHasOutstandingExpr,
+  stripeConnectOutstandingCountExpr,
+} from "../lib/stripe-connect-requirements-sql.js";
 
-const stripeDueCountExpr = sql<number>`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue})`;
+const stripeDueCountExpr = stripeConnectOutstandingCountExpr;
+const stripeDueFilterExpr = stripeConnectHasOutstandingExpr;
 
 function buildBrowseWhere(params: AdminLegalEntityBrowseParams): SQL | undefined {
   const trimmed = params.q?.trim() ?? "";
@@ -27,7 +32,7 @@ function buildBrowseWhere(params: AdminLegalEntityBrowseParams): SQL | undefined
     clauses.push(eq(legalEntity.kind, params.kind));
   }
   if (params.stripeDue) {
-    clauses.push(sql`jsonb_array_length(${legalEntity.stripeConnectRequirementsCurrentlyDue}) > 0`);
+    clauses.push(stripeDueFilterExpr);
   }
 
   return clauses.length > 0 ? and(...clauses) : undefined;

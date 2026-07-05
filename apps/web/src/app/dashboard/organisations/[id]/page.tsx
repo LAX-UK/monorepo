@@ -13,7 +13,7 @@ import {
 } from "@/lib/legal-entity/member-list.gateway.server";
 import { ORG_ONBOARDING_TIMELINE_STAGES } from "@/lib/legal-entity/org-onboarding-steps";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
-import { getConnectGapState } from "@auction/connect";
+import { connectRequirementsAttentionCount, getConnectGapState } from "@auction/connect";
 import { DisplayHeading, LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
@@ -84,7 +84,12 @@ export default async function OrganisationOverviewPage({
       : [];
   const memberCount = fetched.ok ? fetched.data.length : 0;
 
-  const reqDue = entity?.stripeConnectRequirementsCurrentlyDue?.length ?? 0;
+  const reqDue = entity
+    ? connectRequirementsAttentionCount(
+        entity.stripeConnectRequirementsCurrentlyDue,
+        entity.stripeConnectRequirementsErrors,
+      )
+    : 0;
   const gap = entity ? getConnectGapState(entity) : null;
 
   const reviewIndex = reviewTimelineIndex(status);

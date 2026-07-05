@@ -676,6 +676,10 @@ importers:
   packages/config-ts: {}
 
   packages/connect:
+    dependencies:
+      '@auction/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*

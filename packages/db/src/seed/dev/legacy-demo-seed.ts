@@ -1144,6 +1144,13 @@ export async function runLegacyDemoSeed() {
       stripeConnectChargesEnabled: true,
       stripeConnectPayoutsEnabled: false,
       stripeConnectRequirementsCurrentlyDue: ["company.verification.document", "external_account"],
+      stripeConnectRequirementsErrors: [
+        {
+          requirement: "company.verification.document",
+          code: "verification_document_failed_greyscale",
+          reason: "Greyscale documents cannot be read. Please upload a color copy of the document.",
+        },
+      ],
       vatNumber: "GB987654321",
       marginSchemeEligible: true,
       platformFeeBps: 500,

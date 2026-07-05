@@ -75,6 +75,7 @@ function rowToEntity(row: OnboardingOrganisationRow): LegalEntity {
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
     stripeConnectPayoutsEnabled: row.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: row.stripeConnectRequirementsCurrentlyDue ?? [],
+    stripeConnectRequirementsErrors: row.stripeConnectRequirementsErrors ?? [],
     stripeConnectDisabledReason: row.stripeConnectDisabledReason ?? null,
     xeroContactId: row.xeroContactId ?? null,
     vatNumber: row.vatNumber ?? null,

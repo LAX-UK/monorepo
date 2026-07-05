@@ -203,6 +203,7 @@ export class DrizzleLegalEntityConnectRepository
         stripeConnectChargesEnabled: false,
         stripeConnectDisabledReason: "platform_deauthorized",
         stripeConnectRequirementsCurrentlyDue: [],
+        stripeConnectRequirementsErrors: [],
         ...(nextStatus !== row.status ? { status: nextStatus, statusChangedAt: new Date() } : {}),
         updatedAt: new Date(),
       })
