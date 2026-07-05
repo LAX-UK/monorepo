@@ -1,9 +1,8 @@
 name: Terraform test down
 on:
   workflow_dispatch:
-  schedule:
-    # Nightly teardown of ephemeral test infra (21:00 UTC).
-    - cron: '0 21 * * *'
+  # Nightly schedule disabled — test env stays up while actively in use.
+  # Re-enable: schedule: [{ cron: '0 21 * * *' }]
 concurrency:
   group: terraform-test-ephemeral
   cancel-in-progress: false
