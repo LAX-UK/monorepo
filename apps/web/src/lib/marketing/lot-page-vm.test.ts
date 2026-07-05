@@ -108,4 +108,32 @@ describe("buildLotPageViewModel", () => {
     expect(vm.summarySeed.title).toBe("Untitled Study");
     expect(vm.marketingBlocks.length).toBeGreaterThan(0);
   });
+
+  it("keeps SSR bid bar active for a hybrid lot live in saleroom past end time", () => {
+    const hybridSale: Sale = { ...baseSale, deliveryMode: "hybrid" };
+    const onBlockLot: Lot = {
+      ...baseLot,
+      startTime: new Date("2026-06-01T18:00:00Z"),
+      endTime: new Date("2026-06-01T21:00:00Z"),
+      status: "active",
+    };
+
+    const vm = buildLotPageViewModel({
+      shell: {
+        ...shell,
+        auction: onBlockLot,
+        saleBundle: { sale: hybridSale, lots: [onBlockLot] },
+      },
+      secondary: {
+        ...secondary,
+        initialSaleroomStatus: { status: "live", currentLotId: "lot-1" },
+      },
+      searchParams: {},
+      // Well past the catalog end time — clerk session still running.
+      serverNow: Date.parse("2026-06-02T12:00:00Z"),
+    });
+
+    expect(vm.initialMarketingBidBarActive).toBe(true);
+    expect(vm.lotTimerState.kind).toBe("closed");
+  });
 });

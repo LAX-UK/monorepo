@@ -24,6 +24,7 @@ import {
 import type { LotPageSecondaryData, LotPageShellData } from "@/lib/marketing/lot-page-data.service";
 import { mapSaleToOverviewVM } from "@/lib/marketing/saleroom/mappers";
 import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
+import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
@@ -300,7 +301,15 @@ export function buildLotPageViewModel(input: {
     currentPrice: auction.currentPrice,
   };
 
-  const previewLife = classifyLotLifecycle(lifecycleLotPick, saleLifecyclePick, serverNow);
+  // Seed the SSR lifecycle with the server-loaded saleroom session so a hybrid
+  // lot that is live on the block (even past the catalog end time) renders as
+  // "live in saleroom" on first paint instead of flashing "no sale" before the
+  // client SaleroomLiveProvider hydrates.
+  const previewLife = classifyLotLifecycle(lifecycleLotPick, saleLifecyclePick, serverNow, {
+    saleroomSessionActive: isSaleroomSessionLive(initialSaleroomStatus.status),
+    saleroomSessionPaused: initialSaleroomStatus.status === "paused",
+    isOnBlock: initialSaleroomStatus.currentLotId === auction.id,
+  });
   const showPreviewRibbon = previewLife.kind === "preLaunch";
   const isSaleQueueLoading = Boolean(auction.saleId && saleBundle === null);
   const lotTimerState = classifyLotTimerState(toLotCardTimingVM(lifecycleLotPick), serverNow);

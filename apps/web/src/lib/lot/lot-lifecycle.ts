@@ -1,6 +1,10 @@
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import type { Lot, Sale } from "@auction/types";
-import { isSaleroomGatedForOnlineBids, toLotCardTimingVM } from "@auction/validators";
+import {
+  isSaleroomDeliveryMode,
+  isSaleroomGatedForOnlineBids,
+  toLotCardTimingVM,
+} from "@auction/validators";
 
 export type LotLifecycleKind =
   | "preLaunch"
@@ -82,13 +86,39 @@ export function classifyLotLifecycle(
   if (timer.kind === "opensSoon") {
     return { kind: "scheduled", msLeft: timer.msLeft };
   }
-  if (timer.kind === "live") {
-    if (opts?.saleroomSessionPaused) {
+
+  const saleroomSessionPaused = opts?.saleroomSessionPaused === true;
+  const saleroomSessionRunning = opts?.saleroomSessionActive === true || saleroomSessionPaused;
+
+  // Session opts originate from the saleroom live provider, which only wraps
+  // saleroom sales. When the parent sale is known we still verify it is a
+  // saleroom delivery mode so a non-saleroom sale can never be forced under
+  // saleroom control; when the sale is unknown (null) we trust the session
+  // signal. This keeps the live and closed clock branches consistent.
+  const saleSupportsSaleroom = sale == null || isSaleroomDeliveryMode(sale.deliveryMode);
+  const saleroomSessionControls = saleroomSessionRunning && saleSupportsSaleroom;
+
+  // Saleroom lots close by clerk hammer / no-sale, not by the catalog clock.
+  // While a session is live or paused an `active` lot stays under saleroom
+  // control even after `endTime` passes — the auctioneer may run long. This
+  // mirrors the API bid guard, which skips the end-time check for live/paused
+  // saleroom sessions (see apps/api/.../bid/place-bid-pipeline.ts). Without a
+  // running session, a gated hybrid lot still surfaces as "live in saleroom"
+  // while the clock is live (legacy pre-go-live display).
+  const underSaleroomControl =
+    lot.status === "active" &&
+    (timer.kind === "live"
+      ? saleroomGated || saleroomSessionControls
+      : timer.kind === "closed" && saleroomSessionControls);
+
+  if (underSaleroomControl) {
+    if (saleroomSessionPaused) {
       return { kind: "saleroomPaused", msLeft: null };
     }
-    if (saleroomGated || opts?.saleroomSessionActive) {
-      return { kind: "liveSaleroom", msLeft: null };
-    }
+    return { kind: "liveSaleroom", msLeft: null };
+  }
+
+  if (timer.kind === "live") {
     if (opts?.recentlyExtended) {
       return { kind: "extended", msLeft: timer.msLeft };
     }

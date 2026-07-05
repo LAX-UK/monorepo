@@ -147,6 +147,94 @@ describe("classifyLotLifecycle", () => {
     expect(r.kind).toBe("live");
   });
 
+  it("keeps active lot liveSaleroom past endTime while session is live", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - 2 * hour),
+      endTime: new Date(t - hour),
+    });
+    const hybridSale = {
+      status: "active" as const,
+      deliveryMode: "hybrid" as const,
+      allowOnlineBidsBeforeGoLive: true,
+    };
+    const r = classifyLotLifecycle(l, hybridSale, t, { saleroomSessionActive: true });
+    expect(r.kind).toBe("liveSaleroom");
+    expect(r.msLeft).toBeNull();
+  });
+
+  it("keeps active lot saleroomPaused past endTime while session is paused", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - 2 * hour),
+      endTime: new Date(t - hour),
+    });
+    const hybridSale = {
+      status: "active" as const,
+      deliveryMode: "hybrid" as const,
+      allowOnlineBidsBeforeGoLive: true,
+    };
+    const r = classifyLotLifecycle(l, hybridSale, t, { saleroomSessionPaused: true });
+    expect(r.kind).toBe("saleroomPaused");
+  });
+
+  it("closes active lot past endTime when no saleroom session is running", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - 2 * hour),
+      endTime: new Date(t - hour),
+    });
+    const hybridSale = {
+      status: "active" as const,
+      deliveryMode: "hybrid" as const,
+      allowOnlineBidsBeforeGoLive: true,
+    };
+    const r = classifyLotLifecycle(l, hybridSale, t);
+    expect(r.kind).toBe("endedNoSale");
+  });
+
+  it("closes online lot past endTime even if saleroom opts leak in", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - 2 * hour),
+      endTime: new Date(t - hour),
+      winnerId: "u1",
+    });
+    const r = classifyLotLifecycle(l, onlineSale, t, { saleroomSessionActive: true });
+    expect(r.kind).toBe("endedSold");
+  });
+
+  it("does not force liveSaleroom on a live online lot even if session opts leak in", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - hour),
+      endTime: new Date(t + hour),
+    });
+    const r = classifyLotLifecycle(l, onlineSale, t, { saleroomSessionActive: true });
+    expect(r.kind).toBe("live");
+  });
+
+  it("keeps onsite lot liveSaleroom past endTime while session is live", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - 2 * hour),
+      endTime: new Date(t - hour),
+    });
+    const onsiteSale = { status: "active" as const, deliveryMode: "onsite" as const };
+    const r = classifyLotLifecycle(l, onsiteSale, t, { saleroomSessionActive: true });
+    expect(r.kind).toBe("liveSaleroom");
+  });
+
+  it("trusts the session signal past endTime when the sale is unknown", () => {
+    const t = Date.now();
+    const l = lotBase("active", {
+      startTime: new Date(t - 2 * hour),
+      endTime: new Date(t - hour),
+    });
+    const r = classifyLotLifecycle(l, null, t, { saleroomSessionActive: true });
+    expect(r.kind).toBe("liveSaleroom");
+  });
+
   it("returns endedSold when ended with winner", () => {
     const l = lotBase("ended", { winnerId: "u1" });
     expect(classifyLotLifecycle(l, onlineSale, Date.now()).kind).toBe("endedSold");
