@@ -3,9 +3,13 @@ import { toObjectRecord } from "@/lib/data/http/object-guards";
 import { type UserStaffRole, normalizeUserRoleOrClient, userStaffRoles } from "@auction/types";
 import { coerceToDate } from "./coerce";
 
-function optionalNullableDate(value: unknown): Date | null | undefined {
+function optionalNullableDate(value: unknown): Date | null {
   if (value == null || value === "") return null;
   return coerceToDate(value);
+}
+
+function hasOwn(row: Record<string, unknown>, key: string): boolean {
+  return Object.hasOwn(row, key);
 }
 
 function parseUiPreferences(raw: unknown): SessionUser["uiPreferences"] | undefined {
@@ -54,8 +58,9 @@ export function parseSessionUser(raw: unknown): SessionUser {
     email: String(row.email ?? ""),
     name: String(row.name ?? row.email ?? ""),
     role: normalizeUserRoleOrClient(typeof row.role === "string" ? row.role : undefined),
-    image: row.image == null ? null : String(row.image),
   };
+
+  if (hasOwn(row, "image")) out.image = row.image == null ? null : String(row.image);
 
   const staffRole = row.staffRole;
   if (typeof staffRole === "string" && (userStaffRoles as readonly string[]).includes(staffRole)) {
@@ -77,7 +82,9 @@ export function parseSessionUser(raw: unknown): SessionUser {
   if (emailStatus === "ok" || emailStatus === "bounced" || emailStatus === "complained") {
     out.emailStatus = emailStatus;
   }
-  const emailStatusChangedAt = optionalNullableDate(row.emailStatusChangedAt);
+  const emailStatusChangedAt = hasOwn(row, "emailStatusChangedAt")
+    ? optionalNullableDate(row.emailStatusChangedAt)
+    : undefined;
   if (emailStatusChangedAt !== undefined) out.emailStatusChangedAt = emailStatusChangedAt;
   if (typeof row.hasSeenActingContextTooltip === "boolean") {
     out.hasSeenActingContextTooltip = row.hasSeenActingContextTooltip;
@@ -97,7 +104,9 @@ export function parseSessionUser(raw: unknown): SessionUser {
   } else if (signupPersona === null) {
     out.signupPersona = null;
   }
-  const deletionRequestedAt = optionalNullableDate(row.deletionRequestedAt);
+  const deletionRequestedAt = hasOwn(row, "deletionRequestedAt")
+    ? optionalNullableDate(row.deletionRequestedAt)
+    : undefined;
   if (deletionRequestedAt !== undefined) out.deletionRequestedAt = deletionRequestedAt;
   if (row.pendingNewEmail != null) out.pendingNewEmail = String(row.pendingNewEmail);
   if (typeof row.twoFactorEnabled === "boolean") out.twoFactorEnabled = row.twoFactorEnabled;

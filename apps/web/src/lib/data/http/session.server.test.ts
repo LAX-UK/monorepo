@@ -14,6 +14,12 @@ vi.mock("react", () => ({ cache: <T>(fn: T): T => fn }));
 import { getServerSessionUser } from "./session.server";
 
 const sessionUser = { id: "u1", email: "a@b.com" };
+const parsedSessionUser = {
+  id: "u1",
+  email: "a@b.com",
+  name: "a@b.com",
+  role: "client" as const,
+};
 
 function okResponse() {
   return { ok: true, status: 200, json: async () => ({ data: sessionUser }) };
@@ -33,7 +39,7 @@ describe("getServerSessionUser", () => {
 
   it("returns the user on a clean 200", async () => {
     meGet.mockResolvedValueOnce(okResponse());
-    await expect(getServerSessionUser()).resolves.toEqual(sessionUser);
+    await expect(getServerSessionUser()).resolves.toEqual(parsedSessionUser);
     expect(meGet).toHaveBeenCalledTimes(1);
   });
 
@@ -45,13 +51,13 @@ describe("getServerSessionUser", () => {
 
   it("retries a transient 5xx and succeeds (no false logout)", async () => {
     meGet.mockResolvedValueOnce(serverErrorResponse(503)).mockResolvedValueOnce(okResponse());
-    await expect(getServerSessionUser()).resolves.toEqual(sessionUser);
+    await expect(getServerSessionUser()).resolves.toEqual(parsedSessionUser);
     expect(meGet).toHaveBeenCalledTimes(2);
   });
 
   it("retries a thrown network error then succeeds", async () => {
     meGet.mockRejectedValueOnce(new Error("ETIMEDOUT")).mockResolvedValueOnce(okResponse());
-    await expect(getServerSessionUser()).resolves.toEqual(sessionUser);
+    await expect(getServerSessionUser()).resolves.toEqual(parsedSessionUser);
     expect(meGet).toHaveBeenCalledTimes(2);
   });
 
