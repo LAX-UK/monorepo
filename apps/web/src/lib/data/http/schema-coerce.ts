@@ -1,6 +1,22 @@
 import { z } from "zod";
 
-/** Mirrors `toDate` in parse.ts — never throws on bad input. */
+/** Parses unknown API JSON into a typed row (use with `zTransformParse`, not `z.custom`). */
+export type RowParser<T> = (value: unknown) => T;
+
+/** Nullable row parser for list envelopes that filter null rows. */
+export type NullableRowParser<T> = (value: unknown) => T | null;
+
+/** Use instead of `z.custom(parseFn)` — custom only validates; transform applies the parser output. */
+export function zTransformParse<T>(parse: RowParser<T>): z.ZodType<T> {
+  return z.unknown().transform(parse) as z.ZodType<T>;
+}
+
+/** Nullable variant for list envelopes that filter null rows. */
+export function zTransformParseNullable<T>(parse: NullableRowParser<T>): z.ZodType<T | null> {
+  return z.unknown().transform(parse) as z.ZodType<T | null>;
+}
+
+/** Mirrors `coerceToDate` in parse/coerce.ts — never throws on bad input. */
 export const zCoerceDate = z.preprocess(
   (value) => {
     if (value instanceof Date) return value;

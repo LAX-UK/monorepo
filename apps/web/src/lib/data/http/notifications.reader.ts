@@ -3,9 +3,8 @@ import "server-only";
 import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
-import { parseUserNotification } from "@/lib/data/http/parse";
+import { userNotificationSchema } from "@/lib/data/http/notifications.schema";
 import type { UserNotification } from "@auction/types";
-import { z } from "zod";
 
 export type ListMyNotificationsParams = {
   /** Default: 10. */
@@ -17,8 +16,6 @@ export type ListMyNotificationsParams = {
   /** Optional type filter (API `type` query). */
   type?: string;
 };
-
-const userNotificationSchema = z.custom<UserNotification>((val) => parseUserNotification(val));
 
 async function fetchMyNotifications(
   params: ListMyNotificationsParams = {},

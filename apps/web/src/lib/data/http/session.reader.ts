@@ -3,8 +3,8 @@ import "server-only";
 import type { SessionUser } from "@/lib/data/contracts";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { getServerHc } from "@/lib/data/http/hc-server";
+import { sessionUserSchema } from "@/lib/data/http/session.schema";
 import { cache } from "react";
-import { z } from "zod";
 
 /** Backoff schedule for retrying transient `/users/me` failures (ms). Each entry is one retry. */
 const TRANSIENT_RETRY_DELAYS_MS = [150, 400];
@@ -13,8 +13,6 @@ type AttemptResult =
   | { kind: "user"; user: SessionUser }
   | { kind: "unauthenticated" }
   | { kind: "transient"; status?: number };
-
-const sessionUserSchema = z.custom<SessionUser>((val) => val as SessionUser);
 
 async function fetchSessionUserOnce(): Promise<AttemptResult> {
   try {

@@ -1,4 +1,5 @@
 import { toObjectRecord } from "@/lib/data/http/object-guards";
+import { zTransformParseNullable } from "@/lib/data/http/schema-coerce";
 import type {
   OnsiteEventAdminDetail,
   OnsiteEventListItem,
@@ -26,7 +27,7 @@ function parseSegmentOptions(value: unknown): OnsiteEventSegmentOption[] {
   });
 }
 
-export const onsiteEventRsvpAdminRowSchema = z.custom<OnsiteEventRsvpAdminRow | null>((value) => {
+export function parseOnsiteEventRsvpAdminRow(value: unknown): OnsiteEventRsvpAdminRow | null {
   if (typeof value !== "object" || value === null) return null;
   const row = value as Record<string, unknown>;
   if (
@@ -53,9 +54,9 @@ export const onsiteEventRsvpAdminRowSchema = z.custom<OnsiteEventRsvpAdminRow | 
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
-}) as z.ZodType<OnsiteEventRsvpAdminRow | null>;
+}
 
-export const onsiteEventListItemSchema = z.custom<OnsiteEventListItem | null>((value) => {
+export function parseOnsiteEventListItem(value: unknown): OnsiteEventListItem | null {
   if (typeof value !== "object" || value === null) return null;
   const row = value as Record<string, unknown>;
   if (
@@ -75,9 +76,9 @@ export const onsiteEventListItemSchema = z.custom<OnsiteEventListItem | null>((v
     rsvpCount: row.rsvpCount,
     saleId: typeof row.saleId === "string" ? row.saleId : null,
   };
-}) as z.ZodType<OnsiteEventListItem | null>;
+}
 
-export const onsiteEventAdminDetailSchema = z.custom<OnsiteEventAdminDetail | null>((value) => {
+export function parseOnsiteEventAdminDetail(value: unknown): OnsiteEventAdminDetail | null {
   if (typeof value !== "object" || value === null) return null;
   const row = value as Record<string, unknown>;
   if (
@@ -109,7 +110,13 @@ export const onsiteEventAdminDetailSchema = z.custom<OnsiteEventAdminDetail | nu
     checkedInCount: row.checkedInCount,
     saleId: typeof row.saleId === "string" ? row.saleId : null,
   };
-}) as z.ZodType<OnsiteEventAdminDetail | null>;
+}
+
+export const onsiteEventRsvpAdminRowSchema = zTransformParseNullable(parseOnsiteEventRsvpAdminRow);
+
+export const onsiteEventListItemSchema = zTransformParseNullable(parseOnsiteEventListItem);
+
+export const onsiteEventAdminDetailSchema = zTransformParseNullable(parseOnsiteEventAdminDetail);
 
 export const nullableOnsiteEventAdminDetailSchema = onsiteEventAdminDetailSchema;
 

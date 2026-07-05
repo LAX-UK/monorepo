@@ -1,8 +1,8 @@
 import type { ArchiveEndedSummary } from "@/lib/data/contracts";
 import { toObjectRecord } from "@/lib/data/http/object-guards";
 import { parseBid, parseLot, parseLotDetail } from "@/lib/data/http/parse";
+import { zTransformParse } from "@/lib/data/http/schema-coerce";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
-import type { Bid, Lot, PublicLotView } from "@auction/types";
 import { z } from "zod";
 
 export const lotDocumentPublicRowSchema = z
@@ -27,10 +27,7 @@ export const lotCountBodySchema = z.object({ count: z.coerce.number().optional()
 
 export const watchCountSchema = z.object({ count: z.coerce.number().optional() });
 
-export const bidEnvelopeSchema = z.unknown().transform((val) => parseBid(val)) as z.ZodType<Bid>;
-
-export const lotEnvelopeSchema = z.unknown().transform((val) => parseLot(val)) as z.ZodType<Lot>;
-
-export const publicLotViewEnvelopeSchema = z
-  .unknown()
-  .transform((val) => parseLotDetail(val)) as z.ZodType<Lot | PublicLotView>;
+/** Row schema for parse* envelope helpers (bid, lot, etc.). Uses zTransformParse. */
+export const bidEnvelopeSchema = zTransformParse(parseBid);
+export const lotEnvelopeSchema = zTransformParse(parseLot);
+export const publicLotViewEnvelopeSchema = zTransformParse(parseLotDetail);

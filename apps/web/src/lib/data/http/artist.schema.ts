@@ -1,11 +1,13 @@
 import type { ArtistProfile } from "@/lib/data/contracts";
 import { toObjectRecord } from "@/lib/data/http/object-guards";
-import type {
-  PublicArtistDirectoryFacets,
-  PublicArtistDirectoryResult,
-  PublicArtistDirectoryRow,
-} from "@auction/types";
-import type { ArtistProfile as RegistryArtistProfile } from "@auction/types";
+import {
+  emptyPublicArtistDirectoryFacets,
+  parsePublicArtistDirectoryFacets,
+  parsePublicArtistDirectoryRow,
+} from "@/lib/data/http/parse/artist-directory.parse";
+import { parseArtistProfile } from "@/lib/data/http/parse/artist-profile.parse";
+import { zTransformParse } from "@/lib/data/http/schema-coerce";
+import type { PublicArtistDirectoryFacets, PublicArtistDirectoryResult } from "@auction/types";
 import { z } from "zod";
 
 export type PublicArtistBrowseParams = {
@@ -34,23 +36,10 @@ export type PublicArtistBrowseParams = {
 export type SitemapArtist = { id: string; name: string };
 
 export function emptyFacets(): PublicArtistDirectoryFacets {
-  return {
-    total: 0,
-    featured: 0,
-    living: 0,
-    historical: 0,
-    byKind: {},
-    hasUpcoming: 0,
-    topNationalities: [],
-    topCategories: [],
-    topDecades: [],
-    letters: [],
-  };
+  return emptyPublicArtistDirectoryFacets();
 }
 
-const registryArtistProfileSchema = z.custom<RegistryArtistProfile>(
-  (val) => val as RegistryArtistProfile,
-) as z.ZodType<RegistryArtistProfile>;
+export const registryArtistProfileSchema = zTransformParse(parseArtistProfile);
 
 export const publicArtistAliasesSchema = z.array(z.string()) as z.ZodType<string[]>;
 
@@ -97,15 +86,11 @@ export const sitemapArtistRowSchema = registryPublicRowSchema.transform(
   },
 ) as z.ZodType<SitemapArtist | null>;
 
-const publicArtistDirectoryFacetsSchema = z.custom<PublicArtistDirectoryFacets>((val) =>
-  typeof val === "object" && val !== null ? (val as PublicArtistDirectoryFacets) : emptyFacets(),
-);
+const publicArtistDirectoryFacetsSchema = zTransformParse(parsePublicArtistDirectoryFacets);
 
 export const publicArtistBrowseResultSchema = z
   .object({
-    rows: z
-      .array(z.custom<PublicArtistDirectoryRow>((val) => val as PublicArtistDirectoryRow))
-      .optional(),
+    rows: z.array(zTransformParse(parsePublicArtistDirectoryRow)).optional(),
     total: z.coerce.number().optional(),
     facets: publicArtistDirectoryFacetsSchema.optional(),
   })
@@ -116,5 +101,3 @@ export const publicArtistBrowseResultSchema = z
       facets: data.facets ?? emptyFacets(),
     }),
   ) as z.ZodType<PublicArtistDirectoryResult>;
-
-export { registryArtistProfileSchema };
