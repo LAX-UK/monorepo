@@ -2,7 +2,7 @@ import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Queue } from "bullmq";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerPayoutStatementRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -38,7 +38,7 @@ export async function ensureStatementQueued(
  * Mirrors dashboard URL shape; lazy-generates via BullMQ worker + Spaces.
  */
 export function createLegalEntityPayoutStatementRoutes(
-  container: Container,
+  container: ContainerPayoutStatementRoutesSlice,
   authenticator: IAuthenticator,
 ) {
   const requireAuth = createRequireAuth(authenticator, {

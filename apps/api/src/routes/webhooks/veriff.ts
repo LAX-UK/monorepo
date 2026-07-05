@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { Container } from "../../container.js";
+import type { ContainerVeriffWebhookRoutesSlice } from "../../container.js";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import {
   VeriffWebhookNotConfiguredError,
@@ -62,7 +62,10 @@ function webhookErrorResponse(
   return null;
 }
 
-async function runKycProgression(container: Container, userId: string): Promise<string[]> {
+async function runKycProgression(
+  container: ContainerVeriffWebhookRoutesSlice,
+  userId: string,
+): Promise<string[]> {
   return (
     (await progressIndividualsAfterKycApproval(
       {
@@ -77,7 +80,7 @@ async function runKycProgression(container: Container, userId: string): Promise<
 
 /** Best-effort pull of watchlist screening after IDV approval (webhook may have failed). */
 async function reconcileWatchlistAfterApproval(
-  container: Container,
+  container: ContainerVeriffWebhookRoutesSlice,
   providerSessionId: string | null | undefined,
 ): Promise<void> {
   if (!providerSessionId) return;
@@ -104,7 +107,7 @@ function readVeriffWebhookHeaders(c: {
 }
 
 /** Veriff webhook hub — decision (required) and event (optional UX progress). */
-export function createVeriffWebhookRoutes(container: Container) {
+export function createVeriffWebhookRoutes(container: ContainerVeriffWebhookRoutesSlice) {
   const r = new Hono();
 
   r.post("/decision", async (c) => {

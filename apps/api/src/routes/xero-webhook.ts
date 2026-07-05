@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerXeroWebhookRoutesSlice } from "../container.js";
 import { verifyXeroWebhookSignature } from "../lib/xero-webhook-signature.js";
 
 type XeroWebhookEvent = {
@@ -26,7 +26,7 @@ function eventDedupeKey(ev: XeroWebhookEvent): string {
   return createHash("sha256").update(parts.join("|")).digest("hex");
 }
 
-export function createXeroWebhookRoutes(container: Container) {
+export function createXeroWebhookRoutes(container: ContainerXeroWebhookRoutesSlice) {
   const r = new Hono();
 
   r.post("/xero", async (c) => {

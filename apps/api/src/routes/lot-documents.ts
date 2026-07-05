@@ -4,7 +4,7 @@ import {
   lotDocumentsLotIdParamSchema,
 } from "@auction/validators";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerLotDocumentRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireSpecialistCatalogueOrAuctionManage } from "../middleware/require-capability.js";
@@ -13,7 +13,10 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 const lotDocDeleteParams = lotDocumentsLotIdParamSchema.merge(entityDocumentIdParamSchema);
 
-export function createLotDocumentRoutes(container: Container, authenticator: IAuthenticator) {
+export function createLotDocumentRoutes(
+  container: ContainerLotDocumentRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

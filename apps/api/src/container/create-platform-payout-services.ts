@@ -75,9 +75,9 @@ export function createPlatformPayoutServices(
     payoutService,
     connectTransferRepository,
     repos.legalEntityConnectRepository,
+    stripeClientFactory,
     payoutRepository,
     domainEventSink,
-    stripeClientFactory,
     redis,
   );
   const paymentRefundReconcileService = new PaymentRefundReconcileService(

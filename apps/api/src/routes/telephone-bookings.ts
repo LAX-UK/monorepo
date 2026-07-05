@@ -15,7 +15,7 @@ import {
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerTelephoneBookingRoutesSlice } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -43,7 +43,7 @@ function serviceError(
 }
 
 async function requireBookingForSale(
-  container: Container,
+  container: ContainerTelephoneBookingRoutesSlice,
   c: { json: (body: unknown, status?: number) => Response },
   saleId: string,
   bookingId: string,
@@ -58,7 +58,10 @@ async function requireBookingForSale(
   return { ok: true as const, booking: check.value };
 }
 
-export function createTelephoneBookingRoutes(container: Container, authenticator: IAuthenticator) {
+export function createTelephoneBookingRoutes(
+  container: ContainerTelephoneBookingRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
@@ -200,7 +203,7 @@ export function createTelephoneBookingRoutes(container: Container, authenticator
   return root;
 }
 
-export function createAdminTelephoneBookingRoutes(container: Container) {
+export function createAdminTelephoneBookingRoutes(container: ContainerTelephoneBookingRoutesSlice) {
   const r = new Hono<{ Variables: { userId?: string } }>();
 
   r.get("/telephone-bookings/pending-count", async (c) => {

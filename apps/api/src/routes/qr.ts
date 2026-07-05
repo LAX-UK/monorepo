@@ -1,12 +1,12 @@
 import { qrShortCodeParamSchema } from "@auction/validators";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerQrRoutesSlice } from "../container.js";
 import { readQrScanGeoFromHeaders } from "../lib/qr-scan-geo.js";
 import { zValidator } from "../lib/z-validator.js";
 
 const shortCodeSegment = ":shortCode{[0-9A-Za-z]{6,12}}";
 
-export function createQrRoutes(container: Container) {
+export function createQrRoutes(container: ContainerQrRoutesSlice) {
   const r = new Hono();
 
   r.get(`/${shortCodeSegment}`, zValidator("param", qrShortCodeParamSchema), async (c) => {

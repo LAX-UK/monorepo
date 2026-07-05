@@ -2,7 +2,7 @@ import { AUTH_TIMINGS } from "@auction/auth/server";
 import { account, session } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
-import type { Container } from "../container.js";
+import type { ContainerPasswordStepUpSlice } from "../container/container-slices.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 
 /**
@@ -29,7 +29,7 @@ export const SESSION_REVOKE_POLICY: StepUpPolicy = { onMissingCredential: "allow
  *     current session is already authenticated).
  */
 export function createRequireRecentPasswordAuth(
-  container: Container,
+  container: ContainerPasswordStepUpSlice,
   policy: StepUpPolicy = PASSWORD_REQUIRED_POLICY,
 ) {
   const maxAgeMs = AUTH_TIMINGS.recentPasswordProofMaxAgeSec * 1000;

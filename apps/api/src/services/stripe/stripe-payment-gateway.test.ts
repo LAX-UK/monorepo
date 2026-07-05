@@ -10,9 +10,18 @@ function injectStripeClient(gateway: StripePaymentGateway, stripe: Stripe) {
   };
 }
 
+function noopStripeFactory(): IStripeClientFactory {
+  return {
+    get: () => null,
+    require: () => {
+      throw new Error("Stripe not configured");
+    },
+  };
+}
+
 describe("StripePaymentGateway", () => {
   it("capture succeeds via retrieve when capture errors with unexpected_state but PI is succeeded", async () => {
-    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" }, noopStripeFactory());
     const mockStripe = {
       paymentIntents: {
         capture: vi.fn().mockRejectedValue(
@@ -40,7 +49,7 @@ describe("StripePaymentGateway", () => {
   });
 
   it("createCardCheckoutSession uses idempotency key and lot display fields", async () => {
-    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" }, noopStripeFactory());
     const sessionsCreate = vi.fn().mockResolvedValue({
       id: "cs_1",
       url: "https://checkout.stripe.com/pay/cs_1",
@@ -119,7 +128,7 @@ describe("StripePaymentGateway", () => {
   });
 
   it("createBankTransferCheckoutSession uses gb_bank_transfer and separate idempotency key", async () => {
-    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" }, noopStripeFactory());
     const sessionsCreate = vi.fn().mockResolvedValue({
       id: "cs_bank",
       url: "https://checkout.stripe.com/pay/cs_bank",
@@ -168,7 +177,7 @@ describe("StripePaymentGateway", () => {
   });
 
   it("createRefund maps charge_already_refunded to already_refunded result", async () => {
-    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" }, noopStripeFactory());
     const mockStripe = {
       paymentIntents: { capture: vi.fn(), retrieve: vi.fn() },
       refunds: {
@@ -188,7 +197,7 @@ describe("StripePaymentGateway", () => {
   });
 
   it("createRefund passes idempotency key", async () => {
-    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" }, noopStripeFactory());
     const refundsCreate = vi.fn().mockResolvedValue({ id: "re_1" });
     const mockStripe = {
       paymentIntents: { capture: vi.fn(), retrieve: vi.fn() },
@@ -205,7 +214,7 @@ describe("StripePaymentGateway", () => {
   });
 
   it("revokeOpenCheckoutForPayment expires open sessions and cancels the payment intent", async () => {
-    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" });
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" }, noopStripeFactory());
     const sessionsExpire = vi.fn().mockResolvedValue({ id: "cs_1", status: "expired" });
     const sessionsList = vi.fn().mockResolvedValue({
       data: [{ id: "cs_1", status: "open" }],

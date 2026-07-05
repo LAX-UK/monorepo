@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import type { Hono } from "hono";
-import type { Container } from "../../container.js";
+import type { ContainerSubmissionRoutesSlice } from "../../container.js";
 import type { createRequireAuth } from "../../middleware/require-auth.js";
 import type { LegalEntityContext } from "../../middleware/require-legal-entity-context.js";
 
@@ -14,7 +14,7 @@ export type SubmissionHono = Hono<{
 }>;
 
 export type SubmissionRouteDeps = {
-  container: Container;
+  container: ContainerSubmissionRoutesSlice;
   requireAuth: ReturnType<typeof createRequireAuth>;
   requireSubmissionEntityContext: MiddlewareHandler;
 };

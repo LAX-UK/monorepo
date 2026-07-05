@@ -3,7 +3,7 @@ import {
   adminMarketingEventsStatsQuerySchema,
 } from "@auction/validators";
 import type { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerAdminMarketingEventsRoutesSlice } from "../container.js";
 import { isMarketingEventsEnabled } from "../lib/marketing-events-enabled.js";
 import { zValidator } from "../lib/z-validator.js";
 
@@ -11,7 +11,7 @@ export function attachAdminMarketingEventsRoutes(
   platform: Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>,
-  container: Container,
+  container: ContainerAdminMarketingEventsRoutesSlice,
 ) {
   platform.post(
     "/marketing-events/replay",

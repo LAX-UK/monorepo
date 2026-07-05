@@ -4,7 +4,7 @@ import {
   submissionDocumentsSubmissionIdParamSchema,
 } from "@auction/validators";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerSubmissionDocumentRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireSpecialistCatalogueOrAuctionManage } from "../middleware/require-capability.js";
@@ -16,7 +16,7 @@ const submissionDocDeleteParams = submissionDocumentsSubmissionIdParamSchema.mer
 );
 
 export function createSubmissionDocumentRoutes(
-  container: Container,
+  container: ContainerSubmissionDocumentRoutesSlice,
   authenticator: IAuthenticator,
 ) {
   const requireAuth = createRequireAuth(authenticator, {

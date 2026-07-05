@@ -46,6 +46,9 @@ import { SourceOfFundsDocumentReviewService } from "../services/source-of-funds/
 import { SourceOfFundsSettlementReadService } from "../services/source-of-funds/source-of-funds-settlement-read.service.js";
 import { SourceOfFundsService } from "../services/source-of-funds/source-of-funds.service.js";
 import { UploadService } from "../services/upload.service.js";
+import { UploadAuthorizationService } from "../services/upload/upload-authorization.service.js";
+import { UploadRateLimitPolicy } from "../services/upload/upload-rate-limit.policy.js";
+import { UploadValidationDispatcher } from "../services/upload/upload-validation.dispatcher.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
@@ -236,12 +239,21 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     mediaUrlResolver,
   );
   const imageCleanupService = new ImageCleanupService(objectStorage, imageCleanupQueue);
+  const uploadPersistenceRepo = repos.uploadPersistenceRepository;
+  const uploadAuth = new UploadAuthorizationService(uploadPersistenceRepo);
+  const uploadRateLimit = new UploadRateLimitPolicy(redis);
+  const uploadValidation = new UploadValidationDispatcher(uploadValidationQueue);
   const uploadService = new UploadService(
     objectStorage,
+    {
+      repo: uploadPersistenceRepo,
+      auth: uploadAuth,
+      rateLimit: uploadRateLimit,
+      validation: uploadValidation,
+    },
     redis,
     uploadValidationQueue,
     mediaUrlResolver,
-    { repo: repos.uploadPersistenceRepository },
   );
   const lotDocumentService = new EntityDocumentService(
     "lot",

@@ -1,7 +1,7 @@
 import { declineLegalEntityInvitationBodySchema } from "@auction/validators";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerLegalEntityRoutesSlice } from "../container.js";
 import { parseActingLegalEntityCookieFromHeader } from "../lib/impersonation-cookie.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -27,7 +27,10 @@ function invitationOutcomeStatus(code: string): 400 | 403 | 404 {
   }
 }
 
-export function createLegalEntityRoutes(container: Container, authenticator: IAuthenticator) {
+export function createLegalEntityRoutes(
+  container: ContainerLegalEntityRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
@@ -162,7 +165,10 @@ export function createLegalEntityRoutes(container: Container, authenticator: IAu
 /** Mounted under /users to keep the user-preference endpoint colocated with
  * other `/users/me/*` endpoints.
  */
-export function createActingContextUserRoutes(container: Container, authenticator: IAuthenticator) {
+export function createActingContextUserRoutes(
+  container: ContainerLegalEntityRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

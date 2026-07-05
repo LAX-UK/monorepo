@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { Container } from "../../container.js";
+import type { ContainerStripeWebhookRoutesSlice } from "../../container.js";
 import {
   StripeWebhookNotConfiguredError,
   StripeWebhookSignatureError,
@@ -53,7 +53,7 @@ function webhookErrorResponse(
 }
 
 /** Stripe webhook hub — Connect, transfers, and payments (KYC uses Veriff). */
-export function createStripeWebhookRoutes(container: Container) {
+export function createStripeWebhookRoutes(container: ContainerStripeWebhookRoutesSlice) {
   const r = new Hono();
 
   r.post("/connect", async (c) => {

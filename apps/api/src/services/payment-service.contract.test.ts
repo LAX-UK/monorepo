@@ -4,7 +4,6 @@ import type {
   IPaymentAdminService,
   IPaymentBuyerService,
   IPaymentMaintenanceService,
-  IPaymentService,
 } from "./interfaces/payment-service.js";
 import type { PaymentService } from "./payment.service.js";
 
@@ -16,12 +15,11 @@ type AssertAssignable<T extends U, U> = T;
 
 declare const facade: PaymentService;
 
-type _Composite = AssertAssignable<typeof facade, IPaymentService>;
 type _Buyer = AssertAssignable<typeof facade, IPaymentBuyerService>;
 type _Admin = AssertAssignable<typeof facade, IPaymentAdminService>;
 type _Maintenance = AssertAssignable<typeof facade, IPaymentMaintenanceService>;
 
-type _FacadeContract = [_Composite, _Buyer, _Admin, _Maintenance];
+type _FacadeContract = [_Buyer, _Admin, _Maintenance];
 
 defineCompileTimeContract<_FacadeContract>();
 

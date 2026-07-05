@@ -1,18 +1,8 @@
-import type { Sale } from "@auction/types";
+import { SALE_CANCELLABLE, SALE_STATUSES_ALLOWING_LOT_ADD } from "@auction/domain";
 import { LotError } from "../../lib/errors.js";
 import { findPostgresError } from "../../lib/pg-error.js";
 
-export const SALE_CANCELLABLE: ReadonlySet<Sale["status"]> = new Set([
-  "draft",
-  "scheduled",
-  "active",
-]);
-
-export const SALE_STATUSES_ALLOWING_LOT_ADD: ReadonlySet<Sale["status"]> = new Set([
-  "draft",
-  "scheduled",
-  "active",
-]);
+export { SALE_CANCELLABLE, SALE_STATUSES_ALLOWING_LOT_ADD };
 
 export const LOT_NUMBER_CONFLICT_MSG =
   "Lot number already used in that sale — pick a different number or leave it blank to auto-assign.";

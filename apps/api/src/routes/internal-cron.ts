@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerInternalCronRoutesSlice } from "../container.js";
 import type { Env } from "../env.js";
 import { zValidator } from "../lib/z-validator.js";
 
@@ -35,7 +35,7 @@ function requireCronAuth(c: { req: { header: (name: string) => string | undefine
 /** Machine-to-machine triggers (worker / platform cron). Guarded by
  * `CRON_INTERNAL_SECRET` + `X-Cron-Secret` header — not for browser clients.
  */
-export function createInternalCronRoutes(container: Container, env: Env) {
+export function createInternalCronRoutes(container: ContainerInternalCronRoutesSlice, env: Env) {
   const r = new Hono();
 
   r.post("/bulk-payout-settlement", async (c) => {

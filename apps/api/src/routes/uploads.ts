@@ -1,11 +1,14 @@
 import type { UserRole } from "@auction/types";
 import { normalizeUserStaffRole } from "@auction/types";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerUploadRoutesSlice } from "../container.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
-export function createUploadRoutes(container: Container, authenticator: IAuthenticator) {
+export function createUploadRoutes(
+  container: ContainerUploadRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

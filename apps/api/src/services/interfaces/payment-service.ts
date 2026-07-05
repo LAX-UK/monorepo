@@ -86,9 +86,3 @@ export interface IPaymentMaintenanceService {
     authorizedMaxAgeDays?: number,
   ): Promise<number>;
 }
-
-/** @deprecated Prefer IPaymentBuyerService, IPaymentAdminService, or IPaymentMaintenanceService. */
-export interface IPaymentService
-  extends IPaymentBuyerService,
-    IPaymentAdminService,
-    IPaymentMaintenanceService {}

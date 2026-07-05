@@ -1,7 +1,6 @@
 import Stripe from "stripe";
 import type { Env } from "../../env.js";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
-import { StripeClientFactory } from "../../lib/stripe-client.js";
 import { executeWithStripeRetries } from "../../lib/stripe-retries.js";
 import { buildStripeCheckoutCustomText } from "../payment/stripe-checkout-product-display.js";
 import type {
@@ -59,8 +58,8 @@ export interface IStripePaymentGateway
 export class StripePaymentGateway implements IStripePaymentGateway {
   private readonly stripeFactory: IStripeClientFactory;
 
-  constructor(env: Pick<Env, "STRIPE_SECRET_KEY">, stripeFactory?: IStripeClientFactory) {
-    this.stripeFactory = stripeFactory ?? new StripeClientFactory(env);
+  constructor(_env: Pick<Env, "STRIPE_SECRET_KEY">, stripeFactory: IStripeClientFactory) {
+    this.stripeFactory = stripeFactory;
   }
 
   private get stripe() {

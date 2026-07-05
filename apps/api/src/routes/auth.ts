@@ -6,7 +6,7 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import type { Container } from "../container.js";
+import type { ContainerAuthRoutesSlice } from "../container.js";
 import { createAppLogger } from "../lib/logger.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -34,7 +34,7 @@ import {
   stampSessionPasswordProofNow,
 } from "../services/auth/reauth.service.js";
 
-function emailChangeDeps(container: Container): EmailChangeDeps {
+function emailChangeDeps(container: ContainerAuthRoutesSlice): EmailChangeDeps {
   return {
     userService: container.userService,
     emailChange: container.userEmailChangeRepository,
@@ -45,7 +45,7 @@ function emailChangeDeps(container: Container): EmailChangeDeps {
   };
 }
 
-export function createAuthRoutes(container: Container) {
+export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
   const r = new Hono();
   const requireTurnstile = createTurnstileMiddleware(container.env.TURNSTILE_SECRET_KEY);
 

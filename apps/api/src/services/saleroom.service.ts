@@ -3,7 +3,12 @@ import type { ILotRepository, ISaleRepository } from "@auction/persistence/inter
 import type { Redis } from "ioredis";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ISaleroomRealtimePublisher } from "./interfaces/saleroom-realtime-publisher.js";
-import type { ISaleroomService, SaleroomSessionStatusRow } from "./interfaces/saleroom-service.js";
+import type {
+  ISaleroomDisplayControlService,
+  ISaleroomSessionControlService,
+  ISaleroomSessionReadService,
+  SaleroomSessionStatusRow,
+} from "./interfaces/saleroom-service.js";
 import type { ITelephoneBidBookingSaleroomBridge } from "./interfaces/telephone-bid-booking-service.js";
 import type { LotLifecycleService } from "./lot-lifecycle.service.js";
 import { SaleroomDisplayControlService } from "./saleroom/saleroom-display-control.service.js";
@@ -25,7 +30,12 @@ export type SaleroomServiceOptions = {
   displayPublisher?: ISaleroomRealtimePublisher | null;
 };
 
-export class SaleroomService implements ISaleroomService {
+export class SaleroomService
+  implements
+    ISaleroomSessionReadService,
+    ISaleroomSessionControlService,
+    ISaleroomDisplayControlService
+{
   private readonly read: SaleroomSessionReadService;
   private readonly control: SaleroomSessionControlService;
   private readonly display: SaleroomDisplayControlService;
@@ -58,36 +68,36 @@ export class SaleroomService implements ISaleroomService {
     return this.read.getSessionWithRecentEvents(saleId);
   }
 
-  goLive(input: Parameters<ISaleroomService["goLive"]>[0]) {
+  goLive(input: Parameters<ISaleroomSessionControlService["goLive"]>[0]) {
     return this.control.goLive(input);
   }
 
-  pause(input: Parameters<ISaleroomService["pause"]>[0]) {
+  pause(input: Parameters<ISaleroomSessionControlService["pause"]>[0]) {
     return this.control.pause(input);
   }
 
-  resume(input: Parameters<ISaleroomService["resume"]>[0]) {
+  resume(input: Parameters<ISaleroomSessionControlService["resume"]>[0]) {
     return this.control.resume(input);
   }
 
-  advanceToLot(input: Parameters<ISaleroomService["advanceToLot"]>[0]) {
+  advanceToLot(input: Parameters<ISaleroomSessionControlService["advanceToLot"]>[0]) {
     return this.control.advanceToLot(input);
   }
 
-  hammerCurrentLot(input: Parameters<ISaleroomService["hammerCurrentLot"]>[0]) {
+  hammerCurrentLot(input: Parameters<ISaleroomSessionControlService["hammerCurrentLot"]>[0]) {
     return this.control.hammerCurrentLot(input);
   }
 
-  noSaleCurrentLot(input: Parameters<ISaleroomService["noSaleCurrentLot"]>[0]) {
+  noSaleCurrentLot(input: Parameters<ISaleroomSessionControlService["noSaleCurrentLot"]>[0]) {
     return this.control.noSaleCurrentLot(input);
   }
 
-  closeSession(input: Parameters<ISaleroomService["closeSession"]>[0]) {
+  closeSession(input: Parameters<ISaleroomSessionControlService["closeSession"]>[0]) {
     return this.control.closeSession(input);
   }
 
   publishClerkPaddleBidSummary(
-    input: Parameters<ISaleroomService["publishClerkPaddleBidSummary"]>[0],
+    input: Parameters<ISaleroomDisplayControlService["publishClerkPaddleBidSummary"]>[0],
   ) {
     return this.display.publishClerkPaddleBidSummary(input);
   }

@@ -4,7 +4,7 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerLegalEntityMemberRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
@@ -42,7 +42,10 @@ function permissionErrorStatus(code: string): 400 | 403 | 404 | 409 {
   }
 }
 
-export function createLegalEntityMemberRoutes(container: Container, authenticator: IAuthenticator) {
+export function createLegalEntityMemberRoutes(
+  container: ContainerLegalEntityMemberRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

@@ -8,7 +8,7 @@ import {
   updateOnsiteEventBodySchema,
 } from "@auction/validators";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerAdminOnsiteEventRoutesSlice } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import {
   isOnsiteEventCheckInServiceError,
@@ -17,7 +17,7 @@ import {
 import { zValidator } from "../lib/z-validator.js";
 import { createOnsiteEventResendRateLimitMiddleware } from "../middleware/onsite-event-rate-limit.js";
 
-export function createAdminOnsiteEventRoutes(container: Container) {
+export function createAdminOnsiteEventRoutes(container: ContainerAdminOnsiteEventRoutesSlice) {
   const r = new Hono<{ Variables: { userId?: string } }>();
   const resendLimit = createOnsiteEventResendRateLimitMiddleware(container.redis);
 

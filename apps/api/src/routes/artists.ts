@@ -14,7 +14,7 @@ import {
   publicArtistBrowseQuerySchema,
 } from "@auction/validators";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerArtistRoutesSlice } from "../container.js";
 import { ArtistError } from "../lib/errors.js";
 import { serviceErrorJsonBody } from "../lib/forbidden-response.js";
 import { asHttpStatus } from "../lib/http-status.js";
@@ -33,7 +33,10 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 const artistIdSegment =
   ":id{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}";
 
-export function createArtistRoutes(container: Container, authenticator: IAuthenticator) {
+export function createArtistRoutes(
+  container: ContainerArtistRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

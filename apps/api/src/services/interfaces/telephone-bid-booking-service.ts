@@ -122,10 +122,3 @@ export interface ITelephoneBidBookingBidPolicy {
     maxAutoBidAmount?: number;
   }): Promise<Result<TelephoneBidBooking, TelephoneBidBookingServiceError>>;
 }
-
-/** @deprecated Prefer ITelephoneBidBookingBuyerService, ITelephoneBidBookingStaffService, or ITelephoneBidBookingQueryService. */
-export type ITelephoneBidBookingService = ITelephoneBidBookingBuyerService &
-  ITelephoneBidBookingStaffService &
-  ITelephoneBidBookingQueryService &
-  ITelephoneBidBookingSaleroomBridge &
-  ITelephoneBidBookingBidPolicy;

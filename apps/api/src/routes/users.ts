@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerUserRoutesSlice } from "../container.js";
 import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -19,7 +19,10 @@ import { attachUserPublicRoutes } from "./users/public.routes.js";
 import { attachUserSecurityRoutes } from "./users/security.routes.js";
 import { attachUserWatchlistRoutes } from "./users/watchlist.routes.js";
 
-export function createUserRoutes(container: Container, authenticator: IAuthenticator) {
+export function createUserRoutes(
+  container: ContainerUserRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

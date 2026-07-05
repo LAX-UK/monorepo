@@ -7,7 +7,7 @@ import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type Stripe from "stripe";
 import type { Env } from "../../env.js";
-import { StripeClientFactory } from "../../lib/stripe-client.js";
+import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutService } from "../interfaces/payout.js";
 import type {
@@ -42,12 +42,12 @@ export class StripeConnectFacade implements IStripeConnectService {
     payoutService: IPayoutService,
     connectTransferRepository: IConnectTransferRepository,
     legalEntityConnectRepository: ILegalEntityConnectRepository,
+    stripeFactory: IStripeClientFactory,
     payoutRepository?: IPayoutRepository,
     domainEventSink?: IDomainEventSink,
-    stripeFactory?: StripeClientFactory,
     redis?: Redis,
   ) {
-    const factory = stripeFactory ?? new StripeClientFactory(env);
+    const factory = stripeFactory;
     const lifecyclePromoter = new ConnectLifecyclePromoter(
       legalEntityConnectRepository,
       domainEventSink,

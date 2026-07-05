@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerMarketingRoutesSlice } from "../container.js";
 import { isMarketingEventsEnabled } from "../lib/marketing-events-enabled.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -11,7 +11,10 @@ const clickIdsBodySchema = z.object({
   fbc: z.string().max(256).optional(),
 });
 
-export function createMarketingRoutes(container: Container, authenticator: IAuthenticator) {
+export function createMarketingRoutes(
+  container: ContainerMarketingRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

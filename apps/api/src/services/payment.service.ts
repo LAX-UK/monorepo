@@ -18,7 +18,11 @@ import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
-import type { IPaymentService } from "./interfaces/payment-service.js";
+import type {
+  IPaymentAdminService,
+  IPaymentBuyerService,
+  IPaymentMaintenanceService,
+} from "./interfaces/payment-service.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import type { IPlatformFeePolicy } from "./interfaces/platform-fee.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
@@ -57,10 +61,11 @@ export type {
   IPaymentAdminService,
   IPaymentBuyerService,
   IPaymentMaintenanceService,
-  IPaymentService,
 } from "./interfaces/payment-service.js";
 
-export class PaymentService implements IPaymentService {
+export class PaymentService
+  implements IPaymentBuyerService, IPaymentAdminService, IPaymentMaintenanceService
+{
   private readonly deps: PaymentServiceDeps;
 
   constructor(

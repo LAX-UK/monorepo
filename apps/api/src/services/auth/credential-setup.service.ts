@@ -1,10 +1,10 @@
 import { account } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
-import type { Container } from "../../container.js";
+import type { ContainerCredentialSetupSlice } from "../../container/container-slices.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 
 export async function setupCredentialPassword(args: {
-  container: Container;
+  container: ContainerCredentialSetupSlice;
   userId: string;
   password: string;
   authAudit?: IAuthAuditPublisher | undefined;

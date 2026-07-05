@@ -1,14 +1,11 @@
+import { SALE_STATUSES_ALLOWING_LOT_ADD } from "@auction/domain";
 import type { CreateLotInput, Lot, Sale } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { LotError } from "../../lib/errors.js";
 import { mergeSaleTimingIntoPatch, resolveLotTimingForSale } from "../../lib/lot-sale-timing.js";
 import type { LotServiceDeps } from "./lot-types.js";
 
-export const SALE_STATUSES_ALLOWING_LOT_ADD: ReadonlySet<Sale["status"]> = new Set([
-  "draft",
-  "scheduled",
-  "active",
-]);
+export { SALE_STATUSES_ALLOWING_LOT_ADD } from "@auction/domain";
 
 export async function applySaleTimingPolicyToInput(
   deps: LotServiceDeps,

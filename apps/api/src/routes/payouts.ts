@@ -6,7 +6,7 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerAdminPayoutRoutesSlice, ContainerPayoutRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
@@ -39,7 +39,10 @@ function handleError(err: unknown) {
 /** Seller-side routes scoped to the acting legal entity. All require both
  * authentication and a valid `X-Legal-Entity-Id` header.
  */
-export function createPayoutRoutes(container: Container, authenticator: IAuthenticator) {
+export function createPayoutRoutes(
+  container: ContainerPayoutRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
@@ -101,7 +104,10 @@ export function createPayoutRoutes(container: Container, authenticator: IAuthent
 }
 
 /** Admin payout routes (`payout.read` list, `payout.process` mutations). */
-export function createAdminPayoutRoutes(container: Container, authenticator: IAuthenticator) {
+export function createAdminPayoutRoutes(
+  container: ContainerAdminPayoutRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

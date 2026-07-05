@@ -7,9 +7,8 @@ import type { IObjectStorage } from "./interfaces/object-storage.js";
 import type { IUploadAuthorizationService, IUploadService } from "./interfaces/upload-service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import { createUploadKey } from "./upload.policy.js";
-import { UploadAuthorizationService } from "./upload/upload-authorization.service.js";
-import { UploadRateLimitPolicy } from "./upload/upload-rate-limit.policy.js";
-import { UploadValidationDispatcher } from "./upload/upload-validation.dispatcher.js";
+import type { UploadRateLimitPolicy } from "./upload/upload-rate-limit.policy.js";
+import type { UploadValidationDispatcher } from "./upload/upload-validation.dispatcher.js";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -42,24 +41,21 @@ export class UploadService implements IUploadService {
 
   constructor(
     private readonly storage: IObjectStorage,
-    redis?: Redis,
-    validationQueue?: Queue,
-    private readonly mediaUrlResolver?: MediaUrlResolver,
-    deps?: {
+    deps: {
       repo: IUploadPersistenceRepository;
-      auth?: IUploadAuthorizationService;
-      rateLimit?: UploadRateLimitPolicy;
-      validation?: UploadValidationDispatcher;
+      auth: IUploadAuthorizationService;
+      rateLimit: UploadRateLimitPolicy;
+      validation: UploadValidationDispatcher;
     },
+    redis?: Redis,
+    _validationQueue?: Queue,
+    private readonly mediaUrlResolver?: MediaUrlResolver,
   ) {
     this.redis = redis;
-    if (!deps?.repo) {
-      throw new Error("UploadService requires deps.repo from the container");
-    }
     this.repo = deps.repo;
-    this.auth = deps.auth ?? new UploadAuthorizationService(this.repo);
-    this.rateLimit = deps?.rateLimit ?? new UploadRateLimitPolicy(redis);
-    this.validation = deps?.validation ?? new UploadValidationDispatcher(validationQueue);
+    this.auth = deps.auth;
+    this.rateLimit = deps.rateLimit;
+    this.validation = deps.validation;
   }
 
   async uploadImage(body: Buffer, contentType: string): Promise<{ url: string }> {

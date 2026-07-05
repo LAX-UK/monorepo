@@ -81,6 +81,20 @@ function makeStripeFactory(stripe: Stripe): IStripeClientFactory {
   };
 }
 
+function noopStripeFactory(): IStripeClientFactory {
+  return {
+    get: () => null,
+    require: () => {
+      throw new Error("Stripe not configured");
+    },
+  };
+}
+
+/** Stub Stripe client for initiateTransfer paths that must pass the SDK gate. */
+function configuredStripeFactory(stripe: Stripe = {} as Stripe): IStripeClientFactory {
+  return makeStripeFactory(stripe);
+}
+
 function makeConnectTransferRepository(
   overrides: Partial<IConnectTransferRepository> = {},
 ): IConnectTransferRepository {
@@ -169,6 +183,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
       payoutService,
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
+      noopStripeFactory(),
     );
     const transfer = {
       id: "tr_1",
@@ -202,6 +217,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
       payoutService,
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
+      noopStripeFactory(),
     );
 
     const result = await svc.handleTransferEvent({
@@ -234,6 +250,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
       payoutService,
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
+      noopStripeFactory(),
     );
 
     const result = await svc.handleTransferEvent({
@@ -261,6 +278,7 @@ describe("StripeConnectService.handleTransferEvent", () => {
       payoutService,
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
+      noopStripeFactory(),
     );
     const transfer = {
       id: "tr_reversed",
@@ -334,6 +352,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
+      noopStripeFactory(),
     );
 
     const result = await svc.initiateTransfer("po1");
@@ -349,6 +368,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
+      configuredStripeFactory(),
       payoutRepo,
       makeDomainEventSink(),
     );
@@ -366,6 +386,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
+      configuredStripeFactory(),
       payoutRepo,
       makeDomainEventSink(),
     );
@@ -389,6 +410,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
+      configuredStripeFactory(),
       payoutRepo,
       makeDomainEventSink(),
     );
@@ -413,6 +435,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
+      configuredStripeFactory(),
       payoutRepo,
       publisher,
     );
@@ -447,6 +470,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
+      configuredStripeFactory(),
       payoutRepo,
       makeDomainEventSink(),
     );
@@ -470,6 +494,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
+      configuredStripeFactory(),
       payoutRepo,
       publisher,
     );
@@ -538,6 +563,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
+      noopStripeFactory(),
       payoutRepo,
       publisher,
     );
@@ -607,6 +633,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
+      noopStripeFactory(),
       payoutRepo,
       makeDomainEventSink(),
     );
@@ -681,6 +708,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       makePayoutService(null),
       connectTransferRepository,
       makeConnectLegalEntityRepository(),
+      noopStripeFactory(),
       payoutRepo,
       publisher,
     );
@@ -822,6 +850,7 @@ describe("StripeConnectService.ensureAccount", () => {
       makePayoutService(null),
       makeConnectTransferRepository(),
       connectRepository,
+      noopStripeFactory(),
     );
     injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
@@ -915,6 +944,7 @@ describe("StripeConnectService.ensureAccount", () => {
       makePayoutService(null),
       makeConnectTransferRepository(),
       connectRepository,
+      noopStripeFactory(),
     );
     injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
@@ -983,6 +1013,7 @@ describe("StripeConnectService.ensureAccount", () => {
       makePayoutService(null),
       makeConnectTransferRepository(),
       connectRepository,
+      noopStripeFactory(),
     );
     injectStripeOnService(svc, { accounts: { create: accountsCreate } } as unknown as Stripe);
 
@@ -1025,6 +1056,7 @@ describe("StripeConnectService.handleConnectedAccountEvent dedup", () => {
       makePayoutService(null),
       makeConnectTransferRepository(),
       makeConnectLegalEntityRepository(),
+      noopStripeFactory(),
       undefined,
       publisher,
     );

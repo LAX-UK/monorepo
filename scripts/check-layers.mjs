@@ -284,4 +284,30 @@ if (apiRouteDbViolations.length > 0) {
   process.exit(1);
 }
 
+// ─── API routes must not import full Container (DIP at HTTP edge) ────────────
+
+const FULL_CONTAINER_IMPORT_RE = /import\s+type\s+\{\s*Container\s*\}/;
+
+/** @type {string[]} */
+const fullContainerRouteViolations = [];
+
+for (const file of listAllSources(join(root, "apps/api/src/routes"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  if (isTestSource(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  if (FULL_CONTAINER_IMPORT_RE.test(text)) {
+    fullContainerRouteViolations.push(
+      `${rel}: imports full \`Container\` — use a Container*RoutesSlice from container-slices.ts`,
+    );
+  }
+}
+
+if (fullContainerRouteViolations.length > 0) {
+  console.error("Full Container route import violations detected:\n");
+  for (const v of fullContainerRouteViolations) {
+    console.error(`  ${v}`);
+  }
+  process.exit(1);
+}
+
 console.log("check-layers: ok (no layering violations)");

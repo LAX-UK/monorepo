@@ -6,13 +6,16 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
-import type { Container } from "../container.js";
+import type { ContainerExportRoutesSlice } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
-export function createExportRoutes(container: Container, authenticator: IAuthenticator) {
+export function createExportRoutes(
+  container: ContainerExportRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

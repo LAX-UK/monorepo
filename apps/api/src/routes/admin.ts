@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import type { Container } from "../container.js";
+import type { ContainerAdminPlatformRoutesSlice } from "../container.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   requireAuctionManage,
@@ -41,7 +41,10 @@ import {
 } from "./admin/users.routes.js";
 import { createAdminTelephoneBookingRoutes } from "./telephone-bookings.js";
 
-export function createAdminRoutes(container: Container, authenticator: IAuthenticator) {
+export function createAdminRoutes(
+  container: ContainerAdminPlatformRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.admin.requestLifecycle.isSuspended(id),
   });

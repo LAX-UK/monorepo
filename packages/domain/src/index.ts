@@ -1,3 +1,11 @@
+export {
+  lotNumberTakenInSale,
+  nextLotNumberInSale,
+} from "./lot-number.js";
+export {
+  SALE_CANCELLABLE,
+  SALE_STATUSES_ALLOWING_LOT_ADD,
+} from "./sale-status-policy.js";
 export { buyerEntityCanBid } from "./buyer-entity-bid-eligibility.js";
 export {
   addMoneyStrings,

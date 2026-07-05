@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerStripeConnectRoutesSlice } from "../container.js";
 import { respondStripeConnectRouteError } from "../lib/stripe-connect-route-errors.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -20,7 +20,10 @@ const sessionBodySchema = z.object({
   surface: z.enum(["onboarding", "management"]).default("onboarding"),
 });
 
-export function createStripeConnectRoutes(container: Container, authenticator: IAuthenticator) {
+export function createStripeConnectRoutes(
+  container: ContainerStripeConnectRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });

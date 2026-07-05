@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { account, user } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
-import type { Container } from "../../container.js";
+import type { ContainerForgotPasswordSlice } from "../../container/container-slices.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 import { requestMagicLinkForEmail } from "./request-magic-link.service.js";
 
@@ -15,7 +15,7 @@ function authAggregateId(parts: string): string {
 export async function runForgotPasswordSideEffects(args: {
   email: string;
   webOrigin: string;
-  container: Container;
+  container: ContainerForgotPasswordSlice;
   clientIp?: string | undefined;
   authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<void> {

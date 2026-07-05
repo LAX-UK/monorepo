@@ -5,7 +5,7 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Container } from "../container.js";
+import type { ContainerOrganizationOnboardingRoutesSlice } from "../container.js";
 import { isOrgModuleEnabled, orgModuleDisabledResponse } from "../lib/org-module-enabled.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -20,7 +20,7 @@ const stepParamSchema = entityIdParamSchema.extend({
 });
 
 export function createOrganizationOnboardingRoutes(
-  container: Container,
+  container: ContainerOrganizationOnboardingRoutesSlice,
   authenticator: IAuthenticator,
 ) {
   const requireAuth = createRequireAuth(authenticator, {

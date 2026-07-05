@@ -7,7 +7,13 @@ import type { TelephoneBidBooking, TelephoneBidBookingStatus } from "@auction/ty
 import type { IAmlHoldStore } from "./aml/ports.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IKycService } from "./interfaces/kyc-service.js";
-import type { ITelephoneBidBookingService } from "./interfaces/telephone-bid-booking-service.js";
+import type {
+  ITelephoneBidBookingBidPolicy,
+  ITelephoneBidBookingBuyerService,
+  ITelephoneBidBookingQueryService,
+  ITelephoneBidBookingSaleroomBridge,
+  ITelephoneBidBookingStaffService,
+} from "./interfaces/telephone-bid-booking-service.js";
 import type { ITelephoneBookingNotifier } from "./interfaces/telephone-booking-notifier.js";
 import { TelephoneBidBookingBidPolicyService } from "./telephone-booking/telephone-bid-booking-bid-policy.service.js";
 import { TelephoneBidBookingBuyerService } from "./telephone-booking/telephone-bid-booking-buyer.service.js";
@@ -56,7 +62,14 @@ export function buildTelephoneBidBookingService(
   );
 }
 
-export class TelephoneBidBookingService implements ITelephoneBidBookingService {
+export class TelephoneBidBookingService
+  implements
+    ITelephoneBidBookingBuyerService,
+    ITelephoneBidBookingStaffService,
+    ITelephoneBidBookingQueryService,
+    ITelephoneBidBookingSaleroomBridge,
+    ITelephoneBidBookingBidPolicy
+{
   constructor(
     private readonly buyer: TelephoneBidBookingBuyerService,
     private readonly staff: TelephoneBidBookingStaffService,
@@ -65,7 +78,7 @@ export class TelephoneBidBookingService implements ITelephoneBidBookingService {
     private readonly bidPolicy: TelephoneBidBookingBidPolicyService,
   ) {}
 
-  requestBooking(input: Parameters<ITelephoneBidBookingService["requestBooking"]>[0]) {
+  requestBooking(input: Parameters<ITelephoneBidBookingBuyerService["requestBooking"]>[0]) {
     return this.buyer.requestBooking(input);
   }
 
@@ -81,15 +94,17 @@ export class TelephoneBidBookingService implements ITelephoneBidBookingService {
     return this.buyer.getDetailForUser(id, userId);
   }
 
-  addLotsOfInterest(input: Parameters<ITelephoneBidBookingService["addLotsOfInterest"]>[0]) {
+  addLotsOfInterest(input: Parameters<ITelephoneBidBookingBuyerService["addLotsOfInterest"]>[0]) {
     return this.buyer.addLotsOfInterest(input);
   }
 
-  requestLimitIncrease(input: Parameters<ITelephoneBidBookingService["requestLimitIncrease"]>[0]) {
+  requestLimitIncrease(
+    input: Parameters<ITelephoneBidBookingBuyerService["requestLimitIncrease"]>[0],
+  ) {
     return this.buyer.requestLimitIncrease(input);
   }
 
-  cancelByBuyer(input: Parameters<ITelephoneBidBookingService["cancelByBuyer"]>[0]) {
+  cancelByBuyer(input: Parameters<ITelephoneBidBookingBuyerService["cancelByBuyer"]>[0]) {
     return this.buyer.cancelByBuyer(input);
   }
 
@@ -109,35 +124,37 @@ export class TelephoneBidBookingService implements ITelephoneBidBookingService {
     return this.query.countGlobalPending();
   }
 
-  confirm(input: Parameters<ITelephoneBidBookingService["confirm"]>[0]) {
+  confirm(input: Parameters<ITelephoneBidBookingStaffService["confirm"]>[0]) {
     return this.staff.confirm(input);
   }
 
-  assignClerk(input: Parameters<ITelephoneBidBookingService["assignClerk"]>[0]) {
+  assignClerk(input: Parameters<ITelephoneBidBookingStaffService["assignClerk"]>[0]) {
     return this.staff.assignClerk(input);
   }
 
-  updateNotes(input: Parameters<ITelephoneBidBookingService["updateNotes"]>[0]) {
+  updateNotes(input: Parameters<ITelephoneBidBookingStaffService["updateNotes"]>[0]) {
     return this.staff.updateNotes(input);
   }
 
-  approveLimitIncrease(input: Parameters<ITelephoneBidBookingService["approveLimitIncrease"]>[0]) {
+  approveLimitIncrease(
+    input: Parameters<ITelephoneBidBookingStaffService["approveLimitIncrease"]>[0],
+  ) {
     return this.staff.approveLimitIncrease(input);
   }
 
-  startLine(input: Parameters<ITelephoneBidBookingService["startLine"]>[0]) {
+  startLine(input: Parameters<ITelephoneBidBookingStaffService["startLine"]>[0]) {
     return this.staff.startLine(input);
   }
 
-  completeLine(input: Parameters<ITelephoneBidBookingService["completeLine"]>[0]) {
+  completeLine(input: Parameters<ITelephoneBidBookingStaffService["completeLine"]>[0]) {
     return this.staff.completeLine(input);
   }
 
-  closeBooking(input: Parameters<ITelephoneBidBookingService["closeBooking"]>[0]) {
+  closeBooking(input: Parameters<ITelephoneBidBookingStaffService["closeBooking"]>[0]) {
     return this.staff.closeBooking(input);
   }
 
-  cancelByStaff(input: Parameters<ITelephoneBidBookingService["cancelByStaff"]>[0]) {
+  cancelByStaff(input: Parameters<ITelephoneBidBookingStaffService["cancelByStaff"]>[0]) {
     return this.staff.cancelByStaff(input);
   }
 
@@ -158,7 +175,7 @@ export class TelephoneBidBookingService implements ITelephoneBidBookingService {
   }
 
   assertBookingAllowsTelephoneBid(
-    input: Parameters<ITelephoneBidBookingService["assertBookingAllowsTelephoneBid"]>[0],
+    input: Parameters<ITelephoneBidBookingBidPolicy["assertBookingAllowsTelephoneBid"]>[0],
   ) {
     return this.bidPolicy.assertBookingAllowsTelephoneBid(input);
   }

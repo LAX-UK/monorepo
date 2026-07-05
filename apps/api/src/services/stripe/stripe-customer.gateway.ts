@@ -2,7 +2,6 @@ import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import type { Env } from "../../env.js";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
-import { StripeClientFactory } from "../../lib/stripe-client.js";
 import { executeWithStripeRetries } from "../../lib/stripe-retries.js";
 import type { IStripeCustomerGateway } from "../interfaces/stripe-customer.js";
 
@@ -10,11 +9,11 @@ export class StripeCustomerGateway implements IStripeCustomerGateway {
   private readonly stripeFactory: IStripeClientFactory;
 
   constructor(
-    env: Pick<Env, "STRIPE_SECRET_KEY">,
+    _env: Pick<Env, "STRIPE_SECRET_KEY">,
     private readonly legalEntities: ILegalEntityRepository,
-    stripeFactory?: IStripeClientFactory,
+    stripeFactory: IStripeClientFactory,
   ) {
-    this.stripeFactory = stripeFactory ?? new StripeClientFactory(env);
+    this.stripeFactory = stripeFactory;
   }
 
   private get stripe() {

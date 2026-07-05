@@ -1,6 +1,6 @@
 import { displayPairPollBodySchema, displaySnapshotParamSchema } from "@auction/validators";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerSaleroomDisplayRoutesSlice } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { zValidator } from "../lib/z-validator.js";
 
@@ -15,7 +15,7 @@ function readDisplayToken(c: { req: { header: (name: string) => string | undefin
   return null;
 }
 
-export function createSaleroomDisplayRoutes(container: Container) {
+export function createSaleroomDisplayRoutes(container: ContainerSaleroomDisplayRoutesSlice) {
   const r = new Hono();
 
   r.post("/display/pair/start", async (c) => {

@@ -6,7 +6,7 @@ import {
   adminQueueReplayDlqBodySchema,
 } from "@auction/queues";
 import type { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerAdminQueuesRoutesSlice } from "../container.js";
 import {
   mapPauseError,
   mapReplayError,
@@ -35,7 +35,7 @@ export function attachAdminQueuesRoutes(
   platform: Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>,
-  container: Container,
+  container: ContainerAdminQueuesRoutesSlice,
 ) {
   const auditAccess = createAuditAccessMiddleware(createBaseLogger(container.env));
   platform.use("/system/job-queues/*", requireSuperAdminStaffRole);

@@ -104,7 +104,8 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     telephoneBidBookingService,
     saleService,
   } = catalog;
-  const { paymentService, xeroOAuthService, lotFulfilmentService, adminMetricsService } = payments;
+  const { paymentAdminService, xeroOAuthService, lotFulfilmentService, adminMetricsService } =
+    payments;
   const {
     saleRegistrationService,
     saleroomService,
@@ -141,7 +142,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     adminMetricsService,
     attentionFeedReader,
     itemSubmissionAdminApi,
-    paymentService,
+    paymentService: paymentAdminService,
     adminPaymentListQueryService,
     lotService,
     adminLotBrowseService,

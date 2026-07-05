@@ -4,7 +4,7 @@ import {
   saleDocumentsSaleIdParamSchema,
 } from "@auction/validators";
 import { Hono } from "hono";
-import type { Container } from "../container.js";
+import type { ContainerSaleDocumentRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireSpecialistCatalogueOrAuctionManage } from "../middleware/require-capability.js";
@@ -13,7 +13,10 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 const saleDocDeleteParams = saleDocumentsSaleIdParamSchema.merge(entityDocumentIdParamSchema);
 
-export function createSaleDocumentRoutes(container: Container, authenticator: IAuthenticator) {
+export function createSaleDocumentRoutes(
+  container: ContainerSaleDocumentRoutesSlice,
+  authenticator: IAuthenticator,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
