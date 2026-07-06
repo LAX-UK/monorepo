@@ -74,6 +74,8 @@ export type SaleLotCardVM = {
   viewerIsWatching: boolean;
   /** When saleroom session is live and this lot is on the block. */
   isOnBlock?: boolean;
+  /** When saleroom session is live and this lot is next in the run order. */
+  isUpNext?: boolean;
   /** Drives Sold vs Unsold when status is `ended`. */
   winnerId?: string | null | undefined;
   hasWinner?: boolean;

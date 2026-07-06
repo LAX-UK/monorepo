@@ -23,9 +23,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock("@/components/marketing/lot-status-badge", () => ({
-  LotStatusBadge: () => null,
-  LotStatusTimer: () => <span data-testid="lot-status-timer" />,
+vi.mock("@/components/sections/saleroom/saleroom-lot-catalog-overlay", () => ({
+  SaleroomLotCatalogOverlay: () => <span data-testid="saleroom-lot-catalog-overlay" />,
 }));
 
 vi.mock("@/components/marketing/lot-quick-look/lot-quick-look-trigger", () => ({
@@ -70,6 +69,12 @@ const lot: SaleLotCardVM = {
   closingShort: null,
 };
 
+const hybridSaleForLifecycle = {
+  status: "active" as const,
+  deliveryMode: "hybrid" as const,
+  allowOnlineBidsBeforeGoLive: true,
+};
+
 function lotLinks(container: HTMLElement, href: string) {
   return [...container.querySelectorAll(`a[href="${href}"]`)];
 }
@@ -82,7 +87,9 @@ describe("saleroom catalog SEO contract", () => {
   });
 
   it("tile SaleroomLotCard renders image and title links to lot.href", () => {
-    const { container } = render(<SaleroomLotCard lot={lot} />);
+    const { container } = render(
+      <SaleroomLotCard lot={lot} saleForLifecycle={hybridSaleForLifecycle} />,
+    );
 
     const links = lotLinks(container, lot.href);
     expect(links.length).toBeGreaterThanOrEqual(2);
@@ -92,7 +99,9 @@ describe("saleroom catalog SEO contract", () => {
   });
 
   it("row SaleroomLotCard preserves crawlable lot links", () => {
-    const { container } = render(<SaleroomLotCard lot={lot} layout="row" />);
+    const { container } = render(
+      <SaleroomLotCard lot={lot} saleForLifecycle={hybridSaleForLifecycle} layout="row" />,
+    );
 
     const links = lotLinks(container, lot.href);
     expect(links.length).toBeGreaterThanOrEqual(2);
@@ -103,6 +112,7 @@ describe("saleroom catalog SEO contract", () => {
     const { container } = render(
       <SaleroomLotsGrid
         lots={[lot, { ...lot, id: "lot-2", href: "/lot/second/2", title: "Second lot" }]}
+        saleForLifecycle={hybridSaleForLifecycle}
         renderCorner={(item) => <SaleroomLotQuickLookCorner lot={item} isAuthenticated={false} />}
       />,
     );

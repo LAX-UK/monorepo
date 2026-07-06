@@ -22,6 +22,7 @@ import {
   findLotsBySaleId,
   findLotsBySaleIds,
   findPreviewLotsBySaleIds,
+  findRunOrderRefsBySaleId,
   listCatalogLotsBySalePage,
 } from "./lot/lot-catalog-queries.js";
 import { mapLotWithCategories, mapLotsWithCategories } from "./lot/lot-category-queries.js";
@@ -390,6 +391,12 @@ export class DrizzleLotRepository implements ILotRepository {
 
   async findBySaleId(saleId: string): Promise<Lot[]> {
     return findLotsBySaleId(this.db, saleId);
+  }
+
+  async findRunOrderRefsBySaleId(
+    saleId: string,
+  ): Promise<Array<Pick<Lot, "id" | "lotNumber" | "title" | "status">>> {
+    return findRunOrderRefsBySaleId(this.db, saleId);
   }
 
   async findBySaleIds(saleIds: string[]): Promise<Lot[]> {

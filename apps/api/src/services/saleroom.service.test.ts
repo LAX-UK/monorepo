@@ -47,7 +47,11 @@ function createService(
       redis: mockDomainEventSink(redisPublish) as never,
       lotLifecycle: (overrides.lotLifecycle ?? {}) as never,
       saleRepo: (overrides.saleRepo ?? { findById: vi.fn() }) as never,
-      lotRepo: (overrides.lotRepo ?? { findById: vi.fn(), findBySaleId: vi.fn() }) as never,
+      lotRepo: (overrides.lotRepo ?? {
+        findById: vi.fn(),
+        findBySaleId: vi.fn().mockResolvedValue([]),
+        findRunOrderRefsBySaleId: vi.fn().mockResolvedValue([]),
+      }) as never,
       lotJobs: (overrides.lotJobs ?? null) as never,
       telephoneBidBookingService: (overrides.telephoneBidBookingService ?? null) as never,
       displayPublisher: displayPublisher as never,
@@ -166,7 +170,14 @@ describe("SaleroomService.advanceToLot", () => {
 
     const lotRepo = {
       findById: vi.fn().mockResolvedValue({ id: "lot-2", saleId: "sale-1", status: "active" }),
-      findBySaleId: vi.fn(),
+      findBySaleId: vi.fn().mockResolvedValue([
+        { id: "lot-2", lotNumber: 2, title: "Lot 2", status: "active" },
+        { id: "lot-3", lotNumber: 3, title: "Lot 3", status: "scheduled" },
+      ]),
+      findRunOrderRefsBySaleId: vi.fn().mockResolvedValue([
+        { id: "lot-2", lotNumber: 2, title: "Lot 2", status: "active" },
+        { id: "lot-3", lotNumber: 3, title: "Lot 3", status: "scheduled" },
+      ]),
     };
 
     const { service, redisPublish, displayPublisher } = createService({
@@ -190,6 +201,10 @@ describe("SaleroomService.advanceToLot", () => {
       "sale:sale-1:saleroom",
       expect.stringContaining('"kind":"advanced_to_lot"'),
     );
+    expect(redisPublish).toHaveBeenCalledWith(
+      "sale:sale-1:saleroom",
+      expect.stringContaining('"nextLotId":"lot-3"'),
+    );
   });
 
   it("activates a scheduled lot before advancing", async () => {
@@ -208,7 +223,12 @@ describe("SaleroomService.advanceToLot", () => {
         .fn()
         .mockResolvedValueOnce({ id: "lot-2", saleId: "sale-1", status: "scheduled" })
         .mockResolvedValueOnce({ id: "lot-2", saleId: "sale-1", status: "active" }),
-      findBySaleId: vi.fn(),
+      findBySaleId: vi
+        .fn()
+        .mockResolvedValue([{ id: "lot-2", lotNumber: 2, title: "Lot 2", status: "active" }]),
+      findRunOrderRefsBySaleId: vi
+        .fn()
+        .mockResolvedValue([{ id: "lot-2", lotNumber: 2, title: "Lot 2", status: "active" }]),
     };
 
     const { service } = createService({
@@ -239,7 +259,12 @@ describe("SaleroomService.advanceToLot", () => {
 
     const lotRepo = {
       findById: vi.fn().mockResolvedValue({ id: "lot-2", saleId: "sale-1", status: "ended" }),
-      findBySaleId: vi.fn(),
+      findBySaleId: vi
+        .fn()
+        .mockResolvedValue([{ id: "lot-2", lotNumber: 2, title: "Lot 2", status: "active" }]),
+      findRunOrderRefsBySaleId: vi
+        .fn()
+        .mockResolvedValue([{ id: "lot-2", lotNumber: 2, title: "Lot 2", status: "active" }]),
     };
 
     const { service } = createService({ sessionRepo, lotRepo });

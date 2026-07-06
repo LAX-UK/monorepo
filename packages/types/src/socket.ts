@@ -67,6 +67,11 @@ export type SaleroomRealtimePayload = {
   saleId: string;
   emittedAt: string;
   lotId?: string;
+  nextLotId?: string | null;
+  /** Present on hammer/no_sale — lets catalog cards flip to Sold/Unsold without refetch. */
+  lotStatus?: "ended" | "voided";
+  winnerId?: string | null;
+  lotOutcome?: "sold" | "no_sale";
 };
 
 /** Fan-out on `display:{saleId}` via Socket.IO event `displayControl` (Redis `sale:{id}:display`). */

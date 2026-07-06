@@ -4,6 +4,7 @@ import type {
   SaleroomSessionSnapshot,
   SaleroomSessionStatusRow,
 } from "../interfaces/saleroom-service.js";
+import { nextAdvanceableLotId } from "./next-advanceable-lot-id.js";
 import type { SaleroomSessionContext } from "./saleroom-session-context.js";
 
 export class SaleroomSessionReadService implements ISaleroomSessionReadService {
@@ -14,9 +15,21 @@ export class SaleroomSessionReadService implements ISaleroomSessionReadService {
     if (!session) {
       return { status: "none", currentLotId: null };
     }
-    return {
+
+    const currentLotId = session.currentLotId ?? null;
+    const base: PublicSaleroomSessionStatus = {
       status: session.status,
-      currentLotId: session.currentLotId ?? null,
+      currentLotId,
+    };
+
+    if (session.status !== "live" && session.status !== "paused") {
+      return base;
+    }
+
+    const lots = await this.ctx.lotRepo.findRunOrderRefsBySaleId(saleId);
+    return {
+      ...base,
+      nextLotId: nextAdvanceableLotId(lots, currentLotId),
     };
   }
 

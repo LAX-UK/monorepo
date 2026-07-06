@@ -16,6 +16,22 @@ export async function findLotsBySaleId(db: Database, saleId: string): Promise<Lo
   return mapLotsWithCategories(db, rows);
 }
 
+export async function findRunOrderRefsBySaleId(
+  db: Database,
+  saleId: string,
+): Promise<Array<Pick<Lot, "id" | "lotNumber" | "title" | "status">>> {
+  return db
+    .select({
+      id: lot.id,
+      lotNumber: lot.lotNumber,
+      title: lot.title,
+      status: lot.status,
+    })
+    .from(lot)
+    .where(and(eq(lot.saleId, saleId), lotNotDeleted()))
+    .orderBy(sql`coalesce(${lot.lotNumber}, 999999)`, lot.title);
+}
+
 export async function findLotsBySaleIds(db: Database, saleIds: string[]): Promise<Lot[]> {
   if (saleIds.length === 0) return [];
   const rows = await db

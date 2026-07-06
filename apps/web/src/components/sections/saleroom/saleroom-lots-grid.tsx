@@ -1,12 +1,14 @@
 import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingCardReveal } from "@/components/marketing/marketing-reveal";
+import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import type { ReactNode } from "react";
 import { SaleroomLotCard } from "./saleroom-lot-card";
 import type { SaleLotCardVM } from "./view-models";
 
 type Props = {
   lots: SaleLotCardVM[];
+  saleForLifecycle: SaleroomSaleForLifecycle;
   renderCorner?: (lot: SaleLotCardVM) => ReactNode;
   /** OCP: callers render action slot per lot (Bid vs Results). */
   renderActions?: (lot: SaleLotCardVM) => ReactNode;
@@ -17,6 +19,7 @@ type Props = {
  */
 export function SaleroomLotsGrid({
   lots,
+  saleForLifecycle,
   renderCorner,
   renderActions,
   emptyMessage = "No lots in this section yet.",
@@ -48,6 +51,7 @@ export function SaleroomLotsGrid({
         >
           <SaleroomLotCard
             lot={lot}
+            saleForLifecycle={saleForLifecycle}
             cornerAction={renderCorner?.(lot)}
             actions={renderActions?.(lot)}
           />

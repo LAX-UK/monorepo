@@ -14,6 +14,10 @@ import {
   isSaleroomSessionActive,
   isSaleroomSessionLive,
 } from "@/lib/saleroom/public-session-status";
+import {
+  type SaleroomEndedLotPatch,
+  extractSaleroomEndedLotPatch,
+} from "@/lib/saleroom/saleroom-ended-lot-patch";
 import { getSocket } from "@/lib/socket";
 import type { SaleroomRealtimePayload } from "@auction/types";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,12 +29,16 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 type SaleroomLiveContextValue = PublicSaleroomSessionStatus & {
   isSessionActive: boolean;
   isSessionLive: boolean;
   isLotOnBlock: (lotId: string) => boolean;
+  isLotUpNext: (lotId: string) => boolean;
+  /** Realtime terminal lot status from hammer/no_sale before catalog refetch. */
+  endedLotPatches: Readonly<Record<string, SaleroomEndedLotPatch>>;
   /** Imperatively request a re-hydrate from the server (silent, no toast). */
   refresh: () => void;
 };
@@ -66,10 +74,16 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
   /** Prevents overlapping silent hydrates from stacking. */
   const hydratingSilentlyRef = useRef(false);
   const initialRef = useRef(initial);
+  const [endedLotPatches, setEndedLotPatches] = useState<Record<string, SaleroomEndedLotPatch>>({});
 
   useEffect(() => {
     initialRef.current = initial;
   }, [initial]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset patches when sale changes
+  useEffect(() => {
+    setEndedLotPatches({});
+  }, [saleId]);
 
   const { refetch, isFetching } = useSaleroomStatusQuery(saleId, {
     initialData: initial,
@@ -123,6 +137,14 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
       queryClient.setQueryData<PublicSaleroomSessionStatus>(queryKey, (prev) =>
         applySaleroomEvent(prev ?? initialRef.current, event),
       );
+      if (event.kind === "closed") {
+        setEndedLotPatches({});
+        return;
+      }
+      const patch = extractSaleroomEndedLotPatch(event);
+      if (patch && event.lotId) {
+        setEndedLotPatches((prev) => ({ ...prev, [event.lotId as string]: patch }));
+      }
     };
 
     const join = () => {
@@ -164,6 +186,11 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
     [state.currentLotId, state.status],
   );
 
+  const isLotUpNext = useCallback(
+    (lotId: string) => state.status === "live" && state.nextLotId === lotId,
+    [state.nextLotId, state.status],
+  );
+
   const refresh = useCallback(() => {
     silentHydrate();
   }, [silentHydrate]);
@@ -174,9 +201,11 @@ export function SaleroomLiveProvider({ saleId, initial, children }: Props) {
       isSessionActive: isSaleroomSessionActive(state.status),
       isSessionLive: isSaleroomSessionLive(state.status),
       isLotOnBlock,
+      isLotUpNext,
+      endedLotPatches,
       refresh,
     }),
-    [state, isLotOnBlock, refresh],
+    [state, isLotOnBlock, isLotUpNext, endedLotPatches, refresh],
   );
 
   return <SaleroomLiveContext.Provider value={value}>{children}</SaleroomLiveContext.Provider>;

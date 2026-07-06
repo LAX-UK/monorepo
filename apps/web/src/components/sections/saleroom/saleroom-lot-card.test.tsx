@@ -1,4 +1,5 @@
 import { SaleroomLotCard } from "@/components/sections/saleroom/saleroom-lot-card";
+import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,10 +8,9 @@ vi.mock("next/image", () => ({
   default: (props: { alt: string }) => <img alt={props.alt} />,
 }));
 
-vi.mock("@/components/marketing/lot-status-badge", () => ({
-  LotStatusBadge: () => <span data-testid="lot-status-badge" />,
-  LotStatusTimer: ({ layout }: { layout?: string }) => (
-    <span data-testid="lot-status-timer" data-layout={layout ?? "overlay"} />
+vi.mock("@/components/sections/saleroom/saleroom-lot-catalog-overlay", () => ({
+  SaleroomLotCatalogOverlay: ({ layout }: { layout?: string }) => (
+    <span data-testid="saleroom-lot-catalog-overlay" data-layout={layout ?? "overlay"} />
   ),
 }));
 
@@ -29,6 +29,12 @@ beforeEach(() => {
     })),
   });
 });
+
+const hybridSaleForLifecycle: SaleroomSaleForLifecycle = {
+  status: "active",
+  deliveryMode: "hybrid",
+  allowOnlineBidsBeforeGoLive: true,
+};
 
 const lot: SaleLotCardVM = {
   id: "lot-1",
@@ -53,15 +59,19 @@ const lot: SaleLotCardVM = {
 };
 
 describe("SaleroomLotCard", () => {
-  it("renders overlay timer inside the tile image link", () => {
+  it("renders saleroom overlay inside the tile image link", () => {
     const { container } = render(
-      <SaleroomLotCard lot={lot} cornerAction={<span data-testid="corner">Corner</span>} />,
+      <SaleroomLotCard
+        lot={lot}
+        saleForLifecycle={hybridSaleForLifecycle}
+        cornerAction={<span data-testid="corner">Corner</span>}
+      />,
     );
 
     const imageLink = screen.getByRole("link", { name: "Lot 1: Test lot" });
-    const timer = screen.getByTestId("lot-status-timer");
-    expect(imageLink).toContainElement(timer);
-    expect(timer).toHaveAttribute("data-layout", "overlay");
+    const overlay = screen.getByTestId("saleroom-lot-catalog-overlay");
+    expect(imageLink).toContainElement(overlay);
+    expect(overlay).toHaveAttribute("data-layout", "overlay");
     expect(screen.getByTestId("corner")).toBeInTheDocument();
     expect(container.querySelector("[data-overlay-resolved]")).toBeInTheDocument();
   });
@@ -70,6 +80,7 @@ describe("SaleroomLotCard", () => {
     const { container } = render(
       <SaleroomLotCard
         lot={lot}
+        saleForLifecycle={hybridSaleForLifecycle}
         layout="row"
         listActions={<span data-testid="list-actions">Actions</span>}
       />,
@@ -84,7 +95,10 @@ describe("SaleroomLotCard", () => {
 
   it("reserves equal text block heights on tile cards", () => {
     const { container } = render(
-      <SaleroomLotCard lot={{ ...lot, lotLabel: null, artistOrMedium: null }} />,
+      <SaleroomLotCard
+        lot={{ ...lot, lotLabel: null, artistOrMedium: null }}
+        saleForLifecycle={hybridSaleForLifecycle}
+      />,
     );
 
     const titleLink = container.querySelector("a.min-h-12");

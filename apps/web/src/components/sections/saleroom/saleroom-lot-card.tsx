@@ -1,7 +1,8 @@
 "use client";
 
 import { LotLifecycleStatusBadge } from "@/components/marketing/lot-lifecycle-status-badge";
-import { LotStatusBadge, LotStatusTimer } from "@/components/marketing/lot-status-badge";
+import { SaleroomLotCatalogOverlay } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
+import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
 import {
   AdaptiveMediaFrame,
@@ -9,7 +10,6 @@ import {
 } from "@/components/ui/adaptive-media-frame";
 import { saleroomOnBlockBadge, saleroomOnBlockRingClass } from "@/lib/lot/lot-lifecycle";
 import { LOT_CARD_GRID_SLOTS, LOT_CARD_TIMER_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
@@ -17,6 +17,7 @@ import type { SaleLotCardVM } from "./view-models";
 
 type Props = {
   lot: SaleLotCardVM;
+  saleForLifecycle: SaleroomSaleForLifecycle;
   /** Grid/tile image overlays (watchlist + quick-look). */
   cornerAction?: ReactNode;
   /** List row actions beside title (inline heart + quick-look). */
@@ -49,6 +50,7 @@ function MetaStack({
 
 export function SaleroomLotCard({
   lot,
+  saleForLifecycle,
   cornerAction,
   listActions,
   actions,
@@ -92,7 +94,11 @@ export function SaleroomLotCard({
               </p>
             ) : null}
             {lot.isOnBlock ? <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} /> : null}
-            <LotStatusBadge {...lotStatusBadgeProps(lot)} />
+            <SaleroomLotCatalogOverlay
+              lot={lot}
+              saleForLifecycle={saleForLifecycle}
+              layout="inline"
+            />
           </div>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
@@ -165,11 +171,11 @@ export function SaleroomLotCard({
               imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
             />
           </AdaptiveMediaFrameContainer>
-          <LotStatusTimer
-            overlay
-            status={lot.status}
-            startTime={lot.startTime}
-            endTime={lot.endTime}
+          <SaleroomLotCatalogOverlay
+            lot={lot}
+            saleForLifecycle={saleForLifecycle}
+            layout="overlay"
+            useOverlayChrome
           />
         </Link>
         {cornerAction ? <Fragment key={`${lot.id}-corner-action`}>{cornerAction}</Fragment> : null}

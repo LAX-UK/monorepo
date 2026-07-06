@@ -1,24 +1,17 @@
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
-import { sortLotsForRunList } from "@/lib/saleroom/sort-lots-for-run-list";
-import type { Lot, LotStatus } from "@auction/types";
+import {
+  isLotAdvanceable,
+  isLotRunCompleted,
+  isLotRunSkipped,
+  sortLotsForRunList,
+} from "@auction/domain";
+import type { Lot } from "@auction/types";
+
+export { isLotAdvanceable, isLotRunCompleted, isLotRunSkipped, sortLotsForRunList };
 
 export type LotRunOutcome = "upcoming" | "on_block" | "sold" | "no_sale" | "skipped";
 
 type LotRunPick = Pick<Lot, "id" | "status" | "winnerId" | "lotNumber" | "title" | "currentPrice">;
-
-export function isLotRunSkipped(status: LotStatus): boolean {
-  return status === "cancelled" || status === "voided";
-}
-
-export function isLotRunCompleted(status: LotStatus): boolean {
-  return status === "ended";
-}
-
-/** Lots clerks can still advance onto the block. */
-export function isLotAdvanceable(lot: Pick<Lot, "status">): boolean {
-  if (isLotRunSkipped(lot.status) || isLotRunCompleted(lot.status)) return false;
-  return lot.status === "active" || lot.status === "scheduled";
-}
 
 export function deriveLotRunOutcome(
   lot: LotRunPick,

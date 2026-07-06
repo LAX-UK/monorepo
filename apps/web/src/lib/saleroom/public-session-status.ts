@@ -1,6 +1,8 @@
 export type PublicSaleroomSessionStatus = {
   status: "none" | "pending" | "live" | "paused" | "ended";
   currentLotId: string | null;
+  /** Next advanceable lot in run order; present when session is live/paused. */
+  nextLotId?: string | null;
 };
 
 export function isSaleroomSessionActive(status: PublicSaleroomSessionStatus["status"]): boolean {

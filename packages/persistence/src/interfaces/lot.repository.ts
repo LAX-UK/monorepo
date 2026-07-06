@@ -24,6 +24,10 @@ export interface ILotReadRepository {
   countMatching(filter: Omit<ListLotsFilter, "limit" | "offset" | "sort">): Promise<number>;
   /** List lots belonging to a sale (any status). */
   findBySaleId(saleId: string): Promise<Lot[]>;
+  /** Minimal lot fields for saleroom run-order / next-lot resolution. */
+  findRunOrderRefsBySaleId(
+    saleId: string,
+  ): Promise<Array<Pick<Lot, "id" | "lotNumber" | "title" | "status">>>;
   /** Batch lots for many sales (avoids N+1). */
   findBySaleIds(saleIds: string[]): Promise<Lot[]>;
   /** Up to `limitPerSale` preview lots per sale (saleroom cards). */

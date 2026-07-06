@@ -12,9 +12,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock("@/components/marketing/lot-status-badge", () => ({
-  LotStatusBadge: () => null,
-  LotStatusTimer: () => <span data-testid="lot-status-timer" />,
+vi.mock("@/components/sections/saleroom/saleroom-lot-catalog-overlay", () => ({
+  SaleroomLotCatalogOverlay: () => <span data-testid="saleroom-lot-catalog-overlay" />,
 }));
 
 vi.mock("@/components/marketing/lot-quick-look/lot-quick-look-trigger", () => ({
@@ -59,10 +58,19 @@ const lot: SaleLotCardVM = {
   closingShort: null,
 };
 
+const hybridSaleForLifecycle = {
+  status: "active" as const,
+  deliveryMode: "hybrid" as const,
+  allowOnlineBidsBeforeGoLive: true,
+};
+
 describe("SaleroomLotsGrid", () => {
   it("uses equal-height grid stretch classes", () => {
     const { container } = render(
-      <SaleroomLotsGrid lots={[lot, { ...lot, id: "lot-2", title: "Second lot" }]} />,
+      <SaleroomLotsGrid
+        lots={[lot, { ...lot, id: "lot-2", title: "Second lot" }]}
+        saleForLifecycle={hybridSaleForLifecycle}
+      />,
     );
 
     const grid = container.querySelector("ul");
@@ -83,6 +91,7 @@ describe("SaleroomLotsGrid", () => {
     render(
       <SaleroomLotsGrid
         lots={[lot, { ...lot, id: "lot-2", title: "Second lot" }]}
+        saleForLifecycle={hybridSaleForLifecycle}
         renderCorner={(item) => <SaleroomLotQuickLookCorner lot={item} isAuthenticated={true} />}
       />,
     );

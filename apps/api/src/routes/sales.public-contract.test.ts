@@ -63,6 +63,7 @@ describe("sales public GET /:id contract", () => {
     const getPublicSessionStatus = vi.fn().mockResolvedValue({
       status: "live",
       currentLotId: "lot-on-block",
+      nextLotId: "lot-up-next",
     });
     const container = {
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
@@ -78,7 +79,13 @@ describe("sales public GET /:id contract", () => {
     app.route("/sales", createSaleRoutes(container, authenticator));
     const res = await app.request(`http://t/sales/${saleId}/saleroom/status`);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { status: string; currentLotId: string } };
-    expect(body.data).toEqual({ status: "live", currentLotId: "lot-on-block" });
+    const body = (await res.json()) as {
+      data: { status: string; currentLotId: string; nextLotId: string };
+    };
+    expect(body.data).toEqual({
+      status: "live",
+      currentLotId: "lot-on-block",
+      nextLotId: "lot-up-next",
+    });
   });
 });

@@ -137,6 +137,11 @@ export function SaleroomDetailView({
           <SaleroomCatalogLotsLive
             view={vm.layoutView}
             lots={vm.lotVMs}
+            saleForLifecycle={{
+              status: vm.sale.status,
+              deliveryMode: vm.sale.deliveryMode,
+              allowOnlineBidsBeforeGoLive: vm.sale.allowOnlineBidsBeforeGoLive,
+            }}
             isAuthenticated={vm.isAuthenticated}
             canParticipate={vm.viewer.canParticipateAsBuyer}
             emptyMessage={vm.catalogEmptyMessage}

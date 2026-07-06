@@ -235,6 +235,36 @@ describe("classifyLotLifecycle", () => {
     expect(r.kind).toBe("liveSaleroom");
   });
 
+  it("keeps scheduled queue lot liveSaleroom past endTime while session is live", () => {
+    const t = Date.now();
+    const l = lotBase("scheduled", {
+      startTime: new Date(t - 2 * hour),
+      endTime: new Date(t - hour),
+    });
+    const hybridSale = {
+      status: "active" as const,
+      deliveryMode: "hybrid" as const,
+      allowOnlineBidsBeforeGoLive: true,
+    };
+    const r = classifyLotLifecycle(l, hybridSale, t, { saleroomSessionActive: true });
+    expect(r.kind).toBe("liveSaleroom");
+  });
+
+  it("keeps scheduled queue lot saleroomPaused past endTime while session is paused", () => {
+    const t = Date.now();
+    const l = lotBase("scheduled", {
+      startTime: new Date(t - 2 * hour),
+      endTime: new Date(t - hour),
+    });
+    const hybridSale = {
+      status: "active" as const,
+      deliveryMode: "hybrid" as const,
+      allowOnlineBidsBeforeGoLive: true,
+    };
+    const r = classifyLotLifecycle(l, hybridSale, t, { saleroomSessionPaused: true });
+    expect(r.kind).toBe("saleroomPaused");
+  });
+
   it("returns endedSold when ended with winner", () => {
     const l = lotBase("ended", { winnerId: "u1" });
     expect(classifyLotLifecycle(l, onlineSale, Date.now()).kind).toBe("endedSold");

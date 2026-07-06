@@ -23,9 +23,8 @@ vi.mock("next/image", () => ({
   default: (props: { alt: string }) => <img alt={props.alt} />,
 }));
 
-vi.mock("@/components/marketing/lot-status-badge", () => ({
-  LotStatusBadge: () => <span data-testid="lot-status-badge" />,
-  LotStatusTimer: () => <span data-testid="lot-status-timer" />,
+vi.mock("@/components/sections/saleroom/saleroom-lot-catalog-overlay", () => ({
+  SaleroomLotCatalogOverlay: () => <span data-testid="saleroom-lot-catalog-overlay" />,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -97,10 +96,22 @@ const lot = {
   endTime: null,
 } satisfies SaleLotCardVM;
 
+const hybridSaleForLifecycle = {
+  status: "active" as const,
+  deliveryMode: "hybrid" as const,
+  allowOnlineBidsBeforeGoLive: true,
+};
+
 describe("SaleroomCatalogLotsLive staff gating", () => {
   it("hides bid actions for staff while keeping quick-look overlay", () => {
     render(
-      <SaleroomCatalogLotsLive view="grid" lots={[lot]} isAuthenticated canParticipate={false} />,
+      <SaleroomCatalogLotsLive
+        view="grid"
+        lots={[lot]}
+        saleForLifecycle={hybridSaleForLifecycle}
+        isAuthenticated
+        canParticipate={false}
+      />,
     );
 
     expect(screen.queryByRole("link", { name: /bid/i })).not.toBeInTheDocument();
@@ -108,7 +119,15 @@ describe("SaleroomCatalogLotsLive staff gating", () => {
   });
 
   it("shows bid actions for clients", () => {
-    render(<SaleroomCatalogLotsLive view="grid" lots={[lot]} isAuthenticated canParticipate />);
+    render(
+      <SaleroomCatalogLotsLive
+        view="grid"
+        lots={[lot]}
+        saleForLifecycle={hybridSaleForLifecycle}
+        isAuthenticated
+        canParticipate
+      />,
+    );
 
     expect(screen.getByRole("link", { name: /bid/i })).toBeInTheDocument();
   });
@@ -117,7 +136,13 @@ describe("SaleroomCatalogLotsLive staff gating", () => {
 describe("SaleroomCatalogLotsLive view switching", () => {
   it("reacts to client view URL changes without a server prop update", () => {
     render(
-      <SaleroomCatalogLotsLive view="grid" lots={[lot]} isAuthenticated canParticipate={false} />,
+      <SaleroomCatalogLotsLive
+        view="grid"
+        lots={[lot]}
+        saleForLifecycle={hybridSaleForLifecycle}
+        isAuthenticated
+        canParticipate={false}
+      />,
     );
 
     expect(screen.queryByTestId("watchlist-lot-1")).not.toBeInTheDocument();

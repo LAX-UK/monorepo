@@ -9,6 +9,7 @@ export { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
 const DEFAULT_STATUS: PublicSaleroomSessionStatus = {
   status: "none",
   currentLotId: null,
+  nextLotId: null,
 };
 
 export async function getServerSaleroomStatus(
@@ -26,5 +27,6 @@ export async function getServerSaleroomStatus(
   return {
     status: data.status,
     currentLotId: data.currentLotId ?? null,
+    nextLotId: data.nextLotId ?? null,
   };
 }

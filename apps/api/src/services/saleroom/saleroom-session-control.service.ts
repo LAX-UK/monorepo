@@ -5,6 +5,7 @@ import type {
   ISaleroomSessionControlService,
   SaleroomServiceError,
 } from "../interfaces/saleroom-service.js";
+import { nextAdvanceableLotId } from "./next-advanceable-lot-id.js";
 import type { SaleroomDisplayControlService } from "./saleroom-display-control.service.js";
 import { type SaleroomSessionContext, publishSaleroomEvent } from "./saleroom-session-context.js";
 
@@ -46,16 +47,19 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       startedAt,
     });
 
-    await this.ctx.sessionRepo.appendEvent({
-      sessionId: session.id,
-      kind: "opened",
-      payload: {},
-      actorUserId: input.actorUserId,
-    });
-    await publishSaleroomEvent(this.ctx.redis, input.saleId, { kind: "opened" });
+    const runRefs = await this.ctx.lotRepo.findRunOrderRefsBySaleId(input.saleId);
+    const nextLotId = nextAdvanceableLotId(runRefs, session.currentLotId ?? null);
+    await this.appendEventAndPublish(
+      { ...session, status: "live" },
+      input.saleId,
+      "opened",
+      {},
+      input.actorUserId,
+      session.currentLotId ?? null,
+      nextLotId,
+    );
 
-    const saleLots = await this.ctx.lotRepo.findBySaleId(input.saleId);
-    for (const lotRow of saleLots) {
+    for (const lotRow of runRefs) {
       if (lotRow.status === "active") {
         await this.ctx.lotJobs?.cancelLotEndJob(lotRow.id);
       }
@@ -74,7 +78,14 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       return err({ message: "Saleroom must be live to pause", status: 400 });
     }
     await this.ctx.sessionRepo.markPaused(session.id);
-    await this.appendEventAndPublish(session, input.saleId, "paused", {}, input.actorUserId);
+    await this.appendEventAndPublish(
+      session,
+      input.saleId,
+      "paused",
+      {},
+      input.actorUserId,
+      session.currentLotId ?? null,
+    );
     return ok({ sessionId: session.id });
   }
 
@@ -88,7 +99,14 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       return err({ message: "Session is not paused", status: 400 });
     }
     await this.ctx.sessionRepo.markResumed(session.id);
-    await this.appendEventAndPublish(session, input.saleId, "resumed", {}, input.actorUserId);
+    await this.appendEventAndPublish(
+      session,
+      input.saleId,
+      "resumed",
+      {},
+      input.actorUserId,
+      session.currentLotId ?? null,
+    );
     return ok({ sessionId: session.id });
   }
 
@@ -135,6 +153,7 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       "advanced_to_lot",
       { lotId: input.lotId },
       input.actorUserId,
+      input.lotId,
     );
     return ok({ sessionId: session.id, currentLotId: input.lotId });
   }
@@ -170,7 +189,15 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
     await this.ctx.sessionRepo.markEnded(session.id, new Date());
     await this.ctx.telephoneBidBookingService?.closeAllOpenForSale(input.saleId);
     await this.ctx.lotLifecycle.finalizeActiveLotsPastEnd(input.saleId);
-    await this.appendEventAndPublish(session, input.saleId, "closed", {}, input.actorUserId);
+    await this.appendEventAndPublish(
+      session,
+      input.saleId,
+      "closed",
+      {},
+      input.actorUserId,
+      null,
+      null,
+    );
     return ok({ sessionId: session.id });
   }
 
@@ -200,6 +227,28 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       return err({ message: options.failureMessage, status: 400 });
     }
 
+    const eventPayload =
+      options.eventKind === "hammer"
+        ? (() => {
+            const hammer = outcome as { winnerId: string | null; voided: boolean };
+            return {
+              lotId,
+              lotStatus: hammer.voided ? ("voided" as const) : ("ended" as const),
+              winnerId: hammer.winnerId,
+              ...(hammer.voided
+                ? {}
+                : {
+                    lotOutcome: (hammer.winnerId ? "sold" : "no_sale") as "sold" | "no_sale",
+                  }),
+            };
+          })()
+        : {
+            lotId,
+            lotStatus: "ended" as const,
+            winnerId: null,
+            lotOutcome: "no_sale" as const,
+          };
+
     await this.ctx.lotJobs?.cancelLotJobs(lotId);
     await this.ctx.sessionRepo.clearCurrentLot(session.id);
     await this.display.clearDisplayOverlayIfAny(input.saleId);
@@ -208,8 +257,9 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       session,
       input.saleId,
       options.eventKind,
-      { lotId },
+      eventPayload,
       input.actorUserId,
+      lotId,
     );
     return ok({ lotId });
   }
@@ -220,13 +270,25 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
     kind: SaleroomEventKind,
     payload: Record<string, unknown>,
     actorUserId: string,
+    currentLotIdForNext: string | null,
+    nextLotIdOverride?: string | null,
   ): Promise<void> {
+    const nextLotId =
+      nextLotIdOverride !== undefined
+        ? nextLotIdOverride
+        : nextAdvanceableLotId(
+            await this.ctx.lotRepo.findRunOrderRefsBySaleId(saleId),
+            currentLotIdForNext,
+          );
+
+    const payloadWithNext = { ...payload, nextLotId };
+
     await this.ctx.sessionRepo.appendEvent({
       sessionId: session.id,
       kind,
-      payload,
+      payload: payloadWithNext,
       actorUserId,
     });
-    await publishSaleroomEvent(this.ctx.redis, saleId, { kind, ...payload });
+    await publishSaleroomEvent(this.ctx.redis, saleId, { kind, ...payloadWithNext });
   }
 }

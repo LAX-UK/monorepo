@@ -121,3 +121,10 @@ export {
   type SaleSoftDeleteContext,
   type SaleSoftDeleteGuardCounts,
 } from "./sale-soft-delete-policy.js";
+export {
+  isLotAdvanceable,
+  isLotRunCompleted,
+  isLotRunSkipped,
+  nextAdvanceableLotId,
+  sortLotsForRunList,
+} from "./lot-run-order.js";

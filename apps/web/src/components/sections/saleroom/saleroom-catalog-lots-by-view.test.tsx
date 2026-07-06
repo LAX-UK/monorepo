@@ -7,9 +7,8 @@ vi.mock("next/image", () => ({
   default: (props: { alt: string }) => <img alt={props.alt} />,
 }));
 
-vi.mock("@/components/marketing/lot-status-badge", () => ({
-  LotStatusBadge: () => <span data-testid="lot-status-badge" />,
-  LotStatusTimer: () => <span data-testid="lot-status-timer" />,
+vi.mock("@/components/sections/saleroom/saleroom-lot-catalog-overlay", () => ({
+  SaleroomLotCatalogOverlay: () => <span data-testid="saleroom-lot-catalog-overlay" />,
 }));
 
 beforeEach(() => {
@@ -50,6 +49,12 @@ vi.mock("@/components/marketing/lot-quick-look/lot-quick-look-trigger", () => ({
   LotQuickLookTrigger: () => <button type="button" data-testid="quick-look-trigger" />,
 }));
 
+const hybridSaleForLifecycle = {
+  status: "active" as const,
+  deliveryMode: "hybrid" as const,
+  allowOnlineBidsBeforeGoLive: true,
+};
+
 const lot: SaleLotCardVM = {
   id: "lot-1",
   href: "/lot/test/1",
@@ -78,6 +83,7 @@ describe("SaleroomCatalogLotsByView", () => {
       <SaleroomCatalogLotsByView
         view="grid"
         lots={[lot]}
+        saleForLifecycle={hybridSaleForLifecycle}
         isAuthenticated={false}
         renderCorner={() => <span data-testid="corner-action">Heart</span>}
       />,
@@ -90,6 +96,7 @@ describe("SaleroomCatalogLotsByView", () => {
       <SaleroomCatalogLotsByView
         view="list"
         lots={[lot]}
+        saleForLifecycle={hybridSaleForLifecycle}
         isAuthenticated={true}
         renderCorner={() => <span data-testid="corner-action">Overlay</span>}
       />,

@@ -4,6 +4,7 @@ import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-
 const DEFAULT_STATUS: PublicSaleroomSessionStatus = {
   status: "none",
   currentLotId: null,
+  nextLotId: null,
 };
 
 /** Browser fetch for saleroom session state (reconnect hydration). */
@@ -20,6 +21,7 @@ export async function fetchSaleroomStatus(
     return {
       status: data.status,
       currentLotId: data.currentLotId ?? null,
+      nextLotId: data.nextLotId ?? null,
     };
   } catch {
     return null;
