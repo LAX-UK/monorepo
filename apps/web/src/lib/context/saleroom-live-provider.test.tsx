@@ -40,9 +40,21 @@ vi.mock("@/lib/connection/live-connectivity-notice", () => ({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const INITIAL_NONE: PublicSaleroomSessionStatus = { status: "none", currentLotId: null };
-const LIVE_LOT1: PublicSaleroomSessionStatus = { status: "live", currentLotId: "lot-1" };
-const LIVE_NO_LOT: PublicSaleroomSessionStatus = { status: "live", currentLotId: null };
+const INITIAL_NONE: PublicSaleroomSessionStatus = {
+  status: "none",
+  currentLotId: null,
+  nextLotId: null,
+};
+const LIVE_LOT1: PublicSaleroomSessionStatus = {
+  status: "live",
+  currentLotId: "lot-1",
+  nextLotId: null,
+};
+const LIVE_NO_LOT: PublicSaleroomSessionStatus = {
+  status: "live",
+  currentLotId: null,
+  nextLotId: null,
+};
 
 function createTestQueryClient() {
   return new QueryClient({
