@@ -117,7 +117,10 @@ export class MetaCapiMarketingEventPublisher implements IMarketingEventPublisher
       );
     }
     if (event.attribution?.lastTouch) {
-      Object.assign(customData, attributionToPublisherParams("last", event.attribution.lastTouch, "meta"));
+      Object.assign(
+        customData,
+        attributionToPublisherParams("last", event.attribution.lastTouch, "meta"),
+      );
     }
 
     const userData: Record<string, unknown> = {};
