@@ -26,11 +26,54 @@ Email hex mirrors live in [`packages/branding/src/tokens.ts`](../packages/brandi
 - **[Theme mode](./web/theme-mode.md)** — light / dark / Auto resolution
 - **[Forms (RHF + Zod)](./FORMS.md)** — server actions and validation patterns
 
+## Governance policies (admin + catalog)
+
+### Status presentation
+
+| Context | Component | Notes |
+|---------|-----------|-------|
+| Operational/admin entity status | `AdminStatusBadge` + domain resolver in `lib/admin/status-badge-variants` | Canonical dot-pill for draft, active, archived, etc. |
+| Marketing / public catalog | Ring badge variants in `@auction/ui` | Documented exceptions only |
+| Lot auction type | `LotAuctionTypeChip` + presenter registry | Never inline status strings |
+
+### Shell selection
+
+| Route kind | Shell | Example |
+|------------|-------|---------|
+| High-volume list | `CatalogListShell` + board card (`CatalogBoardTableHeader`) | Sales, lots, artists, submissions |
+| Detail hub | `CatalogDetailShell` + tab nav | Sale/lot/category detail |
+| Tab board content | `DetailBoardShell` / `CatalogDetailTabCard` | Overview, press, registrations |
+| Multi-step create/edit | `CatalogFormShell` + sidebar wizard | Sale/lot setup |
+| Queue / finance lens | `CatalogListShell variant="queue"` | Manual payment review |
+| Taxonomy tree | Board chrome + tree (not flat table) | Categories |
+
+### Import policy
+
+- UI primitives: `@auction/ui/components/*` (never direct `@radix-ui/*`)
+- Shared list contracts: `@/lib/admin/catalog/types`, `@/lib/admin/bulk-ops/types`
+- Row view models: `@/lib/admin/catalog/*-table-row.ts`
+- Lib must not import `@/components/**` (enforced by `check-lib-admin-boundaries.mjs`)
+
+### Focus treatment
+
+- Use semantic `focus-visible:outline-ring` or shared `FOCUS_RING` constant
+- Sticky catalog chrome uses `--z-sticky` (40) below site chrome (`--z-site-chrome`: 50)
+
+### Tables
+
+| Pattern | When |
+|---------|------|
+| `AdminDataTable` + `EntityList` | Default admin lists with bulk select |
+| `DetailEntityTable` | Detail tab stat/audit tables |
+| Category tree rows | Taxonomy — never forced into flat `AdminDataTable` |
+| `DetailCardGrid` | Card galleries (press, media previews) |
+
 ## Machine enforcement (CI)
 
 | Check | What it enforces |
 |-------|------------------|
 | `pnpm lint:ui-guardrails` | No raw `<button>`, native form controls, direct `@radix-ui/*`, `window.confirm` in `apps/web` |
+| `node scripts/check-lib-admin-boundaries.mjs` | Blocks new `lib/admin` → `@/components` imports |
 | `apps/web` lint | Native form controls, Query usage allowlist, session ownership |
 | `packages/branding` tests | Token drift vs `globals.css`; event `brand-tokens.css` alignment |
 | Playwright axe | Marketing smoke + admin a11y (WCAG 2a/2aa) |

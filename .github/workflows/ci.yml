@@ -58,11 +58,29 @@ jobs:
           curl -sSLf "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz
           ./gitleaks detect --source . --verbose --redact
 
+      - name: UI guardrails
+        run: pnpm lint:ui-guardrails
+
+      - name: Admin capability drift
+        run: pnpm lint:admin-capability-drift
+
+      - name: Web guardrails
+        run: pnpm lint:web-guardrails
+
+      - name: Zod schema transform lint
+        run: pnpm lint:z-schema-transform
+
       - name: Lint
         run: pnpm turbo run lint --affected
 
       - name: Dependency graph (no circular)
         run: pnpm lint:deps
+
+      - name: Package layer direction
+        run: node scripts/check-layers.mjs
+
+      - name: API route DIP coverage
+        run: node apps/api/scripts/check-route-dip-coverage.mjs
 
       - name: Typecheck
         run: pnpm turbo run typecheck --affected
@@ -82,9 +100,19 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      REDIS_URL: redis://127.0.0.1:6379
     steps:
       - uses: actions/checkout@v4
         with:
@@ -114,6 +142,64 @@ jobs:
       - name: Test
         run: pnpm turbo run test --affected
 
+      - name: Runtime ownership smoke gates
+        run: pnpm --filter @auction/background-runtime build && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
+
+      - name: Domain event smoke gates
+        run: node scripts/ci/run-domain-event-smoke-gates.mjs
+
+      - name: Cutover readiness defaults
+        run: node scripts/ci/verify-cutover-readiness.mjs
+
+  worker-role-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_WORKER: postgresql://worker_app:postgres@localhost:5432/auction_ci
+      WORKER_APP_DB_PASSWORD: postgres
+      API_APP_DB_PASSWORD: postgres
+      AUTH_APP_DB_PASSWORD: postgres
+      WORKER_ROLE_CONTRACT_REQUIRED: "true"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+
+      - name: Seed worker role contract probes
+        run: pnpm --filter @auction/db exec tsx scripts/seed-worker-role-contract-probes.ts
+
+      - name: Apply application role grants
+        run: pnpm --filter @auction/db db:roles
+
+      - name: Worker app role contract
+        run: pnpm --filter @auction/db test -- worker-app-role
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -141,3 +227,70 @@ jobs:
 
       - name: Build
         run: pnpm turbo run build --affected
+
+  full-verify:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_WORKER: postgresql://worker_app:postgres@localhost:5432/auction_ci
+      WORKER_APP_DB_PASSWORD: postgres
+      API_APP_DB_PASSWORD: postgres
+      AUTH_APP_DB_PASSWORD: postgres
+      WORKER_ROLE_CONTRACT_REQUIRED: "true"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+
+      - name: Seed worker role contract probes
+        run: pnpm --filter @auction/db exec tsx scripts/seed-worker-role-contract-probes.ts
+
+      - name: Apply application role grants
+        run: pnpm --filter @auction/db db:roles
+
+      - name: Full monorepo verify (ci:verify)
+        run: pnpm ci:verify
+
+      - name: Release gates bundle
+        run: pnpm ci:release-gates
+
+      - name: Worker app role contract
+        run: pnpm --filter @auction/db test -- worker-app-role

@@ -10,7 +10,16 @@ on:
       - infra/web-build/**
 permissions:
   contents: read
+  actions: read
 jobs:
+  ci-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require green CI on this commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/require-ci-success-for-sha.mjs
   sentry-release:
     uses: ./.github/workflows/sentry-release.yml
     with:
@@ -30,7 +39,7 @@ jobs:
     secrets: inherit
   deploy:
     runs-on: ubuntu-latest
-    needs: [sentry-release, build-images]
+    needs: [ci-gate, sentry-release, build-images]
     # Deploy unless the image build failed/was cancelled. Sentry release/sourcemap
     # failures must NOT block shipping, so we deliberately do not gate on its result.
     # When build-images is skipped (USE_PREBUILT_IMAGES != true) its result is 'skipped' => allowed.

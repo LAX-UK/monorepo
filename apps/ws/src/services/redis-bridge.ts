@@ -1,4 +1,5 @@
 import { captureBackgroundError } from "@auction/observability";
+import { parseLotRealtimeRedisMessage } from "@auction/validators";
 import type { Redis } from "ioredis";
 import type { Server } from "socket.io";
 
@@ -59,13 +60,15 @@ const channelRouters: ChannelRouter[] = [
       return match ? `lot:${match[1]}` : null;
     },
     emit: (io, room, parsed) => {
-      if (parsed.type === "bid_placed" && parsed.sealed === true) {
+      const validated = parseLotRealtimeRedisMessage(parsed) ?? parsed;
+      const payload = validated as Record<string, unknown>;
+      if (payload.type === "bid_placed" && payload.sealed === true) {
         void io
           .in(room)
           .fetchSockets()
           .then((socks) => {
             for (const s of socks) {
-              if (s.data.isAdmin) s.emit("bidUpdate", parsed);
+              if (s.data.isAdmin) s.emit("bidUpdate", payload);
             }
           })
           .catch((err: unknown) => {
@@ -76,14 +79,14 @@ const channelRouters: ChannelRouter[] = [
           });
         return;
       }
-      if (parsed.type === "bid_placed") {
-        io.to(room).emit("bidUpdate", parsed);
-      } else if (parsed.type === "lot_extended") {
-        io.to(room).emit("lotExtended", parsed);
-      } else if (parsed.type === "lot_ended") {
-        io.to(room).emit("lotEnded", parsed);
+      if (payload.type === "bid_placed") {
+        io.to(room).emit("bidUpdate", payload);
+      } else if (payload.type === "lot_extended") {
+        io.to(room).emit("lotExtended", payload);
+      } else if (payload.type === "lot_ended") {
+        io.to(room).emit("lotEnded", payload);
       } else {
-        io.to(room).emit("lotEvent", parsed);
+        io.to(room).emit("lotEvent", payload);
       }
     },
   },

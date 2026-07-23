@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@auction/types": "workspace:*",
+    "@auction/validators": "workspace:*",
     "@auction/observability": "workspace:*",
     "@sentry/node": "^10.51.0",
     "ioredis": "^5.4.2",

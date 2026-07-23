@@ -1,0 +1,4 @@
+{
+  "maxAllowedCycles": 47,
+  "note": "Do not increase without breaking admin-routes hub cycles. Prefer fixing imports over expanding allowlist."
+}

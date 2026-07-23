@@ -34,6 +34,16 @@ const rules = [
     label: "packages/domain must not import @auction/persistence or @auction/db",
     forbiddenSpecifiers: [/^@auction\/persistence(\/|$)/, /^@auction\/db(\/|$)/],
   },
+  {
+    dir: "packages/bidding-runtime",
+    label: "packages/bidding-runtime must not import from apps/**",
+    forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
+  },
+  {
+    dir: "packages/lot-lifecycle-app",
+    label: "packages/lot-lifecycle-app must not import from apps/**",
+    forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
+  },
 ];
 
 const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", "coverage"]);
@@ -118,7 +128,9 @@ function isAllowedDrizzleSite(rel) {
   if (/^apps\/[^/]+\/src\/container\//.test(rel)) return true;
   if (/^apps\/[^/]+\/src\/container\.ts$/.test(rel)) return true;
   if (rel === "apps/api/src/services/payout/payout-helpers.ts") return true;
+  if (rel === "packages/finance-runtime/src/payout/payout-helpers.ts") return true;
   if (rel === "apps/api/src/services/lot-transition-guards.ts") return true;
+  if (/^apps\/worker\/src\/(container|finance|lifecycle|bidding)\//.test(rel)) return true;
   if (isTestSource(rel)) return true;
   if (rel.startsWith("apps/api/src/repositories/")) return true;
   if (rel.startsWith("apps/api/src/exports/")) return true;

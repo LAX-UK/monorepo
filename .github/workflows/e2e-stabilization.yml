@@ -1,0 +1,74 @@
+name: E2E stabilization
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 1"
+
+concurrency:
+  group: e2e-stabilization-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stabilization:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      PLAYWRIGHT_E2E: "1"
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+      PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
+      PLAYWRIGHT_STAFF_PASSWORD: Password123!
+      PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL: staff-catalogue@lax.bid
+      PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD: Password123!
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate and seed dev data
+        run: |
+          pnpm --filter @auction/db db:migrate
+          pnpm --filter @auction/db db:seed:dev
+
+      - name: Build web and API
+        run: pnpm --filter @auction/api build && pnpm --filter @auction/web build
+
+      - name: Start API and web
+        run: |
+          pnpm --filter @auction/api start &
+          pnpm --filter @auction/web start &
+          npx --yes wait-on http://localhost:3000 --timeout 120000
+
+      - name: Playwright stabilization suite
+        run: pnpm --filter @auction/web test:e2e:stabilization

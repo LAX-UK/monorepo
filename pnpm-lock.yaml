@@ -44,6 +44,12 @@ importers:
       '@auction/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@auction/background-runtime':
+        specifier: workspace:*
+        version: link:../../packages/background-runtime
+      '@auction/bidding-runtime':
+        specifier: workspace:*
+        version: link:../../packages/bidding-runtime
       '@auction/connect':
         specifier: workspace:*
         version: link:../../packages/connect
@@ -59,9 +65,18 @@ importers:
       '@auction/exports':
         specifier: workspace:*
         version: link:../../packages/exports
+      '@auction/finance-cron-app':
+        specifier: workspace:*
+        version: link:../../packages/finance-cron-app
+      '@auction/finance-runtime':
+        specifier: workspace:*
+        version: link:../../packages/finance-runtime
       '@auction/http-headers':
         specifier: workspace:*
         version: link:../../packages/http-headers
+      '@auction/lot-lifecycle-app':
+        specifier: workspace:*
+        version: link:../../packages/lot-lifecycle-app
       '@auction/marketing-events':
         specifier: workspace:*
         version: link:../../packages/marketing-events
@@ -146,9 +161,6 @@ importers:
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
-      safe-stable-stringify:
-        specifier: ^2.5.0
-        version: 2.5.0
       stripe:
         specifier: ^22.1.1
         version: 22.1.1(@types/node@22.19.17)
@@ -331,7 +343,7 @@ importers:
         version: 1.2.4(@types/react@19.2.14)(react@19.2.5)
       '@sentry/nextjs':
         specifier: ^10.51.0
-        version: 10.51.0(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.106.2)
+        version: 10.51.0(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.106.2)
       '@stripe/connect-js':
         specifier: ^3.3.31
         version: 3.4.5
@@ -376,10 +388,10 @@ importers:
         version: 1.8.0(react@19.2.5)
       next:
         specifier: ^15.1.3
-        version: 15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       nuqs:
         specifier: ^2.9.0
-        version: 2.9.0(next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
+        version: 2.9.0(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@19.2.5)
@@ -487,15 +499,33 @@ importers:
 
   apps/worker:
     dependencies:
+      '@auction/background-runtime':
+        specifier: workspace:*
+        version: link:../../packages/background-runtime
+      '@auction/bidding-runtime':
+        specifier: workspace:*
+        version: link:../../packages/bidding-runtime
       '@auction/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@auction/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@auction/email':
         specifier: workspace:^
         version: link:../../packages/email
       '@auction/exports':
         specifier: workspace:*
         version: link:../../packages/exports
+      '@auction/finance-cron-app':
+        specifier: workspace:*
+        version: link:../../packages/finance-cron-app
+      '@auction/finance-runtime':
+        specifier: workspace:*
+        version: link:../../packages/finance-runtime
+      '@auction/lot-lifecycle-app':
+        specifier: workspace:*
+        version: link:../../packages/lot-lifecycle-app
       '@auction/marketing-events':
         specifier: workspace:*
         version: link:../../packages/marketing-events
@@ -511,6 +541,9 @@ importers:
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@auction/validators':
+        specifier: workspace:*
+        version: link:../../packages/validators
       '@aws-sdk/client-s3':
         specifier: ^3.1041.0
         version: 3.1041.0
@@ -547,6 +580,12 @@ importers:
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
+      stripe:
+        specifier: ^17.5.0
+        version: 17.7.0
+      xero-node:
+        specifier: ^10.0.0
+        version: 10.1.0
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -578,6 +617,9 @@ importers:
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@auction/validators':
+        specifier: workspace:*
+        version: link:../../packages/validators
       '@sentry/node':
         specifier: ^10.51.0
         version: 10.51.0
@@ -648,6 +690,52 @@ importers:
       zod:
         specifier: ^3.24.1
         version: 3.25.76
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
+  packages/background-runtime:
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
+  packages/bidding-runtime:
+    dependencies:
+      '@auction/db':
+        specifier: workspace:*
+        version: link:../db
+      '@auction/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@auction/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@auction/types':
+        specifier: workspace:*
+        version: link:../types
+      '@auction/validators':
+        specifier: workspace:*
+        version: link:../validators
+      neverthrow:
+        specifier: ^8.1.1
+        version: 8.2.0
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
@@ -818,11 +906,101 @@ importers:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
 
+  packages/finance-cron-app:
+    dependencies:
+      '@auction/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
+  packages/finance-runtime:
+    dependencies:
+      '@auction/connect':
+        specifier: workspace:*
+        version: link:../connect
+      '@auction/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@auction/finance-cron-app':
+        specifier: workspace:*
+        version: link:../finance-cron-app
+      '@auction/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@auction/types':
+        specifier: workspace:*
+        version: link:../types
+      '@auction/validators':
+        specifier: workspace:*
+        version: link:../validators
+      drizzle-orm:
+        specifier: ^0.41.0
+        version: 0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0)
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.10.1
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
+      stripe:
+        specifier: ^22.1.1
+        version: 22.1.1(@types/node@22.19.17)
+      xero-node:
+        specifier: ^10.0.0
+        version: 10.1.0
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      '@auction/db':
+        specifier: workspace:*
+        version: link:../db
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
   packages/http-headers:
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
+  packages/lot-lifecycle-app:
+    dependencies:
+      '@auction/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@auction/types':
+        specifier: workspace:*
+        version: link:../types
+      '@auction/validators':
+        specifier: workspace:*
+        version: link:../validators
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      '@auction/db':
+        specifier: workspace:*
+        version: link:../db
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -876,6 +1054,9 @@ importers:
       '@auction/db':
         specifier: workspace:*
         version: link:../db
+      '@auction/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@auction/types':
         specifier: workspace:*
         version: link:../types
@@ -947,6 +1128,10 @@ importers:
         version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
 
   packages/types:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
@@ -7337,6 +7522,10 @@ packages:
   strip-literal@3.1.0:
     resolution: {integrity: sha512-8r3mkIM/2+PpjHoOtiAW8Rg3jJLHaV7xPwG+YRGrv6FP0wwk/toTpATxWYOW0BKdWwl82VT2tFYi5DlROa0Mxg==}
 
+  stripe@17.7.0:
+    resolution: {integrity: sha512-aT2BU9KkizY9SATf14WhhYVv2uOapBWX0OFWF4xvcj1mPaNotlSc2CsxpS4DS46ZueSppmCF5BX1sNYBtwBvfw==}
+    engines: {node: '>=12.*'}
+
   stripe@22.1.1:
     resolution: {integrity: sha512-cmodIYP27tBkJ8G7DuGgWw0PFuemlFZbuF3Wwr1TrjFjUa3T7NIgCe6TVwX8BO2ynu+xtTuDGfHafNDCPt9lXA==}
     engines: {node: '>=18'}
@@ -7892,6 +8081,9 @@ packages:
   xdg-basedir@4.0.0:
     resolution: {integrity: sha512-PSNhEJDejZYV7h50BohL09Er9VaIefr2LMAf3OEmpCkjOi34eYyQYAXUTjEQtZJTKcF0E2UKTh+osDLsgNim9Q==}
     engines: {node: '>=8'}
+
+  xero-node@10.1.0:
+    resolution: {integrity: sha512-bqUwU1mbjzLC+dS96tF8ZfXXtK5wV/u7DSHChEYISQnfyMvBKe5M5Cid96AaFkCO4nRobCN/Ydlg4ePIemdPRA==}
 
   xero-node@9.3.0:
     resolution: {integrity: sha512-0uXEjzNE+Eek02uBZNa3lXEnQjemCVegQLdFqQPCq4QmAF5U421haVl44P+uAWBFTbf4quGN4AtGy6CfL9ONrQ==}
@@ -10684,7 +10876,7 @@ snapshots:
       '@sentry/types': 6.19.7
       tslib: 1.14.1
 
-  '@sentry/nextjs@10.51.0(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.106.2)':
+  '@sentry/nextjs@10.51.0(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.106.2)':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/semantic-conventions': 1.40.0
@@ -10697,7 +10889,7 @@ snapshots:
       '@sentry/react': 10.51.0(react@19.2.5)
       '@sentry/vercel-edge': 10.51.0
       '@sentry/webpack-plugin': 5.2.1(webpack@5.106.2)
-      next: 15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      next: 15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       rollup: 4.60.1
       stacktrace-parser: 0.1.11
     transitivePeerDependencies:
@@ -11864,7 +12056,7 @@ snapshots:
     optionalDependencies:
       drizzle-kit: 0.31.10
       drizzle-orm: 0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0)
-      next: 15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      next: 15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       pg: 8.20.0
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
@@ -13632,7 +13824,7 @@ snapshots:
     optionalDependencies:
       '@rollup/rollup-linux-x64-gnu': 4.60.1
 
-  next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+  next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
     dependencies:
       '@next/env': 15.5.15
       '@swc/helpers': 0.5.15
@@ -13640,7 +13832,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
-      styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.2.5)
+      styled-jsx: 5.1.6(react@19.2.5)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.15
       '@next/swc-darwin-x64': 15.5.15
@@ -13674,12 +13866,12 @@ snapshots:
     dependencies:
       '@babel/parser': 7.29.2
 
-  nuqs@2.9.0(next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5):
+  nuqs@2.9.0(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5):
     dependencies:
       '@standard-schema/spec': 1.0.0
       react: 19.2.5
     optionalDependencies:
-      next: 15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      next: 15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
 
   nwsapi@2.2.23: {}
 
@@ -14688,18 +14880,21 @@ snapshots:
     dependencies:
       js-tokens: 9.0.1
 
+  stripe@17.7.0:
+    dependencies:
+      '@types/node': 22.19.17
+      qs: 6.15.1
+
   stripe@22.1.1(@types/node@22.19.17):
     optionalDependencies:
       '@types/node': 22.19.17
 
   strnum@2.2.3: {}
 
-  styled-jsx@5.1.6(@babel/core@7.29.0)(react@19.2.5):
+  styled-jsx@5.1.6(react@19.2.5):
     dependencies:
       client-only: 0.0.1
       react: 19.2.5
-    optionalDependencies:
-      '@babel/core': 7.29.0
 
   stylus-lookup@6.1.2:
     dependencies:
@@ -15235,6 +15430,13 @@ snapshots:
   ws@8.18.3: {}
 
   xdg-basedir@4.0.0: {}
+
+  xero-node@10.1.0:
+    dependencies:
+      axios: 1.15.2
+      openid-client: 5.6.5
+    transitivePeerDependencies:
+      - debug
 
   xero-node@9.3.0:
     dependencies:

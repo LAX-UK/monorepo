@@ -150,11 +150,11 @@ Reference D-numbers in code comments where the rationale matters: `// D8: same-t
 
 ## D12. Worker reuses apps/api repository factory and export providers
 
-**Chosen.** `apps/worker` depends on `@auction/api` subpath exports (`@auction/api/exports/repository-factory`, `@auction/api/exports/providers`) for `DrizzleRepositoryFactory`, `IRepositoryFactory`, and export provider wiring. BullMQ jobs share the same repository implementations as the HTTP API rather than duplicating Drizzle access in the worker.
+**Chosen.** `apps/worker` depends on `@auction/exports/providers` and `@auction/persistence` for export provider wiring and repository access. BullMQ jobs share the same repository implementations as the HTTP API rather than duplicating Drizzle access in the worker.
 
 **Alternatives considered.** A slim `@auction/kernel` package with repositories only was deferred — the factory and provider surface is still evolving with API features, and splitting now would duplicate container wiring. Copy-pasting Drizzle queries into the worker was rejected (drift risk).
 
-**Why this wins.** One implementation of repository contracts for API and async jobs. Worker jobs stay type-aligned with API services. The coupling cost is bounded: worker imports only explicit export subpaths, not the full HTTP route graph.
+**Why this wins.** One implementation of repository contracts for API and async jobs. Worker jobs stay type-aligned with API services. The coupling cost is bounded: worker imports shared packages directly, not the full HTTP route graph.
 
 **Follow-up (accepted debt).** When repository + provider wiring stabilizes, extract a shared `@auction/data-access` (or similar) package and point both `apps/api` and `apps/worker` at it so worker no longer depends on the API app package.
 

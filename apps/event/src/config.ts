@@ -16,9 +16,6 @@ export function resolveEventSlug(): string | null {
   return envSlug ?? null;
 }
 
-/** @deprecated Prefer {@link resolveEventSlug} for multi-event routing. */
-export const EVENT_SLUG = DEFAULT_EVENT_SLUG;
-
 const cdnBase =
   (import.meta.env.VITE_CDN_BASE as string | undefined)?.replace(/\/$/, "") ??
   "https://cdn.lax.bid";
