@@ -1,10 +1,13 @@
 import type { IEmailService } from "@auction/email";
 import type {
+  IDomainEventDeliveryRepository,
   INotificationWriteRepository,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type { IEnsurePersonalLegalEntityService } from "@auction/persistence/lib";
 import type pino from "pino";
+import type { WorkerEnv } from "../../env.js";
+import type { XeroLiveExecutorPorts } from "../../integrations/xero/xero-live-executor.js";
 import type { IAdminImpersonationNotifyReader } from "../../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";
 import type { IClearArtistBlocksRepository } from "../../interfaces/clear-artist-blocks.repository.js";
@@ -59,6 +62,9 @@ export type ProjectorRunContext = {
   complianceRecipientReader: IComplianceRecipientReader;
   syncXeroPayoutBill?: ((payoutId: string) => Promise<boolean>) | undefined;
   ensureLotInvoice?: ((lotId: string) => Promise<void>) | undefined;
+  xeroLiveExecutorPorts?: XeroLiveExecutorPorts | undefined;
+  env?: WorkerEnv | undefined;
+  deliveryRepo?: IDomainEventDeliveryRepository | undefined;
   enqueueMarketingContactSync?:
     | ((data: { userId: string; reason: string; eventId: number }) => Promise<void>)
     | undefined;

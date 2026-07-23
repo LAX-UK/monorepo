@@ -1,13 +1,10 @@
-import type pino from "pino";
-import { postInternalCronJob } from "./post-internal-cron-job.js";
+import {
+  type FinanceCronDispatchContext,
+  dispatchFinanceCronJob,
+} from "../finance/finance-cron-dispatch.js";
 
 export async function runCleanupDisplayPairingsJob(opts: {
-  apiBaseUrl: string;
-  cronSecret: string;
-  log: pino.Logger;
+  financeCron: FinanceCronDispatchContext;
 }): Promise<void> {
-  await postInternalCronJob({
-    ...opts,
-    path: "cleanup-display-pairings",
-  });
+  await dispatchFinanceCronJob(opts.financeCron, "cleanup-display-pairings");
 }

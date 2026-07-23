@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { domainEvent, projectorState } from "@auction/db";
-import { and, gt, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import type {
   DomainEventProjectorRow,
@@ -12,6 +12,22 @@ import { rowsFromExecuteResult } from "../projectors/lib/projector-event-rows.js
 
 export class DrizzleDomainEventProjectorReader implements IDomainEventProjectorReader {
   constructor(private readonly db: Database) {}
+
+  async getById(eventId: number): Promise<DomainEventProjectorRow | null> {
+    const [row] = await this.db
+      .select({
+        id: domainEvent.id,
+        eventType: domainEvent.eventType,
+        aggregateId: domainEvent.aggregateId,
+        payload: domainEvent.payload,
+        actorUserId: domainEvent.actorUserId,
+        schemaVersion: domainEvent.schemaVersion,
+      })
+      .from(domainEvent)
+      .where(eq(domainEvent.id, eventId))
+      .limit(1);
+    return row ?? null;
+  }
 
   async listAfterCursor(
     cursor: number,

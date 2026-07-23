@@ -1,12 +1,8 @@
 import type pino from "pino";
+import { parseLotEndedInvoiceEventPayload } from "./lib/lot-ended-invoice-event.schema.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 export const LOT_INVOICE_INITIATION_PROJECTOR = "lot_invoice_initiation";
-
-type LotEndedPayload = {
-  outcome?: string;
-  winnerId?: string | null;
-};
 
 export async function processLotInvoiceInitiation(options: {
   ctx: ProjectorRunContext;
@@ -28,7 +24,7 @@ export async function processLotInvoiceInitiation(options: {
   let maxId = cursor;
   for (const row of rows) {
     try {
-      const payload = (row.payload ?? {}) as LotEndedPayload;
+      const payload = parseLotEndedInvoiceEventPayload(row.payload);
       if (payload.outcome !== "sold" || !payload.winnerId) {
         maxId = row.id;
         continue;

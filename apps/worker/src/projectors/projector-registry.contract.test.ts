@@ -54,6 +54,7 @@ function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
     },
     domainEventReader: {
       listAfterCursor: vi.fn().mockResolvedValue([]),
+      getById: vi.fn(),
       listLockedForProjector: vi.fn().mockResolvedValue([]),
     },
     projectorFailureRecorder: { record: vi.fn() },

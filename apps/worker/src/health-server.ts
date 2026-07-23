@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { Registry, collectDefaultMetrics } from "prom-client";
 import type { WorkerContainer } from "./container/create-worker-container.js";
+import { bindDeliveryMetrics } from "./lib/delivery-metrics.js";
 
 export type HealthServerHandle = {
   app: Hono;
@@ -15,6 +16,7 @@ export function createMetricsRegistry(container: WorkerContainer): Registry {
   collectDefaultMetrics({ register: metrics, prefix: "auction_worker_" });
   metrics.registerMetric(container.marketingEventsOutcomeTotal);
   metrics.registerMetric(container.marketingEventsCapiBatchSize);
+  bindDeliveryMetrics(metrics);
   return metrics;
 }
 

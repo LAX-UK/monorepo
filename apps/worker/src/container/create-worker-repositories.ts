@@ -1,5 +1,6 @@
 import type { IMarketingProfileReader } from "@auction/marketing-events";
 import type {
+  IDomainEventDeliveryRepository,
   INotificationWriteRepository,
   IQrCodeScanPersister,
   ITransactionRunner,
@@ -10,6 +11,7 @@ import {
 } from "@auction/persistence/lib";
 import { DrizzleTransactionRunner } from "@auction/persistence/repositories";
 import {
+  DrizzleDomainEventDeliveryRepository,
   DrizzleNotificationWriteRepository,
   DrizzleQrCodeScanPersister,
 } from "@auction/persistence/repositories";
@@ -133,11 +135,19 @@ export type WorkerRepositories = {
   sourceOfFundsDocumentReviewRepo: ISourceOfFundsDocumentReviewRepository;
   sourceOfFundsReviewResolutionRepo: ISourceOfFundsReviewResolutionRepository;
   lotNotifyReader: ILotNotifyReader;
+  domainEventDeliveryRepo: IDomainEventDeliveryRepository;
 };
 
-export function createWorkerRepositories(db: WorkerDb): WorkerRepositories {
+import type { WorkerEnv } from "../env.js";
+
+export function createWorkerRepositories(
+  db: WorkerDb,
+  env: Pick<WorkerEnv, "DOMAIN_EVENT_PUBLISH_VALIDATE">,
+): WorkerRepositories {
   const projectorStateRepo = new DrizzleProjectorStateRepository(db);
-  const domainEventPublisher = new WorkerDomainEventPublisher();
+  const domainEventPublisher = new WorkerDomainEventPublisher({
+    publishValidateMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+  });
   return {
     uploadValidationRepo: new DrizzleUploadValidationRepository(db),
     emailOutboxRepo: new DrizzleEmailOutboxRepository(db),
@@ -178,5 +188,6 @@ export function createWorkerRepositories(db: WorkerDb): WorkerRepositories {
     sourceOfFundsDocumentReviewRepo: new DrizzleSourceOfFundsDocumentReviewRepository(db),
     sourceOfFundsReviewResolutionRepo: new DrizzleSourceOfFundsReviewResolutionRepository(db),
     lotNotifyReader: new DrizzleLotNotifyReader(db),
+    domainEventDeliveryRepo: new DrizzleDomainEventDeliveryRepository(db),
   };
 }

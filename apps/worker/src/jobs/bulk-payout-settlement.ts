@@ -1,29 +1,39 @@
-import type pino from "pino";
+import type { FinanceCronDispatchContext } from "../finance/finance-cron-dispatch.js";
 
 export async function runBulkPayoutSettlementJob(opts: {
-  apiBaseUrl: string;
-  cronSecret: string;
-  log: pino.Logger;
+  financeCron: FinanceCronDispatchContext;
 }): Promise<void> {
-  const base = opts.apiBaseUrl.replace(/\/$/, "");
-  const url = `${base}/internal/jobs/bulk-payout-settlement`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Cron-Secret": opts.cronSecret,
-    },
-    body: "{}",
-  });
-  if (res.status === 503) {
-    opts.log.warn({ url }, "bulk payout settlement skipped (API reports cron_not_configured)");
+  const workerOwns =
+    opts.financeCron.env.FINANCE_CRON_EXECUTION_OWNER === "worker" &&
+    !opts.financeCron.env.FINANCE_CRON_API_ROLLBACK &&
+    opts.financeCron.handlers != null;
+
+  if (workerOwns) {
+    const outcome = await opts.financeCron.handlers?.runBulkPayoutSettlement();
+    if (
+      outcome &&
+      typeof outcome === "object" &&
+      "deferred" in outcome &&
+      (outcome as { deferred?: boolean }).deferred
+    ) {
+      opts.financeCron.log.warn(
+        { reason: (outcome as { reason?: string }).reason ?? "settlement_already_running" },
+        "bulk_payout_settlement_deferred",
+      );
+    }
     return;
   }
-  if (!res.ok) {
-    const text = await res.text();
-    opts.log.error({ status: res.status, body: text }, "bulk payout settlement request failed");
-    throw new Error(`bulk_payout_settlement_failed:${res.status}`);
+
+  const post = await import("./post-internal-cron-job.js").then((m) =>
+    m.postInternalCronJob({
+      apiBaseUrl: opts.financeCron.env.API_INTERNAL_BASE_URL,
+      cronSecret: opts.financeCron.cronSecret,
+      log: opts.financeCron.log,
+      path: "bulk-payout-settlement",
+      treat409AsSuccess: true,
+    }),
+  );
+  if (post.outcome === "deferred") {
+    opts.financeCron.log.warn({ reason: post.reason }, "bulk_payout_settlement_deferred");
   }
-  const json = (await res.json()) as { data?: unknown };
-  opts.log.info({ result: json.data }, "bulk payout settlement completed");
 }

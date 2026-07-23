@@ -6,6 +6,7 @@ export type DomainEventProjectorRow = {
   aggregateId: string;
   payload: unknown;
   actorUserId?: string | null;
+  schemaVersion?: number;
 };
 
 export type ListDomainEventsAfterCursorOptions = {
@@ -14,6 +15,7 @@ export type ListDomainEventsAfterCursorOptions = {
 };
 
 export interface IDomainEventProjectorReader {
+  getById(eventId: number): Promise<DomainEventProjectorRow | null>;
   listAfterCursor(
     cursor: number,
     options?: ListDomainEventsAfterCursorOptions,

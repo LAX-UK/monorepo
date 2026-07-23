@@ -84,4 +84,5 @@ export type WorkerBootstrapDeps = {
   sentryMonitorSlugs: Record<string, string>;
   heartbeat: (queue: string) => Promise<void>;
   reportWorkerJobFailure: (queue: string, job: { id?: string } | undefined, err: Error) => void;
+  financeCronDispatch: import("../finance/finance-cron-dispatch.js").FinanceCronDispatchContext;
 };

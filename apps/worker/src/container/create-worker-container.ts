@@ -1,8 +1,15 @@
+import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
 import { getBullMqTelemetry, initNodeSentry } from "@auction/observability";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import {
+  DrizzleExternalAccountRepository,
+  DrizzleUserRepository,
+  DrizzleWebhookEventRepository,
+} from "@auction/persistence/repositories";
+import {
   DEAD_LETTER_QUEUE_NAME,
+  LOT_LIFECYCLE_QUEUE_NAME,
   QUEUE_REGISTRY,
   type QueueName,
   createBullQueueOptions,
@@ -12,10 +19,23 @@ import {
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import pino, { type Logger } from "pino";
+import {
+  createWorkerAbsenteeReplayPort,
+  isWorkerAbsenteeReplayReady,
+} from "../bidding/create-worker-absentee-replay.js";
+import { isWorkerBidKycEnforcementActive } from "../bidding/create-worker-bid-eligibility.js";
+import { createWorkerBiddingComposition } from "../bidding/create-worker-bidding.js";
 import { type WorkerEnv, loadWorkerEnv } from "../env.js";
+import { createWorkerFinanceCronHandlers } from "../finance/create-worker-finance-cron.js";
+import { createWorkerFinanceServices } from "../finance/create-worker-finance-services.js";
+import type { FinanceCronDispatchContext } from "../finance/finance-cron-dispatch.js";
+import {
+  createXeroLiveExecutorPortsFromStack,
+  syncXeroInvoiceWebhookLocal,
+} from "../integrations/xero/create-xero-live-executor-ports-local.js";
 import type { MarketingContactSyncJobData } from "../jobs/marketing-contact-sync.js";
 import { marketingEventsOutcomeTotal } from "../jobs/marketing-event-processor.js";
-import { postInternalCronJob } from "../jobs/post-internal-cron-job.js";
+import type { ProcessInboundWebhookDeps } from "../jobs/process-inbound-webhook-event.js";
 import {
   ClamAvHttpMalwareScanner,
   ClamAvMalwareScanner,
@@ -23,12 +43,18 @@ import {
 } from "../lib/malware-scanner.js";
 import { isMarketingEventsEnabled } from "../lib/marketing-events-enabled.js";
 import { queueRuntimeEnvFromWorkerEnv } from "../lib/queue-runtime-env.js";
+import { runtimeOwnershipConfigFromWorkerEnv } from "../lib/runtime-ownership-config.js";
 import { loadSentryMonitorSlugs } from "../lib/sentry-cron.js";
 import { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import { createUploadStorage } from "../lib/upload-storage.js";
+import { registerWorkerLotLifecycleConsumer } from "../lifecycle/register-lot-lifecycle-worker.js";
+import {
+  assertLifecycleExecutionOwner,
+  createWorkerLifecycleExecutor,
+} from "../lifecycle/worker-lifecycle-executor.js";
 import { marketingEventsCapiBatchSize } from "../marketing/meta-capi-batch-collector.js";
 import { createProjectorRunner } from "../projectors/runner.js";
-import { syncXeroPayoutBillViaApi } from "../projectors/xero-payout-bill-sync.js";
+import { LinkExternalAccountWorkerService } from "../services/link-external-account.service.js";
 import { registerComplianceWorkers } from "../workers/register-compliance-workers.js";
 import { registerCronWorkers } from "../workers/register-cron-workers.js";
 import { registerEmailWorker } from "../workers/register-email-worker.js";
@@ -65,10 +91,12 @@ export type WorkerContainer = {
   cronWorkers: ReturnType<typeof registerCronWorkers>;
   deadLetterQueue: Queue;
   projectorRunner: ReturnType<typeof createProjectorRunner>;
+  lotLifecycleConsumer: ReturnType<typeof registerWorkerLotLifecycleConsumer> | null;
 };
 
 export function createWorkerContainer(): WorkerContainer {
   const env = loadWorkerEnv();
+  assertLifecycleExecutionOwner(env);
   if (env.EMAIL_PROVIDER === "postmark" && !env.POSTMARK_SERVER_TOKEN?.trim()) {
     console.error("FATAL: EMAIL_PROVIDER=postmark but POSTMARK_SERVER_TOKEN is empty");
     process.exit(1);
@@ -89,7 +117,7 @@ export function createWorkerContainer(): WorkerContainer {
   });
   const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
   const repoFactory = new DrizzleRepositoryFactory(db);
-  const repositories = createWorkerRepositories(db);
+  const repositories = createWorkerRepositories(db, env);
   const exportProviderDeps = createExportProviderDeps(db);
   const redis = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
@@ -140,7 +168,111 @@ export function createWorkerContainer(): WorkerContainer {
     await redis.set(`worker:heartbeat:${queue}`, String(Date.now()), "EX", 600);
   }
 
-  const deps: WorkerBootstrapDeps = {
+  const internalCronSecret = env.CRON_INTERNAL_SECRET ?? "";
+  const workerBidding = createWorkerBiddingComposition({
+    env,
+    db,
+    redis,
+    repoFactory,
+    domainEventSink: repositories.domainEventSink,
+  });
+  const absenteeReplayPort = createWorkerAbsenteeReplayPort({
+    env,
+    apiBaseUrl: env.API_INTERNAL_BASE_URL,
+    cronSecret: internalCronSecret,
+    log,
+    localReplay: workerBidding.absenteeReplay,
+  });
+  const onLotActivated = absenteeReplayPort
+    ? (lotId: string) => absenteeReplayPort.replayScheduledForLot(lotId)
+    : null;
+  const lifecycleExecutor = createWorkerLifecycleExecutor({
+    db,
+    repos: repositories,
+    redis,
+    log,
+    onLotActivated,
+  });
+  const workerFinanceServices =
+    internalCronSecret.length > 0
+      ? createWorkerFinanceServices({
+          env,
+          log,
+          db,
+          redis,
+          domainEventSink: repositories.domainEventSink,
+          repos: repositories,
+        })
+      : null;
+  const financeCronHandlers =
+    internalCronSecret.length > 0
+      ? createWorkerFinanceCronHandlers({
+          env,
+          log,
+          cronSecret: internalCronSecret,
+          db,
+          domainEventSink: repositories.domainEventSink,
+          repos: repositories,
+          redis,
+          financeServices: workerFinanceServices,
+        })
+      : null;
+  const financeCronDispatch: FinanceCronDispatchContext = {
+    env,
+    log,
+    cronSecret: internalCronSecret,
+    handlers: financeCronHandlers,
+  };
+
+  assertRuntimeOwnership(
+    {
+      ...runtimeOwnershipConfigFromWorkerEnv(env),
+      workerFinanceCronHandlersReady: financeCronHandlers != null,
+    },
+    "worker",
+  );
+
+  let lotLifecycleConsumer: ReturnType<typeof registerWorkerLotLifecycleConsumer> | null = null;
+  if (env.LIFECYCLE_EXECUTION_OWNER === "worker") {
+    lotLifecycleConsumer = registerWorkerLotLifecycleConsumer({
+      connection: redis,
+      executor: lifecycleExecutor,
+      log,
+      onError: (err) => reportWorkerJobFailure(LOT_LIFECYCLE_QUEUE_NAME, undefined, err),
+    });
+    log.info("lot-lifecycle execution owner is worker");
+  }
+
+  const workerLifecycleHandlersReady =
+    env.LIFECYCLE_EXECUTION_OWNER !== "worker" ||
+    (lotLifecycleConsumer != null && onLotActivated != null);
+  const workerAbsenteeApiRollbackReady =
+    env.ABSENTEE_REPLAY_OWNER !== "api_rollback" ||
+    (internalCronSecret.trim().length > 0 && env.API_INTERNAL_BASE_URL.trim().length > 0);
+  const workerAbsenteeReplayReady = isWorkerAbsenteeReplayReady({
+    env,
+    cronSecret: internalCronSecret,
+    apiBaseUrl: env.API_INTERNAL_BASE_URL,
+    localReplayReady: workerBidding.ready,
+  });
+  const workerBidKycEnforcementReady =
+    env.ABSENTEE_REPLAY_OWNER !== "worker" || isWorkerBidKycEnforcementActive(env);
+
+  assertRuntimeOwnership(
+    {
+      ...runtimeOwnershipConfigFromWorkerEnv(env),
+      workerFinanceCronHandlersReady: financeCronHandlers != null,
+      workerLifecycleHandlersReady,
+      workerAbsenteeReplayReady,
+      workerAbsenteeApiRollbackReady,
+      workerBidKycEnforcementReady,
+    },
+    "worker",
+  );
+
+  const deps: WorkerBootstrapDeps & {
+    lifecycleExecutor: ReturnType<typeof createWorkerLifecycleExecutor>;
+  } = {
     env,
     db,
     redis,
@@ -180,9 +312,32 @@ export function createWorkerContainer(): WorkerContainer {
     sentryMonitorSlugs,
     heartbeat,
     reportWorkerJobFailure,
+    financeCronDispatch,
+    lifecycleExecutor,
   };
 
-  const webhookWorkers = registerWebhookWorker(deps);
+  const webhookProcessorDeps: ProcessInboundWebhookDeps = {
+    env,
+    log,
+    webhookEvents: new DrizzleWebhookEventRepository(db),
+    externalAccounts: new DrizzleExternalAccountRepository(db),
+    users: new DrizzleUserRepository(db),
+    transactionRunner: repositories.transactionRunner,
+    linkExternalAccount: new LinkExternalAccountWorkerService(
+      new DrizzleExternalAccountRepository(db),
+      repositories.domainEventSink,
+    ),
+    ...(internalCronSecret && workerFinanceServices
+      ? {
+          syncXeroInvoiceWebhook: async (input) =>
+            syncXeroInvoiceWebhookLocal(workerFinanceServices.accountingReplay, input),
+        }
+      : internalCronSecret
+        ? {}
+        : {}),
+  };
+
+  const webhookWorkers = registerWebhookWorker({ ...deps, webhookProcessorDeps });
   const mediaWorkers = registerMediaWorkers(deps);
   const emailWorkers = registerEmailWorker(deps);
   const marketingWorkers = registerMarketingWorkers(deps);
@@ -214,6 +369,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...payoutWorkers.dlqHandlers,
       ...complianceWorkers.dlqHandlers,
       ...marketingWorkers.dlqHandlers,
+      ...(lotLifecycleConsumer?.dlqHandlers ?? []),
     ],
     (name) => QUEUE_REGISTRY[name],
     {
@@ -231,6 +387,7 @@ export function createWorkerContainer(): WorkerContainer {
     heartbeat("qr-code-scan"),
     heartbeat("gc-pending-uploads"),
     heartbeat("email"),
+    ...(lotLifecycleConsumer ? [heartbeat("lot-lifecycle")] : []),
     heartbeat("marketing-sync"),
     ...(isMarketingEventsEnabled(env) ? [heartbeat("marketing-events")] : []),
     heartbeat("payout-statements"),
@@ -254,7 +411,6 @@ export function createWorkerContainer(): WorkerContainer {
       : []),
   ]);
 
-  const internalCronSecret = env.CRON_INTERNAL_SECRET;
   const adminPayoutsUrl = `${env.WEB_ORIGIN.replace(/\/$/, "")}/admin/payouts`;
   const adminEmailAddress = env.ADMIN_EMAIL_ADDRESS ?? "admin@lax.bid";
   const projectorRunner = createProjectorRunner({
@@ -281,6 +437,8 @@ export function createWorkerContainer(): WorkerContainer {
       sourceOfFundsDocumentReviewRepo: repositories.sourceOfFundsDocumentReviewRepo,
       sourceOfFundsReviewResolutionRepo: repositories.sourceOfFundsReviewResolutionRepo,
       lotNotifyReader: repositories.lotNotifyReader,
+      env,
+      deliveryRepo: repositories.domainEventDeliveryRepo,
       log,
       emailService: emailWorkers.emailOutboxService,
       supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",
@@ -310,23 +468,31 @@ export function createWorkerContainer(): WorkerContainer {
             },
           }
         : {}),
-      ...(internalCronSecret
+      ...(workerFinanceServices
         ? {
-            syncXeroPayoutBill: async (payoutId: string) =>
-              syncXeroPayoutBillViaApi({
-                apiBaseUrl: env.API_INTERNAL_BASE_URL,
-                cronSecret: internalCronSecret,
-                payoutId,
-                log,
-              }),
-            ensureLotInvoice: async (lotId: string) =>
-              postInternalCronJob({
-                apiBaseUrl: env.API_INTERNAL_BASE_URL,
-                cronSecret: internalCronSecret,
-                path: "ensure-lot-invoice",
-                body: { lotId },
-                log,
-              }),
+            xeroLiveExecutorPorts: createXeroLiveExecutorPortsFromStack(
+              workerFinanceServices.xeroStack,
+              async (lotId) => {
+                await workerFinanceServices.ensureLotInvoice(lotId);
+              },
+            ),
+            ensureLotInvoice: async (lotId: string) => {
+              await workerFinanceServices.ensureLotInvoice(lotId);
+            },
+            syncXeroPayoutBill: async (payoutId: string) => {
+              const ports = createXeroLiveExecutorPortsFromStack(
+                workerFinanceServices.xeroStack,
+                async (lotId) => {
+                  await workerFinanceServices.ensureLotInvoice(lotId);
+                },
+              );
+              try {
+                await ports.syncPayoutBill(payoutId);
+                return true;
+              } catch {
+                return false;
+              }
+            },
           }
         : {}),
     }),
@@ -353,6 +519,7 @@ export function createWorkerContainer(): WorkerContainer {
     cronWorkers,
     deadLetterQueue,
     projectorRunner,
+    lotLifecycleConsumer,
   };
 }
 
@@ -377,6 +544,7 @@ export async function shutdownWorkerContainer(
         container.complianceWorkers.close(),
         container.purgeWorkers.close(),
         container.cronWorkers.close(),
+        container.lotLifecycleConsumer?.close(),
         container.deadLetterQueue.close(),
         container.projectorRunner.stop(),
       ]),

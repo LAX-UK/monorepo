@@ -21,6 +21,7 @@ function makeCtx(
     },
     domainEventReader: {
       listAfterCursor: vi.fn().mockResolvedValue(rows),
+      getById: vi.fn(),
       listLockedForProjector: vi.fn(),
     },
     projectorFailureRecorder: {
@@ -55,7 +56,7 @@ describe("processLotInvoiceInitiation", () => {
       id: 10,
       eventType: "lot.ended",
       aggregateId: "lot-sold",
-      payload: { outcome: "sold", winnerId: "buyer-1" },
+      payload: { outcome: "sold", winnerId: "11111111-1111-4111-8111-111111111111" },
     };
     const noSaleRow = {
       id: 11,
@@ -77,7 +78,7 @@ describe("processLotInvoiceInitiation", () => {
       id: 5,
       eventType: "lot.ended",
       aggregateId: "lot-1",
-      payload: { outcome: "sold", winnerId: "buyer-1" },
+      payload: { outcome: "sold", winnerId: "11111111-1111-4111-8111-111111111111" },
     };
     const ctx = makeCtx([row]);
 

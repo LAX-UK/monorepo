@@ -17,6 +17,7 @@ describe("processSourceOfFundsDocumentReview", () => {
       },
       domainEventReader: {
         listAfterCursor: vi.fn().mockResolvedValue([]),
+        getById: vi.fn(),
         listLockedForProjector: vi.fn(),
       },
       projectorFailureRecorder: { record: vi.fn() },

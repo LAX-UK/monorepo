@@ -65,6 +65,50 @@ const envSchema = z
     CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
     /** Optional ClamAV REST endpoint for SoF document malware scanning. */
     CLAMAV_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    ZOHO_CRM_SYNC_MODE: z.enum(["off", "dry_run", "canary", "live"]).default("off"),
+    ZOHO_CRM_ENABLED_EVENT_TYPES: z.string().default(""),
+    XERO_PROJECTOR_MODE: z.enum(["off", "shadow", "canary", "live"]).default("off"),
+    XERO_PROJECTOR_LIVE_OPERATIONS: z.string().default(""),
+    DOMAIN_EVENT_PUBLISH_VALIDATE: z.enum(["off", "observe", "enforce"]).default("off"),
+    LIFECYCLE_EXECUTION_OWNER: z.enum(["api", "worker"]).default("api"),
+    ABSENTEE_REPLAY_OWNER: z.enum(["api_rollback", "worker"]).default("api_rollback"),
+    FINANCE_CRON_EXECUTION_OWNER: z.enum(["api_rollback", "worker"]).default("api_rollback"),
+    FINANCE_CRON_API_ROLLBACK: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(true),
+    ENGLISH_ONLY_AUCTIONS: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(true),
+    VERIFF_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    VERIFF_SHARED_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
+    KYC_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
+    XERO_API_WRITES_DISABLED: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
+    XERO_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+    XERO_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    XERO_REDIRECT_URI: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    XERO_DEFAULT_REVENUE_ACCOUNT_CODE: z.string().min(1).default("200"),
+    XERO_DEFAULT_TAX_TYPE: z.string().min(1).default("NONE"),
+    XERO_INVOICE_DUE_DAYS: z.coerce.number().int().min(0).max(365).default(14),
+    XERO_USE_LEGAL_ENTITY_CONTACT: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
+    XERO_PAYOUT_BILL_ACCOUNT_CODE: z.string().min(1).default("400"),
+    XERO_PAYMENT_BANK_ACCOUNT_CODE: z.string().min(1).default("090"),
+    STRIPE_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    STRIPE_CARD_CHECKOUT_MAX: z.coerce.number().positive().default(10_000),
+    STRIPE_MANUAL_REVIEW_MIN: z.coerce.number().positive().default(500_000),
+    STRIPE_ABSOLUTE_MAX: z.coerce.number().positive().default(999_999.99),
+    DISABLE_PAYOUT_SETTLEMENT: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
+    PAYMENT_PENDING_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(14),
+    PAYMENT_AUTHORIZED_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+    WEBHOOK_EVENTS_PROCESS: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
@@ -102,6 +146,13 @@ const envSchema = z
           path: ["CRON_INTERNAL_SECRET"],
         });
       }
+      if (!e.DATABASE_URL_WORKER?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "DATABASE_URL_WORKER is required outside local development (worker_app role)",
+          path: ["DATABASE_URL_WORKER"],
+        });
+      }
     }
     // Admin email required only in production (test stack uses debug channels).
     if (e.APP_ENV === "production") {
@@ -110,6 +161,13 @@ const envSchema = z
           code: z.ZodIssueCode.custom,
           message: "ADMIN_EMAIL_ADDRESS is required in production for ops notifications",
           path: ["ADMIN_EMAIL_ADDRESS"],
+        });
+      }
+      if (!e.DATABASE_URL_WORKER?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "DATABASE_URL_WORKER is required in production (worker_app role)",
+          path: ["DATABASE_URL_WORKER"],
         });
       }
       if (!e.CLAMAV_URL && !e.CLAMAV_HOST) {

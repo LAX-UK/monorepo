@@ -20,6 +20,7 @@ function makeCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
     },
     domainEventReader: {
       listAfterCursor: vi.fn().mockResolvedValue([]),
+      getById: vi.fn(),
       listLockedForProjector: vi.fn(),
     },
     projectorFailureRecorder: { record: vi.fn() },
@@ -79,6 +80,7 @@ describe("processAmlMatchReview MLRO escalation", () => {
     const ctx = makeCtx({
       domainEventReader: {
         listAfterCursor: vi.fn().mockResolvedValue([eventRow]),
+        getById: vi.fn(),
         listLockedForProjector: vi.fn(),
       },
       adminReviewTaskProjectorRepo: adminReviewTaskProjectorRepo as never,
@@ -121,6 +123,7 @@ describe("processAmlMatchReview MLRO escalation", () => {
     const ctx = makeCtx({
       domainEventReader: {
         listAfterCursor: vi.fn().mockResolvedValue([eventRow]),
+        getById: vi.fn(),
         listLockedForProjector: vi.fn(),
       },
       adminReviewTaskProjectorRepo: adminReviewTaskProjectorRepo as never,
@@ -141,6 +144,7 @@ describe("processAmlMatchReview MLRO escalation", () => {
     const ctx = makeCtx({
       domainEventReader: {
         listAfterCursor: vi.fn().mockResolvedValue([]),
+        getById: vi.fn(),
         listLockedForProjector: vi.fn(),
       },
       adminReviewTaskProjectorRepo: {

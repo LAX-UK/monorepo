@@ -73,7 +73,6 @@ export function registerPayoutWorkers(deps: WorkerBootstrapDeps): PayoutWorkersH
   let payoutSettlementQueue: Queue | undefined;
   let payoutSettlementWorker: Worker | undefined;
   if (env.CRON_INTERNAL_SECRET) {
-    const cronSecret = env.CRON_INTERNAL_SECRET;
     payoutSettlementQueue = new Queue(
       PAYOUT_SETTLEMENT_QUEUE_NAME,
       queueOpts(PAYOUT_SETTLEMENT_QUEUE_NAME),
@@ -83,9 +82,7 @@ export function registerPayoutWorkers(deps: WorkerBootstrapDeps): PayoutWorkersH
       async () => {
         await withSentryCronMonitor("payout-settlement", sentryMonitorSlugs, async () => {
           await runBulkPayoutSettlementJob({
-            apiBaseUrl: env.API_INTERNAL_BASE_URL,
-            cronSecret,
-            log,
+            financeCron: deps.financeCronDispatch,
           });
           await heartbeat("payout-settlement");
         });

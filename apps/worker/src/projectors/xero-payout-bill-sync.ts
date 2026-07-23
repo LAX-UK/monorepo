@@ -1,14 +1,17 @@
 import type pino from "pino";
 
-/** calls API internal cron to create a Xero supplier bill for a paid payout.
- * Idempotent; safe to retry.
- */
+export type XeroPayoutBillSyncOutcome =
+  | { kind: "success" }
+  | { kind: "terminal_skip"; reason: "disabled_or_not_configured" }
+  | { kind: "retryable_failure"; status: number; body: string };
+
+/** Calls API internal cron to create a Xero supplier bill for a paid payout. Idempotent; safe to retry. */
 export async function syncXeroPayoutBillViaApi(opts: {
   apiBaseUrl: string;
   cronSecret: string;
   payoutId: string;
   log: pino.Logger;
-}): Promise<boolean> {
+}): Promise<XeroPayoutBillSyncOutcome> {
   const base = opts.apiBaseUrl.replace(/\/$/, "");
   const url = `${base}/internal/jobs/xero-payout-bill`;
   const res = await fetch(url, {
@@ -25,7 +28,7 @@ export async function syncXeroPayoutBillViaApi(opts: {
       { url, body: text },
       "xero payout bill skipped (API disabled or cron not configured)",
     );
-    return true;
+    return { kind: "terminal_skip", reason: "disabled_or_not_configured" };
   }
   if (!res.ok) {
     const text = await res.text();
@@ -33,7 +36,7 @@ export async function syncXeroPayoutBillViaApi(opts: {
       { status: res.status, body: text, payoutId: opts.payoutId },
       "xero payout bill request failed",
     );
-    return false;
+    return { kind: "retryable_failure", status: res.status, body: text };
   }
-  return true;
+  return { kind: "success" };
 }

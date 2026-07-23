@@ -25,6 +25,7 @@ function makeCtx(
     },
     domainEventReader: {
       listAfterCursor: vi.fn().mockResolvedValue([eventRow]),
+      getById: vi.fn(),
       listLockedForProjector: vi.fn(),
     },
     projectorFailureRecorder: { record: vi.fn() },
