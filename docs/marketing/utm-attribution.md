@@ -2,6 +2,8 @@
 
 Production-only feature gated by env flags (ship dark, enable when ready).
 
+Rollout order: [marketing-attribution-rollout.md](../runbooks/marketing-attribution-rollout.md).
+
 ## Flags
 
 | Variable | App | Purpose |
