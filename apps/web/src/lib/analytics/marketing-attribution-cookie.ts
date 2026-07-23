@@ -3,7 +3,7 @@ import {
   encodeMarketingAttributionHeaderJson,
   parseAttributionTouchFromHref,
   parseMarketingAttributionSnapshot,
-} from "@auction/validators";
+} from "@auction/validators/marketing-attribution";
 
 export const LAX_ATTRIBUTION_COOKIE = "_lax_attr";
 
