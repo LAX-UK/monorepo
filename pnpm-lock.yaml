@@ -701,9 +701,6 @@ importers:
       '@auction/types':
         specifier: workspace:*
         version: link:../types
-      '@auction/validators':
-        specifier: workspace:*
-        version: link:../validators
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
