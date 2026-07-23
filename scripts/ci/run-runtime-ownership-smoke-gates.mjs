@@ -43,17 +43,40 @@ if (!existsSync(jsonOut)) {
 }
 
 const report = JSON.parse(readFileSync(jsonOut, "utf8"));
+
+/** Vitest JSON `numPendingTests` includes `skipIf` skips; classify from assertion status. */
+function summarizeAssertions(report) {
+  let failed = 0;
+  let todo = 0;
+  let passed = 0;
+  for (const file of report.testResults ?? []) {
+    for (const t of file.assertionResults ?? []) {
+      if (t.status === "failed") failed++;
+      else if (t.status === "pending" || t.status === "todo") todo++;
+      else if (t.status === "passed") passed++;
+    }
+  }
+  return { failed, todo, passed };
+}
+
 const executed = report.numTotalTests ?? 0;
 if (executed === 0) {
   console.error("Runtime ownership smoke gates executed zero tests");
   process.exit(1);
 }
 
-const pending = report.numPendingTests ?? 0;
-const skipped = (report.numSkippedTests ?? 0) + (report.numTodoTests ?? 0);
-if (pending > 0 || skipped > 0) {
-  console.error(`Smoke gates had pending=${pending} skipped/todo=${skipped}`);
+const { failed, todo, passed } = summarizeAssertions(report);
+if (failed > 0) {
+  console.error(`Smoke gates failed: ${failed} assertion(s)`);
+  process.exit(1);
+}
+if (todo > 0) {
+  console.error(`Smoke gates had ${todo} pending/todo test(s)`);
+  process.exit(1);
+}
+if (passed === 0) {
+  console.error("Runtime ownership smoke gates had no passing assertions");
   process.exit(1);
 }
 
-console.log(`Runtime ownership smoke gates passed (${executed} tests)`);
+console.log(`Runtime ownership smoke gates passed (${passed} assertions, ${executed} total)`);

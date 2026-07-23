@@ -26,7 +26,12 @@ function errorCode(err: unknown): string | undefined {
 
 /** Classify outbound delivery failures for retry vs dead-letter. */
 export function classifyDeliveryError(err: unknown): DeliveryErrorClass {
-  if (err instanceof DomainEventContractError) return "fatal";
+  if (typeof DomainEventContractError === "function" && err instanceof DomainEventContractError) {
+    return "fatal";
+  }
+  if (err instanceof Error && err.name === "DomainEventContractError") {
+    return "fatal";
+  }
 
   const message = errorMessage(err).toLowerCase();
   const code = errorCode(err)?.toLowerCase();
