@@ -23,6 +23,7 @@
     "ci:staging-acceptance": "node scripts/ci/run-staging-acceptance-preflight.mjs",
     "ci:authorize-cutover": "node scripts/ci/authorize-cutover-preflight.mjs",
     "ci:prove-release": "pnpm ci:verify && pnpm ci:release-gates && pnpm ci:record-evidence",
+    "ci:pre-push": "pnpm exec biome check . && REDIS_URL=${REDIS_URL:-redis://127.0.0.1:6379} pnpm ci:release-gates",
     "ci:staging-preflight": "node scripts/ci/staging-cutover-preflight.mjs",
     "ci:perf": "pnpm --filter @auction/web build && pnpm exec lhci autorun --config=./lighthouserc.json",
     "format": "biome format --write .",

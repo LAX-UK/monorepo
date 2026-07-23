@@ -31,6 +31,7 @@ jobs:
   # repository variable USE_PREBUILT_IMAGES_TEST (caller jobs cannot bind an
   # environment, so only repo/org vars are visible in the `if:`).
   build-images:
+    needs: ci-gate
     if: ${{ vars.USE_PREBUILT_IMAGES_TEST == 'true' }}
     uses: ./.github/workflows/build-images.yml
     with:

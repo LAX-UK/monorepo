@@ -1,5 +1,4 @@
 import type { PlaceBidWithIdempotencyOutcome } from "@auction/bidding-runtime";
-import type { EmailOutboxStatus } from "@auction/db/schema";
 import type {
   AttentionItem,
   EmailEventRow,
@@ -86,7 +85,7 @@ export interface IAdminLegalEntityBrowseQueryService {
 
 export interface IAdminEmailApplicationService {
   listOutbox(input: {
-    status?: EmailOutboxStatus;
+    status?: EmailOutboxRow["status"];
     limit: number;
     offset: number;
   }): Promise<EmailOutboxRow[]>;
