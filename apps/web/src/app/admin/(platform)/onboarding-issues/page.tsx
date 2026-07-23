@@ -92,7 +92,7 @@ export default async function AdminOnboardingIssuesPage({ searchParams }: Props)
                 summary={queueSummary}
                 lensTotal={total}
                 pagination={pagination}
-                buildTabHref={model.buildTabHref}
+                tabHrefs={model.tabHrefs}
                 listReturnTarget={model.listReturnTarget}
                 clearPreviewHref={model.buildItemHref(null)}
                 previewDegraded={previewDegraded}

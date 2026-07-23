@@ -28,7 +28,7 @@ type Props = {
   summary: OnboardingQueueSummary;
   lensTotal: number;
   pagination?: OnboardingIssuesBoardPagination | null | undefined;
-  buildTabHref: (tab: OnboardingTabId) => string;
+  tabHrefs: Record<OnboardingTabId, string>;
   listReturnTarget?: string | undefined;
   clearPreviewHref?: string | undefined;
   previewDegraded?: boolean;
@@ -42,7 +42,7 @@ export function OnboardingIssuesBoardContainer({
   summary,
   lensTotal,
   pagination,
-  buildTabHref,
+  tabHrefs,
   listReturnTarget,
   clearPreviewHref,
   previewDegraded = false,
@@ -79,7 +79,7 @@ export function OnboardingIssuesBoardContainer({
         lensTotal={lensTotal}
         onOpen={onOpen}
         onCloseDrawer={onCloseDrawer}
-        buildTabHref={buildTabHref}
+        tabHrefs={tabHrefs}
         buildItemHref={(itemId) => buildOnboardingIssuesItemHref(searchParams, itemId)}
         listReturnTarget={listReturnTarget}
         pagination={pagination ?? null}

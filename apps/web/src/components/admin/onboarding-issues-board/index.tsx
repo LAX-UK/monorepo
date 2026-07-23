@@ -50,7 +50,7 @@ type Props = {
   lensTotal: number;
   onOpen: (row: AdminOnboardingIssueRow) => void;
   onCloseDrawer: () => void;
-  buildTabHref: (tab: OnboardingTabId) => string;
+  tabHrefs: Record<OnboardingTabId, string>;
   buildItemHref: (itemId: string) => string;
   listReturnTarget?: string | undefined;
   pagination?: OnboardingIssuesBoardPagination | null;
@@ -238,7 +238,7 @@ export function OnboardingIssuesBoard({
   lensTotal,
   onOpen,
   onCloseDrawer,
-  buildTabHref,
+  tabHrefs,
   buildItemHref,
   listReturnTarget,
   pagination = null,
@@ -281,7 +281,7 @@ export function OnboardingIssuesBoard({
               return (
                 <Link
                   key={tabId}
-                  href={buildTabHref(tabId)}
+                  href={tabHrefs[tabId]}
                   role="tab"
                   aria-selected={active}
                   className={cn(

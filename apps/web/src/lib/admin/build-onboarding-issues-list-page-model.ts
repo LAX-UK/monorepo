@@ -44,6 +44,16 @@ export function buildOnboardingIssuesListPageModel(sp: OnboardingIssuesListSearc
         item: "",
         offset: "",
       }),
+    tabHrefs: Object.fromEntries(
+      ONBOARDING_TAB_IDS.map((tabId) => [
+        tabId,
+        buildListHref(ONBOARDING_ISSUES_LIST_PATH, sp, {
+          tab: tabId,
+          item: "",
+          offset: "",
+        }),
+      ]),
+    ) as Record<OnboardingTabId, string>,
     buildItemHref: (itemId: string | null) =>
       buildListHref(ONBOARDING_ISSUES_LIST_PATH, sp, itemId ? { item: itemId } : { item: "" }),
     tabIds: ONBOARDING_TAB_IDS,
