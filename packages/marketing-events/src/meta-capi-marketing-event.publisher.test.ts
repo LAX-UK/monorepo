@@ -75,6 +75,7 @@ describe("MetaCapiMarketingEventPublisher", () => {
           landingPath: "/campaign",
           utmCampaign: "spring",
           fbclid: "meta-click",
+          gclid: "google-click",
         },
       },
     });
@@ -87,5 +88,6 @@ describe("MetaCapiMarketingEventPublisher", () => {
       attribution_last_fbclid: "meta-click",
       attribution_last_landing_path: "/campaign",
     });
+    expect(body.data[0]?.custom_data).not.toHaveProperty("attribution_last_gclid");
   });
 });

@@ -26,6 +26,8 @@ export function buildConsentInitSnippet(snapshot: ConsentSnapshot | null): strin
     "window.dataLayer=window.dataLayer||[];",
     "function gtag(){dataLayer.push(arguments);}",
     `gtag('consent','default',${JSON.stringify(denied)});`,
+    "gtag('set','url_passthrough',true);",
+    "gtag('set','ads_data_redaction',true);",
     ...(update ? [`gtag('consent','update',${JSON.stringify(update)});`] : []),
   ].join("");
 }

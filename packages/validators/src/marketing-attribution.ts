@@ -193,10 +193,63 @@ export function mergeServerAttributionPut(
   return next;
 }
 
+const MARKETING_ATTRIBUTION_HEADER_PREFIX = "1.";
+
+function utf8ToBase64Url(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64url");
+  }
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToUtf8(encoded: string): string | null {
+  try {
+    if (typeof Buffer !== "undefined") {
+      return Buffer.from(encoded, "base64url").toString("utf8");
+    }
+    const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const padLen = (4 - (padded.length % 4)) % 4;
+    const binary = atob(padded + "=".repeat(padLen));
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+/** ASCII-safe wire format for `x-lax-attribution` (Fetch Headers reject non-Latin-1). */
+export function encodeMarketingAttributionHeaderJson(json: string): string | null {
+  const wire = `${MARKETING_ATTRIBUTION_HEADER_PREFIX}${utf8ToBase64Url(json)}`;
+  if (new TextEncoder().encode(wire).byteLength > 4096) return null;
+  return wire;
+}
+
+export function decodeMarketingAttributionHeaderRaw(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith(MARKETING_ATTRIBUTION_HEADER_PREFIX)) {
+    return base64UrlToUtf8(trimmed.slice(MARKETING_ATTRIBUTION_HEADER_PREFIX.length));
+  }
+  return trimmed;
+}
+
+export type AttributionPublisherVendor = "meta" | "sgtm";
+
+const VENDOR_CLICK_ID_KEYS: Record<
+  AttributionPublisherVendor,
+  ReadonlySet<keyof MarketingAttributionTouch>
+> = {
+  meta: new Set(["fbclid"]),
+  sgtm: new Set(["gclid", "msclkid"]),
+};
+
 /** Namespaced GA4 / sGTM event params (not reserved utm_* campaign fields). */
 export function attributionToPublisherParams(
   prefix: "first" | "last",
   touch: MarketingAttributionTouch | undefined,
+  vendor: AttributionPublisherVendor = "sgtm",
 ): Record<string, string> {
   if (!touch) return {};
   const p = prefix === "first" ? "attribution_first" : "attribution_last";
@@ -217,11 +270,14 @@ export function attributionToPublisherParams(
     ["fbclid", "fbclid"],
     ["msclkid", "msclkid"],
   ];
+  const allowedClickIds = VENDOR_CLICK_ID_KEYS[vendor];
   for (const [field, suffix] of map) {
     const v = touch[field];
-    if (typeof v === "string" && v.length > 0) {
-      out[`${p}_${suffix}`] = v.slice(0, 256);
+    if (typeof v !== "string" || v.length === 0) continue;
+    if ((field === "gclid" || field === "fbclid" || field === "msclkid") && !allowedClickIds.has(field)) {
+      continue;
     }
+    out[`${p}_${suffix}`] = v.slice(0, 256);
   }
   return out;
 }

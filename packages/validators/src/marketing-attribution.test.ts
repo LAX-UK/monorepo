@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   attributionToPublisherParams,
+  decodeMarketingAttributionHeaderRaw,
+  encodeMarketingAttributionHeaderJson,
   mergeAttributionSnapshot,
   mergeServerAttributionPut,
   parseAttributionTouchFromSearch,
@@ -110,11 +112,47 @@ describe("server attribution contract", () => {
     expect(mergeServerAttributionPut(existing, incoming)).toEqual(existing);
   });
 
-  it("emits namespaced UTM and click-id parameters", () => {
-    expect(attributionToPublisherParams("last", newer)).toMatchObject({
+  it("emits namespaced UTM and click-id parameters for sGTM", () => {
+    const touch = {
+      ...newer,
+      fbclid: "meta-click",
+      gclid: "google-click",
+    };
+    expect(attributionToPublisherParams("last", touch, "sgtm")).toMatchObject({
       attribution_last_source: "paid",
       attribution_last_gclid: "google-click",
       attribution_last_landing_path: "/newer",
     });
+    expect(attributionToPublisherParams("last", touch, "sgtm")).not.toHaveProperty(
+      "attribution_last_fbclid",
+    );
+  });
+
+  it("emits Meta-only click ids in publisher params", () => {
+    const touch = {
+      ...newer,
+      fbclid: "meta-click",
+      gclid: "google-click",
+    };
+    expect(attributionToPublisherParams("last", touch, "meta")).toMatchObject({
+      attribution_last_fbclid: "meta-click",
+    });
+    expect(attributionToPublisherParams("last", touch, "meta")).not.toHaveProperty(
+      "attribution_last_gclid",
+    );
+  });
+
+  it("round-trips attribution header wire encoding with Unicode", () => {
+    const json = JSON.stringify({
+      version: 1,
+      lastTouch: {
+        capturedAt: "2026-01-01T00:00:00.000Z",
+        landingPath: "/campaign",
+        utmCampaign: "spring-🚀",
+      },
+    });
+    const wire = encodeMarketingAttributionHeaderJson(json);
+    expect(wire).toMatch(/^1\./);
+    expect(decodeMarketingAttributionHeaderRaw(wire ?? "")).toBe(json);
   });
 });
