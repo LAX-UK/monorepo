@@ -1,4 +1,5 @@
 export type { ICircuitBreaker } from "./interfaces/circuit-breaker.js";
+export type { IAttributionStore } from "./interfaces/attribution-store.js";
 export type { IClickIdStore } from "./interfaces/click-id-store.js";
 export type { IMarketingEventPublisher } from "./interfaces/marketing-event-publisher.js";
 export type {
@@ -21,3 +22,9 @@ export { Sha256PiiHasher } from "./sha256-pii.hasher.js";
 export { mergeClientContextIntoUserData } from "./merge-client-context.js";
 export { SgtmMarketingEventPublisher } from "./sgtm-marketing-event.publisher.js";
 export { metaEventNameFor } from "./meta-event-name-map.js";
+export {
+  getMarketingEventsConfig,
+  isMarketingAttributionEnabled,
+  isMarketingEventsEnabled,
+  type MarketingEventsConfig,
+} from "./config.js";

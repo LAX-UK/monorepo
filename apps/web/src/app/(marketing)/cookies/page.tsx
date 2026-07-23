@@ -75,6 +75,13 @@ export default function CookiesPage() {
             off unless you choose to allow it.
           </li>
         </LegalUL>
+        <p>
+          With marketing consent, we may set the first-party <code>_lax_attr</code> cookie for up to
+          90 days. It stores a versioned first-touch and last-touch campaign snapshot (such as UTM
+          campaign fields and advertising click identifiers) so authenticated server-side conversion
+          events can be measured. Withdrawing marketing consent removes the cookie and requests
+          deletion of the linked server snapshot.
+        </p>
 
         <LegalH2 id="third-parties" className="scroll-mt-28">
           Third-party technologies

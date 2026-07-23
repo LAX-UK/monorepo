@@ -59,4 +59,33 @@ describe("MetaCapiMarketingEventPublisher", () => {
     const out = await pub.publish(baseEvent);
     expect(out).toMatchObject({ status: "failed", retryable: true });
   });
+
+  it("adds namespaced attribution to custom_data", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ events_received: 1 }), { status: 200 }));
+    const pub = new MetaCapiMarketingEventPublisher("p", "t", undefined, "v21.0", fetchFn);
+
+    await pub.publish({
+      ...baseEvent,
+      attribution: {
+        version: 1,
+        lastTouch: {
+          capturedAt: "2026-01-02T00:00:00.000Z",
+          landingPath: "/campaign",
+          utmCampaign: "spring",
+          fbclid: "meta-click",
+        },
+      },
+    });
+
+    const body = JSON.parse(String(fetchFn.mock.calls[0]?.[1]?.body)) as {
+      data: Array<{ custom_data: Record<string, unknown> }>;
+    };
+    expect(body.data[0]?.custom_data).toMatchObject({
+      attribution_last_campaign: "spring",
+      attribution_last_fbclid: "meta-click",
+      attribution_last_landing_path: "/campaign",
+    });
+  });
 });

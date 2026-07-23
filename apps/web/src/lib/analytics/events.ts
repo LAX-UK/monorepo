@@ -3,6 +3,7 @@
 import type { MarketingEventName } from "@auction/types";
 import { readConsentFromDocument } from "./consent-headers";
 import { isAnalyticsEnabled } from "./is-enabled";
+import { attributionForDataLayer, readAttributionCookie } from "./marketing-attribution-cookie";
 
 type DataLayerEvent = Record<string, unknown>;
 
@@ -77,10 +78,12 @@ export type TrackViewItemInput = {
 export function trackPageView(path: string): string | null {
   if (!guardAnalytics()) return null;
   const eventId = newEventId();
+  const attr = consentAllowsMarketing() ? readAttributionCookie() : null;
   pushDataLayer({
     event: "page_view",
     event_id: eventId,
     page_path: path,
+    ...(attr ? attributionForDataLayer(attr) : {}),
   });
   return eventId;
 }

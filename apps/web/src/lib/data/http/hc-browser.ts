@@ -1,8 +1,17 @@
 import { marketingConsentHeaderValues } from "@/lib/analytics/consent-headers";
+import { readConsentFromDocument } from "@/lib/analytics/consent-headers";
+import {
+  readAttributionCookie,
+  serializeAttributionHeader,
+} from "@/lib/analytics/marketing-attribution-cookie";
 import { sanitizePageUrlForMarketing } from "@/lib/analytics/sanitize-page-url";
 import { type RpcApp, hcAsRpcApp } from "@/lib/data/http/rpc-app";
 import { getClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
-import { MARKETING_PAGE_URL_HEADER, X_LEGAL_ENTITY_ID_HEADER } from "@auction/http-headers";
+import {
+  MARKETING_ATTRIBUTION_HEADER,
+  MARKETING_PAGE_URL_HEADER,
+  X_LEGAL_ENTITY_ID_HEADER,
+} from "@auction/http-headers";
 
 const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
 
@@ -14,6 +23,10 @@ function withBrowserApiHeaders(init?: RequestInit): RequestInit {
   if (typeof window !== "undefined" && window.location?.href) {
     const pageUrl = sanitizePageUrlForMarketing(window.location.href);
     if (pageUrl) headers.set(MARKETING_PAGE_URL_HEADER, pageUrl);
+  }
+  if (readConsentFromDocument()?.marketing === true) {
+    const attrHeader = serializeAttributionHeader(readAttributionCookie());
+    if (attrHeader) headers.set(MARKETING_ATTRIBUTION_HEADER, attrHeader);
   }
   const actingEntityId = getClientActingLegalEntityId();
   if (actingEntityId && !headers.has(X_LEGAL_ENTITY_ID_HEADER)) {

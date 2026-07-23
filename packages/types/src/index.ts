@@ -23,6 +23,7 @@ export * from "./domain-event-pii.js";
 export * from "./onboarding-steps.js";
 export * from "./document.js";
 export * from "./marketing-events.js";
+export * from "./marketing-attribution.js";
 export * from "./gallery.js";
 export * from "./catalog-url.js";
 export * from "./telephone-booking.js";

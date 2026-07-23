@@ -14,7 +14,7 @@ export function nowUnixSeconds(): number {
   return Math.floor(Date.now() / 1000);
 }
 
-type WebsiteEventContext = {
+export type WebsiteEventContext = {
   get(key: "marketingConsentMarketing"): boolean | undefined;
   get(key: "marketingConsentAnalytics"): boolean | undefined;
   get(key: "marketingClientIp"): string | undefined;

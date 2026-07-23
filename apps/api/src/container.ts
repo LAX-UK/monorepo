@@ -11,6 +11,7 @@ import {
 } from "@auction/email";
 import {
   CompositeMarketingEventPublisher,
+  type IAttributionStore,
   type IClickIdStore,
   type IMarketingEventPublisher,
   InMemoryCircuitBreaker,
@@ -51,13 +52,14 @@ import { BetterAuthAuthenticator } from "./infrastructure/better-auth-authentica
 import { BetterAuthEmailSignupPersister } from "./infrastructure/better-auth-email-signup.persister.js";
 import { BetterAuthVerificationEmailResender } from "./infrastructure/better-auth-verification-email.resender.js";
 import { BullmqMarketingEventQueue } from "./infrastructure/bullmq-marketing-event.queue.js";
+import { CachedAttributionStore } from "./infrastructure/cached-attribution.store.js";
 import { CachedClickIdStore } from "./infrastructure/cached-click-id.store.js";
 import { CachedUserSuspensionChecker } from "./infrastructure/cached-user-suspension.checker.js";
 import { CompositeAuthenticator } from "./infrastructure/composite-authenticator.js";
 import { CompositeErrorClassifier } from "./infrastructure/composite-error.classifier.js";
 import { ConsoleErrorLogger } from "./infrastructure/console-error.logger.js";
-import { DrizzleMarketingEventOutboxRepository } from "./infrastructure/drizzle-marketing-event-outbox.repository.js";
 import { DrizzleExistingAccountReader } from "./infrastructure/drizzle-existing-account.reader.js";
+import { DrizzleMarketingEventOutboxRepository } from "./infrastructure/drizzle-marketing-event-outbox.repository.js";
 import { DrizzleRegistrationCompensator } from "./infrastructure/drizzle-registration.compensator.js";
 import { EmailNotificationChannel } from "./infrastructure/email-notification.channel.js";
 import { EventMarketingConsentGate } from "./infrastructure/header-marketing-consent.gate.js";
@@ -71,8 +73,10 @@ import { NoOpWelcomeNotifier } from "./infrastructure/no-op-welcome.notifier.js"
 import { NoopMarketingEventOutboxRepository } from "./infrastructure/noop-marketing-event-outbox.repository.js";
 import { NoopMarketingEventPublisher } from "./infrastructure/noop-marketing-event.publisher.js";
 import { NoopMarketingEventQueue } from "./infrastructure/noop-marketing-event.queue.js";
+import { PostgresAttributionStore } from "./infrastructure/postgres-attribution.store.js";
 import { PostgresClickIdStore } from "./infrastructure/postgres-click-id.store.js";
 import { PushNotificationChannel } from "./infrastructure/push-notification.channel.js";
+import { RedisAttributionStore } from "./infrastructure/redis-attribution.store.js";
 import { RedisCacheProvider } from "./infrastructure/redis-cache.provider.js";
 import { RedisClickIdStore } from "./infrastructure/redis-click-id.store.js";
 import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
@@ -90,7 +94,10 @@ import { ZodRegistrationValidator } from "./infrastructure/zod-registration.vali
 import { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { DisplayTokenIssuer } from "./lib/display-token.js";
 import { createBaseLogger } from "./lib/logger.js";
-import { getMarketingEventsConfig } from "./lib/marketing-events-enabled.js";
+import {
+  getMarketingEventsConfig,
+  isMarketingAttributionEnabled,
+} from "./lib/marketing-events-enabled.js";
 import { enqueueOrgSubmittedAdminNotice } from "./lib/org-lifecycle-notifications.js";
 import { type OrgModuleGate, createOrgModuleGate } from "./lib/org-module-gate.js";
 import {
@@ -555,6 +562,8 @@ export type Container = {
   marketingEventService: IMarketingEventService;
   marketingEventPublisher: IMarketingEventPublisher;
   clickIdStore: IClickIdStore;
+  attributionStore: IAttributionStore;
+  marketingAttributionEnabled: boolean;
   /** Platform-admin HTTP orchestration (SOLID application layer for `routes/admin*`). Keep route files on `container.admin` only; run `pnpm --filter @auction/api check:admin-dip` in CI. */
   admin: AdminRouteServices;
   /** Engineering-only BullMQ inspection and mutations (super_admin). */
@@ -907,6 +916,12 @@ export function createContainer(env: Env): Container {
   const clickIdStore: IClickIdStore = marketingEnabled
     ? new CachedClickIdStore(new PostgresClickIdStore(db), new RedisClickIdStore(redis))
     : new RedisClickIdStore(redis);
+  // Keep deletion available even while publisher/enrichment flags are disabled.
+  const attributionStore: IAttributionStore = new CachedAttributionStore(
+    new PostgresAttributionStore(db),
+    new RedisAttributionStore(redis),
+  );
+  const marketingAttributionEnabled = isMarketingAttributionEnabled(env);
   const marketingOutbox = marketingEnabled
     ? new DrizzleMarketingEventOutboxRepository(db)
     : new NoopMarketingEventOutboxRepository();
@@ -1879,6 +1894,8 @@ export function createContainer(env: Env): Container {
     marketingEventService,
     marketingEventPublisher,
     clickIdStore,
+    attributionStore,
+    marketingAttributionEnabled,
     admin,
     queueAdmin,
     closeBullQueues,

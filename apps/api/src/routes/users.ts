@@ -28,7 +28,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
 import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
-import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
+import { buildEnrichedWebsiteUserEvent } from "../lib/marketing-attribution-context.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { defaultNotificationPreference } from "../lib/notification-preference-keys.js";
 import { isOrgModuleEnabled, orgModuleDisabledResponse } from "../lib/org-module-enabled.js";
@@ -116,12 +116,19 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     }
     const marketingEventId = crypto.randomUUID();
     await container.marketingEventService.emit(
-      buildWebsiteUserEvent(c, {
-        name: "Lead",
-        eventId: marketingEventId,
-        userId: result.userId,
-        customData: { method: "email" },
-      }),
+      await buildEnrichedWebsiteUserEvent(
+        c,
+        {
+          name: "Lead",
+          eventId: marketingEventId,
+          userId: result.userId,
+          customData: { method: "email" },
+        },
+        {
+          attributionEnabled: container.marketingAttributionEnabled,
+          attributionStore: container.attributionStore,
+        },
+      ),
     );
     return c.json({ data: { userId: result.userId, marketingEventId } }, 201);
   });
@@ -238,12 +245,19 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       return c.json({ error: "Lot not found" }, 404);
     }
     const eventId = crypto.randomUUID();
-    const marketingEvent = buildWebsiteUserEvent(c, {
-      name: "AddToWishlist",
-      eventId,
-      userId,
-      customData: { lotId },
-    });
+    const marketingEvent = await buildEnrichedWebsiteUserEvent(
+      c,
+      {
+        name: "AddToWishlist",
+        eventId,
+        userId,
+        customData: { lotId },
+      },
+      {
+        attributionEnabled: container.marketingAttributionEnabled,
+        attributionStore: container.attributionStore,
+      },
+    );
     const row = await container.db.transaction(async (tx) => {
       const added = await container.watchlistService.add(userId, lotId, tx);
       if (!added) throw new Error("watchlist_insert_failed");
@@ -262,12 +276,19 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
       const userId = c.get("userId") as string;
       const { lotId } = c.req.valid("param");
       const eventId = crypto.randomUUID();
-      const marketingEvent = buildWebsiteUserEvent(c, {
-        name: "RemoveFromWishlist",
-        eventId,
-        userId,
-        customData: { lotId },
-      });
+      const marketingEvent = await buildEnrichedWebsiteUserEvent(
+        c,
+        {
+          name: "RemoveFromWishlist",
+          eventId,
+          userId,
+          customData: { lotId },
+        },
+        {
+          attributionEnabled: container.marketingAttributionEnabled,
+          attributionStore: container.attributionStore,
+        },
+      );
       await container.db.transaction(async (tx) => {
         await container.watchlistService.remove(userId, lotId, tx);
         await container.marketingEventService.stage(marketingEvent, tx);

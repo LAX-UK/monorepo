@@ -1,5 +1,12 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "pnpm-lock.yaml",
+    "package.json",
+    "biome.json",
+    "packages/config-ts/**",
+    "packages/config-biome/**"
+  ],
   "globalPassThroughEnv": [
     "NODE_ENV",
     "PORT",
@@ -52,6 +59,7 @@
     "XERO_CLIENT_SECRET",
     "XERO_REDIRECT_URI",
     "XERO_WEBHOOK_KEY",
+    "XERO_WEBHOOK_INBOX_MODE",
     "XERO_DEFAULT_REVENUE_ACCOUNT_CODE",
     "XERO_DEFAULT_TAX_TYPE",
     "XERO_INVOICE_DUE_DAYS",
@@ -93,6 +101,8 @@
     "NEXT_PUBLIC_APPLE_ENABLED",
     "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
     "NEXT_PUBLIC_GTM_ID",
+    "MARKETING_ATTRIBUTION_ENABLED",
+    "NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED",
     "NEXT_PUBLIC_CSP_REPORT_URI",
     "CSP_ENFORCE",
     "NEXT_PUBLIC_SHOW_LIVE_BIDDING_NAV",

@@ -177,6 +177,7 @@ locals {
         { key = "NEXT_PUBLIC_MEDIA_BASE_URL", value = local.media_public_url, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS", value = "true", type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_GTM_ID", value = var.next_public_gtm_id, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED", value = var.next_public_marketing_attribution_enabled, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "INTERNAL_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "PLATFORM_CATALOG_LEGAL_ENTITY_ID", value = "30000000-0000-4000-9000-000000000001", type = "GENERAL", scope = "RUN_TIME" },
         { key = "NEXT_PUBLIC_WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
@@ -262,7 +263,8 @@ locals {
         { key = "META_PIXEL_ID", value = var.meta_pixel_id, type = "SECRET", scope = "RUN_TIME" },
         { key = "META_CAPI_ACCESS_TOKEN", value = var.meta_capi_access_token, type = "SECRET", scope = "RUN_TIME" },
         { key = "META_CAPI_TEST_EVENT_CODE", value = var.meta_capi_test_event_code, type = "SECRET", scope = "RUN_TIME" },
-        { key = "GA4_MEASUREMENT_ID", value = var.ga4_measurement_id, type = "GENERAL", scope = "RUN_TIME" }
+        { key = "GA4_MEASUREMENT_ID", value = var.ga4_measurement_id, type = "GENERAL", scope = "RUN_TIME" },
+        { key = "MARKETING_ATTRIBUTION_ENABLED", value = var.marketing_attribution_enabled, type = "GENERAL", scope = "RUN_TIME" }
       ])
     },
     {
