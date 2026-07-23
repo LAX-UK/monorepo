@@ -14,10 +14,13 @@ COPY apps/worker/package.json ./apps/worker/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
+# pnpm may create apps/api/node_modules in deps; remove before copying sources.
+RUN rm -rf ./apps/api/node_modules
 COPY apps/api ./apps/api
 # Re-copy tsconfigs after the tree COPY so stale DO layer cache cannot drop tsconfig.build.json
 # while package.json already points the build script at it.
 COPY apps/api/tsconfig.json apps/api/tsconfig.build.json ./apps/api/
+RUN pnpm install --frozen-lockfile
 RUN pnpm turbo run build --filter=@auction/api
 
 FROM node:22-alpine AS runner

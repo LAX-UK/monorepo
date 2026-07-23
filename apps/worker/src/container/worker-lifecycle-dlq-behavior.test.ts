@@ -1,7 +1,19 @@
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("bullmq", () => {
+  const { EventEmitter } = require("node:events");
+  class MockWorker extends EventEmitter {
+    async close(): Promise<void> {}
+  }
+  class MockQueue {
+    async close(): Promise<void> {}
+  }
+  return { Queue: MockQueue, Worker: MockWorker };
+});
+
 import type { EventEmitter } from "node:events";
 import { LOT_LIFECYCLE_QUEUE_NAME, QUEUE_REGISTRY, registerDlqHandlers } from "@auction/queues";
 import type { Worker } from "bullmq";
-import { describe, expect, it, vi } from "vitest";
 import { registerWorkerLotLifecycleConsumer } from "../lifecycle/register-lot-lifecycle-worker.js";
 
 describe("worker lot-lifecycle DLQ behavior", () => {

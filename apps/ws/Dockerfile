@@ -14,7 +14,9 @@ COPY apps/worker/package.json ./apps/worker/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
+RUN rm -rf ./apps/ws/node_modules
 COPY apps/ws ./apps/ws
+RUN pnpm install --frozen-lockfile
 RUN pnpm turbo run build --filter=@auction/ws
 
 FROM node:22-alpine AS runner
