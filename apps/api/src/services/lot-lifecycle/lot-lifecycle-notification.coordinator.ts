@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { LotCloseOutcome } from "@auction/lot-lifecycle-app";
 import type { ISaleRepository } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IWatchlistRepository } from "@auction/persistence/interfaces";
@@ -10,7 +11,6 @@ import type { ILotNotificationSender } from "../interfaces/notifications.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";
-import type { LotCloseNotificationBidRepo, LotCloseOutcome } from "./lot-lifecycle-types.js";
 
 export class LotLifecycleNotificationCoordinator {
   constructor(
@@ -63,7 +63,7 @@ export class LotLifecycleNotificationCoordinator {
   async stageLotCloseNotificationsInTransaction(params: {
     lot: Lot;
     winnerId: string | null;
-    bid: LotCloseNotificationBidRepo;
+    bid: import("@auction/persistence/interfaces").IBidRepository;
     tx: Database;
   }): Promise<void> {
     if (!this.notificationOutbox) return;

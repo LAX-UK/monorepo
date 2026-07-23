@@ -19,6 +19,10 @@ import {
 } from "../lot-lifecycle.service.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import { NotificationFactory } from "../notification.factory.js";
+import {
+  toLifecycleDomainEventSink,
+  toLotLifecycleTransitionRecorder,
+} from "./lifecycle-app-adapters.js";
 
 export type LotLifecycleTestDeps = {
   repos: IRepositoryFactory;
@@ -52,15 +56,16 @@ export function createLotLifecycleTestStack(deps: LotLifecycleTestDeps): LotLife
     deps.repos,
     notifications,
     deps.antiShillingGuard ?? null,
-    deps.domainEventSink ?? null,
-    deps.lotLifecycleRecording ?? null,
+    toLifecycleDomainEventSink(deps.domainEventSink),
+    toLotLifecycleTransitionRecorder(deps.lotLifecycleRecording),
+    "apps/api",
   );
   const timedRunner = new TimedLotTransitionRunner(
     deps.repos,
     notifications,
     clerkOutcomes,
     deps.saleroomSessionLookup ?? null,
-    deps.lotLifecycleRecording ?? null,
+    toLotLifecycleTransitionRecorder(deps.lotLifecycleRecording),
     deps.onLotActivated ?? null,
   );
   return new LotLifecycleService(clerkOutcomes, timedRunner);
@@ -155,15 +160,16 @@ export function createTimedRunnerStack(deps: LotLifecycleTestDeps) {
     deps.repos,
     notifications,
     deps.antiShillingGuard ?? null,
-    deps.domainEventSink ?? null,
-    deps.lotLifecycleRecording ?? null,
+    toLifecycleDomainEventSink(deps.domainEventSink),
+    toLotLifecycleTransitionRecorder(deps.lotLifecycleRecording),
+    "apps/api",
   );
   const timedRunner = new TimedLotTransitionRunner(
     deps.repos,
     notifications,
     clerkOutcomes,
     deps.saleroomSessionLookup ?? null,
-    deps.lotLifecycleRecording ?? null,
+    toLotLifecycleTransitionRecorder(deps.lotLifecycleRecording),
     deps.onLotActivated ?? null,
   );
   return { timedRunner, clerkOutcomes, notifications };
@@ -185,8 +191,9 @@ export function createClerkOutcomeStack(deps: LotLifecycleTestDeps) {
     deps.repos,
     notifications,
     deps.antiShillingGuard ?? null,
-    deps.domainEventSink ?? null,
-    deps.lotLifecycleRecording ?? null,
+    toLifecycleDomainEventSink(deps.domainEventSink),
+    toLotLifecycleTransitionRecorder(deps.lotLifecycleRecording),
+    "apps/api",
   );
   return { clerkOutcomes, notifications };
 }

@@ -11,39 +11,40 @@
     "./app": {
       "types": "./dist/app.d.ts",
       "default": "./dist/app.js"
-    },
-    "./exports": {
-      "types": "./dist/exports/index.d.ts",
-      "default": "./dist/exports/index.js"
-    },
-    "./exports/repository-factory": {
-      "types": "./dist/exports/repository-factory.d.ts",
-      "default": "./dist/exports/repository-factory.js"
-    },
-    "./exports/providers": {
-      "types": "./dist/exports/providers.d.ts",
-      "default": "./dist/exports/providers.js"
     }
   },
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
-    "lint": "biome check . && node scripts/check-org-routes-dip.mjs && node scripts/check-admin-routes-dip.mjs && node scripts/check-bidding-routes-dip.mjs && node scripts/check-error-status.mjs",
+    "lint": "biome check . && node scripts/check-org-routes-dip.mjs && node scripts/check-admin-routes-dip.mjs && node scripts/check-bidding-routes-dip.mjs && node scripts/check-user-routes-dip.mjs && node scripts/check-finance-routes-dip.mjs && node scripts/check-catalog-read-routes-dip.mjs && node scripts/check-catalog-lifecycle-routes-dip.mjs && node scripts/check-catalog-adjacent-routes-dip.mjs && node scripts/check-submissions-routes-dip.mjs && node scripts/check-compliance-routes-dip.mjs && node scripts/check-inbound-webhooks-routes-dip.mjs && node scripts/check-route-dip-coverage.mjs && node scripts/check-error-status.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "check:admin-dip": "node scripts/check-admin-routes-dip.mjs",
     "check:bidding-dip": "node scripts/check-bidding-routes-dip.mjs",
-    "check:org-dip": "node scripts/check-org-routes-dip.mjs"
+    "check:org-dip": "node scripts/check-org-routes-dip.mjs",
+    "check:user-dip": "node scripts/check-user-routes-dip.mjs",
+    "check:finance-dip": "node scripts/check-finance-routes-dip.mjs",
+    "check:catalog-read-dip": "node scripts/check-catalog-read-routes-dip.mjs",
+    "check:catalog-lifecycle-dip": "node scripts/check-catalog-lifecycle-routes-dip.mjs",
+    "check:catalog-adjacent-dip": "node scripts/check-catalog-adjacent-routes-dip.mjs",
+    "check:submissions-dip": "node scripts/check-submissions-routes-dip.mjs",
+    "check:compliance-dip": "node scripts/check-compliance-routes-dip.mjs",
+    "check:inbound-webhooks-dip": "node scripts/check-inbound-webhooks-routes-dip.mjs"
   },
   "dependencies": {
     "@auction/auth": "workspace:*",
     "@auction/connect": "workspace:*",
+    "@auction/background-runtime": "workspace:*",
     "@auction/db": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/email": "workspace:^",
     "@auction/exports": "workspace:*",
+    "@auction/finance-cron-app": "workspace:*",
+    "@auction/finance-runtime": "workspace:*",
     "@auction/persistence": "workspace:*",
+    "@auction/bidding-runtime": "workspace:*",
+    "@auction/lot-lifecycle-app": "workspace:*",
     "@auction/http-headers": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",
@@ -72,7 +73,6 @@
     "postmark": "^4.0.7",
     "prom-client": "^15.1.3",
     "qrcode": "^1.5.4",
-    "safe-stable-stringify": "^2.5.0",
     "stripe": "^22.1.1",
     "web-push": "^3.6.7",
     "xero-node": "^9.0.0",

@@ -1,10 +1,14 @@
 import {
   ClerkLotOutcomeService,
-  LotLifecycleNotificationCoordinator,
   LotLifecycleService,
+  SaleLifecycleService,
   TimedLotTransitionRunner,
-} from "../services/lot-lifecycle.service.js";
-import { SaleLifecycleService } from "../services/sale-lifecycle.service.js";
+} from "@auction/lot-lifecycle-app";
+import {
+  toLifecycleDomainEventSink,
+  toLotLifecycleTransitionRecorder,
+} from "../services/lot-lifecycle/lifecycle-app-adapters.js";
+import { LotLifecycleNotificationCoordinator } from "../services/lot-lifecycle/lot-lifecycle-notification.coordinator.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
@@ -60,12 +64,16 @@ export function createLotLifecycle(input: CreateLotLifecycleInput): ContainerLot
     saleRepo,
   );
 
+  const lifecycleDomainSink = toLifecycleDomainEventSink(domainEventSink);
+  const lifecycleTransitionRecorder = toLotLifecycleTransitionRecorder(lotLifecycleRecording);
+
   const clerkLotOutcomeService = new ClerkLotOutcomeService(
     repoFactory,
     lotLifecycleNotifications,
     antiShillingGuard,
-    domainEventSink,
-    lotLifecycleRecording,
+    lifecycleDomainSink,
+    lifecycleTransitionRecorder,
+    "apps/api",
   );
 
   const timedLotTransitionRunner = new TimedLotTransitionRunner(
@@ -73,8 +81,8 @@ export function createLotLifecycle(input: CreateLotLifecycleInput): ContainerLot
     lotLifecycleNotifications,
     clerkLotOutcomeService,
     saleroomSessionLookup,
-    lotLifecycleRecording,
-    async (lotId) => {
+    lifecycleTransitionRecorder,
+    async (lotId: string) => {
       await lotLifecycleHooks.onLotActivated?.(lotId);
     },
   );

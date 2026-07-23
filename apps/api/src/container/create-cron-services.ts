@@ -1,11 +1,11 @@
 import type { Database } from "@auction/db";
+import { AccountingReplayCronService } from "@auction/finance-cron-app";
+import { LifecycleCronService, PaymentMaintenanceCronService } from "@auction/finance-cron-app";
 import type { Env } from "../env.js";
 import { AccountDeletionEligibilityService } from "../services/account-deletion-eligibility.service.js";
+import { proactiveRefreshXeroTokens } from "../services/accounting/xero-auth-runtime.js";
 import { BrevoWebhookIngestService } from "../services/brevo-webhook-ingest.service.js";
-import { AccountingReplayCronService } from "../services/cron/accounting-replay-cron.service.js";
 import { HygieneCronService } from "../services/cron/hygiene-cron.service.js";
-import { LifecycleCronService } from "../services/cron/lifecycle-cron.service.js";
-import { PaymentMaintenanceCronService } from "../services/cron/payment-maintenance-cron.service.js";
 import { SettlementCronService } from "../services/cron/settlement-cron.service.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
@@ -65,13 +65,32 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
 
   const accountingReplayCronService = new AccountingReplayCronService(
     repos.paymentRefundReconcileRepository,
-    infra.redis,
-    env,
     repos.xeroWebhookEventRepository,
-    repos.xeroConnRepo,
     payments.accountingProvider,
     payments.xeroPaymentRecorder,
     payments.paymentMaintenanceService,
+    repos.paymentRepo,
+    repos.payoutRepository,
+    {
+      isConfigured: () =>
+        Boolean(env.XERO_CLIENT_ID && env.XERO_CLIENT_SECRET && env.XERO_REDIRECT_URI),
+      refresh: async () => {
+        const result = await proactiveRefreshXeroTokens({
+          env,
+          connections: repos.xeroConnRepo,
+          redis: infra.redis,
+        });
+        if (!result.ok) {
+          return {
+            ok: false as const,
+            error: result.reason,
+            status: result.reason === "not_connected" ? 200 : 502,
+            result,
+          };
+        }
+        return { ok: true as const, result };
+      },
+    },
   );
 
   const paymentMaintenanceCronService = new PaymentMaintenanceCronService(

@@ -1,3 +1,13 @@
+import {
+  AmlBidGate,
+  BidEligibilityService,
+  BuyerAgentBidGate,
+  KycBidGate,
+  NoOpAmlBidGate,
+  NoOpKycBidGate,
+  OperatorPlacementPolicy,
+  SaleRegistrationBidGate,
+} from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import {
   DrizzleBidLotRulesReader,
@@ -7,12 +17,6 @@ import {
   DrizzleSaleRegistrationBidReader,
 } from "@auction/persistence/repositories";
 import type { IAmlHoldStore } from "../services/aml/ports.js";
-import { BidEligibilityService } from "../services/bid-eligibility.service.js";
-import { AmlBidGate, NoOpAmlBidGate } from "../services/bid/aml-bid.gate.js";
-import { BuyerAgentBidGate } from "../services/bid/buyer-agent-bid.gate.js";
-import { KycBidGate, NoOpKycBidGate } from "../services/bid/kyc-bid.gate.js";
-import { OperatorPlacementPolicy } from "../services/bid/operator-placement-policy.js";
-import { SaleRegistrationBidGate } from "../services/bid/sale-registration-bid.gate.js";
 import type { IBidEligibility } from "../services/interfaces/bid-eligibility.js";
 import type { IKycService } from "../services/interfaces/kyc-service.js";
 

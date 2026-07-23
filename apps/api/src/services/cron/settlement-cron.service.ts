@@ -38,6 +38,9 @@ export class SettlementCronService {
   }
 
   async syncXeroPayoutBill(payoutId: string) {
+    if (this.env.XERO_API_WRITES_DISABLED) {
+      return { ok: false as const, error: "xero_api_writes_disabled" };
+    }
     if (!this.xeroPayoutBillWriter) {
       return { ok: false as const, error: "xero_payout_bill_disabled" };
     }
@@ -46,6 +49,9 @@ export class SettlementCronService {
   }
 
   async ensureLotInvoice(lotId: string) {
+    if (this.env.XERO_API_WRITES_DISABLED) {
+      return { created: false, reason: "xero_api_writes_disabled", lotId };
+    }
     const data = await this.lotInvoiceInitiationService.ensureForLot(lotId);
     return data;
   }

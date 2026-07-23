@@ -1,3 +1,4 @@
+import { evaluateKycThresholdRequirement } from "@auction/bidding-runtime";
 import type { IKycRepository } from "@auction/persistence/interfaces";
 import { KycRequiredError, type KycStatusSummary } from "../interfaces/kyc-service.js";
 import { buildKycUserFeedback } from "./kyc-user-feedback.js";
@@ -17,10 +18,12 @@ export class KycGateService implements IKycGateService {
     const status: KycStatusSummary["status"] = userState?.kycStatus ?? "unverified";
     const verifiedAt = status === "approved" ? (userState?.kycVerifiedAt ?? null) : null;
     const latestSessionStatus = latest?.verification.status ?? null;
-    const effectiveUserStatus: KycStatusSummary["status"] =
-      status === "pending" && latestSessionStatus === "created" ? "unverified" : status;
-    const requiresKyc =
-      exposure.total >= this.thresholdAmount && effectiveUserStatus !== "approved";
+    const { effectiveUserStatus, requiresKyc } = evaluateKycThresholdRequirement({
+      userKycStatus: status,
+      latestSessionStatus,
+      exposureTotal: exposure.total,
+      thresholdAmount: this.thresholdAmount,
+    });
     const feedback = buildKycUserFeedback({
       userStatus: effectiveUserStatus,
       latestSessionStatus,

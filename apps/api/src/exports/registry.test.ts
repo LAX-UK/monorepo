@@ -1,6 +1,6 @@
 import { AuthzError } from "@auction/exports/providers";
+import { resolveIncludePii } from "@auction/exports/providers";
 import { describe, expect, it, vi } from "vitest";
-import { resolveIncludePii } from "./auth.js";
 import { type IExportProviderDeps, createExportProviders } from "./registry.js";
 
 function baseDeps(overrides: Partial<IExportProviderDeps> = {}): IExportProviderDeps {
@@ -35,13 +35,6 @@ function baseDeps(overrides: Partial<IExportProviderDeps> = {}): IExportProvider
     legalEntityRepo: {
       findActiveMembership: vi.fn().mockResolvedValue(null),
     } as unknown as IExportProviderDeps["legalEntityRepo"],
-    analytics: {
-      getDashboard: vi.fn().mockResolvedValue({
-        revenueSeries: [{ date: "2026-01-01", total: "100" }],
-        lotCompletedSeries: [{ date: "2026-01-01", count: 2 }],
-        registrationSeries: [{ date: "2026-01-01", count: 3 }],
-      }),
-    } as unknown as IExportProviderDeps["analytics"],
     ...overrides,
   };
 }
@@ -146,34 +139,6 @@ describe("createExportProviders", () => {
         {},
       ),
     ).toThrow(AuthzError);
-  });
-
-  it("requires platform admin for analytics export", () => {
-    const deps = baseDeps();
-    const providers = createExportProviders(deps);
-    const analytics = providers.get("analytics");
-    expect(() =>
-      analytics?.authorize(
-        { userId: "u1", userRole: "staff", userStaffRole: "finance_ops" },
-        { days: 30, series: "revenue" },
-      ),
-    ).toThrow(AuthzError);
-  });
-
-  it("maps analytics revenue series to CSV rows", async () => {
-    const deps = baseDeps();
-    const providers = createExportProviders(deps);
-    const analytics = providers.get("analytics");
-    expect(analytics).toBeDefined();
-    if (!analytics) return;
-    const rows: Array<Record<string, string>> = [];
-    for await (const row of analytics.streamRows(
-      { userId: "u1", userRole: "staff", userStaffRole: "super_admin" },
-      { days: 30, series: "revenue" },
-    )) {
-      rows.push(row as Record<string, string>);
-    }
-    expect(rows).toEqual([{ date: "2026-01-01", revenue: "100" }]);
   });
 
   it("includes full payout columns in export rows", async () => {
