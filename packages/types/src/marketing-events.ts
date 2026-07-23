@@ -1,3 +1,5 @@
+import type { MarketingAttributionSnapshot } from "./marketing-attribution.js";
+
 /** Marketing / conversion events shared between web dataLayer and API CAPI publishers. */
 
 export const MARKETING_EVENT_NAMES = [
@@ -40,6 +42,8 @@ export type MarketingEventBase = {
   eventSourceUrl?: string;
   /** Client IP / UA for Event Match Quality (website events only). */
   clientContext?: MarketingClientContext;
+  /** Immutable campaign snapshot at event time (consent-based events only). */
+  attribution?: MarketingAttributionSnapshot;
 };
 
 export type BidPlacedCustomData = {

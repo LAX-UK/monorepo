@@ -46,3 +46,14 @@ export function getMarketingEventsConfig(
 export function isMarketingEventsEnabled(env: MarketingEventsEnv): boolean {
   return getMarketingEventsConfig(env) !== undefined;
 }
+
+export type MarketingAttributionEnv = MarketingEventsEnv & {
+  MARKETING_ATTRIBUTION_ENABLED?: string | undefined;
+};
+
+/** UTM snapshot capture + server enrichment (requires marketing events + explicit flag). */
+export function isMarketingAttributionEnabled(env: MarketingAttributionEnv): boolean {
+  if (!isMarketingEventsEnabled(env)) return false;
+  const raw = env.MARKETING_ATTRIBUTION_ENABLED?.trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
+}

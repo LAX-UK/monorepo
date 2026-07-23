@@ -25,6 +25,7 @@ export * from "./domain-event-catalog/index.js";
 export * from "./onboarding-steps.js";
 export * from "./document.js";
 export * from "./marketing-events.js";
+export * from "./marketing-attribution.js";
 export * from "./gallery.js";
 export * from "./catalog-url.js";
 export * from "./slugify-record.js";

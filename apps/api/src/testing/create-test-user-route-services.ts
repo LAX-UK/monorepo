@@ -12,6 +12,8 @@ export function createTestUserRouteServicesInput(
     env: { WEB_ORIGIN: "https://test.lax.bid", DISABLE_NEW_USER_REGISTRATION: false },
     registrationService: { register: vi.fn() } as never,
     marketingEventService: { emit: vi.fn(), enqueue: vi.fn() } as never,
+    attributionStore: { get: vi.fn(), put: vi.fn(), delete: vi.fn() } as never,
+    marketingAttributionEnabled: false,
     userService: { listPublicArtists: vi.fn(), getById: vi.fn() } as never,
     mediaUrlResolver: { resolve: vi.fn(async (x: string | null) => x) } as never,
     conditionReportService: { listForBuyer: vi.fn() } as never,

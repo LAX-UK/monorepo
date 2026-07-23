@@ -16,6 +16,8 @@ describe("UserWatchlistHttpApplicationService", () => {
       userDashboardReadService: {} as never,
       lotService: { getById: vi.fn().mockResolvedValue(null) } as never,
       marketingEventService: { emit: vi.fn() } as never,
+      attributionStore: { get: vi.fn(), put: vi.fn(), delete: vi.fn() } as never,
+      marketingAttributionEnabled: false,
       artistWatchlistService: {} as never,
       savedSearchService: {} as never,
     });

@@ -1,10 +1,9 @@
+import type { IAttributionStore } from "@auction/marketing-events";
 import type { Redis } from "ioredis";
 import { LotError, PaymentProviderError } from "../../lib/errors.js";
 import type { AuthzError } from "../../lib/errors.js";
-import {
-  type WebsiteEventContext,
-  buildWebsiteUserEvent,
-} from "../../lib/marketing-event-factory.js";
+import { buildEnrichedWebsiteUserEvent } from "../../lib/marketing-attribution-context.js";
+import type { WebsiteEventContext } from "../../lib/marketing-event-factory.js";
 import { checkSofDocumentAttachRateLimit } from "../../lib/sof-document-attach-rate-limit.js";
 import type { IBuyerComplianceHttpApplicationService } from "../interfaces/compliance-routes/compliance-buyer-http.js";
 import type {
@@ -72,6 +71,8 @@ export class BuyerPaymentHttpApplicationService implements IBuyerPaymentHttpAppl
     private readonly buyerComplianceHttp: IBuyerComplianceHttpApplicationService,
     private readonly lotFulfilmentBuyer: ILotFulfilmentBuyerService,
     private readonly marketingEventService: IMarketingEventService,
+    private readonly attributionStore: IAttributionStore,
+    private readonly marketingAttributionEnabled: boolean,
   ) {}
 
   async getBuyerComplianceGate(
@@ -152,12 +153,19 @@ export class BuyerPaymentHttpApplicationService implements IBuyerPaymentHttpAppl
     const marketingEventId = crypto.randomUUID();
     try {
       await this.marketingEventService.emit(
-        buildWebsiteUserEvent(input.websiteContext, {
-          name: "InitiateCheckout",
-          eventId: marketingEventId,
-          userId: input.buyerUserId,
-          customData: { lotId: input.lotId, paymentId: data.paymentId },
-        }),
+        await buildEnrichedWebsiteUserEvent(
+          input.websiteContext,
+          {
+            name: "InitiateCheckout",
+            eventId: marketingEventId,
+            userId: input.buyerUserId,
+            customData: { lotId: input.lotId, paymentId: data.paymentId },
+          },
+          {
+            attributionEnabled: this.marketingAttributionEnabled,
+            attributionStore: this.attributionStore,
+          },
+        ),
       );
     } catch {
       // Committed pending payment must not be rolled back when marketing delivery fails.

@@ -1,5 +1,6 @@
 import type { AccountingReplayCronService } from "@auction/finance-cron-app";
 import type { PaymentMaintenanceCronService } from "@auction/finance-cron-app";
+import type { IAttributionStore } from "@auction/marketing-events";
 import type {
   ILegalEntityRepository,
   IPayoutRepository,
@@ -46,6 +47,8 @@ export type CreateFinanceRouteServicesInput = {
   buyerComplianceHttp: IBuyerComplianceHttpApplicationService;
   lotFulfilmentBuyerService: ILotFulfilmentBuyerService;
   marketingEventService: IMarketingEventService;
+  attributionStore: IAttributionStore;
+  marketingAttributionEnabled: boolean;
   sourceOfFundsDocumentCollectionService: SourceOfFundsDocumentCollectionService;
   settlementCronService: SettlementCronService;
   paymentMaintenanceCronService: PaymentMaintenanceCronService;
@@ -79,6 +82,8 @@ export function createFinanceRouteServices(
       input.buyerComplianceHttp,
       input.lotFulfilmentBuyerService,
       input.marketingEventService,
+      input.attributionStore,
+      input.marketingAttributionEnabled,
     ),
     entityStaffPayment: new EntityStaffPaymentApplicationService(input.paymentAdminService),
     internalCron: new InternalCronApplicationService(

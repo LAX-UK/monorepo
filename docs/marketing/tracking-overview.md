@@ -168,6 +168,8 @@ Once they sign in, we capture these via an authenticated POST from the browser t
 
 If the visitor never gives marketing consent, we never read these cookies and never store them.
 
+For **campaign UTMs** (first/last touch) on logged-in server-side conversions, see [utm-attribution.md](./utm-attribution.md). That path is feature-flagged and marketing-consent gated; GA4 still owns primary campaign reporting via GTM.
+
 ---
 
 ## 6. Google Consent Mode v2

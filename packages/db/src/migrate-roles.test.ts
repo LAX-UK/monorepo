@@ -342,6 +342,10 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_FULL_TABLES]).toContain("marketing_click_ids");
   });
 
+  it("WORKER_FULL_TABLES includes marketing_attribution (retention purge)", () => {
+    expect([...WORKER_FULL_TABLES]).toContain("marketing_attribution");
+  });
+
   it("WORKER_FULL_TABLES includes media_asset (process-image + image-cleanup)", () => {
     expect([...WORKER_FULL_TABLES]).toContain("media_asset");
   });

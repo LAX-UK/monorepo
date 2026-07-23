@@ -1,7 +1,7 @@
 # DPIA note: Meta Conversions API (server-side)
 
 **Scope**: LAX auction platform production (`lax.bid`).  
-**Last updated**: 2026-06-08.
+**Last updated**: 2026-07-23.
 
 ## Processing activities
 
@@ -36,12 +36,14 @@ For each processing activity relying on Art. 6(1)(f), we apply the three cumulat
 - Outbox stores event payloads **without** plaintext PII.
 - Email/name resolved at publish time in the worker and hashed per Meta spec.
 - `_fbp` / `_fbc` persisted in Postgres + Redis (90-day TTL) keyed by `userId` for async conversion matching.
+- **UTM / campaign attribution (marketing consent, feature-flagged)** — First/last campaign snapshots (`utm_*`, click ids) in a first-party cookie (`_lax_attr`, 90 days) synced to `marketing_attribution` via authenticated `PUT /marketing/attribution`. Attached only to **consent-basis** website events as namespaced `attribution_first_*` / `attribution_last_*` params (not GA4 reserved `utm_*` on Measurement Protocol). **Not** attached to legitimate-interest `Purchase` / KYC until LIA explicitly approves reuse. See [utm-attribution.md](../marketing/utm-attribution.md).
 - Website events include `event_source_url` (Referer / `x-lax-page-url`) and client IP/UA only when the request originates from the browser.
 
 ## Retention
 
 - Outbox rows: terminal states (`sent` / `skipped` / `failed`) purged after 30 days; payloads may contain IP/UA/URLs until purge.
 - Postgres click IDs: purged after 90 days (daily worker job); Redis cache 90-day TTL.
+- Postgres marketing attribution snapshots: purged after 90 days (same worker job); Redis cache 90-day TTL when enabled.
 - Meta: per Meta Business Tools terms.
 
 ## International transfers
@@ -58,7 +60,7 @@ Meta (US) and Google (GTM cloud image / tooling) may process data outside the UK
 
 ## User rights
 
-- Consent withdrawal via cookie banner / footer preferences stops new consent-based events.
+- Consent withdrawal via cookie banner / footer preferences stops new consent-based events and triggers `DELETE /marketing/attribution` plus removal of the `_lax_attr` cookie.
 - Existing server legitimate-interest events are documented and limited to payment/KYC facts above.
 - Data subject requests: contact privacy@lax.bid; Meta acts as independent controller for matched ads.
 

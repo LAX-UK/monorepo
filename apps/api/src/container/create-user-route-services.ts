@@ -1,4 +1,5 @@
 import type { IEmailService } from "@auction/email";
+import type { IAttributionStore } from "@auction/marketing-events";
 import type { INotificationPreferenceRepository } from "@auction/persistence/interfaces";
 import type { LotReadPort, SaleLookupPort } from "../container/container-slices.js";
 import type { Env } from "../env.js";
@@ -35,6 +36,8 @@ export type CreateUserRouteServicesInput = {
   env: Pick<Env, "WEB_ORIGIN" | "DISABLE_NEW_USER_REGISTRATION">;
   registrationService: RegistrationService;
   marketingEventService: IMarketingEventService;
+  attributionStore: IAttributionStore;
+  marketingAttributionEnabled: boolean;
   userService: UserService;
   mediaUrlResolver: IMediaUrlResolver;
   conditionReportService: IConditionReportService;
@@ -66,6 +69,8 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       env: input.env,
       registrationService: input.registrationService,
       marketingEventService: input.marketingEventService,
+      attributionStore: input.attributionStore,
+      marketingAttributionEnabled: input.marketingAttributionEnabled,
       userService: input.userService,
       mediaUrlResolver: input.mediaUrlResolver,
     }),
@@ -83,6 +88,8 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       userDashboardReadService: input.userDashboardReadService,
       lotService: input.lotService,
       marketingEventService: input.marketingEventService,
+      attributionStore: input.attributionStore,
+      marketingAttributionEnabled: input.marketingAttributionEnabled,
       artistWatchlistService: input.artistWatchlistService,
       savedSearchService: input.savedSearchService,
     }),
@@ -106,6 +113,7 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       userService: input.userService,
       emailService: input.emailService,
       accountDeletionEligibilityService: input.accountDeletionEligibilityService,
+      attributionStore: input.attributionStore,
     }),
   };
 }

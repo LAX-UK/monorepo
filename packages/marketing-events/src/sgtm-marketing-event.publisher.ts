@@ -1,4 +1,5 @@
 import type { PublishOutcome, ResolvedMarketingEvent } from "@auction/types";
+import { attributionToPublisherParams } from "@auction/validators";
 import type { IMarketingEventPublisher } from "./interfaces/marketing-event-publisher.js";
 
 function mapToGa4EventName(name: string): string {
@@ -48,6 +49,21 @@ export class SgtmMarketingEventPublisher implements IMarketingEventPublisher {
     }
     if (event.userData.client_user_agent) {
       params["ep.user_agent"] = event.userData.client_user_agent;
+    }
+
+    if (event.attribution?.firstTouch) {
+      for (const [k, v] of Object.entries(
+        attributionToPublisherParams("first", event.attribution.firstTouch),
+      )) {
+        params[`ep.${k}`] = v;
+      }
+    }
+    if (event.attribution?.lastTouch) {
+      for (const [k, v] of Object.entries(
+        attributionToPublisherParams("last", event.attribution.lastTouch),
+      )) {
+        params[`ep.${k}`] = v;
+      }
     }
 
     const body = new URLSearchParams();

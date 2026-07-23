@@ -309,6 +309,8 @@ const envSchema = z
     META_CAPI_TEST_EVENT_CODE: z.preprocess(trimEmptyToUndefined, z.string().optional()),
     /** GA4 measurement ID for sGTM Measurement Protocol publisher. */
     GA4_MEASUREMENT_ID: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    /** When true (with full marketing events config), persist UTM snapshots and enrich CAPI events. */
+    MARKETING_ATTRIBUTION_ENABLED: z.preprocess(trimEmptyToUndefined, z.string().optional()),
     /** Meta Graph API version for CAPI (default v21.0). */
     META_GRAPH_API_VERSION: z.preprocess(trimEmptyToUndefined, z.string().optional()),
   })
