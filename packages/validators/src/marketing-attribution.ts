@@ -274,7 +274,10 @@ export function attributionToPublisherParams(
   for (const [field, suffix] of map) {
     const v = touch[field];
     if (typeof v !== "string" || v.length === 0) continue;
-    if ((field === "gclid" || field === "fbclid" || field === "msclkid") && !allowedClickIds.has(field)) {
+    if (
+      (field === "gclid" || field === "fbclid" || field === "msclkid") &&
+      !allowedClickIds.has(field)
+    ) {
       continue;
     }
     out[`${p}_${suffix}`] = v.slice(0, 256);
