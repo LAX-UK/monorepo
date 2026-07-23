@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createDb } from "@auction/db";
+import { createDb } from "./client.js";
 import {
   absenteeBid,
   bid,
@@ -11,7 +11,7 @@ import {
   payment,
   payout,
   payoutLine,
-} from "@auction/db/schema";
+} from "./schema/index.js";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
