@@ -15,11 +15,37 @@ describe("UserSecurityHttpApplicationService", () => {
       } as never,
       emailService: { enqueue } as never,
       accountDeletionEligibilityService: {} as never,
+      attributionStore: {} as never,
     });
 
     const response = await svc.notifyTwoFactorEnabled({ userId: "u1" });
 
     expect(response.status).toBe(200);
     expect(enqueue).toHaveBeenCalled();
+  });
+
+  it("deletes attribution before recording an account deletion request", async () => {
+    const deleteAttribution = vi.fn().mockResolvedValue(undefined);
+    const requestAccountDeletion = vi.fn().mockResolvedValue(undefined);
+    const svc = new UserSecurityHttpApplicationService({
+      sessionRevocation: {} as never,
+      authAuditPublisher: {} as never,
+      userSecurityReadService: {} as never,
+      userService: { requestAccountDeletion } as never,
+      emailService: {} as never,
+      accountDeletionEligibilityService: {
+        check: vi.fn().mockResolvedValue({ ok: true }),
+      } as never,
+      attributionStore: { delete: deleteAttribution } as never,
+    });
+
+    const response = await svc.requestAccountDeletion({ userId: "u1" });
+
+    expect(response.status).toBe(200);
+    expect(deleteAttribution).toHaveBeenCalledWith("u1");
+    expect(requestAccountDeletion).toHaveBeenCalledWith("u1");
+    expect(deleteAttribution.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER).toBeLessThan(
+      requestAccountDeletion.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+    );
   });
 });

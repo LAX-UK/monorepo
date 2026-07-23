@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./marketing-attribution": {
+      "types": "./dist/marketing-attribution.d.ts",
+      "default": "./dist/marketing-attribution.js"
     }
   },
   "scripts": {

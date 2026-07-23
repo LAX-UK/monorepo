@@ -1,4 +1,5 @@
 import type { PublishOutcome, ResolvedMarketingEvent } from "@auction/types";
+import { attributionToPublisherParams } from "@auction/validators";
 import type { IMarketingEventPublisher } from "./interfaces/marketing-event-publisher.js";
 import { metaEventNameFor } from "./meta-event-name-map.js";
 
@@ -107,6 +108,19 @@ export class MetaCapiMarketingEventPublisher implements IMarketingEventPublisher
       if (cd.lotId) customData.content_ids = [cd.lotId];
     } else if ("lotId" in event.customData) {
       customData.content_ids = [(event.customData as { lotId: string }).lotId];
+    }
+
+    if (event.attribution?.firstTouch) {
+      Object.assign(
+        customData,
+        attributionToPublisherParams("first", event.attribution.firstTouch, "meta"),
+      );
+    }
+    if (event.attribution?.lastTouch) {
+      Object.assign(
+        customData,
+        attributionToPublisherParams("last", event.attribution.lastTouch, "meta"),
+      );
     }
 
     const userData: Record<string, unknown> = {};

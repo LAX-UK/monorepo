@@ -27,6 +27,7 @@ export * from "./invitation.js";
 export * from "./forgot-password.js";
 export * from "./reset-password.js";
 export * from "./newsletter.js";
+export * from "./marketing-attribution.js";
 export * from "./user.js";
 export * from "./watchlist.js";
 export * from "./artist-watchlist.js";

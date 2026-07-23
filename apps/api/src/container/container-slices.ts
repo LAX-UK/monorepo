@@ -215,6 +215,8 @@ export type ContainerComplianceMediaSlice = Pick<
   | "marketingEventService"
   | "marketingEventPublisher"
   | "clickIdStore"
+  | "attributionStore"
+  | "marketingAttributionEnabled"
   | "kycService"
   | "kycResubmissionNotifier"
   | "amlService"
@@ -454,7 +456,7 @@ export type ContainerQrRoutesSlice = Pick<Container, "qrCodeService">;
 /** Authenticated marketing click-id capture. */
 export type ContainerMarketingRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "env" | "clickIdStore"
+  "userSuspensionChecker" | "env" | "clickIdStore" | "attributionStore"
 >;
 
 /** Super-admin BullMQ queue inspector/mutator. */

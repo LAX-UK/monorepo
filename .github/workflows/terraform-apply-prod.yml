@@ -87,6 +87,8 @@ jobs:
       TF_VAR_csp_enforce: ${{ secrets.CSP_ENFORCE || '0' }}
       TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
       TF_VAR_next_public_gtm_id: ${{ vars.NEXT_PUBLIC_GTM_ID }}
+      TF_VAR_marketing_attribution_enabled: ${{ vars.MARKETING_ATTRIBUTION_ENABLED || 'true' }}
+      TF_VAR_next_public_marketing_attribution_enabled: ${{ vars.NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED || 'true' }}
       TF_VAR_meta_pixel_id: ${{ secrets.META_PIXEL_ID }}
       TF_VAR_meta_capi_access_token: ${{ secrets.META_CAPI_ACCESS_TOKEN }}
       TF_VAR_meta_capi_test_event_code: ${{ secrets.META_CAPI_TEST_EVENT_CODE }}

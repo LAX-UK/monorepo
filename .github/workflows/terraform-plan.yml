@@ -49,6 +49,8 @@ jobs:
       TF_VAR_slack_channel_id: ${{ secrets.SENTRY_SLACK_CHANNEL_ID }}
       TF_VAR_pagerduty_integration_key: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
       TF_VAR_next_public_gtm_id: ${{ vars.NEXT_PUBLIC_GTM_ID }}
+      TF_VAR_marketing_attribution_enabled: ${{ matrix.env == 'prod' && (vars.MARKETING_ATTRIBUTION_ENABLED || 'true') || (vars.MARKETING_ATTRIBUTION_ENABLED || 'false') }}
+      TF_VAR_next_public_marketing_attribution_enabled: ${{ matrix.env == 'prod' && (vars.NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED || 'true') || (vars.NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED || 'false') }}
       TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
       # --- Prebuilt-image deploys (DOCR). Match the apply workflows so PR plans are accurate. ---
       TF_VAR_app_deploy_source: ${{ (matrix.env == 'prod' && (vars.APP_DEPLOY_SOURCE_PROD || 'github')) || (vars.APP_DEPLOY_SOURCE_TEST || 'github') }}

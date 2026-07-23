@@ -26,6 +26,12 @@ describe("BuyerPaymentHttpApplicationService", () => {
     emit: vi.fn(),
   };
 
+  const attributionStore = {
+    get: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  };
+
   function service() {
     return new BuyerPaymentHttpApplicationService(
       redis,
@@ -34,6 +40,8 @@ describe("BuyerPaymentHttpApplicationService", () => {
       buyerComplianceHttp,
       lotFulfilmentBuyer,
       marketingEventService as never,
+      attributionStore as never,
+      false,
     );
   }
 

@@ -117,6 +117,7 @@ export const WORKER_FULL_TABLES = [
   /** process-image job upserts; image-cleanup deletes rows. */
   "media_asset",
   "marketing_click_ids",
+  "marketing_attribution",
 ] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;

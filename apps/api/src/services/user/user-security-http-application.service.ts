@@ -1,4 +1,5 @@
 import type { IEmailService } from "@auction/email";
+import type { IAttributionStore } from "@auction/marketing-events";
 import type { AccountDeletionEligibilityService } from "../account-deletion-eligibility.service.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
@@ -14,6 +15,7 @@ export type UserSecurityHttpDeps = {
   userService: UserService;
   emailService: Pick<IEmailService, "enqueue">;
   accountDeletionEligibilityService: AccountDeletionEligibilityService;
+  attributionStore: IAttributionStore;
 };
 
 export class UserSecurityHttpApplicationService implements IUserSecurityHttpApplicationService {
@@ -181,6 +183,7 @@ export class UserSecurityHttpApplicationService implements IUserSecurityHttpAppl
     if (!eligibility.ok) {
       return { status: 409, body: { error: eligibility.error, code: eligibility.code } };
     }
+    await this.deps.attributionStore.delete(input.userId);
     await this.deps.userService.requestAccountDeletion(input.userId);
     return { status: 200, body: { ok: true } };
   }

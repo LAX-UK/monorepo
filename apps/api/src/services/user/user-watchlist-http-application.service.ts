@@ -1,8 +1,9 @@
+import type { IAttributionStore } from "@auction/marketing-events";
 import type { WatchlistQuery } from "@auction/validators";
 import type { savedSearchBodySchema } from "@auction/validators";
 import type { z } from "zod";
 import type { LotReadPort } from "../../container/container-slices.js";
-import { buildWebsiteUserEvent } from "../../lib/marketing-event-factory.js";
+import { buildEnrichedWebsiteUserEvent } from "../../lib/marketing-attribution-context.js";
 import type { WebsiteEventContext } from "../../lib/marketing-event-factory.js";
 import type { ArtistWatchlistService } from "../artist-watchlist.service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
@@ -19,6 +20,8 @@ export type UserWatchlistHttpDeps = {
   userDashboardReadService: UserDashboardReadService;
   lotService: LotReadPort;
   marketingEventService: IMarketingEventService;
+  attributionStore: IAttributionStore;
+  marketingAttributionEnabled: boolean;
   artistWatchlistService: ArtistWatchlistService;
   savedSearchService: SavedSearchService;
 };
@@ -48,12 +51,19 @@ export class UserWatchlistHttpApplicationService implements IUserWatchlistHttpAp
     const lot = await this.deps.lotService.getById(input.body.lotId);
     if (!lot) return { status: 404, body: { error: "Lot not found" } };
     const eventId = crypto.randomUUID();
-    const marketingEvent = buildWebsiteUserEvent(input.marketingContext, {
-      name: "AddToWishlist",
-      eventId,
-      userId: input.userId,
-      customData: { lotId: input.body.lotId },
-    });
+    const marketingEvent = await buildEnrichedWebsiteUserEvent(
+      input.marketingContext,
+      {
+        name: "AddToWishlist",
+        eventId,
+        userId: input.userId,
+        customData: { lotId: input.body.lotId },
+      },
+      {
+        attributionEnabled: this.deps.marketingAttributionEnabled,
+        attributionStore: this.deps.attributionStore,
+      },
+    );
     const row = await this.deps.watchlistService.addWithMarketingEvent(
       input.userId,
       input.body.lotId,
@@ -69,12 +79,19 @@ export class UserWatchlistHttpApplicationService implements IUserWatchlistHttpAp
     marketingContext: WebsiteEventContext;
   }): Promise<UserHttpJson> {
     const eventId = crypto.randomUUID();
-    const marketingEvent = buildWebsiteUserEvent(input.marketingContext, {
-      name: "RemoveFromWishlist",
-      eventId,
-      userId: input.userId,
-      customData: { lotId: input.lotId },
-    });
+    const marketingEvent = await buildEnrichedWebsiteUserEvent(
+      input.marketingContext,
+      {
+        name: "RemoveFromWishlist",
+        eventId,
+        userId: input.userId,
+        customData: { lotId: input.lotId },
+      },
+      {
+        attributionEnabled: this.deps.marketingAttributionEnabled,
+        attributionStore: this.deps.attributionStore,
+      },
+    );
     await this.deps.watchlistService.removeWithMarketingEvent(
       input.userId,
       input.lotId,

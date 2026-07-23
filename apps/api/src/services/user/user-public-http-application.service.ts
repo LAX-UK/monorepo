@@ -1,5 +1,6 @@
+import type { IAttributionStore } from "@auction/marketing-events";
 import type { Env } from "../../env.js";
-import { buildWebsiteUserEvent } from "../../lib/marketing-event-factory.js";
+import { buildEnrichedWebsiteUserEvent } from "../../lib/marketing-attribution-context.js";
 import type { WebsiteEventContext } from "../../lib/marketing-event-factory.js";
 import { isOrgModuleEnabled, orgModuleDisabledResponse } from "../../lib/org-module-enabled.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
@@ -13,6 +14,8 @@ export type UserPublicHttpDeps = {
   env: Pick<Env, "WEB_ORIGIN" | "DISABLE_NEW_USER_REGISTRATION">;
   registrationService: RegistrationService;
   marketingEventService: IMarketingEventService;
+  attributionStore: IAttributionStore;
+  marketingAttributionEnabled: boolean;
   userService: UserService;
   mediaUrlResolver: IMediaUrlResolver;
 };
@@ -73,12 +76,19 @@ export class UserPublicHttpApplicationService implements IUserPublicHttpApplicat
     }
     const marketingEventId = crypto.randomUUID();
     await this.deps.marketingEventService.emit(
-      buildWebsiteUserEvent(input.marketingContext, {
-        name: "Lead",
-        eventId: marketingEventId,
-        userId: result.userId,
-        customData: { method: "email" },
-      }),
+      await buildEnrichedWebsiteUserEvent(
+        input.marketingContext,
+        {
+          name: "Lead",
+          eventId: marketingEventId,
+          userId: result.userId,
+          customData: { method: "email" },
+        },
+        {
+          attributionEnabled: this.deps.marketingAttributionEnabled,
+          attributionStore: this.deps.attributionStore,
+        },
+      ),
     );
     return { status: 201, body: { data: { userId: result.userId, marketingEventId } } };
   }

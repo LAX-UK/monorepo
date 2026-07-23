@@ -1,5 +1,9 @@
 import type { Database } from "@auction/db";
-import type { IClickIdStore, IMarketingEventPublisher } from "@auction/marketing-events";
+import type {
+  IAttributionStore,
+  IClickIdStore,
+  IMarketingEventPublisher,
+} from "@auction/marketing-events";
 import type { IWatchlistScreeningReader } from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
 import type { AdminSourceOfFundsQueryService } from "../services/admin/admin-source-of-funds-query.service.js";
@@ -29,6 +33,8 @@ export type ContainerComplianceMedia = {
   marketingEventService: IMarketingEventService;
   marketingEventPublisher: IMarketingEventPublisher;
   clickIdStore: IClickIdStore;
+  attributionStore: IAttributionStore;
+  marketingAttributionEnabled: boolean;
   kycService: IKycService;
   kycResubmissionNotifier: KycResubmissionNotifier;
   amlService: AmlService;
