@@ -26,6 +26,7 @@ describe("SgtmMarketingEventPublisher attribution", () => {
           landingPath: "/last",
           utmCampaign: "spring",
           gclid: "click-1",
+          fbclid: "meta-only",
         },
       },
     };
@@ -41,6 +42,7 @@ describe("SgtmMarketingEventPublisher attribution", () => {
     expect(body.get("ep.attribution_first_source")).toBe("newsletter");
     expect(body.get("ep.attribution_last_campaign")).toBe("spring");
     expect(body.get("ep.attribution_last_gclid")).toBe("click-1");
+    expect(body.has("ep.attribution_last_fbclid")).toBe(false);
     expect(body.has("utm_campaign")).toBe(false);
   });
 });

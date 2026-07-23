@@ -1,5 +1,6 @@
 import type { MarketingAttributionSnapshot, MarketingAttributionTouch } from "@auction/types";
 import {
+  encodeMarketingAttributionHeaderJson,
   parseAttributionTouchFromHref,
   parseMarketingAttributionSnapshot,
 } from "@auction/validators";
@@ -74,6 +75,5 @@ export function serializeAttributionHeader(
 ): string | null {
   if (!snapshot) return null;
   const json = JSON.stringify(snapshot);
-  if (new TextEncoder().encode(json).byteLength > 4096) return null;
-  return json;
+  return encodeMarketingAttributionHeaderJson(json);
 }

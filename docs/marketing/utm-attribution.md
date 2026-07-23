@@ -29,6 +29,8 @@ Requires full marketing events config (`SGTM_ENDPOINT_URL`, `GA4_MEASUREMENT_ID`
 
 Map dataLayer fields `attribution_last_*` on `page_view` in the web container if you want them in GA4 reports. Server-side params arrive as `ep.attribution_last_*` via sGTM.
 
+Google **Consent Mode** `url_passthrough` / `ads_data_redaction` (see [tracking-overview.md](./tracking-overview.md)) is separate from this feature: it does not set `_lax_attr` or server snapshots and does not persist campaign data on the device when marketing consent is denied.
+
 ## Campaign taxonomy
 
 Use consistent, lower-case or fixed-case values for `utm_source`, `utm_medium`, and `utm_campaign` on every link. Prefer `utm_id` when campaign IDs are stable.

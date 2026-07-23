@@ -1,5 +1,9 @@
 import type { MarketingAttributionSnapshot } from "@auction/types";
-import { parseMarketingAttributionSnapshot } from "@auction/validators";
+import {
+  decodeMarketingAttributionHeaderRaw,
+  encodeMarketingAttributionHeaderJson,
+  parseMarketingAttributionSnapshot,
+} from "@auction/validators";
 
 const MAX_HEADER_BYTES = 4096;
 
@@ -9,8 +13,10 @@ export function parseAttributionHeader(
   const trimmed = raw?.trim();
   if (!trimmed) return null;
   if (Buffer.byteLength(trimmed, "utf8") > MAX_HEADER_BYTES) return null;
+  const json = decodeMarketingAttributionHeaderRaw(trimmed);
+  if (!json) return null;
   try {
-    return parseMarketingAttributionSnapshot(JSON.parse(trimmed));
+    return parseMarketingAttributionSnapshot(JSON.parse(json));
   } catch {
     return null;
   }
@@ -18,6 +24,5 @@ export function parseAttributionHeader(
 
 export function serializeAttributionHeader(snapshot: MarketingAttributionSnapshot): string | null {
   const json = JSON.stringify(snapshot);
-  if (Buffer.byteLength(json, "utf8") > MAX_HEADER_BYTES) return null;
-  return json;
+  return encodeMarketingAttributionHeaderJson(json);
 }

@@ -30,11 +30,12 @@ describe("marketing attribution header", () => {
       lastTouch: {
         capturedAt: "2026-01-01T00:00:00.000Z",
         landingPath: "/campaign",
-        utmCampaign: "spring",
+        utmCampaign: "spring-🚀",
       },
     };
     const serialized = serializeAttributionHeader(snapshot);
     expect(serialized).not.toBeNull();
+    expect(serialized).toMatch(/^1\./);
     expect(parseAttributionHeader(serialized ?? undefined)).toEqual(snapshot);
   });
 });

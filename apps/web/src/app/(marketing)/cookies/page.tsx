@@ -34,7 +34,7 @@ export default function CookiesPage() {
       <LegalPage
         title="Cookie policy"
         toc={[...toc]}
-        lastUpdated="8 June 2026"
+        lastUpdated="23 July 2026"
         kicker={null}
         dividerUnderDate
         embedded

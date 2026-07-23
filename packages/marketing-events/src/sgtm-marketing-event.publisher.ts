@@ -53,14 +53,14 @@ export class SgtmMarketingEventPublisher implements IMarketingEventPublisher {
 
     if (event.attribution?.firstTouch) {
       for (const [k, v] of Object.entries(
-        attributionToPublisherParams("first", event.attribution.firstTouch),
+        attributionToPublisherParams("first", event.attribution.firstTouch, "sgtm"),
       )) {
         params[`ep.${k}`] = v;
       }
     }
     if (event.attribution?.lastTouch) {
       for (const [k, v] of Object.entries(
-        attributionToPublisherParams("last", event.attribution.lastTouch),
+        attributionToPublisherParams("last", event.attribution.lastTouch, "sgtm"),
       )) {
         params[`ep.${k}`] = v;
       }
