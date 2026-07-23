@@ -1,5 +1,5 @@
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
@@ -101,10 +101,9 @@ describe("AppShell", () => {
       "href",
       "/",
     );
-    expect(screen.getAllByRole("link", { name: /browse lax\.bid/i })[0]).toHaveAttribute(
-      "href",
-      "/",
-    );
+
+    fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
+    expect(screen.getByRole("menuitem", { name: /browse lax\.bid/i })).toHaveAttribute("href", "/");
   });
 
   it("does not render public-site affordances for staff shells", () => {
@@ -125,7 +124,7 @@ describe("AppShell", () => {
         config={buildShellConfig({
           user: clientUser,
           role: "client",
-          headerRightSlot: <span>Header action</span>,
+          headerActionsSlot: <span>Header action</span>,
           topSlot: <p>Top notice</p>,
           contextBanner: <p>Context banner</p>,
         })}
@@ -216,7 +215,7 @@ describe("AppShell", () => {
     expect(screen.getByText(/Client User · Private collector/i)).toBeInTheDocument();
   });
 
-  it("does not render the mobile hamburger and keeps display settings desktop-only", () => {
+  it("does not render the mobile hamburger and uses a unified account menu", () => {
     render(
       <AppShell user={clientUser} config={buildShellConfig({ user: clientUser, role: "client" })}>
         <p>Dashboard content</p>
@@ -228,11 +227,50 @@ describe("AppShell", () => {
     ).not.toBeInTheDocument();
 
     const header = screen.getByRole("banner");
-    const displaySettings = within(header).getByRole("button", { name: /open display settings/i });
-    const themeToggle = within(header).getByRole("button", {
-      name: /switch to (light|dark) theme/i,
-    });
-    expect(displaySettings.closest(".hidden")).not.toBeNull();
-    expect(themeToggle.closest(".hidden")).not.toBeNull();
+    expect(within(header).getByRole("button", { name: /account menu/i })).toBeInTheDocument();
+    expect(
+      within(header).queryByRole("button", { name: /open display settings/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(header).queryByRole("button", { name: /switch to (light|dark) theme/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not duplicate user identity in the sidebar footer", () => {
+    render(
+      <AppShell user={clientUser} config={buildShellConfig({ user: clientUser, role: "client" })}>
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+
+    expect(screen.queryByText("client@example.com")).not.toBeInTheDocument();
+  });
+
+  it("keeps workspace switching in the sidebar", () => {
+    render(
+      <AppShell user={adminUser} config={buildShellConfig({ user: adminUser, role: "platform" })}>
+        <p>Admin content</p>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole("navigation", { name: /gallery/i })).toBeInTheDocument();
+  });
+
+  it("renders staff shell header with left search and theme toggle", () => {
+    render(
+      <AppShell user={adminUser} config={buildShellConfig({ user: adminUser, role: "platform" })}>
+        <p>Admin content</p>
+      </AppShell>,
+    );
+
+    const header = screen.getByRole("banner");
+    expect(within(header).getByRole("button", { name: /^search$/i })).toBeInTheDocument();
+    expect(within(header).queryByRole("button", { name: /open search/i })).not.toBeInTheDocument();
+    expect(
+      within(header).getByRole("button", { name: /open command palette/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(header).getByRole("button", { name: /switch to (light|dark) theme/i }),
+    ).toBeInTheDocument();
   });
 });

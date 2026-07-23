@@ -20,6 +20,7 @@ import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import { copyTextToClipboard } from "@/lib/admin/copy-text";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { formatSignupPersona } from "@/lib/admin/format-signup-persona";
+import { buildPeopleDetailHref } from "@/lib/admin/people/people-detail-href";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { Badge } from "@auction/ui";
@@ -194,11 +195,19 @@ function ClientDrawerOverview({ u }: { u: AdminUserRow }) {
   );
 }
 
-function ClientDrawerActions({ u }: { u: AdminUserRow }) {
+function ClientDrawerActions({
+  u,
+  listReturnTarget,
+}: {
+  u: AdminUserRow;
+  listReturnTarget?: string | undefined;
+}) {
   return (
     <div className="space-y-4">
       <Button variant="secondary" className="w-full font-label uppercase" asChild>
-        <Link href={`/admin/clients/${u.id}`}>Open full profile</Link>
+        <Link href={buildPeopleDetailHref(`/admin/clients/${u.id}`, listReturnTarget)}>
+          Open full profile
+        </Link>
       </Button>
       <CopyButton value={u.id} label="Copy user ID" copiedLabel="Copied user ID" />
       <CopyButton value={u.email} label="Copy email" copiedLabel="Copied email" />
@@ -212,6 +221,10 @@ type Props = {
   totalMatches: number;
   hasActiveFilters: boolean;
   externalMobileCards?: boolean;
+  selected?: AdminUserRow | null;
+  listReturnTarget?: string | undefined;
+  onOpen?: (user: AdminUserRow) => void;
+  onCloseDrawer?: () => void;
 };
 
 export function AdminClientsBoard({
@@ -219,11 +232,18 @@ export function AdminClientsBoard({
   totalMatches,
   hasActiveFilters,
   externalMobileCards = false,
+  selected = null,
+  listReturnTarget,
+  onOpen,
+  onCloseDrawer,
 }: Props) {
   const bulkOperations = useMemo(() => getUserBulkOperations(), []);
 
   const renderDrawerOverview = useCallback((u: AdminUserRow) => <ClientDrawerOverview u={u} />, []);
-  const renderDrawerActions = useCallback((u: AdminUserRow) => <ClientDrawerActions u={u} />, []);
+  const renderDrawerActions = useCallback(
+    (u: AdminUserRow) => <ClientDrawerActions u={u} listReturnTarget={listReturnTarget} />,
+    [listReturnTarget],
+  );
 
   const renderMobileCard = useCallback(
     (u: AdminUserRow, onOpen: () => void) => (
@@ -259,6 +279,13 @@ export function AdminClientsBoard({
       detailHref={(u) => `/admin/clients/${u.id}`}
       showColumnPicker
       columnVisibilityStorageKey="admin.clients.columns"
+      {...(onOpen
+        ? {
+            selected,
+            onOpen,
+            ...(onCloseDrawer ? { onCloseDrawer } : {}),
+          }
+        : {})}
     />
   );
 }

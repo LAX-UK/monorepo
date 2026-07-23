@@ -6,8 +6,7 @@ import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
 import { SaleroomHubLiveGrid } from "@/components/admin/saleroom-hub-board/saleroom-hub-live-grid";
-import { saleroomHubController } from "@/lib/admin/saleroom-hub-controller";
-import { buildSaleroomHubViewData } from "@/lib/admin/saleroom-hub-page-data";
+import { loadSaleroomHubPage } from "@/lib/admin/saleroom/load-saleroom-hub-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -18,21 +17,8 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 export default async function AdminSaleroomHubPage() {
-  let liveCount = 0;
-  let scheduledCount = 0;
-  let availableCount = 0;
-  let loadError: string | null = null;
-  let hubView: Awaited<ReturnType<typeof buildSaleroomHubViewData>> | null = null;
-
-  try {
-    const result = await saleroomHubController.fetch();
-    liveCount = result.summary.liveCount;
-    scheduledCount = result.summary.scheduledCount;
-    availableCount = result.summary.availableCount;
-    hubView = await buildSaleroomHubViewData(result.rows);
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load sales.";
-  }
+  const { summary, hubView, loadError } = await loadSaleroomHubPage();
+  const { liveCount, scheduledCount, availableCount } = summary;
 
   const empty =
     !loadError && availableCount === 0 ? (

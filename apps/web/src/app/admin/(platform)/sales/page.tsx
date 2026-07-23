@@ -1,32 +1,22 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 import { CatalogPrimaryCta } from "@/components/admin/catalog/catalog-primary-cta";
-import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
 import { CatalogSalesFilterToolbar } from "@/components/admin/catalog/catalog-sales-filter-toolbar";
-import { SaleFilterForm } from "@/components/admin/sale-filter-form";
 import { AdminSalesBoard } from "@/components/admin/sales-board";
-import { ExportButton } from "@/components/exports/export-button";
-import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
-import { salesListController } from "@/lib/admin/admin-list-controllers";
-import { buildSalesListPageModel } from "@/lib/admin/build-sales-list-page-model";
-import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
-import { buildSalesActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
+import { buildSalesListKpiTiles } from "@/lib/admin/sales/build-sales-list-kpi-tiles";
+import { loadAdminSalesListPage } from "@/lib/admin/sales/load-sales-list-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { getAdminSalesKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
-import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import { Button } from "@auction/ui";
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -49,8 +39,8 @@ export default async function AdminSalesPage({
     error?: string;
     limit?: string;
     offset?: string;
-    period?: string;
     sort?: string;
+    period?: string;
   }>;
 }) {
   const user = await requireAdminCapability(SALE_CATALOG_ACCESS, "/admin/sales");
@@ -60,79 +50,34 @@ export default async function AdminSalesPage({
     SALES_ACCESS,
   );
   const sp = await searchParams;
-  const periodDays = parseAdminKpiPeriod(sp.period);
   const error = safeDecodeAdminErrorParam(sp.error);
-  const model = buildSalesListPageModel(sp);
   const {
-    query,
-    statusFilter,
+    periodDays,
+    model,
+    salesSummary,
+    salesTrend,
+    salesHammerTrend,
+    err,
+    boardRows,
+    lensesItems,
+    activeFilterCount,
+    activeFilterChips,
+    boardPagination,
+    listPaginationTotal,
+  } = await loadAdminSalesListPage(sp);
+  const {
     lifecycleSlug,
     deliveryFilter,
     activeLensId,
     hasListFilters,
-    activeFilterCount,
     salesEmptyDescription,
-    lenses,
     columnSort,
     exportFilters,
     presetLabels: PRESET_LABELS,
-    buildPaginationHref,
   } = model;
 
-  const salesTrend = await getAdminSalesKpiTrend(periodDays).catch(() => ({
-    currentTotal: 0,
-    priorTotal: 0,
-    dailyCounts: [] as number[],
-  }));
-
-  let err: string | null = null;
-  let rows = [] as Awaited<ReturnType<typeof salesListController.fetch>>["rows"];
-  let hasNextPage = false;
-  try {
-    const result = await salesListController.fetch(query);
-    rows = result.rows;
-    hasNextPage = result.hasNextPage ?? false;
-  } catch (e) {
-    err = e instanceof Error ? e.message : "Could not load sales.";
-  }
-
-  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
-
-  const activeFilterChips = buildSalesActiveFilterChips(sp, {
-    ...(query.q ? { q: query.q } : {}),
-    ...(statusFilter ? { status: statusFilter } : {}),
-    ...(deliveryFilter ? { deliveryMode: deliveryFilter } : {}),
-    ...(lifecycleSlug ? { lifecycle: lifecycleSlug } : {}),
-    ...(model.sort ? { sort: model.sort } : {}),
-    activeLensId,
-    lensOwnedLifecycle: activeLensId !== "all" && activeLensId !== "setup" && !sp.lifecycle,
-    setupLens: model.setupLens,
-  });
-
-  const boardRows = rows.map(toAdminSaleBoardRow);
-  const liveOnPage = boardRows.filter((r) => r.status === "active").length;
-  const draftOnPage = boardRows.filter((r) => r.status === "draft").length;
-
-  const lensesItems = lenses;
-  const activeFilterCountValue = activeFilterCount;
-
-  const pagination =
-    !err && (query.offset > 0 || hasNextPage) ? (
-      <CatalogPagination
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={rows.length}
-        prevHref={
-          query.offset > 0
-            ? buildPaginationHref({ offset: Math.max(0, query.offset - query.limit) })
-            : null
-        }
-        nextHref={hasNextPage ? buildPaginationHref({ offset: query.offset + query.limit }) : null}
-      />
-    ) : null;
-
   const empty =
-    !err && rows.length === 0 ? (
+    !err && boardRows.length === 0 ? (
       <CatalogListEmptyState
         title={hasListFilters ? "No matching sales" : "No sales yet"}
         description={
@@ -154,15 +99,34 @@ export default async function AdminSalesPage({
       />
     ) : null;
 
+  const kpiStrip = (
+    <AdminTrendKpiBand
+      ariaLabel="Sales summary"
+      tiles={buildSalesListKpiTiles({
+        summary: salesSummary,
+        salesTrend,
+        salesHammerTrend,
+        periodDays,
+      })}
+      toolbarEnd={
+        <Suspense fallback={null}>
+          <CatalogKpiPeriodToggle current={periodDays} />
+        </Suspense>
+      }
+    />
+  );
+
   return (
     <CatalogListShell
       title="Sales"
-      description="Umbrella sessions grouping catalogued lots. Create drafts, attach standalone lots, publish, or cancel from each sale page."
-      meta={<CatalogRelatedWork variant="sales" navCounts={navCounts} />}
+      description="Manage auction sales, organize lots, publish events, and monitor every sale throughout its lifecycle."
+      breadcrumbs={
+        <CatalogBreadcrumbs segments={[{ label: "Admin", href: "/admin" }, { label: "Sales" }]} />
+      }
       primaryAction={
         canManageSales ? (
           <CatalogPrimaryCta href="/admin/sales/new" icon={Plus}>
-            New sale
+            New Sale
           </CatalogPrimaryCta>
         ) : undefined
       }
@@ -170,76 +134,63 @@ export default async function AdminSalesPage({
         <CatalogSalesFilterToolbar
           lenses={lensesItems}
           activeLensId={activeLensId}
-          activeFilterCount={activeFilterCountValue}
           activeFilterChips={activeFilterChips}
-          sheetFilters={
-            <SaleFilterForm
-              activeLensId={activeLensId}
-              {...(lifecycleSlug ? { lifecycle: lifecycleSlug } : {})}
-              {...(deliveryFilter ? { delivery: deliveryFilter } : {})}
-              {...(model.sort ? { sort: model.sort } : {})}
-            />
-          }
         />
       }
       mobileSummary={
         <div className="space-y-3">
           <CatalogListMobileSummary
-            segments={[
-              `${boardRows.length} on page`,
-              liveOnPage > 0 ? `${liveOnPage} live` : null,
-              draftOnPage > 0 ? `${draftOnPage} draft` : null,
-              activeLensId !== "all" ? PRESET_LABELS[activeLensId] : null,
+            metrics={[
+              { id: "page", label: "On page", value: String(boardRows.length) },
+              { id: "live", label: "Live", value: String(salesSummary.activeCount) },
+              { id: "upcoming", label: "Upcoming", value: String(salesSummary.upcomingCount) },
+              { id: "draft", label: "Draft", value: String(salesSummary.draftCount) },
+              ...(activeLensId !== "all"
+                ? [
+                    {
+                      id: "lens",
+                      label: "Lens",
+                      value: PRESET_LABELS[activeLensId],
+                    },
+                  ]
+                : []),
             ]}
           />
-          <CatalogKpiPeriodToggle current={periodDays} className="lg:hidden" />
+          <Suspense fallback={null}>
+            <CatalogKpiPeriodToggle current={periodDays} className="lg:hidden" />
+          </Suspense>
         </div>
       }
-      toolbarEnd={
-        <>
-          <CatalogKpiPeriodToggle current={periodDays} className="hidden lg:flex" />
-          <Link
-            href="/sales"
-            className="min-h-11 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary underline-offset-4 hover:underline"
-          >
-            Public sales
-          </Link>
-          <ExportButton entityType="sales" filters={exportFilters} />
-        </>
-      }
-      kpiStrip={
-        boardRows.length > 0 ? (
-          <AdminTrendKpiBand
-            ariaLabel="Sales summary"
-            tiles={[
-              buildTrendKpiTile("New sales", salesTrend, periodDays, { emphasize: true }),
-              {
-                label: "On this page",
-                value: String(boardRows.length),
-                compareHint: `Live ${liveOnPage} · draft ${draftOnPage}`,
-              },
-              buildTrendKpiTile("New sales trend", salesTrend, periodDays, {
-                trendTone: "secondary",
-              }),
-            ]}
-          />
-        ) : null
-      }
+      kpiStrip={kpiStrip}
       errorAlert={
         err || error ? (
           <AdminListAlert title="Could not load sales">{err ?? error}</AdminListAlert>
         ) : null
       }
       empty={empty}
-      pagination={pagination}
     >
       {!err && boardRows.length > 0 ? (
-        <Suspense fallback={<PageSkeleton variant="table" />}>
+        <Suspense fallback={<CatalogListPageSkeleton title="Sales" kpiTiles={6} />}>
           <AdminSalesBoard
             rows={boardRows}
             canManageSales={canManageSales}
             listError={err}
             columnSort={columnSort}
+            filterControls={{
+              searchPlaceholder: "Search by sale title…",
+              sheetTitle: "Sale filters",
+              activeFilterCount,
+              searchInputId: "admin-sales-table-search",
+            }}
+            saleFilterSheet={{
+              activeLensId,
+              ...(lifecycleSlug ? { lifecycle: lifecycleSlug } : {}),
+              ...(deliveryFilter ? { delivery: deliveryFilter } : {}),
+              ...(model.sort ? { sort: model.sort } : {}),
+            }}
+            exportFilters={exportFilters}
+            pagination={boardPagination}
+            listTotalCount={listPaginationTotal ?? salesSummary.lensCounts.all}
           />
         </Suspense>
       ) : null}

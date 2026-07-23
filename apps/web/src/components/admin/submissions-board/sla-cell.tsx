@@ -14,7 +14,7 @@ export function SubmissionSlaCell({ label, tone }: Props) {
   return (
     <span
       className={cn(
-        "inline-flex rounded-md px-2 py-0.5 font-body text-xs font-medium",
+        "inline-flex shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 font-body text-xs font-medium",
         tone === "red" && "bg-error-container/30 text-error",
         tone === "amber" && "bg-warning-container/40 text-on-surface",
         tone === "default" && "text-on-surface-variant",

@@ -1,7 +1,7 @@
 "use client";
 
 import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { LotImageManager } from "@/components/admin/lot-image-manager";
+import { LotCatalogueImagesField } from "@/components/admin/lot-catalogue-images-field";
 import { LabelCaps } from "@/components/ui/typography";
 import type { FieldSpec, LotCatalogueFieldKey } from "@/lib/admin/lot-catalogue";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
@@ -37,7 +37,7 @@ export function CatalogueImagesSection({ form, fields }: Props) {
               <LabelCaps>{fields.images.label}</LabelCaps>
             </FormLabel>
             <FormControl>
-              <LotImageManager
+              <LotCatalogueImagesField
                 value={field.value.map((key, index) => ({
                   key,
                   alt: form.getValues("imageAlts")[index] ?? "",

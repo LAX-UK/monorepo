@@ -9,22 +9,9 @@ import {
 } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
-
-function badgeVariant(tone: InSaleDisplayRow["statusTone"]) {
-  switch (tone) {
-    case "success":
-      return "success" as const;
-    case "danger":
-      return "danger" as const;
-    case "info":
-      return "info" as const;
-    case "neutral":
-      return "neutral" as const;
-  }
-}
 
 function ReserveBadge({ row }: { row: InSaleDisplayRow }) {
   if (row.reserveLabel === "No reserve") {
@@ -84,9 +71,7 @@ export function InSaleMobileList({ rows }: Props) {
             }
             badges={
               <>
-                <StatusBadge variant={badgeVariant(row.statusTone)} size="sm">
-                  {row.statusLabel}
-                </StatusBadge>
+                <DotStatusPill label={row.statusLabel} tone={row.statusDotTone} />
                 <ReserveBadge row={row} />
               </>
             }
@@ -161,9 +146,7 @@ function InSaleDesktopRowCard({ row }: { row: InSaleDisplayRow }) {
             <ReserveBadge row={row} />
           </div>
           <div className="flex items-center justify-end gap-2">
-            <StatusBadge variant={badgeVariant(row.statusTone)} size="sm">
-              {row.statusLabel}
-            </StatusBadge>
+            <DotStatusPill label={row.statusLabel} tone={row.statusDotTone} />
             {row.status === "ended" ? (
               <Link
                 href="/dashboard/submissions/new"

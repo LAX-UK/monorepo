@@ -79,11 +79,14 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
 
   return (
     <CatalogFormShell
+      layout="wizard"
       breadcrumbs={
         <CatalogBreadcrumbs
           segments={[
+            { label: "Admin", href: "/admin" },
             { label: "Sales", href: "/admin/sales" },
             { label: sale.title, href: `/admin/sales/${id}` },
+            { label: "Setup" },
           ]}
         />
       }
@@ -91,7 +94,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
       description="Complete each step to publish your sale."
       wizardMobile={{
         formId: CATALOG_FORM_IDS.saleSetup,
-        submitLabel: canManageSale ? "Publish sale" : "Back to sale",
+        submitLabel: "Save & continue",
         cancelHref: `/admin/sales/${id}`,
       }}
     >

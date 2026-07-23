@@ -27,6 +27,7 @@ export type AdminSourceOfFundsRow = {
   settlementSummary: string | null;
   settlementItemCount: number;
   pendingCasesForBuyer: number;
+  submittedDocumentCount?: number;
 };
 
 export type AdminSourceOfFundsSettlementItem = {
@@ -244,6 +245,7 @@ const sofRowSchema = z
       settlementSummary: raw.settlementSummary == null ? null : str(raw.settlementSummary),
       settlementItemCount: num(raw.settlementItemCount),
       pendingCasesForBuyer: num(raw.pendingCasesForBuyer),
+      submittedDocumentCount: num(raw.submittedDocumentCount),
     };
   });
 

@@ -1,5 +1,12 @@
 import type { ArtistKind, ArtistStatus } from "@auction/types";
 
+export type GetAdminCategoryPageParams = {
+  includeArchived?: boolean;
+  q?: string;
+  limit?: number;
+  offset?: number;
+};
+
 export type GetAdminArtistListParams = {
   includeArchived?: boolean;
   archivedOnly?: boolean;

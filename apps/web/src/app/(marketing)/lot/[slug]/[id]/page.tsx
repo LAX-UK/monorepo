@@ -13,6 +13,7 @@ import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
 import { OnsiteLotUnavailable } from "@/components/sections/artwork/onsite/onsite-lot-unavailable";
 import { OnsiteParticipationHub } from "@/components/sections/artwork/onsite/onsite-participation-hub";
+import { getServerLotById } from "@/lib/catalog/catalog.server";
 import {
   isPublicCatalogLot,
   viewerCanSeeNonPublicCatalog,
@@ -26,7 +27,6 @@ import { MarketingBidBarChromeProvider } from "@/lib/context/marketing-bid-bar-c
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { getServerLotById } from "@/lib/data/http/lots.server";
 import { buildLotPageViewModel } from "@/lib/marketing/lot-page-vm";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { lotPath, salePath, slugify } from "@/lib/seo/url";

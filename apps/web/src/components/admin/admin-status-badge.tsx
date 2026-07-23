@@ -1,50 +1,25 @@
-import {
-  type AdminStatusDomain,
-  adminStatusLabel,
-  adminStatusToBadgeVariant,
-} from "@/lib/admin/status-badge-variants";
-import { StatusBadge } from "@auction/ui";
-import type { ComponentProps } from "react";
+import { StatusChip, type StatusChipProps } from "@/components/ui/status-chip";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 
-export type AdminStatusBadgeProps = {
-  domain: AdminStatusDomain;
-  status: string;
-  /** Override auto label from taxonomy */
-  label?: string;
-  size?: ComponentProps<typeof StatusBadge>["size"];
-  className?: string;
+export type AdminStatusBadgeProps = StatusChipProps & {
+  /** @deprecated Tag-Review chips use a single size; ignored. */
+  size?: "sm" | "md";
 };
+
+/** Single staff status chip — maps domain status → Tag-Review pill. */
+export function AdminStatusBadge({ size: _size, ...props }: AdminStatusBadgeProps) {
+  return <StatusChip {...props} />;
+}
 
 /** Tab/queue count chip (not a domain status). */
 export function AdminQueueCountBadge({
   count,
-  size = "sm",
   className,
 }: {
   count: number;
-  size?: ComponentProps<typeof StatusBadge>["size"];
   className?: string;
 }) {
   return (
-    <StatusBadge variant="warning" size={size} className={className}>
-      {count}
-    </StatusBadge>
-  );
-}
-
-/** Single staff status chip — maps domain status → StatusBadge variant + label. */
-export function AdminStatusBadge({
-  domain,
-  status,
-  label,
-  size = "sm",
-  className,
-}: AdminStatusBadgeProps) {
-  const variant = adminStatusToBadgeVariant(domain, status);
-  const text = label ?? adminStatusLabel(domain, status);
-  return (
-    <StatusBadge variant={variant} size={size} dot={variant === "live"} className={className}>
-      {text}
-    </StatusBadge>
+    <DotStatusPill label={String(count)} tone="warning" {...(className ? { className } : {})} />
   );
 }

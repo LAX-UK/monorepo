@@ -11,8 +11,8 @@ import {
   buildArchivePageQuery,
   countActiveArchiveFilters,
 } from "@/lib/archive/build-archive-params";
+import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/catalog/catalog.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { formatMoney } from "@/lib/format-currency";

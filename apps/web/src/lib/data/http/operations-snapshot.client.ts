@@ -1,21 +1,13 @@
-import type { AdminPaddleRosterEntry } from "@/lib/data/http/admin.server";
-import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
+import { parseAdminSaleOperationsSnapshot } from "@/lib/data/http/admin-operations-snapshot.schema";
+import type { AdminSaleOperationsSnapshot } from "@/lib/data/http/admin-operations-snapshot.types";
+import type { AdminPaddleRosterEntry } from "@/lib/data/http/admin-paddle.types";
+import { adminSaleListRowsSchema } from "@/lib/data/http/admin-sale-registrations.schema";
 import {
-  type AdminSaleOperationsSnapshot,
-  parseAdminSaleOperationsSnapshot,
-} from "@/lib/telephone/telephone-booking-types";
-
-function parsePaddleRosterEntry(raw: unknown): AdminPaddleRosterEntry | null {
-  if (typeof raw !== "object" || raw === null) return null;
-  const row = raw as Record<string, unknown>;
-  return {
-    paddleNumber: Number.parseInt(String(row.paddleNumber ?? "0"), 10),
-    userId: String(row.userId ?? ""),
-    displayName: String(row.displayName ?? ""),
-    bidLimit: row.bidLimit == null ? null : String(row.bidLimit),
-    hasActiveSelfServiceSession: Boolean(row.hasActiveSelfServiceSession),
-  };
-}
+  adminPaddleRosterItemsEnvelopeSchema,
+  adminSaleroomSessionStatusRowSchema,
+} from "@/lib/data/http/admin-saleroom.schema";
+import { readDataEnvelope } from "@/lib/data/http/envelope";
+import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
 
 export async function fetchAdminSaleOperationsSnapshot(
   saleId: string,
@@ -38,8 +30,29 @@ export async function fetchAdminSalePaddleRoster(
     { cache: "no-store" },
   );
   if (!res.ok) throw new Error(`Failed to load paddle roster (${res.status})`);
-  const body = (await res.json()) as { data?: { items?: unknown[] } };
-  return (body.data?.items ?? [])
-    .map(parsePaddleRosterEntry)
-    .filter((row): row is AdminPaddleRosterEntry => row != null);
+  const body = (await res.json()) as { data?: unknown };
+  return readDataEnvelope(body, adminPaddleRosterItemsEnvelopeSchema, "GET paddles");
+}
+
+/** Capability-aligned admin sales list for saleroom hub/switcher (not public /sales). */
+export async function fetchAdminSalesListForSaleroom(limit = 50) {
+  const qs = new URLSearchParams({ limit: String(Math.min(limit, 100)), offset: "0" });
+  const res = await browserFetch(`${browserApiBase()}/sales?${qs.toString()}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to load sales: ${res.status}`);
+  const body = (await res.json()) as { data?: unknown };
+  return readDataEnvelope(body, adminSaleListRowsSchema, "GET /sales");
+}
+
+export async function fetchAdminSaleroomSessionStatuses(saleIds: string[]) {
+  if (saleIds.length === 0) return [];
+  const res = await browserFetch(
+    `${browserApiBase()}/admin/saleroom/sessions?saleIds=${saleIds.map(encodeURIComponent).join(",")}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) throw new Error(`Failed to load saleroom sessions: ${res.status}`);
+  const body = (await res.json()) as { sessions?: unknown[] };
+  const sessions = Array.isArray(body.sessions) ? body.sessions : [];
+  return sessions.map((row) => adminSaleroomSessionStatusRowSchema.parse(row));
 }

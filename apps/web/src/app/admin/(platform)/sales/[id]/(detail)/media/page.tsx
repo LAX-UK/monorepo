@@ -1,7 +1,7 @@
 import { SaleDayPhotosTab } from "@/components/admin/sale-detail/tabs/day-photos-tab";
 import { loadAdminSaleDetail } from "@/lib/admin/load-sale-detail";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { notFound } from "next/navigation";
@@ -12,7 +12,7 @@ type Props = {
 
 export default async function AdminSaleMediaPage({ params }: Props) {
   const { id } = await params;
-  const user = await requireAdminCapability(SALES_ACCESS, `/admin/sales/${id}`);
+  const user = await requireAdminCapability(SALE_CATALOG_ACCESS, `/admin/sales/${id}`);
   const bundle = await loadAdminSaleDetail(id);
   const { sale } = bundle;
 
@@ -36,6 +36,7 @@ export default async function AdminSaleMediaPage({ params }: Props) {
   return (
     <SaleDayPhotosTab
       saleId={id}
+      saleTitle={sale.title}
       saleStatus={sale.status}
       initialDayImages={dayImages}
       previewUrlByKey={previewUrlByKey}

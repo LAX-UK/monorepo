@@ -79,6 +79,7 @@ export default async function AdminNewLotPage({ searchParams }: PageProps) {
 
   return (
     <CatalogFormShell
+      layout="wizard"
       breadcrumbs={<CatalogBreadcrumbs segments={[{ label: "Lots", href: "/admin/lots" }]} />}
       title="New lot"
       {...(description ? { description } : {})}

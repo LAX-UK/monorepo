@@ -25,7 +25,7 @@ export function AdminUserAmlPanel({ screenings }: { screenings: AdminAmlScreenin
       <div className="flex flex-wrap items-center justify-between gap-2">
         <AdminSectionLabel>AML / watchlist screening</AdminSectionLabel>
         <Link href={queueHref} className="text-xs text-link underline">
-          {latest?.reviewStatus === "pending" ? "Review in queue" : "Open review queue"}
+          {latest?.reviewStatus === "pending" ? "Review screening" : "Open AML list"}
         </Link>
       </div>
       {!latest ? (

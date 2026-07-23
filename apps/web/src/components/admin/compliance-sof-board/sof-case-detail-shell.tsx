@@ -2,7 +2,12 @@ import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-s
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { SofCaseContextRail } from "@/components/admin/compliance-sof-board/sof-case-context-rail";
 import { SofCaseDetailClient } from "@/components/admin/compliance-sof-board/sof-case-detail-client";
-import { buildSofListHref, normalizeSofListStatus } from "@/lib/admin/sof-list-query";
+import { parseAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
+import {
+  buildSofListHref,
+  normalizeSofListStatus,
+  parseSofDetailListStatus,
+} from "@/lib/admin/sof-list-query";
 import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 import Link from "next/link";
@@ -16,6 +21,7 @@ type Props = {
   currentUserId: string;
   success?: string | null;
   error?: string | null;
+  returnTo?: string | string[] | undefined;
 };
 
 export function SofCaseDetailShell({
@@ -27,14 +33,16 @@ export function SofCaseDetailShell({
   currentUserId,
   success,
   error,
+  returnTo,
 }: Props) {
-  const listStatus = normalizeSofListStatus(row.status);
+  const listStatus = parseSofDetailListStatus({ listStatus: normalizeSofListStatus(row.status) });
+  const backHref = parseAdminListReturnTarget(returnTo, buildSofListHref(listStatus));
 
   return (
     <AdminEntityDetailShell
       detailHeader
       detailHeaderSticky={false}
-      backHref={buildSofListHref(listStatus)}
+      backHref={backHref}
       backLabel="Source of Funds"
       eyebrow="Compliance review"
       title={

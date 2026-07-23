@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { adminReviewArtistResultAction } from "@/lib/actions/admin";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistStatus } from "@auction/types";
@@ -31,10 +32,14 @@ export function AdminArtistReviewPanel({ artistId, currentStatus }: Props) {
       <Surface variant="card">
         <h3 className="font-display text-lg font-semibold text-on-surface">Review</h3>
         <div>
-          <p className="text-sm text-on-surface-variant">
+          <p className="flex flex-wrap items-center gap-2 text-sm text-on-surface-variant">
             This artist has already been reviewed (status:{" "}
-            <span className="font-medium capitalize text-on-surface">{currentStatus}</span>). You
-            can update the status from the edit form.
+            {currentStatus ? (
+              <AdminStatusBadge domain="artist" status={currentStatus} />
+            ) : (
+              "unknown"
+            )}
+            ). You can update the status from the edit form.
           </p>
         </div>
       </Surface>

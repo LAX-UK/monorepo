@@ -1,33 +1,45 @@
 "use client";
 
-import { ConfirmedRemoveButton } from "@/components/admin/confirmed-remove-button";
+import { CatalogMediaCard, CatalogMediaManageActions } from "@/components/admin/catalog/media";
+import { MediaImage } from "@/components/ui/media-image";
 import { Button } from "@auction/ui/components/button";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVerticalIcon, PlayCircleIcon } from "lucide-react";
+import { PlayCircleIcon } from "lucide-react";
 import type { DayMediaItem } from "./day-media-types";
 
 export function DayMediaCard({
   item,
   index,
+  showManage,
+  published,
   disabled,
+  isLast,
+  isSelected,
   removeConfirmTitle,
   removeConfirmBody,
   onRemoveConfirmed,
-  onCaptionChange,
-  onAltChange,
+  onOpenInspector,
+  onMoveUp,
+  onMoveDown,
 }: {
   item: DayMediaItem;
   index: number;
+  showManage: boolean;
+  published: boolean;
   disabled: boolean;
+  isLast: boolean;
+  isSelected?: boolean;
   removeConfirmTitle: string;
   removeConfirmBody: string;
   onRemoveConfirmed: () => Promise<void>;
-  onCaptionChange: (v: string) => void;
-  onAltChange: (v: string) => void;
+  onOpenInspector: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
+    disabled: disabled || !showManage,
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -35,36 +47,27 @@ export function DayMediaCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const captionPreview = item.caption.trim();
+  const typeLabel = item.mediaType === "video" ? "Video" : "Photo";
+
   return (
-    <li
+    <CatalogMediaCard
       ref={setNodeRef}
       style={style}
-      className="flex gap-3 rounded-lg border border-border-hairline bg-surface-container-lowest p-3"
-    >
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        {...attributes}
-        {...listeners}
-        className="shrink-0 cursor-grab text-on-surface-variant/50 hover:text-on-surface-variant active:cursor-grabbing"
-        aria-label="Drag to reorder"
-        disabled={disabled}
-      >
-        <GripVerticalIcon className="size-4" aria-hidden />
-      </Button>
-
-      <div className="relative size-16 shrink-0 overflow-hidden rounded-md bg-surface-container-low">
-        {item.uploading ? (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="font-label text-[10px] text-on-surface-variant">Uploading…</span>
+      className={isDragging ? "border-primary ring-2 ring-primary/20" : undefined}
+      {...(isSelected ? { isSelected: true } : {})}
+      {...(disabled || item.uploading ? {} : { onOpen: onOpenInspector })}
+      media={
+        item.uploading ? (
+          <div className="flex size-full items-center justify-center">
+            <span className="font-label text-xs text-on-surface-variant">Uploading…</span>
           </div>
         ) : item.mediaType === "video" ? (
-          <>
+          <div className="relative size-full">
             {item.previewUrl ? (
               <video
                 src={item.previewUrl}
-                className="h-full w-full object-cover"
+                className="size-full object-cover"
                 preload="metadata"
                 muted
                 aria-label={`Video ${index + 1} thumbnail`}
@@ -72,7 +75,7 @@ export function DayMediaCard({
                 <track kind="captions" srcLang="en" label="" />
               </video>
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-surface-container">
+              <div className="flex size-full items-center justify-center bg-surface-container">
                 <PlayCircleIcon className="size-7 text-on-surface-variant/50" aria-hidden />
               </div>
             )}
@@ -82,54 +85,71 @@ export function DayMediaCard({
             >
               <PlayCircleIcon className="size-5 drop-shadow-md text-white" />
             </div>
-          </>
+          </div>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- dashboard thumbnail, no next/image needed
-          <img
-            src={item.previewUrl || undefined}
+          <MediaImage
+            src={item.previewUrl}
             alt={item.alt || `Photo ${index + 1}`}
-            className="h-full w-full object-cover"
+            label={captionPreview || `Photo ${index + 1}`}
+            imgClassName="size-full object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
           />
-        )}
-      </div>
-
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
-          {item.mediaType === "video" ? `Video ${index + 1}` : `Photo ${index + 1}`}
-        </p>
-        {item.uploadError ? (
-          <p className="font-body text-xs text-error">{item.uploadError}</p>
-        ) : null}
-        <input
-          type="text"
-          placeholder="Caption (optional)"
-          maxLength={280}
-          value={item.caption}
-          onChange={(e) => onCaptionChange(e.target.value)}
-          disabled={disabled || item.uploading}
-          className="block w-full rounded-md border border-outline-variant/40 bg-surface px-2.5 py-1.5 font-body text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-        />
-        {item.mediaType === "image" ? (
-          <input
-            type="text"
-            placeholder="Alt text (for SEO & accessibility)"
-            maxLength={280}
-            value={item.alt}
-            onChange={(e) => onAltChange(e.target.value)}
+        )
+      }
+      title={captionPreview || (item.mediaType === "video" ? "Video clip" : `Photo ${index + 1}`)}
+      subtitle={
+        item.uploadError ??
+        (item.alt.trim() && item.mediaType === "image"
+          ? item.alt.trim()
+          : item.mediaType === "video"
+            ? "Video"
+            : "Image")
+      }
+      orderLabel={`${typeLabel} ${index + 1}`}
+      badge={
+        <span className="rounded-full bg-surface-container-lowest/95 px-2 py-1 font-label text-[10px] font-semibold uppercase tracking-wide text-on-surface shadow-sm">
+          {published ? "Published" : "Draft"}
+        </span>
+      }
+      actions={
+        showManage ? (
+          <CatalogMediaManageActions
+            index={index}
+            isLast={isLast}
             disabled={disabled || item.uploading}
-            className="block w-full rounded-md border border-outline-variant/40 bg-surface px-2.5 py-1.5 font-body text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            dragAttributes={attributes}
+            dragListeners={listeners}
+            dragAriaLabel={`Drag media item ${index + 1} to reorder`}
+            moveEarlierAriaLabel={`Move media item ${index + 1} earlier`}
+            moveLaterAriaLabel={`Move media item ${index + 1} later`}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+            onEditDetails={onOpenInspector}
+            editDetailsAriaLabel={`Edit details for media item ${index + 1}`}
+            removeAriaLabel={`Remove item ${index + 1}`}
+            removeConfirmTitle={removeConfirmTitle}
+            removeConfirmBody={removeConfirmBody}
+            onRemoveConfirmed={onRemoveConfirmed}
+            removeLoading={disabled}
           />
-        ) : null}
-      </div>
-
-      <ConfirmedRemoveButton
-        ariaLabel={`Remove item ${index + 1}`}
-        confirmTitle={removeConfirmTitle}
-        confirmBody={removeConfirmBody}
-        disabled={Boolean(disabled || item.uploading)}
-        loading={Boolean(disabled)}
-        onConfirmed={onRemoveConfirmed}
-      />
-    </li>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onOpenInspector}
+            disabled={disabled || item.uploading}
+          >
+            Edit details
+          </Button>
+        )
+      }
+    >
+      {item.uploadError ? (
+        <p className="font-body text-xs text-error" role="alert">
+          {item.uploadError}
+        </p>
+      ) : null}
+    </CatalogMediaCard>
   );
 }

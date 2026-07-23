@@ -111,6 +111,8 @@ export {
   adminStatusLabel,
   adminStatusToBadgeVariant,
   lotEndedPresentation,
+  resolveDotStatusPresentation,
+  resolveLotDotStatusPresentation,
   resolveLotStatusPresentation,
   resolveStatusPresentation,
 } from "./status/resolver";

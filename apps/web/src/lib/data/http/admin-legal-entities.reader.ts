@@ -1,11 +1,16 @@
 import "server-only";
 
 import {
-  adminLegalEntityBrowsePayloadSchema,
   adminLegalEntityDocumentsSchema,
   adminLegalEntitySchema,
   adminStripeConnectRequirementRowsSchema,
 } from "@/lib/data/http/admin-legal-entities.schema";
+import {
+  type AdminLegalEntitiesPage,
+  type AdminLegalEntitiesPageParams,
+  buildAdminLegalEntitiesSearchParams,
+  parseAdminLegalEntitiesPageBody,
+} from "@/lib/data/http/admin-legal-entities.shared";
 import type {
   AdminLegalEntityDocument,
   AdminLegalEntityListResult,
@@ -14,7 +19,21 @@ import type {
 } from "@/lib/data/http/admin-legal-entities.types";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
+import { isIndexableObject } from "@/lib/data/http/object-guards";
 import type { LegalEntity, LegalEntityKind, LegalEntityStatus } from "@auction/types";
+import { normalizeApiErrorMessage } from "@auction/validators";
+
+export type {
+  AdminLegalEntitiesPage,
+  AdminLegalEntitiesPageParams,
+  AdminLegalEntityListRow,
+  AdminLegalEntityListSummary,
+} from "@/lib/data/http/admin-legal-entities.shared";
+
+function readApiError(body: unknown, fallback: string): string {
+  const error = isIndexableObject(body) ? body.error : undefined;
+  return normalizeApiErrorMessage(error, fallback);
+}
 
 export async function getAdminLegalEntitiesWithStripeConnectRequirements(): Promise<
   AdminStripeConnectRequirementRow[]
@@ -31,6 +50,25 @@ export async function getAdminLegalEntitiesWithStripeConnectRequirements(): Prom
   );
 }
 
+export async function getAdminLegalEntitiesPage(
+  params: AdminLegalEntitiesPageParams,
+): Promise<AdminLegalEntitiesPage> {
+  const qs = buildAdminLegalEntitiesSearchParams(params);
+  const res = await authedServerFetch(`/admin/legal-entities/browse?${qs.toString()}`, {
+    cache: "no-store",
+  });
+  if (res.status === 403 || res.status === 401) {
+    throw new Error("forbidden");
+  }
+  if (!res.ok) {
+    const body = await readJsonBody(res).catch(() => ({}));
+    throw new Error(readApiError(body, "Could not load legal entities"));
+  }
+  const body = await readJsonBody(res);
+  return parseAdminLegalEntitiesPageBody(body, params);
+}
+
+/** @deprecated Prefer getAdminLegalEntitiesPage for authoritative summaries. */
 export async function getAdminLegalEntityList(params: {
   q?: string;
   status?: LegalEntityStatus;
@@ -40,24 +78,16 @@ export async function getAdminLegalEntityList(params: {
   limit?: number;
   offset?: number;
 }): Promise<AdminLegalEntityListResult> {
-  const qs = new URLSearchParams();
-  if (params.q?.trim()) qs.set("q", params.q.trim());
-  if (params.status) qs.set("status", params.status);
-  if (params.kind) qs.set("kind", params.kind);
-  if (params.stripeDue) qs.set("stripeDue", "1");
-  if (params.createdByUserId) qs.set("createdByUserId", params.createdByUserId);
-  qs.set("limit", String(params.limit ?? 25));
-  qs.set("offset", String(params.offset ?? 0));
-  const res = await authedServerFetch(`/admin/legal-entities/browse?${qs.toString()}`);
-  if (!res.ok) {
-    throw new Error(`Failed to load legal entities: ${res.status}`);
-  }
-  const body = await readJsonBody(res);
-  return readDataEnvelope(
-    body,
-    adminLegalEntityBrowsePayloadSchema,
-    "GET /admin/legal-entities/browse",
-  );
+  const page = await getAdminLegalEntitiesPage({
+    limit: params.limit ?? 25,
+    offset: params.offset ?? 0,
+    ...(params.q?.trim() ? { q: params.q.trim() } : {}),
+    ...(params.status ? { status: params.status } : {}),
+    ...(params.kind ? { kind: params.kind } : {}),
+    ...(params.stripeDue ? { stripeDue: true } : {}),
+    ...(params.createdByUserId ? { createdByUserId: params.createdByUserId } : {}),
+  });
+  return { rows: page.rows, total: page.total };
 }
 
 export async function searchAdminLegalEntitiesForPicker(params: {

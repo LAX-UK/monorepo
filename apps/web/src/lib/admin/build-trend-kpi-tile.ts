@@ -31,6 +31,7 @@ export function buildTrendKpiTile(
     deltaTone: trend.deltaTone,
     compareHint: trend.compareHint,
     trend: trend.trend,
+    variant: "dashboard" as const,
     ...(opts?.trendTone ? { trendTone: opts.trendTone } : {}),
     ...(opts?.emphasize ? { emphasize: opts.emphasize } : {}),
     ...(opts?.semanticTone ? { semanticTone: opts.semanticTone } : {}),

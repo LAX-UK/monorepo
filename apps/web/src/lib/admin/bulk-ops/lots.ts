@@ -1,5 +1,5 @@
-import type { BulkOperation } from "@/components/admin/bulk-actions-toolbar";
 import { adminBulkLotsResultAction } from "@/lib/actions/admin";
+import type { BulkOperation } from "@/lib/admin/bulk-ops/types";
 import { bulkLotDeleteConfirmationPhrase } from "@auction/validators";
 
 export function getLotBulkOperations(canManageAuction: boolean): BulkOperation[] {

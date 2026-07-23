@@ -279,6 +279,7 @@ export function VenueLocationFields({
               <Textarea
                 id="locationAddress"
                 rows={2}
+                variant="underline"
                 className="font-body text-sm"
                 placeholder="Used as a display fallback when structured fields above are blank."
                 {...field}

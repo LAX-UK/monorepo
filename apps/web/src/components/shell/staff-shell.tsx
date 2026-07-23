@@ -15,7 +15,7 @@ type Props = {
   pendingArtistCount?: number;
   navCounts?: AdminNavCounts;
   cookieDensity?: DashboardDensity | null;
-  headerRightSlot?: ReactNode;
+  headerActionsSlot?: ReactNode;
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
   acting?: ActingContext;
@@ -29,7 +29,7 @@ export function StaffShell({
   pendingArtistCount = 0,
   navCounts,
   cookieDensity,
-  headerRightSlot,
+  headerActionsSlot,
   contextBanner,
   topSlot,
   acting = { kind: "self" },
@@ -40,7 +40,7 @@ export function StaffShell({
       buildShellConfig({
         user,
         role: "platform",
-        headerRightSlot,
+        headerActionsSlot,
         ...(contextBanner ? { contextBanner } : {}),
         ...(topSlot ? { topSlot } : {}),
         pendingSubmissionCount,
@@ -49,7 +49,7 @@ export function StaffShell({
       }),
     [
       user,
-      headerRightSlot,
+      headerActionsSlot,
       contextBanner,
       topSlot,
       pendingSubmissionCount,

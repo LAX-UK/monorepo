@@ -17,7 +17,7 @@ export function relativeFromIso(iso: string, now = new Date()): string {
   const weeks = Math.floor(days / 7);
   if (weeks < 5) return `${weeks}w ago`;
   return new Date(iso).toLocaleDateString(RELATIVE_LOCALE, {
-    year: "numeric",
+    year: "2-digit",
     month: "short",
     day: "numeric",
   });

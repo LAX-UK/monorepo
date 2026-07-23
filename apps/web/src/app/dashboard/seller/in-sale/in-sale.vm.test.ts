@@ -133,13 +133,13 @@ describe("toInSaleDisplayRows", () => {
       ],
       saleMap,
     );
-    expect(out.map((r) => r.statusTone)).toEqual([
-      "success",
+    expect(out.map((r) => r.statusDotTone)).toEqual([
+      "live",
       "info",
       "neutral",
-      "danger",
-      "danger",
-      "neutral",
+      "critical",
+      "critical",
+      "info",
     ]);
   });
 });

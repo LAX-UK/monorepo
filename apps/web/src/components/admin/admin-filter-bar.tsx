@@ -1,61 +1,95 @@
 "use client";
 
 import {
+  CatalogFilterSheetPanel,
+  CatalogFilterSheetTrigger,
+  renderAdminSearchSlot,
+  useCatalogFilterSheetState,
+} from "@/components/admin/catalog/catalog-filter-sheet-primitive";
+import {
   type CatalogSegmentItem,
   CatalogSegmentNav,
   type CatalogSegmentNavProps,
 } from "@/components/admin/catalog/catalog-segment-nav";
-import { MarketingFilterTrigger } from "@/components/marketing/marketing-filter-trigger";
-import { SplitFilterSheet } from "@/components/ui/split-filter-sheet";
+import type { CatalogTableTransactionalConfig } from "@/components/admin/catalog/catalog-table-filter-controls";
+import {
+  AdminFilterSheetPanel,
+  AdminFilterSheetRoot,
+  AdminFilterSheetTrigger,
+} from "@/components/admin/filters/admin-filter-sheet-root";
 import { cn } from "@auction/ui";
-import { type ReactNode, cloneElement, isValidElement, useId, useState } from "react";
+import type { ReactNode } from "react";
 
 export type AdminFilterLens = CatalogSegmentItem;
 
 type Props = {
-  /** View lenses only (2–4 segment toggles), not filter enumerations. */
   lenses?: readonly AdminFilterLens[];
   activeLensId?: string;
   lensAriaLabel?: string;
   sheetTitle?: string;
   sheetFilters?: ReactNode;
   activeFilterCount?: number;
+  showSearch?: boolean;
   showFilterTrigger?: boolean;
   searchSlot?: ReactNode;
   activeFilters?: ReactNode;
   toolbarEnd?: ReactNode;
   LensNav?: (props: CatalogSegmentNavProps) => ReactNode;
   className?: string;
+  transactional?: CatalogTableTransactionalConfig;
 };
 
-type SearchSlotProps = { inputId?: string; paramName?: string };
+type ContentProps = Props & {
+  filterSheet?: ReturnType<typeof useCatalogFilterSheetState>;
+};
 
-function renderSearchSlot(slot: ReactNode, placement: "toolbar" | "mobile" | "sheet"): ReactNode {
-  if (!slot) return null;
-  if (!isValidElement<SearchSlotProps>(slot)) return slot;
-  const base = slot.props.inputId ?? `admin-list-search-${slot.props.paramName ?? "q"}`;
-  return cloneElement<SearchSlotProps>(slot, { inputId: `${base}-${placement}` });
-}
-
-/** Admin list sticky filter chrome: optional lenses, search, Filters drawer, applied chips. */
-export function AdminFilterBar({
+function AdminFilterBarContent({
   lenses,
   activeLensId,
   lensAriaLabel = "View",
   sheetTitle = "Filters",
   sheetFilters,
   activeFilterCount = 0,
+  showSearch = true,
   showFilterTrigger = true,
   searchSlot,
   activeFilters,
   toolbarEnd,
   LensNav: LensNavComponent,
   className,
-}: Props) {
-  const [open, setOpen] = useState(false);
-  const filterPanelId = useId();
+  transactional,
+  filterSheet,
+}: ContentProps) {
   const LensNav = LensNavComponent ?? CatalogSegmentNav;
   const hasLenses = lenses != null && lenses.length > 0 && activeLensId != null;
+
+  const filterTrigger =
+    showFilterTrigger && sheetFilters ? (
+      transactional ? (
+        <AdminFilterSheetTrigger activeCount={activeFilterCount} />
+      ) : filterSheet ? (
+        <CatalogFilterSheetTrigger {...filterSheet} activeCount={activeFilterCount} />
+      ) : null
+    ) : null;
+
+  const filterPanel =
+    showFilterTrigger && sheetFilters ? (
+      transactional ? (
+        <AdminFilterSheetPanel title={sheetTitle}>
+          {showSearch && searchSlot ? (
+            <div className="lg:hidden">{renderAdminSearchSlot(searchSlot, "sheet")}</div>
+          ) : null}
+          {sheetFilters}
+        </AdminFilterSheetPanel>
+      ) : filterSheet ? (
+        <CatalogFilterSheetPanel {...filterSheet} title={sheetTitle}>
+          {showSearch && searchSlot ? (
+            <div className="lg:hidden">{renderAdminSearchSlot(searchSlot, "sheet")}</div>
+          ) : null}
+          {sheetFilters}
+        </CatalogFilterSheetPanel>
+      ) : null
+    ) : null;
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -66,46 +100,43 @@ export function AdminFilterBar({
           <div className="min-w-0 flex-1" />
         )}
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {searchSlot ? (
+          {showSearch && searchSlot ? (
             <div
               className={cn(
                 "min-w-0 flex-1 lg:max-w-md",
                 showFilterTrigger ? "hidden lg:block" : "block w-full",
               )}
             >
-              {renderSearchSlot(searchSlot, "toolbar")}
+              {renderAdminSearchSlot(searchSlot, "toolbar")}
             </div>
           ) : null}
-          {showFilterTrigger ? (
-            <MarketingFilterTrigger
-              onClick={() => setOpen(true)}
-              activeCount={activeFilterCount}
-              aria-expanded={open}
-              aria-controls={filterPanelId}
-            />
-          ) : null}
+          {filterTrigger}
           {toolbarEnd}
         </div>
       </div>
-      {searchSlot && showFilterTrigger ? (
-        <div className="lg:hidden">{renderSearchSlot(searchSlot, "mobile")}</div>
+      {showSearch && searchSlot && showFilterTrigger ? (
+        <div className="lg:hidden">{renderAdminSearchSlot(searchSlot, "mobile")}</div>
       ) : null}
       {activeFilters}
-      {showFilterTrigger && sheetFilters ? (
-        <SplitFilterSheet
-          open={open}
-          onOpenChange={setOpen}
-          title={sheetTitle}
-          description="Refine results. Filter changes apply when you navigate."
-        >
-          <div id={filterPanelId} className="space-y-4">
-            {searchSlot ? (
-              <div className="lg:hidden">{renderSearchSlot(searchSlot, "sheet")}</div>
-            ) : null}
-            {sheetFilters}
-          </div>
-        </SplitFilterSheet>
-      ) : null}
+      {filterPanel}
     </div>
   );
+}
+
+/** Admin list sticky filter chrome: optional lenses, search, Filters drawer, applied chips. */
+export function AdminFilterBar(props: Props) {
+  const filterSheet = useCatalogFilterSheetState();
+
+  if (props.transactional) {
+    return (
+      <AdminFilterSheetRoot
+        adapter={props.transactional.adapter}
+        preserved={props.transactional.preserved}
+      >
+        <AdminFilterBarContent {...props} />
+      </AdminFilterSheetRoot>
+    );
+  }
+
+  return <AdminFilterBarContent {...props} filterSheet={filterSheet} />;
 }

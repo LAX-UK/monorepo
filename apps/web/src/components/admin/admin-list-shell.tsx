@@ -56,6 +56,8 @@ export type AdminListShellProps = {
   empty?: ReactNode;
   /** When false, `view` renders directly (boards that include their own EntityList). */
   wrapView?: boolean;
+  /** Focus target when closing URL-owned list previews opened via deep link. */
+  listHeadingId?: string;
   className?: string;
 };
 
@@ -95,6 +97,7 @@ export function AdminListShell({
   empty,
   wrapView = true,
   className,
+  listHeadingId,
 }: AdminListShellProps) {
   const isHub = layout === "hub";
   const showToolbar = Boolean(savedViews || filters || toolbarEnd || listToolbarEnd);
@@ -104,13 +107,14 @@ export function AdminListShell({
   return (
     <AppScreen
       className={cn(
-        "mx-auto w-full max-w-7xl pb-8 md:space-y-8",
+        "mx-auto w-full max-w-7xl bg-transparent pb-8 md:space-y-8",
         variantSpacing[variant],
         className,
       )}
     >
       <DashboardPageHeader
         title={title}
+        {...(listHeadingId ? { listHeadingId } : {})}
         {...(description ? { description } : {})}
         {...(meta ? { meta } : {})}
         {...(breadcrumbs ? { breadcrumbs } : {})}

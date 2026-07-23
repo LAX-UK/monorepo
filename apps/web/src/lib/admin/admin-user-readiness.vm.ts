@@ -124,7 +124,7 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       id: "aml-review",
       priority: 40,
       message: "Watchlist screening awaiting review",
-      nextActionLabel: "Review AML screening in queue",
+      nextActionLabel: "Review AML screening",
       href: "?tab=overview#aml",
       severity: "warning",
       tone: "warning",

@@ -1,9 +1,9 @@
 "use client";
 
-import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { adminPaymentXeroSyncResultAction } from "@/lib/actions/admin";
 import { xeroSyncStatusLabel } from "@/lib/admin/xero-sync-status-presenter";
+import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";

@@ -1,7 +1,7 @@
-import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
 import { countActiveCatalogFilters } from "@/lib/admin/catalog-list-filter-utils";
 import { adminLotListPath } from "@/lib/admin/catalog-routes";
 import { lotActiveLensId, lotLensItems } from "@/lib/admin/catalog/lots-lenses";
+import type { CatalogSegmentItem } from "@/lib/admin/catalog/types";
 import { buildSortHref } from "@/lib/admin/list-sort";
 import { type LotListSortKey, isLotListSortKey } from "@/lib/admin/lots-list-sort";
 import { lotsListController } from "./admin-list-controllers";
@@ -26,7 +26,7 @@ export type LotsListSearchParams = {
 
 export function buildLotsListPageModel(
   sp: LotsListSearchParams,
-  nav: { withdrawalsPending: number },
+  _nav: { withdrawalsPending: number },
 ) {
   const activeLens = lotActiveLensId(sp);
   const attentionLens = activeLens === "attention";
@@ -41,7 +41,6 @@ export function buildLotsListPageModel(
     ...(attentionLens ? { status: "draft", needsPhotos: "1" } : {}),
   });
 
-  const viewPipeline = query.viewPipeline ?? false;
   const q = query.q ?? "";
   const artistId = query.artistId ?? "";
   const saleId = query.saleId ?? "";
@@ -59,12 +58,19 @@ export function buildLotsListPageModel(
     effectiveStatus && activeLens === "all" ? effectiveStatus : null,
   ]);
 
-  const lenses: CatalogSegmentItem[] = [
-    ...lotLensItems(
-      sp,
-      nav.withdrawalsPending > 0 ? { attention: nav.withdrawalsPending } : undefined,
-    ),
-  ];
+  const lenses: CatalogSegmentItem[] = [...lotLensItems(sp)];
+
+  const hasListFilters =
+    q.trim() !== "" ||
+    artistId.trim() !== "" ||
+    saleId.trim() !== "" ||
+    categoryId.trim() !== "" ||
+    activeLens !== "all";
+
+  const lotsEmptyDescription =
+    activeLens === "attention"
+      ? "No draft lots missing photos in this view."
+      : "Try another lens or clear filters in More filters.";
 
   const columnSort = {
     current: effectiveSort,
@@ -76,10 +82,6 @@ export function buildLotsListPageModel(
     },
   } as const;
 
-  const listParamsForToggle = Object.fromEntries(
-    Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]),
-  ) as Record<string, string | undefined>;
-
   const exportFilters = lotsListExportFilters(query, effectiveSort);
 
   return {
@@ -89,15 +91,15 @@ export function buildLotsListPageModel(
     sort,
     effectiveSort,
     effectiveStatus,
-    viewPipeline,
     q,
     artistId,
     saleId,
     categoryId,
     advancedFilterCount,
     lenses,
+    hasListFilters,
+    lotsEmptyDescription,
     columnSort,
-    listParamsForToggle,
     buildPaginationHref: (patch: Record<string, string | number | undefined>) =>
       buildListHref(adminLotListPath(), sp, patch),
     exportFilters,

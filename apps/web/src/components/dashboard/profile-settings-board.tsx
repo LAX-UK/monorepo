@@ -3,7 +3,8 @@
 import { SettingsField } from "@/components/dashboard/settings-field";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { presentationToDotStatus } from "@auction/ui";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { CreditCard } from "lucide-react";
 import Link from "next/link";
 import { PersonalMobileBlock } from "./profile-settings/personal-mobile-block";
@@ -58,11 +59,12 @@ export function ProfileSettingsBoard({
                   </Link>
                 }
                 value={email}
-                valueAccessory={
-                  <StatusBadge variant={emailStatusVariant(emailStatus, emailVerified)} size="sm">
-                    {emailStatusLabel(emailStatus, emailVerified)}
-                  </StatusBadge>
-                }
+                valueAccessory={(() => {
+                  const label = emailStatusLabel(emailStatus, emailVerified);
+                  const variant = emailStatusVariant(emailStatus, emailVerified);
+                  const presentation = presentationToDotStatus({ label, variant });
+                  return <DotStatusPill label={presentation.label} tone={presentation.tone} />;
+                })()}
               />
             ) : null}
           </div>

@@ -1,12 +1,11 @@
 import { LotThumbnail } from "@/components/dashboard/overview/lot-thumbnail";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { lotStatusLabel } from "@/lib/admin/status-badge-variants";
+import { StatusChip } from "@/components/ui/status-chip";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -76,9 +75,7 @@ export function WatchlistPreviewCard({
                         Est. {formatMoney(lot.currentPrice, resolveLotCurrency(lot))}
                       </span>
                     </span>
-                    <StatusBadge variant={lot.status === "active" ? "live" : "neutral"}>
-                      {lotStatusLabel[lot.status] ?? lot.status}
-                    </StatusBadge>
+                    <StatusChip domain="lot" status={lot.status} />
                   </Link>
                 </li>
               );
@@ -109,9 +106,7 @@ export function WatchlistPreviewCard({
                         Est. {formatMoney(lot.currentPrice, resolveLotCurrency(lot))}
                       </span>
                     </span>
-                    <StatusBadge variant={lot.status === "active" ? "live" : "neutral"}>
-                      {lotStatusLabel[lot.status] ?? lot.status}
-                    </StatusBadge>
+                    <StatusChip domain="lot" status={lot.status} />
                   </Link>
                 </li>
               );

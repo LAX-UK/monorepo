@@ -1,3 +1,6 @@
+/**
+ * @deprecated Prefer `@/lib/buyer-account` for dashboard/account server loaders.
+ */
 export type {
   ArtistFollowRow,
   BidWithLot,

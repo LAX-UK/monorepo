@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmActionButton } from "@/components/admin/confirm-action-button";
 import {
   amlDecideAction,
   amlTriageAction,
@@ -57,6 +58,8 @@ function DecideSubmitButtons({
   blockLabel,
   clearValue,
   blockValue,
+  blockConfirmTitle,
+  blockConfirmBody,
   pending,
   onChoose,
 }: {
@@ -64,6 +67,8 @@ function DecideSubmitButtons({
   blockLabel: string;
   clearValue: string;
   blockValue: string;
+  blockConfirmTitle: string;
+  blockConfirmBody: string;
   pending: boolean;
   onChoose: (decision: string) => void;
 }) {
@@ -77,14 +82,18 @@ function DecideSubmitButtons({
       >
         {pending ? "Saving…" : clearLabel}
       </Button>
-      <Button
+      <ConfirmActionButton
         type="button"
         variant="destructive"
         disabled={pending}
-        onClick={() => onChoose(blockValue)}
+        confirmTitle={blockConfirmTitle}
+        confirmBody={blockConfirmBody}
+        confirmLabel={blockLabel}
+        tone="danger"
+        onConfirmed={() => onChoose(blockValue)}
       >
         {pending ? "Saving…" : blockLabel}
-      </Button>
+      </ConfirmActionButton>
     </div>
   );
 }
@@ -287,6 +296,14 @@ export function ComplianceDecideForm({
         blockLabel={blockLabel}
         clearValue={clearValue}
         blockValue={blockValue}
+        blockConfirmTitle={
+          entityKind === "aml" ? "Block this screening?" : "Reject this Source of Funds case?"
+        }
+        blockConfirmBody={
+          entityKind === "aml"
+            ? "Blocking is terminal. Settlement holds stay in place and the buyer cannot proceed until compliance reverses the decision."
+            : "Rejecting keeps settlement blocked for this buyer. They must supply new evidence and the case must be reopened before payment can proceed."
+        }
         pending={pending}
         onChoose={submitDecision}
       />

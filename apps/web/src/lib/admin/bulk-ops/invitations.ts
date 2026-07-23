@@ -1,5 +1,5 @@
-import type { BulkOperation } from "@/components/admin/bulk-actions-toolbar";
 import { adminBulkInvitationsResultAction } from "@/lib/actions/admin";
+import type { BulkOperation } from "@/lib/admin/bulk-ops/types";
 
 export function getInvitationBulkOperations(): BulkOperation[] {
   return [

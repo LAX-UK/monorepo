@@ -52,6 +52,7 @@ export function ArtistsMobileCards({
             }
             selectionLabel={`Select ${a.displayName}`}
             trailing={<ArtistActionMenu row={a} canEdit={canEdit} />}
+            status={a.status ? <AdminStatusBadge domain="artist" status={a.status} /> : undefined}
             footer={
               <div className="flex flex-wrap gap-2">
                 {canEdit ? (
@@ -83,11 +84,6 @@ export function ArtistsMobileCards({
               {" · "}
               Aliases <span className="tabular-nums">{a.aliasCount}</span>
             </p>
-            {a.status ? (
-              <div className="mt-2">
-                <AdminStatusBadge domain="artist" status={a.status} />
-              </div>
-            ) : null}
           </CatalogMobileCardShell>
         );
       })}

@@ -20,8 +20,9 @@ describe("DashboardPageHeader", () => {
   it("uses compact title scale by default", () => {
     render(<DashboardPageHeader title="Portfolio" />);
     const heading = screen.getByRole("heading", { level: 1, name: "Portfolio" });
-    expect(heading.className).toMatch(/text-2xl/);
-    expect(heading.className).toMatch(/lg:text-3xl/);
+    expect(heading.className).toMatch(/text-xl/);
+    expect(heading.className).toMatch(/sm:text-2xl/);
+    expect(heading.className).toMatch(/lg:text-\[1\.75rem\]/);
   });
 
   it("uses display title scale for overview hero", () => {

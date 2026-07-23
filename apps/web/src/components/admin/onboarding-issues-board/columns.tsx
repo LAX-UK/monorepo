@@ -1,8 +1,15 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import type { AdminOnboardingIssuesPayload } from "@/lib/data/http/admin.server";
-import { formatDateTime } from "@/lib/ui/format";
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
+import { OnboardingIssueAgeCell } from "@/components/admin/onboarding-issues-board/onboarding-issue-age-cell";
+import type {
+  AdminOnboardingArtistRow,
+  AdminOnboardingDocumentRow,
+  AdminOnboardingKycSessionRow,
+  AdminOnboardingLegalEntityRow,
+  AdminOnboardingStaleLeadRow,
+} from "@/lib/data/http/admin-onboarding-issues.shared";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
@@ -33,15 +40,18 @@ export function kycUserLabel(row: {
   return "View client";
 }
 
-export function entityColumns(): ColumnDef<
-  AdminOnboardingIssuesPayload["entitiesPendingReview"][number]
->[] {
+export function entityColumns(): ColumnDef<AdminOnboardingLegalEntityRow>[] {
   return [
     { accessorKey: "displayName", header: "Entity" },
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => <AdminStatusBadge domain="legalEntity" status={row.original.status} />,
+    },
+    {
+      id: "age",
+      header: "Age",
+      cell: ({ row }) => <OnboardingIssueAgeCell iso={row.original.createdAt} />,
     },
     linkColumn(
       (r) => `/admin/legal-entities/${r.id}`,
@@ -50,11 +60,14 @@ export function entityColumns(): ColumnDef<
   ];
 }
 
-export function artistColumns(): ColumnDef<
-  AdminOnboardingIssuesPayload["artistsPendingApproval"][number]
->[] {
+export function artistColumns(): ColumnDef<AdminOnboardingArtistRow>[] {
   return [
     { accessorKey: "displayName", header: "Artist" },
+    {
+      id: "age",
+      header: "Age",
+      cell: ({ row }) => <OnboardingIssueAgeCell iso={row.original.createdAt} />,
+    },
     linkColumn(
       (r) => `/admin/artists/${r.id}/edit`,
       () => "Review",
@@ -62,9 +75,7 @@ export function artistColumns(): ColumnDef<
   ];
 }
 
-export function kycColumns(): ColumnDef<
-  AdminOnboardingIssuesPayload["staleKycSessions"][number]
->[] {
+export function kycColumns(): ColumnDef<AdminOnboardingKycSessionRow>[] {
   return [
     {
       id: "user",
@@ -86,9 +97,14 @@ export function kycColumns(): ColumnDef<
       cell: ({ row }) => <AdminStatusBadge domain="kyc" status={row.original.status} />,
     },
     {
+      id: "age",
+      header: "Age",
+      cell: ({ row }) => <OnboardingIssueAgeCell iso={row.original.createdAt} />,
+    },
+    {
       accessorKey: "createdAt",
       header: "Created",
-      cell: ({ row }) => formatDateTime(row.original.createdAt),
+      cell: ({ row }) => <AdminTableDateTimeCell iso={row.original.createdAt} mode="timestamp" />,
     },
     linkColumn(
       (r) => `/admin/clients/${encodeURIComponent(r.userId)}`,
@@ -97,15 +113,18 @@ export function kycColumns(): ColumnDef<
   ];
 }
 
-export function orgColumns(): ColumnDef<
-  AdminOnboardingIssuesPayload["staleLeadOrganisations"][number]
->[] {
+export function orgColumns(): ColumnDef<AdminOnboardingStaleLeadRow>[] {
   return [
     { accessorKey: "displayName", header: "Organisation" },
     {
+      id: "age",
+      header: "Age",
+      cell: ({ row }) => <OnboardingIssueAgeCell iso={row.original.createdAt} />,
+    },
+    {
       accessorKey: "createdAt",
       header: "Created",
-      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString("en-GB"),
+      cell: ({ row }) => <AdminTableDateTimeCell iso={row.original.createdAt} mode="dateOnly" />,
     },
     linkColumn(
       (r) => `/admin/legal-entities/${r.id}`,
@@ -114,11 +133,14 @@ export function orgColumns(): ColumnDef<
   ];
 }
 
-export function docColumns(): ColumnDef<
-  AdminOnboardingIssuesPayload["documentsAwaitingReview"][number]
->[] {
+export function docColumns(): ColumnDef<AdminOnboardingDocumentRow>[] {
   return [
     { accessorKey: "entityDisplayName", header: "Entity" },
+    {
+      id: "age",
+      header: "Age",
+      cell: ({ row }) => <OnboardingIssueAgeCell iso={row.original.uploadedAt} />,
+    },
     {
       accessorKey: "uploadObjectId",
       header: "Upload",

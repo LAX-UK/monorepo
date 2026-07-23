@@ -1,13 +1,12 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
 import {
   formatEmailDeliverabilityStatus,
   formatSignupPersona,
 } from "@/lib/admin/admin-user-presenters";
 import { copyTextToClipboard } from "@/lib/admin/copy-text";
-import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
-import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { InlineActionMenu } from "@auction/ui";
 import { formatPhoneDisplay } from "@auction/validators";
@@ -27,11 +26,7 @@ export function userJoinedColumn(): ColumnDef<AdminUserRow> {
   return {
     accessorKey: "createdAt",
     header: "Joined",
-    cell: ({ row }) => (
-      <span className="text-xs text-on-surface-variant">
-        {formatAdminUserDate(row.original.createdAt)}
-      </span>
-    ),
+    cell: ({ row }) => <AdminTableDateTimeCell iso={row.original.createdAt} mode="dateOnly" />,
   };
 }
 
@@ -39,11 +34,7 @@ export function userLastActivityColumn(header = "Last activity"): ColumnDef<Admi
   return {
     id: "lastActivity",
     header,
-    cell: ({ row }) => (
-      <span className="text-xs text-on-surface-variant">
-        {relativeFromIso(row.original.updatedAt)}
-      </span>
-    ),
+    cell: ({ row }) => <AdminTableDateTimeCell iso={row.original.updatedAt} mode="timestamp" />,
   };
 }
 
@@ -108,11 +99,12 @@ export function userKycVerifiedAtColumn(): ColumnDef<AdminUserRow> {
   return {
     id: "kycVerifiedAt",
     header: "KYC verified",
-    cell: ({ row }) => (
-      <span className="text-xs text-on-surface-variant">
-        {row.original.kycVerifiedAt ? formatAdminUserDate(row.original.kycVerifiedAt) : "—"}
-      </span>
-    ),
+    cell: ({ row }) =>
+      row.original.kycVerifiedAt ? (
+        <AdminTableDateTimeCell iso={row.original.kycVerifiedAt} mode="dateOnly" />
+      ) : (
+        <span className="text-xs text-on-surface-variant">—</span>
+      ),
   };
 }
 

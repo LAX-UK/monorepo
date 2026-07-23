@@ -8,6 +8,7 @@ export * from "./admin-condition-reports.server";
 export * from "./admin-payments.server";
 export * from "./admin-lot-fulfilment.server";
 export * from "./admin-ops-dashboard.server";
+export * from "./admin-onboarding-issues.server";
 export * from "./admin-legal-entities.server";
 export * from "./admin-users.server";
 export * from "./admin-audit.server";

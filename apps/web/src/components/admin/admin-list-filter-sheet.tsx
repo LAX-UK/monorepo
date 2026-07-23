@@ -11,7 +11,10 @@ type Props = {
   title?: string;
 };
 
-/** Mobile filter drawer for staff list pages; filters stay visible on `lg+`. */
+/**
+ * @deprecated Prefer `AdminFilterBar` with `transactional` or board-header `CatalogTableFilterControls`.
+ * Legacy mobile-only filter drawer for pages still on `AdminListToolbar`.
+ */
 export function AdminListFilterSheet({ children, activeCount = 0, title = "Filters" }: Props) {
   const [open, setOpen] = useState(false);
 

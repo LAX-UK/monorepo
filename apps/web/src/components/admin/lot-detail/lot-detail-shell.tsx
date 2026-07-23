@@ -5,7 +5,6 @@ import {
   CatalogBreadcrumbs,
   CatalogDetailMobileMeta,
   CatalogDetailShell,
-  CatalogDetailStickyMiniBar,
   CatalogDetailTabNav,
 } from "@/components/admin/catalog";
 import { CatalogPostCreateSessionRoot } from "@/components/admin/catalog/catalog-post-create-session";
@@ -14,8 +13,8 @@ import { AdminLotEditableTitle } from "@/components/admin/editable-titles";
 import { ReturnToInventoryButton } from "@/components/admin/lot-actions/return-to-inventory-button";
 import { LotDetailMobilePublishCancel } from "@/components/admin/lot-detail-mobile-publish-cancel";
 import { LotDetailQueueNav } from "@/components/admin/lot-detail-queue-nav";
-import { LotContextRail } from "@/components/admin/lot-detail/lot-context-rail";
 import { LotDetailConnectNotice } from "@/components/admin/lot-detail/lot-detail-connect-notice";
+import { LotDetailMetaRow } from "@/components/admin/lot-detail/lot-detail-meta-row";
 import { LotDetailReadinessProvider } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { LotStatusJourney } from "@/components/admin/lot-detail/lot-status-journey";
@@ -28,9 +27,7 @@ import {
 } from "@/lib/admin/compute-lot-detail-readiness";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import type { AdminDomainEventRow, AdminLotLifecyclePayload } from "@/lib/data/http/admin.server";
-import { resolveLotCurrency } from "@/lib/money/currency";
 import { lotPath } from "@/lib/seo/url";
-import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { Badge } from "@auction/ui";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -60,7 +57,7 @@ export function LotDetailShell({
   bundle,
   bidCount = null,
   documentCount = null,
-  activityEvents = [],
+  activityEvents: _activityEvents = [],
   lifecycle = { snapshot: null, events: [] },
   connectRequired = false,
   canManageCatalog = false,
@@ -127,9 +124,9 @@ export function LotDetailShell({
     },
     {
       id: "images",
-      label: `Images (${auction.images.length})`,
+      label: `Media (${auction.images.length})`,
       href: lotDetailTabHref(lotId, "images"),
-      ...(catalogIncomplete && auction.images.length === 0 ? { badge: "warning" as const } : {}),
+      ...(catalogIncomplete ? { badge: "warning" as const } : {}),
     },
     {
       id: "documents",
@@ -138,7 +135,7 @@ export function LotDetailShell({
     },
     {
       id: "bids",
-      label: `Bids (${bidCount ?? 0})`,
+      label: `Bidding (${bidCount ?? 0})`,
       href: lotDetailTabHref(lotId, "bids"),
     },
     {
@@ -154,25 +151,45 @@ export function LotDetailShell({
         breadcrumbs={
           <CatalogBreadcrumbs
             segments={[
+              { label: "Admin", href: "/admin" },
               { label: "Lots", href: "/admin/lots" },
               ...(context.sale
                 ? [{ label: context.sale.title, href: `/admin/sales/${context.sale.id}` }]
-                : [{ label: "Unassigned" }]),
-              ...(auction.lotNumber != null ? [{ label: `Lot #${auction.lotNumber}` }] : []),
+                : []),
+              { label: auction.title },
             ]}
           />
         }
-        eyebrow="Catalogue lot"
+        contextNav={
+          context.sale ? (
+            <LotDetailQueueNav
+              lotId={lotId}
+              saleId={auction.saleId ?? null}
+              saleTitle={context.sale.title}
+              lotNumber={auction.lotNumber ?? null}
+            />
+          ) : null
+        }
+        metaBelowTitle
+        eyebrow={context.artist?.displayName ?? "Catalogue lot"}
         title={
           <AdminLotEditableTitle lotId={lotId} value={auction.title} editable={canEditTitle} />
         }
         {...(subtitle ? { description: subtitle } : {})}
         meta={
-          <div className="flex flex-wrap items-center gap-2">
-            <AdminStatusBadge domain="lot" status={auction.status} />
-            {auction.lotNumber != null ? (
-              <Badge variant="secondary">Lot #{auction.lotNumber}</Badge>
-            ) : null}
+          <div className="space-y-3">
+            <LotDetailMetaRow
+              auction={auction}
+              context={context}
+              bidCount={bidCount}
+              {...(auction.updatedAt ? { updatedAt: auction.updatedAt } : {})}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <AdminStatusBadge domain="lot" status={auction.status} />
+              {auction.lotNumber != null ? (
+                <Badge variant="secondary">Lot #{auction.lotNumber}</Badge>
+              ) : null}
+            </div>
           </div>
         }
         actions={
@@ -246,60 +263,9 @@ export function LotDetailShell({
             }
           />
         }
-        aside={
-          <LotContextRail
-            lotId={lotId}
-            auction={auction}
-            context={context}
-            bidCount={bidCount}
-            activityEvents={activityEvents}
-            publishReadiness={publishReadiness}
-            deleteBlockers={deleteBlockers}
-            canManageAuction={canManageAuction}
-            status={<AdminStatusBadge domain="lot" status={auction.status} />}
-            publicHref={publicHref}
-            quickRailItems={lotNav.quickRailItems}
-          />
-        }
+        aside={undefined}
         stickySubnav={
-          <>
-            <CatalogDetailTabNav
-              tabs={tabSpecs}
-              entityKind="lot"
-              entityId={lotId}
-              aria-label="Lot sections"
-            />
-            <LotDetailQueueNav
-              lotId={lotId}
-              saleId={auction.saleId ?? null}
-              lotNumber={auction.lotNumber ?? null}
-              compact
-            />
-            <CatalogDetailStickyMiniBar
-              items={[
-                {
-                  id: "status",
-                  label: "Status",
-                  value: <AdminStatusBadge domain="lot" status={auction.status} />,
-                },
-                {
-                  id: "sale",
-                  label: "Sale",
-                  value: context.sale?.title ?? "Unassigned",
-                },
-                {
-                  id: "end",
-                  label: "Ends",
-                  value: formatDateTime(auction.endTime),
-                },
-                {
-                  id: "hammer",
-                  label: "Hammer",
-                  value: formatMoney(auction.currentPrice, resolveLotCurrency(auction)),
-                },
-              ]}
-            />
-          </>
+          <CatalogDetailTabNav tabs={tabSpecs} entityKind="lot" aria-label="Lot sections" />
         }
       >
         <LotStatusJourney

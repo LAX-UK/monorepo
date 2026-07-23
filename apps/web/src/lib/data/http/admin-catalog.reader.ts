@@ -4,6 +4,7 @@ import {
   adminArtistDuplicateHitRowSchema,
   adminArtistListRowSchema,
   adminArtistStatsRowSchema,
+  adminCategoriesListSummarySchema,
   adminCategoryRowSchema,
   artistDeleteEligibilityRowSchema,
   artistProfileRowSchema,
@@ -12,13 +13,16 @@ import {
   ADMIN_ARTIST_LIST_MAX_LIMIT,
   type AdminArtistDuplicateHit,
   type GetAdminArtistListParams,
+  type GetAdminCategoryPageParams,
 } from "@/lib/data/http/admin-catalog.types";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
 import type {
   AdminArtistListResult,
   AdminArtistStats,
+  AdminCategoriesListSummary,
   AdminCategory,
+  AdminCategoryListResult,
   ArtistDeleteEligibility,
   ArtistProfile,
 } from "@auction/types";
@@ -45,6 +49,36 @@ export async function getAdminCategoryList(
     [category.name, category.slug, category.description ?? ""].some((value) =>
       value.toLowerCase().includes(needle),
     ),
+  );
+}
+
+export async function getAdminCategoryPage(
+  params: GetAdminCategoryPageParams = {},
+): Promise<AdminCategoryListResult> {
+  const qs = new URLSearchParams();
+  if (params.includeArchived) qs.set("includeArchived", "true");
+  if (params.q?.trim()) qs.set("q", params.q.trim());
+  qs.set("limit", String(Math.min(200, Math.max(10, params.limit ?? 50))));
+  qs.set("offset", String(Math.max(0, params.offset ?? 0)));
+  const res = await authedServerFetch(`/admin/categories/page?${qs.toString()}`);
+  if (!res.ok) throw new Error(`Failed to load category page: ${res.status}`);
+  return readListEnvelope(
+    await readJsonBody(res),
+    adminCategoryRowSchema,
+    "GET /admin/categories/page",
+  );
+}
+
+export async function getAdminCategoriesListSummary(
+  includeArchived = false,
+): Promise<AdminCategoriesListSummary> {
+  const qs = includeArchived ? "?includeArchived=true" : "";
+  const res = await authedServerFetch(`/admin/categories/summary${qs}`);
+  if (!res.ok) throw new Error(`Failed to load category summary: ${res.status}`);
+  return readDataEnvelope(
+    await readJsonBody(res),
+    adminCategoriesListSummarySchema,
+    "GET /admin/categories/summary",
   );
 }
 

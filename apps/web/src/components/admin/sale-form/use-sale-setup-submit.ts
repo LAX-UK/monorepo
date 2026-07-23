@@ -7,11 +7,11 @@ import {
 import { notifyCatalogActionFailure } from "@/components/admin/catalog/use-catalog-form-submit";
 import {
   adminCreateSaleResultAction,
-  adminPublishSaleResultAction,
   adminUpdateSaleResultAction,
 } from "@/lib/actions/admin-sales";
 import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import { applyCatalogZodIssueToForm } from "@/lib/admin/catalog-form-zod";
+import { adminPublishSaleResultAction } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import {
   findLotsOutsideSaleWindow,
   parseSaleWindowFromForm,

@@ -6,9 +6,7 @@ export {
   type CatalogActiveFilterChip,
 } from "./catalog-active-filters-row";
 export { CatalogPrimaryCta } from "./catalog-primary-cta";
-export { CatalogRelatedWork } from "./catalog-related-work";
 export { CatalogOpsBreadcrumb } from "./catalog-ops-breadcrumb";
-export { CatalogLotsLensNav, ADMIN_LOTS_VIEW_STORAGE_KEY } from "./catalog-lots-lens-nav";
 export { CatalogSegmentNav } from "./catalog-segment-nav";
 export { CatalogPageHeader, type CatalogMobileActionsPlacement } from "./catalog-page-header";
 export { CatalogMobileActionBar, type CatalogMobileAction } from "./catalog-mobile-action-bar";
@@ -37,6 +35,33 @@ export { CatalogDetailErrorShell } from "./catalog-detail-error-shell";
 export { CatalogDetailTabContentSkeleton } from "./catalog-detail-tab-content-skeleton";
 export { CatalogDetailSection } from "./catalog-detail-section";
 export { CatalogDetailTabPanel } from "./catalog-detail-tab-panel";
+export { CatalogDetailTabCard } from "./catalog-detail-tab-card";
+export {
+  DetailActivityFeed,
+  DetailAttentionTable,
+  DetailBoardKpiStrip,
+  DetailBoardShell,
+  DetailBoardToolbar,
+  DetailCardGrid,
+  DetailEntityTable,
+  DetailNoticeBanner,
+  DetailSectionGrid,
+  DetailStatCard,
+} from "./detail-board";
+export type {
+  DetailActivityFeedProps,
+  DetailAttentionTableProps,
+  DetailBoardKpiStripProps,
+  DetailBoardShellProps,
+  DetailBoardToolbarProps,
+  DetailCardGridItem,
+  DetailCardGridProps,
+  DetailEntityColumn,
+  DetailEntityTableProps,
+  DetailNoticeBannerProps,
+  DetailSectionGridProps,
+  DetailStatCardProps,
+} from "./detail-board";
 export {
   CatalogDetailSummaryStrip,
   type CatalogDetailSummaryItem,

@@ -1,4 +1,3 @@
-import type { CatalogMobileAction } from "@/components/admin/catalog";
 import type { QuickActionItem } from "@/components/admin/detail-rail/quick-actions-rail";
 import {
   type CatalogNavAction,
@@ -11,6 +10,7 @@ import {
   adminLotEditHref,
   adminLotNewHref,
 } from "@/lib/admin/catalog-route-helpers";
+import type { CatalogMobileAction } from "@/lib/admin/catalog/types";
 
 type Flags = {
   lotId: string;

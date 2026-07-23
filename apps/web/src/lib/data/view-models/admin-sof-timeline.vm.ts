@@ -83,7 +83,7 @@ export function resolveSofNextAction(
   if (!viewer.canTriage && !viewer.canDecide) {
     return {
       title: "Compliance hold active",
-      body: "Settlement is blocked until MLRO approves this case. Finance cannot release payments from the manual review queue.",
+      body: "Settlement is blocked until MLRO approves this case. Finance cannot release payments held for manual review.",
       variant: "default",
     };
   }
@@ -138,7 +138,7 @@ export function resolveSofNextAction(
   }
   return {
     title: "Read-only view",
-    body: "Settlement is blocked until MLRO approves this case. Finance cannot release payments from the manual review queue.",
+    body: "Settlement is blocked until MLRO approves this case. Finance cannot release payments held for manual review.",
     variant: "default",
   };
 }

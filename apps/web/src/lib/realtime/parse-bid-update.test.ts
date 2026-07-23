@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 describe("parseBidUpdateEvent", () => {
   it("parses placedVia and bidCount from bid update payloads", () => {
     const parsed = parseBidUpdateEvent({
+      type: "bid_placed",
       lotId: "lot-1",
       currentPrice: "1500.00",
       bidCount: 4,

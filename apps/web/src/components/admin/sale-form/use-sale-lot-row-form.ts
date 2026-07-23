@@ -1,11 +1,9 @@
 "use client";
 
 import { adminUpdateLotResultAction } from "@/lib/actions/admin";
-import {
-  adminAddLotToSaleResultAction,
-  adminDetachLotFromSaleResultAction,
-} from "@/lib/actions/admin-sales";
+import { adminAddLotToSaleResultAction } from "@/lib/actions/admin-sales";
 import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
+import { adminDetachLotFromSaleResultAction } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { findLotsOutsideSaleWindow } from "@/lib/admin/sale-lot-window-sync";
 import {
   type SaleSetupLotRowContext,

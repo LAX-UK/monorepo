@@ -36,6 +36,8 @@ export type DocumentAttachmentManagerProps<TKind extends string> = {
   entityId: string;
   kinds: readonly TKind[];
   initialDocuments: EntityDocument[];
+  sectionTitle?: string;
+  sectionDescription?: string;
   actions: {
     attach: (input: {
       uploadObjectId: string;
@@ -51,6 +53,8 @@ export function DocumentAttachmentManager<TKind extends string>({
   entityId,
   kinds,
   initialDocuments,
+  sectionTitle = "Documents",
+  sectionDescription,
   actions,
 }: DocumentAttachmentManagerProps<TKind>) {
   const { uploadFile } = useUploadObjectLifecycle();
@@ -141,7 +145,14 @@ export function DocumentAttachmentManager<TKind extends string>({
 
   return (
     <div className="space-y-4 rounded-lg border border-outline-variant/40 p-4">
-      <div className="font-label text-xs uppercase tracking-[0.2em] text-secondary">Documents</div>
+      <div>
+        <div className="font-label text-xs uppercase tracking-[0.2em] text-secondary">
+          {sectionTitle}
+        </div>
+        {sectionDescription ? (
+          <p className="mt-1 font-body text-xs text-on-surface-variant">{sectionDescription}</p>
+        ) : null}
+      </div>
       {documents.length === 0 ? (
         <p className="font-body text-sm text-on-surface-variant">No documents yet.</p>
       ) : (

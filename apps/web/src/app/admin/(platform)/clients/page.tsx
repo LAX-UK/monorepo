@@ -1,10 +1,10 @@
-import { AdminClientsBoard } from "@/components/admin/admin-clients-board";
+import { AdminBulkSelectionProvider } from "@/components/admin/admin-bulk-selection-bridge";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminUserPreviewProvider } from "@/components/admin/admin-user-preview-provider";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { AdminUsersFilterToolbar } from "@/components/admin/admin-users-filter-toolbar";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { AdminClientsBoardContainer } from "@/components/admin/clients-board/container";
 import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import {
   AdminUserListBulkBar,
@@ -12,17 +12,12 @@ import {
 } from "@/components/admin/people/people-users-mobile-cards";
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { ExportButton } from "@/components/exports/export-button";
-import { usersListController } from "@/lib/admin/admin-list-controllers";
-import { buildListHref } from "@/lib/admin/admin-list-params";
-import { buildUsersActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import {
-  countUsersListActiveFilters,
-  hasUsersListActiveFilters,
-  parseUsersListFilters,
-  usersListFiltersToExportFilters,
-} from "@/lib/admin/users-list-query";
-import type { AdminUserRow } from "@/lib/data/http/admin.server";
+  buildClientsListKpiTiles,
+  buildClientsMobileMetrics,
+} from "@/lib/admin/people/build-clients-list-kpi-tiles";
+import { loadAdminClientsListPage } from "@/lib/admin/people/load-clients-list-page";
+import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
@@ -38,90 +33,27 @@ export default async function AdminClientsPage({
 }) {
   const sp = await searchParams;
   const error = safeDecodeAdminErrorParam(sp.error);
-  const query = usersListController.parseQuery({ ...sp, role: "client" });
-  const listFilters = parseUsersListFilters({ ...sp, role: "client" });
-
-  let rows: AdminUserRow[] = [];
-  let total = 0;
-  let loadError: string | null = null;
-
-  try {
-    const result = await usersListController.fetch({ ...query, role: "client" });
-    rows = result.rows;
-    total = result.total ?? 0;
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load clients.";
-  }
-
-  const activeFilterChips = buildUsersActiveFilterChips("/admin/clients", sp, listFilters);
-  const activeFilterCount = countUsersListActiveFilters(listFilters);
-  const hasFilters = hasUsersListActiveFilters(listFilters);
-  const activeOnPage = rows.filter((r) => !r.suspendedAt).length;
-  const suspendedOnPage = rows.filter((r) => r.suspendedAt).length;
-
-  const exportFilters = {
-    role: "client" as const,
-    ...usersListFiltersToExportFilters(listFilters),
-  };
-
-  const pagination =
-    !loadError && total > 0 ? (
-      <CatalogPagination
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={rows.length}
-        total={total}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/clients", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
-        }
-        nextHref={
-          query.offset + rows.length < total
-            ? buildListHref("/admin/clients", sp, {
-                offset: query.offset + query.limit,
-              })
-            : null
-        }
-      />
-    ) : null;
+  const { model, rows, summary, total, loadError, pagination } = await loadAdminClientsListPage(sp);
+  const isPaginationEmpty = !loadError && total > 0 && rows.length === 0 && !model.hasFilters;
 
   return (
-    <AdminUserPreviewProvider>
+    <AdminBulkSelectionProvider>
       <PeopleListShell
         title="Clients"
         description="Browse collector and seller accounts. Filter by verification, KYC, persona, activity dates, and more."
-        hasFilters={hasFilters}
-        resetHref="/admin/clients"
+        hasFilters={model.hasFilters}
+        resetHref={model.basePath}
         bulkBar={<AdminUserListBulkBar />}
         mobileSummary={
           !loadError ? (
-            <CatalogListMobileSummary
-              metrics={[
-                { id: "total", label: "Total clients", value: String(total) },
-                { id: "page", label: "On this page", value: String(rows.length) },
-                { id: "active", label: "Active", value: String(activeOnPage) },
-                { id: "suspended", label: "Suspended", value: String(suspendedOnPage) },
-              ]}
-            />
+            <CatalogListMobileSummary metrics={buildClientsMobileMetrics(summary)} />
           ) : null
         }
         kpiStrip={
           !loadError ? (
-            <AdminListKpiStrip
+            <AdminTrendKpiBand
               ariaLabel="Client summary"
-              tiles={[
-                { label: "Total clients", value: total, delta: `${rows.length} on this page` },
-                { label: "Active", value: activeOnPage, delta: "On this page" },
-                { label: "Suspended", value: suspendedOnPage, delta: "On this page" },
-                {
-                  label: "Verified email",
-                  value: rows.filter((r) => r.emailVerified).length,
-                  delta: "On this page",
-                },
-              ]}
+              tiles={buildClientsListKpiTiles(summary)}
             />
           ) : null
         }
@@ -133,20 +65,23 @@ export default async function AdminClientsPage({
         filters={
           !loadError ? (
             <AdminUsersFilterToolbar
-              filterDefaults={listFilters}
-              activeFilterCount={activeFilterCount}
-              activeFilterChips={activeFilterChips}
-              toolbarEnd={<ExportButton entityType="clients" filters={exportFilters} />}
+              filterDefaults={model.listFilters}
+              activeFilterCount={model.activeFilterCount}
+              activeFilterChips={model.activeFilterChips}
+              toolbarEnd={<ExportButton entityType="clients" filters={model.exportFilters} />}
             />
           ) : null
         }
         filtersSelfContained
         view={
           !loadError && rows.length > 0 ? (
-            <AdminClientsBoard
+            <AdminClientsBoardContainer
               rows={rows}
               totalMatches={total}
-              hasActiveFilters={hasFilters}
+              hasActiveFilters={model.hasFilters}
+              selectedClientId={model.selectedClientId}
+              listReturnTarget={model.listReturnTarget}
+              clearPreviewHref={model.buildDrawerHref(null)}
               externalMobileCards
             />
           ) : null
@@ -159,18 +94,34 @@ export default async function AdminClientsPage({
             <FilterEmptyState
               entity="clients"
               segment="admin"
-              hasActiveFilters={hasFilters}
-              clearFiltersHref="/admin/clients"
-              {...(!hasFilters
+              hasActiveFilters={model.hasFilters}
+              clearFiltersHref={model.basePath}
+              {...(isPaginationEmpty
                 ? {
-                    description: "Client accounts will appear here once users sign up.",
+                    title: "No clients on this page",
+                    description: "Try a previous page or adjust pagination.",
                   }
-                : {})}
+                : !model.hasFilters
+                  ? {
+                      description: "Client accounts will appear here once users sign up.",
+                    }
+                  : {})}
             />
           ) : null
         }
-        pagination={pagination}
+        pagination={
+          pagination ? (
+            <CatalogPagination
+              offset={pagination.offset}
+              limit={pagination.limit}
+              countOnPage={pagination.countOnPage}
+              total={pagination.total}
+              prevHref={pagination.prevHref}
+              nextHref={pagination.nextHref}
+            />
+          ) : null
+        }
       />
-    </AdminUserPreviewProvider>
+    </AdminBulkSelectionProvider>
   );
 }

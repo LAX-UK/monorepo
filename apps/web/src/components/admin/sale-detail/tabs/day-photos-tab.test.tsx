@@ -37,6 +37,7 @@ describe("SaleDayPhotosTab remove", () => {
     renderWithViewer(
       <SaleDayPhotosTab
         saleId="sale-1"
+        saleTitle="Test sale"
         saleStatus="ended"
         initialDayImages={[{ key: "uploads/pending/sale-day/photo-1.jpg" }]}
         previewUrlByKey={{ "uploads/pending/sale-day/photo-1.jpg": "https://cdn.example/1.jpg" }}
@@ -44,6 +45,7 @@ describe("SaleDayPhotosTab remove", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Manage" }));
     fireEvent.click(screen.getByRole("button", { name: "Remove item 1" }));
     expect(screen.getByText("Remove from public gallery?")).toBeInTheDocument();
     expect(adminUpdateSaleResultAction).not.toHaveBeenCalled();
@@ -57,5 +59,48 @@ describe("SaleDayPhotosTab remove", () => {
     await waitFor(() => {
       expect(adminUpdateSaleResultAction).toHaveBeenCalledWith("sale-1", { dayImages: [] });
     });
+  });
+
+  it("keeps pre-ended media in a clearly labelled draft workspace", () => {
+    renderWithViewer(
+      <SaleDayPhotosTab
+        saleId="sale-1"
+        saleTitle="Test sale"
+        saleStatus="live"
+        initialDayImages={[]}
+        previewUrlByKey={{}}
+        canManage
+      />,
+    );
+
+    expect(screen.getByText("Draft mode")).toBeInTheDocument();
+    const addMediaButtons = screen.getAllByRole("button", { name: "Add media" });
+    const addMediaButton = addMediaButtons[0];
+    if (!addMediaButton) {
+      throw new Error("Expected an Add media button");
+    }
+    fireEvent.click(addMediaButton);
+    expect(screen.getByRole("button", { name: "Add photos and videos" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save media" })).not.toBeInTheDocument();
+  });
+
+  it("opens metadata editing in the inspector instead of inline card fields", () => {
+    renderWithViewer(
+      <SaleDayPhotosTab
+        saleId="sale-1"
+        saleTitle="Test sale"
+        saleStatus="ended"
+        initialDayImages={[
+          { key: "uploads/pending/sale-day/photo-1.jpg", caption: "Opening night" },
+        ]}
+        previewUrlByKey={{ "uploads/pending/sale-day/photo-1.jpg": "https://cdn.example/1.jpg" }}
+        canManage
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit details" }));
+    expect(screen.getByLabelText("Caption")).toBeInTheDocument();
+    expect(screen.getByLabelText("Alt text")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /Photo 1 details/i })).toBeInTheDocument();
   });
 });

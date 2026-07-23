@@ -1,13 +1,15 @@
 import { ArtistDetailShell } from "@/components/admin/artist-detail/artist-detail-shell";
+import { loadAdminArtistDetailContext } from "@/lib/admin/artists/load-artist-detail-context";
 import {
-  getAdminArtistById,
   getAdminArtistDeleteEligibility,
-  getAdminArtistDuplicateCandidates,
   getAdminDomainEventsForAggregate,
-  getAdminLotList,
 } from "@/lib/data/http/admin.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { ARTIST_DELETE_ACCESS, ARTIST_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
+import {
+  ARTIST_DELETE_ACCESS,
+  ARTIST_REVIEW_ACCESS,
+  ARTIST_WRITE_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
 import { artistPath } from "@/lib/seo/url";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import { notFound } from "next/navigation";
@@ -20,15 +22,14 @@ type Props = {
 
 export default async function AdminArtistDetailLayout({ params, children }: Props) {
   const { id } = await params;
-  const [artist, lots, dupes, activityEvents] = await Promise.all([
-    getAdminArtistById(id),
-    getAdminLotList({ artistId: id, limit: 50 }).catch(() => []),
-    getAdminArtistDuplicateCandidates(id).catch(() => []),
+  const [detail, activityEvents] = await Promise.all([
+    loadAdminArtistDetailContext(id),
     getAdminDomainEventsForAggregate({ aggregateType: "artist", aggregateId: id, limit: 5 }).catch(
       () => [],
     ),
   ]);
-  if (!artist) notFound();
+  if (!detail) notFound();
+  const { artist, lotCount, duplicates } = detail;
 
   const user = await getServerSessionUser();
   const canEdit =
@@ -37,6 +38,9 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
   const canManageDelete =
     user != null &&
     userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_DELETE_ACCESS);
+  const canReview =
+    user != null &&
+    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_REVIEW_ACCESS);
   const deleteEligibility = canManageDelete
     ? await getAdminArtistDeleteEligibility(id).catch(() => null)
     : null;
@@ -47,13 +51,14 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
     <ArtistDetailShell
       artistId={id}
       artist={artist}
-      lotCount={lots.length}
-      duplicateCount={dupes.length}
+      lotCount={lotCount}
+      duplicateCount={duplicates.length}
       publicHref={publicHref}
       activityEvents={activityEvents}
       deleteEligibility={deleteEligibility}
       canManageDelete={canManageDelete}
       canEdit={canEdit}
+      canReview={canReview}
     >
       {children}
     </ArtistDetailShell>

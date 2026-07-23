@@ -33,8 +33,8 @@ describe("liveStatusCountdownClassName", () => {
 describe("lotStatusToBadgeVariant", () => {
   it("maps active to live", () => expect(lotStatusToBadgeVariant("active")).toBe("live"));
   it("maps scheduled to info", () => expect(lotStatusToBadgeVariant("scheduled")).toBe("info"));
-  it("maps draft to neutral", () => expect(lotStatusToBadgeVariant("draft")).toBe("neutral"));
-  it("maps ended to success", () => expect(lotStatusToBadgeVariant("ended")).toBe("success"));
+  it("maps draft to info", () => expect(lotStatusToBadgeVariant("draft")).toBe("info"));
+  it("maps ended to neutral", () => expect(lotStatusToBadgeVariant("ended")).toBe("neutral"));
   it("maps cancelled to danger", () => expect(lotStatusToBadgeVariant("cancelled")).toBe("danger"));
   it("maps voided to danger", () => expect(lotStatusToBadgeVariant("voided")).toBe("danger"));
 });
@@ -71,7 +71,7 @@ describe("lotEndedPresentation", () => {
   it("returns Ended when outcome is omitted", () => {
     expect(lotEndedPresentation(undefined)).toEqual({
       label: "Ended",
-      variant: "success",
+      variant: "neutral",
     });
   });
 });

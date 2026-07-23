@@ -1,7 +1,8 @@
 "use client";
 
-import type { AdminConditionReportRequestRow } from "@/lib/data/http/admin.server";
-import { formatDateTime } from "@/lib/ui/format";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
+import type { AdminConditionReportRequestRow } from "@/lib/data/http/admin-condition-reports.shared";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -35,19 +36,13 @@ export function conditionReportColumns(
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <span className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-          {row.original.status.replaceAll("_", " ")}
-        </span>
-      ),
+      cell: ({ row }) => <AdminStatusBadge domain="conditionReport" status={row.original.status} />,
     },
     {
       accessorKey: "createdAt",
       header: "Requested",
       cell: ({ row }) => (
-        <span className="whitespace-nowrap text-xs text-on-surface-variant">
-          {row.original.createdAt ? formatDateTime(row.original.createdAt) : "—"}
-        </span>
+        <AdminTableDateTimeCell iso={row.original.createdAt ?? null} mode="timestamp" />
       ),
     },
     {

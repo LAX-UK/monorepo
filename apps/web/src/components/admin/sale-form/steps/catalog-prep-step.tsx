@@ -2,7 +2,7 @@
 
 import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
 import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { LotImageManager } from "@/components/admin/lot-image-manager";
+import { LotCatalogueImagesField } from "@/components/admin/lot-catalogue-images-field";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminUpdateLotResultAction } from "@/lib/actions/admin";
 import { buildLotPublishReadiness } from "@/lib/admin/catalog-readiness";
@@ -21,7 +21,7 @@ import { Button } from "@auction/ui/components/button";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { Textarea } from "@auction/ui/components/textarea";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 type Props = {
   saleId: string;
@@ -45,12 +45,19 @@ function LotCatalogPrepCard({
   const router = useRouter();
   const [descPending, startDescTransition] = useTransition();
   const imageAlts = lot.marketingDetails?.imageAlts ?? [];
-  const { save, pending: imagesPending } = useLotImagesSave(lot.id);
+  const { save, pending: imagesPending, lastResult: imagesSaveResult } = useLotImagesSave(lot.id);
   const [entries, setEntries] = useState<LotImageSaveEntry[]>(
     lot.images.map((key, i) => ({ key, alt: imageAlts[i] ?? "" })),
   );
   const [description, setDescription] = useState(lot.description ?? "");
   const [descDirty, setDescDirty] = useState(false);
+  const [imagesDirty, setImagesDirty] = useState(false);
+
+  useEffect(() => {
+    if (imagesSaveResult === "ok" || imagesSaveResult === "partial") {
+      setImagesDirty(false);
+    }
+  }, [imagesSaveResult]);
 
   const readiness = buildLotPublishReadiness(
     lot.id,
@@ -98,13 +105,16 @@ function LotCatalogPrepCard({
       <div className="space-y-3">
         <LabelCaps>Photos — needed before going live</LabelCaps>
         <div className="rounded-lg border border-border-hairline bg-surface-container-lowest/40 p-4">
-          <LotImageManager
+          <LotCatalogueImagesField
             value={entries}
-            onChange={setEntries}
+            onChange={(next) => {
+              setEntries(next);
+              setImagesDirty(true);
+            }}
             disabled={readOnly || imagesPending}
           />
         </div>
-        {!readOnly ? (
+        {!readOnly && imagesDirty ? (
           <Button type="button" size="sm" disabled={imagesPending} onClick={saveImages}>
             {imagesPending ? "Saving…" : "Save photos"}
           </Button>
@@ -120,6 +130,7 @@ function LotCatalogPrepCard({
             setDescDirty(true);
           }}
           rows={4}
+          variant="underline"
           disabled={readOnly}
           className="font-body text-sm"
         />

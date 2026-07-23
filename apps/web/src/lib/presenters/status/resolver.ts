@@ -1,4 +1,6 @@
 import type { LotStatus } from "@auction/types";
+import type { DotStatusPillTone } from "@auction/ui";
+import { presentationToDotStatus } from "@auction/ui";
 import { ADMIN_STATUS_REGISTRY } from "./admin-status-registry";
 import { lotStatusLabel, lotStatusToBadgeVariant } from "./catalog";
 import type {
@@ -31,7 +33,7 @@ export function lotEndedPresentation(context?: LotStatusContext): StatusPresenta
   if (winnerId === null || hasWinner === false) {
     return { label: "Unsold", variant: "neutral" };
   }
-  return { label: lotStatusLabel.ended, variant: "success" };
+  return { label: lotStatusLabel.ended, variant: "neutral" };
 }
 
 export function resolveLotStatusPresentation(
@@ -57,6 +59,27 @@ export function resolveStatusPresentation(
   const label = adminStatusLabel(domain, status);
   const variant = adminStatusToBadgeVariant(domain, status);
   return { label, variant, dot: variant === "live" };
+}
+
+export type DotStatusPresentation = {
+  label: string;
+  tone: DotStatusPillTone;
+};
+
+/** Resolver output → Tag-Review chip props. */
+export function resolveDotStatusPresentation(
+  domain: StatusDomain,
+  status: string,
+  context?: StatusPresentationContext,
+): DotStatusPresentation {
+  return presentationToDotStatus(resolveStatusPresentation(domain, status, context));
+}
+
+export function resolveLotDotStatusPresentation(
+  status: LotStatus | string,
+  context?: LotStatusContext,
+): DotStatusPresentation {
+  return presentationToDotStatus(resolveLotStatusPresentation(status, context));
 }
 
 export type {

@@ -12,7 +12,7 @@ export default function PersonalDashboardLoading() {
         <DashboardPageHeader
           title="Your dashboard"
           meta={<LabelCaps className="text-lot-orange">Admin · Personal</LabelCaps>}
-          description="Trend-aware KPIs, queue, anomalies, and saleroom pulse — layout saved on this device."
+          description="Trend-aware KPIs, attention items, anomalies, and saleroom pulse — layout saved on this device."
           actions={<Skeleton className="h-9 w-28 rounded-md" />}
         />
 

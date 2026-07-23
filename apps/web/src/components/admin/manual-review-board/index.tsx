@@ -46,7 +46,11 @@ export function AdminManualReviewBoard({
               <AdminPreviewSheetHeader
                 title={selected.lotTitle}
                 fullPageHref={"/admin/payments?manualReview=1"}
-                subtitle={<p className="text-sm text-on-surface-variant">{selected.winnerEmail}</p>}
+                subtitle={
+                  <p className="font-body text-sm text-on-surface-variant">
+                    {selected.winnerEmail}
+                  </p>
+                }
               />
               <ManualReviewDrawerContent
                 payment={selected}

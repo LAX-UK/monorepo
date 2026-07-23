@@ -1,7 +1,7 @@
 "use client";
 
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin.server";
-import { formatMoney } from "@/lib/ui/format";
 import { Button } from "@auction/ui";
 
 export function ManualReviewMobileCards({
@@ -16,7 +16,7 @@ export function ManualReviewMobileCards({
       {rows.map((row) => (
         <li key={row.paymentId} className="rounded-lg border border-border-hairline p-4">
           <p className="font-medium">{row.lotTitle}</p>
-          <p className="mt-1 text-sm tabular-nums">{formatMoney(row.amount, row.currency)}</p>
+          <AdminTableMoneyCell display={row.amountDisplay} emphasis="default" className="mt-1" />
           <Button
             type="button"
             variant="secondary"

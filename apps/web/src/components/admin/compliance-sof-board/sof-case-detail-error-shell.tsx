@@ -48,7 +48,7 @@ export function SofCaseDetailErrorShell({
           Try again
         </Button>
         <Button variant="secondary" asChild>
-          <Link href={backHref}>Back to queue</Link>
+          <Link href={backHref}>Back to Source of Funds</Link>
         </Button>
       </div>
     </AdminEntityDetailShell>

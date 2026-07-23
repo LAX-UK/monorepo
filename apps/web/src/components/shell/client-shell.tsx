@@ -19,7 +19,7 @@ type Props = {
   clientWorkspaceMode?: ClientWorkspaceMode;
   cookieDensity?: DashboardDensity | null;
   hideEmailStatusBanner?: boolean;
-  headerRightSlot?: ReactNode;
+  headerActionsSlot?: ReactNode;
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
   acting?: ActingContext;
@@ -35,7 +35,7 @@ export function ClientShell({
   clientWorkspaceMode = "buying",
   cookieDensity,
   hideEmailStatusBanner,
-  headerRightSlot,
+  headerActionsSlot,
   contextBanner,
   topSlot,
   acting = { kind: "self" },
@@ -54,7 +54,7 @@ export function ClientShell({
         role: "client",
         clientWorkspaceMode: effectiveWorkspaceMode,
         orgModuleEnabled,
-        headerRightSlot,
+        headerActionsSlot,
         mobileHeader: {
           acting: safeActing,
           actingContext: acting,
@@ -70,7 +70,7 @@ export function ClientShell({
       user,
       effectiveWorkspaceMode,
       orgModuleEnabled,
-      headerRightSlot,
+      headerActionsSlot,
       contextBanner,
       topSlot,
       hideEmailStatusBanner,

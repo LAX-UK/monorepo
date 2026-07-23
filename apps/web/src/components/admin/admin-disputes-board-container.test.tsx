@@ -23,7 +23,7 @@ const SEEDED_PAGE: AdminDisputesPage = {
       stripeDisputeId: "dp_123",
       paymentId: "pay_1",
       status: "open",
-      amountLabel: "£100.00",
+      amountDisplay: { primary: "£100.00" },
       currency: "gbp",
       reason: "fraudulent",
       reasonLabel: "Fraudulent",

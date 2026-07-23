@@ -3,7 +3,9 @@ import {
   dash,
   formatCount,
   formatDate,
+  formatDateShort,
   formatDateTime,
+  formatDateTimeShort,
   formatMoney,
   formatPercent,
 } from "./format";
@@ -20,6 +22,21 @@ describe("format", () => {
   it("formats dates", () => {
     const s = formatDate(new Date("2026-05-19T12:00:00Z"));
     expect(s).toContain("2026");
+  });
+
+  it("formats short dates with 2-digit year", () => {
+    const s = formatDateShort(new Date("2026-05-19T12:00:00Z"));
+    expect(s).toMatch(/19 May 26/);
+    expect(s).not.toContain("2026");
+  });
+
+  it("formats short date time with 2-digit year when reference year differs", () => {
+    const s = formatDateTimeShort(
+      new Date("2025-05-19T14:30:00Z"),
+      new Date("2026-05-18T12:00:00Z"),
+    );
+    expect(s).toMatch(/19 May 25/);
+    expect(s).not.toContain("2025");
   });
 
   it("formats date time", () => {

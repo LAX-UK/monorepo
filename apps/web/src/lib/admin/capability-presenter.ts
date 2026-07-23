@@ -17,7 +17,7 @@ export type CapabilityPresentation = {
 const CAPABILITY_PRESENTATION: Record<RoleCapability, CapabilityPresentation> = {
   "platform.admin.full": {
     label: "Full platform admin",
-    description: "Clients, staff, impersonation, analytics, and unrestricted admin routes.",
+    description: "Clients, staff, impersonation, and unrestricted admin routes.",
     group: "platform",
   },
   "finance.read": {
@@ -127,7 +127,7 @@ const CAPABILITY_PRESENTATION: Record<RoleCapability, CapabilityPresentation> = 
   },
   "specialist.appraise": {
     label: "Appraise submissions",
-    description: "Specialist review queue for incoming consignments.",
+    description: "Specialist review for incoming consignments.",
     group: "catalog",
   },
   "operations.fulfilment": {

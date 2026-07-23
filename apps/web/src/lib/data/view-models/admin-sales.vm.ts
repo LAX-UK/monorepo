@@ -1,7 +1,15 @@
+import type { AdminSaleBoardRow } from "@/lib/admin/catalog/sale-table-row";
 import type { SaleDeleteEligibility } from "@/lib/data/http/admin.server";
+import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
 import { formatDateTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
 import { toDisplayDate, toRequiredIsoString } from "@auction/validators";
+
+function saleCoverImageUrl(sale: Sale): string | null {
+  const asset = sale.coverImageAssets?.[0];
+  if (asset?.src) return asset.src;
+  return sale.coverImages[0] ?? null;
+}
 
 export type AdminSaleBoardInput = {
   sale: Sale;
@@ -27,14 +35,20 @@ export function scheduleEndingSparkline(lots: Lot[], days = 7): number[] {
   return buckets.map((b) => b / max);
 }
 
-export function toAdminSaleBoardRow(row: AdminSaleBoardInput) {
+export function toAdminSaleBoardRow(row: AdminSaleBoardInput): AdminSaleBoardRow {
+  const endTime = row.sale.endTime;
   return {
     saleId: row.sale.id,
     title: row.sale.title,
     status: row.sale.status,
     lotCount: row.lots.length,
+    coverImageUrl: saleCoverImageUrl(row.sale),
+    deliveryMode: row.sale.deliveryMode,
+    typeLabel: deliveryModeShortLabel(row.sale.deliveryMode),
     startTimeIso: toRequiredIsoString(row.sale.startTime),
     startTimeLabel: formatDateTime(row.sale.startTime),
+    endTimeIso: endTime ? toRequiredIsoString(endTime) : null,
+    endTimeLabel: endTime ? formatDateTime(endTime) : "—",
     sparklineValues: scheduleEndingSparkline(row.lots, 7),
     canDelete: row.deleteEligibility?.canDelete === true,
   };

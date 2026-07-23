@@ -65,7 +65,17 @@ describe("getAdminAmlScreeningsPage", () => {
       ok: true,
       json: async () => ({
         data: [{ id: "scr-1", userId: "user-1", totalHits: 0, categories: [] }],
-        meta: { total: 1 },
+        meta: {
+          total: 1,
+          limit: 10,
+          offset: 0,
+          summary: {
+            total: 1,
+            awaitingTriage: 1,
+            triaged: 0,
+            escalated: 0,
+          },
+        },
       }),
     });
 

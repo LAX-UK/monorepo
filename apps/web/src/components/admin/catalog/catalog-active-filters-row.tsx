@@ -2,11 +2,9 @@ import { cn } from "@auction/ui";
 import { X } from "lucide-react";
 import Link from "next/link";
 
-export type CatalogActiveFilterChip = {
-  id: string;
-  label: string;
-  clearHref: string;
-};
+import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
+
+export type { CatalogActiveFilterChip };
 
 type Props = {
   chips: readonly CatalogActiveFilterChip[];

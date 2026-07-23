@@ -1,16 +1,17 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { AdminVenueCreateSheet } from "@/components/admin/admin-venue-create-sheet";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { CatalogPrimaryCta } from "@/components/admin/catalog/catalog-primary-cta";
 import { CatalogVenuesFilterToolbar } from "@/components/admin/catalog/catalog-venues-filter-toolbar";
 import { AdminVenuesBoard } from "@/components/admin/venues-board";
 import { venuesListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref, firstString } from "@/lib/admin/admin-list-params";
+import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
 import { buildVenuesActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { enrichVenueListWithLegalEntityNames } from "@/lib/admin/enrich-venue-list-rows";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
@@ -132,27 +133,25 @@ export default async function AdminVenuesPage({
       />
     ) : null;
 
-  const pagination =
-    !listError && total > 0 && (query.offset > 0 || query.offset + venues.length < total) ? (
-      <CatalogPagination
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={venues.length}
-        total={total}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/venues", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
+  const boardPagination =
+    !listError && total > 0 && (query.offset > 0 || query.offset + venues.length < total)
+      ? {
+          offset: query.offset,
+          limit: query.limit,
+          countOnPage: venues.length,
+          total,
+          prevHref:
+            query.offset > 0
+              ? buildListHref("/admin/venues", sp, {
+                  offset: Math.max(0, query.offset - query.limit),
+                })
+              : null,
+          nextHref:
+            query.offset + venues.length < total
+              ? buildListHref("/admin/venues", sp, { offset: query.offset + query.limit })
+              : null,
         }
-        nextHref={
-          query.offset + venues.length < total
-            ? buildListHref("/admin/venues", sp, { offset: query.offset + query.limit })
-            : null
-        }
-      />
-    ) : null;
+      : null;
 
   return (
     <>
@@ -165,6 +164,11 @@ export default async function AdminVenuesPage({
       <CatalogListShell
         title="Venues"
         description="Reusable onsite gallery and branch locations. Each venue belongs to a legal entity — only venues owned by the sale operator can be attached to a sale."
+        breadcrumbs={
+          <CatalogBreadcrumbs
+            segments={[{ label: "Admin", href: "/admin" }, { label: "Venues" }]}
+          />
+        }
         primaryAction={
           <CatalogPrimaryCta href="/admin/venues?new=1" icon={Plus}>
             New venue
@@ -194,34 +198,26 @@ export default async function AdminVenuesPage({
           ) : null
         }
         kpiStrip={
-          !listError && venues.length > 0 ? (
-            <AdminListKpiStrip
+          !listError ? (
+            <AdminTrendKpiBand
               ariaLabel="Venues summary"
               tiles={[
-                {
-                  label: "On this page",
-                  value: venues.length,
-                  delta: total > 0 ? `${total} total` : undefined,
-                },
-                {
-                  label: "Lens",
-                  value: includeArchived ? "Archived" : "Active",
-                },
-                ...(legalEntityId
-                  ? [
-                      {
-                        label: "Organisation",
-                        value: legalEntityDisplayName ?? "Unknown organisation",
-                      },
-                    ]
-                  : []),
+                buildSnapshotKpiTile("On this page", venues.length, 30, {
+                  compareHint: `${total} matching`,
+                  trendTone: "secondary",
+                }),
+                buildSnapshotKpiTile("Matching venues", total, 30, {
+                  compareHint: includeArchived ? "Including archived" : "Active lens",
+                  trendTone: "info",
+                }),
               ]}
             />
           ) : null
         }
-        pagination={pagination}
       >
-        {!listError && venues.length > 0 ? <AdminVenuesBoard venues={venues} /> : null}
+        {!listError && venues.length > 0 ? (
+          <AdminVenuesBoard venues={venues} pagination={boardPagination} listTotalCount={total} />
+        ) : null}
       </CatalogListShell>
     </>
   );

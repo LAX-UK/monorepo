@@ -11,6 +11,11 @@ vi.mock("@/lib/data/http/invitations.client", () => ({
   fetchAdminInvitationsPage: (...args: unknown[]) => mockFetchAdminInvitationsPage(...args),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/components/admin/admin-invitations-board", () => ({
   AdminInvitationsBoard: ({ rows }: { rows: { email: string }[] }) => (
     <div data-testid="invitations-board">{rows.map((r) => r.email).join(",")}</div>
@@ -33,6 +38,10 @@ const SEEDED_PAGE: AdminInvitationsPage = {
     },
   ],
   total: 1,
+  offset: 0,
+  limit: 50,
+  summary: { total: 1, pending: 1, accepted: 0 },
+  hasNextPage: false,
   pendingTotal: 1,
   acceptedTotal: 0,
 };

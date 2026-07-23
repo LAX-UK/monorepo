@@ -1,24 +1,22 @@
 import { AdminArtistsBoard } from "@/components/admin/admin-artists-board";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { ArtistBackfillReviewSection } from "@/components/admin/artist-backfill-review-section";
 import { ArtistDuplicateReviewSection } from "@/components/admin/artist-duplicate-review-section";
 import { CatalogArtistsFilterToolbar } from "@/components/admin/catalog/catalog-artists-filter-toolbar";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { CatalogPrimaryCta } from "@/components/admin/catalog/catalog-primary-cta";
-import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
 import { artistsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { ArtistPresetId } from "@/lib/admin/artist-list-presets";
 import { artistListActivePreset, artistListPresetHref } from "@/lib/admin/artist-list-presets";
+import { buildArtistsListKpiTiles } from "@/lib/admin/artists/build-artists-list-kpi-tiles";
 import { buildArtistsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -62,7 +60,6 @@ export default async function AdminArtistsPage({
   const showBackfill = sp.backfill === "1";
   const showDuplicates = sp.duplicates === "1";
   const skipIndexedList = showBackfill || showDuplicates;
-  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
 
   const user = await getServerSessionUser();
   const canCreateArtist =
@@ -162,7 +159,7 @@ export default async function AdminArtistsPage({
     { id: "archived", label: "Archived", href: artistListPresetHref("archived", sp) },
     {
       id: "queues",
-      label: "Queues",
+      label: "Review tasks",
       href: queuesHref,
       ...(pendingReviewCount > 0 ? { badge: pendingReviewCount } : {}),
     },
@@ -217,12 +214,66 @@ export default async function AdminArtistsPage({
       <AdminListAlert title="Could not load artists">{loadError ?? error}</AdminListAlert>
     ) : null;
 
+  const boardPagination =
+    !skipIndexedList &&
+    !loadError &&
+    total > 0 &&
+    (query.offset > 0 || query.offset + artists.length < total)
+      ? {
+          offset: query.offset,
+          limit: query.limit,
+          countOnPage: artists.length,
+          prevHref:
+            query.offset > 0
+              ? buildListHref("/admin/artists", sp, {
+                  offset: Math.max(0, query.offset - query.limit),
+                })
+              : null,
+          nextHref:
+            query.offset + artists.length < total
+              ? buildListHref("/admin/artists", sp, { offset: query.offset + query.limit })
+              : null,
+        }
+      : null;
+
+  const boardFilterControls = skipIndexedList
+    ? undefined
+    : {
+        searchPlaceholder: "Search artists…",
+        sheetTitle: "Artist filters",
+        activeFilterCount,
+        searchInputId: "admin-artists-table-search",
+      };
+
+  const artistFilterSheet = skipIndexedList
+    ? undefined
+    : {
+        q,
+        status: query.status,
+        kind: query.kind ?? "",
+        categoryId: query.categoryId ?? "",
+        country: query.country ?? "",
+        sort: query.sort,
+        featured: query.featured,
+        verified: query.verified,
+        includeArchived: query.includeArchived,
+        linked: query.linked,
+      };
+
   const view = showBackfill ? (
     <ArtistBackfillReviewSection />
   ) : showDuplicates ? (
     <ArtistDuplicateReviewSection />
   ) : !loadError && artists.length > 0 ? (
-    <AdminArtistsBoard artists={artists} searchQuery={q} canEdit={canCreateArtist} />
+    <AdminArtistsBoard
+      artists={artists}
+      canEdit={canCreateArtist}
+      {...(boardFilterControls ? { filterControls: boardFilterControls } : {})}
+      {...(artistFilterSheet ? { artistFilterSheet } : {})}
+      categoryOptions={categoryOptions}
+      {...(boardPagination ? { pagination: boardPagination } : {})}
+      listTotalCount={total}
+    />
   ) : null;
 
   const empty = skipIndexedList ? null : !loadError && artists.length === 0 ? (
@@ -267,35 +318,13 @@ export default async function AdminArtistsPage({
     )
   ) : null;
 
-  const pagination =
-    skipIndexedList ||
-    loadError ||
-    !(total > 0 && (query.offset > 0 || query.offset + artists.length < total)) ? null : (
-      <CatalogPagination
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={artists.length}
-        total={total}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/artists", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
-        }
-        nextHref={
-          query.offset + artists.length < total
-            ? buildListHref("/admin/artists", sp, { offset: query.offset + query.limit })
-            : null
-        }
-      />
-    );
-
   return (
     <CatalogListShell
       title="Artists"
       description="Manage canonical public artist profiles, client ownership links, featured state, and attribution targets."
-      meta={skipIndexedList ? null : <CatalogRelatedWork variant="artists" navCounts={navCounts} />}
+      breadcrumbs={
+        <CatalogBreadcrumbs segments={[{ label: "Admin", href: "/admin" }, { label: "Artists" }]} />
+      }
       primaryAction={
         canCreateArtist ? (
           <CatalogPrimaryCta href="/admin/artists/new" icon={Plus}>
@@ -311,19 +340,6 @@ export default async function AdminArtistsPage({
           activeFilterCount={activeFilterCount}
           activeFilterChips={activeFilterChips}
           queueModesActive={skipIndexedList}
-          categoryOptions={categoryOptions}
-          filterDefaults={{
-            q,
-            status: query.status,
-            kind: query.kind ?? "",
-            categoryId: query.categoryId ?? "",
-            country: query.country ?? "",
-            sort: query.sort,
-            featured: query.featured,
-            verified: query.verified,
-            includeArchived: query.includeArchived,
-            linked: query.linked,
-          }}
         />
       }
       toolbarEnd={
@@ -348,21 +364,23 @@ export default async function AdminArtistsPage({
       }
       kpiStrip={
         !skipIndexedList && statsStrip ? (
-          <AdminListKpiStrip
+          <AdminTrendKpiBand
             ariaLabel="Artist summary"
-            tiles={[
-              { label: "Total", value: statsStrip.total },
-              { label: "Pending review", value: statsStrip.pending, semanticTone: "warning" },
-              { label: "Maker–sellers", value: statsStrip.makers },
-              { label: "Historical", value: statsStrip.historical },
-              { label: "Brands", value: statsStrip.brands },
-              { label: "Featured", value: statsStrip.featured },
-            ]}
+            tiles={buildArtistsListKpiTiles({
+              stats: {
+                total: Number(statsStrip.total),
+                pendingReview: Number(statsStrip.pending),
+                makerSellers: Number(statsStrip.makers),
+                historical: Number(statsStrip.historical),
+                brands: Number(statsStrip.brands),
+                featured: Number(statsStrip.featured),
+              },
+              periodDays: 30,
+            })}
           />
         ) : null
       }
       errorAlert={errorAlert}
-      pagination={pagination}
     >
       {view}
     </CatalogListShell>

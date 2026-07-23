@@ -2,26 +2,45 @@
 
 import { useAdminBulkSelectionActions } from "@/components/admin/admin-bulk-selection-bridge";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { InvitationExpiryCountdown } from "@/components/admin/invitation-expiry-countdown";
 import { InvitationRowActions } from "@/components/admin/invitation-row-actions";
+import { InvitationDrawerContent } from "@/components/admin/invitations-board/drawer";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { getInvitationBulkOperations } from "@/lib/admin/bulk-ops/invitations";
 import { invitationRoleLabel } from "@/lib/admin/invitation-role-label";
 import { invitationLifecycleDisplay } from "@/lib/admin/invite-lifecycle";
+import { useAdminListPreviewReturnFocus } from "@/lib/admin/use-admin-list-preview-return-focus";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.server";
 import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
+import { Button, Sheet, SheetContent } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 function coerceDate(d: Date | string): Date {
   return d instanceof Date ? d : new Date(d);
 }
 
-function columns(): ColumnDef<AdminInvitationSummary>[] {
+function columns(
+  onOpen: (row: AdminInvitationSummary, trigger: HTMLElement) => void,
+): ColumnDef<AdminInvitationSummary>[] {
   return [
-    { accessorKey: "email", header: "Email" },
+    {
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => (
+        <Button
+          type="button"
+          variant="link"
+          className="h-auto px-0 py-0 text-left font-body text-sm text-link underline-offset-2 hover:underline"
+          onClick={(event) => onOpen(row.original, event.currentTarget)}
+        >
+          {row.original.email}
+        </Button>
+      ),
+    },
     {
       accessorKey: "targetRole",
       header: "Role",
@@ -110,12 +129,29 @@ type Props = {
   rows: AdminInvitationSummary[];
   /** When true, mobile cards are rendered by the parent list shell. */
   externalMobileCards?: boolean;
+  selected?: AdminInvitationSummary | null;
+  onOpen?: (invitation: AdminInvitationSummary) => void;
+  onCloseDrawer?: () => void;
 };
 
-export function AdminInvitationsBoard({ rows, externalMobileCards = false }: Props) {
+export function AdminInvitationsBoard({
+  rows,
+  externalMobileCards = false,
+  selected = null,
+  onOpen,
+  onCloseDrawer,
+}: Props) {
   const { density } = useTableDensity();
   const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
-  const tableColumns = useMemo(() => columns(), []);
+  const { captureReturnFocus, restoreReturnFocus } = useAdminListPreviewReturnFocus();
+  const handleOpen = useCallback(
+    (invitation: AdminInvitationSummary, trigger: HTMLElement) => {
+      captureReturnFocus(trigger);
+      onOpen?.(invitation);
+    },
+    [captureReturnFocus, onOpen],
+  );
+  const tableColumns = useMemo(() => columns(handleOpen), [handleOpen]);
   const bulkOperations = useMemo(() => getInvitationBulkOperations(), []);
   const bulkActions = useAdminBulkSelectionActions();
   const registerBulk = bulkActions?.registerBulk;
@@ -147,15 +183,35 @@ export function AdminInvitationsBoard({ rows, externalMobileCards = false }: Pro
   ]);
 
   return (
-    <AdminDataTable
-      ariaLabel="Invitations"
-      columns={tableColumns}
-      data={rows}
-      density={density}
-      enableRowSelection
-      getRowId={(row) => row.id}
-      rowSelection={rowSelection}
-      onRowSelectionChange={setRowSelection}
-    />
+    <>
+      <AdminDataTable
+        ariaLabel="Invitations"
+        columns={tableColumns}
+        data={rows}
+        density={density}
+        enableRowSelection
+        getRowId={(row) => row.id}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
+      />
+      <Sheet
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) {
+            onCloseDrawer?.();
+            restoreReturnFocus();
+          }
+        }}
+      >
+        <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">
+          {selected ? (
+            <div className="space-y-4 pt-2">
+              <AdminPreviewSheetHeader title={selected.email} subtitle="Invitation preview" />
+              <InvitationDrawerContent invitation={selected} />
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

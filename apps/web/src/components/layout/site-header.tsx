@@ -164,7 +164,7 @@ function SiteHeaderShell({
             }
             trailing={
               <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
-                <HeaderSearchTrigger tone={headerTone} showIcon fullBarFrom="2xl" />
+                <HeaderSearchTrigger tone={headerTone} layout="both" fullBarFrom="2xl" />
                 <div className="hidden lg:flex">
                   <ThemeToggle headerTone={headerTone} />
                 </div>

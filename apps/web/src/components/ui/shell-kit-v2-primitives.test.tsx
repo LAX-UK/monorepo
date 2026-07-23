@@ -3,11 +3,60 @@ import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboa
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { FilterRow } from "@auction/ui/components/filter-row";
 import { SectionTabs } from "@auction/ui/components/section-tabs";
 import { StickySaveBar } from "@auction/ui/components/sticky-save-bar";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+describe("DotStatusPill", () => {
+  it("renders distinct Lucide glyphs for sold vs unsold", () => {
+    const { container: sold } = render(<DotStatusPill label="Sold" tone="sold" />);
+    expect(sold.querySelector("svg.lucide-check")).not.toBeNull();
+
+    const { container: unsold } = render(<DotStatusPill label="Unsold" tone="neutral" />);
+    expect(unsold.querySelector("svg.lucide-x")).not.toBeNull();
+    expect(unsold.querySelector("svg.lucide-check")).toBeNull();
+  });
+
+  it("renders harmonized Tag-Review shells for sold and live", () => {
+    const { container: sold } = render(<DotStatusPill label="Sold" tone="sold" />);
+    const soldShell = sold.firstChild as HTMLElement;
+    expect(soldShell.className).toMatch(/bg-success-container/);
+    expect(soldShell.className).toMatch(/text-success/);
+    expect(soldShell.querySelector("svg.lucide-check")).not.toBeNull();
+
+    const { container: live } = render(<DotStatusPill label="Live" tone="live" />);
+    const liveShell = live.firstChild as HTMLElement;
+    expect(liveShell.className).toMatch(/bg-danger-container/);
+    expect(liveShell.className).toMatch(/text-live-red/);
+    expect(liveShell.querySelector("svg.lucide-radio")).not.toBeNull();
+  });
+
+  it("uses info blue for pending and warning orange for withdrawn", () => {
+    const { container: pending } = render(<DotStatusPill label="Not started" tone="pending" />);
+    const pendingShell = pending.firstChild as HTMLElement;
+    expect(pendingShell.className).toMatch(/bg-info-container/);
+    expect(pendingShell.className).toMatch(/text-info/);
+    const pendingPath = pending.querySelector("path")?.getAttribute("d") ?? "";
+
+    const { container: warning } = render(<DotStatusPill label="Withdrawn" tone="warning" />);
+    const warningShell = warning.firstChild as HTMLElement;
+    expect(warningShell.className).toMatch(/bg-warning-container/);
+    expect(warningShell.className).toMatch(/text-warning/);
+    const warningPath = warning.querySelector("path")?.getAttribute("d") ?? "";
+
+    expect(pendingPath).not.toEqual(warningPath);
+  });
+
+  it("critical uses ban glyph not live radio", () => {
+    const { container: critical } = render(<DotStatusPill label="Cancelled" tone="critical" />);
+    expect(critical.querySelector("svg.lucide-ban")).not.toBeNull();
+    expect(critical.querySelector("svg.lucide-radio")).toBeNull();
+    expect((critical.firstChild as HTMLElement).className).toMatch(/text-danger/);
+  });
+});
 
 describe("FilterRow", () => {
   it("renders link mode chips with active state", () => {
@@ -81,6 +130,16 @@ describe("StickySaveBar", () => {
       </StickySaveBar>,
     );
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it("renders inline when sticky is false", () => {
+    const { container } = render(
+      <StickySaveBar sticky={false}>
+        <button type="button">Continue</button>
+      </StickySaveBar>,
+    );
+    expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
+    expect(container.firstChild).not.toHaveClass("sticky");
   });
 });
 

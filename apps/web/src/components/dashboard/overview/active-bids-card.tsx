@@ -5,17 +5,18 @@ import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboa
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
 import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { bidHintDotStatus } from "@/lib/presenters/status/bid-board-dot-status";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 function bidHintBadge(hint: "high" | "outbid" | "none") {
-  if (hint === "high") return <StatusBadge variant="success">High bidder</StatusBadge>;
-  if (hint === "outbid") return <StatusBadge variant="danger">Outbid</StatusBadge>;
-  return null;
+  if (hint === "none") return null;
+  const presentation = bidHintDotStatus(hint);
+  return <DotStatusPill label={presentation.label} tone={presentation.tone} />;
 }
 
 export function ActiveBidsCard({ vm }: { vm: DashboardOverviewVm }) {

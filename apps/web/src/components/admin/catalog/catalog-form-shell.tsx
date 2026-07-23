@@ -21,6 +21,8 @@ type Props = {
   };
   children: ReactNode;
   className?: string;
+  /** Wider two-column wizard layout (sale create/setup/edit). */
+  layout?: "default" | "wizard";
 };
 
 /** Create/edit pages — single column mobile, optional desktop actions in header. */
@@ -33,16 +35,20 @@ export function CatalogFormShell({
   wizardMobile,
   children,
   className,
+  layout = "default",
 }: Props) {
   const showMobileBar = Boolean(
     (mobileActions && mobileActions.length > 0) || wizardMobile != null,
   );
+  const isWizardLayout = layout === "wizard";
 
   return (
     <AppScreen
       className={cn(
-        "mx-auto w-full max-w-3xl space-y-6 md:max-w-4xl md:space-y-8 md:pb-8",
-        showMobileBar ? "pb-28" : "pb-8",
+        "mx-auto w-full space-y-6 md:space-y-8 md:pb-8",
+        isWizardLayout ? "max-w-6xl pb-8 xl:max-w-7xl" : "max-w-3xl pb-8 md:max-w-4xl",
+        showMobileBar && !isWizardLayout ? "pb-28" : "",
+        showMobileBar && isWizardLayout ? "pb-28 md:pb-8" : "",
         className,
       )}
     >

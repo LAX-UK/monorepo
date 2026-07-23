@@ -55,7 +55,7 @@ describe("SaleScheduleStep", () => {
     expect(screen.getByText("Delivery & venue")).toBeInTheDocument();
     expect(screen.getByText("Schedule")).toBeInTheDocument();
     expect(screen.getByText("Buyer premium")).toBeInTheDocument();
-    expect(screen.getByText("Delivery mode")).toBeInTheDocument();
+    expect(screen.getByText("Auction format")).toBeInTheDocument();
     expect(screen.getByText("Start (London)")).toBeInTheDocument();
   });
 });

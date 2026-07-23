@@ -1,43 +1,32 @@
 "use client";
 
-import { AdminListSearch } from "@/components/admin/admin-list-search";
 import {
   type CatalogActiveFilterChip,
   CatalogActiveFiltersRow,
 } from "@/components/admin/catalog/catalog-active-filters-row";
-import {
-  CatalogFilterBar,
-  type CatalogSegmentItem,
-} from "@/components/admin/catalog/catalog-filter-bar";
-import { CatalogLotsLensNav } from "@/components/admin/catalog/catalog-lots-lens-nav";
-import type { ReactNode } from "react";
+import { CatalogFilterBar } from "@/components/admin/catalog/catalog-filter-bar";
+import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-segment-nav";
 
-type Props = {
+type StickyProps = {
   lenses: readonly CatalogSegmentItem[];
   activeLensId: string;
-  activeFilterCount: number;
   activeFilterChips?: readonly CatalogActiveFilterChip[];
-  /** Server-rendered filter form (e.g. LotFilterOptionsLoader in Suspense). */
-  sheetFilters: ReactNode;
 };
 
-export function CatalogLotsFilterToolbar({
+/** Sticky bar — lens tabs and applied chips only (search/filters live in the table card header). */
+export function CatalogLotsStickyFilterToolbar({
   lenses,
   activeLensId,
-  activeFilterCount,
   activeFilterChips = [],
-  sheetFilters,
-}: Props) {
+}: StickyProps) {
   return (
     <CatalogFilterBar
       lenses={lenses}
       activeLensId={activeLensId}
-      lensAriaLabel="Lot list view"
-      activeFilterCount={activeFilterCount}
-      LensNav={CatalogLotsLensNav}
-      searchSlot={<AdminListSearch placeholder="Search lots…" className="w-full" />}
+      lensAriaLabel="Lot status"
+      showSearch={false}
+      showFilterTrigger={false}
       activeFilters={<CatalogActiveFiltersRow chips={activeFilterChips} />}
-      sheetFilters={sheetFilters}
     />
   );
 }

@@ -1,5 +1,5 @@
 import { CatalogInfoAsideCopyId } from "@/components/admin/catalog/catalog-info-aside-copy-id";
-import { formatDateTime } from "@/lib/ui/format";
+import { formatAdminTableDateTime } from "@/lib/admin/format-admin-table-datetime";
 import { Surface } from "@auction/ui/components/surface";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +24,10 @@ export function CatalogInfoAside({
   children,
 }: Props) {
   const updated = updatedAt instanceof Date ? updatedAt : updatedAt ? new Date(updatedAt) : null;
+  const updatedPresentation =
+    updated && !Number.isNaN(updated.getTime())
+      ? formatAdminTableDateTime(updated, "timestamp")
+      : null;
 
   return (
     <Surface variant="quiet" padding="md" className="space-y-4 text-sm">
@@ -43,12 +47,21 @@ export function CatalogInfoAside({
           <CatalogInfoAsideCopyId entityId={entityId} />
         </div>
       ) : null}
-      {updated && !Number.isNaN(updated.getTime()) ? (
+      {updatedPresentation ? (
         <div>
           <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
             Updated
           </p>
-          <p className="mt-1 text-on-surface-variant">{formatDateTime(updated)}</p>
+          <time
+            dateTime={updatedPresentation.iso ?? undefined}
+            title={updatedPresentation.title}
+            className="mt-1 block text-on-surface-variant"
+          >
+            <span className="block font-body text-sm">{updatedPresentation.primary}</span>
+            {updatedPresentation.secondary ? (
+              <span className="block font-body text-xs">{updatedPresentation.secondary}</span>
+            ) : null}
+          </time>
         </div>
       ) : null}
       {publicHref ? (

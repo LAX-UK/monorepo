@@ -3,8 +3,8 @@ import { PeopleListPageSkeleton } from "@/components/admin/people/people-list-st
 export default function AdminOnboardingIssuesLoading() {
   return (
     <PeopleListPageSkeleton
-      title="Onboarding & verification queues"
-      description="Loading queues…"
+      title="Onboarding issues"
+      description="Loading onboarding issues…"
       kpiTiles={0}
       showFilterBar={false}
       showTabBar

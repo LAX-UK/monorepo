@@ -119,12 +119,12 @@ describe("buildSubmissionsActiveFilterChips", () => {
     expect(chips[0]?.clearHref).not.toContain("qualityGaps=");
   });
 
-  it("builds my queue and SLA sort chips when active", () => {
+  it("builds assigned-to-me and SLA sort chips when active", () => {
     const chips = buildSubmissionsActiveFilterChips(
       { assignedTo: "me", sort: "sla" },
       { assignedToMe: true, sort: "sla" },
     );
-    expect(chips.find((c) => c.id === "assignedTo")?.label).toBe("My queue");
+    expect(chips.find((c) => c.id === "assignedTo")?.label).toBe("Assigned to me");
     expect(chips.find((c) => c.id === "sort")?.label).toContain("SLA");
     expect(chips.find((c) => c.id === "assignedTo")?.clearHref).not.toContain("assignedTo=");
     expect(chips.find((c) => c.id === "sort")?.clearHref).not.toContain("sort=");

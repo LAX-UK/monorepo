@@ -1,4 +1,5 @@
-import { LotActivityTab } from "@/components/admin/lot-detail/tabs/activity-tab";
+import { LotActivityTabBoard } from "@/components/admin/lot-detail/lot-activity-tab-board";
+import { getAdminDomainEventsForAggregate } from "@/lib/data/http/admin.server";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -6,5 +7,10 @@ type Props = {
 
 export default async function AdminLotActivityPage({ params }: Props) {
   const { id } = await params;
-  return <LotActivityTab lotId={id} />;
+  const events = await getAdminDomainEventsForAggregate({
+    aggregateType: "lot",
+    aggregateId: id,
+    limit: 50,
+  }).catch(() => []);
+  return <LotActivityTabBoard lotId={id} events={events} />;
 }

@@ -1,10 +1,9 @@
 import {
   type StatusDomain,
   type StatusPresentationContext,
-  resolveStatusPresentation,
-} from "@/lib/presenters/status-presentation";
-import { StatusBadge } from "@auction/ui";
-import type { ComponentProps } from "react";
+  resolveDotStatusPresentation,
+} from "@/lib/presenters/status/resolver";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 
 export type DomainStatusBadgeProps = {
   domain: StatusDomain;
@@ -12,28 +11,26 @@ export type DomainStatusBadgeProps = {
   context?: StatusPresentationContext;
   /** Override auto label from registry. */
   label?: string;
-  size?: ComponentProps<typeof StatusBadge>["size"];
+  /** @deprecated Tag-Review chips use a single size; ignored. */
+  size?: "sm" | "md";
   className?: string;
 };
 
-/** API status → registry label + variant → StatusBadge. */
+/** API status → registry label + variant → Tag-Review chip. */
 export function DomainStatusBadge({
   domain,
   status,
   context,
   label,
-  size = "sm",
+  size: _size,
   className,
 }: DomainStatusBadgeProps) {
-  const presentation = resolveStatusPresentation(domain, status, context);
+  const presentation = resolveDotStatusPresentation(domain, status, context);
   return (
-    <StatusBadge
-      variant={presentation.variant}
-      size={size}
-      {...(presentation.dot ? { dot: true } : {})}
-      className={className}
-    >
-      {label ?? presentation.label}
-    </StatusBadge>
+    <DotStatusPill
+      label={label ?? presentation.label}
+      tone={presentation.tone}
+      {...(className ? { className } : {})}
+    />
   );
 }

@@ -1,11 +1,15 @@
 "use client";
 
-import { type AdminKpiPeriodDays, adminKpiPeriodLabel } from "@/lib/admin/admin-kpi-period";
+import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 const PERIODS: AdminKpiPeriodDays[] = [7, 30, 90];
+
+function periodTagLabel(days: AdminKpiPeriodDays): string {
+  return `${days} Days`;
+}
 
 type Props = {
   current: AdminKpiPeriodDays;
@@ -22,9 +26,6 @@ export function CatalogKpiPeriodToggle({ current, className }: Props) {
       className={cn("flex flex-wrap items-center gap-1 border-0 p-0 m-0 min-w-0", className)}
     >
       <legend className="sr-only">KPI trend period</legend>
-      <span className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Trend
-      </span>
       {PERIODS.map((days) => {
         const params = new URLSearchParams(searchParams.toString());
         if (days === 30) {
@@ -40,13 +41,13 @@ export function CatalogKpiPeriodToggle({ current, className }: Props) {
             href={href}
             aria-current={active ? "true" : undefined}
             className={cn(
-              "inline-flex min-h-9 items-center rounded-md border px-2.5 font-label text-[10px] uppercase tracking-[0.12em]",
+              "inline-flex min-h-8 items-center rounded-full border px-3 font-label text-xs font-medium",
               active
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-outline-variant text-on-surface-variant hover:bg-surface-container-low",
+                ? "border-on-surface bg-on-surface text-surface-container-lowest"
+                : "border-shell-stroke bg-surface-container-lowest text-on-surface-variant hover:border-on-surface-variant hover:text-on-surface",
             )}
           >
-            {adminKpiPeriodLabel(days)}
+            {periodTagLabel(days)}
           </Link>
         );
       })}

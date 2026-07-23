@@ -8,7 +8,7 @@ import { pushPaletteRecent } from "@/components/layout/palette/palette-cookie-cl
 import { Button } from "@auction/ui/components/button";
 import { Pin } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   label: string;
@@ -20,7 +20,11 @@ export function AdminPinPageButton({ label, href }: Props) {
   const pathname = usePathname();
   const targetHref = href ?? pathname;
   const routeId = targetHref;
-  const [pinned, setPinned] = useState(() => isPalettePinned("route", routeId));
+  const [pinned, setPinned] = useState(false);
+
+  useEffect(() => {
+    setPinned(isPalettePinned("route", routeId));
+  }, [routeId]);
 
   return (
     <Button

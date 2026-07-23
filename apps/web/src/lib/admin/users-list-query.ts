@@ -1,4 +1,5 @@
 import { firstString } from "@/lib/admin/admin-list-params";
+import type { GetAdminUserListParams } from "@/lib/data/http/admin-users.types";
 import { adminUserListSortEnum } from "@auction/validators";
 import type { z } from "zod";
 
@@ -98,6 +99,37 @@ export function parseUsersListFilters(
   if (lastActiveTo) out.lastActiveTo = lastActiveTo;
   if (sort) out.sort = sort;
   return out;
+}
+
+export function usersListFiltersToGetAdminUserListParams(
+  filters: UsersListFilters,
+  paging: { limit: number; offset: number },
+): GetAdminUserListParams {
+  return {
+    limit: paging.limit,
+    offset: paging.offset,
+    ...(filters.q ? { q: filters.q } : {}),
+    ...(filters.role ? { role: filters.role } : {}),
+    ...(filters.staffRole ? { staffRole: filters.staffRole } : {}),
+    ...(filters.accountStatus ? { accountStatus: filters.accountStatus } : {}),
+    ...(filters.suspendedOnly ? { suspendedOnly: true } : {}),
+    ...(filters.emailVerified !== undefined ? { emailVerified: filters.emailVerified } : {}),
+    ...(filters.kycStatuses?.length ? { kycStatuses: filters.kycStatuses } : {}),
+    ...(filters.kycStatus ? { kycStatus: filters.kycStatus } : {}),
+    ...(filters.persona ? { persona: filters.persona } : {}),
+    ...(filters.twoFactorEnabled !== undefined
+      ? { twoFactorEnabled: filters.twoFactorEnabled }
+      : {}),
+    ...(filters.deletionRequestedOnly ? { deletionRequestedOnly: true } : {}),
+    ...(filters.hasMobile !== undefined ? { hasMobile: filters.hasMobile } : {}),
+    ...(filters.createdFrom ? { createdFrom: filters.createdFrom } : {}),
+    ...(filters.createdTo ? { createdTo: filters.createdTo } : {}),
+    ...(filters.kycVerifiedFrom ? { kycVerifiedFrom: filters.kycVerifiedFrom } : {}),
+    ...(filters.kycVerifiedTo ? { kycVerifiedTo: filters.kycVerifiedTo } : {}),
+    ...(filters.lastActiveFrom ? { lastActiveFrom: filters.lastActiveFrom } : {}),
+    ...(filters.lastActiveTo ? { lastActiveTo: filters.lastActiveTo } : {}),
+    ...(filters.sort ? { sort: filters.sort } : {}),
+  };
 }
 
 export function usersListFiltersToApiParams(

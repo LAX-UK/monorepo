@@ -8,8 +8,8 @@ type Props = {
 
 export default async function AdminSaleDocumentsPage({ params }: Props) {
   const { id } = await params;
-  await loadAdminSaleDetail(id);
+  const bundle = await loadAdminSaleDetail(id);
   const documents = await getServerSaleDocuments(id).catch(() => []);
 
-  return <SaleDocumentsTab saleId={id} documents={documents} />;
+  return <SaleDocumentsTab saleId={id} saleTitle={bundle.sale.title} documents={documents} />;
 }

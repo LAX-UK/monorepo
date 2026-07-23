@@ -6,7 +6,10 @@ import type {
   AdminXeroIntegrationStatus,
 } from "@/lib/data/http/admin-payments.types";
 import { isIndexableObject, toObjectRecord } from "@/lib/data/http/object-guards";
-import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
+import {
+  type AdminPaymentTableRow,
+  buildAdminPaymentAmountDisplay,
+} from "@/lib/data/view-models/admin-payments-table.vm";
 import { z } from "zod";
 
 export const adminPaymentTableRowSchema = z
@@ -22,6 +25,7 @@ export const adminPaymentTableRowSchema = z
       buyerLabel: row.buyerLabel == null ? null : String(row.buyerLabel),
       sellerId: base.sellerId,
       amount: base.amount,
+      amountDisplay: buildAdminPaymentAmountDisplay(base.amount),
       platformFee: base.platformFee,
       status: base.status,
       fulfilmentStatus: row.fulfilmentStatus == null ? null : String(row.fulfilmentStatus),

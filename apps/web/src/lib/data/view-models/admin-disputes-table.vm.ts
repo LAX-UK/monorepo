@@ -1,10 +1,12 @@
+import type { AdminTableMoneyDisplay } from "@/lib/admin/format-admin-table-money";
+import { formatAdminTableMoney } from "@/lib/admin/format-admin-table-money";
 import type { AdminDisputeCaseRow, DisputeCaseStatus } from "@auction/types";
 
 export type AdminDisputeTableRow = {
   stripeDisputeId: string;
   paymentId: string;
   status: DisputeCaseStatus;
-  amountLabel: string;
+  amountDisplay: AdminTableMoneyDisplay;
   currency: string;
   reason: string | null;
   reasonLabel: string;
@@ -35,16 +37,8 @@ const REASON_LABELS: Record<string, string> = {
   insufficient_funds: "Insufficient funds",
 };
 
-function formatMoneyFromCents(amountCents: number, currency: string): string {
-  const amount = amountCents / 100;
-  try {
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: currency.toUpperCase(),
-    }).format(amount);
-  } catch {
-    return `${amount.toFixed(2)} ${currency.toUpperCase()}`;
-  }
+function formatMoneyFromCents(amountCents: number, currency: string): AdminTableMoneyDisplay {
+  return formatAdminTableMoney(amountCents / 100, currency);
 }
 
 function reasonLabel(reason: string | null): string {
@@ -57,7 +51,7 @@ export function buildAdminDisputeTableRow(row: AdminDisputeCaseRow): AdminDisput
     stripeDisputeId: row.stripeDisputeId,
     paymentId: row.paymentId,
     status: row.status,
-    amountLabel: formatMoneyFromCents(row.amountCents, row.currency),
+    amountDisplay: formatMoneyFromCents(row.amountCents, row.currency),
     currency: row.currency,
     reason: row.reason,
     reasonLabel: reasonLabel(row.reason),

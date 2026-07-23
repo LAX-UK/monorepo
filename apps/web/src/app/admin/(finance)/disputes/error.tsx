@@ -1,9 +1,9 @@
 "use client";
 
-import { createFinanceListRouteError } from "@/components/admin/finance/create-finance-list-route-error";
+import { createCatalogListRouteError } from "@/components/admin/catalog/create-catalog-list-route-error";
 
-export default createFinanceListRouteError({
+export default createCatalogListRouteError({
   title: "Payment disputes",
-  backHref: "/admin/disputes",
-  backLabel: "Back to disputes",
+  listHref: "/admin/disputes",
+  listLabel: "Back to disputes",
 });

@@ -1,5 +1,5 @@
-import type { CatalogActiveFilterChip } from "@/components/admin/catalog/catalog-active-filters-row";
 import { buildListHref, firstString } from "@/lib/admin/admin-list-params";
+import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import type { PayoutStatus } from "@auction/types";
 import { payoutStatuses } from "@auction/types";
 

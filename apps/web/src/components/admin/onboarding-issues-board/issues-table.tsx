@@ -11,15 +11,19 @@ export function OnboardingIssuesTable<T extends { id: string }>({
   columns,
   emptyTitle,
   renderCard,
+  getRowHref,
 }: {
   rows: T[];
   columns: ColumnDef<T>[];
   emptyTitle: string;
   renderCard?: (row: T) => ReactNode;
+  getRowHref?: (row: T) => string;
 }) {
   const { density } = useTableDensity();
   if (rows.length === 0) {
-    return <AdminEmptyState title={emptyTitle} description="Nothing in this queue right now." />;
+    return (
+      <AdminEmptyState title={emptyTitle} description="Nothing pending in this list right now." />
+    );
   }
 
   const cards = renderCard ? (
@@ -44,6 +48,7 @@ export function OnboardingIssuesTable<T extends { id: string }>({
           data={rows}
           density={density}
           getRowId={(r) => r.id}
+          {...(getRowHref ? { getRowHref } : {})}
         />
       </div>
       {cards}

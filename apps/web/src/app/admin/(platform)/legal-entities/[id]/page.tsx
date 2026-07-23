@@ -1,15 +1,11 @@
 import { LegalEntityDetailShell } from "@/components/admin/legal-entities/legal-entity-detail-shell";
+import { parseAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
 import { statusLabel } from "@/lib/admin/legal-entity-list-presenter";
+import { loadAdminLegalEntityDetail } from "@/lib/admin/load-admin-legal-entity-detail";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import {
-  getAdminDomainEventsForAggregate,
-  getAdminLegalEntityById,
-  getAdminLegalEntityDocuments,
-  getAdminUserById,
-} from "@/lib/data/http/admin.server";
+import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 export async function generateMetadata({
   params,
@@ -31,10 +27,11 @@ export default async function AdminLegalEntityDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; success?: string; tab?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; tab?: string; returnTo?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
+  const backHref = parseAdminListReturnTarget(sp.returnTo, "/admin/legal-entities");
   const error = safeDecodeAdminErrorParam(sp.error);
   const success = safeDecodeAdminErrorParam(sp.success);
   const activeTab =
@@ -42,28 +39,7 @@ export default async function AdminLegalEntityDetailPage({
       ? sp.tab
       : "overview";
 
-  let entity: Awaited<ReturnType<typeof getAdminLegalEntityById>> = null;
-  try {
-    entity = await getAdminLegalEntityById(id);
-  } catch {
-    notFound();
-  }
-  if (!entity) {
-    notFound();
-  }
-
-  const creatorUser = await getAdminUserById(entity.createdByUserId).catch(() => null);
-  const [documents, activityEvents] = await Promise.all([
-    getAdminLegalEntityDocuments(id).catch(() => []),
-    getAdminDomainEventsForAggregate({
-      aggregateType: "legal_entity",
-      aggregateId: id,
-      limit: 100,
-    }).catch(() => []),
-  ]);
-  const creator = creatorUser
-    ? { id: creatorUser.id, name: creatorUser.name, email: creatorUser.email }
-    : null;
+  const { entity, creator, documents, activityEvents } = await loadAdminLegalEntityDetail(id);
 
   return (
     <LegalEntityDetailShell
@@ -74,6 +50,7 @@ export default async function AdminLegalEntityDetailPage({
       activityEvents={activityEvents}
       error={error}
       success={success}
+      backHref={backHref}
     />
   );
 }

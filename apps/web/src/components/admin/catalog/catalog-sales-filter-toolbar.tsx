@@ -1,6 +1,5 @@
 "use client";
 
-import { AdminListSearch } from "@/components/admin/admin-list-search";
 import {
   type CatalogActiveFilterChip,
   CatalogActiveFiltersRow,
@@ -12,28 +11,26 @@ import type { ReactNode } from "react";
 type Props = {
   lenses: readonly CatalogSegmentItem[];
   activeLensId: string;
-  activeFilterCount: number;
   activeFilterChips?: readonly CatalogActiveFilterChip[];
-  sheetFilters: ReactNode;
+  toolbarEnd?: ReactNode;
 };
 
+/** Sticky bar — lens tabs and applied chips only (search/filters live in the table card header). */
 export function CatalogSalesFilterToolbar({
   lenses,
   activeLensId,
-  activeFilterCount,
   activeFilterChips = [],
-  sheetFilters,
+  toolbarEnd,
 }: Props) {
   return (
     <CatalogFilterBar
       lenses={lenses}
       activeLensId={activeLensId}
       lensAriaLabel="Sale lifecycle"
-      activeFilterCount={activeFilterCount}
-      searchSlot={<AdminListSearch placeholder="Search by sale title…" className="w-full" />}
-      sheetTitle="Sale filters"
+      showSearch={false}
+      showFilterTrigger={false}
       activeFilters={<CatalogActiveFiltersRow chips={activeFilterChips} />}
-      sheetFilters={sheetFilters}
+      toolbarEnd={toolbarEnd}
     />
   );
 }

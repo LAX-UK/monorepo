@@ -1,30 +1,24 @@
 "use client";
 
-import {
-  AdminUserListBulkBar,
-  useAdminUserPreviewActions,
-  useAdminUserPreviewBulk,
-} from "@/components/admin/admin-user-preview-provider";
+import { useAdminBulkSelectionBulk } from "@/components/admin/admin-bulk-selection-bridge";
 import {
   PeopleClientMobileCard,
   PeopleStaffMobileCard,
 } from "@/components/admin/people/people-mobile-card";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { formatSignupPersona } from "@/lib/admin/format-signup-persona";
+import { buildClientsDrawerHref } from "@/lib/admin/people/clients-list-href";
+import { buildStaffDrawerHref } from "@/lib/admin/people/staff-list-href";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
 import { Checkbox } from "@auction/ui/components/checkbox";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 type Props = {
   rows: AdminUserRow[];
 };
-
-function useOpenUserPreview() {
-  const actions = useAdminUserPreviewActions();
-  return (userId: string) => actions?.openUser(userId);
-}
 
 function UserMobileCardRow({
   userId,
@@ -33,7 +27,7 @@ function UserMobileCardRow({
   userId: string;
   children: ReactNode;
 }) {
-  const bulk = useAdminUserPreviewBulk();
+  const bulk = useAdminBulkSelectionBulk();
   const selected = bulk?.isSelected(userId) ?? false;
 
   if (!bulk) {
@@ -54,7 +48,8 @@ function UserMobileCardRow({
 }
 
 export function PeopleClientsMobileCards({ rows }: Props) {
-  const openUser = useOpenUserPreview();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   return (
     <ul className="space-y-2">
@@ -63,7 +58,9 @@ export function PeopleClientsMobileCards({ rows }: Props) {
           <UserMobileCardRow userId={user.id}>
             <PeopleClientMobileCard
               user={user}
-              onOpen={() => openUser?.(user.id)}
+              onOpen={() =>
+                router.push(buildClientsDrawerHref(searchParams, user.id), { scroll: false })
+              }
               formatPersona={formatSignupPersona}
               formatJoined={formatAdminUserDate}
             />
@@ -75,7 +72,8 @@ export function PeopleClientsMobileCards({ rows }: Props) {
 }
 
 export function PeopleStaffMobileCards({ rows }: Props) {
-  const openUser = useOpenUserPreview();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   return (
     <ul className="space-y-2">
@@ -84,7 +82,9 @@ export function PeopleStaffMobileCards({ rows }: Props) {
           <UserMobileCardRow userId={user.id}>
             <PeopleStaffMobileCard
               user={user}
-              onOpen={() => openUser?.(user.id)}
+              onOpen={() =>
+                router.push(buildStaffDrawerHref(searchParams, user.id), { scroll: false })
+              }
               roleLabel={staffRoleLabel(user.staffRole as UserStaffRole | null)}
             />
           </UserMobileCardRow>
@@ -94,4 +94,4 @@ export function PeopleStaffMobileCards({ rows }: Props) {
   );
 }
 
-export { AdminUserListBulkBar };
+export { AdminBulkSelectionBar as AdminUserListBulkBar } from "@/components/admin/admin-bulk-selection-bridge";

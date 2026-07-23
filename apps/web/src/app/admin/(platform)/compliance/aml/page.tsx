@@ -1,20 +1,30 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import { ComplianceAmlBoard } from "@/components/admin/compliance-aml-board";
-import { amlListController } from "@/lib/admin/admin-list-controllers";
-import { buildListHref } from "@/lib/admin/admin-list-params";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
+import { ComplianceAmlBoardContainer } from "@/components/admin/compliance-aml-board/container";
+import {
+  buildAmlListKpiTiles,
+  buildAmlMobileMetrics,
+} from "@/lib/admin/compliance/build-aml-list-kpi-tiles";
+import { loadAdminAmlListPage } from "@/lib/admin/compliance/load-aml-list-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { complianceQueueCrossLinksMeta } from "@/lib/admin/sof-list-query";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { summarizeAmlQueue } from "@/lib/data/view-models/admin-aml-table.vm";
-import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { type UserRole, userHasAccessTo } from "@auction/types";
+import { AML_REVIEW_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
+
+const complianceBreadcrumbs = (
+  <CatalogBreadcrumbs
+    segments={[
+      { label: "Compliance", href: "/admin/compliance/aml" },
+      { label: "AML / sanctions" },
+    ]}
+  />
+);
 
 export default async function AdminComplianceAmlPage({
   searchParams,
@@ -28,38 +38,19 @@ export default async function AdminComplianceAmlPage({
   }>;
 }) {
   const sp = await searchParams;
+  const user = await requireAdminCapability(AML_REVIEW_ACCESS, "/admin/compliance/aml");
+
+  const loaded = await loadAdminAmlListPage(sp, user);
+  const { model, rows, selected, summary, loadError, capabilities, pagination } = loaded;
   const error = safeDecodeAdminErrorParam(sp.error);
   const success = safeDecodeAdminErrorParam(sp.success);
-
-  const user = await requireAdminCapability(AML_REVIEW_ACCESS, "/admin/compliance/aml");
-  const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
-  const canTriage = userHasAccessTo(role, staffRole, AML_REVIEW_ACCESS);
-  const canDecide = userHasAccessTo(role, staffRole, MLRO_DECISION_ACCESS);
-  const query = amlListController.parseQuery(sp);
-
-  let rows: Awaited<ReturnType<typeof amlListController.fetch>>["rows"] = [];
-  let total = 0;
-  let summaryRows: Awaited<ReturnType<typeof amlListController.fetch>>["rowsForSummary"] = [];
-  let loadError: string | null = null;
-
-  try {
-    const result = await amlListController.fetch(query);
-    rows = result.rows;
-    total = result.total ?? 0;
-    summaryRows = result.rowsForSummary ?? result.rows;
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load AML screenings.";
-  }
-
-  const summary = summarizeAmlQueue(summaryRows);
   const { sofHref, paymentsHref } = complianceQueueCrossLinksMeta();
 
   const meta = (
     <p className="font-body text-sm text-on-surface-variant">
       Also see{" "}
       <Link href={sofHref} className="text-link underline">
-        Source of Funds queue
+        Source of Funds cases
       </Link>{" "}
       and payments held for{" "}
       <Link href={paymentsHref} className="text-link underline">
@@ -69,94 +60,57 @@ export default async function AdminComplianceAmlPage({
     </p>
   );
 
-  const pagination =
-    !loadError && total > 0 && (query.offset > 0 || query.offset + rows.length < total) ? (
-      <CatalogPagination
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={rows.length}
-        total={total}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/compliance/aml", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
-        }
-        nextHref={
-          query.offset + rows.length < total
-            ? buildListHref("/admin/compliance/aml", sp, {
-                offset: query.offset + query.limit,
-              })
-            : null
-        }
-      />
-    ) : null;
-
   return (
-    <AdminListShell
+    <CatalogListShell
       variant="queue"
       title="AML / sanctions screening"
       description="Two-stage maker-checker: analyst triage (advisory), then a different MLRO binding clear/block. Cleared screenings lift settlement holds."
+      breadcrumbs={complianceBreadcrumbs}
       meta={meta}
-      errorAlert={
-        error || loadError ? (
-          <AdminListAlert title="Attention">{loadError ?? error}</AdminListAlert>
-        ) : null
-      }
       mobileSummary={
-        !loadError ? (
-          <CatalogListMobileSummary
-            metrics={[
-              { id: "pending", label: "Awaiting triage", value: String(summary.pending) },
-              { id: "triaged", label: "Triaged", value: String(summary.triaged) },
-              { id: "page", label: "On page", value: String(rows.length) },
-            ]}
-          />
+        !loadError && loaded.total > 0 ? (
+          <CatalogListMobileSummary metrics={buildAmlMobileMetrics(summary)} />
         ) : null
       }
       kpiStrip={
-        !loadError ? (
-          <AdminListKpiStrip
-            ariaLabel="AML queue summary"
-            tiles={[
-              { label: "Awaiting triage", value: summary.pending },
-              { label: "Triaged", value: summary.triaged },
-              { label: "Escalated", value: summary.escalated },
-              { label: "Total pending", value: total },
-            ]}
+        !loadError && loaded.total > 0 ? (
+          <AdminTrendKpiBand
+            ariaLabel="AML screenings summary"
+            tiles={buildAmlListKpiTiles(summary)}
           />
         ) : null
       }
-      wrapView={false}
-      view={
-        !loadError && rows.length > 0 ? (
-          <div className="space-y-4">
-            {success ? (
-              <Alert>
-                <AlertTitle>Done</AlertTitle>
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            ) : null}
-            <ComplianceAmlBoard
-              rows={rows}
-              canTriage={canTriage}
-              canDecide={canDecide}
-              currentUserId={user.id}
-              initialScreeningId={sp.screening ?? null}
-            />
-          </div>
+      errorAlert={
+        error || loadError ? (
+          <AdminListAlert title="Could not load">{loadError ?? error}</AdminListAlert>
         ) : null
       }
       empty={
-        !loadError && total === 0 ? (
+        !loadError && rows.length === 0 ? (
           <CatalogListEmptyState
             title="No pending AML screenings"
             description="Watchlist matches awaiting triage will appear here. Escalations are also emailed to compliance officers."
           />
         ) : null
       }
-      pagination={pagination}
-    />
+    >
+      {!loadError && rows.length > 0 ? (
+        <div className="space-y-4">
+          {success ? (
+            <Alert>
+              <AlertTitle>Done</AlertTitle>
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          ) : null}
+          <ComplianceAmlBoardContainer
+            rows={rows}
+            selected={selected}
+            selectedScreeningId={model.selectedScreeningId}
+            pagination={pagination}
+            capabilities={capabilities}
+          />
+        </div>
+      ) : null}
+    </CatalogListShell>
   );
 }

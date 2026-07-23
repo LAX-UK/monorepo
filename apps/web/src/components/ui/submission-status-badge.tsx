@@ -5,10 +5,10 @@ import {
   SELLER_SUBMISSION_STATUS_LABELS,
   SUBMISSION_STATUS_HINTS,
 } from "@/lib/marketing/sell-flow-copy";
-import { resolveStatusPresentation } from "@/lib/presenters/status-presentation";
+import { resolveDotStatusPresentation } from "@/lib/presenters/status-presentation";
 import type { ItemSubmissionStatus } from "@auction/types";
-import { StatusBadge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { CircleAlert } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -31,7 +31,7 @@ function StatusHintContent({ label, hint }: { label: string; hint: string }) {
 export function SubmissionStatusBadge({ status, showHint = true }: Props) {
   const label = SELLER_SUBMISSION_STATUS_LABELS[status];
   const hint = SUBMISSION_STATUS_HINTS[status];
-  const presentation = resolveStatusPresentation("submission", status);
+  const presentation = resolveDotStatusPresentation("submission", status);
   const prefersHover = usePrefersHover();
   const [open, setOpen] = useState(false);
 
@@ -45,13 +45,7 @@ export function SubmissionStatusBadge({ status, showHint = true }: Props) {
 
   return (
     <span className="inline-flex items-center gap-1">
-      <StatusBadge
-        variant={presentation.variant}
-        size="sm"
-        {...(presentation.dot ? { dot: true } : {})}
-      >
-        {label}
-      </StatusBadge>
+      <DotStatusPill label={label} tone={presentation.tone} />
       {showHint && hint ? (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>

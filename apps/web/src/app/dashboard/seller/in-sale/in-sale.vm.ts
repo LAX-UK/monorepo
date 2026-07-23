@@ -1,7 +1,9 @@
 import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { resolveLotDotStatusPresentation } from "@/lib/presenters/status/resolver";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { deriveReserveStatus } from "@auction/domain";
 import type { Lot, LotStatus } from "@auction/types";
+import type { DotStatusPillTone } from "@auction/ui";
 import { toDisplayDate, toRequiredIsoString } from "@auction/validators";
 
 export type SellerLotStatusFilter = "live" | "scheduled" | "ended" | "all";
@@ -19,7 +21,7 @@ export type InSaleDisplayRow = {
   saleTitle: string | null;
   status: LotStatus;
   statusLabel: string;
-  statusTone: "success" | "danger" | "info" | "neutral";
+  statusDotTone: DotStatusPillTone;
   /** Whether the current price meets or exceeds the reserve price. */
   reserveMet: boolean;
   /** Human-readable label: "Met", "Below reserve", or "No reserve". */
@@ -46,24 +48,13 @@ function formatDateTime(d: Date): string {
   return DATE_FMT.format(d);
 }
 
-function lotStatusView(status: LotStatus): {
+function lotStatusView(lot: Pick<Lot, "status" | "winnerId">): {
   label: string;
-  tone: InSaleDisplayRow["statusTone"];
+  statusDotTone: DotStatusPillTone;
 } {
-  switch (status) {
-    case "draft":
-      return { label: "Draft", tone: "neutral" };
-    case "scheduled":
-      return { label: "Scheduled", tone: "info" };
-    case "active":
-      return { label: "Live", tone: "success" };
-    case "ended":
-      return { label: "Ended", tone: "neutral" };
-    case "cancelled":
-      return { label: "Cancelled", tone: "danger" };
-    case "voided":
-      return { label: "Voided", tone: "danger" };
-  }
+  const context = lot.status === "ended" ? { winnerId: lot.winnerId } : undefined;
+  const presentation = resolveLotDotStatusPresentation(lot.status, context);
+  return { label: presentation.label, statusDotTone: presentation.tone };
 }
 
 /** Reserve-met indicator. Returns null-safe results for lots without a reserve. */
@@ -119,7 +110,7 @@ export function toInSaleDisplayRows(
   saleById: Map<string, SaleSummary>,
 ): InSaleDisplayRow[] {
   return lots.map((lot) => {
-    const view = lotStatusView(lot.status);
+    const view = lotStatusView(lot);
     const sale = lot.saleId ? saleById.get(lot.saleId) : undefined;
     const reserve = deriveReserve(lot);
     return {
@@ -131,7 +122,7 @@ export function toInSaleDisplayRows(
       saleTitle: sale?.title ?? null,
       status: lot.status,
       statusLabel: view.label,
-      statusTone: view.tone,
+      statusDotTone: view.statusDotTone,
       reserveMet: reserve.met,
       reserveLabel: reserve.label,
       saleOutcome: reserve.saleOutcome,

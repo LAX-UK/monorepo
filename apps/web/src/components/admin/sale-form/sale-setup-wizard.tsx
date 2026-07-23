@@ -22,6 +22,7 @@ import {
   saleSetupHref,
   saleSetupStepId,
 } from "@/lib/admin/sale-setup";
+import { buildSaleSetupStepperSteps } from "@/lib/data/view-models/sale-setup-stepper.vm";
 import {
   type AdminSaleFormValues,
   adminSaleDraftScheduleSchema,
@@ -323,12 +324,6 @@ export function SaleSetupWizard({
           className="space-y-8"
           onSubmit={(e) => e.preventDefault()}
         >
-          {englishOnlyAuctionsLocked ? (
-            <p className="rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
-              English-only mode is on: lots in this sale must use the English auction type.
-            </p>
-          ) : null}
-
           {readOnlySaleSteps && canEditCatalog ? (
             <Alert>
               <AlertDescription>{catalogueStaffReadOnlyMessage()}</AlertDescription>
@@ -336,7 +331,7 @@ export function SaleSetupWizard({
           ) : null}
 
           {stepNotice ? (
-            <Alert className="border-primary/30 bg-primary/5">
+            <Alert className="border-secondary/30 bg-secondary/5">
               <AlertDescription className="text-on-surface">{stepNotice}</AlertDescription>
             </Alert>
           ) : null}
@@ -362,9 +357,11 @@ export function SaleSetupWizard({
           ) : null}
 
           <AdminFormWizard
-            steps={SALE_SETUP_STEPS}
+            steps={buildSaleSetupStepperSteps()}
+            layout="sidebar"
             isDirty={form.formState.isDirty}
             pending={pending}
+            stickyActions={false}
             hideStickyOnMobile
             mobilePrimaryAction={mobilePrimaryAction}
             mobileCancelAction={mobileCancelAction}
@@ -434,7 +431,9 @@ export function SaleSetupWizard({
               return (
                 <div className="space-y-8">
                   <WizardStepSync stepIndex={stepIndex} onStepIndex={setWizardStepIndex} />
-                  <SaleSetupStepIntro stepId={stepId} stepIndex={stepIndex} />
+                  <div className="lg:hidden">
+                    <SaleSetupStepIntro stepId={stepId} stepIndex={stepIndex} />
+                  </div>
                   {stepIndex === 0 ? (
                     <fieldset disabled={readOnlySaleSteps}>
                       <SaleIdentityStep
@@ -508,6 +507,7 @@ export function SaleSetupWizard({
                       lots={lots}
                       pendingRegistrationCount={pendingRegistrationCount}
                       canPublish={canManageSale}
+                      documentCount={initialSaleDocuments.length}
                       onEditSummary={() => wizardGoToRef.current(0)}
                       {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
                     />

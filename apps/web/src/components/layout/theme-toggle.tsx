@@ -1,7 +1,9 @@
 "use client";
 
+import { ShellChromeIconButton } from "@/components/layout/shell-chrome-icon-button";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
+import type { ChromeSurface } from "@/lib/layout/chrome-surface";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
 import { cn } from "@auction/ui";
@@ -12,11 +14,23 @@ function readDomDark(): boolean {
   return document.documentElement.classList.contains("dark");
 }
 
+type ThemeToggleProps = {
+  headerTone?: SiteHeaderTone;
+  /** @deprecated Use `surface` instead. */
+  variant?: ChromeSurface;
+  surface?: ChromeSurface;
+};
+
 /** uses the View Transitions API to perform a circular reveal from the
  * toggle's center when the theme switches. Falls back to instant toggle in
  * browsers without support, or when reduced-motion is preferred.
  */
-export function ThemeToggle({ headerTone = "on-light" }: { headerTone?: SiteHeaderTone }) {
+export function ThemeToggle({
+  headerTone = "on-light",
+  variant,
+  surface: surfaceProp,
+}: ThemeToggleProps) {
+  const surface = surfaceProp ?? variant ?? "marketing";
   const [isDark, setIsDark] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -84,18 +98,37 @@ export function ThemeToggle({ headerTone = "on-light" }: { headerTone?: SiteHead
     }
   }, []);
 
+  const label = isDark ? "Switch to light theme" : "Switch to dark theme";
+  const icon = isDark ? <Sun aria-hidden /> : <Moon aria-hidden />;
+  const className = cn(
+    "transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
+    surface === "shell" ? undefined : headerChromeIconClass(headerTone),
+  );
+
+  if (surface === "shell") {
+    return (
+      <ShellChromeIconButton
+        ref={buttonRef}
+        label={label}
+        onClick={toggle}
+        aria-pressed={isDark}
+        surface="shell"
+        className={className}
+      >
+        {icon}
+      </ShellChromeIconButton>
+    );
+  }
+
   return (
     <ChromeIconButton
       ref={buttonRef}
-      label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      label={label}
       onClick={toggle}
       aria-pressed={isDark}
-      className={cn(
-        "transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none",
-        headerChromeIconClass(headerTone),
-      )}
+      className={className}
     >
-      {isDark ? <Sun aria-hidden /> : <Moon aria-hidden />}
+      {icon}
     </ChromeIconButton>
   );
 }

@@ -2,6 +2,8 @@ import { type KycCompliancePillTone, kycComplianceIdentityPill } from "@/compone
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { cn } from "@auction/ui";
+import type { DotStatusPillTone } from "@auction/ui";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -40,12 +42,12 @@ const TONE_CLASSES: Record<PillTone, string> = {
   danger: "border-live-red/40 bg-live-red/10 text-live-red",
 };
 
-const TONE_DOT: Record<PillTone, string> = {
-  ok: "bg-success",
-  info: "bg-primary",
-  warn: "bg-lot-orange",
-  danger: "bg-live-red",
-};
+function complianceStripDotTone(tone: PillTone): DotStatusPillTone {
+  if (tone === "ok") return "success";
+  if (tone === "warn") return "warning";
+  if (tone === "danger") return "critical";
+  return "info";
+}
 
 type ComplianceStatusStripProps = {
   user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus" | "twoFactorEnabled">;
@@ -213,12 +215,12 @@ export function ComplianceStatusStrip({
             TONE_CLASSES[pill.tone],
           )}
         >
-          <span className={cn("size-2 rounded-full", TONE_DOT[pill.tone])} aria-hidden />
+          <span className={cn("size-2 rounded-full", "sr-only")} aria-hidden />
           <pill.icon className="size-3.5 opacity-80" aria-hidden />
           <span className="font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] opacity-80">
             {pill.label}
           </span>
-          <span className="font-headline text-xs font-semibold">{pill.value}</span>
+          <DotStatusPill label={pill.value} tone={complianceStripDotTone(pill.tone)} />
         </Link>
       ))}
     </nav>

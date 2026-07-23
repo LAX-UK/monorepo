@@ -1,5 +1,5 @@
-import { artistDetailTabHref } from "@/components/admin/artist-detail/artist-detail-types";
-import type { CatalogDetailSummaryItem } from "@/components/admin/catalog";
+import { artistDetailTabHref } from "@/lib/admin/artists/artist-detail-routes";
+import type { CatalogDetailSummaryItem } from "@/lib/admin/catalog/types";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import type { ArtistProfile } from "@auction/types";
 
@@ -29,7 +29,8 @@ export function buildArtistSummaryItems(
     {
       id: "status",
       label: "Registry status",
-      value: registryStatus.replaceAll("_", " "),
+      value: "",
+      status: { domain: "artist", status: registryStatus },
       hint: artist.featured ? "Featured profile" : "Not featured",
     },
     {

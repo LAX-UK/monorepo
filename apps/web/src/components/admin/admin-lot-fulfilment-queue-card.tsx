@@ -5,7 +5,7 @@ import {
   adminLotFulfilmentReleaseAction,
   adminLotFulfilmentShipAction,
 } from "@/lib/actions/admin";
-import type { AdminLotFulfilmentListRow } from "@/lib/data/http/admin.server";
+import type { AdminLotFulfilmentListRow } from "@/lib/data/http/admin-lot-fulfilment.shared";
 import { Button } from "@auction/ui/components/button";
 import { Textarea } from "@auction/ui/components/textarea";
 import Link from "next/link";

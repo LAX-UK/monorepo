@@ -1,7 +1,7 @@
 "use client";
 
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
 import type { LotWithdrawalRequestTask } from "@/lib/data/http/admin.server";
-import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -14,7 +14,7 @@ export function withdrawalColumns(
       accessorKey: "kind",
       header: "Kind",
       cell: ({ row }) => (
-        <span className="font-label text-[10px] uppercase tracking-wide text-secondary">
+        <span className="whitespace-nowrap font-label text-[10px] uppercase tracking-wide text-secondary">
           {row.original.kind.replaceAll("_", " ")}
         </span>
       ),
@@ -37,11 +37,7 @@ export function withdrawalColumns(
     {
       accessorKey: "createdAt",
       header: "Submitted",
-      cell: ({ row }) => (
-        <span className="text-xs text-on-surface-variant">
-          {formatDateTime(row.original.createdAt)}
-        </span>
-      ),
+      cell: ({ row }) => <AdminTableDateTimeCell iso={row.original.createdAt} mode="timestamp" />,
     },
     {
       id: "open",

@@ -1,10 +1,9 @@
 "use client";
 
-import {
-  AdminPaymentActions,
-  type AdminPaymentTableRow,
-} from "@/components/admin/admin-payments-data-table";
+import { AdminPaymentActions } from "@/components/admin/admin-payment-actions";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
+import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -41,18 +40,21 @@ export function paymentColumns(
       ),
     },
     {
-      accessorKey: "amount",
+      accessorKey: "amountDisplay",
       header: "Amount",
-      cell: ({ row }) => <span className="tabular-nums">{row.original.amount}</span>,
+      cell: ({ row }) => (
+        <AdminTableMoneyCell display={row.original.amountDisplay} emphasis="default" />
+      ),
     },
     {
       accessorKey: "fulfilmentStatus",
       header: "Fulfilment",
-      cell: ({ row }) => (
-        <span className="max-w-[9rem] font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-          {row.original.fulfilmentStatus ? row.original.fulfilmentStatus.replaceAll("_", " ") : "—"}
-        </span>
-      ),
+      cell: ({ row }) =>
+        row.original.fulfilmentStatus ? (
+          <AdminStatusBadge domain="fulfilment" status={row.original.fulfilmentStatus} />
+        ) : (
+          <span className="text-on-surface-variant">—</span>
+        ),
       enableSorting: false,
     },
     {

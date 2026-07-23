@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageUploadField } from "@/components/forms/image-upload-field";
+import { CatalogSingleImageField } from "@/components/admin/catalog/media";
 import {
   FormControl,
   FormField,
@@ -12,7 +12,6 @@ import { ArtistTextField } from "../fields";
 import type { ArtistFormSectionProps } from "../types";
 
 type Props = ArtistFormSectionProps & {
-  /** Map storage key → resolved URL for thumbnails (admin edit of seeded media). */
   previewUrlByKey?: Record<string, string>;
 };
 
@@ -26,14 +25,13 @@ export function MediaSection({ control, disabled = false, previewUrlByKey = {} }
           <FormItem>
             <FormLabel className="font-label text-xs uppercase">Portrait</FormLabel>
             <FormControl>
-              <ImageUploadField
+              <CatalogSingleImageField
                 kind="artist_image"
-                multiple={false}
-                maxFiles={1}
+                value={field.value}
+                onChange={field.onChange}
                 disabled={disabled}
                 previewUrlByKey={previewUrlByKey}
-                value={field.value ? [field.value] : []}
-                onChange={(next) => field.onChange(next[0] ?? "")}
+                inputId="artist-portrait"
               />
             </FormControl>
             <FormMessage />
@@ -47,14 +45,13 @@ export function MediaSection({ control, disabled = false, previewUrlByKey = {} }
           <FormItem>
             <FormLabel className="font-label text-xs uppercase">Hero image</FormLabel>
             <FormControl>
-              <ImageUploadField
+              <CatalogSingleImageField
                 kind="artist_image"
-                multiple={false}
-                maxFiles={1}
+                value={field.value}
+                onChange={field.onChange}
                 disabled={disabled}
                 previewUrlByKey={previewUrlByKey}
-                value={field.value ? [field.value] : []}
-                onChange={(next) => field.onChange(next[0] ?? "")}
+                inputId="artist-hero"
               />
             </FormControl>
             <FormMessage />

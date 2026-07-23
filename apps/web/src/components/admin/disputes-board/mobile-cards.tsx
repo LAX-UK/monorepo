@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
 import type { AdminDisputeTableRow } from "@/lib/data/view-models/admin-disputes-table.vm";
 import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
@@ -29,7 +30,7 @@ export function DisputesMobileCards({ rows, onOpen }: Props) {
                 </p>
                 <AdminStatusBadge domain="dispute" status={row.status} />
               </div>
-              <p className="font-body text-sm tabular-nums text-on-surface">{row.amountLabel}</p>
+              <AdminTableMoneyCell display={row.amountDisplay} emphasis="default" />
               <p className="font-body text-xs text-on-surface-variant">
                 {row.reasonLabel} · opened {formatDateTime(row.openedAt)}
               </p>

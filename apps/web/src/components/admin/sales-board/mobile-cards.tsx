@@ -1,8 +1,10 @@
 "use client";
 
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
 import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
 import { CatalogVirtualizedList } from "@/components/admin/catalog/catalog-virtualized-list";
+import { SaleDeliveryModeChip } from "@/components/admin/sale-delivery-mode-chip";
+import { SaleStatusPill } from "@/components/admin/sale-detail/sale-status-pill";
 import { adminSaleEditHref, adminSaleHref } from "@/lib/admin/catalog-route-helpers";
 import { Sparkline } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -36,10 +38,19 @@ export function SalesBoardMobileCards({
             onSelectedChange={(checked) => onRowSelectionChange(r.saleId, checked)}
             selectionLabel={`Select ${r.title}`}
             trailing={<SaleBoardMobileActionMenu row={r} canManageSales={canManageSales} />}
-            status={<AdminStatusBadge domain="sale" status={r.status} />}
+            status={<SaleStatusPill status={r.status} />}
             footer={
               <>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-nowrap items-center justify-between gap-2 overflow-x-auto font-label text-xs text-on-surface-variant">
+                  <SaleDeliveryModeChip deliveryMode={r.deliveryMode} />
+                  <AdminTableDateTimeCell
+                    iso={r.endTimeIso}
+                    mode="deadline"
+                    live
+                    className="shrink-0 whitespace-nowrap font-label text-xs"
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2">
                   <Sparkline values={r.sparklineValues} width={96} height={28} tone="lot-orange" />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -55,7 +66,10 @@ export function SalesBoardMobileCards({
               </>
             }
           >
-            <Link href={adminSaleHref(r.saleId)} className="font-headline text-sm text-primary">
+            <Link
+              href={adminSaleHref(r.saleId)}
+              className="font-headline text-sm text-link hover:underline"
+            >
               {r.title}
             </Link>
             <p className="font-label text-[10px] uppercase text-on-surface-variant">

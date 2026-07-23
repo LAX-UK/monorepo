@@ -1,8 +1,8 @@
-import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
 import { countActiveCatalogFilters } from "@/lib/admin/catalog-list-filter-utils";
 import { adminSaleListPath } from "@/lib/admin/catalog-routes";
 import { saleActiveLensId, saleLensItems } from "@/lib/admin/catalog/sales-lenses";
 import type { SaleLensId } from "@/lib/admin/catalog/sales-lenses";
+import type { CatalogSegmentItem } from "@/lib/admin/catalog/types";
 import { buildSortHref } from "@/lib/admin/list-sort";
 import { isSaleListSortKey } from "@/lib/admin/sales-list-sort";
 import { salesListController } from "./admin-list-controllers";

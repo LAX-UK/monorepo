@@ -1,19 +1,21 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogLotFulfilmentFilterToolbar } from "@/components/admin/catalog/catalog-lot-fulfilment-filter-toolbar";
-import { CatalogOpsBreadcrumb } from "@/components/admin/catalog/catalog-ops-breadcrumb";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
-import { AdminLotFulfilmentBoard } from "@/components/admin/lot-fulfilment-board";
+import { AdminLotFulfilmentBoardContainer } from "@/components/admin/lot-fulfilment-board/container";
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import {
+  buildLotFulfilmentListKpiTiles,
+  buildLotFulfilmentMobileMetrics,
+} from "@/lib/admin/build-lot-fulfilment-list-kpi-tiles";
 import { buildFulfilmentActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
-import { lotFulfilmentListController } from "@/lib/admin/lot-fulfilment-list-controller";
+import { loadAdminLotFulfilmentListPage } from "@/lib/admin/load-lot-fulfilment-list-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { LOT_FULFILMENT_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
@@ -32,51 +34,21 @@ type Props = {
     q?: string;
     limit?: string;
     offset?: string;
+    lot?: string;
   }>;
 };
 
 export default async function AdminLotFulfilmentQueuePage({ searchParams }: Props) {
   const sp = await searchParams;
-  const query = lotFulfilmentListController.parseQuery(sp);
-  const error = safeDecodeAdminErrorParam(query.error ?? sp.error);
-  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
+  await requireAdminCapability(LOT_FULFILMENT_ACCESS, "/admin/lot-fulfilment");
+
+  const loaded = await loadAdminLotFulfilmentListPage(sp);
+  const { model, rows, summary, total, loadError, pagination } = loaded;
+  const error = safeDecodeAdminErrorParam(sp.error);
   const activeFilterChips = buildFulfilmentActiveFilterChips(sp, {
-    ...(query.status ? { status: query.status } : {}),
-    ...(query.q ? { q: query.q } : {}),
+    ...(model.query.status ? { status: model.query.status } : {}),
+    ...(model.query.q ? { q: model.query.q } : {}),
   });
-
-  const loaded = await lotFulfilmentListController.fetch(query);
-
-  if (loaded.access === "forbidden") {
-    return (
-      <CatalogListShell
-        title="Lot fulfilment"
-        description="Release, shipping, and collection workflow for sold lots."
-        errorAlert={
-          <AdminListAlert title="Access denied">
-            Your account does not have the operations fulfilment staff role.
-          </AdminListAlert>
-        }
-      >
-        {null}
-      </CatalogListShell>
-    );
-  }
-
-  if (loaded.access === "error") {
-    return (
-      <CatalogListShell
-        title="Lot fulfilment"
-        description="Release, shipping, and collection workflow for sold lots."
-        errorAlert={<AdminListAlert title="Could not load queue">{loaded.message}</AdminListAlert>}
-      >
-        {null}
-      </CatalogListShell>
-    );
-  }
-
-  const { rows, total, summary, offset, limit, statusFilter, q } = loaded;
-  const returnStatus = statusFilter ?? "";
 
   const filterBar = (
     <Suspense
@@ -88,125 +60,101 @@ export default async function AdminLotFulfilmentQueuePage({ searchParams }: Prop
       }
     >
       <CatalogLotFulfilmentFilterToolbar
-        activeStatus={statusFilter}
+        activeStatus={model.query.status}
         searchParams={sp}
         activeFilterChips={activeFilterChips}
       />
     </Suspense>
   );
 
-  const errorAlert = error ? <AdminListAlert title="Action failed">{error}</AdminListAlert> : null;
-
   const searchHint =
-    q && !statusFilter && total >= 25 ? (
+    model.query.q && !model.query.status && total >= 25 ? (
       <AdminListAlert title="Many matches">
         Add a status filter to narrow fulfilment search results.
       </AdminListAlert>
     ) : null;
 
-  const pagination =
-    total > 0 && (offset > 0 || offset + rows.length < total) ? (
-      <CatalogPagination
-        offset={offset}
-        limit={limit}
-        countOnPage={rows.length}
-        total={total}
-        prevHref={
-          offset > 0
-            ? buildListHref("/admin/lot-fulfilment", sp, {
-                offset: Math.max(0, offset - limit),
-              })
-            : null
-        }
-        nextHref={
-          offset + rows.length < total
-            ? buildListHref("/admin/lot-fulfilment", sp, { offset: offset + limit })
-            : null
-        }
-      />
-    ) : null;
-
-  const empty =
-    total === 0 ? (
-      <CatalogListEmptyState
-        title="Nothing in this view"
-        description={
-          statusFilter || q
-            ? "No lots match this filter. Try another status, search term, or clear filters."
-            : "No fulfilment rows yet."
-        }
-        action={
-          statusFilter || q ? (
-            <Button variant="secondary" asChild>
-              <Link href="/admin/lot-fulfilment">Clear filters</Link>
-            </Button>
-          ) : undefined
-        }
-      />
-    ) : rows.length === 0 ? (
-      <CatalogListEmptyState
-        title="No rows on this page"
-        description="Try the previous page or clear filters — results may have shifted."
-        action={
-          <Button variant="secondary" asChild>
-            <Link
-              href={buildListHref("/admin/lot-fulfilment", sp, {
-                offset: Math.max(0, offset - limit),
-              })}
-            >
-              Previous page
-            </Link>
-          </Button>
-        }
-      />
-    ) : null;
-
-  const view =
-    rows.length > 0 ? <AdminLotFulfilmentBoard rows={rows} returnStatus={returnStatus} /> : null;
-
   return (
     <CatalogListShell
       title="Lot fulfilment"
       description="After payment is captured, approve release, then ship or mark ready for collection."
-      meta={<CatalogRelatedWork variant="fulfilment" navCounts={navCounts} />}
-      breadcrumbs={<CatalogOpsBreadcrumb current="Lot fulfilment" />}
+      breadcrumbs={
+        <CatalogBreadcrumbs
+          segments={[{ label: "Admin", href: "/admin" }, { label: "Lot fulfilment" }]}
+        />
+      }
       filterBar={filterBar}
       errorAlert={
-        <>
-          {searchHint}
-          {errorAlert}
-        </>
+        loadError || error ? (
+          <>
+            {searchHint}
+            <AdminListAlert
+              title={loadError === "Access denied" ? "Access denied" : "Action failed"}
+            >
+              {loadError ?? error}
+            </AdminListAlert>
+          </>
+        ) : (
+          searchHint
+        )
       }
       kpiStrip={
-        total > 0 ? (
-          <AdminListKpiStrip
+        !loadError ? (
+          <AdminTrendKpiBand
             ariaLabel="Fulfilment summary"
-            tiles={[
-              { label: "In queue", value: summary.total },
-              {
-                label: "Awaiting pickup / release",
-                value: summary.awaitingPickup,
-                semanticTone: "warning",
-              },
-              { label: "In transit / released", value: summary.inTransit },
-            ]}
+            tiles={buildLotFulfilmentListKpiTiles(summary)}
           />
         ) : null
       }
       mobileSummary={
-        total > 0 ? (
-          <CatalogListMobileSummary
-            metrics={[
-              { id: "queue", label: "In queue", value: String(total) },
-              { id: "page", label: "On page", value: String(rows.length) },
-            ]}
+        !loadError && total > 0 ? (
+          <CatalogListMobileSummary metrics={buildLotFulfilmentMobileMetrics(summary)} />
+        ) : null
+      }
+      empty={
+        !loadError && total === 0 ? (
+          <CatalogListEmptyState
+            title="Nothing in this view"
+            description={
+              model.query.status || model.query.q
+                ? "No lots match this filter. Try another status, search term, or clear filters."
+                : "No fulfilment rows yet."
+            }
+            action={
+              model.query.status || model.query.q ? (
+                <Button variant="secondary" asChild>
+                  <Link href="/admin/lot-fulfilment">Clear filters</Link>
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : !loadError && rows.length === 0 ? (
+          <CatalogListEmptyState
+            title="No rows on this page"
+            description="Try the previous page or clear filters — results may have shifted."
+            action={
+              <Button variant="secondary" asChild>
+                <Link
+                  href={buildListHref("/admin/lot-fulfilment", sp, {
+                    offset: Math.max(0, model.query.offset - model.query.limit),
+                  })}
+                >
+                  Previous page
+                </Link>
+              </Button>
+            }
           />
         ) : null
       }
-      empty={empty}
-      pagination={pagination}
     >
-      {view}
+      {!loadError && rows.length > 0 ? (
+        <AdminLotFulfilmentBoardContainer
+          rows={rows}
+          selectedLotId={model.selectedLotId}
+          returnStatus={model.returnStatus}
+          pagination={pagination}
+        />
+      ) : null}
     </CatalogListShell>
   );
 }

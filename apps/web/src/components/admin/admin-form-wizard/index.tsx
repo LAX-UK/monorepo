@@ -30,6 +30,7 @@ import {
   registerWizardMobilePrimary,
   resetWizardStepSync,
 } from "./wizard-step-sync";
+import { WizardVerticalStepper } from "./wizard-vertical-stepper";
 
 export type AdminFormWizardProps = {
   steps: readonly WizardStepSpec[];
@@ -58,6 +59,8 @@ export type AdminFormWizardProps = {
   onStepBack?: (toIndex: number) => void;
   /** Hide duplicate sticky submit on mobile when CatalogMobileActionBar submits the form. */
   hideStickyOnMobile?: boolean;
+  /** When false, action bar sits inline after step content (staff must scroll to reach it). */
+  stickyActions?: boolean;
   /** When true, submitSlot is shown on every step (edit flows). */
   showSubmitOnAllSteps?: boolean;
   /** Exposes goTo for submit-time navigation to the first invalid step. */
@@ -66,6 +69,11 @@ export type AdminFormWizardProps = {
   mobilePrimaryAction?: WizardMobilePrimaryAction | null;
   /** Custom mobile cancel (overrides static cancel href). */
   mobileCancelAction?: WizardMobileCancelAction | null;
+  /**
+   * `sidebar`: form body left, vertical stepper right on lg+ (Figma sale wizard).
+   * `default`: horizontal step chips above the form.
+   */
+  layout?: "default" | "sidebar";
 };
 
 /** Multi-step admin form shell with step indicator, navigation, and sticky actions. */
@@ -82,11 +90,13 @@ export function AdminFormWizard({
   onDraftResume,
   onBeforeNext,
   hideStickyOnMobile = false,
+  stickyActions = true,
   showSubmitOnAllSteps = false,
   onStepControl,
   onStepBack,
   mobilePrimaryAction = null,
   mobileCancelAction = null,
+  layout = "default",
 }: AdminFormWizardProps) {
   const draftKey = draft ? wizardDraftCookieKey(draft.entityKind, draft.entityId) : null;
   const { stepIndex, goNext, goPrev, goTo, isFirst, isLast, setDirty } = useWizardState(
@@ -257,6 +267,7 @@ export function AdminFormWizard({
 
   const stepBody = typeof children === "function" ? children(stepIndex) : children;
   const nextStepLabel = steps[stepIndex + 1]?.label;
+  const useSidebar = layout === "sidebar";
 
   return (
     <div className={className ?? "space-y-8"}>
@@ -275,21 +286,58 @@ export function AdminFormWizard({
           }}
         />
       ) : null}
-      <div className="border-b border-border-hairline pb-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <WizardStepIndicator
-            steps={steps}
-            currentIndex={stepIndex}
-            onStepClick={(index) => void handleStepClick(index)}
-            stepNavigationDisabled={stepJumpPending || pending}
-          />
-          {draftKey ? (
-            <WizardDraftSaveIndicator status={draftSaveStatus} savedAt={draftSavedAt} />
-          ) : null}
+      {useSidebar ? (
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+          <div className="min-w-0 space-y-6">
+            <div className="flex flex-col gap-2 border-b border-border-hairline pb-4 lg:hidden">
+              <WizardStepIndicator
+                steps={steps}
+                currentIndex={stepIndex}
+                onStepClick={(index) => void handleStepClick(index)}
+                stepNavigationDisabled={stepJumpPending || pending}
+              />
+              {draftKey ? (
+                <WizardDraftSaveIndicator status={draftSaveStatus} savedAt={draftSavedAt} />
+              ) : null}
+            </div>
+            <div className="min-h-[12rem]">{stepBody}</div>
+          </div>
+          <aside className="hidden lg:block lg:sticky lg:top-24">
+            <WizardVerticalStepper
+              steps={steps}
+              currentIndex={stepIndex}
+              onStepClick={(index) => void handleStepClick(index)}
+              stepNavigationDisabled={stepJumpPending || pending}
+            />
+            {draftKey ? (
+              <div className="mt-4 border-t border-outline-variant/30 pt-4">
+                <WizardDraftSaveIndicator status={draftSaveStatus} savedAt={draftSavedAt} />
+              </div>
+            ) : null}
+          </aside>
         </div>
-      </div>
-      <div className="min-h-[12rem]">{stepBody}</div>
-      <StickySaveBar className={cn(hideStickyOnMobile && "hidden md:block")}>
+      ) : (
+        <>
+          <div className="border-b border-border-hairline pb-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <WizardStepIndicator
+                steps={steps}
+                currentIndex={stepIndex}
+                onStepClick={(index) => void handleStepClick(index)}
+                stepNavigationDisabled={stepJumpPending || pending}
+              />
+              {draftKey ? (
+                <WizardDraftSaveIndicator status={draftSaveStatus} savedAt={draftSavedAt} />
+              ) : null}
+            </div>
+          </div>
+          <div className="min-h-[12rem]">{stepBody}</div>
+        </>
+      )}
+      <StickySaveBar
+        sticky={stickyActions}
+        className={cn(stickyActions && hideStickyOnMobile && "hidden lg:block")}
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {leadingSlot ?? <span />}
           <div ref={submitRef}>

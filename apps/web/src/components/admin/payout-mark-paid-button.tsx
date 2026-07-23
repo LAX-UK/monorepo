@@ -1,7 +1,9 @@
 "use client";
 
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
-import { markPayoutPaidAction } from "@/lib/admin/payout.actions";
+import { markPayoutPaidAction } from "@/lib/admin/finance/admin-finance-mutations";
+import { Input } from "@auction/ui/components/input";
+import { Label } from "@auction/ui/components/label";
 
 type Props = {
   payoutId: string;
@@ -16,16 +18,17 @@ export function PayoutMarkPaidButton({ payoutId, stripeTransferId, disabled }: P
     <form id={formId} action={markPayoutPaidAction} className="space-y-3 rounded-md border p-3">
       <input type="hidden" name="payoutId" value={payoutId} />
       <h3 className="font-label text-sm font-semibold uppercase tracking-wide">Mark paid</h3>
-      <label className="block space-y-1 text-sm">
-        <span>Stripe transfer ID</span>
-        <input
+      <div className="space-y-1">
+        <Label htmlFor={`${formId}-transfer`}>Stripe transfer ID</Label>
+        <Input
+          id={`${formId}-transfer`}
           name="stripeTransferId"
           required
           defaultValue={stripeTransferId}
           placeholder="tr_..."
-          className="w-full rounded-md border border-outline-variant bg-surface px-3 py-2"
+          disabled={disabled}
         />
-      </label>
+      </div>
       <ConfirmFormSubmit
         formId={formId}
         disabled={disabled}

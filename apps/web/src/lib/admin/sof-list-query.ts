@@ -1,4 +1,5 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { ADMIN_LIST_RETURN_TO_PARAM } from "@/lib/admin/admin-list-return-context";
 
 export type SofListStatus = "pending" | "rejected" | "approved";
 
@@ -69,13 +70,25 @@ export function buildSofStatusChips(
   ];
 }
 
-export function buildSofCaseDetailHref(caseId: string, listStatus: SofListStatus): string {
+export function buildSofCaseDetailHref(
+  caseId: string,
+  listStatus: SofListStatus,
+  returnTo?: string,
+): string {
   const params = new URLSearchParams({ [SOF_LIST_STATUS_PARAM]: listStatus });
+  if (returnTo?.trim()) {
+    params.set(ADMIN_LIST_RETURN_TO_PARAM, returnTo.trim());
+  }
   return `/admin/compliance/source-of-funds/${encodeURIComponent(caseId)}?${params.toString()}`;
 }
 
-export function buildSofListHref(listStatus: SofListStatus = "pending"): string {
-  return buildListHref("/admin/compliance/source-of-funds", {}, { status: listStatus });
+export function buildSofListHref(listStatus: SofListStatus = "pending", returnTo?: string): string {
+  const href = buildListHref("/admin/compliance/source-of-funds", {}, { status: listStatus });
+  if (!returnTo?.trim()) return href;
+  const params = new URLSearchParams(href.includes("?") ? href.split("?")[1] : "");
+  params.set(ADMIN_LIST_RETURN_TO_PARAM, returnTo.trim());
+  const path = href.split("?")[0] ?? href;
+  return `${path}?${params.toString()}`;
 }
 
 export type SofListQuery = {

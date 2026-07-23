@@ -40,9 +40,11 @@ export default async function AdminEditSaleLayout({ params, children }: Props) {
   return (
     <>
       <CatalogFormShell
+        layout="wizard"
         breadcrumbs={
           <CatalogBreadcrumbs
             segments={[
+              { label: "Admin", href: "/admin" },
               { label: "Sales", href: "/admin/sales" },
               { label: sale.title, href: `/admin/sales/${id}` },
               { label: "Edit" },

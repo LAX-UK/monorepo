@@ -10,15 +10,16 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 export type KeyEntry = {
-  key: string /** Stable unique id for React keys and dnd-kit (required when `key` may repeat). */;
+  key: string;
+  /** Stable unique id required only when the same key can occur more than once. */
   sortId?: string;
 };
 
 export type ReorderableImageEntry = KeyEntry & { alt: string };
 
-/** Unique sortable id; falls back to index + key when the same URL appears more than once. */
-export function imageEntrySortId(entry: KeyEntry, index: number): string {
-  return entry.sortId ?? `${index}::${entry.key}`;
+/** Stable sortable id; callers with duplicate keys must provide `sortId`. */
+export function imageEntrySortId(entry: KeyEntry, _index: number): string {
+  return entry.sortId ?? entry.key;
 }
 
 export function useImageReorder<T extends KeyEntry>({

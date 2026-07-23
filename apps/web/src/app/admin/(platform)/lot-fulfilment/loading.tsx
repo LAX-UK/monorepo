@@ -4,7 +4,7 @@ export default function AdminLotFulfilmentLoading() {
   return (
     <CatalogListPageSkeleton
       title="Lot fulfilment"
-      description="Loading fulfilment queue…"
+      description="Loading fulfilment…"
       kpiTiles={3}
       tableRows={8}
       tableColumns={5}

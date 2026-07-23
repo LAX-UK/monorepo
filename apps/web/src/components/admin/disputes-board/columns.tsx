@@ -1,8 +1,9 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
 import type { AdminDisputeTableRow } from "@/lib/data/view-models/admin-disputes-table.vm";
-import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -14,11 +15,7 @@ export function disputeColumns(
     {
       accessorKey: "openedAt",
       header: "Opened",
-      cell: ({ row }) => (
-        <span className="whitespace-nowrap font-body text-xs text-on-surface-variant">
-          {formatDateTime(row.original.openedAt)}
-        </span>
-      ),
+      cell: ({ row }) => <AdminTableDateTimeCell iso={row.original.openedAt} mode="timestamp" />,
     },
     {
       accessorKey: "status",
@@ -26,10 +23,10 @@ export function disputeColumns(
       cell: ({ row }) => <AdminStatusBadge domain="dispute" status={row.original.status} />,
     },
     {
-      accessorKey: "amountLabel",
+      accessorKey: "amountDisplay",
       header: "Amount",
       cell: ({ row }) => (
-        <span className="tabular-nums font-body text-sm">{row.original.amountLabel}</span>
+        <AdminTableMoneyCell display={row.original.amountDisplay} emphasis="default" />
       ),
     },
     {

@@ -1,5 +1,4 @@
 import { AdminQueueCountBadge } from "@/components/admin/admin-status-badge";
-import { CommandPaletteHint } from "@/components/admin/command-palette-hint";
 import { AttentionList } from "@/components/dashboard/attention-list";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import type { AdminAttentionRow } from "@/lib/admin/admin-home-types";
@@ -16,7 +15,7 @@ export function MyQueueWidget({ attention }: Props) {
   return (
     <Surface variant="section" padding="md" className="space-y-4 border-border-hairline">
       <div className="space-y-1">
-        <h3 className="font-headline text-lg font-semibold text-on-surface">My queue</h3>
+        <h3 className="font-headline text-lg font-semibold text-on-surface">Needs attention</h3>
         <p className="font-body text-sm text-on-surface-variant">
           Grouped by domain — finance, compliance, people, catalog, and operations work matched to
           sidebar badges.
@@ -24,15 +23,12 @@ export function MyQueueWidget({ attention }: Props) {
       </div>
 
       {groups.length === 0 ? (
-        <div className="space-y-3">
-          <DashboardEmptyState
-            variant="quiet"
-            title="All clear"
-            description="Nothing urgent right now. New queue items will appear here when nav badges update."
-            headingLevel="h3"
-          />
-          <CommandPaletteHint />
-        </div>
+        <DashboardEmptyState
+          variant="quiet"
+          title="All clear"
+          description="Nothing urgent right now. New items needing attention will appear here when nav badges update."
+          headingLevel="h3"
+        />
       ) : (
         <div className="space-y-6">
           {groups.map((group) => {

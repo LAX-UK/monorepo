@@ -9,6 +9,12 @@ export {
   sofFromJson,
 } from "./compliance-sof.mapper";
 export {
+  type AdminSourceOfFundsListSummary,
+  type AdminSourceOfFundsPage,
+  type AdminSourceOfFundsPageParams,
+  EMPTY_ADMIN_SOF_LIST_SUMMARY,
+} from "./compliance-sof.shared";
+export {
   getAdminSourceOfFundsApproved,
   getAdminSourceOfFundsDetail,
   getAdminSourceOfFundsPage,

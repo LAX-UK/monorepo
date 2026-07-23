@@ -17,8 +17,8 @@ import { SearchFilterFormDesktop } from "@/components/marketing/search-filter-fo
 import { SearchPageToolbar } from "@/components/marketing/search-page-toolbar";
 import { SearchPaginationBar } from "@/components/marketing/search-pagination-bar";
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
+import { getServerLotCount, getServerLotReader } from "@/lib/catalog/catalog.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getServerLotCount, getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { toCatalogLotVMs } from "@/lib/lot/to-catalog-lot-vm";

@@ -1,13 +1,16 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
-import { formatDate, formatMoney } from "@/lib/ui/format";
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
+import type { AdminPayoutBoardRow } from "@/lib/data/view-models/admin-payouts-table.vm";
+import { formatDate } from "@/lib/ui/format";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
-export function payoutColumns(onOpen: (row: AdminPayoutRow) => void): ColumnDef<AdminPayoutRow>[] {
+export function payoutColumns(
+  onOpen: (row: AdminPayoutBoardRow) => void,
+): ColumnDef<AdminPayoutBoardRow>[] {
   const open = onOpen;
   return [
     {
@@ -23,9 +26,11 @@ export function payoutColumns(onOpen: (row: AdminPayoutRow) => void): ColumnDef<
           <span className="block whitespace-nowrap">
             {formatDate(row.original.periodStart)} → {formatDate(row.original.periodEnd)}
           </span>
-          <span className="mt-0.5 block text-xs font-medium tabular-nums text-on-surface">
-            {formatMoney(row.original.netAmount, row.original.currency)}
-          </span>
+          <AdminTableMoneyCell
+            display={row.original.netAmountDisplay}
+            emphasis="default"
+            className="mt-0.5"
+          />
         </Button>
       ),
       enableSorting: false,

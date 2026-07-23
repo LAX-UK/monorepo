@@ -1,8 +1,9 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
-import { formatDate, formatMoney } from "@/lib/ui/format";
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
+import type { AdminPayoutBoardRow } from "@/lib/data/view-models/admin-payouts-table.vm";
+import { formatDate } from "@/lib/ui/format";
 import { Button } from "@auction/ui";
 import Link from "next/link";
 
@@ -10,8 +11,8 @@ export function PayoutsMobileCards({
   rows,
   onOpen,
 }: {
-  rows: AdminPayoutRow[];
-  onOpen: (row: AdminPayoutRow) => void;
+  rows: AdminPayoutBoardRow[];
+  onOpen: (row: AdminPayoutBoardRow) => void;
 }) {
   return (
     <ul className="space-y-3">
@@ -22,9 +23,7 @@ export function PayoutsMobileCards({
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium tabular-nums">
-                {formatMoney(row.netAmount, row.currency)}
-              </p>
+              <AdminTableMoneyCell display={row.netAmountDisplay} emphasis="default" />
               <p className="mt-1 text-xs text-on-surface-variant">
                 {formatDate(row.periodStart)} → {formatDate(row.periodEnd)}
               </p>

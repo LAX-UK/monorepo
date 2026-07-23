@@ -108,12 +108,7 @@ export function VenueDetailShell({ venueId, detail, children }: Props) {
         }
         stickySubnav={
           <>
-            <CatalogDetailTabNav
-              tabs={tabSpecs}
-              entityKind="venue"
-              entityId={venueId}
-              aria-label="Venue sections"
-            />
+            <CatalogDetailTabNav tabs={tabSpecs} entityKind="venue" aria-label="Venue sections" />
             <CatalogDetailStickyMiniBar
               items={[{ id: "sales", label: "Sales using", value: String(salesUsingCount) }]}
             />

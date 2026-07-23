@@ -1,12 +1,12 @@
-import { FinanceListPageSkeleton } from "@/components/admin/finance/finance-list-states";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 
 export default function DisputesLoading() {
   return (
-    <FinanceListPageSkeleton
+    <CatalogListPageSkeleton
       title="Payment disputes"
       description="Loading disputes…"
-      kpiTiles={0}
-      showFilterBar={false}
+      kpiTiles={4}
+      showFilterBar
       tableRows={8}
       tableColumns={5}
     />

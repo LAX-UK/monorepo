@@ -4,24 +4,12 @@ import {
   manualReviewQueueEyebrow,
 } from "@/lib/admin/compliance-manual-review";
 import type { PaymentDisplayRow } from "@/lib/data/view-models/dashboard-payments.vm";
+import { paymentDisplayDotStatus } from "@/lib/presenters/payment-status";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
-
-function statusVariant(tone: PaymentDisplayRow["statusTone"]) {
-  switch (tone) {
-    case "success":
-      return "success" as const;
-    case "danger":
-      return "danger" as const;
-    case "info":
-      return "info" as const;
-    case "neutral":
-      return "neutral" as const;
-  }
-}
 
 function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
   const action = row.primaryAction;
@@ -89,9 +77,10 @@ export function PaymentRowCard({ row }: { row: PaymentDisplayRow }) {
             {row.amountLabel}
           </div>
           <div className="flex items-center justify-end">
-            <StatusBadge variant={statusVariant(row.statusTone)} size="sm">
-              {row.statusLabel}
-            </StatusBadge>
+            {(() => {
+              const presentation = paymentDisplayDotStatus(row.statusLabel, row.statusTone);
+              return <DotStatusPill label={presentation.label} tone={presentation.tone} />;
+            })()}
           </div>
           <div className="flex justify-end">
             <PrimaryActionCell row={row} />

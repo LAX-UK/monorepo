@@ -163,7 +163,6 @@ export function CategoryDetailShell({
             <CatalogDetailTabNav
               tabs={tabSpecs}
               entityKind="category"
-              entityId={categoryId}
               aria-label="Category sections"
             />
             <CatalogDetailStickyMiniBar

@@ -1,5 +1,5 @@
-import type { CatalogActiveFilterChip } from "@/components/admin/catalog/catalog-active-filters-row";
 import { buildListHref, firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
+import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import type { AdminListQueryBase } from "@/lib/admin/i-admin-list-controller";
 
 type SearchParams = Record<string, string | string[] | undefined>;

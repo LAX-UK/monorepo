@@ -2,12 +2,9 @@
 
 import { WizardProgress } from "@auction/ui/components/wizard-progress";
 
-export type WizardStepSpec = {
-  id: string;
-  label: string;
-  /** Optional per-step time hint, e.g. 1 for "1 min" */
-  estimatedMinutes?: number;
-};
+import type { WizardStepSpec } from "@/lib/admin/wizard/types";
+
+export type { WizardStepSpec };
 
 type Props = {
   steps: readonly WizardStepSpec[];

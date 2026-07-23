@@ -1,12 +1,15 @@
 import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import type { AdminAmlScreeningRow } from "@/lib/data/http/compliance-aml.schema";
+import { adminAmlScreeningRowSchema } from "@/lib/data/http/compliance-aml.schema";
+import type { AdminAmlPageParams } from "@/lib/data/http/compliance-aml.shared";
 import {
-  type AdminAmlScreeningRow,
-  adminAmlScreeningRowSchema,
-} from "@/lib/data/http/compliance-aml.schema";
+  buildAdminAmlSearchParams,
+  parseAdminAmlPageBody,
+} from "@/lib/data/http/compliance-aml.shared";
 import { COMPLIANCE_QUEUE_LIST_LIMIT } from "@/lib/data/http/compliance.shared";
-import { readJsonBody, readNullableListEnvelope } from "@/lib/data/http/envelope";
+import { readJsonBody } from "@/lib/data/http/envelope";
 import { isIndexableObject } from "@/lib/data/http/object-guards";
 import { normalizeApiErrorMessage } from "@auction/validators";
 
@@ -23,23 +26,30 @@ export async function getAdminAmlScreeningsPending(
   return page.rows;
 }
 
-export async function getAdminAmlScreeningsPage(params: {
-  limit: number;
-  offset: number;
-}): Promise<{ rows: AdminAmlScreeningRow[]; total: number }> {
-  const qs = new URLSearchParams({
-    limit: String(params.limit),
-    offset: String(params.offset),
-  });
+export async function getAdminAmlScreeningsPage(params: AdminAmlPageParams) {
+  const qs = buildAdminAmlSearchParams(params);
   const res = await authedServerFetch(`/admin/compliance/aml/screenings?${qs.toString()}`);
   if (!res.ok) {
     const body = await readJsonBody(res).catch(() => ({}));
     throw new Error(readApiError(body, "Could not load AML screenings"));
   }
   const body = await readJsonBody(res);
-  return readNullableListEnvelope(
-    body,
-    adminAmlScreeningRowSchema,
-    "GET /admin/compliance/aml/screenings",
+  return parseAdminAmlPageBody(body, params);
+}
+
+export async function getAdminAmlScreeningById(
+  screeningId: string,
+): Promise<AdminAmlScreeningRow | null> {
+  const res = await authedServerFetch(
+    `/admin/compliance/aml/screenings/${encodeURIComponent(screeningId)}`,
   );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const body = await readJsonBody(res).catch(() => ({}));
+    throw new Error(readApiError(body, "Could not load AML screening"));
+  }
+  const body = await readJsonBody(res);
+  const envelope = isIndexableObject(body) ? body : {};
+  if (!envelope.data) return null;
+  return adminAmlScreeningRowSchema.parse(envelope.data);
 }

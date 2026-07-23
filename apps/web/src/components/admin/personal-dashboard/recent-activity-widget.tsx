@@ -45,7 +45,13 @@ export function RecentActivityWidget({ activity }: Props) {
                     <td className="px-4 py-3 font-medium text-on-surface">{r.title}</td>
                     <td className="px-4 py-3">
                       {r.statusLabel ? (
-                        <AdminStatusBadge domain="lot" status={r.statusLabel} size="sm" />
+                        <AdminStatusBadge
+                          domain="lot"
+                          status={r.statusLabel}
+                          {...(r.winnerId !== undefined
+                            ? { context: { lot: { winnerId: r.winnerId } } }
+                            : {})}
+                        />
                       ) : (
                         <span className="text-on-surface-variant">{r.meta}</span>
                       )}

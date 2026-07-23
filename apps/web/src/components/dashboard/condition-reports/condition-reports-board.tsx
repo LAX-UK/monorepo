@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { StatusChip } from "@/components/ui/status-chip";
 import type { BuyerConditionReportRequestVM } from "@/lib/condition-report/map-buyer-condition-report-requests.vm";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -12,32 +13,6 @@ type Props = {
   rows: BuyerConditionReportRequestVM[];
   className?: string;
 };
-
-function StatusPill({ label, tone }: { label: string; tone: "neutral" | "primary" | "warn" }) {
-  const tones = {
-    neutral: "bg-surface-container-high text-on-surface-variant",
-    primary: "bg-primary-container/30 text-primary",
-    warn: "bg-lot-orange/15 text-lot-orange",
-  };
-  return (
-    <span
-      className={cn(
-        "inline-flex rounded-full px-2.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide",
-        tones[tone],
-      )}
-    >
-      {label}
-    </span>
-  );
-}
-
-function statusTone(
-  status: BuyerConditionReportRequestVM["status"],
-): "neutral" | "primary" | "warn" {
-  if (status === "fulfilled") return "primary";
-  if (status === "declined") return "warn";
-  return "neutral";
-}
 
 export function ConditionReportsBoard({ rows, className }: Props) {
   if (rows.length === 0) {
@@ -87,7 +62,11 @@ export function ConditionReportsBoard({ rows, className }: Props) {
                     ) : null}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusPill label={row.statusLabel} tone={statusTone(row.status)} />
+                    <StatusChip
+                      domain="conditionReport"
+                      status={row.status}
+                      label={row.statusLabel}
+                    />
                   </td>
                   <td className="px-4 py-3 text-on-surface-variant">{row.requestedAtLabel}</td>
                   <td className="px-4 py-3">
@@ -128,7 +107,7 @@ export function ConditionReportsBoard({ rows, className }: Props) {
                     <p className="text-xs text-on-surface-variant">{row.lotNumberLabel}</p>
                   ) : null}
                 </div>
-                <StatusPill label={row.statusLabel} tone={statusTone(row.status)} />
+                <StatusChip domain="conditionReport" status={row.status} label={row.statusLabel} />
               </div>
               <p className="text-xs text-on-surface-variant">Requested {row.requestedAtLabel}</p>
               {row.responseNote && row.status === "declined" ? (

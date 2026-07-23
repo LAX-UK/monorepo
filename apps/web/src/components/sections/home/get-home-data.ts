@@ -31,10 +31,13 @@ import {
   toHomeUpcomingAuctionTileVMs,
   toPrivateSaleHighlightVMs,
 } from "@/components/sections/home/home-view-models";
+import {
+  CATALOGUE_FETCH_POLICIES,
+  buildLotListQuery,
+  catalogueFetch,
+} from "@/lib/catalog/catalog.server";
 import type { ListLotsParams } from "@/lib/data/contracts";
-import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
-import { buildLotListQuery } from "@/lib/data/http/lots.server";
 import { parseLot } from "@/lib/data/http/parse";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";

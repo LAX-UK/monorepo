@@ -15,12 +15,14 @@ import {
   reviewSaveDraftHint,
   saleSetupHref,
 } from "@/lib/admin/sale-setup";
+import { deliveryModeLabel } from "@/lib/admin/sale-setup/field-copy";
 import { formatDateTime } from "@/lib/ui/format";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Circle } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type Props = {
   saleId: string;
@@ -30,6 +32,7 @@ type Props = {
   canPublish: boolean;
   connectRequiredByLotId?: ConnectRequiredByLotId;
   onEditSummary?: () => void;
+  documentCount?: number;
 };
 
 function SetupReviewBeforePublish({
@@ -88,6 +91,42 @@ function SetupReviewBeforePublish({
   );
 }
 
+function ReviewSummaryCard({
+  title,
+  stepHref,
+  children,
+}: {
+  title: string;
+  stepHref: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-outline-variant/25 bg-surface-container-lowest/40">
+      <div className="flex items-center justify-between gap-3 border-b border-border-hairline px-4 py-3">
+        <h3 className="font-display text-base font-semibold tracking-tight text-on-surface">
+          {title}
+        </h3>
+        <Link
+          href={stepHref}
+          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
+        >
+          Edit
+        </Link>
+      </div>
+      <dl className="space-y-2 px-4 py-4 font-body text-sm">{children}</dl>
+    </section>
+  );
+}
+
+function ReviewFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-wrap justify-between gap-2">
+      <dt className="text-on-surface-variant">{label}</dt>
+      <dd className="text-right font-medium text-on-surface">{value}</dd>
+    </div>
+  );
+}
+
 export function SaleSetupReviewStep({
   saleId,
   sale,
@@ -96,6 +135,7 @@ export function SaleSetupReviewStep({
   canPublish,
   connectRequiredByLotId,
   onEditSummary,
+  documentCount = 0,
 }: Props) {
   const readiness = buildSaleSetupReadiness({
     saleId,
@@ -105,6 +145,8 @@ export function SaleSetupReviewStep({
     ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
     setupStepHref: (step) => saleSetupHref(saleId, step),
   });
+
+  const termsFilled = Boolean(sale.terms?.trim());
 
   return (
     <div className="space-y-8">
@@ -120,7 +162,34 @@ export function SaleSetupReviewStep({
 
       <SetupReviewBeforePublish readiness={readiness} />
 
-      <WizardFormReviewSection title="Summary" onEdit={() => onEditSummary?.()}>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ReviewSummaryCard title="Sale details" stepHref={saleSetupHref(saleId, "identity")}>
+          <ReviewFact label="Title" value={sale.title} />
+          <ReviewFact label="Description" value={sale.description?.trim() ? "Added" : "Not set"} />
+        </ReviewSummaryCard>
+
+        <ReviewSummaryCard title="Schedule" stepHref={saleSetupHref(saleId, "schedule")}>
+          <ReviewFact label="Format" value={deliveryModeLabel(sale.deliveryMode)} />
+          <ReviewFact label="Opens" value={formatDateTime(sale.startTime)} />
+          <ReviewFact label="Closes" value={formatDateTime(sale.endTime)} />
+          <ReviewFact label="Buyer premium" value={buyerPremiumSummary(sale)} />
+        </ReviewSummaryCard>
+
+        <ReviewSummaryCard title="Documents" stepHref={saleSetupHref(saleId, "documents")}>
+          <ReviewFact label="Attachments" value={String(documentCount)} />
+          <ReviewFact label="Terms of sale" value={termsFilled ? "Added" : "Not set"} />
+        </ReviewSummaryCard>
+
+        <ReviewSummaryCard title="Lots" stepHref={saleSetupHref(saleId, "lots")}>
+          <ReviewFact label="Lots in sale" value={String(lots.length)} />
+          <ReviewFact
+            label="Published lots"
+            value={String(lots.filter((l) => l.status !== "draft").length)}
+          />
+        </ReviewSummaryCard>
+      </div>
+
+      <WizardFormReviewSection title="Full summary" onEdit={() => onEditSummary?.()}>
         <WizardReviewRow label="Sale" value={sale.title} />
         <WizardReviewRow label="Delivery" value={sale.deliveryMode} />
         <WizardReviewRow label="Opens" value={formatDateTime(sale.startTime)} />

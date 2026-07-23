@@ -1,13 +1,14 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { SaleroomHubSessionBadge } from "@/components/admin/saleroom-hub-board/saleroom-hub-session-badge";
 import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
-import { formatDateTime } from "@/lib/ui/format";
 import type { SaleDeliveryMode } from "@auction/types";
 import { Button } from "@auction/ui";
+import { toRequiredIsoString } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
@@ -39,10 +40,18 @@ export function saleroomHubColumns(): ColumnDef<Row>[] {
       id: "schedule",
       header: "Schedule",
       cell: ({ row }) => (
-        <span className="text-xs text-on-surface-variant">
-          {row.original.sale.startTime ? formatDateTime(row.original.sale.startTime) : "—"} →{" "}
-          {row.original.sale.endTime ? formatDateTime(row.original.sale.endTime) : "—"}
-        </span>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <AdminTableDateTimeCell
+            iso={toRequiredIsoString(row.original.sale.startTime)}
+            mode="deadline"
+            deadlineKind="start"
+          />
+          <AdminTableDateTimeCell
+            iso={toRequiredIsoString(row.original.sale.endTime)}
+            mode="deadline"
+            live={row.original.sale.status === "active"}
+          />
+        </div>
       ),
       enableSorting: false,
     },

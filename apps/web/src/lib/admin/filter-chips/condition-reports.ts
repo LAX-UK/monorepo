@@ -1,4 +1,4 @@
-import type { CatalogActiveFilterChip } from "@/components/admin/catalog/catalog-active-filters-row";
+import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
 
 const CR_LENS_LABELS: Record<string, string> = {
@@ -7,6 +7,8 @@ const CR_LENS_LABELS: Record<string, string> = {
   fulfilled: "Fulfilled",
   declined: "Declined",
 };
+
+export { CR_LENS_LABELS as CONDITION_REPORT_LENS_LABELS };
 
 export function buildConditionReportsActiveFilterChips(
   sp: SearchParams,

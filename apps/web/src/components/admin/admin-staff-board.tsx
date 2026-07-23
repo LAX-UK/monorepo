@@ -11,6 +11,7 @@ import {
 } from "@/components/admin/users-board";
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
+import { buildPeopleDetailHref } from "@/lib/admin/people/people-detail-href";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
@@ -77,11 +78,19 @@ function StaffDrawerOverview({ u }: { u: AdminUserRow }) {
   );
 }
 
-function StaffDrawerActions({ u }: { u: AdminUserRow }) {
+function StaffDrawerActions({
+  u,
+  listReturnTarget,
+}: {
+  u: AdminUserRow;
+  listReturnTarget?: string | undefined;
+}) {
   return (
     <div className="space-y-4">
       <Button variant="secondary" className="w-full font-label uppercase" asChild>
-        <Link href={`/admin/staff/${u.id}`}>Open full profile</Link>
+        <Link href={buildPeopleDetailHref(`/admin/staff/${u.id}`, listReturnTarget)}>
+          Open full profile
+        </Link>
       </Button>
       <div className="space-y-4 border-t border-border-hairline pt-4">
         <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
@@ -104,6 +113,10 @@ type Props = {
   totalMatches: number;
   hasActiveFilters: boolean;
   externalMobileCards?: boolean;
+  selected?: AdminUserRow | null;
+  listReturnTarget?: string | undefined;
+  onOpen?: (user: AdminUserRow) => void;
+  onCloseDrawer?: () => void;
 };
 
 export function AdminStaffBoard({
@@ -111,11 +124,18 @@ export function AdminStaffBoard({
   totalMatches,
   hasActiveFilters,
   externalMobileCards = false,
+  selected = null,
+  listReturnTarget,
+  onOpen,
+  onCloseDrawer,
 }: Props) {
   const bulkOperations = useMemo(() => getUserBulkOperations(), []);
 
   const renderDrawerOverview = useCallback((u: AdminUserRow) => <StaffDrawerOverview u={u} />, []);
-  const renderDrawerActions = useCallback((u: AdminUserRow) => <StaffDrawerActions u={u} />, []);
+  const renderDrawerActions = useCallback(
+    (u: AdminUserRow) => <StaffDrawerActions u={u} listReturnTarget={listReturnTarget} />,
+    [listReturnTarget],
+  );
 
   const renderMobileCard = useCallback(
     (u: AdminUserRow, onOpen: () => void) => (
@@ -150,6 +170,13 @@ export function AdminStaffBoard({
       detailHref={(u) => `/admin/staff/${u.id}`}
       showColumnPicker
       columnVisibilityStorageKey="admin.staff.columns"
+      {...(onOpen
+        ? {
+            selected,
+            onOpen,
+            ...(onCloseDrawer ? { onCloseDrawer } : {}),
+          }
+        : {})}
     />
   );
 }

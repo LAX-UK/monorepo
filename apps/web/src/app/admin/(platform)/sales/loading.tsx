@@ -5,7 +5,7 @@ export default function AdminSalesLoading() {
     <CatalogListPageSkeleton
       title="Sales"
       description="Loading sales…"
-      kpiTiles={3}
+      kpiTiles={6}
       tableRows={10}
       tableColumns={5}
     />

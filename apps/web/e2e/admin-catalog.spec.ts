@@ -9,30 +9,16 @@
  * Run: PLAYWRIGHT_E2E=1 pnpm --filter @auction/web test:e2e -- e2e/admin-catalog.spec.ts
  */
 import { expect, test } from "@playwright/test";
+import {
+  catalogueManagerLogin,
+  e2eEnabled as enabled,
+  hasCatalogueManagerCredentials,
+  e2eSkipReason as skipReason,
+  staffLogin,
+} from "./helpers/auth";
 
-const enabled = process.env.PLAYWRIGHT_E2E === "1";
-const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
-
-const staffEmail = process.env.PLAYWRIGHT_STAFF_EMAIL ?? "";
-const staffPassword = process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "";
-const catalogueEmail = process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL ?? "";
-const cataloguePassword = process.env.PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD ?? "";
-
-async function staffLogin(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel(/email/i).fill(staffEmail);
-  await page.getByLabel(/password/i).fill(staffPassword);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/dashboard/);
-}
-
-async function catalogueManagerLogin(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel(/email/i).fill(catalogueEmail);
-  await page.getByLabel(/password/i).fill(cataloguePassword);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/dashboard/);
-}
+const catalogueEmail = hasCatalogueManagerCredentials() ? "configured" : "";
+const cataloguePassword = catalogueEmail;
 
 // ---------------------------------------------------------------------------
 // Admin catalog navigation smoke test
@@ -843,7 +829,7 @@ test.describe("catalog phase 6 flows", () => {
     test.skip(!enabled, skipReason);
     await staffLogin(page);
     await page.goto("/admin");
-    const queue = page.getByRole("heading", { name: /my queue/i });
+    const queue = page.getByRole("heading", { name: /needs attention/i });
     await expect(queue).toBeVisible();
     const fulfilmentLink = page.getByRole("link", { name: /fulfilment/i });
     const crLink = page.getByRole("link", { name: /condition report/i });

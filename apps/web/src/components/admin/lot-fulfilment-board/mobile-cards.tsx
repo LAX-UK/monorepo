@@ -3,7 +3,7 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
 import { CatalogVirtualizedList } from "@/components/admin/catalog/catalog-virtualized-list";
-import type { AdminLotFulfilmentListRow } from "@/lib/data/http/admin.server";
+import type { AdminLotFulfilmentListRow } from "@/lib/data/http/admin-lot-fulfilment.shared";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -31,7 +31,7 @@ export function LotFulfilmentMobileCards({ rows, onOpen }: Props) {
                 className="min-h-11 flex-1"
                 onClick={() => onOpen(row)}
               >
-                Queue actions
+                Actions
               </Button>
               <Button variant="outline" size="sm" className="min-h-11 flex-1" asChild>
                 <Link href={`/admin/lots/${row.lotId}`}>Open lot</Link>

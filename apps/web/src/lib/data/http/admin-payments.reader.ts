@@ -3,7 +3,6 @@ import "server-only";
 import { getAdminLotList } from "@/lib/data/http/admin-lots.reader";
 import {
   adminPaymentRowsSchema,
-  adminPayoutRowsSchema,
   adminXeroIntegrationStatusSchema,
   adminXeroOAuthConsentUrlSchema,
   parseAdminPaymentsListPageBody,
@@ -15,6 +14,7 @@ import type {
   AdminXeroIntegrationStatus,
   GetAdminPaymentsListPageParams,
 } from "@/lib/data/http/admin-payments.types";
+import { parseAdminPayoutsPageBody } from "@/lib/data/http/admin-payouts.shared";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import type { Lot, PayoutStatus } from "@auction/types";
@@ -70,7 +70,9 @@ export async function getAdminPayoutList(
     throw new Error(`Failed to load payouts: ${res.status}`);
   }
   const body = await readJsonBody(res);
-  return readDataEnvelope(body, adminPayoutRowsSchema, "GET /admin/payouts");
+  const limit = Math.min(100, Math.max(1, params.limit ?? 50));
+  const offset = params.offset ?? 0;
+  return parseAdminPayoutsPageBody(body, { limit, offset }).rows;
 }
 
 export async function getAdminXeroIntegrationStatus(): Promise<AdminXeroIntegrationStatus> {

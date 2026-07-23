@@ -8,7 +8,8 @@ import {
   connectGapStageSummary,
 } from "@/lib/connect/connect-gap-copy";
 import type { ConnectGapState } from "@auction/connect";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { presentationToDotStatus } from "@auction/ui";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
 
 const MAX_VISIBLE_MISSING = 5;
@@ -41,12 +42,15 @@ export function ConnectStatusHeader({
   const actionHint = compact ? null : connectGapActionHint(gap.stage, { readOnly });
   const copyOptions = readOnly ? { readOnly: true as const } : undefined;
 
+  const stagePresentation = presentationToDotStatus({
+    label: connectGapStageLabel(gap.stage),
+    variant: connectGapStageBadgeVariant(gap.stage),
+  });
+
   return (
     <Surface variant="section" padding="md" className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge variant={connectGapStageBadgeVariant(gap.stage)} size="sm">
-          {connectGapStageLabel(gap.stage)}
-        </StatusBadge>
+        <DotStatusPill label={stagePresentation.label} tone={stagePresentation.tone} />
         {countLabel ? (
           <span className="font-body text-xs text-on-surface-variant">{countLabel}</span>
         ) : null}

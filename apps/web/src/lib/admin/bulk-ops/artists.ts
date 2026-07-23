@@ -1,4 +1,4 @@
-import type { BulkOperation } from "@/components/admin/bulk-actions-toolbar";
+import type { BulkOperation } from "@/lib/admin/bulk-ops/types";
 
 export function getArtistBulkOperations(): BulkOperation[] {
   return [

@@ -35,6 +35,7 @@ export type SplitFilterSheetFooterProps = {
   onApply?: () => void;
   applyLabel?: string;
   applyDisabled?: boolean;
+  applyDisabledHint?: string;
 };
 
 export function SplitFilterSheetFooter({
@@ -43,32 +44,38 @@ export function SplitFilterSheetFooter({
   onApply,
   applyLabel = "Apply",
   applyDisabled,
+  applyDisabledHint,
 }: SplitFilterSheetFooterProps) {
   return (
-    <div className="flex flex-row items-center justify-between gap-3 px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      {onReset ? (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onReset}
-          className="min-h-11 rounded-none px-0 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-link underline-offset-4 hover:bg-transparent hover:text-link hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0"
-        >
-          {resetLabel}
-        </Button>
-      ) : (
-        <span />
-      )}
-      {onApply ? (
-        <Button
-          type="button"
-          variant="cta"
-          className="min-h-11 shrink-0 px-6"
-          disabled={applyDisabled}
-          onClick={onApply}
-        >
-          {applyLabel}
-        </Button>
+    <div className="flex flex-col gap-2 px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      {applyDisabledHint ? (
+        <p className="font-body text-xs text-on-surface-variant">{applyDisabledHint}</p>
       ) : null}
+      <div className="flex flex-row items-center justify-between gap-3">
+        {onReset ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onReset}
+            className="min-h-11 rounded-none px-0 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-link underline-offset-4 hover:bg-transparent hover:text-link hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0"
+          >
+            {resetLabel}
+          </Button>
+        ) : (
+          <span />
+        )}
+        {onApply ? (
+          <Button
+            type="button"
+            variant="cta"
+            className="min-h-11 shrink-0 px-6 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={applyDisabled}
+            onClick={onApply}
+          >
+            {applyLabel}
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -83,6 +90,7 @@ export type SplitFilterSheetProps = {
   onApply?: () => void;
   applyLabel?: string;
   applyDisabled?: boolean;
+  applyDisabledHint?: string;
   onReset?: () => void;
   resetLabel?: string;
   className?: string;
@@ -118,6 +126,7 @@ export function SplitFilterSheet({
   onApply,
   applyLabel = "Apply",
   applyDisabled,
+  applyDisabledHint,
   onReset,
   resetLabel = "Reset",
   className,
@@ -145,6 +154,7 @@ export function SplitFilterSheet({
       {...(onApply !== undefined ? { onApply } : {})}
       applyLabel={applyLabel}
       {...(applyDisabled !== undefined ? { applyDisabled } : {})}
+      {...(applyDisabledHint ? { applyDisabledHint } : {})}
     />
   );
 

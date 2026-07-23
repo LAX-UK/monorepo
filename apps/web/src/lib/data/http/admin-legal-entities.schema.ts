@@ -1,17 +1,14 @@
 import type {
   AdminLegalEntityDocument,
-  AdminLegalEntityListResult,
   AdminLegalEntityListRow,
   AdminStripeConnectRequirementRow,
 } from "@/lib/data/http/admin-legal-entities.types";
-import { isIndexableObject, toObjectRecord } from "@/lib/data/http/object-guards";
-import type {
-  LegalEntity,
-  LegalEntityKind,
-  LegalEntityStatus,
-  LegalEntitySubkind,
-} from "@auction/types";
+import { toObjectRecord } from "@/lib/data/http/object-guards";
 import {
+  type LegalEntity,
+  type LegalEntityKind,
+  type LegalEntityStatus,
+  type LegalEntitySubkind,
   legalEntityKinds,
   legalEntityStatuses,
   legalEntitySubkinds,
@@ -79,21 +76,6 @@ export const adminLegalEntityListRowSchema = z
       stripeDueCount: Number(row.stripeDueCount ?? 0),
     };
   });
-
-export const adminLegalEntityBrowsePayloadSchema = z
-  .preprocess((raw) => raw, z.unknown())
-  .transform((raw): AdminLegalEntityListResult => {
-    if (isIndexableObject(raw) && "rows" in raw) {
-      const rawRows = Array.isArray(raw.rows) ? raw.rows : [];
-      const rows = rawRows.map((row) => adminLegalEntityListRowSchema.parse(row));
-      const total =
-        typeof raw.total === "number"
-          ? raw.total
-          : Number.parseInt(String(raw.total ?? ""), 10) || rows.length;
-      return { rows, total };
-    }
-    return { rows: [], total: 0 };
-  }) as z.ZodType<AdminLegalEntityListResult>;
 
 export const adminLegalEntitySchema = z
   .preprocess(toObjectRecord, z.record(z.unknown()))
@@ -178,10 +160,6 @@ export const adminLegalEntityDocumentsSchema = z.array(adminLegalEntityDocumentS
 
 export function parseLegalEntityFromAdminApi(raw: unknown): LegalEntity {
   return adminLegalEntitySchema.parse(raw);
-}
-
-export function parseAdminLegalEntityBrowsePayload(raw: unknown): AdminLegalEntityListResult {
-  return adminLegalEntityBrowsePayloadSchema.parse(raw);
 }
 
 type _AdminLegalEntityInfer = z.infer<typeof adminLegalEntitySchema>;

@@ -11,6 +11,7 @@ type Props = {
   mentionType: PressCoverageVM["mentionType"];
   outletName: string;
   headline: string;
+  layout?: "card" | "fill";
   className?: string;
 };
 
@@ -19,15 +20,18 @@ export function PressCoverageCardMedia({
   mentionType,
   outletName,
   headline,
+  layout = "card",
   className,
 }: Props) {
   const [failed, setFailed] = useState(false);
   const showPlaceholder = !imageUrl || failed;
+  const isFill = layout === "fill";
 
   return (
     <div
       className={cn(
-        "relative aspect-video overflow-hidden border-b border-border-hairline bg-surface-container-low",
+        "relative overflow-hidden bg-surface-container-low",
+        isFill ? "h-full w-full" : "aspect-video border-b border-border-hairline",
         className,
       )}
     >

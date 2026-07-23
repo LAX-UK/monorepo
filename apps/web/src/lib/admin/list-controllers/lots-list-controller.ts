@@ -11,7 +11,6 @@ export type LotsListQuery = AdminListQueryBase & {
   categoryId?: string | undefined;
   sort?: ListLotsParams["sort"] | undefined;
   q?: string | undefined;
-  viewPipeline?: boolean | undefined;
   needsPhotos?: boolean | undefined;
 };
 
@@ -22,7 +21,6 @@ export const lotsListController: IAdminListController<
   id: "lots",
   parseQuery(sp) {
     const base = parseListSearchParams(sp);
-    const viewPipeline = firstString(sp.view) === "pipeline";
     const st = firstString(sp.status);
     const status = st && st !== "all" ? (st as LotStatus) : undefined;
     const artistId = firstString(sp.artistId);
@@ -32,13 +30,10 @@ export const lotsListController: IAdminListController<
     const needsPhotos = firstString(sp.needsPhotos) === "1";
     const qRaw = base.q?.trim();
     const q = qRaw ? qRaw.slice(0, 200) : undefined;
-    /** Pipeline is a single-page board (max 200 rows). Cursor-based server pipeline is deferred until lists routinely exceed this cap. */
-    const PIPELINE_LOT_CAP = 200;
-    const limit = viewPipeline ? PIPELINE_LOT_CAP : Math.min(200, base.limit);
+    const limit = Math.min(200, base.limit);
     return {
       ...base,
       limit,
-      viewPipeline,
       status,
       artistId,
       saleId,
@@ -62,11 +57,6 @@ export const lotsListController: IAdminListController<
     if (q.q !== undefined && q.q !== "") p.q = q.q;
     if (q.needsPhotos) p.needsPhotos = true;
     const rows = await getAdminLotList(p);
-    if (q.viewPipeline) {
-      const hasNextPage = rows.length > q.limit;
-      const pageRows = hasNextPage ? rows.slice(0, q.limit) : rows;
-      return { rows: pageRows, offset: q.offset, limit: q.limit, hasNextPage };
-    }
     const hasNextPage = rows.length > q.limit;
     const pageRows = hasNextPage ? rows.slice(0, q.limit) : rows;
     return { rows: pageRows, offset: q.offset, limit: q.limit, hasNextPage };

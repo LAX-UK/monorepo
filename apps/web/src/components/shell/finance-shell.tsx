@@ -14,7 +14,7 @@ type Props = {
   pendingSubmissionCount?: number;
   navCounts?: AdminNavCounts;
   cookieDensity?: DashboardDensity | null;
-  headerRightSlot?: ReactNode;
+  headerActionsSlot?: ReactNode;
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
   acting?: ActingContext;
@@ -27,7 +27,7 @@ export function FinanceShell({
   pendingSubmissionCount = 0,
   navCounts,
   cookieDensity,
-  headerRightSlot,
+  headerActionsSlot,
   contextBanner,
   topSlot,
   acting = { kind: "self" },
@@ -38,13 +38,13 @@ export function FinanceShell({
       buildShellConfig({
         user,
         role: "finance",
-        headerRightSlot,
+        headerActionsSlot,
         ...(contextBanner ? { contextBanner } : {}),
         ...(topSlot ? { topSlot } : {}),
         pendingSubmissionCount,
         ...(navCounts ? { navCounts } : {}),
       }),
-    [user, headerRightSlot, contextBanner, topSlot, pendingSubmissionCount, navCounts],
+    [user, headerActionsSlot, contextBanner, topSlot, pendingSubmissionCount, navCounts],
   );
 
   return (

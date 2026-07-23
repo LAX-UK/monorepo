@@ -1,13 +1,13 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { ConditionReportDeclineButton } from "@/components/admin/condition-report-decline-button";
 import { ConditionReportFulfillForm } from "@/components/admin/condition-report-fulfill-form";
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
 import { adminMarkConditionReportInProgressAction } from "@/lib/actions/admin";
-import type { AdminConditionReportRequestRow } from "@/lib/data/http/admin.server";
-import { formatDateTime } from "@/lib/ui/format";
+import type { AdminConditionReportRequestRow } from "@/lib/data/http/admin-condition-reports.shared";
 import Link from "next/link";
 
 export function ConditionReportDrawerContent({ row }: { row: AdminConditionReportRequestRow }) {
@@ -27,15 +27,33 @@ export function ConditionReportDrawerContent({ row }: { row: AdminConditionRepor
           </Link>
           <AdminStatusBadge domain="conditionReport" status={row.status} />
         </div>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          <Link
-            href={`/admin/clients/${row.requestedByUserId}`}
-            className="text-link hover:underline"
-          >
-            {requesterLabel}
-          </Link>
-          {row.createdAt ? ` · ${formatDateTime(row.createdAt)}` : ""}
-        </p>
+        <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">Requester</dt>
+            <dd>
+              <Link
+                href={`/admin/clients/${row.requestedByUserId}`}
+                className="text-link hover:underline"
+              >
+                {requesterLabel}
+              </Link>
+            </dd>
+          </div>
+          {row.createdAt ? (
+            <div>
+              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
+                Requested
+              </dt>
+              <dd>
+                <AdminTableDateTimeCell
+                  iso={row.createdAt}
+                  mode="timestamp"
+                  className="inline-block"
+                />
+              </dd>
+            </div>
+          ) : null}
+        </dl>
       </div>
       {row.requestNote ? (
         <blockquote className="rounded-md bg-surface-container-low p-3 text-sm text-on-surface-variant">
@@ -57,9 +75,25 @@ export function ConditionReportDrawerContent({ row }: { row: AdminConditionRepor
             Request closed
           </p>
           <p className="mt-2 text-sm text-on-surface-variant">
-            {row.status === "fulfilled"
-              ? `Fulfilled${row.fulfilledAt ? ` on ${formatDateTime(row.fulfilledAt)}` : ""}.`
-              : "Declined."}
+            {row.status === "fulfilled" ? (
+              <>
+                Fulfilled
+                {row.fulfilledAt ? (
+                  <>
+                    {" "}
+                    on{" "}
+                    <AdminTableDateTimeCell
+                      iso={row.fulfilledAt}
+                      mode="timestamp"
+                      className="inline-block"
+                    />
+                  </>
+                ) : null}
+                .
+              </>
+            ) : (
+              "Declined."
+            )}
           </p>
           {row.responseNote ? (
             <p className="mt-3 whitespace-pre-wrap text-sm text-on-surface">{row.responseNote}</p>
@@ -76,7 +110,7 @@ export function ConditionReportDrawerContent({ row }: { row: AdminConditionRepor
                 variant="outline"
                 className="min-h-9"
                 confirmTitle="Mark condition report in progress?"
-                confirmBody="This moves the request into the in-progress queue so staff can see it has been picked up."
+                confirmBody="This marks the request as in progress so staff can see it has been picked up."
                 confirmLabel="Mark in progress"
                 tone="info"
               >

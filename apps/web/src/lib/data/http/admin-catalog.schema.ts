@@ -5,6 +5,7 @@ import { zTransformParse } from "@/lib/data/http/schema-coerce";
 import type {
   AdminArtistListRow,
   AdminArtistStats,
+  AdminCategoriesListSummary,
   AdminCategory,
   ArtistDeleteEligibility,
   ArtistKind,
@@ -115,6 +116,16 @@ const adminArtistDuplicateHitSchema = z
   });
 
 export const adminCategoryRowSchema = adminCategorySchema as z.ZodType<AdminCategory>;
+export const adminCategoriesListSummarySchema = z.object({
+  totalCount: z.coerce.number(),
+  activeCount: z.coerce.number(),
+  archivedCount: z.coerce.number(),
+  usageTotals: z.object({
+    lots: z.coerce.number(),
+    sales: z.coerce.number(),
+    submissions: z.coerce.number(),
+  }),
+}) satisfies z.ZodType<AdminCategoriesListSummary>;
 export const artistProfileRowSchema = artistProfileSchema as z.ZodType<ArtistProfile>;
 export const adminArtistListRowSchema =
   adminArtistListRowSchemaSimple as z.ZodType<AdminArtistListRow>;

@@ -1,0 +1,292 @@
+/* F10 — content-visibility helper for off-screen sections. Browsers skip
+   layout/paint for content outside the viewport, large LCP win on long pages.
+   Apply via `className="cv-auto"` on home sections below the fold. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 800px;
+}
+
+/* F8 — Theme toggle circular reveal via View Transitions API. The new theme
+   wipes in from the toggle center to the farthest corner. Browsers without
+   support fall back to instant swap. */
+@supports (view-transition-name: root) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-old(root) {
+    z-index: 1;
+  }
+  ::view-transition-new(root) {
+    z-index: 2;
+    animation: theme-reveal var(--motion-duration-xl, 900ms) var(--motion-ease-emphasize) forwards;
+  }
+}
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0));
+  }
+  to {
+    clip-path: circle(
+      var(--theme-toggle-radius, 200vmax) at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0)
+    );
+  }
+}
+
+/* Focusable skip link — off-screen until focused */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md, 0.25rem);
+  background-color: var(--color-primary);
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-on-primary);
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Admin list row enter stagger (Wave JJ) */
+@media (prefers-reduced-motion: no-preference) {
+  .admin-data-table-stagger tbody tr {
+    animation: admin-row-enter 0.28s ease-out both;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(2) {
+    animation-delay: 30ms;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(3) {
+    animation-delay: 60ms;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(4) {
+    animation-delay: 90ms;
+  }
+  .admin-data-table-stagger tbody tr:nth-child(n + 5) {
+    animation-delay: 120ms;
+  }
+}
+
+@keyframes admin-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-tab-crossfade[data-state="active"] {
+  animation: admin-tab-fade 0.18s ease-out;
+}
+
+@keyframes admin-tab-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.masonry-layout {
+  columns: 1;
+  column-gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .masonry-layout {
+    columns: 2;
+  }
+}
+
+@media (min-width: 1280px) {
+  .masonry-layout {
+    column-gap: 4rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  .masonry-layout {
+    columns: 3;
+  }
+}
+
+.break-inside-avoid {
+  break-inside: avoid;
+}
+
+.screen {
+  animation: dashboard-fade-in var(--motion-duration-sm) var(--motion-ease-decelerate) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen {
+    animation: none;
+  }
+  .lift-row,
+  .tick-value,
+  .section-enter,
+  .quick-look-stagger > *,
+  .quick-look-deck-enter-from-right,
+  .quick-look-deck-enter-from-left {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Dashboard UX v3 motion grammar */
+.lift-row {
+  transition-property: transform, box-shadow;
+  transition-duration: var(--motion-duration-sm, 200ms);
+  transition-timing-function: var(--motion-ease-standard, ease);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lift-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+  }
+}
+
+.tick-value {
+  animation: bidPriceBump 0.45s ease-out;
+}
+
+.section-enter {
+  animation: section-enter var(--motion-duration-sm, 220ms) var(--motion-ease-decelerate) both;
+}
+
+/* Lot quick look — staggered meta reveal after panel open */
+.quick-look-stagger > * {
+  animation: section-enter var(--motion-duration-sm, 220ms) var(--motion-ease-decelerate) both;
+}
+.quick-look-stagger > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.quick-look-stagger > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.quick-look-stagger > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+.quick-look-stagger > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+.quick-look-stagger > *:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+.quick-look-deck-enter-from-right {
+  animation: quick-look-deck-slide var(--motion-duration-sm, 220ms) var(--motion-ease-decelerate)
+    both;
+}
+.quick-look-deck-enter-from-left {
+  animation: quick-look-deck-slide-left var(--motion-duration-sm, 220ms)
+    var(--motion-ease-decelerate) both;
+}
+
+@keyframes quick-look-deck-slide {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes quick-look-deck-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-dashboard-density="compact"] [data-slot="table-cell"],
+[data-dashboard-density="compact"] [data-slot="table-head"] {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+@keyframes dashboard-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media print {
+  .legal-print a {
+    text-decoration: underline;
+  }
+  .legal-print {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes hero-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

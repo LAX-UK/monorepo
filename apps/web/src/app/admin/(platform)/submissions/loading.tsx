@@ -5,7 +5,7 @@ export default function AdminSubmissionsLoading() {
     <CatalogListPageSkeleton
       title="Submissions"
       description="Loading submissions…"
-      kpiTiles={3}
+      kpiTiles={6}
       tableRows={10}
       tableColumns={6}
     />

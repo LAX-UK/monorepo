@@ -1,8 +1,9 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
 import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
-import type { AdminConditionReportRequestRow } from "@/lib/data/http/admin.server";
+import type { AdminConditionReportRequestRow } from "@/lib/data/http/admin-condition-reports.shared";
 import { Button } from "@auction/ui/components/button";
 
 export function ConditionReportsMobileCards({
@@ -20,7 +21,24 @@ export function ConditionReportsMobileCards({
           id={row.id}
           title={row.lotTitle ?? row.lotId}
           selectionLabel={`Open ${row.lotTitle ?? "request"}`}
-          status={<AdminStatusBadge domain="conditionReport" status={row.status} />}
+          status={
+            <div className="flex flex-col gap-1.5">
+              <AdminStatusBadge domain="conditionReport" status={row.status} />
+              <span className="truncate font-body text-[10px] text-on-surface-variant">
+                {row.requesterEmail ?? row.requestedByUserId}
+                {row.createdAt ? (
+                  <>
+                    {" · "}
+                    <AdminTableDateTimeCell
+                      iso={row.createdAt}
+                      mode="timestamp"
+                      className="inline-block"
+                    />
+                  </>
+                ) : null}
+              </span>
+            </div>
+          }
           footer={
             <Button
               type="button"
@@ -32,12 +50,7 @@ export function ConditionReportsMobileCards({
               Open
             </Button>
           }
-        >
-          <p className="font-headline text-sm text-on-surface">{row.lotTitle ?? row.lotId}</p>
-          <p className="mt-1 font-body text-xs text-on-surface-variant">
-            Lot {row.lotId.slice(0, 8)}…
-          </p>
-        </CatalogMobileCardShell>
+        />
       ))}
     </ul>
   );

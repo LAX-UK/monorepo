@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sofListController } from "./admin-list-controllers";
+import { buildSofListPageModel } from "./compliance/build-sof-list-page-model";
 import {
   buildSofCaseDetailHref,
   buildSofListHref,
@@ -35,25 +35,25 @@ describe("sof-list-query", () => {
   });
 });
 
-describe("sofListController.parseQuery", () => {
+describe("buildSofListPageModel", () => {
   it("caps page size at 100", () => {
-    const q = sofListController.parseQuery({ limit: "200" });
-    expect(q.limit).toBe(100);
+    const model = buildSofListPageModel({ limit: "200" });
+    expect(model.query.limit).toBe(100);
   });
 
   it("parses offset from search params", () => {
-    const q = sofListController.parseQuery({ offset: "50" });
-    expect(q.offset).toBe(50);
+    const model = buildSofListPageModel({ offset: "50" });
+    expect(model.query.offset).toBe(50);
   });
 
   it("defaults status to pending", () => {
-    const q = sofListController.parseQuery({});
-    expect(q.status).toBe("pending");
+    const model = buildSofListPageModel({});
+    expect(model.query.status).toBe("pending");
   });
 
   it("parses status from search params", () => {
-    expect(sofListController.parseQuery({ status: "rejected" }).status).toBe("rejected");
-    expect(sofListController.parseQuery({ status: "approved" }).status).toBe("approved");
-    expect(sofListController.parseQuery({ status: "invalid" }).status).toBe("pending");
+    expect(buildSofListPageModel({ status: "rejected" }).query.status).toBe("rejected");
+    expect(buildSofListPageModel({ status: "approved" }).query.status).toBe("approved");
+    expect(buildSofListPageModel({ status: "invalid" }).query.status).toBe("pending");
   });
 });

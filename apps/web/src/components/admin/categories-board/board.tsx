@@ -1,5 +1,12 @@
 "use client";
 
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
+import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import type {
+  CatalogTableFilterControlsBaseProps,
+  CatalogTableFilterControlsProps,
+} from "@/components/admin/catalog/catalog-table-filter-controls";
 import { CategoriesMobileList } from "@/components/admin/categories-board/mobile-list";
 import { EditableCell } from "@/components/admin/editable-cell";
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
@@ -10,17 +17,29 @@ import {
 import { adminUpdateCategoryNameFieldAction } from "@/lib/actions/admin/field-updates";
 import { notify } from "@/lib/ui/notify";
 import type { AdminCategory } from "@auction/types";
+import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
-import { Surface } from "@auction/ui/components/surface";
 import { Archive, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
+export type CategoriesBoardPagination = {
+  offset: number;
+  limit: number;
+  countOnPage: number;
+  prevHref: string | null;
+  nextHref: string | null;
+};
+
 type Props = {
   categories: AdminCategory[];
   searchQuery?: string;
+  filterControls?: CatalogTableFilterControlsBaseProps;
+  pagination?: CategoriesBoardPagination | null;
+  /** Total categories in current lens (for header count badge). */
+  listTotalCount?: number;
 };
 
 type CategoryNode = AdminCategory & { children: CategoryNode[] };
@@ -50,13 +69,33 @@ function buildTree(categories: AdminCategory[]): CategoryNode[] {
   return sortNodes(roots);
 }
 
-export function AdminCategoriesBoard({ categories, searchQuery = "" }: Props) {
+export function AdminCategoriesBoard({
+  categories,
+  searchQuery = "",
+  filterControls,
+  pagination,
+  listTotalCount,
+}: Props) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<PendingAction | null>(null);
   const [pending, startTransition] = useTransition();
 
   const tree = useMemo(() => buildTree(categories), [categories]);
+
+  const tableFilterControls = useMemo((): CatalogTableFilterControlsProps | undefined => {
+    if (!filterControls) return undefined;
+    return {
+      ...filterControls,
+      sheetFilters: (
+        <p className="font-body text-sm text-on-surface-variant">
+          Search matches names and slugs server-side. Lens toggles archived categories.
+        </p>
+      ),
+    };
+  }, [filterControls]);
+
+  const headerCount = listTotalCount ?? categories.length;
 
   const runAction = (category: AdminCategory, action: "archive" | "delete") => {
     startTransition(async () => {
@@ -79,56 +118,78 @@ export function AdminCategoriesBoard({ categories, searchQuery = "" }: Props) {
   return (
     <>
       <CategoriesMobileList categories={categories} query={searchQuery} />
-      <Surface variant="section" padding="md" className="hidden space-y-4 lg:block">
-        <div className="space-y-1">
-          <h3 className="font-headline text-lg font-semibold text-on-surface">Category tree</h3>
+      <div
+        className={cn(
+          "hidden overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)] lg:block",
+        )}
+      >
+        <CatalogBoardTableHeader
+          leading={
+            <>
+              <h2 className="font-headline text-base font-semibold text-on-surface sm:text-lg">
+                Category tree
+              </h2>
+              <Badge
+                variant="secondary"
+                className="h-6 min-w-6 rounded-full bg-on-surface px-2 font-label text-xs font-semibold text-surface-container-lowest"
+              >
+                {headerCount > 99 ? "99+" : headerCount}
+              </Badge>
+            </>
+          }
+          {...(tableFilterControls ? { filterControls: tableFilterControls } : {})}
+        />
+        <div className="space-y-4 p-4 sm:p-6">
           <p className="font-body text-sm text-on-surface-variant">
             Manage catalog taxonomy, usage, and parent relationships.
           </p>
+          <div>
+            {tree.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-outline-variant/40 p-6 text-sm text-on-surface-variant">
+                No categories match this search.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {tree.map((node) => (
+                  <CategoryTreeRow
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    pending={pending}
+                    pendingId={pendingId}
+                    onRequestAction={(category, action) => setConfirmAction({ category, action })}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
-        <div>
-          {tree.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-outline-variant/40 p-6 text-sm text-on-surface-variant">
-              No categories match this search.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {tree.map((node) => (
-                <CategoryTreeRow
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  pending={pending}
-                  pendingId={pendingId}
-                  onRequestAction={(category, action) => setConfirmAction({ category, action })}
-                />
-              ))}
-            </ul>
-          )}
-        </div>
-        {confirmAction ? (
-          <TypedConfirmationDialog
-            open
-            onOpenChange={(open) => {
-              if (!open) setConfirmAction(null);
-            }}
-            title={
-              confirmAction.action === "archive"
-                ? "Archive this category?"
-                : "Delete this category?"
-            }
-            description={
-              confirmAction.action === "archive"
-                ? "Archived categories stay in the tree but are hidden from new assignments."
-                : "This permanently removes an unused category. This cannot be undone."
-            }
-            actionLabel={confirmAction.action === "archive" ? "Archive" : "Delete"}
-            confirmationPhrase={confirmAction.category.slug}
-            severity={confirmAction.action === "delete" ? "danger" : "warning"}
-            onConfirm={() => runAction(confirmAction.category, confirmAction.action)}
-          />
+        {pagination ? (
+          <div className="border-t border-shell-stroke px-4 py-3 sm:px-6">
+            <CatalogPagination {...pagination} />
+          </div>
         ) : null}
-      </Surface>
+      </div>
+      {confirmAction ? (
+        <TypedConfirmationDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setConfirmAction(null);
+          }}
+          title={
+            confirmAction.action === "archive" ? "Archive this category?" : "Delete this category?"
+          }
+          description={
+            confirmAction.action === "archive"
+              ? "Archived categories stay in the tree but are hidden from new assignments."
+              : "This permanently removes an unused category. This cannot be undone."
+          }
+          actionLabel={confirmAction.action === "archive" ? "Archive" : "Delete"}
+          confirmationPhrase={confirmAction.category.slug}
+          severity={confirmAction.action === "delete" ? "danger" : "warning"}
+          onConfirm={() => runAction(confirmAction.category, confirmAction.action)}
+        />
+      ) : null}
     </>
   );
 }
@@ -167,7 +228,7 @@ function CategoryTreeRow({
             <Link href={`/admin/categories/${node.id}`} className="sr-only">
               View {node.name}
             </Link>
-            {node.archived ? <Badge variant="secondary">Archived</Badge> : null}
+            {node.archived ? <AdminStatusBadge domain="category" status="archived" /> : null}
             {node.heroImageKey ? <Badge variant="outline">Has hero</Badge> : null}
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-1 font-label text-[11px] uppercase tracking-wide text-on-surface-variant">

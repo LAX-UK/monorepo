@@ -1,6 +1,6 @@
 "use client";
 
-import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
+import { ShellChromeIconButton } from "@/components/layout/shell-chrome-icon-button";
 import { ChromePopoverPanel } from "@/components/marketing/chrome-popover-panel";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
@@ -65,23 +65,21 @@ export function StaffNotificationBell({ items }: Props) {
 
   return (
     <div className="relative" ref={wrapRef}>
-      <ChromeIconButton
+      <ShellChromeIconButton
         ref={triggerRef}
         label="Staff attention"
         className={cn(
-          "relative text-secondary transition-[color,background-color] duration-300 ease-out motion-reduce:transition-none hover:bg-surface-container-low hover:text-link",
+          "relative size-10 rounded-full text-on-surface-variant transition-[color,background-color] duration-200 ease-out motion-reduce:transition-none hover:bg-shell-search-bg hover:text-on-surface",
         )}
         aria-expanded={open}
         aria-controls={MENU_ID}
         onClick={() => setOpen((o) => !o)}
       >
-        <Bell aria-hidden />
+        <Bell className="size-5" aria-hidden />
         {showBadge ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-label text-[10px] font-bold text-on-error">
-            {total > 9 ? "9+" : total}
-          </span>
+          <span className="absolute right-1 top-1 size-2 rounded-full bg-danger ring-2 ring-surface-container-lowest" />
         ) : null}
-      </ChromeIconButton>
+      </ShellChromeIconButton>
       {open ? (
         <ChromePopoverPanel
           id={MENU_ID}

@@ -16,7 +16,7 @@ describe("buildAdminDisputeTableRow", () => {
       outcome: null,
       lotTitle: "Vase",
     });
-    expect(row.amountLabel).toContain("125");
+    expect(row.amountDisplay.primary).toContain("125");
     expect(row.reasonLabel).toBe("Fraudulent");
     expect(row.lotTitle).toBe("Vase");
   });

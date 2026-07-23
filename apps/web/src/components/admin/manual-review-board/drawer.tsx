@@ -1,12 +1,13 @@
 "use client";
 
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { ManualReviewPaymentActions } from "@/components/admin/manual-review-payment-actions";
 import { isComplianceManualReviewReason } from "@/lib/admin/compliance-manual-review";
 import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
 import { buildSofCaseDetailHref } from "@/lib/admin/sof-list-query";
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin.server";
-import { formatDateTime, formatMoney } from "@/lib/ui/format";
+import { formatDateTime } from "@/lib/ui/format";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Badge } from "@auction/ui/components/badge";
 import Link from "next/link";
@@ -61,7 +62,7 @@ export function ManualReviewDrawerContent({
                   }
                   className="text-link underline"
                 >
-                  Open compliance queue
+                  Open compliance review
                 </Link>
               )}
             </>
@@ -71,8 +72,8 @@ export function ManualReviewDrawerContent({
       <dl className="grid gap-3 text-sm">
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Amount</dt>
-          <dd className="text-lg font-semibold tabular-nums">
-            {formatMoney(payment.amount, payment.currency)}
+          <dd>
+            <AdminTableMoneyCell display={payment.amountDisplay} emphasis="hammer" />
           </dd>
         </div>
         <div>

@@ -13,6 +13,7 @@ export type DashboardPageHeaderProps = Omit<PageHeaderProps, "title"> & {
   hideDescriptionOnMobile?: boolean;
   /** Hide meta eyebrow below lg when shell title already shows parent context. */
   hideMetaOnMobile?: boolean;
+  listHeadingId?: string;
 };
 
 /** Opinionated dashboard page header — single h1 source per page. */
@@ -23,6 +24,7 @@ export function DashboardPageHeader({
   hideTitleOnMobile = false,
   hideDescriptionOnMobile = false,
   hideMetaOnMobile = false,
+  listHeadingId,
   className,
   description,
   breadcrumbs,
@@ -40,7 +42,7 @@ export function DashboardPageHeader({
   const titleClass =
     titleScale === "display"
       ? "font-headline text-3xl font-semibold tracking-tight text-on-surface lg:text-4xl"
-      : "font-headline text-2xl font-semibold tracking-tight text-on-surface lg:text-3xl";
+      : "font-headline text-xl font-semibold tracking-tight text-on-surface sm:text-2xl lg:text-[1.75rem]";
 
   return (
     <div
@@ -64,14 +66,18 @@ export function DashboardPageHeader({
           </div>
         ) : null}
         {hideTitleOnMobile ? (
-          <h1 className={cn(titleClass, "hidden lg:block")}>{title}</h1>
+          <h1 id={listHeadingId} className={cn(titleClass, "hidden lg:block")}>
+            {title}
+          </h1>
         ) : (
-          <h1 className={titleClass}>{title}</h1>
+          <h1 id={listHeadingId} className={titleClass}>
+            {title}
+          </h1>
         )}
         {description ? (
           <p
             className={cn(
-              "mt-2 max-w-2xl font-body text-sm text-on-surface-variant",
+              "mt-2 max-w-xl font-body text-sm leading-relaxed text-on-surface-variant",
               hideDescriptionOnMobile && "hidden lg:block",
             )}
           >

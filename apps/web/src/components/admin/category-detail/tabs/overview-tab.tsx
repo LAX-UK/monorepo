@@ -1,10 +1,11 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
   CatalogDetailSection,
-  CatalogDetailSummaryStrip,
   CatalogInfoCard,
   CatalogPublishReadiness,
+  DetailBoardKpiStrip,
 } from "@/components/admin/catalog";
+import { DetailEntityTable } from "@/components/admin/catalog/detail-board";
 import { categoryAncestorsOf } from "@/components/admin/category-detail/category-detail-helpers";
 import {
   categoryDetailTabHref,
@@ -15,11 +16,12 @@ import { CategoryUsagePanel } from "@/components/admin/category-detail/category-
 import { MediaImage } from "@/components/ui/media-image";
 import { buildCategorySummaryItems } from "@/lib/admin/build-category-summary-items";
 import { buildCategoryTaxonomyReadiness } from "@/lib/admin/catalog-readiness";
-import { lotStatusLabel } from "@/lib/admin/status-badge-variants";
+import { buildCategoryOverviewViewModel } from "@/lib/admin/categories/build-category-overview-vm";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import type { AdminCategory, ItemSubmission, Lot } from "@auction/types";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type Props = {
   categoryId: string;
@@ -49,20 +51,28 @@ export function CategoryOverviewTab({
     descendantCount,
   );
   const readiness = buildCategoryTaxonomyReadiness(categoryId, category, directChildCount);
+  const vm = buildCategoryOverviewViewModel(
+    categoryId,
+    category,
+    directChildCount,
+    descendantCount,
+    summaryItems,
+    readiness,
+  );
   const ancestors = categoryAncestorsOf(categoryId, allCategories);
   const heroSrc = resolveMediaSrc(category.heroImageKey);
 
   return (
     <div className="space-y-8">
-      {readiness.percent < 100 ? (
+      {vm.readiness.percent < 100 ? (
         <CatalogPublishReadiness
           title="Taxonomy readiness"
-          readiness={readiness}
+          readiness={vm.readiness}
           dismissKey={`category-overview:${categoryId}`}
         />
       ) : null}
 
-      <CatalogDetailSummaryStrip items={summaryItems} />
+      <DetailBoardKpiStrip ariaLabel="Category usage" tiles={vm.kpiTiles} />
 
       <CatalogDetailSection
         title="Usage & lifecycle"
@@ -173,7 +183,7 @@ export function CategoryOverviewTab({
                 items={previewLots.map((lot) => ({
                   id: lot.id,
                   label: lot.title,
-                  meta: lotStatusLabel[lot.status] ?? lot.status,
+                  meta: <AdminStatusBadge domain="lot" status={lot.status} />,
                   href: `/admin/lots/${lot.id}`,
                 }))}
               />
@@ -185,7 +195,14 @@ export function CategoryOverviewTab({
                 items={previewSales.map(({ sale, lots }) => ({
                   id: sale.id,
                   label: sale.title,
-                  meta: `${lots.length} lots · ${sale.status}`,
+                  meta: (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <AdminStatusBadge domain="sale" status={sale.status} />
+                      <span className="text-xs text-on-surface-variant">
+                        {lots.length} {lots.length === 1 ? "lot" : "lots"}
+                      </span>
+                    </span>
+                  ),
                   href: `/admin/sales/${sale.id}`,
                 }))}
               />
@@ -197,7 +214,7 @@ export function CategoryOverviewTab({
                 items={previewSubmissions.map((submission) => ({
                   id: submission.id,
                   label: submission.title,
-                  meta: submission.status.replaceAll("_", " "),
+                  meta: <AdminStatusBadge domain="submission" status={submission.status} />,
                   href: `/admin/submissions/${submission.id}`,
                 }))}
               />
@@ -216,7 +233,7 @@ function PreviewList({
 }: {
   title: string;
   viewAllHref: string;
-  items: { id: string; label: string; meta: string; href: string }[];
+  items: { id: string; label: string; meta: ReactNode; href: string }[];
 }) {
   return (
     <div className="space-y-3">
@@ -229,16 +246,30 @@ function PreviewList({
           View all →
         </Link>
       </div>
-      <ul className="divide-y divide-outline-variant/15 rounded-lg border border-border-hairline">
-        {items.map((item) => (
-          <li key={item.id} className="px-3 py-2.5">
-            <Link href={item.href} className="font-medium text-sm text-on-surface hover:text-link">
-              {item.label}
-            </Link>
-            <p className="text-xs capitalize text-on-surface-variant">{item.meta}</p>
-          </li>
-        ))}
-      </ul>
+      <DetailEntityTable
+        rows={items}
+        getRowId={(item) => item.id}
+        emptyTitle={`No ${title.toLowerCase()} linked`}
+        columns={[
+          {
+            id: "label",
+            header: title.slice(0, -1) || title,
+            cell: (item) => (
+              <Link
+                href={item.href}
+                className="font-medium text-sm text-on-surface hover:text-link"
+              >
+                {item.label}
+              </Link>
+            ),
+          },
+          {
+            id: "meta",
+            header: "Status",
+            cell: (item) => <div className="text-xs text-on-surface-variant">{item.meta}</div>,
+          },
+        ]}
+      />
     </div>
   );
 }

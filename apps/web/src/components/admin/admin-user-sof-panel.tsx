@@ -64,7 +64,7 @@ export function AdminUserSofPanel({ cases }: Props) {
         <p className="text-xs text-on-surface-variant">
           Showing 5 of {cases.length} cases.{" "}
           <Link href={buildSofListHref("pending")} className="text-link underline">
-            Open queue
+            Review cases
           </Link>
         </p>
       ) : null}

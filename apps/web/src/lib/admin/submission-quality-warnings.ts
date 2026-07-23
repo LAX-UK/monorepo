@@ -1,10 +1,6 @@
-import { evaluateSubmissionQuality } from "@auction/domain";
-import type { ItemSubmission } from "@auction/types";
+import { type SubmissionQualityInput, evaluateSubmissionQuality } from "@auction/domain";
 
-export type SubmissionQualityWarningInput = Pick<
-  ItemSubmission,
-  "title" | "images" | "description" | "provenance" | "categoryId" | "categoryIds"
->;
+export type SubmissionQualityWarningInput = SubmissionQualityInput;
 
 /** Advisory labels for staff queue triage (description, provenance, photo count). */
 export function submissionQualityWarnings(submission: SubmissionQualityWarningInput): string[] {

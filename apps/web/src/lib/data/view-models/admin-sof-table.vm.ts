@@ -124,7 +124,12 @@ export function buildAdminSofTableRow(row: AdminSourceOfFundsRow): AdminSofTable
     reviewNotes: row.reviewNotes,
     reviewedByUserId: row.reviewedByUserId,
     createdAt: row.createdAt,
-    evidenceCount: Array.isArray(row.evidence) ? row.evidence.length : 0,
+    evidenceCount:
+      typeof row.submittedDocumentCount === "number"
+        ? row.submittedDocumentCount
+        : Array.isArray(row.evidence)
+          ? row.evidence.length
+          : 0,
     evidenceKeys: Array.isArray(row.evidence) ? row.evidence.map(String) : [],
   };
 }

@@ -25,7 +25,7 @@ function inSaleRow(id: string, title: string): InSaleDisplayRow {
     saleOutcome: null,
     status: "active",
     statusLabel: "Live",
-    statusTone: "success",
+    statusDotTone: "live",
     endTimeIso: "2026-01-02T00:00:00.000Z",
     endTimeLabel: "2 Jan 2026",
     startTimeIso: "2026-01-01T00:00:00.000Z",

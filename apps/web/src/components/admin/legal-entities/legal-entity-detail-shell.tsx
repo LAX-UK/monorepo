@@ -25,6 +25,7 @@ type Props = {
   activityEvents?: AdminDomainEventRow[];
   error?: string | null;
   success?: string | null;
+  backHref?: string;
 };
 
 export function LegalEntityDetailShell({
@@ -35,12 +36,13 @@ export function LegalEntityDetailShell({
   activityEvents = [],
   error,
   success,
+  backHref = "/admin/legal-entities",
 }: Props) {
   return (
     <AdminEntityDetailShell
       detailHeader
       detailHeaderSticky={false}
-      backHref="/admin/legal-entities"
+      backHref={backHref}
       backLabel="Legal entities"
       entityId={entity.id}
       updatedAt={entity.updatedAt}

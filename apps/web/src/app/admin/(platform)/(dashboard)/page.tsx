@@ -142,26 +142,16 @@ export default async function AdminHomePage({
     dashboardLoadWarning ??= "Could not load finance dashboard alerts.";
   }
 
-  const activity: AdminActivityRow[] = recentLots.slice(0, 10).map((l) => {
-    const statusTone =
-      l.status === "active"
-        ? "live"
-        : l.status === "ended"
-          ? "neutral"
-          : l.status === "scheduled"
-            ? "warning"
-            : "neutral";
-    return {
-      id: l.id,
-      title: l.title,
-      meta: `${l.status} · ends ${formatDateTime(l.endTime)}`,
-      href: `/admin/lots/${l.id}`,
-      statusLabel: l.status,
-      statusTone,
-      priceLabel: formatMoney(l.currentPrice),
-      endsLabel: formatDateTime(l.endTime),
-    };
-  });
+  const activity: AdminActivityRow[] = recentLots.slice(0, 10).map((l) => ({
+    id: l.id,
+    title: l.title,
+    meta: `${l.status} · ends ${formatDateTime(l.endTime)}`,
+    href: `/admin/lots/${l.id}`,
+    statusLabel: l.status,
+    winnerId: l.winnerId,
+    priceLabel: formatMoney(l.currentPrice),
+    endsLabel: formatDateTime(l.endTime),
+  }));
 
   let navCounts = EMPTY_ADMIN_NAV_COUNTS;
   try {

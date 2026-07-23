@@ -1,10 +1,6 @@
 import { ArtistOverviewTab } from "@/components/admin/artist-detail/tabs/overview-tab";
 import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
-import {
-  getAdminArtistById,
-  getAdminArtistDuplicateCandidates,
-  getAdminLotList,
-} from "@/lib/data/http/admin.server";
+import { loadAdminArtistDetailContext } from "@/lib/admin/artists/load-artist-detail-context";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -15,12 +11,9 @@ type Props = {
 export default async function AdminArtistOverviewPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const [artist, lots, dupes] = await Promise.all([
-    getAdminArtistById(id),
-    getAdminLotList({ artistId: id, limit: 50 }).catch(() => []),
-    getAdminArtistDuplicateCandidates(id).catch(() => []),
-  ]);
-  if (!artist) notFound();
+  const detail = await loadAdminArtistDetailContext(id);
+  if (!detail) notFound();
+  const { artist, lotCount, duplicates } = detail;
 
   return (
     <>
@@ -28,8 +21,8 @@ export default async function AdminArtistOverviewPage({ params, searchParams }: 
       <ArtistOverviewTab
         artistId={id}
         artist={artist}
-        lotCount={lots.length}
-        duplicateCount={dupes.length}
+        lotCount={lotCount}
+        duplicateCount={duplicates.length}
       />
     </>
   );

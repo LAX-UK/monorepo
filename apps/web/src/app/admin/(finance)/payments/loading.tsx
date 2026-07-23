@@ -1,13 +1,14 @@
-import { FinanceListPageSkeleton } from "@/components/admin/finance/finance-list-states";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 
 export default function PaymentsLoading() {
   return (
-    <FinanceListPageSkeleton
+    <CatalogListPageSkeleton
       title="Payments"
       description="Loading payments…"
       kpiTiles={4}
       tableRows={10}
       tableColumns={6}
+      showFilterBar
     />
   );
 }

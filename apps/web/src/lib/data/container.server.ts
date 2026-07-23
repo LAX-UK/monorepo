@@ -2,33 +2,31 @@ import "server-only";
 
 export { getWriteContainer, type WriteServiceContainer } from "./write-container.server";
 
-import { getServerMyAddresses } from "@/lib/data/http/addresses.server";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import {
   getServerMyArtistFollows,
   getServerMyBids,
-  getServerMyPortfolio,
-  getServerMyWatchlist,
-} from "@/lib/data/http/dashboard.server";
-import { getServerKycStatusSummary, postServerKycSession } from "@/lib/data/http/kyc.server";
-import { getServerMyLegalEntityMemberships } from "@/lib/data/http/legal-entities.server";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
-import { getServerMyNotificationPreferences } from "@/lib/data/http/notification-preferences.server";
-import {
+  getServerMyNotificationPreferences,
   getServerMyNotifications,
   getServerMyNotificationsSafe,
-} from "@/lib/data/http/notifications.server";
-import { getServerOrgOnboardingResume } from "@/lib/data/http/org-onboarding.server";
+  getServerMyPortfolio,
+  getServerMyWatchlist,
+  getServerSessionUser,
+} from "@/lib/buyer-account";
 import {
   getServerLotFulfilmentForWinner,
   getServerMyPayments,
-} from "@/lib/data/http/payments.server";
+} from "@/lib/buyer-account/payments.server";
+import { getServerMyAddresses } from "@/lib/data/http/addresses.server";
+import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerKycStatusSummary, postServerKycSession } from "@/lib/data/http/kyc.server";
+import { getServerMyLegalEntityMemberships } from "@/lib/data/http/legal-entities.server";
+import { getServerLotReader } from "@/lib/data/http/lots.server";
+import { getServerOrgOnboardingResume } from "@/lib/data/http/org-onboarding.server";
 import { getServerSaleWithLots, getServerSalesList } from "@/lib/data/http/sales.server";
 import {
   getServerPayoutPreviewNextForLegalEntity,
   getServerPayoutsListForLegalEntity,
 } from "@/lib/data/http/seller-payouts.server";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerMySessions } from "@/lib/data/http/sessions.server";
 import { getServerStripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import {

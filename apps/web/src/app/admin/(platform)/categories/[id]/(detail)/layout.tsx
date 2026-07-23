@@ -4,11 +4,8 @@ import {
   categoryDirectChildrenOf,
 } from "@/components/admin/category-detail/category-detail-helpers";
 import { CategoryDetailShell } from "@/components/admin/category-detail/category-detail-shell";
-import { loadAdminCategoryDetail } from "@/lib/admin/load-category-detail";
-import {
-  getAdminCategoryList,
-  getAdminDomainEventsForAggregate,
-} from "@/lib/data/http/admin.server";
+import { loadAdminCategoryDetail, loadAdminCategoryTree } from "@/lib/admin/load-category-detail";
+import { getAdminDomainEventsForAggregate } from "@/lib/data/http/admin.server";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -20,7 +17,7 @@ export default async function AdminCategoryDetailLayout({ params, children }: Pr
   const { id } = await params;
   const [category, allCategories, activityEvents] = await Promise.all([
     loadAdminCategoryDetail(id),
-    getAdminCategoryList({ includeArchived: true }),
+    loadAdminCategoryTree(),
     getAdminDomainEventsForAggregate({
       aggregateType: "category",
       aggregateId: id,

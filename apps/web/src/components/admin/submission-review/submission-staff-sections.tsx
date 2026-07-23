@@ -1,5 +1,6 @@
 "use client";
 
+import { DetailEntityTable } from "@/components/admin/catalog/detail-board";
 import { DocumentAttachmentManager } from "@/components/admin/document-attachment-manager";
 import {
   adminAttachSubmissionDocumentResultAction,
@@ -29,29 +30,30 @@ export function SubmissionDocumentsSection(props: {
 
 export function SubmissionMetadataSummary(props: { submission: ItemSubmission }) {
   const s = props.submission;
+  const rows = [
+    { id: "year", label: "Year of work", value: s.yearOfWork ?? "—" },
+    { id: "signed", label: "Signed", value: s.isSigned ? "Yes" : "No" },
+    { id: "edition", label: "Edition", value: s.edition ?? "—" },
+    { id: "condition", label: "Condition (seller)", value: s.conditionSelfReport ?? "—" },
+  ];
+
   return (
-    <div className="rounded-xl border border-border-hairline bg-surface-container-low/30 p-4 font-body text-sm">
-      <h3 className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Metadata
-      </h3>
-      <dl className="grid gap-2 sm:grid-cols-2">
-        <div>
-          <dt className="text-on-surface-variant">Year of work</dt>
-          <dd className="font-medium text-on-surface">{s.yearOfWork ?? "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-on-surface-variant">Signed</dt>
-          <dd className="font-medium text-on-surface">{s.isSigned ? "Yes" : "No"}</dd>
-        </div>
-        <div>
-          <dt className="text-on-surface-variant">Edition</dt>
-          <dd className="font-medium text-on-surface">{s.edition ?? "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-on-surface-variant">Condition (seller)</dt>
-          <dd className="font-medium text-on-surface">{s.conditionSelfReport ?? "—"}</dd>
-        </div>
-      </dl>
-    </div>
+    <DetailEntityTable
+      rows={rows}
+      getRowId={(row) => row.id}
+      emptyTitle="No metadata"
+      columns={[
+        {
+          id: "field",
+          header: "Field",
+          cell: (row) => <span className="text-on-surface-variant">{row.label}</span>,
+        },
+        {
+          id: "value",
+          header: "Value",
+          cell: (row) => <span className="font-medium text-on-surface">{row.value}</span>,
+        },
+      ]}
+    />
   );
 }

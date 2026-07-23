@@ -1,6 +1,8 @@
 import { ArtistReviewTab } from "@/components/admin/artist-detail/tabs/review-tab";
 import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminArtistById } from "@/lib/data/http/admin.server";
+import { ARTIST_REVIEW_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notFound, redirect } from "next/navigation";
 
 type Props = {
@@ -10,6 +12,7 @@ type Props = {
 
 export default async function AdminArtistReviewPage({ params, searchParams }: Props) {
   const { id } = await params;
+  await requireAdminCapability(ARTIST_REVIEW_ACCESS, `/admin/artists/${id}`);
   const sp = await searchParams;
   const artist = await getAdminArtistById(id);
   if (!artist) notFound();

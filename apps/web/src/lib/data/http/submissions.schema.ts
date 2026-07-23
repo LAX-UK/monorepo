@@ -103,6 +103,21 @@ export function parseItemSubmissionSchema(raw: unknown): ItemSubmission {
   return itemSubmissionSchema.parse(raw);
 }
 
+const entityDocumentPublicRowSchema = z.object({
+  id: z.string(),
+  kind: z.string(),
+  label: z.string().nullable(),
+  downloadUrl: z.string(),
+});
+
+export const submissionDocumentsListSchema = z.object({
+  data: z.array(entityDocumentPublicRowSchema),
+});
+
+export function parseSubmissionDocumentsList(raw: unknown) {
+  return submissionDocumentsListSchema.parse(raw).data;
+}
+
 type _ItemSubmissionInfer = z.infer<typeof itemSubmissionSchema>;
 const _itemSubmissionTypeGuard = null as unknown as _ItemSubmissionInfer satisfies ItemSubmission;
 void _itemSubmissionTypeGuard;

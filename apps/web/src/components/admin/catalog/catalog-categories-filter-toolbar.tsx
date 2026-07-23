@@ -1,6 +1,5 @@
 "use client";
 
-import { AdminListSearch } from "@/components/admin/admin-list-search";
 import {
   type CatalogActiveFilterChip,
   CatalogActiveFiltersRow,
@@ -15,6 +14,7 @@ type Props = {
   activeFilterChips?: readonly CatalogActiveFilterChip[];
 };
 
+/** Sticky bar — archive lens and applied chips (search lives in the table card header). */
 export function CatalogCategoriesFilterToolbar({
   lenses,
   activeLensId,
@@ -26,16 +26,10 @@ export function CatalogCategoriesFilterToolbar({
       lenses={lenses}
       activeLensId={activeLensId}
       lensAriaLabel="Category archive scope"
-      sheetTitle="Category filters"
-      activeFilterCount={activeFilterCount}
+      showSearch={false}
       showFilterTrigger={false}
-      searchSlot={<AdminListSearch placeholder="Search categories…" className="w-full" />}
+      activeFilterCount={activeFilterCount}
       activeFilters={<CatalogActiveFiltersRow chips={activeFilterChips} />}
-      sheetFilters={
-        <p className="font-body text-sm text-on-surface-variant">
-          Search matches names and slugs server-side. Lens toggles archived categories.
-        </p>
-      }
     />
   );
 }

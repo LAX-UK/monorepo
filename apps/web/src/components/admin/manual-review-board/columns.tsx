@@ -1,7 +1,7 @@
 "use client";
 
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin.server";
-import { formatMoney } from "@/lib/ui/format";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -46,12 +46,10 @@ export function manualReviewColumns(
       cell: ({ row }) => <span className="text-sm">{row.original.sellerDisplayName}</span>,
     },
     {
-      accessorKey: "amount",
+      accessorKey: "amountDisplay",
       header: "Amount",
       cell: ({ row }) => (
-        <span className="tabular-nums font-medium">
-          {formatMoney(row.original.amount, row.original.currency)}
-        </span>
+        <AdminTableMoneyCell display={row.original.amountDisplay} emphasis="default" />
       ),
     },
     {

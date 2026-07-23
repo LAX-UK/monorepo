@@ -1,12 +1,9 @@
 "use client";
 
-import type { AdminLotFulfilmentListRow } from "@/lib/data/http/admin.server";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import type { AdminLotFulfilmentListRow } from "@/lib/data/http/admin-lot-fulfilment.shared";
 import { Button } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
-
-function statusLabel(status: string): string {
-  return status.replaceAll("_", " ");
-}
 
 export function lotFulfilmentColumns(
   onOpen: (row: AdminLotFulfilmentListRow) => void,
@@ -29,11 +26,7 @@ export function lotFulfilmentColumns(
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <span className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-          {statusLabel(row.original.status)}
-        </span>
-      ),
+      cell: ({ row }) => <AdminStatusBadge domain="fulfilment" status={row.original.status} />,
     },
     {
       accessorKey: "fulfilmentMethod",

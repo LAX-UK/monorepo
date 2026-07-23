@@ -1,3 +1,4 @@
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { ArtistDestructivePanel } from "@/components/admin/artist-detail/artist-destructive-panel";
 import { artistDetailTabHref } from "@/components/admin/artist-detail/artist-detail-types";
 import { CatalogInfoAside } from "@/components/admin/catalog/catalog-info-aside";
@@ -83,7 +84,7 @@ export function ArtistContextRail({
             {
               id: "status",
               label: "Registry status",
-              value: (artist.status ?? "pending").replaceAll("_", " "),
+              value: <AdminStatusBadge domain="artist" status={artist.status ?? "pending"} />,
             },
           ]}
         />

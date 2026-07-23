@@ -4,12 +4,8 @@ import {
   categoryDirectChildrenOf,
 } from "@/components/admin/category-detail/category-detail-helpers";
 import { CategoryOverviewTab } from "@/components/admin/category-detail/tabs/overview-tab";
-import { loadAdminCategoryDetail } from "@/lib/admin/load-category-detail";
-import {
-  getAdminCategoryList,
-  getAdminLotList,
-  getAdminSalesList,
-} from "@/lib/data/http/admin.server";
+import { loadAdminCategoryDetail, loadAdminCategoryTree } from "@/lib/admin/load-category-detail";
+import { getAdminLotList, getAdminSalesList } from "@/lib/data/http/admin.server";
 import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
 
 type Props = {
@@ -23,7 +19,7 @@ export default async function AdminCategoryOverviewPage({ params, searchParams }
   const [category, allCategories, previewLots, previewSales, previewSubmissions] =
     await Promise.all([
       loadAdminCategoryDetail(id),
-      getAdminCategoryList({ includeArchived: true }),
+      loadAdminCategoryTree(),
       getAdminLotList({ categoryId: id, limit: 3 }).catch(() => []),
       getAdminSalesList({ categoryId: id, limit: 3 }).catch(() => []),
       getAdminSubmissions({ categoryId: id, limit: 3 }).catch(() => ({ rows: [], total: 0 })),

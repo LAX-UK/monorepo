@@ -1,11 +1,9 @@
 import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
 import { AdminSaleHeaderActions } from "@/components/admin/admin-sale-header-actions";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
   CatalogBreadcrumbs,
   CatalogDetailMobileMeta,
   CatalogDetailShell,
-  CatalogDetailStickyMiniBar,
   CatalogDetailTabNav,
 } from "@/components/admin/catalog";
 import { CatalogPostCreateSessionRoot } from "@/components/admin/catalog/catalog-post-create-session";
@@ -13,17 +11,18 @@ import { CatalogWhatsNextBanner } from "@/components/admin/catalog/catalog-whats
 import { AdminSaleEditableTitle } from "@/components/admin/editable-titles";
 import { AdminQrCodeButton } from "@/components/admin/qr-code/admin-qr-code-button";
 import { SaleDetailMobileLifecycleTrailing } from "@/components/admin/sale-detail-mobile-lifecycle-trailing";
-import { SaleContextRail } from "@/components/admin/sale-detail/sale-context-rail";
 import { SaleDetailConnectNotice } from "@/components/admin/sale-detail/sale-detail-connect-notice";
 import { isSaleLiveish, venueOneLiner } from "@/components/admin/sale-detail/sale-detail-helpers";
+import { SaleDetailMetaRow } from "@/components/admin/sale-detail/sale-detail-meta-row";
 import { SaleDetailReadinessProvider } from "@/components/admin/sale-detail/sale-detail-readiness-context";
-import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { SaleSetupProgressChip } from "@/components/admin/sale-detail/sale-setup-progress-chip";
+import { SaleDeliveryPill, SaleStatusPill } from "@/components/admin/sale-detail/sale-status-pill";
 import {
   buildSaleDetailNavActions,
   saleNavItemsToMobileBar,
 } from "@/lib/admin/build-sale-lifecycle-mobile-actions";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
+import { adminSaleroomHref } from "@/lib/admin/catalog-route-helpers";
 import {
   computeSaleDetailReadiness,
   saleDetailCanPublish,
@@ -31,10 +30,12 @@ import {
 } from "@/lib/admin/compute-sale-detail-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
-import type { AdminDomainEventRow, AdminSaleListRow } from "@/lib/data/http/admin.server";
+import { buildSaleDetailTabSpecs } from "@/lib/admin/sales/build-sale-detail-tab-specs";
+import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { salePath } from "@/lib/seo/url";
-import { Badge } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { isSaleroomDeliveryMode } from "@auction/validators";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
@@ -45,11 +46,12 @@ type Props = {
   pendingRegistrationCount?: number | null;
   pendingTelephoneBookingCount?: number | null;
   documentCount?: number | null;
-  activityEvents?: readonly AdminDomainEventRow[];
   canManageSales?: boolean;
   connectRequiredByLotId?: ConnectRequiredByLotId;
   /** Precomputed in layout — avoids duplicate readiness work in rail and overview. */
   draftSetupReadiness?: CatalogReadinessResult | null;
+  /** Merged API + local attention count for overview tab badge. */
+  overviewAttentionCount?: number;
   linkedEventSlug?: string | null;
   linkedEventTitle?: string | null;
   children: ReactNode;
@@ -62,10 +64,10 @@ export function SaleDetailShell({
   pendingRegistrationCount = null,
   pendingTelephoneBookingCount = null,
   documentCount = null,
-  activityEvents = [],
   canManageSales = false,
   connectRequiredByLotId,
   draftSetupReadiness: draftSetupReadinessProp,
+  overviewAttentionCount = 0,
   linkedEventSlug = null,
   linkedEventTitle = null,
   children,
@@ -94,10 +96,6 @@ export function SaleDetailShell({
     liveish && pendingRegistrationCount != null && pendingRegistrationCount > 0
       ? pendingRegistrationCount
       : 0;
-  const pendingTelephone =
-    isSaleroom && pendingTelephoneBookingCount != null && pendingTelephoneBookingCount > 0
-      ? pendingTelephoneBookingCount
-      : 0;
 
   const setupReadiness =
     draftSetupReadinessProp !== undefined
@@ -112,65 +110,18 @@ export function SaleDetailShell({
 
   const publishReady = sale.status === "draft" && saleDetailCanPublish(setupReadiness);
 
-  const tabSpecs = [
-    {
-      id: "overview",
-      label: "Overview",
-      href: saleDetailTabHref(saleId, "overview"),
-    },
-    {
-      id: "schedule",
-      label: "Schedule",
-      href: saleDetailTabHref(saleId, "schedule"),
-    },
-    {
-      id: "lots",
-      label: `Lots (${lots.length})`,
-      href: saleDetailTabHref(saleId, "lots"),
-      ...(sale.status === "draft" && lots.length === 0 ? { badge: "warning" as const } : {}),
-    },
-    {
-      id: "documents",
-      label: `Documents (${documentCount ?? 0})`,
-      href: saleDetailTabHref(saleId, "documents"),
-    },
-    {
-      id: "registrations",
-      label: liveish ? `Registrations (${registrationCount ?? 0})` : "Registrations",
-      href: saleDetailTabHref(saleId, "registrations"),
-      ...(pendingRegs > 0 ? { badge: "pending" as const } : {}),
-    },
-    ...(isSaleroom
-      ? [
-          {
-            id: "operations",
-            label: "Operations",
-            href: saleDetailTabHref(saleId, "operations"),
-          },
-          {
-            id: "telephone-bookings",
-            label: "Telephone",
-            href: saleDetailTabHref(saleId, "telephone-bookings"),
-            ...(pendingTelephone > 0 ? { badge: "pending" as const } : {}),
-          },
-          {
-            id: "media",
-            label: "Auction day",
-            href: saleDetailTabHref(saleId, "media"),
-          },
-        ]
-      : []),
-    {
-      id: "press",
-      label: "Press",
-      href: saleDetailTabHref(saleId, "press"),
-    },
-    {
-      id: "activity",
-      label: "Activity",
-      href: saleDetailTabHref(saleId, "activity"),
-    },
-  ];
+  const tabSpecs = buildSaleDetailTabSpecs({
+    saleId,
+    deliveryMode: sale.deliveryMode,
+    liveish,
+    lotCount: lots.length,
+    saleStatus: sale.status,
+    registrationCount,
+    pendingRegistrationCount: pendingRegs,
+    pendingTelephoneBookingCount: pendingTelephoneBookingCount ?? 0,
+    documentCount,
+    overviewAttentionCount,
+  });
 
   const draftSetupHref =
     sale.status === "draft"
@@ -198,23 +149,32 @@ export function SaleDetailShell({
       <CatalogDetailShell
         breadcrumbs={
           <CatalogBreadcrumbs
-            segments={[{ label: "Sales", href: "/admin/sales" }, { label: sale.title }]}
+            segments={[
+              { label: "Admin", href: "/admin" },
+              { label: "Sales", href: "/admin/sales" },
+              { label: sale.title },
+            ]}
           />
         }
-        eyebrow="Sale"
+        metaBelowTitle
         title={
           <AdminSaleEditableTitle saleId={saleId} value={sale.title} editable={canManageSales} />
         }
-        {...(venueLine ? { description: venueLine } : {})}
         meta={
-          <div className="flex flex-wrap items-center gap-2">
-            <AdminStatusBadge domain="sale" status={sale.status} />
-            <Badge variant="secondary" className="capitalize">
-              {sale.deliveryMode}
-            </Badge>
-            {sale.status === "draft" && setupReadiness && draftSetupHref ? (
-              <SaleSetupProgressChip readiness={setupReadiness} setupHref={draftSetupHref} />
-            ) : null}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <SaleStatusPill status={sale.status} />
+              <SaleDeliveryPill deliveryMode={sale.deliveryMode} />
+              {sale.status === "draft" && setupReadiness && draftSetupHref ? (
+                <SaleSetupProgressChip readiness={setupReadiness} setupHref={draftSetupHref} />
+              ) : null}
+            </div>
+            <SaleDetailMetaRow
+              sale={sale}
+              venueLine={venueLine}
+              lotCount={lots.length}
+              registrationCount={registrationCount}
+            />
           </div>
         }
         actions={
@@ -222,6 +182,15 @@ export function SaleDetailShell({
             <AdminPinPageButton label={sale.title} />
             {canManageSales ? (
               <AdminQrCodeButton entityType="sale" entityId={saleId} title={sale.title} />
+            ) : null}
+            {liveish ? (
+              <Button
+                size="sm"
+                className="bg-secondary text-on-secondary shadow-sm hover:bg-secondary/90"
+                asChild
+              >
+                <Link href={adminSaleroomHref(saleId)}>+ Open sales room</Link>
+              </Button>
             ) : null}
             <AdminSaleHeaderActions
               saleId={saleId}
@@ -234,6 +203,7 @@ export function SaleDetailShell({
               canDelete={canDelete}
               canMarkOnsiteEnded={canMarkOnsiteEnded}
               showSaleroomLink={liveish}
+              hideSaleroomLink
             />
           </div>
         }
@@ -256,7 +226,7 @@ export function SaleDetailShell({
             updatedAt={sale.updatedAt}
             publicHref={publicHref}
             publicLabel="View on site"
-            status={<AdminStatusBadge domain="sale" status={sale.status} />}
+            status={<SaleStatusPill status={sale.status} />}
             quickLinks={[
               ...(liveish ? [{ label: "Open saleroom", href: `/admin/saleroom/${saleId}` }] : []),
               ...(linkedEventSlug
@@ -280,50 +250,8 @@ export function SaleDetailShell({
             }
           />
         }
-        aside={
-          <SaleContextRail
-            saleId={saleId}
-            sale={sale}
-            lots={lots}
-            liveish={liveish}
-            registrationCount={registrationCount}
-            activityEvents={activityEvents}
-            deleteBlockers={deleteBlockers}
-            canManageSales={canManageSales}
-            draftSetupReadiness={setupReadiness}
-            quickRailItems={saleNav.quickRailItems}
-            {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
-            {...(draftSetupHref ? { draftSetupHref } : {})}
-            linkedEventSlug={linkedEventSlug}
-            linkedEventTitle={linkedEventTitle}
-            status={<AdminStatusBadge domain="sale" status={sale.status} />}
-            publicHref={publicHref}
-          />
-        }
         stickySubnav={
-          <>
-            <CatalogDetailTabNav
-              tabs={tabSpecs}
-              entityKind="sale"
-              entityId={saleId}
-              aria-label="Sale sections"
-            />
-            <CatalogDetailStickyMiniBar
-              items={[
-                {
-                  id: "status",
-                  label: "Status",
-                  value: <AdminStatusBadge domain="sale" status={sale.status} />,
-                },
-                { id: "lots", label: "Lots", value: lots.length },
-                {
-                  id: "publish",
-                  label: "Publish",
-                  value: publishReady ? "Ready" : sale.status === "draft" ? "Not ready" : "—",
-                },
-              ]}
-            />
-          </>
+          <CatalogDetailTabNav tabs={tabSpecs} entityKind="sale" aria-label="Sale sections" />
         }
       >
         <Suspense fallback={null}>

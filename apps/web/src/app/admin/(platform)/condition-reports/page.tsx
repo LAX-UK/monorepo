@@ -1,20 +1,22 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import { CatalogConditionReportsFilterToolbar } from "@/components/admin/catalog/catalog-condition-reports-filter-toolbar";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
-import { CatalogOpsBreadcrumb } from "@/components/admin/catalog/catalog-ops-breadcrumb";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
-import { AdminConditionReportsBoard } from "@/components/admin/condition-reports-board";
-import { conditionReportsListController } from "@/lib/admin/admin-list-controllers";
-import { buildListHref } from "@/lib/admin/admin-list-params";
+import { AdminConditionReportsBoardContainer } from "@/components/admin/condition-reports-board/container";
+import {
+  buildConditionReportsListKpiTiles,
+  buildConditionReportsMobileMetrics,
+} from "@/lib/admin/build-condition-reports-list-kpi-tiles";
 import { buildConditionReportsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
+import { loadAdminConditionReportsListPage } from "@/lib/admin/load-condition-reports-list-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { CONDITION_REPORTS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -24,79 +26,28 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 type Props = {
-  searchParams: Promise<{ error?: string; limit?: string; offset?: string; lens?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+    limit?: string;
+    offset?: string;
+    lens?: string;
+    request?: string;
+  }>;
 };
 
 export default async function AdminConditionReportsPage({ searchParams }: Props) {
   const sp = await searchParams;
+  await requireAdminCapability(CONDITION_REPORTS_ACCESS, "/admin/condition-reports");
+
+  const loaded = await loadAdminConditionReportsListPage(sp);
+  const { model, rows, summary, total, loadError, pagination } = loaded;
   const error = safeDecodeAdminErrorParam(sp.error);
-  const query = conditionReportsListController.parseQuery(sp);
-  const activeLensId = query.lens ?? "open";
-  const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
+  const success = safeDecodeAdminErrorParam(sp.success);
+  const activeLensId = model.query.lens;
   const activeFilterChips = buildConditionReportsActiveFilterChips(sp, {
     activeLens: activeLensId,
   });
-
-  let rows: Awaited<ReturnType<typeof conditionReportsListController.fetch>>["rows"] = [];
-  let pageRowCount = 0;
-  let total = 0;
-  let loadError: string | null = null;
-  try {
-    const result = await conditionReportsListController.fetch(query);
-    total = result.total ?? 0;
-    pageRowCount = result.rows.length;
-    rows = result.rows;
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load condition report requests.";
-  }
-
-  const errorAlert =
-    error || loadError ? (
-      <AdminListAlert title="Could not load condition reports">{loadError ?? error}</AdminListAlert>
-    ) : null;
-
-  const empty =
-    !loadError && total === 0 ? (
-      <CatalogListEmptyState
-        title="Queue is clear"
-        description={
-          activeLensId === "open"
-            ? "No pending or in-progress condition report requests."
-            : "No requests match this lens."
-        }
-      />
-    ) : !loadError && rows.length === 0 ? (
-      <CatalogListEmptyState
-        title="No rows on this page"
-        description="Try the previous page or switch lenses."
-      />
-    ) : null;
-
-  const view = !loadError && rows.length > 0 ? <AdminConditionReportsBoard rows={rows} /> : null;
-
-  const pagination =
-    !loadError && total > 0 && (query.offset > 0 || query.offset + pageRowCount < total) ? (
-      <CatalogPagination
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={rows.length}
-        total={total}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/condition-reports", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
-        }
-        nextHref={
-          query.offset + pageRowCount < total
-            ? buildListHref("/admin/condition-reports", sp, {
-                offset: query.offset + query.limit,
-              })
-            : null
-        }
-      />
-    ) : null;
 
   const filterBar = (
     <Suspense
@@ -119,37 +70,75 @@ export default async function AdminConditionReportsPage({ searchParams }: Props)
     <CatalogListShell
       title="Condition report requests"
       description="Buyer-requested condition reports. Fulfilling publishes the PDF copy block on the public lot page."
-      meta={<CatalogRelatedWork variant="conditionReports" navCounts={navCounts} />}
-      breadcrumbs={<CatalogOpsBreadcrumb current="Condition reports" />}
+      breadcrumbs={
+        <CatalogBreadcrumbs
+          segments={[{ label: "Admin", href: "/admin" }, { label: "Condition reports" }]}
+        />
+      }
       filterBar={filterBar}
       kpiStrip={
         !loadError ? (
-          <AdminListKpiStrip
+          <AdminTrendKpiBand
             ariaLabel="Condition reports summary"
-            tiles={[
-              { label: "Open (nav)", value: navCounts.conditionReportsPending },
-              { label: "Total matching", value: total },
-              { label: "On this page", value: rows.length },
-            ]}
+            tiles={buildConditionReportsListKpiTiles({
+              summary,
+              activeLensId,
+              matchingTotal: total,
+            })}
           />
         ) : null
       }
-      errorAlert={errorAlert}
+      errorAlert={
+        error || loadError ? (
+          <AdminListAlert title="Could not load condition reports">
+            {loadError ?? error}
+          </AdminListAlert>
+        ) : null
+      }
       mobileSummary={
-        !loadError && rows.length > 0 ? (
+        !loadError ? (
           <CatalogListMobileSummary
-            segments={[
-              `${rows.length} on page`,
-              total > 0 ? `${total} total` : null,
-              activeLensId !== "open" ? activeLensId.replaceAll("_", " ") : "Open queue",
-            ]}
+            metrics={buildConditionReportsMobileMetrics({
+              summary,
+              matchingTotal: total,
+              pageCount: rows.length,
+            })}
           />
         ) : null
       }
-      empty={empty}
-      pagination={pagination}
+      empty={
+        !loadError && total === 0 ? (
+          <CatalogListEmptyState
+            title="No open requests"
+            description={
+              activeLensId === "open"
+                ? "No pending or in-progress condition report requests."
+                : "No requests match this lens."
+            }
+          />
+        ) : !loadError && rows.length === 0 ? (
+          <CatalogListEmptyState
+            title="No rows on this page"
+            description="Try the previous page or switch lenses."
+          />
+        ) : null
+      }
     >
-      {view}
+      {!loadError && rows.length > 0 ? (
+        <div className="space-y-4">
+          {success ? (
+            <Alert>
+              <AlertTitle>Condition report updated</AlertTitle>
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          ) : null}
+          <AdminConditionReportsBoardContainer
+            rows={rows}
+            selectedRequestId={model.selectedRequestId}
+            pagination={pagination}
+          />
+        </div>
+      ) : null}
     </CatalogListShell>
   );
 }

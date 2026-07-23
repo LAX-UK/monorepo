@@ -22,14 +22,14 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
-type Doc = AdminSourceOfFundsDetail["submittedDocuments"][number];
+import {
+  type SofEvidenceCheckState,
+  isSofEvidencePdfFileName,
+  isSofEvidenceReviewDirty,
+  sofEvidenceChecksFromDoc,
+} from "@/lib/admin/compliance/sof-evidence-reviewer.vm";
 
-type CheckState = {
-  matchesDeclaredSource: boolean;
-  coversExposure: boolean;
-  recentEnough: boolean;
-  legibleComplete: boolean;
-};
+type Doc = AdminSourceOfFundsDetail["submittedDocuments"][number];
 
 type Props = {
   caseId: string;
@@ -38,32 +38,6 @@ type Props = {
   readOnly?: boolean;
 };
 
-function isPdfFileName(name: string): boolean {
-  return name.toLowerCase().endsWith(".pdf");
-}
-
-function checksFromDoc(doc: Doc | null): CheckState {
-  return {
-    matchesDeclaredSource: Boolean(doc?.staffReview?.checks.matchesDeclaredSource),
-    coversExposure: Boolean(doc?.staffReview?.checks.coversExposure),
-    recentEnough: Boolean(doc?.staffReview?.checks.recentEnough),
-    legibleComplete: Boolean(doc?.staffReview?.checks.legibleComplete),
-  };
-}
-
-function isReviewDirty(doc: Doc | null, checks: CheckState, note: string): boolean {
-  if (!doc) return false;
-  const saved = checksFromDoc(doc);
-  const savedNote = doc.staffReview?.note ?? "";
-  return (
-    checks.matchesDeclaredSource !== saved.matchesDeclaredSource ||
-    checks.coversExposure !== saved.coversExposure ||
-    checks.recentEnough !== saved.recentEnough ||
-    checks.legibleComplete !== saved.legibleComplete ||
-    note !== savedNote
-  );
-}
-
 export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: Props) {
   const router = useRouter();
   const docs = detail.submittedDocuments;
@@ -71,7 +45,9 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
   const selected = docs.find((d) => d.id === selectedId) ?? null;
   const sufficiency = useMemo(() => summarizeEvidenceSufficiency(docs), [docs]);
 
-  const [checks, setChecks] = useState<CheckState>(() => checksFromDoc(selected));
+  const [checks, setChecks] = useState<SofEvidenceCheckState>(() =>
+    sofEvidenceChecksFromDoc(selected),
+  );
   const [note, setNote] = useState(selected?.staffReview?.note ?? "");
   const [error, setError] = useState<string | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
@@ -79,7 +55,7 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
   const [downloadPending, startDownload] = useTransition();
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const [pendingDoc, setPendingDoc] = useState<Doc | null>(null);
-  const dirty = isReviewDirty(selected, checks, note);
+  const dirty = isSofEvidenceReviewDirty(selected, checks, note);
 
   useEffect(() => {
     if (docs.length === 0) {
@@ -95,7 +71,7 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
     const doc = docs.find((d) => d.id === selectedId) ?? null;
     if (!doc) return;
     if (dirty) return;
-    setChecks(checksFromDoc(doc));
+    setChecks(sofEvidenceChecksFromDoc(doc));
     setNote(doc.staffReview?.note ?? "");
     setPreviewFailed(false);
     setError(null);
@@ -103,7 +79,7 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
 
   function applyDoc(doc: Doc) {
     setSelectedId(doc.id);
-    setChecks(checksFromDoc(doc));
+    setChecks(sofEvidenceChecksFromDoc(doc));
     setNote(doc.staffReview?.note ?? "");
     setError(null);
     setPreviewFailed(false);
@@ -156,7 +132,7 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
     : null;
   const fileName = selected?.fileName ?? selected?.label ?? "";
   const showImage = selected && isImageFileName(fileName);
-  const showPdf = selected && isPdfFileName(fileName);
+  const showPdf = selected && isSofEvidencePdfFileName(fileName);
   const staleConflict = error != null && isSofStaleConflictMessage(error);
 
   if (docs.length === 0) {

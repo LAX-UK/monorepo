@@ -9,6 +9,8 @@ type Props = {
   description?: string | undefined;
   meta?: ReactNode;
   breadcrumbs?: ReactNode;
+  /** Quiet contextual nav between breadcrumbs and title (e.g. back + lot sequence). */
+  contextNav?: ReactNode;
   eyebrow?: ReactNode;
   /** Desktop header actions */
   actions?: ReactNode;
@@ -27,6 +29,8 @@ type Props = {
   stickySubnav?: ReactNode;
   /** Title-adjacent nav (e.g. prev/next lot) */
   titleAddon?: ReactNode;
+  /** When true, meta renders below the title (Figma detail header order). */
+  metaBelowTitle?: boolean;
   children: ReactNode;
   className?: string;
 };
@@ -37,6 +41,7 @@ export function CatalogDetailShell({
   description,
   meta,
   breadcrumbs,
+  contextNav,
   eyebrow,
   actions,
   mobileActions,
@@ -47,6 +52,7 @@ export function CatalogDetailShell({
   tabs: tabsSlot,
   stickySubnav,
   titleAddon,
+  metaBelowTitle,
   children,
   className,
 }: Props) {
@@ -78,7 +84,9 @@ export function CatalogDetailShell({
         {...(description ? { description } : {})}
         {...(meta ? { meta } : {})}
         {...(breadcrumbs ? { breadcrumbs } : {})}
+        {...(contextNav ? { contextNav } : {})}
         {...(eyebrow ? { eyebrow } : {})}
+        {...(metaBelowTitle ? { metaBelowTitle } : {})}
         actions={actions}
         mobileActionsPlacement="none"
       />

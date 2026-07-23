@@ -1,7 +1,8 @@
-import { AdminLotBidsTable } from "@/components/admin/admin-lot-bids-table";
+import { LotBidsTabBoard } from "@/components/admin/lot-detail/lot-bids-tab-board";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
 import { getAdminUsersByIds } from "@/lib/data/http/admin.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
+import { buildLotBidsTableRows } from "@/lib/data/view-models/lot-bids-tab.vm";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -12,7 +13,9 @@ export default async function AdminLotBidsPage({ params }: Props) {
   await loadAdminLotDetail(id);
   const bids = await getServerLotBids(id, 100).catch(() => []);
   const bidderIds = [
-    ...new Set(bids.map((bid) => bid.bidderId).filter((id): id is string => Boolean(id))),
+    ...new Set(
+      bids.map((bid) => bid.bidderId).filter((bidderId): bidderId is string => Boolean(bidderId)),
+    ),
   ];
   const bidders = await getAdminUsersByIds(bidderIds).catch(() => []);
   const bidderLabels = Object.fromEntries(
@@ -22,11 +25,10 @@ export default async function AdminLotBidsPage({ params }: Props) {
   );
 
   return (
-    <AdminLotBidsTable
+    <LotBidsTabBoard
       lotId={id}
-      bids={bids}
+      rows={buildLotBidsTableRows(bids, bidderLabels)}
       capped={bids.length >= 100}
-      bidderLabels={bidderLabels}
     />
   );
 }

@@ -4,8 +4,8 @@ import {
   KIND_SEGMENTS,
   NATIONALITY_SEGMENTS,
 } from "@/lib/artists/directory-presets";
+import { getServerLotReader } from "@/lib/catalog/catalog.server";
 import { fetchArtistsForSitemap } from "@/lib/data/http/artist.server";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { fetchPressHubMeta, getServerPressArchiveReader } from "@/lib/data/http/press.server";
 import { fetchSalesForSitemap } from "@/lib/data/http/sales.server";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";

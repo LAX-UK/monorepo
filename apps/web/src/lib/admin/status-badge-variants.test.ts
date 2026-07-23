@@ -24,8 +24,8 @@ import {
 describe("lotStatusToBadgeVariant", () => {
   it("maps active to live", () => expect(lotStatusToBadgeVariant("active")).toBe("live"));
   it("maps scheduled to info", () => expect(lotStatusToBadgeVariant("scheduled")).toBe("info"));
-  it("maps draft to neutral", () => expect(lotStatusToBadgeVariant("draft")).toBe("neutral"));
-  it("maps ended to success", () => expect(lotStatusToBadgeVariant("ended")).toBe("success"));
+  it("maps draft to info", () => expect(lotStatusToBadgeVariant("draft")).toBe("info"));
+  it("maps ended to neutral", () => expect(lotStatusToBadgeVariant("ended")).toBe("neutral"));
   it("maps cancelled to danger", () => expect(lotStatusToBadgeVariant("cancelled")).toBe("danger"));
   it("maps voided to danger", () => expect(lotStatusToBadgeVariant("voided")).toBe("danger"));
   it("falls back to neutral for unknown", () =>
@@ -34,8 +34,8 @@ describe("lotStatusToBadgeVariant", () => {
 
 describe("saleStatusToBadgeVariant", () => {
   it("maps active to live", () => expect(saleStatusToBadgeVariant("active")).toBe("live"));
-  it("maps draft to neutral", () => expect(saleStatusToBadgeVariant("draft")).toBe("neutral"));
-  it("maps ended to success", () => expect(saleStatusToBadgeVariant("ended")).toBe("success"));
+  it("maps draft to info", () => expect(saleStatusToBadgeVariant("draft")).toBe("info"));
+  it("maps ended to neutral", () => expect(saleStatusToBadgeVariant("ended")).toBe("neutral"));
   it("maps cancelled to danger", () =>
     expect(saleStatusToBadgeVariant("cancelled")).toBe("danger"));
 });

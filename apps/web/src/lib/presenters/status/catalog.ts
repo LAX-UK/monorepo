@@ -39,8 +39,8 @@ export const submissionStatusLabel: Record<ItemSubmissionStatus, string> = {
 export const lotStatusBadgeVariant: Partial<Record<LotStatus, StatusBadgeVariant>> = {
   active: "live",
   scheduled: "info",
-  draft: "neutral",
-  ended: "success",
+  draft: "info",
+  ended: "neutral",
   cancelled: "danger",
   voided: "danger",
 };
@@ -53,8 +53,8 @@ export function lotStatusToBadgeVariant(status: LotStatus | string): StatusBadge
 export const saleStatusBadgeVariant: Partial<Record<SaleStatus, StatusBadgeVariant>> = {
   active: "live",
   scheduled: "info",
-  draft: "neutral",
-  ended: "success",
+  draft: "info",
+  ended: "neutral",
   cancelled: "danger",
 };
 

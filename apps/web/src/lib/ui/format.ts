@@ -73,6 +73,16 @@ export function formatDate(
   return dateFormatter({ day: "numeric", month: "short", year: "numeric" }, locale).format(d);
 }
 
+/** Dense table date with 2-digit year, e.g. 19 May 26 */
+export function formatDateShort(
+  value: Date | string | number | null | undefined,
+  locale = DEFAULT_DATE_LOCALE,
+): string {
+  const d = toDate(value);
+  if (!d) return "—";
+  return dateFormatter({ day: "numeric", month: "short", year: "2-digit" }, locale).format(d);
+}
+
 /** Date + time for staff tables and detail panels */
 export function formatDateTime(
   value: Date | string | number | null | undefined,
@@ -88,6 +98,29 @@ export function formatDateTime(
       hour: "2-digit",
       minute: "2-digit",
     },
+    locale,
+  ).format(d);
+}
+
+/** Compact date + time for table secondary lines (drops year when same as reference). */
+export function formatDateTimeShort(
+  value: Date | string | number | null | undefined,
+  reference: Date = new Date(),
+  locale = DEFAULT_DATE_LOCALE,
+): string {
+  const d = toDate(value);
+  if (!d) return "—";
+  const sameYear = d.getFullYear() === reference.getFullYear();
+  return dateFormatter(
+    sameYear
+      ? { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }
+      : {
+          day: "numeric",
+          month: "short",
+          year: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        },
     locale,
   ).format(d);
 }

@@ -1,24 +1,24 @@
 "use client";
 
-import { UploadItem } from "@/components/forms/upload-item";
+import {
+  CatalogMediaDropzone,
+  CatalogMediaUploadQueue,
+  CatalogSingleImageField,
+} from "@/components/admin/catalog/media";
 import { MediaImage } from "@/components/ui/media-image";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
 import { useUploadGallery } from "@/lib/forms/image/use-upload-gallery";
 import { notify } from "@/lib/ui/notify";
+import type { CatalogImageUploadKind } from "@/lib/upload/upload-policies.client";
+import {
+  catalogImageAccept,
+  catalogImageHelperCopy,
+  getCatalogImagePolicy,
+} from "@/lib/upload/upload-policies.client";
 import { Button } from "@auction/ui/components/button";
-import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
 
 /** Image-only upload kinds (presign + thumbnail UI). */
-export type ImageUploadKind =
-  | "avatar"
-  | "submission_image"
-  | "lot_image"
-  | "sale_cover"
-  | "sale_day"
-  | "artist_image"
-  | "category_image";
-
-const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
+export type ImageUploadKind = CatalogImageUploadKind;
 
 type ImageUploadFieldProps = {
   kind: ImageUploadKind;
@@ -27,47 +27,8 @@ type ImageUploadFieldProps = {
   value: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
-  /** Map storage key → resolved URL for thumbnails (admin edit of seeded media). */
   previewUrlByKey?: Record<string, string>;
 };
-
-function placeholderLabel(kind: ImageUploadKind): string {
-  switch (kind) {
-    case "avatar":
-      return "Profile";
-    case "sale_cover":
-      return "Auction cover";
-    case "sale_day":
-      return "Auction day photo";
-    case "submission_image":
-      return "Submission image";
-    case "lot_image":
-      return "Lot artwork";
-    case "artist_image":
-      return "Artist image";
-    case "category_image":
-      return "Category hero";
-  }
-}
-
-function dropzoneAriaLabel(kind: ImageUploadKind): string {
-  switch (kind) {
-    case "lot_image":
-      return "Upload lot images";
-    case "sale_cover":
-      return "Upload sale cover images";
-    case "sale_day":
-      return "Upload auction day photos";
-    case "artist_image":
-      return "Upload artist images";
-    case "category_image":
-      return "Upload category hero image";
-    case "avatar":
-      return "Upload profile photo";
-    case "submission_image":
-      return "Upload submission images";
-  }
-}
 
 export function ImageUploadField({
   kind,
@@ -78,8 +39,41 @@ export function ImageUploadField({
   disabled = false,
   previewUrlByKey = {},
 }: ImageUploadFieldProps) {
-  const label = placeholderLabel(kind);
-  const isAvatar = kind === "avatar";
+  if (!multiple && maxFiles === 1) {
+    return (
+      <CatalogSingleImageField
+        kind={kind}
+        value={value[0] ?? null}
+        onChange={(next) => onChange(next ? [next] : [])}
+        disabled={disabled}
+        previewUrlByKey={previewUrlByKey}
+        shape={kind === "avatar" ? "circle" : "rect"}
+      />
+    );
+  }
+
+  return (
+    <MultiImageUploadField
+      kind={kind}
+      maxFiles={maxFiles}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      previewUrlByKey={previewUrlByKey}
+    />
+  );
+}
+
+function MultiImageUploadField({
+  kind,
+  maxFiles,
+  value,
+  onChange,
+  disabled = false,
+  previewUrlByKey = {},
+}: Omit<ImageUploadFieldProps, "multiple"> & { maxFiles: number }) {
+  const policy = getCatalogImagePolicy(kind);
+  const remaining = Math.max(0, maxFiles - value.length);
 
   const { items, uploadFiles, retry } = useUploadGallery({
     kind,
@@ -100,34 +94,37 @@ export function ImageUploadField({
 
   return (
     <div className="space-y-3">
-      <FileUploadTrigger
-        dropzone
-        disabled={disabled}
-        multiple={multiple}
-        accept={IMAGE_ACCEPT}
-        inputId={`image-upload-${kind}`}
-        dropzoneAriaLabel={dropzoneAriaLabel(kind)}
-        onFilesSelected={(files) => void uploadFiles(files)}
-        className="[&_[role=button]]:min-h-0 [&_[role=button]]:rounded-lg [&_[role=button]]:border-outline-variant [&_[role=button]]:bg-surface-container-lowest [&_[role=button]]:p-6 [&_[role=button]]:text-left"
-      >
-        <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Upload images
-        </span>
-        <span className="mt-2 block font-body text-sm text-on-surface-variant">
-          Drop files here or click to choose. JPEG, PNG, WebP, and GIF up to 10 MB each.
-        </span>
-      </FileUploadTrigger>
+      {remaining > 0 ? (
+        <CatalogMediaDropzone
+          inputId={`image-upload-${kind}`}
+          title={policy.dropzoneTitle}
+          description={catalogImageHelperCopy(kind, remaining)}
+          accept={catalogImageAccept(kind)}
+          disabled={disabled}
+          onFilesSelected={(files) => void uploadFiles(files)}
+          queue={
+            <CatalogMediaUploadQueue
+              items={items}
+              disabled={disabled}
+              onRetry={(itemId) => void retry(itemId)}
+            />
+          }
+        />
+      ) : (
+        <p className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4 font-body text-sm text-on-surface-variant">
+          Maximum of {maxFiles} images reached. Remove an image before uploading another.
+        </p>
+      )}
       {value.length > 0 ? (
-        <div className={isAvatar ? "max-w-40" : "grid gap-3 sm:grid-cols-2"}>
+        <div className="grid gap-3 sm:grid-cols-2">
           {value.map((urlOrKey, index) => (
             <div key={urlOrKey} className="rounded-md border border-outline-variant/30 p-2">
               <MediaImage
                 src={displaySrc(urlOrKey)}
-                alt={label}
-                label={label}
-                shape={isAvatar ? "circle" : "rect"}
+                alt={policy.placeholderLabel}
+                label={policy.placeholderLabel}
                 aspect={[1, 1]}
-                sizes={isAvatar ? "160px" : "(max-width: 640px) 100vw, 320px"}
+                sizes="(max-width: 640px) 100vw, 320px"
               />
               <Button
                 type="button"
@@ -142,24 +139,8 @@ export function ImageUploadField({
           ))}
         </div>
       ) : (
-        <MediaPlaceholder
-          label={label}
-          shape={isAvatar ? "circle" : "rect"}
-          aspect={[1, 1]}
-          className={isAvatar ? "max-w-40" : undefined}
-        />
+        <MediaPlaceholder label={policy.placeholderLabel} aspect={[1, 1]} />
       )}
-      {items.length > 0 ? (
-        <ul className="space-y-2" aria-live="polite">
-          {items.map((item) => (
-            <UploadItem
-              key={item.id}
-              item={item}
-              {...(disabled ? {} : { onRetry: (fileName: string) => void retry(fileName) })}
-            />
-          ))}
-        </ul>
-      ) : null}
     </div>
   );
 }

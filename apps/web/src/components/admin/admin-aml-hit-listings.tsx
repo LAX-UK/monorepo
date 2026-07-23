@@ -82,7 +82,7 @@ export function AdminAmlHitListings({ hits, compact = false }: Props) {
       {compact && hits.length > visibleHits.length ? (
         <p className="text-xs text-on-surface-variant">
           +{hits.length - visibleHits.length} more hit
-          {hits.length - visibleHits.length === 1 ? "" : "s"} — open the review queue for full
+          {hits.length - visibleHits.length === 1 ? "" : "s"} — open the screenings list for full
           detail.
         </p>
       ) : null}

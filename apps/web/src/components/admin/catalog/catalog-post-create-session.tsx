@@ -4,6 +4,7 @@ import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   type ReactNode,
+  Suspense,
   createContext,
   useCallback,
   useContext,
@@ -26,23 +27,32 @@ const noopContext: CatalogPostCreateSessionContextValue = {
   registerBannerDismiss: () => {},
 };
 
-export function CatalogPostCreateSessionProvider({ children }: { children: ReactNode }) {
+function CreatedUrlLatch({ onFreshCreate }: { onFreshCreate: () => void }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const isFreshInUrl = searchParams.get("created") === "1";
-  const [latched, setLatched] = useState(false);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
     if (!isFreshInUrl) return;
-    setLatched(true);
+    onFreshCreate();
     const params = new URLSearchParams(searchParams.toString());
     params.delete("created");
     const qs = params.toString();
     router.replace(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, {
       scroll: false,
     });
-  }, [isFreshInUrl, router, searchParams]);
+  }, [isFreshInUrl, onFreshCreate, router, searchParams]);
+
+  return null;
+}
+
+export function CatalogPostCreateSessionProvider({ children }: { children: ReactNode }) {
+  const [latched, setLatched] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  const onFreshCreate = useCallback(() => {
+    setLatched(true);
+  }, []);
 
   const registerBannerDismiss = useCallback(() => {
     setBannerDismissed(true);
@@ -61,6 +71,9 @@ export function CatalogPostCreateSessionProvider({ children }: { children: React
 
   return (
     <CatalogPostCreateSessionContext.Provider value={value}>
+      <Suspense fallback={null}>
+        <CreatedUrlLatch onFreshCreate={onFreshCreate} />
+      </Suspense>
       {children}
     </CatalogPostCreateSessionContext.Provider>
   );

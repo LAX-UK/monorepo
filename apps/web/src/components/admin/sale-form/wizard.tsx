@@ -13,6 +13,7 @@ import {
   saleFormValidationBanner,
 } from "@/lib/admin/sale-form-step-copy";
 import { saleSetupHref } from "@/lib/admin/sale-setup";
+import { buildSaleEditStepperSteps } from "@/lib/data/view-models/sale-setup-stepper.vm";
 import {
   type AdminSaleFormValues,
   adminSaleDraftScheduleSchema,
@@ -47,13 +48,6 @@ import {
 } from "./use-sale-form-submit";
 import { useSaleTierBandPreview } from "./use-sale-tier-preview";
 
-const SALE_FORM_STEPS = [
-  { id: "identity", label: "Identity" },
-  { id: "schedule", label: "Schedule" },
-  { id: "documents", label: "Documents" },
-  { id: "review", label: "Review" },
-] as const;
-
 const SALE_WIZARD_FIELD_STEPS = 3;
 
 type Props = {
@@ -80,7 +74,7 @@ export function AdminSaleForm({
   saleStatus,
   defaultValues,
   categories,
-  englishOnlyAuctionsLocked = false,
+  englishOnlyAuctionsLocked: _englishOnlyAuctionsLocked = false,
   initialSaleDocuments = [],
   previewUrlByKey = {},
   htmlFormId,
@@ -204,13 +198,6 @@ export function AdminSaleForm({
             },
           )}
         >
-          {englishOnlyAuctionsLocked ? (
-            <p className="rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
-              English-only mode is on: any lots created with this sale must use the{" "}
-              <span className="font-medium text-on-surface">english</span> auction type
-            </p>
-          ) : null}
-
           {saveNotice ? (
             <Alert className="border-warning/40 bg-warning/5">
               <AlertDescription className="space-y-2 font-body text-sm text-on-surface-variant">
@@ -238,7 +225,8 @@ export function AdminSaleForm({
           ) : null}
 
           <AdminFormWizard
-            steps={SALE_FORM_STEPS}
+            steps={buildSaleEditStepperSteps()}
+            layout="sidebar"
             isDirty={form.formState.isDirty}
             pending={pending}
             hideStickyOnMobile={Boolean(htmlFormId)}
@@ -284,7 +272,9 @@ export function AdminSaleForm({
               const stepId = stepIds[stepIndex] ?? "identity";
               return (
                 <div className="space-y-6">
-                  <WizardStepIntro copy={saleFormStepIntro(stepId, "edit")} />
+                  <div className="lg:hidden">
+                    <WizardStepIntro copy={saleFormStepIntro(stepId, "edit")} />
+                  </div>
                   {stepIndex === 0 ? (
                     <SaleIdentityStep
                       form={form}

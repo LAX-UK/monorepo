@@ -1,19 +1,5 @@
+import type { AdminTableMoneyDisplay } from "@/lib/admin/format-admin-table-money";
 import type { LegalEntityStatus } from "@auction/types";
-
-export type AdminAnalyticsPayload = {
-  activeLots: number;
-  lotCompletedSeries: { date: string; count: number }[];
-  conversion: { ended: number; withWinner: number };
-  revenueSeries: { date: string; total: string }[];
-  averageOrderValue: string | null;
-  registrationSeries: { date: string; count: number }[];
-  totalUsers: number;
-  sparklines?: {
-    revenue: readonly number[];
-    lotCompleted: readonly number[];
-    registrations: readonly number[];
-  };
-};
 
 export type AdminTodayMetricsPayload = {
   liveLots: number;
@@ -69,6 +55,7 @@ export type AdminManualReviewPaymentRow = {
   sellerStatus: LegalEntityStatus;
   sellerArchivedAt: string | null;
   amount: string;
+  amountDisplay: AdminTableMoneyDisplay;
   currency: string;
   archiveReason: string | null;
   archiveTimestamp: string | null;

@@ -2,10 +2,12 @@
 
 import { AdminEntityTabPanel } from "@/components/admin/admin-entity-tab-panel";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { documentReviewStatusBadgeVariant } from "@/components/organisations/labels";
 import { reviewLegalEntityDocumentAction } from "@/lib/admin/legal-entity-lifecycle.actions";
 import type { AdminLegalEntityDocument } from "@/lib/data/http/admin.server";
+import { presentationToDotStatus } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -68,7 +70,14 @@ export function LegalEntityDocumentsTab({ legalEntityId, documents, error, succe
                   {doc.contentType ?? "Unknown type"}
                   {doc.byteSize ? ` · ${Math.round(doc.byteSize / 1024)} KB` : null}
                 </p>
-                <StatusBadge variant="neutral">{doc.reviewStatus}</StatusBadge>
+                <DotStatusPill
+                  {...presentationToDotStatus({
+                    label: doc.reviewStatus,
+                    variant: documentReviewStatusBadgeVariant(
+                      doc.reviewStatus as "pending" | "approved" | "rejected",
+                    ),
+                  })}
+                />
                 {doc.reviewNotes ? (
                   <p className="font-body text-xs text-on-surface-variant">{doc.reviewNotes}</p>
                 ) : null}

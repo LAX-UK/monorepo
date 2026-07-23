@@ -1,7 +1,8 @@
 "use client";
 
-import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
+import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import { Button } from "@auction/ui";
 
 type Props = {
@@ -31,7 +32,7 @@ export function PaymentsMobileCards({ rows, onOpen }: Props) {
           <p className="mt-2 text-sm text-on-surface-variant">
             {p.buyerLabel?.trim() || "Buyer profile"}
           </p>
-          <p className="mt-1 tabular-nums text-sm">{p.amount}</p>
+          <AdminTableMoneyCell display={p.amountDisplay} emphasis="default" className="mt-1" />
           {p.fulfilmentStatus ? (
             <p className="mt-1 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
               Fulfilment: {p.fulfilmentStatus.replaceAll("_", " ")}

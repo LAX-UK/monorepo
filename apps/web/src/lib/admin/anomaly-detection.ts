@@ -124,7 +124,7 @@ export function detectAnomalies(
     push(
       "onboarding-issues",
       "warning",
-      `${onboarding} onboarding issues in the queue`,
+      `${onboarding} onboarding issues need attention`,
       "/admin/onboarding-issues",
     );
   }

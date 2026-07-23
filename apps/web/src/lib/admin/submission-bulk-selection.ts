@@ -1,4 +1,4 @@
-import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
+import type { AdminSubmissionTableRow } from "@/lib/admin/catalog/submission-table-row";
 
 /** Merge row statuses into a map so cross-page selections retain known statuses. */
 export function mergeSubmissionStatuses(

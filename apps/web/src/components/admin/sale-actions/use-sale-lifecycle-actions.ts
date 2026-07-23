@@ -1,12 +1,12 @@
 "use client";
 
+import { adminSoftDeleteSaleResultAction } from "@/lib/actions/admin-sales";
 import {
   adminCancelSaleResultAction,
   adminMarkSaleEndedResultAction,
   adminPublishSaleResultAction,
-  adminSoftDeleteSaleResultAction,
   adminUnpublishSaleResultAction,
-} from "@/lib/actions/admin-sales";
+} from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";

@@ -1,11 +1,10 @@
 "use client";
 
+import { useAdminBulkSelectionActions } from "@/components/admin/admin-bulk-selection-bridge";
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
-import { useAdminUserPreviewActions } from "@/components/admin/admin-user-preview-provider";
-import type { AdminUserListBulkBridge } from "@/components/admin/admin-user-preview-provider";
 import { BulkActionsToolbar, type BulkOperation } from "@/components/admin/bulk-actions-toolbar";
 import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { useTableDensity } from "@/components/layout/density-provider";
@@ -38,6 +37,10 @@ type Props = {
   detailHref?: (user: AdminUserRow) => string;
   showColumnPicker?: boolean;
   columnVisibilityStorageKey?: string;
+  /** URL-owned preview: selected row from list or off-page fetch. */
+  selected?: AdminUserRow | null;
+  onOpen?: (user: AdminUserRow) => void;
+  onCloseDrawer?: () => void;
 };
 
 export function AdminUserListShell({
@@ -57,23 +60,25 @@ export function AdminUserListShell({
   detailHref,
   showColumnPicker = false,
   columnVisibilityStorageKey,
+  selected: controlledSelected,
+  onOpen: controlledOnOpen,
+  onCloseDrawer,
 }: Props) {
   const { density: shellDensity } = useTableDensity();
   const tableDensity = shellDensity === "compact" ? "compact" : "comfortable";
-  const [selected, setSelected] = useState<AdminUserRow | null>(null);
-  const previewActions = useAdminUserPreviewActions();
-  const registerOpenUser = previewActions?.registerOpenUser;
-  const registerBulk = previewActions?.registerBulk;
+  const [internalSelected, setInternalSelected] = useState<AdminUserRow | null>(null);
+  const isControlledPreview = controlledOnOpen != null;
+  const selected = isControlledPreview ? (controlledSelected ?? null) : internalSelected;
+  const bulkActions = useAdminBulkSelectionActions();
+  const registerBulk = bulkActions?.registerBulk;
   const { rowSelection, setRowSelection, selectedIds, clear } = useBulkSelection();
-  const onOpen = useCallback((u: AdminUserRow) => setSelected(u), []);
-
-  useEffect(() => {
-    if (!registerOpenUser || !externalMobileCards) return;
-    registerOpenUser((userId) => {
-      const user = rows.find((row) => row.id === userId);
-      if (user) setSelected(user);
-    });
-  }, [registerOpenUser, externalMobileCards, rows]);
+  const onOpen = useCallback(
+    (u: AdminUserRow) => {
+      if (controlledOnOpen) controlledOnOpen(u);
+      else setInternalSelected(u);
+    },
+    [controlledOnOpen],
+  );
 
   useEffect(() => {
     if (!registerBulk || !externalMobileCards) {
@@ -81,7 +86,7 @@ export function AdminUserListShell({
       return;
     }
 
-    const bulkBridge: AdminUserListBulkBridge = {
+    registerBulk({
       selectedIds,
       operations: bulkOperations,
       clear,
@@ -89,8 +94,7 @@ export function AdminUserListShell({
       toggleSelected: (userId, checked) => {
         setRowSelection((prev) => ({ ...prev, [userId]: checked }));
       },
-    };
-    registerBulk(bulkBridge);
+    });
     return () => registerBulk(null);
   }, [
     registerBulk,
@@ -140,7 +144,14 @@ export function AdminUserListShell({
       {!externalMobileCards ? (
         <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />
       ) : null}
-      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+      <Sheet
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (open) return;
+          if (onCloseDrawer) onCloseDrawer();
+          else setInternalSelected(null);
+        }}
+      >
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">
           {selected ? (
             <div className="space-y-4 pt-2">

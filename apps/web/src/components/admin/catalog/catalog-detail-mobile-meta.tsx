@@ -1,7 +1,7 @@
 "use client";
 
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
 import { CatalogInfoAsideCopyId } from "@/components/admin/catalog/catalog-info-aside-copy-id";
-import { formatDateTime } from "@/lib/ui/format";
 import {
   BottomSheet,
   BottomSheetContent,
@@ -96,7 +96,7 @@ export function CatalogDetailMobileMeta({
                   <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                     Updated
                   </p>
-                  <p className="mt-1 text-on-surface-variant">{formatDateTime(updated)}</p>
+                  <AdminTableDateTimeCell iso={updated} mode="timestamp" className="mt-1" />
                 </div>
               ) : null}
               {publicHref ? (

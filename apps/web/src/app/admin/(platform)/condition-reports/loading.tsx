@@ -5,7 +5,7 @@ export default function AdminConditionReportsLoading() {
     <CatalogListPageSkeleton
       title="Condition report requests"
       description="Loading condition report requests…"
-      kpiTiles={0}
+      kpiTiles={3}
       tableRows={10}
       tableColumns={5}
       showFilterBar

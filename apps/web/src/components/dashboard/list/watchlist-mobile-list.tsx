@@ -8,11 +8,11 @@ import {
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import type { WatchlistBoardRow } from "@/components/dashboard/watchlist-board-rows";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
+import { StatusChip } from "@/components/ui/status-chip";
 import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import { lotPath } from "@/lib/seo/url";
 import { cn } from "@auction/ui";
 import { Checkbox } from "@auction/ui/components/checkbox";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import Link from "next/link";
 
 type Props = {
@@ -64,9 +64,7 @@ export function WatchlistMobileList({ rows, artistNameById, selectedIds, onToggl
               subtitle={<p className="truncate text-xs text-on-surface-variant">{artist}</p>}
               badges={
                 <>
-                  <StatusBadge variant={row.status === "active" ? "live" : "neutral"} size="sm">
-                    {row.status}
-                  </StatusBadge>
+                  <StatusChip domain="lot" status={row.status} />
                   <span className="text-xs tabular-nums text-on-surface-variant">
                     {row.estimateLabel}
                   </span>

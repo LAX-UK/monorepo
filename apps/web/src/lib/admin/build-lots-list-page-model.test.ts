@@ -1,26 +1,34 @@
+import { buildLotsListPageModel } from "@/lib/admin/build-lots-list-page-model";
+import { lotActiveLensId, lotLensItems } from "@/lib/admin/catalog/lots-lenses";
 import { describe, expect, it } from "vitest";
-import { buildLotsListPageModel } from "./build-lots-list-page-model";
 
 describe("buildLotsListPageModel", () => {
-  it("resolves live lens to active status", () => {
-    const model = buildLotsListPageModel({ lens: "live" }, { withdrawalsPending: 0 });
-    expect(model.activeLens).toBe("live");
-    expect(model.query.status).toBe("active");
+  it("maps attention lens to draft + needsPhotos query", () => {
+    const model = buildLotsListPageModel(
+      { lens: "attention", needsPhotos: "1", status: "draft" },
+      { withdrawalsPending: 2 },
+    );
+    expect(model.activeLens).toBe("attention");
+    expect(model.attentionLens).toBe(true);
+    expect(model.query.needsPhotos).toBe(true);
+    expect(model.query.status).toBe("draft");
   });
 
-  it("counts advanced filters including search and sort", () => {
-    const model = buildLotsListPageModel(
-      { q: "vase", sort: "endingAsc", artistId: "a1" },
-      { withdrawalsPending: 0 },
-    );
-    expect(model.advancedFilterCount).toBe(3);
+  it("exposes hasListFilters when advanced filters are active", () => {
+    const model = buildLotsListPageModel({ q: "vase", artistId: "a1" }, { withdrawalsPending: 0 });
+    expect(model.hasListFilters).toBe(true);
   });
 
-  it("excludes pipeline toggle from filter badge count", () => {
-    const model = buildLotsListPageModel(
-      { view: "pipeline", q: "test" },
-      { withdrawalsPending: 0 },
-    );
-    expect(model.advancedFilterCount).toBe(1);
+  it("defaults to all lens", () => {
+    const model = buildLotsListPageModel({}, { withdrawalsPending: 0 });
+    expect(model.activeLens).toBe("all");
+    expect(lotActiveLensId({})).toBe("all");
+    expect(lotLensItems({}).map((l) => l.id)).toEqual([
+      "all",
+      "live",
+      "draft",
+      "ending",
+      "attention",
+    ]);
   });
 });

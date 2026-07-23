@@ -27,8 +27,8 @@ export type BuildShellConfigInput = {
   role: AppShellRole;
   clientWorkspaceMode?: ClientWorkspaceMode;
   density?: DashboardDensity;
-  headerLeftSlot?: ReactNode;
-  headerRightSlot?: ReactNode;
+  headerActionsSlot?: ReactNode;
+  headerExtraSlot?: ReactNode;
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
   hideEmailStatusBanner?: boolean;
@@ -52,8 +52,8 @@ export function buildShellConfig({
   role,
   clientWorkspaceMode = "buying",
   density = "normal",
-  headerLeftSlot,
-  headerRightSlot,
+  headerActionsSlot,
+  headerExtraSlot,
   contextBanner,
   topSlot,
   hideEmailStatusBanner,
@@ -137,8 +137,8 @@ export function buildShellConfig({
     mobileNav,
     ...(moreSheetNav && moreSheetNav.length > 0 ? { moreSheetNav } : {}),
     header: {
-      ...(headerLeftSlot ? { leftSlot: headerLeftSlot } : {}),
-      ...(headerRightSlot ? { rightSlot: headerRightSlot } : {}),
+      ...(headerActionsSlot ? { actionsSlot: headerActionsSlot } : {}),
+      ...(headerExtraSlot ? { extraSlot: headerExtraSlot } : {}),
     },
     ...(contextBanner ? { contextBanner } : {}),
     ...(topSlot ? { topSlot } : {}),

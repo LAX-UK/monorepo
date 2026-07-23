@@ -1,40 +1,19 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import type { AdminSubmissionTableRow } from "@/components/admin/admin-submissions-data-table";
-import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import { CatalogRelatedWork } from "@/components/admin/catalog/catalog-related-work";
 import { CatalogSubmissionsFilterToolbar } from "@/components/admin/catalog/catalog-submissions-filter-toolbar";
 import { AdminSubmissionsBoard } from "@/components/admin/submissions-board";
-import { ExportButton } from "@/components/exports/export-button";
-import {
-  type SubmissionDecisionQueue,
-  submissionsListController,
-} from "@/lib/admin/admin-list-controllers";
-import { buildListHref } from "@/lib/admin/admin-list-params";
-import { buildSubmissionsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
-import { submissionsDecisionQueueHref } from "@/lib/admin/list-presets/submissions-presets";
+import { SubmissionReviewDrawerFromPreview } from "@/components/admin/submissions/submission-review-drawer-from-preview";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import {
-  submissionBlocksAccept,
-  submissionQualityWarnings,
-} from "@/lib/admin/submission-quality-warnings";
-import {
-  formatSubmissionSlaLabel,
-  submissionQueueSlaDays,
-  submissionSlaTone,
-} from "@/lib/admin/submission-sla";
+import { buildSubmissionsListKpiTiles } from "@/lib/admin/submissions/build-submissions-list-kpi-tiles";
+import { loadSubmissionReview } from "@/lib/admin/submissions/load-submission-review";
+import { loadAdminSubmissionsListPage } from "@/lib/admin/submissions/load-submissions-list-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminCategoryById, getAdminLegalEntityById } from "@/lib/data/http/admin.server";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -42,14 +21,8 @@ import { Suspense } from "react";
 
 export const metadata: Metadata = metadataForPrivate(
   "Submissions",
-  "Review seller submissions and decision queues.",
+  "Review seller submissions and staff decisions.",
 );
-
-const DECISION_TABS: { id: SubmissionDecisionQueue; label: string }[] = [
-  { id: "awaiting", label: "Awaiting" },
-  { id: "accepted", label: "Accepted" },
-  { id: "rejected", label: "Rejected" },
-];
 
 export default async function AdminSubmissionsPage({
   searchParams,
@@ -64,164 +37,80 @@ export default async function AdminSubmissionsPage({
     sort?: string;
     limit?: string;
     offset?: string;
+    preview?: string;
   }>;
 }) {
   const sp = await searchParams;
   const user = await requireAdminCapability(SUBMISSIONS_ACCESS, "/admin/submissions");
   const error = safeDecodeAdminErrorParam(sp.error);
-  const query = submissionsListController.parseQuery(sp);
-  const initialQ = query.q ?? "";
-  const activeQueue = query.queue ?? "awaiting";
-
-  let loadError: string | null = null;
-  let rows: Awaited<ReturnType<typeof submissionsListController.fetch>>["rows"] = [];
-  let total = 0;
-  try {
-    const result = await submissionsListController.fetch(query);
-    rows = result.rows;
-    total = result.total ?? rows.length;
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load submissions.";
-  }
-
-  const sellerIds = [
-    ...new Set(
-      rows.map((s) => s.legalEntityId ?? s.sellerId).filter((id): id is string => Boolean(id)),
-    ),
-  ];
-  const sellerNameEntries = await Promise.all(
-    sellerIds.map(async (id) => {
-      const entity = await getAdminLegalEntityById(id).catch(() => null);
-      return [id, entity?.displayName ?? null] as const;
-    }),
-  );
-  const sellerNameById = new Map(sellerNameEntries);
-
-  const submissionRows: AdminSubmissionTableRow[] = rows.map((s) => {
-    const entityId = s.legalEntityId ?? s.sellerId ?? "";
-    const sellerPreview = entityId
-      ? (sellerNameById.get(entityId) ?? `ID: ${entityId.slice(0, 8)}…`)
-      : "Unknown seller";
-    const slaDays = submissionQueueSlaDays(s.status, s.updatedAt);
-    const qualityWarnings = submissionQualityWarnings(s);
-    const blocksAccept = submissionBlocksAccept(s);
-    return {
-      id: s.id,
-      title: s.title,
-      sellerPreview,
-      status: s.status,
-      createdAtLabel: formatDateTime(s.createdAt),
-      slaDays,
-      slaLabel: slaDays == null ? null : formatSubmissionSlaLabel(slaDays),
-      slaTone: slaDays == null ? null : submissionSlaTone(slaDays),
-      qualityWarnings,
-      blocksAccept,
-      assigneeLabel: s.assignedToUserId
-        ? s.assignedToUserId === user.id
-          ? "You"
-          : "Assigned"
-        : "—",
-    };
-  });
-
-  const qualityGapsOnPage = submissionRows.filter(
-    (r) => r.blocksAccept || r.qualityWarnings.length > 0,
-  ).length;
-
-  const clearTitleHref = buildListHref("/admin/submissions", sp, {
-    q: "",
-    offset: 0,
-    queue: activeQueue,
-  });
-
-  const awaitingOnPage = submissionRows.filter(
-    (r) => r.status === "under_review" || r.status === "submitted",
-  ).length;
-
-  const kpiTiles =
-    !loadError && submissionRows.length > 0 ? (
-      <AdminListKpiStrip
-        ariaLabel="Submissions summary"
-        tiles={[
-          { label: "On this page", value: submissionRows.length, delta: `of ${total} total` },
-          ...(activeQueue === "awaiting"
-            ? [
-                {
-                  label: "Submitted / reviewing",
-                  value: awaitingOnPage,
-                  delta: "On this page",
-                },
-                {
-                  label: "Quality gaps",
-                  value: qualityGapsOnPage,
-                  delta: "On this page",
-                },
-              ]
-            : []),
-        ]}
-      />
-    ) : null;
-
-  const lenses: CatalogSegmentItem[] = DECISION_TABS.map((tab) => ({
-    id: tab.id,
-    label: tab.label,
-    href: submissionsDecisionQueueHref(tab.id, sp),
-  }));
-
-  const activeFilterCount =
-    (initialQ.trim() !== "" ? 1 : 0) +
-    (query.categoryId ? 1 : 0) +
-    (query.qualityGaps ? 1 : 0) +
-    (query.assignedToMe ? 1 : 0) +
-    (query.sort ? 1 : 0);
-  const categoryFilter = query.categoryId
-    ? await getAdminCategoryById(query.categoryId).catch(() => null)
-    : null;
-
-  const [navCounts, categories] = await Promise.all([
-    getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS),
-    (async () => {
-      try {
-        return await (await getServerCategoryReader()).tree();
-      } catch {
-        return [];
-      }
-    })(),
+  const previewId = sp.preview?.trim() ?? "";
+  const [vm, previewReview] = await Promise.all([
+    loadAdminSubmissionsListPage({ sp, currentUserId: user.id }),
+    previewId ? loadSubmissionReview(previewId, user.id) : Promise.resolve(null),
   ]);
+  const {
+    model,
+    summary,
+    loadError,
+    rows,
+    submissionRows,
+    total,
+    categories,
+    activeFilterChips,
+    qualityGapsOnPage,
+    awaitingOnPage,
+  } = vm;
+  const { query, activeQueue, advancedFilterCount, exportFilters } = model;
+  const lenses = model.lenses.map((lens) => ({
+    ...lens,
+    ...(lens.id === "awaiting"
+      ? { badge: summary.queueCounts.awaiting }
+      : lens.id === "accepted"
+        ? { badge: summary.queueCounts.accepted }
+        : lens.id === "rejected"
+          ? { badge: summary.queueCounts.rejected }
+          : {}),
+  }));
+  const kpiStrip = !loadError ? (
+    <AdminTrendKpiBand
+      ariaLabel="Submissions summary"
+      tiles={buildSubmissionsListKpiTiles({
+        summary,
+        periodDays: 30,
+        qualityGapsOnPage,
+      })}
+    />
+  ) : null;
 
-  const activeFilterChips = buildSubmissionsActiveFilterChips(sp, {
-    ...(initialQ ? { q: initialQ } : {}),
-    ...(query.categoryId
-      ? { categoryId: query.categoryId, categoryName: categoryFilter?.name ?? null }
-      : {}),
-    ...(query.qualityGaps ? { qualityGaps: true } : {}),
-    ...(query.assignedToMe ? { assignedToMe: true } : {}),
-    ...(query.sort ? { sort: query.sort } : {}),
-  });
+  const boardPagination =
+    !loadError && total > 0 && (query.offset > 0 || query.offset + rows.length < total)
+      ? {
+          offset: query.offset,
+          limit: query.limit,
+          countOnPage: rows.length,
+          total,
+          prevHref:
+            query.offset > 0
+              ? model.buildPaginationHref({ offset: Math.max(0, query.offset - query.limit) })
+              : null,
+          nextHref:
+            query.offset + rows.length < total
+              ? model.buildPaginationHref({ offset: query.offset + query.limit })
+              : null,
+        }
+      : null;
 
-  const pagination =
-    !loadError && total > 0 && (query.offset > 0 || query.offset + rows.length < total) ? (
-      <CatalogPagination
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={rows.length}
-        total={total}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/submissions", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
-        }
-        nextHref={
-          query.offset + rows.length < total
-            ? buildListHref("/admin/submissions", sp, {
-                offset: query.offset + query.limit,
-              })
-            : null
-        }
-      />
-    ) : null;
+  const boardFilterControls = {
+    searchPlaceholder: "Search submissions…",
+    sheetTitle: "Submission filters",
+    activeFilterCount: advancedFilterCount,
+    searchInputId: "admin-submissions-table-search",
+  };
+
+  const submissionFilterSheet = {
+    categories,
+    queue: activeQueue,
+  };
 
   const errorAlert =
     error || loadError ? (
@@ -236,38 +125,26 @@ export default async function AdminSubmissionsPage({
 
   const empty =
     !loadError && rows.length === 0 ? (
-      initialQ || query.categoryId ? (
+      model.initialQ || query.categoryId ? (
         <CatalogListEmptyState
           title="No matches"
-          description="No submissions match your filters in this queue. Try another search term or clear filters."
+          description="No submissions match your filters. Try another search term or clear filters."
           action={
             <div className="flex flex-wrap gap-2">
-              {initialQ ? (
+              {model.initialQ ? (
                 <Button variant="secondary" asChild>
-                  <Link href={clearTitleHref}>Clear search</Link>
+                  <Link href={model.clearTitleHref}>Clear search</Link>
                 </Button>
               ) : null}
               <Button variant="secondaryOutline" asChild>
-                <Link
-                  href={buildListHref("/admin/submissions", sp, {
-                    categoryId: undefined,
-                    q: "",
-                    qualityGaps: "",
-                    assignedTo: "",
-                    sort: "",
-                    offset: 0,
-                    queue: activeQueue,
-                  })}
-                >
-                  View all in queue
-                </Link>
+                <Link href={model.clearFiltersHref}>View all submissions</Link>
               </Button>
             </div>
           }
         />
       ) : (
         <CatalogListEmptyState
-          title={`Nothing in "${DECISION_TABS.find((t) => t.id === activeQueue)?.label ?? "this queue"}"`}
+          title={`Nothing in "${model.decisionTabs.find((t) => t.id === activeQueue)?.label ?? "this list"}"`}
           description={`There are no submissions ${scopeDescription} right now.`}
           action={
             <Button variant="secondaryOutline" asChild>
@@ -280,17 +157,27 @@ export default async function AdminSubmissionsPage({
 
   const board =
     !loadError && submissionRows.length > 0 ? (
-      <AdminSubmissionsBoard rows={submissionRows} />
+      <AdminSubmissionsBoard
+        rows={submissionRows}
+        filterControls={boardFilterControls}
+        submissionFilterSheet={submissionFilterSheet}
+        exportFilters={exportFilters}
+        pagination={boardPagination}
+        listTotalCount={total}
+      />
     ) : null;
 
   return (
     <CatalogListShell
       title="Submissions"
-      description="Staff decision queue: approve to create draft lots or reject with a clear reason."
-      meta={<CatalogRelatedWork variant="submissions" navCounts={navCounts} />}
-      kpiStrip={kpiTiles}
+      description="Review seller submissions: approve to create draft lots or reject with a clear reason."
+      breadcrumbs={
+        <CatalogBreadcrumbs
+          segments={[{ label: "Admin", href: "/admin" }, { label: "Submissions" }]}
+        />
+      }
+      kpiStrip={kpiStrip}
       empty={empty}
-      pagination={pagination}
       filterBar={
         <Suspense
           fallback={
@@ -303,44 +190,35 @@ export default async function AdminSubmissionsPage({
           <CatalogSubmissionsFilterToolbar
             lenses={lenses}
             activeLensId={activeQueue}
-            activeFilterCount={activeFilterCount}
+            activeFilterCount={advancedFilterCount}
             activeFilterChips={activeFilterChips}
-            initialQ={initialQ}
-            initialCategoryId={query.categoryId ?? null}
-            categories={categories}
-            queue={activeQueue}
-            qualityGaps={query.qualityGaps ?? false}
-            assignedToMe={query.assignedToMe ?? false}
-            sortBySla={query.sort === "sla"}
           />
         </Suspense>
       }
-      toolbarEnd={
-        <ExportButton
-          entityType="submissions"
-          filters={{
-            ...(activeQueue ? { queue: activeQueue } : {}),
-            ...(initialQ ? { q: initialQ } : {}),
-            ...(query.categoryId ? { categoryId: query.categoryId } : {}),
-            ...(query.qualityGaps ? { qualityGaps: "1" } : {}),
-            ...(query.assignedToMe ? { assignedTo: "me" } : {}),
-            ...(query.sort ? { sort: query.sort } : {}),
-          }}
-        />
-      }
       errorAlert={errorAlert}
       mobileSummary={
-        !loadError && submissionRows.length > 0 ? (
+        !loadError ? (
           <CatalogListMobileSummary
             metrics={[
-              { id: "page", label: "On page", value: String(submissionRows.length) },
-              { id: "total", label: "Total", value: String(total) },
+              { id: "awaiting", label: "Awaiting", value: String(summary.awaitingReview) },
+              { id: "assigned", label: "Assigned", value: String(summary.assignedToMe) },
+              { id: "sla", label: "Over SLA", value: String(summary.overSla) },
+              ...(activeQueue === "awaiting"
+                ? [
+                    {
+                      id: "page",
+                      label: "On page",
+                      value: String(awaitingOnPage),
+                    },
+                  ]
+                : []),
             ]}
           />
         ) : null
       }
     >
       {board}
+      {previewReview ? <SubmissionReviewDrawerFromPreview loaded={previewReview} /> : null}
     </CatalogListShell>
   );
 }

@@ -9,7 +9,6 @@ import {
  */
 import {
   AML_REVIEW_ACCESS,
-  ANALYTICS_ACCESS,
   ARTISTS_ACCESS,
   CATEGORIES_ACCESS,
   CONDITION_REPORTS_ACCESS,
@@ -33,7 +32,6 @@ import { userHasAccessTo } from "@auction/types";
 import {
   AlertTriangle,
   Banknote,
-  BarChart3,
   Brush,
   Building2,
   ClipboardList,
@@ -146,13 +144,6 @@ function buildStaffNavGroupSpecs(
           icon: Gauge,
           match: (pathname) => pathname === "/admin",
           requirement: STAFF_OVERVIEW_ACCESS,
-        },
-        {
-          id: "analytics",
-          href: "/admin/analytics",
-          label: "Analytics",
-          icon: BarChart3,
-          requirement: ANALYTICS_ACCESS,
         },
       ],
     },

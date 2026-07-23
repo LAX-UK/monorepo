@@ -1,18 +1,19 @@
 import {
   categoryDetailTabHref,
   categoryEditHref,
-} from "@/components/admin/category-detail/category-detail-types";
+} from "@/lib/admin/categories/category-detail-routes";
 import {
   lotDetailTabHref,
   lotEditCatalogHref,
   lotEditHref,
-} from "@/components/admin/lot-detail/lot-detail-types";
-import { saleDetailTabHref, saleEditHref } from "@/components/admin/sale-detail/sale-detail-types";
+} from "@/lib/admin/lots/lot-detail-routes";
 import { readinessLabel } from "@/lib/admin/sale-setup/field-copy";
-import { evaluateLotReadiness } from "@auction/domain";
+import { saleDetailTabHref, saleEditHref } from "@/lib/admin/sales/sale-detail-routes";
+import { evaluateLotReadiness, evaluateSalePublishReadiness } from "@auction/domain";
 import type { AdminCategory, ArtistProfile, Lot, Sale } from "@auction/types";
 import {
   isOnsiteLocationReadyForPublish,
+  isStartInFutureForPublish,
   lotTimingViolationAgainstSale,
   saleModeInheritsLotTiming,
 } from "@auction/validators";
@@ -139,42 +140,37 @@ export function buildSalePublishReadiness(
   lotCount: number,
   pendingRegistrationCount: number | null,
 ): CatalogReadinessResult {
-  const hasLots = lotCount >= 1;
-  const scheduleValid = sale.endTime.getTime() > sale.startTime.getTime();
-  const liveish = sale.status === "scheduled" || sale.status === "active";
-  const isOnsite = sale.deliveryMode === "onsite";
-  const venueOk = !isOnsite || isOnsiteLocationReadyForPublish(sale);
+  const coreChecks = evaluateSalePublishReadiness({
+    sale,
+    lotCount,
+    pendingRegistrationCount,
+    venueReady: isOnsiteLocationReadyForPublish(sale),
+    startInFuture: isStartInFutureForPublish(sale.startTime),
+  });
 
-  const items: CatalogReadinessItem[] = [
-    {
-      id: "lots",
-      label: "At least one lot attached",
-      ok: hasLots,
-      severity: "required",
-      href: saleDetailTabHref(saleId, "lots"),
-    },
-    {
-      id: "schedule",
-      label: "Sale schedule set",
-      ok: scheduleValid,
-      severity: "required",
-      href: saleDetailTabHref(saleId, "schedule"),
-    },
-    {
-      id: "registrations",
-      label: "Registrations reviewed",
-      ok: !liveish || pendingRegistrationCount === 0,
-      severity: "warning",
-      href: saleDetailTabHref(saleId, "registrations"),
-    },
-    {
-      id: "venue",
-      label: "Onsite venue details",
-      ok: venueOk,
-      severity: isOnsite ? "required" : "warning",
-      href: saleEditHref(saleId),
-    },
-  ];
+  const items: CatalogReadinessItem[] = coreChecks.map((check) => ({
+    id: check.id,
+    label:
+      check.id === "lots"
+        ? "At least one lot attached"
+        : check.id === "schedule"
+          ? "Sale schedule set"
+          : check.id === "registrations"
+            ? "Registrations reviewed"
+            : check.id === "venue"
+              ? "Onsite venue details"
+              : "Opening time must be in the future",
+    ok: check.ok,
+    severity: check.severity,
+    href:
+      check.id === "lots"
+        ? saleDetailTabHref(saleId, "lots")
+        : check.id === "schedule" || check.id === "sale_start_future"
+          ? saleDetailTabHref(saleId, "schedule")
+          : check.id === "registrations"
+            ? saleDetailTabHref(saleId, "registrations")
+            : saleEditHref(saleId),
+  }));
 
   const completeCount = items.filter((i) => i.ok).length;
   const firstFailing = items.find((i) => !i.ok);

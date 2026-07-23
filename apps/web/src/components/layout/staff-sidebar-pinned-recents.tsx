@@ -5,6 +5,7 @@ import {
   readPalettePinned,
 } from "@/components/layout/palette/palette-cookie-client";
 import type { PalettePinnedRef } from "@/components/layout/palette/pinned-store";
+import { sidebarNavItemClassName } from "@/lib/layout/sidebar-nav-classes";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -51,8 +52,8 @@ function PinnedList({
   onNavigate?: () => void;
 }) {
   return (
-    <div className="border-b border-border-hairline px-1 pb-3 pt-1">
-      <p className="mb-1 px-3 font-label text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">
+    <div className="mb-1 rounded-xl border border-border-hairline bg-surface-container px-2 py-2.5 shadow-sm">
+      <p className="mb-1.5 px-2 font-label text-[10px] font-medium uppercase tracking-[0.18em] text-on-surface-variant/70">
         Pinned
       </p>
       <ul className="space-y-0.5">
@@ -65,11 +66,11 @@ function PinnedList({
                 {...(onNavigate ? { onClick: onNavigate } : {})}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "block truncate rounded-md px-3 py-1.5 font-label text-[12px] text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface",
-                  active && "bg-primary-container/40 text-on-primary-container",
+                  sidebarNavItemClassName({ active }),
+                  "min-h-9 px-2 py-1.5 text-[12px]",
                 )}
               >
-                {p.label}
+                <span className="min-w-0 flex-1 truncate">{p.label}</span>
               </Link>
             </li>
           );

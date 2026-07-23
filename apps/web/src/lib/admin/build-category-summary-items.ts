@@ -1,8 +1,8 @@
-import type { CatalogDetailSummaryItem } from "@/components/admin/catalog";
+import type { CatalogDetailSummaryItem } from "@/lib/admin/catalog/types";
 import {
   categoryDetailTabHref,
   categorySubmissionsHref,
-} from "@/components/admin/category-detail/category-detail-types";
+} from "@/lib/admin/categories/category-detail-routes";
 import type { AdminCategory } from "@auction/types";
 
 export function buildCategorySummaryItems(
@@ -38,13 +38,14 @@ export function buildCategorySummaryItems(
       id: "submissions",
       label: "Submissions",
       value: category.usage.submissions,
-      hint: category.usage.submissions === 0 ? "No submissions" : "View queue",
+      hint: category.usage.submissions === 0 ? "No submissions" : "View submissions",
       href: categorySubmissionsHref(categoryId),
     },
     {
       id: "status",
       label: "Status",
-      value: category.archived ? "Archived" : "Active",
+      value: "",
+      status: { domain: "category", status: category.archived ? "archived" : "active" },
       hint: category.parentId ? "Has parent" : "Root category",
     },
   ];

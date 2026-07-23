@@ -2,7 +2,10 @@
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
-import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import {
+  assertAdminCapabilityForRedirect,
+  denyUnlessAdminCapability,
+} from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -25,6 +28,8 @@ export async function adminStartSubmissionReviewAction(formData: FormData): Prom
   return instrumentServerAction(
     "adminStartSubmissionReviewAction",
     async () => {
+      const gate = await assertAdminCapabilityForRedirect(SUBMISSIONS_ACCESS);
+      if (!gate.ok) redirect(`/admin/submissions?error=${encodeURIComponent(gate.message)}`);
       const id = String(formData.get("submissionId") ?? "").trim();
       if (!id) redirect(`/admin/submissions?error=${encodeURIComponent("Missing submission")}`);
       const { adminSubmissions } = getWriteContainer();
@@ -44,6 +49,8 @@ export async function adminApproveSubmissionAction(formData: FormData): Promise<
   return instrumentServerAction(
     "adminApproveSubmissionAction",
     async () => {
+      const gate = await assertAdminCapabilityForRedirect(SUBMISSIONS_ACCESS);
+      if (!gate.ok) redirect(`/admin/submissions?error=${encodeURIComponent(gate.message)}`);
       const id = String(formData.get("submissionId") ?? "").trim();
       if (!id) redirect(`/admin/submissions?error=${encodeURIComponent("Missing submission")}`);
       const parsed = approveSubmissionBodySchema.safeParse({
@@ -74,6 +81,8 @@ export async function adminRejectSubmissionAction(formData: FormData): Promise<v
   return instrumentServerAction(
     "adminRejectSubmissionAction",
     async () => {
+      const gate = await assertAdminCapabilityForRedirect(SUBMISSIONS_ACCESS);
+      if (!gate.ok) redirect(`/admin/submissions?error=${encodeURIComponent(gate.message)}`);
       const id = String(formData.get("submissionId") ?? "").trim();
       if (!id) redirect(`/admin/submissions?error=${encodeURIComponent("Missing submission")}`);
       const parsed = rejectSubmissionBodySchema.safeParse({

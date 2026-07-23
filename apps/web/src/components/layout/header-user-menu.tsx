@@ -4,6 +4,7 @@ import { ChromePopoverPanel } from "@/components/marketing/chrome-popover-panel"
 import { MediaImage } from "@/components/ui/media-image";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
+import { shellRolePillLabel } from "@/lib/admin/staff-role-presenter";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import { cn } from "@auction/ui";
@@ -102,6 +103,7 @@ export function HeaderUserMenu({ user, headerTone = "on-light" }: HeaderUserMenu
   const displayName = user.name.trim() || user.email;
   const shellRole: AppShellRole = sessionUserToShellRole(user);
   const roleMeta = appShellRoleMeta[shellRole];
+  const rolePillLabel = shellRolePillLabel(user);
 
   return (
     <div className="relative shrink-0" ref={wrapRef}>
@@ -173,7 +175,7 @@ export function HeaderUserMenu({ user, headerTone = "on-light" }: HeaderUserMenu
             >
               <span className={`size-1.5 rounded-full ${roleMeta.dotClassName}`} aria-hidden />
               <span className="font-label text-[10px] font-bold uppercase tracking-[0.12em]">
-                {roleMeta.label}
+                {rolePillLabel}
               </span>
             </div>
           </div>

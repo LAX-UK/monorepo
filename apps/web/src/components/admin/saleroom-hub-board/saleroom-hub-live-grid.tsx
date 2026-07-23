@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { ConnectionStatusChip } from "@/features/saleroom/components/shared/connection-status-chip";
 import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
@@ -11,6 +12,7 @@ import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-
 import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
 import type { AdminSaleOperationsSnapshot } from "@/lib/telephone/telephone-booking-types";
 import { Button } from "@auction/ui";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { LiveBadge } from "@auction/ui/components/live-badge";
 import Link from "next/link";
 
@@ -99,20 +101,14 @@ function RoomCard({
             </Link>
             <SaleDeliveryModeBadge mode={row.deliveryMode} />
             {needsClosing ? (
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
-                Needs closing
-              </span>
+              <DotStatusPill label="Needs closing" tone="warning" />
             ) : isSaleroomSessionLive(session.status) ? (
               <LiveBadge />
             ) : null}
             {session.status === "paused" ? (
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
-                Paused
-              </span>
+              <AdminStatusBadge domain="saleroomSession" status="paused" />
             ) : session.status === "live" && !session.currentLotId ? (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                Between lots
-              </span>
+              <DotStatusPill label="Between lots" tone="info" />
             ) : null}
           </div>
           {enriched.currentLotTitle ? (

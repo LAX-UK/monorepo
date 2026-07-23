@@ -2,7 +2,7 @@
 
 import { AdminLegalEntityPicker } from "@/components/admin/admin-legal-entity-picker";
 import { PendingFormSubmit } from "@/components/admin/pending-form-submit";
-import { runPayoutSettlementAction } from "@/lib/admin/payout.actions";
+import { runPayoutSettlementAction } from "@/lib/admin/finance/admin-finance-mutations";
 import { useState } from "react";
 
 const FORM_ID = "payout-settlement-form";

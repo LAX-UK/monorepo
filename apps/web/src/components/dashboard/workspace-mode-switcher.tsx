@@ -12,14 +12,14 @@ import {
   BottomSheetTrigger,
 } from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
-import { ChevronDown } from "lucide-react";
+import { Briefcase, ChevronDown } from "lucide-react";
 import { useState, useTransition } from "react";
 
 type Props = {
   mode: ClientWorkspaceMode;
   hidden?: boolean;
   /** Inline buttons for embedding in another sheet (no nested overlay). */
-  variant?: "sheet" | "inline";
+  variant?: "sheet" | "inline" | "compact";
 };
 
 export function WorkspaceModeSwitcher({ mode, hidden, variant = "sheet" }: Props) {
@@ -73,6 +73,49 @@ export function WorkspaceModeSwitcher({ mode, hidden, variant = "sheet" }: Props
         </p>
         {workspaceButtons}
       </div>
+    );
+  }
+
+  if (variant === "compact") {
+    return (
+      <HydrationDeferred
+        fallback={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled
+            aria-busy
+            className="min-h-10 min-w-10 text-on-surface-variant"
+            aria-label="Workspace"
+          >
+            <Briefcase className="size-4" aria-hidden />
+          </Button>
+        }
+      >
+        <BottomSheet open={open} onOpenChange={setOpen}>
+          <BottomSheetTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={pending}
+              className="min-h-10 min-w-10 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              aria-label={`Workspace: ${mode === "buying" ? "Buying" : "Selling"}`}
+            >
+              <Briefcase className="size-4" aria-hidden />
+            </Button>
+          </BottomSheetTrigger>
+          <BottomSheetContent className="border-outline-variant">
+            <BottomSheetHeader>
+              <BottomSheetTitle className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                Workspace
+              </BottomSheetTitle>
+            </BottomSheetHeader>
+            <div className="grid gap-3 px-6 pb-6">{workspaceButtons}</div>
+          </BottomSheetContent>
+        </BottomSheet>
+      </HydrationDeferred>
     );
   }
 

@@ -1,4 +1,4 @@
-import type { CatalogActiveFilterChip } from "@/components/admin/catalog/catalog-active-filters-row";
+import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
 
 export const FULFILMENT_STATUS_LABELS: Record<string, string> = {

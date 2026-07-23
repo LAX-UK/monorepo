@@ -1,7 +1,7 @@
 "use client";
 
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
-import { reversePayoutAction } from "@/lib/admin/payout.actions";
+import { reversePayoutAction } from "@/lib/admin/finance/admin-finance-mutations";
 import { Can } from "@/lib/auth/capabilities";
 import { PAYOUT_REVERSE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { PayoutStatus } from "@auction/types";

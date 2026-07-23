@@ -2,7 +2,7 @@
 
 import { ExportButton } from "@/components/exports/export-button";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
-import { relativeFromIso } from "@/lib/admin/relative-time";
+import { formatAdminTableDateTime } from "@/lib/admin/format-admin-table-datetime";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -43,46 +43,50 @@ export function CatalogDomainEventsTimeline({
         </div>
       ) : null}
       <ol className="relative space-y-0 border-l border-border-hairline pl-4">
-        {events.map((event) => (
-          <li key={event.id} className="relative pb-6 last:pb-0">
-            <span
-              className="absolute -left-[5px] top-1.5 size-2 rounded-full bg-primary ring-2 ring-surface"
-              aria-hidden
-            />
-            <div className="rounded-lg border border-border-hairline/60 bg-surface-container-low/40 px-4 py-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="font-body text-sm font-medium text-on-surface">
-                  {domainEventLabel(event.eventType)}
-                </p>
-                <time
-                  dateTime={event.occurredAt.toISOString()}
-                  className="font-body text-xs text-on-surface-variant"
-                >
-                  {relativeFromIso(event.occurredAt.toISOString())}
-                </time>
-              </div>
-              {showTechnicalDetails ? (
-                <>
-                  <p className="mt-1 font-mono text-[10px] text-on-surface-variant">
-                    {event.eventType}
+        {events.map((event) => {
+          const when = formatAdminTableDateTime(event.occurredAt, "timestamp");
+          return (
+            <li key={event.id} className="relative pb-6 last:pb-0">
+              <span
+                className="absolute -left-[5px] top-1.5 size-2 rounded-full bg-primary ring-2 ring-surface"
+                aria-hidden
+              />
+              <div className="rounded-lg border border-border-hairline/60 bg-surface-container-low/40 px-4 py-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="font-body text-sm font-medium text-on-surface">
+                    {domainEventLabel(event.eventType)}
                   </p>
-                  {event.actorUserId ? (
-                    <p className="mt-1 font-body text-xs text-on-surface-variant">
-                      Actor: {event.actorUserId.slice(0, 8)}…
+                  <time
+                    dateTime={when.iso ?? undefined}
+                    title={when.title}
+                    className="font-body text-xs text-on-surface-variant"
+                  >
+                    {when.primary}
+                  </time>
+                </div>
+                {showTechnicalDetails ? (
+                  <>
+                    <p className="mt-1 font-mono text-[10px] text-on-surface-variant">
+                      {event.eventType}
                     </p>
-                  ) : null}
-                  <EventPayload payload={event.payload} label="payload" />
-                </>
-              ) : (
-                <EventTechnicalDetails
-                  eventType={event.eventType}
-                  actorUserId={event.actorUserId}
-                  payload={event.payload}
-                />
-              )}
-            </div>
-          </li>
-        ))}
+                    {event.actorUserId ? (
+                      <p className="mt-1 font-body text-xs text-on-surface-variant">
+                        Actor: {event.actorUserId.slice(0, 8)}…
+                      </p>
+                    ) : null}
+                    <EventPayload payload={event.payload} label="payload" />
+                  </>
+                ) : (
+                  <EventTechnicalDetails
+                    eventType={event.eventType}
+                    actorUserId={event.actorUserId}
+                    payload={event.payload}
+                  />
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

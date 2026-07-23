@@ -1,6 +1,7 @@
 import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { parseSubmissionDocumentsList } from "@/lib/data/http/submissions.schema";
 import type { EntityDocument } from "@auction/types";
 
 export async function getServerSubmissionDocuments(
@@ -14,6 +15,11 @@ export async function getServerSubmissionDocuments(
     },
   );
   if (!res.ok) return [];
-  const body = (await res.json().catch(() => null)) as { data?: EntityDocument[] } | null;
-  return body?.data ?? [];
+  const body = await res.json().catch(() => null);
+  if (body == null) return [];
+  try {
+    return parseSubmissionDocumentsList(body) as EntityDocument[];
+  } catch {
+    return [];
+  }
 }

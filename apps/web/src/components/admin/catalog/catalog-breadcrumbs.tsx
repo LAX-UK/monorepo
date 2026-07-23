@@ -13,7 +13,7 @@ type Props = {
 };
 
 const trailClass =
-  "flex flex-wrap items-center gap-x-3 gap-y-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]";
+  "flex flex-wrap items-center gap-x-2 gap-y-1 font-label text-sm font-normal normal-case tracking-normal";
 
 /** Label-caps breadcrumb trail for catalog list/detail/form pages. */
 export function CatalogBreadcrumbs({ segments, className }: Props) {
@@ -22,33 +22,31 @@ export function CatalogBreadcrumbs({ segments, className }: Props) {
   return (
     <span className={cn(trailClass, className)}>
       {segments.map((segment, index) => {
-        const isFirst = index === 0;
-        const prefix = isFirst ? "← " : "";
         const node: ReactNode = segment.href ? (
           <Link
             href={segment.href}
             className={cn(
-              "text-link hover:underline",
-              !isFirst && index < segments.length - 1 ? "max-w-[min(100%,14rem)] truncate" : "",
+              "text-on-surface-variant hover:text-secondary hover:underline",
+              index < segments.length - 1 ? "max-w-[min(100%,14rem)] truncate" : "",
             )}
           >
-            {prefix}
             {segment.label}
           </Link>
         ) : (
           <span
             className={cn(
-              index === segments.length - 1 ? "text-on-surface" : "text-on-surface-variant",
+              index === segments.length - 1
+                ? "font-semibold text-secondary"
+                : "text-on-surface-variant",
               index > 0 && index < segments.length - 1 ? "max-w-[min(100%,14rem)] truncate" : "",
             )}
           >
-            {prefix}
             {segment.label}
           </span>
         );
 
         return (
-          <span key={`${segment.label}-${index}`} className="inline-flex items-center gap-x-3">
+          <span key={`${segment.label}-${index}`} className="inline-flex items-center gap-x-2">
             {index > 0 ? <span className="text-on-surface-variant">/</span> : null}
             {node}
           </span>

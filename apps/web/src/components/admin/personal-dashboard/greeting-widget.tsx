@@ -11,7 +11,7 @@ export function GreetingWidget({ name }: Props) {
     <Surface variant="card" padding="md" className="space-y-3">
       <h2 className="font-headline text-xl font-semibold text-on-surface">Good day, {first}</h2>
       <p className="font-body text-sm text-on-surface-variant">
-        Your personal cockpit — queue, trends, and saleroom pulse in one place.
+        Your personal cockpit — attention items, trends, and saleroom pulse in one place.
       </p>
       <div className="flex flex-wrap gap-2">
         <Link

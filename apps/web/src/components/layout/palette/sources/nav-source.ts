@@ -80,7 +80,7 @@ const QUICK_ACTION_SPECS: QuickActionSpec[] = [
   {
     id: "qa-submissions",
     href: "/admin/submissions",
-    label: "Submissions queue",
+    label: "Review submissions",
     icon: Upload,
     requirement: SUBMISSIONS_ACCESS,
     platformOnly: true,
@@ -88,21 +88,21 @@ const QUICK_ACTION_SPECS: QuickActionSpec[] = [
   {
     id: "qa-manual-review",
     href: "/admin/payments?manualReview=1",
-    label: "Manual review queue",
+    label: "Manual review",
     icon: WalletCards,
     requirement: FINANCE_ACCESS,
   },
   {
     id: "qa-disputes",
     href: "/admin/disputes",
-    label: "Disputes queue",
+    label: "Open disputes",
     icon: WalletCards,
     requirement: FINANCE_ACCESS,
   },
   {
     id: "qa-onboarding",
     href: "/admin/onboarding-issues",
-    label: "Onboarding queues",
+    label: "Onboarding issues",
     icon: ClipboardList,
     requirement: ONBOARDING_QUEUES_ACCESS,
     platformOnly: true,
@@ -110,7 +110,7 @@ const QUICK_ACTION_SPECS: QuickActionSpec[] = [
   {
     id: "qa-aml",
     href: "/admin/compliance/aml",
-    label: "AML screening queue",
+    label: "AML screenings",
     icon: Shield,
     requirement: AML_REVIEW_ACCESS,
     platformOnly: true,
@@ -118,7 +118,7 @@ const QUICK_ACTION_SPECS: QuickActionSpec[] = [
   {
     id: "qa-sof",
     href: "/admin/compliance/source-of-funds",
-    label: "Source of Funds queue",
+    label: "Source of Funds cases",
     icon: Shield,
     requirement: AML_REVIEW_ACCESS,
     platformOnly: true,

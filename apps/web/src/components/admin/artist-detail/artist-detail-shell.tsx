@@ -34,6 +34,7 @@ type Props = {
   deleteEligibility?: ArtistDeleteEligibility | null;
   canManageDelete?: boolean;
   canEdit?: boolean;
+  canReview?: boolean;
   children: ReactNode;
 };
 
@@ -47,6 +48,7 @@ export function ArtistDetailShell({
   deleteEligibility = null,
   canManageDelete = false,
   canEdit = false,
+  canReview = false,
   children,
 }: Props) {
   const lifeRaw = formatArtistLifespan({
@@ -89,7 +91,7 @@ export function ArtistDetailShell({
       href: artistDetailTabHref(artistId, "duplicates"),
       ...(duplicateCount > 0 ? { badge: "warning" as const } : {}),
     },
-    ...(registryStatus === "pending"
+    ...(registryStatus === "pending" && canReview
       ? [
           {
             id: "review",
@@ -146,7 +148,7 @@ export function ArtistDetailShell({
             publicLabel="Public profile"
             status={statusBadge}
             primaryAction={
-              registryStatus === "pending" ? (
+              registryStatus === "pending" && canReview ? (
                 <Link
                   href={artistDetailTabHref(artistId, "review")}
                   className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
@@ -173,12 +175,7 @@ export function ArtistDetailShell({
         }
         stickySubnav={
           <>
-            <CatalogDetailTabNav
-              tabs={tabSpecs}
-              entityKind="artist"
-              entityId={artistId}
-              aria-label="Artist sections"
-            />
+            <CatalogDetailTabNav tabs={tabSpecs} entityKind="artist" aria-label="Artist sections" />
             <CatalogDetailStickyMiniBar
               items={[
                 { id: "lots", label: "Lots", value: String(lotCount) },

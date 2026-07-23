@@ -1,4 +1,4 @@
-import { isSaleLiveish } from "@/components/admin/sale-detail/sale-detail-helpers";
+import { isSaleLiveish } from "@/lib/admin/sales/sale-detail-helpers";
 import {
   type AdminSaleListRow,
   getAdminSaleById,

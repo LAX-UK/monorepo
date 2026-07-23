@@ -8,6 +8,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { buildArtistSummaryItems } from "@/lib/admin/build-artist-summary-items";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import { type ArtistProfile, getCreatorKindConfig } from "@auction/types";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
@@ -79,9 +80,16 @@ export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }
                 <p>
                   <span className="font-medium text-on-surface">Featured / verified</span>
                   <br />
-                  {artist.featured ? "Featured" : "Not featured"}
-                  {" · "}
-                  {artist.verified ? "Verified" : "Not verified"}
+                  <span className="mt-1 inline-flex flex-wrap items-center gap-1">
+                    <DotStatusPill
+                      label={artist.featured ? "Featured" : "Not featured"}
+                      tone={artist.featured ? "success" : "neutral"}
+                    />
+                    <DotStatusPill
+                      label={artist.verified ? "Verified" : "Not verified"}
+                      tone={artist.verified ? "success" : "warning"}
+                    />
+                  </span>
                 </p>
                 <p>
                   <span className="font-medium text-on-surface">Archived</span>

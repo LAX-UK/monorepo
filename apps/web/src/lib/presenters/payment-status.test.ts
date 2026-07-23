@@ -44,12 +44,12 @@ describe("getPaymentStatusView", () => {
     expect(getPaymentStatusView("captured").tone).toBe("success");
   });
 
-  it("maps refunded to danger tone", () => {
-    expect(getPaymentStatusView("refunded").tone).toBe("danger");
+  it("maps refunded to neutral tone", () => {
+    expect(getPaymentStatusView("refunded").tone).toBe("neutral");
   });
 
-  it("maps pending to neutral tone", () => {
-    expect(getPaymentStatusView("pending").tone).toBe("neutral");
+  it("maps pending to info tone", () => {
+    expect(getPaymentStatusView("pending").tone).toBe("info");
   });
 
   it("maps authorized and requires_manual_review to info tone", () => {

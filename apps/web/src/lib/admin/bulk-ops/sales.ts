@@ -1,10 +1,10 @@
-import type { BulkOperation } from "@/components/admin/bulk-actions-toolbar";
+import { adminBulkSalesResultAction } from "@/lib/actions/admin-sales";
+import type { BulkOperation } from "@/lib/admin/bulk-ops/types";
+import { toSequentialBulkResult } from "@/lib/admin/catalog-bulk-result-handler";
 import {
-  adminBulkSalesResultAction,
   adminCancelSaleResultAction,
   adminPublishSaleResultAction,
-} from "@/lib/actions/admin-sales";
-import { toSequentialBulkResult } from "@/lib/admin/catalog-bulk-result-handler";
+} from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import type { SaleStatus } from "@auction/types";
 import { bulkSaleDeleteConfirmationPhrase } from "@auction/validators";

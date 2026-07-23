@@ -1,20 +1,16 @@
 import { AdminDisputesBoardContainer } from "@/components/admin/admin-disputes-board-container";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { DisputesListPagination } from "@/components/admin/disputes-list-pagination";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
-import { disputesListController } from "@/lib/admin/admin-list-controllers";
-import { buildListHref } from "@/lib/admin/admin-list-params";
+import { buildDisputesListKpiTiles } from "@/lib/admin/finance/build-disputes-list-kpi-tiles";
+import { loadAdminDisputesListPage } from "@/lib/admin/finance/load-disputes-list-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminDisputesPage } from "@/lib/data/http/disputes.server";
-import { adminDisputesKeys } from "@/lib/data/queries/admin-disputes";
-import { getQueryClient } from "@/lib/query/get-query-client";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import type { AdminDisputeCaseSummary } from "@auction/types";
-import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
+import { HydrationBoundary } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -30,66 +26,9 @@ export default async function AdminDisputesPage({
 }) {
   const sp = await searchParams;
   const error = safeDecodeAdminErrorParam(sp.error);
-  const query = disputesListController.parseQuery(sp);
-
-  const listQueryParams = {
-    offset: query.offset,
-    limit: query.limit,
-    ...(query.status ? { status: query.status } : {}),
-  };
-
-  let rows: Awaited<ReturnType<typeof disputesListController.fetch>>["rows"] = [];
-  let hasNextPage = false;
-  let loadError: string | null = null;
-  let summary: AdminDisputeCaseSummary = {
-    open: 0,
-    underReview: 0,
-    won: 0,
-    lost: 0,
-    closed: 0,
-  };
-  let disputesPageData: Awaited<ReturnType<typeof getAdminDisputesPage>> | null = null;
-  let dehydratedState: ReturnType<typeof dehydrate> | undefined;
-
-  try {
-    const queryClient = getQueryClient();
-    const result = await getAdminDisputesPage(listQueryParams);
-    queryClient.setQueryData(adminDisputesKeys.list(listQueryParams), result);
-    disputesPageData = result;
-    rows = result.rows;
-    hasNextPage = result.hasNextPage;
-    summary = result.summary;
-    dehydratedState = dehydrate(queryClient);
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load dispute cases.";
-  }
-
-  const statusChips = [
-    {
-      id: "all",
-      label: "All",
-      href: buildListHref("/admin/disputes", sp, { status: undefined, offset: 0 }),
-      active: !query.status,
-    },
-    {
-      id: "open",
-      label: "Open",
-      href: buildListHref("/admin/disputes", sp, { status: "open", offset: 0 }),
-      active: query.status === "open",
-    },
-    {
-      id: "under_review",
-      label: "Under review",
-      href: buildListHref("/admin/disputes", sp, { status: "under_review", offset: 0 }),
-      active: query.status === "under_review",
-    },
-    {
-      id: "closed",
-      label: "Closed",
-      href: buildListHref("/admin/disputes", sp, { status: "closed", offset: 0 }),
-      active: query.status === "closed",
-    },
-  ];
+  const { model, rows, summary, dehydratedState, loadError, pagination } =
+    await loadAdminDisputesListPage(sp);
+  const { listQueryParams, statusChipSpecs, hasFilters } = model;
 
   const meta = (
     <p className="font-body text-sm text-on-surface-variant">
@@ -101,23 +40,20 @@ export default async function AdminDisputesPage({
     </p>
   );
 
-  const pagination =
-    !loadError && (query.offset > 0 || hasNextPage) ? (
-      <DisputesListPagination
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={rows.length}
-        hasNextPage={hasNextPage}
-      />
-    ) : null;
-
   return (
-    <AdminListShell
+    <CatalogListShell
       variant="queue"
       title="Payment disputes"
       description="Stripe chargebacks and disputes. Open a case for payment context and timeline."
+      breadcrumbs={
+        <CatalogBreadcrumbs
+          segments={[{ label: "Finance", href: "/admin/finance" }, { label: "Disputes" }]}
+        />
+      }
       meta={meta}
-      chips={<FilterChipRow label="Status" chips={statusChips} />}
+      chips={<FilterChipRow label="Status" chips={statusChipSpecs} />}
+      hasFilters={hasFilters}
+      resetHref="/admin/disputes"
       mobileSummary={
         !loadError ? (
           <CatalogListMobileSummary
@@ -131,28 +67,15 @@ export default async function AdminDisputesPage({
       }
       kpiStrip={
         !loadError ? (
-          <AdminListKpiStrip
+          <AdminTrendKpiBand
             ariaLabel="Dispute summary"
-            tiles={[
-              { label: "Open", value: summary.open },
-              { label: "Under review", value: summary.underReview },
-              { label: "Won", value: summary.won },
-              { label: "Lost", value: summary.lost },
-            ]}
+            tiles={buildDisputesListKpiTiles(summary)}
           />
         ) : null
       }
       errorAlert={
         error || loadError ? (
           <AdminListAlert title="Could not load">{loadError ?? error}</AdminListAlert>
-        ) : null
-      }
-      wrapView={false}
-      view={
-        !loadError && rows.length > 0 && disputesPageData ? (
-          <HydrationBoundary state={dehydratedState}>
-            <AdminDisputesBoardContainer params={listQueryParams} />
-          </HydrationBoundary>
         ) : null
       }
       empty={
@@ -163,7 +86,12 @@ export default async function AdminDisputesPage({
           />
         ) : null
       }
-      pagination={pagination}
-    />
+    >
+      {!loadError && rows.length > 0 && dehydratedState ? (
+        <HydrationBoundary state={dehydratedState}>
+          <AdminDisputesBoardContainer params={listQueryParams} pagination={pagination} />
+        </HydrationBoundary>
+      ) : null}
+    </CatalogListShell>
   );
 }

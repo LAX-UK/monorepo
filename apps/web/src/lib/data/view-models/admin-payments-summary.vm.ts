@@ -1,4 +1,4 @@
-import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
+import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 
 export type PaymentsSummaryVm = {
   totalVolume: number;

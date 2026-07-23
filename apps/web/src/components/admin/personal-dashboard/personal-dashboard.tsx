@@ -134,7 +134,7 @@ export function PersonalDashboard({
       <DashboardPageHeader
         title="Your dashboard"
         meta={<LabelCaps className="text-lot-orange">Admin · Personal</LabelCaps>}
-        description="Trend-aware KPIs, queue, anomalies, and saleroom pulse — layout saved on this device."
+        description="Trend-aware KPIs, attention items, anomalies, and saleroom pulse — layout saved on this device."
         actions={<PersonalDashboardCustomizeSheet widgets={widgets} staffRole={staffRole} />}
       />
 

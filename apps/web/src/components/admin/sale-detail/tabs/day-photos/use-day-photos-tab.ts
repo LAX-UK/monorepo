@@ -4,7 +4,8 @@ import { useUploadObjectLifecycle } from "@/hooks/use-upload-object-lifecycle";
 import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
 import { notify } from "@/lib/ui/notify";
 import type { SaleDayMediaRef } from "@auction/types";
-import { PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { type DayMediaItem, itemsToDayImages, refToItem } from "./day-media-types";
@@ -37,7 +38,10 @@ export function useDayPhotosTab({
   );
   const dirty = JSON.stringify(items) !== savedRef.current;
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const uploadFiles = useCallback(
     async (files: FileList | File[]) => {

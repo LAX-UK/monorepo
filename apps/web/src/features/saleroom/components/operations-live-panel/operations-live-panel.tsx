@@ -29,7 +29,7 @@ type Props = {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-4 transition-colors duration-200">
+    <div className="rounded-xl border border-shell-stroke bg-surface-container-low/40 p-4 transition-colors duration-200">
       <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         {label}
       </p>
@@ -52,7 +52,7 @@ function ActionCard({
   return (
     <Link
       href={href}
-      className="flex min-h-11 flex-col justify-center rounded-xl border border-border-hairline bg-surface-container-low/40 p-5 transition-colors duration-200 hover:border-link/30 hover:bg-primary/5"
+      className="flex min-h-11 flex-col justify-center rounded-xl border border-shell-stroke bg-surface-container-low/40 p-5 transition-colors duration-200 hover:border-secondary/30 hover:bg-secondary/5"
     >
       <h3 className="font-headline text-base text-on-surface">{title}</h3>
       <p className="mt-2 font-body text-sm text-on-surface-variant">{description}</p>
@@ -142,7 +142,7 @@ function OperationsLiveContent({
 
       {vm.currentLotId != null ? (
         <div
-          className="rounded-xl border border-border-hairline bg-surface-container-low/40 p-5 transition-all duration-200"
+          className="rounded-xl border border-shell-stroke bg-surface-container-low/40 p-5 transition-all duration-200"
           aria-live="polite"
         >
           <h3 className="font-headline text-base text-on-surface">On the block</h3>

@@ -61,7 +61,15 @@ export default async function AdminNewSalePage({
 
   return (
     <CatalogFormShell
-      breadcrumbs={<CatalogBreadcrumbs segments={[{ label: "Sales", href: "/admin/sales" }]} />}
+      layout="wizard"
+      breadcrumbs={
+        <CatalogBreadcrumbs
+          segments={[
+            { label: "Admin", href: "/admin" },
+            { label: "Sales", href: "/admin/sales" },
+          ]}
+        />
+      }
       title="New sale"
       description={
         cloneFailed
@@ -70,7 +78,7 @@ export default async function AdminNewSalePage({
       }
       wizardMobile={{
         formId: CATALOG_FORM_IDS.saleSetup,
-        submitLabel: "Publish sale",
+        submitLabel: "Save & continue",
         cancelHref: "/admin/sales",
       }}
     >

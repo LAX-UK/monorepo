@@ -1,6 +1,6 @@
-import { venueOneLiner } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { adminSaleListPath } from "@/lib/admin/catalog-routes";
+import { venueOneLiner } from "@/lib/admin/sales/sale-detail-helpers";
 import type { Sale } from "@auction/types";
 
 export type SaleLensId = "all" | "upcoming" | "live" | "closed" | "settled" | "setup";

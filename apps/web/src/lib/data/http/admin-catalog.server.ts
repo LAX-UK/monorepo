@@ -9,6 +9,7 @@ export {
 export {
   ADMIN_ARTIST_LIST_MAX_LIMIT,
   type AdminArtistDuplicateHit,
+  type GetAdminCategoryPageParams,
   type GetAdminArtistListParams,
 } from "./admin-catalog.types";
 export {
@@ -19,6 +20,8 @@ export {
   getAdminArtistsByOwnerUserId,
   getAdminArtistStats,
   getAdminCategoryById,
+  getAdminCategoriesListSummary,
   getAdminCategoryList,
+  getAdminCategoryPage,
   searchAdminArtistsRegistry,
 } from "./admin-catalog.reader";

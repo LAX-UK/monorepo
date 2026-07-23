@@ -5,27 +5,23 @@ import {
 import { AdminInvitationsBoardContainer } from "@/components/admin/admin-invitations-board-container";
 import { AdminInviteCard } from "@/components/admin/admin-invite-card";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
+import { AdminListPreviewDegradedAlert } from "@/components/admin/admin-list-preview-degraded-alert";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { InvitationsFilterToolbar } from "@/components/admin/invitations-filter-toolbar";
 import { InvitationsListPagination } from "@/components/admin/invitations-list-pagination";
 import { InvitationsMobileCards } from "@/components/admin/people/invitations-mobile-cards";
 import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
-import type { invitationsListController } from "@/lib/admin/admin-list-controllers";
 import {
-  buildInvitationsActiveFilterChips,
-  countInvitationsListActiveFilters,
-  hasInvitationsListActiveFilters,
-  invitationsListFiltersFromQuery,
-  parseInvitationsListQuery,
-} from "@/lib/admin/invitations-list-query";
+  buildInvitationsListKpiTiles,
+  buildInvitationsMobileMetrics,
+} from "@/lib/admin/people/build-invitations-list-kpi-tiles";
+import { loadAdminInvitationsListPage } from "@/lib/admin/people/load-invitations-list-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminInvitationsPage } from "@/lib/data/http/invitations.server";
-import { adminInvitationsKeys } from "@/lib/data/queries/admin-invitations";
-import { getQueryClient } from "@/lib/query/get-query-client";
+import { ADMIN_PEOPLE_LIST_HEADING_ID } from "@/lib/admin/use-admin-list-preview-return-focus";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
+import { HydrationBoundary } from "@tanstack/react-query";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
@@ -36,73 +32,32 @@ export const metadata: Metadata = metadataForPrivate(
 export default async function AdminInvitationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    error?: string;
-    q?: string;
-    status?: string;
-    limit?: string;
-    offset?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
   const error = safeDecodeAdminErrorParam(sp.error);
-  const query = parseInvitationsListQuery(sp);
-  const listFilters = invitationsListFiltersFromQuery(query);
-  const activeFilterChips = buildInvitationsActiveFilterChips(
-    "/admin/invitations",
-    sp,
-    listFilters,
-  );
-  const activeFilterCount = countInvitationsListActiveFilters(listFilters);
-  const hasFilters = hasInvitationsListActiveFilters(listFilters);
+  const {
+    model,
+    rows,
+    summary,
+    total,
+    loadError,
+    dehydratedState,
+    pagination,
+    selectedInvitation,
+    previewDegraded,
+  } = await loadAdminInvitationsListPage(sp);
 
-  const listQueryParams = {
-    offset: query.offset,
-    limit: query.limit,
-    ...(query.status ? { status: query.status } : {}),
-    ...(query.q ? { q: query.q } : {}),
-  };
-
-  let rows: Awaited<ReturnType<typeof invitationsListController.fetch>>["rows"] = [];
-  let total = 0;
-  let pendingTotal = 0;
-  let acceptedTotal = 0;
-  let loadError: string | null = null;
-  let invitationsPageData: Awaited<ReturnType<typeof getAdminInvitationsPage>> | null = null;
-  let dehydratedState: ReturnType<typeof dehydrate> | undefined;
-  try {
-    const queryClient = getQueryClient();
-    const result = await getAdminInvitationsPage(listQueryParams);
-    queryClient.setQueryData(adminInvitationsKeys.list(listQueryParams), result);
-    invitationsPageData = result;
-    rows = result.rows;
-    total = result.total ?? 0;
-    pendingTotal = result.pendingTotal;
-    acceptedTotal = result.acceptedTotal;
-    dehydratedState = dehydrate(queryClient);
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load invitations.";
-  }
-
-  const isPaginationEmpty = !loadError && total > 0 && rows.length === 0 && !hasFilters;
-
-  const pagination =
-    !loadError && total > 0 ? (
-      <InvitationsListPagination
-        offset={query.offset}
-        limit={query.limit}
-        total={total}
-        countOnPage={rows.length}
-      />
-    ) : null;
+  const isPaginationEmpty = !loadError && total > 0 && rows.length === 0 && !model.hasFilters;
 
   return (
     <AdminBulkSelectionProvider>
       <PeopleListShell
         title="Invitations"
+        listHeadingId={ADMIN_PEOPLE_LIST_HEADING_ID}
         description="Invite staff or clients by email. They complete signup using the link we send."
-        hasFilters={hasFilters}
-        resetHref="/admin/invitations"
+        hasFilters={model.hasFilters}
+        resetHref={model.basePath}
         bulkBar={<AdminBulkSelectionBar />}
         headerAfter={
           !loadError ? (
@@ -112,7 +67,7 @@ export default async function AdminInvitationsPage({
                 <h2 className="font-headline text-lg text-on-surface">Sent invitations</h2>
                 <p className="text-sm text-on-surface-variant">
                   {total > 0
-                    ? `${total} invitation${total === 1 ? "" : "s"}${hasFilters ? " matching filters" : " total"}`
+                    ? `${total} invitation${total === 1 ? "" : "s"}${model.hasFilters ? " matching filters" : " total"}`
                     : "All platform invitations"}
                 </p>
               </div>
@@ -121,51 +76,45 @@ export default async function AdminInvitationsPage({
         }
         kpiStrip={
           !loadError ? (
-            <AdminListKpiStrip
+            <AdminTrendKpiBand
               ariaLabel="Invitations summary"
-              tiles={[
-                {
-                  label: "Total invitations",
-                  value: total,
-                  delta: hasFilters
-                    ? `${rows.length} matching filters`
-                    : `${rows.length} on this page`,
-                },
-                { label: "Pending", value: pendingTotal, delta: "Org-wide" },
-                { label: "Accepted", value: acceptedTotal, delta: "Org-wide" },
-              ]}
+              tiles={buildInvitationsListKpiTiles(summary)}
             />
           ) : null
         }
         mobileSummary={
           !loadError ? (
-            <CatalogListMobileSummary
-              metrics={[
-                { id: "total", label: "Total invitations", value: String(total) },
-                { id: "pending", label: "Pending", value: String(pendingTotal) },
-                { id: "accepted", label: "Accepted", value: String(acceptedTotal) },
-              ]}
-            />
+            <CatalogListMobileSummary metrics={buildInvitationsMobileMetrics(summary)} />
           ) : null
         }
         errorAlert={
           error || loadError ? (
             <AdminListAlert title="Could not load invitations">{loadError ?? error}</AdminListAlert>
+          ) : previewDegraded ? (
+            <AdminListPreviewDegradedAlert
+              entityLabel="invitation"
+              clearHref={model.buildDrawerHref(null)}
+            />
           ) : null
         }
         filters={
           !loadError ? (
             <InvitationsFilterToolbar
-              activeFilterCount={activeFilterCount}
-              activeFilterChips={activeFilterChips}
+              activeFilterCount={model.activeFilterCount}
+              activeFilterChips={model.activeFilterChips}
             />
           ) : null
         }
         filtersSelfContained
         view={
-          !loadError && rows.length > 0 && invitationsPageData ? (
+          !loadError && rows.length > 0 && dehydratedState ? (
             <HydrationBoundary state={dehydratedState}>
-              <AdminInvitationsBoardContainer params={listQueryParams} externalMobileCards />
+              <AdminInvitationsBoardContainer
+                params={model.listQueryParams}
+                externalMobileCards
+                selectedInvitationId={model.selectedInvitationId}
+                selectedInvitation={selectedInvitation}
+              />
             </HydrationBoundary>
           ) : null
         }
@@ -175,14 +124,14 @@ export default async function AdminInvitationsPage({
             <FilterEmptyState
               entity="invitations"
               segment="admin"
-              hasActiveFilters={hasFilters}
-              clearFiltersHref="/admin/invitations"
+              hasActiveFilters={model.hasFilters}
+              clearFiltersHref={model.basePath}
               {...(isPaginationEmpty
                 ? {
                     title: "No invitations on this page",
                     description: "Try a previous page or adjust pagination.",
                   }
-                : !hasFilters
+                : !model.hasFilters
                   ? {
                       title: "No invitations yet",
                       description:
@@ -193,7 +142,16 @@ export default async function AdminInvitationsPage({
             />
           ) : null
         }
-        pagination={pagination}
+        pagination={
+          pagination ? (
+            <InvitationsListPagination
+              offset={pagination.offset}
+              limit={pagination.limit}
+              total={pagination.total}
+              countOnPage={pagination.countOnPage}
+            />
+          ) : null
+        }
       />
     </AdminBulkSelectionProvider>
   );

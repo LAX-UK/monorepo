@@ -1,37 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import {
+  e2eEnabled as enabled,
+  expectNoSeriousAxeViolationsInMain,
+  formatAxeViolations,
+  hasStaffCredentials,
+  e2eSkipReason as skipReason,
+  staffLogin,
+} from "./helpers/auth";
 
-const enabled = process.env.PLAYWRIGHT_E2E === "1";
-const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
-
-const staffEmail = process.env.PLAYWRIGHT_STAFF_EMAIL ?? "";
-const staffPassword = process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "";
-
-async function staffLogin(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel(/email/i).fill(staffEmail);
-  await page.getByLabel(/password/i).fill(staffPassword);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/\/(admin|dashboard)/);
-}
-
-function formatAxeViolations(
-  violations: ReadonlyArray<{ id: string; impact?: string | null; help: string }>,
-) {
-  return violations.map((v) => `  - ${v.id} (${v.impact ?? "?"}): ${v.help}`).join("\n");
-}
-
-async function expectNoSeriousAxeViolationsInMain(page: import("@playwright/test").Page) {
-  const axe = await new AxeBuilder({ page })
-    .include("#main-content")
-    .withTags(["wcag2a", "wcag2aa"])
-    .analyze();
-  const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-  expect(
-    blocking,
-    blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-  ).toHaveLength(0);
-}
+const staffEmail = hasStaffCredentials() ? "configured" : "";
 
 test.describe("admin a11y smoke", () => {
   test("admin home has no serious axe violations in main", async ({ page }) => {
@@ -482,14 +460,6 @@ test.describe("admin a11y smoke", () => {
     await expectNoSeriousAxeViolationsInMain(page);
   });
 
-  test("analytics report hub has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/analytics");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
-  });
-
   test("event RSVPs hub has no serious axe violations in main", async ({ page }) => {
     test.skip(!enabled || !staffEmail, skipReason);
     await staffLogin(page);
@@ -518,6 +488,24 @@ test.describe("admin a11y smoke", () => {
     test.skip(!enabled || !staffEmail, skipReason);
     await staffLogin(page);
     await page.goto("/admin/lots?lens=attention");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("new lot wizard at mobile has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/admin/lots/new");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("new sale wizard at mobile has no serious axe violations in main", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/admin/sales/new");
     await expect(page.locator("#main-content")).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
   });

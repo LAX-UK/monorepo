@@ -1,0 +1,352 @@
+/* Shimmer (F5b) — generic skeleton shimmer used by per-section skeletons and
+   live-bid feedback. Consumes motion tokens so duration/easing live in @theme. */
+@keyframes shimmer-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  animation: shimmer-sweep var(--motion-duration-xl) var(--motion-ease-standard) infinite;
+}
+
+/* Gold border pulse (F3b) — emitted on a card when a new bid lands. Caller
+   toggles a data attribute or class for one cycle and removes after. */
+@keyframes accent-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--color-accent-brand);
+  }
+  60% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent-brand) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent-brand) 0%, transparent);
+  }
+}
+
+.accent-pulse {
+  animation: accent-pulse var(--motion-duration-xl, 900ms) var(--motion-ease-decelerate);
+}
+
+/* Back-compat alias — same animation as `.accent-pulse`. */
+.gold-pulse {
+  animation: accent-pulse var(--motion-duration-xl, 900ms) var(--motion-ease-decelerate);
+}
+
+/* Outbid shake (F3b) — short horizontal nudge on a card when user is outbid. */
+@keyframes outbid-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-3px);
+  }
+  40%,
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+.outbid-shake {
+  animation: outbid-shake var(--motion-duration-md, 320ms) var(--motion-ease-standard);
+}
+
+/* SOLD stamp (F3c) — overlay on lots that just closed. Slight rotation + scale
+   so it lands like an ink mark rather than a flat label. */
+@keyframes sold-stamp-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.4) rotate(-12deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.95) rotate(-6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-8deg);
+  }
+}
+
+.sold-stamp-in {
+  animation: sold-stamp-in var(--motion-duration-lg, 520ms) var(--motion-ease-emphasize) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot-pulse,
+  .fade-up,
+  .fade-up-d1,
+  .fade-up-d2,
+  .fade-up-d3,
+  .fade-up-d4,
+  .wipe-in,
+  .zoom-bg,
+  .tick-in,
+  .shimmer-sweep::after,
+  .accent-pulse,
+  .gold-pulse,
+  .outbid-shake,
+  .sold-stamp-in {
+    animation: none;
+  }
+}
+
+/* Default: no clip — SSR and no-JS stay visible. JS arms data-reveal-init before animation. */
+.reveal[data-reveal-init="true"]:not([data-revealed="true"]) {
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+}
+
+.reveal__inner {
+  height: 100%;
+  width: 100%;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.reveal[data-reveal-init="true"]:not([data-revealed="true"]) > .reveal__inner {
+  transform: scale(1.08);
+}
+
+.reveal--wipe[data-revealed="true"],
+.reveal--wipeZoom[data-revealed="true"] {
+  animation: revealWipeIn var(--motion-duration-xl, 900ms) var(--motion-ease-emphasize) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal--zoom[data-revealed="true"] > .reveal__inner,
+.reveal--wipeZoom[data-revealed="true"] > .reveal__inner {
+  animation: revealZoomIn var(--motion-duration-2xl) var(--motion-ease-emphasize) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+/* fadeUp variant — replaces the legacy `.fade-up` class for new usage and is
+   driven by Reveal's data-revealed flag so it only fires once visible. */
+.reveal--fadeUp[data-reveal-init="true"]:not([data-revealed="true"]) {
+  clip-path: none;
+  opacity: 0;
+  transform: translateY(16px);
+}
+.reveal--fadeUp[data-revealed="true"] {
+  animation: fade-up var(--motion-duration-lg, 520ms) var(--motion-ease-emphasize) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+.reveal--fadeUp[data-reveal-init="true"]:not([data-revealed="true"]) > .reveal__inner {
+  transform: none;
+}
+
+/* textLine variant — per-line clip-path wipe. Author wraps each line manually
+   in a span; this variant adds the wipe to the outer container. */
+.reveal--textLine[data-revealed="true"] {
+  animation: revealWipeIn var(--motion-duration-lg, 520ms) var(--motion-ease-emphasize) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal[data-reveal-init="true"]:not([data-revealed="true"]) {
+    clip-path: none;
+    opacity: 1;
+  }
+
+  .reveal[data-reveal-init="true"]:not([data-revealed="true"]) > .reveal__inner {
+    transform: none;
+  }
+
+  .reveal,
+  .reveal[data-revealed="true"] {
+    animation: none;
+  }
+
+  .reveal__inner,
+  .reveal[data-revealed="true"] > .reveal__inner {
+    transform: none;
+    animation: none;
+  }
+}
+
+/* Desktop mega-menu: full-bleed shelf under header (break out of max-width container). */
+.header-megamenu {
+  display: grid;
+  grid-template-rows: 0fr;
+  left: 0;
+  width: 100dvw;
+  margin-inline: calc(50% - 50dvw);
+  transform: translateY(-4px);
+  opacity: 0;
+  pointer-events: none;
+  border-bottom: 1px solid var(--color-nav-border, transparent);
+  transition: grid-template-rows var(--motion-duration-md, 320ms) var(--motion-ease-emphasize),
+    transform var(--motion-duration-sm, 200ms) var(--motion-ease-emphasize), opacity
+    var(--motion-duration-sm, 200ms) var(--motion-ease-decelerate);
+}
+
+@supports not (width: 100dvw) {
+  .header-megamenu {
+    width: 100%;
+    margin-inline: 0;
+  }
+}
+
+.header-megamenu > div {
+  min-height: 0;
+}
+
+.header-megamenu__inner {
+  overflow: hidden;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.header-megamenu[data-open="false"] {
+  background: transparent;
+}
+
+.header-megamenu[data-open="true"] {
+  grid-template-rows: 1fr;
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  background: var(--color-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-megamenu {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Artwork live session — bid row flash + stagger */
+@keyframes artwork-bid-flash {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: color-mix(in srgb, var(--color-primary-container) 35%, transparent);
+  }
+}
+
+.animate-artwork-bid-flash {
+  animation: artwork-bid-flash var(--motion-duration-md) var(--motion-ease-decelerate);
+}
+
+@keyframes artwork-slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-artwork-slide-up-fade {
+  animation: artwork-slide-up-fade var(--motion-duration-md) var(--motion-ease-decelerate) forwards;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-artwork-bid-flash,
+  .animate-artwork-slide-up-fade {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Adaptive overlay tone palettes — photo decides, not site theme */
+[data-overlay-tone="light"] {
+  --overlay-fg: #ffffff;
+  --overlay-bg: rgba(0, 0, 0, 0.45);
+  --overlay-border: rgba(255, 255, 255, 0.22);
+  --overlay-fg-opaque: #ffffff;
+  --overlay-bg-opaque: #000000;
+}
+
+[data-overlay-tone="dark"] {
+  --overlay-fg: #000000;
+  --overlay-bg: rgba(255, 255, 255, 0.78);
+  --overlay-border: rgba(0, 0, 0, 0.12);
+  --overlay-fg-opaque: #000000;
+  --overlay-bg-opaque: #f9f9f9;
+}
+
+[data-overlay-fallback="opaque"] {
+  --overlay-bg: var(--overlay-bg-opaque);
+  --overlay-fg: var(--overlay-fg-opaque);
+  backdrop-filter: none !important;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-overlay-tone] {
+    --overlay-bg: var(--overlay-bg-opaque);
+    backdrop-filter: none !important;
+  }
+}
+
+/* biome-ignore lint/correctness/noUnknownMediaFeatureName: Valid MQ5 a11y feature */
+@media (prefers-reduced-transparency: reduce) {
+  [data-overlay-tone] {
+    --overlay-bg: var(--overlay-bg-opaque);
+    backdrop-filter: none !important;
+  }
+}
+
+/* Catalog mobile lists: defer off-screen card paint without full virtual scroll. */
+.catalog-virtualized-list > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 9rem;
+}
+
+.admin-data-table-virtualized tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3rem;
+}
+
+/* Marketing site header — light chrome over immersive home hero */
+[data-chrome-variant="transparentUntilScroll"][data-at-top="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.42), transparent 85%);
+}
+
+[data-header-tone="on-dark"] .site-header-search-icon,
+[data-header-tone="on-dark"] .site-header-search-placeholder {
+  color: var(--color-hero-foreground);
+}
+
+[data-header-tone="on-dark"] .site-header-search-placeholder {
+  opacity: 0.72;
+}
+
+[data-header-tone="on-dark"] .site-header-search-kbd {
+  color: var(--color-hero-foreground);
+  border-color: color-mix(in srgb, var(--color-hero-foreground) 45%, transparent);
+}
+
+[data-header-tone="on-dark"] .site-header-page-title {
+  color: var(--color-hero-foreground);
+  border-color: color-mix(in srgb, var(--color-hero-foreground) 25%, transparent);
+}

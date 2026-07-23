@@ -11,9 +11,10 @@ import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboa
 import { useDashboardListRowPaddingClass } from "@/hooks/use-dashboard-list-density";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { bidBoardDotStatus } from "@/lib/presenters/status/bid-board-dot-status";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
 import { History } from "lucide-react";
 import Link from "next/link";
@@ -22,13 +23,6 @@ function lotArtistLabel(row: BidBoardRow, artistNameById: Record<string, string>
   const id = row.lot?.artistId;
   if (id && artistNameById[id]) return artistNameById[id];
   return "Unattributed";
-}
-
-function statusVariant(row: BidBoardRow) {
-  if (row.statusLabel === "Winning" || row.statusLabel === "Won") return "success";
-  if (row.statusLabel === "Outbid") return "danger";
-  if (row.lot?.status === "active") return "live";
-  return "neutral";
 }
 
 type Props = {
@@ -83,9 +77,13 @@ export function BidsMobileList({ rows, artistNameById, onOpenHistory }: Props) {
               }
               badges={
                 <>
-                  <StatusBadge variant={statusVariant(row)} size="sm">
-                    {row.statusLabel}
-                  </StatusBadge>
+                  {(() => {
+                    const presentation = bidBoardDotStatus({
+                      statusLabel: row.statusLabel,
+                      lotStatus: lot.status,
+                    });
+                    return <DotStatusPill label={presentation.label} tone={presentation.tone} />;
+                  })()}
                   {row.placement.onBehalf ? <BidPlacementBadge bid={row.bid} /> : null}
                   <span
                     className={

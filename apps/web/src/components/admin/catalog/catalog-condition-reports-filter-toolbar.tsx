@@ -13,7 +13,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 export type ConditionReportLensId = "open" | "pending" | "in_progress" | "fulfilled" | "declined";
 
 const LENSES: { id: ConditionReportLensId; label: string }[] = [
-  { id: "open", label: "Open queue" },
+  { id: "open", label: "Open requests" },
   { id: "pending", label: "Pending" },
   { id: "in_progress", label: "In progress" },
   { id: "fulfilled", label: "Fulfilled" },
@@ -44,7 +44,7 @@ export function CatalogConditionReportsFilterToolbar({
     <CatalogFilterBar
       lenses={lenses}
       activeLensId={activeLensId}
-      lensAriaLabel="Condition report queue"
+      lensAriaLabel="Condition report status"
       sheetTitle="Condition report filters"
       sheetFilters={<span className="sr-only">No additional filters</span>}
       showFilterTrigger={false}

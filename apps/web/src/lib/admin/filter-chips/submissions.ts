@@ -1,4 +1,4 @@
-import type { CatalogActiveFilterChip } from "@/components/admin/catalog/catalog-active-filters-row";
+import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
 
 export function buildSubmissionsActiveFilterChips(
@@ -34,7 +34,7 @@ export function buildSubmissionsActiveFilterChips(
   if (ctx.assignedToMe) {
     chips.push({
       id: "assignedTo",
-      label: "My queue",
+      label: "Assigned to me",
       clearHref: omitParamsHref(base, sp, ["assignedTo"]),
     });
   }

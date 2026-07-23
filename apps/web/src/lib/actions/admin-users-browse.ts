@@ -15,6 +15,7 @@ export type SearchAdminUsersBrowseInput = {
   q?: string;
   limit?: number;
   offset?: number;
+  role?: string;
 };
 
 export type SearchAdminUsersBrowseResult = {
@@ -33,6 +34,7 @@ export async function searchAdminUsersBrowseAction(
     try {
       const data = await getAdminUserList({
         ...(input.q?.trim() ? { q: input.q.trim() } : {}),
+        ...(input.role?.trim() ? { role: input.role.trim() } : {}),
         limit: input.limit ?? 10,
         offset: input.offset ?? 0,
       });

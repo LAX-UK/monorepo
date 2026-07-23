@@ -1,7 +1,6 @@
 "use client";
 
 import { AdminFilterBar } from "@/components/admin/admin-filter-bar";
-import { AdminListSearch } from "@/components/admin/admin-list-search";
 import {
   type CatalogActiveFilterChip,
   CatalogActiveFiltersRow,
@@ -10,15 +9,24 @@ import {
 type Props = {
   activeFilterChips?: readonly CatalogActiveFilterChip[];
   toolbarEnd?: React.ReactNode;
+  /** When true, search moves to the board table header (payments list parity). */
+  stickyOnly?: boolean;
 };
 
-/** Payments list search via shared admin filter chrome (no filter drawer). */
-export function PaymentsFilterToolbar({ activeFilterChips = [], toolbarEnd }: Props) {
+/** Payments list filter chrome — chips in sticky bar; search in board header when stickyOnly. */
+export function PaymentsFilterToolbar({
+  activeFilterChips = [],
+  toolbarEnd,
+  stickyOnly = false,
+}: Props) {
   return (
     <AdminFilterBar
       showFilterTrigger={false}
+      showSearch={!stickyOnly}
       searchSlot={
-        <AdminListSearch placeholder="Search lot, buyer, or payment id…" className="w-full" />
+        stickyOnly ? undefined : (
+          <span className="font-body text-sm text-on-surface-variant">Use board search</span>
+        )
       }
       activeFilters={
         activeFilterChips.length > 0 ? <CatalogActiveFiltersRow chips={activeFilterChips} /> : null

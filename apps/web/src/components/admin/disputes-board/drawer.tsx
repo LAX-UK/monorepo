@@ -2,6 +2,7 @@
 
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { CatalogDomainEventsTimeline } from "@/components/admin/catalog/catalog-domain-events-timeline";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
@@ -34,7 +35,7 @@ export function DisputeDrawerContent({
   const buyerLinkLabel = row.buyerLabel?.trim() || "View buyer profile";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-2">
       <AdminPreviewSheetHeader
         title="Dispute case"
         fullPageHref="/admin/disputes"
@@ -47,7 +48,7 @@ export function DisputeDrawerContent({
 
       <div className="flex flex-wrap items-center gap-2">
         <AdminStatusBadge domain="dispute" status={row.status} />
-        <span className="font-body text-sm tabular-nums text-on-surface">{row.amountLabel}</span>
+        <AdminTableMoneyCell display={row.amountDisplay} emphasis="default" />
       </div>
 
       <dl className="grid grid-cols-1 gap-3 text-sm">

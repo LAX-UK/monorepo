@@ -3,7 +3,6 @@
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
 import { notifyOrphanDraftSales } from "@/lib/admin/bulk-ops/orphan-draft-sale-notify";
 import { handleBulkActionResult } from "@/lib/admin/catalog-bulk-result-handler";
-import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import {
@@ -27,36 +26,14 @@ import { MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, useTransition } from "react";
 
-export type BulkTypedConfirmConfig = {
-  title: string;
-  description: string;
-  actionLabel: string;
-  confirmationPhrase: (selectedCount: number) => string;
-};
+import type { BulkOperation, BulkOperationRunOptions } from "@/lib/admin/bulk-ops/types";
 
-export type BulkReasonPromptConfig = {
-  title: string;
-  description: string;
-  fieldLabel: string;
-  placeholder: string;
-  actionLabel: string;
-  minLength?: number;
-};
-
-export type BulkOperationRunOptions = {
-  confirmationPhrase?: string;
-  reason?: string;
-};
-
-export type BulkOperation = {
-  id: string;
-  label: string;
-  confirm?: string;
-  typedConfirm?: BulkTypedConfirmConfig;
-  reasonPrompt?: BulkReasonPromptConfig;
-  destructive?: boolean;
-  run: (ids: string[], options?: BulkOperationRunOptions) => Promise<ActionResult<unknown>>;
-};
+export type {
+  BulkOperation,
+  BulkOperationRunOptions,
+  BulkReasonPromptConfig,
+  BulkTypedConfirmConfig,
+} from "@/lib/admin/bulk-ops/types";
 
 type Props = {
   selectedIds: string[];

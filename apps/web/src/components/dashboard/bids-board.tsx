@@ -23,10 +23,11 @@ import {
   parseBidsParams,
 } from "@/lib/dashboard/filters/bids/bids-filters";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { bidBoardDotStatus } from "@/lib/presenters/status/bid-board-dot-status";
 import { lotPath } from "@/lib/seo/url";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { toRequiredIsoString } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download, Gavel, History } from "lucide-react";
@@ -42,13 +43,6 @@ function filterBidRows(rows: BidBoardRow[], q: string): BidBoardRow[] {
     const title = r.lot?.title.toLowerCase() ?? "";
     return title.includes(t);
   });
-}
-
-function statusVariant(row: BidBoardRow) {
-  if (row.statusLabel === "Winning" || row.statusLabel === "Won") return "success";
-  if (row.statusLabel === "Outbid") return "danger";
-  if (row.lot?.status === "active") return "live";
-  return "neutral";
 }
 
 function lotArtistLabel(row: BidBoardRow, artistNameById: Record<string, string>): string {
@@ -136,11 +130,13 @@ function bidColumns(ctx: BidColumnContext): ColumnDef<BidBoardRow>[] {
       id: "status",
       header: "Status",
       accessorFn: (r) => r.statusLabel,
-      cell: ({ row }) => (
-        <StatusBadge variant={statusVariant(row.original)} size="sm">
-          {row.original.statusLabel}
-        </StatusBadge>
-      ),
+      cell: ({ row }) => {
+        const presentation = bidBoardDotStatus({
+          statusLabel: row.original.statusLabel,
+          lotStatus: row.original.lot?.status,
+        });
+        return <DotStatusPill label={presentation.label} tone={presentation.tone} />;
+      },
     },
     {
       id: "timer",

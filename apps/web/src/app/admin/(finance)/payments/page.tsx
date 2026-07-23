@@ -1,35 +1,24 @@
 import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { AdminPaymentsBoard } from "@/components/admin/admin-payments-board";
-import type { AdminPaymentTableRow } from "@/components/admin/admin-payments-data-table";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { FilterChipRow } from "@/components/admin/filter-chip-row";
 import { PaymentsFilterToolbar } from "@/components/admin/finance/payments-filter-toolbar";
 import { AdminManualReviewBoard } from "@/components/admin/manual-review-board";
-import { ExportButton } from "@/components/exports/export-button";
-import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
-import { paymentStatusesForChip, paymentsListController } from "@/lib/admin/admin-list-controllers";
-import { buildListHref } from "@/lib/admin/admin-list-params";
-import { detectAnomalies, detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
-import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
-import { manualReviewListController } from "@/lib/admin/manual-review-list-controller";
-import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
+import {
+  buildManualReviewKpiTiles,
+  buildPaymentsListKpiTiles,
+} from "@/lib/admin/finance/build-payments-list-kpi-tiles";
+import { loadAdminPaymentsListPage } from "@/lib/admin/finance/load-payments-list-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminPaymentsKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
-import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminUsersByIds } from "@/lib/data/http/admin.server";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatCompactMoney } from "@/lib/ui/format";
-import { type UserRole, canAccessPlatformAdminRoutes } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import type { Metadata } from "next";
@@ -38,6 +27,12 @@ import { Suspense } from "react";
 export const metadata: Metadata = metadataForPrivate(
   "Payments",
   "Capture, review, and reconcile buyer payments.",
+);
+
+const financeBreadcrumbs = (
+  <CatalogBreadcrumbs
+    segments={[{ label: "Finance", href: "/admin/finance" }, { label: "Payments" }]}
+  />
 );
 
 export default async function AdminPaymentsPage({
@@ -56,336 +51,146 @@ export default async function AdminPaymentsPage({
   }>;
 }) {
   const sp = await searchParams;
-  const manualReviewQuery = manualReviewListController.parseQuery(sp);
-  const manualReviewQueue = manualReviewQuery.manualReview;
-  const manualReviewReasonFilter = manualReviewQuery.reasonFilter;
+  const loaded = await loadAdminPaymentsListPage(sp);
+  const { model, periodDays, paymentsTrend } = loaded;
+  const {
+    manualReviewQueue,
+    hasListFilters,
+    statusChipSpecs,
+    manualReviewReasonChipSpecs,
+    searchFilterChips,
+    exportFilters,
+  } = model;
   const success = safeDecodeAdminErrorParam(sp.success);
-  const periodDays = parseAdminKpiPeriod(sp.period);
   const error = safeDecodeAdminErrorParam(sp.error);
-  const query = paymentsListController.parseQuery(sp);
 
-  const paymentsTrend = await getAdminPaymentsKpiTrend(periodDays).catch(() => ({
-    currentTotal: 0,
-    priorTotal: 0,
-    dailyCounts: [] as number[],
-  }));
+  const statusChips = <FilterChipRow label="Filter by payment status" chips={statusChipSpecs} />;
 
-  let manualReviewRows: Awaited<ReturnType<typeof manualReviewListController.fetch>>["rows"] = [];
-  let manualReviewAllRows: Awaited<ReturnType<typeof manualReviewListController.fetch>>["allRows"] =
-    [];
-  let manualReviewSummary: Awaited<ReturnType<typeof manualReviewListController.fetch>>["summary"] =
-    { total: 0, financeHolds: 0, complianceHolds: 0, amlHolds: 0, sofHolds: 0 };
-  let manualReviewLoadError: string | null = null;
-  if (manualReviewQueue) {
-    try {
-      const result = await manualReviewListController.fetch(manualReviewQuery);
-      manualReviewRows = result.rows;
-      manualReviewAllRows = result.allRows;
-      manualReviewSummary = result.summary;
-    } catch (e) {
-      manualReviewLoadError =
-        e instanceof Error ? e.message : "Could not load manual review payments.";
-    }
-  }
-
-  let loadError: string | null = null;
-  let paymentRows: AdminPaymentTableRow[] = [];
-  let summary = { totalVolume: 0, captured: 0, pending: 0, refunded: 0 };
-  let total = 0;
-  try {
-    const result = await paymentsListController.fetch(query);
-    paymentRows = result.rows;
-    summary = result.paymentsSummary ?? summary;
-    total = result.total ?? paymentRows.length;
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load payments.";
-  }
-
-  const buyerIds = [...new Set(paymentRows.map((row) => row.buyerId).filter(Boolean))];
-  const buyers = await getAdminUsersByIds(buyerIds).catch(() => []);
-  const buyerLabels = new Map(buyers.map((b) => [b.id, b.name || b.email || null]));
-  paymentRows = paymentRows.map((row) => ({
-    ...row,
-    buyerLabel: row.buyerLabel ?? buyerLabels.get(row.buyerId) ?? null,
-  }));
-
-  let navCounts = EMPTY_ADMIN_NAV_COUNTS;
-  try {
-    navCounts = await getAdminNavCounts();
-  } catch {
-    /* use empty */
-  }
-  const paymentAnomalies = detectAnomaliesFromNavCounts(navCounts, {
-    awaitingCaptureVolume: summary.pending,
-  });
-
-  const statusChips = (
-    <FilterChipRow
-      label="Filter by payment status"
-      chips={[
-        {
-          id: "manual-review",
-          label: "Manual review",
-          href: buildListHref("/admin/payments", sp, {
-            manualReview: "1",
-            manualReviewReason: "",
-            status: "",
-            offset: 0,
-          }),
-          active: manualReviewQueue && !manualReviewReasonFilter,
-        },
-        {
-          id: "manual-review-finance",
-          label: "Finance",
-          href: buildListHref("/admin/payments", sp, {
-            manualReview: "1",
-            manualReviewReason: "finance",
-            status: "",
-            offset: 0,
-          }),
-          active: manualReviewQueue && manualReviewReasonFilter === "finance",
-        },
-        {
-          id: "manual-review-compliance",
-          label: "Compliance",
-          href: buildListHref("/admin/payments", sp, {
-            manualReview: "1",
-            manualReviewReason: "compliance",
-            status: "",
-            offset: 0,
-          }),
-          active: manualReviewQueue && manualReviewReasonFilter === "compliance",
-        },
-        ...paymentStatusesForChip.map((s) => ({
-          id: s,
-          label: s,
-          href: buildListHref("/admin/payments", sp, {
-            status: s === "all" ? "" : s,
-            manualReview: "",
-            offset: 0,
-          }),
-          active:
-            !manualReviewQueue &&
-            ((s === "all" && query.status === undefined) || query.status === s),
-        })),
-      ]}
-    />
-  );
-
-  if (manualReviewQueue) {
-    const sessionUser = await getServerSessionUser();
-    const canOpenComplianceQueues = sessionUser
-      ? canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null)
-      : false;
-    const manualAnomalies = detectAnomalies(
-      { manualReviewCount: manualReviewRows.length },
-      { manualReviewCount: 0 },
-    );
-    const financeHoldCount = manualReviewSummary.financeHolds;
-    const complianceHoldCount = manualReviewSummary.complianceHolds;
+  if (manualReviewQueue && loaded.mode === "manual-review") {
+    const financeHoldCount = loaded.summary.financeHolds;
+    const complianceHoldCount = loaded.summary.complianceHolds;
     return (
-      <AdminListShell
+      <CatalogListShell
         variant="queue"
         title="Manual payment review"
         description="Winning payments held before checkout: finance (archived seller, high value) or compliance (AML hold, source of funds). Compliance holds cannot be released until MLRO clears the case."
+        breadcrumbs={
+          <CatalogBreadcrumbs
+            segments={[
+              { label: "Finance", href: "/admin/finance" },
+              { label: "Payments", href: "/admin/payments" },
+              { label: "Manual review" },
+            ]}
+          />
+        }
         hasFilters={manualReviewQueue}
         resetHref="/admin/payments?manualReview=1"
         chips={
           <>
             {statusChips}
-            <FilterChipRow
-              label="Filter by hold reason"
-              chips={[
-                {
-                  id: "mr-all",
-                  label: "All holds",
-                  href: buildListHref("/admin/payments", sp, {
-                    manualReview: "1",
-                    manualReviewReason: "",
-                    offset: 0,
-                  }),
-                  active: !manualReviewReasonFilter,
-                },
-                {
-                  id: "mr-finance",
-                  label: "Finance holds",
-                  href: buildListHref("/admin/payments", sp, {
-                    manualReview: "1",
-                    manualReviewReason: "finance",
-                    offset: 0,
-                  }),
-                  active: manualReviewReasonFilter === "finance",
-                },
-                {
-                  id: "mr-compliance-all",
-                  label: "Compliance holds",
-                  href: buildListHref("/admin/payments", sp, {
-                    manualReview: "1",
-                    manualReviewReason: "compliance",
-                    offset: 0,
-                  }),
-                  active: manualReviewReasonFilter === "compliance",
-                },
-                {
-                  id: "mr-aml",
-                  label: manualReviewReasonLabel("aml_hold"),
-                  href: buildListHref("/admin/payments", sp, {
-                    manualReview: "1",
-                    manualReviewReason: "aml_hold",
-                    offset: 0,
-                  }),
-                  active: manualReviewReasonFilter === "aml_hold",
-                },
-                {
-                  id: "mr-sof",
-                  label: manualReviewReasonLabel("source_of_funds_required"),
-                  href: buildListHref("/admin/payments", sp, {
-                    manualReview: "1",
-                    manualReviewReason: "source_of_funds_required",
-                    offset: 0,
-                  }),
-                  active: manualReviewReasonFilter === "source_of_funds_required",
-                },
-              ]}
-            />
+            <FilterChipRow label="Filter by hold reason" chips={manualReviewReasonChipSpecs} />
           </>
         }
         errorAlert={
-          error || manualReviewLoadError ? (
+          error || loaded.loadError ? (
             <AdminListAlert title="Could not complete action">
-              {manualReviewLoadError ?? error}
+              {loaded.loadError ?? error}
             </AdminListAlert>
           ) : null
         }
         kpiStrip={
-          manualReviewAllRows.length > 0 ? (
+          loaded.allRows.length > 0 ? (
             <div className="space-y-4">
-              <AdminListKpiStrip
+              <AdminTrendKpiBand
                 ariaLabel="Manual review summary"
-                tiles={[
-                  { label: "Total holds", value: manualReviewAllRows.length },
-                  {
-                    label: "Finance holds",
-                    value: financeHoldCount,
-                    ...(financeHoldCount > 0 ? { semanticTone: "warning" as const } : {}),
-                  },
-                  {
-                    label: "Compliance holds",
-                    value: complianceHoldCount,
-                    ...(complianceHoldCount > 0 ? { semanticTone: "danger" as const } : {}),
-                  },
-                ]}
+                tiles={buildManualReviewKpiTiles({
+                  total: loaded.allRows.length,
+                  financeHolds: financeHoldCount,
+                  complianceHolds: complianceHoldCount,
+                })}
               />
-              {manualAnomalies.length > 0 ? (
-                <AdminAnomalyBanner anomalies={manualAnomalies} storageKey="manual-review" />
+              {loaded.anomalies.length > 0 ? (
+                <AdminAnomalyBanner anomalies={loaded.anomalies} storageKey="manual-review" />
               ) : null}
             </div>
-          ) : manualAnomalies.length > 0 ? (
-            <AdminAnomalyBanner anomalies={manualAnomalies} storageKey="manual-review" />
+          ) : loaded.anomalies.length > 0 ? (
+            <AdminAnomalyBanner anomalies={loaded.anomalies} storageKey="manual-review" />
           ) : null
         }
         mobileSummary={
-          manualReviewAllRows.length > 0 ? (
+          loaded.allRows.length > 0 ? (
             <CatalogListMobileSummary
               metrics={[
-                { id: "total", label: "Holds", value: String(manualReviewAllRows.length) },
+                { id: "total", label: "Holds", value: String(loaded.allRows.length) },
                 { id: "finance", label: "Finance", value: String(financeHoldCount) },
                 { id: "compliance", label: "Compliance", value: String(complianceHoldCount) },
               ]}
             />
           ) : null
         }
-        wrapView={false}
-        view={
-          !manualReviewLoadError && (success || manualReviewRows.length > 0) ? (
-            <div className="space-y-4">
-              {success ? (
-                <Alert>
-                  <AlertTitle>Done</AlertTitle>
-                  <AlertDescription>{success}</AlertDescription>
-                </Alert>
-              ) : null}
-              {manualReviewRows.length > 0 ? (
-                <AdminManualReviewBoard
-                  rows={manualReviewRows}
-                  canOpenComplianceQueues={canOpenComplianceQueues}
-                />
-              ) : null}
-            </div>
-          ) : null
-        }
         empty={
-          !manualReviewLoadError && !success && manualReviewRows.length === 0 ? (
+          !loaded.loadError && !success && loaded.rows.length === 0 ? (
             <CatalogListEmptyState
               title="No manual review payments"
               description="Payments in requires_manual_review will appear here — finance or compliance holds."
             />
           ) : null
         }
-      />
+      >
+        {!loaded.loadError && (success || loaded.rows.length > 0) ? (
+          <div className="space-y-4">
+            {success ? (
+              <Alert>
+                <AlertTitle>Done</AlertTitle>
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            ) : null}
+            {loaded.rows.length > 0 ? (
+              <AdminManualReviewBoard
+                rows={loaded.rows}
+                canOpenComplianceQueues={loaded.canOpenComplianceQueues}
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </CatalogListShell>
     );
   }
 
-  const paymentQ = query.q ?? "";
-  const searchFilterChips =
-    paymentQ.trim().length > 0
-      ? [
-          {
-            id: "q",
-            label: `Search: ${paymentQ.trim()}`,
-            clearHref: buildListHref("/admin/payments", sp, { q: "", offset: 0 }),
-          },
-        ]
-      : [];
+  if (loaded.mode !== "payments") {
+    throw new Error("Payment list mode did not match the page model.");
+  }
+  const {
+    rows: paymentRows,
+    summary,
+    total,
+    loadError,
+    anomalies: paymentAnomalies,
+    pagination: boardPagination,
+  } = loaded;
 
-  const pagination =
-    !loadError && total > 0 ? (
-      <CatalogPagination
-        offset={query.offset}
-        limit={query.limit}
-        countOnPage={paymentRows.length}
-        total={total}
-        prevHref={
-          query.offset > 0
-            ? buildListHref("/admin/payments", sp, {
-                offset: Math.max(0, query.offset - query.limit),
-              })
-            : null
-        }
-        nextHref={
-          query.offset + paymentRows.length < total
-            ? buildListHref("/admin/payments", sp, {
-                offset: query.offset + query.limit,
-              })
-            : null
-        }
-      />
-    ) : null;
+  const boardFilterControls = {
+    searchPlaceholder: "Search lot, buyer, or payment id…",
+    sheetTitle: "Payment filters",
+    activeFilterCount: searchFilterChips.length,
+    searchInputId: "admin-payments-table-search",
+  };
 
   return (
-    <AdminListShell
+    <CatalogListShell
       title="Payments"
       description="Filter by status, search payments, and use the drawer for capture/refund on touch devices."
-      hasFilters={Boolean(query.status || paymentQ)}
+      breadcrumbs={financeBreadcrumbs}
+      hasFilters={hasListFilters}
       resetHref="/admin/payments"
-      chips={statusChips}
       filters={
         <PaymentsFilterToolbar
           activeFilterChips={searchFilterChips}
           toolbarEnd={<CatalogKpiPeriodToggle current={periodDays} className="hidden lg:flex" />}
+          stickyOnly
         />
       }
       filtersSelfContained
-      listToolbarEnd={
-        <ExportButton
-          entityType="payments"
-          disabled={Boolean(query.q?.trim())}
-          disabledReason="Clear search to export all payments matching the status filters"
-          filters={{
-            ...(query.status ? { status: query.status } : {}),
-          }}
-        />
-      }
       mobileSummary={
         !loadError && total > 0 ? (
           <div className="space-y-3">
@@ -412,29 +217,11 @@ export default async function AdminPaymentsPage({
             ) : null}
             <AdminTrendKpiBand
               ariaLabel="Payments summary"
-              tiles={[
-                {
-                  label: "Total volume",
-                  value: formatCompactMoney(summary.totalVolume),
-                  compareHint: "Loaded rows",
-                  emphasize: true,
-                },
-                buildTrendKpiTile("Payment events", paymentsTrend, periodDays, {
-                  trendTone: "primary",
-                }),
-                {
-                  label: "Awaiting action",
-                  value: formatCompactMoney(summary.pending),
-                  compareHint: "Pending + authorized",
-                  trendTone: "live-red",
-                },
-                {
-                  label: "Settled",
-                  value: formatCompactMoney(summary.captured),
-                  compareHint: "Captured",
-                  trendTone: "primary",
-                },
-              ]}
+              tiles={buildPaymentsListKpiTiles({
+                summary,
+                trend: paymentsTrend,
+                periodDays,
+              })}
             />
           </>
         ) : null
@@ -442,14 +229,6 @@ export default async function AdminPaymentsPage({
       errorAlert={
         error || loadError ? (
           <AdminListAlert title="Could not load payments">{loadError ?? error}</AdminListAlert>
-        ) : null
-      }
-      wrapView={false}
-      view={
-        !loadError && paymentRows.length > 0 ? (
-          <Suspense fallback={<PageSkeleton variant="table" />}>
-            <AdminPaymentsBoard rows={paymentRows} />
-          </Suspense>
         ) : null
       }
       empty={
@@ -460,7 +239,18 @@ export default async function AdminPaymentsPage({
           />
         ) : null
       }
-      pagination={pagination}
-    />
+    >
+      {!loadError && paymentRows.length > 0 ? (
+        <Suspense fallback={<PageSkeleton variant="table" />}>
+          <AdminPaymentsBoard
+            rows={paymentRows}
+            statusChips={statusChips}
+            filterControls={boardFilterControls}
+            exportFilters={exportFilters}
+            pagination={boardPagination}
+          />
+        </Suspense>
+      ) : null}
+    </CatalogListShell>
   );
 }

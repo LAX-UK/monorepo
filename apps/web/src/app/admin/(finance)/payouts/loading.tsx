@@ -1,14 +1,13 @@
-import { FinanceListPageSkeleton } from "@/components/admin/finance/finance-list-states";
+import { CatalogListPageSkeleton } from "@/components/admin/catalog/catalog-list-states";
 
 export default function PayoutsLoading() {
   return (
-    <FinanceListPageSkeleton
+    <CatalogListPageSkeleton
       title="Payouts"
       description="Loading payouts…"
-      kpiTiles={4}
+      kpiTiles={6}
       tableRows={8}
-      tableColumns={7}
-      showReadinessBand
+      tableColumns={4}
     />
   );
 }

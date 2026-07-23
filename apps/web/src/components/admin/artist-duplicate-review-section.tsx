@@ -1,6 +1,7 @@
 import { AdminArtistDuplicatesTable } from "@/components/admin/admin-artist-duplicates-table";
 import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { AdminArtistDuplicateHit } from "@/lib/data/http/admin.server";
 import {
   getAdminArtistDuplicateCandidates,
@@ -98,9 +99,11 @@ export async function ArtistDuplicateReviewSection() {
                       {artist.displayName}
                     </Link>
                   </h2>
-                  <p className="mt-1 font-body text-xs text-on-surface-variant">
-                    Candidate lots: <span className="tabular-nums">{artist.lotCount}</span> ·
-                    Status: <span>{artist.status}</span>
+                  <p className="mt-1 flex flex-wrap items-center gap-2 font-body text-xs text-on-surface-variant">
+                    Candidate lots: <span className="tabular-nums">{artist.lotCount}</span>
+                    {artist.status ? (
+                      <AdminStatusBadge domain="artist" status={artist.status} />
+                    ) : null}
                   </p>
                 </div>
               </div>

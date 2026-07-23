@@ -1,75 +1,19 @@
 "use client";
 
 import {
-  AdminQuickCreateMenu,
-  type QuickCreateItem,
-} from "@/components/admin/admin-quick-create-menu";
-import {
   type StaffAttentionItem,
   StaffNotificationBell,
 } from "@/components/admin/staff-notification-bell";
-import { Badge } from "@auction/ui/components/badge";
-import { Button } from "@auction/ui/components/button";
-import { Upload } from "lucide-react";
-import Link from "next/link";
 
 type Props = {
-  pendingSubmissionCount?: number;
-  manualReviewCount?: number;
-  attentionItems?: StaffAttentionItem[];
-  canSeeSubmissions?: boolean;
-  quickCreateItems?: readonly QuickCreateItem[];
+  items: StaffAttentionItem[];
 };
 
-/** Global admin header: quick-create menu and attention badges. */
-export function AdminShellHeaderActions({
-  pendingSubmissionCount = 0,
-  manualReviewCount = 0,
-  attentionItems,
-  canSeeSubmissions = false,
-  quickCreateItems = [],
-}: Props) {
-  const bellItems: StaffAttentionItem[] = attentionItems ?? [
-    ...(canSeeSubmissions && pendingSubmissionCount > 0
-      ? [
-          {
-            id: "submissions",
-            href: "/admin/submissions",
-            label: "Pending submissions",
-            count: pendingSubmissionCount,
-          } satisfies StaffAttentionItem,
-        ]
-      : []),
-    ...(manualReviewCount > 0
-      ? [
-          {
-            id: "manual-review",
-            href: "/admin/payments?manualReview=1",
-            label: "Payments — manual review",
-            count: manualReviewCount,
-          } satisfies StaffAttentionItem,
-        ]
-      : []),
-  ];
-
+/** Global admin header: staff attention notifications. */
+export function AdminShellHeaderActions({ items }: Props) {
   return (
     <div className="flex items-center gap-1 sm:gap-2">
-      <StaffNotificationBell items={bellItems} />
-      {canSeeSubmissions && pendingSubmissionCount > 0 ? (
-        <Button variant="ghost" size="sm" asChild className="relative min-h-9 gap-1.5 px-2">
-          <Link
-            href="/admin/submissions"
-            aria-label={`${pendingSubmissionCount} pending submissions`}
-          >
-            <Upload className="size-4" aria-hidden />
-            <span className="hidden font-label text-xs sm:inline">Submissions</span>
-            <Badge className="h-5 min-w-5 rounded-full bg-lot-orange px-1 font-label text-[10px] text-white">
-              {pendingSubmissionCount > 99 ? "99+" : pendingSubmissionCount}
-            </Badge>
-          </Link>
-        </Button>
-      ) : null}
-      <AdminQuickCreateMenu items={quickCreateItems} />
+      <StaffNotificationBell items={items} />
     </div>
   );
 }

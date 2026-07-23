@@ -1,4 +1,7 @@
+import type { SaleDeliveryMode } from "@auction/types";
 import type { SaleSetupStepId } from "./sale-setup-step-ids";
+
+export { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
 
 export type FieldTier = "required" | "before_publish" | "optional";
 
@@ -70,8 +73,6 @@ export function attachExistingLotPanelBody(isOnsite: boolean): string {
     ? "Search draft inventory. Attached lots inherit the sale schedule."
     : "Search draft inventory. Review the lot and adjust its schedule to fit this sale before attaching.";
 }
-
-import type { SaleDeliveryMode } from "@auction/types";
 
 export function deliveryModeExplanation(mode: SaleDeliveryMode): string {
   if (mode === "online") {

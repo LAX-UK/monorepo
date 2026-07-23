@@ -6,7 +6,7 @@ import { UploadProgress } from "@auction/ui/components/upload-progress";
 
 type Props = {
   item: UploadGalleryItem;
-  onRetry?: (fileName: string) => void;
+  onRetry?: (itemId: string) => void;
 };
 
 export function UploadItem({ item, onRetry }: Props) {
@@ -15,7 +15,10 @@ export function UploadItem({ item, onRetry }: Props) {
     <li className="rounded-md border border-outline-variant/25 bg-surface-container-low/50 px-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-body text-xs text-on-surface">{item.fileName}</span>
-        <span className="font-body text-xs text-on-surface-variant">
+        <span
+          className="font-body text-xs text-on-surface-variant"
+          role={item.status === "error" ? "alert" : undefined}
+        >
           {item.message ?? item.status}
         </span>
       </div>
@@ -32,7 +35,7 @@ export function UploadItem({ item, onRetry }: Props) {
           variant="outline"
           size="sm"
           className="mt-2 h-auto px-2 py-1 text-xs"
-          onClick={() => onRetry(item.fileName)}
+          onClick={() => onRetry(item.id)}
         >
           Retry upload
         </Button>

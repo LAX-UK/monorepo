@@ -2,10 +2,11 @@
 
 import { MediaImage } from "@/components/ui/media-image";
 import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
+import { presentationToDotStatus } from "@auction/ui";
 import { TimelineStages } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -88,22 +89,26 @@ export function PortfolioLotGrid({ items, variant = "split" }: Props) {
               <div className="flex min-w-0 flex-col">
                 <div className="space-y-2 p-4 pb-2">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <StatusBadge
-                      variant={
-                        row.complianceReason
-                          ? "warning"
-                          : row.paymentStatus === "captured"
-                            ? "success"
-                            : "warning"
-                      }
-                      size="sm"
-                    >
-                      {row.settlementLabel}
-                    </StatusBadge>
+                    {(() => {
+                      const variant = row.complianceReason
+                        ? ("warning" as const)
+                        : row.paymentStatus === "captured"
+                          ? ("success" as const)
+                          : ("warning" as const);
+                      const presentation = presentationToDotStatus({
+                        label: row.settlementLabel,
+                        variant,
+                      });
+                      return <DotStatusPill label={presentation.label} tone={presentation.tone} />;
+                    })()}
                     {row.complianceReason ? (
-                      <StatusBadge variant="danger" size="sm">
-                        Compliance hold
-                      </StatusBadge>
+                      <DotStatusPill
+                        label="Compliance hold"
+                        tone={
+                          presentationToDotStatus({ label: "Compliance hold", variant: "danger" })
+                            .tone
+                        }
+                      />
                     ) : null}
                   </div>
                   <h3 className="font-headline text-2xl font-light leading-tight group-hover:italic">

@@ -1,4 +1,4 @@
-import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-section";
+import { LotDocumentsTabBoard } from "@/components/admin/lot-detail/lot-documents-tab-board";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 
@@ -11,5 +11,5 @@ export default async function AdminLotDocumentsPage({ params }: Props) {
   await loadAdminLotDetail(id);
   const documents = await getServerLotDocuments(id).catch(() => []);
 
-  return <LotDocumentsSection lotId={id} initialDocuments={documents} />;
+  return <LotDocumentsTabBoard lotId={id} initialDocuments={documents} />;
 }

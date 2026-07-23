@@ -11,9 +11,10 @@ type Props = {
   rows: AdminSofTableRow[];
   status: SofListStatus;
   canReopen: boolean;
+  listReturnTarget?: string | undefined;
 };
 
-export function SofMobileCards({ rows, status, canReopen }: Props) {
+export function SofMobileCards({ rows, status, canReopen, listReturnTarget }: Props) {
   if (status === "rejected") {
     return (
       <ul className="space-y-2">
@@ -40,7 +41,9 @@ export function SofMobileCards({ rows, status, canReopen }: Props) {
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" size="sm" asChild>
-                  <Link href={buildSofCaseDetailHref(row.id, status)}>View case</Link>
+                  <Link href={buildSofCaseDetailHref(row.id, status, listReturnTarget)}>
+                    View case
+                  </Link>
                 </Button>
                 {canReopen ? (
                   <SofReopenButton caseId={row.id} variant="outline" size="sm">
@@ -91,7 +94,7 @@ export function SofMobileCards({ rows, status, canReopen }: Props) {
               </p>
             )}
             <Link
-              href={buildSofCaseDetailHref(row.id, status)}
+              href={buildSofCaseDetailHref(row.id, status, listReturnTarget)}
               className="absolute inset-0 z-0 rounded-lg"
               aria-label={
                 status === "pending"

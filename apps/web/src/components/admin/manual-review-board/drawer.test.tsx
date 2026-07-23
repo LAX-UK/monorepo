@@ -19,6 +19,7 @@ const payment = {
   winnerEmail: "buyer@example.com",
   sellerDisplayName: "Archived Seller Ltd",
   amount: "1200.00",
+  amountDisplay: { primary: "£1,200.00" },
   currency: "GBP",
   manualReviewReason: "seller_archived" as const,
   archiveReason: "Seller closed account",

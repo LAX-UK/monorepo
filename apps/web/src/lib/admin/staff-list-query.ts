@@ -1,6 +1,7 @@
-import type { CatalogActiveFilterChip } from "@/components/admin/catalog/catalog-active-filters-row";
 import { buildListHref, firstString } from "@/lib/admin/admin-list-params";
+import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
+import type { GetAdminUserListParams } from "@/lib/data/http/admin-users.types";
 import type { UserStaffRole } from "@auction/types";
 import { userStaffRoles } from "@auction/types";
 
@@ -33,6 +34,20 @@ export function parseStaffListFilters(sp: SearchParams): StaffListFilters {
     ...(q ? { q } : {}),
     ...(staffRole ? { staffRole } : {}),
     ...(suspendedOnly ? { suspendedOnly: true } : {}),
+  };
+}
+
+export function staffListFiltersToGetAdminUserListParams(
+  filters: StaffListFilters,
+  paging: { limit: number; offset: number },
+): GetAdminUserListParams {
+  return {
+    limit: paging.limit,
+    offset: paging.offset,
+    role: "staff",
+    ...(filters.q ? { q: filters.q } : {}),
+    ...(filters.staffRole ? { staffRole: filters.staffRole } : {}),
+    ...(filters.suspendedOnly ? { suspendedOnly: true } : {}),
   };
 }
 

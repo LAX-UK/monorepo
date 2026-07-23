@@ -24,5 +24,5 @@ export function PaletteItemBadge({ item }: { item: PaletteItem }) {
     );
   }
 
-  return <AdminQueueCountBadge count={count} size="sm" />;
+  return <AdminQueueCountBadge count={count} />;
 }

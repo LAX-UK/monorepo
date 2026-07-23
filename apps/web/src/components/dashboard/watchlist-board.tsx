@@ -8,12 +8,12 @@ import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboar
 import { DashboardLotCountdown } from "@/components/dashboard/primitives/dashboard-lot-countdown";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { MediaImage } from "@/components/ui/media-image";
+import { StatusChip } from "@/components/ui/status-chip";
 import { removeWatchlistLot } from "@/lib/data/http/watchlist.client";
 import { lotPath } from "@/lib/seo/url";
 import { BulkActionBar } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { DataTable } from "@auction/ui/components/data-table";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -76,11 +76,7 @@ function watchlistColumns(artistNameById: Record<string, string>): ColumnDef<Wat
       id: "status",
       header: "Status",
       accessorFn: (row) => row.status,
-      cell: ({ row }) => (
-        <StatusBadge variant={row.original.status === "active" ? "live" : "neutral"}>
-          {row.original.status}
-        </StatusBadge>
-      ),
+      cell: ({ row }) => <StatusChip domain="lot" status={row.original.status} />,
     },
     {
       id: "closes",

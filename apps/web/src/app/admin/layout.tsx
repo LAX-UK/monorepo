@@ -7,7 +7,7 @@ import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { FinanceShell } from "@/components/shell/finance-shell";
 import { StaffShell } from "@/components/shell/staff-shell";
-import { canAccess, quickCreateItemsFor } from "@/lib/admin/dashboard-access";
+import { buildStaffHeaderAttentionItems } from "@/lib/admin/build-staff-header-attention-items";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
@@ -26,7 +26,6 @@ import {
 } from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import {
-  SUBMISSIONS_ACCESS,
   type UserRole,
   type UserStaffRole,
   canAccessFinanceAdminRoutes,
@@ -112,15 +111,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       }
     : { kind: "self" };
 
-  const canSeeSubmissions = canAccess(userRole, staffRole, SUBMISSIONS_ACCESS);
-  const quickCreateItems = quickCreateItemsFor(userRole, staffRole);
-
-  const headerRightSlot = (
+  const headerActionsSlot = (
     <AdminShellHeaderActions
-      pendingSubmissionCount={pendingSubmissionCount}
-      manualReviewCount={navCounts.manualReviewCount}
-      canSeeSubmissions={canSeeSubmissions}
-      quickCreateItems={quickCreateItems}
+      items={buildStaffHeaderAttentionItems(navCounts, userRole, staffRole)}
     />
   );
 
@@ -146,7 +139,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               navCounts={navCounts}
               cookieDensity={cookieDensity}
               acting={acting}
-              headerRightSlot={headerRightSlot}
+              headerActionsSlot={headerActionsSlot}
               topSlot={<WelcomeBackToast />}
             >
               {children}
@@ -159,7 +152,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               navCounts={navCounts}
               cookieDensity={cookieDensity}
               acting={acting}
-              headerRightSlot={headerRightSlot}
+              headerActionsSlot={headerActionsSlot}
               contextBanner={<PlatformStaffContextBanners />}
               topSlot={<WelcomeBackToast />}
             >

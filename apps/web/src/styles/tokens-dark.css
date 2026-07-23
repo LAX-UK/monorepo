@@ -1,0 +1,232 @@
+/* Light theme: native controls match semantic tokens */
+html {
+  color-scheme: light;
+}
+
+/* Dark theme: semantic tokens derived from Brand Identity v1.0 */
+html.dark {
+  color-scheme: dark;
+  --color-accent-brand: var(--color-accent-gold);
+  /* Marketing surfaces in dark */
+  --color-page-bg: #121414;
+  --color-footer-bg: #0d0f0f;
+  --color-footer-soft: #0d0f0f;
+  --color-nav-border: #333534;
+  --color-hero-cream: #1e2020;
+  --color-nav-text: var(--color-brand-light-cream);
+  --color-cta-bg: var(--color-brand-light-cream);
+  --color-cta-on: var(--color-brand-obsidian);
+  --color-scrim-hero: rgba(0, 0, 0, 0.62);
+  --color-scrim-hero-mid: rgba(0, 0, 0, 0.5);
+  --color-scrim-hero-strong: rgba(0, 0, 0, 0.72);
+  --color-scrim-hero-soft: rgba(0, 0, 0, 0.5);
+  --color-scrim-auth: rgba(255, 255, 255, 0.06);
+  --color-input-border: var(--color-brand-light-gray);
+  --color-input-border-focus: var(--color-brand-light-cream);
+  --color-hero-foreground: #fafafa;
+  --color-success: #56d364;
+  --color-on-success: #0d1117;
+
+  --color-on-surface: var(--color-brand-light-cream);
+  --color-surface-container-high: #383a39;
+  --color-surface-container-low: #2d2f2e;
+  --color-on-surface-variant: #c9c5bc;
+  --color-on-primary-fixed-variant: var(--color-accent-gold);
+  --color-primary: var(--color-brand-light-cream);
+  --color-outline: var(--color-brand-light-gray);
+  --color-on-secondary-fixed-variant: #e0e0e0;
+  --color-surface-dim: #141616;
+  --color-secondary: color-mix(in srgb, var(--color-brand-midnight) 75%, white);
+  --color-on-error: #690005;
+  --color-on-background: var(--color-brand-light-cream);
+  --color-tertiary: #b0b1b1;
+  --color-error: #ffb4ab;
+  --color-surface-tint: color-mix(in srgb, var(--color-brand-midnight) 75%, white);
+  --color-surface-container: #333534;
+  --color-on-tertiary-container: #e2e3e3;
+  --color-on-tertiary-fixed-variant: #d1d0d0;
+  --color-surface-container-highest: #3e403f;
+  --color-tertiary-fixed-dim: #7a7a7a;
+  --color-error-container: #93000a;
+  --color-on-tertiary-fixed: #e3e2e2;
+  --color-tertiary-fixed: #2e3131;
+  --color-primary-container: color-mix(in srgb, var(--color-brand-midnight) 35%, black);
+  --color-primary-fixed-dim: color-mix(in srgb, var(--color-accent-gold) 55%, black);
+  --color-secondary-container: color-mix(in srgb, var(--color-brand-midnight) 25%, black);
+  --color-on-primary-container: var(--color-brand-light-cream);
+  --color-inverse-surface: #e4e2de;
+  --color-on-secondary-fixed: #e8e7e7;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #e8e7e7;
+  --color-on-error-container: #ffdad4;
+  --color-surface-bright: #343636;
+  --color-surface-variant: #444746;
+  --color-on-primary-fixed: var(--color-brand-light-cream);
+  --color-secondary-fixed-dim: #7a7878;
+  --color-primary-fixed: color-mix(in srgb, var(--color-accent-gold) 25%, black);
+  --color-on-primary: var(--color-brand-obsidian);
+  --color-surface: #1a1c1c;
+  --color-on-tertiary: #ffffff;
+  --color-inverse-on-surface: #1a1c1c;
+  --color-outline-variant: #5c5a54;
+  --color-divider-soft: var(--color-outline-variant);
+  --color-surface-container-lowest: #0f1111;
+  --color-tertiary-container: #5e6363;
+  --color-secondary-fixed: #8e8d8d;
+  --color-inverse-primary: var(--color-brand-midnight);
+  --color-background: #121414;
+  --color-link: color-mix(in srgb, var(--color-brand-midnight) 60%, white);
+
+  --color-warning: oklch(0.78 0.12 85);
+  --color-on-warning: oklch(0.18 0.03 85);
+  --color-warning-container: oklch(0.28 0.06 85);
+  --color-danger: oklch(0.72 0.14 25);
+  --color-on-danger: oklch(0.15 0.02 25);
+  --color-danger-container: oklch(0.28 0.08 25);
+  --color-positive: oklch(0.72 0.12 145);
+  --color-on-positive: oklch(0.15 0.02 145);
+  --color-negative: oklch(0.72 0.14 25);
+  --color-neutral-delta: oklch(0.65 0.02 250);
+  --color-trend-line: oklch(0.7 0.06 250 / 0.4);
+
+  /* Dashboard shell chrome — mirror @theme shell tokens in globals.css */
+  --color-shell-page-bg: var(--color-background);
+  --color-shell-search-bg: var(--color-surface-container-low);
+  --color-shell-stroke: var(--color-nav-border);
+  --color-info: color-mix(in srgb, var(--color-accent-blue) 72%, white);
+  --color-info-container: color-mix(
+    in srgb,
+    var(--color-brand-midnight) 45%,
+    var(--color-surface-container)
+  );
+  --color-nav-active-bg: var(--color-secondary-container);
+  --color-nav-active-border: var(--color-secondary);
+}
+
+@keyframes bidPriceBump {
+  0% {
+    transform: scale(1.04);
+    color: var(--color-accent-gold);
+  }
+  100% {
+    transform: scale(1);
+    color: var(--color-primary);
+  }
+}
+
+@keyframes revealWipeIn {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+@keyframes revealZoomIn {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wipe-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zoom-bg {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes tick {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.live-dot-pulse {
+  animation: pulse-dot var(--motion-duration-pulse) var(--motion-ease-standard) infinite;
+}
+
+.fade-up,
+.fade-up-d1,
+.fade-up-d2,
+.fade-up-d3,
+.fade-up-d4 {
+  animation: fade-up var(--motion-duration-lg, 520ms) var(--motion-ease-emphasize) both;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+.fade-up-d1 {
+  --reveal-delay: 150ms;
+}
+
+.fade-up-d2 {
+  --reveal-delay: 280ms;
+}
+
+.fade-up-d3 {
+  --reveal-delay: 420ms;
+}
+
+.fade-up-d4 {
+  --reveal-delay: 550ms;
+}
+
+.wipe-in {
+  animation: wipe-in var(--motion-duration-xl) var(--motion-duration-md)
+    var(--motion-ease-emphasize) both;
+}
+
+.zoom-bg {
+  animation: zoom-bg var(--motion-duration-2xl) var(--motion-ease-emphasize) both;
+}
+
+.tick-in {
+  animation: tick var(--motion-duration-md, 320ms) var(--motion-ease-decelerate) both;
+}

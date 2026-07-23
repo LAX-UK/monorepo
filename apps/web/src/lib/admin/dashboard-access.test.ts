@@ -1,11 +1,6 @@
 import type { DashboardWidgetState } from "@/lib/admin/dashboard-widgets.vm";
 import { describe, expect, it } from "vitest";
-import {
-  allowedDashboardWidgets,
-  hubQuickLinksFor,
-  isWidgetAllowed,
-  quickCreateItemsFor,
-} from "./dashboard-access";
+import { allowedDashboardWidgets, hubQuickLinksFor, isWidgetAllowed } from "./dashboard-access";
 
 describe("dashboard-access", () => {
   const allWidgets: DashboardWidgetState[] = [
@@ -107,43 +102,6 @@ describe("dashboard-access", () => {
       expect(links.map((l) => l.href)).toContain("/admin/lot-fulfilment");
       expect(links.map((l) => l.href)).toContain("/admin/submissions");
       expect(links.map((l) => l.href)).toContain("/admin/clients");
-    });
-  });
-
-  describe("quickCreateItemsFor", () => {
-    it("super_admin can create all items", () => {
-      const items = quickCreateItemsFor("staff", "super_admin");
-      expect(items).toHaveLength(4);
-      expect(items.map((i) => i.id)).toEqual(["new-lot", "new-sale", "new-artist", "invite-user"]);
-    });
-
-    it("client_advisor cannot create lot, sale, or artist", () => {
-      const items = quickCreateItemsFor("staff", "client_advisor");
-      expect(items.map((i) => i.id)).not.toContain("new-lot");
-      expect(items.map((i) => i.id)).not.toContain("new-sale");
-      expect(items.map((i) => i.id)).not.toContain("new-artist");
-    });
-
-    it("operations can create lot, sale, and artist but not invite", () => {
-      const items = quickCreateItemsFor("staff", "operations");
-      expect(items.map((i) => i.id)).toContain("new-lot");
-      expect(items.map((i) => i.id)).toContain("new-sale");
-      expect(items.map((i) => i.id)).toContain("new-artist");
-      expect(items.map((i) => i.id)).not.toContain("invite-user");
-    });
-
-    it("specialist cannot create anything except maybe artist (if they have review access)", () => {
-      const items = quickCreateItemsFor("staff", "specialist");
-      expect(items.map((i) => i.id)).not.toContain("new-lot");
-      expect(items.map((i) => i.id)).not.toContain("new-sale");
-      expect(items.map((i) => i.id)).not.toContain("invite-user");
-    });
-
-    it("catalogue_manager can create lot and artist", () => {
-      const items = quickCreateItemsFor("staff", "catalogue_manager");
-      expect(items.map((i) => i.id)).toContain("new-lot");
-      expect(items.map((i) => i.id)).toContain("new-artist");
-      expect(items.map((i) => i.id)).not.toContain("new-sale");
     });
   });
 });

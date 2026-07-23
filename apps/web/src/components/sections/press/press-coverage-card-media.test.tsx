@@ -34,4 +34,43 @@ describe("PressCoverageCardMedia", () => {
       expect(screen.getByRole("img", { name: /Press press coverage placeholder/i })).toBeTruthy();
     });
   });
+
+  it("renders placeholder in fill layout when no imageUrl is provided", () => {
+    const { container } = render(
+      <PressCoverageCardMedia
+        layout="fill"
+        imageUrl={null}
+        mentionType="feature"
+        outletName="Art Review"
+        headline="Sale highlights"
+      />,
+    );
+
+    expect(
+      screen.getByRole("img", { name: /Art Review press coverage placeholder/i }),
+    ).toBeTruthy();
+    const root = container.firstElementChild;
+    expect(root?.className).toContain("h-full");
+    expect(root?.className).not.toContain("aspect-video");
+  });
+
+  it("falls back to placeholder in fill layout when the remote image fails", async () => {
+    const { container } = render(
+      <PressCoverageCardMedia
+        layout="fill"
+        imageUrl="https://cdn.example.com/broken.jpg"
+        mentionType="quote"
+        outletName="Times"
+        headline="Quote piece"
+      />,
+    );
+
+    const img = container.querySelector("img");
+    expect(img).toBeTruthy();
+    img?.dispatchEvent(new Event("error"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: /Times press coverage placeholder/i })).toBeTruthy();
+    });
+  });
 });

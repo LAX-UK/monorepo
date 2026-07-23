@@ -56,16 +56,6 @@ export const adminUserDetailRowSchema = z
     };
   }) as z.ZodType<AdminUserDetailPayload>;
 
-export const adminUserListResultSchema = z
-  .preprocess(toObjectRecord, z.record(z.unknown()))
-  .transform((row): { rows: AdminUserRow[]; total: number } => {
-    const rawRows = Array.isArray(row.rows) ? row.rows : [];
-    return {
-      rows: rawRows.map((entry) => adminUserRowSchema.parse(entry)),
-      total: Number(row.total ?? rawRows.length),
-    };
-  }) as z.ZodType<{ rows: AdminUserRow[]; total: number }>;
-
 export const adminKycSessionRowSchema = z
   .preprocess(toObjectRecord, z.record(z.unknown()))
   .transform(

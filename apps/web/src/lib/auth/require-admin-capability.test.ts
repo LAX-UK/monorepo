@@ -16,7 +16,6 @@ vi.mock("next/navigation", () => ({
 }));
 
 import {
-  ANALYTICS_ACCESS,
   CLIENT_BIDS_ACCESS,
   LOTS_ACCESS,
   USERS_DIRECTORY_ACCESS,
@@ -79,15 +78,5 @@ describe("requireAdminCapability", () => {
     });
     const user = await requireAdminCapability(CLIENT_BIDS_ACCESS, "/admin/clients");
     expect(user.staffRole).toBe("client_advisor");
-  });
-
-  it("redirects specialist away from analytics", async () => {
-    getServerSessionUser.mockResolvedValue({
-      role: "staff",
-      staffRole: "specialist",
-    });
-    await expect(requireAdminCapability(ANALYTICS_ACCESS, "/admin/analytics")).rejects.toThrow(
-      "REDIRECT:",
-    );
   });
 });

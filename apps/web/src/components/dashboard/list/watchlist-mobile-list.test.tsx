@@ -87,7 +87,7 @@ describe("WatchlistMobileList", () => {
       />,
     );
 
-    expect(screen.getAllByText("Live")).toHaveLength(2);
-    expect(screen.queryByText("Closed")).not.toBeInTheDocument();
+    expect(screen.getAllByText("12:00:00")).toHaveLength(2);
+    expect(screen.getByText("Ended")).toBeInTheDocument();
   });
 });

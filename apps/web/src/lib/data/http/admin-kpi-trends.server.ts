@@ -52,6 +52,22 @@ export async function getAdminLotsKpiTrend(
   return fetchAdminKpiTrend("/admin/kpi/lots-trend", periodDays, "getAdminLotsKpiTrend");
 }
 
+export async function getAdminLotsHammerKpiTrend(
+  periodDays: AdminKpiPeriodDays,
+): Promise<AdminKpiTrendBundle> {
+  return fetchAdminKpiTrend(
+    "/admin/kpi/lots-hammer-trend",
+    periodDays,
+    "getAdminLotsHammerKpiTrend",
+  );
+}
+
+export async function getAdminLotsEndedKpiTrend(
+  periodDays: AdminKpiPeriodDays,
+): Promise<AdminKpiTrendBundle> {
+  return fetchAdminKpiTrend("/admin/kpi/lots-ended-trend", periodDays, "getAdminLotsEndedKpiTrend");
+}
+
 export async function getAdminSalesKpiTrend(
   periodDays: AdminKpiPeriodDays,
 ): Promise<AdminKpiTrendBundle> {

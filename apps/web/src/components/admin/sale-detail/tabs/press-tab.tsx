@@ -1,13 +1,38 @@
 "use client";
 
-import { CatalogDetailTabPanel } from "@/components/admin/catalog";
-import { ConfirmedRemoveButton } from "@/components/admin/confirmed-remove-button";
-import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
+import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { DetailBoardKpiStrip, DetailBoardToolbar } from "@/components/admin/catalog/detail-board";
+import {
+  CatalogMediaAddPanel,
+  CatalogMediaCollectionActions,
+  CatalogMediaInspector,
+  CatalogMediaWorkspace,
+  MediaReorderLiveRegion,
+  useMediaReorderAnnouncement,
+} from "@/components/admin/catalog/media";
+import { PressItemCard } from "@/components/admin/sale-detail/tabs/press-item-card";
+import {
+  EMPTY_PRESS_FORM,
+  MENTION_TYPE_OPTIONS,
+  type PressFormState,
+  PressMentionForm,
+} from "@/components/admin/sale-detail/tabs/press-mention-form";
+import {
+  type PressItem,
+  pressItemsToCoverage,
+  toPressItem,
+  usePressMutations,
+} from "@/components/admin/sale-detail/tabs/use-press-mutations";
+import { useMediaCollectionUi } from "@/lib/admin/media/use-media-collection-ui";
+import { buildSalePressCardImage } from "@/lib/data/view-models/sale-press-tab.presenters";
+import {
+  buildSalePressKpiTiles,
+  matchesSalePressSearch,
+} from "@/lib/data/view-models/sale-press-tab.vm";
 import { notify } from "@/lib/ui/notify";
 import type { SalePressMentionType, SalePressRef } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { DatePicker } from "@auction/ui/components/date-picker";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import {
@@ -18,128 +43,130 @@ import {
   SelectValue,
 } from "@auction/ui/components/select";
 import { Textarea } from "@auction/ui/components/textarea";
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
-import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { ExternalLinkIcon, GripVerticalIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type PressItem = SalePressRef & { id: string };
-
-const MENTION_TYPE_OPTIONS: { value: SalePressMentionType; label: string }[] = [
-  { value: "feature", label: "Feature" },
-  { value: "interview", label: "Interview" },
-  { value: "quote", label: "Quote" },
-  { value: "roundup", label: "Roundup" },
-];
-
-const NO_MENTION_TYPE = "__none__";
-
-// ─── Empty add form ────────────────────────────────────────────────────────────
-
-type PressForm = {
-  url: string;
-  headline: string;
-  outletName: string;
-  publishedAt: string;
-  excerpt: string;
-  mentionType: SalePressMentionType | "";
-};
-
-const EMPTY_FORM: PressForm = {
-  url: "",
-  headline: "",
-  outletName: "",
-  publishedAt: "",
-  excerpt: "",
-  mentionType: "",
-};
-
-// ─── Sortable row ──────────────────────────────────────────────────────────────
-
-function PressItemRow({
+function PressItemInspectorFields({
   item,
+  index,
   disabled,
-  onRemoveConfirmed,
+  onChange,
+  onMentionTypeChange,
 }: {
   item: PressItem;
+  index: number;
   disabled: boolean;
-  onRemoveConfirmed: () => Promise<void>;
+  onChange: (patch: Partial<PressItem>) => void;
+  onMentionTypeChange: (value: SalePressMentionType | null) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: item.id,
-  });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   return (
-    <li
-      ref={setNodeRef}
-      style={style}
-      className="flex items-start gap-3 rounded-lg border border-border-hairline bg-surface-container-lowest p-3"
-    >
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        {...attributes}
-        {...listeners}
-        className="mt-0.5 shrink-0 cursor-grab text-on-surface-variant/50 hover:text-on-surface-variant active:cursor-grabbing"
-        aria-label="Drag to reorder"
-        disabled={disabled}
-      >
-        <GripVerticalIcon className="size-4" aria-hidden />
-      </Button>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-body text-sm font-medium text-on-surface">{item.headline}</p>
-        <div className="mt-0.5 flex flex-wrap items-center gap-2">
-          <span className="font-label text-xs text-on-surface-variant">{item.outletName}</span>
-          {item.publishedAt ? (
-            <span className="font-body text-xs text-on-surface-variant/60">{item.publishedAt}</span>
-          ) : null}
-          {item.mentionType ? (
-            <span className="rounded-full border border-outline-variant/30 px-1.5 py-0.5 font-label text-[10px] uppercase tracking-wide text-on-surface-variant/70">
-              {item.mentionType}
-            </span>
-          ) : null}
-        </div>
-        {item.excerpt ? (
-          <p className="mt-1 line-clamp-2 font-body text-xs text-on-surface-variant/60">
-            {item.excerpt}
-          </p>
-        ) : null}
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded p-1 text-on-surface-variant/50 hover:text-link focus:outline-none focus:ring-2 focus:ring-ring"
-          aria-label={"Open article in new tab"}
-        >
-          <ExternalLinkIcon className="size-4" aria-hidden />
-        </a>
-        <ConfirmedRemoveButton
-          ariaLabel="Remove press link"
-          confirmTitle="Remove press link?"
-          confirmBody={`Remove "${item.headline}" from public press coverage? This cannot be undone.`}
-          disabled={Boolean(disabled)}
-          loading={Boolean(disabled)}
-          className="rounded p-1"
-          onConfirmed={onRemoveConfirmed}
+    <>
+      <div>
+        <Label htmlFor={`press-headline-${item.id}`}>Headline</Label>
+        <Input
+          id={`press-headline-${item.id}`}
+          value={item.headline}
+          onChange={(event) => onChange({ headline: event.target.value })}
+          aria-label={`Headline for press item ${index + 1}`}
+          placeholder="Headline"
+          maxLength={500}
+          disabled={disabled}
+          className="mt-1"
         />
       </div>
-    </li>
+      <div>
+        <Label htmlFor={`press-outlet-${item.id}`}>Outlet</Label>
+        <Input
+          id={`press-outlet-${item.id}`}
+          value={item.outletName}
+          onChange={(event) => onChange({ outletName: event.target.value })}
+          aria-label={`Outlet for press item ${index + 1}`}
+          placeholder="Outlet"
+          maxLength={200}
+          disabled={disabled}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor={`press-date-${item.id}`}>Publication date</Label>
+        <DatePicker
+          id={`press-date-${item.id}`}
+          value={item.publishedAt ?? ""}
+          onChange={(value) => onChange({ publishedAt: value })}
+          placeholder="Publication date"
+          disabled={disabled}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor={`press-url-${item.id}`}>Article URL</Label>
+        <Input
+          id={`press-url-${item.id}`}
+          type="url"
+          value={item.url}
+          onChange={(event) => onChange({ url: event.target.value })}
+          aria-label={`Article URL for press item ${index + 1}`}
+          placeholder="Article URL"
+          disabled={disabled}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor={`press-type-${item.id}`}>Mention type</Label>
+        <Select
+          value={item.mentionType ?? "__none__"}
+          onValueChange={(value) =>
+            onMentionTypeChange(value === "__none__" ? null : (value as SalePressMentionType))
+          }
+          disabled={disabled}
+        >
+          <SelectTrigger
+            id={`press-type-${item.id}`}
+            aria-label={`Mention type for press item ${index + 1}`}
+            className="mt-1"
+          >
+            <SelectValue placeholder="Mention type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">No mention type</SelectItem>
+            {MENTION_TYPE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor={`press-excerpt-${item.id}`}>Excerpt</Label>
+        <Textarea
+          id={`press-excerpt-${item.id}`}
+          value={item.excerpt ?? ""}
+          onChange={(event) => onChange({ excerpt: event.target.value })}
+          aria-label={`Excerpt for press item ${index + 1}`}
+          placeholder="Excerpt or pull quote"
+          maxLength={280}
+          rows={3}
+          disabled={disabled}
+          className="mt-1"
+        />
+      </div>
+    </>
   );
 }
-
-// ─── Main tab ──────────────────────────────────────────────────────────────────
 
 type Props = {
   saleId: string;
@@ -148,23 +175,75 @@ type Props = {
 };
 
 function toItem(ref: SalePressRef, index: number): PressItem {
-  return { ...ref, id: `${index}::${ref.url}` };
+  return toPressItem(ref, index);
 }
 
 function itemsToPressCoverage(items: PressItem[]): SalePressRef[] {
-  return items.map(({ id: _id, ...r }) => r);
+  return pressItemsToCoverage(items);
 }
 
 export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props) {
-  const router = useRouter();
+  const { saving, persistPressCoverage } = usePressMutations(saleId);
   const [items, setItems] = useState<PressItem[]>(() => initialPressCoverage.map(toItem));
-  const [form, setForm] = useState<PressForm>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<PressFormState>(EMPTY_PRESS_FORM);
+  const [search, setSearch] = useState("");
+  const [inspectId, setInspectId] = useState<string | null>(null);
+  const { message, announceMove } = useMediaReorderAnnouncement();
+  const {
+    showAdd,
+    showManage,
+    setShowManage,
+    addButtonRef,
+    manageButtonRef,
+    addPanelRef,
+    closeAddPanel,
+    toggleAdd,
+    toggleManage,
+  } = useMediaCollectionUi({
+    collectionLength: items.length,
+    inspectTarget: inspectId,
+    setInspectTarget: setInspectId,
+  });
 
   const savedRef = useRef(JSON.stringify(initialPressCoverage));
   const dirty = JSON.stringify(items.map(({ id: _id, ...r }) => r)) !== savedRef.current;
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const visibleItems = useMemo(
+    () => items.filter((item) => matchesSalePressSearch(item, search)),
+    [items, search],
+  );
+  const reorderFiltered = search.trim().length > 0;
+
+  useEffect(() => {
+    if (reorderFiltered) setShowManage(false);
+  }, [reorderFiltered, setShowManage]);
+
+  const moveItem = (index: number, offset: -1 | 1) => {
+    const target = index + offset;
+    if (target < 0 || target >= items.length) return;
+    announceMove(`press item ${index + 1}`, index, target);
+    setItems((prev) => arrayMove(prev, index, target));
+  };
+
+  const updateItem = (itemId: string, patch: Partial<PressItem>) => {
+    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)));
+  };
+
+  const updateMentionType = (itemId: string, mentionType: SalePressMentionType | null) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
+        if (mentionType) return { ...item, mentionType };
+        const { mentionType: _mentionType, ...withoutMentionType } = item;
+        return withoutMentionType;
+      }),
+    );
+  };
 
   const addLink = () => {
     const url = form.url.trim();
@@ -185,231 +264,188 @@ export function SalePressTab({ saleId, initialPressCoverage, canManage }: Props)
     if (form.excerpt?.trim()) ref.excerpt = form.excerpt.trim();
     if (form.mentionType) ref.mentionType = form.mentionType as SalePressMentionType;
     setItems((prev) => [...prev, toItem(ref, prev.length)]);
-    setForm(EMPTY_FORM);
+    setForm(EMPTY_PRESS_FORM);
   };
 
-  const persistPressCoverage = useCallback(
-    async (nextItems: PressItem[]): Promise<boolean> => {
-      setSaving(true);
-      try {
-        const pressCoverage = itemsToPressCoverage(nextItems);
-        const result = await adminUpdateSaleResultAction(saleId, { pressCoverage });
-        if (result.ok) {
-          savedRef.current = JSON.stringify(pressCoverage);
-          router.refresh();
-          return true;
-        }
-        notify.error("Save failed", {
-          description: !result.ok && result.error ? result.error : "Please try again.",
-        });
-        return false;
-      } finally {
-        setSaving(false);
-      }
-    },
-    [router, saleId],
-  );
-
-  const handleSave = useCallback(async () => {
+  const handleSave = async () => {
     const ok = await persistPressCoverage(items);
     if (ok) {
+      savedRef.current = JSON.stringify(itemsToPressCoverage(items));
       notify.success("Press coverage saved");
     }
-  }, [items, persistPressCoverage]);
+  };
 
-  const handleRemoveConfirmed = useCallback(
-    async (itemId: string) => {
-      if (saving || !canManage) return;
-      const next = items.filter((it) => it.id !== itemId);
-      const ok = await persistPressCoverage(next);
-      if (!ok) return;
-      setItems(next);
-      notify.success("Press link removed");
-    },
-    [canManage, items, persistPressCoverage, saving],
-  );
+  const handleRemoveConfirmed = async (itemId: string) => {
+    if (saving || !canManage) return;
+    const next = items.filter((it) => it.id !== itemId);
+    const ok = await persistPressCoverage(next);
+    if (!ok) return;
+    setItems(next);
+    savedRef.current = JSON.stringify(itemsToPressCoverage(next));
+    if (inspectId === itemId) setInspectId(null);
+    notify.success("Press link removed");
+  };
+
+  const inspectedItem = inspectId ? items.find((item) => item.id === inspectId) : null;
+  const inspectedIndex = inspectedItem ? items.findIndex((item) => item.id === inspectId) : -1;
 
   return (
-    <CatalogDetailTabPanel
-      title="Press coverage"
-      description="Curate external press and news links for this sale. Removing a link saves immediately; use Save coverage for new links and reordering."
-      framed={false}
-    >
-      {/* Add form */}
-      {canManage ? (
-        <div className="mb-6 rounded-xl border border-border-hairline bg-surface-container-lowest p-5">
-          <h3 className="mb-4 font-label text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
-            Add a press link
-          </h3>
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="press-url">Article URL *</Label>
-                <Input
-                  id="press-url"
-                  type="url"
-                  placeholder="https://dailymail.co.uk/article/..."
-                  value={form.url}
-                  onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                  disabled={saving}
-                  className="mt-1 font-body text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="press-outlet">Outlet name *</Label>
-                <Input
-                  id="press-outlet"
-                  type="text"
-                  placeholder="Daily Mail"
-                  maxLength={200}
-                  value={form.outletName}
-                  onChange={(e) => setForm((f) => ({ ...f, outletName: e.target.value }))}
-                  disabled={saving}
-                  className="mt-1 font-body text-sm"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="press-headline">Headline *</Label>
-              <Input
-                id="press-headline"
-                type="text"
-                placeholder="Article headline as published"
-                maxLength={500}
-                value={form.headline}
-                onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))}
-                disabled={saving}
-                className="mt-1 font-body text-sm"
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="press-date">Publication date</Label>
-                <DatePicker
-                  id="press-date"
-                  value={form.publishedAt}
-                  onChange={(value) => setForm((f) => ({ ...f, publishedAt: value }))}
-                  disabled={saving}
-                  placeholder="Pick a date"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="press-type">Mention type</Label>
-                <Select
-                  value={form.mentionType || NO_MENTION_TYPE}
-                  onValueChange={(value) =>
-                    setForm((f) => ({
-                      ...f,
-                      mentionType: value === NO_MENTION_TYPE ? "" : (value as SalePressMentionType),
-                    }))
-                  }
-                  disabled={saving}
-                >
-                  <SelectTrigger id="press-type" className="mt-1 w-full font-body text-sm">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_MENTION_TYPE}>— select type —</SelectItem>
-                    {MENTION_TYPE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="press-excerpt">
-                Excerpt / pull quote
-                <span className="ml-1 font-body font-normal normal-case text-on-surface-variant/50">
-                  ({(form.excerpt ?? "").length}/280)
+    <div className="space-y-6">
+      <DetailBoardKpiStrip ariaLabel="Press summary" tiles={buildSalePressKpiTiles(items)} />
+
+      <CatalogMediaWorkspace
+        title="Press coverage"
+        description="External press and news links for this sale."
+        count={visibleItems.length}
+        actions={
+          canManage ? (
+            <CatalogMediaCollectionActions
+              addButtonRef={addButtonRef}
+              manageButtonRef={manageButtonRef}
+              showAdd={showAdd}
+              showManage={showManage}
+              onToggleAdd={toggleAdd}
+              onToggleManage={toggleManage}
+              addLabel="Add press link"
+              manageLabel="Manage"
+              manageDisabled={reorderFiltered}
+            />
+          ) : undefined
+        }
+        toolbar={
+          <DetailBoardToolbar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search press…"
+            trailing={
+              reorderFiltered ? (
+                <span className="font-body text-xs text-on-surface-variant">
+                  Clear search to reorder.
                 </span>
-              </Label>
-              <Textarea
-                id="press-excerpt"
-                placeholder="Short quote or summary from the article (max 280 chars)"
-                maxLength={280}
-                rows={2}
-                value={form.excerpt ?? ""}
-                onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
-                disabled={saving}
-                className="mt-1 font-body text-sm"
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addLink}
-                disabled={
-                  saving || !form.url.trim() || !form.headline.trim() || !form.outletName.trim()
-                }
-              >
-                Add link
+              ) : null
+            }
+          />
+        }
+        addPanel={
+          canManage && showAdd ? (
+            <CatalogMediaAddPanel
+              panelRef={addPanelRef}
+              title="Add a press link"
+              description="Add the published article details. Preview imagery is enriched from the article."
+              onCancel={closeAddPanel}
+            >
+              <PressMentionForm form={form} onChange={setForm} onAdd={addLink} saving={saving} />
+            </CatalogMediaAddPanel>
+          ) : undefined
+        }
+        liveRegion={<MediaReorderLiveRegion message={message} />}
+        saveBar={
+          dirty ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-body text-sm text-on-surface-variant">
+                You have unsaved press coverage changes.
+              </p>
+              <Button onClick={() => void handleSave()} disabled={saving} variant="cta" size="sm">
+                {saving ? "Saving…" : "Save coverage"}
               </Button>
             </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* List */}
-      <div className="rounded-xl border border-border-hairline bg-surface-container-lowest p-5">
-        {items.length === 0 ? (
-          <EmptyState
-            title="No press links yet"
-            description="Add links to articles, features, and interviews covering this sale."
+          ) : undefined
+        }
+        footer={
+          <span aria-live="polite">
+            {`Showing ${visibleItems.length} of ${items.length}`}
+            {dirty && !saving ? " · Unsaved changes" : ""}
+            {saving ? " · Saving…" : ""}
+          </span>
+        }
+      >
+        {items.length === 0 && !showAdd ? (
+          canManage ? (
+            <AdminEmptyState
+              title="No press links yet"
+              description="Curated press coverage for this sale will appear here."
+              action={
+                <Button type="button" size="sm" onClick={toggleAdd}>
+                  Add press link
+                </Button>
+              }
+            />
+          ) : (
+            <AdminEmptyState
+              title="No press links yet"
+              description="Curated press coverage for this sale will appear here."
+            />
+          )
+        ) : visibleItems.length === 0 ? (
+          <AdminEmptyState
+            title="No matching press links"
+            description="Try a different search term."
           />
         ) : (
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={(event) => {
+              if (!showManage) return;
               const { active, over } = event;
               if (over && active.id !== over.id) {
                 setItems((prev) => {
                   const from = prev.findIndex((it) => it.id === active.id);
                   const to = prev.findIndex((it) => it.id === over.id);
+                  if (from >= 0 && to >= 0) announceMove(`press item ${from + 1}`, from, to);
                   return arrayMove(prev, from, to);
                 });
               }
             }}
           >
-            <SortableContext items={items.map((it) => it.id)} strategy={rectSortingStrategy}>
-              <ol className="list-none space-y-2 p-0" aria-live="polite">
-                {items.map((item) => (
-                  <PressItemRow
-                    key={item.id}
-                    item={item}
-                    disabled={!canManage || saving}
-                    onRemoveConfirmed={() => handleRemoveConfirmed(item.id)}
-                  />
-                ))}
+            <SortableContext
+              items={visibleItems.map((item) => item.id)}
+              strategy={rectSortingStrategy}
+            >
+              <ol className="grid list-none gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3">
+                {visibleItems.map((item) => {
+                  const itemIndex = items.findIndex((it) => it.id === item.id);
+                  return (
+                    <PressItemCard
+                      key={item.id}
+                      item={item}
+                      index={itemIndex}
+                      isLast={itemIndex === items.length - 1}
+                      showManage={showManage}
+                      isSelected={inspectId === item.id}
+                      disabled={!canManage || saving}
+                      onOpenInspector={() => setInspectId(item.id)}
+                      onMoveUp={() => moveItem(itemIndex, -1)}
+                      onMoveDown={() => moveItem(itemIndex, 1)}
+                      onRemoveConfirmed={() => handleRemoveConfirmed(item.id)}
+                    />
+                  );
+                })}
               </ol>
             </SortableContext>
           </DndContext>
         )}
+      </CatalogMediaWorkspace>
 
-        {canManage ? (
-          <div className="mt-5 flex items-center justify-between gap-3 border-t border-border-hairline pt-4">
-            <p className="font-body text-xs text-on-surface-variant">
-              {items.length} link{items.length !== 1 ? "s" : ""}
-              {dirty && !saving ? " · Unsaved changes" : ""}
-              {saving ? " · Saving…" : ""}
-            </p>
-            <Button
-              onClick={() => void handleSave()}
-              disabled={saving || !dirty}
-              variant="cta"
-              size="sm"
-            >
-              {saving ? "Saving…" : "Save coverage"}
-            </Button>
-          </div>
-        ) : null}
-      </div>
-    </CatalogDetailTabPanel>
+      {inspectedItem && inspectedIndex >= 0 ? (
+        <CatalogMediaInspector
+          open
+          onOpenChange={(open) => {
+            if (!open) setInspectId(null);
+          }}
+          title={`Press ${inspectedIndex + 1} details`}
+          description="Update article metadata. Open Graph imagery is read-only and enriched from the article."
+          preview={buildSalePressCardImage(inspectedItem)}
+        >
+          <PressItemInspectorFields
+            item={inspectedItem}
+            index={inspectedIndex}
+            disabled={!canManage || saving}
+            onChange={(patch) => updateItem(inspectedItem.id, patch)}
+            onMentionTypeChange={(value) => updateMentionType(inspectedItem.id, value)}
+          />
+        </CatalogMediaInspector>
+      ) : null}
+    </div>
   );
 }

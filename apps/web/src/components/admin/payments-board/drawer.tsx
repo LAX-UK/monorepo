@@ -1,12 +1,10 @@
 "use client";
 
+import { AdminPaymentActions } from "@/components/admin/admin-payment-actions";
 import { AdminPaymentXeroPanel } from "@/components/admin/admin-payment-xero-panel";
-import {
-  AdminPaymentActions,
-  type AdminPaymentTableRow,
-} from "@/components/admin/admin-payments-data-table";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
+import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments-table.vm";
 import Link from "next/link";
 
 export function PaymentDrawerContent({

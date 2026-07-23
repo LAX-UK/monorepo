@@ -33,7 +33,7 @@ export function SaleDocumentsStep({
     <CatalogFormSection title="Documents & terms" collapsible={false}>
       <div className="space-y-2">
         <p className="font-body text-sm text-on-surface-variant">
-          PDF attachments (optional) — stored on this sale for staff download.
+          Manage internal staff files and bidder-facing sale documents separately.
         </p>
         <SaleDocumentsSection saleId={saleId} initialDocuments={initialSaleDocuments} />
       </div>
@@ -60,6 +60,7 @@ export function SaleDocumentsStep({
               <Textarea
                 id="terms"
                 rows={4}
+                variant="underline"
                 className="font-body text-sm"
                 readOnly={termsReadOnly}
                 aria-readonly={termsReadOnly}

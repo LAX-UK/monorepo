@@ -1,13 +1,22 @@
+import type { AdminListShellVariant } from "@/components/admin/admin-list-shell";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 type Props = {
   title: ReactNode;
   description?: string;
+  variant?: AdminListShellVariant;
   breadcrumbs?: ReactNode;
   primaryAction?: ReactNode;
   meta?: ReactNode;
   filterBar?: ReactNode;
+  chips?: ReactNode;
+  hasFilters?: boolean;
+  resetHref?: string;
+  filters?: ReactNode;
+  filtersSelfContained?: boolean;
+  listToolbarEnd?: ReactNode;
   kpiStrip?: ReactNode;
   /** One-line summary on mobile when kpiStrip is hidden */
   mobileSummary?: ReactNode;
@@ -19,17 +28,27 @@ type Props = {
   className?: string;
 };
 
+const catalogStickyChrome =
+  "sticky top-0 z-20 -mx-1 space-y-3 bg-shell-page-bg/95 px-1 py-2 backdrop-blur-sm supports-[backdrop-filter]:bg-shell-page-bg/80";
+
 /**
- * Catalog list layout — adapter over `AdminListShell` preserving catalog prop names
- * and filter/KPI ordering. Boards own responsive table/card split (`wrapView={false}`).
+ * Catalog list layout — opinionated defaults for catalog module pages:
+ * sticky lens/filter chrome, hero KPI band spacing, boards own table/card split.
  */
 export function CatalogListShell({
   title,
   description,
+  variant = "default",
   breadcrumbs,
   primaryAction,
   meta,
   filterBar,
+  chips,
+  hasFilters,
+  resetHref,
+  filters,
+  filtersSelfContained,
+  listToolbarEnd,
   kpiStrip,
   mobileSummary,
   toolbarEnd,
@@ -41,7 +60,8 @@ export function CatalogListShell({
 }: Props) {
   return (
     <AdminListShell
-      {...(className ? { className } : {})}
+      className={cn("pb-10", className)}
+      variant={variant}
       title={title}
       {...(description ? { description } : {})}
       {...(breadcrumbs ? { breadcrumbs } : {})}
@@ -49,14 +69,16 @@ export function CatalogListShell({
       {...(meta ? { meta } : {})}
       {...(filterBar
         ? {
-            headerAfter: (
-              <div className="sticky top-0 z-20 -mx-1 space-y-3 bg-surface/95 px-1 py-2 backdrop-blur-sm supports-[backdrop-filter]:bg-surface/80">
-                {filterBar}
-              </div>
-            ),
+            headerAfter: <div className={catalogStickyChrome}>{filterBar}</div>,
           }
         : {})}
-      kpiStrip={kpiStrip}
+      {...(chips ? { chips } : {})}
+      {...(hasFilters != null ? { hasFilters } : {})}
+      {...(resetHref ? { resetHref } : {})}
+      {...(filters ? { filters } : {})}
+      {...(filtersSelfContained ? { filtersSelfContained } : {})}
+      {...(listToolbarEnd ? { listToolbarEnd } : {})}
+      kpiStrip={kpiStrip ? <div className="space-y-6">{kpiStrip}</div> : undefined}
       mobileSummary={mobileSummary}
       {...(toolbarEnd
         ? {

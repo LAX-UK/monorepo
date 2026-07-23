@@ -5,7 +5,7 @@ export default function LotsLoading() {
     <CatalogListPageSkeleton
       title="Lots"
       description="Loading lots…"
-      kpiTiles={3}
+      kpiTiles={6}
       tableRows={10}
       tableColumns={6}
     />

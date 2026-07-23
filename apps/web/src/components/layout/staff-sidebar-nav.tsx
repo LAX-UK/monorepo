@@ -1,11 +1,21 @@
 "use client";
 
+import { readPalettePinned } from "@/components/layout/palette/palette-cookie-client";
 import { StaffSidebarPinnedRecents } from "@/components/layout/staff-sidebar-pinned-recents";
 import { ViewTransitionLink } from "@/components/layout/view-transition-link";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
-import { navBadgeClassName } from "@/lib/layout/nav-badge-classes";
+import {
+  navBadgeClassName,
+  navBadgeDotClassName,
+  navBadgeShowsCount,
+} from "@/lib/layout/nav-badge-classes";
+import {
+  sidebarGroupHeaderClassName,
+  sidebarNavItemClassName,
+  sidebarRailItemClassName,
+} from "@/lib/layout/sidebar-nav-classes";
 import { readStaffNavGroupOpen, writeStaffNavGroupOpen } from "@/lib/layout/staff-nav-storage";
-import type { NavGroup, NavItem } from "@/lib/shell/contracts";
+import type { NavBadgeTone, NavGroup, NavItem } from "@/lib/shell/contracts";
 import { getActiveNavGroupId } from "@/lib/shell/nav-adapters";
 import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
@@ -24,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@auction/ui/components/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Star } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -38,6 +48,13 @@ function groupBadgeTotal(g: NavGroup): number {
   return g.items.reduce((sum, i) => sum + (i.badge ?? 0), 0);
 }
 
+function groupBadgeTone(g: NavGroup): NavBadgeTone {
+  if (g.items.some((i) => (i.badge ?? 0) > 0 && i.badgeTone === "danger")) return "danger";
+  if (g.items.some((i) => (i.badge ?? 0) > 0 && i.badgeTone === "warning")) return "warning";
+  if (g.items.some((i) => (i.badge ?? 0) > 0 && i.badgeTone === "live")) return "live";
+  return "default";
+}
+
 function buildOpenMap(
   groups: readonly NavGroup[],
   activeGroupId: string | null,
@@ -49,6 +66,30 @@ function buildOpenMap(
     next[g.id] = stored ?? g.id === activeGroupId;
   }
   return next;
+}
+
+function SidebarNavBadge({
+  count,
+  tone = "default",
+  className,
+  label,
+}: {
+  count: number;
+  tone?: NavBadgeTone;
+  className?: string;
+  label: string;
+}) {
+  if (count <= 0) return null;
+
+  if (navBadgeShowsCount(tone)) {
+    return (
+      <Badge className={navBadgeClassName(tone, className)} aria-label={label}>
+        {count > 99 ? "99+" : count}
+      </Badge>
+    );
+  }
+
+  return <span className={navBadgeDotClassName(tone, className)} aria-label={label} />;
 }
 
 function NavItemLink({
@@ -67,6 +108,7 @@ function NavItemLink({
   const hydrated = useHydrated();
   const Icon = item.icon;
   const active = itemActive(item, pathname);
+  const pinned = hydrated && readPalettePinned().some((p) => p.href === item.href);
 
   const link = (
     <ViewTransitionLink
@@ -74,25 +116,25 @@ function NavItemLink({
       {...(onNavigate ? { onClick: onNavigate } : {})}
       aria-current={active ? "page" : undefined}
       aria-label={item.label}
-      className={cn(
-        "group relative flex min-h-10 items-center gap-3 rounded-md px-2 py-2 font-label text-[13px] font-medium text-on-surface-variant transition-colors",
-        labelsHidden && "justify-center px-2",
-        indent && "pl-7",
-        "hover:bg-surface-container-high hover:text-on-surface",
-        active &&
-          (indent
-            ? "border-l-2 border-accent-brand bg-primary-container/40 pl-[calc(1.75rem-2px)] text-on-primary-container"
-            : "bg-surface-container-high text-on-surface"),
-      )}
+      className={sidebarNavItemClassName({
+        active,
+        labelsHidden,
+        ...(indent ? { indent: true } : {}),
+      })}
     >
       <Icon className="size-4 shrink-0" aria-hidden />
       {!labelsHidden ? (
         <>
           <span className="min-w-0 flex-1 truncate whitespace-nowrap">{item.label}</span>
           {item.badge ? (
-            <Badge className={navBadgeClassName(item.badgeTone)}>
-              {item.badge > 99 ? "99+" : item.badge}
-            </Badge>
+            <SidebarNavBadge
+              count={item.badge}
+              {...(item.badgeTone ? { tone: item.badgeTone } : {})}
+              label={`${item.badge > 99 ? "99+" : item.badge} pending ${item.label}`}
+            />
+          ) : null}
+          {pinned ? (
+            <Star className="size-3 shrink-0 fill-secondary text-secondary" aria-hidden />
           ) : null}
         </>
       ) : null}
@@ -129,29 +171,39 @@ function StaffSidebarNavStatic({
 }) {
   if (labelsHidden) {
     return (
-      <div className="flex flex-col items-center gap-1 py-1">
+      <div className="flex flex-col items-center gap-1.5 py-1">
         {groups.map((g) => {
           const GroupIcon = g.icon;
           const anyActive = g.items.some((i) => itemActive(i, pathname));
           const target = g.items.find((i) => itemActive(i, pathname)) ?? g.items[0];
           if (!target) return null;
           const gb = groupBadgeTotal(g);
+          const tone = groupBadgeTone(g);
           return (
             <ViewTransitionLink
               key={g.id}
               href={target.href}
               {...(onNavigate ? { onClick: onNavigate } : {})}
               aria-label={g.title}
-              className={cn(
-                "relative inline-flex min-h-10 min-w-10 items-center justify-center rounded-md",
-                anyActive && "bg-surface-container-high text-on-surface",
-              )}
+              className={sidebarRailItemClassName(anyActive)}
             >
               <GroupIcon className="size-4" aria-hidden />
               {gb > 0 ? (
-                <Badge className="absolute -right-0.5 -top-0.5 h-4 min-w-4 rounded-full px-0.5 font-label text-[8px] leading-none text-white">
-                  {gb > 99 ? "99+" : gb}
-                </Badge>
+                navBadgeShowsCount(tone) ? (
+                  <Badge
+                    className={navBadgeClassName(
+                      tone,
+                      "absolute -right-0.5 -top-0.5 h-4 min-w-4 px-0.5 font-label text-[8px] leading-none",
+                    )}
+                  >
+                    {gb > 99 ? "99+" : gb}
+                  </Badge>
+                ) : (
+                  <span
+                    className={navBadgeDotClassName(tone, "absolute right-0.5 top-0.5")}
+                    aria-hidden
+                  />
+                )
               ) : null}
             </ViewTransitionLink>
           );
@@ -161,30 +213,29 @@ function StaffSidebarNavStatic({
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-3">
       <StaffSidebarPinnedRecents
         labelsHidden={labelsHidden}
         {...(onNavigate ? { onNavigate } : {})}
       />
       {groups.map((g) => {
-        const GroupIcon = g.icon;
         const open = g.id === activeGroupId;
         const gb = groupBadgeTotal(g);
+        const tone = groupBadgeTone(g);
         return (
-          <div key={g.id} className="rounded-md">
-            <div className="flex w-full min-h-10 items-center gap-2 rounded-md px-3 py-2 font-label text-[12px] font-semibold uppercase tracking-wide text-on-surface-variant">
-              <ChevronDown
-                className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")}
-                aria-hidden
-              />
-              <GroupIcon className="size-4 shrink-0" aria-hidden />
+          <div key={g.id} className="rounded-lg">
+            <div className={sidebarGroupHeaderClassName()}>
               <span className="min-w-0 flex-1 truncate text-left">{g.title}</span>
               {gb > 0 ? (
-                <Badge className={navBadgeClassName("default")}>{gb > 99 ? "99+" : gb}</Badge>
+                <SidebarNavBadge
+                  count={gb}
+                  tone={tone}
+                  label={`${gb > 99 ? "99+" : gb} items need attention in ${g.title}`}
+                />
               ) : null}
             </div>
             {open ? (
-              <div className="space-y-0.5 pl-1 pt-0.5">
+              <div className="space-y-0.5 pt-0.5">
                 {g.items.map((item) => (
                   <NavItemLink
                     key={item.id}
@@ -223,11 +274,12 @@ function StaffSidebarNavHydrated({
 }) {
   if (labelsHidden) {
     return (
-      <div className="flex flex-col items-center gap-1 py-1">
+      <div className="flex flex-col items-center gap-1.5 py-1">
         {groups.map((g) => {
           const GroupIcon = g.icon;
           const anyActive = g.items.some((i) => itemActive(i, pathname));
           const gb = groupBadgeTotal(g);
+          const tone = groupBadgeTone(g);
           return (
             <DropdownMenu key={g.id}>
               <DropdownMenuTrigger asChild>
@@ -235,17 +287,26 @@ function StaffSidebarNavHydrated({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className={cn(
-                    "relative min-h-10 min-w-10 shrink-0",
-                    anyActive && "bg-surface-container-high text-on-surface",
-                  )}
+                  className={cn(sidebarRailItemClassName(anyActive), "shrink-0")}
                   aria-label={g.title}
                 >
                   <GroupIcon className="size-4" aria-hidden />
                   {gb > 0 ? (
-                    <Badge className="absolute -right-0.5 -top-0.5 h-4 min-w-4 rounded-full px-0.5 font-label text-[8px] leading-none text-white">
-                      {gb > 99 ? "99+" : gb}
-                    </Badge>
+                    navBadgeShowsCount(tone) ? (
+                      <Badge
+                        className={navBadgeClassName(
+                          tone,
+                          "absolute -right-0.5 -top-0.5 h-4 min-w-4 px-0.5 font-label text-[8px] leading-none",
+                        )}
+                      >
+                        {gb > 99 ? "99+" : gb}
+                      </Badge>
+                    ) : (
+                      <span
+                        className={navBadgeDotClassName(tone, "absolute right-0.5 top-0.5")}
+                        aria-hidden
+                      />
+                    )
                   ) : null}
                 </Button>
               </DropdownMenuTrigger>
@@ -261,7 +322,7 @@ function StaffSidebarNavHydrated({
                     <DropdownMenuItem
                       key={item.id}
                       asChild
-                      className={cn(active && "bg-surface-container-high")}
+                      className={cn(active && "bg-surface-container-high font-semibold")}
                     >
                       <ViewTransitionLink
                         href={item.href}
@@ -270,9 +331,12 @@ function StaffSidebarNavHydrated({
                         <Icon className="mr-2 size-4 shrink-0 opacity-70" aria-hidden />
                         <span className="flex-1">{item.label}</span>
                         {item.badge ? (
-                          <Badge className={navBadgeClassName(item.badgeTone, "ml-2")}>
-                            {item.badge > 99 ? "99+" : item.badge}
-                          </Badge>
+                          <SidebarNavBadge
+                            count={item.badge}
+                            {...(item.badgeTone ? { tone: item.badgeTone } : {})}
+                            className="ml-2"
+                            label={`${item.badge > 99 ? "99+" : item.badge} pending ${item.label}`}
+                          />
                         ) : null}
                       </ViewTransitionLink>
                     </DropdownMenuItem>
@@ -287,33 +351,35 @@ function StaffSidebarNavHydrated({
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-3">
       <StaffSidebarPinnedRecents
         labelsHidden={labelsHidden}
         {...(onNavigate ? { onNavigate } : {})}
       />
       {groups.map((g) => {
-        const GroupIcon = g.icon;
         const open = openMap[g.id] ?? g.id === activeGroupId;
         const gb = groupBadgeTotal(g);
+        const tone = groupBadgeTone(g);
         return (
           <Collapsible key={g.id} open={open} onOpenChange={(next) => persistOpen(g.id, next)}>
-            <CollapsibleTrigger
-              className={cn(
-                "flex w-full min-h-10 items-center gap-2 rounded-md px-3 py-2 font-label text-[12px] font-semibold uppercase tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface",
-              )}
-            >
+            <CollapsibleTrigger className={sidebarGroupHeaderClassName()}>
+              <span className="min-w-0 flex-1 truncate text-left">{g.title}</span>
               <ChevronDown
-                className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")}
+                className={cn(
+                  "size-3.5 shrink-0 opacity-60 transition-transform",
+                  open && "rotate-180",
+                )}
                 aria-hidden
               />
-              <GroupIcon className="size-4 shrink-0" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-left">{g.title}</span>
               {gb > 0 ? (
-                <Badge className={navBadgeClassName("default")}>{gb > 99 ? "99+" : gb}</Badge>
+                <SidebarNavBadge
+                  count={gb}
+                  tone={tone}
+                  label={`${gb > 99 ? "99+" : gb} items need attention in ${g.title}`}
+                />
               ) : null}
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-0.5 pl-1 pt-0.5">
+            <CollapsibleContent className="space-y-0.5 pt-0.5">
               {g.items.map((item) => (
                 <NavItemLink
                   key={item.id}

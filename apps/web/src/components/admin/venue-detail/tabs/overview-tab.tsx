@@ -1,7 +1,7 @@
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { CatalogDetailSection } from "@/components/admin/catalog/catalog-detail-section";
 import type { VenueDetail } from "@/lib/services/interfaces/admin-venue-service";
-import { Badge } from "@auction/ui/components/badge";
 import Link from "next/link";
 
 type Props = {
@@ -30,9 +30,7 @@ export function VenueOverviewTab({ venueId: _venueId, detail }: Props) {
 
         <CatalogDetailSection title="Status">
           <div className="space-y-2">
-            <Badge variant={venue.status === "archived" ? "secondary" : "outline"}>
-              {venue.status === "archived" ? "Archived" : "Active"}
-            </Badge>
+            <AdminStatusBadge domain="venue" status={venue.status} />
             {salesUsingCount > 0 ? (
               <p className="font-body text-sm text-on-surface-variant">
                 Used by {salesUsingCount} sale{salesUsingCount !== 1 ? "s" : ""}.{" "}

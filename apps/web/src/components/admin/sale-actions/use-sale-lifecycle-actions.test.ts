@@ -11,19 +11,22 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-vi.mock("@/lib/actions/admin-sales", () => ({
+vi.mock("@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations", () => ({
   adminPublishSaleResultAction: vi.fn(),
   adminCancelSaleResultAction: vi.fn(),
   adminMarkSaleEndedResultAction: vi.fn(),
-  adminSoftDeleteSaleResultAction: vi.fn(),
   adminUnpublishSaleResultAction: vi.fn(),
+}));
+
+vi.mock("@/lib/actions/admin-sales", () => ({
+  adminSoftDeleteSaleResultAction: vi.fn(),
 }));
 
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: vi.fn(), error: vi.fn() },
 }));
 
-import { adminPublishSaleResultAction } from "@/lib/actions/admin-sales";
+import { adminPublishSaleResultAction } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { notify } from "@/lib/ui/notify";
 
 describe("useSaleLifecycleActions", () => {

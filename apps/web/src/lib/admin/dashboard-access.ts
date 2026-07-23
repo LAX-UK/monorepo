@@ -1,14 +1,11 @@
 import type { DashboardWidgetId, DashboardWidgetState } from "@/lib/admin/dashboard-widgets.vm";
 import {
   AML_REVIEW_ACCESS,
-  ARTIST_WRITE_ACCESS,
   type CapabilityRequirement,
   FINANCE_ACCESS,
-  INVITATIONS_ACCESS,
   LOTS_ACCESS,
   LOT_FULFILMENT_ACCESS,
   SALEROOM_ACCESS,
-  SALES_ACCESS,
   SALE_CATALOG_ACCESS,
   SUBMISSIONS_ACCESS,
   USERS_DIRECTORY_ACCESS,
@@ -95,68 +92,6 @@ export function hubQuickLinksFor(role: UserRole, staffRole: UserStaffRole | null
   return HUB_QUICK_LINK_SPECS.filter((spec) =>
     userHasAccessTo(role, staffRole, spec.requirement),
   ).map(({ href, label }) => ({ href, label }));
-}
-
-export type QuickCreateItemSpec = {
-  id: string;
-  href: string;
-  label: string;
-  iconName: "Package" | "ScrollText" | "Brush" | "UserPlus";
-  requirement: CapabilityRequirement;
-};
-
-/**
- * All possible quick-create menu items with their capability requirements.
- * Order matters for display.
- */
-export const QUICK_CREATE_SPECS: readonly QuickCreateItemSpec[] = [
-  {
-    id: "new-lot",
-    href: "/admin/lots/new",
-    label: "New lot",
-    iconName: "Package",
-    requirement: LOTS_ACCESS,
-  },
-  {
-    id: "new-sale",
-    href: "/admin/sales/new",
-    label: "New sale",
-    iconName: "ScrollText",
-    requirement: SALES_ACCESS,
-  },
-  {
-    id: "new-artist",
-    href: "/admin/artists/new",
-    label: "New artist",
-    iconName: "Brush",
-    requirement: ARTIST_WRITE_ACCESS,
-  },
-  {
-    id: "invite-user",
-    href: "/admin/invitations",
-    label: "Invite user",
-    iconName: "UserPlus",
-    requirement: INVITATIONS_ACCESS,
-  },
-];
-
-export type QuickCreateItem = {
-  id: string;
-  href: string;
-  label: string;
-  iconName: QuickCreateItemSpec["iconName"];
-};
-
-/**
- * Get the quick-create menu items that the viewer can access.
- */
-export function quickCreateItemsFor(
-  role: UserRole,
-  staffRole: UserStaffRole | null,
-): QuickCreateItem[] {
-  return QUICK_CREATE_SPECS.filter((spec) =>
-    userHasAccessTo(role, staffRole, spec.requirement),
-  ).map(({ id, href, label, iconName }) => ({ id, href, label, iconName }));
 }
 
 /**

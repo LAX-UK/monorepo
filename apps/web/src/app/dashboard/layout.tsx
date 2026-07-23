@@ -100,7 +100,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         hideEmailStatusBanner
         acting={acting}
         safeActing={safeActing}
-        headerRightSlot={
+        headerActionsSlot={
           <ActingAsBanner
             hasSeenTooltip={user.hasSeenActingContextTooltip ?? true}
             userRole={user.role}

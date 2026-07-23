@@ -82,7 +82,7 @@ const ATTENTION_ROW_SPECS: readonly AttentionRowSpec[] = [
       title: `${count} AML ${word(count, "screening", "screenings")} pending`,
       hint: "Watchlist match — triage and MLRO decide",
       href: "/admin/compliance/aml",
-      ctaLabel: "Open queue",
+      ctaLabel: "Review screenings",
     }),
   },
   {
@@ -94,7 +94,7 @@ const ATTENTION_ROW_SPECS: readonly AttentionRowSpec[] = [
       title: `${count} Source of Funds ${word(count, "case", "cases")} pending`,
       hint: "Settlement gated until MLRO approval",
       href: "/admin/compliance/source-of-funds",
-      ctaLabel: "Open queue",
+      ctaLabel: "Review cases",
     }),
   },
   // People / onboarding
@@ -107,7 +107,7 @@ const ATTENTION_ROW_SPECS: readonly AttentionRowSpec[] = [
       title: `${count} onboarding ${word(count, "issue", "issues")}`,
       hint: "KYC, entities, or org setup blocking go-live",
       href: "/admin/onboarding-issues",
-      ctaLabel: "Open queue",
+      ctaLabel: "View issues",
     }),
   },
   {
@@ -156,7 +156,7 @@ const ATTENTION_ROW_SPECS: readonly AttentionRowSpec[] = [
       title: `${count} ${word(count, "withdrawal", "withdrawals")} pending`,
       hint: "Seller requests on lots attention lens",
       href: "/admin/lots?lens=attention",
-      ctaLabel: "Open queue",
+      ctaLabel: "Review lots",
     }),
   },
   {
@@ -168,7 +168,7 @@ const ATTENTION_ROW_SPECS: readonly AttentionRowSpec[] = [
       title: `${count} ${word(count, "draft", "drafts")} missing photos`,
       hint: "Catalogue images needed before publish",
       href: "/admin/lots?lens=attention",
-      ctaLabel: "Open queue",
+      ctaLabel: "Review lots",
     }),
   },
   {
@@ -203,7 +203,7 @@ const ATTENTION_ROW_SPECS: readonly AttentionRowSpec[] = [
     requirement: SALEROOM_ACCESS,
     buildRow: (count) => ({
       title: `${count} telephone ${word(count, "line", "lines")} awaiting confirmation`,
-      hint: "Onsite sale telephone bidding queue",
+      hint: "Onsite sale telephone bidding requests",
       href: "/admin/saleroom",
       ctaLabel: "Open saleroom",
     }),
@@ -217,7 +217,7 @@ const ATTENTION_ROW_SPECS: readonly AttentionRowSpec[] = [
       title: `${count} condition ${word(count, "report", "reports")} open`,
       hint: "Buyer-requested reports",
       href: "/admin/condition-reports",
-      ctaLabel: "Open queue",
+      ctaLabel: "Review requests",
     }),
   },
   {
@@ -229,7 +229,7 @@ const ATTENTION_ROW_SPECS: readonly AttentionRowSpec[] = [
       title: `${count} ${word(count, "lot", "lots")} in fulfilment`,
       hint: "Release and shipping workflow",
       href: "/admin/lot-fulfilment",
-      ctaLabel: "Open queue",
+      ctaLabel: "Open fulfilment",
     }),
   },
 ];

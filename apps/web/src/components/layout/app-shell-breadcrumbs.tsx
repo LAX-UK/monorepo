@@ -18,10 +18,13 @@ export function AppShellBreadcrumbs({
   role,
   sessionUser,
   clientWorkspaceMode = "buying",
+  variant = "all",
 }: {
   role: AppShellRole;
   sessionUser: SessionUser;
   clientWorkspaceMode?: ClientWorkspaceMode;
+  /** `mobile` — header title only; `desktop` — breadcrumb trail only. */
+  variant?: "all" | "mobile" | "desktop";
 }) {
   const pathname = usePathname();
   const config = useShellConfig();
@@ -48,12 +51,16 @@ export function AppShellBreadcrumbs({
 
     return (
       <>
-        <div className="min-w-0 flex-1 lg:hidden">
-          <MobileShellTitle items={items} {...(resolvedModel ? { model: resolvedModel } : {})} />
-        </div>
-        <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 lg:block lg:flex-none">
-          <Breadcrumbs items={items} className="text-xs" inline />
-        </nav>
+        {variant !== "desktop" ? (
+          <div className="min-w-0 flex-1 lg:hidden">
+            <MobileShellTitle items={items} {...(resolvedModel ? { model: resolvedModel } : {})} />
+          </div>
+        ) : null}
+        {variant !== "mobile" ? (
+          <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 lg:block lg:flex-none">
+            <Breadcrumbs items={items} className="text-xs" inline />
+          </nav>
+        ) : null}
       </>
     );
   }
@@ -62,12 +69,16 @@ export function AppShellBreadcrumbs({
 
   return (
     <>
-      <div className="min-w-0 flex-1 lg:hidden">
-        <MobileShellTitle items={items} />
-      </div>
-      <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 lg:block lg:flex-none">
-        <Breadcrumbs items={items} className="text-xs" inline />
-      </nav>
+      {variant !== "desktop" ? (
+        <div className="min-w-0 flex-1 lg:hidden">
+          <MobileShellTitle items={items} />
+        </div>
+      ) : null}
+      {variant !== "mobile" ? (
+        <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 lg:block lg:flex-none">
+          <Breadcrumbs items={items} className="text-xs" inline />
+        </nav>
+      ) : null}
     </>
   );
 }

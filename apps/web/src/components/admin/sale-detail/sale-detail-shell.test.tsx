@@ -52,10 +52,6 @@ vi.mock("@/components/admin/sale-detail/sale-detail-connect-notice", () => ({
   SaleDetailConnectNotice: () => null,
 }));
 
-vi.mock("@/components/admin/sale-detail/sale-context-rail", () => ({
-  SaleContextRail: () => <aside data-testid="context-rail" />,
-}));
-
 vi.mock("@/components/admin/sale-detail-mobile-lifecycle-trailing", () => ({
   SaleDetailMobileLifecycleTrailing: () => null,
 }));

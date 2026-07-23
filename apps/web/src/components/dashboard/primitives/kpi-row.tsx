@@ -12,7 +12,7 @@ export type KpiRowProps = {
   variant?: "default" | "hero";
   /** When true, skip outer chrome (for use inside OverviewHeroBand). */
   embedded?: boolean;
-  columns?: 4 | 5 | 6;
+  columns?: 3 | 4 | 5 | 6;
   sticky?: boolean;
   track?: AccentTrack;
   className?: string;
@@ -38,7 +38,9 @@ export function KpiRow({
       ? "md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-6"
       : columns === 5
         ? "md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4";
+        : columns === 3
+          ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
+          : "md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4";
 
   const showHeroChrome = variant === "hero" && !embedded;
 
@@ -58,7 +60,11 @@ export function KpiRow({
         {tiles.map((tile, index) => {
           const { id, href, ...tileProps } = tile;
           const content = (
-            <KpiTile {...tileProps} clickable={Boolean(href) || tileProps.clickable === true} />
+            <KpiTile
+              {...tileProps}
+              clickable={Boolean(href) || tileProps.clickable === true}
+              variant={tileProps.variant ?? "default"}
+            />
           );
           if (href) {
             return (

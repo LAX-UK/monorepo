@@ -47,7 +47,7 @@ export function payoutStatusToBadgeVariant(status: PayoutStatus | string): Statu
       return "neutral";
     case "failed":
     case "clawback_pending":
-      return "warning";
+      return "danger";
     case "reversed":
       return "danger";
     default:

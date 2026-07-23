@@ -7,6 +7,7 @@ import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { WatchlistBoard } from "@/components/dashboard/watchlist-board";
 import { type WatchlistBoardRow, estimateLabel } from "@/components/dashboard/watchlist-board-rows";
 import { WatchlistListToolbar } from "@/components/dashboard/watchlist/watchlist-list-toolbar";
+import type { WatchlistWithLotRow } from "@/lib/buyer-account";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import {
   type DashboardSliceFailure,
@@ -19,7 +20,6 @@ import {
 } from "@/lib/dashboard/filters/watchlist/watchlist-filters";
 import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import type { WatchlistWithLotRow } from "@/lib/data/dto/dashboard-dtos";
 import { readClientWorkspacePageMeta } from "@/lib/workspace/client-workspace-mode";
 import type { Category } from "@auction/types";
 import { Button } from "@auction/ui/components/button";

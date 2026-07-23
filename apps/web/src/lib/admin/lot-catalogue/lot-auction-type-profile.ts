@@ -1,13 +1,12 @@
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
+import { LOT_AUCTION_TYPE_REGISTRY } from "@/lib/presenters/lot-auction-type/lot-auction-type-registry";
 import { type LotAuctionType, lotAuctionTypes } from "@auction/types";
 import type { UseFormReturn } from "react-hook-form";
 
-export const LOT_AUCTION_TYPE_LABELS: Record<LotAuctionType, string> = {
-  english: "English",
-  dutch: "Dutch",
-  sealed: "Sealed bid",
-  buy_it_now: "Buy it now",
-};
+/** Canonical staff labels — re-exported from presenter registry (DIP). */
+export const LOT_AUCTION_TYPE_LABELS: Record<LotAuctionType, string> = Object.fromEntries(
+  Object.entries(LOT_AUCTION_TYPE_REGISTRY).map(([key, value]) => [key, value.label]),
+) as Record<LotAuctionType, string>;
 
 export const LOT_AUCTION_TYPE_DESCRIPTIONS: Record<LotAuctionType, string> = {
   english: "Open ascending bids with optional reserve and minimum increment.",

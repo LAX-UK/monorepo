@@ -1,12 +1,10 @@
 import "server-only";
 
+import { parseAdminSaleOperationsSnapshot } from "@/lib/data/http/admin-operations-snapshot.schema";
+import type { AdminSaleOperationsSnapshot } from "@/lib/data/http/admin-operations-snapshot.types";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import {
-  type AdminSaleOperationsSnapshot,
-  type AdminTelephoneBookingRow,
-  parseAdminSaleOperationsSnapshot,
-  parseAdminTelephoneBookingRow,
-} from "@/lib/telephone/telephone-booking-types";
+import type { AdminTelephoneBookingRow } from "@/lib/telephone/telephone-booking-types";
+import { parseAdminTelephoneBookingRow } from "@/lib/telephone/telephone-booking-types";
 
 export type { AdminSaleOperationsSnapshot, AdminTelephoneBookingRow };
 

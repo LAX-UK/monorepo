@@ -9,21 +9,30 @@ import {
   adminUserActivityEntriesSchema,
   adminUserBidsResultSchema,
   adminUserDetailRowSchema,
-  adminUserListResultSchema,
   adminUserLookupRowsSchema,
 } from "@/lib/data/http/admin-users.schema";
+import {
+  type AdminUserPage,
+  buildAdminUserSearchParams,
+  parseAdminUserPageBody,
+} from "@/lib/data/http/admin-users.shared";
 import type {
   AdminKycSessionRow,
   AdminUserActivityEntry,
   AdminUserBidRow,
   AdminUserDetailPayload,
   AdminUserLookupRow,
-  AdminUserRow,
   GetAdminUserListParams,
 } from "@/lib/data/http/admin-users.types";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type AdminAmlScreeningRow, screeningFromJson } from "@/lib/data/http/compliance.server";
 import { readDataEnvelope, readJsonBody, unwrapEnvelopeData } from "@/lib/data/http/envelope";
+
+export type {
+  AdminUserListSummary,
+  AdminUserPage,
+  AdminUserPageParams,
+} from "@/lib/data/http/admin-users.shared";
 import type { LegalEntity } from "@auction/types";
 
 export async function getAdminLegalEntitiesForUser(userId: string): Promise<LegalEntity[]> {
@@ -36,41 +45,19 @@ export async function getAdminLegalEntitiesForUser(userId: string): Promise<Lega
   return entities.filter((e): e is LegalEntity => e != null);
 }
 
-export async function getAdminUserList(
-  params: GetAdminUserListParams,
-): Promise<{ rows: AdminUserRow[]; total: number }> {
-  const qs = new URLSearchParams();
-  if (params.q) qs.set("q", params.q);
-  qs.set("limit", String(params.limit ?? 25));
-  qs.set("offset", String(params.offset ?? 0));
-  if (params.role) qs.set("role", params.role);
-  if (params.staffRole) qs.set("staffRole", params.staffRole);
-  if (params.accountStatus) qs.set("status", params.accountStatus);
-  else if (params.suspendedOnly) qs.set("suspended", "1");
-  if (params.emailVerified === true) qs.set("emailVerified", "1");
-  else if (params.emailVerified === false) qs.set("emailVerified", "0");
-  if (params.emailStatus) qs.set("emailStatus", params.emailStatus);
-  if (params.kycStatuses?.length) qs.set("kycStatuses", params.kycStatuses.join(","));
-  else if (params.kycStatus) qs.set("kycStatus", params.kycStatus);
-  if (params.persona) qs.set("persona", params.persona);
-  if (params.twoFactorEnabled === true) qs.set("twoFactor", "1");
-  else if (params.twoFactorEnabled === false) qs.set("twoFactor", "0");
-  if (params.deletionRequestedOnly) qs.set("deletionRequested", "1");
-  if (params.hasMobile === true) qs.set("hasMobile", "1");
-  else if (params.hasMobile === false) qs.set("hasMobile", "0");
-  if (params.createdFrom) qs.set("createdFrom", params.createdFrom);
-  if (params.createdTo) qs.set("createdTo", params.createdTo);
-  if (params.kycVerifiedFrom) qs.set("kycVerifiedFrom", params.kycVerifiedFrom);
-  if (params.kycVerifiedTo) qs.set("kycVerifiedTo", params.kycVerifiedTo);
-  if (params.lastActiveFrom) qs.set("lastActiveFrom", params.lastActiveFrom);
-  if (params.lastActiveTo) qs.set("lastActiveTo", params.lastActiveTo);
-  if (params.sort) qs.set("sort", params.sort);
-  const res = await authedServerFetch(`/admin/users?${qs.toString()}`);
+export async function getAdminUserList(params: GetAdminUserListParams): Promise<AdminUserPage> {
+  const qs = buildAdminUserSearchParams(params);
+  const res = await authedServerFetch(`/admin/users?${qs.toString()}`, {
+    cache: "no-store",
+  });
+  if (res.status === 403 || res.status === 401) {
+    throw new Error("forbidden");
+  }
   if (!res.ok) {
     throw new Error(`Failed to load users: ${res.status}`);
   }
   const body = await readJsonBody(res);
-  return readDataEnvelope(body, adminUserListResultSchema, "GET /admin/users");
+  return parseAdminUserPageBody(body, params);
 }
 
 export async function getAdminUserKycSessions(userId: string): Promise<AdminKycSessionRow[]> {

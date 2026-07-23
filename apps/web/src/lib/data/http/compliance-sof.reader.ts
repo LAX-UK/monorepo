@@ -9,6 +9,11 @@ import {
   adminSourceOfFundsRowSchema,
   buyerSourceOfFundsViewSchema,
 } from "@/lib/data/http/compliance-sof.schema";
+import {
+  type AdminSourceOfFundsPageParams,
+  buildAdminSourceOfFundsSearchParams,
+  parseAdminSourceOfFundsPageBody,
+} from "@/lib/data/http/compliance-sof.shared";
 import { COMPLIANCE_QUEUE_LIST_LIMIT } from "@/lib/data/http/compliance.shared";
 import { readDataEnvelope, readJsonBody, readNullableListEnvelope } from "@/lib/data/http/envelope";
 import { isIndexableObject } from "@/lib/data/http/object-guards";
@@ -53,27 +58,15 @@ export async function getAdminSourceOfFundsApproved(
   return page.rows;
 }
 
-export async function getAdminSourceOfFundsPage(params: {
-  status: "pending" | "rejected" | "approved";
-  limit: number;
-  offset: number;
-}): Promise<{ rows: AdminSourceOfFundsRow[]; total: number }> {
-  const qs = new URLSearchParams({
-    limit: String(params.limit),
-    offset: String(params.offset),
-    status: params.status,
-  });
+export async function getAdminSourceOfFundsPage(params: AdminSourceOfFundsPageParams) {
+  const qs = buildAdminSourceOfFundsSearchParams(params);
   const res = await authedServerFetch(`/admin/compliance/source-of-funds?${qs.toString()}`);
   if (!res.ok) {
     const body = await readJsonBody(res).catch(() => ({}));
     throw new Error(readApiError(body, "Could not load Source of Funds cases"));
   }
   const body = await readJsonBody(res);
-  return readNullableListEnvelope(
-    body,
-    adminSourceOfFundsRowSchema,
-    "GET /admin/compliance/source-of-funds",
-  );
+  return parseAdminSourceOfFundsPageBody(body, params);
 }
 
 export async function getAdminSourceOfFundsDetail(

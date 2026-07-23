@@ -1,26 +1,12 @@
 "use client";
 
-import type { SessionUser } from "@/lib/data/contracts";
-import {
-  type UserRole,
-  canAccessFinanceAdminRoutes,
-  canAccessPlatformAdminRoutes,
-} from "@auction/types";
+import { sidebarNavItemClassName } from "@/lib/layout/sidebar-nav-classes";
 import { cn } from "@auction/ui";
-import { Building2, CreditCard, Store } from "lucide-react";
+import { Store } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type WorkspaceLink = {
-  id: "platform" | "finance" | "gallery";
-  label: string;
-  href: string;
-  icon: typeof Building2;
-  active: boolean;
-};
-
 type Props = {
-  user: SessionUser;
   collapsed?: boolean;
 };
 
@@ -42,73 +28,26 @@ export function isPlatformAdminPath(pathname: string): boolean {
   return pathname === "/admin" || (pathname.startsWith("/admin/") && !isFinanceAdminPath(pathname));
 }
 
-/** Switch between platform admin, finance admin, and public gallery. */
-export function StaffWorkspaceSwitcher({ user, collapsed = false }: Props) {
+/** Link back to the public gallery from the staff shell footer. */
+export function StaffWorkspaceSwitcher({ collapsed = false }: Props) {
   const pathname = usePathname();
-  const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
-
-  const links: WorkspaceLink[] = [];
-  if (canAccessPlatformAdminRoutes(role, staffRole)) {
-    links.push({
-      id: "platform",
-      label: "Platform",
-      href: "/admin",
-      icon: Building2,
-      active: isPlatformAdminPath(pathname),
-    });
-  }
-  if (canAccessFinanceAdminRoutes(role, staffRole)) {
-    links.push({
-      id: "finance",
-      label: "Finance",
-      href: "/admin/finance",
-      icon: CreditCard,
-      active: isFinanceAdminPath(pathname),
-    });
-  }
-  links.push({
-    id: "gallery",
-    label: "Gallery",
-    href: "/",
-    icon: Store,
-    active: !pathname.startsWith("/admin"),
-  });
-
-  if (links.length <= 1) return null;
+  const active = !pathname.startsWith("/admin");
 
   return (
-    <nav aria-label="Workspace" className={cn("space-y-1", collapsed && "px-1")}>
-      {!collapsed ? (
-        <p className="px-3 pb-1 font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-          Workspace
-        </p>
-      ) : null}
-      <ul className="space-y-0.5">
-        {links.map((link) => {
-          const Icon = link.icon;
-          return (
-            <li key={link.id}>
-              <Link
-                href={link.href}
-                className={cn(
-                  "flex min-h-10 items-center gap-2 rounded-md px-3 py-2 font-label text-xs transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                  link.active
-                    ? "bg-primary/10 font-semibold text-primary"
-                    : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
-                  collapsed && "justify-center px-2",
-                )}
-                title={collapsed ? link.label : undefined}
-                aria-current={link.active ? "page" : undefined}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden />
-                {!collapsed ? <span>{link.label}</span> : null}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+    <nav aria-label="Gallery" className={cn(collapsed && "px-0.5")}>
+      <Link
+        href="/"
+        className={cn(
+          sidebarNavItemClassName({ active, labelsHidden: collapsed }),
+          "text-xs",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        )}
+        title={collapsed ? "Gallery" : undefined}
+        aria-current={active ? "page" : undefined}
+      >
+        <Store className="size-4 shrink-0" aria-hidden />
+        {!collapsed ? <span className="min-w-0 flex-1 truncate">Gallery</span> : null}
+      </Link>
     </nav>
   );
 }

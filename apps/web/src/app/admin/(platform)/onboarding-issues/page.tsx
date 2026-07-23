@@ -1,80 +1,73 @@
 import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { OnboardingIssuesBoard } from "@/components/admin/onboarding-issues-board";
-import { onboardingIssuesListController } from "@/lib/admin/onboarding-issues-list-controller";
+import { OnboardingIssuesBoardContainer } from "@/components/admin/onboarding-issues-board/container";
+import {
+  buildOnboardingIssuesListKpiTiles,
+  buildOnboardingIssuesMobileMetrics,
+} from "@/lib/admin/build-onboarding-issues-list-kpi-tiles";
+import { loadAdminOnboardingIssuesListPage } from "@/lib/admin/load-onboarding-issues-list-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 export const metadata: Metadata = metadataForPrivate(
-  "Onboarding queues",
+  "Onboarding issues",
   "Legal entities, artists, KYC, and documents awaiting staff review.",
 );
 
-export default async function AdminOnboardingIssuesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
+type Props = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AdminOnboardingIssuesPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const query = onboardingIssuesListController.parseQuery(sp);
-
-  let result: Awaited<ReturnType<typeof onboardingIssuesListController.fetch>> | null = null;
-  let loadError: string | null = null;
-  try {
-    result = await onboardingIssuesListController.fetch(query);
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load onboarding queues.";
-  }
-
-  const data = result?.data ?? null;
-  const summary = result?.summary;
-  const queueTotal = summary?.queueTotal ?? 0;
+  const loaded = await loadAdminOnboardingIssuesListPage(sp);
+  const {
+    model,
+    tab,
+    rows,
+    selected,
+    queueSummary,
+    lensSummary,
+    total,
+    loadError,
+    pagination,
+    previewDegraded,
+  } = loaded;
 
   return (
     <AdminListShell
       layout="hub"
-      title="Onboarding & verification queues"
-      description="Consolidated verification queues for entities, artists, KYC, and documents."
+      title="Onboarding issues"
+      description="Verification items for entities, artists, KYC, and documents awaiting staff review."
       mobileSummary={
-        summary ? (
+        !loadError && queueSummary.queueTotal > 0 ? (
           <CatalogListMobileSummary
-            metrics={[
-              { id: "total", label: "Open items", value: String(summary.queueTotal) },
-              { id: "entities", label: "Entities", value: String(summary.entities) },
-              { id: "artists", label: "Artists", value: String(summary.artists) },
-              { id: "kyc", label: "KYC", value: String(summary.kyc) },
-            ]}
+            metrics={buildOnboardingIssuesMobileMetrics(lensSummary, tab)}
           />
         ) : null
       }
       kpiStrip={
-        summary ? (
-          <AdminListKpiStrip
-            ariaLabel="Onboarding queue summary"
-            tiles={[
-              { label: "Open items", value: summary.queueTotal },
-              { label: "Entities", value: summary.entities },
-              { label: "Artists", value: summary.artists },
-              { label: "KYC sessions", value: summary.kyc },
-              { label: "Lead orgs", value: summary.orgs },
-              { label: "Documents", value: summary.documents },
-            ]}
+        !loadError && queueSummary.queueTotal > 0 ? (
+          <AdminTrendKpiBand
+            ariaLabel="Onboarding issues summary"
+            tiles={buildOnboardingIssuesListKpiTiles(lensSummary, tab)}
           />
         ) : null
       }
       errorAlert={
         loadError ? (
-          <AdminListAlert title="Could not load queues">{loadError}</AdminListAlert>
+          <AdminListAlert title="Could not load onboarding issues">{loadError}</AdminListAlert>
         ) : undefined
       }
       empty={
-        data && queueTotal === 0 ? (
+        !loadError && queueSummary.queueTotal === 0 ? (
           <CatalogListEmptyState
-            title="All onboarding queues clear"
+            title="All onboarding issues resolved"
             description="No entities, artists, KYC sessions, or documents need attention right now."
           />
         ) : null
@@ -89,8 +82,22 @@ export default async function AdminOnboardingIssuesPage({
               { href: "/admin/clients", label: "Clients" },
             ]}
           />
-          {data ? (
-            <OnboardingIssuesBoard data={data} defaultTab={result?.tab ?? "entities"} />
+          {!loadError && queueSummary.queueTotal > 0 ? (
+            <Suspense fallback={null}>
+              <OnboardingIssuesBoardContainer
+                tab={tab}
+                rows={rows}
+                selected={selected}
+                selectedItemId={model.selectedItemId}
+                summary={queueSummary}
+                lensTotal={total}
+                pagination={pagination}
+                buildTabHref={model.buildTabHref}
+                listReturnTarget={model.listReturnTarget}
+                clearPreviewHref={model.buildItemHref(null)}
+                previewDegraded={previewDegraded}
+              />
+            </Suspense>
           ) : null}
         </div>
       }

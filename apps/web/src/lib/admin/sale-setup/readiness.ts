@@ -113,21 +113,11 @@ export function buildSaleSetupReadiness(
       const relabeled = relabelItem(item);
       if (!setupStepHref) return relabeled;
       if (item.id === "lots") return { ...relabeled, href: setupStepHref("lots") };
-      if (item.id === "venue" || item.id === "schedule") {
+      if (item.id === "venue" || item.id === "schedule" || item.id === "sale_start_future") {
         return { ...relabeled, href: setupStepHref("schedule") };
       }
       return relabeled;
     });
-
-  if (sale.status === "draft" && !isStartInFutureForPublish(sale.startTime)) {
-    items.push({
-      id: "sale_start_future",
-      label: readinessLabel("sale_start_future"),
-      ok: false,
-      severity: "required",
-      href: setupStepHref?.("schedule") ?? `/admin/sales/${saleId}/edit`,
-    });
-  }
 
   for (const lot of lots) {
     if (!lotFitsSaleWindowForPublish(lot, sale)) {

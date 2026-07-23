@@ -11,6 +11,7 @@ import Link from "next/link";
 type SofColumnOptions = {
   status: SofListStatus;
   canReopen: boolean;
+  listReturnTarget?: string | undefined;
 };
 
 function buyerCell(row: AdminSofTableRow) {
@@ -35,11 +36,16 @@ function buyerCell(row: AdminSofTableRow) {
   );
 }
 
-function rejectedActions(row: AdminSofTableRow, canReopen: boolean, listStatus: SofListStatus) {
+function rejectedActions(
+  row: AdminSofTableRow,
+  canReopen: boolean,
+  listStatus: SofListStatus,
+  listReturnTarget?: string | undefined,
+) {
   return (
     <div className="flex flex-wrap gap-2">
       <Button type="button" variant="secondary" size="sm" asChild>
-        <Link href={buildSofCaseDetailHref(row.id, listStatus)}>View case</Link>
+        <Link href={buildSofCaseDetailHref(row.id, listStatus, listReturnTarget)}>View case</Link>
       </Button>
       {canReopen ? (
         <SofReopenButton caseId={row.id} variant="outline" size="sm">
@@ -50,7 +56,11 @@ function rejectedActions(row: AdminSofTableRow, canReopen: boolean, listStatus: 
   );
 }
 
-export function sofColumns({ status, canReopen }: SofColumnOptions): ColumnDef<AdminSofTableRow>[] {
+export function sofColumns({
+  status,
+  canReopen,
+  listReturnTarget,
+}: SofColumnOptions): ColumnDef<AdminSofTableRow>[] {
   const columns: ColumnDef<AdminSofTableRow>[] = [
     {
       id: "buyer",
@@ -120,7 +130,9 @@ export function sofColumns({ status, canReopen }: SofColumnOptions): ColumnDef<A
         header: "",
         cell: ({ row }) => (
           <Button type="button" variant="secondary" size="sm" asChild>
-            <Link href={buildSofCaseDetailHref(row.original.id, status)}>Review</Link>
+            <Link href={buildSofCaseDetailHref(row.original.id, status, listReturnTarget)}>
+              Review
+            </Link>
           </Button>
         ),
         enableSorting: false,
@@ -141,7 +153,7 @@ export function sofColumns({ status, canReopen }: SofColumnOptions): ColumnDef<A
       columns.push({
         id: "actions",
         header: "",
-        cell: ({ row }) => rejectedActions(row.original, canReopen, status),
+        cell: ({ row }) => rejectedActions(row.original, canReopen, status, listReturnTarget),
         enableSorting: false,
       });
     } else {
@@ -150,7 +162,9 @@ export function sofColumns({ status, canReopen }: SofColumnOptions): ColumnDef<A
         header: "",
         cell: ({ row }) => (
           <Button type="button" variant="secondary" size="sm" asChild>
-            <Link href={buildSofCaseDetailHref(row.original.id, status)}>View case</Link>
+            <Link href={buildSofCaseDetailHref(row.original.id, status, listReturnTarget)}>
+              View case
+            </Link>
           </Button>
         ),
         enableSorting: false,

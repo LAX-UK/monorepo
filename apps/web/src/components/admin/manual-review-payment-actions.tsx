@@ -5,7 +5,7 @@ import { isComplianceManualReviewReason } from "@/lib/admin/compliance-manual-re
 import {
   captureManualReviewPaymentAction,
   refundManualReviewPaymentAction,
-} from "@/lib/admin/payment.actions";
+} from "@/lib/admin/finance/admin-finance-mutations";
 import type { AdminManualReviewPaymentRow } from "@/lib/data/http/admin.server";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 
@@ -25,7 +25,7 @@ export function ManualReviewPaymentActions({ paymentId, manualReviewReason }: Pr
         <Alert variant="destructive">
           <AlertDescription>
             Release for checkout is blocked while AML or Source-of-Funds compliance holds apply.
-            Clear the case in the compliance queues before retrying release.
+            Clear the case in compliance review before retrying release.
           </AlertDescription>
         </Alert>
       ) : null}

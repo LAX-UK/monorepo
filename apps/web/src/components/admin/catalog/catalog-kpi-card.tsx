@@ -1,3 +1,4 @@
+import { cn } from "@auction/ui";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -11,6 +12,8 @@ type Props = {
 
 /** Shared metric tile for catalog detail KPI strips. */
 export function CatalogKpiCard({ label, value, hint, href }: Props) {
+  const isPlainValue = typeof value === "string" || typeof value === "number";
+
   const body = (
     <Surface
       variant="card"
@@ -19,9 +22,16 @@ export function CatalogKpiCard({ label, value, hint, href }: Props) {
       <p className="line-clamp-2 break-words font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
         {label}
       </p>
-      <p className="mt-1 min-w-0 truncate text-base font-semibold tabular-nums text-on-surface sm:text-lg">
+      <div
+        className={cn(
+          "mt-1 min-w-0",
+          isPlainValue
+            ? "truncate text-base font-semibold tabular-nums text-on-surface sm:text-lg"
+            : "flex items-center",
+        )}
+      >
         {value}
-      </p>
+      </div>
       <div className="mt-auto min-h-[2.5rem] pt-1 font-body text-xs text-on-surface-variant">
         {hint ? <p className="line-clamp-2 break-words">{hint}</p> : null}
       </div>

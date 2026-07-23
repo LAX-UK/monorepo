@@ -1,5 +1,7 @@
-import type { CatalogActiveFilterChip } from "@/components/admin/catalog/catalog-active-filters-row";
+import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
+import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
+import type { SaleDeliveryMode } from "@auction/types";
 
 export function buildSalesActiveFilterChips(
   sp: SearchParams,
@@ -30,11 +32,6 @@ export function buildSalesActiveFilterChips(
     live: "Live",
     closed: "Closed",
     settled: "Settled",
-  };
-
-  const DELIVERY_LABELS: Record<string, string> = {
-    online: "Online",
-    onsite: "On-site",
   };
 
   const SALE_SORT_LABELS: Record<string, string> = {
@@ -70,9 +67,10 @@ export function buildSalesActiveFilterChips(
     });
   }
   if (ctx.deliveryMode?.trim()) {
+    const mode = ctx.deliveryMode as SaleDeliveryMode;
     chips.push({
       id: "deliveryMode",
-      label: `Delivery: ${DELIVERY_LABELS[ctx.deliveryMode] ?? ctx.deliveryMode}`,
+      label: `Delivery: ${deliveryModeShortLabel(mode)}`,
       clearHref: omitParamsHref(base, sp, ["delivery"]),
     });
   }

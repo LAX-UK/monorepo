@@ -41,8 +41,10 @@ export type ShellConfig = {
   mobileNav: readonly NavItem[];
   moreSheetNav?: readonly NavEntry[];
   header: {
-    leftSlot?: ReactNode;
-    rightSlot?: ReactNode;
+    /** Module actions (notification bell, badges) — rendered before theme toggle. */
+    actionsSlot?: ReactNode;
+    /** Rare trailing overrides after actions, before theme toggle. */
+    extraSlot?: ReactNode;
   };
   footerCluster?: ReactNode;
   contextBanner?: ReactNode;

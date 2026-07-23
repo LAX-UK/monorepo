@@ -1,8 +1,6 @@
 import { adminUpdateLotResultAction } from "@/lib/actions/admin";
-import {
-  adminAddLotToSaleResultAction,
-  adminDetachLotFromSaleResultAction,
-} from "@/lib/actions/admin-sales";
+import { adminAddLotToSaleResultAction } from "@/lib/actions/admin-sales";
+import { adminDetachLotFromSaleResultAction } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import {
   type SaleSetupLotRowContext,
   type SaleSetupLotRowFormValues,
@@ -23,6 +21,9 @@ vi.mock("@/lib/actions/admin", () => ({
 
 vi.mock("@/lib/actions/admin-sales", () => ({
   adminAddLotToSaleResultAction: vi.fn(),
+}));
+
+vi.mock("@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations", () => ({
   adminDetachLotFromSaleResultAction: vi.fn(),
 }));
 

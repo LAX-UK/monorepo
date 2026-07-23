@@ -17,7 +17,8 @@ export type AdminActivityRow = {
   meta: string;
   href: string;
   statusLabel?: string;
-  statusTone?: "live" | "neutral" | "warning" | "success";
+  /** When set, `ended` lots resolve to Sold vs Unsold in status chips. */
+  winnerId?: string | null;
   priceLabel?: string;
   endsLabel?: string;
 };

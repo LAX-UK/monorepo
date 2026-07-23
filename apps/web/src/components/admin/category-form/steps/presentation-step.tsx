@@ -1,7 +1,7 @@
 "use client";
 
+import { CatalogSingleImageField } from "@/components/admin/catalog/media";
 import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
-import { ImageUploadField } from "@/components/forms/image-upload-field";
 import { LabelCaps } from "@/components/ui/typography";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
@@ -40,10 +40,11 @@ export function CategoryPresentationStep({ form, mode }: Props) {
                 <LabelCaps>Hero image</LabelCaps>
               </FormLabel>
               <FormControl>
-                <ImageUploadField
+                <CatalogSingleImageField
                   kind="category_image"
-                  value={field.value ? [field.value] : []}
-                  onChange={(keys) => field.onChange(keys[0] ?? null)}
+                  value={field.value}
+                  onChange={(next) => field.onChange(next)}
+                  inputId="category-hero"
                 />
               </FormControl>
               <p className="text-xs text-on-surface-variant">

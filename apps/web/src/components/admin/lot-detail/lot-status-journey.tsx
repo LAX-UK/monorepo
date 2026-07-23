@@ -1,5 +1,8 @@
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
-import { formatDateTime } from "@/lib/ui/format";
+import { formatAdminTableDateTime } from "@/lib/admin/format-admin-table-datetime";
+import { cn } from "@auction/ui";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 
 export type LotStatusJourneySnapshot = {
   currentStatus: string;
@@ -21,10 +24,10 @@ type Props = {
   saleName?: string | null;
 };
 
-function pill(active: boolean, done: boolean) {
-  if (active) return "border-primary bg-primary/10 text-primary";
-  if (done) return "border-outline-variant/40 bg-surface-container-low text-on-surface";
-  return "border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant";
+function stepTone(active: boolean, done: boolean): "info" | "success" | "neutral" {
+  if (active) return "info";
+  if (done) return "success";
+  return "neutral";
 }
 
 export function LotStatusJourney({ snapshot, events, saleName }: Props) {
@@ -37,6 +40,7 @@ export function LotStatusJourney({ snapshot, events, saleName }: Props) {
   );
   const terminal = ["ended", "cancelled", "voided", "draft"].includes(snapshot.currentStatus);
   const lastLabel = domainEventLabel(snapshot.lastEventType);
+  const lastWhen = formatAdminTableDateTime(snapshot.lastEventAt, "timestamp");
 
   const steps = [
     { key: "created", label: "Created", done: true, active: false },
@@ -73,13 +77,19 @@ export function LotStatusJourney({ snapshot, events, saleName }: Props) {
   return (
     <div className="space-y-3 rounded-lg border border-border-hairline bg-surface-container-lowest/40 p-4">
       <div className="flex flex-wrap items-center gap-2">
+        <span className="font-label text-[10px] uppercase tracking-wide text-secondary">
+          Current status
+        </span>
+        <AdminStatusBadge domain="lot" status={snapshot.currentStatus} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
         {steps.map((step, index) => (
           <div key={step.key} className="flex items-center gap-2">
-            <span
-              className={`rounded-full border px-3 py-1 font-label text-[10px] uppercase tracking-wide ${pill(step.active, step.done)}`}
-            >
-              {step.label}
-            </span>
+            <DotStatusPill
+              label={step.label}
+              tone={stepTone(step.active, step.done)}
+              className={cn(!step.done && !step.active && "opacity-70")}
+            />
             {index < steps.length - 1 ? (
               <span className="text-on-surface-variant/40" aria-hidden>
                 →
@@ -89,19 +99,28 @@ export function LotStatusJourney({ snapshot, events, saleName }: Props) {
         ))}
       </div>
       <p className="font-body text-xs text-on-surface-variant">
-        Last activity: {lastLabel} · {formatDateTime(new Date(snapshot.lastEventAt))}
+        Last activity: {lastLabel} ·{" "}
+        <time dateTime={lastWhen.iso ?? undefined} title={lastWhen.title}>
+          {lastWhen.primary}
+        </time>
       </p>
       {recent.length > 0 ? (
         <ul className="space-y-1 border-t border-border-hairline pt-2">
-          {recent.map((ev, i) => (
-            <li
-              key={`${ev.eventType}-${ev.occurredAt}-${i}`}
-              className="font-body text-xs text-on-surface-variant"
-            >
-              {domainEventLabel(ev.eventType)}
-              {ev.saleTitle ? ` · ${ev.saleTitle}` : ""} · {formatDateTime(new Date(ev.occurredAt))}
-            </li>
-          ))}
+          {recent.map((ev, i) => {
+            const when = formatAdminTableDateTime(ev.occurredAt, "timestamp");
+            return (
+              <li
+                key={`${ev.eventType}-${ev.occurredAt}-${i}`}
+                className="font-body text-xs text-on-surface-variant"
+              >
+                {domainEventLabel(ev.eventType)}
+                {ev.saleTitle ? ` · ${ev.saleTitle}` : ""} ·{" "}
+                <time dateTime={when.iso ?? undefined} title={when.title}>
+                  {when.primary}
+                </time>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </div>

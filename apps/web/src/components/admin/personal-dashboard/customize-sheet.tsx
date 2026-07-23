@@ -24,7 +24,7 @@ import { useState, useTransition } from "react";
 const WIDGET_LABELS: Record<DashboardWidgetId, { label: string; description: string }> = {
   greeting: { label: "Greeting", description: "Personal welcome and quick links" },
   "kpi-band": { label: "Trend KPIs", description: "Period comparison metrics with sparklines" },
-  "my-queue": { label: "My queue", description: "Attention items needing action" },
+  "my-queue": { label: "Needs attention", description: "Attention items needing action" },
   anomalies: { label: "Anomalies", description: "Operational callouts above threshold" },
   "saleroom-live": { label: "Saleroom live", description: "Live bidding pulse and saleroom link" },
   "onsite-radar": {

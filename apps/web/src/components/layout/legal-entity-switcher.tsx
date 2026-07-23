@@ -2,12 +2,8 @@
 
 import { initials } from "@/components/organisations/initials";
 import { PendingInvitationsBadge } from "@/components/organisations/invitation-card-list";
-import {
-  roleLabel,
-  statusBadgeVariant,
-  statusLabel,
-  subkindLabel,
-} from "@/components/organisations/labels";
+import { roleLabel, subkindLabel } from "@/components/organisations/labels";
+import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
 import { shouldUseCompactLegalEntitySwitcher } from "@/lib/navigation/mobile-header-context";
@@ -24,8 +20,8 @@ import {
   CommandItem,
   CommandList,
 } from "@auction/ui/components/command";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Check, ChevronRight, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -120,13 +116,9 @@ export function LegalEntitySwitcher({
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{acting.displayName}</p>
               <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                <StatusBadge variant={statusBadgeVariant(acting.status)} size="sm">
-                  {statusLabel(acting.status)}
-                </StatusBadge>
+                <DomainStatusBadge domain="legalEntity" status={acting.status} />
                 {acting.kind === "organisation" ? (
-                  <StatusBadge variant="neutral" size="sm">
-                    {roleLabel(acting.role)}
-                  </StatusBadge>
+                  <DotStatusPill label={roleLabel(acting.role)} tone="neutral" />
                 ) : null}
               </div>
             </div>
@@ -166,13 +158,11 @@ export function LegalEntitySwitcher({
                         {subkindLabel(m.subkind)}
                       </span>
                     </span>
-                    <StatusBadge
-                      variant={statusBadgeVariant(m.status)}
-                      size="sm"
+                    <DomainStatusBadge
+                      domain="legalEntity"
+                      status={m.status}
                       className="shrink-0"
-                    >
-                      {statusLabel(m.status)}
-                    </StatusBadge>
+                    />
                   </CommandItem>
                 ))}
             </CommandGroup>
@@ -205,13 +195,11 @@ export function LegalEntitySwitcher({
                           {m.isPrimaryAdmin ? " · Primary" : ""}
                         </span>
                       </span>
-                      <StatusBadge
-                        variant={statusBadgeVariant(m.status)}
-                        size="sm"
+                      <DomainStatusBadge
+                        domain="legalEntity"
+                        status={m.status}
                         className="shrink-0"
-                      >
-                        {statusLabel(m.status)}
-                      </StatusBadge>
+                      />
                     </CommandItem>
                   ))}
               </CommandGroup>
@@ -228,9 +216,10 @@ export function LegalEntitySwitcher({
               >
                 <span className="flex items-center gap-2">
                   Pending invitations
-                  <StatusBadge variant="warning" size="sm">
-                    {pendingInvitesCount > 9 ? "9+" : pendingInvitesCount}
-                  </StatusBadge>
+                  <DotStatusPill
+                    label={pendingInvitesCount > 9 ? "9+" : String(pendingInvitesCount)}
+                    tone="warning"
+                  />
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
               </Link>
@@ -319,9 +308,7 @@ const LegalEntitySwitcherTrigger = forwardRef<
         <span className="hidden min-w-0 flex-1 text-left lg:block">
           <span className="block truncate font-medium leading-tight">{acting.displayName}</span>
           <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            <StatusBadge variant={statusBadgeVariant(acting.status)} size="sm">
-              {statusLabel(acting.status)}
-            </StatusBadge>
+            <DomainStatusBadge domain="legalEntity" status={acting.status} />
             <span className="truncate text-on-surface-variant text-xs">
               {subkindLabel(acting.subkind)}
               {acting.kind === "organisation" ? ` · ${roleLabel(acting.role)}` : ""}

@@ -1,13 +1,8 @@
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { CatalogKpiCard } from "@/components/admin/catalog/catalog-kpi-card";
-import type { ReactNode } from "react";
+import type { CatalogDetailSummaryItem } from "@/lib/admin/catalog/types";
 
-export type CatalogDetailSummaryItem = {
-  id: string;
-  label: string;
-  value: ReactNode;
-  hint?: string;
-  href?: string;
-};
+export type { CatalogDetailSummaryItem };
 
 type Props = {
   items: readonly CatalogDetailSummaryItem[];
@@ -30,7 +25,13 @@ export function CatalogDetailSummaryStrip({ items }: Props) {
         <CatalogKpiCard
           key={item.id}
           label={item.label}
-          value={item.value}
+          value={
+            item.status ? (
+              <AdminStatusBadge domain={item.status.domain} status={item.status.status} />
+            ) : (
+              item.value
+            )
+          }
           {...(item.hint ? { hint: item.hint } : {})}
           {...(item.href ? { href: item.href } : {})}
         />

@@ -1,10 +1,10 @@
 "use client";
 
 import { AdminLotPicker } from "@/components/admin/admin-lot-picker";
+import { LotAuctionTypeChip } from "@/components/admin/lot-auction-type-chip";
 import { RhfDateTimePicker } from "@/components/ui/rhf-date-time-picker";
 import { LabelCaps } from "@/components/ui/typography";
 import { adminGetLotAttachPreviewAction, adminUpdateLotResultAction } from "@/lib/actions/admin";
-import { adminAttachLotToSaleResultAction } from "@/lib/actions/admin-sales";
 import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import {
   attachReviewScheduleChanged,
@@ -12,6 +12,7 @@ import {
   inventoryLotToAttachReviewRow,
   validateAttachReviewSchedule,
 } from "@/lib/admin/attach-existing-lot";
+import { adminAttachLotToSaleResultAction } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { proposeLotTimesWithinWindow } from "@/lib/admin/sale-lot-window-sync";
 import {
   type SaleSetupLotRowFormValues,
@@ -297,8 +298,8 @@ export function AttachExistingLotReview({
                 <dt className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
                   Auction type
                 </dt>
-                <dd className="font-body text-sm text-on-surface capitalize">
-                  {previewLot.auctionType.replace(/_/g, " ")}
+                <dd className="font-body text-sm text-on-surface">
+                  <LotAuctionTypeChip auctionType={previewLot.auctionType} />
                 </dd>
               </div>
               <div>

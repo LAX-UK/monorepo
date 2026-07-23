@@ -1,6 +1,6 @@
 import { CatalogBreadcrumbs } from "@/components/admin/catalog";
+import { LotDocumentsTabBoard } from "@/components/admin/lot-detail/lot-documents-tab-board";
 import { AdminLotForm } from "@/components/admin/lot-form";
-import { LotDocumentsSection } from "@/components/admin/lot-form/lot-documents-section";
 import { LotEditFormLayout } from "@/components/admin/lot-form/lot-edit-form-layout";
 import { AdminLotMarketingForm } from "@/components/admin/lot-marketing-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
@@ -91,7 +91,7 @@ export default async function AdminEditLotLayout({ params, children }: Props) {
             lotEditSection="catalog"
           />
         }
-        documentsSection={<LotDocumentsSection lotId={id} initialDocuments={lotDocuments} />}
+        documentsSection={<LotDocumentsTabBoard lotId={id} initialDocuments={lotDocuments} />}
       />
       {children}
     </Suspense>

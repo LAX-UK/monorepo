@@ -34,11 +34,13 @@ describe("buildShellConfig", () => {
     const config = buildShellConfig({
       user: clientUser,
       role: "client",
-      headerRightSlot: <span>Right</span>,
+      headerActionsSlot: <span>Actions</span>,
+      headerExtraSlot: <span>Extra</span>,
       contextBanner: <span>Banner</span>,
       topSlot: <span>Top</span>,
     });
-    expect(config.header.rightSlot).toBeTruthy();
+    expect(config.header.actionsSlot).toBeTruthy();
+    expect(config.header.extraSlot).toBeTruthy();
     expect(config.contextBanner).toBeTruthy();
     expect(config.topSlot).toBeTruthy();
   });

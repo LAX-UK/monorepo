@@ -1,8 +1,10 @@
-import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
 import { deliveryModeExplanation, deliveryModeLabel } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
+import type { SaleDeliveryMode } from "@auction/types";
 import { saleDeliveryModes } from "@auction/types";
+import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   FormControl,
@@ -19,7 +21,15 @@ type Props = {
   deliveryMode: AdminSaleFormValues["deliveryMode"];
 };
 
+const FIGMA_MODE_HEADINGS: Record<SaleDeliveryMode, string> = {
+  online: "Online (timed auction)",
+  hybrid: "Hybrid (in-room + online)",
+  onsite: "Live (real-time saleroom)",
+};
+
 export function DeliveryModeField({ form, isDraft, deliveryMode }: Props) {
+  const activeMode = (deliveryMode ?? "online") as SaleDeliveryMode;
+
   return (
     <>
       <FormField
@@ -28,25 +38,42 @@ export function DeliveryModeField({ form, isDraft, deliveryMode }: Props) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              <LabelCaps>Delivery mode</LabelCaps>
+              <LabelCaps>Auction format</LabelCaps>
             </FormLabel>
-            <RhfSelect
-              value={field.value ?? ""}
-              onValueChange={(v) => {
-                if (isDraft) field.onChange(v);
-              }}
-              onBlur={field.onBlur}
-              disabled={!isDraft}
-              options={saleDeliveryModes.map((m) => ({
-                value: m,
-                label: deliveryModeLabel(m),
-              }))}
-              triggerClassName="w-full font-body text-sm"
-            />
+            <FormControl>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {saleDeliveryModes.map((mode) => {
+                  const selected = field.value === mode;
+                  return (
+                    <Button
+                      key={mode}
+                      type="button"
+                      variant="ghost"
+                      disabled={!isDraft}
+                      onClick={() => {
+                        if (isDraft) field.onChange(mode);
+                      }}
+                      className={cn(
+                        "rounded-xl border p-4 text-left transition-colors",
+                        selected
+                          ? "border-secondary bg-secondary/5 ring-1 ring-secondary/30"
+                          : "border-outline-variant/30 bg-surface-container-lowest hover:border-outline-variant/60",
+                        !isDraft && "cursor-not-allowed opacity-70",
+                      )}
+                    >
+                      <span className="block font-headline text-sm text-on-surface">
+                        {FIGMA_MODE_HEADINGS[mode]}
+                      </span>
+                      <span className="mt-1 block font-body text-xs text-on-surface-variant">
+                        {deliveryModeLabel(mode)}
+                      </span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </FormControl>
             <p className="mt-2 font-body text-xs text-on-surface-variant">
-              {deliveryModeExplanation(
-                (deliveryMode ?? "online") as (typeof saleDeliveryModes)[number],
-              )}
+              {deliveryModeExplanation(activeMode)}
             </p>
             <FormMessage />
           </FormItem>

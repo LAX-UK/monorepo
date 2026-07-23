@@ -1,8 +1,10 @@
 "use client";
 
 import { openCommandPalette } from "@/components/layout/command-palette-events";
+import { ShellChromeIconButton } from "@/components/layout/shell-chrome-icon-button";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { KbdHint } from "@/components/marketing/kbd-hint";
+import type { ChromeSurface } from "@/lib/layout/chrome-surface";
 import {
   SITE_HEADER_CHROME,
   type SiteHeaderTone,
@@ -44,6 +46,8 @@ const HEADER_SEARCH_BAR_FROM: Record<
   },
 };
 
+type HeaderSearchLayout = "pill" | "icon" | "both";
+
 type PaletteTriggerProps = {
   className?: string;
   tone?: SiteHeaderTone;
@@ -52,6 +56,7 @@ type PaletteTriggerProps = {
   /** Min viewport width where the full search bar replaces the icon trigger. */
   fullBarFrom?: HeaderSearchBarFrom;
   onOpen?: () => void;
+  surface?: ChromeSurface;
 };
 
 export function HeaderSearchPaletteTrigger({
@@ -60,6 +65,7 @@ export function HeaderSearchPaletteTrigger({
   variant = "bar",
   fullBarFrom = "xl",
   onOpen,
+  surface = "marketing",
 }: PaletteTriggerProps) {
   const [isMac, setIsMac] = useState(true);
 
@@ -71,6 +77,28 @@ export function HeaderSearchPaletteTrigger({
     onOpen?.();
     openCommandPalette();
   };
+
+  if (surface === "shell" && variant === "bar") {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={open}
+        className={cn(
+          "hidden h-12 w-full max-w-[20.75rem] items-center justify-start gap-3 rounded-full border border-shell-stroke bg-shell-search-bg px-4 text-left font-label text-sm font-normal text-on-surface-variant shadow-none hover:bg-shell-search-bg/90 lg:flex",
+          className,
+        )}
+        aria-haspopup="dialog"
+        aria-label="Search"
+      >
+        <Search className="size-5 shrink-0 text-on-surface-variant" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">Search...</span>
+        <KbdHint className="hidden text-on-surface-variant/80 sm:inline">
+          {isMac ? "⌘K" : "Ctrl+K"}
+        </KbdHint>
+      </Button>
+    );
+  }
 
   if (variant === "drawer") {
     return (
@@ -133,6 +161,19 @@ export function HeaderSearchPaletteTrigger({
   );
 }
 
+function HeaderSearchShellIconTrigger({ className }: { className?: string }) {
+  return (
+    <ShellChromeIconButton
+      label="Open command palette"
+      className={cn("shrink-0 lg:hidden", className)}
+      onClick={openCommandPalette}
+      aria-haspopup="dialog"
+    >
+      <Search className="size-4" aria-hidden />
+    </ShellChromeIconButton>
+  );
+}
+
 function HeaderSearchIconTrigger({
   className = "",
   tone = "on-light",
@@ -169,29 +210,39 @@ function HeaderSearchIconTrigger({
 export function HeaderSearchTrigger({
   className = "",
   tone = "on-light",
-  showIcon = false,
   fullBarFrom = "xl",
   iconFrom = "default",
+  surface = "marketing",
+  layout = "pill",
 }: {
   className?: string;
   tone?: SiteHeaderTone;
-  /** Icon-only trigger below `fullBarFrom` (marketing header). */
-  showIcon?: boolean;
   fullBarFrom?: HeaderSearchBarFrom;
   /** `lg` shows the icon from lg until `fullBarFrom` (staff shell gap). */
   iconFrom?: HeaderSearchIconFrom;
+  surface?: ChromeSurface;
+  /** `pill` — bar only; `icon` — icon only; `both` — responsive icon + bar. */
+  layout?: HeaderSearchLayout;
 }) {
+  const showShellIcon = surface === "shell" && (layout === "icon" || layout === "both");
+  const showMarketingIcon = surface === "marketing" && (layout === "icon" || layout === "both");
+  const showPill = layout === "pill" || layout === "both";
+
   return (
     <>
-      {showIcon ? (
+      {showShellIcon ? <HeaderSearchShellIconTrigger /> : null}
+      {showMarketingIcon ? (
         <HeaderSearchIconTrigger tone={tone} fullBarFrom={fullBarFrom} iconFrom={iconFrom} />
       ) : null}
-      <HeaderSearchPaletteTrigger
-        className={className}
-        tone={tone}
-        variant="bar"
-        fullBarFrom={fullBarFrom}
-      />
+      {showPill ? (
+        <HeaderSearchPaletteTrigger
+          className={className}
+          tone={tone}
+          variant="bar"
+          fullBarFrom={fullBarFrom}
+          surface={surface}
+        />
+      ) : null}
     </>
   );
 }

@@ -40,6 +40,8 @@ type Props = {
   canDelete: boolean;
   canMarkOnsiteEnded: boolean;
   showSaleroomLink?: boolean | undefined;
+  /** When true, saleroom CTA is rendered by the parent shell instead. */
+  hideSaleroomLink?: boolean | undefined;
 };
 
 export function AdminSaleHeaderActions({
@@ -53,6 +55,7 @@ export function AdminSaleHeaderActions({
   canDelete,
   canMarkOnsiteEnded,
   showSaleroomLink = false,
+  hideSaleroomLink = false,
 }: Props) {
   const { pending, publish, unpublish, markOnsiteEnded, cancel, softDelete } =
     useSaleLifecycleActions(saleId);
@@ -65,7 +68,7 @@ export function AdminSaleHeaderActions({
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      {showSaleroomLink ? (
+      {showSaleroomLink && !hideSaleroomLink ? (
         <Button size="sm" asChild>
           <Link href={adminSaleroomHref(saleId)}>Open saleroom</Link>
         </Button>

@@ -13,16 +13,9 @@ import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export type CatalogMobileAction = {
-  id: string;
-  label: string;
-  href?: string;
-  onClick?: () => void;
-  /** When set, renders a native submit for that form id (cannot combine with href). */
-  htmlForm?: string;
-  variant?: "primary" | "secondary";
-  disabled?: boolean;
-};
+import type { CatalogMobileAction } from "@/lib/admin/catalog/types";
+
+export type { CatalogMobileAction };
 
 type Props = {
   actions: readonly CatalogMobileAction[];
@@ -48,7 +41,7 @@ export function CatalogMobileActionBar({
   return (
     <div
       className={cn(
-        "fixed inset-x-0 z-30 border-t border-border-hairline bg-surface/95 p-3 backdrop-blur-md md:hidden",
+        "fixed inset-x-0 z-30 border-t border-border-hairline bg-surface/95 p-3 backdrop-blur-md lg:hidden",
         withBottomNavOffset &&
           "bottom-[calc(var(--mobile-tab-bar-height,0px)+env(safe-area-inset-bottom,0px))]",
         !withBottomNavOffset && "bottom-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]",

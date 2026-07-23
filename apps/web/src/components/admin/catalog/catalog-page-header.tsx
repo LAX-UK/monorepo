@@ -13,13 +13,17 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { CatalogMobileAction } from "./catalog-mobile-action-bar";
 
-export type CatalogMobileActionsPlacement = "header" | "bar" | "none";
+import type { CatalogMobileActionsPlacement } from "@/lib/admin/catalog/types";
+
+export type { CatalogMobileActionsPlacement };
 
 type Props = {
   title: ReactNode;
   description?: string;
   meta?: ReactNode;
   breadcrumbs?: ReactNode;
+  /** Quiet contextual nav between breadcrumbs and title (e.g. back + lot sequence). */
+  contextNav?: ReactNode;
   eyebrow?: ReactNode;
   /** Shown on md+ in the header row */
   actions?: ReactNode;
@@ -27,6 +31,8 @@ type Props = {
   mobileActions?: readonly CatalogMobileAction[];
   /** Where mobile actions render; default `none` (shells use fixed bottom bar). */
   mobileActionsPlacement?: CatalogMobileActionsPlacement;
+  /** When true, meta renders below the title (Figma detail header order). */
+  metaBelowTitle?: boolean;
   className?: string;
 };
 
@@ -36,10 +42,12 @@ export function CatalogPageHeader({
   description,
   meta,
   breadcrumbs,
+  contextNav,
   eyebrow,
   actions,
   mobileActions,
   mobileActionsPlacement = "none",
+  metaBelowTitle = false,
   className,
 }: Props) {
   const primaryMobile = mobileActions?.find((a) => a.variant === "primary") ?? mobileActions?.[0];
@@ -50,21 +58,21 @@ export function CatalogPageHeader({
   return (
     <header className={cn("mx-auto w-full max-w-7xl", className)}>
       {breadcrumbs ? (
-        <div className="mb-4 text-sm text-on-surface-variant [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline">
-          {breadcrumbs}
-        </div>
+        <div className="mb-4 text-sm text-on-surface-variant">{breadcrumbs}</div>
       ) : null}
+      {contextNav ? <div className="mb-4">{contextNav}</div> : null}
       {eyebrow ? (
         <p className="mb-2 font-label text-[10px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
           {eyebrow}
         </p>
       ) : null}
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
         <div className="min-w-0 flex-1">
-          {meta ? <div className="mb-2">{meta}</div> : null}
+          {!metaBelowTitle && meta ? <div className="mb-2">{meta}</div> : null}
           <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface md:text-3xl">
             {title}
           </h1>
+          {metaBelowTitle && meta ? <div className="mt-3">{meta}</div> : null}
           {description ? (
             <p className="mt-2 max-w-2xl font-body text-sm leading-relaxed text-on-surface-variant">
               {description}
@@ -75,10 +83,10 @@ export function CatalogPageHeader({
           <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
         ) : null}
         {actions && showHeaderMobile ? (
-          <div className="hidden shrink-0 flex-wrap items-center gap-2 md:flex">{actions}</div>
+          <div className="hidden shrink-0 flex-wrap items-center gap-2 lg:flex">{actions}</div>
         ) : null}
         {showHeaderMobile ? (
-          <div className="flex flex-wrap items-center gap-2 md:hidden">
+          <div className="flex flex-wrap items-center gap-2 lg:hidden">
             {primaryMobile ? <CatalogHeaderActionButton action={primaryMobile} fullWidth /> : null}
             {overflowMobile.length > 0 ? (
               <DropdownMenu>

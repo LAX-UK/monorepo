@@ -2,6 +2,7 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import type { AdminArtistDuplicateHit } from "@/lib/data/http/admin.server";
 import { EntityList } from "@auction/ui";
@@ -52,22 +53,25 @@ export function AdminArtistDuplicatesTable({ rows }: { rows: AdminArtistDuplicat
   const cards = (
     <ul className="space-y-3 lg:hidden">
       {rows.map((row) => (
-        <li
+        <CatalogMobileCardShell
           key={row.id}
-          className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4"
+          id={row.id}
+          title={row.displayName}
+          selectionLabel={`Select ${row.displayName}`}
+          status={<AdminStatusBadge domain="artist" status={row.status} />}
+          footer={
+            <Link
+              href={`/admin/artists/${row.id}`}
+              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
+            >
+              View profile →
+            </Link>
+          }
         >
-          <p className="font-medium text-on-surface">{row.displayName}</p>
-          <p className="mt-1 text-xs text-on-surface-variant">{artistKindMeta(row.kind).badge}</p>
-          <div className="mt-2">
-            <AdminStatusBadge domain="artist" status={row.status} />
-          </div>
-          <Link
-            href={`/admin/artists/${row.id}`}
-            className="mt-3 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-          >
-            View
-          </Link>
-        </li>
+          <p className="font-body text-xs text-on-surface-variant">
+            {artistKindMeta(row.kind).badge}
+          </p>
+        </CatalogMobileCardShell>
       ))}
     </ul>
   );

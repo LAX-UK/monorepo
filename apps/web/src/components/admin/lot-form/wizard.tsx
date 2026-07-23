@@ -21,6 +21,7 @@ import { applyLotTypeFieldReset } from "@/lib/admin/lot-catalogue";
 import { buildLotEditTabFields, buildLotStepFields } from "@/lib/admin/lot-form-field-ownership";
 import { lotFormStepLabel } from "@/lib/admin/lot-form-field-ownership";
 import { lotFormStepIntro } from "@/lib/admin/lot-form-step-copy";
+import { buildLotSetupStepperViewModel } from "@/lib/data/view-models/lot-setup-stepper.vm";
 import {
   type AdminLotFormSaleTiming,
   type AdminLotFormValues,
@@ -51,13 +52,6 @@ import {
   submitLotForm,
   validateAllLotWizardSteps,
 } from "./use-lot-form-submit";
-
-const LOT_FORM_STEPS = [
-  { id: "identity", label: "Identity" },
-  { id: "sale-seller", label: "Sale & seller" },
-  { id: "catalogue", label: "Catalogue" },
-  { id: "review", label: "Review" },
-] as const;
 
 const LOT_WIZARD_FIELD_STEPS = 3;
 
@@ -165,6 +159,7 @@ export function AdminLotForm({
     reValidateMode: "onChange",
   });
   const auctionType = form.watch("auctionType");
+  const wizardSteps = useMemo(() => buildLotSetupStepperViewModel(mode), [mode]);
   const lotStepFields = useMemo(
     () => buildLotStepFields(auctionType, { includeArtist: showArtistField }),
     [auctionType, showArtistField],
@@ -331,7 +326,8 @@ export function AdminLotForm({
             </div>
           ) : (
             <AdminFormWizard
-              steps={LOT_FORM_STEPS}
+              steps={wizardSteps}
+              layout="sidebar"
               isDirty={formDirty}
               pending={pending}
               hideStickyOnMobile={Boolean(htmlFormId)}

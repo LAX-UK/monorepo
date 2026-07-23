@@ -1,11 +1,13 @@
 "use client";
 
 import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
+import { LotAuctionTypeChip } from "@/components/admin/lot-auction-type-chip";
 import { UnderlineInput } from "@/components/ui/input";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { LabelCaps } from "@/components/ui/typography";
-import { LOT_AUCTION_TYPE_DESCRIPTIONS, LOT_AUCTION_TYPE_LABELS } from "@/lib/admin/lot-catalogue";
+import { LOT_AUCTION_TYPE_DESCRIPTIONS } from "@/lib/admin/lot-catalogue";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
+import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type-presentation";
 import type { LotAuctionType } from "@auction/types";
 import {
   FormControl,
@@ -88,14 +90,17 @@ export function LotIdentityStep({
               onBlur={field.onBlur}
               options={auctionTypeOptions.map((t) => ({
                 value: t,
-                label: LOT_AUCTION_TYPE_LABELS[t],
+                label: lotAuctionTypeLabel(t),
               }))}
               triggerClassName="w-full font-body text-sm"
             />
             {field.value ? (
-              <p className="mt-2 font-body text-xs text-on-surface-variant">
-                {LOT_AUCTION_TYPE_DESCRIPTIONS[field.value as LotAuctionType]}
-              </p>
+              <div className="mt-2 flex flex-col gap-2">
+                <LotAuctionTypeChip auctionType={field.value as LotAuctionType} />
+                <p className="font-body text-xs text-on-surface-variant">
+                  {LOT_AUCTION_TYPE_DESCRIPTIONS[field.value as LotAuctionType]}
+                </p>
+              </div>
             ) : null}
             {englishOnlyAuctionsLocked ? (
               <p className="mt-2 font-body text-xs text-on-surface-variant">

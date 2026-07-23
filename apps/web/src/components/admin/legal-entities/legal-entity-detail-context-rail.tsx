@@ -61,7 +61,7 @@ export function LegalEntityDetailContextRail({ entity }: Props) {
           },
           {
             id: "onboarding",
-            label: "Onboarding queues",
+            label: "Onboarding issues",
             href: "/admin/onboarding-issues?tab=entities",
             variant: "outline",
           },

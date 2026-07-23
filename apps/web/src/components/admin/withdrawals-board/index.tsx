@@ -45,7 +45,7 @@ export function AdminWithdrawalsBoard({ tasks }: { tasks: LotWithdrawalRequestTa
                     : "/admin/lots?lens=attention"
                 }
                 subtitle={
-                  <p className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
+                  <p className="truncate font-body text-sm text-on-surface-variant">
                     {selected.kind.replaceAll("_", " ")}
                     {selected.status ? ` · ${selected.status.replaceAll("_", " ")}` : ""}
                   </p>

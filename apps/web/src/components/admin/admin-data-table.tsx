@@ -55,13 +55,13 @@ function columnPickerOptions<TData, TValue>(
   return options;
 }
 
-function loadVisibility(storageKey: string): VisibilityState {
+function loadVisibility(storageKey: string, defaults?: VisibilityState): VisibilityState {
   try {
     const raw = localStorage.getItem(storageKey);
-    if (!raw) return {};
+    if (!raw) return defaults ?? {};
     return JSON.parse(raw) as VisibilityState;
   } catch {
-    return {};
+    return defaults ?? {};
   }
 }
 
@@ -78,6 +78,8 @@ type AdminDataTableProps<TData, TValue> = {
   onRowSelectionChange?: (selection: RowSelectionState) => void;
   density?: "comfortable" | "compact";
   columnVisibilityStorageKey?: string;
+  /** Applied when localStorage has no saved layout for the storage key. */
+  defaultColumnVisibility?: VisibilityState;
   showColumnPicker?: boolean;
   toolbarEnd?: ReactNode;
   stickyHeader?: boolean;
@@ -96,6 +98,7 @@ export function AdminDataTable<TData, TValue>({
   ariaLabel,
   columns,
   columnVisibilityStorageKey,
+  defaultColumnVisibility,
   showColumnPicker = false,
   toolbarEnd,
   stickyHeader = false,
@@ -137,8 +140,8 @@ export function AdminDataTable<TData, TValue>({
 
   useEffect(() => {
     if (!columnVisibilityStorageKey) return;
-    setColumnVisibility(loadVisibility(columnVisibilityStorageKey));
-  }, [columnVisibilityStorageKey]);
+    setColumnVisibility(loadVisibility(columnVisibilityStorageKey, defaultColumnVisibility));
+  }, [columnVisibilityStorageKey, defaultColumnVisibility]);
 
   useEffect(() => {
     if (!enableKeyboardNav) return;

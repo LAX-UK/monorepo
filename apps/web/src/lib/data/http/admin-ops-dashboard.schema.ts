@@ -1,61 +1,16 @@
+import { formatAdminTableMoney } from "@/lib/admin/format-admin-table-money";
 import type {
-  AdminAnalyticsPayload,
   AdminAttentionFeedItem,
   AdminFinanceIssuesPayload,
   AdminManualReviewPaymentRow,
   AdminOnboardingIssuesPayload,
   AdminTodayMetricsPayload,
 } from "@/lib/data/http/admin-ops-dashboard.types";
-import { isIndexableObject, toObjectRecord } from "@/lib/data/http/object-guards";
+import { toObjectRecord } from "@/lib/data/http/object-guards";
 import { zNullableStringFromEmpty } from "@/lib/data/http/schema-coerce";
 import { legalEntityStatuses } from "@auction/types";
 import type { LegalEntityStatus } from "@auction/types";
 import { z } from "zod";
-
-const dateCountSeriesSchema = z.array(
-  z
-    .preprocess(toObjectRecord, z.record(z.unknown()))
-    .transform((row) => ({ date: String(row.date ?? ""), count: Number(row.count ?? 0) })),
-);
-
-const dateTotalSeriesSchema = z.array(
-  z
-    .preprocess(toObjectRecord, z.record(z.unknown()))
-    .transform((row) => ({ date: String(row.date ?? ""), total: String(row.total ?? "0") })),
-);
-
-const numberArraySchema = z.preprocess(
-  (value) => (Array.isArray(value) ? value.map(Number) : []),
-  z.array(z.number()),
-);
-
-export const adminAnalyticsPayloadSchema = z
-  .preprocess(toObjectRecord, z.record(z.unknown()))
-  .transform((row): AdminAnalyticsPayload => {
-    const conversionRaw = isIndexableObject(row.conversion) ? row.conversion : {};
-    const sparklinesRaw = isIndexableObject(row.sparklines) ? row.sparklines : undefined;
-    return {
-      activeLots: Number(row.activeLots ?? 0),
-      lotCompletedSeries: dateCountSeriesSchema.parse(row.lotCompletedSeries),
-      conversion: {
-        ended: Number(conversionRaw.ended ?? 0),
-        withWinner: Number(conversionRaw.withWinner ?? 0),
-      },
-      revenueSeries: dateTotalSeriesSchema.parse(row.revenueSeries),
-      averageOrderValue: zNullableStringFromEmpty.parse(row.averageOrderValue),
-      registrationSeries: dateCountSeriesSchema.parse(row.registrationSeries),
-      totalUsers: Number(row.totalUsers ?? 0),
-      ...(sparklinesRaw
-        ? {
-            sparklines: {
-              revenue: numberArraySchema.parse(sparklinesRaw.revenue),
-              lotCompleted: numberArraySchema.parse(sparklinesRaw.lotCompleted),
-              registrations: numberArraySchema.parse(sparklinesRaw.registrations),
-            },
-          }
-        : {}),
-    };
-  }) as z.ZodType<AdminAnalyticsPayload>;
 
 export const adminTodayMetricsPayloadSchema = z
   .preprocess(toObjectRecord, z.record(z.unknown()))
@@ -180,6 +135,10 @@ export const adminManualReviewPaymentRowSchema = z
       sellerStatus,
       sellerArchivedAt: zNullableStringFromEmpty.parse(row.sellerArchivedAt),
       amount: String(row.amount ?? "0"),
+      amountDisplay: formatAdminTableMoney(
+        String(row.amount ?? "0"),
+        String(row.currency ?? "GBP"),
+      ),
       currency: String(row.currency ?? "GBP"),
       archiveReason: zNullableStringFromEmpty.parse(row.archiveReason),
       archiveTimestamp: zNullableStringFromEmpty.parse(row.archiveTimestamp),
@@ -227,8 +186,3 @@ export const adminLiveMetricsSchema = z
   .transform((row) => ({ bidsPerMinute: Number(row.bidsPerMinute ?? 0) })) as z.ZodType<{
   bidsPerMinute: number;
 }>;
-
-type _AdminAnalyticsPayloadInfer = z.infer<typeof adminAnalyticsPayloadSchema>;
-const _adminAnalyticsPayloadGuard =
-  null as unknown as _AdminAnalyticsPayloadInfer satisfies AdminAnalyticsPayload;
-void _adminAnalyticsPayloadGuard;

@@ -1,10 +1,11 @@
-import { SaleActivityTab } from "@/components/admin/sale-detail/tabs/activity-tab";
+import { redirect } from "next/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-export default async function AdminSaleActivityPage({ params }: Props) {
+/** Legacy route — activity lives on Overview. */
+export default async function AdminSaleActivityRedirectPage({ params }: Props) {
   const { id } = await params;
-  return <SaleActivityTab saleId={id} />;
+  redirect(`/admin/sales/${id}#activity`);
 }
