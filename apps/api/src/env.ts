@@ -286,6 +286,7 @@ const envSchema = z
     META_PIXEL_ID: z.preprocess(trimEmptyToUndefined, z.string().optional()),
     /** Meta Conversions API access token. */
     META_CAPI_ACCESS_TOKEN: z.preprocess(trimEmptyToUndefined, z.string().optional()),
+    MARKETING_ATTRIBUTION_ENABLED: z.preprocess(trimEmptyToUndefined, z.string().optional()),
     /** Optional Meta test event code (Events Manager validation). */
     META_CAPI_TEST_EVENT_CODE: z.preprocess(trimEmptyToUndefined, z.string().optional()),
     /** GA4 measurement ID for sGTM Measurement Protocol publisher. */

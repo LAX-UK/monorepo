@@ -168,6 +168,8 @@ Once they sign in, we capture these via an authenticated POST from the browser t
 
 If the visitor never gives marketing consent, we never read these cookies and never store them.
 
+For **campaign UTMs** (first/last touch) on logged-in server-side conversions, see [utm-attribution.md](./utm-attribution.md). That path is feature-flagged and marketing-consent gated; GA4 still owns primary campaign reporting via GTM.
+
 ---
 
 ## 6. Google Consent Mode v2
@@ -186,8 +188,10 @@ We fully implement **Google Consent Mode v2**. Before any tag fires, the visitor
 
 This means:
 
+- We use **advanced Consent Mode**: `gtm.js` loads in production whenever GTM is configured, while the inline head snippet defaults all optional storage to **denied** until the visitor chooses. Tags that respect Consent Mode can send cookieless pings before consent and full measurement after consent.
 - Google's tags (and any third-party tags in GTM that respect Consent Mode) will receive pings even without consent, but those pings carry **no personalization** data — they're modelled, not measured.
-- The moment a visitor grants consent, full personalized measurement turns on without a page reload.
+- The moment a visitor grants consent, full personalized measurement turns on without a page reload (via `gtag('consent','update',…)` from the cookie banner).
+- The synchronous head bootstrap also sets **`url_passthrough`** and **`ads_data_redaction`** before `gtm.js` loads. When analytics or ad storage is denied, Google can carry ad-click/session context in the URL (not in cookies) and redact ad identifiers in pings — cookieless measurement that supports Consent Mode modeling without writing attribution cookies (`_lax_attr` remains marketing-consent gated separately).
 
 ---
 

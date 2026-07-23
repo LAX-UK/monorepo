@@ -9,7 +9,7 @@ import { z } from "zod";
 import type { Container } from "../container.js";
 import { LotError, PaymentProviderError } from "../lib/errors.js";
 import { asHttpStatus } from "../lib/http-status.js";
-import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
+import { buildEnrichedWebsiteUserEvent } from "../lib/marketing-attribution-context.js";
 import { paymentCommandErrorToHttp } from "../lib/payment-http-error.js";
 import { checkSofDocumentAttachRateLimit } from "../lib/sof-document-attach-rate-limit.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -224,12 +224,19 @@ export function createPaymentRoutes(container: Container, authenticator: IAuthen
       const data = result.value;
       const marketingEventId = crypto.randomUUID();
       await container.marketingEventService.emit(
-        buildWebsiteUserEvent(c, {
-          name: "InitiateCheckout",
-          eventId: marketingEventId,
-          userId,
-          customData: { lotId: body.lotId, paymentId: data.paymentId },
-        }),
+        await buildEnrichedWebsiteUserEvent(
+          c,
+          {
+            name: "InitiateCheckout",
+            eventId: marketingEventId,
+            userId,
+            customData: { lotId: body.lotId, paymentId: data.paymentId },
+          },
+          {
+            attributionEnabled: container.marketingAttributionEnabled,
+            attributionStore: container.attributionStore,
+          },
+        ),
       );
       return c.json(
         {

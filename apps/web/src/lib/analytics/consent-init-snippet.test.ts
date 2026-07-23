@@ -6,6 +6,8 @@ describe("buildConsentInitSnippet", () => {
     const s = buildConsentInitSnippet(null);
     expect(s).toContain("gtag('consent','default'");
     expect(s).toContain('"analytics_storage":"denied"');
+    expect(s).toContain("gtag('set','url_passthrough',true)");
+    expect(s).toContain("gtag('set','ads_data_redaction',true)");
     expect(s).not.toContain("gtag('consent','update'");
   });
 
@@ -20,5 +22,7 @@ describe("buildConsentInitSnippet", () => {
     expect(s).toContain("gtag('consent','update'");
     expect(s).toContain('"analytics_storage":"granted"');
     expect(s).toContain('"ad_storage":"denied"');
+    expect(s).toContain("gtag('set','url_passthrough',true)");
+    expect(s).toContain("gtag('set','ads_data_redaction',true)");
   });
 });

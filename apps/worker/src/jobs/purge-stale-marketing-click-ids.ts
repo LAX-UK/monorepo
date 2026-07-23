@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { marketingClickIds } from "@auction/db/schema";
+import { marketingAttribution, marketingClickIds } from "@auction/db/schema";
 import { lt } from "drizzle-orm";
 import type { Logger } from "pino";
 
@@ -10,12 +10,24 @@ export async function purgeStaleMarketingClickIds(input: {
   log: Logger;
 }): Promise<number> {
   const staleBefore = new Date(Date.now() - RETENTION_MS);
-  const deleted = await input.db
+  const deletedClickIds = await input.db
     .delete(marketingClickIds)
     .where(lt(marketingClickIds.updatedAt, staleBefore))
     .returning({ userId: marketingClickIds.userId });
-  if (deleted.length > 0) {
-    input.log.info({ count: deleted.length, staleBefore }, "purged stale marketing click ids");
+  const deletedAttribution = await input.db
+    .delete(marketingAttribution)
+    .where(lt(marketingAttribution.updatedAt, staleBefore))
+    .returning({ userId: marketingAttribution.userId });
+  const count = deletedClickIds.length + deletedAttribution.length;
+  if (count > 0) {
+    input.log.info(
+      {
+        clickIds: deletedClickIds.length,
+        attribution: deletedAttribution.length,
+        staleBefore,
+      },
+      "purged stale marketing click ids and attribution",
+    );
   }
-  return deleted.length;
+  return count;
 }

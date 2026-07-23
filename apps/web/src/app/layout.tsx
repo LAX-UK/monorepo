@@ -3,6 +3,7 @@ import { AnalyticsDebugPanel } from "@/components/analytics/analytics-debug-pane
 import { AnalyticsPageView } from "@/components/analytics/analytics-page-view";
 import { ConsentInit } from "@/components/analytics/consent-init";
 import { GtmNoscript } from "@/components/analytics/gtm-noscript";
+import { MarketingAttributionSync } from "@/components/analytics/marketing-attribution-sync";
 import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-ids-sync";
 import { BottomChromeSync } from "@/components/layout/bottom-chrome-sync";
 import { SessionThemeSync } from "@/components/layout/session-theme-sync";
@@ -137,6 +138,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <AnalyticsPageView />
           </Suspense>
           <MarketingClickIdsSync />
+          <MarketingAttributionSync />
           <BrowserOfflineBanner />
           <AuthSessionProvider serverUser={user} authCookiePresent={authCookiePresent}>
             <PushBootstrap />
