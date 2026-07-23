@@ -49,11 +49,10 @@ describe("admin-aml-table.vm", () => {
         id: "2",
         matchStatus: "possible_match",
         ...baseRow,
-        decisionOutcome: "escalate",
-        triageRecommendation: "recommend_clear",
+        triageRecommendation: "recommend_block",
         triagedByUserId: "staff",
       }),
     ];
-    expect(summarizeAmlQueue(rows)).toEqual({ pending: 1, triaged: 0, escalated: 1 });
+    expect(summarizeAmlQueue(rows)).toEqual({ pending: 1, triaged: 1, escalated: 1 });
   });
 });

@@ -80,9 +80,12 @@ export function summarizeAmlQueue(rows: AdminAmlTableRow[]): {
   let triaged = 0;
   let escalated = 0;
   for (const row of rows) {
-    if (row.decisionOutcome === "escalate") escalated += 1;
-    else if (row.triageRecommendation) triaged += 1;
-    else pending += 1;
+    if (!row.triageRecommendation) {
+      pending += 1;
+      continue;
+    }
+    triaged += 1;
+    if (row.triageRecommendation === "recommend_block") escalated += 1;
   }
   return { pending, triaged, escalated };
 }

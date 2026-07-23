@@ -125,7 +125,7 @@ export class DrizzleAmlScreeningRepository
         total: sql<number>`count(*)::int`,
         awaitingTriage: sql<number>`count(*) filter (where ${kycWatchlistScreening.triageRecommendation} is null)::int`,
         triaged: sql<number>`count(*) filter (where ${kycWatchlistScreening.triageRecommendation} is not null)::int`,
-        escalated: sql<number>`count(*) filter (where ${kycWatchlistScreening.decisionOutcome} = 'escalate')::int`,
+        escalated: sql<number>`count(*) filter (where ${kycWatchlistScreening.triageRecommendation} = 'recommend_block')::int`,
       })
       .from(kycWatchlistScreening)
       .where(eq(kycWatchlistScreening.reviewStatus, "pending"));
