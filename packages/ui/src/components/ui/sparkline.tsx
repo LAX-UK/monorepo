@@ -5,7 +5,16 @@ export type SparklineProps = {
   values: readonly number[];
   className?: string;
   /** Stroke color — CSS color or token class applied via stroke-current */
-  tone?: "primary" | "lot-orange" | "live-red" | "secondary";
+  tone?:
+    | "primary"
+    | "lot-orange"
+    | "live-red"
+    | "secondary"
+    | "accent-brand"
+    | "info"
+    | "success"
+    | "accent-gold"
+    | "muted";
   width?: number;
   height?: number;
   "aria-hidden"?: boolean;
@@ -16,6 +25,11 @@ const toneClass: Record<NonNullable<SparklineProps["tone"]>, string> = {
   "lot-orange": "text-lot-orange",
   "live-red": "text-live-red",
   secondary: "text-secondary",
+  "accent-brand": "text-accent-brand",
+  info: "text-info",
+  success: "text-success",
+  "accent-gold": "text-accent-gold",
+  muted: "text-on-surface-variant",
 };
 
 export function Sparkline({

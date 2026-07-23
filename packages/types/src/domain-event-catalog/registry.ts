@@ -1,0 +1,314 @@
+import type { z } from "zod";
+import {
+  paymentCapturedPayloadSchemaV1,
+  paymentRefundedPayloadSchemaV1,
+  payoutPaidPayloadSchemaV1,
+  payoutSettlementCreatedPayloadSchemaV1,
+} from "./financial-payload-schemas.js";
+import { LotEventSchemas } from "./lot-payload-schemas.js";
+import {
+  amlScreeningPayloadSchemaV1,
+  bidFirstForUserPayloadSchemaV1,
+  bidLotWonPayloadSchemaV1,
+  bidOutbidPayloadSchemaV1,
+  looseDomainEventPayloadV1,
+  sourceOfFundsRequiredPayloadSchemaV1,
+  sourceOfFundsReviewedPayloadSchemaV1,
+  userEmailVerifiedPayloadSchemaV1,
+  userLinkedExternalPayloadSchemaV1,
+  userRegisteredPayloadSchemaV1,
+} from "./payload-schemas.js";
+import type {
+  DomainEventConsumer,
+  DomainEventDefinition,
+  DomainEventProducer,
+  IdempotencyPolicy,
+  PiiClassification,
+} from "./types.js";
+
+/** Every event type currently emitted in production code paths (excluding test-only types). */
+export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
+  "admin.impersonation_ended",
+  "admin.impersonation_started",
+  "aml.match_flagged",
+  "aml.screening_evaluated",
+  "artist.approved",
+  "artist.deleted",
+  "artist.merged",
+  "artist.propose_matches",
+  "artist.reviewed",
+  "auth.account_suspended",
+  "auth.email_change_cancelled",
+  "auth.email_change_completed",
+  "auth.email_change_started",
+  "auth.forgot_password_requested",
+  "auth.password_credential_enabled",
+  "auth.reauth_success",
+  "auth.session_revoked",
+  "auth.sessions_revoked_all_except_current",
+  "auth.two_factor_security_email",
+  "bid.first_for_user",
+  "bid.lot_won",
+  "bid.outbid",
+  "bid.proxy_cancelled",
+  "category.archived",
+  "category.created",
+  "category.deleted",
+  "category.updated",
+  "condition_report.declined",
+  "condition_report.fulfilled",
+  "condition_report.in_progress",
+  "condition_report.requested",
+  "export.requested",
+  "item_submission.restricted_entity_write",
+  "kyc.verified",
+  "legal_entity.approved",
+  "legal_entity.archive_cascaded",
+  "legal_entity.archived",
+  "legal_entity.created",
+  "legal_entity.docs_received",
+  "legal_entity.docs_requested",
+  "legal_entity.lifecycle_progressed",
+  "legal_entity.member_accepted",
+  "legal_entity.member_declined",
+  "legal_entity.member_invited",
+  "legal_entity.member_removed",
+  "legal_entity.member_role_changed",
+  "legal_entity.rejected",
+  "legal_entity.restricted",
+  "legal_entity.review_started",
+  "lot.activated",
+  "lot.attached_to_sale",
+  "lot.cancelled",
+  "lot.created",
+  "lot.detached_from_sale",
+  "lot.ended",
+  "lot.published",
+  "lot.returned_to_inventory",
+  "lot.soft_deleted",
+  "lot.unpublished",
+  "lot.voided",
+  "lot.withdrawal_requested",
+  "payment.bank_transfer_partially_funded",
+  "payment.cancelled",
+  "payment.capture_blocked_terminal_status",
+  "payment.captured",
+  "payment.checkout_failed",
+  "payment.dispute_closed",
+  "payment.dispute_funds_withdrawn",
+  "payment.dispute_opened",
+  "payment.manual_review_released",
+  "payment.refunded",
+  "payment.requires_manual_review",
+  "payout.clawback_required",
+  "payout.paid",
+  "payout.reversed",
+  "payout.settlement_created",
+  "payout.transfer_blocked",
+  "payout.transfer_failed",
+  "payout.transfer_initiated",
+  "payout.transfer_reversed",
+  "sale.cancelled",
+  "sale.created",
+  "sale.ended",
+  "sale.published",
+  "sale.soft_deleted",
+  "sale.unpublished",
+  "saleroom.display.overlay_clear",
+  "saleroom.display.overlay_set",
+  "saleroom.display.paired",
+  "saleroom.display.revoked",
+  "source_of_funds.document_downloaded",
+  "source_of_funds.document_reviewed",
+  "source_of_funds.document_uploaded",
+  "source_of_funds.documents_requested",
+  "source_of_funds.documents_submitted",
+  "source_of_funds.required",
+  "source_of_funds.reviewed",
+  "user.deletion_requested",
+  "user.email_verified",
+  "user.linked_external",
+  "user.registered",
+  "user.suspended",
+  "venue.archived",
+  "venue.created",
+  "venue.updated",
+] as const;
+
+export type LiveDomainEventType = (typeof ALL_LIVE_DOMAIN_EVENT_TYPES)[number];
+
+type RegistryOverride = {
+  producers?: DomainEventProducer[];
+  consumers?: DomainEventConsumer[];
+  piiClassification?: PiiClassification;
+  idempotencyPolicy?: IdempotencyPolicy;
+  schema?: z.ZodTypeAny;
+};
+
+function defaultDefinition(override: RegistryOverride = {}): DomainEventDefinition {
+  return {
+    producers: override.producers ?? ["apps/api"],
+    consumers: override.consumers ?? [],
+    piiClassification: override.piiClassification ?? "operational",
+    idempotencyPolicy: override.idempotencyPolicy ?? "none",
+    payloadSchemas: { 1: override.schema ?? looseDomainEventPayloadV1 },
+  };
+}
+
+const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>> = {
+  "admin.impersonation_started": {
+    consumers: ["admin_impersonation_notify"],
+    piiClassification: "contains_pii",
+  },
+  "admin.impersonation_ended": { piiClassification: "contains_pii" },
+  "aml.match_flagged": {
+    consumers: ["aml_match_review"],
+    schema: amlScreeningPayloadSchemaV1,
+    piiClassification: "none",
+  },
+  "aml.screening_evaluated": { schema: amlScreeningPayloadSchemaV1, piiClassification: "none" },
+  "artist.approved": { consumers: ["clear_artist_blocks"] },
+  "artist.merged": { consumers: ["clear_artist_blocks"] },
+  "artist.reviewed": { consumers: ["clear_artist_blocks"] },
+  "bid.first_for_user": {
+    schema: bidFirstForUserPayloadSchemaV1,
+    idempotencyPolicy: "aggregate_event_unique",
+    consumers: ["zoho"],
+    piiClassification: "none",
+  },
+  "bid.lot_won": {
+    schema: bidLotWonPayloadSchemaV1,
+    consumers: ["zoho", "notifications"],
+    piiClassification: "none",
+  },
+  "bid.outbid": {
+    schema: bidOutbidPayloadSchemaV1,
+    idempotencyPolicy: "aggregate_event_unique",
+    consumers: ["zoho", "notifications"],
+    piiClassification: "none",
+  },
+  "bid.proxy_cancelled": { consumers: ["notification_fanout"], piiClassification: "none" },
+  "kyc.verified": { consumers: ["marketing_contacts"], piiClassification: "contains_pii" },
+  "legal_entity.member_invited": { piiClassification: "contains_pii" },
+  "lot.activated": { schema: LotEventSchemas["lot.activated"], piiClassification: "none" },
+  "lot.attached_to_sale": {
+    schema: LotEventSchemas["lot.attached_to_sale"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.cancelled": {
+    schema: LotEventSchemas["lot.cancelled"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.created": {
+    schema: LotEventSchemas["lot.created"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.detached_from_sale": {
+    schema: LotEventSchemas["lot.detached_from_sale"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.ended": {
+    schema: LotEventSchemas["lot.ended"],
+    consumers: ["lot_invoice_initiation", "notification_fanout", "zoho", "xero"],
+    piiClassification: "none",
+  },
+  "lot.published": {
+    schema: LotEventSchemas["lot.published"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.returned_to_inventory": {
+    schema: LotEventSchemas["lot.returned_to_inventory"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.soft_deleted": { schema: LotEventSchemas["lot.soft_deleted"], piiClassification: "none" },
+  "lot.unpublished": {
+    schema: LotEventSchemas["lot.unpublished"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.voided": {
+    schema: LotEventSchemas["lot.voided"],
+    consumers: ["lot_voided_anti_shilling", "notification_fanout"],
+    piiClassification: "none",
+  },
+  "lot.withdrawal_requested": {
+    schema: LotEventSchemas["lot.withdrawal_requested"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "payment.captured": {
+    schema: paymentCapturedPayloadSchemaV1,
+    consumers: ["xero", "zoho"],
+    piiClassification: "contains_pii",
+  },
+  "payment.dispute_closed": { consumers: ["notification_fanout"] },
+  "payment.dispute_opened": { consumers: ["notification_fanout"] },
+  "payment.refunded": {
+    schema: paymentRefundedPayloadSchemaV1,
+    consumers: ["payment_refund_notify", "xero", "zoho"],
+  },
+  "payout.paid": {
+    schema: payoutPaidPayloadSchemaV1,
+    consumers: ["xero"],
+  },
+  "payout.settlement_created": {
+    schema: payoutSettlementCreatedPayloadSchemaV1,
+    consumers: ["xero"],
+  },
+  "payment.requires_manual_review": { consumers: ["notification_fanout"] },
+  "payout.clawback_required": { consumers: ["notification_fanout"] },
+  "payout.transfer_blocked": { consumers: ["notification_fanout"] },
+  "payout.transfer_failed": { consumers: ["payout_transfer_failed_notify"] },
+  "payout.transfer_initiated": { consumers: ["notification_fanout"] },
+  "source_of_funds.document_reviewed": { consumers: ["source_of_funds_documents"] },
+  "source_of_funds.documents_requested": { consumers: ["source_of_funds_documents"] },
+  "source_of_funds.documents_submitted": { consumers: ["source_of_funds_documents"] },
+  "source_of_funds.required": {
+    schema: sourceOfFundsRequiredPayloadSchemaV1,
+    consumers: ["source_of_funds_review"],
+    piiClassification: "none",
+  },
+  "source_of_funds.reviewed": {
+    schema: sourceOfFundsReviewedPayloadSchemaV1,
+    consumers: ["source_of_funds_documents"],
+    piiClassification: "none",
+  },
+  "user.deletion_requested": { consumers: ["marketing_contacts"], piiClassification: "none" },
+  "user.email_verified": {
+    schema: userEmailVerifiedPayloadSchemaV1,
+    producers: ["apps/auth", "packages/db"],
+    consumers: ["marketing_contacts", "zoho"],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "contains_pii",
+  },
+  "user.linked_external": {
+    schema: userLinkedExternalPayloadSchemaV1,
+    idempotencyPolicy: "aggregate_event_unique",
+    consumers: ["zoho"],
+    piiClassification: "none",
+  },
+  "user.registered": {
+    schema: userRegisteredPayloadSchemaV1,
+    producers: ["apps/api", "apps/auth", "packages/db"],
+    consumers: ["legal_entity_provisioning", "marketing_contacts", "zoho"],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "contains_pii",
+  },
+};
+
+export const DOMAIN_EVENT_REGISTRY: Record<LiveDomainEventType, DomainEventDefinition> =
+  ALL_LIVE_DOMAIN_EVENT_TYPES.reduce(
+    (acc, eventType) => {
+      acc[eventType] = defaultDefinition(REGISTRY_OVERRIDES[eventType]);
+      return acc;
+    },
+    {} as Record<LiveDomainEventType, DomainEventDefinition>,
+  );
+
+export type DomainEventCatalogType = keyof typeof DOMAIN_EVENT_REGISTRY;

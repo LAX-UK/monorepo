@@ -17,6 +17,17 @@ export type SaleModeCapabilities = {
    * start/end window instead of carrying their own schedule.
    */
   readonly inheritsLotTiming: boolean;
+  /** Which bid placement channels are meaningful for admin overview UI. */
+  readonly bidChannels: SaleBidChannelVisibility;
+};
+
+export type SaleBidChannelVisibility = {
+  /** Web bids (`placedVia` web and similar). */
+  readonly online: boolean;
+  /** In-room / saleroom clerk bids. */
+  readonly room: boolean;
+  /** Telephone and absentee operator bids. */
+  readonly phone: boolean;
 };
 
 const SALE_MODE_CAPABILITIES: Record<SaleDeliveryMode, SaleModeCapabilities> = {
@@ -25,18 +36,21 @@ const SALE_MODE_CAPABILITIES: Record<SaleDeliveryMode, SaleModeCapabilities> = {
     allowsStreamUrl: false,
     allowsLocation: false,
     inheritsLotTiming: false,
+    bidChannels: { online: true, room: false, phone: false },
   },
   onsite: {
     allowsBidding: false,
     allowsStreamUrl: true,
     allowsLocation: true,
     inheritsLotTiming: true,
+    bidChannels: { online: false, room: true, phone: true },
   },
   hybrid: {
     allowsBidding: true,
     allowsStreamUrl: true,
     allowsLocation: true,
     inheritsLotTiming: true,
+    bidChannels: { online: true, room: true, phone: true },
   },
 };
 
@@ -63,6 +77,11 @@ export function saleModeAllowsLocation(mode: SaleDeliveryMode): boolean {
 
 export function saleModeInheritsLotTiming(mode: SaleDeliveryMode): boolean {
   return SALE_MODE_CAPABILITIES[mode].inheritsLotTiming;
+}
+
+/** Bid channels shown in sale overview and similar admin breakdowns. */
+export function saleModeBidChannels(mode: SaleDeliveryMode): SaleBidChannelVisibility {
+  return SALE_MODE_CAPABILITIES[mode].bidChannels;
 }
 
 /** Modes that support live saleroom session, paddle check-in, and telephone bookings. */

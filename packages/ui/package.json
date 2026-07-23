@@ -117,6 +117,14 @@
       "types": "./dist/components/ui/kpi-tile.d.ts",
       "default": "./dist/components/ui/kpi-tile.js"
     },
+    "./components/dot-status-pill": {
+      "types": "./dist/components/ui/dot-status-pill.d.ts",
+      "default": "./dist/components/ui/dot-status-pill.js"
+    },
+    "./components/filter-chip-group": {
+      "types": "./dist/components/ui/filter-chip-group.d.ts",
+      "default": "./dist/components/ui/filter-chip-group.js"
+    },
     "./components/live-badge": {
       "types": "./dist/components/ui/live-badge.d.ts",
       "default": "./dist/components/ui/live-badge.js"

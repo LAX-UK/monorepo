@@ -3,7 +3,7 @@ import type * as React from "react";
 import { cn } from "../../lib/utils.js";
 
 export const statusBadgeVariants = cva(
-  "inline-flex items-center justify-center rounded-full font-label font-bold uppercase tracking-widest ring-1 ring-inset",
+  "inline-flex w-fit shrink-0 items-center justify-center whitespace-nowrap rounded-full font-label font-bold uppercase tracking-widest ring-1 ring-inset",
   {
     variants: {
       variant: {

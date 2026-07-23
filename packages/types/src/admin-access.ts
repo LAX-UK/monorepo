@@ -95,6 +95,10 @@ export const LOT_FULFILMENT_ACCESS: CapabilityRequirement = {
 /** Finance shell: payments, disputes, payouts, integrations. */
 export const FINANCE_ACCESS: CapabilityRequirement = "finance.read";
 
+export const PAYOUT_PROCESS_ACCESS: CapabilityRequirement = {
+  anyOf: ["payout.process", "platform.admin.full"],
+};
+
 export const PAYOUT_REVERSE_ACCESS: CapabilityRequirement = {
   anyOf: ["payout.reverse", "platform.admin.full"],
 };
@@ -105,7 +109,7 @@ export const QR_CODES_ACCESS: CapabilityRequirement = LOTS_ACCESS;
 /** Admin home dashboard and widget preferences. */
 export const ADMIN_HOME_ACCESS: CapabilityRequirement = STAFF_OVERVIEW_ACCESS;
 
-/** Full platform administration (clients, staff, impersonation, analytics). */
+/** Full platform administration (clients, staff, impersonation). */
 export const PLATFORM_ADMIN_ACCESS: CapabilityRequirement = "platform.admin.full";
 
 /** Redacted domain-event audit feeds (PII still gated per-request). */
@@ -141,8 +145,6 @@ export const CLIENT_KYC_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
  * for the same least-privilege reason as {@link CLIENT_KYC_ACCESS}. Platform admin only.
  */
 export const CLIENT_ACTIVITY_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
-
-export const ANALYTICS_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 
 /** Onboarding & verification queues. */
 export const ONBOARDING_QUEUES_ACCESS: CapabilityRequirement = STAFF_OVERVIEW_ACCESS;

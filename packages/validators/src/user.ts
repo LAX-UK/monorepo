@@ -203,7 +203,3 @@ export const adminBulkUsersBodySchema = z.object({
   op: z.enum(["suspend", "unsuspend"]),
   reason: z.string().max(500).optional(),
 });
-
-export const adminAnalyticsQuerySchema = z.object({
-  days: z.coerce.number().int().min(1).max(365).optional().default(30),
-});

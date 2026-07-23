@@ -17,7 +17,9 @@ describe("lot-transitions", () => {
   });
 
   it("LOT_CANCELLABLE_STATUSES is a defensive copy of cancel transition from-set", () => {
-    const cancelFrom = LOT_TRANSITIONS.find((t) => t.kind === "cancel")!.from;
+    const cancelTransition = LOT_TRANSITIONS.find((t) => t.kind === "cancel");
+    expect(cancelTransition).toBeDefined();
+    const cancelFrom = cancelTransition?.from ?? [];
     expect(LOT_CANCELLABLE_STATUSES).not.toBe(cancelFrom);
     expect([...LOT_CANCELLABLE_STATUSES].sort()).toEqual([...cancelFrom].sort());
   });

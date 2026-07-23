@@ -18,9 +18,5 @@ export const adminKpiTrendQuerySchema = z.object({
   periodDays: adminKpiPeriodDaysSchema,
 });
 
-/** @deprecated Use adminKpiTrendQuerySchema — kept for existing route imports. */
-export const adminLotsKpiTrendQuerySchema = adminKpiTrendQuerySchema;
-
 export type AdminKpiTrendQuery = z.infer<typeof adminKpiTrendQuerySchema>;
-export type AdminLotsKpiTrendQuery = AdminKpiTrendQuery;
 export type AdminKpiTrendBundleDto = z.infer<typeof adminKpiTrendBundleSchema>;

@@ -109,11 +109,10 @@ describe("COLORS vs apps/web globals.css @theme (light)", () => {
 
 describe("globals.css accent-brand (light vs dark)", () => {
   const globalsPath = join(__dirname, "../../../apps/web/src/app/globals.css");
+  const darkTokensPath = join(__dirname, "../../../apps/web/src/styles/tokens-dark.css");
   const css = readFileSync(globalsPath, "utf8");
+  const darkCss = readFileSync(darkTokensPath, "utf8");
   const lightBlock = css.split("html.dark")[0] ?? "";
-  const darkIdx = css.indexOf("html.dark");
-  const pulseIdx = css.indexOf("@keyframes accent-pulse");
-  const darkSlice = darkIdx >= 0 && pulseIdx > darkIdx ? css.slice(darkIdx, pulseIdx) : "";
 
   it("light theme defines blue accent + brand alias", () => {
     expect(parseCssVar(lightBlock, "--color-accent-blue")).toBe("#2b7fff");
@@ -121,7 +120,7 @@ describe("globals.css accent-brand (light vs dark)", () => {
   });
 
   it("dark theme maps accent-brand to gold token", () => {
-    expect(darkSlice).toContain("--color-accent-brand: var(--color-accent-gold)");
+    expect(darkCss).toContain("--color-accent-brand: var(--color-accent-gold)");
   });
 });
 

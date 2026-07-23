@@ -140,11 +140,13 @@ export type { StatusBadgeProps } from "./components/ui/status-badge.js";
 export { Sparkline } from "./components/ui/sparkline.js";
 export type { SparklineProps } from "./components/ui/sparkline.js";
 export { KpiTile } from "./components/ui/kpi-tile.js";
+export { KpiCard } from "./components/ui/kpi-card.js";
 export type {
   KpiTileProps,
   KpiTileSemanticTone,
   KpiTileTone,
 } from "./components/ui/kpi-tile.js";
+export type { KpiCardProps } from "./components/ui/kpi-card.js";
 export { Toolbar } from "./components/ui/toolbar.js";
 export type { ToolbarProps } from "./components/ui/toolbar.js";
 export { SectionNav } from "./components/ui/section-nav.js";
@@ -167,6 +169,50 @@ export { Toaster } from "./components/ui/sonner.js";
 export { SidebarInset, SidebarTrigger } from "./components/ui/sidebar.js";
 export { FilterChip } from "./components/ui/filter-chip.js";
 export type { FilterChipProps } from "./components/ui/filter-chip.js";
+export { FilterChipGroup } from "./components/ui/filter-chip-group.js";
+export type {
+  FilterChipGroupItem,
+  FilterChipGroupProps,
+} from "./components/ui/filter-chip-group.js";
+export { DotStatusPill, TONE_SHELL } from "./components/ui/dot-status-pill.js";
+export type { DotStatusPillProps, DotStatusPillTone } from "./components/ui/dot-status-pill.js";
+export { DeliveryModePill } from "./components/ui/delivery-mode-pill.js";
+export type {
+  DeliveryModePillProps,
+  DeliveryModeTagKey,
+} from "./components/ui/delivery-mode-pill.js";
+export { DeliveryModeTagIcon } from "./components/ui/delivery-mode-tag-icon.js";
+export {
+  DELIVERY_MODE_SHELL,
+  DELIVERY_MODE_TAG_VARIANT,
+} from "./components/ui/delivery-mode-tag-variant.js";
+export type {
+  DeliveryModeTagGlyph,
+  DeliveryModeTagVariant,
+} from "./components/ui/delivery-mode-tag-variant.js";
+export { LotAuctionTypePill } from "./components/ui/lot-auction-type-pill.js";
+export type {
+  LotAuctionTypePillProps,
+  LotAuctionTypeTagKey,
+} from "./components/ui/lot-auction-type-pill.js";
+export { LotAuctionTypeTagIcon } from "./components/ui/lot-auction-type-tag-icon.js";
+export {
+  LOT_AUCTION_TYPE_SHELL,
+  LOT_AUCTION_TYPE_TAG_VARIANT,
+} from "./components/ui/lot-auction-type-tag-variant.js";
+export type {
+  LotAuctionTypeTagGlyph,
+  LotAuctionTypeTagVariant,
+} from "./components/ui/lot-auction-type-tag-variant.js";
+export { StatusTagIcon, STATUS_TAG_ICON_TONES } from "./components/ui/status-tag-icon.js";
+export {
+  presentationToDotStatus,
+  statusBadgeVariantToDotTone,
+} from "./lib/status-presentation-bridge.js";
+export type {
+  StatusBadgeVariant,
+  StatusPresentationInput,
+} from "./lib/status-presentation-bridge.js";
 export { SegmentToggle } from "./components/ui/segment-toggle.js";
 export type { SegmentToggleOption, SegmentToggleProps } from "./components/ui/segment-toggle.js";
 export { ViewSwitcher } from "./components/ui/view-switcher.js";
@@ -349,5 +395,5 @@ export type {
   TimeFormString,
   ZonedInstant,
 } from "./lib/datetime/index.js";
-export { EntityList, EntityForm } from "./shell/index.js";
-export type { EntityListProps, EntityFormProps, EntityFormSection } from "./shell/index.js";
+export { EntityList } from "./shell/index.js";
+export type { EntityListProps } from "./shell/index.js";

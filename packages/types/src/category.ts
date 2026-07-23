@@ -26,6 +26,18 @@ export type AdminCategory = Category & {
   usage: CategoryUsage;
 };
 
+export type AdminCategoryListResult = {
+  rows: AdminCategory[];
+  total: number;
+};
+
+export type AdminCategoriesListSummary = {
+  totalCount: number;
+  activeCount: number;
+  archivedCount: number;
+  usageTotals: Pick<CategoryUsage, "lots" | "sales" | "submissions">;
+};
+
 export function primaryCategoryId(categoryIds: readonly string[]): string | null {
   return categoryIds[0] ?? null;
 }

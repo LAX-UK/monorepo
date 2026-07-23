@@ -2,7 +2,16 @@ import type * as React from "react";
 import { cn } from "../../lib/utils.js";
 import { Sparkline } from "./sparkline.js";
 
-export type KpiTileTone = "primary" | "lot-orange" | "live-red" | "secondary";
+export type KpiTileTone =
+  | "primary"
+  | "lot-orange"
+  | "live-red"
+  | "secondary"
+  | "accent-brand"
+  | "info"
+  | "success"
+  | "accent-gold"
+  | "muted";
 
 /** Semantic emphasis for dashboard KPI rows (v3). */
 export type KpiTileSemanticTone = "default" | "emphasis" | "warning" | "danger";
@@ -35,6 +44,8 @@ export type KpiTileProps = {
   semanticTone?: KpiTileSemanticTone;
   /** Hover lift when tile is interactive */
   clickable?: boolean;
+  /** Visual variant — `dashboard` matches admin dashboard KPI cards. */
+  variant?: "default" | "dashboard";
 };
 
 const deltaToneClass = {
@@ -70,6 +81,13 @@ function formatStructuredDelta(
   );
 }
 
+const dashboardSemanticToneClass: Record<KpiTileSemanticTone, string> = {
+  default: "border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
+  emphasis: "border-info/30 bg-info-container/30 shadow-[var(--shadow-rest)]",
+  warning: "border-lot-orange/35 bg-warning-container/40 shadow-[var(--shadow-rest)]",
+  danger: "border-live-red/35 bg-danger-container/40 shadow-[var(--shadow-rest)]",
+};
+
 export function KpiTile({
   label,
   value,
@@ -87,16 +105,25 @@ export function KpiTile({
   emphasize,
   semanticTone = "default",
   clickable = false,
+  variant = "default",
 }: KpiTileProps) {
   const resolvedDelta =
     delta ??
     (deltaDirection ? formatStructuredDelta(deltaDirection, deltaPercent, deltaTone) : null);
 
+  const toneClass =
+    variant === "dashboard"
+      ? dashboardSemanticToneClass[semanticTone]
+      : semanticToneClass[semanticTone];
+
   return (
     <div
       className={cn(
-        "relative flex h-full min-h-[8.5rem] min-w-0 flex-col overflow-hidden rounded-xl border p-4 transition-shadow motion-safe:duration-200 sm:p-5",
-        semanticToneClass[semanticTone],
+        "relative flex h-full min-w-0 flex-col overflow-hidden border p-4 transition-shadow motion-safe:duration-200 sm:p-5",
+        variant === "dashboard"
+          ? "min-h-[7.75rem] rounded-shell-card"
+          : "min-h-[8.5rem] rounded-xl",
+        toneClass,
         clickable &&
           "cursor-pointer hover:shadow-[var(--shadow-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         className,
@@ -107,7 +134,7 @@ export function KpiTile({
           {anomaly}
         </span>
       ) : null}
-      <KpiTileHeader label={label} icon={icon} />
+      <KpiTileHeader label={label} icon={icon} variant={variant} />
       <KpiTileBody
         value={value}
         {...(emphasize !== undefined ? { emphasize } : {})}
@@ -121,10 +148,25 @@ export function KpiTile({
   );
 }
 
-function KpiTileHeader({ label, icon }: { label: React.ReactNode; icon?: React.ReactNode }) {
+function KpiTileHeader({
+  label,
+  icon,
+  variant = "default",
+}: {
+  label: React.ReactNode;
+  icon?: React.ReactNode;
+  variant?: "default" | "dashboard";
+}) {
   return (
     <div className="flex min-w-0 items-start justify-between gap-2">
-      <p className="min-w-0 truncate font-label text-xs font-normal uppercase tracking-widest text-secondary">
+      <p
+        className={cn(
+          "min-w-0 truncate font-label text-on-surface-variant",
+          variant === "dashboard"
+            ? "text-sm font-normal normal-case tracking-normal"
+            : "text-xs font-normal uppercase tracking-widest text-secondary",
+        )}
+      >
         {label}
       </p>
       {icon ? <div className="shrink-0 text-primary [&_svg]:size-5">{icon}</div> : null}

@@ -76,6 +76,7 @@ export {
   evaluateSubmissionQuality,
   submissionHasQualityGaps,
   type SubmissionQualityCheck,
+  type SubmissionQualityInput,
   type SubmissionQualityResult,
 } from "./submission-quality.js";
 export {
@@ -85,6 +86,42 @@ export {
   type LotReadinessResult,
   type LotReadinessInput,
 } from "./lot-readiness.js";
+export {
+  evaluateSalePublishReadiness,
+  rollupLotReadinessFailures,
+  type SaleReadinessCheck,
+  type SaleReadinessCheckId,
+  type SalePublishReadinessInput,
+  type LotReadinessFailureRollup,
+} from "./sale-readiness.js";
+export {
+  composeSaleAttention,
+  resolveApplicableContributors,
+  resolveNeededSignalKeys,
+  DEFAULT_SALE_ATTENTION_CONTRIBUTORS,
+  type SaleAttentionContributor,
+  type SaleAttentionItem,
+  type SaleAttentionResult,
+  type SaleAttentionSignals,
+  type SaleAttentionPrincipal,
+  type SaleAttentionSeverity,
+  type SaleAttentionKind,
+  type SaleAttentionCategory,
+  type SaleAttentionSignalKey,
+  type SaleAttentionTarget,
+} from "./sale-attention/index.js";
+export {
+  composeLotAttention,
+  DEFAULT_LOT_ATTENTION_CONTRIBUTORS,
+  type LotAttentionContributor,
+  type LotAttentionItem,
+  type LotAttentionResult,
+  type LotAttentionSignals,
+  type LotAttentionPrincipal,
+  type LotAttentionSeverity,
+  type LotAttentionKind,
+  type LotAttentionTarget,
+} from "./lot-attention/index.js";
 export {
   deriveNoSaleReason,
   deriveReserveStatus,

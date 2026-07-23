@@ -30,7 +30,6 @@ export const exportEntityTypeSchema = z.enum([
   "payments",
   "domain-events",
   "payouts",
-  "analytics",
 ]);
 export const exportFormatSchema = z.enum(["csv"]);
 
@@ -99,11 +98,6 @@ const exportDomainEventsFiltersSchema = z
     }
   });
 
-const exportAnalyticsFiltersSchema = z.object({
-  days: z.coerce.number().int().min(1).max(365),
-  series: z.enum(["revenue", "ended_lots", "registrations"]),
-});
-
 export const exportFiltersByEntitySchema = z.discriminatedUnion("entityType", [
   z.object({ entityType: z.literal("lots"), filters: exportLotsFiltersSchema.default({}) }),
   z.object({ entityType: z.literal("sales"), filters: exportSalesFiltersSchema.default({}) }),
@@ -120,10 +114,6 @@ export const exportFiltersByEntitySchema = z.discriminatedUnion("entityType", [
   z.object({
     entityType: z.literal("payouts"),
     filters: z.object({ legalEntityId: z.string().uuid().optional() }).default({}),
-  }),
-  z.object({
-    entityType: z.literal("analytics"),
-    filters: exportAnalyticsFiltersSchema,
   }),
 ]);
 

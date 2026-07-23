@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adminKpiTrendQuerySchema, adminLotsKpiTrendQuerySchema } from "./admin-kpi.js";
+import { adminKpiTrendQuerySchema } from "./admin-kpi.js";
 
 describe("adminKpiTrendQuerySchema", () => {
   it("defaults periodDays to 30", () => {
@@ -11,7 +11,7 @@ describe("adminKpiTrendQuerySchema", () => {
     expect(adminKpiTrendQuerySchema.parse({ periodDays: "90" }).periodDays).toBe(90);
   });
 
-  it("keeps adminLotsKpiTrendQuerySchema as an alias", () => {
-    expect(adminLotsKpiTrendQuerySchema).toBe(adminKpiTrendQuerySchema);
+  it("rejects invalid periodDays", () => {
+    expect(() => adminKpiTrendQuerySchema.parse({ periodDays: "14" })).toThrow();
   });
 });

@@ -15,6 +15,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
     "typescript": "^5.7.3",

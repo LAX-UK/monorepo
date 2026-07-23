@@ -31,6 +31,9 @@ export const adminUpdateCategoryBodySchema = adminCreateCategoryBodySchema.parti
 
 export const adminCategoryListQuerySchema = z.object({
   includeArchived: z.coerce.boolean().optional().default(false),
+  q: z.string().trim().max(200).optional(),
+  limit: z.coerce.number().int().min(10).max(200).optional(),
+  offset: z.coerce.number().int().min(0).max(50_000).optional(),
 });
 
 export type CategoryHierarchyIssueCode = "parent_not_found" | "self_parent" | "cycle";

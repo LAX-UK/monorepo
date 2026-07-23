@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import * as adminAccess from "./admin-access.js";
 import {
   ADMIN_HOME_ACCESS,
-  ANALYTICS_ACCESS,
   ARTIST_MERGE_ACCESS,
   ARTIST_REVIEW_ACCESS,
   ARTIST_WRITE_ACCESS,
@@ -83,11 +82,6 @@ describe("admin-access requirements", () => {
   it("ONBOARDING_QUEUES_ACCESS allows specialist", () => {
     expect(has("specialist", ONBOARDING_QUEUES_ACCESS)).toBe(true);
     expect(has("staff_viewer", ONBOARDING_QUEUES_ACCESS)).toBe(true);
-  });
-
-  it("ANALYTICS_ACCESS is super_admin only among sample roles", () => {
-    expect(has("super_admin", ANALYTICS_ACCESS)).toBe(true);
-    expect(has("auction_manager", ANALYTICS_ACCESS)).toBe(false);
   });
 
   it("USER_PICKER_ACCESS is narrower than USERS_DIRECTORY_ACCESS", () => {

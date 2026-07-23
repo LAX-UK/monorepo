@@ -5,6 +5,7 @@ import {
   isSaleroomGatedForOnlineBids,
   saleModeAllowsBidding,
   saleModeAllowsOperatorBidding,
+  saleModeBidChannels,
   saleModeInheritsLotTiming,
 } from "./sale-mode-policy.js";
 
@@ -43,5 +44,12 @@ describe("sale-mode-policy", () => {
       isSaleroomGatedForOnlineBids({ deliveryMode: "hybrid", allowOnlineBidsBeforeGoLive: true }),
     ).toBe(false);
     expect(isSaleroomGatedForOnlineBids({ deliveryMode: "online" })).toBe(false);
+  });
+
+  it("exposes bid channel visibility per delivery mode", () => {
+    expect(saleModeBidChannels("online")).toEqual({ online: true, room: false, phone: false });
+    expect(saleModeBidChannels("onsite")).toEqual({ online: false, room: true, phone: true });
+    expect(saleModeBidChannels("hybrid")).toEqual({ online: true, room: true, phone: true });
+    expect(getSaleModeCapabilities("online").bidChannels.online).toBe(true);
   });
 });

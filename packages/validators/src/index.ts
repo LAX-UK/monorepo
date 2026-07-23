@@ -13,9 +13,11 @@ export * from "./lot-sale-timing.js";
 export * from "./sale-settlement.js";
 export * from "./stream-embed.js";
 export * from "./bid.js";
+export * from "./lot-realtime-events.js";
 export * from "./bid-anti-sniping-policy.js";
 export * from "./auto-bid.js";
 export * from "./buyer-premium.js";
+export * from "./lot-checkout-pricing.js";
 export * from "./category.js";
 export * from "./notification.js";
 export * from "./payment.js";
@@ -43,6 +45,14 @@ export * from "./admin-marketing-events.js";
 export * from "./admin-audit.js";
 export * from "./admin-lot.js";
 export * from "./admin-kpi.js";
+export * from "./admin-sale-overview-kpi-trends.js";
+export {
+  computeSaleExpectedRevenue,
+  composeTieredRevenueDailySeries,
+  type SaleBidVolumeByDayAndLot,
+  type SaleLotRevenueInput,
+  type SalePremiumContext,
+} from "./sale-revenue/compute-sale-revenue.js";
 /** Legal Entity Model validators */
 export * from "./legal-entity.js";
 export * from "./org-onboarding-subkind.js";
