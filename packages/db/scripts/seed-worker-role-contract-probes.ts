@@ -4,12 +4,14 @@ import { eq } from "drizzle-orm";
  */
 import { createDb } from "../src/index.js";
 import { user } from "../src/schema/auth.js";
+import { bid } from "../src/schema/bids.js";
 import { legalEntity } from "../src/schema/legal-entities.js";
 import { lot } from "../src/schema/lots.js";
 
 const PROBE_USER_ID = "worker-role-contract-probe-user";
 const PROBE_LE_ID = "00000000-0000-4000-8000-000000000001";
 const PROBE_LOT_ID = "00000000-0000-4000-8000-000000000002";
+const PROBE_BID_ID = "00000000-0000-4000-8000-000000000003";
 
 async function main() {
   const url = process.env.DATABASE_URL;
@@ -64,6 +66,19 @@ async function main() {
       startTime: now,
       endTime: end,
       status: "draft",
+    });
+  }
+
+  const existingBid = await db.select({ id: bid.id }).from(bid).where(eq(bid.id, PROBE_BID_ID));
+  if (existingBid.length === 0) {
+    await db.insert(bid).values({
+      id: PROBE_BID_ID,
+      lotId: PROBE_LOT_ID,
+      bidderId: PROBE_USER_ID,
+      buyerLegalEntityId: PROBE_LE_ID,
+      amount: "100.00",
+      placedVia: "web",
+      internalPlacementKey: "worker-role-contract-probe-bid",
     });
   }
 

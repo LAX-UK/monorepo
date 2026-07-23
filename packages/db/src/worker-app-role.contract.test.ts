@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { sql } from "drizzle-orm";
+import { describe, expect, it } from "vitest";
 import { createDb } from "./client.js";
 import {
   absenteeBid,
@@ -12,8 +14,6 @@ import {
   payout,
   payoutLine,
 } from "./schema/index.js";
-import { sql } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
 
 const WORKER_URL = process.env.DATABASE_URL_WORKER ?? process.env.WORKER_APP_DATABASE_URL;
 
