@@ -1,8 +1,26 @@
+import type { IWatchlistScreeningReader } from "@auction/persistence/interfaces";
 import type { AmlService } from "../aml/aml.service.js";
 import type { IAdminAmlApplicationService } from "../interfaces/admin-routes.js";
+import type { AdminAmlListPage } from "./admin-aml-list-query.service.js";
+import { AdminAmlListQueryService } from "./admin-aml-list-query.service.js";
 
 export class AdminAmlApplicationService implements IAdminAmlApplicationService {
-  constructor(private readonly aml: AmlService) {}
+  private readonly listQuery: AdminAmlListQueryService;
+
+  constructor(
+    private readonly aml: AmlService,
+    screeningReader: IWatchlistScreeningReader,
+  ) {
+    this.listQuery = new AdminAmlListQueryService(screeningReader);
+  }
+
+  getPage(...args: Parameters<AdminAmlListQueryService["getPage"]>): Promise<AdminAmlListPage> {
+    return this.listQuery.getPage(...args);
+  }
+
+  getPendingById(id: string) {
+    return this.listQuery.getPendingById(id);
+  }
 
   listForUser(...args: Parameters<AmlService["listForUser"]>) {
     return this.aml.listForUser(...args);

@@ -7,11 +7,14 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { ContainerPaymentHttpRoutesSlice } from "../container.js";
-import { LotError, PaymentProviderError } from "../lib/errors.js";
+import {
+  respondFinanceError,
+  respondFinanceOkBody,
+  respondFinanceRouteOutcome,
+} from "../lib/finance-route-response.js";
 import { asHttpStatus } from "../lib/http-status.js";
-import { buildWebsiteUserEvent } from "../lib/marketing-event-factory.js";
+import { marketingWebsiteContextFromHono } from "../lib/marketing-website-context.js";
 import { paymentCommandErrorToHttp } from "../lib/payment-http-error.js";
-import { checkSofDocumentAttachRateLimit } from "../lib/sof-document-attach-rate-limit.js";
 import { zValidator } from "../lib/z-validator.js";
 import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
@@ -42,6 +45,9 @@ export function createPaymentRoutes(
     (input) => container.impersonationAuditService.recordSessionTimedOut(input),
     container.impersonationSessionService,
   );
+  const buyerPaymentHttp = container.finance.buyerPaymentHttp;
+  const entityStaffPayment = container.finance.entityStaffPayment;
+
   const r = new Hono<{
     Variables: {
       userId?: string;
@@ -55,27 +61,23 @@ export function createPaymentRoutes(
   r.get("/", requireAuth, async (c) => {
     const role = c.get("userRole") ?? "client";
     const staffRole = c.get("userStaffRole") ?? null;
-    const result = await container.paymentAdminService.listAllForAdmin(role, staffRole);
+    const result = await entityStaffPayment.listAllForAdmin(role, staffRole);
     return result.match(
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
     );
   });
 
-  /** Buyer pre-flight compliance gate: checks AML hold + SoF without creating
-   * a payment row. Used by the checkout page and portfolio to surface blockers
-   * before the buyer submits. */
   r.get("/me/compliance-gate", requireAuth, requireBuyerRole, async (c) => {
     const userId = c.get("userId") as string;
-    const result = await container.paymentBuyerService.getBuyerComplianceGateStatus(userId);
-    return c.json({ data: result });
+    const outcome = await buyerPaymentHttp.getBuyerComplianceGate(userId);
+    return respondFinanceRouteOutcome(c, outcome);
   });
 
-  /** Buyer Source-of-Funds case + document upload status. */
   r.get("/me/source-of-funds", requireAuth, requireBuyerRole, async (c) => {
     const userId = c.get("userId") as string;
-    const view = await container.sourceOfFundsDocumentCollectionService.getBuyerView(userId);
-    return c.json({ data: view });
+    const outcome = await buyerPaymentHttp.getBuyerSourceOfFundsView(userId);
+    return respondFinanceRouteOutcome(c, outcome);
   });
 
   r.post(
@@ -88,39 +90,19 @@ export function createPaymentRoutes(
       const userId = c.get("userId") as string;
       const { id: caseId } = c.req.valid("param");
       const { uploadObjectId, requestedType, label } = c.req.valid("json");
-      const allowed = await checkSofDocumentAttachRateLimit(container.redis, userId);
-      if (!allowed) {
-        return c.json({ error: "Too many upload attempts", code: "rate_limited" }, 429);
+      const result = await buyerPaymentHttp.attachSourceOfFundsDocument({
+        buyerUserId: userId,
+        caseId,
+        uploadObjectId,
+        requestedType,
+        label: label ?? null,
+      });
+      if (!result.ok) {
+        const body: Record<string, string> = { error: result.error };
+        if (result.error === "rate_limited") body.code = "rate_limited";
+        return c.json(body, asHttpStatus(result.status));
       }
-      try {
-        const doc = await container.sourceOfFundsDocumentCollectionService.attachDocument({
-          caseId,
-          buyerUserId: userId,
-          uploadObjectId,
-          requestedType,
-          label: label ?? null,
-        });
-        return c.json({ ok: true, document: doc });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "attach_failed";
-        if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
-        if (message === "source_of_funds_forbidden") return c.json({ error: message }, 403);
-        if (
-          message === "source_of_funds_documents_not_requested" ||
-          message === "source_of_funds_documents_already_submitted" ||
-          message === "source_of_funds_not_pending"
-        ) {
-          return c.json({ error: message }, 409);
-        }
-        if (
-          message === "upload_not_active" ||
-          message === "upload_kind_mismatch" ||
-          message === "source_of_funds_requested_type_not_allowed"
-        ) {
-          return c.json({ error: message }, 400);
-        }
-        throw err;
-      }
+      return c.json({ ok: true, document: result.document });
     },
   );
 
@@ -132,41 +114,26 @@ export function createPaymentRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const { id: caseId } = c.req.valid("param");
-      try {
-        const record = await container.sourceOfFundsDocumentCollectionService.submitDocuments({
-          caseId,
-          buyerUserId: userId,
-        });
-        return c.json({ ok: true, sourceOfFunds: record });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "submit_failed";
-        if (message === "source_of_funds_not_found") return c.json({ error: message }, 404);
-        if (message === "source_of_funds_forbidden") return c.json({ error: message }, 403);
-        if (
-          message === "source_of_funds_documents_not_requested" ||
-          message === "source_of_funds_documents_already_submitted" ||
-          message === "source_of_funds_no_documents_to_submit"
-        ) {
-          return c.json({ error: message }, 409);
-        }
-        throw err;
+      const result = await buyerPaymentHttp.submitSourceOfFundsDocuments({
+        buyerUserId: userId,
+        caseId,
+      });
+      if (!result.ok) {
+        return c.json({ error: result.error }, asHttpStatus(result.status));
       }
+      return c.json({ ok: true, sourceOfFunds: result.sourceOfFunds });
     },
   );
 
-  /** Buyer-facing payments list. Strictly scoped to the JWT user; the route never
-   * accepts a buyerId from the client. Optional `?status` narrows the result.
-   */
   r.get("/me", requireAuth, zValidator("query", myPaymentsQuerySchema), async (c) => {
     const userId = c.get("userId") as string;
     const { status } = c.req.valid("query");
-    const { data } = await container.paymentBuyerService.listMyPaymentsForBuyerApi(userId, {
+    const outcome = await buyerPaymentHttp.listMyPayments(userId, {
       ...(status !== undefined ? { status } : {}),
     });
-    return c.json({ data });
+    return respondFinanceRouteOutcome(c, outcome);
   });
 
-  /** Winning bidder: fulfilment row for checkout / collection tracking. */
   r.get(
     "/me/lot/:lotId/fulfilment",
     requireAuth,
@@ -175,16 +142,16 @@ export function createPaymentRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const { lotId } = c.req.valid("param");
-      const result = await container.lotFulfilmentService.getForWinner(userId, lotId);
-      return result.match(
-        (data) => c.json({ data }),
-        (e) =>
-          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
-      );
+      const outcome = await buyerPaymentHttp.getWinnerLotFulfilment(userId, lotId);
+      if (outcome.kind === "err") {
+        const body: Record<string, string> = { error: outcome.error.message };
+        if (outcome.error.code) body.code = outcome.error.code;
+        return c.json(body, asHttpStatus(outcome.error.status));
+      }
+      return c.json({ data: outcome.data });
     },
   );
 
-  /** Buyer relinquishes an unpaid pending invoice (winner-only). */
   r.post(
     "/me/:id/cancel-pending",
     requireAuth,
@@ -193,11 +160,9 @@ export function createPaymentRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const result = await container.paymentBuyerService.cancelPendingAsBuyer(userId, id);
-      return result.match(
-        () => c.json({ ok: true }),
-        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
-      );
+      const outcome = await buyerPaymentHttp.cancelPendingPayment(userId, id);
+      if (outcome.kind === "ok") return c.json({ ok: true });
+      return respondFinanceError(c, outcome.error);
     },
   );
 
@@ -209,43 +174,18 @@ export function createPaymentRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const result = await container.paymentBuyerService.createPendingForWinner(
-        userId,
-        body.lotId,
-        body.addressId,
-      );
-      if (result.isErr()) {
-        const error = result.error;
-        const body: Record<string, string> = { error: error.message };
-        if (error instanceof PaymentProviderError && error.stripeCode) {
-          body.code = error.stripeCode;
-        } else if (error instanceof LotError && error.code) {
-          body.code = error.code;
-        }
-        return c.json(body, asHttpStatus(error.status));
+      const result = await buyerPaymentHttp.initiateBuyerCheckout({
+        buyerUserId: userId,
+        lotId: body.lotId,
+        addressId: body.addressId,
+        websiteContext: marketingWebsiteContextFromHono(c),
+      });
+      if (!result.ok) {
+        const errBody: Record<string, string> = { error: result.error };
+        if (result.code) errBody.code = result.code;
+        return c.json(errBody, asHttpStatus(result.status));
       }
-      const data = result.value;
-      const marketingEventId = crypto.randomUUID();
-      await container.marketingEventService.emit(
-        buildWebsiteUserEvent(c, {
-          name: "InitiateCheckout",
-          eventId: marketingEventId,
-          userId,
-          customData: { lotId: body.lotId, paymentId: data.paymentId },
-        }),
-      );
-      return c.json(
-        {
-          data: {
-            paymentId: data.paymentId,
-            checkoutUrl: data.checkoutUrl,
-            checkoutRail: data.checkoutRail,
-            manualReviewReason: data.manualReviewReason,
-            marketingEventId,
-          },
-        },
-        201,
-      );
+      return respondFinanceOkBody(c, { data: result.data }, result.status);
     },
   );
 
@@ -261,7 +201,7 @@ export function createPaymentRoutes(
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
-      const result = await container.paymentAdminService.markCapturedByAdmin(
+      const result = await entityStaffPayment.markCapturedByAdmin(
         userId,
         role,
         id,
@@ -290,7 +230,7 @@ export function createPaymentRoutes(
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
-      const result = await container.paymentAdminService.refundPayment(
+      const result = await entityStaffPayment.refundPayment(
         userId,
         role,
         id,

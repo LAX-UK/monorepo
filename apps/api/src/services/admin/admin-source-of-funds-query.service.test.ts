@@ -85,6 +85,7 @@ describe("AdminSourceOfFundsQueryService", () => {
       findPendingForUser: vi.fn(),
       listByStatus: vi.fn(),
       countByStatus: vi.fn(),
+      summarizeByStatus: vi.fn().mockResolvedValue({ total: 1, awaitingTriage: 1, triaged: 0 }),
       create: vi.fn(),
       setTriage: vi.fn(),
       setReview: vi.fn(),
@@ -98,6 +99,7 @@ describe("AdminSourceOfFundsQueryService", () => {
     };
     adminUserReader = {
       list: vi.fn(),
+      summarize: vi.fn(),
       getById: vi.fn(),
       getByIds: vi
         .fn()

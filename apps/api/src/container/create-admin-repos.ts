@@ -21,7 +21,6 @@ import type {
   ILegalEntityDocumentAdminRepository,
   ILegalEntityLifecycleAdminRepository,
   IUserEmailVerifiedPublisher,
-  IUserMetricsReader,
 } from "@auction/persistence/interfaces";
 import {
   DrizzleAdminDisputeCaseEnrichmentReader,
@@ -45,11 +44,9 @@ import {
   DrizzleLegalEntityDocumentAdminRepository,
   DrizzleLegalEntityLifecycleAdminRepository,
   DrizzleUserEmailVerifiedPublisher,
-  DrizzleUserMetricsReader,
 } from "@auction/persistence/repositories";
 
 export type AdminRepositories = {
-  userMetrics: IUserMetricsReader;
   adminUserReader: IAdminUserReader;
   adminUserKycReader: IAdminUserKycReader;
   adminRoleManager: IAdminUserRoleManager;
@@ -74,7 +71,6 @@ export type AdminRepositories = {
 };
 
 export function createAdminRepositories(db: Database): AdminRepositories {
-  const userMetrics = new DrizzleUserMetricsReader(db);
   const adminUserReader = new DrizzleAdminUserReader(db);
   const adminUserKycReader = new DrizzleAdminUserKycReader(db);
   const adminRoleManager = new DrizzleAdminUserRoleManager(db);
@@ -99,7 +95,6 @@ export function createAdminRepositories(db: Database): AdminRepositories {
   const userEmailVerifiedPublisher = new DrizzleUserEmailVerifiedPublisher(db);
 
   return {
-    userMetrics,
     adminUserReader,
     adminUserKycReader,
     adminRoleManager,

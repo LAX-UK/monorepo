@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { createUserRouteServices } from "../container/create-user-route-services.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { createTestUserRouteServicesInput } from "../testing/create-test-user-route-services.js";
 import { createUserRoutes } from "./users.js";
 
 const FAKE_COOKIE = "better-auth.session_token=test-session-token-fixture";
@@ -30,22 +32,26 @@ function sessionsTestApp(opts: {
   authDb: ReturnType<typeof makeAuthDbForSessions>;
   listForUser: ReturnType<typeof vi.fn>;
   deleteSessionForUser: ReturnType<typeof vi.fn>;
+  getSessionIdForCookieToken?: ReturnType<typeof vi.fn>;
+  revokeAllForUserExcept?: ReturnType<typeof vi.fn>;
 }) {
   const sessionRevocation = {
     listForUser: opts.listForUser,
     deleteSessionForUser: opts.deleteSessionForUser,
-    getSessionIdForCookieToken: vi.fn(),
-    revokeAllForUserExcept: vi.fn(),
+    getSessionIdForCookieToken: opts.getSessionIdForCookieToken ?? vi.fn(),
+    revokeAllForUserExcept: opts.revokeAllForUserExcept ?? vi.fn(),
   };
+  const userRoutes = createUserRouteServices(
+    createTestUserRouteServicesInput({
+      sessionRevocation: sessionRevocation as never,
+      authAuditPublisher: { publish: vi.fn().mockResolvedValue(undefined) } as never,
+    }),
+  );
   const container = {
     env: {},
     authDb: opts.authDb,
-    sessionRevocation,
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    authAuditPublisher: { publish: vi.fn().mockResolvedValue(undefined) },
-    transactionRunner: {
-      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
-    } as never,
+    userRoutes,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", staffRole: null }),
@@ -122,26 +128,13 @@ describe("POST /users/me/sessions/revoke-all", () => {
     const getSessionIdForCookieToken = vi.fn().mockResolvedValue("current-sess");
     const revokeAllForUserExcept = vi.fn().mockResolvedValue(undefined);
 
-    const container = {
-      env: {},
+    const { app } = sessionsTestApp({
       authDb,
-      sessionRevocation: {
-        listForUser,
-        deleteSessionForUser,
-        getSessionIdForCookieToken,
-        revokeAllForUserExcept,
-      },
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-      authAuditPublisher: { publish: vi.fn().mockResolvedValue(undefined) },
-      transactionRunner: {
-        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
-      } as never,
-    } as unknown as Container;
-    const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", staffRole: null }),
-    };
-    const app = new Hono();
-    app.route("/users", createUserRoutes(container, authenticator));
+      listForUser,
+      deleteSessionForUser,
+      getSessionIdForCookieToken,
+      revokeAllForUserExcept,
+    });
 
     const res = await app.request("/users/me/sessions/revoke-all", {
       method: "POST",
@@ -156,27 +149,11 @@ describe("POST /users/me/sessions/revoke-all", () => {
 describe("POST /users/me/delete step-up", () => {
   it("still returns credential_required for OAuth-only users", async () => {
     const authDb = makeAuthDbForSessions({ lastPasswordAuthAt: null, hasCredential: false });
-    const sessionRevocation = {
-      listForUser: vi.fn(),
-      deleteSessionForUser: vi.fn(),
-      getSessionIdForCookieToken: vi.fn(),
-      revokeAllForUserExcept: vi.fn(),
-    };
     const container = {
       env: {},
       authDb,
-      sessionRevocation,
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-      authAuditPublisher: { publish: vi.fn() },
-      db: {
-        select: vi.fn(() => ({
-          from: vi.fn(() => ({
-            where: vi.fn(() => ({
-              limit: vi.fn().mockResolvedValue([{ deletionRequestedAt: null }]),
-            })),
-          })),
-        })),
-      },
+      userRoutes: createUserRouteServices(createTestUserRouteServicesInput()),
     } as unknown as Container;
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", staffRole: null }),

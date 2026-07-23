@@ -53,6 +53,10 @@ export class AdminUserService {
     return this.reader.list(filter);
   }
 
+  ensureDirectoryAccess(actorRole: string, actorStaffRole: string | null | undefined): void {
+    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
+  }
+
   getById(actorRole: string, actorStaffRole: string | null | undefined, id: string) {
     assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
     return this.reader.getById(id);

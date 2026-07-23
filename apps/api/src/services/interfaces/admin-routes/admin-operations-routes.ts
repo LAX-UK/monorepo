@@ -1,3 +1,4 @@
+import type { PlaceBidWithIdempotencyOutcome } from "@auction/bidding-runtime";
 import type { EmailOutboxStatus } from "@auction/db/schema";
 import type {
   AttentionItem,
@@ -8,17 +9,21 @@ import type {
   RedactedDomainEventRow,
 } from "@auction/persistence/interfaces";
 import type { Result } from "neverthrow";
-import type { AdminOnboardingIssues, AdminReviewTaskRow } from "../../../admin/admin-route-dtos.js";
+import type { AdminReviewTaskRow } from "../../../admin/admin-route-dtos.js";
 import type {
   AdminLegalEntityBrowseParams,
   AdminLegalEntityBrowseResult,
 } from "../../../lib/admin-legal-entity-browse.js";
 import type { AdminTodayMetrics } from "../../admin-metrics.service.js";
 import type { AdminSaleOperationsSnapshotService } from "../../admin-sale-operations-snapshot.service.js";
-import type { PlaceBidWithIdempotencyOutcome } from "../../bid/place-bid-idempotency.js";
-import type { PaddleService, PaddleServiceError } from "../../paddle.service.js";
+import type { AdminLegalEntityBrowsePage } from "../../admin/admin-legal-entity-browse-query.service.js";
+import type {
+  AdminOnboardingIssuesPage,
+  AdminOnboardingIssuesPageRow,
+} from "../../admin/admin-onboarding-issues-query.service.js";
+import type { PaddleServiceError } from "../../paddle.service.js";
 import type { SaleroomCheckInService } from "../../saleroom-check-in.service.js";
-import type { AdminAnalyticsDashboard, DateRange } from "../analytics.js";
+import type { AdminPaddleAssignInput, AdminPaddleClearInput } from "../admin-live-bidding-ports.js";
 import type { IDisplayOverlayService } from "../display-overlay-service.js";
 import type { IDisplayPairingService } from "../display-pairing-service.js";
 import type {
@@ -26,7 +31,11 @@ import type {
   ISaleroomSessionControlService,
   ISaleroomSessionReadService,
 } from "../saleroom-service.js";
-import type { IAdminFinanceDashboardQueryService } from "./admin-finance-routes.js";
+import type {
+  IAdminFinanceIssueSnapshotQueryService,
+  IAdminManualReviewPaymentQueryService,
+} from "./admin-finance-routes.js";
+import type { IAdminTelephoneBookingApplicationService } from "./admin-telephone-booking-routes.js";
 
 export type { RedactedDomainEventRow };
 
@@ -48,7 +57,15 @@ export type {
 } from "../../../lib/admin-legal-entity-browse.js";
 
 export interface IAdminOnboardingIssuesQueryService {
-  getOnboardingIssues(): Promise<AdminOnboardingIssues>;
+  getPage(input: {
+    tab: import("@auction/persistence/interfaces").AdminOnboardingIssuesTab;
+    limit: number;
+    offset: number;
+  }): Promise<AdminOnboardingIssuesPage>;
+  getSelectedItem(input: {
+    tab: import("@auction/persistence/interfaces").AdminOnboardingIssuesTab;
+    id: string;
+  }): Promise<AdminOnboardingIssuesPageRow | null>;
 }
 
 export interface IAdminReviewTaskQueryService {
@@ -61,16 +78,11 @@ export interface IAdminReviewTaskQueryService {
 }
 
 export interface IAdminLegalEntityBrowseQueryService {
+  getPage(params: AdminLegalEntityBrowseParams): Promise<AdminLegalEntityBrowsePage>;
   searchLegalEntitiesBrowse(
     params: AdminLegalEntityBrowseParams,
   ): Promise<AdminLegalEntityBrowseResult>;
 }
-
-export interface IAdminDashboardQueryService
-  extends IAdminFinanceDashboardQueryService,
-    IAdminOnboardingIssuesQueryService,
-    IAdminReviewTaskQueryService,
-    IAdminLegalEntityBrowseQueryService {}
 
 export interface IAdminEmailApplicationService {
   listOutbox(input: {
@@ -85,7 +97,6 @@ export interface IAdminEmailApplicationService {
 }
 
 export interface IAdminOpsReadService {
-  getAnalyticsDashboard(range: DateRange): Promise<AdminAnalyticsDashboard>;
   getTodayMetrics(): Promise<AdminTodayMetrics>;
   getBidsPerMinute(): Promise<number>;
   listAttentionFeed(): Promise<AttentionItem[]>;
@@ -136,7 +147,21 @@ export type AdminPlacePaddleBidResult =
       bidCount: number;
     };
 
+export type ClerkPaddleBidHttpResult = {
+  httpStatus: number;
+  body: unknown;
+};
+
 export interface IAdminLiveBiddingApplicationService {
+  placeClerkPaddleBid(input: {
+    saleId: string;
+    lotId: string;
+    paddleNumber: number;
+    amount: number;
+    clerkUserId: string;
+    maxAutoBidAmount?: number | undefined;
+    idempotencyKey?: string | undefined;
+  }): Promise<ClerkPaddleBidHttpResult>;
   placePaddleBid(input: {
     saleId: string;
     lotId: string;
@@ -157,10 +182,10 @@ export interface IAdminLiveBiddingApplicationService {
     idempotencyKey?: string | undefined;
   }): Promise<PlaceBidWithIdempotencyOutcome>;
   assignPaddle(
-    input: Parameters<PaddleService["assignPaddle"]>[0],
+    input: AdminPaddleAssignInput,
   ): Promise<Result<{ paddleNumber: number }, PaddleServiceError | AdminLiveBiddingRateLimitError>>;
-  clearPaddle: PaddleService["clearPaddle"];
-  listSaleRoster: PaddleService["listSaleRoster"];
+  clearPaddle(input: AdminPaddleClearInput): Promise<Result<void, PaddleServiceError>>;
+  listSaleRoster(saleId: string): Promise<import("../../paddle.service.js").PaddleRosterEntry[]>;
 }
 
 export interface IAdminSaleroomDisplayService {
@@ -175,10 +200,13 @@ export type AdminOperationsRouteServices = {
   requestLifecycle: IAdminRequestLifecycleService;
   ops: IAdminOpsReadService;
   domainEvents: IAdminDomainEventQueryService;
-  dashboard: IAdminDashboardQueryService;
+  financeIssueSnapshot: IAdminFinanceIssueSnapshotQueryService;
+  manualReviewPayments: IAdminManualReviewPaymentQueryService;
+  reviewTasks: IAdminReviewTaskQueryService;
   email: IAdminEmailApplicationService;
   display: IAdminSaleroomDisplayService;
   saleroom: IAdminSaleroomApplicationService;
   saleroomCheckIn: IAdminSaleroomCheckInApplicationService;
   liveBidding: IAdminLiveBiddingApplicationService;
+  telephoneBookings: IAdminTelephoneBookingApplicationService;
 };

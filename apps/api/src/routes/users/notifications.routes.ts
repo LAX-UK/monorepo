@@ -1,5 +1,6 @@
 import { notificationIdUuidParamSchema } from "@auction/validators";
 import { z } from "zod";
+import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
 
@@ -23,13 +24,14 @@ export function attachUserNotificationsRoutes(r: UserHono, deps: UserRouteDeps):
     const tab = tabRaw === "unread" || tabRaw === "archived" ? tabRaw : "all";
     const typeRaw = c.req.query("type");
     const type = typeRaw && typeRaw.trim() !== "" ? typeRaw.trim() : undefined;
-    const data = await container.notificationQueryService.listForUserFiltered(userId, {
+    const response = await container.userRoutes.notificationsHttp.listNotifications({
+      userId,
       limit,
       offset,
       tab,
-      type,
+      ...(type !== undefined ? { type } : {}),
     });
-    return c.json({ data });
+    return respondUserHttpJson(c, response);
   });
 
   r.patch(
@@ -39,8 +41,8 @@ export function attachUserNotificationsRoutes(r: UserHono, deps: UserRouteDeps):
     async (c) => {
       const userId = c.get("userId") as string;
       const { ids } = c.req.valid("json");
-      const count = await container.notificationQueryService.markManyRead(userId, ids);
-      return c.json({ data: { count } });
+      const response = await container.userRoutes.notificationsHttp.markManyRead({ userId, ids });
+      return respondUserHttpJson(c, response);
     },
   );
 
@@ -51,11 +53,11 @@ export function attachUserNotificationsRoutes(r: UserHono, deps: UserRouteDeps):
     async (c) => {
       const userId = c.get("userId") as string;
       const { notificationId } = c.req.valid("param");
-      const archived = await container.notificationQueryService.archive(userId, notificationId);
-      if (!archived) {
-        return c.json({ error: "Not found" }, 404);
-      }
-      return c.body(null, 204);
+      const response = await container.userRoutes.notificationsHttp.archiveNotification({
+        userId,
+        notificationId,
+      });
+      return respondUserHttpJson(c, response);
     },
   );
 
@@ -66,17 +68,17 @@ export function attachUserNotificationsRoutes(r: UserHono, deps: UserRouteDeps):
     async (c) => {
       const userId = c.get("userId") as string;
       const { notificationId } = c.req.valid("param");
-      const updated = await container.notificationQueryService.markRead(userId, notificationId);
-      if (!updated) {
-        return c.json({ error: "Not found" }, 404);
-      }
-      return c.body(null, 204);
+      const response = await container.userRoutes.notificationsHttp.markRead({
+        userId,
+        notificationId,
+      });
+      return respondUserHttpJson(c, response);
     },
   );
 
   r.patch("/me/notifications/read-all", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const count = await container.notificationQueryService.markAllRead(userId);
-    return c.json({ data: { count } });
+    const response = await container.userRoutes.notificationsHttp.markAllRead({ userId });
+    return respondUserHttpJson(c, response);
   });
 }

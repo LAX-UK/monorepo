@@ -1,7 +1,5 @@
 import type { Database } from "@auction/db";
 import {
-  AnalyticsService,
-  DefaultMetricsAggregator,
   DrizzleExportAdminUserReader,
   DrizzleExportDomainEventsQuery,
   DrizzleExportLegalEntityReader,
@@ -13,25 +11,13 @@ import type { ContainerRepositories } from "./create-repositories.js";
 
 export type CreateExportProviderDepsInput = Pick<
   ContainerRepositories,
-  | "lotRepo"
-  | "saleRepo"
-  | "itemSubmissionRepository"
-  | "lotMetrics"
-  | "paymentMetrics"
-  | "userMetrics"
+  "lotRepo" | "saleRepo" | "itemSubmissionRepository"
 >;
 
 export function createExportProviderDeps(
   db: Database,
   repos: CreateExportProviderDepsInput,
 ): IExportProviderDeps {
-  const analytics = new AnalyticsService(
-    repos.lotMetrics,
-    repos.paymentMetrics,
-    repos.userMetrics,
-    new DefaultMetricsAggregator(),
-  );
-
   return {
     lotRepo: repos.lotRepo,
     saleRepo: repos.saleRepo,
@@ -41,6 +27,5 @@ export function createExportProviderDeps(
     domainEvents: new DrizzleExportDomainEventsQuery(db),
     payoutRepo: new DrizzleExportPayoutReader(db),
     legalEntityRepo: new DrizzleExportLegalEntityReader(db),
-    analytics,
   };
 }

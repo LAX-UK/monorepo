@@ -5,15 +5,24 @@ import { createAuthRepositories } from "./container/create-auth-repositories.js"
 import { createContainerAuth } from "./container/create-auth.js";
 import { createBiddingRouteServices } from "./container/create-bidding-route-services.js";
 import { createBiddingSaleroom } from "./container/create-bidding-saleroom.js";
+import { createCatalogRouteServices } from "./container/create-catalog-route-services.js";
 import { createCatalogServices } from "./container/create-catalog-services.js";
 import { createComplianceMedia } from "./container/create-compliance-media.js";
+import { createComplianceRouteServices } from "./container/create-compliance-route-services.js";
 import { createCronServices } from "./container/create-cron-services.js";
+import { createFinanceRouteServices } from "./container/create-finance-route-services.js";
+import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
 import { createPaymentsServices } from "./container/create-payments-services.js";
+import { createPlatformCronRouteServices } from "./container/create-platform-cron-route-services.js";
+import { createPlatformInboundWebhookRouteServices } from "./container/create-platform-inbound-webhook-route-services.js";
 import { createPlatformServices } from "./container/create-platform-services.js";
 import { createRepositories } from "./container/create-repositories.js";
+import { createSubmissionRouteServices } from "./container/create-submission-route-services.js";
 import { createUserMiscServices } from "./container/create-user-misc-services.js";
+import { createUserNotificationComposition } from "./container/create-user-notification-composition.js";
+import { createUserRouteServices } from "./container/create-user-route-services.js";
 import type { Env } from "./env.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
@@ -38,6 +47,8 @@ export function createContainer(env: Env): Container {
   });
 
   const repos = createRepositories(db);
+
+  const userNotification = createUserNotificationComposition(repos);
 
   const platform = createPlatformServices({ env, db, infra, repos });
   const lotLifecycle = createLotLifecycle({ infra, repos, platform });
@@ -69,7 +80,7 @@ export function createContainer(env: Env): Container {
     lotLifecycle,
     complianceMedia,
     catalog,
-    payments,
+    adminMetricsService: payments.adminMetricsService,
   });
   const userMisc = createUserMiscServices({
     env,
@@ -85,18 +96,6 @@ export function createContainer(env: Env): Container {
     catalog,
     payments,
   });
-  const admin = createAdminServices({
-    env,
-    db,
-    infra,
-    repos,
-    platform,
-    complianceMedia,
-    catalog,
-    payments,
-    bidding: biddingSaleroom,
-    userMisc,
-  });
   const cron = createCronServices({
     env,
     db,
@@ -109,6 +108,101 @@ export function createContainer(env: Env): Container {
     lotLifecycle,
     biddingSaleroom,
     complianceMedia,
+  });
+  const compliance = createComplianceRouteServices({
+    db,
+    transactionRunner: platform.transactionRunner,
+    legalEntityRepository: repos.legalEntityRepository,
+    domainEventSink: platform.domainEventSink,
+    kycService: complianceMedia.kycService,
+    amlService: complianceMedia.amlService,
+    stripeConnectService: platform.stripeConnectService,
+    marketingEventService: complianceMedia.marketingEventService,
+    kycResubmissionNotifier: complianceMedia.kycResubmissionNotifier,
+    sourceOfFundsDocumentCollectionService: complianceMedia.sourceOfFundsDocumentCollectionService,
+    uploadService: complianceMedia.uploadService,
+    exportService: complianceMedia.exportService,
+    lotDocumentService: complianceMedia.lotDocumentService,
+    saleDocumentService: complianceMedia.saleDocumentService,
+    storageDriver: env.STORAGE_DRIVER,
+  });
+  const finance = createFinanceRouteServices({
+    redis: infra.redis,
+    legalEntityRepository: repos.legalEntityRepository,
+    payoutRepository: repos.payoutRepository,
+    payoutStatementQueue: infra.payoutStatementQueue,
+    paymentAdminService: payments.paymentAdminService,
+    paymentBuyerService: payments.paymentBuyerService,
+    buyerComplianceHttp: compliance.buyerComplianceHttp,
+    lotFulfilmentBuyerService: payments.lotFulfilmentService,
+    marketingEventService: complianceMedia.marketingEventService,
+    sourceOfFundsDocumentCollectionService: complianceMedia.sourceOfFundsDocumentCollectionService,
+    settlementCronService: cron.settlementCronService,
+    paymentMaintenanceCronService: cron.paymentMaintenanceCronService,
+    accountingReplayCronService: cron.accountingReplayCronService,
+    stripeWebhookVerifier: infra.stripeWebhookVerifier,
+    stripeConnectService: platform.stripeConnectService,
+    stripePaymentWebhookService: payments.stripePaymentWebhookService,
+    payoutSellerService: platform.payoutSellerService,
+    env,
+    xeroWebhookEventRepository: repos.xeroWebhookEventRepository,
+    accountingProvider: payments.accountingProvider,
+    webhookEventRepository: repos.webhookEventRepository,
+    webhookEventsProducer: infra.webhookEventsProducer,
+  });
+  const platformCron = createPlatformCronRouteServices({
+    redis: infra.redis,
+    lifecycleCronService: cron.lifecycleCronService,
+    hygieneCronService: cron.hygieneCronService,
+  });
+  const platformInboundWebhooks = createPlatformInboundWebhookRouteServices({
+    env,
+    webhookEventRepository: repos.webhookEventRepository,
+    webhookEventsProducer: infra.webhookEventsProducer,
+  });
+  const catalogRoutes = createCatalogRouteServices({
+    saleService: catalog.saleService,
+    saleSoftDeleteService: catalog.saleSoftDeleteService,
+    saleStatusTransitionService: catalog.saleStatusTransitionService,
+    lotService: catalog.lotService,
+    lotSoftDeleteService: catalog.lotSoftDeleteService,
+    mediaUrlResolver: complianceMedia.mediaUrlResolver,
+    mediaAssetEnricher: complianceMedia.mediaAssetEnricher,
+    db,
+    objectStorage: infra.objectStorage,
+    cachedCatalogueListService: platform.cachedCatalogueListService,
+    lotLifecycleQueryService: catalog.lotLifecycleQueryService,
+    stripeConnectService: platform.stripeConnectService,
+    legalEntityRepository: repos.legalEntityRepository,
+    saleListReadService: catalog.saleListReadService,
+    repoFactory: repos.repoFactory,
+    saleroomService: biddingSaleroom.saleroomService,
+    saleBiddersService: catalog.saleBiddersService,
+    categoryService: catalog.categoryService,
+    pressArchiveReadService: catalog.pressArchiveReadService,
+    saleFollowService: catalog.saleFollowService,
+    artistRegistryService: platform.artistRegistryService,
+    artistProfileService: catalog.artistProfileService,
+    artistDeleteService: catalog.artistDeleteService,
+    venueService: catalog.venueService,
+  });
+  const submissionRoutes = createSubmissionRouteServices({
+    itemSubmissionSellerApi: catalog.itemSubmissionSellerApi,
+    itemSubmissionAdminApi: catalog.itemSubmissionAdminApi,
+    submissionDocumentService: complianceMedia.submissionDocumentService,
+  });
+  const admin = createAdminServices({
+    env,
+    db,
+    infra,
+    repos,
+    platform,
+    complianceMedia,
+    catalog,
+    payments,
+    bidding: biddingSaleroom,
+    userMisc,
+    payoutStatementApplication: finance.payoutStatement,
   });
 
   return {
@@ -165,10 +259,7 @@ export function createContainer(env: Env): Container {
     dashboardQueryService: catalog.dashboardQueryService,
     userDashboardReadService: userMisc.userDashboardReadService,
     cachedCatalogueListService: platform.cachedCatalogueListService,
-    notificationQueryService: catalog.notificationQueryService,
-    paymentBuyerService: payments.paymentBuyerService,
-    paymentAdminService: payments.paymentAdminService,
-    paymentMaintenanceService: payments.paymentMaintenanceService,
+    notificationQueryService: userNotification.notificationQueryService,
     lotInvoiceInitiationService: payments.lotInvoiceInitiationService,
     qrCodeService: catalog.qrCodeService,
     qrCodeAnalytics: catalog.qrCodeAnalytics,
@@ -201,9 +292,9 @@ export function createContainer(env: Env): Container {
     userSuspensionCacheInvalidator: platform.cachedUserSuspensionChecker,
     registrationService: userMisc.registrationService,
     invitationService: userMisc.invitationService,
+    invitationRepository: userMisc.invitationRepository,
     profileService: userMisc.profileService,
     addressService: userMisc.addressService,
-    analyticsService: userMisc.analyticsService,
     domainEventSink: platform.domainEventSink,
     transactionRunner: platform.transactionRunner,
     authAuditPublisher: platform.authAuditPublisher,
@@ -215,11 +306,6 @@ export function createContainer(env: Env): Container {
     requireLegalEntityContext: platform.requireLegalEntityContext,
     requireSubmissionsLegalEntityContext: userMisc.requireSubmissionsLegalEntityContext,
     adminUserService: userMisc.adminUserService,
-    adminNavCountsService: admin.adminNavCountsService,
-    adminLotsKpiTrendService: admin.adminLotsKpiTrendService,
-    adminPaymentsKpiTrendService: admin.adminPaymentsKpiTrendService,
-    adminSalesKpiTrendService: admin.adminSalesKpiTrendService,
-    adminPayoutsKpiTrendService: admin.adminPayoutsKpiTrendService,
     adminPaymentListQueryService: userMisc.adminPaymentListQueryService,
     adminMetricsService: payments.adminMetricsService,
     attentionFeedReader: repos.attentionFeedReader,
@@ -269,7 +355,6 @@ export function createContainer(env: Env): Container {
     dataExportQueue: infra.dataExportQueue,
     exportService: complianceMedia.exportService,
     legalEntityArchiveQueue: infra.legalEntityArchiveQueue,
-    stripePaymentWebhookService: payments.stripePaymentWebhookService,
     stripeClientFactory: infra.stripeClientFactory,
     stripeWebhookVerifier: infra.stripeWebhookVerifier,
     marketingEventService: complianceMedia.marketingEventService,
@@ -278,19 +363,78 @@ export function createContainer(env: Env): Container {
     postmarkWebhookService: userMisc.postmarkWebhookService,
     brevoWebhookIngestService: cron.brevoWebhookIngestService,
     accountDeletionEligibilityService: cron.accountDeletionEligibilityService,
-    settlementCronService: cron.settlementCronService,
-    accountingReplayCronService: cron.accountingReplayCronService,
-    paymentMaintenanceCronService: cron.paymentMaintenanceCronService,
-    lifecycleCronService: cron.lifecycleCronService,
-    hygieneCronService: cron.hygieneCronService,
     adminMarketingEventsService: userMisc.adminMarketingEventsService,
     emailUnsubscribeService: userMisc.emailUnsubscribeService,
     bidding: createBiddingRouteServices({
+      bidPlacer: biddingSaleroom.bidService,
       absenteeBidService: biddingSaleroom.absenteeBidService,
       autoBidService: biddingSaleroom.autoBidService,
       conditionReportService: catalog.conditionReportService,
+      saleRegistrationBuyer: biddingSaleroom.saleRegistrationService,
+      telephoneBidBookingBuyer: catalog.telephoneBidBookingService,
+      lotService: catalog.lotService,
+      displayPairingService: biddingSaleroom.displayPairingService,
+      displaySnapshotReader: biddingSaleroom.displaySnapshotReader,
+    }),
+    identityRoutes: createIdentityRouteServices({
+      accountSecurity: {
+        env,
+        authDb,
+        auth,
+        db,
+        userService: userMisc.userService,
+        userEmailChangeRepository: repos.userEmailChangeRepository,
+        emailService: infra.emailService,
+        sessionRevocation,
+        authAuditPublisher: platform.authAuditPublisher,
+        authCredentialReader: userMisc.authCredentialReader,
+      },
+      legalEntityRepository: repos.legalEntityRepository,
+      personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
+      orgModuleGate: userMisc.orgModuleGate,
+      userService: userMisc.userService,
+      pendingInvitationsReader: repos.pendingInvitationsReader,
+      invitationLifecycleService: platform.invitationLifecycleService,
+      legalEntityAccessService: platform.legalEntityAccessService,
+      memberManagementService: platform.memberManagementService,
+      organizationOnboardingService: platform.organizationOnboardingService,
+      organizationOnboardingFlowService: platform.organizationOnboardingFlowService,
+    }),
+    userRoutes: createUserRouteServices({
+      env,
+      registrationService: userMisc.registrationService,
+      marketingEventService: complianceMedia.marketingEventService,
+      userService: userMisc.userService,
+      mediaUrlResolver: complianceMedia.mediaUrlResolver,
+      conditionReportService: catalog.conditionReportService,
+      userDashboardReadService: userMisc.userDashboardReadService,
+      lotService: catalog.lotService,
+      paymentBuyerService: payments.paymentBuyerService,
+      mediaAssetEnricher: complianceMedia.mediaAssetEnricher,
+      saleService: catalog.saleService,
+      watchlistService: userMisc.watchlistService,
+      artistWatchlistService: userMisc.artistWatchlistService,
+      savedSearchService: userMisc.savedSearchService,
+      notificationQueryService: userNotification.notificationQueryService,
+      vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
+      pushSubscriptionRepository: repos.pushSubscriptionRepository,
+      notificationPreferenceRepository: repos.notificationPreferenceRepository,
+      uiPreferenceService: platform.uiPreferenceService,
+      profileService: userMisc.profileService,
+      addressService: userMisc.addressService,
+      sessionRevocation,
+      authAuditPublisher: platform.authAuditPublisher,
+      userSecurityReadService: userMisc.userSecurityReadService,
+      emailService: infra.emailService,
+      accountDeletionEligibilityService: cron.accountDeletionEligibilityService,
     }),
     admin: admin.admin,
+    finance,
+    platformCron,
+    platformInboundWebhooks,
+    compliance,
+    catalogRoutes,
+    submissionRoutes,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,
   };
@@ -308,6 +452,7 @@ export type {
   ContainerAuthRoutesSlice,
   ContainerBidRoutesSlice,
   ContainerBiddingRoutesSlice,
+  ContainerIdentityRoutesSlice,
   ContainerBiddingSaleroomSlice,
   ContainerBrevoWebhookRoutesSlice,
   ContainerCatalogAdminReadersSlice,
@@ -341,13 +486,12 @@ export type {
   ContainerOrganizationOnboardingRoutesSlice,
   ContainerOrganizationRoutesSlice,
   ContainerPasswordStepUpSlice,
-  ContainerPaymentExposureSlice,
   ContainerPaymentHttpRoutesSlice,
-  ContainerPaymentRoutesSlice,
   ContainerPaymentsSlice,
   ContainerPayoutRoutesSlice,
   ContainerPayoutStatementRoutesSlice,
   ContainerPlatformSlice,
+  ContainerPlatformInboundWebhooksSlice,
   ContainerPostmarkWebhookRoutesSlice,
   ContainerPressRoutesSlice,
   ContainerQrRoutesSlice,
@@ -361,16 +505,20 @@ export type {
   ContainerSubmissionDocumentRoutesSlice,
   ContainerSubmissionRoutesSlice,
   ContainerTelephoneBookingRoutesSlice,
+  ContainerBuyerTelephoneBookingRoutesSlice,
+  ContainerAdminTelephoneBookingRoutesSlice,
   ContainerUploadRoutesSlice,
   ContainerUserMiscSlice,
   ContainerUserProfileSlice,
-  ContainerUserRoutesSlice,
+  ContainerUserAccountRoutesSlice,
+  ContainerUserRouteServicesSlice,
   ContainerUserSuspensionExposureSlice,
   ContainerUserUtilitySlice,
   ContainerVenueRoutesSlice,
   ContainerVeriffWebhookRoutesSlice,
   ContainerXeroWebhookRoutesSlice,
   ContainerSaleAuxRoutesSlice,
+  ContainerSaleFollowRoutesSlice,
   ContainerSaleLifecycleWriteRoutesSlice,
   ContainerSaleLotMembershipRoutesSlice,
   ContainerSaleReadRoutesSlice,

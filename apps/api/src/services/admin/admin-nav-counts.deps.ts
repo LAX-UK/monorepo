@@ -1,3 +1,4 @@
+import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
 import type { ISaleroomLiveSessionCounter } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Sale } from "@auction/types";
@@ -6,19 +7,17 @@ import type { IConditionReportAdminService } from "../interfaces/condition-repor
 import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
 import type { ISaleReadService } from "../interfaces/sale-service.js";
 import type { ITelephoneBidBookingQueryService } from "../interfaces/telephone-bid-booking-service.js";
-import type { InvitationService } from "../invitation.service.js";
 import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
 import type { AdminNavCountsDeps } from "./admin-nav-counts.service.js";
-import type { AdminRouteServicesCore } from "./create-admin-route-services.js";
 
 export type CreateAdminNavCountsDepsInput = {
   saleroomLiveSessionCounter: ISaleroomLiveSessionCounter;
-  admin: AdminRouteServicesCore;
+  authority: AdminNavCountsAuthorityPorts;
   repoFactory: IRepositoryFactory;
   conditionReportService: IConditionReportAdminService;
   lotFulfilmentService: ILotFulfilmentService;
+  lotFulfilmentRepository: ILotFulfilmentRepository;
   saleService: ISaleReadService;
-  invitationService: InvitationService;
   amlService: AmlService;
   sourceOfFundsService: SourceOfFundsService;
   telephoneBidBookingService: ITelephoneBidBookingQueryService;
@@ -32,22 +31,6 @@ function saleNeedsSetup(saleRow: Sale, lotCount: number): boolean {
   return false;
 }
 
-function sumOnboardingIssuesFromSnapshot(snapshot: {
-  entitiesPendingReviewCount: number;
-  artistsPendingApprovalCount: number;
-  staleKycSessionsCount: number;
-  documentsAwaitingReviewCount: number;
-  staleLeadOrganisationsCount: number;
-}): number {
-  return (
-    snapshot.entitiesPendingReviewCount +
-    snapshot.artistsPendingApprovalCount +
-    snapshot.staleKycSessionsCount +
-    snapshot.documentsAwaitingReviewCount +
-    snapshot.staleLeadOrganisationsCount
-  );
-}
-
 export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): AdminNavCountsDeps {
   const actionableFulfilment = new Set([
     "awaiting_payment",
@@ -56,12 +39,12 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
     "released",
     "in_transit",
   ]);
+  const { authority } = input;
 
   return {
-    getSubmissionsPending: () =>
-      input.admin.ops.countPendingSubmissions({ status: "under_review" }),
+    getSubmissionsPending: () => authority.countPendingSubmissions({ status: "under_review" }),
     getArtistsPending: async () => {
-      const stats = await input.admin.catalog.getArtistStats();
+      const stats = await authority.getArtistStats();
       return stats.pendingReview;
     },
     getConditionReportsPending: async () => {
@@ -79,33 +62,20 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
       ]);
       return pending.total + inProgress.total;
     },
-    getManualReviewCount: () => input.admin.dashboard.countManualReviewPayments(),
-    getOnboardingIssuesTotal: async () => {
-      const snapshot = await input.admin.dashboard.getFinanceIssueSnapshot();
-      return sumOnboardingIssuesFromSnapshot(snapshot);
-    },
+    getManualReviewCount: () => authority.countManualReviewPayments(),
+    getOnboardingIssuesTotal: () => authority.getOnboardingQueueTotal(),
     getLotFulfilmentPending: async () => {
-      const loaded = await input.lotFulfilmentService.listForAdmin({ limit: 1, offset: 0 });
-      return Object.entries(loaded.statusCounts).reduce(
+      const summary = await input.lotFulfilmentRepository.summarizeForAdmin();
+      return Object.entries(summary.statusCounts).reduce(
         (sum, [status, count]) => sum + (actionableFulfilment.has(status) ? count : 0),
         0,
       );
     },
-    getWithdrawalsPending: () =>
-      input.admin.dashboard.countPendingAdminReviewTasks("lot_withdrawal_request"),
-    getDisputesOpen: () => input.admin.disputeCases.countOpenCases(),
-    getPayoutsFailed: async () => {
-      const finance = await input.admin.dashboard.getFinanceIssueSnapshot();
-      return finance.failedPayoutCount;
-    },
+    getWithdrawalsPending: () => authority.countPendingAdminReviewTasks("lot_withdrawal_request"),
+    getDisputesOpen: () => authority.countOpenDisputeCases(),
+    getPayoutsFailed: () => authority.getFailedPayoutCount(),
     getSaleroomLiveCount: () => input.saleroomLiveSessionCounter.countLiveOrPausedOnActiveSales(),
-    getInvitationsPending: async () => {
-      const { pendingTotal } = await input.invitationService.listInvitations(
-        {},
-        { limit: 1, offset: 0 },
-      );
-      return pendingTotal;
-    },
+    getInvitationsPending: () => authority.getInvitationsPendingCount(),
     getDraftSalesNeedingSetup: async () => {
       const rows = await input.saleService.list({
         status: "draft",
@@ -120,8 +90,66 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
     getAmlScreeningsPending: () => input.amlService.countPendingReviews(),
     getSourceOfFundsPending: () => input.sourceOfFundsService.countPending(),
     getTelephoneBookingsPending: () => input.telephoneBidBookingService.countGlobalPending(),
-    getLegalEntityStripeRequirements: async () => {
-      const finance = await input.admin.dashboard.getFinanceIssueSnapshot();
+    getLegalEntityStripeRequirements: () => authority.getStripeRequirementsCount(),
+  };
+}
+
+export type AdminNavCountsAuthorityPorts = {
+  countPendingSubmissions: (
+    filter: Omit<
+      import("@auction/persistence/interfaces").ListSubmissionsFilter,
+      "limit" | "offset"
+    >,
+  ) => Promise<number>;
+  getArtistStats: () => Promise<import("@auction/types").AdminArtistStats>;
+  countManualReviewPayments: () => Promise<number>;
+  getOnboardingQueueTotal: () => Promise<number>;
+  countPendingAdminReviewTasks: (
+    kind: "lot_artist_backfill" | "lot_withdrawal_request",
+  ) => Promise<number>;
+  countOpenDisputeCases: () => Promise<number>;
+  getFailedPayoutCount: () => Promise<number>;
+  getInvitationsPendingCount: () => Promise<number>;
+  getStripeRequirementsCount: () => Promise<number>;
+};
+
+export function createAdminNavCountsAuthorityPorts(
+  admin: Pick<
+    import("../interfaces/admin-routes.js").AdminRouteServicesCore,
+    | "ops"
+    | "catalog"
+    | "manualReviewPayments"
+    | "onboardingIssues"
+    | "reviewTasks"
+    | "disputeCases"
+    | "financeIssueSnapshot"
+    | "invitations"
+  >,
+): AdminNavCountsAuthorityPorts {
+  return {
+    countPendingSubmissions: (filter) => admin.ops.countPendingSubmissions(filter),
+    getArtistStats: () => admin.catalog.getArtistStats(),
+    countManualReviewPayments: () => admin.manualReviewPayments.countManualReviewPayments(),
+    getOnboardingQueueTotal: async () => {
+      const page = await admin.onboardingIssues.getPage({
+        tab: "entities",
+        limit: 1,
+        offset: 0,
+      });
+      return page.summary.queueTotal;
+    },
+    countPendingAdminReviewTasks: (kind) => admin.reviewTasks.countPendingAdminReviewTasks(kind),
+    countOpenDisputeCases: () => admin.disputeCases.countOpenCases(),
+    getFailedPayoutCount: async () => {
+      const finance = await admin.financeIssueSnapshot.getFinanceIssueSnapshot();
+      return finance.failedPayoutCount;
+    },
+    getInvitationsPendingCount: async () => {
+      const page = await admin.invitations.getPage({}, { limit: 1, offset: 0 });
+      return page.summary.pending;
+    },
+    getStripeRequirementsCount: async () => {
+      const finance = await admin.financeIssueSnapshot.getFinanceIssueSnapshot();
       return finance.legalEntitiesWithStripeConnectRequirementsCount;
     },
   };

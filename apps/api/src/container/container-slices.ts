@@ -18,36 +18,39 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
+import type {
+  AdminSatelliteJobQueuesRoutesContainer,
+  AdminSatelliteMarketingEventsRoutesContainer,
+  AdminSatelliteOnsiteEventsRoutesContainer,
+} from "../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { BiddingRouteServices } from "../services/interfaces/bidding-routes.js";
-import type {
-  ILotLifecycleService,
-  ILotReadService,
-  ILotService,
-} from "../services/interfaces/lot-service.js";
-import type {
-  IPaymentAdminService,
-  IPaymentBuyerService,
-  IPaymentMaintenanceService,
-} from "../services/interfaces/payment-service.js";
+import type { CatalogRouteServices } from "../services/interfaces/catalog-routes/index.js";
+import type { ComplianceRouteServices } from "../services/interfaces/compliance-routes/index.js";
+import type { FinanceRouteServices } from "../services/interfaces/finance-routes/index.js";
+import type { IdentityRouteServices } from "../services/interfaces/identity-routes.js";
+import type { ILotLifecycleService, ILotReadService } from "../services/interfaces/lot-service.js";
+import type { PlatformCronRouteServices } from "../services/interfaces/platform-cron-routes/index.js";
+import type { PlatformInboundWebhookRouteServices } from "../services/interfaces/platform-inbound-webhooks/index.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
 import type {
   ISaleLifecycleService,
   ISaleLotMembershipService,
   ISaleReadService,
-  ISaleService,
   ISaleWriteService,
 } from "../services/interfaces/sale-service.js";
 import type {
   ISaleroomSessionReadService,
   SaleroomServicePort,
 } from "../services/interfaces/saleroom-service.js";
+import type { SubmissionRouteServices } from "../services/interfaces/submission-routes/index.js";
 import type {
   ITelephoneBidBookingBuyerService,
   ITelephoneBidBookingQueryService,
   ITelephoneBidBookingStaffService,
   TelephoneBidBookingServicePort,
 } from "../services/interfaces/telephone-bid-booking-service.js";
+import type { UserRouteServices } from "../services/interfaces/user-routes.js";
 import type {
   IUserSuspensionCacheInvalidator,
   IUserSuspensionChecker,
@@ -67,6 +70,7 @@ import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 import type { ContainerSaleRegistrationServices } from "./create-sale-registration-services.js";
 import type { ContainerUserMiscServices } from "./create-user-misc-services.js";
+import type { ContainerUserNotificationComposition } from "./create-user-notification-composition.js";
 import type { ContainerUserProfileServices } from "./create-user-profile-services.js";
 import type { ContainerUserUtilityServices } from "./create-user-utility-services.js";
 
@@ -113,11 +117,34 @@ export type ContainerExposedRepositoriesSlice = {
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
 };
 
-/** Segregated payment HTTP ports mapped to the same runtime service instance. */
-export type ContainerPaymentExposureSlice = {
-  paymentBuyerService: IPaymentBuyerService;
-  paymentAdminService: IPaymentAdminService;
-  paymentMaintenanceService: IPaymentMaintenanceService;
+/** Finance route application ports (statements, buyer HTTP, staff commands, cron ingress). */
+export type ContainerFinanceSlice = {
+  finance: FinanceRouteServices;
+};
+
+/** Platform maintenance cron ingress (lifecycle, hygiene). */
+export type ContainerPlatformCronSlice = {
+  platformCron: PlatformCronRouteServices;
+};
+
+/** Shopify + WordPress webhook claim ingress (platform integrations). */
+export type ContainerPlatformInboundWebhooksSlice = {
+  platformInboundWebhooks: PlatformInboundWebhookRouteServices;
+};
+
+/** Compliance route application ports (Veriff ingress, buyer SoF reads). */
+export type ContainerComplianceSlice = {
+  compliance: ComplianceRouteServices;
+};
+
+/** Catalog lifecycle HTTP route application ports (sale/lot commands). */
+export type ContainerCatalogRoutesSlice = {
+  catalogRoutes: CatalogRouteServices;
+};
+
+/** Item submission HTTP route application ports (seller/admin/documents). */
+export type ContainerSubmissionRoutesServicesSlice = {
+  submissionRoutes: SubmissionRouteServices;
 };
 
 /** Platform suspension ports exposed under route-facing names. */
@@ -230,7 +257,6 @@ export type ContainerPaymentsSlice = Pick<
   | "xeroPaymentRecorder"
   | "lotFulfilmentService"
   | "lotInvoiceInitiationService"
-  | "stripePaymentWebhookService"
   | "xeroOAuthService"
   | "adminMetricsService"
 >;
@@ -243,9 +269,14 @@ export type ContainerUserUtilitySlice = ContainerUserUtilityServices;
 
 export type ContainerUserMiscSlice = ContainerUserMiscServices;
 
-export type ContainerAdminSlice = ContainerAdminServices;
+export type ContainerUserNotificationSlice = ContainerUserNotificationComposition;
 
-export type ContainerCronSlice = ContainerCronServices;
+export type ContainerAdminSlice = Pick<ContainerAdminServices, "admin">;
+
+export type ContainerCronSlice = Pick<
+  ContainerCronServices,
+  "accountDeletionEligibilityService" | "brevoWebhookIngestService"
+>;
 
 /** Route-facing admin bag (mirrors `container.admin`). */
 export type ContainerAdminRoutesSlice = {
@@ -255,6 +286,16 @@ export type ContainerAdminRoutesSlice = {
 /** Route-facing bidding bag (mirrors `container.bidding`). */
 export type ContainerBiddingRoutesSlice = {
   bidding: BiddingRouteServices;
+};
+
+/** Route-facing platform identity bag (mirrors `container.identityRoutes`). */
+export type ContainerIdentityRoutesSlice = {
+  identityRoutes: IdentityRouteServices;
+};
+
+/** Route-facing buyer user account bag (mirrors `container.userRoutes`). */
+export type ContainerUserRouteServicesSlice = {
+  userRoutes: UserRouteServices;
 };
 
 /** Composed root container slices (single source of truth for `Container`). */
@@ -267,148 +308,88 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerComplianceMediaSlice &
   ContainerCatalogSlice &
   ContainerPaymentsSlice &
-  ContainerPaymentExposureSlice &
   ContainerBiddingSaleroomSlice &
   ContainerUserProfileSlice &
   ContainerUserUtilitySlice &
+  ContainerUserNotificationSlice &
   ContainerAdminSlice &
   ContainerCronSlice &
+  ContainerFinanceSlice &
+  ContainerPlatformCronSlice &
+  ContainerPlatformInboundWebhooksSlice &
+  ContainerComplianceSlice &
+  ContainerCatalogRoutesSlice &
+  ContainerSubmissionRoutesServicesSlice &
   ContainerAdminRoutesSlice &
-  ContainerBiddingRoutesSlice;
+  ContainerBiddingRoutesSlice &
+  ContainerIdentityRoutesSlice &
+  ContainerUserRouteServicesSlice;
 
 export type Container = ContainerComposedSlices;
 
 /** Public sale catalogue HTTP handlers. */
-export type ContainerSaleRoutesSlice = Omit<
-  Pick<
-    Container,
-    | "saleService"
-    | "saleListReadService"
-    | "saleFollowService"
-    | "saleRegistrationService"
-    | "saleBiddersService"
-    | "saleStatusTransitionService"
-    | "saleSoftDeleteService"
-    | "lotService"
-    | "cachedCatalogueListService"
-    | "repoFactory"
-    | "saleroomService"
-    | "stripeConnectService"
-    | "legalEntityRepository"
-    | "userSuspensionChecker"
-    | "kycService"
-    | "mediaUrlResolver"
-    | "mediaAssetEnricher"
-  >,
-  "saleService" | "lotService" | "saleroomService"
-> & {
-  saleService: ISaleService;
-  lotService: LotLifecyclePort;
-  saleroomService: SaleroomServicePort;
-};
-
-/** Sale read routes — public/admin catalogue detail only. */
-export type ContainerSaleReadRoutesSlice = Omit<
-  ContainerSaleRoutesSlice,
-  "saleService" | "lotService" | "saleroomService"
-> & {
-  saleService: SaleReadPort;
-  saleroomService: SaleroomReadPort;
-};
-
-/** Sale lifecycle write routes — create, draft update, publish/unpublish/cancel. */
-export type ContainerSaleLifecycleWriteRoutesSlice = Omit<
-  ContainerSaleRoutesSlice,
-  "saleService" | "lotService"
-> & {
-  saleService: SaleLifecycleWritePort;
-};
-
-/** Sale lot membership routes — add/attach/detach lots and cancel lots on a sale. */
-export type ContainerSaleLotMembershipRoutesSlice = Omit<
-  ContainerSaleRoutesSlice,
-  "saleService" | "lotService"
-> & {
-  saleService: SaleLotMembershipPort;
-  lotService: LotLifecyclePort;
-};
-
-/** Sale follow/registration routes — no lot/sale catalogue service ports. */
-export type ContainerSaleAuxRoutesSlice = Omit<
-  ContainerSaleRoutesSlice,
-  "saleService" | "lotService"
->;
-
-/** Minimal catalog + bidding route dependencies for lot HTTP handlers. */
-export type ContainerLotRoutesSlice = Pick<
+export type ContainerSaleRoutesSlice = Pick<
   Container,
-  | "lotService"
-  | "bidService"
-  | "autoBidService"
-  | "absenteeBidService"
-  | "conditionReportService"
+  | "userSuspensionChecker"
+  | "kycService"
+  | "requireSubmissionsLegalEntityContext"
+  | "catalogRoutes"
   | "bidding"
 >;
 
-/** Lot route wiring shared by `routes/lots/*` submodules. */
-export type ContainerLotRouteDepsSlice = Omit<
-  ContainerLotRoutesSlice &
-    ContainerBiddingRoutesSlice &
-    Pick<
-      Container,
-      | "env"
-      | "redis"
-      | "db"
-      | "kycService"
-      | "userSuspensionChecker"
-      | "requireSubmissionsLegalEntityContext"
-      | "lotSoftDeleteService"
-      | "lotLifecycleQueryService"
-      | "saleService"
-      | "mediaUrlResolver"
-      | "mediaAssetEnricher"
-      | "objectStorage"
-      | "cachedCatalogueListService"
-      | "stripeConnectService"
-      | "legalEntityRepository"
-    >,
-  "lotService" | "saleService"
-> & {
-  lotService: ILotService;
-  saleService: SaleReadPort;
-};
-
-/** Lot read routes — public catalogue/detail only. */
-export type ContainerLotReadRoutesSlice = Omit<
-  ContainerLotRouteDepsSlice,
-  "lotService" | "saleService"
-> & {
-  lotService: LotReadPort;
-  saleService: SaleReadPort;
-};
-
-/** Minimal payment route dependencies. */
-export type ContainerPaymentRoutesSlice = Pick<
+/** Sale read routes — public/admin catalogue detail only. */
+export type ContainerSaleReadRoutesSlice = Pick<
   Container,
-  | "paymentBuyerService"
-  | "paymentAdminService"
-  | "stripeConnectService"
-  | "lotInvoiceInitiationService"
+  "catalogRoutes" | "userSuspensionChecker"
 >;
 
-/** Payment HTTP routes (buyer + admin payment endpoints). */
-export type ContainerPaymentHttpRoutesSlice = ContainerPaymentRoutesSlice &
+/** Sale lifecycle write routes — create, draft update, publish/unpublish/cancel. */
+export type ContainerSaleLifecycleWriteRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "kycService" | "catalogRoutes"
+>;
+
+/** Sale lot membership routes — add/attach/detach lots and cancel lots on a sale. */
+export type ContainerSaleLotMembershipRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "kycService" | "catalogRoutes"
+>;
+
+/** Sale follow routes — authenticated sale watchlist. */
+export type ContainerSaleFollowRoutesSlice = Pick<Container, "catalogRoutes">;
+
+/** Sale follow/registration routes — no lot/sale catalogue service ports. */
+export type ContainerSaleAuxRoutesSlice = Pick<Container, "bidding">;
+
+/** Minimal catalog + bidding route dependencies for lot HTTP handlers. */
+export type ContainerLotRoutesSlice = Pick<Container, "bidding">;
+
+/** Lot route wiring shared by `routes/lots/*` submodules. */
+export type ContainerLotRouteDepsSlice = ContainerBiddingRoutesSlice &
   Pick<
     Container,
     | "env"
     | "redis"
+    | "kycService"
+    | "userSuspensionChecker"
+    | "requireSubmissionsLegalEntityContext"
+    | "catalogRoutes"
+  >;
+
+/** Lot read routes — public catalogue/detail only. */
+export type ContainerLotReadRoutesSlice = Pick<
+  Container,
+  "catalogRoutes" | "userSuspensionChecker" | "bidding"
+>;
+
+/** Payment HTTP routes (buyer + staff payment endpoints). */
+export type ContainerPaymentHttpRoutesSlice = ContainerFinanceSlice &
+  Pick<
+    Container,
     | "userSuspensionChecker"
     | "legalEntityRepository"
     | "impersonationAuditService"
     | "impersonationSessionService"
-    | "sourceOfFundsDocumentCollectionService"
-    | "lotFulfilmentService"
-    | "marketingEventService"
   >;
 
 /** Standalone bid placement route (`routes/bids.ts`). */
@@ -416,17 +397,17 @@ export type ContainerBidRoutesSlice = Pick<
   Container,
   | "env"
   | "redis"
-  | "bidService"
+  | "bidding"
   | "userSuspensionChecker"
   | "kycService"
   | "requireSubmissionsLegalEntityContext"
 >;
 
 /** Public category listing. */
-export type ContainerCategoryRoutesSlice = Pick<Container, "categoryService">;
+export type ContainerCategoryRoutesSlice = Pick<Container, "catalogRoutes">;
 
 /** Press archive public reads. */
-export type ContainerPressRoutesSlice = Pick<Container, "pressArchiveReadService">;
+export type ContainerPressRoutesSlice = Pick<Container, "catalogRoutes" | "userSuspensionChecker">;
 
 /** Guest/staff onsite event HTTP handlers. */
 export type ContainerOnsiteEventRoutesSlice = Pick<
@@ -453,11 +434,8 @@ export type ContainerBrevoWebhookRoutesSlice = Pick<Container, "env" | "brevoWeb
 /** Postmark delivery webhook. */
 export type ContainerPostmarkWebhookRoutesSlice = Pick<Container, "env" | "postmarkWebhookService">;
 
-/** Shopify + WordPress inbound webhook claim. */
-export type ContainerInboundWebhookClaimRoutesSlice = Pick<
-  Container,
-  "env" | "webhookEventRepository"
->;
+/** Shopify + WordPress inbound webhook routes. */
+export type ContainerInboundWebhookClaimRoutesSlice = ContainerPlatformInboundWebhooksSlice;
 
 /** Aggregated third-party webhook routes (`routes/webhooks/index.ts`). */
 export type ContainerInboundWebhookRoutesSlice = ContainerBrevoWebhookRoutesSlice &
@@ -468,7 +446,7 @@ export type ContainerInboundWebhookRoutesSlice = ContainerBrevoWebhookRoutesSlic
 export type ContainerWellKnownRoutesSlice = Pick<Container, "getPublicJwks">;
 
 /** Venue CRUD (staff). */
-export type ContainerVenueRoutesSlice = Pick<Container, "venueService" | "userSuspensionChecker">;
+export type ContainerVenueRoutesSlice = Pick<Container, "catalogRoutes" | "userSuspensionChecker">;
 
 /** Public QR redirect + scan enqueue. */
 export type ContainerQrRoutesSlice = Pick<Container, "qrCodeService">;
@@ -480,242 +458,138 @@ export type ContainerMarketingRoutesSlice = Pick<
 >;
 
 /** Super-admin BullMQ queue inspector/mutator. */
-export type ContainerAdminQueuesRoutesSlice = Pick<Container, "env" | "queueAdmin">;
+export type ContainerAdminQueuesRoutesSlice = Pick<Container, "env"> &
+  AdminSatelliteJobQueuesRoutesContainer;
 
 /** Admin marketing event replay/stats. */
-export type ContainerAdminMarketingEventsRoutesSlice = Pick<
-  Container,
-  "env" | "adminMarketingEventsService"
->;
+export type ContainerAdminMarketingEventsRoutesSlice = Pick<Container, "env"> &
+  AdminSatelliteMarketingEventsRoutesContainer;
 
 /** Saleroom display pairing + snapshot (public). */
-export type ContainerSaleroomDisplayRoutesSlice = Pick<
-  Container,
-  "displayPairingService" | "displaySnapshotReader"
->;
+export type ContainerSaleroomDisplayRoutesSlice = Pick<Container, "bidding">;
 
 /** User account routes (`routes/users/*`). */
-export type ContainerUserRoutesSlice = Omit<
-  Pick<
-    Container,
-    | "userSuspensionChecker"
-    | "env"
-    | "authDb"
-    | "conditionReportService"
-    | "userDashboardReadService"
-    | "lotService"
-    | "paymentBuyerService"
-    | "mediaUrlResolver"
-    | "mediaAssetEnricher"
-    | "notificationQueryService"
-    | "watchlistService"
-    | "repoFactory"
-    | "marketingEventService"
-    | "artistWatchlistService"
-    | "savedSearchService"
-    | "vapidPublicKey"
-    | "pushSubscriptionRepository"
-    | "notificationPreferenceRepository"
-    | "uiPreferenceService"
-    | "profileService"
-    | "addressService"
-    | "sessionRevocation"
-    | "authAuditPublisher"
-    | "userSecurityReadService"
-    | "userService"
-    | "emailService"
-    | "accountDeletionEligibilityService"
-    | "registrationService"
-    | "saleService"
-  >,
-  "lotService" | "saleService"
-> & {
-  lotService: LotReadPort;
-  saleService: SaleLookupPort;
-};
+export type ContainerUserAccountRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "env" | "authDb" | "userRoutes"
+>;
 
 /** Auth email/password flows. */
 export type ContainerAuthRoutesSlice = Pick<
   Container,
-  | "env"
-  | "redis"
-  | "authenticator"
-  | "userSuspensionChecker"
-  | "authDb"
-  | "authAuditPublisher"
-  | "userService"
-  | "userEmailChangeRepository"
-  | "emailService"
-  | "sessionRevocation"
-  | "authCredentialReader"
-  | "auth"
-  | "db"
+  "env" | "redis" | "authenticator" | "userSuspensionChecker" | "authDb" | "identityRoutes"
 >;
 
 /** Buyer KYC session/status. */
-export type ContainerKycRoutesSlice = Pick<Container, "userSuspensionChecker" | "kycService">;
+export type ContainerKycRoutesSlice = ContainerComplianceSlice &
+  Pick<Container, "userSuspensionChecker">;
 
 /** Organisation wizard + public subkind/requirements. */
 export type ContainerOrganizationRoutesSlice = Pick<
   Container,
-  | "userSuspensionChecker"
-  | "organizationOnboardingService"
-  | "orgModuleGate"
-  | "organizationOnboardingFlowService"
-  | "env"
+  "userSuspensionChecker" | "orgModuleGate" | "identityRoutes"
 >;
 
 /** Per-entity onboarding steps (nested under organisations). */
 export type ContainerOrganizationOnboardingRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "env" | "organizationOnboardingFlowService"
+  "userSuspensionChecker" | "orgModuleGate" | "identityRoutes"
 >;
 
 /** Legal entity membership + invitations (buyer). */
 export type ContainerLegalEntityRoutesSlice = Pick<
   Container,
-  | "userSuspensionChecker"
-  | "legalEntityRepository"
-  | "personalLegalEntityResolver"
-  | "orgModuleGate"
-  | "userService"
-  | "pendingInvitationsReader"
-  | "invitationLifecycleService"
-  | "legalEntityAccessService"
+  "userSuspensionChecker" | "identityRoutes"
 >;
 
 /** Legal entity member admin (invite, roles, transfer). */
 export type ContainerLegalEntityMemberRoutesSlice = Pick<
   Container,
-  | "userSuspensionChecker"
-  | "requireLegalEntityContext"
-  | "memberManagementService"
-  | "invitationLifecycleService"
-  | "orgModuleGate"
-  | "userService"
+  "userSuspensionChecker" | "requireLegalEntityContext" | "identityRoutes"
 >;
 
 /** Item submission seller + admin APIs. */
 export type ContainerSubmissionRoutesSlice = Pick<
   Container,
-  | "userSuspensionChecker"
-  | "requireSubmissionsLegalEntityContext"
-  | "itemSubmissionSellerApi"
-  | "itemSubmissionAdminApi"
-  | "submissionDocumentService"
+  "submissionRoutes" | "userSuspensionChecker" | "requireSubmissionsLegalEntityContext"
 >;
 
-/** Submission document attach/list. */
+/** Submission document attach/list (staff shortcut). */
 export type ContainerSubmissionDocumentRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "submissionDocumentService"
+  "submissionRoutes" | "userSuspensionChecker"
 >;
 
 /** Lot document attach/list. */
-export type ContainerLotDocumentRoutesSlice = Pick<
-  Container,
-  "userSuspensionChecker" | "lotDocumentService"
->;
+export type ContainerLotDocumentRoutesSlice = ContainerComplianceSlice &
+  Pick<Container, "userSuspensionChecker">;
 
 /** Sale document attach/list. */
-export type ContainerSaleDocumentRoutesSlice = Pick<
-  Container,
-  "userSuspensionChecker" | "saleDocumentService"
->;
+export type ContainerSaleDocumentRoutesSlice = ContainerComplianceSlice &
+  Pick<Container, "userSuspensionChecker">;
 
 /** Presigned upload + local dev upload. */
-export type ContainerUploadRoutesSlice = Pick<
-  Container,
-  "userSuspensionChecker" | "env" | "uploadService"
->;
+export type ContainerUploadRoutesSlice = ContainerComplianceSlice &
+  Pick<Container, "userSuspensionChecker">;
 
 /** GDPR data export jobs. */
-export type ContainerExportRoutesSlice = Pick<Container, "userSuspensionChecker" | "exportService">;
+export type ContainerExportRoutesSlice = ContainerComplianceSlice &
+  Pick<Container, "userSuspensionChecker">;
 
 /** Artist registry + profile browse (public + staff). */
-export type ContainerArtistRoutesSlice = Pick<
-  Container,
-  "userSuspensionChecker" | "artistRegistryService" | "artistProfileService" | "artistDeleteService"
->;
+export type ContainerArtistRoutesSlice = Pick<Container, "userSuspensionChecker" | "catalogRoutes">;
 
 /** Seller payout list/preview (legal entity scoped). */
-export type ContainerPayoutRoutesSlice = Pick<
-  Container,
-  "userSuspensionChecker" | "requireLegalEntityContext" | "payoutService"
->;
+export type ContainerPayoutRoutesSlice = ContainerFinanceSlice &
+  Pick<Container, "userSuspensionChecker" | "requireLegalEntityContext">;
 
 /** Staff payout settlement/adjustment. */
-export type ContainerAdminPayoutRoutesSlice = Pick<
-  Container,
-  "userSuspensionChecker" | "payoutRepository" | "payoutStatementQueue" | "payoutService"
->;
-
-/** Seller payout statement download. */
-export type ContainerPayoutStatementRoutesSlice = Pick<
-  Container,
-  "userSuspensionChecker" | "legalEntityRepository" | "payoutRepository" | "payoutStatementQueue"
->;
-
-/** Stripe Connect onboarding (seller). */
-export type ContainerStripeConnectRoutesSlice = Pick<
-  Container,
-  "userSuspensionChecker" | "requireLegalEntityContext" | "stripeConnectService"
->;
-
-/** Stripe connect/transfers/payments webhooks. */
-export type ContainerStripeWebhookRoutesSlice = Pick<
-  Container,
-  "stripeWebhookVerifier" | "stripeConnectService" | "stripePaymentWebhookService"
->;
-
-/** Veriff KYC + AML watchlist webhooks. */
-export type ContainerVeriffWebhookRoutesSlice = Pick<
-  Container,
-  | "transactionRunner"
-  | "legalEntityRepository"
-  | "domainEventSink"
-  | "amlService"
-  | "stripeConnectService"
-  | "kycService"
-  | "marketingEventService"
-  | "db"
-  | "kycResubmissionNotifier"
->;
-
-/** Xero invoice webhook ingest. */
-export type ContainerXeroWebhookRoutesSlice = Pick<
-  Container,
-  "env" | "xeroWebhookEventRepository" | "accountingProvider"
->;
-
-/** Telephone bid booking (buyer + staff). */
-export type ContainerTelephoneBookingRoutesSlice = Omit<
-  Pick<Container, "telephoneBidBookingService" | "userSuspensionChecker" | "kycService">,
-  "telephoneBidBookingService"
-> & {
-  telephoneBidBookingService: TelephoneBookingRoutePort;
+export type ContainerAdminPayoutRoutesSlice = Pick<Container, "userSuspensionChecker"> & {
+  admin: Pick<import("../services/interfaces/admin-routes.js").AdminRouteServices, "payouts">;
 };
 
-/** Internal cron tick endpoints. */
-export type ContainerInternalCronRoutesSlice = Pick<
+/** Seller payout statement download. */
+export type ContainerPayoutStatementRoutesSlice = ContainerFinanceSlice &
+  Pick<Container, "userSuspensionChecker">;
+
+/** Stripe Connect onboarding (seller). */
+export type ContainerStripeConnectRoutesSlice = ContainerFinanceSlice &
+  Pick<Container, "userSuspensionChecker" | "requireLegalEntityContext">;
+
+/** Stripe connect/transfers/payments webhooks. */
+export type ContainerStripeWebhookRoutesSlice = ContainerFinanceSlice;
+
+/** Veriff KYC + AML watchlist webhooks. */
+export type ContainerVeriffWebhookRoutesSlice = ContainerComplianceSlice;
+
+/** Xero invoice webhook ingest. */
+export type ContainerXeroWebhookRoutesSlice = ContainerFinanceSlice;
+
+/** Buyer telephone bid booking HTTP routes. */
+export type ContainerBuyerTelephoneBookingRoutesSlice = Pick<
   Container,
-  | "redis"
-  | "settlementCronService"
-  | "paymentMaintenanceCronService"
-  | "accountingReplayCronService"
-  | "hygieneCronService"
-  | "lifecycleCronService"
+  "bidding" | "userSuspensionChecker" | "kycService"
 >;
 
+/** Staff telephone bid booking HTTP routes (platform shell). */
+export type ContainerAdminTelephoneBookingRoutesSlice = Pick<Container, "admin">;
+
+/** @deprecated Use ContainerBuyerTelephoneBookingRoutesSlice or ContainerAdminTelephoneBookingRoutesSlice. */
+export type ContainerTelephoneBookingRoutesSlice = ContainerBuyerTelephoneBookingRoutesSlice &
+  ContainerAdminTelephoneBookingRoutesSlice;
+
+/** Internal cron tick endpoints. */
+export type ContainerInternalCronRoutesSlice = ContainerFinanceSlice &
+  ContainerPlatformCronSlice &
+  Pick<Container, "absenteeBidService">;
+
 /** Admin onsite event CRUD + check-in. */
-export type ContainerAdminOnsiteEventRoutesSlice = Pick<
-  Container,
-  "redis" | "onsiteEventAdminService" | "onsiteEventStaffCheckInService"
->;
+export type ContainerAdminOnsiteEventRoutesSlice = Pick<Container, "redis"> &
+  AdminSatelliteOnsiteEventsRoutesContainer;
 
 /** Top-level admin platform shell (request lifecycle + nested admin services). */
 export type ContainerAdminPlatformRoutesSlice = ContainerAdminRoutesSlice &
-  ContainerTelephoneBookingRoutesSlice &
+  Pick<Container, "redis"> &
   ContainerAdminOnsiteEventRoutesSlice &
   ContainerAdminMarketingEventsRoutesSlice &
   ContainerAdminQueuesRoutesSlice;

@@ -25,7 +25,6 @@ export interface ILotFulfilmentAdminService {
   }): Promise<{
     items: LotFulfilmentListRow[];
     total: number;
-    statusCounts: Record<string, number>;
   }>;
   getByLotIdForAdmin(lotId: string): Promise<LotFulfilmentRow | null>;
   approveRelease(input: {

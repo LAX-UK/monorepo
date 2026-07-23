@@ -21,6 +21,10 @@ export class AdminSourceOfFundsApplicationService implements IAdminSourceOfFunds
     return this.query.listEnriched(...args);
   }
 
+  getPage(...args: Parameters<AdminSourceOfFundsQueryService["getPage"]>) {
+    return this.query.getPage(...args);
+  }
+
   getDetail(...args: Parameters<AdminSourceOfFundsQueryService["getDetail"]>) {
     return this.query.getDetail(...args);
   }

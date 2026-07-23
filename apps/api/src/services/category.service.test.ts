@@ -39,16 +39,45 @@ function createSut(categories: Category[]) {
     if (!existing) return null;
     return category({ ...existing, ...input });
   });
+  const findPageForAdmin = vi.fn().mockResolvedValue({ rows: [], total: 0 });
+  const summarizeForAdmin = vi.fn().mockResolvedValue({
+    totalCount: 0,
+    activeCount: 0,
+    archivedCount: 0,
+    usageTotals: { lots: 0, sales: 0, submissions: 0 },
+  });
   const repo = {
     findAll,
     findById,
     findBySlug,
     create,
     update,
+    findPageForAdmin,
+    summarizeForAdmin,
   } as unknown as ICategoryRepository;
   const service = new CategoryService(repo);
-  return { service, findAll, findById, findBySlug, create, update };
+  return {
+    service,
+    findAll,
+    findById,
+    findBySlug,
+    create,
+    update,
+    findPageForAdmin,
+    summarizeForAdmin,
+  };
 }
+
+describe("CategoryService admin list", () => {
+  it("delegates paginated listing and global summary to persistence", async () => {
+    const { service, findPageForAdmin, summarizeForAdmin } = createSut([]);
+    await service.listPageForAdmin({ q: "paint", limit: 25, offset: 50 });
+    await service.summarizeForAdmin({ includeArchived: true });
+
+    expect(findPageForAdmin).toHaveBeenCalledWith({ q: "paint", limit: 25, offset: 50 });
+    expect(summarizeForAdmin).toHaveBeenCalledWith({ includeArchived: true });
+  });
+});
 
 describe("CategoryService.list", () => {
   it("returns valid category hierarchy unchanged", async () => {

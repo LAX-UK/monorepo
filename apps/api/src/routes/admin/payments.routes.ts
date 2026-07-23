@@ -1,14 +1,14 @@
 import { adminPaymentsListQuerySchema } from "@auction/validators";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireFinanceAccess } from "../../middleware/require-capability.js";
+import type { AdminPaymentsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import { adminPaymentIdParamSchema } from "./_schemas.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminPaymentsListRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminPaymentsRoutesContainer,
 ): void {
   platform.get(
     "/payments",
@@ -37,10 +37,10 @@ export function attachAdminPaymentsListRoutes(
 
 export function attachAdminPaymentsManualReviewRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminPaymentsRoutesContainer,
 ): void {
   platform.get("/payments/manual-review", requireFinanceAccess, async (c) => {
-    const data = await container.admin.dashboard.listManualReviewPayments();
+    const data = await container.admin.manualReviewPayments.listManualReviewPayments();
     return c.json({ data });
   });
 

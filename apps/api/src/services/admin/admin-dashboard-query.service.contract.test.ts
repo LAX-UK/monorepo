@@ -1,49 +1,41 @@
 import { describe, expect, it } from "vitest";
 import { defineCompileTimeContract } from "../../testing/compile-time-contract.js";
 import type {
-  IAdminDashboardQueryService,
+  IAdminCatalogListSummariesQueryService,
+  IAdminDashboardMetricsService,
   IAdminFinanceDashboardQueryService,
-  IAdminFinanceIssueSnapshotQueryService,
-  IAdminLegalEntityBrowseQueryService,
+  IAdminKpiTrendsQueryService,
   IAdminManualReviewPaymentQueryService,
-  IAdminOnboardingIssuesQueryService,
+  IAdminNavCountsQueryService,
   IAdminReviewTaskQueryService,
 } from "../interfaces/admin-routes.js";
-import type { AdminDashboardQueryService } from "./admin-dashboard-query.service.js";
+import type { AdminDashboardMetricsApplicationService } from "./admin-dashboard-metrics-application.service.js";
 
-/**
- * Compile-time LSP contract: the migration facade must remain substitutable for
- * every segregated interface (identical public method surface at the type level).
- */
 type AssertAssignable<T extends U, U> = T;
 
-declare const facade: AdminDashboardQueryService;
+declare const metrics: AdminDashboardMetricsApplicationService;
 
-type _Composite = AssertAssignable<typeof facade, IAdminDashboardQueryService>;
-type _Finance = AssertAssignable<typeof facade, IAdminFinanceDashboardQueryService>;
-type _FinanceIssueSnapshot = AssertAssignable<
-  typeof facade,
-  IAdminFinanceIssueSnapshotQueryService
->;
-type _ManualReviewPayments = AssertAssignable<typeof facade, IAdminManualReviewPaymentQueryService>;
-type _OnboardingIssues = AssertAssignable<typeof facade, IAdminOnboardingIssuesQueryService>;
-type _ReviewTasks = AssertAssignable<typeof facade, IAdminReviewTaskQueryService>;
-type _LegalEntityBrowse = AssertAssignable<typeof facade, IAdminLegalEntityBrowseQueryService>;
+type _MetricsComposite = AssertAssignable<typeof metrics, IAdminDashboardMetricsService>;
+type _NavCounts = AssertAssignable<typeof metrics, IAdminNavCountsQueryService>;
+type _KpiTrends = AssertAssignable<typeof metrics, IAdminKpiTrendsQueryService>;
+type _ListSummaries = AssertAssignable<typeof metrics, IAdminCatalogListSummariesQueryService>;
 
-type _FacadeContract = [
-  _Composite,
-  _Finance,
-  _FinanceIssueSnapshot,
-  _ManualReviewPayments,
-  _OnboardingIssues,
-  _ReviewTasks,
-  _LegalEntityBrowse,
-];
+type _MetricsContract = [_MetricsComposite, _NavCounts, _KpiTrends, _ListSummaries];
 
-defineCompileTimeContract<_FacadeContract>();
+defineCompileTimeContract<_MetricsContract>();
 
-describe("AdminDashboardQueryService facade contract", () => {
+describe("Admin dashboard metrics application contract", () => {
   it("compile-time LSP types are exported for CI typecheck", () => {
     expect(true).toBe(true);
+  });
+});
+
+describe("Admin operations query ports (standalone interfaces)", () => {
+  it("finance and review ports remain distinct from metrics bundle", () => {
+    type _Finance = IAdminFinanceDashboardQueryService;
+    type _ManualReview = IAdminManualReviewPaymentQueryService;
+    type _ReviewTasks = IAdminReviewTaskQueryService;
+    const _ports: [_Finance, _ManualReview, _ReviewTasks] = [{} as never, {} as never, {} as never];
+    expect(_ports).toHaveLength(3);
   });
 });

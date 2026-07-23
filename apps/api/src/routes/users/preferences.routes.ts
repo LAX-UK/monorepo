@@ -1,5 +1,3 @@
-import type { NotificationPreferenceInput } from "@auction/persistence/interfaces";
-import { defaultNotificationPreference } from "@auction/persistence/lib";
 import {
   biddingPreferencesPatchSchema,
   notificationPreferencePatchSchema,
@@ -7,6 +5,7 @@ import {
   pushUnsubscribeBodySchema,
   uiPreferencePatchSchema,
 } from "@auction/validators";
+import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
 
@@ -14,20 +13,23 @@ export function attachUserPreferencesRoutes(r: UserHono, deps: UserRouteDeps): v
   const { container, requireAuth } = deps;
 
   r.get("/me/push/vapid-key", requireAuth, (c) => {
-    return c.json({ data: { publicKey: container.vapidPublicKey } });
+    return respondUserHttpJson(c, container.userRoutes.preferencesHttp.getVapidPublicKey());
   });
 
   r.get("/me/push-subscription/status", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const subs = await container.pushSubscriptionRepository.findByUser(userId);
-    return c.json({ data: { hasServerSubscription: subs.length > 0 } });
+    const response = await container.userRoutes.preferencesHttp.getPushSubscriptionStatus({
+      userId,
+    });
+    return respondUserHttpJson(c, response);
   });
 
   r.get("/me/preferences/notifications", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const row = await container.notificationPreferenceRepository.getForUser(userId);
-    const data = row ?? defaultNotificationPreference(userId);
-    return c.json({ data });
+    const response = await container.userRoutes.preferencesHttp.getNotificationPreferences({
+      userId,
+    });
+    return respondUserHttpJson(c, response);
   });
 
   r.patch(
@@ -37,11 +39,11 @@ export function attachUserPreferencesRoutes(r: UserHono, deps: UserRouteDeps): v
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const data = await container.notificationPreferenceRepository.upsert(
+      const response = await container.userRoutes.preferencesHttp.patchNotificationPreferences({
         userId,
-        body as NotificationPreferenceInput,
-      );
-      return c.json({ data });
+        body,
+      });
+      return respondUserHttpJson(c, response);
     },
   );
 
@@ -52,19 +54,18 @@ export function attachUserPreferencesRoutes(r: UserHono, deps: UserRouteDeps): v
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const { defaultMaxBidAmount: _clientOnly, ...patch } = body;
-      const data = await container.notificationPreferenceRepository.upsert(
+      const response = await container.userRoutes.preferencesHttp.patchBiddingPreferences({
         userId,
-        patch as NotificationPreferenceInput,
-      );
-      return c.json({ data });
+        body,
+      });
+      return respondUserHttpJson(c, response);
     },
   );
 
   r.get("/me/preferences/ui", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const data = await container.uiPreferenceService.getForUser(userId);
-    return c.json({ data });
+    const response = await container.userRoutes.preferencesHttp.getUiPreferences({ userId });
+    return respondUserHttpJson(c, response);
   });
 
   r.patch(
@@ -74,15 +75,18 @@ export function attachUserPreferencesRoutes(r: UserHono, deps: UserRouteDeps): v
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const data = await container.uiPreferenceService.patch(userId, body);
-      return c.json({ data });
+      const response = await container.userRoutes.preferencesHttp.patchUiPreferences({
+        userId,
+        body,
+      });
+      return respondUserHttpJson(c, response);
     },
   );
 
   r.post("/me/preferences/ui/reset-layout", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const data = await container.uiPreferenceService.resetLayoutDefaults(userId);
-    return c.json({ data });
+    const response = await container.userRoutes.preferencesHttp.resetUiLayout({ userId });
+    return respondUserHttpJson(c, response);
   });
 
   r.post(
@@ -92,13 +96,11 @@ export function attachUserPreferencesRoutes(r: UserHono, deps: UserRouteDeps): v
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const row = await container.pushSubscriptionRepository.create({
+      const response = await container.userRoutes.preferencesHttp.createPushSubscription({
         userId,
-        endpoint: body.endpoint,
-        p256dh: body.keys.p256dh,
-        auth: body.keys.auth,
+        body,
       });
-      return c.json({ data: { id: row.id } }, 201);
+      return respondUserHttpJson(c, response);
     },
   );
 
@@ -108,8 +110,8 @@ export function attachUserPreferencesRoutes(r: UserHono, deps: UserRouteDeps): v
     zValidator("json", pushUnsubscribeBodySchema),
     async (c) => {
       const body = c.req.valid("json");
-      await container.pushSubscriptionRepository.deleteByEndpoint(body.endpoint);
-      return c.body(null, 204);
+      const response = await container.userRoutes.preferencesHttp.removePushSubscription({ body });
+      return respondUserHttpJson(c, response);
     },
   );
 }

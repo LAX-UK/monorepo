@@ -21,7 +21,7 @@ export function attachAdminMarketingEventsRoutes(
         return c.json({ error: "marketing_events_disabled" }, 503);
       }
       const body = c.req.valid("json");
-      const result = await container.adminMarketingEventsService.replay(body);
+      const result = await container.admin.marketingEvents.replay(body);
       return c.json(result);
     },
   );
@@ -34,7 +34,7 @@ export function attachAdminMarketingEventsRoutes(
         return c.json({ error: "marketing_events_disabled" }, 503);
       }
       const { days } = c.req.valid("query");
-      const data = await container.adminMarketingEventsService.stats(days);
+      const data = await container.admin.marketingEvents.stats(days);
       return c.json({ data });
     },
   );

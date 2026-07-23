@@ -2,7 +2,9 @@ import type { ProfileMeRow } from "@auction/persistence/interfaces";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { createUserRouteServices } from "../container/create-user-route-services.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { createTestUserRouteServicesInput } from "../testing/create-test-user-route-services.js";
 import { createUserRoutes } from "./users.js";
 
 function baseProfile(over: Partial<ProfileMeRow> = {}): ProfileMeRow {
@@ -36,27 +38,36 @@ function appWithGetProfile(row: ProfileMeRow | null, opts?: { suspended?: boolea
     getProfile: vi.fn().mockResolvedValue(row),
     updateProfile: vi.fn().mockResolvedValue(undefined),
   };
+  const uiPreferenceService = {
+    getForUser: vi.fn().mockResolvedValue({
+      theme: "system",
+      viewLotsDefault: "auto",
+      viewArtistsDefault: "auto",
+      viewSalesDefault: "auto",
+      density: "comfortable",
+      viewSync: false,
+    }),
+    patch: vi.fn(),
+    resetLayoutDefaults: vi.fn(),
+  };
+  const mediaUrlResolver = {
+    resolve: vi.fn().mockImplementation((x: string | null) => Promise.resolve(x)),
+  };
+  const userRoutes = createUserRouteServices(
+    createTestUserRouteServicesInput({
+      profileService: profileService as never,
+      uiPreferenceService: uiPreferenceService as never,
+      mediaUrlResolver: mediaUrlResolver as never,
+    }),
+  );
   const app = new Hono();
   const container = {
-    profileService,
-    uiPreferenceService: {
-      getForUser: vi.fn().mockResolvedValue({
-        theme: "system",
-        viewLotsDefault: "auto",
-        viewArtistsDefault: "auto",
-        viewSalesDefault: "auto",
-        density: "comfortable",
-        viewSync: false,
-      }),
-      patch: vi.fn(),
-      resetLayoutDefaults: vi.fn(),
-    },
+    env: {},
+    authDb: {},
     userSuspensionChecker: {
       isSuspended: vi.fn().mockResolvedValue(opts?.suspended ?? false),
     },
-    mediaUrlResolver: {
-      resolve: vi.fn().mockImplementation((x: string | null) => Promise.resolve(x)),
-    },
+    userRoutes,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
@@ -123,10 +134,17 @@ describe("GET /users/me", () => {
 
 describe("PATCH /users/me/profile", () => {
   function appWithProfileService(profileService: { updateProfile: ReturnType<typeof vi.fn> }) {
+    const userRoutes = createUserRouteServices(
+      createTestUserRouteServicesInput({
+        profileService: profileService as never,
+      }),
+    );
     const app = new Hono();
     const container = {
-      profileService,
+      env: {},
+      authDb: {},
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      userRoutes,
     } as unknown as Container;
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),

@@ -40,6 +40,7 @@ export type AdminSourceOfFundsListRowDto = SourceOfFundsCase & {
   settlementSummary: string | null;
   settlementItemCount: number;
   pendingCasesForBuyer: number;
+  submittedDocumentCount: number;
 };
 
 export type AdminSourceOfFundsStaffActorDto = {

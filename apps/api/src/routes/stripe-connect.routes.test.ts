@@ -4,7 +4,9 @@ import Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
+import { StripeConnectHttpApplicationService } from "../services/finance/stripe-connect-http-application.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import { createStripeConnectRoutes } from "./stripe-connect.js";
 
 const entityId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
@@ -34,7 +36,11 @@ function mountApp(role: LegalEntitySummary["role"]) {
 
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    stripeConnectService,
+    finance: {
+      stripeConnectHttp: new StripeConnectHttpApplicationService(
+        stripeConnectService as unknown as IStripeConnectService,
+      ),
+    },
     requireLegalEntityContext: async (
       c: { set: (key: string, value: LegalEntityContext) => void },
       next: () => Promise<void>,
@@ -42,7 +48,10 @@ function mountApp(role: LegalEntitySummary["role"]) {
       c.set("legalEntityContext", legalEntityContext);
       await next();
     },
-  } as unknown as Container;
+  } as unknown as Pick<
+    Container,
+    "userSuspensionChecker" | "finance" | "requireLegalEntityContext"
+  >;
 
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue({ id: "user-1", role: "client" }),

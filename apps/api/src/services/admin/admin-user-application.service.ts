@@ -4,26 +4,34 @@ import type {
   AdminUserBidListResult,
   AdminUserDetail,
   AdminUserListFilter,
-  AdminUserListResult,
   AdminUserListRow,
+  IAdminUserBrowseReader,
 } from "@auction/persistence/interfaces";
 import { AuthzError } from "../../lib/errors.js";
 import type { AdminUserService } from "../admin-user.service.js";
 import type { IAdminUserApplicationService } from "../interfaces/admin-routes.js";
 import type { ProfileService } from "../profile.service.js";
+import type { AdminUserListPage } from "./admin-user-list-query.service.js";
+import { AdminUserListQueryService } from "./admin-user-list-query.service.js";
 
 export class AdminUserApplicationService implements IAdminUserApplicationService {
+  private readonly listQuery: AdminUserListQueryService;
+
   constructor(
     private readonly adminUsers: AdminUserService,
     private readonly profiles: ProfileService,
-  ) {}
+    adminUserReader: IAdminUserBrowseReader,
+  ) {
+    this.listQuery = new AdminUserListQueryService(adminUserReader);
+  }
 
-  list(
+  getPage(
     actorRole: string,
     actorStaffRole: string | null | undefined,
     filter: AdminUserListFilter,
-  ): Promise<AdminUserListResult> {
-    return this.adminUsers.list(actorRole, actorStaffRole, filter);
+  ): Promise<AdminUserListPage> {
+    this.adminUsers.ensureDirectoryAccess(actorRole, actorStaffRole);
+    return this.listQuery.getPage(filter);
   }
 
   getById(

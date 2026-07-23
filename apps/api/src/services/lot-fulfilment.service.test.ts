@@ -34,6 +34,12 @@ function serviceForListForAdmin(
     listForAdmin: vi.fn().mockResolvedValue({
       items: rows,
       total,
+    }),
+    countMatching: vi.fn().mockResolvedValue(total),
+    summarizeForAdmin: vi.fn().mockResolvedValue({
+      total,
+      awaitingPickup: total,
+      inTransit: 0,
       statusCounts: { awaiting_release: total },
     }),
   } as unknown as ILotFulfilmentRepository;
@@ -71,11 +77,10 @@ describe("LotFulfilmentService.listForAdmin", () => {
     expect(fulfilmentRepo.listForAdmin).toHaveBeenCalledWith({ q: lotId });
   });
 
-  it("returns paginated total and status counts", async () => {
+  it("returns paginated total", async () => {
     const row = { ...makeFulfilmentRow(), lotTitle: "Blue vase" };
     const { svc } = serviceForListForAdmin([row], { total: 42 });
     const result = await svc.listForAdmin({ limit: 10, offset: 0 });
     expect(result.total).toBe(42);
-    expect(result.statusCounts.awaiting_release).toBe(42);
   });
 });

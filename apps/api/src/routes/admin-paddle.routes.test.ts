@@ -10,10 +10,9 @@ const LOT_ID = "00000000-0000-4000-8000-000000000001";
 const REG_ID = "00000000-0000-4000-8000-0000000000a1";
 
 function buildPaddleApp() {
-  const placePaddleBid = vi.fn().mockResolvedValue({
-    type: "ok_with_summary",
+  const placeClerkPaddleBid = vi.fn().mockResolvedValue({
+    httpStatus: 201,
     body: { data: { id: "bid-paddle-1", amount: "500.00" } },
-    bidCount: 1,
   });
   const assignPaddle = vi.fn().mockResolvedValue(ok({ paddleNumber: 142 }));
   const clearPaddle = vi.fn().mockResolvedValue(ok(undefined));
@@ -35,11 +34,23 @@ function buildPaddleApp() {
         reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
       },
       disputeCases: { countOpenCases: vi.fn().mockResolvedValue(0) },
-      liveBidding: { placePaddleBid, assignPaddle, clearPaddle, listSaleRoster },
-      saleroom: { publishClerkPaddleBidSummary: vi.fn().mockResolvedValue(undefined) },
+      liveBidding: { placeClerkPaddleBid, assignPaddle, clearPaddle, listSaleRoster },
+      onsiteEvents: { listAdminEvents: vi.fn().mockResolvedValue([]) },
     },
-    telephoneBidBookingService: { countGlobalPending: vi.fn().mockResolvedValue(0) },
-    onsiteEventAdminService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
+    redis: {
+      multi: () => ({
+        zadd: vi.fn().mockReturnThis(),
+        zremrangebyscore: vi.fn().mockReturnThis(),
+        expire: vi.fn().mockReturnThis(),
+        zcard: vi.fn().mockReturnThis(),
+        exec: vi.fn().mockResolvedValue([
+          [null, 1],
+          [null, 0],
+          [null, 1],
+          [null, 0],
+        ]),
+      }),
+    },
   } as unknown as Container;
 
   const authenticator: IAuthenticator = {
@@ -52,7 +63,7 @@ function buildPaddleApp() {
   app.route("/admin", createAdminRoutes(container, authenticator));
   return {
     app,
-    placePaddleBid,
+    placeClerkPaddleBid,
     assignPaddle,
     clearPaddle,
     listSaleRoster,
@@ -61,7 +72,7 @@ function buildPaddleApp() {
 
 describe("paddle admin routes", () => {
   it("POST /admin/saleroom/paddle-bids resolves paddle and places bid", async () => {
-    const { app, placePaddleBid } = buildPaddleApp();
+    const { app, placeClerkPaddleBid } = buildPaddleApp();
     const res = await app.request("http://test/admin/saleroom/paddle-bids", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -74,7 +85,7 @@ describe("paddle admin routes", () => {
     });
 
     expect(res.status).toBe(201);
-    expect(placePaddleBid).toHaveBeenCalledWith(
+    expect(placeClerkPaddleBid).toHaveBeenCalledWith(
       expect.objectContaining({
         saleId: SALE_ID,
         lotId: LOT_ID,

@@ -12,6 +12,7 @@ import {
   XeroClient,
 } from "xero-node";
 import type { Env } from "../../env.js";
+import { assertXeroApiWritesAllowed } from "../../lib/xero-api-writes-guard.js";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { ensureXeroContactForLegalEntity } from "./xero-legal-entity-contact.js";
@@ -33,6 +34,7 @@ export class XeroPayoutBillWriter {
       | "XERO_REDIRECT_URI"
       | "XERO_DEFAULT_TAX_TYPE"
       | "XERO_PAYOUT_BILL_ACCOUNT_CODE"
+      | "XERO_API_WRITES_DISABLED"
     >,
     private readonly connections: IXeroConnectionRepository,
     private readonly payouts: IPayoutRepository,
@@ -76,6 +78,11 @@ export class XeroPayoutBillWriter {
     xeroBillId?: string;
     error?: string;
   }> {
+    try {
+      assertXeroApiWritesAllowed(this.env);
+    } catch {
+      return { ok: false, error: "xero_api_writes_disabled" };
+    }
     const payout = await this.payouts.findById(payoutId);
     if (!payout) {
       return { ok: false, error: "payout_not_found" };

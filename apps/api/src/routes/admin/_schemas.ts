@@ -28,6 +28,23 @@ export const adminLegalEntityBrowseQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
 });
 
+export const adminOnboardingIssuesQuerySchema = z.object({
+  tab: z
+    .enum(["entities", "artists", "kyc", "organizations", "documents", "orgs"])
+    .optional()
+    .default("entities")
+    .transform((tab) => (tab === "orgs" ? "organizations" : tab)),
+  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
+export const adminOnboardingIssuesSelectedQuerySchema = z.object({
+  tab: z
+    .enum(["entities", "artists", "kyc", "organizations", "documents", "orgs"])
+    .transform((tab) => (tab === "orgs" ? "organizations" : tab)),
+  id: z.string().uuid(),
+});
+
 export const impersonationRecordFailedEndBodySchema = z.object({
   sessionId: z.string().uuid(),
   legalEntityId: z.string().uuid(),

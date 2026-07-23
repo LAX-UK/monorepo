@@ -2,16 +2,18 @@ import type {
   AdminActivityEntry,
   AdminUserDetail,
   AdminUserListFilter,
-  AdminUserListResult,
   AdminUserListRow,
-} from "@auction/persistence/interfaces";
-import type {
-  InvitationAdminListFilters,
-  InvitationAdminListRow,
 } from "@auction/persistence/interfaces";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import type { Result } from "neverthrow";
+import type { AdminInvitationListPage } from "../../admin/admin-invitation-list-query.service.js";
+import type { AdminUserListPage } from "../../admin/admin-user-list-query.service.js";
 import type { CreateInvitationInput, InvitationError } from "../../invitation.service.js";
+import type { StripeConnectRequirementEntityRow } from "./admin-finance-routes.js";
+import type {
+  IAdminLegalEntityBrowseQueryService,
+  IAdminOnboardingIssuesQueryService,
+} from "./admin-operations-routes.js";
 
 export type AdminImpersonationLookupResult =
   | { ok: true; data: { id: string; displayName: string; status: string } }
@@ -52,11 +54,11 @@ export interface IAdminImpersonationService {
 }
 
 export interface IAdminUserApplicationService {
-  list(
+  getPage(
     actorRole: string,
     actorStaffRole: string | null | undefined,
     filter: AdminUserListFilter,
-  ): Promise<AdminUserListResult>;
+  ): Promise<AdminUserListPage>;
   getById(
     actorRole: string,
     actorStaffRole: string | null | undefined,
@@ -125,15 +127,10 @@ export interface IAdminInvitationApplicationService {
   create(
     input: CreateInvitationInput,
   ): Promise<Result<{ id: string; expiresAt: Date }, InvitationError>>;
-  listInvitations(
-    filters: InvitationAdminListFilters,
+  getPage(
+    filters: import("@auction/persistence/interfaces").InvitationAdminListFilters,
     page: { limit: number; offset: number },
-  ): Promise<{
-    rows: InvitationAdminListRow[];
-    total: number;
-    pendingTotal: number;
-    acceptedTotal: number;
-  }>;
+  ): Promise<AdminInvitationListPage>;
   revoke(input: { actorUserId: string; invitationId: string }): Promise<
     Result<void, InvitationError>
   >;
@@ -159,4 +156,9 @@ export type AdminPeopleRouteServices = {
   impersonation: IAdminImpersonationService;
   users: IAdminUserApplicationService;
   invitations: IAdminInvitationApplicationService;
+  legalEntityBrowse: IAdminLegalEntityBrowseQueryService;
+  onboardingIssues: IAdminOnboardingIssuesQueryService;
+  stripeConnectRequirements: {
+    listEntities: () => Promise<StripeConnectRequirementEntityRow[]>;
+  };
 };

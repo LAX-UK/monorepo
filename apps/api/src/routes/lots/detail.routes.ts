@@ -1,27 +1,27 @@
-import {
-  type UserRole,
-  normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
-  roleHasCapability,
-} from "@auction/types";
-import {
-  isPublicCatalogLot,
-  lotIdParamSchema,
-  viewerCanSeeNonPublicCatalog,
-} from "@auction/validators";
-import { listLotDocumentsPublic } from "../../lib/list-lot-documents-public.js";
-import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
-import { maskLotForPublicView } from "../../lib/lot-public-view.js";
-import { presentLotImages } from "../../lib/media-presenters.js";
+import { type UserRole, normalizeUserStaffRole } from "@auction/types";
+import { lotIdParamSchema } from "@auction/validators";
+import { respondBiddingRouteOutcome } from "../../lib/bidding-route-response.js";
+import { respondCatalogHttpJson } from "../../lib/catalog-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { LotHono, LotReadRouteDeps } from "./_shared.js";
 
+function viewerFromContext(c: {
+  get: (key: "userId" | "userRole" | "userStaffRole") => string | null | undefined;
+}) {
+  return {
+    userId: c.get("userId"),
+    role: c.get("userRole"),
+    staffRole: c.get("userStaffRole") ?? null,
+  };
+}
+
 export function attachLotDetailRoutes(r: LotHono, deps: LotReadRouteDeps): void {
   const { container, optionalAuth } = deps;
+  const lotReadHttp = container.catalogRoutes.lotReadHttp;
 
   r.get("/:id/bids", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
-    const result = await container.lotService.listBidsForPublicApi({
+    const result = await container.bidding.lotBidHistoryHttp.listForLot({
       lotId: id,
       viewerRole: (c.get("userRole") ?? "client") as UserRole,
       viewerStaffRole: normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined),
@@ -31,61 +31,27 @@ export function attachLotDetailRoutes(r: LotHono, deps: LotReadRouteDeps): void 
     if (result.kind === "not_found") {
       return c.json({ error: "Not found" }, 404);
     }
+    if (result.kind === "err") {
+      return respondBiddingRouteOutcome(c, result);
+    }
     return c.json({ data: result.data });
   });
 
   r.get("/:id/watch-count", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
-    const result = await container.lotService.countWatchersForPublicApi(id);
-    if (result.kind === "not_found") {
-      return c.json({ error: "Not found" }, 404);
-    }
-    return c.json({ data: { count: result.count } });
+    const response = await lotReadHttp.getWatchCount({ lotId: id });
+    return respondCatalogHttpJson(c, response);
   });
 
   r.get("/:id/documents", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
-    const data = await listLotDocumentsPublic(
-      container.db,
-      container.objectStorage,
-      container.mediaUrlResolver,
-      id,
-    );
-    return c.json({ data });
+    const response = await lotReadHttp.listLotDocuments({ lotId: id });
+    return respondCatalogHttpJson(c, response);
   });
 
   r.get("/:id", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
-    const role = c.get("userRole");
-    const staffRole = c.get("userStaffRole");
-    const lot = await container.lotService.getById(id);
-    if (!lot) {
-      return c.json({ error: "Not found" }, 404);
-    }
-    const presented = await presentLotImages(
-      container.mediaUrlResolver,
-      lot,
-      container.mediaAssetEnricher,
-    );
-    const sale = lot.saleId ? await container.saleService.getById(lot.saleId) : null;
-    const canPreview = viewerCanSeeNonPublicCatalog(role, staffRole);
-    if (!canPreview && !isPublicCatalogLot(presented, sale)) {
-      return c.json({ error: "Not found" }, 404);
-    }
-    const withPricing = {
-      ...presented,
-      checkoutPricing: computeLotCheckoutPricing(presented, sale),
-    };
-    const viewerRole = normalizeUserRoleOrClient(role);
-    const staff = normalizeUserStaffRole(staffRole ?? undefined);
-    const deleteEligibility = roleHasCapability(viewerRole, "auction.manage", staff)
-      ? await container.lotSoftDeleteService.getDeleteEligibility(id)
-      : null;
-    return c.json({
-      data: {
-        ...maskLotForPublicView(withPricing, role, staffRole),
-        ...(deleteEligibility ? { deleteEligibility } : {}),
-      },
-    });
+    const response = await lotReadHttp.getLotDetail({ lotId: id, viewer: viewerFromContext(c) });
+    return respondCatalogHttpJson(c, response);
   });
 }

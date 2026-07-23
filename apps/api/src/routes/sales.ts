@@ -27,8 +27,14 @@ export function createSaleRoutes(
       : createMiddleware<{ Variables: { userId?: string } }>(async (_c, next) => {
           await next();
         });
+  const requireLegalEntity = container.requireSubmissionsLegalEntityContext;
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRole?: string | null;
+      legalEntityContext?: { legalEntityId: string };
+    };
   }>();
 
   const deps: SaleRouteDeps = {
@@ -36,6 +42,7 @@ export function createSaleRoutes(
     requireAuth,
     optionalAuth,
     kycGate,
+    requireLegalEntity,
   };
 
   attachSaleReadRoutes(r, deps);

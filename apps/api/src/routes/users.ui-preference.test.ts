@@ -1,8 +1,24 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { createUserRouteServices } from "../container/create-user-route-services.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { createTestUserRouteServicesInput } from "../testing/create-test-user-route-services.js";
+
 import { createUserRoutes } from "./users.js";
+
+function uiPreferenceTestContainer(uiPreferenceService: {
+  getForUser: ReturnType<typeof vi.fn>;
+  patch: ReturnType<typeof vi.fn>;
+  resetLayoutDefaults?: ReturnType<typeof vi.fn>;
+}) {
+  return {
+    userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+    userRoutes: createUserRouteServices(
+      createTestUserRouteServicesInput({ uiPreferenceService: uiPreferenceService as never }),
+    ),
+  } as unknown as Container;
+}
 
 describe("GET /users/me/preferences/ui", () => {
   it("returns theme", async () => {
@@ -11,10 +27,7 @@ describe("GET /users/me/preferences/ui", () => {
       patch: vi.fn(),
     };
     const app = new Hono();
-    const container = {
-      uiPreferenceService,
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    } as unknown as Container;
+    const container = uiPreferenceTestContainer(uiPreferenceService);
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
     };
@@ -41,10 +54,7 @@ describe("PATCH /users/me/preferences/ui", () => {
       patch: vi.fn().mockResolvedValue(row),
     };
     const app = new Hono();
-    const container = {
-      uiPreferenceService,
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    } as unknown as Container;
+    const container = uiPreferenceTestContainer(uiPreferenceService);
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
     };
@@ -82,10 +92,7 @@ describe("POST /users/me/preferences/ui/reset-layout", () => {
       resetLayoutDefaults: vi.fn().mockResolvedValue(row),
     };
     const app = new Hono();
-    const container = {
-      uiPreferenceService,
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    } as unknown as Container;
+    const container = uiPreferenceTestContainer(uiPreferenceService);
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
     };

@@ -6,6 +6,7 @@ import { createBidRoutes } from "../routes/bids.js";
 import { createPaymentRoutes } from "../routes/payments.js";
 import { createSubmissionRoutes } from "../routes/submissions.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { stubSubmissionRouteServices } from "../testing/stub-submission-route-services.js";
 
 const lotId = "00000000-0000-4000-8000-000000000001";
 const submissionId = "00000000-0000-4000-8000-000000000002";
@@ -59,12 +60,38 @@ describe("admin session on buyer-gated POST routes", () => {
   });
 
   it("POST /payments returns 403 bidding_not_allowed_for_role before payment service", async () => {
-    const paymentService = { createPendingForWinner: vi.fn(), listAllForAdmin: vi.fn() };
+    const paymentService = {
+      createPendingForWinner: vi.fn(),
+      listAllForAdmin: vi.fn(),
+      listMyPaymentsForBuyerApi: vi.fn(),
+      getBuyerComplianceGateStatus: vi.fn(),
+      cancelPendingAsBuyer: vi.fn(),
+      markCapturedByAdmin: vi.fn(),
+      refundPayment: vi.fn(),
+    };
     const app = new Hono().route(
       "/payments",
       createPaymentRoutes(
         minimalContainer({
-          paymentService,
+          paymentBuyerService: paymentService,
+          finance: {
+            entityStaffPayment: paymentService,
+            buyerPaymentHttp: {
+              attachSourceOfFundsDocument: vi.fn(),
+              submitSourceOfFundsDocuments: vi.fn(),
+            },
+          },
+          legalEntityRepository: {},
+          impersonationAuditService: { recordSessionTimedOut: vi.fn() },
+          impersonationSessionService: { validateForRequest: vi.fn() },
+          lotFulfilmentService: { getForWinner: vi.fn() },
+          marketingEventService: { emit: vi.fn() },
+          compliance: {
+            buyerComplianceHttp: {
+              getBuyerSourceOfFundsView: vi.fn().mockResolvedValue({ data: {} }),
+            },
+            veriffWebhooks: {} as never,
+          },
         }),
         adminAuth,
       ),
@@ -80,12 +107,23 @@ describe("admin session on buyer-gated POST routes", () => {
   });
 
   it("POST /submissions/:id/submit returns 403 bidding_not_allowed_for_role before submission service", async () => {
-    const itemSubmissionSellerApi = { submitForReviewForSellerApi: vi.fn() };
+    const submitForReview = vi.fn();
     const app = new Hono().route(
       "/submissions",
       createSubmissionRoutes(
         minimalContainer({
-          itemSubmissionSellerApi,
+          requireSubmissionsLegalEntityContext: createMiddleware(async (c, next) => {
+            c.set("legalEntityContext", {
+              legalEntityId: "le-1",
+              userId: "admin-user",
+              role: "owner",
+              isPrimaryAdmin: true,
+            });
+            await next();
+          }),
+          submissionRoutes: stubSubmissionRouteServices({
+            sellerHttp: { submitForReview } as never,
+          }),
         }),
         adminAuth,
       ),
@@ -97,6 +135,6 @@ describe("admin session on buyer-gated POST routes", () => {
     });
     expect(res.status).toBe(403);
     await expect(res.json()).resolves.toEqual({ error: "bidding_not_allowed_for_role" });
-    expect(itemSubmissionSellerApi.submitForReviewForSellerApi).not.toHaveBeenCalled();
+    expect(submitForReview).not.toHaveBeenCalled();
   });
 });

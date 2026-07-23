@@ -4,7 +4,7 @@ import { assertConnectUrlAllowed } from "../lib/stripe-connect-return-url.js";
 import { respondStripeConnectRouteError } from "../lib/stripe-connect-route-errors.js";
 import { zValidator } from "../lib/z-validator.js";
 import { requireLegalEntityBrowse } from "../middleware/require-capability.js";
-import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
+import type { IAdminStripeConnectApplicationService } from "../services/interfaces/admin-routes.js";
 
 const legalEntityIdParamSchema = z.object({
   id: z.string().uuid(),
@@ -18,8 +18,7 @@ const linkBodySchema = z.object({
 /** Admin ops: sync Connect state and mint fallback onboarding links for sellers. */
 export function attachAdminStripeConnectRoutes(
   platform: Hono<{ Variables: { userId?: string; userRole?: string } }>,
-  stripeConnectService: IStripeConnectService,
-  webOrigin: string | undefined,
+  stripeConnect: IAdminStripeConnectApplicationService,
   failClosedOriginCheck = process.env.NODE_ENV === "production",
 ) {
   platform.post(
@@ -29,7 +28,7 @@ export function attachAdminStripeConnectRoutes(
     async (c) => {
       const { id } = c.req.valid("param");
       try {
-        const status = await stripeConnectService.syncAccountFromStripe(id);
+        const status = await stripeConnect.syncAccountFromStripe(id);
         return c.json({ data: status });
       } catch (err) {
         const mapped = respondStripeConnectRouteError(c, err);
@@ -48,13 +47,13 @@ export function attachAdminStripeConnectRoutes(
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       try {
-        assertConnectUrlAllowed(body.returnUrl, webOrigin, { failClosed: failClosedOriginCheck });
-        assertConnectUrlAllowed(body.refreshUrl, webOrigin, { failClosed: failClosedOriginCheck });
-        const link = await stripeConnectService.createOnboardingLink(
-          id,
-          body.returnUrl,
-          body.refreshUrl,
-        );
+        assertConnectUrlAllowed(body.returnUrl, stripeConnect.webOrigin, {
+          failClosed: failClosedOriginCheck,
+        });
+        assertConnectUrlAllowed(body.refreshUrl, stripeConnect.webOrigin, {
+          failClosed: failClosedOriginCheck,
+        });
+        const link = await stripeConnect.createOnboardingLink(id, body.returnUrl, body.refreshUrl);
         return c.json({ data: link });
       } catch (err) {
         const mapped = respondStripeConnectRouteError(c, err);

@@ -42,7 +42,7 @@ export function attachAdminQueuesRoutes(
   platform.use("/system/job-queues/*", auditAccess);
 
   platform.get("/system/job-queues/summary", async (c) => {
-    const data = await container.queueAdmin.inspector.list();
+    const data = await container.admin.jobQueues.list();
     return c.json({ data });
   });
 
@@ -53,7 +53,7 @@ export function attachAdminQueuesRoutes(
     async (c) => {
       const { name } = c.req.valid("param");
       const { status, offset, limit } = c.req.valid("query");
-      const data = await container.queueAdmin.inspector.jobs(name, status, { offset, limit });
+      const data = await container.admin.jobQueues.jobs(name, status, { offset, limit });
       return c.json({ data });
     },
   );
@@ -63,7 +63,7 @@ export function attachAdminQueuesRoutes(
     zValidator("param", adminQueueJobIdParamSchema),
     async (c) => {
       const { name, jobId } = c.req.valid("param");
-      const job = await container.queueAdmin.inspector.job(name, jobId);
+      const job = await container.admin.jobQueues.job(name, jobId);
       if (!job) return c.json({ error: "job_not_found" }, 404);
       return c.json({ data: job });
     },
@@ -75,7 +75,7 @@ export function attachAdminQueuesRoutes(
     async (c) => {
       const { name, jobId } = c.req.valid("param");
       try {
-        await container.queueAdmin.mutator.retry(name, jobId, actorFromContext(c));
+        await container.admin.jobQueues.retry(name, jobId, actorFromContext(c));
         return c.json({ ok: true });
       } catch (err) {
         const { error, status } = mapRetryError(err);
@@ -90,7 +90,7 @@ export function attachAdminQueuesRoutes(
     async (c) => {
       const { name } = c.req.valid("param");
       try {
-        await container.queueAdmin.mutator.pause(name, actorFromContext(c));
+        await container.admin.jobQueues.pause(name, actorFromContext(c));
         return c.json({ ok: true });
       } catch (err) {
         const { error, status } = mapPauseError(err);
@@ -105,7 +105,7 @@ export function attachAdminQueuesRoutes(
     async (c) => {
       const { name } = c.req.valid("param");
       try {
-        await container.queueAdmin.mutator.resume(name, actorFromContext(c));
+        await container.admin.jobQueues.resume(name, actorFromContext(c));
         return c.json({ ok: true });
       } catch (err) {
         const { error, status } = mapResumeError(err);
@@ -122,7 +122,7 @@ export function attachAdminQueuesRoutes(
       const { jobId } = c.req.valid("param");
       const body = c.req.valid("json");
       try {
-        await container.queueAdmin.mutator.replayFromDlq(
+        await container.admin.jobQueues.replayFromDlq(
           jobId,
           actorFromContext(c),
           body.confirmIdempotency,

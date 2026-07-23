@@ -4,7 +4,7 @@ import {
   scheduleAbsenteeBidBodySchema,
   setAutoBidBodySchema,
 } from "@auction/validators";
-import { asHttpStatus } from "../../lib/http-status.js";
+import { respondBiddingRouteOutcome } from "../../lib/bidding-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireBuyerRole } from "../../middleware/require-buyer-role.js";
 import type { LotHono, LotRouteDeps } from "./_shared.js";
@@ -19,31 +19,33 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     requireLegalEntity,
   } = deps;
 
+  const { autoBidHttp, absenteeBidHttp, conditionReportHttp } = container.bidding;
+
   r.post(
     "/:id/absentee-bids",
     requireAuth,
+    biddingKillSwitch,
     requireBuyerRole,
     kycGate,
+    requireLegalEntity,
+    bidUserRateLimit,
     zValidator("param", lotIdParamSchema),
     zValidator("json", scheduleAbsenteeBidBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
+      const legalEntityContext = c.get("legalEntityContext");
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.bidding.absenteeBidService.schedule({
+      const outcome = await absenteeBidHttp.scheduleAbsentee({
         userId,
         lotId: id,
-        buyerLegalEntityId: body.buyerLegalEntityId,
+        ...(legalEntityContext?.legalEntityId !== undefined
+          ? { actingLegalEntityId: legalEntityContext.legalEntityId }
+          : {}),
+        bodyLegalEntityId: body.buyerLegalEntityId,
         maxAmount: body.maxAmount,
       });
-      if (result.isErr()) {
-        const e = result.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      return c.json({ data: result.value }, 201);
+      return respondBiddingRouteOutcome(c, outcome, 201);
     },
   );
 
@@ -55,11 +57,8 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     async (c) => {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const row = await container.bidding.conditionReportService.findForBuyerOnLot({
-        userId,
-        lotId: id,
-      });
-      return c.json({ data: row });
+      const outcome = await conditionReportHttp.findForBuyerOnLot({ userId, lotId: id });
+      return respondBiddingRouteOutcome(c, outcome);
     },
   );
 
@@ -68,28 +67,26 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     requireAuth,
     requireBuyerRole,
     kycGate,
+    requireLegalEntity,
     zValidator("param", lotIdParamSchema),
     zValidator("json", createConditionReportRequestBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
+      const legalEntityContext = c.get("legalEntityContext");
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.bidding.conditionReportService.createRequest({
+      const outcome = await conditionReportHttp.createRequest({
         userId,
         lotId: id,
         ...(body.requestNote !== undefined ? { requestNote: body.requestNote } : {}),
+        ...(legalEntityContext?.legalEntityId !== undefined
+          ? { actingLegalEntityId: legalEntityContext.legalEntityId }
+          : {}),
         ...(body.requestingLegalEntityId !== undefined
           ? { requestingLegalEntityId: body.requestingLegalEntityId }
           : {}),
       });
-      if (result.isErr()) {
-        const e = result.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      return c.json({ data: result.value }, 201);
+      return respondBiddingRouteOutcome(c, outcome, 201);
     },
   );
 
@@ -101,18 +98,8 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     async (c) => {
       const { id } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.bidding.autoBidService.getAutoBid({
-        lotId: id,
-        placedByUserId: userId,
-      });
-      if (result.isErr()) {
-        const e = result.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      return c.json({ data: result.value });
+      const outcome = await autoBidHttp.getAutoBid({ lotId: id, placedByUserId: userId });
+      return respondBiddingRouteOutcome(c, outcome);
     },
   );
 
@@ -132,22 +119,17 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
       const legalEntityContext = c.get("legalEntityContext");
       const body = c.req.valid("json");
       const idem = c.req.header("idempotency-key") ?? c.req.header("Idempotency-Key");
-      const result = await container.bidding.autoBidService.setAutoBid({
+      const outcome = await autoBidHttp.setAutoBid({
         lotId: id,
         placedByUserId: userId,
-        buyerLegalEntityId: legalEntityContext?.legalEntityId ?? "",
+        ...(legalEntityContext?.legalEntityId !== undefined
+          ? { actingLegalEntityId: legalEntityContext.legalEntityId }
+          : {}),
         maxAutoBidAmount: body.maxAutoBidAmount,
         autoBidStepAmount: body.autoBidStepAmount,
         ...(idem ? { idempotencyKey: idem } : {}),
       });
-      if (result.isErr()) {
-        const e = result.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      return c.json({ data: result.value }, 200);
+      return respondBiddingRouteOutcome(c, outcome, 200);
     },
   );
 
@@ -162,18 +144,8 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     async (c) => {
       const { id } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const result = await container.bidding.autoBidService.clearAutoBid({
-        lotId: id,
-        placedByUserId: userId,
-      });
-      if (result.isErr()) {
-        const e = result.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      return c.json({ data: result.value });
+      const outcome = await autoBidHttp.clearAutoBid({ lotId: id, placedByUserId: userId });
+      return respondBiddingRouteOutcome(c, outcome);
     },
   );
 }

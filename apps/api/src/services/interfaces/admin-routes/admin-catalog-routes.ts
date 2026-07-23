@@ -2,7 +2,9 @@ import type { CreateCategoryInput, UpdateCategoryInput } from "@auction/persiste
 import type {
   AdminArtistListResult,
   AdminArtistStats,
+  AdminCategoriesListSummary,
   AdminCategory,
+  AdminCategoryListResult,
   ArtistProfile,
   Category,
   Lot,
@@ -16,6 +18,8 @@ import type {
   AdminCatalogCreateArtistBody,
   AdminCatalogUpdateArtistBody,
 } from "../../../admin/admin-route-dtos.js";
+import type { AdminConditionReportListPage } from "../../admin/admin-condition-report-list-query.service.js";
+import type { AdminLotFulfilmentListPage } from "../../admin/admin-lot-fulfilment-list-query.service.js";
 import type {
   LotLifecycleSnapshotRow,
   LotLifecycleTimelineEvent,
@@ -34,6 +38,15 @@ import type { ISaleRegistrationAdminService } from "../sale-registration-service
 
 export interface IAdminCatalogApplicationService {
   listCategoriesForAdmin(input: { includeArchived: boolean }): Promise<AdminCategory[]>;
+  listCategoryPageForAdmin(input: {
+    includeArchived: boolean;
+    q?: string;
+    limit: number;
+    offset: number;
+  }): Promise<AdminCategoryListResult>;
+  getCategoriesListSummary(input: {
+    includeArchived: boolean;
+  }): Promise<AdminCategoriesListSummary>;
   createCategory(body: CreateCategoryInput, actorUserId?: string | null): Promise<Category>;
   getCategory(categoryId: string): Promise<AdminCategory | null>;
   updateCategory(
@@ -87,6 +100,12 @@ export interface IAdminSaleRegistrationsApplicationService {
 }
 
 export interface IAdminLotFulfilmentApplicationService {
+  getPage(input: {
+    q?: string;
+    status?: import("@auction/persistence/interfaces").LotFulfilmentRow["status"];
+    limit: number;
+    offset: number;
+  }): Promise<AdminLotFulfilmentListPage>;
   listForAdmin: ILotFulfilmentAdminService["listForAdmin"];
   getByLotIdForAdmin: ILotFulfilmentAdminService["getByLotIdForAdmin"];
   approveRelease: ILotFulfilmentAdminService["approveRelease"];
@@ -108,6 +127,12 @@ export interface IAdminQrCodesApplicationService {
 }
 
 export interface IAdminConditionReportsApplicationService {
+  getPage(input: {
+    status?: "open" | "pending" | "in_progress" | "fulfilled" | "declined";
+    lotId?: string;
+    limit: number;
+    offset: number;
+  }): Promise<AdminConditionReportListPage>;
   listForAdmin: IConditionReportService["listForAdmin"];
   markInProgress: IConditionReportService["markInProgress"];
   fulfill(input: FulfillConditionReportInput): Promise<Result<Lot, ConditionReportServiceError>>;

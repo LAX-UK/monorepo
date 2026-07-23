@@ -1,15 +1,22 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
-import type { Container } from "../container.js";
+import type { ContainerExportRoutesSlice } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createExportRoutes } from "./exports.js";
 
 const userId = "user-1";
 
+function buildContainer(exportHttp: ContainerExportRoutesSlice["compliance"]["exportHttp"]) {
+  return {
+    compliance: { exportHttp },
+    userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+  } as unknown as ContainerExportRoutesSlice;
+}
+
 describe("export routes", () => {
   it("POST / returns sync CSV for small exports", async () => {
     const createExport = vi.fn().mockResolvedValue({
-      mode: "sync",
+      kind: "sync_stream",
       contentType: "text/csv; charset=utf-8",
       filename: "lots-export-2026-05-28.csv",
       stream: (async function* () {
@@ -17,10 +24,7 @@ describe("export routes", () => {
       })(),
     });
 
-    const container = {
-      exportService: { createExport },
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    } as unknown as Container;
+    const container = buildContainer({ createExport } as never);
 
     const authenticator: IAuthenticator = {
       getSessionUser: vi
@@ -45,21 +49,22 @@ describe("export routes", () => {
 
   it("POST / returns 202 for async exports", async () => {
     const createExport = vi.fn().mockResolvedValue({
-      mode: "async",
-      job: {
-        id: "exp-1",
-        entityType: "lots",
-        format: "csv",
-        status: "pending",
-        progress: 0,
-        createdAt: new Date().toISOString(),
+      kind: "json",
+      status: 202,
+      body: {
+        mode: "async",
+        job: {
+          id: "exp-1",
+          entityType: "lots",
+          format: "csv",
+          status: "pending",
+          progress: 0,
+          createdAt: new Date().toISOString(),
+        },
       },
     });
 
-    const container = {
-      exportService: { createExport },
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    } as unknown as Container;
+    const container = buildContainer({ createExport } as never);
 
     const authenticator: IAuthenticator = {
       getSessionUser: vi
@@ -83,15 +88,13 @@ describe("export routes", () => {
   });
 
   it("POST / returns 403 for authz errors", async () => {
-    const { AuthzError } = await import("@auction/exports/providers");
-    const createExport = vi
-      .fn()
-      .mockRejectedValue(new AuthzError("Finance export requires finance.read", 403));
+    const createExport = vi.fn().mockResolvedValue({
+      kind: "json",
+      status: 403,
+      body: { error: "Finance export requires finance.read", code: "export_forbidden" },
+    });
 
-    const container = {
-      exportService: { createExport },
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    } as unknown as Container;
+    const container = buildContainer({ createExport } as never);
 
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({ id: userId, role: "client", staffRole: null }),
@@ -110,12 +113,12 @@ describe("export routes", () => {
   });
 
   it("POST /preview returns estimated rows", async () => {
-    const previewExport = vi.fn().mockResolvedValue({ estimatedRows: 12, syncMaxRows: 5000 });
+    const previewExport = vi.fn().mockResolvedValue({
+      status: 200,
+      body: { estimatedRows: 12, syncMaxRows: 5000 },
+    });
 
-    const container = {
-      exportService: { previewExport },
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    } as unknown as Container;
+    const container = buildContainer({ previewExport } as never);
 
     const authenticator: IAuthenticator = {
       getSessionUser: vi

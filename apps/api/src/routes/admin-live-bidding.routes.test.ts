@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
-import type { Container } from "../container.js";
-import { BidError } from "../lib/errors.js";
+import type { AdminOperationsSaleroomRoutesContainer } from "../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createAdminRoutes } from "./admin.js";
 
@@ -11,13 +10,11 @@ const LOT_ID = "00000000-0000-4000-8000-000000000001";
 const REG_ID = "00000000-0000-4000-8000-0000000000a1";
 
 function buildLiveBiddingApp(partial: {
-  liveBidding?: Partial<Container["admin"]["liveBidding"]>;
-  saleroom?: Partial<Container["admin"]["saleroom"]>;
+  liveBidding?: Partial<AdminOperationsSaleroomRoutesContainer["admin"]["liveBidding"]>;
 }) {
-  const placePaddleBid = vi.fn().mockResolvedValue({
-    type: "ok_with_summary",
+  const placeClerkPaddleBid = vi.fn().mockResolvedValue({
+    httpStatus: 201,
     body: { data: { id: "bid-paddle-1", amount: "500.00" } },
-    bidCount: 2,
   });
   const placeTelephoneBid = vi.fn().mockResolvedValue({
     type: "ok",
@@ -34,7 +31,6 @@ function buildLiveBiddingApp(partial: {
       hasActiveSelfServiceSession: false,
     },
   ]);
-  const publishClerkPaddleBidSummary = vi.fn().mockResolvedValue(undefined);
 
   const container = {
     env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
@@ -45,21 +41,37 @@ function buildLiveBiddingApp(partial: {
       },
       disputeCases: { countOpenCases: vi.fn().mockResolvedValue(0) },
       liveBidding: {
-        placePaddleBid,
+        placeClerkPaddleBid,
         placeTelephoneBid,
         assignPaddle,
         clearPaddle,
         listSaleRoster,
         ...partial.liveBidding,
       },
-      saleroom: {
-        publishClerkPaddleBidSummary,
-        ...partial.saleroom,
-      },
+      onsiteEvents: { listAdminEvents: vi.fn().mockResolvedValue([]) },
     },
-    telephoneBidBookingService: { countGlobalPending: vi.fn().mockResolvedValue(0) },
-    onsiteEventAdminService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
-  } as unknown as Container;
+    redis: {
+      multi: () => ({
+        zadd: vi.fn().mockReturnThis(),
+        zremrangebyscore: vi.fn().mockReturnThis(),
+        expire: vi.fn().mockReturnThis(),
+        zcard: vi.fn().mockReturnThis(),
+        exec: vi.fn().mockResolvedValue([
+          [null, 1],
+          [null, 0],
+          [null, 1],
+          [null, 0],
+        ]),
+      }),
+    },
+  } as unknown as AdminOperationsSaleroomRoutesContainer & {
+    env: never;
+    redis: unknown;
+    admin: AdminOperationsSaleroomRoutesContainer["admin"] & {
+      disputeCases: unknown;
+      onsiteEvents: unknown;
+    };
+  };
 
   const authenticator: IAuthenticator = {
     getSessionUser: vi
@@ -68,21 +80,20 @@ function buildLiveBiddingApp(partial: {
   };
 
   const app = new Hono();
-  app.route("/admin", createAdminRoutes(container, authenticator));
+  app.route("/admin", createAdminRoutes(container as never, authenticator));
   return {
     app,
-    placePaddleBid,
+    placeClerkPaddleBid,
     placeTelephoneBid,
     assignPaddle,
     clearPaddle,
     listSaleRoster,
-    publishClerkPaddleBidSummary,
   };
 }
 
 describe("admin live bidding routes (DIP facade)", () => {
-  it("POST /admin/saleroom/paddle-bids uses admin.liveBidding and publishes summary", async () => {
-    const { app, placePaddleBid, publishClerkPaddleBidSummary } = buildLiveBiddingApp({});
+  it("POST /admin/saleroom/paddle-bids uses admin.liveBidding.placeClerkPaddleBid", async () => {
+    const { app, placeClerkPaddleBid } = buildLiveBiddingApp({});
     const res = await app.request("http://test/admin/saleroom/paddle-bids", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -95,7 +106,7 @@ describe("admin live bidding routes (DIP facade)", () => {
     });
 
     expect(res.status).toBe(201);
-    expect(placePaddleBid).toHaveBeenCalledWith(
+    expect(placeClerkPaddleBid).toHaveBeenCalledWith(
       expect.objectContaining({
         saleId: SALE_ID,
         lotId: LOT_ID,
@@ -104,13 +115,6 @@ describe("admin live bidding routes (DIP facade)", () => {
         clerkUserId: "clerk-1",
       }),
     );
-    expect(publishClerkPaddleBidSummary).toHaveBeenCalledWith({
-      saleId: SALE_ID,
-      lotId: LOT_ID,
-      currentPrice: "500.00",
-      bidCount: 2,
-      leaderPaddleNumber: 142,
-    });
   });
 
   it("POST /admin/saleroom/telephone-bids uses admin.liveBidding", async () => {
@@ -161,11 +165,11 @@ describe("admin live bidding routes (DIP facade)", () => {
   });
 
   it("POST paddle-bids maps on-block failure to HTTP status", async () => {
-    const placePaddleBid = vi.fn().mockResolvedValue({
-      type: "err",
-      error: new BidError("Lot is not on block", 409, "lot_not_on_block"),
+    const placeClerkPaddleBid = vi.fn().mockResolvedValue({
+      httpStatus: 409,
+      body: { error: "Lot is not on block", code: "lot_not_on_block" },
     });
-    const { app } = buildLiveBiddingApp({ liveBidding: { placePaddleBid } as never });
+    const { app } = buildLiveBiddingApp({ liveBidding: { placeClerkPaddleBid } as never });
     const res = await app.request("http://test/admin/saleroom/paddle-bids", {
       method: "POST",
       headers: { "content-type": "application/json" },

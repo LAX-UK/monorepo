@@ -1,6 +1,6 @@
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requirePlatformAdminFull } from "../../middleware/require-capability.js";
+import type { AdminPeopleImpersonationRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import {
   impersonationLookupQuerySchema,
   impersonationRecordFailedEndBodySchema,
@@ -10,7 +10,7 @@ import type { AdminHono } from "./_shared.js";
 
 export function attachAdminImpersonationRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminPeopleImpersonationRoutesContainer,
 ): void {
   platform.get(
     "/impersonation/lookup",

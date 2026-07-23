@@ -1,5 +1,3 @@
-import type { ListSubmissionsFilter } from "@auction/persistence/interfaces";
-import type { ItemSubmissionStatus } from "@auction/types";
 import {
   adminAssignSubmissionBodySchema,
   adminBulkSubmissionsBodySchema,
@@ -8,205 +6,147 @@ import {
   rejectSubmissionBodySchema,
   submissionIdParamSchema,
 } from "@auction/validators";
-import { asHttpStatus } from "../../lib/http-status.js";
+import { respondSubmissionHttpJson } from "../../lib/submission-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
-import { requirePlatformShell } from "../../middleware/require-capability.js";
-import type { SubmissionHono, SubmissionRouteDeps } from "./_shared.js";
-
-function submissionsAdminListFilter(
-  q: {
-    queue?: "awaiting" | "accepted" | "rejected" | undefined;
-    status?: ItemSubmissionStatus | undefined;
-    sellerId?: string | undefined;
-    categoryId?: string | undefined;
-    q?: string | undefined;
-    qualityGaps?: "1" | undefined;
-    assignedTo?: "me" | undefined;
-    sort?: "newest" | "oldest" | "sla" | undefined;
-    limit: number;
-    offset: number;
-  },
-  userId: string,
-): ListSubmissionsFilter {
-  const base: ListSubmissionsFilter = {
-    limit: q.limit,
-    offset: q.offset,
-    ...(q.sellerId ? { legalEntityId: q.sellerId } : {}),
-    ...(q.categoryId ? { categoryId: q.categoryId } : {}),
-    ...(q.q ? { q: q.q.trim() || undefined } : {}),
-    ...(q.qualityGaps === "1" ? { qualityGaps: true } : {}),
-    ...(q.assignedTo === "me" ? { assignedToUserId: userId } : {}),
-    ...(q.sort ? { sort: q.sort } : {}),
-  };
-  const AWAITING: ItemSubmissionStatus[] = ["submitted", "under_review"];
-  const ACCEPTED: ItemSubmissionStatus[] = ["approved", "converted"];
-  switch (q.queue) {
-    case "awaiting":
-      return { ...base, statuses: AWAITING };
-    case "accepted":
-      return { ...base, statuses: ACCEPTED };
-    case "rejected":
-      return { ...base, statuses: ["rejected"] };
-    default:
-      return { ...base, ...(q.status !== undefined ? { status: q.status } : {}) };
-  }
-}
+import { requireSubmissionsAccess } from "../../middleware/require-capability.js";
+import { type SubmissionHono, type SubmissionRouteDeps, viewerFromContext } from "./_shared.js";
 
 export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionRouteDeps): void {
   const { container, requireAuth } = deps;
+  const adminHttp = container.submissionRoutes.adminHttp;
 
   r.get(
     "/",
     requireAuth,
-    requirePlatformShell,
+    requireSubmissionsAccess,
     zValidator("query", listSubmissionsQuerySchema),
     async (c) => {
-      const q = c.req.valid("query");
-      const userId = c.get("userId") as string;
-      const { data, total } = await container.itemSubmissionAdminApi.listSubmissionsForAdminApi(
-        submissionsAdminListFilter(q, userId),
-      );
-      return c.json({ data, total });
+      const query = c.req.valid("query");
+      const response = await adminHttp.listSubmissions({
+        query,
+        viewer: viewerFromContext(c),
+      });
+      return respondSubmissionHttpJson(c, response);
     },
   );
 
   r.post(
     "/:id/review/start",
     requireAuth,
-    requirePlatformShell,
+    requireSubmissionsAccess,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
-      const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const result = await container.itemSubmissionAdminApi.startReviewForAdminApi(adminId, id);
-      if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-      }
-      return c.json({ data: result.value });
+      const response = await adminHttp.startReview({
+        submissionId: id,
+        viewer: viewerFromContext(c),
+      });
+      return respondSubmissionHttpJson(c, response);
     },
   );
 
   r.post(
     "/bulk",
     requireAuth,
-    requirePlatformShell,
+    requireSubmissionsAccess,
     zValidator("json", adminBulkSubmissionsBodySchema),
     async (c) => {
-      const adminId = c.get("userId") as string;
-      const { ids, op, reason, reviewNotes } = c.req.valid("json");
-      const out = await container.itemSubmissionAdminApi.bulkApproveOrReject({
-        adminId,
-        ids,
-        op,
-        reason,
-        reviewNotes,
+      const body = c.req.valid("json");
+      const response = await adminHttp.bulkApproveOrReject({
+        body,
+        viewer: viewerFromContext(c),
       });
-      if (out.kind === "bad_request") {
-        return c.json({ error: out.message }, 400);
-      }
-      if (out.kind === "err") {
-        return c.json({ error: out.error.message }, asHttpStatus(out.error.status));
-      }
-      return c.json({ ok: true, data: { count: out.count } });
+      return respondSubmissionHttpJson(c, response);
     },
   );
 
   r.post(
     "/:id/accept",
     requireAuth,
-    requirePlatformShell,
+    requireSubmissionsAccess,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", approveSubmissionBodySchema),
     async (c) => {
-      const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.itemSubmissionAdminApi.acceptForAdminApi(adminId, id, body);
-      if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-      }
-      return c.json({ data: result.value });
+      const response = await adminHttp.accept({
+        submissionId: id,
+        body,
+        viewer: viewerFromContext(c),
+      });
+      return respondSubmissionHttpJson(c, response);
     },
   );
 
   r.post(
     "/:id/convert",
     requireAuth,
-    requirePlatformShell,
+    requireSubmissionsAccess,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", approveSubmissionBodySchema),
     async (c) => {
-      const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.itemSubmissionAdminApi.convertForAdminApi(adminId, id, body);
-      if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-      }
-      return c.json({ data: result.value });
+      const response = await adminHttp.convert({
+        submissionId: id,
+        body,
+        viewer: viewerFromContext(c),
+      });
+      return respondSubmissionHttpJson(c, response);
     },
   );
 
   r.post(
     "/:id/assign",
     requireAuth,
-    requirePlatformShell,
+    requireSubmissionsAccess,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", adminAssignSubmissionBodySchema),
     async (c) => {
-      const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const { assignedToUserId } = c.req.valid("json");
-      const result = await container.itemSubmissionAdminApi.assignForAdminApi(
-        adminId,
-        id,
-        assignedToUserId,
-      );
-      if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-      }
-      return c.json({ data: result.value });
+      const body = c.req.valid("json");
+      const response = await adminHttp.assign({
+        submissionId: id,
+        body,
+        viewer: viewerFromContext(c),
+      });
+      return respondSubmissionHttpJson(c, response);
     },
   );
 
   r.post(
     "/:id/approve",
     requireAuth,
-    requirePlatformShell,
+    requireSubmissionsAccess,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", approveSubmissionBodySchema),
     async (c) => {
-      const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.itemSubmissionAdminApi.approveForAdminApi(adminId, id, body);
-      if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-      }
-      return c.json({ data: result.value });
+      const response = await adminHttp.approve({
+        submissionId: id,
+        body,
+        viewer: viewerFromContext(c),
+      });
+      return respondSubmissionHttpJson(c, response);
     },
   );
 
   r.post(
     "/:id/reject",
     requireAuth,
-    requirePlatformShell,
+    requireSubmissionsAccess,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", rejectSubmissionBodySchema),
     async (c) => {
-      const adminId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const { rejectionReason, reviewNotes } = c.req.valid("json");
-      const result = await container.itemSubmissionAdminApi.rejectForAdminApi(
-        adminId,
-        id,
-        rejectionReason,
-        reviewNotes,
-      );
-      if (result.isErr()) {
-        return c.json({ error: result.error.message }, asHttpStatus(result.error.status));
-      }
-      return c.json({ data: result.value });
+      const body = c.req.valid("json");
+      const response = await adminHttp.reject({
+        submissionId: id,
+        body,
+        viewer: viewerFromContext(c),
+      });
+      return respondSubmissionHttpJson(c, response);
     },
   );
 }

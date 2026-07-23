@@ -1,5 +1,6 @@
 import type { Auth } from "@auction/auth/server";
 import type { Database } from "@auction/db";
+import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
 import { BetterAuthEmailSignupPersister } from "../infrastructure/better-auth-email-signup.persister.js";
 import { BetterAuthVerificationEmailResender } from "../infrastructure/better-auth-verification-email.resender.js";
@@ -44,6 +45,7 @@ export type ContainerUserProfileServices = {
   profileService: ProfileService;
   addressService: AddressService;
   invitationService: InvitationService;
+  invitationRepository: IUserInvitationRepository;
   registrationService: RegistrationService;
   orgModuleGate: OrgModuleGate;
   adminUserService: AdminUserService;
@@ -193,6 +195,7 @@ export function createUserProfileServices(
     profileService,
     addressService,
     invitationService,
+    invitationRepository,
     registrationService,
     orgModuleGate,
     adminUserService,

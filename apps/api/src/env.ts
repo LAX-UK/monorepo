@@ -120,6 +120,9 @@ const envSchema = z
     APPLE_PRIVATE_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     SHOPIFY_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     WORDPRESS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    WEBHOOK_EVENTS_ENQUEUE: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
     /** Web Push (optional). When all three are set, server push is enabled. */
     VAPID_PUBLIC_KEY: z.string().optional(),
     VAPID_PRIVATE_KEY: z.string().optional(),
@@ -158,6 +161,8 @@ const envSchema = z
     XERO_REDIRECT_URI: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** Webhook signing key from Xero (optional until webhooks are configured). */
     XERO_WEBHOOK_KEY: z.string().optional(),
+    /** When `inbox`, Xero invoice webhooks persist to `webhook_event` and enqueue worker processing. */
+    XERO_WEBHOOK_INBOX_MODE: z.enum(["legacy", "inbox"]).default("legacy"),
     /** Chart of accounts revenue code for invoice line items (org-specific). */
     XERO_DEFAULT_REVENUE_ACCOUNT_CODE: z.string().min(1).default("200"),
     /** Xero tax type for line items (e.g. OUTPUT2, NONE). Org-specific. */
@@ -245,6 +250,20 @@ const envSchema = z
      * Optional until bulk jobs are enabled in deploy.
      */
     CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
+    /** When true, synchronous API/cron Xero accounting writes are disabled (projector owns outbound). */
+    XERO_API_WRITES_DISABLED: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(false),
+    /** Publish-time domain event catalog validation: off | observe (log) | enforce (reject tx). */
+    DOMAIN_EVENT_PUBLISH_VALIDATE: z.enum(["off", "observe", "enforce"]).default("off"),
+    /** Who consumes lot-lifecycle BullMQ jobs and runs the periodic tick (default api for rollback). */
+    LIFECYCLE_EXECUTION_OWNER: z.enum(["api", "worker"]).default("api"),
+    ABSENTEE_REPLAY_OWNER: z.enum(["api_rollback", "worker"]).default("api_rollback"),
+    FINANCE_CRON_EXECUTION_OWNER: z.enum(["api_rollback", "worker"]).default("api_rollback"),
+    FINANCE_CRON_API_ROLLBACK: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(true),
+    XERO_PROJECTOR_MODE: z.enum(["off", "shadow", "canary", "live"]).optional(),
     /** Mount Bull Board at /admin/system/job-queues (super_admin only). Default false in production. */
     ENABLE_BULL_BOARD: z.preprocess((v) => {
       if (v === undefined || v === "") return undefined;

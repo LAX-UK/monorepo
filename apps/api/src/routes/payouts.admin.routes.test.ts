@@ -8,16 +8,12 @@ const payoutId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
 function mountApp(role: string, staffRole?: string) {
   const app = new Hono();
-  const payoutService = {
+  const payouts = {
     adminManualReverse: vi.fn(),
-  };
-  const payoutRepository = {
-    findById: vi.fn(),
   };
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    payoutService,
-    payoutRepository,
+    admin: { payouts },
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi
@@ -25,12 +21,12 @@ function mountApp(role: string, staffRole?: string) {
       .mockResolvedValue({ id: "u1", role, ...(staffRole ? { staffRole } : {}) }),
   };
   app.route("/admin/payouts", createAdminPayoutRoutes(container, authenticator));
-  return { app, payoutService };
+  return { app, payouts };
 }
 
 describe("admin payout routes — reverse", () => {
   it("returns 403 for POST reverse when user is finance staff (finance_ops)", async () => {
-    const { app, payoutService } = mountApp("staff", "finance_ops");
+    const { app, payouts } = mountApp("staff", "finance_ops");
 
     const res = await app.request(`/admin/payouts/${payoutId}/reverse`, {
       method: "POST",
@@ -42,11 +38,11 @@ describe("admin payout routes — reverse", () => {
     });
 
     expect(res.status).toBe(403);
-    expect(payoutService.adminManualReverse).not.toHaveBeenCalled();
+    expect(payouts.adminManualReverse).not.toHaveBeenCalled();
   });
 
   it("returns 400 when confirmation phrase does not match payout id", async () => {
-    const { app, payoutService } = mountApp("staff", "super_admin");
+    const { app, payouts } = mountApp("staff", "super_admin");
 
     const res = await app.request(`/admin/payouts/${payoutId}/reverse`, {
       method: "POST",
@@ -58,12 +54,12 @@ describe("admin payout routes — reverse", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(payoutService.adminManualReverse).not.toHaveBeenCalled();
+    expect(payouts.adminManualReverse).not.toHaveBeenCalled();
   });
 
   it("calls adminManualReverse for administrator with matching phrase", async () => {
-    const { app, payoutService } = mountApp("staff", "super_admin");
-    payoutService.adminManualReverse.mockResolvedValue({
+    const { app, payouts } = mountApp("staff", "super_admin");
+    payouts.adminManualReverse.mockResolvedValue({
       id: payoutId,
       legalEntityId: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
       status: "reversed",
@@ -80,6 +76,6 @@ describe("admin payout routes — reverse", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(payoutService.adminManualReverse).toHaveBeenCalledWith("u1", payoutId, { reason });
+    expect(payouts.adminManualReverse).toHaveBeenCalledWith("u1", payoutId, { reason });
   });
 });

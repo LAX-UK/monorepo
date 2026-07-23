@@ -52,6 +52,7 @@ function mockSaleRepo(row: Pick<Sale, "id" | "title" | "deliveryMode"> | null): 
     update: vi.fn(),
     updateStatus: vi.fn(),
     countCreatedAtByDay: vi.fn(),
+    avgLotsPerSale: vi.fn().mockResolvedValue(0),
   };
 }
 

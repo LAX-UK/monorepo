@@ -77,6 +77,9 @@ function makeService(initial: WatchlistScreeningRecord): Harness {
     async countByReviewStatus() {
       return 1;
     },
+    async summarizePendingQueue() {
+      return { total: 1, awaitingTriage: 1, triaged: 0, escalated: 0 };
+    },
     async listForUser() {
       return [record];
     },
@@ -344,6 +347,9 @@ describe("AmlService watchlist webhook ingest", () => {
       },
       async countByReviewStatus() {
         return 0;
+      },
+      async summarizePendingQueue() {
+        return { total: 0, awaitingTriage: 0, triaged: 0, escalated: 0 };
       },
       async listForUser() {
         return [];

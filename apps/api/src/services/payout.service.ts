@@ -28,7 +28,9 @@ export type {
 import {
   addAdjustment,
   adminList,
+  adminListPage,
   adminManualReverse,
+  adminSettlementPreview,
   markPaid,
   previewPending,
   reconcileStripeTransfer,
@@ -83,6 +85,16 @@ export class PayoutService implements IPayoutService {
 
   adminList(filter: AdminListPayoutsFilter = {}): Promise<Payout[]> {
     return adminList(this.deps, filter);
+  }
+
+  adminListPage(
+    filter: AdminListPayoutsFilter & { limit: number; offset: number },
+  ): Promise<import("./admin/admin-payout-list-query.service.js").AdminPayoutListPage> {
+    return adminListPage(this.deps, filter);
+  }
+
+  adminSettlementPreview(legalEntityId: string) {
+    return adminSettlementPreview(this.deps, legalEntityId);
   }
 
   createSettlement(

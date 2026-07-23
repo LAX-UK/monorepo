@@ -2,22 +2,26 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createArtistRoutes } from "./artists.js";
 
 describe("GET /artists/browse", () => {
   it("routes to browsePublic instead of :id param validation", async () => {
     const browsePublic = vi.fn().mockResolvedValue({
-      items: [],
-      total: 0,
-      facets: { kinds: {}, decades: {}, nationalities: {} },
+      status: 200,
+      body: {
+        data: {
+          items: [],
+          total: 0,
+          facets: { kinds: {}, decades: {}, nationalities: {} },
+        },
+      },
     });
     const container = {
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-      artistRegistryService: {},
-      artistProfileService: {
-        listPublic: vi.fn(),
-        browsePublic,
-      },
+      catalogRoutes: stubCatalogRouteServices({
+        artistHttp: { ...stubCatalogRouteServices().artistHttp, browsePublic },
+      }),
     } as unknown as Container;
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue(null),

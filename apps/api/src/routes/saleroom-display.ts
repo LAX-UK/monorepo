@@ -1,7 +1,7 @@
 import { displayPairPollBodySchema, displaySnapshotParamSchema } from "@auction/validators";
 import { Hono } from "hono";
 import type { ContainerSaleroomDisplayRoutesSlice } from "../container.js";
-import { asHttpStatus } from "../lib/http-status.js";
+import { respondBiddingRouteOutcome } from "../lib/bidding-route-response.js";
 import { zValidator } from "../lib/z-validator.js";
 
 function readDisplayToken(c: { req: { header: (name: string) => string | undefined } }):
@@ -15,60 +15,50 @@ function readDisplayToken(c: { req: { header: (name: string) => string | undefin
   return null;
 }
 
+function unauthorizedDisplayToken() {
+  return { error: "Display token required", code: "unauthorized" } as const;
+}
+
 export function createSaleroomDisplayRoutes(container: ContainerSaleroomDisplayRoutesSlice) {
+  const http = () => container.bidding.saleroomDisplayHttp;
   const r = new Hono();
 
   r.post("/display/pair/start", async (c) => {
-    const data = await container.displayPairingService.startPairing();
-    return c.json({ data });
+    return respondBiddingRouteOutcome(c, await http().startPairing());
   });
 
   r.post("/display/pair/poll", zValidator("json", displayPairPollBodySchema), async (c) => {
     const { deviceCode } = c.req.valid("json");
-    const result = await container.displayPairingService.pollPairing(deviceCode);
-    return c.json({ data: result });
+    return respondBiddingRouteOutcome(c, await http().pollPairing(deviceCode));
   });
 
   r.get("/display/:saleId/verify", zValidator("param", displaySnapshotParamSchema), async (c) => {
     const { saleId } = c.req.valid("param");
     const token = readDisplayToken(c);
     if (!token) {
-      return c.json({ error: "Display token required", code: "unauthorized" }, 401);
+      return c.json(unauthorizedDisplayToken(), 401);
     }
-    const verified = await container.displayPairingService.verifyDisplayTokenForSale(token, saleId);
-    if (verified.isErr()) {
-      return c.json(
-        {
-          error: verified.error.message,
-          ...(verified.error.code ? { code: verified.error.code } : {}),
-        },
-        asHttpStatus(verified.error.status),
-      );
+    const outcome = await http().verifyDisplayTokenForSale({ displayToken: token, saleId });
+    if (outcome.kind === "err") {
+      return respondBiddingRouteOutcome(c, outcome);
     }
-    return c.json({ data: { ok: true } }, 200, { "Cache-Control": "no-store" });
+    return c.json({ data: outcome.data }, 200, { "Cache-Control": "no-store" });
   });
 
   r.get("/display/:saleId/snapshot", zValidator("param", displaySnapshotParamSchema), async (c) => {
     const { saleId } = c.req.valid("param");
     const token = readDisplayToken(c);
     if (!token) {
-      return c.json({ error: "Display token required", code: "unauthorized" }, 401);
+      return c.json(unauthorizedDisplayToken(), 401);
     }
-    const verified = await container.displayPairingService.verifyDisplayTokenForSale(token, saleId);
-    if (verified.isErr()) {
-      return c.json(
-        {
-          error: verified.error.message,
-          ...(verified.error.code ? { code: verified.error.code } : {}),
-        },
-        asHttpStatus(verified.error.status),
-      );
-    }
-    const snapshot = await container.displaySnapshotReader.getSnapshot(saleId);
-    if (!snapshot) {
+    const outcome = await http().getSnapshot({ displayToken: token, saleId });
+    if (outcome.kind === "not_found") {
       return c.json({ error: "Sale not found" }, 404);
     }
-    return c.json({ data: snapshot }, 200, {
+    if (outcome.kind === "err") {
+      return respondBiddingRouteOutcome(c, outcome);
+    }
+    return c.json({ data: outcome.data }, 200, {
       "Cache-Control": "no-store",
     });
   });
@@ -76,14 +66,9 @@ export function createSaleroomDisplayRoutes(container: ContainerSaleroomDisplayR
   r.post("/display/heartbeat", async (c) => {
     const token = readDisplayToken(c);
     if (!token) {
-      return c.json({ error: "Display token required", code: "unauthorized" }, 401);
+      return c.json(unauthorizedDisplayToken(), 401);
     }
-    const result = await container.displayPairingService.heartbeat(token);
-    return result.match(
-      (body) => c.json({ data: body }),
-      (e) =>
-        c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
-    );
+    return respondBiddingRouteOutcome(c, await http().heartbeat(token));
   });
 
   return r;

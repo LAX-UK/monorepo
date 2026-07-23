@@ -5,15 +5,15 @@ import {
   lotFulfilmentReleaseBodySchema,
   lotFulfilmentShipBodySchema,
 } from "@auction/validators";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireOperationsFulfilment } from "../../middleware/require-capability.js";
+import type { AdminCatalogSupportRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminLotFulfilmentRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminCatalogSupportRoutesContainer,
 ): void {
   platform.get(
     "/lot-fulfilment",
@@ -23,23 +23,20 @@ export function attachAdminLotFulfilmentRoutes(
       const query = adminLotFulfilmentListQuerySchema.parse(c.req.valid("query"));
       const limit = query.limit ?? 50;
       const offset = query.offset ?? 0;
-      const result = await container.admin.lotFulfilment.listForAdmin(
-        query.status === undefined
-          ? {
-              ...(query.q ? { q: query.q } : {}),
-              limit,
-              offset,
-            }
-          : {
-              status: query.status,
-              ...(query.q ? { q: query.q } : {}),
-              limit,
-              offset,
-            },
-      );
+      const page = await container.admin.lotFulfilment.getPage({
+        ...(query.q ? { q: query.q } : {}),
+        ...(query.status !== undefined ? { status: query.status } : {}),
+        limit,
+        offset,
+      });
       return c.json({
-        data: result.items,
-        meta: { total: result.total, limit, offset, statusCounts: result.statusCounts },
+        data: page.rows,
+        meta: {
+          total: page.total,
+          limit: page.limit,
+          offset: page.offset,
+          summary: page.summary,
+        },
       });
     },
   );

@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { formatCsvHeader, formatCsvRow } from "@auction/exports";
+import type { ExportProvider } from "@auction/exports/providers";
 import type { IExportJobRepository } from "@auction/persistence/interfaces";
-import type { ExportProvider } from "../../exports/types.js";
 import type { ExportAuthContext } from "./export-types.js";
 
 export class SyncExportRunner {

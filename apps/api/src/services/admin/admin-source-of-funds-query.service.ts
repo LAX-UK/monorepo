@@ -2,12 +2,15 @@ import type { ISourceOfFundsDocumentReviewRepository } from "@auction/persistenc
 import type { ISourceOfFundsDocumentRepository } from "@auction/persistence/interfaces";
 import type { IAdminUserReader } from "@auction/persistence/interfaces";
 import type {
+  AdminSourceOfFundsListSummary,
+  ISourceOfFundsRepository,
+} from "@auction/persistence/interfaces";
+import type {
   AdminSourceOfFundsDetailDto,
   AdminSourceOfFundsListRowDto,
 } from "../../admin/admin-route-dtos.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { SourceOfFundsSettlementReadService } from "../source-of-funds/source-of-funds-settlement-read.service.js";
-import type { ISourceOfFundsRepository } from "../source-of-funds/source-of-funds.types.js";
 import type { SourceOfFundsStatus } from "../source-of-funds/source-of-funds.types.js";
 
 function majorToPence(major: string): number {
@@ -33,6 +36,17 @@ export interface IAdminSourceOfFundsQueryService {
     limit: number,
     offset: number,
   ): Promise<{ rows: AdminSourceOfFundsListRowDto[]; total: number }>;
+  getPage(input: {
+    status: SourceOfFundsStatus;
+    limit: number;
+    offset: number;
+  }): Promise<{
+    rows: AdminSourceOfFundsListRowDto[];
+    total: number;
+    offset: number;
+    limit: number;
+    summary: AdminSourceOfFundsListSummary;
+  }>;
   getDetail(caseId: string): Promise<AdminSourceOfFundsDetailDto | null>;
   listForUser(userId: string, limit?: number): Promise<AdminSourceOfFundsListRowDto[]>;
 }
@@ -52,37 +66,67 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
     limit: number,
     offset: number,
   ): Promise<{ rows: AdminSourceOfFundsListRowDto[]; total: number }> {
-    const [cases, total] = await Promise.all([
-      this.caseRepo.listByStatus(status, limit, offset),
-      this.caseRepo.countByStatus(status),
+    const page = await this.getPage({ status, limit, offset });
+    return { rows: page.rows, total: page.total };
+  }
+
+  async getPage(input: {
+    status: SourceOfFundsStatus;
+    limit: number;
+    offset: number;
+  }): Promise<{
+    rows: AdminSourceOfFundsListRowDto[];
+    total: number;
+    offset: number;
+    limit: number;
+    summary: AdminSourceOfFundsListSummary;
+  }> {
+    const [cases, summary] = await Promise.all([
+      this.caseRepo.listByStatus(input.status, input.limit, input.offset),
+      this.caseRepo.summarizeByStatus(input.status),
     ]);
 
     if (cases.length === 0) {
-      return { rows: [], total };
+      return {
+        rows: [],
+        total: summary.total,
+        offset: input.offset,
+        limit: input.limit,
+        summary,
+      };
     }
 
     const userIds = [...new Set(cases.map((c) => c.userId))];
-    const [buyers, summaries, pendingCounts] = await Promise.all([
+    const caseIds = cases.map((c) => c.id);
+    const [buyers, summaries, pendingCounts, documentCounts] = await Promise.all([
       this.loadBuyers(userIds),
       this.settlementRead.summarizeForBuyersBatch(userIds),
       this.caseRepo.countPendingByUserIds(userIds),
+      this.loadSubmittedDocumentCounts(caseIds),
     ]);
 
     const rows: AdminSourceOfFundsListRowDto[] = cases.map((c) => {
       const buyer = buyers.get(c.userId);
-      const summary = summaries.get(c.userId);
+      const settlementSummary = summaries.get(c.userId);
       return {
         ...c,
         buyerEmail: buyer?.email ?? null,
         buyerName: buyer?.name ?? null,
         buyerLabel: buyerLabelFrom(buyer?.name ?? null, buyer?.email ?? null) ?? "Unknown buyer",
-        settlementSummary: summary?.settlementSummary ?? null,
-        settlementItemCount: summary?.settlementItemCount ?? 0,
+        settlementSummary: settlementSummary?.settlementSummary ?? null,
+        settlementItemCount: settlementSummary?.settlementItemCount ?? 0,
         pendingCasesForBuyer: pendingCounts.get(c.userId) ?? 0,
+        submittedDocumentCount: documentCounts.get(c.id) ?? 0,
       };
     });
 
-    return { rows, total };
+    return {
+      rows,
+      total: summary.total,
+      offset: input.offset,
+      limit: input.limit,
+      summary,
+    };
   }
 
   async getDetail(caseId: string): Promise<AdminSourceOfFundsDetailDto | null> {
@@ -185,6 +229,7 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
       settlementSummary: summary?.settlementSummary ?? null,
       settlementItemCount: summary?.settlementItemCount ?? 0,
       pendingCasesForBuyer: pendingCounts.get(userId) ?? 0,
+      submittedDocumentCount: 0,
     }));
   }
 
@@ -221,6 +266,23 @@ export class AdminSourceOfFundsQueryService implements IAdminSourceOfFundsQueryS
           : null,
       };
     });
+  }
+
+  private async loadSubmittedDocumentCounts(
+    caseIds: readonly string[],
+  ): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    if (caseIds.length === 0) return out;
+    const counts = await Promise.all(
+      caseIds.map(async (caseId) => ({
+        caseId,
+        count: await this.docRepo.countActiveForCase(caseId),
+      })),
+    );
+    for (const { caseId, count } of counts) {
+      out.set(caseId, count);
+    }
+    return out;
   }
 
   private async loadBuyers(

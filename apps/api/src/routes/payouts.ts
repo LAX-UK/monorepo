@@ -6,7 +6,9 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { ContainerAdminPayoutRoutesSlice, ContainerPayoutRoutesSlice } from "../container.js";
+import type { ContainerPayoutRoutesSlice } from "../container.js";
+import { respondFinanceRouteOutcome } from "../lib/finance-route-response.js";
+import { mapPayoutStatementOutcomeToHttp } from "../lib/payout-statement-http.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
@@ -15,16 +17,15 @@ import {
   requirePayoutReverse,
 } from "../middleware/require-capability.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
+import type { AdminFinancePayoutRoutesContainer } from "../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import {
   PayoutNotFoundError,
   PayoutPermissionError,
   PayoutStatusTransitionError,
 } from "../services/interfaces/payout.js";
-import { ensureStatementQueued } from "./payout-statements.js";
-
 const payoutIdParam = z.object({ payoutId: z.string().uuid() });
-const RETRY_AFTER_SEC = 5;
+const settlementPreviewQuery = z.object({ legalEntityId: z.string().uuid() });
 const markPaidBodySchema = z.object({
   stripeTransferId: z.string().min(3).max(200),
 });
@@ -47,6 +48,7 @@ export function createPayoutRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const requireContext = container.requireLegalEntityContext;
+  const sellerPayoutHttp = container.finance.sellerPayoutHttp;
   const r = new Hono<{
     Variables: {
       userId?: string;
@@ -64,20 +66,20 @@ export function createPayoutRoutes(
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const q = c.req.valid("query");
-      const list = await container.payoutService.listForLegalEntity(ctx.legalEntityId, {
+      const outcome = await sellerPayoutHttp.listForLegalEntity(ctx.legalEntityId, {
         ...(q.status !== undefined ? { status: q.status } : {}),
         limit: q.limit,
         offset: q.offset,
       });
-      return c.json({ data: list });
+      return respondFinanceRouteOutcome(c, outcome);
     },
   );
 
   /** GET /payouts/preview-next — pending payments not yet on a payout. */
   r.get("/preview-next", requireAuth, requireContext, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
-    const preview = await container.payoutService.previewPending(ctx.legalEntityId);
-    return c.json({ data: preview });
+    const outcome = await sellerPayoutHttp.previewPending(ctx.legalEntityId);
+    return respondFinanceRouteOutcome(c, outcome);
   });
 
   /** GET /payouts/:payoutId — full payout + lines (entity-scoped). */
@@ -89,14 +91,8 @@ export function createPayoutRoutes(
     async (c) => {
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { payoutId } = c.req.valid("param");
-      try {
-        const result = await container.payoutService.getById(ctx.legalEntityId, payoutId);
-        return c.json({ data: result });
-      } catch (err) {
-        const mapped = handleError(err);
-        if (mapped) return c.json({ error: mapped.code }, mapped.status);
-        throw err;
-      }
+      const outcome = await sellerPayoutHttp.getById(ctx.legalEntityId, payoutId);
+      return respondFinanceRouteOutcome(c, outcome);
     },
   );
 
@@ -105,7 +101,7 @@ export function createPayoutRoutes(
 
 /** Admin payout routes (`payout.read` list, `payout.process` mutations). */
 export function createAdminPayoutRoutes(
-  container: ContainerAdminPayoutRoutesSlice,
+  container: AdminFinancePayoutRoutesContainer,
   authenticator: IAuthenticator,
 ) {
   const requireAuth = createRequireAuth(authenticator, {
@@ -124,41 +120,43 @@ export function createAdminPayoutRoutes(
     zValidator("param", payoutIdParam),
     async (c) => {
       const { payoutId } = c.req.valid("param");
-      const p = await container.payoutRepository.findById(payoutId);
-      if (!p) {
-        return c.json({ error: "payout_not_found" }, 404);
-      }
-      if (p.statementGenerationError) {
-        return c.json(
-          { error: "statement_generation_failed", detail: p.statementGenerationError },
-          422,
-        );
-      }
-      if (p.statementUrl) {
-        return c.redirect(p.statementUrl, 302);
-      }
-      await ensureStatementQueued(
-        container.payoutRepository,
-        container.payoutStatementQueue,
-        payoutId,
-      );
-      return c.json({ error: "statement_pending" }, 503, {
-        "Retry-After": String(RETRY_AFTER_SEC),
-      });
+      const outcome = await container.admin.payouts.resolveStatementPdf(payoutId);
+      return mapPayoutStatementOutcomeToHttp(c, outcome);
     },
   );
 
-  /** GET /admin/payouts — list across all entities (`payout.read`). */
+  /** GET /admin/payouts — paginated list with filtered summary (`payout.read`). */
   r.get("/", requireAuth, adminRead, zValidator("query", listPayoutsQuerySchema), async (c) => {
     const q = c.req.valid("query");
-    const list = await container.payoutService.adminList({
+    const page = await container.admin.payouts.adminListPage({
       ...(q.legalEntityId !== undefined ? { legalEntityId: q.legalEntityId } : {}),
       ...(q.status !== undefined ? { status: q.status } : {}),
       limit: q.limit,
       offset: q.offset,
     });
-    return c.json({ data: list });
+    return c.json({
+      data: page.rows,
+      meta: {
+        total: page.total,
+        limit: page.limit,
+        offset: page.offset,
+        summary: page.summary,
+      },
+    });
   });
+
+  /** GET /admin/payouts/settlement-preview — pending settlement snapshot for one entity. */
+  r.get(
+    "/settlement-preview",
+    requireAuth,
+    adminRead,
+    zValidator("query", settlementPreviewQuery),
+    async (c) => {
+      const { legalEntityId } = c.req.valid("query");
+      const preview = await container.admin.payouts.adminSettlementPreview(legalEntityId);
+      return c.json({ data: preview });
+    },
+  );
 
   /** POST /admin/payouts/run-settlement — create a payout from pending payments. */
   r.post(
@@ -172,7 +170,7 @@ export function createAdminPayoutRoutes(
       if (!body.legalEntityId) {
         return c.json({ error: "legal_entity_id_required_until_bulk_implemented" }, 400);
       }
-      const result = await container.payoutService.createSettlement(userId, {
+      const result = await container.admin.payouts.createSettlement(userId, {
         legalEntityId: body.legalEntityId,
         periodStart: new Date(0),
         periodEnd: new Date(),
@@ -194,7 +192,7 @@ export function createAdminPayoutRoutes(
       const { payoutId } = c.req.valid("param");
       const body = c.req.valid("json");
       try {
-        const result = await container.payoutService.addAdjustment(userId, payoutId, body);
+        const result = await container.admin.payouts.addAdjustment(userId, payoutId, body);
         return c.json({ data: result }, 201);
       } catch (err) {
         const mapped = handleError(err);
@@ -216,7 +214,7 @@ export function createAdminPayoutRoutes(
       const { payoutId } = c.req.valid("param");
       const body = c.req.valid("json");
       try {
-        const result = await container.payoutService.markPaid(userId, payoutId, body);
+        const result = await container.admin.payouts.markPaid(userId, payoutId, body);
         return c.json({ data: result });
       } catch (err) {
         const mapped = handleError(err);
@@ -248,7 +246,7 @@ export function createAdminPayoutRoutes(
         );
       }
       try {
-        const result = await container.payoutService.adminManualReverse(userId, payoutId, {
+        const result = await container.admin.payouts.adminManualReverse(userId, payoutId, {
           reason: body.reason,
         });
         return c.json({ data: result });

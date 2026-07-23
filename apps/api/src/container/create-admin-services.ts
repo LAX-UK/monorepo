@@ -1,16 +1,37 @@
 import type { Database } from "@auction/db";
+import {
+  DrizzleAdminSubmissionsSummaryReader,
+  DrizzleExportJobRepository,
+} from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
+import { AdminLotAttentionService } from "../services/admin/admin-lot-attention.service.js";
+import { AdminLotDetailMetricsService } from "../services/admin/admin-lot-detail-metrics.service.js";
+import { AdminLotOverviewKpiTrendService } from "../services/admin/admin-lot-overview-kpi-trend.service.js";
+import { AdminLotsEndedKpiTrendService } from "../services/admin/admin-lots-ended-kpi-trend.service.js";
+import { AdminLotsHammerKpiTrendService } from "../services/admin/admin-lots-hammer-kpi-trend.service.js";
 import { AdminLotsKpiTrendService } from "../services/admin/admin-lots-kpi-trend.service.js";
-import { createAdminNavCountsDeps } from "../services/admin/admin-nav-counts.deps.js";
+import { AdminLotsListSummaryService } from "../services/admin/admin-lots-list-summary.service.js";
+import {
+  createAdminNavCountsAuthorityPorts,
+  createAdminNavCountsDeps,
+} from "../services/admin/admin-nav-counts.deps.js";
 import { AdminNavCountsService } from "../services/admin/admin-nav-counts.service.js";
 import { AdminPaymentsKpiTrendService } from "../services/admin/admin-payments-kpi-trend.service.js";
 import { AdminPayoutsKpiTrendService } from "../services/admin/admin-payouts-kpi-trend.service.js";
+import { AdminSaleAttentionService } from "../services/admin/admin-sale-attention.service.js";
+import { AdminSaleDetailMetricsService } from "../services/admin/admin-sale-detail-metrics.service.js";
+import { AdminSaleOverviewKpiTrendService } from "../services/admin/admin-sale-overview-kpi-trend.service.js";
 import { AdminSalesKpiTrendService } from "../services/admin/admin-sales-kpi-trend.service.js";
+import { AdminSalesListSummaryService } from "../services/admin/admin-sales-list-summary.service.js";
+import { AdminSubmissionsListSummaryService } from "../services/admin/admin-submissions-list-summary.service.js";
 import {
   attachAdminDashboardMetrics,
+  attachAdminDetailBoardServices,
   createAdminRouteServices,
 } from "../services/admin/create-admin-route-services.js";
+import { attachAdminSatelliteServices } from "../services/admin/create-admin-satellite-services.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
+import type { IPayoutStatementApplicationService } from "../services/interfaces/finance-routes/finance-payout-statement.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
@@ -22,11 +43,6 @@ import type { ContainerUserMiscServices } from "./create-user-misc-services.js";
 
 export type ContainerAdminServices = {
   admin: AdminRouteServices;
-  adminNavCountsService: AdminNavCountsService;
-  adminLotsKpiTrendService: AdminLotsKpiTrendService;
-  adminPaymentsKpiTrendService: AdminPaymentsKpiTrendService;
-  adminSalesKpiTrendService: AdminSalesKpiTrendService;
-  adminPayoutsKpiTrendService: AdminPayoutsKpiTrendService;
 };
 
 export type CreateAdminServicesInput = {
@@ -40,10 +56,11 @@ export type CreateAdminServicesInput = {
   payments: ContainerPaymentsServices;
   bidding: ContainerBiddingSaleroom;
   userMisc: ContainerUserMiscServices;
+  payoutStatementApplication: IPayoutStatementApplicationService;
 };
 
 export function createAdminServices(input: CreateAdminServicesInput): ContainerAdminServices {
-  const { env, infra, repos, platform, complianceMedia, catalog, payments, bidding, userMisc } =
+  const { env, db, infra, repos, platform, complianceMedia, catalog, payments, bidding, userMisc } =
     input;
   const { redis, cache } = infra;
   const {
@@ -51,6 +68,8 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     paymentRepo,
     saleRepo,
     payoutRepository,
+    saleOverviewKpiTrendReader,
+    saleRevenueSnapshotReader,
     repoFactory,
     emailObservabilityRepository,
     attentionFeedReader,
@@ -65,6 +84,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     adminManualReviewPaymentEnrichmentReader,
     adminOnboardingIssuesReader,
     adminReviewTaskReader,
+    adminReviewTaskRepository,
     adminLegalEntityBrowseReader,
     adminDisputeCaseEnrichmentReader,
     impersonationSessionRepository,
@@ -81,6 +101,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
   const {
     legalEntityDocumentAdminService,
     amlService,
+    amlScreeningReader,
     adminSourceOfFundsQueryService,
     sourceOfFundsService,
     sourceOfFundsDocumentCollectionService,
@@ -104,8 +125,13 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     telephoneBidBookingService,
     saleService,
   } = catalog;
-  const { paymentAdminService, xeroOAuthService, lotFulfilmentService, adminMetricsService } =
-    payments;
+  const {
+    paymentAdminService,
+    xeroOAuthService,
+    lotFulfilmentService,
+    lotFulfilmentRepository,
+    adminMetricsService,
+  } = payments;
   const {
     saleRegistrationService,
     saleroomService,
@@ -118,10 +144,11 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
   const {
     adminUserService,
     profileService,
-    analyticsService,
     invitationService,
+    invitationRepository,
     adminPaymentListQueryService,
   } = userMisc;
+  const { adminUserReader } = repos;
 
   const adminBase = createAdminRouteServices({
     transactionRunner: platform.transactionRunner,
@@ -137,8 +164,8 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     artistProfileService,
     emailObservabilityRepository,
     adminUserService,
+    adminUserReader,
     profileService,
-    analyticsService,
     adminMetricsService,
     attentionFeedReader,
     itemSubmissionAdminApi,
@@ -152,6 +179,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     artistRegistryService,
     resolvePlatformCatalogLegalEntityId,
     invitationService,
+    invitationRepository,
     xeroOAuthService,
     xeroConnectionRepository: xeroConnRepo,
     xeroWebhookEventRepository,
@@ -162,9 +190,11 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     qrCodeService,
     qrCodeAnalytics,
     conditionReportService,
+    conditionReportRequestRepository: repos.conditionReportRequestRepository,
     mediaUrlResolver,
     mediaAssetEnricher,
     amlService,
+    amlScreeningReader,
     adminSourceOfFundsQueryService,
     sourceOfFundsService,
     sourceOfFundsDocumentCollectionService,
@@ -175,6 +205,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     saleroomCheckInService,
     saleExpectedGuestsService: catalog.saleExpectedGuestsService,
     lotFulfilmentService,
+    lotFulfilmentRepository,
     bidService,
     saleroomOnBlockPolicy,
     paddleService: catalog.paddleService,
@@ -194,23 +225,65 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     adminLegalEntityBrowseReader,
     adminDisputeCaseEnrichmentReader,
     bidRepo: repoFactory.root.bid,
+    payoutService: platform.payoutService,
+    payoutSettlementService: platform.payoutSettlementService,
+    payoutStatementApplication: input.payoutStatementApplication,
     env,
   });
 
   const adminLotsKpiTrendService = new AdminLotsKpiTrendService(lotRepo);
+  const adminLotsEndedKpiTrendService = new AdminLotsEndedKpiTrendService(lotRepo);
+  const adminLotsHammerKpiTrendService = new AdminLotsHammerKpiTrendService(lotRepo);
   const adminPaymentsKpiTrendService = new AdminPaymentsKpiTrendService(paymentRepo);
   const adminSalesKpiTrendService = new AdminSalesKpiTrendService(saleRepo);
   const adminPayoutsKpiTrendService = new AdminPayoutsKpiTrendService(payoutRepository);
+  const adminSalesListSummaryService = new AdminSalesListSummaryService(saleRepo, lotRepo);
+  const adminLotsListSummaryService = new AdminLotsListSummaryService(
+    lotRepo,
+    adminReviewTaskReader,
+  );
+  const adminSubmissionsListSummaryService = new AdminSubmissionsListSummaryService(
+    new DrizzleAdminSubmissionsSummaryReader(db),
+  );
+  const adminSaleDetailMetricsService = new AdminSaleDetailMetricsService(
+    lotRepo,
+    saleRevenueSnapshotReader,
+    adminDomainEventReader,
+    new DrizzleExportJobRepository(db),
+  );
+  const adminSaleOverviewKpiTrendService = new AdminSaleOverviewKpiTrendService(
+    saleRepo,
+    saleOverviewKpiTrendReader,
+  );
+  const adminSaleAttentionService = new AdminSaleAttentionService(
+    repos.saleAttentionSignalsReader,
+    legalEntityRepository,
+    stripeConnectService,
+  );
+  const adminLotDetailMetricsService = new AdminLotDetailMetricsService(
+    lotRepo,
+    repoFactory.root.bid,
+  );
+  const adminLotOverviewKpiTrendService = new AdminLotOverviewKpiTrendService(
+    lotRepo,
+    repoFactory.root.bid,
+  );
+  const adminLotAttentionService = new AdminLotAttentionService(
+    lotRepo,
+    adminReviewTaskRepository,
+    legalEntityRepository,
+    stripeConnectService,
+  );
 
   const adminNavCountsService = new AdminNavCountsService(
     createAdminNavCountsDeps({
       saleroomLiveSessionCounter: repos.saleroomLiveSessionCounter,
-      admin: adminBase,
+      authority: createAdminNavCountsAuthorityPorts(adminBase),
       repoFactory,
       conditionReportService,
       lotFulfilmentService,
+      lotFulfilmentRepository,
       saleService,
-      invitationService,
       amlService,
       sourceOfFundsService,
       telephoneBidBookingService,
@@ -219,20 +292,38 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     30,
   );
 
-  const admin = attachAdminDashboardMetrics(adminBase, {
-    navCounts: adminNavCountsService,
-    lotsKpiTrend: adminLotsKpiTrendService,
-    paymentsKpiTrend: adminPaymentsKpiTrendService,
-    salesKpiTrend: adminSalesKpiTrendService,
-    payoutsKpiTrend: adminPayoutsKpiTrendService,
-  });
+  const admin = attachAdminSatelliteServices(
+    attachAdminDetailBoardServices(
+      attachAdminDashboardMetrics(adminBase, {
+        navCounts: adminNavCountsService,
+        lotsKpiTrend: adminLotsKpiTrendService,
+        lotsEndedKpiTrend: adminLotsEndedKpiTrendService,
+        lotsHammerKpiTrend: adminLotsHammerKpiTrendService,
+        paymentsKpiTrend: adminPaymentsKpiTrendService,
+        salesKpiTrend: adminSalesKpiTrendService,
+        payoutsKpiTrend: adminPayoutsKpiTrendService,
+        salesListSummary: adminSalesListSummaryService,
+        lotsListSummary: adminLotsListSummaryService,
+        submissionsListSummary: adminSubmissionsListSummaryService,
+      }),
+      {
+        saleDetailMetrics: adminSaleDetailMetricsService,
+        saleOverviewKpiTrend: adminSaleOverviewKpiTrendService,
+        saleAttention: adminSaleAttentionService,
+        lotDetailMetrics: adminLotDetailMetricsService,
+        lotOverviewKpiTrend: adminLotOverviewKpiTrendService,
+        lotAttention: adminLotAttentionService,
+      },
+    ),
+    {
+      db,
+      queueInspector: userMisc.queueAdmin.inspector,
+      queueMutator: userMisc.queueAdmin.mutator,
+      adminMarketingEventsService: userMisc.adminMarketingEventsService,
+      onsiteEventAdminService: catalog.onsiteEventAdminService,
+      onsiteEventStaffCheckInService: catalog.onsiteEventStaffCheckInService,
+    },
+  );
 
-  return {
-    admin,
-    adminNavCountsService,
-    adminLotsKpiTrendService,
-    adminPaymentsKpiTrendService,
-    adminSalesKpiTrendService,
-    adminPayoutsKpiTrendService,
-  };
+  return { admin };
 }

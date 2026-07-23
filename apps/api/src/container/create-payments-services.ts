@@ -47,6 +47,7 @@ export type ContainerPaymentsServices = {
   xeroPayoutBillWriter: XeroPayoutBillWriter | null;
   stripePaymentGateway: StripePaymentGateway;
   xeroPaymentRecorder: XeroPaymentRecorder | null;
+  lotFulfilmentRepository: DrizzleLotFulfilmentRepository;
   lotFulfilmentService: LotFulfilmentService;
   paymentCaptureService: PaymentCaptureService;
   stripeCheckoutService: StripeCheckoutService | null;
@@ -122,6 +123,7 @@ export function createPaymentsServices(
           XERO_DEFAULT_TAX_TYPE: env.XERO_DEFAULT_TAX_TYPE,
           XERO_INVOICE_DUE_DAYS: env.XERO_INVOICE_DUE_DAYS,
           XERO_USE_LEGAL_ENTITY_CONTACT: env.XERO_USE_LEGAL_ENTITY_CONTACT,
+          XERO_API_WRITES_DISABLED: env.XERO_API_WRITES_DISABLED,
         },
         xeroConnRepo,
         paymentExtRepo,
@@ -140,6 +142,7 @@ export function createPaymentsServices(
           XERO_REDIRECT_URI: env.XERO_REDIRECT_URI,
           XERO_DEFAULT_TAX_TYPE: env.XERO_DEFAULT_TAX_TYPE,
           XERO_PAYOUT_BILL_ACCOUNT_CODE: env.XERO_PAYOUT_BILL_ACCOUNT_CODE,
+          XERO_API_WRITES_DISABLED: env.XERO_API_WRITES_DISABLED,
         },
         xeroConnRepo,
         payoutRepository,
@@ -158,6 +161,7 @@ export function createPaymentsServices(
           XERO_CLIENT_SECRET: env.XERO_CLIENT_SECRET,
           XERO_REDIRECT_URI: env.XERO_REDIRECT_URI,
           XERO_PAYMENT_BANK_ACCOUNT_CODE: env.XERO_PAYMENT_BANK_ACCOUNT_CODE,
+          XERO_API_WRITES_DISABLED: env.XERO_API_WRITES_DISABLED,
         },
         xeroConnRepo,
         paymentExtRepo,
@@ -166,10 +170,9 @@ export function createPaymentsServices(
       )
     : null;
 
-  const lotFulfilmentService = new LotFulfilmentService(
-    lotRepo,
-    new DrizzleLotFulfilmentRepository(db),
-  );
+  const lotFulfilmentRepository = new DrizzleLotFulfilmentRepository(db);
+
+  const lotFulfilmentService = new LotFulfilmentService(lotRepo, lotFulfilmentRepository);
 
   const paymentCaptureService = new PaymentCaptureService(
     platform.transactionRunner,
@@ -298,6 +301,7 @@ export function createPaymentsServices(
     xeroPayoutBillWriter,
     stripePaymentGateway,
     xeroPaymentRecorder,
+    lotFulfilmentRepository,
     lotFulfilmentService,
     paymentCaptureService,
     stripeCheckoutService,

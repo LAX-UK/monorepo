@@ -8,17 +8,17 @@ import {
   adminSaleroomSaleIdParamSchema,
   adminTelephonePlaceBidBodySchema,
 } from "@auction/validators";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireAuctionManage } from "../../middleware/require-capability.js";
-import { paddleBidPlacedTotal } from "../../services/paddle.service.js";
+import type { AdminOperationsSaleroomRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminSaleroomRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminOperationsSaleroomRoutesContainer,
 ): void {
   platform.get(
     "/sales/:saleId/expected-guests",
@@ -129,7 +129,7 @@ export function attachAdminSaleroomRoutes(
         c.req.header("idempotency-key") ??
         c.req.header("Idempotency-Key") ??
         `paddle:${body.saleId}:${body.paddleNumber}:${body.lotId}:${body.amount}`;
-      const out = await container.admin.liveBidding.placePaddleBid({
+      const out = await container.admin.liveBidding.placeClerkPaddleBid({
         saleId: body.saleId,
         lotId: body.lotId,
         paddleNumber: body.paddleNumber,
@@ -138,61 +138,7 @@ export function attachAdminSaleroomRoutes(
         ...(body.maxAutoBidAmount !== undefined ? { maxAutoBidAmount: body.maxAutoBidAmount } : {}),
         idempotencyKey,
       });
-      if (out.type === "replay") {
-        paddleBidPlacedTotal.inc({ outcome: "replay" });
-        console.info(
-          JSON.stringify({
-            action: "paddle_bid_placed",
-            saleId: body.saleId,
-            lotId: body.lotId,
-            paddleNumber: body.paddleNumber,
-            clerkUserId,
-            outcome: "replay",
-          }),
-        );
-        return c.json(out.body, 201);
-      }
-      if (out.type === "err") {
-        paddleBidPlacedTotal.inc({ outcome: "error" });
-        console.info(
-          JSON.stringify({
-            action: "paddle_bid_placed",
-            saleId: body.saleId,
-            lotId: body.lotId,
-            paddleNumber: body.paddleNumber,
-            clerkUserId,
-            outcome: "error",
-            error: out.error.message,
-          }),
-        );
-        const e = out.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      if (out.type === "ok_with_summary") {
-        paddleBidPlacedTotal.inc({ outcome: "ok" });
-        void container.admin.saleroom.publishClerkPaddleBidSummary({
-          saleId: body.saleId,
-          lotId: body.lotId,
-          currentPrice: out.body.data.amount,
-          bidCount: out.bidCount,
-          leaderPaddleNumber: body.paddleNumber,
-        });
-        console.info(
-          JSON.stringify({
-            action: "paddle_bid_placed",
-            saleId: body.saleId,
-            lotId: body.lotId,
-            paddleNumber: body.paddleNumber,
-            clerkUserId,
-            outcome: "ok",
-          }),
-        );
-        return c.json(out.body, 201);
-      }
-      return c.json(out.body, 201);
+      return c.json(out.body, out.httpStatus as ContentfulStatusCode);
     },
   );
 

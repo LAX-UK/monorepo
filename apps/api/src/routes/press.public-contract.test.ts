@@ -1,18 +1,24 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
-import type { Container } from "../container.js";
+import type { ContainerPressRoutesSlice } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import {
+  createCatalogPressReadHttpFixture,
+  mockPressArchiveReadService,
+} from "../testing/catalog-press-read-http-fixture.js";
+import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createPressRoutes } from "./press.js";
 
-function mockContainer(overrides: Partial<Container["pressArchiveReadService"]> = {}): Container {
+function mockContainer(
+  overrides: Parameters<typeof mockPressArchiveReadService>[0] = {},
+): ContainerPressRoutesSlice {
+  const pressArchiveReadService = mockPressArchiveReadService(overrides);
   return {
-    pressArchiveReadService: {
-      listCoverage: vi.fn(),
-      listDayMediaSales: vi.fn(),
-      getSitemapFreshness: vi.fn(),
-      ...overrides,
-    },
-  } as unknown as Container;
+    catalogRoutes: stubCatalogRouteServices({
+      pressReadHttp: createCatalogPressReadHttpFixture(pressArchiveReadService),
+    }),
+    userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+  } as ContainerPressRoutesSlice;
 }
 
 function mockAuthenticator(): IAuthenticator {

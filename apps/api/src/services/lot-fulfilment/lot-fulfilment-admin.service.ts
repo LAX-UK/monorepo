@@ -18,7 +18,6 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
   }): Promise<{
     items: LotFulfilmentListRow[];
     total: number;
-    statusCounts: Record<string, number>;
   }> {
     return this.ctx.fulfilmentRepo.listForAdmin(options);
   }

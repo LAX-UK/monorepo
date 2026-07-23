@@ -12,22 +12,21 @@ describe("POST /sales/:id/lots/:lotId/status", () => {
     const app = new Hono<{
       Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
     }>();
-    const cancel = vi.fn();
     const setLotStatus = vi.fn();
-    const getById = vi.fn().mockResolvedValue({ id: lotId, saleId });
     const container = {
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       saleService: {},
       saleSoftDeleteService: { softDelete: vi.fn(), getDeleteEligibility: vi.fn() },
       saleFollowService: {},
       saleBiddersService: { list: vi.fn() },
-      mediaUrlResolver: { resolveManyUnique: vi.fn().mockResolvedValue(new Map()) },
-      lotService: {
-        getById,
-        cancel,
-      },
-      saleStatusTransitionService: { setLotStatus },
+      saleStatusTransitionService: { setLotStatus: vi.fn() },
+      lotService: { getById: vi.fn(), cancel: vi.fn() },
       kycService: { isConfigured: () => false },
+      catalogRoutes: {
+        saleLifecycleHttp: {},
+        saleLotMembershipHttp: { setLotStatus },
+        lotLifecycleHttp: {},
+      },
     } as unknown as Container;
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({
@@ -37,13 +36,15 @@ describe("POST /sales/:id/lots/:lotId/status", () => {
       }),
     };
     app.route("/sales", createSaleRoutes(container, authenticator));
-    return { app, cancel, setLotStatus, getById };
+    return { app, setLotStatus };
   }
 
-  it("delegates cancelled status to LotService.cancel", async () => {
-    const { ok } = await import("neverthrow");
-    const { app, cancel, setLotStatus } = appWithMocks();
-    cancel.mockResolvedValue(ok({ id: lotId, status: "cancelled", images: [] }));
+  it("delegates cancelled status to catalog sale lot membership HTTP port", async () => {
+    const { app, setLotStatus } = appWithMocks();
+    setLotStatus.mockResolvedValue({
+      kind: "ok",
+      data: { id: lotId, status: "cancelled", images: [] },
+    });
 
     const res = await app.request(`http://t/sales/${saleId}/lots/${lotId}/status`, {
       method: "POST",
@@ -52,23 +53,25 @@ describe("POST /sales/:id/lots/:lotId/status", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(cancel).toHaveBeenCalledWith(
-      "staff-1",
-      "staff",
-      lotId,
-      "auction_manager",
-      "admin_override",
+    expect(setLotStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "staff-1",
+        role: "staff",
+        saleId,
+        lotId,
+        status: "cancelled",
+        reason: "ops override",
+      }),
     );
-    expect(setLotStatus).not.toHaveBeenCalled();
   });
 
-  it("returns use_dedicated_cancel body when setLotStatus rejects cancelled", async () => {
-    const { err } = await import("neverthrow");
+  it("returns use_dedicated_cancel body when membership port rejects transition", async () => {
     const { LotError } = await import("../lib/errors.js");
-    const { app, cancel, setLotStatus } = appWithMocks();
-    setLotStatus.mockResolvedValue(
-      err(new LotError("Use dedicated cancel route", 409, "use_dedicated_cancel")),
-    );
+    const { app, setLotStatus } = appWithMocks();
+    setLotStatus.mockResolvedValue({
+      kind: "err",
+      error: new LotError("Use dedicated cancel route", 409, "use_dedicated_cancel"),
+    });
 
     const res = await app.request(`http://t/sales/${saleId}/lots/${lotId}/status`, {
       method: "POST",
@@ -79,6 +82,5 @@ describe("POST /sales/:id/lots/:lotId/status", () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as { code?: string };
     expect(body.code).toBe("use_dedicated_cancel");
-    expect(cancel).not.toHaveBeenCalled();
   });
 });

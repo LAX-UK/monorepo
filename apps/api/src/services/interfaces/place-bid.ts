@@ -1,7 +1,7 @@
+import type { PlaceBidWithIdempotencyOutcome } from "@auction/bidding-runtime";
 import type { Bid } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { BidError } from "../../lib/errors.js";
-import type { PlaceBidWithIdempotencyOutcome } from "../bid/place-bid-idempotency.js";
 
 export type PlaceBidPlacement = {
   placedVia?: string;
@@ -21,6 +21,8 @@ export type PlaceBidInput = {
   maxAutoBidAmount?: number;
   autoBidStepAmount?: number;
   placement?: PlaceBidPlacement;
+  /** Durable idempotency for internal replays (e.g. absentee). */
+  internalPlacementKey?: string;
 };
 
 /** Narrow port for callers that only need to place bids (e.g. absentee replay). */

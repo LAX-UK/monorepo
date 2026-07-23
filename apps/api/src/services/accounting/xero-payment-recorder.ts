@@ -16,6 +16,7 @@ import {
   XeroClient,
 } from "xero-node";
 import type { Env } from "../../env.js";
+import { assertXeroApiWritesAllowed } from "../../lib/xero-api-writes-guard.js";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
 import { applyStoredTokens, refreshXeroTokensIfNeeded } from "./xero-auth-runtime.js";
 import { getXeroScopes } from "./xero-token.service.js";
@@ -42,6 +43,7 @@ export class XeroPaymentRecorder implements IXeroPaymentRecorder {
       | "XERO_CLIENT_SECRET"
       | "XERO_REDIRECT_URI"
       | "XERO_PAYMENT_BANK_ACCOUNT_CODE"
+      | "XERO_API_WRITES_DISABLED"
     >,
     private readonly connections: IXeroConnectionRepository,
     private readonly externalRefs: IPaymentExternalRefRepository,
@@ -62,6 +64,11 @@ export class XeroPaymentRecorder implements IXeroPaymentRecorder {
     paymentId: string,
     amountMajor: string,
   ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      assertXeroApiWritesAllowed(this.env);
+    } catch {
+      return { ok: false, error: "xero_api_writes_disabled" };
+    }
     if (!this.isConfigured()) {
       return { ok: false, error: "Xero payment recording not configured" };
     }
@@ -125,6 +132,11 @@ export class XeroPaymentRecorder implements IXeroPaymentRecorder {
     amountMajor: string,
     reference: string,
   ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      assertXeroApiWritesAllowed(this.env);
+    } catch {
+      return { ok: false, error: "xero_api_writes_disabled" };
+    }
     if (!this.isConfigured()) {
       return { ok: false, error: "Xero payment recording not configured" };
     }

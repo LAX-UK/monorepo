@@ -1,7 +1,6 @@
 import {
   ADMIN_DASHBOARD_ACCESS,
   AML_REVIEW_ACCESS,
-  ANALYTICS_ACCESS,
   ARTISTS_ACCESS,
   ARTIST_REVIEW_ACCESS,
   ARTIST_WRITE_ACCESS,
@@ -10,6 +9,7 @@ import {
   CLIENT_ACTIVITY_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
+  CONDITION_REPORTS_ACCESS,
   type CapabilityRequirement,
   EMAIL_ADMIN_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
@@ -102,7 +102,6 @@ export const requireAuctionManage = createRequireCapability("auction.manage");
 export const requirePlatformAdminFull = createRequireAccess(PLATFORM_ADMIN_ACCESS);
 export const requireUsersDirectory = createRequireAccess(USERS_DIRECTORY_ACCESS);
 export const requireUserModeration = createRequireAccess(USER_MODERATION_ACCESS);
-export const requireAnalytics = createRequireAccess(ANALYTICS_ACCESS);
 export const requireOnboardingQueues = createRequireAccess(ONBOARDING_QUEUES_ACCESS);
 export const requireAdminDashboard = createRequireAccess(ADMIN_DASHBOARD_ACCESS);
 export const requireInvitationsAccess = createRequireAccess(INVITATIONS_ACCESS);
@@ -126,7 +125,10 @@ export const requireAmlReview = createRequireAccess(AML_REVIEW_ACCESS);
 /** Binding MLRO decision (checker) on a flagged screening / SoF case. */
 export const requireMlroDecision = createRequireAccess(MLRO_DECISION_ACCESS);
 
-/** Condition report queue: specialists, catalogue editors, or full auction managers. */
+/** Condition report queue requirement shared with web navigation and actions. */
+export const requireConditionReportsAccess = createRequireAccess(CONDITION_REPORTS_ACCESS);
+
+/** Shared document/catalogue route requirement retained for non-condition-report routes. */
 export const requireSpecialistCatalogueOrAuctionManage = createMiddleware<{
   Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
 }>(async (c, next) => {

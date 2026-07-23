@@ -1,3 +1,4 @@
+import { SaleroomOnBlockPolicy } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import type { IAntiShillingGuard } from "@auction/persistence/interfaces";
 import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
@@ -11,7 +12,6 @@ import { BidError } from "../lib/errors.js";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { BidService, type BidServiceOptions } from "./bid.service.js";
-import { SaleroomOnBlockPolicy } from "./bid/saleroom-on-block.policy.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ICacheProvider } from "./interfaces/cache.js";
 import type { IIdempotencyStore } from "./interfaces/idempotency-store.js";
@@ -105,6 +105,7 @@ function createBid(partial: Partial<Bid> = {}): Bid {
 function baseBidRepo(overrides: Partial<IBidRepository> = {}): IBidRepository {
   return {
     create: vi.fn(),
+    findByInternalPlacementKey: vi.fn().mockResolvedValue(null),
     findHighestForLot: vi.fn(),
     listForLotSettlement: vi.fn(),
     findEligibleBidsForLotClose: vi.fn().mockResolvedValue([]),
@@ -112,7 +113,7 @@ function baseBidRepo(overrides: Partial<IBidRepository> = {}): IBidRepository {
     countForLot: vi.fn().mockResolvedValue(1),
     listForBidder: vi.fn(),
     findWinningBid: vi.fn().mockResolvedValue(null),
-    listDistinctBidderIds: vi.fn(),
+    listDistinctBidderIds: vi.fn().mockResolvedValue([]),
     markWinningBid: vi.fn(),
     clearWinningBid: vi.fn(),
     aggregateBidderCeilings: vi.fn().mockResolvedValue(new Map<string, number>()),

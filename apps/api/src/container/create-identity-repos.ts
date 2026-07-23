@@ -28,9 +28,9 @@ import type {
 import {
   DrizzleAccountDeletionEligibilityReader,
   DrizzleAddressRepository,
+  DrizzleEntityInvitationRepository,
   DrizzleImpersonationDomainEventReader,
   DrizzleImpersonationSessionRepository,
-  DrizzleInvitationRepository,
   DrizzleKycRepository,
   DrizzleLegalEntityConnectRepository,
   DrizzleLegalEntityMemberRepository,
@@ -95,7 +95,7 @@ export function createIdentityRepositories(db: Database): IdentityRepositories {
     db,
   );
   const invitationRepository = new DrizzleUserInvitationRepository(db);
-  const entityInvitationRepository = new DrizzleInvitationRepository(db);
+  const entityInvitationRepository = new DrizzleEntityInvitationRepository(db);
   const notificationPreferenceRepository = new DrizzleNotificationPreferenceRepository(db);
   const uiPreferenceRepository = new DrizzleUiPreferenceRepository(db);
   const pushSubscriptionRepository = new DrizzlePushSubscriptionRepository(db);

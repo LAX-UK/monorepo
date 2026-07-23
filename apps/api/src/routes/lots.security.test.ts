@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { LotService } from "../services/lot.service.js";
+import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createLotRoutes } from "./lots.js";
 
 const lotId = "11111111-1111-4111-8111-111111111111";
@@ -42,16 +43,51 @@ function mount(user: { id: string; role: string; staffRole?: string } | null) {
     lotNotifications: null,
   });
   const lotService = Object.assign(lotCore, { create: lotServiceCreate });
+  const base = stubCatalogRouteServices();
+  const createMock = vi.fn(async (input: { userId: string; body: unknown }) => {
+    const r = await lotServiceCreate(input.userId, input.body);
+    if (r && typeof r === "object" && "isErr" in r && r.isErr()) {
+      return { kind: "err" as const, error: r.error as Error };
+    }
+    const value =
+      r && typeof r === "object" && "value" in r
+        ? (r.value as { id: string; marketingDetails: object; images: string[] })
+        : { id: "lot-1", marketingDetails: {}, images: [] };
+    return { kind: "ok" as const, data: value, status: 201 as const };
+  });
+  const create = createMock as typeof base.lotLifecycleHttp.create;
+  const listForLot = vi.fn(async (input: Parameters<typeof lotCore.listBidsForPublicApi>[0]) => {
+    const result = await lotCore.listBidsForPublicApi(input);
+    if (result.kind === "not_found") return { kind: "not_found" as const };
+    return { kind: "ok" as const, data: result.data };
+  });
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     lotService,
     mediaUrlResolver: { resolveMany: vi.fn().mockResolvedValue([]) },
+    catalogRoutes: stubCatalogRouteServices({
+      lotLifecycleHttp: { ...base.lotLifecycleHttp, create },
+    }),
+    bidding: {
+      lotBidHistoryHttp: { listForLot },
+      placeBidHttp: { placeBid: vi.fn() },
+      autoBidHttp: {},
+      absenteeBidHttp: {},
+      saleRegistrationHttp: {},
+      conditionReportHttp: {},
+    },
+    env: {},
+    redis: {},
+    kycService: { isConfigured: () => false },
+    requireSubmissionsLegalEntityContext: vi.fn(),
+    db: {},
+    objectStorage: {},
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue(user),
   };
   app.route("/lots", createLotRoutes(container, authenticator));
-  return { app, lotServiceCreate };
+  return { app, lotServiceCreate, create: createMock };
 }
 
 describe("lot bid history privacy", () => {
@@ -136,7 +172,15 @@ describe("POST /lots persists artistId from request body", () => {
   });
 
   it("rejects non-administrator callers", async () => {
-    const { app, lotServiceCreate } = mount({ id: "user-1", role: "client" });
+    const { AuthzError } = await import("../lib/errors.js");
+    const { app, lotServiceCreate, create } = mount({ id: "user-1", role: "client" });
+    create.mockResolvedValue({
+      kind: "err",
+      error: new AuthzError(
+        "Only staff with auction.manage or catalogue.write can create lots",
+        403,
+      ),
+    });
 
     const res = await app.request("/lots", {
       method: "POST",

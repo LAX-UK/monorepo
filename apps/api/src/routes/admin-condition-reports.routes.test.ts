@@ -22,12 +22,39 @@ function createConditionReportsContainer(conditionReports: Container["admin"]["c
 }
 
 describe("admin condition report routes", () => {
-  it("GET /condition-report-requests returns paginated rows for authorized staff", async () => {
-    const listForAdmin = vi.fn().mockResolvedValue({
-      items: [{ id: requestId, status: "pending", lotTitle: "Blue vase" }],
+  it("uses the shared condition-report capability requirement", async () => {
+    const getPage = vi.fn();
+    const container = createConditionReportsContainer({ getPage } as never);
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "auction_manager" }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request("http://test/admin/condition-report-requests?limit=25&offset=0");
+
+    expect(res.status).toBe(403);
+    expect(getPage).not.toHaveBeenCalled();
+  });
+
+  it("GET /condition-report-requests returns paginated rows with meta.summary", async () => {
+    const getPage = vi.fn().mockResolvedValue({
+      rows: [{ id: requestId, status: "pending", lotTitle: "Blue vase" }],
       total: 1,
+      offset: 0,
+      limit: 25,
+      summary: {
+        total: 1,
+        open: 1,
+        pending: 1,
+        inProgress: 0,
+        fulfilled: 0,
+        declined: 0,
+      },
     });
-    const container = createConditionReportsContainer({ listForAdmin } as never);
+    const container = createConditionReportsContainer({ getPage } as never);
     const authenticator: IAuthenticator = {
       getSessionUser: vi
         .fn()
@@ -42,11 +69,19 @@ describe("admin condition report routes", () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      data: { items: Array<{ id: string }>; total: number; limit: number; offset: number };
+      data: Array<{ id: string }>;
+      meta: {
+        total: number;
+        limit: number;
+        offset: number;
+        summary: { open: number; pending: number };
+      };
     };
-    expect(body.data.total).toBe(1);
-    expect(body.data.items[0]?.id).toBe(requestId);
-    expect(listForAdmin).toHaveBeenCalledWith({
+    expect(body.meta.total).toBe(1);
+    expect(body.data[0]?.id).toBe(requestId);
+    expect(body.meta.summary.open).toBe(1);
+    expect(body.meta.summary.pending).toBe(1);
+    expect(getPage).toHaveBeenCalledWith({
       status: "pending",
       limit: 25,
       offset: 0,

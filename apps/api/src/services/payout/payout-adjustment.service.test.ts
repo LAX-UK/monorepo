@@ -4,14 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { PayoutAdjustmentService } from "./payout-adjustment.service.js";
 
-vi.mock("./payout-helpers.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./payout-helpers.js")>();
-  return {
-    ...actual,
-    payoutRepoForTx: (rootRepo: IPayoutRepository) => rootRepo,
-  };
-});
-
 describe("PayoutAdjustmentService aggregated refund lines", () => {
   it("updates an existing refund line instead of inserting a duplicate", async () => {
     const openPayout = {
@@ -64,6 +56,24 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
       tryInsertSaleLine: vi.fn(),
       list: vi.fn(),
       countMatching: vi.fn().mockResolvedValue(0),
+      summarizeMatching: vi.fn().mockResolvedValue({
+        total: 0,
+        scheduled: 0,
+        inTransit: 0,
+        paid: 0,
+        failed: 0,
+        reversed: 0,
+        clawbackPending: 0,
+        totalNet: "0.00",
+        readiness: {
+          inFlightCount: 0,
+          missingTransferRefCount: 0,
+          withFailureReasonCount: 0,
+          withStatementErrorCount: 0,
+          clawbackCount: 0,
+          failedCount: 0,
+        },
+      }),
       countCreatedAtByDay: vi.fn().mockResolvedValue(new Map()),
       findByStripeTransferId: vi.fn(),
       findUnlinkedCapturedPayments: vi.fn(),
@@ -81,7 +91,11 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
     const db = {
       transaction: vi.fn(async (fn: (tx: Database) => Promise<void>) => fn(db as Database)),
     } as unknown as Database;
-    const svc = new PayoutAdjustmentService(transactionRunnerFromDb(db), repo);
+    const svc = new PayoutAdjustmentService(
+      transactionRunnerFromDb(db),
+      repo,
+      (rootRepo) => rootRepo,
+    );
 
     await svc.addPaymentLineToOpenPayoutOrCreateClawback({
       legalEntityId: openPayout.legalEntityId,

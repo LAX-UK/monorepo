@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
+import { IdentityAccountSecurityHttpApplicationService } from "../services/identity/identity-account-security-http-application.service.js";
 import { createAuthRoutes } from "./auth.js";
 
 /** Drizzle query builders are deeply chained; tests stub `db` (user lookup,
@@ -72,25 +73,47 @@ function mountAuth(opts: {
   const enqueue = opts.emailEnqueue ?? vi.fn(async () => ({ outboxId: "out-1" }));
   const requestPasswordReset = opts.requestPasswordReset ?? vi.fn(async () => ({ status: true }));
   const authHandler = opts.authHandler ?? vi.fn(async () => new Response(null, { status: 200 }));
-  const container = {
-    env: {
-      BETTER_AUTH_SECRET: "test",
-      WEB_ORIGIN: "http://localhost:3000",
-      API_PUBLIC_URL: "http://localhost:4000",
+  const env = {
+    BETTER_AUTH_SECRET: "test",
+    WEB_ORIGIN: "http://localhost:3000",
+    API_PUBLIC_URL: "http://localhost:4000",
+  };
+  const auth = {
+    api: {
+      getSession: vi.fn(async () => null),
+      requestPasswordReset,
     },
+    handler: authHandler,
+  };
+  const authAuditPublisher = { publish: vi.fn(async () => {}) };
+  const emailService = { enqueue };
+  const container = {
+    env,
     db: opts.db,
     authDb: opts.authDb,
     redis: buildFakeRedis(),
-    auth: {
-      api: {
-        getSession: vi.fn(async () => null),
-        requestPasswordReset,
-      },
-      handler: authHandler,
+    auth,
+    authenticator: {
+      getSessionUser: vi.fn(async () => null),
     },
+    userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
     userService: {},
-    emailService: { enqueue },
-    authAuditPublisher: { publish: vi.fn(async () => {}) },
+    emailService,
+    authAuditPublisher,
+    identityRoutes: {
+      accountSecurityHttp: new IdentityAccountSecurityHttpApplicationService({
+        env: env as never,
+        authDb: opts.authDb as never,
+        auth: auth as never,
+        db: opts.db as never,
+        userService: {} as never,
+        userEmailChangeRepository: {} as never,
+        emailService: emailService as never,
+        sessionRevocation: {} as never,
+        authAuditPublisher,
+        authCredentialReader: { hasCredentialAccount: vi.fn(async () => false) },
+      }),
+    },
   };
   const app = new Hono().route("/auth", createAuthRoutes(container as never));
   return { app, enqueue, requestPasswordReset, authHandler };

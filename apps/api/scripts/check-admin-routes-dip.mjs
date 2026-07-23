@@ -13,6 +13,10 @@ const staticFiles = [
   "src/routes/admin.ts",
   "src/routes/admin-invitations.ts",
   "src/routes/admin-legal-entity-lifecycle.ts",
+  "src/routes/admin-marketing-events.ts",
+  "src/routes/admin-onsite-events.ts",
+  "src/routes/admin-queues.ts",
+  "src/routes/telephone-bookings/admin.routes.ts",
   "src/routes/xero-admin.ts",
 ];
 
@@ -25,6 +29,9 @@ const files = [...staticFiles, ...adminModuleFiles];
 
 /** Skip import paths like `../container.js` (slash before `container`). */
 const re = /(?<![\w./])container\.(\w+)\b/g;
+
+/** Infra keys allowed alongside `container.admin` in admin route modules. */
+const ALLOWED_CONTAINER_KEYS = new Set(["admin", "env", "redis"]);
 
 const allowlistPath = join(__dirname, "admin-dip-allowlist.json");
 const allowlist = JSON.parse(readFileSync(allowlistPath, "utf8"));
@@ -50,7 +57,7 @@ for (const rel of files) {
     const m = re.exec(text);
     if (m === null) break;
     const name = m[1];
-    if (name === "admin") continue;
+    if (ALLOWED_CONTAINER_KEYS.has(name)) continue;
 
     const ref = `container.${name}`;
     found.add(ref);

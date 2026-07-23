@@ -1,20 +1,36 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { createUserRouteServices } from "../container/create-user-route-services.js";
+import { createTestUserRouteServicesInput } from "../testing/create-test-user-route-services.js";
 import { createUserRoutes } from "./users.js";
 
-function mountRegister(overrides?: Partial<Container>) {
-  const registrationService = {
+function mountRegister(overrides?: {
+  registrationService?: { register: ReturnType<typeof vi.fn> };
+  env?: Record<string, unknown>;
+}) {
+  const registrationService = overrides?.registrationService ?? {
     register: vi.fn().mockResolvedValue({ ok: true, userId: "user-new" }),
   };
   const marketingEventService = {
     emit: vi.fn().mockResolvedValue(undefined),
   };
+  const env = {
+    WEB_ORIGIN: "https://test.lax.bid",
+    ...(overrides?.env ?? {}),
+  };
+  const userRoutes = createUserRouteServices(
+    createTestUserRouteServicesInput({
+      env: env as never,
+      registrationService: registrationService as never,
+      marketingEventService: marketingEventService as never,
+    }),
+  );
   const container = {
-    env: { WEB_ORIGIN: "https://test.lax.bid" },
-    registrationService,
-    marketingEventService,
-    ...overrides,
+    env,
+    authDb: {},
+    userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
+    userRoutes,
   } as unknown as Container;
   const app = new Hono();
   app.route(
@@ -61,7 +77,7 @@ describe("POST /users/register", () => {
           status: 400,
         }),
       },
-    } as unknown as Partial<Container>);
+    });
     const res = await app.request("/users/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,7 +105,7 @@ describe("POST /users/register", () => {
           status: 409,
         }),
       },
-    } as unknown as Partial<Container>);
+    });
     const res = await app.request("/users/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -111,7 +127,7 @@ describe("POST /users/register", () => {
   it("accepts organisation persona on production host (org module launched)", async () => {
     const { app, registrationService } = mountRegister({
       env: { WEB_ORIGIN: "https://lax.bid" },
-    } as Partial<Container>);
+    });
     const res = await app.request("/users/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -135,7 +151,7 @@ describe("POST /users/register", () => {
     try {
       const { app, registrationService } = mountRegister({
         env: { WEB_ORIGIN: "https://lax.bid" },
-      } as Partial<Container>);
+      });
       const res = await app.request("/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -158,7 +174,7 @@ describe("POST /users/register", () => {
   it("accepts invite tokens on production host (entity invites allowed)", async () => {
     const { app, registrationService } = mountRegister({
       env: { WEB_ORIGIN: "https://lax.bid" },
-    } as Partial<Container>);
+    });
     const res = await app.request("/users/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -186,7 +202,7 @@ describe("POST /users/register", () => {
     try {
       const { app, registrationService } = mountRegister({
         env: { WEB_ORIGIN: "https://lax.bid" },
-      } as Partial<Container>);
+      });
       const res = await app.request("/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -239,7 +255,7 @@ describe("POST /users/register", () => {
   it("returns 503 when registration is disabled", async () => {
     const { app } = mountRegister({
       env: { DISABLE_NEW_USER_REGISTRATION: true, WEB_ORIGIN: "https://test.lax.bid" },
-    } as Partial<Container>);
+    });
     const res = await app.request("/users/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

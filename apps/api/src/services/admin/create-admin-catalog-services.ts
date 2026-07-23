@@ -1,3 +1,7 @@
+import type {
+  IConditionReportRequestRepository,
+  ILotFulfilmentRepository,
+} from "@auction/persistence/interfaces";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
 import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { CategoryService } from "../category.service.js";
@@ -32,9 +36,11 @@ export type CreateAdminCatalogServicesInput = {
   lotLifecycleQueryService: LotLifecycleQueryService;
   saleRegistrationService: ISaleRegistrationService;
   lotFulfilmentService: ILotFulfilmentService;
+  lotFulfilmentRepository: ILotFulfilmentRepository;
   qrCodeService: QrCodeService;
   qrCodeAnalytics: QrCodeAnalyticsService;
   conditionReportService: IConditionReportService;
+  conditionReportRequestRepository: IConditionReportRequestRepository;
   mediaUrlResolver: MediaUrlResolver;
   mediaAssetEnricher: MediaAssetEnricher;
 };
@@ -56,10 +62,14 @@ export function createAdminCatalogServices(
       input.lotLifecycleQueryService,
     ),
     saleRegistrations: new AdminSaleRegistrationsApplicationService(input.saleRegistrationService),
-    lotFulfilment: new AdminLotFulfilmentApplicationService(input.lotFulfilmentService),
+    lotFulfilment: new AdminLotFulfilmentApplicationService(
+      input.lotFulfilmentService,
+      input.lotFulfilmentRepository,
+    ),
     qrCodes: new AdminQrCodesApplicationService(input.qrCodeService, input.qrCodeAnalytics),
     conditionReports: new AdminConditionReportsApplicationService(
       input.conditionReportService,
+      input.conditionReportRequestRepository,
       input.mediaUrlResolver,
       input.mediaAssetEnricher,
     ),

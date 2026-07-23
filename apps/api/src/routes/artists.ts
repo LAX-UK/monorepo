@@ -1,4 +1,4 @@
-import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import { type UserRole, normalizeUserStaffRole } from "@auction/types";
 import {
   artistAddAliasBodySchema,
   artistCheckNameQuerySchema,
@@ -15,9 +15,10 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import type { ContainerArtistRoutesSlice } from "../container.js";
-import { ArtistError } from "../lib/errors.js";
-import { serviceErrorJsonBody } from "../lib/forbidden-response.js";
-import { asHttpStatus } from "../lib/http-status.js";
+import {
+  respondCatalogHttpJson,
+  respondCatalogRouteOutcome,
+} from "../lib/catalog-route-response.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -41,6 +42,7 @@ export function createArtistRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const optionalAuth = createOptionalAuth(authenticator);
+  const http = () => container.catalogRoutes.artistHttp;
   const r = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>();
@@ -48,47 +50,43 @@ export function createArtistRoutes(
   r.get("/search", optionalAuth, zValidator("query", artistSearchQuerySchema), async (c) => {
     const { q, limit } = c.req.valid("query");
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    const hits = await container.artistRegistryService.search(q, limit);
-    const data = roleHasCapability(role, "artist.read", staff)
-      ? hits
-      : hits.filter((hit) => hit.status === "approved");
-    return c.json({ data });
+    const staffRole = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+    return respondCatalogHttpJson(c, await http().search({ q, limit, role, staffRole }));
   });
 
   r.get("/public", zValidator("query", artistPublicListQuerySchema), async (c) => {
     const { limit, offset } = c.req.valid("query");
-    const data = await container.artistProfileService.listPublic({ limit, offset });
-    return c.json({ data });
+    return respondCatalogHttpJson(c, await http().listPublic({ limit, offset }));
   });
 
   r.get("/browse", zValidator("query", publicArtistBrowseQuerySchema), async (c) => {
     const q = c.req.valid("query");
-    const data = await container.artistProfileService.browsePublic({
-      limit: q.limit,
-      offset: q.offset,
-      ...(q.q ? { q: q.q } : {}),
-      ...(q.kind ? { kind: q.kind } : {}),
-      ...(q.kinds && q.kinds.length > 0 ? { kinds: q.kinds } : {}),
-      ...(q.letter ? { letter: q.letter } : {}),
-      ...(q.living === true ? { living: true } : {}),
-      ...(q.historical === true ? { historical: true } : {}),
-      ...(q.nationality ? { nationality: q.nationality } : {}),
-      ...(q.country ? { country: q.country } : {}),
-      ...(q.categorySlug ? { categorySlug: q.categorySlug } : {}),
-      ...(q.featuredOnly === true ? { featuredOnly: true } : {}),
-      ...(q.featuredFirst === true ? { featuredFirst: true } : {}),
-      ...(q.decade ? { decade: q.decade } : {}),
-      ...(q.hasUpcoming === true ? { hasUpcoming: true } : {}),
-      sort: q.sort,
-    });
-    return c.json({ data });
+    return respondCatalogHttpJson(
+      c,
+      await http().browsePublic({
+        limit: q.limit,
+        offset: q.offset,
+        ...(q.q ? { q: q.q } : {}),
+        ...(q.kind ? { kind: q.kind } : {}),
+        ...(q.kinds && q.kinds.length > 0 ? { kinds: q.kinds } : {}),
+        ...(q.letter ? { letter: q.letter } : {}),
+        ...(q.living === true ? { living: true } : {}),
+        ...(q.historical === true ? { historical: true } : {}),
+        ...(q.nationality ? { nationality: q.nationality } : {}),
+        ...(q.country ? { country: q.country } : {}),
+        ...(q.categorySlug ? { categorySlug: q.categorySlug } : {}),
+        ...(q.featuredOnly === true ? { featuredOnly: true } : {}),
+        ...(q.featuredFirst === true ? { featuredFirst: true } : {}),
+        ...(q.decade ? { decade: q.decade } : {}),
+        ...(q.hasUpcoming === true ? { hasUpcoming: true } : {}),
+        sort: q.sort,
+      }),
+    );
   });
 
   r.get("/check-name", zValidator("query", artistCheckNameQuerySchema), async (c) => {
     const { displayName } = c.req.valid("query");
-    const result = await container.artistRegistryService.checkNameAvailability(displayName);
-    return c.json({ data: result });
+    return respondCatalogHttpJson(c, await http().checkNameAvailability({ displayName }));
   });
 
   r.post(
@@ -99,8 +97,7 @@ export function createArtistRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const result = await container.artistRegistryService.proposeMatchesForAdmin(userId, body);
-      return c.json({ data: result });
+      return respondCatalogHttpJson(c, await http().proposeMatchesForAdmin({ userId, body }));
     },
   );
 
@@ -109,25 +106,15 @@ export function createArtistRoutes(
     zValidator("param", artistUuidParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      const found = await container.artistRegistryService.findById(id);
-      if (!found || found.status !== "approved" || found.archived) {
-        return c.json({ error: "Not found" }, 404);
-      }
-      const detail = await container.artistProfileService.getPublicDetail(id);
-      return c.json({ data: detail?.aliases ?? [] });
+      return respondCatalogHttpJson(c, await http().getAliasesPublic({ id }));
     },
   );
 
   r.get("/by-slug/:slug", optionalAuth, zValidator("param", artistSlugParamSchema), async (c) => {
     const { slug } = c.req.valid("param");
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    const found = await container.artistRegistryService.findBySlug(slug);
-    if (!found) return c.json({ error: "Not found" }, 404);
-    if (!roleHasCapability(role, "artist.read", staff) && found.status !== "approved") {
-      return c.json({ error: "Not found" }, 404);
-    }
-    return c.json({ data: found });
+    const staffRole = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+    return respondCatalogHttpJson(c, await http().getBySlug({ slug, role, staffRole }));
   });
 
   r.get(
@@ -137,13 +124,8 @@ export function createArtistRoutes(
     async (c) => {
       const { id } = c.req.valid("param");
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-      const found = await container.artistRegistryService.findById(id);
-      if (!found) return c.json({ error: "Not found" }, 404);
-      if (!roleHasCapability(role, "artist.read", staff) && found.status !== "approved") {
-        return c.json({ error: "Not found" }, 404);
-      }
-      return c.json({ data: found });
+      const staffRole = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      return respondCatalogHttpJson(c, await http().getById({ id, role, staffRole }));
     },
   );
 
@@ -155,8 +137,7 @@ export function createArtistRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const created = await container.artistRegistryService.create(userId, body);
-      return c.json({ data: created }, 201);
+      return respondCatalogHttpJson(c, await http().create({ userId, body }));
     },
   );
 
@@ -170,13 +151,15 @@ export function createArtistRoutes(
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const created = await container.artistRegistryService.addAlias(
-        userId,
-        id,
-        body.alias,
-        body.kind,
+      return respondCatalogHttpJson(
+        c,
+        await http().addAlias({
+          userId,
+          id,
+          alias: body.alias,
+          ...(body.kind !== undefined ? { kind: body.kind } : {}),
+        }),
       );
-      return c.json({ data: created }, 201);
     },
   );
 
@@ -190,22 +173,10 @@ export function createArtistRoutes(
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      try {
-        const result = await container.artistRegistryService.mergeWithConfirmation(
-          userId,
-          id,
-          body,
-        );
-        return c.json({ data: result });
-      } catch (e) {
-        if (e instanceof ArtistError) {
-          return c.json(
-            { error: e.code ?? "artist_error", message: e.message },
-            asHttpStatus(e.status),
-          );
-        }
-        throw e;
-      }
+      return respondCatalogHttpJson(
+        c,
+        await http().mergeWithConfirmation({ userId, fromArtistId: id, body }),
+      );
     },
   );
 
@@ -219,8 +190,7 @@ export function createArtistRoutes(
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const updated = await container.artistRegistryService.review(userId, id, body);
-      return c.json({ data: updated });
+      return respondCatalogHttpJson(c, await http().review({ userId, id, body }));
     },
   );
 
@@ -231,11 +201,7 @@ export function createArtistRoutes(
     zValidator("param", artistUuidParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      const eligibility = await container.artistDeleteService.getDeleteEligibility(id);
-      if (!eligibility) {
-        return c.json({ error: "Not found" }, 404);
-      }
-      return c.json({ data: eligibility });
+      return respondCatalogHttpJson(c, await http().getDeleteEligibility({ id }));
     },
   );
 
@@ -251,18 +217,16 @@ export function createArtistRoutes(
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const { confirmationPhrase } = c.req.valid("json");
-      const result = await container.artistDeleteService.delete(
-        userId,
-        role,
-        id,
-        confirmationPhrase,
-        staffRole,
+      return respondCatalogRouteOutcome(
+        c,
+        await http().delete({
+          userId,
+          role,
+          staffRole,
+          id,
+          confirmationPhrase,
+        }),
       );
-      if (result.isErr()) {
-        const error = result.error;
-        return c.json(serviceErrorJsonBody(error), asHttpStatus(error.status));
-      }
-      return c.body(null, 204);
     },
   );
 

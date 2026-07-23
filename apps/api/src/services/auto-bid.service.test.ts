@@ -65,6 +65,7 @@ function repos(overrides: {
   } as unknown as ILotRepository;
   const bidRepo: IBidRepository = {
     create: vi.fn(),
+    findByInternalPlacementKey: vi.fn().mockResolvedValue(null),
     findHighestForLot: vi.fn(),
     listForLotSettlement: vi.fn(),
     findEligibleBidsForLotClose: vi.fn(),

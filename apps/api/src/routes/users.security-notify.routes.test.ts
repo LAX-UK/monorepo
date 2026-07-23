@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { createUserRouteServices } from "../container/create-user-route-services.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { createTestUserRouteServicesInput } from "../testing/create-test-user-route-services.js";
 import { createUserRoutes } from "./users.js";
 
 const FAKE_COOKIE = "better-auth.session_token=test-session-token-fixture";
@@ -16,16 +18,18 @@ function securityNotifyTestApp(opts: {
   const enqueue = opts.enqueue ?? vi.fn().mockResolvedValue(undefined);
   const container = {
     env: {},
-    transactionRunner: {
-      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
-    } as never,
-    userService: { getById },
-    userSecurityReadService: {
-      getTwoFactorEnabled: vi.fn().mockResolvedValue(opts.twoFactorEnabled ?? null),
-    },
-    emailService: { enqueue },
+    authDb: {},
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    authAuditPublisher: { publish: vi.fn().mockResolvedValue(undefined) },
+    userRoutes: createUserRouteServices(
+      createTestUserRouteServicesInput({
+        userService: { getById } as never,
+        userSecurityReadService: {
+          getTwoFactorEnabled: vi.fn().mockResolvedValue(opts.twoFactorEnabled ?? null),
+        } as never,
+        emailService: { enqueue } as never,
+        authAuditPublisher: { publish: vi.fn().mockResolvedValue(undefined) } as never,
+      }),
+    ),
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", staffRole: null }),

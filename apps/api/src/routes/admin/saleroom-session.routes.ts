@@ -6,15 +6,15 @@ import {
   displayRevokeBodySchema,
   saleroomAdvanceLotBodySchema,
 } from "@auction/validators";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireAuctionManage } from "../../middleware/require-capability.js";
+import type { AdminOperationsSaleroomRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminSaleroomSessionRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminOperationsSaleroomRoutesContainer,
 ): void {
   platform.get(
     "/saleroom/sessions",

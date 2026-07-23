@@ -6,9 +6,16 @@ function createQueueTestApp(staffRole: string | null) {
   const list = vi.fn().mockResolvedValue([{ name: "email", paused: false, counts: { failed: 0 } }]);
   const container = {
     env: { LOG_LEVEL: "silent", NODE_ENV: "test", APP_ENV: "development" } as never,
-    queueAdmin: {
-      inspector: { list, jobs: vi.fn(), job: vi.fn() },
-      mutator: { retry: vi.fn(), pause: vi.fn(), resume: vi.fn(), replayFromDlq: vi.fn() },
+    admin: {
+      jobQueues: {
+        list,
+        jobs: vi.fn(),
+        job: vi.fn(),
+        retry: vi.fn(),
+        pause: vi.fn(),
+        resume: vi.fn(),
+        replayFromDlq: vi.fn(),
+      },
     },
   };
 
@@ -44,9 +51,16 @@ describe("admin queue routes", () => {
     const pause = vi.fn().mockRejectedValue(new Error("mutations_disabled_in_prod"));
     const container = {
       env: { LOG_LEVEL: "silent", NODE_ENV: "test", APP_ENV: "development" } as never,
-      queueAdmin: {
-        inspector: { list: vi.fn(), jobs: vi.fn(), job: vi.fn() },
-        mutator: { retry: vi.fn(), pause, resume: vi.fn(), replayFromDlq: vi.fn() },
+      admin: {
+        jobQueues: {
+          list: vi.fn(),
+          jobs: vi.fn(),
+          job: vi.fn(),
+          retry: vi.fn(),
+          pause,
+          resume: vi.fn(),
+          replayFromDlq: vi.fn(),
+        },
       },
     };
     const app = new Hono<{
@@ -66,9 +80,16 @@ describe("admin queue routes", () => {
     const retry = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
     const container = {
       env: { LOG_LEVEL: "silent", NODE_ENV: "test", APP_ENV: "development" } as never,
-      queueAdmin: {
-        inspector: { list: vi.fn(), jobs: vi.fn(), job: vi.fn() },
-        mutator: { retry, pause: vi.fn(), resume: vi.fn(), replayFromDlq: vi.fn() },
+      admin: {
+        jobQueues: {
+          list: vi.fn(),
+          jobs: vi.fn(),
+          job: vi.fn(),
+          retry,
+          pause: vi.fn(),
+          resume: vi.fn(),
+          replayFromDlq: vi.fn(),
+        },
       },
     };
     const app = new Hono<{ Variables: { userId?: string; userStaffRole?: string | null } }>();

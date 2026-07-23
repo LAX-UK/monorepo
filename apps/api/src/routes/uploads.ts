@@ -1,7 +1,9 @@
-import type { UserRole } from "@auction/types";
-import { normalizeUserStaffRole } from "@auction/types";
 import { Hono } from "hono";
 import type { ContainerUploadRoutesSlice } from "../container.js";
+import {
+  complianceViewerFromContext,
+  respondComplianceHttpJson,
+} from "../lib/compliance-route-response.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
@@ -12,57 +14,41 @@ export function createUploadRoutes(
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
+  const uploadHttp = container.compliance.uploadHttp;
   const r = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>();
 
   r.put("/local/:token", async (c) => {
-    if (container.env.STORAGE_DRIVER !== "local") {
-      return c.json({ error: "Not found" }, 404);
-    }
-    let key: string;
-    try {
-      key = Buffer.from(c.req.param("token"), "base64url").toString("utf8");
-    } catch {
-      return c.json({ error: "Invalid upload token" }, 400);
-    }
     const buf = Buffer.from(await c.req.arrayBuffer());
     const contentType = c.req.header("content-type") ?? "application/octet-stream";
-    await container.uploadService.putLocalPresignedUpload(key, buf, contentType);
-    return c.body(null, 200);
+    const response = await uploadHttp.putLocalPresignedUpload({
+      token: c.req.param("token"),
+      body: buf,
+      contentType,
+    });
+    if ("kind" in response) {
+      return c.body(null, 200 as const);
+    }
+    return respondComplianceHttpJson(c, response);
   });
 
   r.post("/presign", requireAuth, async (c) => {
-    const userId = c.get("userId");
-    const userRole = c.get("userRole") as UserRole | undefined;
-    if (!userId || !userRole) return c.json({ error: "Unauthorized" }, 401);
     const body = await c.req.json().catch(() => null);
     if (!body || typeof body !== "object") {
       return c.json({ error: "Invalid JSON body" }, 400);
     }
     const input = body as { kind?: unknown; contentType?: unknown; byteSize?: unknown };
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    const result = await container.uploadService.createPresignedUpload({
-      userId,
-      userRole,
-      userStaffRole: staff,
+    const response = await uploadHttp.createPresignedUpload({
+      viewer: complianceViewerFromContext(c),
       kind: typeof input.kind === "string" ? input.kind : "",
       contentType: typeof input.contentType === "string" ? input.contentType : "",
       byteSize: Number(input.byteSize),
     });
-    if (!result.ok) {
-      return c.json(
-        { error: result.error, ...(result.resetAt ? { resetAt: result.resetAt } : {}) },
-        result.status as 400 | 403 | 429 | 500 | 503,
-      );
-    }
-    return c.json({ data: result.value });
+    return respondComplianceHttpJson(c, response);
   });
 
   r.post("/confirm", requireAuth, async (c) => {
-    const userId = c.get("userId");
-    const userRole = c.get("userRole") as UserRole | undefined;
-    if (!userId || !userRole) return c.json({ error: "Unauthorized" }, 401);
     const body = await c.req.json().catch(() => null);
     const uploadId =
       body &&
@@ -70,35 +56,19 @@ export function createUploadRoutes(
       typeof (body as { uploadId?: unknown }).uploadId === "string"
         ? (body as { uploadId: string }).uploadId
         : "";
-    if (!uploadId) return c.json({ error: "uploadId is required" }, 400);
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    const result = await container.uploadService.confirmUpload({
+    const response = await uploadHttp.confirmUpload({
+      viewer: complianceViewerFromContext(c),
       uploadId,
-      userId,
-      userRole,
-      userStaffRole: staff,
     });
-    if (!result.ok) {
-      return c.json({ error: result.error }, result.status as 400 | 404 | 409 | 503);
-    }
-    return c.json({ data: result.value });
+    return respondComplianceHttpJson(c, response);
   });
 
   r.get("/:uploadId", requireAuth, async (c) => {
-    const userId = c.get("userId");
-    const userRole = c.get("userRole") as UserRole | undefined;
-    if (!userId || !userRole) return c.json({ error: "Unauthorized" }, 401);
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    const result = await container.uploadService.getUploadStatus({
+    const response = await uploadHttp.getUploadStatus({
+      viewer: complianceViewerFromContext(c),
       uploadId: c.req.param("uploadId"),
-      userId,
-      userRole,
-      userStaffRole: staff,
     });
-    if (!result.ok) {
-      return c.json({ error: result.error }, result.status as 404 | 503);
-    }
-    return c.json({ data: result.value });
+    return respondComplianceHttpJson(c, response);
   });
 
   return r;

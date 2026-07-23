@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { type ExportEntityType, type ExportFormat, exportFilename } from "@auction/exports";
 import { AuthzError } from "@auction/exports/providers";
+import type { ExportProvider } from "@auction/exports/providers";
 import type { IExportJobRepository } from "@auction/persistence/interfaces";
 import { DATA_EXPORT_QUEUE_NAME } from "@auction/queues";
 import type { CreateExportBody, ExportPreviewBody } from "@auction/validators";
 import type { Queue } from "bullmq";
-import type { ExportProvider } from "../../exports/types.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ExportFileStorage } from "./export-file-storage.js";
 import { ExportJobViewMapper } from "./export-job-view.mapper.js";

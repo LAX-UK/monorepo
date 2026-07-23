@@ -1,5 +1,11 @@
 import { deriveNoSaleReason, deriveReserveStatus } from "@auction/domain";
 import type { Bid, Lot, LotEndedTrigger } from "@auction/types";
+import {
+  encodeBidPlacedPublicRedisMessage,
+  encodeBidPlacedSealedRedisMessage,
+  encodeLotExtendedRedisMessage,
+  encodeProxyCancelledRedisMessage,
+} from "@auction/validators";
 import type { Redis } from "ioredis";
 import type {
   BidPlacedRealtimeMeta,
@@ -14,31 +20,21 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
   async notifyBidPlaced(lot: Lot, bid: Bid, meta?: BidPlacedRealtimeMeta): Promise<void> {
     const channel = `lot:${lot.id}:events`;
     if (lot.auctionType === "sealed" && lot.status === "active") {
-      await this.redis.publish(
-        channel,
-        JSON.stringify({
-          type: "bid_placed",
-          lotId: lot.id,
-          sealed: true,
-        }),
-      );
+      await this.redis.publish(channel, encodeBidPlacedSealedRedisMessage(lot.id));
       return;
     }
+    const reserveStatus = deriveReserveStatus(lot.currentPrice, lot.reservePrice);
+    const reserveMet = reserveStatus.kind === "none" ? undefined : reserveStatus.kind === "met";
     await this.redis.publish(
       channel,
-      JSON.stringify({
-        type: "bid_placed",
+      encodeBidPlacedPublicRedisMessage({
         lotId: lot.id,
         bid,
         currentPrice: lot.currentPrice,
         emittedAt: Date.now(),
         ...(meta?.outbidUserId ? { outbidUserId: meta.outbidUserId } : {}),
         ...(meta?.bidCount != null ? { bidCount: meta.bidCount } : {}),
-        ...(() => {
-          const reserveStatus = deriveReserveStatus(lot.currentPrice, lot.reservePrice);
-          if (reserveStatus.kind === "none") return {};
-          return { reserveMet: reserveStatus.kind === "met" };
-        })(),
+        ...(reserveMet !== undefined ? { reserveMet } : {}),
       }),
     );
   }
@@ -47,8 +43,7 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
     const channel = `lot:${lot.id}:events`;
     await this.redis.publish(
       channel,
-      JSON.stringify({
-        type: "lot_extended",
+      encodeLotExtendedRedisMessage({
         lotId: lot.id,
         newEndTime: newEndTime.toISOString(),
       }),
@@ -59,8 +54,7 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
     const channel = `lot:${lotId}:events`;
     await this.redis.publish(
       channel,
-      JSON.stringify({
-        type: "proxy_cancelled",
+      encodeProxyCancelledRedisMessage({
         lotId,
         bidderUserId,
         ...(reason ? { reason } : {}),

@@ -18,7 +18,6 @@ import type {
   ILotLifecycleSnapshotReader,
   ILotLifecycleSnapshotRepository,
   ILotLifecycleTimelineReader,
-  ILotMetricsReader,
   IMediaAssetReader,
   IOnsiteEventCheckInLogRepository,
   IOnsiteEventClientReader,
@@ -30,13 +29,16 @@ import type {
   IQrCodeRepository,
   IQrCodeScanPersister,
   IRepositoryFactory,
+  ISaleAttentionSignalsReader,
   ISaleBiddersReader,
   ISaleDocumentRepository,
   ISaleExpectedGuestsReader,
   ISaleFollowRepository,
   ISaleModeLookup,
+  ISaleOverviewKpiTrendReader,
   ISaleRegistrationRepository,
   ISaleRepository,
+  ISaleRevenueSnapshotReader,
   ISaleroomCheckInRepository,
   ISaleroomDisplaySessionRepository,
   ISaleroomDisplaySnapshotReader,
@@ -63,7 +65,6 @@ import {
   DrizzleLotDocumentRepository,
   DrizzleLotLifecycleSnapshotRepository,
   DrizzleLotLifecycleTimelineReader,
-  DrizzleLotMetricsReader,
   DrizzleMediaAssetReader,
   DrizzleOnsiteEventCheckInLogRepository,
   DrizzleOnsiteEventClientReader,
@@ -74,12 +75,15 @@ import {
   DrizzleQrCodeAnalyticsReader,
   DrizzleQrCodeRepository,
   DrizzleQrCodeScanPersister,
+  DrizzleSaleAttentionSignalsReader,
   DrizzleSaleBiddersReader,
   DrizzleSaleDocumentRepository,
   DrizzleSaleExpectedGuestsReader,
   DrizzleSaleFollowRepository,
   DrizzleSaleModeLookup,
+  DrizzleSaleOverviewKpiTrendReader,
   DrizzleSaleRegistrationRepository,
+  DrizzleSaleRevenueSnapshotReader,
   DrizzleSaleroomCheckInRepository,
   DrizzleSaleroomDisplaySessionRepository,
   DrizzleSaleroomDisplaySnapshotReader,
@@ -136,8 +140,10 @@ export type CatalogRepositories = {
   artistRegistryRepository: IArtistRegistryRepository;
   displayPairingRepository: IDisplayPairingRepository;
   saleModeLookup: ISaleModeLookup;
-  lotMetrics: ILotMetricsReader;
   attentionFeedReader: IAttentionFeedReader;
+  saleAttentionSignalsReader: ISaleAttentionSignalsReader;
+  saleOverviewKpiTrendReader: ISaleOverviewKpiTrendReader;
+  saleRevenueSnapshotReader: ISaleRevenueSnapshotReader;
   saleroomDisplaySessionRepository: ISaleroomDisplaySessionRepository;
   saleBiddersReader: ISaleBiddersReader;
   saleroomDisplaySnapshotReader: ISaleroomDisplaySnapshotReader;
@@ -185,8 +191,10 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
   const artistRegistryRepository = new DrizzleArtistRegistryRepository(db);
   const displayPairingRepository = new DrizzleDisplayPairingRepository(db);
   const saleModeLookup = new DrizzleSaleModeLookup(db);
-  const lotMetrics = new DrizzleLotMetricsReader(db);
   const attentionFeedReader = new DrizzleAttentionFeedReader(db);
+  const saleAttentionSignalsReader = new DrizzleSaleAttentionSignalsReader(db);
+  const saleOverviewKpiTrendReader = new DrizzleSaleOverviewKpiTrendReader(db);
+  const saleRevenueSnapshotReader = new DrizzleSaleRevenueSnapshotReader(db);
   const saleroomDisplaySessionRepository = new DrizzleSaleroomDisplaySessionRepository(db);
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);
   const saleroomDisplaySnapshotReader = new DrizzleSaleroomDisplaySnapshotReader(db);
@@ -233,8 +241,10 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
     artistRegistryRepository,
     displayPairingRepository,
     saleModeLookup,
-    lotMetrics,
     attentionFeedReader,
+    saleAttentionSignalsReader,
+    saleOverviewKpiTrendReader,
+    saleRevenueSnapshotReader,
     saleroomDisplaySessionRepository,
     saleBiddersReader,
     saleroomDisplaySnapshotReader,

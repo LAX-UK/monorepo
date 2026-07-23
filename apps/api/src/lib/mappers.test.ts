@@ -72,6 +72,7 @@ function bidRow(
     placedVia: null,
     telephoneBookingId: null,
     clerkUserId: null,
+    internalPlacementKey: null,
     createdAt: now,
     ...overrides,
   };

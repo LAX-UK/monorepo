@@ -22,6 +22,19 @@ export class AdminCatalogApplicationService implements IAdminCatalogApplicationS
     return this.categoryService.listForAdmin({ includeArchived: input.includeArchived });
   }
 
+  listCategoryPageForAdmin(input: {
+    includeArchived: boolean;
+    q?: string;
+    limit: number;
+    offset: number;
+  }) {
+    return this.categoryService.listPageForAdmin(input);
+  }
+
+  getCategoriesListSummary(input: { includeArchived: boolean }) {
+    return this.categoryService.summarizeForAdmin(input);
+  }
+
   createCategory(body: CreateCategoryInput, actorUserId?: string | null) {
     return this.categoryService.create(body, { actorUserId: actorUserId ?? null });
   }

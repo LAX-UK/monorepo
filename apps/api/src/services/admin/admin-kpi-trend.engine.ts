@@ -6,7 +6,7 @@ import type {
 import type { CreatedAtDailyCountFn } from "../interfaces/created-at-daily-count.js";
 import { buildTrendWindows, bundleFromDailyCounts } from "./admin-kpi-trend.helpers.js";
 
-/** Shared UTC day-window math; entity services supply countCreatedAtByDay only. */
+/** Shared UTC day-window math; entity services supply a daily numeric series (counts or sums). */
 export class AdminKpiTrendEngine implements IAdminKpiTrendService {
   constructor(private readonly countCreatedAtByDay: CreatedAtDailyCountFn) {}
 

@@ -1,8 +1,24 @@
+import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
 import type { IAdminLotFulfilmentApplicationService } from "../interfaces/admin-routes.js";
 import type { ILotFulfilmentAdminService } from "../interfaces/lot-fulfilment-service.js";
+import type { AdminLotFulfilmentListPage } from "./admin-lot-fulfilment-list-query.service.js";
+import { AdminLotFulfilmentListQueryService } from "./admin-lot-fulfilment-list-query.service.js";
 
 export class AdminLotFulfilmentApplicationService implements IAdminLotFulfilmentApplicationService {
-  constructor(private readonly fulfilment: ILotFulfilmentAdminService) {}
+  private readonly listQuery: AdminLotFulfilmentListQueryService;
+
+  constructor(
+    private readonly fulfilment: ILotFulfilmentAdminService,
+    fulfilmentRepository: ILotFulfilmentRepository,
+  ) {
+    this.listQuery = new AdminLotFulfilmentListQueryService(fulfilmentRepository);
+  }
+
+  getPage(
+    ...args: Parameters<AdminLotFulfilmentListQueryService["getPage"]>
+  ): Promise<AdminLotFulfilmentListPage> {
+    return this.listQuery.getPage(...args);
+  }
 
   listForAdmin(...args: Parameters<ILotFulfilmentAdminService["listForAdmin"]>) {
     return this.fulfilment.listForAdmin(...args);

@@ -3,17 +3,23 @@ import type {
   ICategoryRepository,
   UpdateCategoryInput,
 } from "@auction/persistence/interfaces";
-import type { AdminCategory, Category } from "@auction/types";
+import type {
+  AdminCategoriesListSummary,
+  AdminCategory,
+  AdminCategoryListResult,
+  Category,
+} from "@auction/types";
 import { slugifyRecordKey } from "@auction/types";
 import { normalizeCategoryHierarchy, validateCategoryParent } from "@auction/validators";
 import { CategoryError } from "../lib/errors.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
+import type { ICategoryService } from "./interfaces/category-service.js";
 
 type CategoryMutationContext = {
   actorUserId?: string | null;
 };
 
-export class CategoryService {
+export class CategoryService implements ICategoryService {
   constructor(
     private readonly categories: ICategoryRepository,
     private readonly domainEventSink?: IDomainEventSink | null,
@@ -42,6 +48,21 @@ export class CategoryService {
         usage: source?.usage ?? { lots: 0, sales: 0, submissions: 0, total: 0 },
       };
     });
+  }
+
+  async listPageForAdmin(options: {
+    includeArchived?: boolean;
+    q?: string;
+    limit: number;
+    offset: number;
+  }): Promise<AdminCategoryListResult> {
+    return this.categories.findPageForAdmin(options);
+  }
+
+  async summarizeForAdmin(
+    options: { includeArchived?: boolean } = {},
+  ): Promise<AdminCategoriesListSummary> {
+    return this.categories.summarizeForAdmin(options);
   }
 
   async getForAdmin(id: string): Promise<AdminCategory | null> {

@@ -1,8 +1,8 @@
 import type { ExportEntityType } from "@auction/exports";
 import { AuthzError } from "@auction/exports/providers";
+import type { ExportProvider } from "@auction/exports/providers";
 import type { IExportJobRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
-import type { ExportProvider } from "../../exports/types.js";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import { ExportFileStorage } from "./export-file-storage.js";
@@ -46,6 +46,7 @@ function mockRepo(
     markFailed: vi.fn().mockResolvedValue(undefined),
     markCancelled: vi.fn().mockResolvedValue(undefined),
     getStatus: vi.fn(),
+    findLatestCompletedForSale: vi.fn().mockResolvedValue(null),
   };
 }
 

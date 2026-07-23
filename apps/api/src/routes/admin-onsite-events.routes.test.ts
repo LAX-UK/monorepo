@@ -56,8 +56,12 @@ describe("admin onsite event routes", () => {
       await next();
     });
     const container = {
-      onsiteEventAdminService,
-      onsiteEventStaffCheckInService,
+      admin: {
+        onsiteEvents: {
+          ...onsiteEventAdminService,
+          ...onsiteEventStaffCheckInService,
+        },
+      },
       redis: buildRateLimitRedis(),
     } as unknown as Container;
     hono.route("/admin/event-rsvps", createAdminOnsiteEventRoutes(container));

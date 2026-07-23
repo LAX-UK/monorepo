@@ -1,6 +1,8 @@
 import type { Hono } from "hono";
+import type { MiddlewareHandler } from "hono";
 import type {
   ContainerSaleAuxRoutesSlice,
+  ContainerSaleFollowRoutesSlice,
   ContainerSaleLifecycleWriteRoutesSlice,
   ContainerSaleLotMembershipRoutesSlice,
   ContainerSaleReadRoutesSlice,
@@ -11,13 +13,19 @@ import type { createRequireAuth } from "../../middleware/require-auth.js";
 import type { createRequireKyc } from "../../middleware/require-kyc.js";
 
 export type SaleHono = Hono<{
-  Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  Variables: {
+    userId?: string;
+    userRole?: string;
+    userStaffRole?: string | null;
+    legalEntityContext?: { legalEntityId: string };
+  };
 }>;
 
 type SaleRouteMiddleware = {
   requireAuth: ReturnType<typeof createRequireAuth>;
   optionalAuth: ReturnType<typeof createOptionalAuth>;
   kycGate: ReturnType<typeof createRequireKyc>;
+  requireLegalEntity: MiddlewareHandler;
 };
 
 export type SaleRouteDeps = SaleRouteMiddleware & {
@@ -34,6 +42,10 @@ export type SaleLifecycleWriteRouteDeps = SaleRouteMiddleware & {
 
 export type SaleLotMembershipRouteDeps = SaleRouteMiddleware & {
   container: ContainerSaleLotMembershipRoutesSlice;
+};
+
+export type SaleFollowRouteDeps = SaleRouteMiddleware & {
+  container: ContainerSaleFollowRoutesSlice;
 };
 
 export type SaleAuxRouteDeps = SaleRouteMiddleware & {

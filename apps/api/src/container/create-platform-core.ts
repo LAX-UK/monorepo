@@ -25,8 +25,11 @@ export type ContainerPlatformCore = {
 export function createPlatformCore(
   db: Database,
   repos: Pick<ContainerRepositories, "lotLifecycleSnapshotRepository">,
+  env: Pick<import("../env.js").Env, "DOMAIN_EVENT_PUBLISH_VALIDATE">,
 ): ContainerPlatformCore {
-  const domainEventPublisher = new DomainEventPublisher();
+  const domainEventPublisher = new DomainEventPublisher({
+    publishValidateMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+  });
   const domainEventSink: IDomainEventSink = new DomainEventSink(domainEventPublisher, db);
   const transactionRunner: ITransactionRunner = new DrizzleTransactionRunner(db);
   const lotLifecycleEventRecorder = new LotLifecycleEventRecorder(

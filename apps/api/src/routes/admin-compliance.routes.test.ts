@@ -27,11 +27,16 @@ function createComplianceContainer(partial: {
 }
 
 describe("admin compliance routes (DIP facade)", () => {
-  it("GET /compliance/aml/screenings returns pending rows with meta.total", async () => {
-    const listPendingReviews = vi.fn().mockResolvedValue([{ id: screeningId }]);
-    const countPendingReviews = vi.fn().mockResolvedValue(3);
+  it("GET /compliance/aml/screenings returns pending rows with meta.total and summary", async () => {
+    const getPage = vi.fn().mockResolvedValue({
+      rows: [{ id: screeningId }],
+      total: 3,
+      limit: 50,
+      offset: 0,
+      summary: { total: 3, awaitingTriage: 2, triaged: 1, escalated: 0 },
+    });
     const container = createComplianceContainer({
-      aml: { listPendingReviews, countPendingReviews } as never,
+      aml: { getPage } as never,
     });
     const authenticator: IAuthenticator = {
       getSessionUser: vi
@@ -46,12 +51,17 @@ describe("admin compliance routes (DIP facade)", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       data: Array<{ id: string }>;
-      meta: { total: number; limit: number; offset: number };
+      meta: {
+        total: number;
+        limit: number;
+        offset: number;
+        summary: { awaitingTriage: number; triaged: number };
+      };
     };
     expect(body.meta.total).toBe(3);
+    expect(body.meta.summary.awaitingTriage).toBe(2);
     expect(body.data).toHaveLength(1);
-    expect(listPendingReviews).toHaveBeenCalledWith(50, 0);
-    expect(countPendingReviews).toHaveBeenCalledOnce();
+    expect(getPage).toHaveBeenCalledWith({ limit: 50, offset: 0 });
   });
 
   it("POST /compliance/aml/screenings/:id/decide maps aml_triage_required to 409", async () => {
@@ -78,13 +88,16 @@ describe("admin compliance routes (DIP facade)", () => {
     expect(await res.json()).toEqual({ error: "aml_triage_required" });
   });
 
-  it("GET /compliance/source-of-funds returns enriched rows with meta.total", async () => {
-    const listEnriched = vi.fn().mockResolvedValue({
+  it("GET /compliance/source-of-funds returns enriched rows with meta.total and summary", async () => {
+    const getPage = vi.fn().mockResolvedValue({
       rows: [{ id: caseId, status: "pending" }],
       total: 1,
+      limit: 50,
+      offset: 0,
+      summary: { total: 1, awaitingTriage: 1, triaged: 0 },
     });
     const container = createComplianceContainer({
-      sourceOfFunds: { listEnriched } as never,
+      sourceOfFunds: { getPage } as never,
     });
     const authenticator: IAuthenticator = {
       getSessionUser: vi
@@ -101,11 +114,17 @@ describe("admin compliance routes (DIP facade)", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       data: Array<{ id: string }>;
-      meta: { total: number; limit: number; offset: number };
+      meta: {
+        total: number;
+        limit: number;
+        offset: number;
+        summary: { awaitingTriage: number };
+      };
     };
     expect(body.meta.total).toBe(1);
+    expect(body.meta.summary.awaitingTriage).toBe(1);
     expect(body.data[0]?.id).toBe(caseId);
-    expect(listEnriched).toHaveBeenCalledWith("pending", 50, 0);
+    expect(getPage).toHaveBeenCalledWith({ status: "pending", limit: 50, offset: 0 });
   });
 
   it("GET /compliance/source-of-funds/:id/documents/:docId/preview streams bytes with headers", async () => {

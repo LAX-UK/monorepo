@@ -1,22 +1,22 @@
 import {
-  adminAnalyticsQuerySchema,
   adminKpiTrendQuerySchema,
   adminSubmissionCountBySellersQuerySchema,
   adminSubmissionCountQuerySchema,
 } from "@auction/validators";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
   requireAdminDashboard,
-  requireAnalytics,
   requireFinanceAccess,
   requireSubmissionsAccess,
 } from "../../middleware/require-capability.js";
+import { LotAttentionNotFoundError } from "../../services/admin/admin-lot-attention.service.js";
+import { SaleAttentionNotFoundError } from "../../services/admin/admin-sale-attention.service.js";
+import type { AdminOpsMetricsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminOpsRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminOpsMetricsRoutesContainer,
 ): void {
   platform.get("/submissions/quality-gaps-count", requireSubmissionsAccess, async (c) => {
     const count = await container.admin.ops.countQualityGapsForAdminApi();
@@ -47,20 +47,6 @@ export function attachAdminOpsRoutes(
     },
   );
 
-  platform.get(
-    "/analytics",
-    requireAnalytics,
-    zValidator("query", adminAnalyticsQuerySchema),
-    async (c) => {
-      const { days } = c.req.valid("query");
-      const end = new Date();
-      const start = new Date(end);
-      start.setUTCDate(start.getUTCDate() - days);
-      const data = await container.admin.ops.getAnalyticsDashboard({ start, end });
-      return c.json({ data });
-    },
-  );
-
   platform.get("/metrics/today", requireAdminDashboard, async (c) => {
     const data = await container.admin.ops.getTodayMetrics();
     return c.json({ data });
@@ -72,9 +58,31 @@ export function attachAdminOpsRoutes(
   });
 
   platform.get("/nav-counts", requireAdminDashboard, async (c) => {
-    const data = await container.admin.dashboardMetrics.getNavCounts();
+    const data = await container.admin.navCounts.getNavCounts();
     return c.json({ data });
   });
+
+  platform.get(
+    "/kpi/lots-hammer-trend",
+    requireAdminDashboard,
+    zValidator("query", adminKpiTrendQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.kpiTrends.getLotsHammerTrend(q.periodDays);
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/kpi/lots-ended-trend",
+    requireAdminDashboard,
+    zValidator("query", adminKpiTrendQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.kpiTrends.getLotsEndedTrend(q.periodDays);
+      return c.json({ data });
+    },
+  );
 
   platform.get(
     "/kpi/lots-trend",
@@ -82,7 +90,7 @@ export function attachAdminOpsRoutes(
     zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const data = await container.admin.dashboardMetrics.getLotsTrend(q.periodDays);
+      const data = await container.admin.kpiTrends.getLotsTrend(q.periodDays);
       return c.json({ data });
     },
   );
@@ -93,7 +101,7 @@ export function attachAdminOpsRoutes(
     zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const data = await container.admin.dashboardMetrics.getPaymentsTrend(q.periodDays);
+      const data = await container.admin.kpiTrends.getPaymentsTrend(q.periodDays);
       return c.json({ data });
     },
   );
@@ -104,10 +112,107 @@ export function attachAdminOpsRoutes(
     zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const data = await container.admin.dashboardMetrics.getSalesTrend(q.periodDays);
+      const data = await container.admin.kpiTrends.getSalesTrend(q.periodDays);
       return c.json({ data });
     },
   );
+
+  platform.get("/kpi/sales-summary", requireAdminDashboard, async (c) => {
+    const data = await container.admin.listSummaries.getSalesListSummary();
+    return c.json({ data });
+  });
+
+  platform.get("/kpi/lots-summary", requireAdminDashboard, async (c) => {
+    const data = await container.admin.listSummaries.getLotsListSummary();
+    return c.json({ data });
+  });
+
+  platform.get("/kpi/submissions-summary", requireSubmissionsAccess, async (c) => {
+    const userId = c.get("userId") as string;
+    const data = await container.admin.listSummaries.getSubmissionsListSummary(userId);
+    return c.json({ data });
+  });
+
+  platform.get("/sales/:saleId/metrics", requireAdminDashboard, async (c) => {
+    const saleId = c.req.param("saleId");
+    const data = await container.admin.saleDetailBoard.getMetrics(saleId);
+    return c.json({ data });
+  });
+
+  platform.get(
+    "/sales/:saleId/kpi-trends",
+    requireAdminDashboard,
+    zValidator("query", adminKpiTrendQuerySchema),
+    async (c) => {
+      const saleId = c.req.param("saleId");
+      const q = c.req.valid("query");
+      const data = await container.admin.saleDetailBoard.getOverviewKpiTrends(saleId, q.periodDays);
+      if (!data) {
+        return c.json({ error: "not_found" }, 404);
+      }
+      return c.json({ data });
+    },
+  );
+
+  platform.get("/sales/:saleId/attention", requireAdminDashboard, async (c) => {
+    const saleId = c.req.param("saleId");
+    const role = (c.get("userRole") ?? "client") as "client" | "staff" | "seller";
+    const staffRole = c.get("userStaffRole") ?? null;
+    try {
+      const data = await container.admin.saleDetailBoard.getAttention(saleId, {
+        role,
+        staffRole,
+      });
+      return c.json({ data });
+    } catch (err) {
+      if (err instanceof SaleAttentionNotFoundError) {
+        return c.json({ error: "not_found" }, 404);
+      }
+      throw err;
+    }
+  });
+
+  platform.get("/lots/:lotId/metrics", requireAdminDashboard, async (c) => {
+    const lotId = c.req.param("lotId");
+    const data = await container.admin.lotDetailBoard.getMetrics(lotId);
+    if (!data) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    return c.json({ data });
+  });
+
+  platform.get(
+    "/lots/:lotId/overview-kpi-trends",
+    requireAdminDashboard,
+    zValidator("query", adminKpiTrendQuerySchema),
+    async (c) => {
+      const lotId = c.req.param("lotId");
+      const q = c.req.valid("query");
+      const data = await container.admin.lotDetailBoard.getOverviewKpiTrends(lotId, q.periodDays);
+      if (!data) {
+        return c.json({ error: "not_found" }, 404);
+      }
+      return c.json({ data });
+    },
+  );
+
+  platform.get("/lots/:lotId/attention", requireAdminDashboard, async (c) => {
+    const lotId = c.req.param("lotId");
+    const role = (c.get("userRole") ?? "client") as "client" | "staff" | "seller";
+    const staffRole = c.get("userStaffRole") ?? null;
+    try {
+      const data = await container.admin.lotDetailBoard.getAttention(lotId, {
+        role,
+        staffRole,
+      });
+      return c.json({ data });
+    } catch (err) {
+      if (err instanceof LotAttentionNotFoundError) {
+        return c.json({ error: "not_found" }, 404);
+      }
+      throw err;
+    }
+  });
 
   platform.get(
     "/kpi/payouts-trend",
@@ -115,7 +220,7 @@ export function attachAdminOpsRoutes(
     zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const data = await container.admin.dashboardMetrics.getPayoutsTrend(q.periodDays);
+      const data = await container.admin.kpiTrends.getPayoutsTrend(q.periodDays);
       return c.json({ data });
     },
   );
@@ -123,7 +228,7 @@ export function attachAdminOpsRoutes(
 
 export function attachAdminAttentionRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminOpsMetricsRoutesContainer,
 ): void {
   platform.get("/attention", requireAdminDashboard, async (c) => {
     const data = await container.admin.ops.listAttentionFeed();

@@ -5,6 +5,7 @@ import type {
 import type { Lot } from "@auction/types";
 import { Contact, Invoice, Invoices, LineAmountTypes, LineItem } from "xero-node";
 import type { Env } from "../../env.js";
+import { assertXeroApiWritesAllowed } from "../../lib/xero-api-writes-guard.js";
 import { billToContextToXeroInvoiceToAddress } from "../bill-to-xero.js";
 import type {
   IInvoiceAccountingProvider,
@@ -32,6 +33,7 @@ export class XeroInvoiceWriter {
       | "XERO_DEFAULT_TAX_TYPE"
       | "XERO_INVOICE_DUE_DAYS"
       | "XERO_USE_LEGAL_ENTITY_CONTACT"
+      | "XERO_API_WRITES_DISABLED"
     >,
     private readonly connections: IXeroConnectionRepository,
     private readonly externalRefs: IPaymentExternalRefRepository,
@@ -43,6 +45,11 @@ export class XeroInvoiceWriter {
   async ensureInvoiceForPayment(
     ctx: InvoiceAccountingContext,
   ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      assertXeroApiWritesAllowed(this.env);
+    } catch {
+      return { ok: false, error: "xero_api_writes_disabled" };
+    }
     const conn = await this.connections.findLatest();
     if (!conn) {
       return { ok: false, error: "Xero is not connected" };

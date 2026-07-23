@@ -1,5 +1,6 @@
 import type { IAdminDisputeCaseEnrichmentReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { IWatchlistScreeningReader } from "@auction/persistence/interfaces";
 import type { Env } from "../../env.js";
 import type { AmlService } from "../aml/aml.service.js";
 import type { AdminComplianceRouteServices } from "../interfaces/admin-routes/admin-compliance-routes.js";
@@ -22,6 +23,7 @@ export type CreateAdminComplianceServicesInput = {
   legalEntityDocumentAdminService: LegalEntityDocumentAdminService;
   adminDisputeCaseEnrichmentReader: IAdminDisputeCaseEnrichmentReader;
   amlService: AmlService;
+  amlScreeningReader: IWatchlistScreeningReader;
   adminSourceOfFundsQueryService: AdminSourceOfFundsQueryService;
   sourceOfFundsService: SourceOfFundsService;
   sourceOfFundsDocumentCollectionService: SourceOfFundsDocumentCollectionService;
@@ -42,7 +44,7 @@ export function createAdminComplianceServices(
       input.legalEntityLifecycleAdminService,
       input.legalEntityDocumentAdminService,
     ),
-    aml: new AdminAmlApplicationService(input.amlService),
+    aml: new AdminAmlApplicationService(input.amlService, input.amlScreeningReader),
     sourceOfFunds: new AdminSourceOfFundsApplicationService(
       input.adminSourceOfFundsQueryService,
       input.sourceOfFundsService,

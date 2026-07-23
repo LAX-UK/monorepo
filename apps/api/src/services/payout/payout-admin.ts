@@ -2,6 +2,8 @@ import type { ReconcileStripeTransferPatch } from "@auction/persistence/interfac
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import { addDecimal, subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
+import type { AdminPayoutListPage } from "../admin/admin-payout-list-query.service.js";
+import { AdminPayoutListQueryService } from "../admin/admin-payout-list-query.service.js";
 import type {
   AdminListPayoutsFilter,
   MarkPaidInput,
@@ -21,6 +23,21 @@ export async function adminList(
     ...(filter.limit !== undefined ? { limit: filter.limit } : {}),
     ...(filter.offset !== undefined ? { offset: filter.offset } : {}),
   });
+}
+
+export async function adminListPage(
+  deps: PayoutServiceDeps,
+  filter: AdminListPayoutsFilter & { limit: number; offset: number },
+): Promise<AdminPayoutListPage> {
+  return await new AdminPayoutListQueryService(deps.repo).getPage(filter);
+}
+
+export async function adminSettlementPreview(deps: PayoutServiceDeps, legalEntityId: string) {
+  const [pending, openPayout] = await Promise.all([
+    previewPending(deps, legalEntityId),
+    deps.repo.findOpenPayoutForEntity(legalEntityId),
+  ]);
+  return { pending, openPayout };
 }
 
 export async function previewPending(

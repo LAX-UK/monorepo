@@ -63,6 +63,3 @@ export function createCatalogServices(input: CreateCatalogServicesInput): Contai
     ...adminReaders,
   };
 }
-
-/** @deprecated Prefer sub-slice types from create-*-services.ts for narrow deps. */
-export type { ContainerCatalogServicesLegacy } from "./create-catalog-services.legacy.js";

@@ -1,4 +1,4 @@
-import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import type { UserRole } from "@auction/types";
 import {
   bulkSalesBodySchema,
   cancelSaleBodySchema,
@@ -8,61 +8,41 @@ import {
   saleIdParamSchema,
   updateSaleSchema,
 } from "@auction/validators";
-import { LotError } from "../../lib/errors.js";
+import { respondCatalogRouteOutcome } from "../../lib/catalog-route-response.js";
 import { serviceErrorJsonBody } from "../../lib/forbidden-response.js";
 import { asHttpStatus } from "../../lib/http-status.js";
-import { presentSaleImages, presentSalesWithLotsImages } from "../../lib/media-presenters.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { SaleHono, SaleLifecycleWriteRouteDeps } from "./_shared.js";
 
 export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteRouteDeps): void {
   const { container, requireAuth } = deps;
+  const http = () => container.catalogRoutes.saleLifecycleHttp;
 
   r.post("/bulk", requireAuth, zValidator("json", bulkSalesBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const role = (c.get("userRole") ?? "client") as UserRole;
     const staffRole = c.get("userStaffRole") ?? null;
     const { ids, confirmationPhrase } = c.req.valid("json");
-    const result = await container.saleSoftDeleteService.bulkSoftDelete(
-      userId,
-      role,
-      ids,
-      confirmationPhrase,
-      staffRole,
+    return respondCatalogRouteOutcome(
+      c,
+      await http().bulkSoftDelete({ userId, role, ids, confirmationPhrase, staffRole }),
     );
-    if (result.isErr()) {
-      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-    }
-    const { attempted, failed, errors } = result.value;
-    return c.json({ data: { attempted, failed, errors } });
   });
 
   r.post("/", requireAuth, zValidator("json", createSaleSchema), async (c) => {
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    if (!roleHasCapability(role, "auction.manage", staff)) {
-      return c.json({ error: "Only staff with auction.manage can create sales" }, 403);
-    }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json");
-    try {
-      const sale = await container.saleService.create(userId, body);
-      return c.json(
-        {
-          data: await presentSaleImages(
-            container.mediaUrlResolver,
-            sale,
-            container.mediaAssetEnricher,
-          ),
-        },
-        201,
-      );
-    } catch (e) {
-      if (e instanceof LotError) {
-        return c.json({ error: e.message }, asHttpStatus(e.status));
-      }
-      throw e;
-    }
+    return respondCatalogRouteOutcome(
+      c,
+      await http().createSale({
+        userId,
+        role,
+        staffRole: c.get("userStaffRole"),
+        body,
+      }),
+      201,
+    );
   });
 
   r.patch(
@@ -75,17 +55,10 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const patch = c.req.valid("json");
-      const result = await container.saleService.updateDraft(role, id, patch, staffRole);
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json({
-        data: await presentSaleImages(
-          container.mediaUrlResolver,
-          result.value,
-          container.mediaAssetEnricher,
-        ),
-      });
+      return respondCatalogRouteOutcome(
+        c,
+        await http().updateDraft({ role, saleId: id, patch, staffRole }),
+      );
     },
   );
 
@@ -94,12 +67,10 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
     const role = (c.get("userRole") ?? "client") as UserRole;
     const staffRole = c.get("userStaffRole") ?? null;
     const { id } = c.req.valid("param");
-    const result = await container.saleService.publish(userId, role, id, staffRole);
-    if (result.isErr()) {
-      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-    }
-    const data = await presentSalesWithLotsImages(container.mediaUrlResolver, [result.value]);
-    return c.json({ data: data[0] });
+    return respondCatalogRouteOutcome(
+      c,
+      await http().publish({ userId, role, saleId: id, staffRole }),
+    );
   });
 
   r.post("/:id/unpublish", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {
@@ -107,17 +78,10 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
     const role = (c.get("userRole") ?? "client") as UserRole;
     const staffRole = c.get("userStaffRole") ?? null;
     const { id } = c.req.valid("param");
-    const result = await container.saleService.unpublish(userId, role, id, staffRole);
-    if (result.isErr()) {
-      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-    }
-    return c.json({
-      data: await presentSaleImages(
-        container.mediaUrlResolver,
-        result.value,
-        container.mediaAssetEnricher,
-      ),
-    });
+    return respondCatalogRouteOutcome(
+      c,
+      await http().unpublish({ userId, role, saleId: id, staffRole }),
+    );
   });
 
   r.post(
@@ -130,17 +94,10 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
       const role = (c.get("userRole") ?? "client") as UserRole;
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
-      const result = await container.saleService.cancel(userId, role, id, staffRole);
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json({
-        data: await presentSaleImages(
-          container.mediaUrlResolver,
-          result.value,
-          container.mediaAssetEnricher,
-        ),
-      });
+      return respondCatalogRouteOutcome(
+        c,
+        await http().cancel({ userId, role, saleId: id, staffRole }),
+      );
     },
   );
 
@@ -155,17 +112,18 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const { confirmationPhrase } = c.req.valid("json");
-      const result = await container.saleSoftDeleteService.softDelete(
+      const outcome = await http().softDelete({
         userId,
         role,
-        id,
+        saleId: id,
         confirmationPhrase,
         staffRole,
+      });
+      if (outcome.kind === "no_content") return c.body(null, 204);
+      return c.json(
+        serviceErrorJsonBody(outcome.error),
+        asHttpStatus("status" in outcome.error ? (outcome.error.status as number) : 500),
       );
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.body(null, 204);
     },
   );
 
@@ -180,18 +138,16 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const { reason } = c.req.valid("json");
-      const result = await container.saleStatusTransitionService.markOnsiteSaleEnded(
-        role,
-        id,
-        reason,
-        staffRole,
-        userId,
+      return respondCatalogRouteOutcome(
+        c,
+        await http().markOnsiteSaleEnded({
+          userId,
+          role,
+          saleId: id,
+          reason: reason ?? "",
+          staffRole,
+        }),
       );
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      const data = await presentSalesWithLotsImages(container.mediaUrlResolver, [result.value]);
-      return c.json({ data: data[0] });
     },
   );
 }

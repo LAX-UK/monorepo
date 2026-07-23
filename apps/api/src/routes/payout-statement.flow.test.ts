@@ -1,7 +1,7 @@
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Queue } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
-import { ensureStatementQueued } from "./payout-statements.js";
+import { ensureStatementQueued } from "../services/payout/payout-statement-queue.js";
 
 describe("payout statement queue ", () => {
   it("first request clears error bit and enqueues idempotent job", async () => {

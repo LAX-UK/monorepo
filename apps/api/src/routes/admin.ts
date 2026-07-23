@@ -19,6 +19,7 @@ import { attachAdminAuditRoutes } from "./admin/audit.routes.js";
 import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
 import { attachAdminComplianceRoutes } from "./admin/compliance.routes.js";
 import { attachAdminConditionReportsRoutes } from "./admin/condition-reports.routes.js";
+import { attachAdminDeliveryOpsRoutes } from "./admin/delivery-ops.routes.js";
 import { attachAdminEmailRoutes } from "./admin/email.routes.js";
 import { attachAdminFinanceRoutes } from "./admin/finance.routes.js";
 import { attachAdminImpersonationRoutes } from "./admin/impersonation.routes.js";
@@ -39,7 +40,7 @@ import {
   attachAdminUsersDirectoryRoutes,
   attachAdminUsersManagementRoutes,
 } from "./admin/users.routes.js";
-import { createAdminTelephoneBookingRoutes } from "./telephone-bookings.js";
+import { createAdminTelephoneBookingRoutes } from "./telephone-bookings/index.js";
 
 export function createAdminRoutes(
   container: ContainerAdminPlatformRoutesSlice,
@@ -108,11 +109,7 @@ export function createAdminRoutes(
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
 
   if (container.admin.stripeConnect) {
-    attachAdminStripeConnectRoutes(
-      platform,
-      container.admin.stripeConnect,
-      container.admin.stripeConnect.webOrigin,
-    );
+    attachAdminStripeConnectRoutes(platform, container.admin.stripeConnect);
   }
 
   attachAdminInvitationRoutes(platform, container.admin.invitations);
@@ -120,6 +117,8 @@ export function createAdminRoutes(
   attachAdminMarketingEventsRoutes(platform, container);
 
   attachAdminQueuesRoutes(platform, container);
+
+  attachAdminDeliveryOpsRoutes(platform, container);
 
   // Finance-shell routes must stay reachable for finance_ops, who fails
   // `requirePlatformShell`. Guards are path-scoped (not `use("*")`) so they don't

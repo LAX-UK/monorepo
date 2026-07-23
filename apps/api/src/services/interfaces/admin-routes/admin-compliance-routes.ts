@@ -7,6 +7,7 @@ import type {
 } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { LifecycleAdminOp } from "../../../lib/legal-entity-lifecycle-transitions.js";
+import type { AdminAmlListPage } from "../../admin/admin-aml-list-query.service.js";
 import type { AdminSourceOfFundsQueryService } from "../../admin/admin-source-of-funds-query.service.js";
 import type {
   AdminLegalEntityDocumentDto,
@@ -46,6 +47,8 @@ export interface IAdminLegalEntityLifecycleApplicationService {
 }
 
 export interface IAdminAmlApplicationService {
+  getPage(input: { limit: number; offset: number }): Promise<AdminAmlListPage>;
+  getPendingById(id: string): Promise<AdminAmlListPage["rows"][number] | null>;
   listForUser: AmlService["listForUser"];
   listPendingReviews: AmlService["listPendingReviews"];
   countPendingReviews: AmlService["countPendingReviews"];
@@ -60,6 +63,7 @@ export interface IAdminSourceOfFundsApplicationService {
     SSR_TRUSTED_ORIGINS?: string[] | undefined;
   };
   listEnriched: AdminSourceOfFundsQueryService["listEnriched"];
+  getPage: AdminSourceOfFundsQueryService["getPage"];
   getDetail: AdminSourceOfFundsQueryService["getDetail"];
   listForUser: AdminSourceOfFundsQueryService["listForUser"];
   triage: SourceOfFundsService["triage"];

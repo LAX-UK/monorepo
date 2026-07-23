@@ -7,7 +7,7 @@ import {
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { ContainerAuthRoutesSlice } from "../container.js";
-import { createAppLogger } from "../lib/logger.js";
+import { respondIdentityHttpJson } from "../lib/identity-route-response.js";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 import { zValidator } from "../lib/z-validator.js";
 import {
@@ -21,33 +21,11 @@ import {
   createRequireRecentPasswordAuth,
 } from "../middleware/require-recent-password-auth.js";
 import { createTurnstileMiddleware } from "../middleware/turnstile.js";
-import { setupCredentialPassword } from "../services/auth/credential-setup.service.js";
-import type { EmailChangeDeps } from "../services/auth/email-change.service.js";
-import {
-  clearEmailChangeInProgress,
-  confirmEmailChangeFromToken,
-  requestEmailChange,
-} from "../services/auth/email-change.service.js";
-import { runForgotPasswordSideEffects } from "../services/auth/forgot-password.service.js";
-import {
-  stampReauthWithPassword,
-  stampSessionPasswordProofNow,
-} from "../services/auth/reauth.service.js";
-
-function emailChangeDeps(container: ContainerAuthRoutesSlice): EmailChangeDeps {
-  return {
-    userService: container.userService,
-    emailChange: container.userEmailChangeRepository,
-    emailService: container.emailService,
-    env: container.env,
-    authDb: container.authDb,
-    sessionRevocation: container.sessionRevocation,
-  };
-}
 
 export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
   const r = new Hono();
   const requireTurnstile = createTurnstileMiddleware(container.env.TURNSTILE_SECRET_KEY);
+  const accountSecurity = container.identityRoutes.accountSecurityHttp;
 
   const requireAuth = createRequireAuth(container.authenticator, {
     isSuspended: (userId) => container.userSuspensionChecker.isSuspended(userId),
@@ -56,46 +34,19 @@ export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
     container,
     PASSWORD_REQUIRED_POLICY,
   );
-  // redis may be absent in unit-test containers; fall back to a no-op passthrough.
   const confirmEmailChangeRateLimit = container.redis
     ? createConfirmEmailChangeRateLimitMiddleware(container.redis)
     : createMiddleware(async (_c, next) => next());
 
   r.post("/reauth", requireAuth, zValidator("json", reauthBodySchema), async (c) => {
-    const userId = c.get("userId");
-    if (!userId) return c.json({ error: "Unauthorized", code: "session_required" }, 401);
     const { password } = c.req.valid("json");
     const token = extractBetterAuthSessionToken(c.req.header("cookie"));
-    const out = await stampReauthWithPassword({
-      authDb: container.authDb,
-      userId,
+    const response = await accountSecurity.reauth({
+      userId: c.get("userId"),
       password,
-      sessionTokenFromCookie: token,
+      sessionTokenFromCookie: token ?? null,
     });
-    if (out === "ok") {
-      void container.authAuditPublisher
-        .publish({
-          eventType: "auth.reauth_success",
-          aggregateId: userId,
-          payload: {},
-          actorUserId: userId,
-        })
-        .catch(() => {});
-      return c.json({ ok: true });
-    }
-    if (out === "invalid_password") {
-      return c.json({ error: "Incorrect password", code: "invalid_credentials" }, 401);
-    }
-    if (out === "no_credential") {
-      return c.json(
-        {
-          error: "Password re-authentication is not available for this sign-in method.",
-          code: "credential_required",
-        },
-        400,
-      );
-    }
-    return c.json({ error: "Session not found", code: "session_required" }, 401);
+    return respondIdentityHttpJson(c, response);
   });
 
   r.post(
@@ -111,28 +62,12 @@ export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
         c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
         c.req.header("x-real-ip") ??
         undefined;
-
-      void runForgotPasswordSideEffects({
+      const response = await accountSecurity.forgotPassword({
         email,
         webOrigin,
-        container,
-        clientIp,
-        authAudit: container.authAuditPublisher,
-      }).catch((err) => {
-        const logEnv = {
-          LOG_LEVEL: container.env.LOG_LEVEL ?? "info",
-          NODE_ENV: container.env.NODE_ENV ?? "production",
-        };
-        createAppLogger(logEnv).error(
-          {
-            err: err instanceof Error ? err.message : String(err),
-            stack: err instanceof Error ? err.stack?.slice(0, 2000) : undefined,
-          },
-          "forgot_password_side_effect_failed",
-        );
+        ...(clientIp !== undefined ? { clientIp } : {}),
       });
-
-      return c.json({ ok: true });
+      return respondIdentityHttpJson(c, response);
     },
   );
 
@@ -142,35 +77,14 @@ export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
     requireAuth,
     zValidator("json", setupPasswordBodySchema),
     async (c) => {
-      const userId = c.get("userId");
-      if (!userId) return c.json({ error: "Unauthorized", code: "session_required" }, 401);
-
       const { password } = c.req.valid("json");
-      const result = await setupCredentialPassword({
-        container,
-        userId,
+      const token = extractBetterAuthSessionToken(c.req.header("cookie"));
+      const response = await accountSecurity.setupPassword({
+        userId: c.get("userId"),
         password,
-        authAudit: container.authAuditPublisher,
+        sessionTokenFromCookie: token ?? null,
       });
-      if (result.ok) {
-        const token = extractBetterAuthSessionToken(c.req.header("cookie"));
-        void stampSessionPasswordProofNow({
-          authDb: container.authDb,
-          userId,
-          sessionTokenFromCookie: token,
-        }).catch(() => {});
-        return c.json({ ok: true });
-      }
-      if (result.kind === "user_not_found") {
-        return c.json({ error: "User not found", code: "user_not_found" }, 404);
-      }
-      if (result.kind === "already_set") {
-        return c.json(
-          { error: "A password is already set on this account.", code: "credential_already_set" },
-          409,
-        );
-      }
-      return c.json({ error: "Could not set password.", code: "setup_password_failed" }, 500);
+      return respondIdentityHttpJson(c, response);
     },
   );
 
@@ -180,50 +94,18 @@ export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
     requireRecentPasswordAuth,
     zValidator("json", requestEmailChangeSchema),
     async (c) => {
-      const userId = c.get("userId");
-      if (!userId) return c.json({ error: "Unauthorized", code: "session_required" }, 401);
-
       const body = c.req.valid("json");
-      const out = await requestEmailChange({
-        deps: emailChangeDeps(container),
-        userId,
+      const response = await accountSecurity.requestEmailChange({
+        userId: c.get("userId"),
         body,
-        authAudit: container.authAuditPublisher,
       });
-      if (out.ok) return c.json({ ok: true });
-      if (out.kind === "user_not_found") {
-        return c.json({ error: "User not found", code: "user_not_found" }, 404);
-      }
-      if (out.kind === "same_email") {
-        return c.json(
-          {
-            error: "New email must differ from your current address",
-            code: "email_change_same_email",
-          },
-          400,
-        );
-      }
-      return c.json(
-        { error: "That email is already in use", code: "email_change_email_taken" },
-        409,
-      );
+      return respondIdentityHttpJson(c, response);
     },
   );
 
   r.delete("/change-email", requireAuth, requireRecentPasswordAuth, async (c) => {
-    const userId = c.get("userId");
-    if (!userId) return c.json({ error: "Unauthorized", code: "session_required" }, 401);
-
-    const out = await clearEmailChangeInProgress({
-      deps: emailChangeDeps(container),
-      userId,
-      authAudit: container.authAuditPublisher,
-    });
-    if (out.ok) return c.json({ ok: true });
-    return c.json(
-      { error: "No email change is in progress", code: "email_change_none_in_progress" },
-      400,
-    );
+    const response = await accountSecurity.clearEmailChange({ userId: c.get("userId") });
+    return respondIdentityHttpJson(c, response);
   });
 
   r.post("/confirm-email-change", confirmEmailChangeRateLimit, async (c) => {
@@ -231,59 +113,13 @@ export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
     if (typeof body.token !== "string") {
       return c.json({ error: "Missing token", code: "email_change_missing_token" }, 400);
     }
-
-    const result = await confirmEmailChangeFromToken({
-      deps: emailChangeDeps(container),
-      token: body.token,
-      authAudit: container.authAuditPublisher,
-    });
-
-    if (result.ok && result.completed) {
-      return c.json({ ok: true, completed: true });
-    }
-    if (result.ok && !result.completed) {
-      return c.json({
-        ok: true,
-        completed: false,
-        message:
-          result.confirmFor === "old"
-            ? "Current address confirmed. Open the email sent to your new address and confirm there to finish."
-            : "New address confirmed. Open the email sent to your current address and confirm there to finish.",
-      });
-    }
-
-    if (result.kind === "user_not_found") {
-      return c.json({ error: "User not found", code: "user_not_found" }, 404);
-    }
-    if (result.kind === "stale_flow") {
-      return c.json(
-        { error: "Email change token no longer matches this account", code: "email_change_stale" },
-        409,
-      );
-    }
-    if (result.kind === "expired") {
-      return c.json(
-        {
-          error: "This email change request has expired. Start again from settings.",
-          code: "email_change_expired",
-        },
-        410,
-      );
-    }
-    if (result.kind === "email_taken") {
-      return c.json(
-        { error: "That email is already in use", code: "email_change_email_taken" },
-        409,
-      );
-    }
-    return c.json({ error: "Invalid or expired token", code: "email_change_token_invalid" }, 400);
+    const response = await accountSecurity.confirmEmailChange({ token: body.token });
+    return respondIdentityHttpJson(c, response);
   });
 
   r.get("/password-status", requireAuth, async (c) => {
-    const userId = c.get("userId");
-    if (!userId) return c.json({ error: "Unauthorized", code: "session_required" }, 401);
-    const hasPassword = await container.authCredentialReader.hasCredentialAccount(userId);
-    return c.json({ data: { hasPassword } });
+    const response = await accountSecurity.getPasswordStatus({ userId: c.get("userId") });
+    return respondIdentityHttpJson(c, response);
   });
 
   return r;

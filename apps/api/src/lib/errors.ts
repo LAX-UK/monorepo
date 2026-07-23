@@ -1,17 +1,7 @@
 export { LotError } from "@auction/persistence/lib";
-
-export class BidError extends Error {
-  readonly code?: string | undefined;
-  constructor(
-    message: string,
-    readonly status: number = 400,
-    code?: string,
-  ) {
-    super(message);
-    this.name = "BidError";
-    this.code = code;
-  }
-}
+/** Bid placement now lives in @auction/bidding-runtime; re-export so every
+ * `instanceof BidError` check (routes, classifiers, gates) shares one class. */
+export { BidError } from "@auction/bidding-runtime";
 
 import type { RoleCapability, UserRole, UserStaffRole } from "@auction/types";
 

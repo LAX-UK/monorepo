@@ -1,3 +1,4 @@
+import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
 import { ok } from "neverthrow";
 import { presentLotImages } from "../../lib/media-presenters.js";
 import type { IAdminConditionReportsApplicationService } from "../interfaces/admin-routes.js";
@@ -7,15 +8,28 @@ import type {
 } from "../interfaces/condition-report.js";
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
+import type { AdminConditionReportListPage } from "./admin-condition-report-list-query.service.js";
+import { AdminConditionReportListQueryService } from "./admin-condition-report-list-query.service.js";
 
 export class AdminConditionReportsApplicationService
   implements IAdminConditionReportsApplicationService
 {
+  private readonly listQuery: AdminConditionReportListQueryService;
+
   constructor(
     private readonly conditionReports: IConditionReportService,
+    conditionReportRepository: IConditionReportRequestRepository,
     private readonly mediaUrlResolver: MediaUrlResolver,
     private readonly mediaAssetEnricher: MediaAssetEnricher,
-  ) {}
+  ) {
+    this.listQuery = new AdminConditionReportListQueryService(conditionReportRepository);
+  }
+
+  getPage(
+    ...args: Parameters<AdminConditionReportListQueryService["getPage"]>
+  ): Promise<AdminConditionReportListPage> {
+    return this.listQuery.getPage(...args);
+  }
 
   listForAdmin(...args: Parameters<IConditionReportService["listForAdmin"]>) {
     return this.conditionReports.listForAdmin(...args);

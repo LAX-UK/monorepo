@@ -3,7 +3,6 @@ import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
-import { BidError } from "../lib/errors.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { KycRequiredError } from "../services/interfaces/kyc-service.js";
 import { createBidRoutes } from "./bids.js";
@@ -76,35 +75,39 @@ class MemoryRedis {
 function mount(opts?: {
   env?: Container["env"];
   kycService?: Container["kycService"];
-  bidService?: Container["bidService"];
+  placeBid?: ReturnType<typeof vi.fn>;
   userId?: string;
   redis?: MemoryRedis;
 }) {
   const redis = (opts?.redis ?? new MemoryRedis()) as unknown as Redis;
-  const bidService =
-    opts?.bidService ??
-    ({
-      placeBidWithIdempotency: vi.fn().mockResolvedValue({
-        type: "ok",
-        body: {
-          data: {
-            id: "bid-1",
-            lotId,
-            amount: "100",
-            isWinning: true,
-            isAutoBid: false,
-            maxAutoBidAmount: null,
-            createdAt: new Date(),
-          },
-        },
-      }),
-    } as unknown as Container["bidService"]);
+  const placeBid =
+    opts?.placeBid ??
+    vi.fn().mockResolvedValue({
+      kind: "ok",
+      data: {
+        id: "bid-1",
+        lotId,
+        amount: "100",
+        isWinning: true,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: new Date(),
+      },
+      status: 201,
+    });
   const container = {
     env: opts?.env ?? {},
     redis,
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     kycService: opts?.kycService ?? { isConfigured: () => false },
-    bidService,
+    bidding: {
+      placeBidHttp: { placeBid },
+      autoBidHttp: {},
+      absenteeBidHttp: {},
+      saleRegistrationHttp: {},
+      lotBidHistoryHttp: {},
+      conditionReportHttp: {},
+    },
     requireSubmissionsLegalEntityContext: stubLegalEntityMiddleware(),
   } as unknown as Container;
   const authenticator: IAuthenticator = {
@@ -114,7 +117,7 @@ function mount(opts?: {
   };
   const app = new Hono();
   app.route("/bids", createBidRoutes(container, authenticator));
-  return { app, bidService, redis };
+  return { app, placeBid, redis };
 }
 
 function bidBody() {
@@ -123,7 +126,7 @@ function bidBody() {
 
 describe("bid user rate limits", () => {
   it("returns 429 with Retry-After after 30 bids in one minute for the same user", async () => {
-    const { app, bidService } = mount();
+    const { app, placeBid } = mount();
     for (let i = 0; i < 30; i++) {
       const res = await app.request("/bids", {
         method: "POST",
@@ -143,13 +146,13 @@ describe("bid user rate limits", () => {
     expect(Number(ra)).toBeGreaterThanOrEqual(1);
     const json = (await blocked.json()) as { code?: string };
     expect(json.code).toBe("bid_rate_limited_minute");
-    expect(bidService.placeBidWithIdempotency).toHaveBeenCalledTimes(30);
+    expect(placeBid).toHaveBeenCalledTimes(30);
   });
 
   it("returns 429 with bid_rate_limited_hour after 100 bids in one hour", async () => {
     const redis = new MemoryRedis();
     redis.presetCount("bid:rl:1h:user-hour-test", 100);
-    const { app, bidService } = mount({ userId: "user-hour-test", redis });
+    const { app, placeBid } = mount({ userId: "user-hour-test", redis });
     const blocked = await app.request("/bids", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -158,13 +161,13 @@ describe("bid user rate limits", () => {
     expect(blocked.status).toBe(429);
     const json = (await blocked.json()) as { code?: string };
     expect(json.code).toBe("bid_rate_limited_hour");
-    expect(bidService.placeBidWithIdempotency).not.toHaveBeenCalled();
+    expect(placeBid).not.toHaveBeenCalled();
   });
 });
 
 describe("POST /bids middleware gates", () => {
   it("returns 503 when DISABLE_BIDDING kill switch is on", async () => {
-    const { app, bidService } = mount({ env: { DISABLE_BIDDING: true } as Container["env"] });
+    const { app, placeBid } = mount({ env: { DISABLE_BIDDING: true } as Container["env"] });
     const res = await app.request("/bids", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -173,11 +176,11 @@ describe("POST /bids middleware gates", () => {
     expect(res.status).toBe(503);
     const json = (await res.json()) as { code?: string };
     expect(json.code).toBe("bidding_disabled");
-    expect(bidService.placeBidWithIdempotency).not.toHaveBeenCalled();
+    expect(placeBid).not.toHaveBeenCalled();
   });
 
   it("returns 402 kyc_required when KYC middleware rejects", async () => {
-    const { app, bidService } = mount({
+    const { app, placeBid } = mount({
       kycService: {
         isConfigured: () => true,
         enforceThreshold: vi.fn().mockRejectedValue(
@@ -210,21 +213,19 @@ describe("POST /bids middleware gates", () => {
     expect(res.status).toBe(402);
     const json = (await res.json()) as { error?: string };
     expect(json.error).toBe("kyc_required");
-    expect(bidService.placeBidWithIdempotency).not.toHaveBeenCalled();
+    expect(placeBid).not.toHaveBeenCalled();
   });
 
   it("returns eligibility error code from bid service", async () => {
     const { app } = mount({
-      bidService: {
-        placeBidWithIdempotency: vi.fn().mockResolvedValue({
-          type: "err",
-          error: new BidError(
-            "Register and be approved to bid on this sale",
-            403,
-            "sale_registration_required",
-          ),
-        }),
-      } as unknown as Container["bidService"],
+      placeBid: vi.fn().mockResolvedValue({
+        kind: "err",
+        error: {
+          message: "Register and be approved to bid on this sale",
+          status: 403,
+          code: "sale_registration_required",
+        },
+      }),
     });
     const res = await app.request("/bids", {
       method: "POST",
@@ -238,18 +239,24 @@ describe("POST /bids middleware gates", () => {
 
   it("passes acting legal entity id from middleware to bid service", async () => {
     const agentEntityId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-    const bidService = {
-      placeBidWithIdempotency: vi.fn().mockResolvedValue({
-        type: "ok",
-        body: { data: { id: "bid-agent", lotId, amount: "100" } },
-      }),
-    };
+    const placeBid = vi.fn().mockResolvedValue({
+      kind: "ok",
+      data: { id: "bid-agent", lotId, amount: "100" },
+      status: 201,
+    });
     const container = {
       env: {},
       redis: new MemoryRedis() as unknown as Redis,
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       kycService: { isConfigured: () => false },
-      bidService,
+      bidding: {
+        placeBidHttp: { placeBid },
+        autoBidHttp: {},
+        absenteeBidHttp: {},
+        saleRegistrationHttp: {},
+        lotBidHistoryHttp: {},
+        conditionReportHttp: {},
+      },
       requireSubmissionsLegalEntityContext: stubLegalEntityMiddleware(agentEntityId),
     } as unknown as Container;
     const authenticator: IAuthenticator = {
@@ -263,7 +270,7 @@ describe("POST /bids middleware gates", () => {
       body: bidBody(),
     });
     expect(res.status).toBe(201);
-    expect(bidService.placeBidWithIdempotency).toHaveBeenCalledWith(
+    expect(placeBid).toHaveBeenCalledWith(
       expect.objectContaining({
         buyerLegalEntityId: agentEntityId,
       }),
@@ -274,28 +281,32 @@ describe("POST /bids middleware gates", () => {
 describe("POST /bids success contract", () => {
   it("returns top-level data key with bid id", async () => {
     const redis = new MemoryRedis() as unknown as Redis;
-    const bidService = {
-      placeBidWithIdempotency: vi.fn().mockResolvedValue({
-        type: "ok",
-        body: {
-          data: {
-            id: "bid-contract",
-            lotId,
-            amount: "10.00",
-            isWinning: true,
-            isAutoBid: false,
-            maxAutoBidAmount: null,
-            createdAt: new Date(),
-          },
-        },
-      }),
-    };
+    const placeBid = vi.fn().mockResolvedValue({
+      kind: "ok",
+      data: {
+        id: "bid-contract",
+        lotId,
+        amount: "10.00",
+        isWinning: true,
+        isAutoBid: false,
+        maxAutoBidAmount: null,
+        createdAt: new Date(),
+      },
+      status: 201,
+    });
     const container = {
       env: {},
       redis,
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       kycService: { isConfigured: () => false },
-      bidService,
+      bidding: {
+        placeBidHttp: { placeBid },
+        autoBidHttp: {},
+        absenteeBidHttp: {},
+        saleRegistrationHttp: {},
+        lotBidHistoryHttp: {},
+        conditionReportHttp: {},
+      },
       requireSubmissionsLegalEntityContext: stubLegalEntityMiddleware(),
     } as unknown as Container;
     const authenticator: IAuthenticator = {

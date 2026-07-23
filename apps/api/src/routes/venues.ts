@@ -6,8 +6,7 @@ import {
 } from "@auction/validators";
 import { Hono } from "hono";
 import type { ContainerVenueRoutesSlice } from "../container.js";
-import { serviceErrorJsonBody } from "../lib/forbidden-response.js";
-import { asHttpStatus } from "../lib/http-status.js";
+import { respondCatalogHttpJson } from "../lib/catalog-route-response.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireVenuesAccess } from "../middleware/require-capability.js";
@@ -20,6 +19,7 @@ export function createVenueRoutes(
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
+  const http = () => container.catalogRoutes.venueHttp;
   const r = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
   }>();
@@ -28,32 +28,27 @@ export function createVenueRoutes(
 
   r.get("/", zValidator("query", listVenuesQuerySchema), async (c) => {
     const query = c.req.valid("query");
-    const { venues, total } = await container.venueService.list({
-      legalEntityId: query.legalEntityId,
-      includeArchived: query.includeArchived === "1",
-      q: query.q,
-      limit: query.limit,
-      offset: query.offset,
-    });
-    return c.json({ data: venues, total });
+    return respondCatalogHttpJson(
+      c,
+      await http().list({
+        includeArchived: query.includeArchived === "1",
+        limit: query.limit,
+        offset: query.offset,
+        ...(query.legalEntityId ? { legalEntityId: query.legalEntityId } : {}),
+        ...(query.q ? { q: query.q } : {}),
+      }),
+    );
   });
 
   r.get("/:id", zValidator("param", venueIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
-    const data = await container.venueService.get(id);
-    if (!data) return c.json({ error: "Not found" }, 404);
-    const salesUsingCount = await container.venueService.getSalesUsingCount(id);
-    return c.json({ data, usage: { salesUsingCount } });
+    return respondCatalogHttpJson(c, await http().get({ id }));
   });
 
   r.post("/", zValidator("json", createVenueSchema), async (c) => {
     const actorUserId = c.get("userId") as string;
     const body = c.req.valid("json");
-    const result = await container.venueService.create(body, { actorUserId });
-    if (result.isErr()) {
-      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-    }
-    return c.json({ data: result.value }, 201);
+    return respondCatalogHttpJson(c, await http().create({ actorUserId, body }));
   });
 
   r.patch(
@@ -64,22 +59,14 @@ export function createVenueRoutes(
       const actorUserId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.venueService.update(id, body, { actorUserId });
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json({ data: result.value });
+      return respondCatalogHttpJson(c, await http().update({ actorUserId, id, body }));
     },
   );
 
   r.post("/:id/archive", zValidator("param", venueIdParamSchema), async (c) => {
     const actorUserId = c.get("userId") as string;
     const { id } = c.req.valid("param");
-    const result = await container.venueService.archive(id, { actorUserId });
-    if (result.isErr()) {
-      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-    }
-    return c.json({ data: result.value });
+    return respondCatalogHttpJson(c, await http().archive({ actorUserId, id }));
   });
 
   return r;

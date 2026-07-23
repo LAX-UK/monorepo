@@ -23,13 +23,20 @@ function createFulfilmentContainer(partial: {
 }
 
 describe("admin lot fulfilment routes (DIP facade)", () => {
-  it("GET /lot-fulfilment lists rows via admin.lotFulfilment", async () => {
-    const listForAdmin = vi.fn().mockResolvedValue({
-      items: [{ lotId: LOT_ID, status: "awaiting_payment" }],
+  it("GET /lot-fulfilment lists rows via admin.lotFulfilment.getPage", async () => {
+    const getPage = vi.fn().mockResolvedValue({
+      rows: [{ lotId: LOT_ID, status: "awaiting_payment" }],
       total: 1,
-      statusCounts: { awaiting_payment: 1 },
+      offset: 0,
+      limit: 50,
+      summary: {
+        total: 1,
+        awaitingPickup: 0,
+        inTransit: 0,
+        statusCounts: { awaiting_payment: 1 },
+      },
     });
-    const container = createFulfilmentContainer({ lotFulfilment: { listForAdmin } as never });
+    const container = createFulfilmentContainer({ lotFulfilment: { getPage } as never });
     const authenticator: IAuthenticator = {
       getSessionUser: vi
         .fn()
@@ -43,11 +50,18 @@ describe("admin lot fulfilment routes (DIP facade)", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       data: unknown[];
-      meta: { total: number; limit: number; offset: number };
+      meta: {
+        total: number;
+        limit: number;
+        offset: number;
+        summary: { total: number; statusCounts: Record<string, number> };
+      };
     };
     expect(body.data).toHaveLength(1);
     expect(body.meta.total).toBe(1);
-    expect(listForAdmin).toHaveBeenCalled();
+    expect(body.meta.summary.total).toBe(1);
+    expect(body.meta.summary.statusCounts.awaiting_payment).toBe(1);
+    expect(getPage).toHaveBeenCalledWith({ limit: 50, offset: 0 });
   });
 
   it("POST /lot-fulfilment/:lotId/release delegates approveRelease", async () => {

@@ -1,4 +1,4 @@
-import { type CreateLotInput, type UserRole, normalizeUserStaffRole } from "@auction/types";
+import type { CreateLotInput, UserRole } from "@auction/types";
 import {
   bulkLotsBodySchema,
   cancelLotBodySchema,
@@ -8,92 +8,53 @@ import {
   updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
-import type { Context } from "hono";
-import { canManageCatalogue } from "../../lib/catalogue-auth.js";
-import { type AuthzError, LotError, missingCatalogueCapabilityError } from "../../lib/errors.js";
+import { respondCatalogRouteOutcome } from "../../lib/catalog-route-response.js";
 import { serviceErrorJsonBody } from "../../lib/forbidden-response.js";
 import { asHttpStatus } from "../../lib/http-status.js";
-import { presentLotImages } from "../../lib/media-presenters.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { LotHono, LotRouteDeps } from "./_shared.js";
 
-function jsonLotOrAuthzError(c: Context, e: LotError | AuthzError) {
-  if (e instanceof LotError && e.code) {
-    return c.json({ error: e.message, code: e.code }, asHttpStatus(e.status));
-  }
-  return c.json({ error: e.message }, asHttpStatus(e.status));
-}
-
 export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
   const { container, requireAuth } = deps;
+  const http = () => container.catalogRoutes.lotLifecycleHttp;
 
   r.post("/bulk", requireAuth, zValidator("json", bulkLotsBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const role = (c.get("userRole") ?? "client") as UserRole;
     const body = c.req.valid("json");
     const { ids, op, reason } = body;
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-
-    if (op === "soft_delete") {
-      const result = await container.lotSoftDeleteService.bulkSoftDelete(
-        userId,
-        role,
-        ids,
-        body.confirmationPhrase ?? "",
-        staff,
-      );
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      const { attempted, failed, errors, orphanDraftSales } = result.value;
-      return c.json({
-        data: { attempted, failed, errors, orphanDraftSales },
-      });
-    }
-
-    const result = await container.lotService.bulkPublishOrCancel(
+    const bulkInput = {
       userId,
       role,
       ids,
       op,
-      staff,
-      reason,
-    );
-    if (result.isErr()) {
-      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-    }
-    const { attempted, failed, errors } = result.value;
-    return c.json({
-      data: { attempted, failed, errors },
-    });
+      staffRole: c.get("userStaffRole"),
+      ...(reason !== undefined ? { reason } : {}),
+      ...("confirmationPhrase" in body && body.confirmationPhrase !== undefined
+        ? { confirmationPhrase: body.confirmationPhrase }
+        : {}),
+    };
+    return respondCatalogRouteOutcome(c, await http().bulkLots(bulkInput));
   });
 
   r.post("/:id/publish", requireAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;
     const role = (c.get("userRole") ?? "client") as UserRole;
     const { id } = c.req.valid("param");
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    const result = await container.lotService.publish(userId, role, id, staff);
-    if (result.isErr()) {
-      return jsonLotOrAuthzError(c, result.error);
-    }
-    return c.json({
-      data: await presentLotImages(
-        container.mediaUrlResolver,
-        result.value,
-        container.mediaAssetEnricher,
-      ),
-    });
+    return respondCatalogRouteOutcome(
+      c,
+      await http().publish({ userId, role, lotId: id, staffRole: c.get("userStaffRole") }),
+    );
   });
 
   r.post("/:id/withdraw-request", requireAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const sellerUserId = c.get("userId") as string;
     const { id } = c.req.valid("param");
-    const result = await container.lotService.requestWithdrawal(sellerUserId, id);
-    if (result.isErr()) {
-      return jsonLotOrAuthzError(c, result.error);
+    const outcome = await http().requestWithdrawal({ sellerUserId, lotId: id });
+    if (outcome.kind === "ok") {
+      return c.json({ data: outcome.data }, outcome.data.alreadyPending ? 200 : 201);
     }
-    return c.json({ data: result.value }, result.value.alreadyPending ? 200 : 201);
+    return respondCatalogRouteOutcome(c, outcome);
   });
 
   r.post(
@@ -106,24 +67,16 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
       const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-      const result = await container.lotService.cancel(
-        userId,
-        role,
-        id,
-        staff,
-        body.reason?.trim() ? "admin_override" : "manual",
+      return respondCatalogRouteOutcome(
+        c,
+        await http().cancel({
+          userId,
+          role,
+          lotId: id,
+          staffRole: c.get("userStaffRole"),
+          cancelReason: body.reason?.trim() ? "admin_override" : "manual",
+        }),
       );
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json({
-        data: await presentLotImages(
-          container.mediaUrlResolver,
-          result.value,
-          container.mediaAssetEnricher,
-        ),
-      });
     },
   );
 
@@ -138,17 +91,18 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const { confirmationPhrase } = c.req.valid("json");
-      const result = await container.lotSoftDeleteService.softDelete(
+      const outcome = await http().softDelete({
         userId,
         role,
-        id,
+        lotId: id,
         confirmationPhrase,
         staffRole,
+      });
+      if (outcome.kind === "no_content") return c.body(null, 204);
+      return c.json(
+        serviceErrorJsonBody(outcome.error),
+        asHttpStatus("status" in outcome.error ? (outcome.error.status as number) : 500),
       );
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.body(null, 204);
     },
   );
 
@@ -161,18 +115,10 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
       const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json") as Partial<CreateLotInput>;
-      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-      const result = await container.lotService.update(role, id, body, staff);
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json({
-        data: await presentLotImages(
-          container.mediaUrlResolver,
-          result.value,
-          container.mediaAssetEnricher,
-        ),
-      });
+      return respondCatalogRouteOutcome(
+        c,
+        await http().update({ role, lotId: id, body, staffRole: c.get("userStaffRole") }),
+      );
     },
   );
 
@@ -185,49 +131,25 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
       const role = (c.get("userRole") ?? "client") as UserRole;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-      const result = await container.lotService.updateMarketingDetails(role, id, body, staff);
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json({
-        data: await presentLotImages(
-          container.mediaUrlResolver,
-          result.value,
-          container.mediaAssetEnricher,
-        ),
-      });
+      return respondCatalogRouteOutcome(
+        c,
+        await http().updateMarketingDetails({
+          role,
+          lotId: id,
+          body,
+          staffRole: c.get("userStaffRole"),
+        }),
+      );
     },
   );
 
   r.post("/", requireAuth, zValidator("json", createLotSchema), async (c) => {
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    if (!canManageCatalogue(role, staff)) {
-      const e = missingCatalogueCapabilityError(
-        "Only staff with auction.manage or catalogue.write can create lots",
-        role,
-        staff,
-      );
-      return c.json(serviceErrorJsonBody(e), asHttpStatus(e.status));
-    }
     const userId = c.get("userId") as string;
     const body = c.req.valid("json") as CreateLotInput;
-    if (!body.sellerLegalEntityId) {
-      return c.json({ error: "sellerLegalEntityId is required" }, 400);
-    }
-    const result = await container.lotService.create(userId, body);
-    if (result.isErr()) {
-      return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-    }
-    return c.json(
-      {
-        data: await presentLotImages(
-          container.mediaUrlResolver,
-          result.value,
-          container.mediaAssetEnricher,
-        ),
-      },
+    return respondCatalogRouteOutcome(
+      c,
+      await http().create({ userId, role, body, staffRole: c.get("userStaffRole") }),
       201,
     );
   });

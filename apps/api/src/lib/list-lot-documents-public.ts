@@ -2,8 +2,8 @@ import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
 import { lot, lotDocument, uploadObject } from "@auction/db/schema";
 import { and, asc, eq, isNull } from "drizzle-orm";
+import type { IMediaUrlResolver } from "../services/interfaces/media-url-resolver.js";
 import type { IObjectStorage } from "../services/interfaces/object-storage.js";
-import type { MediaUrlResolver } from "../services/media-url-resolver.js";
 
 export type LotDocumentPublicDto = {
   id: string;
@@ -16,7 +16,7 @@ export type LotDocumentPublicDto = {
 export async function listLotDocumentsPublic(
   db: Database,
   storage: IObjectStorage,
-  resolver: MediaUrlResolver | undefined,
+  resolver: IMediaUrlResolver | undefined,
   lotId: string,
 ): Promise<LotDocumentPublicDto[]> {
   const [lotRow] = await db

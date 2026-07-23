@@ -41,14 +41,22 @@ export function attachAdminInvitationRoutes(
     zValidator("query", adminInvitationsListQuerySchema),
     async (c) => {
       const { limit, offset, status, q } = c.req.valid("query");
-      const { rows, total, pendingTotal, acceptedTotal } = await invitations.listInvitations(
+      const page = await invitations.getPage(
         {
           ...(status !== undefined ? { status } : {}),
           ...(q !== undefined ? { q } : {}),
         },
         { limit, offset },
       );
-      return c.json({ data: rows, total, pendingTotal, acceptedTotal });
+      return c.json({
+        data: page.rows,
+        meta: {
+          total: page.total,
+          limit: page.limit,
+          offset: page.offset,
+          summary: page.summary,
+        },
+      });
     },
   );
 

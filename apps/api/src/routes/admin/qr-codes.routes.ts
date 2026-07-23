@@ -8,17 +8,17 @@ import {
   adminQrCodeUpdateSchema,
   resolveQrCodeAnalyticsQuery,
 } from "@auction/validators";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
   requireCatalogueWrite,
   requireQrCodesAccess,
 } from "../../middleware/require-capability.js";
+import type { AdminCatalogSupportRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminQrCodesRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminCatalogSupportRoutesContainer,
 ): void {
   platform.get(
     "/qr-codes",

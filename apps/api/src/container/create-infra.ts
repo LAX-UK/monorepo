@@ -20,7 +20,11 @@ import {
   QR_CODE_SCAN_QUEUE_NAME,
   type QueueName,
   VALIDATE_UPLOAD_QUEUE_NAME,
+  WEBHOOK_EVENTS_QUEUE_NAME,
+  type WebhookEventsJobData,
+  type WebhookEventsQueueProducer,
   bindLegalEntityArchiveQueue,
+  bindWebhookEventsQueue,
   createBullQueueOptions,
 } from "@auction/queues";
 import { Queue } from "bullmq";
@@ -59,6 +63,8 @@ export type ContainerInfra = {
   payoutStatementQueue: Queue;
   dataExportQueue: Queue;
   legalEntityArchiveQueue: ReturnType<typeof bindLegalEntityArchiveQueue>;
+  webhookEventsQueue: Queue<WebhookEventsJobData>;
+  webhookEventsProducer: WebhookEventsQueueProducer;
 };
 
 export function createInfra(
@@ -116,6 +122,11 @@ export function createInfra(
       queueOpts(LEGAL_ENTITY_ARCHIVE_QUEUE_NAME),
     ),
   );
+  const webhookEventsQueue = new Queue<WebhookEventsJobData>(
+    WEBHOOK_EVENTS_QUEUE_NAME,
+    queueOpts(WEBHOOK_EVENTS_QUEUE_NAME),
+  );
+  const webhookEventsProducer = bindWebhookEventsQueue(webhookEventsQueue);
   const publicUploadBase = `${env.API_PUBLIC_URL.replace(/\/$/, "")}/static/uploads`;
   const objectStorage: IObjectStorage =
     env.STORAGE_DRIVER === "s3"
@@ -153,5 +164,7 @@ export function createInfra(
     payoutStatementQueue,
     dataExportQueue,
     legalEntityArchiveQueue,
+    webhookEventsQueue,
+    webhookEventsProducer,
   };
 }

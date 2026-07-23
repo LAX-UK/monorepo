@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import {
-  requireAnalytics,
   requireArtistsAccess,
   requireAuditDomainEvents,
   requireCategoriesAccess,
@@ -49,18 +48,6 @@ describe("admin access middleware", () => {
 
   it("requireUsersDirectory allows client_advisor", async () => {
     const app = createAccessTestApp(requireUsersDirectory, "client_advisor");
-    const res = await app.request("http://test/test");
-    expect(res.status).toBe(200);
-  });
-
-  it("requireAnalytics returns 403 for specialist", async () => {
-    const app = createAccessTestApp(requireAnalytics, "specialist");
-    const res = await app.request("http://test/test");
-    expect(res.status).toBe(403);
-  });
-
-  it("requireAnalytics allows super_admin", async () => {
-    const app = createAccessTestApp(requireAnalytics, "super_admin");
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
@@ -219,7 +206,7 @@ describe("admin access middleware", () => {
 describe("admin invitation routes", () => {
   it("GET /invitations returns 403 for specialist without user.invite", async () => {
     const invitations = {
-      listInvitations: vi.fn(),
+      getPage: vi.fn(),
       create: vi.fn(),
       revoke: vi.fn(),
       resend: vi.fn(),
@@ -237,16 +224,17 @@ describe("admin invitation routes", () => {
     attachAdminInvitationRoutes(app, invitations as never);
     const res = await app.request("http://test/invitations");
     expect(res.status).toBe(403);
-    expect(invitations.listInvitations).not.toHaveBeenCalled();
+    expect(invitations.getPage).not.toHaveBeenCalled();
   });
 
   it("GET /invitations allows super_admin", async () => {
     const invitations = {
-      listInvitations: vi.fn().mockResolvedValue({
+      getPage: vi.fn().mockResolvedValue({
         rows: [],
         total: 0,
-        pendingTotal: 0,
-        acceptedTotal: 0,
+        offset: 0,
+        limit: 50,
+        summary: { total: 0, pending: 0, accepted: 0 },
       }),
       create: vi.fn(),
       revoke: vi.fn(),
@@ -265,6 +253,6 @@ describe("admin invitation routes", () => {
     attachAdminInvitationRoutes(app, invitations as never);
     const res = await app.request("http://test/invitations");
     expect(res.status).toBe(200);
-    expect(invitations.listInvitations).toHaveBeenCalledOnce();
+    expect(invitations.getPage).toHaveBeenCalledOnce();
   });
 });

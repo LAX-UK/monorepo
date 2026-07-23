@@ -4,35 +4,43 @@ import {
   declineConditionReportRequestBodySchema,
   fulfillConditionReportRequestBodySchema,
 } from "@auction/validators";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
-import { requireSpecialistCatalogueOrAuctionManage } from "../../middleware/require-capability.js";
+import { requireConditionReportsAccess } from "../../middleware/require-capability.js";
+import type { AdminCatalogSupportRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminConditionReportsRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminCatalogSupportRoutesContainer,
 ): void {
   platform.get(
     "/condition-report-requests",
-    requireSpecialistCatalogueOrAuctionManage,
+    requireConditionReportsAccess,
     zValidator("query", adminConditionReportListQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
-      const { items, total } = await container.admin.conditionReports.listForAdmin({
-        status: q.status,
-        lotId: q.lotId,
+      const page = await container.admin.conditionReports.getPage({
+        ...(q.status !== undefined ? { status: q.status } : {}),
+        ...(q.lotId ? { lotId: q.lotId } : {}),
         limit: q.limit,
         offset: q.offset,
       });
-      return c.json({ data: { items, total, limit: q.limit, offset: q.offset } });
+      return c.json({
+        data: page.rows,
+        meta: {
+          total: page.total,
+          limit: page.limit,
+          offset: page.offset,
+          summary: page.summary,
+        },
+      });
     },
   );
 
   platform.post(
     "/condition-report-requests/:id/mark-in-progress",
-    requireSpecialistCatalogueOrAuctionManage,
+    requireConditionReportsAccess,
     zValidator("param", conditionReportRequestIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
@@ -51,7 +59,7 @@ export function attachAdminConditionReportsRoutes(
 
   platform.post(
     "/condition-report-requests/:id/fulfill",
-    requireSpecialistCatalogueOrAuctionManage,
+    requireConditionReportsAccess,
     zValidator("param", conditionReportRequestIdParamSchema),
     zValidator("json", fulfillConditionReportRequestBodySchema),
     async (c) => {
@@ -80,7 +88,7 @@ export function attachAdminConditionReportsRoutes(
 
   platform.post(
     "/condition-report-requests/:id/decline",
-    requireSpecialistCatalogueOrAuctionManage,
+    requireConditionReportsAccess,
     zValidator("param", conditionReportRequestIdParamSchema),
     zValidator("json", declineConditionReportRequestBodySchema),
     async (c) => {

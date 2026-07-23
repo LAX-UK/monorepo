@@ -3,6 +3,9 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { createCatalogLotReadHttpFixture } from "../testing/catalog-lot-read-http-fixture.js";
+import { stubBiddingRouteServices } from "../testing/stub-bidding-route-services.js";
+import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createLotRoutes } from "./lots.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -56,26 +59,31 @@ function mount(
   const app = new Hono();
   const listLotsForPublicApi = vi.fn().mockResolvedValue({ data: [] });
   const getById = vi.fn().mockResolvedValue(lot);
-  const container = {
-    userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    lotService: { getById, listLotsForPublicApi },
+  const cachedCatalogueListService = {
+    buildKey: (_route: string, query: Record<string, unknown>) => JSON.stringify(query),
+    getOrLoad: async (_key: string, load: () => Promise<unknown>) => load(),
+  };
+  const lotReadHttp = createCatalogLotReadHttpFixture({
+    lotService: {
+      listLotsForPublicApi,
+      getById,
+      countMatching: vi.fn(),
+      archiveEndedSummary: vi.fn(),
+    },
     saleService: {
       getById: vi.fn().mockResolvedValue(null),
       findByIds: vi.fn().mockResolvedValue([]),
     },
-    mediaUrlResolver: {
-      resolve: vi.fn(async (url: string) => url),
-      resolveMany: vi.fn(async (urls: string[]) => urls),
-    },
-    lotSoftDeleteService: { getDeleteEligibility: vi.fn() },
-    lotLifecycleQueryService: { getSnapshotsForLots: vi.fn().mockResolvedValue(new Map()) },
-    cachedCatalogueListService: {
-      buildKey: (_route: string, query: Record<string, unknown>) => JSON.stringify(query),
-      getOrLoad: async (_key: string, load: () => Promise<unknown>) => load(),
-    },
+    cachedCatalogueListService: cachedCatalogueListService as never,
+  });
+  const container = {
+    userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+    catalogRoutes: stubCatalogRouteServices({ lotReadHttp }),
     redis: null,
     env: {},
     kycService: null,
+    bidding: stubBiddingRouteServices(),
+    requireSubmissionsLegalEntityContext: vi.fn(),
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue(user),
@@ -113,9 +121,17 @@ describe("lots public contract", () => {
     const lot = activeLot();
     const app = new Hono();
     const getById = vi.fn().mockResolvedValue(lot);
-    const container = {
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-      lotService: { getById, listLotsForPublicApi: vi.fn() },
+    const cachedCatalogueListService = {
+      buildKey: (_route: string, query: Record<string, unknown>) => JSON.stringify(query),
+      getOrLoad: async (_key: string, load: () => Promise<unknown>) => load(),
+    };
+    const lotReadHttp = createCatalogLotReadHttpFixture({
+      lotService: {
+        getById,
+        listLotsForPublicApi: vi.fn(),
+        countMatching: vi.fn(),
+        archiveEndedSummary: vi.fn(),
+      },
       saleService: {
         getById: vi.fn().mockResolvedValue({
           id: saleId,
@@ -125,19 +141,16 @@ describe("lots public contract", () => {
         }),
         findByIds: vi.fn().mockResolvedValue([]),
       },
-      mediaUrlResolver: {
-        resolve: vi.fn(async (url: string) => url),
-        resolveMany: vi.fn(async (urls: string[]) => urls),
-      },
-      lotSoftDeleteService: { getDeleteEligibility: vi.fn() },
-      lotLifecycleQueryService: { getSnapshotsForLots: vi.fn().mockResolvedValue(new Map()) },
-      cachedCatalogueListService: {
-        buildKey: (_route: string, query: Record<string, unknown>) => JSON.stringify(query),
-        getOrLoad: async (_key: string, load: () => Promise<unknown>) => load(),
-      },
+      cachedCatalogueListService: cachedCatalogueListService as never,
+    });
+    const container = {
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      catalogRoutes: stubCatalogRouteServices({ lotReadHttp }),
       redis: null,
       env: {},
       kycService: null,
+      bidding: stubBiddingRouteServices(),
+      requireSubmissionsLegalEntityContext: vi.fn(),
     } as unknown as Container;
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue(null),

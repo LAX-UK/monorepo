@@ -7,7 +7,8 @@ import {
   watchlistLotIdParamSchema,
   watchlistQuerySchema,
 } from "@auction/validators";
-import { buildWebsiteUserEvent } from "../../lib/marketing-event-factory.js";
+import { marketingWebsiteContextFromHono } from "../../lib/marketing-website-context.js";
+import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
 
@@ -16,42 +17,26 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
 
   r.get("/me/watchlist/ids", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const lotIds = await container.watchlistService.listIds(userId);
-    return c.json({ data: { lotIds } });
+    const response = await container.userRoutes.watchlistHttp.listWatchlistIds({ userId });
+    return respondUserHttpJson(c, response);
   });
 
   r.get("/me/watchlist", requireAuth, zValidator("query", watchlistQuerySchema), async (c) => {
     const userId = c.get("userId") as string;
     const query = c.req.valid("query");
-    const data = await container.userDashboardReadService.listWatchlistForUser(userId, {
-      sort: query.sort,
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.categoryIds ? { categoryIds: query.categoryIds } : {}),
-    });
-    return c.json({ data });
+    const response = await container.userRoutes.watchlistHttp.listWatchlist({ userId, query });
+    return respondUserHttpJson(c, response);
   });
 
   r.post("/me/watchlist", requireAuth, zValidator("json", watchlistBodySchema), async (c) => {
     const userId = c.get("userId") as string;
-    const { lotId } = c.req.valid("json");
-    const lot = await container.repoFactory.root.lot.findById(lotId);
-    if (!lot) {
-      return c.json({ error: "Lot not found" }, 404);
-    }
-    const eventId = crypto.randomUUID();
-    const marketingEvent = buildWebsiteUserEvent(c, {
-      name: "AddToWishlist",
-      eventId,
+    const body = c.req.valid("json");
+    const response = await container.userRoutes.watchlistHttp.addWatchlistLot({
       userId,
-      customData: { lotId },
+      body,
+      marketingContext: marketingWebsiteContextFromHono(c),
     });
-    const row = await container.watchlistService.addWithMarketingEvent(
-      userId,
-      lotId,
-      marketingEvent,
-    );
-    await container.marketingEventService.enqueue(marketingEvent);
-    return c.json({ data: row, marketingEventId: eventId }, 201);
+    return respondUserHttpJson(c, response);
   });
 
   r.delete(
@@ -61,25 +46,19 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
     async (c) => {
       const userId = c.get("userId") as string;
       const { lotId } = c.req.valid("param");
-      const eventId = crypto.randomUUID();
-      const marketingEvent = buildWebsiteUserEvent(c, {
-        name: "RemoveFromWishlist",
-        eventId,
+      const response = await container.userRoutes.watchlistHttp.removeWatchlistLot({
         userId,
-        customData: { lotId },
+        lotId,
+        marketingContext: marketingWebsiteContextFromHono(c),
       });
-      await container.watchlistService.removeWithMarketingEvent(userId, lotId, marketingEvent);
-      await container.marketingEventService.enqueue(marketingEvent);
-      return c.body(null, 204);
+      return respondUserHttpJson(c, response);
     },
   );
 
   r.get("/me/artist-watchlist", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const rows = await container.artistWatchlistService.list(userId);
-    return c.json({
-      data: rows.map((row) => ({ artistId: row.artistId, id: row.id, createdAt: row.createdAt })),
-    });
+    const response = await container.userRoutes.watchlistHttp.listArtistWatchlist({ userId });
+    return respondUserHttpJson(c, response);
   });
 
   r.post(
@@ -88,12 +67,12 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
     zValidator("json", artistWatchlistBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
-      const { artistId } = c.req.valid("json");
-      const row = await container.artistWatchlistService.add(userId, artistId);
-      if (!row) {
-        return c.json({ error: "Artist not found" }, 404);
-      }
-      return c.json({ data: row }, 201);
+      const body = c.req.valid("json");
+      const response = await container.userRoutes.watchlistHttp.addArtistWatchlist({
+        userId,
+        body,
+      });
+      return respondUserHttpJson(c, response);
     },
   );
 
@@ -104,15 +83,18 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
     async (c) => {
       const userId = c.get("userId") as string;
       const { artistId } = c.req.valid("param");
-      await container.artistWatchlistService.remove(userId, artistId);
-      return c.body(null, 204);
+      const response = await container.userRoutes.watchlistHttp.removeArtistWatchlist({
+        userId,
+        artistId,
+      });
+      return respondUserHttpJson(c, response);
     },
   );
 
   r.get("/me/saved-searches", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const rows = await container.savedSearchService.list(userId);
-    return c.json({ data: rows });
+    const response = await container.userRoutes.watchlistHttp.listSavedSearches({ userId });
+    return respondUserHttpJson(c, response);
   });
 
   r.post(
@@ -122,12 +104,8 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
     async (c) => {
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      const row = await container.savedSearchService.create(userId, {
-        label: body.label,
-        query: body.query,
-        notifyEmail: body.notifyEmail,
-      });
-      return c.json({ data: row }, 201);
+      const response = await container.userRoutes.watchlistHttp.createSavedSearch({ userId, body });
+      return respondUserHttpJson(c, response);
     },
   );
 
@@ -138,9 +116,8 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
     async (c) => {
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
-      const removed = await container.savedSearchService.remove(userId, id);
-      if (!removed) return c.json({ error: "Not found" }, 404);
-      return c.body(null, 204);
+      const response = await container.userRoutes.watchlistHttp.removeSavedSearch({ userId, id });
+      return respondUserHttpJson(c, response);
     },
   );
 }

@@ -1,10 +1,61 @@
+import type { IAdminOnboardingIssuesReader } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { AdminOnboardingIssuesQueryService } from "./admin-onboarding-issues-query.service.js";
 
-describe("AdminOnboardingIssuesQueryService.getOnboardingIssues", () => {
-  it("returns grouped onboarding issue lists", async () => {
-    const entities = [{ id: "le-1", displayName: "Gallery", status: "under_review" }];
-    const artists = [{ id: "artist-1", displayName: "Artist", status: "pending" }];
+describe("AdminOnboardingIssuesQueryService.getPage", () => {
+  it("returns paginated entities lens with cross-lens summary", async () => {
+    const entities = [{ id: "le-1", displayName: "Gallery", status: "under_review" as const }];
+    const reader: IAdminOnboardingIssuesReader = {
+      summarizeAllQueues: vi.fn().mockResolvedValue({
+        queueTotal: 6,
+        entities: 1,
+        artists: 2,
+        kyc: 1,
+        organizations: 1,
+        documents: 1,
+      }),
+      listEntitiesPendingReview: vi.fn().mockResolvedValue({ rows: entities, total: 1 }),
+      summarizeEntitiesPendingReview: vi.fn().mockResolvedValue({
+        total: 1,
+        docsReceived: 0,
+        underReview: 1,
+      }),
+      listArtistsPendingApproval: vi.fn(),
+      summarizeArtistsPendingApproval: vi.fn(),
+      listStaleKycSessions: vi.fn(),
+      summarizeStaleKycSessions: vi.fn(),
+      listDocumentsAwaitingReview: vi.fn(),
+      summarizeDocumentsAwaitingReview: vi.fn(),
+      listStaleLeadOrganisations: vi.fn(),
+      summarizeStaleLeadOrganisations: vi.fn(),
+      findRowById: vi.fn(),
+    };
+    const svc = new AdminOnboardingIssuesQueryService(reader);
+
+    await expect(svc.getPage({ tab: "entities", limit: 50, offset: 0 })).resolves.toEqual({
+      tab: "entities",
+      rows: entities,
+      total: 1,
+      offset: 0,
+      limit: 50,
+      summary: {
+        queueTotal: 6,
+        entities: 1,
+        artists: 2,
+        kyc: 1,
+        organizations: 1,
+        documents: 1,
+      },
+      lensSummary: {
+        tab: "entities",
+        summary: { total: 1, docsReceived: 0, underReview: 1 },
+      },
+    });
+    expect(reader.listEntitiesPendingReview).toHaveBeenCalledWith({ limit: 50, offset: 0 });
+    expect(reader.summarizeAllQueues).toHaveBeenCalledOnce();
+  });
+
+  it("loads kyc lens rows and summary", async () => {
     const staleKycSessions = [
       {
         id: "kyc-1",
@@ -16,37 +67,40 @@ describe("AdminOnboardingIssuesQueryService.getOnboardingIssues", () => {
         createdAt: new Date("2026-01-01T00:00:00Z"),
       },
     ];
-    const documentsAwaitingReview = [
-      {
-        id: "doc-1",
-        legalEntityId: "le-1",
-        entityDisplayName: "Gallery",
-        uploadObjectId: "obj-1",
-        uploadedAt: new Date("2026-01-02T00:00:00Z"),
-      },
-    ];
-    const staleLeadOrganisations = [
-      { id: "lead-1", displayName: "Lead Org", createdAt: new Date("2025-12-01T00:00:00Z") },
-    ];
-
-    const reader = {
-      getOnboardingIssues: vi.fn().mockResolvedValue({
-        entitiesPendingReview: entities,
-        artistsPendingApproval: artists,
-        staleKycSessions,
-        documentsAwaitingReview,
-        staleLeadOrganisations,
+    const reader: IAdminOnboardingIssuesReader = {
+      summarizeAllQueues: vi.fn().mockResolvedValue({
+        queueTotal: 1,
+        entities: 0,
+        artists: 0,
+        kyc: 1,
+        organizations: 0,
+        documents: 0,
       }),
+      listEntitiesPendingReview: vi.fn(),
+      summarizeEntitiesPendingReview: vi.fn(),
+      listArtistsPendingApproval: vi.fn(),
+      summarizeArtistsPendingApproval: vi.fn(),
+      listStaleKycSessions: vi.fn().mockResolvedValue({ rows: staleKycSessions, total: 1 }),
+      summarizeStaleKycSessions: vi.fn().mockResolvedValue({
+        total: 1,
+        created: 0,
+        requiresInput: 0,
+        processing: 1,
+      }),
+      listDocumentsAwaitingReview: vi.fn(),
+      summarizeDocumentsAwaitingReview: vi.fn(),
+      listStaleLeadOrganisations: vi.fn(),
+      summarizeStaleLeadOrganisations: vi.fn(),
+      findRowById: vi.fn(),
     };
     const svc = new AdminOnboardingIssuesQueryService(reader);
 
-    await expect(svc.getOnboardingIssues()).resolves.toEqual({
-      entitiesPendingReview: entities,
-      artistsPendingApproval: artists,
-      staleKycSessions,
-      documentsAwaitingReview,
-      staleLeadOrganisations,
+    const page = await svc.getPage({ tab: "kyc", limit: 25, offset: 10 });
+    expect(page.rows).toEqual(staleKycSessions);
+    expect(page.lensSummary).toEqual({
+      tab: "kyc",
+      summary: { total: 1, created: 0, requiresInput: 0, processing: 1 },
     });
-    expect(reader.getOnboardingIssues).toHaveBeenCalledOnce();
+    expect(reader.listStaleKycSessions).toHaveBeenCalledWith({ limit: 25, offset: 10 });
   });
 });

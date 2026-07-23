@@ -2,7 +2,6 @@ import type { Database } from "@auction/db";
 import type {
   IConnectTransferRepository,
   IPaymentExternalRefRepository,
-  IPaymentMetricsReader,
   IPaymentRefundReconcileRepository,
   IPaymentWebhookLookupReader,
   IPaymentWriteRepository,
@@ -13,7 +12,6 @@ import type {
 import {
   DrizzleConnectTransferRepository,
   DrizzlePaymentExternalRefRepository,
-  DrizzlePaymentMetricsReader,
   DrizzlePaymentRefundReconcileRepository,
   DrizzlePaymentRepository,
   DrizzlePaymentWebhookLookupReader,
@@ -28,7 +26,6 @@ export type PaymentsRepositories = {
   paymentRepo: IPaymentWriteRepository;
   paymentRefundReconcileRepository: IPaymentRefundReconcileRepository;
   paymentExtRepo: IPaymentExternalRefRepository;
-  paymentMetrics: IPaymentMetricsReader;
   paymentWebhookLookupReader: IPaymentWebhookLookupReader;
   xeroConnRepo: IXeroConnectionRepository;
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
@@ -41,7 +38,6 @@ export function createPaymentsRepositories(db: Database): PaymentsRepositories {
   const paymentRepo = new DrizzlePaymentRepository(db);
   const paymentRefundReconcileRepository = new DrizzlePaymentRefundReconcileRepository(db);
   const paymentExtRepo = new DrizzlePaymentExternalRefRepository(db);
-  const paymentMetrics = new DrizzlePaymentMetricsReader(db);
   const paymentWebhookLookupReader = new DrizzlePaymentWebhookLookupReader(db);
   const xeroConnRepo = new DrizzleXeroConnectionRepository(db);
   const xeroWebhookEventRepository = new DrizzleXeroWebhookEventRepository(db);
@@ -52,7 +48,6 @@ export function createPaymentsRepositories(db: Database): PaymentsRepositories {
     paymentRepo,
     paymentRefundReconcileRepository,
     paymentExtRepo,
-    paymentMetrics,
     paymentWebhookLookupReader,
     xeroConnRepo,
     xeroWebhookEventRepository,

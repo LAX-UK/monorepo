@@ -1,11 +1,12 @@
 import type { Lot } from "@auction/types";
 import { Hono } from "hono";
-import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import { AuthzError } from "../lib/errors.js";
 import { createLotRoutes } from "../routes/lots.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { stubBiddingRouteServices } from "../testing/stub-bidding-route-services.js";
+import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 
 const lotId = "00000000-0000-4000-8000-000000000001";
 
@@ -52,6 +53,16 @@ const sampleLot: Lot = {
 const marketingPayload = { artistNote: "hello" };
 
 function makeContainer() {
+  const updateMarketingDetails = vi.fn(async (input: { role: string }) => {
+    if (input.role !== "staff") {
+      return {
+        kind: "err" as const,
+        error: new AuthzError("Only staff can update marketing details", 403),
+      };
+    }
+    return { kind: "ok" as const, data: sampleLot };
+  });
+  const base = stubCatalogRouteServices();
   return {
     redis: { get: vi.fn().mockResolvedValue(null), set: vi.fn(), ping: vi.fn() },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
@@ -61,17 +72,22 @@ function makeContainer() {
       countMatching: vi.fn().mockResolvedValue(0),
       create: vi.fn(),
       update: vi.fn(),
-      updateMarketingDetails: vi.fn(async (role: string) => {
-        if (role !== "staff") {
-          return err(new AuthzError("Only staff can update marketing details", 403));
-        }
-        return ok(sampleLot);
-      }),
       publish: vi.fn(),
       cancel: vi.fn(),
       archiveEndedSummary: vi.fn().mockResolvedValue({ total: "0", count: 0 }),
     },
     bidService: { listForLot: vi.fn() },
+    catalogRoutes: stubCatalogRouteServices({
+      lotLifecycleHttp: { ...base.lotLifecycleHttp, updateMarketingDetails },
+    }),
+    bidding: stubBiddingRouteServices(),
+    env: {},
+    kycService: { isConfigured: () => false },
+    requireSubmissionsLegalEntityContext: vi.fn(),
+    lotSoftDeleteService: { getDeleteEligibility: vi.fn() },
+    saleService: { getById: vi.fn() },
+    mediaUrlResolver: {},
+    lotLifecycleQueryService: { getSnapshotsForLots: vi.fn() },
   } as unknown as Container;
 }
 

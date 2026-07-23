@@ -1,8 +1,8 @@
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { respondComplianceRouteError } from "../../lib/compliance-route-errors.js";
 import { applyStaffPreviewFramingHeaders } from "../../lib/staff-preview-framing.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireAmlReview, requireMlroDecision } from "../../middleware/require-capability.js";
+import type { AdminComplianceRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import {
   amlReviewBodySchema,
   amlReviewQuerySchema,
@@ -20,7 +20,7 @@ import type { AdminHono } from "./_shared.js";
 
 export function attachAdminComplianceRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminComplianceRoutesContainer,
 ): void {
   // ── AML / sanctions watchlist review (MLRO / compliance) ──────────────────
   platform.get(
@@ -29,11 +29,30 @@ export function attachAdminComplianceRoutes(
     zValidator("query", amlReviewQuerySchema),
     async (c) => {
       const { limit, offset } = c.req.valid("query");
-      const [data, total] = await Promise.all([
-        container.admin.aml.listPendingReviews(limit, offset),
-        container.admin.aml.countPendingReviews(),
-      ]);
-      return c.json({ data, meta: { total, limit, offset } });
+      const page = await container.admin.aml.getPage({ limit, offset });
+      return c.json({
+        data: page.rows,
+        meta: {
+          total: page.total,
+          limit: page.limit,
+          offset: page.offset,
+          summary: page.summary,
+        },
+      });
+    },
+  );
+
+  platform.get(
+    "/compliance/aml/screenings/:id",
+    requireAmlReview,
+    zValidator("param", amlScreeningIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const row = await container.admin.aml.getPendingById(id);
+      if (!row) {
+        return c.json({ error: "not_found" }, 404);
+      }
+      return c.json({ data: row });
     },
   );
 
@@ -97,12 +116,16 @@ export function attachAdminComplianceRoutes(
     zValidator("query", sourceOfFundsListQuerySchema),
     async (c) => {
       const { limit, offset, status } = c.req.valid("query");
-      const { rows, total } = await container.admin.sourceOfFunds.listEnriched(
-        status,
-        limit,
-        offset,
-      );
-      return c.json({ data: rows, meta: { total, limit, offset } });
+      const page = await container.admin.sourceOfFunds.getPage({ status, limit, offset });
+      return c.json({
+        data: page.rows,
+        meta: {
+          total: page.total,
+          limit: page.limit,
+          offset: page.offset,
+          summary: page.summary,
+        },
+      });
     },
   );
 

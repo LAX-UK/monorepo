@@ -1,7 +1,7 @@
+import { SaleLifecycleService } from "@auction/lot-lifecycle-app";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import { SaleLifecycleService } from "./sale-lifecycle.service.js";
 
 function sale(overrides: Partial<Sale> = {}): Sale {
   const now = new Date();

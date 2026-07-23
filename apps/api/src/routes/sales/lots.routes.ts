@@ -1,4 +1,4 @@
-import { type UserRole, normalizeUserStaffRole } from "@auction/types";
+import type { UserRole } from "@auction/types";
 import {
   attachLotToSaleBodySchema,
   cancelSaleBodySchema,
@@ -7,14 +7,13 @@ import {
   saleLotIdParamSchema,
   updateLotStatusBodySchema,
 } from "@auction/validators";
-import { serviceErrorJsonBody } from "../../lib/forbidden-response.js";
-import { asHttpStatus } from "../../lib/http-status.js";
-import { presentLotImages } from "../../lib/media-presenters.js";
+import { respondCatalogRouteOutcome } from "../../lib/catalog-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { SaleHono, SaleLotMembershipRouteDeps } from "./_shared.js";
 
 export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDeps): void {
   const { container, requireAuth } = deps;
+  const http = () => container.catalogRoutes.saleLotMembershipHttp;
 
   r.post(
     "/:id/lots",
@@ -26,18 +25,9 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
       const staffRole = c.get("userStaffRole") ?? null;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const result = await container.saleService.addLot(role, id, body, staffRole);
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json(
-        {
-          data: await presentLotImages(
-            container.mediaUrlResolver,
-            result.value,
-            container.mediaAssetEnricher,
-          ),
-        },
+      return respondCatalogRouteOutcome(
+        c,
+        await http().addLot({ role, saleId: id, body, staffRole }),
         201,
       );
     },
@@ -53,23 +43,16 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
       const staffRole = c.get("userStaffRole") ?? null;
       const { id, lotId } = c.req.valid("param");
       const body = c.req.valid("json") ?? { via: "attach_endpoint" as const };
-      const result = await container.saleService.attachExistingLot(
-        role,
-        id,
-        lotId,
-        staffRole,
-        body.via,
+      return respondCatalogRouteOutcome(
+        c,
+        await http().attachExistingLot({
+          role,
+          saleId: id,
+          lotId,
+          staffRole,
+          via: body.via ?? "attach_endpoint",
+        }),
       );
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json({
-        data: await presentLotImages(
-          container.mediaUrlResolver,
-          result.value,
-          container.mediaAssetEnricher,
-        ),
-      });
     },
   );
 
@@ -81,11 +64,9 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
       const role = (c.get("userRole") ?? "client") as UserRole;
       const staffRole = c.get("userStaffRole") ?? null;
       const { id, lotId } = c.req.valid("param");
-      const result = await container.saleService.detachLot(role, id, lotId, staffRole);
-      return result.match(
-        () => c.body(null, 204),
-        (error) => c.json(serviceErrorJsonBody(error), asHttpStatus(error.status)),
-      );
+      const outcome = await http().detachLot({ role, saleId: id, lotId, staffRole });
+      if (outcome.kind === "ok") return c.body(null, 204);
+      return respondCatalogRouteOutcome(c, outcome);
     },
   );
 
@@ -100,27 +81,17 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
       const staffRole = c.get("userStaffRole") ?? null;
       const { id, lotId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
-      const lot = await container.lotService.getById(lotId);
-      if (!lot || lot.saleId !== id) {
-        return c.json({ error: "Lot not found in this sale" }, 404);
-      }
-      const result = await container.lotService.cancel(
-        userId,
-        role,
-        lotId,
-        normalizeUserStaffRole(staffRole ?? undefined),
-        reason?.trim() ? "admin_override" : "manual",
+      return respondCatalogRouteOutcome(
+        c,
+        await http().cancelLotOnSale({
+          userId,
+          role,
+          saleId: id,
+          lotId,
+          staffRole,
+          ...(reason !== undefined ? { reason } : {}),
+        }),
       );
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json({
-        data: await presentLotImages(
-          container.mediaUrlResolver,
-          result.value,
-          container.mediaAssetEnricher,
-        ),
-      });
     },
   );
 
@@ -132,53 +103,21 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
     async (c) => {
       const role = (c.get("userRole") ?? "client") as UserRole;
       const staffRole = c.get("userStaffRole") ?? null;
+      const userId = c.get("userId") as string;
       const { id, lotId } = c.req.valid("param");
       const { status, reason } = c.req.valid("json");
-      if (status === "cancelled") {
-        const userId = c.get("userId") as string;
-        const lot = await container.lotService.getById(lotId);
-        if (!lot || lot.saleId !== id) {
-          return c.json({ error: "Lot not found in this sale" }, 404);
-        }
-        const cancelResult = await container.lotService.cancel(
+      return respondCatalogRouteOutcome(
+        c,
+        await http().setLotStatus({
           userId,
           role,
+          saleId: id,
           lotId,
-          normalizeUserStaffRole(staffRole ?? undefined),
-          reason?.trim() ? "admin_override" : "manual",
-        );
-        if (cancelResult.isErr()) {
-          return c.json(
-            serviceErrorJsonBody(cancelResult.error),
-            asHttpStatus(cancelResult.error.status),
-          );
-        }
-        return c.json({
-          data: await presentLotImages(
-            container.mediaUrlResolver,
-            cancelResult.value,
-            container.mediaAssetEnricher,
-          ),
-        });
-      }
-      const result = await container.saleStatusTransitionService.setLotStatus(
-        role,
-        id,
-        lotId,
-        status,
-        reason,
-        staffRole,
+          staffRole,
+          status,
+          ...(reason !== undefined ? { reason } : {}),
+        }),
       );
-      if (result.isErr()) {
-        return c.json(serviceErrorJsonBody(result.error), asHttpStatus(result.error.status));
-      }
-      return c.json({
-        data: await presentLotImages(
-          container.mediaUrlResolver,
-          result.value,
-          container.mediaAssetEnricher,
-        ),
-      });
     },
   );
 }

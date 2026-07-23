@@ -1,6 +1,6 @@
 import type { ExportEntityType, ExportFormat, ExportPhase, ExportStatus } from "@auction/exports";
 import { exportFilename } from "@auction/exports";
-import type { ExportProvider } from "../../exports/types.js";
+import type { ExportProvider } from "@auction/exports/providers";
 import type { IExportProgressStore } from "./export-progress.store.js";
 import type { ExportJobRow, ExportJobView } from "./export-types.js";
 

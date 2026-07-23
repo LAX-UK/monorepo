@@ -2,10 +2,8 @@ import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type { UserRole } from "@auction/types";
 import type { UserStaffRole } from "@auction/types";
 import { Hono } from "hono";
-import { type Result, err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
-import type { Container } from "../container.js";
-import { AuthzError, LotError } from "../lib/errors.js";
+import type { ContainerPaymentHttpRoutesSlice } from "../container.js";
 import { X_LEGAL_ENTITY_ID_HEADER } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { MyPaymentRowDTO } from "../services/payment-me-presenter.js";
@@ -19,15 +17,24 @@ type MountOptions = {
   staffRole?: string;
   /** Authenticator session id; defaults to "u1". */
   sessionUserId?: string;
-  /** Override `paymentService.listMyPaymentsForBuyerApi` (used by /payments/me tests). */
-  listMyPaymentsForBuyerApi?: (
+  listMyPayments?: (
     userId: string,
     options: { status?: PaymentRecord["status"] },
-  ) => Promise<{ data: MyPaymentRowDTO[] }>;
-  cancelPendingAsBuyer?: (
+  ) => Promise<{ kind: "ok"; data: MyPaymentRowDTO[] }>;
+  cancelPendingPayment?: (
     buyerId: string,
     paymentId: string,
-  ) => Promise<Result<void, AuthzError | LotError>>;
+  ) => Promise<
+    | { kind: "ok"; data: { ok: true } }
+    | { kind: "err"; error: { message: string; status: number; code?: string } }
+  >;
+  getWinnerLotFulfilment?: (
+    userId: string,
+    lotId: string,
+  ) => Promise<
+    | { kind: "ok"; data: unknown }
+    | { kind: "err"; error: { message: string; status: number; code?: string } }
+  >;
 };
 
 function dtoFromPaymentRecord(row: PaymentRecord): MyPaymentRowDTO {
@@ -51,33 +58,32 @@ function dtoFromPaymentRecord(row: PaymentRecord): MyPaymentRowDTO {
 function mount(role: string, opts: MountOptions = {}) {
   const sessionUserId = opts.sessionUserId ?? "u1";
   const app = new Hono();
-  const paymentService = {
+  const entityStaffPayment = {
     listAllForAdmin: vi.fn(),
-    createPendingForWinner: vi.fn(),
-    markCapturedByAdmin: vi.fn().mockReturnValue({ match: (ok: () => Response) => ok() }),
-    refundPayment: vi.fn().mockReturnValue({ match: (ok: () => Response) => ok() }),
-    listMyPaymentsForBuyerApi:
-      opts.listMyPaymentsForBuyerApi ?? vi.fn(async () => ({ data: [] as MyPaymentRowDTO[] })),
-    cancelPendingAsBuyer: opts.cancelPendingAsBuyer ?? vi.fn(async () => ok<void>(undefined)),
+    markCapturedByAdmin: vi.fn().mockReturnValue({ match: (okFn: () => Response) => okFn() }),
+    refundPayment: vi.fn().mockReturnValue({ match: (okFn: () => Response) => okFn() }),
   };
-  const lotService = {
-    getById: vi.fn(async (_id: string) => null),
-  };
-  const mediaUrlResolver = {
-    resolve: vi.fn(async (v: string | null | undefined) => v ?? null),
-    resolveMany: vi.fn(async (vs: (string | null | undefined)[]) => vs.map((v) => v ?? null)),
+  const buyerPaymentHttp = {
+    getBuyerComplianceGate: vi.fn(),
+    getBuyerSourceOfFundsView: vi.fn(),
+    listMyPayments:
+      opts.listMyPayments ??
+      vi.fn(async () => ({ kind: "ok" as const, data: [] as MyPaymentRowDTO[] })),
+    cancelPendingPayment:
+      opts.cancelPendingPayment ??
+      vi.fn(async () => ({ kind: "ok" as const, data: { ok: true as const } })),
+    getWinnerLotFulfilment:
+      opts.getWinnerLotFulfilment ?? vi.fn(async () => ({ kind: "ok" as const, data: null })),
+    initiateBuyerCheckout: vi.fn(),
+    attachSourceOfFundsDocument: vi.fn(),
+    submitSourceOfFundsDocuments: vi.fn(),
   };
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    paymentService,
-    paymentBuyerService: paymentService,
-    paymentAdminService: paymentService,
-    paymentMaintenanceService: paymentService,
-    lotFulfilmentService: {
-      getForWinner: vi.fn().mockResolvedValue(ok(null)),
+    finance: {
+      entityStaffPayment,
+      buyerPaymentHttp,
     },
-    lotService,
-    mediaUrlResolver,
     legalEntityRepository: {
       findActiveMembership: vi.fn().mockImplementation((userId: string, legalEntityId: string) =>
         opts.membershipRole
@@ -92,7 +98,7 @@ function mount(role: string, opts: MountOptions = {}) {
     },
     impersonationAuditService: { recordSessionTimedOut: vi.fn() },
     impersonationSessionService: { validateForRequest: vi.fn() },
-  } as unknown as Container;
+  } as unknown as ContainerPaymentHttpRoutesSlice;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn(async () =>
       sessionUserId
@@ -105,21 +111,21 @@ function mount(role: string, opts: MountOptions = {}) {
     ),
   };
   app.route("/payments", createPaymentRoutes(container, authenticator));
-  return { app, paymentService, lotService, lotFulfilmentService: container.lotFulfilmentService };
+  return { app, entityStaffPayment, buyerPaymentHttp };
 }
 
 describe("payment finance entity authorization", () => {
   it("returns 403 for finance staff (finance_ops) refund without acting entity context", async () => {
-    const { app, paymentService } = mount("staff", { staffRole: "finance_ops" });
+    const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
 
     const res = await app.request(`/payments/${paymentId}/refund`, { method: "POST" });
 
     expect(res.status).toBe(403);
-    expect(paymentService.refundPayment).not.toHaveBeenCalled();
+    expect(entityStaffPayment.refundPayment).not.toHaveBeenCalled();
   });
 
   it("returns 403 for finance staff capture without finance membership", async () => {
-    const { app, paymentService } = mount("staff", {
+    const { app, entityStaffPayment } = mount("staff", {
       membershipRole: "viewer",
       staffRole: "finance_ops",
     });
@@ -130,11 +136,11 @@ describe("payment finance entity authorization", () => {
     });
 
     expect(res.status).toBe(403);
-    expect(paymentService.markCapturedByAdmin).not.toHaveBeenCalled();
+    expect(entityStaffPayment.markCapturedByAdmin).not.toHaveBeenCalled();
   });
 
   it("allows finance member refund for their acting entity", async () => {
-    const { app, paymentService } = mount("staff", {
+    const { app, entityStaffPayment } = mount("staff", {
       membershipRole: "finance",
       staffRole: "finance_ops",
     });
@@ -145,7 +151,7 @@ describe("payment finance entity authorization", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(paymentService.refundPayment).toHaveBeenCalledWith(
+    expect(entityStaffPayment.refundPayment).toHaveBeenCalledWith(
       "u1",
       "staff",
       paymentId,
@@ -155,12 +161,12 @@ describe("payment finance entity authorization", () => {
   });
 
   it("allows staff (super_admin) capture without entity context", async () => {
-    const { app, paymentService } = mount("staff", { staffRole: "super_admin" });
+    const { app, entityStaffPayment } = mount("staff", { staffRole: "super_admin" });
 
     const res = await app.request(`/payments/${paymentId}/capture`, { method: "POST" });
 
     expect(res.status).toBe(200);
-    expect(paymentService.markCapturedByAdmin).toHaveBeenCalledWith(
+    expect(entityStaffPayment.markCapturedByAdmin).toHaveBeenCalledWith(
       "u1",
       "staff",
       paymentId,
@@ -190,35 +196,37 @@ describe("GET /payments/me", () => {
   }
 
   it("returns 401 for unauthenticated requests", async () => {
-    const { app, paymentService } = mount("client", { sessionUserId: "" });
+    const { app, buyerPaymentHttp } = mount("client", { sessionUserId: "" });
     const res = await app.request("/payments/me");
     expect(res.status).toBe(401);
-    expect(paymentService.listMyPaymentsForBuyerApi).not.toHaveBeenCalled();
+    expect(buyerPaymentHttp.listMyPayments).not.toHaveBeenCalled();
   });
 
-  it("delegates to listMyPaymentsForBuyerApi with the JWT userId only", async () => {
-    const listMyPaymentsForBuyerApi = vi.fn(async () => ({
+  it("delegates to listMyPayments with the JWT userId only", async () => {
+    const listMyPayments = vi.fn(async () => ({
+      kind: "ok" as const,
       data: [dtoFromPaymentRecord(paymentRow())],
     }));
-    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
+    const { app } = mount("client", { sessionUserId: "alice", listMyPayments });
     const res = await app.request("/payments/me");
     expect(res.status).toBe(200);
-    expect(listMyPaymentsForBuyerApi).toHaveBeenCalledTimes(1);
-    expect(listMyPaymentsForBuyerApi).toHaveBeenCalledWith("alice", {});
+    expect(listMyPayments).toHaveBeenCalledTimes(1);
+    expect(listMyPayments).toHaveBeenCalledWith("alice", {});
   });
 
   it("does not allow the client to override the buyerId via query parameters", async () => {
-    const listMyPaymentsForBuyerApi = vi.fn(async () => ({ data: [] }));
-    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
+    const listMyPayments = vi.fn(async () => ({ kind: "ok" as const, data: [] }));
+    const { app } = mount("client", { sessionUserId: "alice", listMyPayments });
     const res = await app.request("/payments/me?buyerId=bob&userId=bob&paidByUserId=bob");
     expect(res.status).toBe(200);
-    expect(listMyPaymentsForBuyerApi).toHaveBeenCalledWith("alice", {});
+    expect(listMyPayments).toHaveBeenCalledWith("alice", {});
   });
 
   it("does not include rows that do not belong to the caller (cross-user isolation)", async () => {
     const aliceRow = paymentRow({ id: "alice-pay", paidByUserId: "alice" });
     const bobRow = paymentRow({ id: "bob-pay", paidByUserId: "bob" });
-    const listMyPaymentsForBuyerApi = vi.fn(async (id: string) => ({
+    const listMyPayments = vi.fn(async (id: string) => ({
+      kind: "ok" as const,
       data:
         id === "alice"
           ? [dtoFromPaymentRecord(aliceRow)]
@@ -226,7 +234,7 @@ describe("GET /payments/me", () => {
             ? [dtoFromPaymentRecord(bobRow)]
             : [],
     }));
-    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
+    const { app } = mount("client", { sessionUserId: "alice", listMyPayments });
     const res = await app.request("/payments/me");
     const body = (await res.json()) as { data: { id: string }[] };
     const ids = body.data.map((r) => r.id);
@@ -238,12 +246,12 @@ describe("GET /payments/me", () => {
     const captured = paymentRow({ id: "c", status: "captured" });
     const refunded = paymentRow({ id: "r", status: "refunded" });
     const pending = paymentRow({ id: "p", status: "pending" });
-    const listMyPaymentsForBuyerApi = vi.fn(async (_userId, options) => {
+    const listMyPayments = vi.fn(async (_userId, options) => {
       const rows = [captured, refunded, pending];
       const filtered = options.status ? rows.filter((r) => r.status === options.status) : rows;
-      return { data: filtered.map(dtoFromPaymentRecord) };
+      return { kind: "ok" as const, data: filtered.map(dtoFromPaymentRecord) };
     });
-    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
+    const { app } = mount("client", { sessionUserId: "alice", listMyPayments });
 
     const res = await app.request("/payments/me?status=refunded");
     expect(res.status).toBe(200);
@@ -252,11 +260,11 @@ describe("GET /payments/me", () => {
   });
 
   it("rejects unknown status values with 400", async () => {
-    const listMyPaymentsForBuyerApi = vi.fn(async () => ({ data: [] }));
-    const { app } = mount("client", { sessionUserId: "alice", listMyPaymentsForBuyerApi });
+    const listMyPayments = vi.fn(async () => ({ kind: "ok" as const, data: [] }));
+    const { app } = mount("client", { sessionUserId: "alice", listMyPayments });
     const res = await app.request("/payments/me?status=bogus");
     expect(res.status).toBe(400);
-    expect(listMyPaymentsForBuyerApi).not.toHaveBeenCalled();
+    expect(listMyPayments).not.toHaveBeenCalled();
   });
 
   it("does not leak Stripe identifiers in the response payload", async () => {
@@ -267,7 +275,10 @@ describe("GET /payments/me", () => {
     });
     const { app } = mount("client", {
       sessionUserId: "alice",
-      listMyPaymentsForBuyerApi: vi.fn(async () => ({ data: [dtoFromPaymentRecord(row)] })),
+      listMyPayments: vi.fn(async () => ({
+        kind: "ok" as const,
+        data: [dtoFromPaymentRecord(row)],
+      })),
     });
     const res = await app.request("/payments/me");
     const text = await res.text();
@@ -280,7 +291,10 @@ describe("GET /payments/me", () => {
     const row = paymentRow();
     const { app } = mount("client", {
       sessionUserId: "alice",
-      listMyPaymentsForBuyerApi: vi.fn(async () => ({ data: [dtoFromPaymentRecord(row)] })),
+      listMyPayments: vi.fn(async () => ({
+        kind: "ok" as const,
+        data: [dtoFromPaymentRecord(row)],
+      })),
     });
     const res = await app.request("/payments/me");
     expect(res.status).toBe(200);
@@ -313,32 +327,33 @@ describe("GET /payments/me/lot/:lotId/fulfilment", () => {
   const lotUuid = "44444444-4444-4444-8444-444444444444";
 
   it("returns 401 when unauthenticated", async () => {
-    const { app, lotFulfilmentService } = mount("client", { sessionUserId: "" });
+    const { app, buyerPaymentHttp } = mount("client", { sessionUserId: "" });
     const res = await app.request(`/payments/me/lot/${lotUuid}/fulfilment`);
     expect(res.status).toBe(401);
-    expect(lotFulfilmentService.getForWinner).not.toHaveBeenCalled();
+    expect(buyerPaymentHttp.getWinnerLotFulfilment).not.toHaveBeenCalled();
   });
 
   it("returns 403 for roles that are not buyers", async () => {
-    const { app, lotFulfilmentService } = mount("staff", {
+    const { app, buyerPaymentHttp } = mount("staff", {
       sessionUserId: "u1",
       staffRole: "finance_ops",
     });
     const res = await app.request(`/payments/me/lot/${lotUuid}/fulfilment`);
     expect(res.status).toBe(403);
-    expect(lotFulfilmentService.getForWinner).not.toHaveBeenCalled();
+    expect(buyerPaymentHttp.getWinnerLotFulfilment).not.toHaveBeenCalled();
   });
 
   it("rejects invalid lot id with 400", async () => {
-    const { app, lotFulfilmentService } = mount("client", { sessionUserId: "alice" });
+    const { app, buyerPaymentHttp } = mount("client", { sessionUserId: "alice" });
     const res = await app.request("/payments/me/lot/not-a-uuid/fulfilment");
     expect(res.status).toBe(400);
-    expect(lotFulfilmentService.getForWinner).not.toHaveBeenCalled();
+    expect(buyerPaymentHttp.getWinnerLotFulfilment).not.toHaveBeenCalled();
   });
 
-  it("delegates to getForWinner with session user and lot id", async () => {
-    const getForWinner = vi.fn().mockResolvedValue(
-      ok({
+  it("delegates to getWinnerLotFulfilment with session user and lot id", async () => {
+    const getWinnerLotFulfilment = vi.fn().mockResolvedValue({
+      kind: "ok",
+      data: {
         id: "ff",
         lotId: lotUuid,
         paymentId: null,
@@ -354,42 +369,16 @@ describe("GET /payments/me/lot/:lotId/fulfilment", () => {
         notes: null,
         updatedAt: new Date(),
         createdAt: new Date(),
-      }),
-    );
-    const lotFulfilmentService = { getForWinner };
-    const app = new Hono();
-    const paymentService = {
-      listAllForAdmin: vi.fn(),
-      createPendingForWinner: vi.fn(),
-      markCapturedByAdmin: vi.fn().mockReturnValue({ match: (fn: () => Response) => fn() }),
-      refundPayment: vi.fn().mockReturnValue({ match: (fn: () => Response) => fn() }),
-      listMyPaymentsForBuyerApi: vi.fn(async () => ({ data: [] as MyPaymentRowDTO[] })),
-      cancelPendingAsBuyer: vi.fn(async () => ok<void>(undefined)),
-    };
-    const container = {
-      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-      paymentService,
-      paymentBuyerService: paymentService,
-      paymentAdminService: paymentService,
-      paymentMaintenanceService: paymentService,
-      lotFulfilmentService,
-      lotService: { getById: vi.fn(async () => null) },
-      mediaUrlResolver: {
-        resolve: vi.fn(async (v: string | null | undefined) => v ?? null),
-        resolveMany: vi.fn(async (vs: (string | null | undefined)[]) => vs.map((v) => v ?? null)),
       },
-      legalEntityRepository: { findActiveMembership: vi.fn().mockResolvedValue(null) },
-      impersonationAuditService: { recordSessionTimedOut: vi.fn() },
-      impersonationSessionService: { validateForRequest: vi.fn() },
-    } as unknown as Container;
-    const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn(async () => ({ id: "alice", role: "client" as UserRole })),
-    };
-    app.route("/payments", createPaymentRoutes(container, authenticator));
+    });
+    const { app } = mount("client", {
+      sessionUserId: "alice",
+      getWinnerLotFulfilment,
+    });
 
     const res = await app.request(`/payments/me/lot/${lotUuid}/fulfilment`);
     expect(res.status).toBe(200);
-    expect(getForWinner).toHaveBeenCalledWith("alice", lotUuid);
+    expect(getWinnerLotFulfilment).toHaveBeenCalledWith("alice", lotUuid);
     const body = (await res.json()) as { data: { status: string } };
     expect(body.data.status).toBe("awaiting_payment");
   });
@@ -397,38 +386,42 @@ describe("GET /payments/me/lot/:lotId/fulfilment", () => {
 
 describe("POST /payments/me/:id/cancel-pending", () => {
   it("returns 401 when unauthenticated", async () => {
-    const { app, paymentService } = mount("client", { sessionUserId: "" });
+    const { app, buyerPaymentHttp } = mount("client", { sessionUserId: "" });
     const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
     expect(res.status).toBe(401);
-    expect(paymentService.cancelPendingAsBuyer).not.toHaveBeenCalled();
+    expect(buyerPaymentHttp.cancelPendingPayment).not.toHaveBeenCalled();
   });
 
   it("returns 403 for roles that cannot place bids", async () => {
-    const { app, paymentService } = mount("staff", {
+    const { app, buyerPaymentHttp } = mount("staff", {
       sessionUserId: "u1",
       staffRole: "finance_ops",
     });
     const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
     expect(res.status).toBe(403);
-    expect(paymentService.cancelPendingAsBuyer).not.toHaveBeenCalled();
+    expect(buyerPaymentHttp.cancelPendingPayment).not.toHaveBeenCalled();
   });
 
-  it("delegates to cancelPendingAsBuyer with the session user id", async () => {
-    const cancelPendingAsBuyer = vi.fn(async () => ok<void>(undefined));
-    const { app, paymentService } = mount("client", {
+  it("delegates to cancelPendingPayment with the session user id", async () => {
+    const cancelPendingPayment = vi.fn(async () => ({
+      kind: "ok" as const,
+      data: { ok: true as const },
+    }));
+    const { app, buyerPaymentHttp } = mount("client", {
       sessionUserId: "alice",
-      cancelPendingAsBuyer,
+      cancelPendingPayment,
     });
     const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
     expect(res.status).toBe(200);
-    expect(paymentService.cancelPendingAsBuyer).toHaveBeenCalledWith("alice", paymentId);
+    expect(buyerPaymentHttp.cancelPendingPayment).toHaveBeenCalledWith("alice", paymentId);
   });
 
   it("maps service errors to HTTP status", async () => {
-    const cancelPendingAsBuyer = vi.fn(async () =>
-      err(new LotError("Only pending payments can be cancelled", 409)),
-    );
-    const { app } = mount("client", { sessionUserId: "alice", cancelPendingAsBuyer });
+    const cancelPendingPayment = vi.fn(async () => ({
+      kind: "err" as const,
+      error: { message: "Only pending payments can be cancelled", status: 409 },
+    }));
+    const { app } = mount("client", { sessionUserId: "alice", cancelPendingPayment });
     const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error?: string };
@@ -436,10 +429,11 @@ describe("POST /payments/me/:id/cancel-pending", () => {
   });
 
   it("maps authorization errors from the service", async () => {
-    const cancelPendingAsBuyer = vi.fn(async () =>
-      err(new AuthzError("Only the buyer can cancel this payment", 403)),
-    );
-    const { app } = mount("client", { sessionUserId: "alice", cancelPendingAsBuyer });
+    const cancelPendingPayment = vi.fn(async () => ({
+      kind: "err" as const,
+      error: { message: "Only the buyer can cancel this payment", status: 403 },
+    }));
+    const { app } = mount("client", { sessionUserId: "alice", cancelPendingPayment });
     const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
     expect(res.status).toBe(403);
   });

@@ -4,6 +4,9 @@ import type { Container } from "../container.js";
 import { CachedCatalogueListService } from "../services/cached-catalogue-list.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { ICacheProvider } from "../services/interfaces/cache.js";
+import { createCatalogLotReadHttpFixture } from "../testing/catalog-lot-read-http-fixture.js";
+import { stubBiddingRouteServices } from "../testing/stub-bidding-route-services.js";
+import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createLotRoutes } from "./lots.js";
 
 function createMemoryCache(): ICacheProvider {
@@ -23,20 +26,23 @@ function mount() {
   const app = new Hono();
   const listLotsForPublicApi = vi.fn().mockResolvedValue({ data: [] });
   const cachedCatalogueListService = new CachedCatalogueListService(createMemoryCache(), 60);
+  const lotReadHttp = createCatalogLotReadHttpFixture({
+    lotService: {
+      listLotsForPublicApi,
+      getById: vi.fn(),
+      countMatching: vi.fn(),
+      archiveEndedSummary: vi.fn(),
+    },
+    cachedCatalogueListService,
+  });
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
-    lotService: { listLotsForPublicApi },
-    saleService: { findByIds: vi.fn().mockResolvedValue([]) },
-    mediaUrlResolver: {
-      resolve: vi.fn(async (url: string) => url),
-      resolveMany: vi.fn(async (urls: string[]) => urls),
-    },
-    lotSoftDeleteService: { getDeleteEligibilityBatch: vi.fn() },
-    lotLifecycleQueryService: { getSnapshotsForLots: vi.fn().mockResolvedValue(new Map()) },
-    cachedCatalogueListService,
+    catalogRoutes: stubCatalogRouteServices({ lotReadHttp }),
     redis: null,
     env: {},
     kycService: null,
+    bidding: stubBiddingRouteServices(),
+    requireSubmissionsLegalEntityContext: vi.fn(),
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue(null),

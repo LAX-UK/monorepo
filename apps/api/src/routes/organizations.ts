@@ -6,6 +6,7 @@ import {
 import type { MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import type { ContainerOrganizationRoutesSlice } from "../container.js";
+import { respondIdentityRouteOutcome } from "../lib/identity-route-response.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -19,55 +20,37 @@ export function createOrganizationRoutes(
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
+  const organizationHttp = container.identityRoutes.organizationHttp;
   const r = new Hono<{ Variables: { userId?: string; userRole?: string } }>();
 
-  /** GET /organizations/subkinds — public list of subkinds available to public onboarding. */
   r.get("/subkinds", (c) => {
-    return c.json({ data: container.organizationOnboardingService.listSubkinds() });
+    return respondIdentityRouteOutcome(c, organizationHttp.listSubkinds());
   });
 
-  /** GET /organizations/requirements/:subkind */
   r.get("/requirements/:subkind", zValidator("param", orgRequirementsParamsSchema), (c) => {
     const { subkind } = c.req.valid("param");
-    return c.json({
-      data: container.organizationOnboardingService.getRequirements(subkind),
-    });
+    return respondIdentityRouteOutcome(c, organizationHttp.getRequirements({ subkind }));
   });
 
-  /** GET /organizations/check-name?displayName=... — slug availability with
-   * suggestions. Public to avoid round-trips during the wizard.
-   */
   r.get("/check-name", zValidator("query", checkOrgNameSchema), async (c) => {
     const { displayName } = c.req.valid("query");
-    const result = await container.organizationOnboardingService.checkNameAvailability(displayName);
-    return c.json({ data: result });
+    const outcome = await organizationHttp.checkNameAvailability({ displayName });
+    return respondIdentityRouteOutcome(c, outcome);
   });
 
-  /** POST /organizations — create a new organisation. Auth required. */
   r.post(
     "/",
     requireAuth,
     orgCreateRateLimit,
     zValidator("json", createOrganizationSchema),
     async (c) => {
-      if (!container.orgModuleGate.isEnabled()) {
-        const body = container.orgModuleGate.disabledResponse();
-        return c.json(body, 403);
-      }
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
-      try {
-        const result = await container.organizationOnboardingService.createOrganization(
-          userId,
-          body,
-        );
-        return c.json({ data: result }, 201);
-      } catch (e) {
-        if (e instanceof Error && e.message === "organization_limit_reached") {
-          return c.json({ error: "organization_limit_reached" }, 429);
-        }
-        throw e;
+      const outcome = await organizationHttp.createOrganization({ userId, body });
+      if (outcome.kind === "err") {
+        return respondIdentityRouteOutcome(c, outcome);
       }
+      return respondIdentityRouteOutcome(c, outcome, 201);
     },
   );
 

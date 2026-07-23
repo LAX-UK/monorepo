@@ -2,6 +2,7 @@ import { DrizzleUserEmailChangeRepository } from "@auction/persistence/repositor
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { createEmailChangeToken } from "../lib/email-change-token.js";
+import { IdentityAccountSecurityHttpApplicationService } from "../services/identity/identity-account-security-http-application.service.js";
 import { createAuthRoutes } from "./auth.js";
 /** Deterministic HMAC input for tests only (not a production credential). */
 const fixtureHmacKey = ["vitest", "email-change", "routes", "fixture"].join(":");
@@ -83,33 +84,51 @@ function makeRecentAuthDb() {
 }
 
 function mountAuthDb(db: object, authDb: object = db) {
+  const env = {
+    BETTER_AUTH_SECRET: fixtureHmacKey,
+    WEB_ORIGIN: "http://localhost:3000",
+    LOG_LEVEL: "error",
+    NODE_ENV: "test",
+  };
+  const auth = {
+    api: {
+      getSession: vi.fn(async () => ({ user: { id: "u1" } })),
+    },
+  };
+  const userService = { getById: vi.fn(async () => null) };
+  const userEmailChangeRepository = new DrizzleUserEmailChangeRepository(db as never);
+  const emailService = { enqueue: vi.fn() };
+  const authAuditPublisher = { publish: vi.fn(async () => {}) };
+  const sessionRevocation = { revokeAllForUser: vi.fn(async () => 0) };
   const container = {
-    env: {
-      BETTER_AUTH_SECRET: fixtureHmacKey,
-      WEB_ORIGIN: "http://localhost:3000",
-      LOG_LEVEL: "error",
-      NODE_ENV: "test",
-    },
+    env,
     db,
-    /** POST /auth/confirm-email-change writes `user.email` + `user.email_verified`,
-     * which `api_app` is intentionally denied. The route runs that transaction
-     * through `container.authDb` (auth_app role). Tests default `authDb` to the
-     * same mock as `db` so existing scenarios don't have to be rewritten. */
     authDb,
-    auth: {
-      api: {
-        getSession: vi.fn(async () => ({ user: { id: "u1" } })),
-      },
-    },
+    auth,
     authenticator: {
       getSessionUser: vi.fn(async () => ({ id: "u1", role: "client" as const, staffRole: null })),
     },
     userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
-    sessionRevocation: { revokeAllForUser: vi.fn(async () => 0) },
-    userService: { getById: vi.fn(async () => null) },
-    userEmailChangeRepository: new DrizzleUserEmailChangeRepository(db as never),
-    emailService: { enqueue: vi.fn() },
-    authAuditPublisher: { publish: vi.fn(async () => {}) },
+    sessionRevocation,
+    userService,
+    userEmailChangeRepository,
+    emailService,
+    authAuditPublisher,
+    redis: null,
+    identityRoutes: {
+      accountSecurityHttp: new IdentityAccountSecurityHttpApplicationService({
+        env: env as never,
+        authDb: authDb as never,
+        auth: auth as never,
+        db: db as never,
+        userService: userService as never,
+        userEmailChangeRepository,
+        emailService: emailService as never,
+        sessionRevocation: sessionRevocation as never,
+        authAuditPublisher,
+        authCredentialReader: { hasCredentialAccount: vi.fn(async () => false) },
+      }),
+    },
   };
   const app = new Hono().route("/auth", createAuthRoutes(container as never));
   return { app, auth: container.auth };
@@ -295,20 +314,7 @@ describe("POST /auth/confirm-email-change", () => {
 describe("DELETE /auth/change-email", () => {
   it("returns 401 without a session", async () => {
     const db = { transaction: vi.fn() };
-    const container = {
-      env: { BETTER_AUTH_SECRET: fixtureHmacKey, WEB_ORIGIN: "http://localhost:3000" },
-      db,
-      authDb: db,
-      auth: { api: { getSession: vi.fn(async () => null) } },
-      authenticator: { getSessionUser: vi.fn(async () => null) },
-      userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
-      sessionRevocation: { revokeAllForUser: vi.fn(async () => {}) },
-      userService: { getById: vi.fn(async () => null) },
-      userEmailChangeRepository: new DrizzleUserEmailChangeRepository(db as never),
-      emailService: { enqueue: vi.fn() },
-      authAuditPublisher: { publish: vi.fn(async () => {}) },
-    };
-    const app = new Hono().route("/auth", createAuthRoutes(container as never));
+    const { app } = mountAuthDb(db);
     const res = await app.request("/auth/change-email", { method: "DELETE" });
     expect(res.status).toBe(401);
   });

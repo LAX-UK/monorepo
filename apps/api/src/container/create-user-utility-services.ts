@@ -12,8 +12,6 @@ import { AdminPaymentListQueryService } from "../services/admin/admin-payment-li
 import { StructuredQueueAuditService } from "../services/admin/queue-audit.service.js";
 import { BullMQQueueInspector } from "../services/admin/queue-inspector.service.js";
 import { BullMQQueueMutator } from "../services/admin/queue-mutator.service.js";
-import { AnalyticsService } from "../services/analytics.service.js";
-import { DefaultMetricsAggregator } from "../services/default-metrics.aggregator.js";
 import { EmailUnsubscribeService } from "../services/email-unsubscribe.service.js";
 import { ErrorHandlerService } from "../services/error-handler.service.js";
 import { NewsletterSignupService } from "../services/newsletter-signup.service.js";
@@ -23,7 +21,6 @@ import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 
 export type ContainerUserUtilityServices = {
-  analyticsService: AnalyticsService;
   httpErrorHandler: ErrorHandlerService;
   queueAdmin: {
     inspector: BullMQQueueInspector;
@@ -66,9 +63,6 @@ export function createUserUtilityServices(
     dataExportQueue,
   } = infra;
   const {
-    lotMetrics,
-    paymentMetrics,
-    userMetrics,
     paymentRepo,
     adminMarketingEventOutboxRepository,
     emailSuppressionRepository,
@@ -79,14 +73,6 @@ export function createUserUtilityServices(
     failedJobRepository,
   } = repos;
   const { errorReporter } = payments;
-
-  const metricsAggregator = new DefaultMetricsAggregator();
-  const analyticsService = new AnalyticsService(
-    lotMetrics,
-    paymentMetrics,
-    userMetrics,
-    metricsAggregator,
-  );
 
   const httpErrorHandler = new ErrorHandlerService(
     new CompositeErrorClassifier(),
@@ -156,7 +142,6 @@ export function createUserUtilityServices(
   const adminPaymentListQueryService = new AdminPaymentListQueryService(paymentRepo);
 
   return {
-    analyticsService,
     httpErrorHandler,
     queueAdmin,
     closeBullQueues,

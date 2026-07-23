@@ -8,7 +8,6 @@ import {
   updateProfileNameFormSchema,
   userIdParamSchema,
 } from "@auction/validators";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { mapAdminUserListQuery } from "../../lib/admin-user-list-query.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -21,12 +20,13 @@ import {
   requireUserModeration,
   requireUsersDirectory,
 } from "../../middleware/require-capability.js";
+import type { AdminPeopleUsersRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import { activityQuerySchema, adminUserIdParamSchema, userBidsQuerySchema } from "./_schemas.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminUsersDirectoryRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminPeopleUsersRoutesContainer,
 ): void {
   platform.get(
     "/users",
@@ -36,12 +36,20 @@ export function attachAdminUsersDirectoryRoutes(
       const q = c.req.valid("query");
       const actorRole = c.get("userRole") ?? "client";
       const actorStaff = c.get("userStaffRole") as string | null | undefined;
-      const data = await container.admin.users.list(
+      const page = await container.admin.users.getPage(
         actorRole,
         actorStaff,
         mapAdminUserListQuery(q),
       );
-      return c.json({ data });
+      return c.json({
+        data: page.rows,
+        meta: {
+          total: page.total,
+          limit: page.limit,
+          offset: page.offset,
+          summary: page.summary,
+        },
+      });
     },
   );
 
@@ -118,7 +126,7 @@ export function attachAdminUsersDirectoryRoutes(
 
 export function attachAdminUsersManagementRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminPeopleUsersRoutesContainer,
 ): void {
   platform.get(
     "/users/:userId/source-of-funds",

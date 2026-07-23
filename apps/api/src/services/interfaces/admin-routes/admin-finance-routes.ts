@@ -32,9 +32,11 @@ export interface IAdminPaymentsApplicationService {
   ): Promise<import("../../admin/admin-payment-list-query.service.js").AdminPaymentListPage>;
 }
 
-export type IAdminStripeConnectApplicationService = IStripeConnectService & {
+export interface IAdminStripeConnectApplicationService {
   readonly webOrigin: string | undefined;
-};
+  syncAccountFromStripe: IStripeConnectService["syncAccountFromStripe"];
+  createOnboardingLink: IStripeConnectService["createOnboardingLink"];
+}
 
 export type XeroConnectionHealth = "healthy" | "degraded" | "disconnected";
 
@@ -74,13 +76,72 @@ export interface IXeroAdminApplicationService {
 
 export type { AdminNavCounts } from "../../admin/admin-nav-counts.service.js";
 export type { AdminKpiPeriodDays, AdminKpiTrendBundle } from "../admin-kpi-trend.js";
+import type { AdminSubmissionsListSummary } from "@auction/persistence/interfaces";
+import type { AdminLotsListSummary } from "../../admin/admin-lots-list-summary.service.js";
+import type { AdminSalesListSummary } from "../../admin/admin-sales-list-summary.service.js";
+export type {
+  AdminLotsLensCounts,
+  AdminLotsListSummary,
+} from "../../admin/admin-lots-list-summary.service.js";
+export type {
+  AdminSalesLensCounts,
+  AdminSalesListSummary,
+} from "../../admin/admin-sales-list-summary.service.js";
 
-export interface IAdminDashboardMetricsService {
+export interface IAdminDashboardMetricsService
+  extends IAdminNavCountsQueryService,
+    IAdminKpiTrendsQueryService,
+    IAdminCatalogListSummariesQueryService {}
+
+export interface IAdminNavCountsQueryService {
   getNavCounts(): Promise<AdminNavCounts>;
+}
+
+export interface IAdminKpiTrendsQueryService {
   getLotsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
+  getLotsEndedTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
+  getLotsHammerTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
   getPaymentsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
   getSalesTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
   getPayoutsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
+}
+
+export interface IAdminCatalogListSummariesQueryService {
+  getSalesListSummary(): Promise<AdminSalesListSummary>;
+  getLotsListSummary(): Promise<AdminLotsListSummary>;
+  getSubmissionsListSummary(userId: string): Promise<AdminSubmissionsListSummary>;
+}
+
+export interface IAdminPayoutApplicationService {
+  adminListPage(
+    filter: import("../../interfaces/payout.js").AdminListPayoutsFilter & {
+      limit: number;
+      offset: number;
+    },
+  ): Promise<import("../../admin/admin-payout-list-query.service.js").AdminPayoutListPage>;
+  adminSettlementPreview(legalEntityId: string): Promise<unknown>;
+  createSettlement(
+    actorUserId: string,
+    input: { legalEntityId: string; periodStart: Date; periodEnd: Date },
+  ): Promise<{ ok: true; payout: unknown } | { ok: false; reason: string }>;
+  addAdjustment(
+    actorUserId: string,
+    payoutId: string,
+    body: import("@auction/validators").CreatePayoutAdjustmentInput,
+  ): Promise<unknown>;
+  markPaid(
+    actorUserId: string,
+    payoutId: string,
+    body: { stripeTransferId: string },
+  ): Promise<unknown>;
+  adminManualReverse(
+    actorUserId: string,
+    payoutId: string,
+    input: { reason: string },
+  ): Promise<unknown>;
+  resolveStatementPdf(
+    payoutId: string,
+  ): Promise<import("../finance-routes/finance-payout-statement.js").PayoutStatementOutcome>;
 }
 
 export type { FinanceIssueSnapshot, StripeConnectRequirementEntityRow };
@@ -105,5 +166,5 @@ export type AdminFinanceRouteServices = {
   payments: IAdminPaymentsApplicationService;
   stripeConnect: IAdminStripeConnectApplicationService;
   xero: IXeroAdminApplicationService;
-  dashboardMetrics: IAdminDashboardMetricsService;
+  payouts: IAdminPayoutApplicationService;
 };

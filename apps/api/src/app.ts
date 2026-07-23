@@ -65,7 +65,7 @@ import { createSaleRoutes } from "./routes/sales.js";
 import { createStripeConnectRoutes } from "./routes/stripe-connect.js";
 import { createSubmissionDocumentRoutes } from "./routes/submission-documents.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
-import { createTelephoneBookingRoutes } from "./routes/telephone-bookings.js";
+import { createTelephoneBookingRoutes } from "./routes/telephone-bookings/index.js";
 import { createUploadRoutes } from "./routes/uploads.js";
 import { createUserRoutes } from "./routes/users.js";
 import { createVenueRoutes } from "./routes/venues.js";

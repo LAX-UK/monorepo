@@ -1,10 +1,23 @@
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createLotRoutes } from "./lots.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+function stubLegalEntityMiddleware() {
+  return createMiddleware(async (c, next) => {
+    c.set("legalEntityContext", {
+      legalEntityId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      userId: c.get("userId") as string,
+      role: "owner",
+      isPrimaryAdmin: true,
+    });
+    await next();
+  });
+}
 
 function lotRoutesApp(opts: {
   session: { id: string; role: string; staffRole: string | null } | null;
@@ -30,18 +43,30 @@ function lotRoutesApp(opts: {
     saleService: { getById: vi.fn() },
     mediaUrlResolver: {},
     kycService: { isConfigured: () => false },
-    requireSubmissionsLegalEntityContext: vi.fn(),
+    requireSubmissionsLegalEntityContext: stubLegalEntityMiddleware(),
     redis: {},
     lotLifecycleQueryService: { getSnapshotsForLots: vi.fn() },
-    conditionReportService: { findForBuyerOnLot, createRequest, listForAdmin: vi.fn() },
-    absenteeBidService: { schedule: vi.fn() },
-    autoBidService: { setForLot: vi.fn() },
+    catalogRoutes: {},
     bidding: {
-      conditionReportService: { findForBuyerOnLot, createRequest },
-      absenteeBidService: { schedule: vi.fn() },
-      autoBidService: { setForLot: vi.fn() },
+      conditionReportHttp: {
+        findForBuyerOnLot: vi.fn(async (input: { userId: string; lotId: string }) => {
+          const data = await findForBuyerOnLot(input);
+          return { kind: "ok" as const, data };
+        }),
+        createRequest: vi.fn(async (input: Record<string, unknown>) => {
+          const result = await createRequest(input);
+          if (result.isErr()) {
+            return { kind: "err" as const, error: result.error };
+          }
+          return { kind: "ok" as const, data: result.value, status: 201 };
+        }),
+      },
+      autoBidHttp: { getAutoBid: vi.fn(), setAutoBid: vi.fn(), clearAutoBid: vi.fn() },
+      absenteeBidHttp: { scheduleAbsentee: vi.fn() },
+      placeBidHttp: { placeBid: vi.fn() },
+      saleRegistrationHttp: { requestRegistration: vi.fn(), listMineForSale: vi.fn() },
+      lotBidHistoryHttp: { listForLot: vi.fn() },
     },
-    bidService: {},
     lotReaderService: {},
     lotDocumentService: {},
   } as unknown as Container;

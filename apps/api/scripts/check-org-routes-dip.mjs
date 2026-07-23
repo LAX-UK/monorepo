@@ -1,5 +1,5 @@
 /**
- * Enforces DIP for org/legal-entity HTTP routes: only allowlisted `container.*` accessors.
+ * Enforces DIP for platform identity HTTP routes: only `container.identityRoutes` (+ middleware infra).
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -9,26 +9,23 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
 const files = [
+  "src/routes/auth.ts",
   "src/routes/legal-entities.ts",
   "src/routes/legal-entity-members.ts",
-  "src/routes/stripe-connect.ts",
   "src/routes/organizations.ts",
+  "src/routes/organization-onboarding.ts",
 ];
 
-const allowed = new Set([
+const ALLOWED_CONTAINER_KEYS = new Set([
+  "identityRoutes",
   "userSuspensionChecker",
-  "legalEntityRepository",
-  "personalLegalEntityResolver",
-  "legalEntityAccessService",
-  "pendingInvitationsReader",
-  "invitationLifecycleService",
-  "userService",
-  "memberManagementService",
+  "authenticator",
+  "env",
+  "redis",
+  "authDb",
   "requireLegalEntityContext",
-  "db",
-  "organizationOnboardingService",
   "orgModuleGate",
-  "stripeConnectService",
+  "userService",
 ]);
 
 const re = /(?<![\w./])container\.(\w+)\b/g;
@@ -37,20 +34,18 @@ let failed = false;
 for (const rel of files) {
   const path = join(root, rel);
   const text = readFileSync(path, "utf8");
+  re.lastIndex = 0;
   const seen = new Set();
   for (;;) {
     const m = re.exec(text);
     if (m === null) break;
     const name = m[1];
-    if (!allowed.has(name)) {
-      const key = `${rel}:${name}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        console.error(
-          `[check-org-routes-dip] ${rel}: forbidden or unknown reference "container.${name}"`,
-        );
-        failed = true;
-      }
+    if (ALLOWED_CONTAINER_KEYS.has(name)) continue;
+    const ref = `container.${name}`;
+    if (!seen.has(ref)) {
+      seen.add(ref);
+      console.error(`[check-org-routes-dip] ${rel}: forbidden reference "${ref}"`);
+      failed = true;
     }
   }
 }

@@ -172,6 +172,17 @@ export interface IPayoutAdminService {
   /** Admin: list payouts across all entities, with optional filter. */
   adminList(filter?: AdminListPayoutsFilter): Promise<Payout[]>;
 
+  /** Admin: paginated list with filtered global summary. */
+  adminListPage(
+    filter: AdminListPayoutsFilter & { limit: number; offset: number },
+  ): Promise<import("../admin/admin-payout-list-query.service.js").AdminPayoutListPage>;
+
+  /** Admin: preview pending settlement for one legal entity. */
+  adminSettlementPreview(legalEntityId: string): Promise<{
+    pending: PendingPayoutPreview;
+    openPayout: Payout | null;
+  }>;
+
   /** Admin: append a manual adjustment line. Adjustments require both a
    * `note` and a positive/negative `amount`. The payout's `gross / fee /
    * net` totals are recomputed.

@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import type { ContainerUserRoutesSlice } from "../../container.js";
+import type { ContainerUserAccountRoutesSlice } from "../../container.js";
 import type { MarketingClientContextVars } from "../../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../../middleware/marketing-consent.js";
 import type { createRequireAuth } from "../../middleware/require-auth.js";
@@ -12,7 +12,7 @@ export type UserHono = Hono<{
 }>;
 
 export type UserRouteDeps = {
-  container: ContainerUserRoutesSlice;
+  container: ContainerUserAccountRoutesSlice;
   requireAuth: ReturnType<typeof createRequireAuth>;
   requireAuthAllowSuspended: ReturnType<typeof createRequireAuth>;
   requirePasswordStepUp: ReturnType<typeof createRequireRecentPasswordAuth>;

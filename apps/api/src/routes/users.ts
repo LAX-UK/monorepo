@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { ContainerUserRoutesSlice } from "../container.js";
+import type { ContainerUserAccountRoutesSlice } from "../container.js";
 import type { MarketingClientContextVars } from "../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../middleware/marketing-consent.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
@@ -20,7 +20,7 @@ import { attachUserSecurityRoutes } from "./users/security.routes.js";
 import { attachUserWatchlistRoutes } from "./users/watchlist.routes.js";
 
 export function createUserRoutes(
-  container: ContainerUserRoutesSlice,
+  container: ContainerUserAccountRoutesSlice,
   authenticator: IAuthenticator,
 ) {
   const requireAuth = createRequireAuth(authenticator, {

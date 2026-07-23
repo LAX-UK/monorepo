@@ -25,7 +25,20 @@ function buildApp(staffRole: string) {
         reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
       },
       users: {
-        list: vi.fn().mockResolvedValue({ total: 0, rows: [] }),
+        getPage: vi.fn().mockResolvedValue({
+          rows: [],
+          total: 0,
+          offset: 0,
+          limit: 1,
+          summary: {
+            total: 0,
+            active: 0,
+            suspended: 0,
+            emailVerified: 0,
+            kycVerified: 0,
+            byStaffRole: {},
+          },
+        }),
       },
       disputeCases: {
         countOpenCases: vi.fn().mockResolvedValue(0),
@@ -38,12 +51,26 @@ function buildApp(staffRole: string) {
           counts: { rsvped: 0, galaCheckedIn: 0, salePresent: 0, paddled: 0 },
         }),
       },
+      telephoneBookings: {
+        countGlobalPending: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      onsiteEvents: {
+        listAdminEvents: vi.fn().mockResolvedValue([]),
+      },
     },
-    telephoneBidBookingService: {
-      countGlobalPending: vi.fn().mockResolvedValue(0),
-    },
-    onsiteEventAdminService: {
-      listAdminEvents: vi.fn().mockResolvedValue([]),
+    redis: {
+      multi: () => ({
+        zadd: vi.fn().mockReturnThis(),
+        zremrangebyscore: vi.fn().mockReturnThis(),
+        expire: vi.fn().mockReturnThis(),
+        zcard: vi.fn().mockReturnThis(),
+        exec: vi.fn().mockResolvedValue([
+          [null, 1],
+          [null, 0],
+          [null, 1],
+          [null, 0],
+        ]),
+      }),
     },
   } as unknown as Container;
 

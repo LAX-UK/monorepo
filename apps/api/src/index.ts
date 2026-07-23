@@ -1,3 +1,4 @@
+import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb } from "@auction/db";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
 import {
@@ -14,8 +15,10 @@ import { createContainer } from "./container.js";
 import { loadEnv } from "./env.js";
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { closeBullBoardQueues } from "./lib/bull-board.js";
+import { runtimeOwnershipConfigFromApiEnv } from "./lib/runtime-ownership-config.js";
 
 const env = loadEnv();
+assertRuntimeOwnership(runtimeOwnershipConfigFromApiEnv(env), "api");
 if (env.SENTRY_DSN_API) {
   initNodeSentry({
     dsn: env.SENTRY_DSN_API,
@@ -40,25 +43,32 @@ const lotJobs = container.lotJobScheduler as LotJobScheduler;
 lotJobs.queue.on("error", (err: Error) => {
   reportBackground("lot-queue", err);
 });
-const lotWorker = lotJobs.createWorker();
+let lotWorker: ReturnType<LotJobScheduler["createWorker"]> | null = null;
+if (env.LIFECYCLE_EXECUTION_OWNER === "api") {
+  lotWorker = lotJobs.createWorker();
+  lotWorker.on("error", (err: Error) => {
+    reportBackground("lot-worker", err);
+  });
+  lotWorker.on("failed", (job: { id?: string } | undefined, err: Error) => {
+    reportBackground("lot-worker", err, { jobId: job?.id });
+  });
+} else {
+  console.log("[api] lot-lifecycle worker skipped (LIFECYCLE_EXECUTION_OWNER=worker)");
+}
 const deadLetterQueue = new Queue(
   DEAD_LETTER_QUEUE_NAME,
   createBullQueueOptions(DEAD_LETTER_QUEUE_NAME, { connection: container.redis }),
 );
-attachDlq(lotWorker, LOT_LIFECYCLE_QUEUE_NAME, QUEUE_REGISTRY[LOT_LIFECYCLE_QUEUE_NAME], {
-  dlqQueue: deadLetterQueue,
-  db: container.db,
-  logError: (message, context) => console.error(message, context),
-});
-lotWorker.on("error", (err: Error) => {
-  reportBackground("lot-worker", err);
-});
-lotWorker.on("failed", (job: { id?: string } | undefined, err: Error) => {
-  reportBackground("lot-worker", err, { jobId: job?.id });
-});
+if (lotWorker) {
+  attachDlq(lotWorker, LOT_LIFECYCLE_QUEUE_NAME, QUEUE_REGISTRY[LOT_LIFECYCLE_QUEUE_NAME], {
+    dlqQueue: deadLetterQueue,
+    db: container.db,
+    logError: (message, context) => console.error(message, context),
+  });
+}
 
 /** Local/dev only: when worker cron is not configured, run lifecycle in-process (single instance). */
-if (!env.CRON_INTERNAL_SECRET) {
+if (!env.CRON_INTERNAL_SECRET && env.LIFECYCLE_EXECUTION_OWNER === "api") {
   const LIFECYCLE_MS = 10_000;
   const runLifecycleSweep = () => {
     void container.lotLifecycleService
@@ -99,7 +109,7 @@ function shutdown(signal: NodeJS.Signals) {
       process.exit(1);
     }
     void Promise.allSettled([
-      lotWorker.close(),
+      ...(lotWorker ? [lotWorker.close()] : []),
       lotJobs.queue.close(),
       deadLetterQueue.close(),
       container.closeBullQueues(),

@@ -1,39 +1,46 @@
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
-import type { Container } from "../../container.js";
+import type { ContainerStripeWebhookRoutesSlice } from "../../container.js";
 import {
   StripeWebhookNotConfiguredError,
   StripeWebhookSignatureError,
 } from "../../lib/stripe-webhook-verifier.js";
+import { StripeWebhookIngressApplicationService } from "../../services/finance/stripe-webhook-ingress-application.service.js";
+import type { StripePaymentWebhookService } from "../../services/stripe-payment-webhook.service.js";
 import { createStripeWebhookRoutes } from "./stripe.js";
 
-function makeContainer(overrides: Partial<Container> = {}): Container {
+function makeStripeWebhookRoutesContainer(
+  overrides: {
+    stripePaymentWebhookService?: StripePaymentWebhookService | null;
+  } = {},
+) {
   const stripeConnectService = {
     handleConnectedAccountEvent: vi.fn().mockResolvedValue({ processed: true }),
     handleTransferEvent: vi.fn().mockResolvedValue({ processed: true }),
   };
+  const stripeWebhookVerifier = {
+    verify: vi.fn(),
+  };
+  const stripePaymentWebhookService =
+    overrides.stripePaymentWebhookService !== undefined
+      ? overrides.stripePaymentWebhookService
+      : null;
+  const stripeWebhooks = new StripeWebhookIngressApplicationService(
+    stripeWebhookVerifier as never,
+    stripeConnectService as never,
+    stripePaymentWebhookService,
+  );
   return {
-    env: {
-      STRIPE_TRANSFERS_WEBHOOK_SECRET: "whsec_test",
-    },
-    stripeWebhookVerifier: {
-      verify: vi.fn(),
-    },
+    container: { finance: { stripeWebhooks } } as unknown as ContainerStripeWebhookRoutesSlice,
+    stripeWebhookVerifier,
     stripeConnectService,
-    stripePaymentWebhookService: null,
-    transactionRunner: {
-      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
-    } as never,
-    domainEventSink: {},
-    marketingEventService: { enqueue: vi.fn() },
-    ...overrides,
-  } as unknown as Container;
+  };
 }
 
 describe("POST /webhooks/stripe/transfers", () => {
   it("returns 401 when signature verification fails", async () => {
-    const container = makeContainer();
-    vi.mocked(container.stripeWebhookVerifier.verify).mockImplementation(() => {
+    const { container, stripeWebhookVerifier } = makeStripeWebhookRoutesContainer();
+    vi.mocked(stripeWebhookVerifier.verify).mockImplementation(() => {
       throw new StripeWebhookSignatureError("No signatures found");
     });
     const app = createStripeWebhookRoutes(container);
@@ -49,8 +56,8 @@ describe("POST /webhooks/stripe/transfers", () => {
   });
 
   it("returns 503 when transfers webhook secret is not configured", async () => {
-    const container = makeContainer();
-    vi.mocked(container.stripeWebhookVerifier.verify).mockImplementation(() => {
+    const { container, stripeWebhookVerifier } = makeStripeWebhookRoutesContainer();
+    vi.mocked(stripeWebhookVerifier.verify).mockImplementation(() => {
       throw new StripeWebhookNotConfiguredError("transfers");
     });
     const app = createStripeWebhookRoutes(container);
@@ -65,13 +72,14 @@ describe("POST /webhooks/stripe/transfers", () => {
   });
 
   it("delegates verified transfer events to StripeConnectService", async () => {
-    const container = makeContainer();
+    const { container, stripeWebhookVerifier, stripeConnectService } =
+      makeStripeWebhookRoutesContainer();
     const event = {
       id: "evt_tr",
       type: "transfer.created",
       data: { object: { id: "tr_1" } },
     } as unknown as Stripe.Event;
-    vi.mocked(container.stripeWebhookVerifier.verify).mockReturnValue(event);
+    vi.mocked(stripeWebhookVerifier.verify).mockReturnValue(event);
     const app = createStripeWebhookRoutes(container);
 
     const res = await app.request("/transfers", {
@@ -81,7 +89,7 @@ describe("POST /webhooks/stripe/transfers", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(container.stripeConnectService.handleTransferEvent).toHaveBeenCalledWith(event);
+    expect(stripeConnectService.handleTransferEvent).toHaveBeenCalledWith(event);
     expect(await res.json()).toEqual({ ok: true, processed: true });
   });
 });
@@ -92,17 +100,17 @@ describe("POST /webhooks/stripe/payments", () => {
       processed: false,
       reason: "missing_charge_id",
     });
-    const container = makeContainer({
+    const { container, stripeWebhookVerifier } = makeStripeWebhookRoutesContainer({
       stripePaymentWebhookService: {
         handleDisputeCreated,
-      } as unknown as Container["stripePaymentWebhookService"],
+      } as unknown as StripePaymentWebhookService,
     });
     const event = {
       id: "evt_dispute",
       type: "charge.dispute.created",
       data: { object: { id: "dp_1" } },
     } as unknown as Stripe.Event;
-    vi.mocked(container.stripeWebhookVerifier.verify).mockReturnValue(event);
+    vi.mocked(stripeWebhookVerifier.verify).mockReturnValue(event);
     const app = createStripeWebhookRoutes(container);
 
     const res = await app.request("/payments", {
@@ -120,10 +128,10 @@ describe("POST /webhooks/stripe/payments", () => {
       processed: true,
       action: "payment_intent_succeeded",
     });
-    const container = makeContainer({
+    const { container, stripeWebhookVerifier } = makeStripeWebhookRoutesContainer({
       stripePaymentWebhookService: {
         handlePaymentIntentSucceeded,
-      } as unknown as Container["stripePaymentWebhookService"],
+      } as unknown as StripePaymentWebhookService,
     });
     const event = {
       id: "evt_pi_ok",
@@ -137,7 +145,7 @@ describe("POST /webhooks/stripe/payments", () => {
         },
       },
     } as unknown as Stripe.Event;
-    vi.mocked(container.stripeWebhookVerifier.verify).mockReturnValue(event);
+    vi.mocked(stripeWebhookVerifier.verify).mockReturnValue(event);
     const app = createStripeWebhookRoutes(container);
 
     const res = await app.request("/payments", {

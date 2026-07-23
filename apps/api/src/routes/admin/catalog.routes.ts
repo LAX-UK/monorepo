@@ -8,7 +8,6 @@ import {
   artistIdParamSchema,
   categoryIdParamSchema,
 } from "@auction/validators";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
   requireArtistReviewAccess,
@@ -17,13 +16,14 @@ import {
   requireCatalogueWrite,
   requireCategoriesAccess,
 } from "../../middleware/require-capability.js";
+import type { AdminCatalogRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import { adminArtistSearchQuerySchema } from "./_schemas.js";
 import { adminArtistIdSegment } from "./_shared.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminCatalogRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminCatalogRoutesContainer,
 ): void {
   platform.get(
     "/categories",
@@ -32,6 +32,35 @@ export function attachAdminCatalogRoutes(
     async (c) => {
       const q = c.req.valid("query");
       const data = await container.admin.catalog.listCategoriesForAdmin({
+        includeArchived: q.includeArchived,
+      });
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/categories/page",
+    requireCategoriesAccess,
+    zValidator("query", adminCategoryListQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.catalog.listCategoryPageForAdmin({
+        includeArchived: q.includeArchived,
+        ...(q.q ? { q: q.q } : {}),
+        limit: q.limit ?? 50,
+        offset: q.offset ?? 0,
+      });
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/categories/summary",
+    requireCategoriesAccess,
+    zValidator("query", adminCategoryListQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.catalog.getCategoriesListSummary({
         includeArchived: q.includeArchived,
       });
       return c.json({ data });

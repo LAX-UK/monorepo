@@ -4,7 +4,6 @@ import { createBaseLogger } from "../lib/logger.js";
 import { AdminLotBrowseService } from "../services/admin/admin-lot-browse.service.js";
 import { DashboardQueryService } from "../services/dashboard-query.service.js";
 import { LotLifecycleQueryService } from "../services/lot-lifecycle-query.service.js";
-import { NotificationQueryService } from "../services/notification-query.service.js";
 import { QrCodeAnalyticsService } from "../services/qr-code-analytics.service.js";
 import { QrCodeService } from "../services/qr-code.service.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -16,7 +15,6 @@ export type ContainerCatalogAdminReaders = {
   qrCodeService: QrCodeService;
   qrCodeAnalytics: QrCodeAnalyticsService;
   dashboardQueryService: DashboardQueryService;
-  notificationQueryService: NotificationQueryService;
 };
 
 export type CreateCatalogAdminReadersInput = {
@@ -31,12 +29,7 @@ export function createCatalogAdminReaders(
 ): ContainerCatalogAdminReaders {
   const { env, infra, repos } = input;
   const { redis, qrCodeScanQueue } = infra;
-  const {
-    repoFactory,
-    notificationReadRepo,
-    lotLifecycleSnapshotReader,
-    lotLifecycleTimelineReader,
-  } = repos;
+  const { repoFactory, lotLifecycleSnapshotReader, lotLifecycleTimelineReader } = repos;
 
   const lotLifecycleQueryService = new LotLifecycleQueryService(
     lotLifecycleSnapshotReader,
@@ -53,7 +46,6 @@ export function createCatalogAdminReaders(
   );
   const qrCodeAnalytics = new QrCodeAnalyticsService(repos.qrCodeAnalyticsReader);
   const dashboardQueryService = new DashboardQueryService(repoFactory);
-  const notificationQueryService = new NotificationQueryService(notificationReadRepo);
 
   return {
     lotLifecycleQueryService,
@@ -61,6 +53,5 @@ export function createCatalogAdminReaders(
     qrCodeService,
     qrCodeAnalytics,
     dashboardQueryService,
-    notificationQueryService,
   };
 }

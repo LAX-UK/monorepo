@@ -5,7 +5,6 @@ import {
   lotIdParamSchema,
   returnLotToInventoryBodySchema,
 } from "@auction/validators";
-import type { ContainerAdminRoutesSlice } from "../../container.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
@@ -13,11 +12,12 @@ import {
   requireLotsAccess,
   requireSpecialistCatalogueOrAuctionManage,
 } from "../../middleware/require-capability.js";
+import type { AdminLotsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
 export function attachAdminLotsRoutes(
   platform: AdminHono,
-  container: ContainerAdminRoutesSlice,
+  container: AdminLotsRoutesContainer,
 ): void {
   /** GET /admin/lots/browse — attachable draft lots for sale setup picker. */
   platform.get(
@@ -102,14 +102,15 @@ export function attachAdminLotsRoutes(
 
   /** GET /admin/lots/artist-backfill-review — pending `lot_artist_backfill` tasks (SE-P23). */
   platform.get("/lots/artist-backfill-review", requireLotsAccess, async (c) => {
-    const rows = await container.admin.dashboard.listPendingAdminReviewTasks("lot_artist_backfill");
+    const rows =
+      await container.admin.reviewTasks.listPendingAdminReviewTasks("lot_artist_backfill");
     return c.json({ data: rows });
   });
 
   /** GET /admin/lots/withdrawal-requests — pending seller withdrawal tasks (B3). */
   platform.get("/lots/withdrawal-requests", requireLotsAccess, async (c) => {
     const rows =
-      await container.admin.dashboard.listPendingAdminReviewTasks("lot_withdrawal_request");
+      await container.admin.reviewTasks.listPendingAdminReviewTasks("lot_withdrawal_request");
     return c.json({ data: rows });
   });
 

@@ -5,7 +5,7 @@ import type { AdminRouteServices } from "../services/interfaces/admin-routes.js"
 
 export function attachXeroAdminRoutes(
   r: Hono<{ Variables: { userId?: string; userRole?: string } }>,
-  admin: AdminRouteServices,
+  admin: Pick<AdminRouteServices, "xero">,
 ): void {
   const xero = admin.xero;
 

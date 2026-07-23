@@ -66,6 +66,16 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
     async countByStatus(status: SourceOfFundsStatus) {
       return state.cases.filter((c) => c.status === status).length;
     },
+    async summarizeByStatus(status: SourceOfFundsStatus) {
+      const rows = state.cases.filter((c) => c.status === status);
+      let awaitingTriage = 0;
+      let triaged = 0;
+      for (const row of rows) {
+        if (row.triageRecommendation) triaged += 1;
+        else awaitingTriage += 1;
+      }
+      return { total: rows.length, awaitingTriage, triaged };
+    },
     async create(input: CreateSourceOfFundsCaseInput) {
       const created = makeCase({
         id: `sof_${state.cases.length + 1}`,

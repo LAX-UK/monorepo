@@ -1,84 +1,32 @@
 import { placeBidSchema } from "@auction/validators";
-import { Hono } from "hono";
-import { createMiddleware } from "hono/factory";
-import type { Redis } from "ioredis";
 import type { ContainerBidRoutesSlice } from "../container.js";
-import { asHttpStatus } from "../lib/http-status.js";
+import { respondBiddingRouteOutcome } from "../lib/bidding-route-response.js";
 import { zValidator } from "../lib/z-validator.js";
+import {
+  createBidUserRateLimitMiddleware,
+  createBiddingKillSwitchMiddleware,
+  createBuyerParticipationHono,
+  createOptionalKycGate,
+} from "../middleware/buyer-participation-policy.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
-import { createRequireKyc } from "../middleware/require-kyc.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
-import type { IBidPlacerWithIdempotency } from "../services/interfaces/place-bid.js";
 
-const BID_RL_MINUTE_MAX = 30;
-const BID_RL_HOUR_MAX = 100;
-
-/** Per-user bid rate limits (SE-P23): 30/min and 100/hour; 429 + Retry-After. */
-export function createBidUserRateLimitMiddleware(redis: Redis) {
-  return createMiddleware(async (c, next) => {
-    const userId = c.get("userId");
-    if (!userId || typeof userId !== "string") {
-      await next();
-      return;
-    }
-    const minKey = `bid:rl:1m:${userId}`;
-    const hourKey = `bid:rl:1h:${userId}`;
-
-    const nMin = await redis.incr(minKey);
-    if (nMin === 1) {
-      await redis.expire(minKey, 60);
-    }
-    if (nMin > BID_RL_MINUTE_MAX) {
-      const ms = await redis.pttl(minKey);
-      const sec = Math.max(1, Math.ceil(ms / 1000));
-      c.header("Retry-After", String(sec));
-      return c.json({ error: "Too many bids", code: "bid_rate_limited_minute" }, 429);
-    }
-
-    const nHr = await redis.incr(hourKey);
-    if (nHr === 1) {
-      await redis.expire(hourKey, 3600);
-    }
-    if (nHr > BID_RL_HOUR_MAX) {
-      const ms = await redis.pttl(hourKey);
-      const sec = Math.max(1, Math.ceil(ms / 1000));
-      c.header("Retry-After", String(sec));
-      return c.json({ error: "Too many bids", code: "bid_rate_limited_hour" }, 429);
-    }
-
-    await next();
-  });
-}
+export {
+  BID_RL_HOUR_MAX,
+  BID_RL_MINUTE_MAX,
+  createBidUserRateLimitMiddleware,
+} from "../middleware/buyer-participation-policy.js";
 
 export function createBidRoutes(container: ContainerBidRoutesSlice, authenticator: IAuthenticator) {
-  const bidPlacer: IBidPlacerWithIdempotency = container.bidService;
-  const biddingKillSwitch = createMiddleware(async (c, next) => {
-    if (container.env?.DISABLE_BIDDING) {
-      return c.json({ error: "Bidding temporarily disabled", code: "bidding_disabled" }, 503);
-    }
-    await next();
-  });
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const kyc = container.kycService;
-  const kycGate =
-    kyc?.isConfigured() === true
-      ? createRequireKyc(kyc)
-      : createMiddleware(async (_c, next) => {
-          await next();
-        });
+  const kycGate = createOptionalKycGate(container.kycService);
+  const biddingKillSwitch = createBiddingKillSwitchMiddleware(container.env);
   const bidUserRateLimit = createBidUserRateLimitMiddleware(container.redis);
   const requireLegalEntity = container.requireSubmissionsLegalEntityContext;
-  const r = new Hono<{
-    Variables: {
-      userId?: string;
-      userRole?: string;
-      userStaffRole?: string | null;
-      legalEntityContext?: { legalEntityId: string };
-    };
-  }>();
+  const r = createBuyerParticipationHono();
 
   r.post(
     "/",
@@ -94,7 +42,7 @@ export function createBidRoutes(container: ContainerBidRoutesSlice, authenticato
       const legalEntityContext = c.get("legalEntityContext");
       const idem = c.req.header("idempotency-key") ?? c.req.header("Idempotency-Key");
       const body = c.req.valid("json");
-      const out = await bidPlacer.placeBidWithIdempotency({
+      const outcome = await container.bidding.placeBidHttp.placeBid({
         placedByUserId: userId,
         ...(legalEntityContext?.legalEntityId
           ? { buyerLegalEntityId: legalEntityContext.legalEntityId }
@@ -107,17 +55,10 @@ export function createBidRoutes(container: ContainerBidRoutesSlice, authenticato
           ? { autoBidStepAmount: body.autoBidStepAmount }
           : {}),
       });
-      if (out.type === "replay") {
-        return c.json(out.body, 201);
+      if (outcome.kind === "replay") {
+        return c.json({ data: outcome.data }, 201);
       }
-      if (out.type === "err") {
-        const e = out.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
-      }
-      return c.json(out.body, 201);
+      return respondBiddingRouteOutcome(c, outcome, 201);
     },
   );
 

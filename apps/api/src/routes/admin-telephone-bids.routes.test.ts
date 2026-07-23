@@ -27,9 +27,23 @@ function buildTelephoneBidApp(placeTelephoneBid?: ReturnType<typeof vi.fn>) {
       },
       disputeCases: { countOpenCases: vi.fn().mockResolvedValue(0) },
       liveBidding: { placeTelephoneBid: bidFn },
+      telephoneBookings: { countGlobalPending: vi.fn().mockResolvedValue({ count: 0 }) },
+      onsiteEvents: { listAdminEvents: vi.fn().mockResolvedValue([]) },
     },
-    telephoneBidBookingService: { countGlobalPending: vi.fn().mockResolvedValue(0) },
-    onsiteEventAdminService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
+    redis: {
+      multi: () => ({
+        zadd: vi.fn().mockReturnThis(),
+        zremrangebyscore: vi.fn().mockReturnThis(),
+        expire: vi.fn().mockReturnThis(),
+        zcard: vi.fn().mockReturnThis(),
+        exec: vi.fn().mockResolvedValue([
+          [null, 1],
+          [null, 0],
+          [null, 1],
+          [null, 0],
+        ]),
+      }),
+    },
   } as unknown as Container;
 
   const authenticator: IAuthenticator = {

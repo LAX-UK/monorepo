@@ -1,8 +1,13 @@
+import type { SaleroomOnBlockPolicy } from "@auction/bidding-runtime";
+import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
 import type { IBidRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
+import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
 import type {
   IAdminDisputeCaseEnrichmentReader,
   IImpersonationSessionRepository,
 } from "@auction/persistence/interfaces";
+import type { IWatchlistScreeningReader } from "@auction/persistence/interfaces";
 import type { IAdminDomainEventReader } from "@auction/persistence/interfaces";
 import type { IAdminFinanceIssueSnapshotReader } from "@auction/persistence/interfaces";
 import type { IAdminLegalEntityBrowseReader } from "@auction/persistence/interfaces";
@@ -29,20 +34,23 @@ import type { AdminUserService } from "../admin-user.service.js";
 import type { AmlService } from "../aml/aml.service.js";
 import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { BidService } from "../bid.service.js";
-import type { SaleroomOnBlockPolicy } from "../bid/saleroom-on-block.policy.js";
 import type { CategoryService } from "../category.service.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImpersonationAuditService } from "../impersonation-audit.service.js";
-import type { AdminRouteServices } from "../interfaces/admin-routes.js";
-import type { IAnalyticsService } from "../interfaces/analytics.js";
+import type {
+  AdminMetricsQueryServices,
+  AdminRouteServicesWithoutSatellites,
+} from "../interfaces/admin-routes.js";
 import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
 import type { IConditionReportService } from "../interfaces/condition-report.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
+import type { IPayoutStatementApplicationService } from "../interfaces/finance-routes/finance-payout-statement.js";
 import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-apis.js";
 import type { ILotFulfilmentService } from "../interfaces/lot-fulfilment-service.js";
 import type { ILotService } from "../interfaces/lot-service.js";
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
+import type { IPayoutAdminService, IPayoutSettlementService } from "../interfaces/payout.js";
 import type { ISaleRegistrationService } from "../interfaces/sale-registration-service.js";
 import type { SaleroomServicePort } from "../interfaces/saleroom-service.js";
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
@@ -65,14 +73,27 @@ import type { SourceOfFundsDocumentReviewService } from "../source-of-funds/sour
 import type { SourceOfFundsService } from "../source-of-funds/source-of-funds.service.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
 import { AdminDashboardMetricsApplicationService } from "./admin-dashboard-metrics-application.service.js";
+import type { AdminLotAttentionService } from "./admin-lot-attention.service.js";
 import type { AdminLotBrowseService } from "./admin-lot-browse.service.js";
+import { AdminLotDetailBoardApplicationService } from "./admin-lot-detail-board-application.service.js";
+import type { AdminLotDetailMetricsService } from "./admin-lot-detail-metrics.service.js";
+import type { AdminLotOverviewKpiTrendService } from "./admin-lot-overview-kpi-trend.service.js";
+import type { AdminLotsEndedKpiTrendService } from "./admin-lots-ended-kpi-trend.service.js";
+import type { AdminLotsHammerKpiTrendService } from "./admin-lots-hammer-kpi-trend.service.js";
 import type { AdminLotsKpiTrendService } from "./admin-lots-kpi-trend.service.js";
+import type { AdminLotsListSummaryService } from "./admin-lots-list-summary.service.js";
 import type { AdminNavCountsService } from "./admin-nav-counts.service.js";
 import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
 import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.service.js";
 import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.service.js";
+import type { AdminSaleAttentionService } from "./admin-sale-attention.service.js";
+import { AdminSaleDetailBoardApplicationService } from "./admin-sale-detail-board-application.service.js";
+import type { AdminSaleDetailMetricsService } from "./admin-sale-detail-metrics.service.js";
+import type { AdminSaleOverviewKpiTrendService } from "./admin-sale-overview-kpi-trend.service.js";
 import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.js";
+import type { AdminSalesListSummaryService } from "./admin-sales-list-summary.service.js";
 import type { AdminSourceOfFundsQueryService } from "./admin-source-of-funds-query.service.js";
+import type { AdminSubmissionsListSummaryService } from "./admin-submissions-list-summary.service.js";
 import { createAdminCatalogServices } from "./create-admin-catalog-services.js";
 import { createAdminComplianceServices } from "./create-admin-compliance-services.js";
 import { createAdminFinanceServices } from "./create-admin-finance-services.js";
@@ -80,7 +101,10 @@ import { createAdminOperationsServices } from "./create-admin-operations-service
 import { createAdminPeopleServices } from "./create-admin-people-services.js";
 import type { LegalEntityDocumentAdminService } from "./legal-entity-document-admin.service.js";
 
-export type AdminRouteServicesCore = Omit<AdminRouteServices, "dashboardMetrics">;
+export type AdminRouteServicesCore = Omit<
+  AdminRouteServicesWithoutSatellites,
+  "navCounts" | "kpiTrends" | "listSummaries" | "saleDetailBoard" | "lotDetailBoard"
+>;
 
 export type CreateAdminRouteServicesInput = {
   transactionRunner: ITransactionRunner;
@@ -96,8 +120,8 @@ export type CreateAdminRouteServicesInput = {
   artistProfileService: ArtistProfileService;
   emailObservabilityRepository: IEmailObservabilityRepository;
   adminUserService: AdminUserService;
+  adminUserReader: import("@auction/persistence/interfaces").IAdminUserReader;
   profileService: ProfileService;
-  analyticsService: IAnalyticsService;
   adminMetricsService: AdminMetricsService;
   attentionFeedReader: IAttentionFeedReader;
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
@@ -111,6 +135,7 @@ export type CreateAdminRouteServicesInput = {
   artistRegistryService: IArtistRegistryService;
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   invitationService: InvitationService;
+  invitationRepository: IUserInvitationRepository;
   xeroOAuthService: XeroOAuthService | null;
   xeroConnectionRepository: IXeroConnectionRepository;
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
@@ -121,9 +146,11 @@ export type CreateAdminRouteServicesInput = {
   qrCodeService: QrCodeService;
   qrCodeAnalytics: QrCodeAnalyticsService;
   conditionReportService: IConditionReportService;
+  conditionReportRequestRepository: IConditionReportRequestRepository;
   mediaUrlResolver: MediaUrlResolver;
   mediaAssetEnricher: MediaAssetEnricher;
   amlService: AmlService;
+  amlScreeningReader: IWatchlistScreeningReader;
   adminSourceOfFundsQueryService: AdminSourceOfFundsQueryService;
   sourceOfFundsService: SourceOfFundsService;
   sourceOfFundsDocumentCollectionService: SourceOfFundsDocumentCollectionService;
@@ -134,6 +161,7 @@ export type CreateAdminRouteServicesInput = {
   saleroomCheckInService: SaleroomCheckInService;
   saleExpectedGuestsService: SaleExpectedGuestsService;
   lotFulfilmentService: ILotFulfilmentService;
+  lotFulfilmentRepository: ILotFulfilmentRepository;
   bidService: BidService;
   saleroomOnBlockPolicy: SaleroomOnBlockPolicy;
   paddleService: PaddleService;
@@ -149,6 +177,9 @@ export type CreateAdminRouteServicesInput = {
   adminLegalEntityBrowseReader: IAdminLegalEntityBrowseReader;
   adminDisputeCaseEnrichmentReader: IAdminDisputeCaseEnrichmentReader;
   bidRepo: IBidRepository;
+  payoutService: IPayoutAdminService;
+  payoutSettlementService: IPayoutSettlementService;
+  payoutStatementApplication: IPayoutStatementApplicationService;
   env: Pick<
     Env,
     | "XERO_REDIRECT_URI"
@@ -166,7 +197,6 @@ export function createAdminRouteServices(
   const operations = createAdminOperationsServices({
     impersonationAuditService: input.impersonationAuditService,
     userSuspensionChecker: input.userSuspensionChecker,
-    analyticsService: input.analyticsService,
     adminMetricsService: input.adminMetricsService,
     attentionFeedReader: input.attentionFeedReader,
     itemSubmissionAdminApi: input.itemSubmissionAdminApi,
@@ -187,9 +217,7 @@ export function createAdminRouteServices(
     adminFinanceIssueSnapshotReader: input.adminFinanceIssueSnapshotReader,
     adminManualReviewPaymentReader: input.adminManualReviewPaymentReader,
     adminManualReviewPaymentEnrichmentReader: input.adminManualReviewPaymentEnrichmentReader,
-    adminOnboardingIssuesReader: input.adminOnboardingIssuesReader,
     adminReviewTaskReader: input.adminReviewTaskReader,
-    adminLegalEntityBrowseReader: input.adminLegalEntityBrowseReader,
     bidRepo: input.bidRepo,
   });
 
@@ -204,9 +232,11 @@ export function createAdminRouteServices(
     lotLifecycleQueryService: input.lotLifecycleQueryService,
     saleRegistrationService: input.saleRegistrationService,
     lotFulfilmentService: input.lotFulfilmentService,
+    lotFulfilmentRepository: input.lotFulfilmentRepository,
     qrCodeService: input.qrCodeService,
     qrCodeAnalytics: input.qrCodeAnalytics,
     conditionReportService: input.conditionReportService,
+    conditionReportRequestRepository: input.conditionReportRequestRepository,
     mediaUrlResolver: input.mediaUrlResolver,
     mediaAssetEnricher: input.mediaAssetEnricher,
   });
@@ -220,6 +250,9 @@ export function createAdminRouteServices(
     xeroWebhookEventRepository: input.xeroWebhookEventRepository,
     paymentExternalRefRepository: input.paymentExternalRefRepository,
     userRepository: input.userRepository,
+    payoutService: input.payoutService,
+    payoutSettlementService: input.payoutSettlementService,
+    payoutStatementApplication: input.payoutStatementApplication,
     env: input.env,
   });
 
@@ -230,6 +263,7 @@ export function createAdminRouteServices(
     legalEntityDocumentAdminService: input.legalEntityDocumentAdminService,
     adminDisputeCaseEnrichmentReader: input.adminDisputeCaseEnrichmentReader,
     amlService: input.amlService,
+    amlScreeningReader: input.amlScreeningReader,
     adminSourceOfFundsQueryService: input.adminSourceOfFundsQueryService,
     sourceOfFundsService: input.sourceOfFundsService,
     sourceOfFundsDocumentCollectionService: input.sourceOfFundsDocumentCollectionService,
@@ -244,8 +278,13 @@ export function createAdminRouteServices(
     impersonationDomainEventReader: input.impersonationDomainEventReader,
     legalEntityRepository: input.legalEntityRepository,
     adminUserService: input.adminUserService,
+    adminUserReader: input.adminUserReader,
     profileService: input.profileService,
     invitationService: input.invitationService,
+    invitationRepository: input.invitationRepository,
+    adminLegalEntityBrowseReader: input.adminLegalEntityBrowseReader,
+    adminOnboardingIssuesReader: input.adminOnboardingIssuesReader,
+    adminFinanceIssueSnapshotReader: input.adminFinanceIssueSnapshotReader,
   });
 
   const { domainEventsService: _domainEventsService, ...operationsServices } = operations;
@@ -262,24 +301,77 @@ export function createAdminRouteServices(
 export type AttachAdminDashboardMetricsInput = {
   navCounts: AdminNavCountsService;
   lotsKpiTrend: AdminLotsKpiTrendService;
+  lotsEndedKpiTrend: AdminLotsEndedKpiTrendService;
+  lotsHammerKpiTrend: AdminLotsHammerKpiTrendService;
   paymentsKpiTrend: AdminPaymentsKpiTrendService;
   salesKpiTrend: AdminSalesKpiTrendService;
   payoutsKpiTrend: AdminPayoutsKpiTrendService;
+  salesListSummary: AdminSalesListSummaryService;
+  lotsListSummary: AdminLotsListSummaryService;
+  submissionsListSummary: AdminSubmissionsListSummaryService;
 };
 
-/** Nav counts depend on `admin` (circular); attach dashboard metrics after both are built. */
+export type AdminRouteServicesWithMetrics = AdminRouteServicesCore & AdminMetricsQueryServices;
+
+/** Attach metrics query ports after nav-count deps are wired. */
+export function attachAdminMetricsQueries(
+  admin: AdminRouteServicesCore,
+  metrics: AttachAdminDashboardMetricsInput,
+): AdminRouteServicesWithMetrics {
+  const metricsFacade = new AdminDashboardMetricsApplicationService(
+    metrics.navCounts,
+    metrics.lotsKpiTrend,
+    metrics.lotsEndedKpiTrend,
+    metrics.lotsHammerKpiTrend,
+    metrics.paymentsKpiTrend,
+    metrics.salesKpiTrend,
+    metrics.payoutsKpiTrend,
+    metrics.salesListSummary,
+    metrics.lotsListSummary,
+    metrics.submissionsListSummary,
+  );
+  return {
+    ...admin,
+    navCounts: metricsFacade,
+    kpiTrends: metricsFacade,
+    listSummaries: metricsFacade,
+  };
+}
+
+/** @deprecated Use attachAdminMetricsQueries */
 export function attachAdminDashboardMetrics(
   admin: AdminRouteServicesCore,
   metrics: AttachAdminDashboardMetricsInput,
-): AdminRouteServices {
+): AdminRouteServicesWithMetrics {
+  return attachAdminMetricsQueries(admin, metrics);
+}
+
+export type AdminRouteServicesWithDashboardMetrics = AdminRouteServicesWithMetrics;
+
+export type AttachAdminDetailBoardInput = {
+  saleDetailMetrics: AdminSaleDetailMetricsService;
+  saleOverviewKpiTrend: AdminSaleOverviewKpiTrendService;
+  saleAttention: AdminSaleAttentionService;
+  lotDetailMetrics: AdminLotDetailMetricsService;
+  lotOverviewKpiTrend: AdminLotOverviewKpiTrendService;
+  lotAttention: AdminLotAttentionService;
+};
+
+export function attachAdminDetailBoardServices(
+  admin: AdminRouteServicesWithMetrics,
+  detail: AttachAdminDetailBoardInput,
+): AdminRouteServicesWithoutSatellites {
   return {
     ...admin,
-    dashboardMetrics: new AdminDashboardMetricsApplicationService(
-      metrics.navCounts,
-      metrics.lotsKpiTrend,
-      metrics.paymentsKpiTrend,
-      metrics.salesKpiTrend,
-      metrics.payoutsKpiTrend,
+    saleDetailBoard: new AdminSaleDetailBoardApplicationService(
+      detail.saleDetailMetrics,
+      detail.saleOverviewKpiTrend,
+      detail.saleAttention,
+    ),
+    lotDetailBoard: new AdminLotDetailBoardApplicationService(
+      detail.lotDetailMetrics,
+      detail.lotOverviewKpiTrend,
+      detail.lotAttention,
     ),
   };
 }
