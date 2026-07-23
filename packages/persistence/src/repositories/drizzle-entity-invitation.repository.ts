@@ -178,6 +178,3 @@ export class DrizzleEntityInvitationRepository implements IEntityInvitationRepos
     return row?.displayName ?? null;
   }
 }
-
-/** @deprecated Use DrizzleEntityInvitationRepository — kept for import compatibility. */
-export { DrizzleEntityInvitationRepository as DrizzleInvitationRepository };

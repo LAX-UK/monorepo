@@ -53,4 +53,6 @@ export interface IExportJobRepository {
   markFailed(exportId: string, message: string): Promise<void>;
   markCancelled(exportId: string): Promise<void>;
   getStatus(exportId: string): Promise<ExportStatus | null>;
+  /** Latest completed export scoped to a sale via filters.saleId. */
+  findLatestCompletedForSale(saleId: string): Promise<ExportJobRow | null>;
 }

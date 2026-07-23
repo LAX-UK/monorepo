@@ -1,7 +1,13 @@
 import type { Database } from "@auction/db";
 import { category, lotCategories, saleCategories, submissionCategories } from "@auction/db/schema";
-import type { AdminCategory, Category, CategoryUsage } from "@auction/types";
-import { asc, count, eq, inArray } from "drizzle-orm";
+import type {
+  AdminCategoriesListSummary,
+  AdminCategory,
+  AdminCategoryListResult,
+  Category,
+  CategoryUsage,
+} from "@auction/types";
+import { and, asc, count, eq, ilike, inArray, or } from "drizzle-orm";
 import type {
   CreateCategoryInput,
   ICategoryRepository,
@@ -39,6 +45,80 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
     const rows = await this.findAll(options);
     const usageById = await this.usageForMany(rows.map((row) => row.id));
     return rows.map((row) => ({ ...row, usage: usageById.get(row.id) ?? emptyUsage() }));
+  }
+
+  async findPageForAdmin(options: {
+    includeArchived?: boolean;
+    q?: string;
+    limit: number;
+    offset: number;
+  }): Promise<AdminCategoryListResult> {
+    const needle = options.q?.trim();
+    const where = and(
+      options.includeArchived ? undefined : eq(category.archived, false),
+      needle
+        ? or(
+            ilike(category.name, `%${needle}%`),
+            ilike(category.slug, `%${needle}%`),
+            ilike(category.description, `%${needle}%`),
+          )
+        : undefined,
+    );
+    const [rows, totalRows] = await Promise.all([
+      this.db
+        .select()
+        .from(category)
+        .where(where)
+        .orderBy(asc(category.sortOrder), asc(category.name))
+        .limit(options.limit)
+        .offset(options.offset),
+      this.db.select({ value: count() }).from(category).where(where),
+    ]);
+    const categories = rows.map(mapCategory);
+    const usageById = await this.usageForMany(categories.map((row) => row.id));
+    return {
+      rows: categories.map((row) => ({
+        ...row,
+        usage: usageById.get(row.id) ?? emptyUsage(),
+      })),
+      total: totalRows[0]?.value ?? 0,
+    };
+  }
+
+  async summarizeForAdmin(
+    options: { includeArchived?: boolean } = {},
+  ): Promise<AdminCategoriesListSummary> {
+    const lensWhere = options.includeArchived ? undefined : eq(category.archived, false);
+    const [matching, active, archived, lots, sales, submissions] = await Promise.all([
+      this.db.select({ value: count() }).from(category).where(lensWhere),
+      this.db.select({ value: count() }).from(category).where(eq(category.archived, false)),
+      this.db.select({ value: count() }).from(category).where(eq(category.archived, true)),
+      this.db
+        .select({ value: count() })
+        .from(lotCategories)
+        .innerJoin(category, eq(lotCategories.categoryId, category.id))
+        .where(lensWhere),
+      this.db
+        .select({ value: count() })
+        .from(saleCategories)
+        .innerJoin(category, eq(saleCategories.categoryId, category.id))
+        .where(lensWhere),
+      this.db
+        .select({ value: count() })
+        .from(submissionCategories)
+        .innerJoin(category, eq(submissionCategories.categoryId, category.id))
+        .where(lensWhere),
+    ]);
+    return {
+      totalCount: matching[0]?.value ?? 0,
+      activeCount: active[0]?.value ?? 0,
+      archivedCount: archived[0]?.value ?? 0,
+      usageTotals: {
+        lots: lots[0]?.value ?? 0,
+        sales: sales[0]?.value ?? 0,
+        submissions: submissions[0]?.value ?? 0,
+      },
+    };
   }
 
   async findById(id: string): Promise<Category | null> {

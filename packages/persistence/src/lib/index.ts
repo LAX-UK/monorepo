@@ -79,6 +79,13 @@ export type {
   DomainEventInput,
   IDomainEventPublisher,
 } from "./domain-event.types.js";
+export type {
+  ClaimDomainEventDeliveriesInput,
+  DomainEventDeliveryRow,
+  DomainEventDeliveryStatus,
+  IDomainEventDeliveryRepository,
+} from "../interfaces/domain-event-delivery.repository.js";
+export { DrizzleDomainEventDeliveryRepository } from "../repositories/drizzle-domain-event-delivery.repository.js";
 
 export { composeAttentionItems } from "./attention-feed.helpers.js";
 

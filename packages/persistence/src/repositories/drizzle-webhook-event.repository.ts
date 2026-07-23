@@ -1,7 +1,21 @@
 import type { Database } from "@auction/db";
 import { webhookEvent } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
-import type { IWebhookEventRepository } from "../interfaces/webhook-event.repository.js";
+import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import type {
+  IWebhookEventRepository,
+  WebhookEventDrainRow,
+} from "../interfaces/webhook-event.repository.js";
+
+const DEFAULT_MAX_ATTEMPTS = 10;
+
+function mapDrainRow(row: typeof webhookEvent.$inferSelect): WebhookEventDrainRow {
+  return {
+    eventKey: row.eventKey,
+    source: row.source,
+    payload: row.payload,
+    attempts: row.attempts,
+  };
+}
 
 export class DrizzleWebhookEventRepository implements IWebhookEventRepository {
   constructor(private readonly db: Database) {}
@@ -24,10 +38,71 @@ export class DrizzleWebhookEventRepository implements IWebhookEventRepository {
     return { claimed: Boolean(row) };
   }
 
+  async tryClaimForProcessing(
+    eventKey: string,
+    leaseMs: number,
+  ): Promise<{ claimed: boolean; row: WebhookEventDrainRow | null }> {
+    const now = new Date();
+    const claimExpiresAt = new Date(now.getTime() + leaseMs);
+    const [row] = await this.db
+      .update(webhookEvent)
+      .set({
+        claimExpiresAt,
+        attempts: sql`${webhookEvent.attempts} + 1`,
+      })
+      .where(
+        and(
+          eq(webhookEvent.eventKey, eventKey),
+          isNull(webhookEvent.processedAt),
+          lt(webhookEvent.attempts, DEFAULT_MAX_ATTEMPTS),
+          or(isNull(webhookEvent.claimExpiresAt), lt(webhookEvent.claimExpiresAt, now)),
+        ),
+      )
+      .returning();
+    if (!row) return { claimed: false, row: null };
+    return { claimed: true, row: mapDrainRow(row) };
+  }
+
+  async listUnprocessedForDrain(limit: number): Promise<WebhookEventDrainRow[]> {
+    const now = new Date();
+    const rows = await this.db
+      .select()
+      .from(webhookEvent)
+      .where(
+        and(
+          isNull(webhookEvent.processedAt),
+          lt(webhookEvent.attempts, DEFAULT_MAX_ATTEMPTS),
+          or(isNull(webhookEvent.claimExpiresAt), lt(webhookEvent.claimExpiresAt, now)),
+        ),
+      )
+      .orderBy(webhookEvent.receivedAt)
+      .limit(limit);
+    return rows.map(mapDrainRow);
+  }
+
+  async recoverStaleClaims(now: Date = new Date()): Promise<number> {
+    const updated = await this.db
+      .update(webhookEvent)
+      .set({ claimExpiresAt: null })
+      .where(
+        and(
+          isNull(webhookEvent.processedAt),
+          sql`${webhookEvent.claimExpiresAt} IS NOT NULL`,
+          lt(webhookEvent.claimExpiresAt, now),
+        ),
+      )
+      .returning({ id: webhookEvent.id });
+    return updated.length;
+  }
+
   async markProcessed(eventKey: string): Promise<void> {
     await this.db
       .update(webhookEvent)
-      .set({ processedAt: new Date(), lastError: null })
+      .set({
+        processedAt: new Date(),
+        lastError: null,
+        claimExpiresAt: null,
+      })
       .where(eq(webhookEvent.eventKey, eventKey));
   }
 
@@ -35,8 +110,8 @@ export class DrizzleWebhookEventRepository implements IWebhookEventRepository {
     await this.db
       .update(webhookEvent)
       .set({
-        processedAt: new Date(),
         lastError: error,
+        claimExpiresAt: null,
       })
       .where(eq(webhookEvent.eventKey, eventKey));
   }

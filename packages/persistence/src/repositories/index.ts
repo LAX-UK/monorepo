@@ -10,6 +10,7 @@ export { DrizzleEmailSuppressionRepository } from "./drizzle-email-suppression.r
 export { DrizzleEmailWebhookIngestRepository } from "./drizzle-email-webhook-ingest.repository.js";
 export { DrizzleNewsletterSignupRepository } from "./drizzle-newsletter-signup.repository.js";
 export { DrizzleWebhookEventRepository } from "./drizzle-webhook-event.repository.js";
+export { DrizzleExternalAccountRepository } from "./drizzle-external-account.repository.js";
 export { DrizzleUploadObjectReader } from "./drizzle-upload-object.reader.js";
 export { DrizzleUploadPersistenceRepository } from "./drizzle-upload-persistence.repository.js";
 export { DrizzleSavedSearchRepository } from "./drizzle-saved-search.repository.js";
@@ -77,6 +78,7 @@ export {
   DrizzleNotificationOutboxRepository,
   NOTIFICATION_OUTBOX_MAX_ATTEMPTS,
 } from "./drizzle-notification-outbox.repository.js";
+export { DrizzleDomainEventDeliveryRepository } from "./drizzle-domain-event-delivery.repository.js";
 export { DrizzleNotificationPreferenceRepository } from "./drizzle-notification-preference.repository.js";
 export { DrizzleSaleFollowRepository } from "./drizzle-sale-follow.repository.js";
 export { DrizzleSaleBiddersReader } from "./drizzle-sale-bidders.reader.js";
@@ -97,9 +99,6 @@ export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
 export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-ref.repository.js";
 export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";
 export { DrizzleXeroWebhookEventRepository } from "./drizzle-xero-webhook-event.repository.js";
-export { DrizzleLotMetricsReader } from "./drizzle-lot-metrics.reader.js";
-export { DrizzlePaymentMetricsReader } from "./drizzle-payment-metrics.reader.js";
-export { DrizzleUserMetricsReader } from "./drizzle-user-metrics.reader.js";
 export { DrizzleAdminUserReader } from "./drizzle-admin-user.reader.js";
 export { DrizzleAdminUserRoleManager } from "./drizzle-admin-user.reader.js";
 export { DrizzleAdminUserActivityReader } from "./drizzle-admin-user.reader.js";
@@ -113,6 +112,7 @@ export { DrizzleAdminManualReviewPaymentReader } from "./drizzle-admin-manual-re
 export { DrizzleAdminManualReviewPaymentEnrichmentReader } from "./drizzle-admin-manual-review-payment-enrichment.reader.js";
 export { DrizzleAdminReviewTaskReader } from "./drizzle-admin-review-task.reader.js";
 export { DrizzleAdminReviewTaskRepository } from "./drizzle-admin-review-task.repository.js";
+export { DrizzleAdminSubmissionsSummaryReader } from "./drizzle-admin-submissions-summary.reader.js";
 export { DrizzleMediaAssetReader } from "./drizzle-media-asset.reader.js";
 export { DrizzleQrCodeScanPersister } from "./drizzle-qr-code-scan.persister.js";
 export { DrizzleSaleroomOnBlockReader } from "./drizzle-saleroom-on-block.reader.js";
@@ -137,10 +137,7 @@ export { DrizzleLegalEntityMemberRepository } from "./drizzle-legal-entity-membe
 export { DrizzleLegalEntityNotificationRecipientRepository } from "./drizzle-legal-entity-notification-recipient.repository.js";
 export { DrizzleLegalEntityOnboardingRepository } from "./drizzle-legal-entity-onboarding.repository.js";
 export { DrizzleLegalEntityConnectRepository } from "./drizzle-legal-entity-connect.repository.js";
-export {
-  DrizzleEntityInvitationRepository,
-  DrizzleInvitationRepository,
-} from "./drizzle-entity-invitation.repository.js";
+export { DrizzleEntityInvitationRepository } from "./drizzle-entity-invitation.repository.js";
 export {
   DrizzleAmlHoldStore,
   DrizzleAmlScreeningRepository,
@@ -178,6 +175,9 @@ export { DrizzleLotSoftDeleteSideEffects } from "./drizzle-lot-soft-delete.side-
 export { DrizzleSaleSoftDeleteSideEffects } from "./drizzle-sale-soft-delete.side-effects.js";
 export { DrizzleLotFulfilmentRepository } from "./drizzle-lot-fulfilment.repository.js";
 export { DrizzleAttentionFeedReader } from "./drizzle-attention-feed.reader.js";
+export { DrizzleSaleAttentionSignalsReader } from "./drizzle-sale-attention-signals.reader.js";
+export { DrizzleSaleOverviewKpiTrendReader } from "./drizzle-sale-overview-kpi-trend.reader.js";
+export { DrizzleSaleRevenueSnapshotReader } from "./drizzle-sale-revenue-snapshot.reader.js";
 
 export { DrizzleRepositoryFactory } from "../drizzle-repository.factory.js";
 export { DrizzleTransactionRunner } from "../transaction-runner.js";

@@ -14,4 +14,6 @@ export interface ISaleRepository {
   updateStatus(id: string, status: SaleStatus): Promise<void>;
   /** UTC day counts for admin KPI trends (created_at >= rangeStart, non-deleted sales). */
   countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
+  /** Average non-deleted lots per non-deleted sale. */
+  avgLotsPerSale(): Promise<number>;
 }

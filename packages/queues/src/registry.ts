@@ -8,10 +8,12 @@ import {
   VALIDATE_UPLOAD_QUEUE_NAME,
   WEBHOOK_EVENTS_QUEUE_NAME,
 } from "./queue-names.js";
+import { FINANCE_CRON_QUEUE_REGISTRY } from "./registries/finance-cron.js";
 import { MAINTENANCE_QUEUE_REGISTRY } from "./registries/maintenance.js";
 import { MARKETING_QUEUE_REGISTRY } from "./registries/marketing.js";
 import { PAYOUT_QUEUE_REGISTRY } from "./registries/payout.js";
-import type { QueueDefinition, QueueRuntimeEnv } from "./types.js";
+import { PLATFORM_CRON_QUEUE_REGISTRY } from "./registries/platform-cron.js";
+import type { QueueConsumer, QueueDefinition, QueueRuntimeEnv } from "./types.js";
 
 export * from "./queue-names.js";
 
@@ -39,11 +41,11 @@ export const QUEUE_REGISTRY = {
     description: "Transactional + outbox email delivery",
   },
   [LOT_LIFECYCLE_QUEUE_NAME]: {
-    producers: ["api"],
+    producers: ["api", "worker"],
     consumer: "api",
     criticality: "high",
     pauseOrder: null,
-    heartbeatKey: null,
+    heartbeatKey: "lot-lifecycle",
     dlq: true,
     showInUi: true,
     allowUiRetries: false,
@@ -54,7 +56,8 @@ export const QUEUE_REGISTRY = {
       removeOnComplete: 500,
       removeOnFail: 500,
     },
-    description: "Lot activate/end scheduling (runs in apps/api)",
+    description:
+      "Lot activate/end scheduling (worker consumer when LIFECYCLE_EXECUTION_OWNER=worker; API consumer when api)",
   },
   [VALIDATE_UPLOAD_QUEUE_NAME]: {
     producers: ["api"],
@@ -111,7 +114,7 @@ export const QUEUE_REGISTRY = {
     description: "QR code scan analytics write-behind",
   },
   [WEBHOOK_EVENTS_QUEUE_NAME]: {
-    producers: [],
+    producers: ["api"],
     consumer: "worker",
     criticality: "normal",
     pauseOrder: null,
@@ -119,14 +122,14 @@ export const QUEUE_REGISTRY = {
     dlq: false,
     showInUi: true,
     allowUiRetries: true,
-    repeatable: false,
+    repeatable: true,
     defaultJobOptions: {
       attempts: 3,
       backoff: { type: "exponential", delay: 5000 },
       removeOnComplete: 200,
       removeOnFail: 500,
     },
-    description: "Webhook ingest (Phase 2 — no producer yet)",
+    description: "Webhook ingest processing (Shopify / WordPress)",
   },
   [DATA_EXPORT_QUEUE_NAME]: {
     producers: ["api"],
@@ -165,6 +168,8 @@ export const QUEUE_REGISTRY = {
     description: "Exhausted-retry jobs for inspection and replay",
   },
   ...MARKETING_QUEUE_REGISTRY,
+  ...FINANCE_CRON_QUEUE_REGISTRY,
+  ...PLATFORM_CRON_QUEUE_REGISTRY,
   ...MAINTENANCE_QUEUE_REGISTRY,
   ...PAYOUT_QUEUE_REGISTRY,
 } as const satisfies Record<string, QueueDefinition>;
@@ -208,12 +213,37 @@ export function heartbeatRedisKey(queueName: QueueName): string | null {
   return key ? `worker:heartbeat:${key}` : null;
 }
 
+/** Effective BullMQ consumer for a queue given deployment ownership flags. */
+export function resolveEffectiveQueueConsumer(
+  queueName: QueueName,
+  def: QueueDefinition,
+  env: QueueRuntimeEnv,
+): QueueConsumer {
+  if (queueName === LOT_LIFECYCLE_QUEUE_NAME) {
+    return env.lifecycleExecutionOwner === "worker" ? "worker" : "api";
+  }
+  return def.consumer;
+}
+
+/** Heartbeat suffix when the worker process consumes this queue. */
+export function resolveWorkerHeartbeatKeyForQueue(
+  queueName: QueueName,
+  def: QueueDefinition,
+  env: QueueRuntimeEnv,
+): string | null {
+  if (resolveEffectiveQueueConsumer(queueName, def, env) !== "worker") {
+    return null;
+  }
+  return def.heartbeatKey;
+}
+
 /** Queues that should wire attachDlq() on their Worker. */
 export function listWorkerHeartbeatKeys(env: QueueRuntimeEnv): string[] {
   const keys: string[] = [];
-  for (const { def } of listEnabledQueues(env)) {
-    if (def.heartbeatKey && def.consumer === "worker") {
-      keys.push(`worker:heartbeat:${def.heartbeatKey}`);
+  for (const { name, def } of listEnabledQueues(env)) {
+    const hb = resolveWorkerHeartbeatKeyForQueue(name, def, env);
+    if (hb) {
+      keys.push(`worker:heartbeat:${hb}`);
     }
   }
   // domain-events is a DB poller, not BullMQ — kept for worker /health/ready compatibility

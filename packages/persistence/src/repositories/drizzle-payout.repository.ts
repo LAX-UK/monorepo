@@ -162,6 +162,99 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
     return row?.n ?? 0;
   }
 
+  async summarizeMatching(
+    filter: Omit<ListPayoutsFilter, "limit" | "offset">,
+  ): Promise<import("../interfaces/payout.repository.js").AdminPayoutListSummary> {
+    const conditions = [
+      filter.legalEntityId ? eq(payout.legalEntityId, filter.legalEntityId) : undefined,
+      filter.status ? eq(payout.status, filter.status) : undefined,
+    ].filter((c): c is NonNullable<typeof c> => c !== undefined);
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [row] = await (where
+      ? this.db
+          .select({
+            total: sql<number>`count(*)::int`,
+            scheduled: sql<number>`count(*) filter (where ${payout.status} = 'scheduled')::int`,
+            inTransit: sql<number>`count(*) filter (where ${payout.status} = 'in_transit')::int`,
+            paid: sql<number>`count(*) filter (where ${payout.status} = 'paid')::int`,
+            failed: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
+            reversed: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
+            clawbackPending: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
+            totalNet: sql<string>`coalesce(sum(${payout.netAmount})::text, '0')`,
+            inFlightCount: sql<number>`count(*) filter (where ${payout.status} in ('scheduled', 'in_transit'))::int`,
+            missingTransferRefCount: sql<number>`count(*) filter (where ${payout.status} in ('scheduled', 'in_transit') and (${payout.stripeTransferId} is null or btrim(${payout.stripeTransferId}) = ''))::int`,
+            withFailureReasonCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null and btrim(${payout.failureReason}) <> '')::int`,
+            withStatementErrorCount: sql<number>`count(*) filter (where ${payout.statementGenerationError} is not null and btrim(${payout.statementGenerationError}) <> '')::int`,
+            clawbackCount: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
+            failedCount: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
+            reversedCount: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
+            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed'))::int`,
+          })
+          .from(payout)
+          .where(where)
+      : this.db
+          .select({
+            total: sql<number>`count(*)::int`,
+            scheduled: sql<number>`count(*) filter (where ${payout.status} = 'scheduled')::int`,
+            inTransit: sql<number>`count(*) filter (where ${payout.status} = 'in_transit')::int`,
+            paid: sql<number>`count(*) filter (where ${payout.status} = 'paid')::int`,
+            failed: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
+            reversed: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
+            clawbackPending: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
+            totalNet: sql<string>`coalesce(sum(${payout.netAmount})::text, '0')`,
+            inFlightCount: sql<number>`count(*) filter (where ${payout.status} in ('scheduled', 'in_transit'))::int`,
+            missingTransferRefCount: sql<number>`count(*) filter (where ${payout.status} in ('scheduled', 'in_transit') and (${payout.stripeTransferId} is null or btrim(${payout.stripeTransferId}) = ''))::int`,
+            withFailureReasonCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null and btrim(${payout.failureReason}) <> '')::int`,
+            withStatementErrorCount: sql<number>`count(*) filter (where ${payout.statementGenerationError} is not null and btrim(${payout.statementGenerationError}) <> '')::int`,
+            clawbackCount: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
+            failedCount: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
+            reversedCount: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
+            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed'))::int`,
+          })
+          .from(payout));
+
+    const stats = row ?? {
+      total: 0,
+      scheduled: 0,
+      inTransit: 0,
+      paid: 0,
+      failed: 0,
+      reversed: 0,
+      clawbackPending: 0,
+      totalNet: "0",
+      inFlightCount: 0,
+      missingTransferRefCount: 0,
+      withFailureReasonCount: 0,
+      withStatementErrorCount: 0,
+      clawbackCount: 0,
+      failedCount: 0,
+      reversedCount: 0,
+      blockerPayoutCount: 0,
+    };
+
+    return {
+      total: stats.total,
+      scheduled: stats.scheduled,
+      inTransit: stats.inTransit,
+      paid: stats.paid,
+      failed: stats.failed,
+      reversed: stats.reversed,
+      clawbackPending: stats.clawbackPending,
+      totalNet: stats.totalNet,
+      readiness: {
+        inFlightCount: stats.inFlightCount,
+        missingTransferRefCount: stats.missingTransferRefCount,
+        withFailureReasonCount: stats.withFailureReasonCount,
+        withStatementErrorCount: stats.withStatementErrorCount,
+        clawbackCount: stats.clawbackCount,
+        failedCount: stats.failedCount,
+        reversedCount: stats.reversedCount,
+        blockerPayoutCount: stats.blockerPayoutCount,
+      },
+    };
+  }
+
   async findById(payoutId: string): Promise<Payout | null> {
     const rows = await this.db.select().from(payout).where(eq(payout.id, payoutId)).limit(1);
     return rows[0] ? rowToPayout(rows[0]) : null;

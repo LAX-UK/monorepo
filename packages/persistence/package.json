@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@auction/db": "workspace:*",
+    "@auction/domain": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
     "drizzle-orm": "^0.41.0",

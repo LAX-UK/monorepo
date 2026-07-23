@@ -44,6 +44,15 @@ export const domainEvent = pgTable(
     uniqueIndex("domain_events_user_registered_uid")
       .on(table.aggregateType, table.aggregateId)
       .where(sql`${table.eventType} = 'user.registered'`),
+    uniqueIndex("domain_events_bid_first_for_user_uid")
+      .on(table.aggregateType, table.aggregateId)
+      .where(sql`${table.eventType} = 'bid.first_for_user'`),
+    uniqueIndex("domain_events_bid_outbid_uid")
+      .on(table.aggregateType, table.aggregateId)
+      .where(sql`${table.eventType} = 'bid.outbid'`),
+    uniqueIndex("domain_events_user_linked_external_uid")
+      .on(table.aggregateType, table.aggregateId)
+      .where(sql`${table.eventType} = 'user.linked_external'`),
   ],
 );
 

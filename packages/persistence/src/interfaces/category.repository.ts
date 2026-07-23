@@ -1,4 +1,9 @@
-import type { AdminCategory, Category } from "@auction/types";
+import type {
+  AdminCategoriesListSummary,
+  AdminCategory,
+  AdminCategoryListResult,
+  Category,
+} from "@auction/types";
 import type {
   adminCreateCategoryBodySchema,
   adminUpdateCategoryBodySchema,
@@ -12,6 +17,15 @@ export type UpdateCategoryInput = (typeof adminUpdateCategoryBodySchema)["_outpu
 export interface ICategoryRepository {
   findAll(options?: { includeArchived?: boolean }): Promise<Category[]>;
   findAllForAdmin(options?: { includeArchived?: boolean }): Promise<AdminCategory[]>;
+  findPageForAdmin(options: {
+    includeArchived?: boolean;
+    q?: string;
+    limit: number;
+    offset: number;
+  }): Promise<AdminCategoryListResult>;
+  summarizeForAdmin(options?: {
+    includeArchived?: boolean;
+  }): Promise<AdminCategoriesListSummary>;
   findById(id: string): Promise<Category | null>;
   findBySlug(slug: string): Promise<Category | null>;
   create(input: CreateCategoryInput & { slug: string }): Promise<Category>;

@@ -87,11 +87,24 @@ export interface ILotAnalyticsRepository {
   sumEndedHammer(filter: ArchiveEndedAggregateFilter): Promise<{ total: string; count: number }>;
   /** UTC day counts for admin KPI trends (created_at >= rangeStart, non-deleted lots). */
   countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
+  countEndedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
+  /** Sum hammer (current price) for ended lots per UTC day (by endTime). */
+  sumEndedHammerByDay(rangeStart: Date): Promise<Map<string, number>>;
   /** Lot counts per sale id for list endpoints. */
   countLotsBySaleIds(
     saleIds: string[],
     options?: { publicOnly?: boolean | undefined },
   ): Promise<Map<string, number>>;
+  /** Aggregate estimate proxy for a sale's lots. */
+  sumSaleLotEstimates(saleId: string): Promise<{ total: string; count: number }>;
+  /** Bid counts by channel for lots in a sale. */
+  countSaleBidActivityByChannel(saleId: string): Promise<{
+    online: number;
+    room: number;
+    phone: number;
+  }>;
+  /** Distinct bidders on active lots in a sale. */
+  countActiveBiddersForSale(saleId: string): Promise<number>;
 }
 
 /** Full lot persistence port — composite of segregated read/write/lifecycle/analytics slices (ISP). */

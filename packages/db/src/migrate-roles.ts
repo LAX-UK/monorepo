@@ -90,13 +90,26 @@ export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
 const WORKER_LOCK_READ_TABLES = [
   "domain_events",
   "newsletter_signup_log",
-  /** Payouts - worker needs SELECT + UPDATE for settlement processing */
-  "payout",
-  "payout_line",
   /** archive cascade updates bids + draft/scheduled lots. */
   "bid",
   "lot",
+  /** Sale lifecycle reconciliation updates umbrella sale status. */
+  "sale",
 ];
+
+/** Bulk payout settlement creates payout + line rows and updates payout transfer state. */
+export const WORKER_PAYOUT_SETTLEMENT_TABLES = ["payout", "payout_line"] as const;
+
+/** Stripe Connect readiness sync during settlement updates cached flags + lifecycle status. */
+export const WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS = [
+  "status",
+  "stripe_connect_charges_enabled",
+  "stripe_connect_payouts_enabled",
+  "stripe_connect_requirements_currently_due",
+  "stripe_connect_requirements_errors",
+  "stripe_connect_disabled_reason",
+  "updated_at",
+] as const;
 export const WORKER_FULL_TABLES = [
   "projector_state",
   "webhook_event",
@@ -111,6 +124,44 @@ export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"]
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 /** Worker processes async CSV exports and purges expired rows (data-export + purge-expired jobs). */
 export const WORKER_DATA_EXPORT_TABLES = ["data_exports"] as const;
+
+/** Per-consumer delivery ledger (Zoho/Xero projector leases, retry, dead-letter). */
+export const WORKER_DOMAIN_EVENT_DELIVERY_TABLES = ["domain_event_delivery"] as const;
+
+/** Worker-local finance cron: expire stale pending/authorized payments. */
+export const WORKER_PAYMENT_MAINTENANCE_TABLES = ["payment"] as const;
+
+/** Worker-local finance cron: Xero OAuth, external refs, webhook replay, refund reconcile. */
+export const WORKER_FINANCE_INTEGRATION_TABLES = [
+  "xero_connection",
+  "payment_external_ref",
+  "xero_webhook_event",
+  "payment_refund_reconcile",
+] as const;
+
+/** Display pairing hygiene cron (expire pending + purge terminal rows). */
+export const WORKER_DISPLAY_PAIRING_TABLES = ["saleroom_display_pairing"] as const;
+
+/** Invoice addressing reads during lot invoice initiation. */
+export const WORKER_FINANCE_READ_TABLES = ["address"] as const;
+
+/** Lot lifecycle notification staging (won/lost) drained by notification outbox cron. */
+export const WORKER_NOTIFICATION_OUTBOX_TABLES = ["notification_outbox"] as const;
+
+/** Watchlist reads for lifecycle starting / ending-soon notifications. */
+export const WORKER_LIFECYCLE_READ_TABLES = ["watchlist", "saleroom_session"] as const;
+
+/** Worker lifecycle journal upserts during activate/end/bid early-close. */
+export const WORKER_LIFECYCLE_SNAPSHOT_TABLES = ["lot_lifecycle_snapshot"] as const;
+
+/** DLQ exhaustion audit rows when worker consumes BullMQ queues. */
+export const WORKER_FAILED_JOBS_TABLES = ["failed_jobs"] as const;
+
+/** Worker-local absentee replay and bid placement for lifecycle activation. */
+export const WORKER_ABSENTEE_BID_TABLES = ["absentee_bid"] as const;
+
+/** Worker absentee replay inserts bids during activation replay. */
+export const WORKER_BID_PLACEMENT_TABLES = ["bid"] as const;
 
 type RoleName = "auth_app" | "api_app" | "worker_app";
 
@@ -305,6 +356,48 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     for (const tableName of WORKER_QR_CODE_SCAN_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
     }
+    for (const tableName of WORKER_DOMAIN_EVENT_DELIVERY_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+    }
+    for (const tableName of WORKER_PAYMENT_MAINTENANCE_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
+    }
+    for (const tableName of WORKER_FINANCE_INTEGRATION_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+    }
+    for (const tableName of WORKER_DISPLAY_PAIRING_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
+    }
+    for (const tableName of WORKER_FINANCE_READ_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "SELECT");
+    }
+    for (const tableName of WORKER_NOTIFICATION_OUTBOX_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+    }
+    for (const tableName of WORKER_LIFECYCLE_READ_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "SELECT");
+    }
+    for (const tableName of WORKER_LIFECYCLE_SNAPSHOT_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+    }
+    for (const tableName of WORKER_FAILED_JOBS_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+    }
+    for (const tableName of WORKER_ABSENTEE_BID_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
+    }
+    for (const tableName of WORKER_BID_PLACEMENT_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+    }
+    for (const tableName of WORKER_PAYOUT_SETTLEMENT_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+    }
+    await grantColumnUpdateIfExists(
+      client,
+      "worker_app",
+      "legal_entity",
+      WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS,
+    );
 
     for (const role of ["auth_app", "api_app", "worker_app"] as const) {
       await grantSequences(client, role);

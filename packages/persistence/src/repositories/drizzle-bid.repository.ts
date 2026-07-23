@@ -31,10 +31,17 @@ export class DrizzleBidRepository implements IBidRepository {
         placedVia: row.placedVia ?? null,
         telephoneBookingId: row.telephoneBookingId ?? null,
         clerkUserId: row.clerkUserId ?? null,
+        internalPlacementKey: row.internalPlacementKey ?? null,
       })
       .returning();
     if (!created) throw new Error("Failed to create bid");
     return mapBidRow(created);
+  }
+
+  async findByInternalPlacementKey(key: string) {
+    const rows = await this.db.select().from(bid).where(eq(bid.internalPlacementKey, key)).limit(1);
+    const row = rows[0];
+    return row ? mapBidRow(row) : null;
   }
 
   async findHighestForLot(lotId: string) {

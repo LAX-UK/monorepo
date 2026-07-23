@@ -117,6 +117,27 @@ export class DrizzleAmlScreeningRepository
     return row?.n ?? 0;
   }
 
+  async summarizePendingQueue(
+    conn?: Database,
+  ): Promise<import("../interfaces/aml-screening.repository.js").AdminAmlListSummary> {
+    const [row] = await this.conn(conn)
+      .select({
+        total: sql<number>`count(*)::int`,
+        awaitingTriage: sql<number>`count(*) filter (where ${kycWatchlistScreening.triageRecommendation} is null)::int`,
+        triaged: sql<number>`count(*) filter (where ${kycWatchlistScreening.triageRecommendation} is not null)::int`,
+        escalated: sql<number>`count(*) filter (where ${kycWatchlistScreening.decisionOutcome} = 'escalate')::int`,
+      })
+      .from(kycWatchlistScreening)
+      .where(eq(kycWatchlistScreening.reviewStatus, "pending"));
+
+    return {
+      total: row?.total ?? 0,
+      awaitingTriage: row?.awaitingTriage ?? 0,
+      triaged: row?.triaged ?? 0,
+      escalated: row?.escalated ?? 0,
+    };
+  }
+
   async listForUser(
     userId: string,
     limit: number,

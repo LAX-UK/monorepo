@@ -13,6 +13,7 @@ export const webhookEvent = pgTable(
     processedAt: timestamp("processed_at", { mode: "date", withTimezone: true }),
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
+    claimExpiresAt: timestamp("claim_expires_at", { mode: "date", withTimezone: true }),
   },
   (table) => [
     index("webhook_event_source_idx").on(table.source),

@@ -11,6 +11,8 @@ export interface IAbsenteeBidRepository {
     maxAmount: string;
   }): Promise<{ id: string } | null>;
   expireStaleExecutingLeases(cutoff: Date): Promise<void>;
+  /** Executing rows whose lease expired (for durable-key reconciliation). */
+  listStaleExecuting(cutoff: Date): Promise<AbsenteeBidRow[]>;
   listScheduledForLot(lotId: string): Promise<AbsenteeBidRow[]>;
   markVoided(id: string, cancellationReason: string): Promise<void>;
   markLost(id: string, cancellationReason?: string): Promise<void>;

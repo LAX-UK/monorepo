@@ -1,9 +1,11 @@
 import type { Database } from "@auction/db";
 import { conditionReportRequest, lot, user } from "@auction/db/schema";
 import type { Lot } from "@auction/types";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
+  AdminConditionReportListSummary,
   BuyerConditionReportListRow,
+  ConditionReportAdminBaseFilter,
   ConditionReportAdminListFilter,
   ConditionReportRequestListRow,
   IConditionReportRequestRepository,
@@ -16,7 +18,11 @@ import {
   mapRequestRow,
 } from "../lib/condition-report-request.mapper.js";
 
-function buildAdminWhereClause(filter: ConditionReportAdminListFilter) {
+function buildBaseWhereClause(filter: ConditionReportAdminBaseFilter = {}) {
+  return filter.lotId ? eq(conditionReportRequest.lotId, filter.lotId) : undefined;
+}
+
+function buildListWhereClause(filter: Omit<ConditionReportAdminListFilter, "limit" | "offset">) {
   const filters = [] as ReturnType<typeof eq>[];
   if (filter.status === "open") {
     filters.push(inArray(conditionReportRequest.status, [...OPEN_REQUEST_STATUSES]));
@@ -111,12 +117,45 @@ export class DrizzleConditionReportRequestRepository implements IConditionReport
     return updated ? mapRequestRow(updated) : null;
   }
 
-  async listForAdmin(filter: ConditionReportAdminListFilter) {
-    const whereClause = buildAdminWhereClause(filter);
-
+  async countMatching(filter: Omit<ConditionReportAdminListFilter, "limit" | "offset">) {
+    const whereClause = buildListWhereClause(filter);
     const countBase = this.db.select({ n: count() }).from(conditionReportRequest);
     const [totalRow] = whereClause ? await countBase.where(whereClause) : await countBase;
-    const total = Number(totalRow?.n ?? 0);
+    return Number(totalRow?.n ?? 0);
+  }
+
+  async summarizeForAdmin(
+    baseFilter: ConditionReportAdminBaseFilter = {},
+  ): Promise<AdminConditionReportListSummary> {
+    const whereClause = buildBaseWhereClause(baseFilter);
+    const query = this.db
+      .select({
+        total: sql<number>`count(*)::int`,
+        pending: sql<number>`count(*) filter (where ${conditionReportRequest.status} = 'pending')::int`,
+        inProgress: sql<number>`count(*) filter (where ${conditionReportRequest.status} = 'in_progress')::int`,
+        fulfilled: sql<number>`count(*) filter (where ${conditionReportRequest.status} = 'fulfilled')::int`,
+        declined: sql<number>`count(*) filter (where ${conditionReportRequest.status} = 'declined')::int`,
+        open: sql<number>`count(*) filter (where ${conditionReportRequest.status} in ('pending', 'in_progress'))::int`,
+      })
+      .from(conditionReportRequest);
+    const [row] = whereClause ? await query.where(whereClause) : await query;
+    return {
+      total: row?.total ?? 0,
+      open: row?.open ?? 0,
+      pending: row?.pending ?? 0,
+      inProgress: row?.inProgress ?? 0,
+      fulfilled: row?.fulfilled ?? 0,
+      declined: row?.declined ?? 0,
+    };
+  }
+
+  async listForAdmin(filter: ConditionReportAdminListFilter) {
+    const listFilter = {
+      ...(filter.status !== undefined ? { status: filter.status } : {}),
+      ...(filter.lotId ? { lotId: filter.lotId } : {}),
+    };
+    const whereClause = buildListWhereClause(listFilter);
+    const total = await this.countMatching(listFilter);
 
     const listBase = this.db
       .select({

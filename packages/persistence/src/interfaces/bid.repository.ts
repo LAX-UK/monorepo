@@ -12,10 +12,12 @@ export type CreateBidRow = {
   placedVia?: string | null;
   telephoneBookingId?: string | null;
   clerkUserId?: string | null;
+  internalPlacementKey?: string | null;
 };
 
 export interface IBidRepository {
   create(row: CreateBidRow): Promise<Bid>;
+  findByInternalPlacementKey(key: string): Promise<Bid | null>;
   findHighestForLot(lotId: string): Promise<Bid | null>;
   /** Highest amount first; earliest bid wins ties (settlement). */
   listForLotSettlement(lotId: string, limit: number): Promise<Bid[]>;

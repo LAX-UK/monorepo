@@ -124,4 +124,16 @@ export class DrizzleExportJobRepository implements IExportJobRepository {
       .where(eq(dataExport.id, exportId));
     return (row?.status as ExportStatus | undefined) ?? null;
   }
+
+  async findLatestCompletedForSale(saleId: string) {
+    const id = saleId.trim();
+    if (!id) return null;
+    const [row] = await this.db
+      .select()
+      .from(dataExport)
+      .where(and(eq(dataExport.status, "completed"), sql`${dataExport.filters}->>'saleId' = ${id}`))
+      .orderBy(desc(dataExport.completedAt))
+      .limit(1);
+    return row ?? null;
+  }
 }

@@ -41,6 +41,18 @@ export class DrizzleAbsenteeBidRepository implements IAbsenteeBidRepository {
       );
   }
 
+  async listStaleExecuting(cutoff: Date) {
+    return this.db
+      .select()
+      .from(absenteeBid)
+      .where(
+        and(
+          eq(absenteeBid.status, "executing"),
+          or(isNull(absenteeBid.executingAt), lt(absenteeBid.executingAt, cutoff)),
+        ),
+      );
+  }
+
   async listScheduledForLot(lotId: string) {
     return this.db
       .select()

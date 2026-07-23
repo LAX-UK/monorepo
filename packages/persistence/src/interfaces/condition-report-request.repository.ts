@@ -19,6 +19,19 @@ export type ConditionReportAdminListFilter = {
   offset: number;
 };
 
+export type ConditionReportAdminBaseFilter = {
+  lotId?: string | undefined;
+};
+
+export type AdminConditionReportListSummary = {
+  total: number;
+  open: number;
+  pending: number;
+  inProgress: number;
+  fulfilled: number;
+  declined: number;
+};
+
 export type ConditionReportRequestListRow = ConditionReportRequestRow & {
   lotTitle: string | null;
   requesterEmail: string | null;
@@ -59,6 +72,10 @@ export interface IConditionReportRequestRepository {
   listForAdmin(
     filter: ConditionReportAdminListFilter,
   ): Promise<{ items: ConditionReportRequestListRow[]; total: number }>;
+  countMatching(filter: Omit<ConditionReportAdminListFilter, "limit" | "offset">): Promise<number>;
+  summarizeForAdmin(
+    baseFilter?: ConditionReportAdminBaseFilter,
+  ): Promise<AdminConditionReportListSummary>;
   listForBuyer(input: {
     userId: string;
     limit: number;

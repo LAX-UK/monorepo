@@ -9,7 +9,6 @@ export const EXPORT_ENTITY_TYPES = [
   "payments",
   "domain-events",
   "payouts",
-  "analytics",
 ] as const;
 
 export type ExportEntityType = (typeof EXPORT_ENTITY_TYPES)[number];

@@ -13,9 +13,14 @@ import type {
 import { mapLotRow } from "../lib/entity-row-mappers.js";
 import { mergeLotMarketingDetailsPatch } from "../lib/lot-marketing-details-merge.js";
 import {
+  countActiveBiddersForSale,
   countLotsCreatedAtByDay,
+  countLotsEndedAtByDay,
   countMatchingLots,
+  countSaleBidActivityByChannel,
   sumEndedLotHammer,
+  sumEndedLotHammerByDay,
+  sumSaleLotEstimates,
 } from "./lot/lot-analytics-queries.js";
 import {
   countLotsBySaleIds,
@@ -426,6 +431,26 @@ export class DrizzleLotRepository implements ILotRepository {
 
   async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
     return countLotsCreatedAtByDay(this.db, rangeStart);
+  }
+
+  async countEndedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
+    return countLotsEndedAtByDay(this.db, rangeStart);
+  }
+
+  async sumEndedHammerByDay(rangeStart: Date): Promise<Map<string, number>> {
+    return sumEndedLotHammerByDay(this.db, rangeStart);
+  }
+
+  async sumSaleLotEstimates(saleId: string) {
+    return sumSaleLotEstimates(this.db, saleId);
+  }
+
+  async countSaleBidActivityByChannel(saleId: string) {
+    return countSaleBidActivityByChannel(this.db, saleId);
+  }
+
+  async countActiveBiddersForSale(saleId: string) {
+    return countActiveBiddersForSale(this.db, saleId);
   }
 
   async listSoldLotsMissingPayment(limit: number): Promise<string[]> {

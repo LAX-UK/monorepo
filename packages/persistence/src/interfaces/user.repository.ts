@@ -15,6 +15,8 @@ export interface IUserRepository {
   findById(id: string): Promise<UserProfileRow | null>;
   /** Case-insensitive email lookup (invitation duplicate checks). */
   findByEmail(email: string): Promise<UserProfileRow | null>;
+  /** Verified-account id for inbound identity webhooks (Shopify customer link). */
+  findVerifiedIdByEmail(email: string): Promise<string | null>;
   listIdsByRole(role: string): Promise<string[]>;
   /** Staff user ids that should receive new-item-submission notifications (appraisal / catalogue / auction). */
   listStaffIdsForSubmissionNotifications(): Promise<string[]>;

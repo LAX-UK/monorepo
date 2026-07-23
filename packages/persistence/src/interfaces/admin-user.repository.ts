@@ -65,6 +65,16 @@ export type AdminUserListResult = {
   total: number;
 };
 
+export type AdminUserListSummary = {
+  total: number;
+  active: number;
+  suspended: number;
+  emailVerified: number;
+  kycVerified: number;
+  /** Staff-role counts within the current filter (includes `legacy` for null staff_role). */
+  byStaffRole: Record<string, number>;
+};
+
 export type AdminUserDetail = AdminUserListRow & {
   suspendedReason: string | null;
   dateOfBirth: string | null;
@@ -139,11 +149,19 @@ export interface IAdminUserBidsReader {
   ): Promise<AdminUserBidListResult>;
 }
 
-export interface IAdminUserReader {
+/** Directory browse + KPI summary (same filter predicate as list). */
+export interface IAdminUserBrowseReader {
   list(filter: AdminUserListFilter): Promise<AdminUserListResult>;
+  summarize(filter: AdminUserListFilter): Promise<AdminUserListSummary>;
+}
+
+/** Detail and batch lookup reads (no directory filters). */
+export interface IAdminUserDetailReader {
   getById(id: string): Promise<AdminUserDetail | null>;
   getByIds(ids: string[]): Promise<AdminUserListRow[]>;
 }
+
+export interface IAdminUserReader extends IAdminUserBrowseReader, IAdminUserDetailReader {}
 
 export interface IAdminUserKycReader {
   listSessionsForUser(userId: string, limit?: number): Promise<AdminKycSession[]>;

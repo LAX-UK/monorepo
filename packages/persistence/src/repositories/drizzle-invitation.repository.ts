@@ -192,24 +192,18 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
     filters: InvitationAdminListFilters,
   ): Promise<{ total: number; pending: number; accepted: number }> {
     const filteredWhere = buildAdminListWhere(filters);
-    const [filteredRow, globalRow] = await Promise.all([
-      this.db
-        .select({ total: sql<number>`count(*)::int` })
-        .from(userInvitation)
-        .where(filteredWhere)
-        .then((rows) => rows[0]),
-      this.db
-        .select({
-          pending: sql<number>`count(*) filter (where ${userInvitation.status} = 'pending')::int`,
-          accepted: sql<number>`count(*) filter (where ${userInvitation.status} = 'accepted')::int`,
-        })
-        .from(userInvitation)
-        .then((rows) => rows[0]),
-    ]);
+    const countBase = this.db
+      .select({
+        total: sql<number>`count(*)::int`,
+        pending: sql<number>`count(*) filter (where ${userInvitation.status} = 'pending')::int`,
+        accepted: sql<number>`count(*) filter (where ${userInvitation.status} = 'accepted')::int`,
+      })
+      .from(userInvitation);
+    const [row] = filteredWhere ? await countBase.where(filteredWhere) : await countBase;
     return {
-      total: filteredRow?.total ?? 0,
-      pending: globalRow?.pending ?? 0,
-      accepted: globalRow?.accepted ?? 0,
+      total: row?.total ?? 0,
+      pending: row?.pending ?? 0,
+      accepted: row?.accepted ?? 0,
     };
   }
 

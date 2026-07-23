@@ -6,6 +6,7 @@ import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import type { ISaleRepository, ListSalesFilter } from "../interfaces/index.js";
 import { mapSaleRow } from "../lib/entity-row-mappers.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
+import { queryAvgLotsPerSale } from "./sale/sale-analytics-queries.js";
 
 /** Sold lot without captured/refunded buyer payment. */
 function soldLotMissingSettledPayment() {
@@ -280,5 +281,9 @@ export class DrizzleSaleRepository implements ISaleRepository {
 
   async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
     return queryCreatedAtDailyCounts(this.db, sale, sale.createdAt, rangeStart, saleNotDeleted());
+  }
+
+  async avgLotsPerSale(): Promise<number> {
+    return queryAvgLotsPerSale(this.db);
   }
 }

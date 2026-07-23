@@ -36,12 +36,16 @@ export type AdminOnboardingLegalEntityRow = {
   id: string;
   displayName: string;
   status: LegalEntityStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  statusChangedAt: Date | null;
 };
 
 export type AdminOnboardingArtistRow = {
   id: string;
   displayName: string;
   status: string;
+  createdAt: Date;
 };
 
 export type AdminOnboardingKycSessionRow = {
@@ -74,6 +78,59 @@ export type AdminOnboardingIssues = {
   staleKycSessions: AdminOnboardingKycSessionRow[];
   documentsAwaitingReview: AdminOnboardingDocumentRow[];
   staleLeadOrganisations: AdminOnboardingStaleLeadRow[];
+};
+
+export type AdminOnboardingIssuesTab =
+  | "entities"
+  | "artists"
+  | "kyc"
+  | "organizations"
+  | "documents";
+
+export type AdminOnboardingIssuesCrossSummary = {
+  queueTotal: number;
+  entities: number;
+  artists: number;
+  kyc: number;
+  organizations: number;
+  documents: number;
+};
+
+export type AdminOnboardingEntitiesLensSummary = {
+  total: number;
+  docsReceived: number;
+  underReview: number;
+};
+
+export type AdminOnboardingArtistsLensSummary = {
+  total: number;
+};
+
+export type AdminOnboardingKycLensSummary = {
+  total: number;
+  created: number;
+  requiresInput: number;
+  processing: number;
+};
+
+export type AdminOnboardingDocumentsLensSummary = {
+  total: number;
+};
+
+export type AdminOnboardingOrganizationsLensSummary = {
+  total: number;
+};
+
+export type AdminOnboardingIssuesLensSummary =
+  | { tab: "entities"; summary: AdminOnboardingEntitiesLensSummary }
+  | { tab: "artists"; summary: AdminOnboardingArtistsLensSummary }
+  | { tab: "kyc"; summary: AdminOnboardingKycLensSummary }
+  | { tab: "organizations"; summary: AdminOnboardingOrganizationsLensSummary }
+  | { tab: "documents"; summary: AdminOnboardingDocumentsLensSummary };
+
+export type AdminOnboardingIssuesListResult<T> = {
+  rows: T[];
+  total: number;
 };
 
 /** Base row before domain-event enrichment for `/admin/payments/manual-review`. */

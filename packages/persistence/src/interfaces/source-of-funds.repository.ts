@@ -59,6 +59,13 @@ export type SourceOfFundsReviewInput = {
   reviewNotes: string | null;
 };
 
+/** Filtered aggregate counts for the admin Source of Funds list queue. */
+export type AdminSourceOfFundsListSummary = {
+  total: number;
+  awaitingTriage: number;
+  triaged: number;
+};
+
 export interface ISourceOfFundsRepository {
   findLatestForUser(userId: string, conn?: Database): Promise<SourceOfFundsCase | null>;
   findById(id: string, conn?: Database): Promise<SourceOfFundsCase | null>;
@@ -76,6 +83,11 @@ export interface ISourceOfFundsRepository {
     conn?: Database,
   ): Promise<SourceOfFundsCase[]>;
   countByStatus(status: SourceOfFundsStatus, conn?: Database): Promise<number>;
+  /** Aggregate triage counts for the active status filter (full result set, not page-limited). */
+  summarizeByStatus(
+    status: SourceOfFundsStatus,
+    conn?: Database,
+  ): Promise<AdminSourceOfFundsListSummary>;
   create(input: CreateSourceOfFundsCaseInput, conn?: Database): Promise<SourceOfFundsCase>;
   setTriage(input: SourceOfFundsTriageInput, conn?: Database): Promise<SourceOfFundsCase | null>;
   setReview(input: SourceOfFundsReviewInput, conn?: Database): Promise<SourceOfFundsCase | null>;

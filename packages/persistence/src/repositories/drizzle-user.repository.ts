@@ -42,6 +42,17 @@ export class DrizzleUserRepository implements IUserRepository {
     };
   }
 
+  async findVerifiedIdByEmail(email: string): Promise<string | null> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return null;
+    const [row] = await this.db
+      .select({ id: user.id })
+      .from(user)
+      .where(and(eq(user.emailVerified, true), sql`lower(${user.email}) = ${normalized}`))
+      .limit(1);
+    return row?.id ?? null;
+  }
+
   async listIdsByRole(role: string): Promise<string[]> {
     const rows = await this.db.select({ id: user.id }).from(user).where(eq(user.role, role));
     return rows.map((r) => r.id);

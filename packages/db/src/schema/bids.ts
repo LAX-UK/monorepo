@@ -42,6 +42,8 @@ export const bid = pgTable(
     }),
     /** Staff clerk who placed this bid on behalf of the buyer (operator placements). */
     clerkUserId: text("clerk_user_id").references(() => user.id, { onDelete: "set null" }),
+    /** Durable idempotency for internal placements (e.g. absentee replay). */
+    internalPlacementKey: text("internal_placement_key"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -55,6 +57,9 @@ export const bid = pgTable(
     uniqueIndex("bid_one_winner_per_lot_uniq")
       .on(table.lotId)
       .where(sql`${table.isWinning} = true`),
+    uniqueIndex("bid_internal_placement_key_uniq")
+      .on(table.internalPlacementKey)
+      .where(sql`${table.internalPlacementKey} IS NOT NULL`),
     check(
       "bid_placed_via_check",
       sql`${table.placedVia} IS NULL OR ${table.placedVia} IN ('web', 'absentee', 'telephone', 'saleroom')`,

@@ -26,6 +26,12 @@ export type {
   ListSubmissionsFilter,
 } from "./item-submission.repository.js";
 
+export type {
+  AdminSubmissionsListSummary,
+  AdminSubmissionsQueueCounts,
+  IAdminSubmissionsSummaryReader,
+} from "./admin-submissions-summary.reader.js";
+
 export type { ISessionRepository } from "./session.repository.js";
 export type { AuthSessionListRow } from "./session.types.js";
 
@@ -51,7 +57,12 @@ export type { IEmailWebhookIngestRepository } from "./email-webhook-ingest.repos
 
 export type { INewsletterSignupRepository } from "./newsletter-signup.repository.js";
 
-export type { IWebhookEventRepository } from "./webhook-event.repository.js";
+export type { IWebhookEventRepository, WebhookEventDrainRow } from "./webhook-event.repository.js";
+export type {
+  ExternalAccountRow,
+  IExternalAccountRepository,
+  UpsertExternalAccountInput,
+} from "./external-account.repository.js";
 
 export type { IFailedJobRepository, FailedJobReplayRow } from "./failed-job.repository.js";
 
@@ -144,7 +155,9 @@ export type {
 } from "./telephone-bid-booking-detail.reader.js";
 
 export type {
+  AdminConditionReportListSummary,
   BuyerConditionReportListRow,
+  ConditionReportAdminBaseFilter,
   ConditionReportAdminListFilter,
   ConditionReportRequestListRow,
   ConditionReportRequestRow,
@@ -425,6 +438,7 @@ export type {
 } from "./payment-write.repository.js";
 
 export type {
+  AdminPayoutListSummary,
   CreatePayoutInput,
   InsertPayoutLineInput,
   IPayoutAnalyticsRepository,
@@ -451,16 +465,6 @@ export type {
 } from "./xero.repository.js";
 
 export type {
-  DateRange,
-  ILotMetricsReader,
-  IPaymentMetricsReader,
-  IUserMetricsReader,
-  LotMetricPoint,
-  RevenueMetricPoint,
-  UserMetricPoint,
-} from "./metrics.reader.js";
-
-export type {
   RedactedDomainEventRow,
   FinanceIssueSnapshot,
   StripeConnectRequirementEntityRow,
@@ -470,6 +474,15 @@ export type {
   AdminOnboardingDocumentRow,
   AdminOnboardingStaleLeadRow,
   AdminOnboardingIssues,
+  AdminOnboardingIssuesTab,
+  AdminOnboardingIssuesCrossSummary,
+  AdminOnboardingIssuesListResult,
+  AdminOnboardingIssuesLensSummary,
+  AdminOnboardingEntitiesLensSummary,
+  AdminOnboardingArtistsLensSummary,
+  AdminOnboardingKycLensSummary,
+  AdminOnboardingDocumentsLensSummary,
+  AdminOnboardingOrganizationsLensSummary,
   ManualReviewPaymentBaseRow,
   AdminManualReviewPaymentRow,
   AdminReviewTaskRow,
@@ -482,6 +495,8 @@ export type {
   AdminLegalEntityBrowseParams,
   AdminLegalEntityBrowseResult,
   AdminLegalEntityBrowseRow,
+  AdminLegalEntityBrowseSummary,
+  AdminLegalEntityBrowseFilter,
 } from "./admin-legal-entity-browse.reader.js";
 
 export type {
@@ -524,8 +539,11 @@ export type {
   AdminUserListResult,
   AdminUserListRow,
   AdminUserListSort,
+  AdminUserListSummary,
   IAdminUserActivityReader,
   IAdminUserBidsReader,
+  IAdminUserBrowseReader,
+  IAdminUserDetailReader,
   IAdminUserKycReader,
   IAdminUserReader,
   IAdminUserRoleManager,
@@ -605,6 +623,7 @@ export type {
 } from "./aml.types.js";
 
 export type {
+  AdminAmlListSummary,
   IAmlHoldStore,
   IWatchlistScreeningReader,
   IWatchlistScreeningWriter,
@@ -615,6 +634,7 @@ export type {
 } from "./aml-screening.repository.js";
 
 export type {
+  AdminSourceOfFundsListSummary,
   CreateSourceOfFundsCaseInput,
   ISourceOfFundsRepository,
   SourceOfFundsCase,
@@ -701,6 +721,12 @@ export type {
 } from "./press-archive.repository.js";
 
 export type { IPaymentDomainEventsRepository } from "./payment-domain-events.repository.js";
+export type {
+  ClaimDomainEventDeliveriesInput,
+  DomainEventDeliveryRow,
+  DomainEventDeliveryStatus,
+  IDomainEventDeliveryRepository,
+} from "./domain-event-delivery.repository.js";
 
 export type { ILotCancelledLifecycleRecorder } from "./lot-cancelled-lifecycle-recorder.js";
 
@@ -709,6 +735,9 @@ export type { ILotSoftDeleteSideEffects } from "./lot-soft-delete.js";
 export type { ISaleSoftDeleteSideEffects } from "./sale-soft-delete.js";
 
 export type {
+  AdminLotFulfilmentBaseFilter,
+  AdminLotFulfilmentListFilter,
+  AdminLotFulfilmentListSummary,
   ILotFulfilmentPaymentHook,
   ILotFulfilmentRepository,
   InsertLotFulfilmentInput,
@@ -726,6 +755,24 @@ export type {
   PaymentAttentionRow,
   SubmissionAttentionRow,
 } from "./attention-feed.reader.js";
+
+export type {
+  ISaleAttentionSignalsReader,
+  SaleAttentionSignalKey,
+  SaleAttentionSignals,
+} from "./sale-attention-signals.reader.js";
+
+export type {
+  ISaleOverviewKpiTrendReader,
+  SaleBidVolumeByDayAndLotRow,
+  SaleOverviewKpiDailySignals,
+} from "./sale-overview-kpi-trend.reader.js";
+
+export type {
+  ISaleRevenueSnapshotReader,
+  SalePremiumContext,
+  SaleRevenueSnapshotData,
+} from "./sale-revenue-snapshot.reader.js";
 
 export type {
   IRepositoryFactory,

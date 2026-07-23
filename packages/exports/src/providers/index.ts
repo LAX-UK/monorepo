@@ -1,6 +1,5 @@
 export {
   createExportProviders,
-  type ExportProviderDeps,
   type IExportProviderDeps,
 } from "./registry.js";
 export type { ExportAuthContext, ExportProvider } from "./types.js";

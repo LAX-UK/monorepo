@@ -7,6 +7,7 @@ afterEach(() => {
 
 function mockDb(options: {
   countTotal?: number;
+  summaryRow?: Record<string, number>;
   rows?: {
     id: string;
     displayName: string;
@@ -19,38 +20,52 @@ function mockDb(options: {
 }) {
   const countTotal = options.countTotal ?? options.rows?.length ?? 0;
   const rows = options.rows ?? [];
+  const summaryRow = options.summaryRow ?? {
+    total: countTotal,
+    lead: 0,
+    docs_requested: 0,
+    docs_received: 0,
+    under_review: 0,
+    connect_pending: 0,
+    approved: countTotal,
+    restricted: 0,
+    rejected: 0,
+    archived: 0,
+    stripeDueCount: 0,
+    individual: 0,
+    organisation: countTotal,
+  };
 
   const offset = vi.fn().mockResolvedValue(rows);
   const limit = vi.fn().mockReturnValue({ offset });
   const orderBy = vi.fn().mockReturnValue({ limit });
-  const countWhere = vi.fn().mockResolvedValue([{ n: countTotal }]);
-  const countFromResult = Object.assign(Promise.resolve([{ n: countTotal }]), {
-    where: countWhere,
-  });
-  const countFrom = vi.fn().mockReturnValue(countFromResult);
-
   const listWhere = vi.fn().mockReturnValue({ orderBy });
   const listFromResult = {
     where: listWhere,
     orderBy,
   };
   const listFrom = vi.fn().mockReturnValue(listFromResult);
+  const listSelect = vi.fn().mockReturnValue({ from: listFrom });
+
+  const summaryWhere = vi.fn().mockResolvedValue([summaryRow]);
+  const summaryFrom = Object.assign(Promise.resolve([summaryRow]), {
+    where: summaryWhere,
+  });
+  const summarySelect = vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue(summaryFrom) });
 
   let selectCall = 0;
-  const listSelect = vi.fn().mockReturnValue({ from: listFrom });
-  const countSelect = vi.fn().mockReturnValue({ from: countFrom });
   const db = {
     select: vi.fn().mockImplementation(() => {
       selectCall += 1;
-      return selectCall === 1 ? countSelect() : listSelect();
+      return selectCall === 1 ? summarySelect() : listSelect();
     }),
   };
 
-  return { db, listWhere, countWhere, limit, offset };
+  return { db, listWhere, summaryWhere, limit, offset };
 }
 
 describe("DrizzleAdminLegalEntityBrowseReader.searchLegalEntitiesBrowse", () => {
-  it("returns rows and total", async () => {
+  it("returns rows, total, and summary", async () => {
     const updatedAt = new Date("2026-01-01T00:00:00.000Z");
     const { db } = mockDb({
       countTotal: 1,
@@ -75,6 +90,8 @@ describe("DrizzleAdminLegalEntityBrowseReader.searchLegalEntitiesBrowse", () => 
     });
 
     expect(result.total).toBe(1);
+    expect(result.summary.total).toBe(1);
+    expect(result.summary.byKind.organisation).toBe(1);
     expect(result.rows).toEqual([
       {
         id: "a",
@@ -154,5 +171,45 @@ describe("DrizzleAdminLegalEntityBrowseReader.searchLegalEntitiesBrowse", () => 
     });
 
     expect(listWhere).toHaveBeenCalled();
+  });
+});
+
+describe("DrizzleAdminLegalEntityBrowseReader.summarizeLegalEntitiesBrowse", () => {
+  it("returns aggregate counts for filtered browse", async () => {
+    const { db } = mockDb({
+      summaryRow: {
+        total: 3,
+        lead: 1,
+        docs_requested: 0,
+        docs_received: 1,
+        under_review: 1,
+        connect_pending: 0,
+        approved: 0,
+        restricted: 0,
+        rejected: 0,
+        archived: 0,
+        stripeDueCount: 2,
+        individual: 1,
+        organisation: 2,
+      },
+    });
+    const reader = new DrizzleAdminLegalEntityBrowseReader(db as never);
+
+    await expect(reader.summarizeLegalEntitiesBrowse({ status: "under_review" })).resolves.toEqual({
+      total: 3,
+      byStatus: {
+        lead: 1,
+        docs_requested: 0,
+        docs_received: 1,
+        under_review: 1,
+        connect_pending: 0,
+        approved: 0,
+        restricted: 0,
+        rejected: 0,
+        archived: 0,
+      },
+      stripeDueCount: 2,
+      byKind: { individual: 1, organisation: 2 },
+    });
   });
 });

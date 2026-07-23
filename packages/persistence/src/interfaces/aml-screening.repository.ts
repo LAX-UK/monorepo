@@ -37,6 +37,18 @@ export type WatchlistScreeningRecord = {
   createdAt: Date;
 };
 
+/** Filtered aggregate counts for the admin AML pending-review queue. */
+export type AdminAmlListSummary = {
+  /** All pending screenings. */
+  total: number;
+  /** Pending screenings without a triage recommendation (partition bucket). */
+  awaitingTriage: number;
+  /** Pending screenings with a triage recommendation (partition bucket). */
+  triaged: number;
+  /** Pending screenings with policy escalation — may overlap triage buckets (risk overlay). */
+  escalated: number;
+};
+
 export interface IWatchlistScreeningReader {
   findById(id: string, conn?: Database): Promise<WatchlistScreeningRecord | null>;
   findLatestByUserId(userId: string, conn?: Database): Promise<WatchlistScreeningRecord | null>;
@@ -51,6 +63,8 @@ export interface IWatchlistScreeningReader {
     conn?: Database,
   ): Promise<WatchlistScreeningRecord[]>;
   countByReviewStatus(reviewStatus: AmlReviewStatus, conn?: Database): Promise<number>;
+  /** Aggregate triage/escalation counts across all pending screenings (not page-limited). */
+  summarizePendingQueue(conn?: Database): Promise<AdminAmlListSummary>;
   listForUser(userId: string, limit: number, conn?: Database): Promise<WatchlistScreeningRecord[]>;
 }
 

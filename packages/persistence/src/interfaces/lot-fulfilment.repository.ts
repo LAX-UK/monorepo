@@ -16,6 +16,21 @@ export type LotFulfilmentAddressSnapshot = {
   addressType: "shipping" | "billing" | "both";
 };
 
+export type AdminLotFulfilmentBaseFilter = {
+  q?: string;
+};
+
+export type AdminLotFulfilmentListFilter = AdminLotFulfilmentBaseFilter & {
+  status?: LotFulfilmentRow["status"];
+};
+
+export type AdminLotFulfilmentListSummary = {
+  total: number;
+  awaitingPickup: number;
+  inTransit: number;
+  statusCounts: Record<string, number>;
+};
+
 export type InsertLotFulfilmentInput = {
   lotId: string;
   paymentId: string;
@@ -42,16 +57,13 @@ export interface ILotFulfilmentRepository {
   findByLotId(lotId: string): Promise<LotFulfilmentRow | null>;
   insert(input: InsertLotFulfilmentInput): Promise<void>;
   updateByLotId(lotId: string, patch: UpdateLotFulfilmentInput): Promise<void>;
-  listForAdmin(options?: {
-    status?: LotFulfilmentRow["status"];
-    q?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<{
-    items: LotFulfilmentListRow[];
-    total: number;
-    statusCounts: Record<string, number>;
-  }>;
+  listForAdmin(
+    options?: AdminLotFulfilmentListFilter & { limit?: number; offset?: number },
+  ): Promise<{ items: LotFulfilmentListRow[]; total: number }>;
+  countMatching(filter: AdminLotFulfilmentListFilter): Promise<number>;
+  summarizeForAdmin(
+    baseFilter?: AdminLotFulfilmentBaseFilter,
+  ): Promise<AdminLotFulfilmentListSummary>;
 }
 
 /** Hooks from lot fulfilment into the payment flow (DIP for payment services). */

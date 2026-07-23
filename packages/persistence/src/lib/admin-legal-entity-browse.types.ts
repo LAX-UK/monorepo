@@ -10,9 +10,17 @@ export type AdminLegalEntityBrowseRow = {
   stripeDueCount: number;
 };
 
+export type AdminLegalEntityBrowseSummary = {
+  total: number;
+  byStatus: Record<LegalEntityStatus, number>;
+  stripeDueCount: number;
+  byKind: Record<LegalEntityKind, number>;
+};
+
 export type AdminLegalEntityBrowseResult = {
   rows: AdminLegalEntityBrowseRow[];
   total: number;
+  summary: AdminLegalEntityBrowseSummary;
 };
 
 export type AdminLegalEntityBrowseParams = {
@@ -25,3 +33,5 @@ export type AdminLegalEntityBrowseParams = {
   limit: number;
   offset: number;
 };
+
+export type AdminLegalEntityBrowseFilter = Omit<AdminLegalEntityBrowseParams, "limit" | "offset">;

@@ -1,12 +1,13 @@
 import type { Database } from "@auction/db";
-import { session, user, type userStaffRoleEnum } from "@auction/db/schema";
-import { count, desc, eq, inArray } from "drizzle-orm";
+import { session, user, userStaffRoleEnum } from "@auction/db/schema";
+import { count, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
   AdminActivityEntry,
   AdminUserDetail,
   AdminUserListFilter,
   AdminUserListResult,
   AdminUserListRow,
+  AdminUserListSummary,
   IAdminUserActivityReader,
   IAdminUserReader,
   IAdminUserRoleManager,
@@ -40,6 +41,42 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
     return {
       total,
       rows: rows.map(mapAdminUserListRow),
+    };
+  }
+
+  async summarize(filter: AdminUserListFilter): Promise<AdminUserListSummary> {
+    const whereClause = buildAdminUserListWhere(filter);
+    const staffRoleCountSelect = Object.fromEntries(
+      userStaffRoleEnum.enumValues.map((role) => [
+        `role_${role}`,
+        sql<number>`count(*) filter (where ${user.staffRole} = ${role})::int`,
+      ]),
+    );
+    const countBase = this.db
+      .select({
+        total: sql<number>`count(*)::int`,
+        active: sql<number>`count(*) filter (where ${user.suspendedAt} is null)::int`,
+        suspended: sql<number>`count(*) filter (where ${user.suspendedAt} is not null)::int`,
+        emailVerified: sql<number>`count(*) filter (where ${user.emailVerified} = true)::int`,
+        kycVerified: sql<number>`count(*) filter (where ${user.kycStatus} = 'approved')::int`,
+        legacyStaffRole: sql<number>`count(*) filter (where ${user.role} = 'staff' and ${user.staffRole} is null)::int`,
+        ...staffRoleCountSelect,
+      })
+      .from(user);
+    const [row] = whereClause ? await countBase.where(whereClause) : await countBase;
+    const byStaffRole: Record<string, number> = {};
+    for (const role of userStaffRoleEnum.enumValues) {
+      const key = `role_${role}` as keyof typeof row;
+      byStaffRole[role] = Number(row?.[key] ?? 0);
+    }
+    byStaffRole.legacy = row?.legacyStaffRole ?? 0;
+    return {
+      total: row?.total ?? 0,
+      active: row?.active ?? 0,
+      suspended: row?.suspended ?? 0,
+      emailVerified: row?.emailVerified ?? 0,
+      kycVerified: row?.kycVerified ?? 0,
+      byStaffRole,
     };
   }
 

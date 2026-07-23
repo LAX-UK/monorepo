@@ -154,8 +154,33 @@ export interface IPayoutLifecycleRepository {
   listScheduledPayoutsAwaitingTransfer(limit?: number): Promise<Payout[]>;
 }
 
+export type AdminPayoutListSummary = {
+  total: number;
+  scheduled: number;
+  inTransit: number;
+  paid: number;
+  failed: number;
+  reversed: number;
+  clawbackPending: number;
+  totalNet: string;
+  readiness: {
+    inFlightCount: number;
+    missingTransferRefCount: number;
+    withFailureReasonCount: number;
+    withStatementErrorCount: number;
+    clawbackCount: number;
+    failedCount: number;
+    reversedCount: number;
+    blockerPayoutCount: number;
+  };
+};
+
 export interface IPayoutAnalyticsRepository {
   countMatching(filter: Omit<ListPayoutsFilter, "limit" | "offset">): Promise<number>;
+  /** Filtered aggregate counts and settlement-readiness metrics for admin list KPIs. */
+  summarizeMatching(
+    filter: Omit<ListPayoutsFilter, "limit" | "offset">,
+  ): Promise<AdminPayoutListSummary>;
   /** UTC day counts for admin KPI trends (created_at >= rangeStart). */
   countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
 }

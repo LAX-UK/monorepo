@@ -14,6 +14,7 @@ export type QueueRuntimeEnv = {
   appEnv: "production" | "test" | "development";
   cronInternalSecret?: string | undefined;
   marketingEventsEnabled: boolean;
+  lifecycleExecutionOwner?: "api" | "worker" | undefined;
 };
 
 export type QueueDefinition = {

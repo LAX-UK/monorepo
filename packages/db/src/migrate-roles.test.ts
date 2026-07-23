@@ -9,7 +9,11 @@ import {
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
   WORKER_DATA_EXPORT_TABLES,
+  WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_FULL_TABLES,
+  WORKER_LIFECYCLE_READ_TABLES,
+  WORKER_NOTIFICATION_OUTBOX_TABLES,
+  WORKER_PAYMENT_MAINTENANCE_TABLES,
   WORKER_PROVISIONING_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
 } from "./migrate-roles.js";
@@ -349,6 +353,23 @@ describe("migrate-roles invariants", () => {
 
   it("WORKER_DATA_EXPORT_TABLES includes data_exports (worker data-export jobs)", () => {
     expect([...WORKER_DATA_EXPORT_TABLES]).toContain("data_exports");
+  });
+
+  it("WORKER_DOMAIN_EVENT_DELIVERY_TABLES includes domain_event_delivery ledger", () => {
+    expect([...WORKER_DOMAIN_EVENT_DELIVERY_TABLES]).toContain("domain_event_delivery");
+  });
+
+  it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {
+    expect([...WORKER_PAYMENT_MAINTENANCE_TABLES]).toContain("payment");
+  });
+
+  it("WORKER_NOTIFICATION_OUTBOX_TABLES includes notification_outbox (lifecycle staging)", () => {
+    expect([...WORKER_NOTIFICATION_OUTBOX_TABLES]).toContain("notification_outbox");
+  });
+
+  it("WORKER_LIFECYCLE_READ_TABLES includes watchlist and saleroom_session", () => {
+    expect([...WORKER_LIFECYCLE_READ_TABLES]).toContain("watchlist");
+    expect([...WORKER_LIFECYCLE_READ_TABLES]).toContain("saleroom_session");
   });
 });
 

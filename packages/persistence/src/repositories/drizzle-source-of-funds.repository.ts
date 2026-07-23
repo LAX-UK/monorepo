@@ -116,6 +116,26 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
     return row?.n ?? 0;
   }
 
+  async summarizeByStatus(
+    status: SourceOfFundsStatus,
+    conn?: Database,
+  ): Promise<import("../interfaces/source-of-funds.repository.js").AdminSourceOfFundsListSummary> {
+    const [row] = await this.conn(conn)
+      .select({
+        total: sql<number>`count(*)::int`,
+        awaitingTriage: sql<number>`count(*) filter (where ${sourceOfFunds.triageRecommendation} is null)::int`,
+        triaged: sql<number>`count(*) filter (where ${sourceOfFunds.triageRecommendation} is not null)::int`,
+      })
+      .from(sourceOfFunds)
+      .where(eq(sourceOfFunds.status, status));
+
+    return {
+      total: row?.total ?? 0,
+      awaitingTriage: row?.awaitingTriage ?? 0,
+      triaged: row?.triaged ?? 0,
+    };
+  }
+
   async create(input: CreateSourceOfFundsCaseInput, conn?: Database): Promise<SourceOfFundsCase> {
     const [row] = await this.conn(conn)
       .insert(sourceOfFunds)
