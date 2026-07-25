@@ -1,4 +1,4 @@
-import { moneyGte } from "@auction/validators";
+import { moneyGte } from "./money-compare.js";
 
 export type ReserveStatus =
   | { kind: "none" }
