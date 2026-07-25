@@ -1,14 +1,14 @@
 import { marketingConsentHeaderValues } from "@/lib/analytics/consent-headers";
 import { readConsentFromDocument } from "@/lib/analytics/consent-headers";
 import {
-  readAttributionCookie,
-  serializeAttributionHeader,
-} from "@/lib/analytics/marketing-attribution-cookie";
+  readGa4BrowserIdsFromDocument,
+  serializeGa4BrowserIdsHeader,
+} from "@/lib/analytics/ga4-browser-ids";
 import { sanitizePageUrlForMarketing } from "@/lib/analytics/sanitize-page-url";
 import { type RpcApp, hcAsRpcApp } from "@/lib/data/http/rpc-app";
 import { getClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
 import {
-  MARKETING_ATTRIBUTION_HEADER,
+  MARKETING_GA4_IDS_HEADER,
   MARKETING_PAGE_URL_HEADER,
   X_LEGAL_ENTITY_ID_HEADER,
 } from "@auction/http-headers";
@@ -24,9 +24,9 @@ function withBrowserApiHeaders(init?: RequestInit): RequestInit {
     const pageUrl = sanitizePageUrlForMarketing(window.location.href);
     if (pageUrl) headers.set(MARKETING_PAGE_URL_HEADER, pageUrl);
   }
-  if (readConsentFromDocument()?.marketing === true) {
-    const attrHeader = serializeAttributionHeader(readAttributionCookie());
-    if (attrHeader) headers.set(MARKETING_ATTRIBUTION_HEADER, attrHeader);
+  if (readConsentFromDocument()?.analytics === true) {
+    const ga4Header = serializeGa4BrowserIdsHeader(readGa4BrowserIdsFromDocument());
+    if (ga4Header) headers.set(MARKETING_GA4_IDS_HEADER, ga4Header);
   }
   const actingEntityId = getClientActingLegalEntityId();
   if (actingEntityId && !headers.has(X_LEGAL_ENTITY_ID_HEADER)) {

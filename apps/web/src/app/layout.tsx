@@ -1,6 +1,7 @@
 import { AnalyticsBootstrap } from "@/components/analytics/analytics-bootstrap";
 import { AnalyticsDebugPanel } from "@/components/analytics/analytics-debug-panel";
 import { AnalyticsPageView } from "@/components/analytics/analytics-page-view";
+import { AuthAnalyticsSync } from "@/components/analytics/auth-analytics-sync";
 import { ConsentInit } from "@/components/analytics/consent-init";
 import { GtmNoscript } from "@/components/analytics/gtm-noscript";
 import { MarketingAttributionSync } from "@/components/analytics/marketing-attribution-sync";
@@ -136,6 +137,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <AnalyticsBootstrap nonce={nonce} />
           <Suspense fallback={null}>
             <AnalyticsPageView />
+            <AuthAnalyticsSync />
           </Suspense>
           <MarketingClickIdsSync />
           <MarketingAttributionSync />

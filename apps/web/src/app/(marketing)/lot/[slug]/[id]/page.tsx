@@ -71,7 +71,7 @@ import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory"
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import { toLotCardTimingVM } from "@auction/validators";
+import { appendMarketingParamsToPath, toLotCardTimingVM } from "@auction/validators";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
@@ -80,15 +80,22 @@ type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function ensureCanonicalLotSlug(slug: string, lot: { id: string; title: string }) {
-  if (slug !== slugify(lot.title)) permanentRedirect(lotPath(lot));
+function ensureCanonicalLotSlug(
+  slug: string,
+  lot: { id: string; title: string },
+  searchParams: Record<string, string | string[] | undefined> = {},
+) {
+  if (slug !== slugify(lot.title)) {
+    permanentRedirect(appendMarketingParamsToPath(lotPath(lot), searchParams));
+  }
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { id, slug } = await params;
+  const sp = await searchParams;
   const auction = await getServerLotById(id);
   if (!auction) return metadataForNotFound("Lot not found");
-  ensureCanonicalLotSlug(slug, auction);
+  ensureCanonicalLotSlug(slug, auction, sp);
   return metadataForLot(auction);
 }
 
@@ -106,7 +113,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     notFound();
   }
   const canPreviewCatalog = viewerCanSeeNonPublicCatalog(session?.role, session?.staffRole);
-  ensureCanonicalLotSlug(slug, auction);
+  ensureCanonicalLotSlug(slug, auction, sp);
 
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
 

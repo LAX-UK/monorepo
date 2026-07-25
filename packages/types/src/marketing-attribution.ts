@@ -18,6 +18,9 @@ export type MarketingAttributionTouch = {
   utmCreativeFormat?: string;
   utmMarketingTactic?: string;
   gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
+  dclid?: string;
   fbclid?: string;
   msclkid?: string;
 };

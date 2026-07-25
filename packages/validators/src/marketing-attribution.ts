@@ -17,6 +17,9 @@ export const marketingAttributionTouchSchema = z.object({
   utmCreativeFormat: touchField.optional(),
   utmMarketingTactic: touchField.optional(),
   gclid: touchField.optional(),
+  gbraid: touchField.optional(),
+  wbraid: touchField.optional(),
+  dclid: touchField.optional(),
   fbclid: touchField.optional(),
   msclkid: touchField.optional(),
 });
@@ -51,9 +54,94 @@ const URL_PARAM_TO_TOUCH: ReadonlyArray<{
   { param: "utm_creative_format", key: "utmCreativeFormat" },
   { param: "utm_marketing_tactic", key: "utmMarketingTactic" },
   { param: "gclid", key: "gclid" },
+  { param: "gbraid", key: "gbraid" },
+  { param: "wbraid", key: "wbraid" },
+  { param: "dclid", key: "dclid" },
   { param: "fbclid", key: "fbclid" },
   { param: "msclkid", key: "msclkid" },
 ];
+
+/** Campaign fields persisted in the attribution snapshot. */
+export const CAMPAIGN_QUERY_PARAM_NAMES = URL_PARAM_TO_TOUCH.map(({ param }) => param);
+
+const REDIRECT_ONLY_QUERY_PARAM_NAMES = ["gclsrc", "_gl"] as const;
+
+function firstSearchParamValue(
+  source: URLSearchParams | Record<string, string | string[] | undefined>,
+  param: string,
+): string | undefined {
+  if (source instanceof URLSearchParams) {
+    const raw = source.get(param);
+    return raw == null ? undefined : raw;
+  }
+  const value = source[param];
+  if (value === undefined) return undefined;
+  return typeof value === "string" ? value : value[0];
+}
+
+function sourceParamNames(
+  source: URLSearchParams | Record<string, string | string[] | undefined>,
+): string[] {
+  return source instanceof URLSearchParams ? [...source.keys()] : Object.keys(source);
+}
+
+function isRedirectPassthroughParam(param: string): boolean {
+  return (
+    CAMPAIGN_QUERY_PARAM_NAMES.includes(param) ||
+    REDIRECT_ONLY_QUERY_PARAM_NAMES.includes(
+      param as (typeof REDIRECT_ONLY_QUERY_PARAM_NAMES)[number],
+    ) ||
+    /^gad_[a-z0-9_]+$/i.test(param)
+  );
+}
+
+/** Copy persisted campaign fields into a callback URL. */
+export function appendCampaignSearchParams(
+  target: URLSearchParams,
+  source: URLSearchParams | Record<string, string | string[] | undefined>,
+): void {
+  for (const param of CAMPAIGN_QUERY_PARAM_NAMES) {
+    const raw = firstSearchParamValue(source, param);
+    if (raw == null) continue;
+    const trimmed = raw.trim();
+    if (trimmed.length === 0 || trimmed.length > 256) continue;
+    target.set(param, trimmed);
+  }
+}
+
+/**
+ * Preserve campaign and Google linker parameters through same-site redirects.
+ * Redirect-only values are forwarded but never persisted in our attribution snapshot.
+ */
+export function appendMarketingPassthroughParams(
+  target: URLSearchParams,
+  source: URLSearchParams | Record<string, string | string[] | undefined>,
+): void {
+  for (const param of sourceParamNames(source)) {
+    if (!isRedirectPassthroughParam(param)) continue;
+    const raw = firstSearchParamValue(source, param);
+    if (raw == null) continue;
+    const trimmed = raw.trim();
+    if (trimmed.length === 0 || trimmed.length > 2_048) continue;
+    target.set(param, trimmed);
+  }
+}
+
+/** Append redirect-safe marketing parameters while preserving an existing query string. */
+export function appendMarketingParamsToPath(
+  path: string,
+  source: URLSearchParams | Record<string, string | string[] | undefined>,
+): string {
+  const hashIndex = path.indexOf("#");
+  const fragment = hashIndex >= 0 ? path.slice(hashIndex) : "";
+  const withoutFragment = hashIndex >= 0 ? path.slice(0, hashIndex) : path;
+  const qIndex = withoutFragment.indexOf("?");
+  const pathname = qIndex >= 0 ? withoutFragment.slice(0, qIndex) : withoutFragment;
+  const query = new URLSearchParams(qIndex >= 0 ? withoutFragment.slice(qIndex + 1) : "");
+  appendMarketingPassthroughParams(query, source);
+  const encoded = query.toString();
+  return `${encoded ? `${pathname}?${encoded}` : pathname}${fragment}`;
+}
 
 function hasCampaignSignal(touch: MarketingAttributionTouch): boolean {
   return URL_PARAM_TO_TOUCH.some(({ key }) => touch[key] != null && touch[key] !== "");
@@ -111,6 +199,9 @@ const OPTIONAL_TOUCH_KEYS: ReadonlyArray<
   "utmCreativeFormat",
   "utmMarketingTactic",
   "gclid",
+  "gbraid",
+  "wbraid",
+  "dclid",
   "fbclid",
   "msclkid",
 ];
@@ -242,7 +333,7 @@ const VENDOR_CLICK_ID_KEYS: Record<
   ReadonlySet<keyof MarketingAttributionTouch>
 > = {
   meta: new Set(["fbclid"]),
-  sgtm: new Set(["gclid", "msclkid"]),
+  sgtm: new Set(["gclid", "gbraid", "wbraid", "dclid", "msclkid"]),
 };
 
 /** Namespaced GA4 / sGTM event params (not reserved utm_* campaign fields). */
@@ -267,6 +358,9 @@ export function attributionToPublisherParams(
     ["utmCreativeFormat", "creative_format"],
     ["utmMarketingTactic", "marketing_tactic"],
     ["gclid", "gclid"],
+    ["gbraid", "gbraid"],
+    ["wbraid", "wbraid"],
+    ["dclid", "dclid"],
     ["fbclid", "fbclid"],
     ["msclkid", "msclkid"],
   ];
@@ -275,7 +369,12 @@ export function attributionToPublisherParams(
     const v = touch[field];
     if (typeof v !== "string" || v.length === 0) continue;
     if (
-      (field === "gclid" || field === "fbclid" || field === "msclkid") &&
+      (field === "gclid" ||
+        field === "gbraid" ||
+        field === "wbraid" ||
+        field === "dclid" ||
+        field === "fbclid" ||
+        field === "msclkid") &&
       !allowedClickIds.has(field)
     ) {
       continue;

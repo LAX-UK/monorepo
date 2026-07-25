@@ -2,6 +2,7 @@
 
 import { ProviderMark } from "@/components/auth/provider-mark";
 import { authClient } from "@/lib/auth-client";
+import { buildOAuthCallbackUrl } from "@/lib/auth/oauth-return-params";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { Button } from "@auction/ui/components/button";
 import { useState } from "react";
@@ -29,10 +30,14 @@ export function SocialSignInButtons({ next = "/dashboard" }: Props) {
     setPending(provider);
     const webOrigin = window.location.origin;
     const safeNext = isSafeNextPath(next) ? next : "/dashboard";
-    const callbackParams = new URLSearchParams({ next: safeNext });
     const { error } = await authClient.signIn.social({
       provider,
-      callbackURL: `${webOrigin}/auth/social-callback?${callbackParams.toString()}`,
+      callbackURL: buildOAuthCallbackUrl({
+        webOrigin,
+        next: safeNext,
+        provider,
+        source: new URLSearchParams(window.location.search),
+      }),
       errorCallbackURL: `${webOrigin}/login?social_error=1`,
     });
     if (error) {

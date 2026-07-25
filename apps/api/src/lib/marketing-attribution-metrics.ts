@@ -8,7 +8,7 @@ const marketingAttributionOperationsTotal = new Counter({
 
 export function recordMarketingAttributionOperation(
   operation: "delete" | "enrich" | "sync",
-  outcome: "accepted" | "disabled" | "failed" | "missing" | "rejected",
+  outcome: "accepted" | "disabled" | "failed" | "missing" | "rejected" | "store_unavailable",
   enabled: boolean,
 ): void {
   marketingAttributionOperationsTotal.inc({

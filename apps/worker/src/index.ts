@@ -91,6 +91,7 @@ import { purgeExpiredVerifications } from "./jobs/purge-expired-verifications.js
 import { purgeQrCodeScans } from "./jobs/purge-qr-code-scans.js";
 import { purgeSoftDeletedUsers } from "./jobs/purge-soft-deleted-users.js";
 import { purgeSourceOfFundsDocumentsJob } from "./jobs/purge-source-of-funds-documents.js";
+import { purgeStaleMarketingAttribution } from "./jobs/purge-stale-marketing-attribution.js";
 import { purgeStaleMarketingClickIds } from "./jobs/purge-stale-marketing-click-ids.js";
 import { purgeStaleMarketingOutbox } from "./jobs/purge-stale-marketing-outbox.js";
 import { recordQrCodeScanJob } from "./jobs/qr-code-scan.js";
@@ -567,6 +568,7 @@ if (marketingConfig) {
     async () => {
       await withSentryCronMonitor("purge-marketing-click-ids", sentryMonitorSlugs, async () => {
         await purgeStaleMarketingClickIds({ db, log });
+        await purgeStaleMarketingAttribution({ db, log });
         await purgeStaleMarketingOutbox({ db, log });
       });
     },

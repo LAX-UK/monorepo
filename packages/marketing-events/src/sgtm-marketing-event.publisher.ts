@@ -25,6 +25,7 @@ export class SgtmMarketingEventPublisher implements IMarketingEventPublisher {
 
     const params: Record<string, string> = {
       en: mapToGa4EventName(event.name),
+      _et: "1",
       "ep.event_id": event.eventId,
       "ep.action_source": event.actionSource,
     };
@@ -49,6 +50,13 @@ export class SgtmMarketingEventPublisher implements IMarketingEventPublisher {
     }
     if (event.userData.client_user_agent) {
       params["ep.user_agent"] = event.userData.client_user_agent;
+    }
+    if (event.clientContext?.gaClientId) {
+      params.cid = event.clientContext.gaClientId;
+    }
+    if (event.clientContext?.gaSessionId) {
+      // GA4 web collection protocol field parsed by the sGTM GA4 Client.
+      params.sid = event.clientContext.gaSessionId;
     }
 
     if (event.attribution?.firstTouch) {

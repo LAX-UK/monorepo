@@ -191,17 +191,17 @@ export function trackQuickLookEnrichmentMs(input: {
   return eventId;
 }
 
-export function trackSignUp(): string | null {
+export function trackSignUp(method = "email"): string | null {
   if (!guardConversion()) return null;
   const eventId = newEventId();
-  pushDataLayer({ event: "sign_up", event_id: eventId, method: "email" });
+  pushDataLayer({ event: "sign_up", event_id: eventId, method });
   return eventId;
 }
 
-export function trackLogin(): string | null {
+export function trackLogin(method = "email"): string | null {
   if (!guardConversion()) return null;
   const eventId = newEventId();
-  pushDataLayer({ event: "login", event_id: eventId, method: "email" });
+  pushDataLayer({ event: "login", event_id: eventId, method });
   return eventId;
 }
 

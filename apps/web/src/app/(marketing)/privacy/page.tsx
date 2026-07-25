@@ -409,7 +409,10 @@ export default function PrivacyPage() {
         </p>
         <p>
           Some cookies are essential for the site to function. Optional analytics or marketing
-          cookies are used only where permitted and, where required, with consent.
+          cookies are used only where permitted and, where required, with consent. Our{" "}
+          <code>lax_consent</code> cookie records those choices. When marketing is allowed,{" "}
+          <code>_lax_attr</code> stores a first/last campaign snapshot for up to 90 days; it is
+          removed and its linked server snapshot is deleted when marketing consent is withdrawn.
         </p>
         <p>
           On the public marketing site and buyer dashboard, optional analytics may be loaded via{" "}
