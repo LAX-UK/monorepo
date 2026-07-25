@@ -82,6 +82,7 @@ import { RedisClickIdStore } from "./infrastructure/redis-click-id.store.js";
 import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
 import { RedisLuaRateLimitStore } from "./infrastructure/redis-lua-rate-limit.store.js";
 import { RedisNotificationSender } from "./infrastructure/redis-notification.sender.js";
+import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { RedisSaleroomRealtimePublisher } from "./infrastructure/redis-saleroom-realtime.publisher.js";
 import { RedisUserNotificationPublisher } from "./infrastructure/redis-user-notification.publisher.js";
 import { S3ObjectStorage } from "./infrastructure/s3-object-storage.js";
@@ -263,6 +264,7 @@ import type { ILegalEntityRepository } from "./services/interfaces/legal-entity-
 import type { IMarketingEventService } from "./services/interfaces/marketing-event-service.js";
 import type { IMemberManagementService } from "./services/interfaces/member-management.js";
 import type { INotificationPreferenceRepository } from "./services/interfaces/notification-preference.js";
+import type { IOAuthAttributionStore } from "./services/interfaces/oauth-attribution-store.js";
 import type { IObjectStorage } from "./services/interfaces/object-storage.js";
 import type { IOnsiteEventCheckInService } from "./services/interfaces/onsite-event-check-in-service.js";
 import type { IOnsiteEventRsvpService } from "./services/interfaces/onsite-event-rsvp-service.js";
@@ -563,6 +565,7 @@ export type Container = {
   marketingEventPublisher: IMarketingEventPublisher;
   clickIdStore: IClickIdStore;
   attributionStore: IAttributionStore;
+  oauthAttributionStore: IOAuthAttributionStore;
   marketingAttributionEnabled: boolean;
   /** Platform-admin HTTP orchestration (SOLID application layer for `routes/admin*`). Keep route files on `container.admin` only; run `pnpm --filter @auction/api check:admin-dip` in CI. */
   admin: AdminRouteServices;
@@ -607,6 +610,7 @@ export function createContainer(env: Env): Container {
     env.ENABLE_PHONE_VERIFICATION && isTwilioVerifyConfigured(env)
       ? TwilioVerifyService.fromEnv(env)
       : new ConsolePhoneVerificationService();
+  const oauthAttributionStore = new RedisOAuthAttributionStore(redisCache);
 
   const auth = createAuth({
     db: authDb,
@@ -628,6 +632,12 @@ export function createContainer(env: Env): Container {
     authDekKey: env.AUTH_DEK_KEY?.trim(),
     revokeAllSessions: (userId: string) => sessionRevocation.revokeAllForUser(userId),
     onUserCreated: async (authUser) => {
+      await oauthAttributionStore.markNewUser(authUser.id).catch((error: unknown) => {
+        console.error("[marketing] failed to mark new user for OAuth attribution", {
+          userId: authUser.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
       await ensurePersonalLegalEntityService.ensure({
         userId: authUser.id,
         displayName: authUser.name,
@@ -643,6 +653,8 @@ export function createContainer(env: Env): Container {
         { producer: "apps/api", accountDb: authDb },
       );
     },
+    onAccountCreated: ({ userId, providerId }) =>
+      oauthAttributionStore.completeNewUserAccount(userId, providerId),
     onEmailVerified: async (authUser) => {
       const { publishUserEmailVerified } = await import(
         "./services/publish-user-email-verified.js"
@@ -1895,6 +1907,7 @@ export function createContainer(env: Env): Container {
     marketingEventPublisher,
     clickIdStore,
     attributionStore,
+    oauthAttributionStore,
     marketingAttributionEnabled,
     admin,
     queueAdmin,

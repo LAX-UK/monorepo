@@ -16,6 +16,7 @@ export const metadata: Metadata = metadataForStatic({
 const toc = [
   { id: "overview", label: "Overview" },
   { id: "categories", label: "Categories" },
+  { id: "first-party-cookies", label: "First-party cookies" },
   { id: "third-parties", label: "Third parties" },
   { id: "manage", label: "Manage preferences" },
 ] as const;
@@ -34,7 +35,7 @@ export default function CookiesPage() {
       <LegalPage
         title="Cookie policy"
         toc={[...toc]}
-        lastUpdated="23 July 2026"
+        lastUpdated="25 July 2026"
         kicker={null}
         dividerUnderDate
         embedded
@@ -82,6 +83,73 @@ export default function CookiesPage() {
           events can be measured. Withdrawing marketing consent removes the cookie and requests
           deletion of the linked server snapshot.
         </p>
+
+        <LegalH2 id="first-party-cookies" className="scroll-mt-28">
+          First-party cookies we set
+        </LegalH2>
+        <p>
+          The table below lists cookies set by {SITE_NAME} code (not third-party tags loaded via
+          GTM). Session cookies used for sign-in are issued by our authentication service and are
+          covered under strictly necessary cookies above.
+        </p>
+        <div className="my-6 overflow-x-auto">
+          <table className="w-full min-w-[36rem] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="py-2 pr-4 font-semibold">Name</th>
+                <th className="py-2 pr-4 font-semibold">Purpose</th>
+                <th className="py-2 font-semibold">Duration</th>
+              </tr>
+            </thead>
+            <tbody className="align-top text-secondary">
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 font-mono text-xs text-primary">lax_consent</td>
+                <td className="py-2 pr-4">Stores your analytics and marketing cookie choices.</td>
+                <td className="py-2">180 days</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 font-mono text-xs text-primary">_lax_attr</td>
+                <td className="py-2 pr-4">
+                  First/last campaign attribution used for server-side conversion measurement. Set
+                  only with marketing consent.
+                </td>
+                <td className="py-2">90 days</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 font-mono text-xs text-primary">lax_theme</td>
+                <td className="py-2 pr-4">Remembers light, dark, or system colour scheme.</td>
+                <td className="py-2">365 days</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 font-mono text-xs text-primary">lax_client_workspace</td>
+                <td className="py-2 pr-4">
+                  Remembers whether you are in the buying or selling dashboard workspace.
+                </td>
+                <td className="py-2">365 days</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 font-mono text-xs text-primary">lax_view_*</td>
+                <td className="py-2 pr-4">Per-route catalogue layout preference.</td>
+                <td className="py-2">60 days</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 font-mono text-xs text-primary">lax_palette_recents</td>
+                <td className="py-2 pr-4">Recent pages in the staff command palette.</td>
+                <td className="py-2">90 days</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 font-mono text-xs text-primary">lax_palette_pinned</td>
+                <td className="py-2 pr-4">Pinned pages in the staff command palette.</td>
+                <td className="py-2">90 days</td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 font-mono text-xs text-primary">lax_dashboard_density</td>
+                <td className="py-2 pr-4">Dashboard density preference.</td>
+                <td className="py-2">365 days</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <LegalH2 id="third-parties" className="scroll-mt-28">
           Third-party technologies

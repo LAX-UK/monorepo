@@ -12,8 +12,38 @@ const snapshot = {
   },
 };
 
-function setup(input?: { authenticated?: boolean; enabled?: boolean }) {
+function setup(input?: {
+  authenticated?: boolean;
+  enabled?: boolean;
+  linkedProvider?: boolean;
+  oauthSource?: "apple" | "credential" | "google";
+}) {
   const attributionStore = { put: vi.fn(), get: vi.fn(), delete: vi.fn() };
+  const marketingEventService = { emit: vi.fn(), stage: vi.fn(), enqueue: vi.fn() };
+  const authDb = {
+    select: vi.fn(() => ({
+      from: () => ({
+        where: () => ({
+          limit: vi.fn().mockResolvedValue(
+            input?.linkedProvider === false
+              ? []
+              : [
+                  {
+                    providerId: "google",
+                  },
+                ],
+          ),
+        }),
+      }),
+    })),
+  };
+  const oauthAttributionStore = {
+    markNewUser: vi.fn(),
+    completeNewUserAccount: vi.fn(),
+    resolveOutcome: vi
+      .fn()
+      .mockResolvedValue(input?.oauthSource === "credential" ? "login" : "signup"),
+  };
   const container = {
     env: {
       NODE_ENV: "production",
@@ -24,6 +54,9 @@ function setup(input?: { authenticated?: boolean; enabled?: boolean }) {
       MARKETING_ATTRIBUTION_ENABLED: input?.enabled === false ? "false" : "true",
     },
     attributionStore,
+    authDb,
+    marketingEventService,
+    oauthAttributionStore,
     clickIdStore: { put: vi.fn(), get: vi.fn() },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
   } as unknown as Container;
@@ -32,7 +65,12 @@ function setup(input?: { authenticated?: boolean; enabled?: boolean }) {
       .fn()
       .mockResolvedValue(input?.authenticated === false ? null : { id: "user-1", role: "client" }),
   };
-  return { routes: createMarketingRoutes(container, authenticator), attributionStore };
+  return {
+    routes: createMarketingRoutes(container, authenticator),
+    attributionStore,
+    marketingEventService,
+    oauthAttributionStore,
+  };
 }
 
 describe("marketing attribution routes", () => {
@@ -70,5 +108,89 @@ describe("marketing attribution routes", () => {
     const response = await routes.request("/attribution", { method: "DELETE" });
     expect(response.status).toBe(204);
     expect(attributionStore.delete).toHaveBeenCalledWith("user-1");
+  });
+
+  it("emits an idempotent Lead only for a verified, recent OAuth signup", async () => {
+    const { routes, marketingEventService } = setup({ oauthSource: "google" });
+    const response = await routes.request("/oauth-outcome", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-lax-consent-marketing": "1",
+        "x-lax-consent-analytics": "1",
+      },
+      body: JSON.stringify({ provider: "google" }),
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: { event: "signup", method: "google" },
+    });
+    expect(marketingEventService.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Lead",
+        eventId: "oauth-lead:user-1",
+        customData: { method: "oauth" },
+      }),
+    );
+  });
+
+  it("classifies existing OAuth users as login without emitting Lead", async () => {
+    const { routes, marketingEventService } = setup({ oauthSource: "credential" });
+    const response = await routes.request("/oauth-outcome", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-lax-consent-marketing": "1",
+        "x-lax-consent-analytics": "1",
+      },
+      body: JSON.stringify({ provider: "google" }),
+    });
+    await expect(response.json()).resolves.toEqual({
+      data: { event: "login", method: "google" },
+    });
+    expect(marketingEventService.emit).not.toHaveBeenCalled();
+  });
+
+  it("does not emit a signup Lead without both consents", async () => {
+    const { routes, marketingEventService } = setup({ oauthSource: "google" });
+    const response = await routes.request("/oauth-outcome", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-lax-consent-marketing": "1",
+        "x-lax-consent-analytics": "0",
+      },
+      body: JSON.stringify({ provider: "google" }),
+    });
+    expect(response.status).toBe(200);
+    expect(marketingEventService.emit).not.toHaveBeenCalled();
+  });
+
+  it("rejects a provider that is not linked to the authenticated user", async () => {
+    const { routes } = setup({ linkedProvider: false });
+    const response = await routes.request("/oauth-outcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "google" }),
+    });
+    expect(response.status).toBe(403);
+  });
+
+  it("suppresses replayed OAuth outcome events", async () => {
+    const { routes, marketingEventService, oauthAttributionStore } = setup();
+    oauthAttributionStore.resolveOutcome.mockResolvedValue("ignored");
+    const response = await routes.request("/oauth-outcome", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-lax-consent-marketing": "1",
+        "x-lax-consent-analytics": "1",
+      },
+      body: JSON.stringify({ provider: "google" }),
+    });
+    await expect(response.json()).resolves.toEqual({
+      data: { event: "ignored", method: "google" },
+    });
+    expect(marketingEventService.emit).not.toHaveBeenCalled();
   });
 });

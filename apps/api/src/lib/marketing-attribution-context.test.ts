@@ -42,7 +42,7 @@ function store(get: IAttributionStore["get"]): IAttributionStore {
 }
 
 describe("marketing attribution event context", () => {
-  it("merges the client last touch with canonical server first touch", async () => {
+  it("treats the stored snapshot as authoritative", async () => {
     const stored: MarketingAttributionSnapshot = { version: 1, firstTouch: storedFirst };
     const incoming: MarketingAttributionSnapshot = { version: 1, lastTouch: headerLast };
 
@@ -53,7 +53,7 @@ describe("marketing attribution event context", () => {
         userId: "user-1",
         attributionStore: store(vi.fn().mockResolvedValue(stored)),
       }),
-    ).resolves.toEqual({ version: 1, firstTouch: storedFirst, lastTouch: headerLast });
+    ).resolves.toEqual(stored);
   });
 
   it("does not read attribution without marketing consent", async () => {
@@ -69,7 +69,19 @@ describe("marketing attribution event context", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("uses a valid request snapshot when the store is unavailable", async () => {
+  it("does not trust a request snapshot when the store has no record", async () => {
+    const incoming: MarketingAttributionSnapshot = { version: 1, lastTouch: headerLast };
+    await expect(
+      resolveAttributionForWebsiteEvent({
+        context: context({ attribution: incoming }),
+        consent: { marketing: true, analytics: true, basis: "consent" },
+        userId: "user-1",
+        attributionStore: store(vi.fn().mockResolvedValue(null)),
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("drops the client snapshot when the authoritative store is unavailable", async () => {
     const incoming: MarketingAttributionSnapshot = { version: 1, lastTouch: headerLast };
     await expect(
       resolveAttributionForWebsiteEvent({
@@ -78,7 +90,7 @@ describe("marketing attribution event context", () => {
         userId: "user-1",
         attributionStore: store(vi.fn().mockRejectedValue(new Error("database unavailable"))),
       }),
-    ).resolves.toEqual(incoming);
+    ).resolves.toBeUndefined();
   });
 
   it("never enriches when the runtime flag is disabled", async () => {

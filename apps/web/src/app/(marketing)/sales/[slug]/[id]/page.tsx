@@ -66,7 +66,11 @@ import { salePath, slugify } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Sale } from "@auction/types";
 import { cn } from "@auction/ui";
-import { parseStreamEmbedUrl } from "@auction/validators";
+import {
+  appendMarketingParamsToPath,
+  appendMarketingPassthroughParams,
+  parseStreamEmbedUrl,
+} from "@auction/validators";
 import {
   formatPostalAddressLines,
   isSaleroomDeliveryMode,
@@ -101,22 +105,30 @@ function canonicalSalePathWithQuery(sale: Sale, sp: Record<string, string | stri
   if (page) qs.set("page", page);
   const view = parseUrlLayoutView(firstString(sp.view));
   if (view) qs.set("view", view);
+  appendMarketingPassthroughParams(qs, sp);
   const q = qs.toString();
   const path = salePath(sale);
   return q ? `${path}?${q}` : path;
 }
 
-function ensureCanonicalSaleSlug(slug: string, sale: Sale) {
-  if (slug !== slugify(sale.title)) permanentRedirect(salePath(sale));
+function ensureCanonicalSaleSlug(
+  slug: string,
+  sale: Sale,
+  searchParams: Record<string, string | string[] | undefined> = {},
+) {
+  if (slug !== slugify(sale.title)) {
+    permanentRedirect(appendMarketingParamsToPath(salePath(sale), searchParams));
+  }
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { id, slug } = await params;
+  const sp = await searchParams;
   const shell = await getServerSaleShell(id).catch(() => null);
   if (!shell) {
     return metadataForNotFound("Sale not found");
   }
-  ensureCanonicalSaleSlug(slug, shell.sale);
+  ensureCanonicalSaleSlug(slug, shell.sale, sp);
   return metadataForSale(shell.sale, {
     hasPress: (shell.sale.pressCoverage?.length ?? 0) > 0,
     hasDayMedia:

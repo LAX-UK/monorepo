@@ -1,3 +1,4 @@
+import { withOAuthReturnParams } from "@/lib/auth/oauth-return-params";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { redirect } from "next/navigation";
@@ -6,7 +7,7 @@ import { redirect } from "next/navigation";
 export default async function SocialCallbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
   const oauthError = typeof sp.error === "string" ? sp.error : undefined;
@@ -32,5 +33,5 @@ export default async function SocialCallbackPage({
     requireEmailVerification: false,
     withWelcomeBack: true,
   });
-  redirect(dest);
+  redirect(withOAuthReturnParams(dest, sp));
 }

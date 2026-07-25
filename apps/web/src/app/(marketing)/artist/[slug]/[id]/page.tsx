@@ -37,6 +37,7 @@ import { getSiteUrl } from "@/lib/site-url";
 import { getCreatorKindConfig } from "@auction/types";
 import type { Lot, ArtistProfile as RegistryArtist } from "@auction/types";
 import { Badge, Button } from "@auction/ui";
+import { appendMarketingParamsToPath } from "@auction/validators";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -78,8 +79,14 @@ async function loadArtistLots(artistId: string): Promise<Lot[]> {
   }
 }
 
-function ensureCanonicalArtistSlug(slug: string, artist: { id: string; name: string }) {
-  if (slug !== slugify(artist.name)) permanentRedirect(artistPath(artist));
+function ensureCanonicalArtistSlug(
+  slug: string,
+  artist: { id: string; name: string },
+  searchParams: Record<string, string | string[] | undefined> = {},
+) {
+  if (slug !== slugify(artist.name)) {
+    permanentRedirect(appendMarketingParamsToPath(artistPath(artist), searchParams));
+  }
 }
 
 /** `noindex` for any registry artist that shouldn't be ranked: merged, archived, rejected. */
@@ -90,11 +97,12 @@ function shouldNoIndex(registry: RegistryArtist | null): boolean {
   return false;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { id, slug } = await params;
+  const sp = await searchParams;
   const registry = await fetchRegistryArtistById(id);
   if (!registry) return metadataForNotFound("Artist not found");
-  ensureCanonicalArtistSlug(slug, { id: registry.id, name: registry.displayName });
+  ensureCanonicalArtistSlug(slug, { id: registry.id, name: registry.displayName }, sp);
   const base = metadataForSeller({ id: registry.id, name: registry.displayName });
   if (shouldNoIndex(registry)) {
     return { ...base, robots: { index: false, follow: true } };
@@ -125,7 +133,7 @@ export default async function ArtistPage({ params, searchParams }: PageProps) {
   const watching = watchedArtistIds.includes(id);
   const isAuthed = Boolean(session);
 
-  ensureCanonicalArtistSlug(slug, { id: registry.id, name: artistName });
+  ensureCanonicalArtistSlug(slug, { id: registry.id, name: artistName }, sp);
   const profilePath = artistPath({ id: registry.id, name: artistName });
   const profileUrl = `${base}${profilePath}`;
 

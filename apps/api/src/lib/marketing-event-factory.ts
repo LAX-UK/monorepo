@@ -1,6 +1,7 @@
+import { MARKETING_GA4_IDS_HEADER, MARKETING_PAGE_URL_HEADER } from "@auction/http-headers";
 import type { MarketingClientContext, MarketingEvent, MarketingEventConsent } from "@auction/types";
 import { marketingConsentFromHeaders } from "../infrastructure/header-marketing-consent.gate.js";
-import { MARKETING_PAGE_URL_HEADER } from "../middleware/marketing-client-context.js";
+import { parseGa4BrowserIdsHeader } from "./marketing-ga4-ids-header.js";
 
 export function buildMarketingEventConsent(
   marketing: boolean,
@@ -61,16 +62,22 @@ export function eventSourceUrlFromContext(c: WebsiteEventContext): string | unde
   return undefined;
 }
 
-/** Client IP/UA for website events only. */
+/** Client IP/UA and analytics-consented GA4 identifiers for website events only. */
 export function clientContextFromContext(
   c: WebsiteEventContext,
 ): MarketingClientContext | undefined {
   const ipAddress = c.get("marketingClientIp");
   const userAgent = c.get("marketingClientUserAgent");
-  if (!ipAddress && !userAgent) return undefined;
+  const ga4 =
+    c.get("marketingConsentAnalytics") === true
+      ? parseGa4BrowserIdsHeader(c.req.header(MARKETING_GA4_IDS_HEADER))
+      : null;
+  if (!ipAddress && !userAgent && !ga4) return undefined;
   return {
     ...(ipAddress ? { ipAddress } : {}),
     ...(userAgent ? { userAgent } : {}),
+    ...(ga4?.clientId ? { gaClientId: ga4.clientId } : {}),
+    ...(ga4?.sessionId ? { gaSessionId: ga4.sessionId } : {}),
   };
 }
 
