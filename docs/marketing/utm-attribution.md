@@ -15,17 +15,25 @@ Requires full marketing events config (`SGTM_ENDPOINT_URL`, `GA4_MEASUREMENT_ID`
 
 ## Behaviour
 
-1. **Landing** — On first document load, allowlisted query params (`utm_*`, `gclid`, `fbclid`, `msclkid`) are read from the URL pathname landing only.
-2. **Consent** — Before marketing consent, values stay in memory only. After marketing consent, a first-party `_lax_attr` cookie stores first-touch (write-once) and last-touch snapshots (90 days, `SameSite=Lax`, `Secure` on HTTPS).
+1. **Landing** — On first document load, allowlisted query params are read from `url.search` (the query string). The pathname is stored separately as `landingPath` on each touch.
+2. **Consent** — Before marketing consent, values stay in memory only. After marketing consent, a first-party `_lax_attr` cookie stores first-touch (write-once) and last-touch snapshots (90 days, `SameSite=Lax`, `Secure` on HTTPS). Safari ITP caps client-set cookies at 7 days; a same-origin `Set-Cookie` route handler preserves the intended 90-day window on `lax.bid`.
 3. **Logged-in sync** — Authenticated, marketing-consented `PUT /marketing/attribution` atomically merges into `marketing_attribution` (Postgres + Redis cache).
 4. **Conversions** — Consent-based website events (`Lead`, `InitiateCheckout`, wishlist) attach an immutable attribution snapshot to the marketing outbox payload. Publishers emit namespaced `attribution_first_*` / `attribution_last_*` params (not GA4 reserved `utm_*` on Measurement Protocol).
 5. **Legitimate interest** — `Purchase` / KYC webhook events do **not** attach stored attribution until DPIA approves reuse.
+6. **OAuth** — A short-lived marker is created when Better Auth creates a user and completed only when its Google or Apple account row is committed. The callback consumes it once, so client query parameters cannot manufacture or replay signup Leads.
+
+### Allowlisted query params
+
+`utm_source`, `utm_medium`, `utm_campaign`, `utm_id`, `utm_term`, `utm_content`, `utm_source_platform`, `utm_creative_format`, `utm_marketing_tactic`, `gclid`, `gbraid`, `wbraid`, `dclid`, `fbclid`, `msclkid`.
+
+Redirects also pass through Google linker values (`gclsrc`, `_gl`, and bounded `gad_*` parameters) without persisting them in the attribution snapshot.
 
 ## Operations
 
 - `marketing_attribution_operations_total{operation,outcome,flag_state}` records value-free API sync, deletion, and enrichment outcomes.
-- Postgres and Redis retain snapshots for 90 days from the latest successful sync. Redis is write-through only; DB fallback reads do not extend its TTL.
+- Postgres and Redis retain snapshots for 90 days from the latest successful sync (`updated_at` on Postgres; Redis TTL). A daily worker job purges stale Postgres rows. Redis is write-through only; DB fallback reads do not extend its TTL.
 - Consent withdrawal clears browser storage and retries authenticated server deletion. The DELETE endpoint remains available without marketing consent.
+- Stored attribution is authoritative on the server. Client-supplied attribution headers are not used for conversion enrichment; if the store has no record or is unavailable, attribution is omitted.
 
 ## GTM
 
@@ -39,7 +47,7 @@ Use consistent, lower-case or fixed-case values for `utm_source`, `utm_medium`, 
 
 ## Rollback
 
-Disable `MARKETING_ATTRIBUTION_ENABLED` first; this is the authoritative server-side kill switch for sync and enrichment. `NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED` is compiled into the Next.js bundle and requires a web rebuild to stop browser capture. Deletion remains available while either flag is off. Do not roll back migration `0135_marketing_attribution` in production.
+Disable `MARKETING_ATTRIBUTION_ENABLED` first; this is the authoritative server-side kill switch for sync and enrichment. `NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED` is compiled into the Next.js bundle and requires a web rebuild to stop browser capture. Deletion remains available while either flag is off. Do not roll back migration `0128_marketing_attribution` in production.
 
 ## Future: append-only touchpoint stream
 

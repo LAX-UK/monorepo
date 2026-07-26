@@ -1,58 +1,85 @@
-# Marketing attribution rollout (recommended order)
+# Marketing attribution rollout (release line)
 
-Ship code first, migrate before relying on sync, validate GTM consent, then treat API flag as the kill switch.
+Ship code first, migrate before relying on sync, validate GTM consent, then treat the API flag as the kill switch.
 
-## 1. Code merge
+## 1. Release scope
 
-- **main:** PR #309 (attribution snapshot + consent measurement hardening).
-- **release:** PR #310 (same feature on the release line). Pushes to `release` trigger **App deploy prod** when `apps/**`, `packages/**`, or `infra/web-build/**` change.
+- Deploy only the commits on `feat/marketing-attribution-snapshot-release`.
+- Do not merge `main` into `release`; the branch lines have intentionally diverged.
+- Pushes to `release` trigger production deployment when application, package, or web-build files change.
 
 ## 2. Database (expand-first)
 
-Run the migrate job **before** or as part of the same deploy window as API/web that enable attribution:
-
-| Branch line | Migration tag |
-|-------------|-----------------|
-| main | `0135_marketing_attribution` |
-| release | `0128_marketing_attribution` (equivalent schema) |
-
-Use the standard **migrate** component / `pnpm --filter @auction/db db:migrate` against the target DB with `DATABASE_URL_OWNER` (or your prod migrate job). Do **not** roll back this migration in production.
+Run migration `0128_marketing_attribution` before or in the same deploy window as the API/web rollout. Use the standard migrate component with `DATABASE_URL_OWNER`. Do not roll this migration back in production.
 
 ## 3. Feature flags (dark → live)
 
 | Variable | Layer | Recommended sequence |
-|----------|--------|----------------------|
-| `MARKETING_ATTRIBUTION_ENABLED` | API (Terraform / DO runtime) | Optional: leave `false` until migration + smoke test pass; then set `true` and redeploy API only. Prod Terraform apply defaults to `true` when the repo var is unset. |
-| `NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED` | Web build | Baked at image build (`infra/web-build/prod.env` is `true`). Changing it requires a **web rebuild**. |
+|----------|-------|----------------------|
+| `MARKETING_ATTRIBUTION_ENABLED` | API | Leave `false` until migration and smoke tests pass, then enable and redeploy API. |
+| `NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED` | Web build | Enable for the web image; changing it requires a rebuild. |
 
-Server-side kill switch: disable **`MARKETING_ATTRIBUTION_ENABLED`** first (stops sync, DB writes, CAPI/sGTM enrichment). Browser capture stops only after a web rebuild with the public flag off.
+The API flag is the authoritative kill switch for sync, database writes, and event enrichment. Browser capture stops only after rebuilding web with the public flag disabled.
 
-Requires existing marketing events config (same gate as CAPI/sGTM): `SGTM_ENDPOINT_URL`, `GA4_MEASUREMENT_ID`, `META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN`.
+Existing marketing event configuration is also required: `SGTM_ENDPOINT_URL`, `GA4_MEASUREMENT_ID`, `META_PIXEL_ID`, and `META_CAPI_ACCESS_TOKEN`.
 
-## 4. GTM / sGTM (manual, before trusting prod data)
+## 4. GTM / sGTM
 
-1. **Consent Mode** — Every tag in the **web** container must respect Consent Mode (GTM loads under advanced Consent Mode; denied marketing must not fire personalisation tags).
-2. **dataLayer** — Map `attribution_last_*` on key events (e.g. `page_view`) if you want GA4 reporting from the browser.
-3. **Server** — Map `ep.attribution_first_*` / `ep.attribution_last_*` (sGTM) and Meta CAPI custom data from the outbox payload.
-4. **Links** — Use consistent `utm_source`, `utm_medium`, `utm_campaign`; prefer stable `utm_id`.
+1. Confirm every web tag respects Consent Mode.
+2. Map `attribution_first_*` / `attribution_last_*` dataLayer fields on key browser events.
+3. Confirm the sGTM GA4 Client receives `ep.attribution_first_*`, `ep.attribution_last_*`, `cid`, and `sid`.
+4. Use consistent `utm_source`, `utm_medium`, and `utm_campaign`; prefer stable `utm_id`.
 
-See [utm-attribution.md](../marketing/utm-attribution.md) and [tracking-overview.md](../marketing/tracking-overview.md).
+## 5. Smoke test (marketing consent granted)
 
-## 5. Smoke test (marketing consent **granted**)
+1. Open a test campaign URL and grant consent. Confirm `_lax_attr` is readable after one decode and has `Max-Age=7776000`.
+2. Log in and confirm `PUT /marketing/attribution` succeeds.
+3. Fire a consent-based conversion and confirm namespaced attribution plus matching GA4 client/session identifiers reach sGTM.
+4. Complete a new Google or Apple signup. Confirm one browser `sign_up` and one idempotent server `Lead`.
+5. Repeat with an existing OAuth account. Confirm `login` and no new server `Lead`.
+6. Withdraw marketing consent. Confirm browser cookie removal and authenticated server deletion.
 
-1. Open a campaign URL with test UTMs → after consent, `_lax_attr` is set (first + last touch).
-2. Log in → `PUT /marketing/attribution` succeeds; check `marketing_attribution_operations_total{operation="put",outcome="success"}`.
-3. Fire a consent-based conversion (e.g. Lead / wishlist) → sGTM/Meta receive namespaced attribution params (not cross-vendor click IDs).
-4. Withdraw marketing consent → cookie cleared; authenticated `DELETE /marketing/attribution` retried.
+Without marketing consent, `_lax_attr`, attribution sync, OAuth conversion events, and GA4 identifier forwarding must remain disabled.
 
-**Without** marketing consent: no `_lax_attr` persistence or server sync; Google passthrough/redaction does not substitute for this feature.
+## 6. GA4 / GTM console checklist
 
-## 6. Not in scope until DPIA
+### Unwanted referrals
 
-`Purchase` and KYC webhook events do **not** attach stored attribution until legitimate-interest reuse is approved.
+In **Admin → Data Streams → Configure tag settings → List unwanted referrals**, add:
 
-## Rollback
+- `accounts.google.com`
+- `appleid.apple.com`
+- `auth.lax.bid`
+- `checkout.stripe.com`
+- `veriff.com`
 
-1. Set `MARKETING_ATTRIBUTION_ENABLED=false` → redeploy API.
+### Custom dimensions
+
+Register event-scoped custom dimensions for the required `attribution_first_*` and `attribution_last_*` parameters. They are not retroactive and may take 24–48 hours to appear.
+
+### Web container mapping
+
+In web container `GTM-W6K4N67Z`, map attribution fields on `page_view`, `login`, `sign_up`, and other required events.
+
+### Data retention
+
+In **Admin → Data Settings → Data Retention**:
+
+- Set event data retention to 14 months.
+- Enable **Reset user data on new activity**.
+
+### Internal traffic
+
+Confirm office and VPN test addresses are not hidden by the internal-traffic filter during validation.
+
+### Server container URL
+
+Verify the web Google tag's `server_container_url` is `https://gtm.lax.bid`.
+
+Use DebugView for OAuth journeys; Realtime acquisition cards can lag or omit the initial source.
+
+## 7. Rollback
+
+1. Set `MARKETING_ATTRIBUTION_ENABLED=false` and redeploy API.
 2. Rebuild web with `NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED=false` if browser capture must stop.
-3. Do not drop `marketing_attribution` table in prod.
+3. Do not drop `marketing_attribution` in production.

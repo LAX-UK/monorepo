@@ -9,75 +9,97 @@ import {
   writeAttributionCookie,
 } from "@/lib/analytics/marketing-attribution-cookie";
 import {
+  clearAttributionCookieServer,
+  persistAttributionCookieServer,
+} from "@/lib/analytics/persist-attribution-cookie.server";
+import {
   deleteMarketingAttribution,
   syncMarketingAttribution,
 } from "@/lib/data/http/marketing-attribution.client";
 import type { MarketingAttributionTouch } from "@auction/types";
 import { mergeAttributionSnapshot } from "@auction/validators";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 const RETRY_DELAYS_MS = [0, 1_000, 5_000] as const;
+
+async function retryRequest(operation: () => Promise<void>): Promise<void> {
+  let lastError: unknown;
+  for (const delay of RETRY_DELAYS_MS) {
+    if (delay > 0) await new Promise((resolve) => window.setTimeout(resolve, delay));
+    try {
+      await operation();
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
 
 /** Capture UTMs on first paint; persist + sync when marketing consent is granted. */
 export function MarketingAttributionSync() {
   const { snapshot } = useConsent();
   const pendingTouch = useRef<MarketingAttributionTouch | null>(null);
   const initialDocumentCaptured = useRef(false);
+  const cookieMutationQueue = useRef<Promise<void>>(Promise.resolve());
+  const cookiePersistInFlight = useRef<string | null>(null);
+  const attributionMutationQueue = useRef<Promise<void>>(Promise.resolve());
+  const persistedCookie = useRef<string | null>(null);
   const syncedSnapshot = useRef<string | null>(null);
   const syncInFlight = useRef<string | null>(null);
   const marketingWasGranted = useRef(false);
   const withdrawalHandled = useRef(false);
   const withdrawalInFlight = useRef(false);
 
+  const queueCookieMutation = useCallback((operation: () => Promise<void>): Promise<void> => {
+    const next = cookieMutationQueue.current
+      .catch(() => undefined)
+      .then(() => retryRequest(operation));
+    cookieMutationQueue.current = next;
+    return next;
+  }, []);
+
+  const queueAttributionMutation = useCallback((operation: () => Promise<void>): Promise<void> => {
+    const next = attributionMutationQueue.current
+      .catch(() => undefined)
+      .then(() => retryRequest(operation));
+    attributionMutationQueue.current = next;
+    return next;
+  }, []);
+
   useEffect(() => {
     const enabled = isMarketingAttributionEnabled();
-    const timers = new Set<number>();
-    let cancelled = false;
-
-    const retry = (operation: () => Promise<void>, onSuccess: () => void): void => {
-      const attempt = (index: number): void => {
-        const timer = window.setTimeout(() => {
-          timers.delete(timer);
-          void operation()
-            .then(() => {
-              if (!cancelled) onSuccess();
-            })
-            .catch(() => {
-              if (!cancelled && index + 1 < RETRY_DELAYS_MS.length) {
-                attempt(index + 1);
-              }
-            });
-        }, RETRY_DELAYS_MS[index]);
-        timers.add(timer);
-      };
-      attempt(0);
-    };
-
-    const cleanup = (): void => {
-      cancelled = true;
-      for (const timer of timers) window.clearTimeout(timer);
-      withdrawalInFlight.current = false;
-    };
 
     const withdraw = (): void => {
       const hadStoredAttribution = readAttributionCookie() !== null;
       clearAttributionCookie();
+      cookiePersistInFlight.current = null;
+      void queueCookieMutation(clearAttributionCookieServer)
+        .then(() => {
+          persistedCookie.current = null;
+        })
+        .catch(() => undefined);
       syncedSnapshot.current = null;
+      persistedCookie.current = null;
       syncInFlight.current = null;
       const shouldDeleteServerCopy = marketingWasGranted.current || hadStoredAttribution;
       marketingWasGranted.current = false;
       if (shouldDeleteServerCopy && !withdrawalHandled.current && !withdrawalInFlight.current) {
         withdrawalInFlight.current = true;
-        retry(deleteMarketingAttribution, () => {
-          withdrawalHandled.current = true;
-          withdrawalInFlight.current = false;
-        });
+        void queueAttributionMutation(deleteMarketingAttribution)
+          .then(() => {
+            if (!marketingWasGranted.current) withdrawalHandled.current = true;
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            withdrawalInFlight.current = false;
+          });
       }
     };
 
     if (!enabled) {
       withdraw();
-      return cleanup;
+      return;
     }
 
     if (!initialDocumentCaptured.current) {
@@ -88,7 +110,7 @@ export function MarketingAttributionSync() {
     const marketing = snapshot?.marketing === true;
     if (!marketing) {
       withdraw();
-      return cleanup;
+      return;
     }
 
     marketingWasGranted.current = true;
@@ -101,23 +123,35 @@ export function MarketingAttributionSync() {
 
     writeAttributionCookie(attribution);
     const serialized = JSON.stringify(attribution);
+    if (persistedCookie.current !== serialized && cookiePersistInFlight.current !== serialized) {
+      cookiePersistInFlight.current = serialized;
+      void queueCookieMutation(() => persistAttributionCookieServer(attribution))
+        .then(() => {
+          if (cookiePersistInFlight.current === serialized) {
+            persistedCookie.current = serialized;
+          }
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (cookiePersistInFlight.current === serialized) {
+            cookiePersistInFlight.current = null;
+          }
+        });
+    }
     if (syncedSnapshot.current === serialized || syncInFlight.current === serialized) return;
 
     syncInFlight.current = serialized;
-    retry(
-      () => syncMarketingAttribution(attribution),
-      () => {
-        syncedSnapshot.current = serialized;
-        syncInFlight.current = null;
-      },
-    );
-
-    return () => {
-      cancelled = true;
-      for (const timer of timers) window.clearTimeout(timer);
-      if (syncInFlight.current === serialized) syncInFlight.current = null;
-    };
-  }, [snapshot?.marketing, snapshot]);
+    void queueAttributionMutation(() => syncMarketingAttribution(attribution))
+      .then(() => {
+        if (syncInFlight.current === serialized) {
+          syncedSnapshot.current = serialized;
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (syncInFlight.current === serialized) syncInFlight.current = null;
+      });
+  }, [queueAttributionMutation, queueCookieMutation, snapshot?.marketing, snapshot]);
 
   return null;
 }

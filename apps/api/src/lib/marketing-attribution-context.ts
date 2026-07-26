@@ -1,9 +1,6 @@
-import { MARKETING_ATTRIBUTION_HEADER } from "@auction/http-headers";
 import type { IAttributionStore } from "@auction/marketing-events";
 import type { MarketingAttributionSnapshot, MarketingEvent } from "@auction/types";
 import type { MarketingEventConsent } from "@auction/types";
-import { mergeServerAttributionPut } from "@auction/validators";
-import { parseAttributionHeader } from "./marketing-attribution-header.js";
 import { recordMarketingAttributionOperation } from "./marketing-attribution-metrics.js";
 import type { WebsiteEventContext } from "./marketing-event-factory.js";
 import { buildWebsiteUserEvent } from "./marketing-event-factory.js";
@@ -20,14 +17,14 @@ export async function resolveAttributionForWebsiteEvent(input: {
 }): Promise<MarketingAttributionSnapshot | undefined> {
   if (!consentAllowsAttribution(input.consent)) return undefined;
 
-  const fromHeader = parseAttributionHeader(input.context.req.header(MARKETING_ATTRIBUTION_HEADER));
   try {
     const stored = await input.attributionStore.get(input.userId);
-    if (stored && fromHeader) return mergeServerAttributionPut(stored, fromHeader);
-    return stored ?? fromHeader ?? undefined;
+    if (stored) return stored;
+    return undefined;
   } catch {
-    // Attribution is best-effort and must never make the business operation fail.
-    return fromHeader ?? undefined;
+    // Attribution is omitted when server authority is unavailable.
+    recordMarketingAttributionOperation("enrich", "store_unavailable", true);
+    return undefined;
   }
 }
 

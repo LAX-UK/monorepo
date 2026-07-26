@@ -14,6 +14,10 @@ describe("SgtmMarketingEventPublisher attribution", () => {
       consent: { marketing: true, analytics: true, basis: "consent" },
       customData: { method: "email" },
       userData: {},
+      clientContext: {
+        gaClientId: "1234567890.9876543210",
+        gaSessionId: "1700000000",
+      },
       attribution: {
         version: 1,
         firstTouch: {
@@ -44,5 +48,9 @@ describe("SgtmMarketingEventPublisher attribution", () => {
     expect(body.get("ep.attribution_last_gclid")).toBe("click-1");
     expect(body.has("ep.attribution_last_fbclid")).toBe(false);
     expect(body.has("utm_campaign")).toBe(false);
+    expect(body.get("cid")).toBe("1234567890.9876543210");
+    expect(body.get("sid")).toBe("1700000000");
+    expect(body.get("_et")).toBe("1");
+    expect(body.has("ep.ga_session_id")).toBe(false);
   });
 });

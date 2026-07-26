@@ -11,6 +11,9 @@ export const MARKETING_PAGE_URL_HEADER = "x-lax-page-url";
 /** JSON snapshot of first/last campaign attribution (browser, marketing consent). */
 export const MARKETING_ATTRIBUTION_HEADER = "x-lax-attribution";
 
+/** GA4 browser client/session identifiers (browser, analytics consent). */
+export const MARKETING_GA4_IDS_HEADER = "x-lax-ga4-ids";
+
 /**
  * Custom headers the browser client may send on credentialed API calls.
  * Keep in sync with Hono CORS `allowHeaders` in apps/api.
@@ -23,5 +26,6 @@ export const BROWSER_API_CUSTOM_HEADERS = [
   MARKETING_CONSENT_ANALYTICS_HEADER,
   MARKETING_PAGE_URL_HEADER,
   MARKETING_ATTRIBUTION_HEADER,
+  MARKETING_GA4_IDS_HEADER,
   X_LEGAL_ENTITY_ID_HEADER,
 ] as const;

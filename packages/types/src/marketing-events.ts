@@ -30,6 +30,10 @@ export type MarketingUserRef = { kind: "user"; userId: string } | { kind: "anon"
 export type MarketingClientContext = {
   ipAddress?: string;
   userAgent?: string;
+  /** GA4 browser instance id (`_ga` / gtag client_id). */
+  gaClientId?: string;
+  /** GA4 active session id (`_ga_<stream>` / gtag session_id). */
+  gaSessionId?: string;
 };
 
 export type MarketingEventBase = {

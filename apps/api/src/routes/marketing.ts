@@ -1,4 +1,7 @@
-import { MARKETING_CONSENT_MARKETING_HEADER } from "@auction/http-headers";
+import {
+  MARKETING_CONSENT_ANALYTICS_HEADER,
+  MARKETING_CONSENT_MARKETING_HEADER,
+} from "@auction/http-headers";
 import {
   marketingAttributionPutBodySchema,
   parseMarketingAttributionSnapshot,
@@ -6,11 +9,13 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { ContainerMarketingRoutesSlice } from "../container.js";
+import { buildEnrichedWebsiteUserEvent } from "../lib/marketing-attribution-context.js";
 import { recordMarketingAttributionOperation } from "../lib/marketing-attribution-metrics.js";
 import {
   isMarketingAttributionEnabled,
   isMarketingEventsEnabled,
 } from "../lib/marketing-events-enabled.js";
+import { marketingWebsiteContextFromHono } from "../lib/marketing-website-context.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -18,6 +23,10 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 const clickIdsBodySchema = z.object({
   fbp: z.string().max(256).optional(),
   fbc: z.string().max(256).optional(),
+});
+
+const oauthOutcomeBodySchema = z.object({
+  provider: z.enum(["google", "apple"]),
 });
 
 export function createMarketingRoutes(
@@ -84,6 +93,40 @@ export function createMarketingRoutes(
     }
     recordMarketingAttributionOperation("delete", "accepted", enabled);
     return c.body(null, 204);
+  });
+
+  r.post("/oauth-outcome", requireAuth, zValidator("json", oauthOutcomeBodySchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const { provider } = c.req.valid("json");
+    const linked = await container.authOAuthAccountReader.hasLinkedProvider(userId, provider);
+    if (!linked) return c.json({ error: "oauth_provider_not_linked" }, 403);
+
+    const authEvent = await container.oauthAttributionStore.resolveOutcome(userId, provider);
+
+    if (
+      authEvent === "signup" &&
+      isMarketingEventsEnabled(container.env) &&
+      c.req.header(MARKETING_CONSENT_MARKETING_HEADER) === "1" &&
+      c.req.header(MARKETING_CONSENT_ANALYTICS_HEADER) === "1"
+    ) {
+      await container.marketingEventService.emit(
+        await buildEnrichedWebsiteUserEvent(
+          marketingWebsiteContextFromHono(c),
+          {
+            name: "Lead",
+            eventId: `oauth-lead:${userId}`,
+            userId,
+            customData: { method: "oauth" },
+          },
+          {
+            attributionEnabled: isMarketingAttributionEnabled(container.env),
+            attributionStore: container.attributionStore,
+          },
+        ),
+      );
+    }
+
+    return c.json({ data: { event: authEvent, method: provider } });
   });
 
   return r;

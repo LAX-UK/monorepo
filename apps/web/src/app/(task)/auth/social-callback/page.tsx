@@ -1,3 +1,4 @@
+import { withOAuthReturnParams } from "@/lib/auth/oauth-return-params";
 import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { redirect } from "next/navigation";
@@ -6,7 +7,7 @@ import { redirect } from "next/navigation";
 export default async function SocialCallbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
   const oauthError = typeof sp.error === "string" ? sp.error : undefined;
@@ -17,12 +18,7 @@ export default async function SocialCallbackPage({
 
   const user = await getServerSessionUser();
   if (!user) {
-    const requestedNext = typeof sp.next === "string" ? sp.next : null;
-    const params = new URLSearchParams({ social_error: "1", reason: "session_missing" });
-    if (isSafeNextPath(requestedNext ?? undefined)) {
-      params.set("next", requestedNext as string);
-    }
-    redirect(`/login?${params.toString()}`);
+    redirect("/login?social_error=1&reason=session_missing");
   }
 
   if (user.suspended === true) {
@@ -37,5 +33,5 @@ export default async function SocialCallbackPage({
     requireEmailVerification: false,
     withWelcomeBack: true,
   });
-  redirect(dest);
+  redirect(withOAuthReturnParams(dest, sp));
 }

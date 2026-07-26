@@ -71,6 +71,12 @@ export type AuthEnv = {
   onUserCreated?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
     | undefined;
+  /** Called after the first account row is created. OAuth signup attribution uses
+   * this because Better Auth creates the user before its provider account.
+   */
+  onAccountCreated?:
+    | ((account: { userId: string; providerId: string }) => Promise<void>)
+    | undefined;
   /** Invoked from `emailVerification.afterEmailVerification` when the user confirms their email. */
   onEmailVerified?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
@@ -198,6 +204,7 @@ export function createAuth(env: AuthEnv): Auth {
       db: env.db,
       email: env.email,
       onUserCreated: env.onUserCreated,
+      onAccountCreated: env.onAccountCreated,
       enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
     }),
     session: {

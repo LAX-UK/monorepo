@@ -300,6 +300,7 @@ export function createWorkerContainer(): WorkerContainer {
     qrCodeScanPersister: repositories.qrCodeScanPersister,
     qrCodeScanPurgeRepo: repositories.qrCodeScanPurgeRepo,
     marketingClickIdPurgeRepo: repositories.marketingClickIdPurgeRepo,
+    marketingAttributionPurgeRepo: repositories.marketingAttributionPurgeRepo,
     notificationWriteRepo: repositories.notificationWriteRepo,
     transactionRunner: repositories.transactionRunner,
     adminReviewTaskProjectorRepo: repositories.adminReviewTaskProjectorRepo,

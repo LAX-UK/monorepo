@@ -25,6 +25,7 @@ import type { IEmailOutboxRepository } from "../interfaces/email-outbox.reposito
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
 import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
 import type { ILotNotifyReader } from "../interfaces/lot-notify.reader.js";
+import type { IMarketingAttributionPurgeRepository } from "../interfaces/marketing-attribution-purge.repository.js";
 import type { IMarketingClickIdPurgeRepository } from "../interfaces/marketing-click-id-purge.repository.js";
 import type { IMarketingContactSyncRepository } from "../interfaces/marketing-contact-sync.repository.js";
 import type { IMarketingEventOutboxWorker } from "../interfaces/marketing-event-outbox.worker.js";
@@ -66,6 +67,7 @@ import { DrizzleEmailOutboxRepository } from "../repositories/drizzle-email-outb
 import { DrizzleImpersonationSweepRepository } from "../repositories/drizzle-impersonation-sweep.repository.js";
 import { DrizzleLegalEntityArchiveCascadeReader } from "../repositories/drizzle-legal-entity-archive-cascade.reader.js";
 import { DrizzleLotNotifyReader } from "../repositories/drizzle-lot-notify.reader.js";
+import { DrizzleMarketingAttributionPurgeRepository } from "../repositories/drizzle-marketing-attribution-purge.repository.js";
 import { DrizzleMarketingClickIdPurgeRepository } from "../repositories/drizzle-marketing-click-id-purge.repository.js";
 import { DrizzleMarketingContactSyncRepository } from "../repositories/drizzle-marketing-contact-sync.repository.js";
 import { DrizzleMarketingEventOutboxWorker } from "../repositories/drizzle-marketing-event-outbox.worker.js";
@@ -112,6 +114,7 @@ export type WorkerRepositories = {
   qrCodeScanPersister: IQrCodeScanPersister;
   qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;
   marketingClickIdPurgeRepo: IMarketingClickIdPurgeRepository;
+  marketingAttributionPurgeRepo: IMarketingAttributionPurgeRepository;
   notificationWriteRepo: INotificationWriteRepository;
   transactionRunner: ITransactionRunner;
   adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
@@ -165,6 +168,7 @@ export function createWorkerRepositories(
     qrCodeScanPersister: new DrizzleQrCodeScanPersister(db),
     qrCodeScanPurgeRepo: new DrizzleQrCodeScanPurgeRepository(db),
     marketingClickIdPurgeRepo: new DrizzleMarketingClickIdPurgeRepository(db),
+    marketingAttributionPurgeRepo: new DrizzleMarketingAttributionPurgeRepository(db),
     notificationWriteRepo: new DrizzleNotificationWriteRepository(db),
     transactionRunner: new DrizzleTransactionRunner(db),
     adminReviewTaskProjectorRepo: new DrizzleAdminReviewTaskProjectorRepository(db),
