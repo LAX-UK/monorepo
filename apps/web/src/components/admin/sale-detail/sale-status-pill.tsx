@@ -15,7 +15,7 @@ type SaleDeliveryPillProps = {
   iconOnly?: boolean;
 };
 
-/** Figma dot-pill for sale lifecycle status. */
+/** Dot-pill for sale lifecycle status. */
 export function SaleStatusPill({ status, className, iconOnly }: SaleStatusPillProps) {
   const presentation = resolveDotStatusPresentation("sale", status);
   const label =
@@ -30,7 +30,7 @@ export function SaleStatusPill({ status, className, iconOnly }: SaleStatusPillPr
   );
 }
 
-/** Figma delivery-format pill (Online / Onsite / Hybrid). */
+/** Delivery-format pill (Online / Onsite / Hybrid). */
 export function SaleDeliveryPill({ deliveryMode, className, iconOnly }: SaleDeliveryPillProps) {
   return (
     <SaleDeliveryModeChip

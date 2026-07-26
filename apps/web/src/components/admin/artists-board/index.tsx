@@ -8,6 +8,7 @@ import type {
 import { artistColumns } from "@/components/admin/artists-board/columns";
 import { ArtistsMobileCards } from "@/components/admin/artists-board/mobile-cards";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import type {
@@ -21,7 +22,6 @@ import { artistFilterAdapter } from "@/lib/admin/filters/artist-filter-adapter";
 import type { AdminFilterPreserved } from "@/lib/admin/filters/types";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminArtistListRow } from "@auction/types";
-import { cn } from "@auction/ui";
 import { EntityList } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { useSearchParams } from "next/navigation";
@@ -102,11 +102,7 @@ export function AdminArtistsBoard({
 
   return (
     <div className="space-y-4">
-      <div
-        className={cn(
-          "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-        )}
-      >
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -159,7 +155,7 @@ export function AdminArtistsBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
       <BulkActionsToolbar
         selectedIds={selectedIds}
         operations={bulkOperations}

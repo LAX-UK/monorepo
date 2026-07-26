@@ -1,11 +1,12 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { getAdminOnsiteEvents } from "@/lib/data/http/onsite-event.server";
+import { StaffHubShell } from "@/components/admin/catalog/staff-hub-shell";
+import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
+import { loadAdminEventRsvpsHubPage } from "@/lib/admin/events/load-event-rsvps-hub-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatDateTime } from "@/lib/ui/format";
 import { Button } from "@auction/ui/components/button";
@@ -20,17 +21,7 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 export default async function AdminEventRsvpsPage() {
-  let events: Awaited<ReturnType<typeof getAdminOnsiteEvents>> = [];
-  let loadError: string | null = null;
-
-  try {
-    events = await getAdminOnsiteEvents();
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load event RSVPs.";
-  }
-
-  const totalRsvps = events.reduce((sum, event) => sum + event.rsvpCount, 0);
-  const publishedCount = events.filter((event) => event.status === "published").length;
+  const { events, totalRsvps, publishedCount, loadError } = await loadAdminEventRsvpsHubPage();
 
   const empty =
     !loadError && events.length === 0 ? (
@@ -41,18 +32,23 @@ export default async function AdminEventRsvpsPage() {
     ) : null;
 
   return (
-    <AdminListShell
-      layout="hub"
+    <StaffHubShell
       title="Event RSVPs"
       description="Manage guest lists, passes, and check-in for invitation-only events. For live bidding, use Saleroom."
       kpiStrip={
         !loadError ? (
-          <AdminListKpiStrip
+          <AdminTrendKpiBand
             ariaLabel="Event RSVPs summary"
             tiles={[
-              { label: "Events", value: events.length },
-              { label: "Published", value: publishedCount },
-              { label: "Total RSVPs", value: totalRsvps },
+              buildSnapshotKpiTile("Events", events.length, 30, {
+                compareHint: "Registered events",
+              }),
+              buildSnapshotKpiTile("Published", publishedCount, 30, {
+                compareHint: "Live guest lists",
+              }),
+              buildSnapshotKpiTile("Total RSVPs", totalRsvps, 30, {
+                compareHint: "Across all events",
+              }),
             ]}
           />
         ) : null

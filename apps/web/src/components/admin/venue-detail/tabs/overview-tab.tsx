@@ -1,6 +1,7 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { CatalogDetailTabPanel } from "@/components/admin/catalog";
+import { CatalogDetailTabPanel, DetailBoardKpiStrip } from "@/components/admin/catalog";
 import { CatalogDetailSection } from "@/components/admin/catalog/catalog-detail-section";
+import { buildVenueOverviewViewModel } from "@/lib/data/view-models/venue-overview.vm";
 import type { VenueDetail } from "@/lib/services/interfaces/admin-venue-service";
 import Link from "next/link";
 
@@ -10,10 +11,13 @@ type Props = {
 };
 
 export function VenueOverviewTab({ venueId: _venueId, detail }: Props) {
-  const { venue, salesUsingCount, legalEntityDisplayName = null } = detail;
+  const vm = buildVenueOverviewViewModel(detail);
+  const { venue } = detail;
+  const { salesUsingCount, legalEntityDisplayName } = vm;
 
   return (
     <CatalogDetailTabPanel title="Overview" framed={false}>
+      <DetailBoardKpiStrip ariaLabel="Venue usage" tiles={vm.kpiTiles} />
       <div className="grid gap-4 sm:grid-cols-2">
         <CatalogDetailSection title="Address">
           <div className="space-y-0.5 font-body text-sm text-on-surface">

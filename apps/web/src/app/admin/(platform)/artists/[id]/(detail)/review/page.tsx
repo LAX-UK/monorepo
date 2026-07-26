@@ -1,7 +1,7 @@
 import { ArtistReviewTab } from "@/components/admin/artist-detail/tabs/review-tab";
 import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
+import { loadAdminArtistReviewPage } from "@/lib/admin/artists/load-artist-review-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { getAdminArtistById } from "@/lib/data/http/admin.server";
 import { ARTIST_REVIEW_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notFound, redirect } from "next/navigation";
 
@@ -14,16 +14,16 @@ export default async function AdminArtistReviewPage({ params, searchParams }: Pr
   const { id } = await params;
   await requireAdminCapability(ARTIST_REVIEW_ACCESS, `/admin/artists/${id}`);
   const sp = await searchParams;
-  const artist = await getAdminArtistById(id);
-  if (!artist) notFound();
-  if (artist.status !== "pending") {
+  const model = await loadAdminArtistReviewPage(id);
+  if (!model) notFound();
+  if (model.artist.status !== "pending") {
     redirect(`/admin/artists/${id}`);
   }
 
   return (
     <>
       <CatalogDetailActionError error={sp.error} title="Could not review artist" />
-      <ArtistReviewTab artistId={id} currentStatus={artist.status} />
+      <ArtistReviewTab artistId={model.artistId} currentStatus={model.artist.status} />
     </>
   );
 }

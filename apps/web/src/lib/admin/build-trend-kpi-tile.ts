@@ -1,4 +1,4 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import { kpiWithTrend } from "@/lib/admin/kpi-with-trend.vm";
 import type { AdminKpiTrendBundle } from "@/lib/data/http/admin-kpi-trends.server";
 import type { KpiTileTone } from "@auction/ui/components/kpi-tile";

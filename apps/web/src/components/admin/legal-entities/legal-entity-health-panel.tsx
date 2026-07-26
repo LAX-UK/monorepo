@@ -1,8 +1,7 @@
-import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogDetailTabCard } from "@/components/admin/catalog";
 import type { LegalEntityHealthVM } from "@/lib/admin/legal-entity-health";
 import { cn } from "@auction/ui";
-import { Surface } from "@auction/ui/components/surface";
 
 type Props = {
   health: LegalEntityHealthVM;
@@ -13,13 +12,15 @@ const gateTone = (ready: boolean) =>
 
 export function LegalEntityHealthPanel({ health }: Props) {
   return (
-    <Surface variant="quiet" padding="md" className="space-y-4">
-      <AdminSectionLabel>Organisation readiness</AdminSectionLabel>
+    <CatalogDetailTabCard
+      title="Organisation readiness"
+      description="Connect stage and commerce gates for this legal entity."
+    >
       <p className="font-body text-sm text-on-surface-variant">
         Connect stage: <span className="font-medium text-on-surface">{health.stageLabel}</span>
       </p>
 
-      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div className={cn("space-y-2 rounded-md border px-3 py-3", gateTone(health.canPublish))}>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Can sell</dt>
           <dd>
@@ -50,7 +51,7 @@ export function LegalEntityHealthPanel({ health }: Props) {
       </dl>
 
       {health.blockers.length > 0 ? (
-        <div className="space-y-2">
+        <div className="mt-4 space-y-2">
           <p className="font-label text-[10px] uppercase text-on-surface-variant">Blockers</p>
           <ul className="space-y-2">
             {health.blockers.map((blocker) => (
@@ -65,10 +66,10 @@ export function LegalEntityHealthPanel({ health }: Props) {
           </ul>
         </div>
       ) : (
-        <p className="font-body text-sm text-on-surface-variant">
+        <p className="mt-4 font-body text-sm text-on-surface-variant">
           No outstanding blockers — this organisation is ready for commerce.
         </p>
       )}
-    </Surface>
+    </CatalogDetailTabCard>
   );
 }

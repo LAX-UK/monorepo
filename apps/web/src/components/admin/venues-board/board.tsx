@@ -2,6 +2,7 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
@@ -224,7 +225,7 @@ export function AdminVenuesBoard({ venues, pagination, listTotalCount }: Props) 
         </div>
       ) : null}
 
-      <div className="hidden overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)] lg:block">
+      <CatalogBoardCard className="hidden lg:block">
         <CatalogBoardTableHeader
           leading={
             <>
@@ -267,7 +268,7 @@ export function AdminVenuesBoard({ venues, pagination, listTotalCount }: Props) 
             nextHref={pagination.nextHref}
           />
         ) : null}
-      </div>
+      </CatalogBoardCard>
 
       {confirmVenue ? (
         <TypedConfirmationDialog

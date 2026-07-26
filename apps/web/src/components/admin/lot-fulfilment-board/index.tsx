@@ -3,13 +3,13 @@
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminLotFulfilmentQueueCard } from "@/components/admin/admin-lot-fulfilment-queue-card";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { lotFulfilmentColumns } from "@/components/admin/lot-fulfilment-board/columns";
 import { LotFulfilmentMobileCards } from "@/components/admin/lot-fulfilment-board/mobile-cards";
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminLotFulfilmentListRow } from "@/lib/data/http/admin-lot-fulfilment.shared";
-import { cn } from "@auction/ui";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import type { ReactNode } from "react";
@@ -48,11 +48,7 @@ export function AdminLotFulfilmentBoard({
 
   return (
     <>
-      <div
-        className={cn(
-          "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-        )}
-      >
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -92,7 +88,7 @@ export function AdminLotFulfilmentBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
       <Sheet open={!!selected} onOpenChange={(open) => !open && onCloseDrawer()}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">
           {selected ? (

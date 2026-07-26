@@ -1,4 +1,7 @@
-import type { AdminListShellVariant } from "@/components/admin/admin-list-shell";
+import type {
+  AdminListShellLayout,
+  AdminListShellVariant,
+} from "@/components/admin/admin-list-shell";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
@@ -7,9 +10,12 @@ type Props = {
   title: ReactNode;
   description?: string;
   variant?: AdminListShellVariant;
+  layout?: AdminListShellLayout;
   breadcrumbs?: ReactNode;
   primaryAction?: ReactNode;
   meta?: ReactNode;
+  /** Extra content below page header (invitations invite card, etc.). */
+  headerAfter?: ReactNode;
   filterBar?: ReactNode;
   chips?: ReactNode;
   hasFilters?: boolean;
@@ -22,6 +28,9 @@ type Props = {
   mobileSummary?: ReactNode;
   toolbarEnd?: ReactNode;
   errorAlert?: ReactNode;
+  bulkBar?: ReactNode;
+  mobileCards?: ReactNode;
+  listHeadingId?: string;
   children: ReactNode;
   empty?: ReactNode;
   pagination?: ReactNode;
@@ -39,9 +48,11 @@ export function CatalogListShell({
   title,
   description,
   variant = "default",
+  layout = "list",
   breadcrumbs,
   primaryAction,
   meta,
+  headerAfter,
   filterBar,
   chips,
   hasFilters,
@@ -53,6 +64,9 @@ export function CatalogListShell({
   mobileSummary,
   toolbarEnd,
   errorAlert,
+  bulkBar,
+  mobileCards,
+  listHeadingId,
   children,
   empty,
   pagination,
@@ -62,11 +76,14 @@ export function CatalogListShell({
     <AdminListShell
       className={cn("pb-10", className)}
       variant={variant}
+      layout={layout}
       title={title}
+      {...(listHeadingId ? { listHeadingId } : {})}
       {...(description ? { description } : {})}
       {...(breadcrumbs ? { breadcrumbs } : {})}
       {...(primaryAction ? { primaryAction } : {})}
       {...(meta ? { meta } : {})}
+      {...(headerAfter ? { headerAfter } : {})}
       {...(filterBar
         ? {
             headerAfter: <div className={catalogStickyChrome}>{filterBar}</div>,
@@ -88,6 +105,8 @@ export function CatalogListShell({
           }
         : {})}
       errorAlert={errorAlert}
+      {...(bulkBar ? { bulkBar } : {})}
+      {...(mobileCards ? { mobileCards } : {})}
       view={children}
       wrapView={false}
       empty={empty}

@@ -1,15 +1,265 @@
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+"use client";
+
 import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { sumCapturedPayments } from "@/lib/admin/admin-user-metrics";
-import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
+import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
+import { AdminTableMoneyCell } from "@/components/admin/admin-table-money-cell";
+import {
+  DetailBoardKpiStrip,
+  DetailBoardShell,
+  DetailBoardToolbar,
+  DetailCardGrid,
+  DetailEntityTable,
+} from "@/components/admin/catalog/detail-board";
+import { MediaImage } from "@/components/ui/media-image";
+import { downloadClientBidsCsv } from "@/lib/admin/export-client-bids-csv";
+import { formatAdminTableMoney } from "@/lib/admin/format-admin-table-money";
 import { connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
 import type { AdminPaymentRow, AdminUserBidRow } from "@/lib/data/http/admin.server";
-import { formatMoney } from "@/lib/format-currency";
+import {
+  CLIENT_BID_CHANNEL_FILTERS,
+  type ClientBidChannelFilter,
+  buildClientPaymentsKpiTiles,
+  buildClientWonLotGridItems,
+  filterClientBids,
+  matchesClientPaymentSearch,
+  presentClientBidStatus,
+  sortPaymentsRecentFirst,
+} from "@/lib/data/view-models/client-commerce-tab.vm";
 import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, Lot } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
+import { useMemo, useState } from "react";
+
+export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow[] }) {
+  const [search, setSearch] = useState("");
+  const kpiTiles = useMemo(() => buildClientPaymentsKpiTiles(payments), [payments]);
+  const filteredPayments = useMemo(
+    () =>
+      sortPaymentsRecentFirst(payments).filter((payment) =>
+        matchesClientPaymentSearch(payment, search),
+      ),
+    [payments, search],
+  );
+
+  return (
+    <div className="space-y-6">
+      <DetailBoardKpiStrip ariaLabel="Payments summary" tiles={kpiTiles} />
+      <DetailBoardShell
+        title="Payments"
+        description="Captured and outstanding buyer payments."
+        count={filteredPayments.length}
+        toolbar={
+          <DetailBoardToolbar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search payments…"
+          />
+        }
+      >
+        <DetailEntityTable
+          rows={filteredPayments}
+          getRowId={(payment) => payment.id}
+          ariaLabel="Client payments"
+          emptyTitle="No payments"
+          emptyDescription="No payments for this buyer yet."
+          columns={[
+            {
+              id: "lot",
+              header: "Lot",
+              cell: (payment) => (
+                <Link
+                  href={`/admin/lots/${payment.lotId}`}
+                  className="font-headline text-sm font-medium text-on-surface hover:text-link"
+                >
+                  Lot {payment.lotId.slice(0, 8)}…
+                </Link>
+              ),
+            },
+            {
+              id: "amount",
+              header: "Amount",
+              cell: (payment) => (
+                <AdminTableMoneyCell display={formatAdminTableMoney(payment.amount)} />
+              ),
+            },
+            {
+              id: "status",
+              header: "Status",
+              cell: (payment) => (
+                <AdminStatusBadge domain="payment" status={payment.status} size="sm" />
+              ),
+            },
+            {
+              id: "created",
+              header: "Created",
+              cell: (payment) => (
+                <AdminTableDateTimeCell iso={payment.createdAt.toISOString()} mode="timestamp" />
+              ),
+            },
+            {
+              id: "invoice",
+              header: "Invoice",
+              cell: (payment) =>
+                payment.xeroOnlineInvoiceUrl ? (
+                  <a
+                    href={payment.xeroOnlineInvoiceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-body text-xs text-link hover:underline"
+                  >
+                    View
+                  </a>
+                ) : (
+                  <span className="font-body text-xs text-on-surface-variant">—</span>
+                ),
+            },
+          ]}
+        />
+      </DetailBoardShell>
+    </div>
+  );
+}
+
+export function AdminUserBidsPanel({
+  bids,
+  clientLabel = "client",
+}: {
+  bids: AdminUserBidRow[];
+  clientLabel?: string;
+}) {
+  const [search, setSearch] = useState("");
+  const [channel, setChannel] = useState<ClientBidChannelFilter>("all");
+  const filteredBids = useMemo(
+    () => filterClientBids(bids, { search, channel }),
+    [bids, search, channel],
+  );
+
+  return (
+    <div className="space-y-6">
+      <DetailBoardShell
+        title="Bidding"
+        description="Recent bidding activity for this client."
+        count={filteredBids.length}
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={bids.length === 0}
+            onClick={() => downloadClientBidsCsv(filteredBids, clientLabel)}
+          >
+            Export
+          </Button>
+        }
+        toolbar={
+          <DetailBoardToolbar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search…"
+            filters={CLIENT_BID_CHANNEL_FILTERS}
+            activeFilter={channel}
+            onFilterChange={setChannel}
+            filterAriaLabel="Filter bids by channel"
+          />
+        }
+      >
+        <DetailEntityTable
+          rows={filteredBids}
+          getRowId={(bid) => bid.id}
+          ariaLabel="Client bids"
+          emptyTitle="No bids"
+          emptyDescription="This client has not placed any bids yet."
+          columns={[
+            {
+              id: "lot",
+              header: "Lot#",
+              cell: (bid) => (
+                <div className="min-w-0">
+                  <Link
+                    href={`/admin/lots/${bid.lotId}`}
+                    className="font-headline text-sm font-medium text-on-surface hover:text-link"
+                  >
+                    {bid.lotTitle}
+                  </Link>
+                  {bid.isAutoBid ? (
+                    <p className="mt-0.5 font-body text-[11px] text-on-surface-variant">Auto bid</p>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              id: "sale",
+              header: "Sale",
+              cell: (bid) => (
+                <span className="block max-w-[14rem] truncate font-body text-sm text-on-surface">
+                  {bid.saleTitle ?? "—"}
+                </span>
+              ),
+            },
+            {
+              id: "amount",
+              header: "Amount",
+              cell: (bid) => <AdminTableMoneyCell display={formatAdminTableMoney(bid.amount)} />,
+            },
+            {
+              id: "status",
+              header: "Status",
+              cell: (bid) => {
+                const status = presentClientBidStatus(bid);
+                return <DotStatusPill label={status.label} tone={status.tone} />;
+              },
+            },
+            {
+              id: "time",
+              header: "Time",
+              cell: (bid) => (
+                <AdminTableDateTimeCell iso={bid.createdAt.toISOString()} mode="timestamp" />
+              ),
+            },
+          ]}
+        />
+      </DetailBoardShell>
+    </div>
+  );
+}
+
+export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
+  const items = buildClientWonLotGridItems(wonLots, (lot) =>
+    lot.images[0] ? (
+      <MediaImage
+        src={lot.images[0]}
+        alt={lot.title}
+        label={lot.title}
+        imgClassName="size-full object-cover"
+        sizes="(max-width: 640px) 50vw, 320px"
+      />
+    ) : (
+      <div className="flex size-full items-center justify-center font-body text-xs text-on-surface-variant">
+        No image
+      </div>
+    ),
+  );
+
+  return (
+    <div className="space-y-6">
+      <DetailBoardShell
+        title="Won lots"
+        description="Lots this client has won across all sales."
+        count={wonLots.length}
+      >
+        <DetailCardGrid
+          items={items}
+          columns={3}
+          emptyTitle="This client has not won any lots yet."
+        />
+      </DetailBoardShell>
+    </div>
+  );
+}
 
 function PanelHeader({ title, summary }: { title: string; summary?: string }) {
   return (
@@ -18,137 +268,6 @@ function PanelHeader({ title, summary }: { title: string; summary?: string }) {
       {summary ? (
         <span className="font-headline text-lg tabular-nums text-on-surface">{summary}</span>
       ) : null}
-    </div>
-  );
-}
-
-export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow[] }) {
-  const lifetime = sumCapturedPayments(payments);
-  const recentPayments = [...payments]
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 12);
-
-  return (
-    <div className="space-y-4">
-      <PanelHeader
-        title="Payments"
-        {...(lifetime > 0 ? { summary: formatMoney(lifetime.toFixed(2)) } : {})}
-      />
-      <p className="font-body text-xs text-on-surface-variant">Lifetime spend (captured)</p>
-      {recentPayments.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">No payments for this buyer yet.</p>
-      ) : (
-        <ul className="divide-y divide-outline-variant/15 rounded-md border border-border-hairline">
-          {recentPayments.map((p) => (
-            <li
-              key={p.id}
-              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
-            >
-              <div className="min-w-0">
-                <Link
-                  href={`/admin/lots/${p.lotId}`}
-                  className="font-medium text-link hover:underline"
-                >
-                  Lot {p.lotId.slice(0, 8)}…
-                </Link>
-                <p className="text-xs text-on-surface-variant">
-                  {formatAdminUserDate(p.createdAt.toISOString())}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className="font-medium">{formatMoney(p.amount)}</span>
-                <AdminStatusBadge domain="payment" status={p.status} size="sm" />
-                {p.xeroOnlineInvoiceUrl ? (
-                  <a
-                    href={p.xeroOnlineInvoiceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] text-link hover:underline"
-                  >
-                    Invoice
-                  </a>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-export function AdminUserBidsPanel({ bids }: { bids: AdminUserBidRow[] }) {
-  return (
-    <div className="space-y-3">
-      <PanelHeader title="Bids" {...(bids.length > 0 ? { summary: String(bids.length) } : {})} />
-      {bids.length === 0 ? (
-        <AdminEmptyState title="No bids" description="This client has not placed any bids yet." />
-      ) : (
-        <ul className="divide-y divide-outline-variant/15 rounded-md border border-border-hairline">
-          {bids.map((bid) => (
-            <li
-              key={bid.id}
-              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
-            >
-              <div className="min-w-0">
-                <Link
-                  href={`/admin/lots/${bid.lotId}`}
-                  className="font-medium text-link hover:underline"
-                >
-                  {bid.lotTitle}
-                </Link>
-                {bid.saleTitle ? (
-                  <p className="truncate text-xs text-on-surface-variant">{bid.saleTitle}</p>
-                ) : null}
-                <p className="text-xs text-on-surface-variant">
-                  {formatAdminUserDate(bid.createdAt.toISOString())}
-                  {bid.placedVia ? ` · ${bid.placedVia}` : ""}
-                  {bid.isAutoBid ? " · auto" : ""}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className="font-medium">{formatMoney(bid.amount)}</span>
-                {bid.isWinning ? (
-                  <AdminStatusBadge domain="lot" status="active" label="Winning" size="sm" />
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
-  return (
-    <div className="space-y-3">
-      <PanelHeader
-        title="Won lots"
-        {...(wonLots.length > 0 ? { summary: String(wonLots.length) } : {})}
-      />
-      {wonLots.length === 0 ? (
-        <AdminEmptyState title="No wins" description="This client has not won any lots yet." />
-      ) : (
-        <ul className="divide-y divide-outline-variant/15 rounded-md border border-border-hairline">
-          {wonLots.map((lot) => (
-            <li
-              key={lot.id}
-              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
-            >
-              <Link
-                href={`/admin/lots/${lot.id}`}
-                className="min-w-0 truncate text-sm font-medium text-link hover:underline"
-              >
-                {lot.title}
-              </Link>
-              <span className="text-xs text-on-surface-variant">
-                {formatMoney(lot.currentPrice)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

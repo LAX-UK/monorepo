@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildSaleEditStepperSteps, buildSaleSetupStepperSteps } from "./sale-setup-stepper.vm";
 
 describe("buildSaleSetupStepperSteps", () => {
-  it("returns 6 Figma-labelled steps including Review", () => {
+  it("returns 6 labelled steps including Review", () => {
     const steps = buildSaleSetupStepperSteps();
     expect(steps).toHaveLength(6);
     expect(steps.map((s) => s.label)).toEqual([
@@ -22,7 +22,7 @@ describe("buildSaleSetupStepperSteps", () => {
     expect(identity?.description).toBeTruthy();
   });
 
-  it("adds Figma sub-items for schedule, documents, and lots", () => {
+  it("adds sub-items for schedule, documents, and lots", () => {
     const steps = buildSaleSetupStepperSteps();
     expect(steps[1]?.subItems).toEqual(["Auction format", "Schedule", "Commercial settings"]);
     expect(steps[2]?.subItems).toEqual(["Internal documents", "Public documents", "Terms of sale"]);
@@ -31,7 +31,7 @@ describe("buildSaleSetupStepperSteps", () => {
 });
 
 describe("buildSaleEditStepperSteps", () => {
-  it("returns 4 edit steps with Figma labels", () => {
+  it("returns 4 edit steps with wizard labels", () => {
     const steps = buildSaleEditStepperSteps();
     expect(steps).toHaveLength(4);
     expect(steps[0]?.label).toBe("Sale Information");

@@ -14,7 +14,7 @@ export type DetailBoardShellProps = {
   className?: string;
 };
 
-/** Figma-aligned card shell for admin detail tab boards. */
+/** Card shell for admin detail tab boards. */
 export function DetailBoardShell({
   title,
   description,

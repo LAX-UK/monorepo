@@ -2,9 +2,9 @@ import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { getStaffNavItems, getStaffNavParentLabel } from "@/components/layout/staff-nav";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { SessionUser } from "@/lib/data/contracts";
+import { type AppShellRole, sessionUserToShellRole } from "@/lib/shell/session-user-shell-role";
 import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import type { AppShellLayout, UserRole, UserStaffRole } from "@auction/types";
-import { staffRoleToShellLayout } from "@auction/types";
+import type { UserRole, UserStaffRole } from "@auction/types";
 import {
   Bell,
   Brush,
@@ -25,17 +25,8 @@ import {
   WalletCards,
 } from "lucide-react";
 
-/** Visual shell segment for the dashboard chrome. */
-export type AppShellRole = AppShellLayout;
-
-/** Maps session user to shell layout (client vs platform admin vs finance). */
-export function sessionUserToShellRole(
-  user: Pick<SessionUser, "role" | "staffRole">,
-): AppShellRole {
-  return staffRoleToShellLayout(user.role as UserRole, user.staffRole ?? null);
-}
-
-export type { AppShellNavItem };
+export type { AppShellRole, AppShellNavItem };
+export { sessionUserToShellRole };
 
 export type AppShellRoleMeta = {
   label: string;

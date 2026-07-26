@@ -1,6 +1,6 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
 import { CONDITION_REPORT_LENS_LABELS } from "@/lib/admin/filter-chips/condition-reports";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminConditionReportListSummary } from "@/lib/data/http/admin-condition-reports.shared";
 
 export function buildConditionReportsListKpiTiles(input: {

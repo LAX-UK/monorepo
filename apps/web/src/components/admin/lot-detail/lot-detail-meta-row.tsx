@@ -13,7 +13,7 @@ type Props = {
   updatedAt?: Date | string | null;
 };
 
-/** Sale link, category, updated, bid count row under lot detail title (Figma header meta). */
+/** Sale link, category, updated, bid count row under lot detail title. */
 export function LotDetailMetaRow({ auction, context, bidCount = null, updatedAt }: Props) {
   const sale = context.sale;
   const artist = context.artist;

@@ -1,10 +1,8 @@
 import { CatalogBreadcrumbs, CatalogFormShell } from "@/components/admin/catalog";
 import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
-import { categoryDetailTabHref } from "@/components/admin/category-detail/category-detail-types";
 import { CategoryEditForm } from "@/components/admin/category-detail/category-edit-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { loadAdminCategoryDetail } from "@/lib/admin/load-category-detail";
-import { getAdminCategoryList } from "@/lib/data/http/admin.server";
+import { loadAdminCategoryEditPage } from "@/lib/admin/categories/load-category-edit-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -14,9 +12,7 @@ type Props = {
 export default async function AdminCategoryEditPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const category = await loadAdminCategoryDetail(id);
-  const allCategories = await getAdminCategoryList({ includeArchived: true });
-  const overviewHref = categoryDetailTabHref(id, "overview");
+  const page = await loadAdminCategoryEditPage(id);
 
   return (
     <CatalogFormShell
@@ -25,7 +21,7 @@ export default async function AdminCategoryEditPage({ params, searchParams }: Pr
         <CatalogBreadcrumbs
           segments={[
             { label: "Categories", href: "/admin/categories" },
-            { label: category.name, href: overviewHref },
+            { label: page.category.name, href: page.overviewHref },
             { label: "Edit" },
           ]}
         />
@@ -42,15 +38,15 @@ export default async function AdminCategoryEditPage({ params, searchParams }: Pr
           id: "cancel",
           label: "Cancel",
           variant: "secondary",
-          href: overviewHref,
+          href: page.overviewHref,
         },
       ]}
     >
       <CatalogDetailActionError error={sp.error} title="Could not save category" />
       <CategoryEditForm
-        category={category}
-        allCategories={allCategories}
-        cancelHref={overviewHref}
+        category={page.category}
+        allCategories={page.allCategories}
+        cancelHref={page.overviewHref}
       />
     </CatalogFormShell>
   );

@@ -13,11 +13,14 @@ import {
   categorySubmissionsHref,
 } from "@/components/admin/category-detail/category-detail-types";
 import { CategoryUsagePanel } from "@/components/admin/category-detail/category-usage-panel";
+import { categoryActivityTabHref } from "@/components/admin/category-detail/tabs/activity-tab";
+import { ActivitySnapshotRail } from "@/components/admin/detail-rail";
 import { MediaImage } from "@/components/ui/media-image";
 import { buildCategorySummaryItems } from "@/lib/admin/build-category-summary-items";
 import { buildCategoryTaxonomyReadiness } from "@/lib/admin/catalog-readiness";
 import { buildCategoryOverviewViewModel } from "@/lib/admin/categories/build-category-overview-vm";
-import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
+import { domainEventLabel } from "@/lib/admin/domain-event-labels";
+import type { AdminDomainEventRow, AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import type { AdminCategory, ItemSubmission, Lot } from "@auction/types";
 import Link from "next/link";
@@ -32,6 +35,7 @@ type Props = {
   previewLots: Lot[];
   previewSales: AdminSaleListRow[];
   previewSubmissions: ItemSubmission[];
+  activityEvents?: readonly AdminDomainEventRow[];
 };
 
 export function CategoryOverviewTab({
@@ -43,6 +47,7 @@ export function CategoryOverviewTab({
   previewLots,
   previewSales,
   previewSubmissions,
+  activityEvents = [],
 }: Props) {
   const summaryItems = buildCategorySummaryItems(
     categoryId,
@@ -222,6 +227,19 @@ export function CategoryOverviewTab({
           </div>
         </CatalogDetailSection>
       )}
+
+      <CatalogDetailSection title="Recent activity" description="Latest taxonomy changes.">
+        <ActivitySnapshotRail
+          events={activityEvents.map((e) => ({
+            id: e.id,
+            label: domainEventLabel(e.eventType),
+            at: e.occurredAt.toISOString(),
+            actor: e.actorUserId,
+          }))}
+          viewAllHref={categoryActivityTabHref(categoryId)}
+          viewAllLabel="View all activity"
+        />
+      </CatalogDetailSection>
     </div>
   );
 }

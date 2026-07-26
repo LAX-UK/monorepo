@@ -1,4 +1,4 @@
-import type { StaffAttentionItem } from "@/components/admin/staff-notification-bell";
+import type { StaffAttentionItem } from "@/lib/admin/staff-attention.types";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import {
   AML_REVIEW_ACCESS,

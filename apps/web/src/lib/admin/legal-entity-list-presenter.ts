@@ -1,4 +1,4 @@
-import { statusLabel, subkindLabel } from "@/components/organisations/labels";
+import { statusLabel, subkindLabel } from "@/lib/organisations/legal-entity-labels";
 import type { LegalEntityKind, LegalEntityStatus } from "@auction/types";
 import { legalEntityKinds, legalEntityStatuses } from "@auction/types";
 

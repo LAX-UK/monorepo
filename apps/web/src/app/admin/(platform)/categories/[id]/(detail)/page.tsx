@@ -1,12 +1,6 @@
 import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
-import {
-  categoryDescendantsOf,
-  categoryDirectChildrenOf,
-} from "@/components/admin/category-detail/category-detail-helpers";
 import { CategoryOverviewTab } from "@/components/admin/category-detail/tabs/overview-tab";
-import { loadAdminCategoryDetail, loadAdminCategoryTree } from "@/lib/admin/load-category-detail";
-import { getAdminLotList, getAdminSalesList } from "@/lib/data/http/admin.server";
-import { getAdminSubmissions } from "@/lib/data/http/submissions.server";
+import { loadAdminCategoryOverviewPage } from "@/lib/admin/categories/load-category-overview-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -16,29 +10,21 @@ type Props = {
 export default async function AdminCategoryOverviewPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const [category, allCategories, previewLots, previewSales, previewSubmissions] =
-    await Promise.all([
-      loadAdminCategoryDetail(id),
-      loadAdminCategoryTree(),
-      getAdminLotList({ categoryId: id, limit: 3 }).catch(() => []),
-      getAdminSalesList({ categoryId: id, limit: 3 }).catch(() => []),
-      getAdminSubmissions({ categoryId: id, limit: 3 }).catch(() => ({ rows: [], total: 0 })),
-    ]);
-  const directChildCount = categoryDirectChildrenOf(id, allCategories).length;
-  const descendantCount = categoryDescendantsOf(id, allCategories).length;
+  const page = await loadAdminCategoryOverviewPage(id);
 
   return (
     <>
       <CatalogDetailActionError error={sp.error} title="Could not save category" />
       <CategoryOverviewTab
         categoryId={id}
-        category={category}
-        allCategories={allCategories}
-        directChildCount={directChildCount}
-        descendantCount={descendantCount}
-        previewLots={previewLots}
-        previewSales={previewSales}
-        previewSubmissions={previewSubmissions.rows}
+        category={page.category}
+        allCategories={page.allCategories}
+        directChildCount={page.directChildCount}
+        descendantCount={page.descendantCount}
+        previewLots={page.previewLots}
+        previewSales={page.previewSales}
+        previewSubmissions={page.previewSubmissions}
+        activityEvents={page.activityEvents}
       />
     </>
   );

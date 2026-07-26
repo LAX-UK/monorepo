@@ -27,7 +27,7 @@ function toExportRow(row: AdminSaleRegistrationRow): Record<string, string> {
   };
 }
 
-/** Client-side CSV export for the sale registrations table (Figma Export register). */
+/** Client-side CSV export for the sale registrations table. */
 export function downloadSaleRegistrationsCsv(
   rows: readonly AdminSaleRegistrationRow[],
   saleTitle: string,

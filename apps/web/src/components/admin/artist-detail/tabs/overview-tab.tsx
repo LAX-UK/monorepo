@@ -3,13 +3,19 @@ import {
   CatalogDetailSection,
   CatalogDetailSummaryStrip,
   CatalogDetailTabPanel,
+  DetailBoardKpiStrip,
 } from "@/components/admin/catalog";
+import { ActivitySnapshotRail, RelatedEntitiesRail } from "@/components/admin/detail-rail";
 import { MediaImage } from "@/components/ui/media-image";
-import { buildArtistSummaryItems } from "@/lib/admin/build-artist-summary-items";
+import { domainEventLabel } from "@/lib/admin/domain-event-labels";
+import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
+import { buildArtistOverviewViewModel } from "@/lib/data/view-models/artist-overview.vm";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
+import { artistPath } from "@/lib/seo/url";
 import { type ArtistProfile, getCreatorKindConfig } from "@auction/types";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
+import { ExternalLink, GitMerge } from "lucide-react";
 import Link from "next/link";
 
 type Props = {
@@ -17,10 +23,17 @@ type Props = {
   artist: ArtistProfile;
   lotCount: number;
   duplicateCount: number;
+  activityEvents?: readonly AdminDomainEventRow[];
 };
 
-export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }: Props) {
-  const summaryItems = buildArtistSummaryItems(artistId, artist, lotCount, duplicateCount);
+export function ArtistOverviewTab({
+  artistId,
+  artist,
+  lotCount,
+  duplicateCount,
+  activityEvents = [],
+}: Props) {
+  const vm = buildArtistOverviewViewModel(artistId, artist, lotCount, duplicateCount);
   const portraitSrc = resolveMediaSrc(artist.portraitUrl);
 
   const kindConfig = getCreatorKindConfig(artist.kind);
@@ -42,9 +55,32 @@ export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }
       </div>
     ) : null;
 
+  const publicHref = artistPath({ id: artist.id, name: artist.displayName });
+  const related = [
+    ...(artist.status === "merged_into" && artist.mergedIntoArtistId
+      ? [
+          {
+            id: artist.mergedIntoArtistId,
+            kind: "Survivor",
+            label: "Merged into profile",
+            href: `/admin/artists/${artist.mergedIntoArtistId}`,
+            icon: <GitMerge className="size-4" aria-hidden />,
+          },
+        ]
+      : []),
+    {
+      id: "public",
+      kind: "Public",
+      label: "Public profile",
+      href: publicHref,
+      icon: <ExternalLink className="size-4" aria-hidden />,
+    },
+  ];
+
   return (
     <CatalogDetailTabPanel framed={false}>
-      <CatalogDetailSummaryStrip items={summaryItems} />
+      <DetailBoardKpiStrip ariaLabel="Artist catalogue" tiles={vm.kpiTiles} />
+      <CatalogDetailSummaryStrip items={vm.summaryItems} />
 
       <CatalogDetailSection title="Profile">
         {mergedBanner}
@@ -183,6 +219,25 @@ export function ArtistOverviewTab({ artistId, artist, lotCount, duplicateCount }
           </div>
         </Surface>
       </CatalogDetailSection>
+
+      {related.length > 0 ? (
+        <CatalogDetailSection title="Related">
+          <RelatedEntitiesRail items={related} />
+        </CatalogDetailSection>
+      ) : null}
+
+      {activityEvents.length > 0 ? (
+        <CatalogDetailSection title="Recent activity">
+          <ActivitySnapshotRail
+            events={activityEvents.map((e) => ({
+              id: e.id,
+              label: domainEventLabel(e.eventType),
+              at: e.occurredAt.toISOString(),
+              actor: e.actorUserId,
+            }))}
+          />
+        </CatalogDetailSection>
+      ) : null}
     </CatalogDetailTabPanel>
   );
 }

@@ -1,16 +1,16 @@
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
-import { shouldShowRadarRow } from "@/features/saleroom/lib/merge-operations-snapshot";
-import type { RadarRowVM } from "@/features/saleroom/types/staff-saleroom.vm";
-import type { AdminSaleOperationsSnapshot } from "@/lib/data/http/admin.server";
-import type { SaleDeliveryMode } from "@auction/types";
+import {
+  type OnsiteSalesRadarRow,
+  mapOperationsSnapshotToRadarRow,
+} from "@/lib/admin/saleroom/map-operations-snapshot-to-radar-row";
 import { LiveBadge } from "@auction/ui/components/live-badge";
 import { Surface } from "@auction/ui/components/surface";
-import { isSaleroomDeliveryMode } from "@auction/validators";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-export type OnsiteSalesRadarRow = RadarRowVM;
+export type { OnsiteSalesRadarRow };
+export { mapOperationsSnapshotToRadarRow };
 
 type Props = {
   rows: OnsiteSalesRadarRow[];
@@ -95,46 +95,3 @@ export function SaleroomSalesRadarWidget({ rows }: Props) {
 
 /** @deprecated Use SaleroomSalesRadarWidget */
 export const OnsiteSalesRadarWidget = SaleroomSalesRadarWidget;
-
-export function mapOperationsSnapshotToRadarRow(
-  snapshot: AdminSaleOperationsSnapshot,
-): OnsiteSalesRadarRow | null {
-  const deliveryMode = snapshot.sale.deliveryMode as SaleDeliveryMode;
-  if (!isSaleroomDeliveryMode(deliveryMode)) {
-    return null;
-  }
-
-  const pendingRegistrations = snapshot.registrations.pending;
-  const pendingTelephone = snapshot.telephoneBookings.requested;
-  const inProgressTelephone = snapshot.telephoneBookings.inProgress;
-  const sessionStatus = snapshot.saleroomSession?.status ?? null;
-
-  if (
-    !shouldShowRadarRow({
-      deliveryMode,
-      pendingRegistrations,
-      pendingTelephone,
-      inProgressTelephone,
-      sessionStatus,
-    })
-  ) {
-    return null;
-  }
-
-  const isLiveSession = sessionStatus === "live" || sessionStatus === "paused";
-  const needsClosing = isLiveSession && snapshot.sale.status === "ended";
-
-  return {
-    saleId: snapshot.sale.id,
-    title: snapshot.sale.title,
-    status: snapshot.sale.status,
-    deliveryMode,
-    pendingRegistrations,
-    pendingTelephone,
-    inProgressTelephone,
-    sessionStatus,
-    currentLotTitle: snapshot.saleroomSession?.currentLotTitle ?? null,
-    isLiveSession,
-    needsClosing,
-  };
-}

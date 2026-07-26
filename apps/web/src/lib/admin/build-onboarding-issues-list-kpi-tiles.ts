@@ -1,5 +1,5 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminOnboardingIssuesLensSummary } from "@/lib/data/http/admin-onboarding-issues.shared";
 import { toApiOnboardingTab } from "@/lib/data/http/admin-onboarding-issues.shared";
 import type { OnboardingTabId } from "@/lib/data/view-models/admin-onboarding-issues.vm";

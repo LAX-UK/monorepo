@@ -2,6 +2,7 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { legalEntityColumns } from "@/components/admin/legal-entities-board/columns";
@@ -12,7 +13,6 @@ import { formatLegalEntityKindSubkind } from "@/lib/admin/legal-entity-list-pres
 import type { AdminLegalEntityDetailBundle } from "@/lib/admin/load-admin-legal-entity-detail";
 import { buildPeopleDetailHref } from "@/lib/admin/people/people-detail-href";
 import type { AdminLegalEntityListRow } from "@/lib/data/http/admin-legal-entities.shared";
-import { cn } from "@auction/ui";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { useMemo } from "react";
@@ -57,11 +57,7 @@ export function AdminLegalEntitiesBoard({
 
   return (
     <>
-      <div
-        className={cn(
-          "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-        )}
-      >
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -102,7 +98,7 @@ export function AdminLegalEntitiesBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
       <Sheet open={drawerOpen} onOpenChange={(open) => !open && onCloseDrawer()}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">
           {preview ? (

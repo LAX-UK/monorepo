@@ -1,12 +1,10 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { OnsiteEventAdminPanel } from "@/components/admin/event-rsvps/onsite-event-admin-panel";
 import { OnsiteEventRefreshOnReturn } from "@/components/admin/event-rsvps/onsite-event-refresh-on-return";
+import { OperationsDetailShell } from "@/components/admin/operations-detail-shell";
+import { loadAdminEventRsvpDetailPage } from "@/lib/admin/events/load-event-rsvp-detail-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
-import {
-  getAdminOnsiteEventDetail,
-  getAdminOnsiteEventRsvps,
-} from "@/lib/data/http/onsite-event.server";
+import { getAdminOnsiteEventDetail } from "@/lib/data/http/onsite-event.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -28,45 +26,15 @@ export default async function AdminOnsiteEventPage({ params, searchParams }: Pro
   const { slug } = await params;
   const sp = await searchParams;
   const error = safeDecodeAdminErrorParam(sp.error);
+  const model = await loadAdminEventRsvpDetailPage({ slug });
 
-  let detail: Awaited<ReturnType<typeof getAdminOnsiteEventDetail>> = null;
-  let rsvps: Awaited<ReturnType<typeof getAdminOnsiteEventRsvps>> = [];
-  let venueDayCounts: {
-    rsvped: number;
-    galaCheckedIn: number;
-    salePresent: number;
-    paddled: number;
-  } | null = null;
-  let loadError: string | null = null;
+  if (model.notFound) notFound();
 
-  try {
-    detail = await getAdminOnsiteEventDetail(slug);
-    if (!detail) notFound();
-    try {
-      rsvps = await getAdminOnsiteEventRsvps(slug);
-    } catch (e) {
-      loadError = e instanceof Error ? e.message : "Could not load RSVPs.";
-    }
-    if (detail.saleId) {
-      try {
-        const linked = await getAdminExpectedGuests(detail.saleId);
-        venueDayCounts = linked.counts;
-      } catch {
-        // Non-fatal — RSVP list still renders.
-      }
-    }
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load onsite event data.";
-  }
-
-  if (!detail) {
+  if (!model.detail) {
     return (
-      <div className="space-y-4">
-        <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface">
-          {slug}
-        </h1>
-        <AdminListAlert>{loadError ?? "Could not load onsite event data."}</AdminListAlert>
-      </div>
+      <OperationsDetailShell slug={slug} title={slug} description="Onsite event">
+        <AdminListAlert>{model.loadError ?? "Could not load onsite event data."}</AdminListAlert>
+      </OperationsDetailShell>
     );
   }
 
@@ -75,16 +43,23 @@ export default async function AdminOnsiteEventPage({ params, searchParams }: Pro
       <Suspense fallback={null}>
         <OnsiteEventRefreshOnReturn />
       </Suspense>
-      <OnsiteEventAdminPanel
+      <OperationsDetailShell
         slug={slug}
-        title={detail.title}
-        segmentOptions={detail.segmentOptions}
-        micrositeUrl={detail.micrositeUrl}
-        saleId={detail.saleId}
-        venueDayCounts={venueDayCounts}
-        rsvps={rsvps}
-        error={error ?? loadError}
-      />
+        title={model.detail.title}
+        description="Guest RSVPs, pass delivery, and arrival tracking."
+      >
+        <OnsiteEventAdminPanel
+          slug={slug}
+          title={model.detail.title}
+          segmentOptions={model.detail.segmentOptions}
+          micrositeUrl={model.detail.micrositeUrl}
+          saleId={model.detail.saleId}
+          venueDayCounts={model.venueDayCounts}
+          rsvps={model.rsvps}
+          error={error ?? model.loadError}
+          chromeless
+        />
+      </OperationsDetailShell>
     </>
   );
 }

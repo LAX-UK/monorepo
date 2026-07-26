@@ -1,6 +1,5 @@
 import { CategoryLotsTab } from "@/components/admin/category-detail/tabs/children-lots-tabs";
-import { loadAdminCategoryDetail } from "@/lib/admin/load-category-detail";
-import { getAdminLotList } from "@/lib/data/http/admin.server";
+import { loadAdminCategoryLotsPage } from "@/lib/admin/categories/load-category-lots-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -8,8 +7,7 @@ type Props = {
 
 export default async function AdminCategoryLotsPage({ params }: Props) {
   const { id } = await params;
-  const category = await loadAdminCategoryDetail(id);
-  const lots = await getAdminLotList({ categoryId: id, limit: 50 }).catch(() => []);
+  const page = await loadAdminCategoryLotsPage(id);
 
-  return <CategoryLotsTab lots={lots} totalCount={category.usage.lots} />;
+  return <CategoryLotsTab lots={page.lots} totalCount={page.totalCount} />;
 }

@@ -78,7 +78,7 @@ const baseSubmission = {
 >;
 
 describe("SubmissionReviewWorkspace", () => {
-  it("renders Figma-aligned drawer sections without duplicating the header title", () => {
+  it("renders drawer sections without duplicating the header title", () => {
     const vm = buildFixtureVm();
 
     renderWithViewer(

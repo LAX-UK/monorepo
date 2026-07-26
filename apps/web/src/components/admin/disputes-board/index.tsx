@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { disputeColumns } from "@/components/admin/disputes-board/columns";
@@ -31,7 +32,7 @@ export function AdminDisputesBoard({ rows, pagination }: Props) {
 
   return (
     <>
-      <div className="overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]">
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -70,7 +71,7 @@ export function AdminDisputesBoard({ rows, pagination }: Props) {
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
 
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">

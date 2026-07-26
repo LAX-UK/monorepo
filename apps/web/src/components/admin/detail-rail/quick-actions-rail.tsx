@@ -1,18 +1,10 @@
 "use client";
 
 import { RailSection } from "@/components/admin/detail-rail/rail-section";
+import type { QuickActionItem } from "@/lib/admin/detail-rail/quick-action.types";
 import { Button } from "@auction/ui/components/button";
-import type { ReactNode } from "react";
 
-export type QuickActionItem = {
-  id: string;
-  label: string;
-  onClick?: () => void;
-  href?: string;
-  variant?: "default" | "secondary" | "outline" | "ghost" | "destructive";
-  disabled?: boolean;
-  icon?: ReactNode;
-};
+export type { QuickActionItem };
 
 type Props = {
   actions: readonly QuickActionItem[];

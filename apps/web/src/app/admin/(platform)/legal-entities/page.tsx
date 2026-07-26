@@ -2,9 +2,9 @@ import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListPreviewDegradedAlert } from "@/components/admin/admin-list-preview-degraded-alert";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { AdminLegalEntitiesBoardContainer } from "@/components/admin/legal-entities-board/container";
 import { LegalEntitiesFilterToolbar } from "@/components/admin/legal-entities/legal-entities-filter-toolbar";
-import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import {
   buildLegalEntitiesListKpiTiles,
@@ -51,7 +51,7 @@ export default async function AdminLegalEntitiesPage({ searchParams }: Props) {
   ] as const;
 
   return (
-    <PeopleListShell
+    <CatalogListShell
       title="Legal entities"
       description="Browse organisation and selling entities. Filter by status, kind, or Stripe requirements."
       hasFilters={model.hasFilters}
@@ -101,18 +101,6 @@ export default async function AdminLegalEntitiesPage({ searchParams }: Props) {
           />
         ) : null
       }
-      view={
-        !loadError && rows.length > 0 ? (
-          <AdminLegalEntitiesBoardContainer
-            rows={rows}
-            stripeLens={model.stripeLens}
-            selectedEntityId={model.selectedEntityId}
-            preview={preview}
-            listReturnTarget={model.listReturnTarget}
-            pagination={pagination}
-          />
-        ) : null
-      }
       empty={
         !loadError && rows.length === 0 ? (
           <FilterEmptyState
@@ -130,6 +118,17 @@ export default async function AdminLegalEntitiesPage({ searchParams }: Props) {
         ) : null
       }
       pagination={null}
-    />
+    >
+      {!loadError && rows.length > 0 ? (
+        <AdminLegalEntitiesBoardContainer
+          rows={rows}
+          stripeLens={model.stripeLens}
+          selectedEntityId={model.selectedEntityId}
+          preview={preview}
+          listReturnTarget={model.listReturnTarget}
+          pagination={pagination}
+        />
+      ) : null}
+    </CatalogListShell>
   );
 }

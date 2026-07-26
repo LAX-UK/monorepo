@@ -1,5 +1,5 @@
 import { OnsiteEventForm } from "@/components/admin/event-rsvps/onsite-event-form";
-import { loadSaleroomSalesForPicker } from "@/lib/admin/load-saleroom-sales-picker";
+import { loadAdminEventRsvpCreatePage } from "@/lib/admin/events/load-event-rsvp-create-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
@@ -9,6 +9,6 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 export default async function AdminCreateOnsiteEventPage() {
-  const saleroomSales = await loadSaleroomSalesForPicker();
+  const { saleroomSales } = await loadAdminEventRsvpCreatePage();
   return <OnsiteEventForm mode="create" saleroomSales={saleroomSales} />;
 }

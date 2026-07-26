@@ -1,3 +1,4 @@
+import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { SofNextActionCallout } from "@/components/admin/compliance-sof-board/sof-next-action-callout";
 import { SofReopenButton } from "@/components/admin/compliance-sof-board/sof-reopen-button";
@@ -17,12 +18,26 @@ type Props = {
   currentUserId: string;
 };
 
-export function SofCaseContextRail({ row, detail, canTriage, canDecide, currentUserId }: Props) {
+/** Full-width review workflow controls (formerly the SoF context rail). */
+export function SofCaseReviewActionsSection({
+  row,
+  detail,
+  canTriage,
+  canDecide,
+  currentUserId,
+}: Props) {
   const readOnly = row.status !== "pending";
   const documentsAlreadyRequested = detail.documentRequest.requestedAt != null;
 
   return (
-    <div className="space-y-4">
+    <section
+      aria-labelledby="sof-review-actions-title"
+      className="space-y-4 rounded-xl border border-border-hairline bg-surface-container-low/60 p-5"
+    >
+      <AdminSectionLabel id="sof-review-actions-title" as="h2">
+        Review actions
+      </AdminSectionLabel>
+
       <SofNextActionCallout
         row={row}
         detail={detail}
@@ -70,6 +85,11 @@ export function SofCaseContextRail({ row, detail, canTriage, canDecide, currentU
           { label: "User ID", value: row.userId },
         ]}
       />
-    </div>
+    </section>
   );
+}
+
+/** @deprecated Use SofCaseReviewActionsSection */
+export function SofCaseContextRail(props: Props) {
+  return <SofCaseReviewActionsSection {...props} />;
 }

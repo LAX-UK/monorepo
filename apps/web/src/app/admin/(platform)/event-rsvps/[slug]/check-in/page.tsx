@@ -1,5 +1,6 @@
 import { OnsiteEventCheckInConsole } from "@/components/admin/event-rsvps/check-in-console";
-import { OnsiteEventBreadcrumbs } from "@/components/admin/event-rsvps/onsite-event-breadcrumbs";
+import { OperationsDetailShell } from "@/components/admin/operations-detail-shell";
+import { loadAdminEventRsvpCheckInPage } from "@/lib/admin/events/load-event-rsvp-check-in-page";
 import { getAdminOnsiteEventDetail } from "@/lib/data/http/onsite-event.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -18,13 +19,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function AdminOnsiteEventCheckInPage({ params }: Props) {
   const { slug } = await params;
-  const detail = await getAdminOnsiteEventDetail(slug).catch(() => null);
-  if (!detail) notFound();
+  const model = await loadAdminEventRsvpCheckInPage({ slug });
+  if (model.notFound) notFound();
 
   return (
-    <div className="space-y-6">
-      <OnsiteEventBreadcrumbs slug={slug} eventTitle={detail.title} current="check-in" />
-      <OnsiteEventCheckInConsole slug={slug} title={`${detail.title} · Check-in`} />
-    </div>
+    <OperationsDetailShell
+      slug={slug}
+      title={`${model.title} · Check-in`}
+      description="Scan passes, search guests, and mark arrivals."
+      eyebrow="Door check-in"
+    >
+      <OnsiteEventCheckInConsole slug={slug} title={`${model.title} · Check-in`} />
+    </OperationsDetailShell>
   );
 }

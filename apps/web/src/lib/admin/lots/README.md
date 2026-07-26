@@ -2,16 +2,16 @@
 
 Reference implementation #2 after Sales. Every lots surface follows the same layering as sales/payments.
 
-## Figma map
+## Route map
 
-| Frame | Node | Route / target |
-|---|---|---|
-| Lots list | `248:7007` | `/admin/lots` |
-| Lot overview | `261:20532` | `/admin/lots/[id]` |
-| Lot media | `263:8407` | `/admin/lots/[id]/images` |
-| Lot documents | `265:9266` | `/admin/lots/[id]/documents` |
-| Lot bids | `267:9434` | `/admin/lots/[id]/bids` |
-| Lot create | `117:2516` | `/admin/lots/new`, `/admin/lots/[id]/edit` |
+| Surface | Route / target |
+|---|---|
+| Lots list | `/admin/lots` |
+| Lot overview | `/admin/lots/[id]` |
+| Lot media | `/admin/lots/[id]/images` |
+| Lot documents | `/admin/lots/[id]/documents` |
+| Lot bids | `/admin/lots/[id]/bids` |
+| Lot create | `/admin/lots/new`, `/admin/lots/[id]/edit` |
 
 **Catalogue IA:** catalogue fields live on Overview and `/admin/lots/[id]/catalogue` redirects to
 the overview anchor. It is not a sixth navigation tab.
@@ -51,7 +51,7 @@ Satellite modes:
     → tab routes fetch readers → tab VMs → detail-board adapters
 ```
 
-Overview stack (Figma `261:20532`):
+Overview stack:
 
 ```
 CatalogKpiPeriodToggle → DetailBoardKpiStrip → DetailAttentionTable

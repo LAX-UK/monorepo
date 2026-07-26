@@ -1,56 +1,40 @@
-import { LegalEntityDetailShell } from "@/components/admin/legal-entities/legal-entity-detail-shell";
-import { parseAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
-import { statusLabel } from "@/lib/admin/legal-entity-list-presenter";
-import { loadAdminLegalEntityDetail } from "@/lib/admin/load-admin-legal-entity-detail";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
-import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import type { Metadata } from "next";
+import { LegalEntityOverviewTab } from "@/components/admin/legal-entities/tabs/overview-tab";
+import {
+  legalEntityDetailTabHref,
+  resolveLegalEntityRouteTab,
+} from "@/lib/admin/catalog/detail-tab-compat";
+import { loadAdminLegalEntityOverviewPage } from "@/lib/admin/legal-entities/load-legal-entity-overview-page";
+import { redirect } from "next/navigation";
 
-export async function generateMetadata({
-  params,
-}: {
+type Props = {
   params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  const entity = await getAdminLegalEntityById(id).catch(() => null);
-  return metadataForPrivate(
-    entity?.displayName ?? "Legal entity",
-    entity
-      ? `${entity.kind} / ${entity.subkind} · ${statusLabel(entity.status)}`
-      : "Legal entity detail",
-  );
-}
+  searchParams: Promise<{ tab?: string; returnTo?: string; error?: string; success?: string }>;
+};
 
-export default async function AdminLegalEntityDetailPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; success?: string; tab?: string; returnTo?: string }>;
-}) {
+export default async function AdminLegalEntityOverviewPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const backHref = parseAdminListReturnTarget(sp.returnTo, "/admin/legal-entities");
-  const error = safeDecodeAdminErrorParam(sp.error);
-  const success = safeDecodeAdminErrorParam(sp.success);
-  const activeTab =
-    sp.tab === "stripe" || sp.tab === "lifecycle" || sp.tab === "documents" || sp.tab === "activity"
-      ? sp.tab
-      : "overview";
+  const routeTab = resolveLegalEntityRouteTab(sp.tab);
+  if (routeTab !== "overview") {
+    const target = legalEntityDetailTabHref(id, routeTab);
+    const qs = new URLSearchParams();
+    if (sp.returnTo) qs.set("returnTo", sp.returnTo);
+    if (sp.error) qs.set("error", sp.error);
+    if (sp.success) qs.set("success", sp.success);
+    const suffix = qs.toString();
+    redirect(suffix ? `${target}?${suffix}` : target);
+  }
 
-  const { entity, creator, documents, activityEvents } = await loadAdminLegalEntityDetail(id);
-
+  const page = await loadAdminLegalEntityOverviewPage(id);
+  const pendingDocCount = page.documents.filter((d) => d.reviewStatus === "pending").length;
   return (
-    <LegalEntityDetailShell
-      entity={entity}
-      creator={creator}
-      activeTab={activeTab}
-      documents={documents}
-      activityEvents={activityEvents}
-      error={error}
-      success={success}
-      backHref={backHref}
+    <LegalEntityOverviewTab
+      entity={page.entity}
+      creator={page.creator}
+      health={page.health}
+      pendingDocCount={pendingDocCount}
+      activityEvents={page.activityEvents}
+      canViewActivity={page.canViewActivity}
     />
   );
 }

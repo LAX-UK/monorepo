@@ -1,6 +1,6 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminSubmissionsListSummary } from "@/lib/data/http/admin-submissions-summary.server";
 
 type Input = {
@@ -9,7 +9,7 @@ type Input = {
   qualityGapsOnPage?: number;
 };
 
-/** Figma-aligned 6-tile submissions list KPI band — snapshot sparklines (no trend API). */
+/** Six-tile submissions list KPI band — snapshot sparklines (no trend API). */
 export function buildSubmissionsListKpiTiles({
   summary,
   periodDays,

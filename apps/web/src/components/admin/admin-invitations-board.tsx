@@ -4,6 +4,8 @@ import { useAdminBulkSelectionActions } from "@/components/admin/admin-bulk-sele
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
+import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { InvitationExpiryCountdown } from "@/components/admin/invitation-expiry-countdown";
 import { InvitationRowActions } from "@/components/admin/invitation-row-actions";
 import { InvitationDrawerContent } from "@/components/admin/invitations-board/drawer";
@@ -16,6 +18,7 @@ import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.server";
 import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
 import { Button, Sheet, SheetContent } from "@auction/ui";
+import { Badge } from "@auction/ui/components/badge";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -184,16 +187,36 @@ export function AdminInvitationsBoard({
 
   return (
     <>
-      <AdminDataTable
-        ariaLabel="Invitations"
-        columns={tableColumns}
-        data={rows}
-        density={density}
-        enableRowSelection
-        getRowId={(row) => row.id}
-        rowSelection={rowSelection}
-        onRowSelectionChange={setRowSelection}
-      />
+      <CatalogBoardCard>
+        <CatalogBoardTableHeader
+          leading={
+            <>
+              <h2 className="font-headline text-base font-semibold text-on-surface sm:text-lg">
+                Invitations
+              </h2>
+              <Badge
+                variant="secondary"
+                className="h-6 min-w-6 rounded-full bg-secondary px-2 font-label text-xs font-medium text-on-secondary"
+              >
+                {rows.length}
+              </Badge>
+            </>
+          }
+        />
+        <div className="p-4 sm:p-6">
+          <AdminDataTable
+            ariaLabel="Invitations"
+            columns={tableColumns}
+            data={rows}
+            density={density}
+            enableRowSelection
+            getRowId={(row) => row.id}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            className="[&_table]:border-0"
+          />
+        </div>
+      </CatalogBoardCard>
       <Sheet
         open={!!selected}
         onOpenChange={(open) => {

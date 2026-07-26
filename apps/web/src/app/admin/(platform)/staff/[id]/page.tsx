@@ -1,12 +1,19 @@
-import { AdminUserCapabilitiesPanel } from "@/components/admin/admin-user-capabilities-panel";
-import { AdminUserDetailShell } from "@/components/admin/admin-user-detail-shell";
+import { AdminUserAccountControls } from "@/components/admin/admin-user-account-controls";
+import {
+  AdminUserCapabilitiesPanel,
+  STAFF_OVERVIEW_SECTION_COUNT,
+  countStaffCapabilities,
+} from "@/components/admin/admin-user-capabilities-panel";
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
+import { PeopleDetailShell } from "@/components/admin/people-detail-shell";
+import { PeopleOverviewTab } from "@/components/admin/people/people-overview-tab";
 import { parseAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
 import { loadAdminStaffDetail } from "@/lib/admin/load-admin-staff-detail";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import { getAdminUserById } from "@/lib/data/http/admin.server";
+import { buildPeopleOverviewViewModel } from "@/lib/data/view-models/people-overview.vm";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import type { UserStaffRole } from "@auction/types";
+import type { UserRole, UserStaffRole } from "@auction/types";
 import type { Metadata } from "next";
 
 type Props = {
@@ -29,9 +36,20 @@ export default async function AdminStaffDetailPage({ params, searchParams }: Pro
   const sp = await searchParams;
   const listHref = parseAdminListReturnTarget(sp.returnTo, "/admin/staff");
   const { user, canManageRoles, canModerate } = await loadAdminStaffDetail(id);
+  const staffRole = (user.staffRole as UserStaffRole | null) ?? null;
+  const permissionsCount = countStaffCapabilities(staffRole);
+  const overviewVm = buildPeopleOverviewViewModel({
+    summaryMetrics: {
+      memberSinceIso: user.createdAt,
+      lifetimeSpend: null,
+      lotsWon: null,
+      submissionsCount: null,
+    },
+    isStaff: true,
+  });
 
   return (
-    <AdminUserDetailShell
+    <PeopleDetailShell
       user={user}
       listHref={listHref}
       listLabel="Staff"
@@ -42,15 +60,29 @@ export default async function AdminStaffDetailPage({ params, searchParams }: Pro
         {
           id: "overview",
           label: "Overview",
-          content: <AdminUserProfilePanel user={user} />,
+          count: STAFF_OVERVIEW_SECTION_COUNT,
+          content: (
+            <PeopleOverviewTab kpiTiles={overviewVm.kpiTiles} ariaLabel="Staff summary">
+              <AdminUserProfilePanel user={user} />
+            </PeopleOverviewTab>
+          ),
         },
         {
           id: "permissions",
           label: "Permissions",
+          count: permissionsCount,
           content: (
-            <AdminUserCapabilitiesPanel
-              staffRole={(user.staffRole as UserStaffRole | null) ?? null}
-            />
+            <div className="space-y-6">
+              {canManageRoles ? (
+                <AdminUserAccountControls
+                  userId={user.id}
+                  role={user.role as UserRole}
+                  staffRole={staffRole}
+                  isStaff
+                />
+              ) : null}
+              <AdminUserCapabilitiesPanel staffRole={staffRole} />
+            </div>
           ),
         },
       ]}

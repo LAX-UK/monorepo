@@ -154,6 +154,7 @@ export function AdminStaffBoard({
       totalMatches={totalMatches}
       bulkOperations={bulkOperations}
       drawerTitle="Staff member"
+      boardTitle="Staff"
       tableAriaLabel="Staff directory"
       emptyComponent={
         <FilterEmptyState

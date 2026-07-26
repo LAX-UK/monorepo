@@ -1,7 +1,7 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminKpiTrendBundle } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminLotsListSummary } from "@/lib/data/http/admin-lots-summary.server";
 
@@ -12,7 +12,7 @@ type Input = {
   periodDays: AdminKpiPeriodDays;
 };
 
-/** Figma-aligned 6-tile lots list KPI band — every tile includes sparkline + delta rhythm. */
+/** Six-tile lots list KPI band — every tile includes sparkline + delta rhythm. */
 export function buildLotsListKpiTiles({
   summary,
   lotsTrend,

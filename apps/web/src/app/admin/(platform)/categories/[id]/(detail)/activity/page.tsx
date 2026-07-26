@@ -1,4 +1,5 @@
 import { CategoryActivityTab } from "@/components/admin/category-detail/tabs/activity-tab";
+import { loadAdminCategoryActivityPage } from "@/lib/admin/categories/load-category-activity-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -6,5 +7,7 @@ type Props = {
 
 export default async function AdminCategoryActivityPage({ params }: Props) {
   const { id } = await params;
-  return <CategoryActivityTab categoryId={id} />;
+  const page = await loadAdminCategoryActivityPage(id);
+
+  return <CategoryActivityTab categoryId={page.categoryId} events={page.events} />;
 }

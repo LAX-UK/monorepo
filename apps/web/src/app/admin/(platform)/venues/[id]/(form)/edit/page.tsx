@@ -5,7 +5,7 @@ import {
 } from "@/components/admin/catalog";
 import { AdminVenueForm } from "@/components/admin/venue-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { loadAdminVenueDetail } from "@/lib/admin/load-venue-detail";
+import { loadAdminVenueEditPage } from "@/lib/admin/venues/load-venue-edit-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
@@ -16,15 +16,15 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const detail = await loadAdminVenueDetail(id);
-  return metadataForPrivate(`Edit ${detail.venue.name}`, "Update venue details.");
+  const page = await loadAdminVenueEditPage(id);
+  return metadataForPrivate(`Edit ${page.venue.name}`, "Update venue details.");
 }
 
 export default async function AdminVenueEditPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const detail = await loadAdminVenueDetail(id);
-  const { venue, salesUsingCount, legalEntityDisplayName } = detail;
+  const page = await loadAdminVenueEditPage(id);
+  const { venue, salesUsingCount, legalEntityDisplayName } = page;
 
   return (
     <CatalogFormShell
@@ -32,7 +32,7 @@ export default async function AdminVenueEditPage({ params, searchParams }: Props
         <CatalogBreadcrumbs
           segments={[
             { label: "Venues", href: "/admin/venues" },
-            { label: venue.name, href: `/admin/venues/${id}` },
+            { label: venue.name, href: page.detailHref },
             { label: "Edit" },
           ]}
         />
@@ -50,7 +50,7 @@ export default async function AdminVenueEditPage({ params, searchParams }: Props
           id: "cancel",
           label: "Cancel",
           variant: "secondary",
-          href: `/admin/venues/${id}`,
+          href: page.detailHref,
         },
       ]}
     >
@@ -60,7 +60,7 @@ export default async function AdminVenueEditPage({ params, searchParams }: Props
         venue={venue}
         legalEntityDisplayName={legalEntityDisplayName ?? null}
         salesUsingCount={salesUsingCount}
-        cancelHref={`/admin/venues/${id}`}
+        cancelHref={page.detailHref}
         isArchived={venue.status === "archived"}
       />
     </CatalogFormShell>

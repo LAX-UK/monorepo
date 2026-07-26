@@ -13,7 +13,7 @@ export type DetailNoticeBannerProps = {
   className?: string;
 };
 
-/** Figma-style warning notice for draft mode, connect, and setup banners. */
+/** Warning notice for draft mode, connect, and setup banners. */
 export function DetailNoticeBanner({
   title,
   message,

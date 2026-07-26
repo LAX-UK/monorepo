@@ -1,5 +1,5 @@
 import { buildAdminClientDetailTabs } from "@/components/admin/admin-client-detail-tabs";
-import { AdminUserDetailShell } from "@/components/admin/admin-user-detail-shell";
+import { PeopleDetailShell } from "@/components/admin/people-detail-shell";
 import { parseAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
 import { loadAdminClientDetail } from "@/lib/admin/load-admin-client-detail";
 import { getAdminUserById } from "@/lib/data/http/admin.server";
@@ -27,13 +27,12 @@ export default async function AdminClientDetailPage({ params, searchParams }: Pr
   const bundle = await loadAdminClientDetail(id);
 
   return (
-    <AdminUserDetailShell
+    <PeopleDetailShell
       user={bundle.user}
       listHref={listHref}
       listLabel="Clients"
       attentionItems={bundle.attentionItems}
       railContext={bundle.railContext}
-      summaryMetrics={bundle.summaryMetrics}
       legalEntitiesForActions={bundle.legalEntitiesForActions}
       showAccountControls={bundle.canManageRoles}
       showDangerZone={bundle.canModerate}

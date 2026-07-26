@@ -4,13 +4,7 @@ import { AdminLotForm } from "@/components/admin/lot-form";
 import { LotEditFormLayout } from "@/components/admin/lot-form/lot-edit-form-layout";
 import { AdminLotMarketingForm } from "@/components/admin/lot-marketing-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { loadAdminLotRecord } from "@/lib/admin/load-lot-detail";
-import { getLotFormAssignableSales } from "@/lib/admin/lot-form-sales";
-import { getAdminArtistList } from "@/lib/data/http/admin.server";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
-import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
-import { lotToAdminLotFormValues } from "@/lib/forms/schemas/admin-lot-defaults";
+import { loadAdminLotEditPage } from "@/lib/admin/lots/load-lot-edit-page";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -26,22 +20,13 @@ type Props = {
 
 export default async function AdminEditLotLayout({ params, children }: Props) {
   const { id } = await params;
-  const auction = await loadAdminLotRecord(id);
-  const [categories, salesResult, artistList, lotDocuments] = await Promise.all([
-    (async () => (await getServerCategoryReader()).tree())(),
-    getLotFormAssignableSales(auction?.saleId).catch(() => getLotFormAssignableSales()),
-    getAdminArtistList({ includeArchived: false, limit: 200 }),
-    getServerLotDocuments(id),
-  ]);
-  const sales = salesResult.sales;
-  const artists = artistList.rows;
-  if (auction.status === "ended" || auction.status === "cancelled" || auction.status === "voided") {
-    redirect(`/admin/lots/${id}`);
+  const page = await loadAdminLotEditPage(id);
+
+  if (page.redirectTo) {
+    redirect(page.redirectTo);
   }
 
-  const isDraft = auction.status === "draft";
-  const canEditCore = isDraft || auction.status === "scheduled";
-  const englishOnlyAuctionsLocked = isEnglishOnlyAuctionsLocked();
+  const { auction, canEditCore, isDraft } = page;
 
   return (
     <Suspense fallback={<LotEditFormLayoutFallback />}>
@@ -69,11 +54,11 @@ export default async function AdminEditLotLayout({ params, children }: Props) {
                 <AdminLotForm
                   mode="edit"
                   lotId={id}
-                  defaultValues={lotToAdminLotFormValues(auction)}
-                  categories={categories}
-                  sales={sales}
-                  artists={artists}
-                  englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
+                  defaultValues={page.defaultValues}
+                  categories={page.categories}
+                  sales={page.sales}
+                  artists={page.artists}
+                  englishOnlyAuctionsLocked={page.englishOnlyAuctionsLocked}
                   htmlFormId={CATALOG_FORM_IDS.lot}
                   showArtistField={false}
                   lotEditSection="auction"
@@ -85,13 +70,13 @@ export default async function AdminEditLotLayout({ params, children }: Props) {
           <AdminLotMarketingForm
             lotId={id}
             marketingDetails={auction.marketingDetails}
-            artists={artists}
+            artists={page.artists}
             artistId={auction.artistId ?? null}
             htmlFormId={CATALOG_FORM_IDS.lotMarketing}
             lotEditSection="catalog"
           />
         }
-        documentsSection={<LotDocumentsTabBoard lotId={id} initialDocuments={lotDocuments} />}
+        documentsSection={<LotDocumentsTabBoard lotId={id} initialDocuments={page.lotDocuments} />}
       />
       {children}
     </Suspense>

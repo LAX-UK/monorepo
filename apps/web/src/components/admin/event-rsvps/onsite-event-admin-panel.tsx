@@ -26,6 +26,8 @@ type Props = {
   } | null;
   rsvps: OnsiteEventRsvpAdminRow[];
   error?: string | null;
+  /** When true, outer catalog shell owns breadcrumbs/header chrome. */
+  chromeless?: boolean;
 };
 
 type ArrivalFilter = "all" | "pending" | "arrived";
@@ -39,6 +41,7 @@ export function OnsiteEventAdminPanel({
   venueDayCounts = null,
   rsvps,
   error,
+  chromeless = false,
 }: Props) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
@@ -88,7 +91,9 @@ export function OnsiteEventAdminPanel({
 
   return (
     <div className="space-y-8">
-      <OnsiteEventBreadcrumbs slug={slug} eventTitle={title} current="rsvps" />
+      {!chromeless ? (
+        <OnsiteEventBreadcrumbs slug={slug} eventTitle={title} current="rsvps" />
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <OnsiteEventAdminActions
           slug={slug}

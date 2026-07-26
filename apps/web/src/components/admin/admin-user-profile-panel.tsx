@@ -1,6 +1,6 @@
-import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
+import { CatalogDetailTabCard } from "@/components/admin/catalog";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import {
   formatEmailDeliverabilityStatus,
@@ -13,22 +13,22 @@ import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import { formatAmlHoldReason } from "@/lib/admin/status-badge-variants";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
-import { Surface } from "@auction/ui/components/surface";
 import { formatPhoneDisplay } from "@auction/validators";
 import type { ReactNode } from "react";
 
-function ProfileSection({
+function ProfileCard({
   title,
+  description,
   children,
 }: {
   title: string;
+  description?: string;
   children: ReactNode;
 }) {
   return (
-    <Surface variant="quiet" padding="md" className="space-y-3">
-      <AdminSectionLabel>{title}</AdminSectionLabel>
+    <CatalogDetailTabCard title={title} {...(description ? { description } : {})}>
       {children}
-    </Surface>
+    </CatalogDetailTabCard>
   );
 }
 
@@ -43,9 +43,17 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
     Boolean(user.pendingNewEmail);
 
   return (
-    <div className="space-y-4">
-      <ProfileSection title="Identity">
+    <div className="space-y-6">
+      <ProfileCard title="Identity" description="Core profile information.">
         <dl className="grid gap-3 text-sm md:grid-cols-2">
+          <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">Full name</dt>
+            <dd>{user.name}</dd>
+          </div>
+          <div>
+            <dt className="font-label text-[10px] uppercase text-on-surface-variant">Email</dt>
+            <dd>{user.email}</dd>
+          </div>
           {mobileDisplay ? (
             <div>
               <dt className="font-label text-[10px] uppercase text-on-surface-variant">Mobile</dt>
@@ -66,9 +74,9 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
             </div>
           ) : null}
         </dl>
-      </ProfileSection>
+      </ProfileCard>
 
-      <ProfileSection title="Account">
+      <ProfileCard title="Account" description="Platform role and membership.">
         <dl className="grid gap-3 text-sm md:grid-cols-2">
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">Role</dt>
@@ -117,9 +125,9 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
             </div>
           ) : null}
         </dl>
-      </ProfileSection>
+      </ProfileCard>
 
-      <ProfileSection title="Verification">
+      <ProfileCard title="Verification" description="Identity and contact verification status.">
         <dl className="grid gap-3 text-sm md:grid-cols-2">
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">Email</dt>
@@ -177,9 +185,9 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
             </div>
           ) : null}
         </dl>
-      </ProfileSection>
+      </ProfileCard>
 
-      <ProfileSection title="Security">
+      <ProfileCard title="Security" description="Authentication and recovery settings.">
         <dl className="grid gap-3 text-sm md:grid-cols-2">
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">
@@ -195,7 +203,7 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
             </dd>
           </div>
         </dl>
-      </ProfileSection>
+      </ProfileCard>
 
       {hasAdvancedDetails ? (
         <CollapsibleSection title="Advanced details">

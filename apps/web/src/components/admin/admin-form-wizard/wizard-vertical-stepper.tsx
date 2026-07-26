@@ -49,7 +49,7 @@ function StepDivider() {
 }
 
 /**
- * Figma-style vertical wizard stepper for desktop sidebar layout.
+ * Vertical wizard stepper for desktop sidebar layout.
  * Reference: Admin Dashboard `82:764` / step component `84:1446`.
  */
 export function WizardVerticalStepper({

@@ -1,46 +1,31 @@
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
+import { CatalogKpiPeriodToggle } from "@/components/admin/catalog/catalog-kpi-period-toggle";
+import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { StaffHubShell } from "@/components/admin/catalog/staff-hub-shell";
+import { PersonalDashboardCustomizeSheet } from "@/components/admin/personal-dashboard/customize-sheet";
 import {
-  type OnsiteSalesRadarRow,
-  mapOperationsSnapshotToRadarRow,
-} from "@/components/admin/personal-dashboard/onsite-sales-radar-widget";
-import { PersonalDashboard } from "@/components/admin/personal-dashboard/personal-dashboard";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import type { AdminActivityRow, AdminAttentionRow } from "@/lib/admin/admin-home-types";
+  PersonalDashboard,
+  PersonalDashboardKpiBand,
+} from "@/components/admin/personal-dashboard/personal-dashboard";
 import { parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
-import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
-import { buildSyntheticAttentionRows } from "@/lib/admin/build-synthetic-attention-rows";
-import {
-  allowedDashboardWidgets,
-  canAccess,
-  hubQuickLinksFor,
-  isWidgetAllowed,
-} from "@/lib/admin/dashboard-access";
+import { allowedDashboardWidgets } from "@/lib/admin/dashboard-access";
 import {
   ADMIN_DASHBOARD_WIDGETS_COOKIE,
+  isDashboardWidgetVisible,
   parseDashboardWidgetsCookie,
 } from "@/lib/admin/dashboard-widgets.vm";
+import { loadAdminDashboardPage } from "@/lib/admin/load-admin-dashboard-page";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { getAdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
-import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import {
-  getAdminAttentionFeed,
-  getAdminFinanceIssues,
-  getAdminLotList,
-  getAdminMetricsLive,
-  getAdminMetricsToday,
-  getAdminSaleOperationsSnapshot,
-  getAdminSalesList,
-} from "@/lib/data/http/admin.server";
-import { formatDateTime, formatMoney } from "@/lib/ui/format";
-import {
-  FINANCE_ACCESS,
-  LOTS_ACCESS,
-  SALEROOM_ACCESS,
-  type UserRole,
-  type UserStaffRole,
-} from "@auction/types";
-import { isSaleroomDeliveryMode } from "@auction/validators";
+import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import type { UserRole, UserStaffRole } from "@auction/types";
+import { LabelCaps } from "@auction/ui";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
+
+export const metadata: Metadata = metadataForPrivate(
+  "Your dashboard",
+  "Trend-aware KPIs, attention items, anomalies, and saleroom pulse.",
+);
 
 export default async function AdminHomePage({
   searchParams,
@@ -55,161 +40,72 @@ export default async function AdminHomePage({
   const role = (user.role ?? "staff") as UserRole;
   const staffRole = (user.staffRole ?? null) as UserStaffRole | null;
 
-  const can = (req: Parameters<typeof canAccess>[2]) => canAccess(role, staffRole, req);
-
-  const canAccessLots = can(LOTS_ACCESS);
-  const canAccessFinance = can(FINANCE_ACCESS);
-  const canAccessSaleroom = can(SALEROOM_ACCESS);
-
   const rawWidgets = parseDashboardWidgetsCookie(
     jar.get(ADMIN_DASHBOARD_WIDGETS_COOKIE)?.value,
     staffRole,
   );
   const widgets = allowedDashboardWidgets(role, staffRole, rawWidgets);
 
-  let metrics = {
-    liveLots: 0,
-    endingWithinHour: 0,
-    draftLots: 0,
-    pendingSubmissions: 0,
-    stalePendingPayments: 0,
-    revenueToday: "0",
-  };
-  let bidsPerMinute = 0;
-  let activeLotIds: string[] = [];
-  let attention: AdminAttentionRow[] = [];
-  let recentLots: Awaited<ReturnType<typeof getAdminLotList>> = [];
-  let financeIssues: Awaited<ReturnType<typeof getAdminFinanceIssues>> | null = null;
-  let onsiteRadarRows: OnsiteSalesRadarRow[] = [];
-  let dashboardLoadWarning: string | null = null;
-  let trends: Awaited<ReturnType<typeof getAdminHomeKpiTrends>> = {
-    lots: { currentTotal: 0, priorTotal: 0, dailyCounts: [] },
-    submissions: { currentTotal: 0, priorTotal: 0, dailyCounts: [] },
-    payments: { currentTotal: 0, priorTotal: 0, dailyCounts: [] },
-  };
-
-  const results = await Promise.allSettled([
-    getAdminMetricsToday(),
-    getAdminMetricsLive(),
-    canAccessLots
-      ? getAdminLotList({ status: "active", limit: 20, sort: "endingAsc" })
-      : Promise.resolve([]),
-    getAdminAttentionFeed(),
-    canAccessLots ? getAdminLotList({ limit: 12, sort: "endingAsc" }) : Promise.resolve([]),
-    getAdminHomeKpiTrends(periodDays),
-    canAccessFinance ? getAdminFinanceIssues() : Promise.resolve(null),
-  ]);
-
-  const [metricsR, liveR, activeR, feedR, recentR, trendsR, financeR] = results;
-
-  if (metricsR.status === "fulfilled") {
-    metrics = metricsR.value;
-  } else {
-    dashboardLoadWarning = "Could not load dashboard metrics.";
-  }
-
-  if (liveR.status === "fulfilled") {
-    bidsPerMinute = liveR.value.bidsPerMinute;
-  }
-
-  if (activeR.status === "fulfilled") {
-    activeLotIds = activeR.value.map((a) => a.id);
-  } else if (canAccessLots) {
-    dashboardLoadWarning ??= "Could not load active lots.";
-  }
-
-  if (feedR.status === "fulfilled") {
-    attention = feedR.value.map((item) => ({
-      id: item.id,
-      title: item.title,
-      hint: item.hint,
-      href: item.kind === "lot_draft_past_start" ? "/admin/lots?lens=attention" : item.href,
-      ctaLabel: item.ctaLabel ?? "Open",
-    }));
-  }
-
-  if (recentR.status === "fulfilled") {
-    recentLots = recentR.value;
-  }
-
-  if (trendsR.status === "fulfilled") {
-    trends = trendsR.value;
-  }
-
-  if (financeR.status === "fulfilled") {
-    financeIssues = financeR.value;
-  } else if (canAccessFinance) {
-    dashboardLoadWarning ??= "Could not load finance dashboard alerts.";
-  }
-
-  const activity: AdminActivityRow[] = recentLots.slice(0, 10).map((l) => ({
-    id: l.id,
-    title: l.title,
-    meta: `${l.status} · ends ${formatDateTime(l.endTime)}`,
-    href: `/admin/lots/${l.id}`,
-    statusLabel: l.status,
-    winnerId: l.winnerId,
-    priceLabel: formatMoney(l.currentPrice),
-    endsLabel: formatDateTime(l.endTime),
-  }));
-
-  let navCounts = EMPTY_ADMIN_NAV_COUNTS;
-  try {
-    navCounts = await getAdminNavCounts();
-  } catch {
-    /* use empty */
-  }
-  const anomalies = detectAnomaliesFromNavCounts(navCounts, {
-    stalePendingPayments: metrics.stalePendingPayments,
-    pendingSubmissions: metrics.pendingSubmissions,
-    failedPayouts: financeIssues?.failedPayoutCount ?? 0,
-  });
-
-  const syntheticAttention = buildSyntheticAttentionRows(navCounts, role, staffRole);
-  const attentionForDashboard = [...syntheticAttention, ...attention];
-
-  if (canAccessSaleroom && isWidgetAllowed(role, staffRole, "onsite-radar")) {
-    try {
-      const onsiteSales = await getAdminSalesList({ limit: 12, status: "active" });
-      const onsiteCandidates = onsiteSales.filter((row) =>
-        isSaleroomDeliveryMode(row.sale.deliveryMode),
-      );
-      const snapshots = await Promise.all(
-        onsiteCandidates
-          .slice(0, 6)
-          .map((row) => getAdminSaleOperationsSnapshot(row.sale.id).catch(() => null)),
-      );
-      onsiteRadarRows = snapshots
-        .map((snapshot) => (snapshot ? mapOperationsSnapshotToRadarRow(snapshot) : null))
-        .filter((row): row is OnsiteSalesRadarRow => row != null);
-    } catch {
-      /* optional widget */
-    }
-  }
-
-  const activeSaleroomSessions = onsiteRadarRows.filter((row) => row.isLiveSession).length;
-
-  const hubLinks = hubQuickLinksFor(role, staffRole);
+  const dashboard = await loadAdminDashboardPage({ periodDays, role, staffRole, widgets });
+  const showKpiBand = isDashboardWidgetVisible(widgets, "kpi-band");
 
   return (
-    <AppScreen>
-      <PersonalDashboard
-        userName={user.name}
-        periodDays={periodDays}
-        widgets={widgets}
-        metrics={metrics}
-        trends={trends}
-        bidsPerMinute={bidsPerMinute}
-        activeLotIds={activeLotIds}
-        attention={attentionForDashboard}
-        activity={activity}
-        anomalies={anomalies}
-        onsiteRadarRows={onsiteRadarRows}
-        activeSaleroomSessions={activeSaleroomSessions}
-        loadWarning={dashboardLoadWarning}
-        staffRole={staffRole}
-        hubLinks={hubLinks}
-      />
-    </AppScreen>
+    <StaffHubShell
+      title="Your dashboard"
+      description="Trend-aware KPIs, attention items, anomalies, and saleroom pulse — layout saved on this device."
+      meta={<LabelCaps className="text-lot-orange">Admin · Personal</LabelCaps>}
+      primaryAction={<PersonalDashboardCustomizeSheet widgets={widgets} staffRole={staffRole} />}
+      postKpiToolbarEnd={<CatalogKpiPeriodToggle current={periodDays} />}
+      kpiStrip={
+        showKpiBand ? (
+          <PersonalDashboardKpiBand
+            periodDays={periodDays}
+            metrics={dashboard.metrics}
+            trends={dashboard.trends}
+            bidsPerMinute={dashboard.bidsPerMinute}
+          />
+        ) : null
+      }
+      mobileSummary={
+        showKpiBand ? (
+          <CatalogListMobileSummary
+            metrics={[
+              { id: "live", label: "Live lots", value: String(dashboard.metrics.liveLots) },
+              {
+                id: "payments",
+                label: "Stale payments",
+                value: String(dashboard.metrics.stalePendingPayments),
+              },
+              { id: "bids", label: "Bids/min", value: String(dashboard.bidsPerMinute) },
+            ]}
+          />
+        ) : null
+      }
+      errorAlert={
+        dashboard.loadWarning ? (
+          <AdminListAlert title="Some dashboard data could not load">
+            {dashboard.loadWarning}
+          </AdminListAlert>
+        ) : null
+      }
+      view={
+        <PersonalDashboard
+          userName={user.name}
+          periodDays={periodDays}
+          widgets={widgets}
+          metrics={dashboard.metrics}
+          trends={dashboard.trends}
+          bidsPerMinute={dashboard.bidsPerMinute}
+          activeLotIds={dashboard.activeLotIds}
+          attention={dashboard.attention}
+          activity={dashboard.activity}
+          anomalies={dashboard.anomalies}
+          onsiteRadarRows={dashboard.onsiteRadarRows}
+          activeSaleroomSessions={dashboard.activeSaleroomSessions}
+          hubLinks={dashboard.hubLinks}
+          includeKpiBand={false}
+        />
+      }
+    />
   );
 }

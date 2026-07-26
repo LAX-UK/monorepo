@@ -1,10 +1,11 @@
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import { type AccentTrack, accentHeroBorderClass } from "@/lib/dashboard/accent-track";
 import { cn } from "@auction/ui";
-import { KpiTile, type KpiTileProps } from "@auction/ui/components/kpi-tile";
+import { KpiTile } from "@auction/ui/components/kpi-tile";
 import { StatStrip } from "@auction/ui/components/stat-strip";
 import Link from "next/link";
 
-export type KpiRowTile = KpiTileProps & { id?: string; href?: string };
+export type { KpiRowTile };
 
 export type KpiRowProps = {
   tiles: readonly KpiRowTile[];

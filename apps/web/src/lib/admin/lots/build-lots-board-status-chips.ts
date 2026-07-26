@@ -1,7 +1,7 @@
-import type { FilterChip } from "@/components/admin/filter-chip-row";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { LotsListSearchParams } from "@/lib/admin/build-lots-list-page-model";
 import { adminLotListPath } from "@/lib/admin/catalog-routes";
+import type { FilterChip } from "@/lib/admin/filter-chip.types";
 
 export type LotsBoardQuickStatus = "all" | "live" | "withdraw" | "sold";
 
@@ -13,7 +13,7 @@ export function lotsBoardQuickStatus(sp: LotsListSearchParams): LotsBoardQuickSt
   return "all";
 }
 
-/** Table-card quick filter chips — All / Live / Withdraw / Sold (Figma). */
+/** Table-card quick filter chips — All / Live / Withdraw / Sold. */
 export function buildLotsBoardStatusChips(
   sp: LotsListSearchParams,
   active: LotsBoardQuickStatus,

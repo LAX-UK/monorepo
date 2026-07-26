@@ -1,6 +1,5 @@
 import { CategorySalesTab } from "@/components/admin/category-detail/tabs/children-lots-tabs";
-import { loadAdminCategoryDetail } from "@/lib/admin/load-category-detail";
-import { getAdminSalesList } from "@/lib/data/http/admin.server";
+import { loadAdminCategorySalesPage } from "@/lib/admin/categories/load-category-sales-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -8,8 +7,7 @@ type Props = {
 
 export default async function AdminCategorySalesPage({ params }: Props) {
   const { id } = await params;
-  const category = await loadAdminCategoryDetail(id);
-  const sales = await getAdminSalesList({ categoryId: id, limit: 50 }).catch(() => []);
+  const page = await loadAdminCategorySalesPage(id);
 
-  return <CategorySalesTab sales={sales} totalCount={category.usage.sales} />;
+  return <CategorySalesTab sales={page.sales} totalCount={page.totalCount} />;
 }

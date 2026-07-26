@@ -3,7 +3,6 @@ import {
   AdminHubQuickLinks,
 } from "@/components/admin/admin-hub-quick-links";
 import { AnomalyCalloutsWidget } from "@/components/admin/personal-dashboard/anomaly-callouts-widget";
-import { PersonalDashboardCustomizeSheet } from "@/components/admin/personal-dashboard/customize-sheet";
 import { GreetingWidget } from "@/components/admin/personal-dashboard/greeting-widget";
 import { MyQueueWidget } from "@/components/admin/personal-dashboard/my-queue-widget";
 import { OnsiteSalesRadarWidget } from "@/components/admin/personal-dashboard/onsite-sales-radar-widget";
@@ -11,7 +10,6 @@ import type { OnsiteSalesRadarRow } from "@/components/admin/personal-dashboard/
 import { RecentActivityWidget } from "@/components/admin/personal-dashboard/recent-activity-widget";
 import { SaleroomLiveWidget } from "@/components/admin/personal-dashboard/saleroom-live-widget";
 import { TrendKpiBandWidget } from "@/components/admin/personal-dashboard/trend-kpi-band-widget";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import type { AdminActivityRow, AdminAttentionRow } from "@/lib/admin/admin-home-types";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import type { AdminAnomaly } from "@/lib/admin/anomaly-detection";
@@ -23,8 +21,6 @@ import {
 import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
-import { LabelCaps } from "@auction/ui";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 
 type Props = {
   userName: string;
@@ -39,10 +35,27 @@ type Props = {
   anomalies: readonly AdminAnomaly[];
   onsiteRadarRows?: readonly OnsiteSalesRadarRow[];
   activeSaleroomSessions?: number;
-  loadWarning?: string | null;
   staffRole?: UserStaffRole | null;
   hubLinks?: readonly AdminHubQuickLink[];
+  /** When false, KPI band is rendered by StaffHubShell `kpiStrip`. */
+  includeKpiBand?: boolean;
 };
+
+export function PersonalDashboardKpiBand({
+  periodDays,
+  metrics,
+  trends,
+  bidsPerMinute,
+}: Pick<Props, "periodDays" | "metrics" | "trends" | "bidsPerMinute">) {
+  return (
+    <TrendKpiBandWidget
+      periodDays={periodDays}
+      metrics={metrics}
+      trends={trends}
+      bidsPerMinute={bidsPerMinute}
+    />
+  );
+}
 
 export function PersonalDashboard({
   userName,
@@ -57,9 +70,9 @@ export function PersonalDashboard({
   anomalies,
   onsiteRadarRows = [],
   activeSaleroomSessions = 0,
-  loadWarning = null,
-  staffRole = null,
+  staffRole: _staffRole = null,
   hubLinks = [],
+  includeKpiBand = true,
 }: Props) {
   const show = (id: DashboardWidgetState["id"]) => isDashboardWidgetVisible(widgets, id);
   const orderOf = (id: DashboardWidgetId) => widgets.find((w) => w.id === id)?.order ?? 999;
@@ -80,14 +93,15 @@ export function PersonalDashboard({
     {
       id: "kpi-band",
       order: orderOf("kpi-band"),
-      node: show("kpi-band") ? (
-        <TrendKpiBandWidget
-          periodDays={periodDays}
-          metrics={metrics}
-          trends={trends}
-          bidsPerMinute={bidsPerMinute}
-        />
-      ) : null,
+      node:
+        includeKpiBand && show("kpi-band") ? (
+          <PersonalDashboardKpiBand
+            periodDays={periodDays}
+            metrics={metrics}
+            trends={trends}
+            bidsPerMinute={bidsPerMinute}
+          />
+        ) : null,
     },
     {
       id: "queue-saleroom",
@@ -131,20 +145,6 @@ export function PersonalDashboard({
 
   return (
     <div className="space-y-8">
-      <DashboardPageHeader
-        title="Your dashboard"
-        meta={<LabelCaps className="text-lot-orange">Admin · Personal</LabelCaps>}
-        description="Trend-aware KPIs, attention items, anomalies, and saleroom pulse — layout saved on this device."
-        actions={<PersonalDashboardCustomizeSheet widgets={widgets} staffRole={staffRole} />}
-      />
-
-      {loadWarning ? (
-        <Alert variant="destructive">
-          <AlertTitle>Some dashboard data could not load</AlertTitle>
-          <AlertDescription>{loadWarning}</AlertDescription>
-        </Alert>
-      ) : null}
-
       {hubLinks.length > 0 ? (
         <AdminHubQuickLinks ariaLabel="Staff hub shortcuts" links={hubLinks} />
       ) : null}

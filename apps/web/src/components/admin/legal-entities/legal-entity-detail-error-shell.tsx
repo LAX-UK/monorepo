@@ -21,8 +21,6 @@ export function LegalEntityDetailErrorShell({
 
   return (
     <AdminEntityDetailShell
-      detailHeader
-      detailHeaderSticky={false}
       backHref="/admin/legal-entities"
       backLabel="Legal entities"
       title="Legal entity"

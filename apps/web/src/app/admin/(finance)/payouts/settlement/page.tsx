@@ -5,10 +5,10 @@ import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-lis
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { PayoutSettlementWorkspace } from "@/components/admin/payout-settlement-workspace";
 import { mapFinanceHubQuickLinks } from "@/lib/admin/finance-hub-links";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getFinanceAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminSettlementPreview } from "@/lib/data/http/admin-payouts.reader";
+import {
+  loadAdminSettlementPage,
+  loadSettlementPreview,
+} from "@/lib/admin/finance/load-settlement-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import type { Metadata } from "next";
@@ -18,26 +18,13 @@ export const metadata: Metadata = metadataForPrivate(
   "Create a payout from captured payments for one legal entity.",
 );
 
-async function loadSettlementPreview(legalEntityId: string) {
-  "use server";
-  return getAdminSettlementPreview(legalEntityId);
-}
-
 export default async function PayoutSettlementPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const sp = await searchParams;
-  const success = safeDecodeAdminErrorParam(sp.success);
-  const error = safeDecodeAdminErrorParam(sp.error);
-
-  let navCounts = EMPTY_ADMIN_NAV_COUNTS;
-  try {
-    navCounts = await getFinanceAdminNavCounts();
-  } catch {
-    /* use empty */
-  }
+  const { success, error, navCounts } = await loadAdminSettlementPage(sp);
 
   return (
     <CatalogListShell

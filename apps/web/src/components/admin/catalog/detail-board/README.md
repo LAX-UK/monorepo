@@ -27,7 +27,7 @@ Entity-agnostic presentation layer for catalog **detail tabs** (sale, lot, categ
 - `DetailCardGrid` — media/press cards
 - `DetailAttentionTable` — overview attention rows
 - `DetailActivityFeed` / `DetailStatCard` / `DetailSectionGrid`
-- `DetailNoticeBanner` — Figma warning cards
+- `DetailNoticeBanner` — warning cards
 - `DetailQualityGapCard` — field-level quality gap callouts (submission review, catalogue checks)
 - `DetailStatValue` — supports `verified` checkmarks on entity table rows
 

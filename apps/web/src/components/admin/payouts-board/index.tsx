@@ -2,6 +2,7 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { payoutColumns } from "@/components/admin/payouts-board/columns";
@@ -12,7 +13,7 @@ import { useTableDensity } from "@/components/layout/density-provider";
 import { buildPayoutsDrawerHref } from "@/lib/admin/payouts-list-href";
 import type { AdminPayoutBoardRow } from "@/lib/data/view-models/admin-payouts-table.vm";
 import { formatDate } from "@/lib/ui/format";
-import { EntityList, Sheet, SheetContent, cn } from "@auction/ui";
+import { EntityList, Sheet, SheetContent } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
@@ -46,11 +47,7 @@ export function AdminPayoutsBoard({
 
   return (
     <>
-      <div
-        className={cn(
-          "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-        )}
-      >
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -95,7 +92,7 @@ export function AdminPayoutsBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
 
       <Sheet
         open={!!selected}

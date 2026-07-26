@@ -4,7 +4,7 @@ import { lotFormStepIntro } from "@/lib/admin/lot-form-step-copy";
 const LOT_SETUP_STEP_IDS = ["identity", "sale-seller", "catalogue", "review"] as const;
 export type LotSetupStepId = (typeof LOT_SETUP_STEP_IDS)[number];
 
-const FIGMA_SETUP_LABELS: Record<LotSetupStepId, string> = {
+const SETUP_STEP_LABELS: Record<LotSetupStepId, string> = {
   identity: "Lot identity",
   "sale-seller": "Sale & seller",
   catalogue: "Catalogue",
@@ -27,17 +27,17 @@ function buildStepSpec(id: LotSetupStepId, label: string, description: string): 
   };
 }
 
-/** Figma display steps for lot create wizard (4 steps). */
+/** Display steps for lot create wizard (4 steps). */
 export function buildLotSetupStepperSteps(): WizardStepSpec[] {
   return LOT_SETUP_STEP_IDS.map((id) =>
-    buildStepSpec(id, FIGMA_SETUP_LABELS[id], lotFormStepIntro(id).body),
+    buildStepSpec(id, SETUP_STEP_LABELS[id], lotFormStepIntro(id).body),
   );
 }
 
-/** Figma display steps for lot edit wizard (4 steps). */
+/** Display steps for lot edit wizard (4 steps). */
 export function buildLotEditStepperSteps(): WizardStepSpec[] {
   return LOT_SETUP_STEP_IDS.map((id) =>
-    buildStepSpec(id, FIGMA_SETUP_LABELS[id], lotFormStepIntro(id).body),
+    buildStepSpec(id, SETUP_STEP_LABELS[id], lotFormStepIntro(id).body),
   );
 }
 

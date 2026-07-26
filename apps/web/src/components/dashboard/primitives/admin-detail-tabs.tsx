@@ -24,10 +24,11 @@ export type AdminDetailTab = {
   content: ReactNode;
 };
 
-/** Legacy tab ids kept for deep-link backwards compatibility. */
+/** Legacy query-tab ids kept for deep-link backwards compatibility. */
 export const ADMIN_DETAIL_TAB_ALIASES: Record<string, string> = {
   bids: "won-lots",
   payouts: "payments",
+  lifecycle: "compliance",
 };
 
 export function resolveAdminDetailTabFromUrl(

@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import type {
@@ -17,7 +18,6 @@ import {
 import { adminUpdateCategoryNameFieldAction } from "@/lib/actions/admin/field-updates";
 import { notify } from "@/lib/ui/notify";
 import type { AdminCategory } from "@auction/types";
-import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
 import { Archive, ChevronRight, Pencil, Trash2 } from "lucide-react";
@@ -118,11 +118,7 @@ export function AdminCategoriesBoard({
   return (
     <>
       <CategoriesMobileList categories={categories} query={searchQuery} />
-      <div
-        className={cn(
-          "hidden overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)] lg:block",
-        )}
-      >
+      <CatalogBoardCard className="hidden lg:block">
         <CatalogBoardTableHeader
           leading={
             <>
@@ -169,7 +165,7 @@ export function AdminCategoriesBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
       {confirmAction ? (
         <TypedConfirmationDialog
           open

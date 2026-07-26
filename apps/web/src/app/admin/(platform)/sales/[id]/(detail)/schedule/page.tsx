@@ -1,5 +1,5 @@
 import { SaleScheduleTab } from "@/components/admin/sale-detail/tabs/schedule-tab";
-import { loadAdminSaleDetail } from "@/lib/admin/load-sale-detail";
+import { loadAdminSaleSchedulePage } from "@/lib/admin/sales/load-sale-schedule-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -7,6 +7,6 @@ type Props = {
 
 export default async function AdminSaleSchedulePage({ params }: Props) {
   const { id } = await params;
-  const { sale, lots } = await loadAdminSaleDetail(id);
-  return <SaleScheduleTab saleId={id} sale={sale} lots={lots} />;
+  const page = await loadAdminSaleSchedulePage(id);
+  return <SaleScheduleTab saleId={page.saleId} sale={page.sale} lots={page.lots} />;
 }

@@ -22,6 +22,9 @@ Email hex mirrors live in [`packages/branding/src/tokens.ts`](../packages/brandi
 ## Conventions (read before building UI)
 
 - **[Marketing design language](./marketing-design-language.md)** — marketing surface SSOT: layout, aspect ratios, saleroom chrome, overlay tone, component catalog
+- **[UI redesign program](./ui/redesign-program.md)** — phased rollout order (marketing → admin catalog → dashboard → saleroom)
+- **[View-model conventions](./ui/view-model-conventions.md)** — where presentation logic lives; `lib/admin` import rules
+- **[Token change checklist](./ui/token-change-checklist.md)** — rebrand touch points and visual baseline commands
 - **[Form controls](./ui/form-controls.md)** — `@auction/ui` pickers, RHF wrappers, native-control ban
 - **[Theme mode](./web/theme-mode.md)** — light / dark / Auto resolution
 - **[Forms (RHF + Zod)](./FORMS.md)** — server actions and validation patterns
@@ -73,7 +76,7 @@ Email hex mirrors live in [`packages/branding/src/tokens.ts`](../packages/brandi
 | Check | What it enforces |
 |-------|------------------|
 | `pnpm lint:ui-guardrails` | No raw `<button>`, native form controls, direct `@radix-ui/*`, `window.confirm` in `apps/web` |
-| `node scripts/check-lib-admin-boundaries.mjs` | Blocks new `lib/admin` → `@/components` imports |
+| `pnpm lint:lib-admin-boundaries` | Blocks `lib/admin` → `@/components` imports (also in `ci:verify`) |
 | `apps/web` lint | Native form controls, Query usage allowlist, session ownership |
 | `packages/branding` tests | Token drift vs `globals.css`; event `brand-tokens.css` alignment |
 | Playwright axe | Marketing smoke + admin a11y (WCAG 2a/2aa) |

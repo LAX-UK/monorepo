@@ -1,8 +1,7 @@
-import { AdminSectionLabel } from "@/components/admin/admin-section-label";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogDetailTabCard } from "@/components/admin/catalog";
 import type { AdminUserReadinessSnapshot } from "@/lib/admin/admin-user-readiness.vm";
 import { cn } from "@auction/ui";
-import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 const toneClass = {
@@ -15,9 +14,10 @@ export function AdminUserReadinessPanel({ snapshot }: { snapshot: AdminUserReadi
   const { identity, compliance, commerce, nextAction } = snapshot;
 
   return (
-    <Surface variant="quiet" padding="md" className="space-y-4">
-      <AdminSectionLabel>Client readiness</AdminSectionLabel>
-
+    <CatalogDetailTabCard
+      title="Client health & readiness"
+      description="Identity, compliance, and commerce readiness for this client."
+    >
       <div className={cn("rounded-lg border px-4 py-3", toneClass[nextAction.tone])}>
         <p className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
           Next action
@@ -30,7 +30,7 @@ export function AdminUserReadinessPanel({ snapshot }: { snapshot: AdminUserReadi
         </Link>
       </div>
 
-      <dl className="grid gap-3 text-sm md:grid-cols-3">
+      <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
         <div className="space-y-2 rounded-md border border-border-hairline/60 bg-surface-container-low/40 p-3">
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Identity</dt>
           <dd className="flex flex-wrap gap-2">
@@ -97,6 +97,6 @@ export function AdminUserReadinessPanel({ snapshot }: { snapshot: AdminUserReadi
           </dd>
         </div>
       </dl>
-    </Surface>
+    </CatalogDetailTabCard>
   );
 }

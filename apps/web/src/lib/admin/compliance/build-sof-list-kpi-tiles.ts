@@ -1,5 +1,5 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { SofListStatus } from "@/lib/admin/sof-list-query";
 import type { AdminSourceOfFundsListSummary } from "@/lib/data/http/compliance-sof.shared";
 

@@ -22,7 +22,7 @@ function mapEndedTone(label: string, tone: DotStatusPillTone): LotDotStatusPrese
   return { label, tone };
 }
 
-/** Figma-aligned dot status label + tone for lot rows (sale board + global list). */
+/** Dot status label + tone for lot rows (sale board + global list). */
 export function lotDotStatusPresentation(input: LotDotStatusInput): LotDotStatusPresentation {
   const { status, winnerId, context = "sale-board" } = input;
 

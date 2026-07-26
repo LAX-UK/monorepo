@@ -1,8 +1,7 @@
 import { CatalogDetailActionError } from "@/components/admin/catalog";
 import { SaleLotsTab } from "@/components/admin/sale-detail/tabs/lots-tab";
-import { loadAdminSaleDetail } from "@/lib/admin/load-sale-detail";
+import { loadAdminSaleLotsPage } from "@/lib/admin/sales/load-sale-lots-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
@@ -21,25 +20,17 @@ export default async function AdminSaleLotsPage({ params, searchParams }: Props)
     user.staffRole ?? null,
     SALES_ACCESS,
   );
-  const bundle = await loadAdminSaleDetail(id);
-  const canAddLots =
-    bundle.sale.status === "draft" ||
-    bundle.sale.status === "scheduled" ||
-    bundle.sale.status === "active";
-  const categories =
-    canAddLots && bundle.sale.status !== "draft"
-      ? await (await getServerCategoryReader()).tree().catch(() => [])
-      : [];
+  const page = await loadAdminSaleLotsPage(id);
 
   return (
     <>
       <CatalogDetailActionError error={sp.error} />
       <SaleLotsTab
-        saleId={id}
-        sale={bundle.sale}
-        lots={bundle.lots}
+        saleId={page.saleId}
+        sale={page.sale}
+        lots={page.lots}
         canManageAuction={canManageAuction}
-        categories={categories}
+        categories={page.categories}
         englishOnlyAuctionsLocked={isEnglishOnlyAuctionsLocked()}
       />
     </>

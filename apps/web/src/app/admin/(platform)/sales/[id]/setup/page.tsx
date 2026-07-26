@@ -1,25 +1,11 @@
 import { CatalogBreadcrumbs } from "@/components/admin/catalog";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
 import { SaleSetupWizard } from "@/components/admin/sale-form/sale-setup-wizard";
-import { firstString } from "@/lib/admin/admin-list-params";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { connectRequiredFromLots } from "@/lib/admin/connect-readiness";
-import {
-  loadAdminSaleDetail,
-  loadAdminSalePendingRegistrationCount,
-} from "@/lib/admin/load-sale-detail";
-import { type SaleSetupStepId, resolveFirstIncompleteStep } from "@/lib/admin/sale-setup";
+import { loadAdminSaleSetupPage } from "@/lib/admin/sales/load-sale-setup-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { getAdminArtistList } from "@/lib/data/http/admin.server";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getWriteContainer } from "@/lib/data/write-container.server";
-import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
-import {
-  buildCoverImagePreviewMap,
-  saleToAdminSaleFormValues,
-} from "@/lib/forms/schemas/admin-sale-defaults";
-import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { type UserRole, userHasAccessTo } from "@auction/types";
+import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import type { UserRole } from "@auction/types";
 import { redirect } from "next/navigation";
 
 type Props = {
@@ -32,50 +18,16 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
   const sp = await searchParams;
   const user = await requireAdminCapability(LOTS_ACCESS, `/admin/sales/${id}/setup`);
 
-  const bundle = await loadAdminSaleDetail(id);
-  const { sale, lots } = bundle;
+  const page = await loadAdminSaleSetupPage({
+    saleId: id,
+    step: sp.step,
+    role: user.role as UserRole,
+    staffRole: user.staffRole ?? null,
+  });
 
-  if (sale.status !== "draft") {
-    redirect(
-      `/admin/sales/${id}?error=${encodeURIComponent("Setup is only available for draft sales")}`,
-    );
+  if (page.redirectTo) {
+    redirect(page.redirectTo);
   }
-
-  const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
-  const canManageSale = userHasAccessTo(role, staffRole, SALES_ACCESS);
-  const canEditCatalog = userHasAccessTo(role, staffRole, LOTS_ACCESS);
-
-  const stepParam = firstString(sp.step)?.trim() as SaleSetupStepId | undefined;
-
-  const [categories, artistResult, venuesResult, pendingRegistrationCount, connectRequiredByLotId] =
-    await Promise.all([
-      (await getServerCategoryReader()).tree(),
-      getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
-      getWriteContainer()
-        .adminVenues.list({
-          ...(sale.createdByLegalEntityId ? { legalEntityId: sale.createdByLegalEntityId } : {}),
-        })
-        .catch(() => ({ ok: true as const, data: { venues: [], total: 0 }, status: 200 })),
-      loadAdminSalePendingRegistrationCount(id, sale),
-      Promise.resolve(connectRequiredFromLots(lots)),
-    ]);
-
-  const initialStep =
-    stepParam ??
-    resolveFirstIncompleteStep({
-      sale,
-      lots,
-      pendingRegistrationCount,
-      connectRequiredByLotId,
-    });
-
-  const defaultValues = saleToAdminSaleFormValues(sale);
-  const saleWithCovers = bundle.sale as typeof sale & { coverImagePresentedUrls?: string[] };
-  const previewUrlByKey = buildCoverImagePreviewMap(
-    sale.coverImages,
-    saleWithCovers.coverImagePresentedUrls ?? [],
-  );
 
   return (
     <CatalogFormShell
@@ -85,7 +37,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
           segments={[
             { label: "Admin", href: "/admin" },
             { label: "Sales", href: "/admin/sales" },
-            { label: sale.title, href: `/admin/sales/${id}` },
+            { label: page.sale.title, href: `/admin/sales/${id}` },
             { label: "Setup" },
           ]}
         />
@@ -100,19 +52,19 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
     >
       <SaleSetupWizard
         saleId={id}
-        initialStep={initialStep}
-        defaultValues={defaultValues}
-        sale={sale}
-        lots={lots}
-        categories={categories}
-        venues={venuesResult.ok ? venuesResult.data.venues : []}
-        artists={artistResult.rows}
-        englishOnlyAuctionsLocked={isEnglishOnlyAuctionsLocked()}
-        previewUrlByKey={previewUrlByKey}
-        canManageSale={canManageSale}
-        canEditCatalog={canEditCatalog}
-        pendingRegistrationCount={pendingRegistrationCount}
-        connectRequiredByLotId={connectRequiredByLotId}
+        initialStep={page.initialStep}
+        defaultValues={page.defaultValues}
+        sale={page.sale}
+        lots={page.lots}
+        categories={page.categories}
+        venues={page.venues}
+        artists={page.artists}
+        englishOnlyAuctionsLocked={page.englishOnlyAuctionsLocked}
+        previewUrlByKey={page.previewUrlByKey}
+        canManageSale={page.canManageSale}
+        canEditCatalog={page.canEditCatalog}
+        pendingRegistrationCount={page.pendingRegistrationCount}
+        connectRequiredByLotId={page.connectRequiredByLotId}
       />
     </CatalogFormShell>
   );

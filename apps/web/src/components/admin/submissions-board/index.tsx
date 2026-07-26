@@ -2,6 +2,7 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import type {
@@ -24,7 +25,6 @@ import {
 } from "@/lib/admin/submission-bulk-selection";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { CategoryNode } from "@auction/types";
-import { cn } from "@auction/ui";
 import { EntityList } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { useRouter } from "next/navigation";
@@ -105,11 +105,7 @@ export function AdminSubmissionsBoard({
 
   return (
     <div className="space-y-4">
-      <div
-        className={cn(
-          "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-        )}
-      >
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -177,7 +173,7 @@ export function AdminSubmissionsBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
       <BulkActionsToolbar
         selectedIds={selectedIds}
         operations={selectedBulkActionable ? bulkOperations : []}

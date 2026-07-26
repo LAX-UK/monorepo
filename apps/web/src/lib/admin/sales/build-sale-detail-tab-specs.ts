@@ -1,4 +1,4 @@
-import type { CatalogDetailTabSpec } from "@/components/admin/catalog/catalog-detail-tab-nav";
+import type { CatalogDetailTabSpec } from "@/lib/admin/catalog/catalog-detail-tab.types";
 import { saleDetailTabHref } from "@/lib/admin/sales/sale-detail-routes";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";

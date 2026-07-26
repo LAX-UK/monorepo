@@ -70,7 +70,7 @@ export type AdminFormWizardProps = {
   /** Custom mobile cancel (overrides static cancel href). */
   mobileCancelAction?: WizardMobileCancelAction | null;
   /**
-   * `sidebar`: form body left, vertical stepper right on lg+ (Figma sale wizard).
+   * `sidebar`: form body left, vertical stepper right on lg+ (sale wizard layout).
    * `default`: horizontal step chips above the form.
    */
   layout?: "default" | "sidebar";

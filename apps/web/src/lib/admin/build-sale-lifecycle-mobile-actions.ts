@@ -1,4 +1,3 @@
-import type { QuickActionItem } from "@/components/admin/detail-rail/quick-actions-rail";
 import {
   type CatalogNavAction,
   type CatalogPrimaryMetaAction,
@@ -10,6 +9,7 @@ import {
   adminSaleroomHref,
 } from "@/lib/admin/catalog-route-helpers";
 import type { CatalogMobileAction } from "@/lib/admin/catalog/types";
+import type { QuickActionItem } from "@/lib/admin/detail-rail/quick-action.types";
 
 export type SaleLifecycleActionKind = "publish" | "unpublish" | "markEnded" | "cancel" | "delete";
 

@@ -3,6 +3,7 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { LegalEntityHealthPanel } from "@/components/admin/legal-entities/legal-entity-health-panel";
+import { LegalEntityImpersonationButton } from "@/components/admin/legal-entities/legal-entity-impersonation-button";
 import { LegalEntitySummaryStrip } from "@/components/admin/legal-entities/legal-entity-summary-strip";
 import { formatLegalEntityKindSubkind } from "@/lib/admin/legal-entity-list-presenter";
 import type { AdminLegalEntityDetailBundle } from "@/lib/admin/load-admin-legal-entity-detail";
@@ -62,7 +63,12 @@ export function LegalEntityDrawerContent({ detail, listReturnTarget }: Props) {
 
       <AdminTechnicalIdDisclosure items={[{ label: "Legal entity ID", value: entity.id }]} />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <LegalEntityImpersonationButton
+          legalEntityId={entity.id}
+          displayName={entity.displayName}
+          className="min-h-11"
+        />
         <Button variant="outline" size="sm" className="min-h-11" asChild>
           <Link
             href={buildPeopleDetailHref(`/admin/legal-entities/${entity.id}`, listReturnTarget)}

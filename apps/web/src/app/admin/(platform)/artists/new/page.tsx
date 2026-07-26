@@ -1,8 +1,7 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
-import { parseScenarioParam } from "@/components/admin/artist-form/scenario-config";
 import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
+import { loadAdminArtistCreatePage } from "@/lib/admin/artists/load-artist-create-page";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import Link from "next/link";
 
 type Search = { ownerUserId?: string; displayName?: string; scenario?: string };
@@ -13,17 +12,7 @@ export default async function NewAdminArtistPage({
   searchParams: Promise<Search>;
 }) {
   const sp = await searchParams;
-  const ownerFromUrl = sp.ownerUserId?.trim() ?? "";
-  const displayFromUrl = sp.displayName?.trim() ?? "";
-  const ownerUserId = ownerFromUrl.length > 0 ? ownerFromUrl : null;
-  const initialScenario = parseScenarioParam(sp.scenario?.trim());
-  const categories = await (async () => {
-    try {
-      return await (await getServerCategoryReader()).tree();
-    } catch {
-      return [];
-    }
-  })();
+  const page = await loadAdminArtistCreatePage(sp);
 
   return (
     <CatalogFormShell
@@ -46,11 +35,11 @@ export default async function NewAdminArtistPage({
     >
       <AdminArtistForm
         mode="create"
-        initialScenario={initialScenario}
+        initialScenario={page.initialScenario}
         htmlFormId={CATALOG_FORM_IDS.artist}
-        categories={categories}
+        categories={page.categories}
         defaultValues={{
-          displayName: displayFromUrl,
+          displayName: page.displayName,
           kind: "artist",
           status: "approved",
           portraitUrl: "",
@@ -66,7 +55,7 @@ export default async function NewAdminArtistPage({
           foundedYear: "",
           dissolvedYear: "",
           websiteUrl: "",
-          ownerUserId,
+          ownerUserId: page.ownerUserId,
           featured: false,
           verified: false,
           archived: false,

@@ -179,12 +179,12 @@ Admin and integration settlement paths:
 
 | Area | Notes |
 |------|-------|
-| Card processing | Xero hosted invoices and manual capture/refund are implemented; no Stripe/other gateway/client secret yet. |
+| Card processing | Stripe Connect (seller onboarding, webhooks, payment intents) and Xero hosted invoices are implemented; see `docs/runbooks/stripe-connect-go-live.md` and `docs/runbooks/xero-stripe-payment-setup.md`. |
 | Bid retraction | Bids are final; no buyer/admin bid retraction flow is implemented. |
 | Dutch scheduling precision | Dutch decrements run in lifecycle processing; there is no separate per-decrement BullMQ job. |
 | Admin override breadth | Admin lot status overrides intentionally avoid moving lots back to active. |
-| Domain event projectors | Zoho and Xero projectors are scaffolded as no-op stubs; outbound API calls are **(Phase 2)**. See `docs/architecture/04-domain-events.md`. |
-| Lot lifecycle ownership | `lot-lifecycle` BullMQ scheduler runs in `apps/api` today; migrating it into `apps/worker` is **(Phase 2)**. |
+| Domain event projectors | Zoho and Xero projectors are **implemented** behind feature flags (`ZOHO_CRM_SYNC_MODE`, `XERO_PROJECTOR_MODE`; default `off`). See `docs/architecture/04-domain-events.md` and `docs/runbooks/async-delivery-phase-two.md`. |
+| Lot lifecycle ownership | Default owner is `apps/api` (`LIFECYCLE_EXECUTION_OWNER=api`). Worker path exists behind env; cutover staged per `docs/runbooks/worker-runtime-cutover.md`. |
 
 ## File Reference
 

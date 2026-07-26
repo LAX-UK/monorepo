@@ -3,6 +3,7 @@
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import type {
@@ -26,7 +27,6 @@ import { lotFilterAdapter } from "@/lib/admin/filters/lot-filter-adapter";
 import type { LotListSortKey } from "@/lib/admin/lots-list-sort";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
-import { cn } from "@auction/ui";
 import { EntityList } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import type { VisibilityState } from "@tanstack/react-table";
@@ -73,7 +73,7 @@ type Props = {
   listError: string | null;
   urlError: string | null;
   statusChips?: ReactNode;
-  /** Figma quick status segment (All / Live / Withdraw / Sold). */
+  /** Quick status segment (All / Live / Withdraw / Sold). */
   statusQuickFilter?: ReactNode;
   statusQuickFilterMobile?: ReactNode;
   filterControls?: CatalogTableFilterControlsBaseProps;
@@ -169,11 +169,7 @@ export function AdminLotsBoard({
   return (
     <div className="space-y-4">
       {listError ? <AdminListAlert title="Could not load lots">{listError}</AdminListAlert> : null}
-      <div
-        className={cn(
-          "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-        )}
-      >
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -244,7 +240,7 @@ export function AdminLotsBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
       <BulkActionsToolbar
         selectedIds={selectedIds}
         operations={bulkOperations}

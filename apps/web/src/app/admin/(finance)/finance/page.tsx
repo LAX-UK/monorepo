@@ -2,14 +2,12 @@ import { AdminAnomalyBanner } from "@/components/admin/admin-anomaly-banner";
 import { AdminFinanceKpiRows } from "@/components/admin/admin-finance-kpi-rows";
 import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
+import { StaffHubShell } from "@/components/admin/catalog/staff-hub-shell";
+import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
 import { mapFinanceHubQuickLinks } from "@/lib/admin/finance-hub-links";
-import { getFinanceAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminFinanceIssues } from "@/lib/data/http/admin.server";
+import { loadAdminFinanceHubPage } from "@/lib/admin/finance/load-finance-hub-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
@@ -19,29 +17,11 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 export default async function FinanceAdminHomePage() {
-  let financeIssues: Awaited<ReturnType<typeof getAdminFinanceIssues>> | null = null;
-  let financeIssuesLoadError: string | null = null;
-  try {
-    financeIssues = await getAdminFinanceIssues();
-  } catch (e) {
-    financeIssuesLoadError = e instanceof Error ? e.message : "Could not load finance KPI data.";
-    financeIssues = null;
-  }
-
-  let navCounts = EMPTY_ADMIN_NAV_COUNTS;
-  try {
-    navCounts = await getFinanceAdminNavCounts();
-  } catch {
-    /* use empty */
-  }
-
-  const anomalies = detectAnomaliesFromNavCounts(navCounts, {
-    failedPayouts: financeIssues?.failedPayoutCount ?? 0,
-  });
+  const { financeIssues, navCounts, anomalies, failedPayouts, loadError } =
+    await loadAdminFinanceHubPage();
 
   return (
-    <AdminListShell
-      layout="hub"
+    <StaffHubShell
       title="Finance"
       description="Payments, payouts, disputes, and accounting integrations."
       mobileSummary={
@@ -53,35 +33,41 @@ export default async function FinanceAdminHomePage() {
               value: String(navCounts.manualReviewCount),
             },
             { id: "disputes", label: "Open disputes", value: String(navCounts.disputesOpen) },
-            {
-              id: "payouts",
-              label: "Failed payouts",
-              value: String(financeIssues?.failedPayoutCount ?? navCounts.payoutsFailed),
-            },
+            { id: "payouts", label: "Failed payouts", value: String(failedPayouts) },
           ]}
         />
       }
+      kpiStrip={
+        financeIssues ? null : !loadError ? (
+          <AdminTrendKpiBand
+            ariaLabel="Finance nav counts"
+            tiles={[
+              buildSnapshotKpiTile("Manual review", navCounts.manualReviewCount, 30, {
+                compareHint: "Payments awaiting release",
+                semanticTone: navCounts.manualReviewCount > 0 ? "warning" : "default",
+              }),
+              buildSnapshotKpiTile("Open disputes", navCounts.disputesOpen, 30, {
+                compareHint: "Stripe dispute cases",
+                semanticTone: navCounts.disputesOpen > 0 ? "danger" : "default",
+              }),
+              buildSnapshotKpiTile("Failed payouts", failedPayouts, 30, {
+                compareHint: "Transfer or reconciliation failures",
+                semanticTone: failedPayouts > 0 ? "danger" : "default",
+              }),
+            ]}
+          />
+        ) : null
+      }
+      errorAlert={
+        loadError ? (
+          <AdminListAlert title="Could not load finance KPIs">{loadError}</AdminListAlert>
+        ) : null
+      }
       view={
         <div className="space-y-8">
-          {financeIssues ? (
-            <AdminFinanceKpiRows financeIssues={financeIssues} />
-          ) : !financeIssuesLoadError ? (
-            <AdminListKpiStrip
-              ariaLabel="Finance nav counts"
-              tiles={[
-                { label: "Manual review", value: navCounts.manualReviewCount },
-                { label: "Open disputes", value: navCounts.disputesOpen },
-                { label: "Failed payouts", value: navCounts.payoutsFailed },
-              ]}
-            />
-          ) : null}
+          {financeIssues ? <AdminFinanceKpiRows financeIssues={financeIssues} /> : null}
           {anomalies.length > 0 ? (
             <AdminAnomalyBanner anomalies={anomalies} storageKey="finance-home" />
-          ) : null}
-          {financeIssuesLoadError ? (
-            <AdminListAlert title="Could not load finance KPIs">
-              {financeIssuesLoadError}
-            </AdminListAlert>
           ) : null}
           <AdminHubQuickLinks
             ariaLabel="Finance quick links"

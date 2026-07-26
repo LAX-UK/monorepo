@@ -1,6 +1,5 @@
 import { LotDocumentsTabBoard } from "@/components/admin/lot-detail/lot-documents-tab-board";
-import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
-import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
+import { loadAdminLotDocumentsPage } from "@/lib/admin/lots/load-lot-documents-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -8,8 +7,7 @@ type Props = {
 
 export default async function AdminLotDocumentsPage({ params }: Props) {
   const { id } = await params;
-  await loadAdminLotDetail(id);
-  const documents = await getServerLotDocuments(id).catch(() => []);
+  const page = await loadAdminLotDocumentsPage(id);
 
-  return <LotDocumentsTabBoard lotId={id} initialDocuments={documents} />;
+  return <LotDocumentsTabBoard lotId={page.lotId} initialDocuments={page.documents} />;
 }

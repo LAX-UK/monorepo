@@ -1,5 +1,5 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminAmlListSummary } from "@/lib/data/http/compliance-aml.shared";
 
 export function buildAmlListKpiTiles(summary: AdminAmlListSummary): KpiRowTile[] {

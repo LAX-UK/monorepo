@@ -1,78 +1,111 @@
-import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
+import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { LegalEntityDetailContextRail } from "@/components/admin/legal-entities/legal-entity-detail-context-rail";
-import { LegalEntityDetailTabs } from "@/components/admin/legal-entities/legal-entity-detail-tabs";
-import { LegalEntitySummaryStrip } from "@/components/admin/legal-entities/legal-entity-summary-strip";
+import {
+  CatalogBreadcrumbs,
+  CatalogDetailMobileMeta,
+  CatalogDetailShell,
+  CatalogDetailTabNav,
+} from "@/components/admin/catalog";
+import { LegalEntitySupportActionsSection } from "@/components/admin/legal-entities/legal-entity-detail-context-rail";
+import { LegalEntityImpersonationButton } from "@/components/admin/legal-entities/legal-entity-impersonation-button";
+import { buildLegalEntityDetailTabSpecs } from "@/lib/admin/catalog/detail-tab-compat";
 import { formatLegalEntityKindSubkind } from "@/lib/admin/legal-entity-list-presenter";
+import type { AdminLegalEntityDetailBundle } from "@/lib/admin/load-admin-legal-entity-detail";
 import { relativeFromIso } from "@/lib/admin/relative-time";
-import type { AdminDomainEventRow } from "@/lib/data/http/admin-audit.schema";
-import type { AdminLegalEntityDocument } from "@/lib/data/http/admin.server";
+import { stripeRequirementsAttentionCountForEntity } from "@/lib/admin/stripe-connect-staff-presenter";
 import { formatDateTime } from "@/lib/ui/format";
-import type { LegalEntity } from "@auction/types";
-
-type CreatorInfo = {
-  id: string;
-  name: string;
-  email: string;
-} | null;
+import type { ReactNode } from "react";
 
 type Props = {
-  entity: LegalEntity;
-  creator: CreatorInfo;
-  activeTab: string;
-  documents?: AdminLegalEntityDocument[];
-  activityEvents?: AdminDomainEventRow[];
+  bundle: AdminLegalEntityDetailBundle;
+  backHref: string;
   error?: string | null;
   success?: string | null;
-  backHref?: string;
+  saleCount?: number;
+  children: ReactNode;
 };
 
 export function LegalEntityDetailShell({
-  entity,
-  creator,
-  activeTab,
-  documents = [],
-  activityEvents = [],
+  bundle,
+  backHref,
   error,
   success,
-  backHref = "/admin/legal-entities",
+  saleCount = 0,
+  children,
 }: Props) {
+  const { entity, documents } = bundle;
+  const pendingDocCount = documents.filter((d) => d.reviewStatus === "pending").length;
+  const stripeDueCount = stripeRequirementsAttentionCountForEntity(entity);
+  const tabSpecs = buildLegalEntityDetailTabSpecs({
+    entityId: entity.id,
+    pendingDocCount,
+    stripeDueCount,
+    saleCount,
+  });
+
+  const statusBadge = <AdminStatusBadge domain="legalEntity" status={entity.status} size="md" />;
+
+  const quickLinks = [
+    { label: "Onboarding issues", href: "/admin/onboarding-issues?tab=entities" },
+    ...(stripeDueCount > 0
+      ? [{ label: "Stripe tab", href: `/admin/legal-entities/${entity.id}/stripe` }]
+      : []),
+  ];
+
   return (
-    <AdminEntityDetailShell
-      detailHeader
-      detailHeaderSticky={false}
-      backHref={backHref}
-      backLabel="Legal entities"
-      entityId={entity.id}
-      updatedAt={entity.updatedAt}
+    <CatalogDetailShell
+      breadcrumbs={
+        <CatalogBreadcrumbs
+          segments={[{ label: "Legal entities", href: backHref }, { label: entity.displayName }]}
+        />
+      }
+      eyebrow="Legal entity"
       title={entity.displayName}
-      description={`Legal entity · ${formatLegalEntityKindSubkind(entity.kind, entity.subkind)} · Created ${formatDateTime(entity.createdAt)}`}
-      actions={<AdminPinPageButton label={entity.displayName} />}
+      description={`${formatLegalEntityKindSubkind(entity.kind, entity.subkind)} · Created ${formatDateTime(entity.createdAt)}`}
       meta={
-        <div className="space-y-3">
-          <LegalEntitySummaryStrip entity={entity} />
-          <div className="flex flex-wrap items-center gap-2">
-            <AdminStatusBadge domain="legalEntity" status={entity.status} size="md" />
-            <span className="font-body text-xs text-on-surface-variant">
-              Updated {formatDateTime(entity.updatedAt)} (
-              {relativeFromIso(entity.updatedAt.toISOString())})
-            </span>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {statusBadge}
+          <span className="font-body text-xs text-on-surface-variant">
+            Updated {formatDateTime(entity.updatedAt)} (
+            {relativeFromIso(entity.updatedAt.toISOString())})
+          </span>
         </div>
       }
-      rail={<LegalEntityDetailContextRail entity={entity} />}
-      railSticky={false}
+      metaBelowTitle
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <AdminPinPageButton label={entity.displayName} />
+          <LegalEntityImpersonationButton
+            legalEntityId={entity.id}
+            displayName={entity.displayName}
+          />
+        </div>
+      }
+      mobileMeta={
+        <CatalogDetailMobileMeta
+          entityId={entity.id}
+          updatedAt={entity.updatedAt}
+          status={statusBadge}
+          quickLinks={quickLinks}
+        />
+      }
+      stickySubnav={
+        <CatalogDetailTabNav
+          tabs={tabSpecs}
+          entityKind="legal-entity"
+          aria-label="Legal entity sections"
+        />
+      }
     >
-      <LegalEntityDetailTabs
-        entity={entity}
-        creator={creator}
-        activeTab={activeTab}
-        documents={documents}
-        activityEvents={activityEvents}
-        {...(error != null ? { error } : {})}
-        {...(success != null ? { success } : {})}
-      />
-    </AdminEntityDetailShell>
+      {success ? (
+        <AdminListAlert title="Done" variant="default">
+          {success}
+        </AdminListAlert>
+      ) : null}
+      {error ? <AdminListAlert title="Could not apply change">{error}</AdminListAlert> : null}
+      <LegalEntitySupportActionsSection entity={entity} hideImpersonation />
+      {children}
+    </CatalogDetailShell>
   );
 }

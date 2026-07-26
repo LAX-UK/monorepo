@@ -34,6 +34,7 @@ export function AdminInvitationsBoardContainer({
     [data?.rows, selectedInvitationId],
   );
   const selected = selectedFromRows ?? selectedFromLoader;
+  const rows = data?.rows ?? [];
 
   const onOpen = useCallback(
     (invitation: AdminInvitationSummary) => {
@@ -46,11 +47,11 @@ export function AdminInvitationsBoardContainer({
     router.push(buildInvitationsDrawerHref(searchParams, null), { scroll: false });
   }, [router, searchParams]);
 
-  if (!data) return null;
+  if (!data && !selectedFromLoader) return null;
 
   return (
     <AdminInvitationsBoard
-      rows={data.rows}
+      rows={rows}
       externalMobileCards={externalMobileCards}
       selected={selected}
       onOpen={onOpen}

@@ -1,5 +1,3 @@
-import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
-import { SaleroomHubLiveGrid } from "@/components/admin/saleroom-hub-board/saleroom-hub-live-grid";
 import type { saleroomHubController } from "@/lib/admin/saleroom-hub-controller";
 import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
 import { getAdminSaleroomSessions } from "@/lib/data/http/admin.server";
@@ -104,5 +102,3 @@ export async function buildSaleroomHubViewData(
     scheduledOnlyRows,
   };
 }
-
-export { AdminSaleroomHubBoard, SaleroomHubLiveGrid };

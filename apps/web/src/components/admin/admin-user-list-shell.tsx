@@ -6,11 +6,14 @@ import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
 import { BulkActionsToolbar, type BulkOperation } from "@/components/admin/bulk-actions-toolbar";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
+import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@auction/ui";
+import { Badge } from "@auction/ui/components/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ReactNode } from "react";
@@ -24,6 +27,7 @@ type Props = {
   buildColumns: (onOpen: (u: AdminUserRow) => void) => ColumnDef<AdminUserRow>[];
   bulkOperations: BulkOperation[];
   drawerTitle?: string;
+  boardTitle?: string;
   tableAriaLabel?: string;
   emptyMessage?: string;
   emptyComponent?: ReactNode;
@@ -49,6 +53,7 @@ export function AdminUserListShell({
   buildColumns,
   bulkOperations,
   drawerTitle = "User",
+  boardTitle,
   tableAriaLabel = "Accounts",
   emptyMessage = "No matching accounts.",
   emptyComponent,
@@ -135,11 +140,32 @@ export function AdminUserListShell({
 
   return (
     <>
-      <p className="mb-3 font-body text-xs text-on-surface-variant">
-        Showing {rows.length} of {totalMatches} matching accounts on this page.
-      </p>
-      {externalMobileCards ? table : <div className="hidden lg:block">{table}</div>}
-      {cards}
+      <CatalogBoardCard>
+        {boardTitle ? (
+          <CatalogBoardTableHeader
+            leading={
+              <>
+                <h2 className="font-headline text-base font-semibold text-on-surface sm:text-lg">
+                  {boardTitle}
+                </h2>
+                <Badge
+                  variant="secondary"
+                  className="h-6 min-w-6 rounded-full bg-secondary px-2 font-label text-xs font-medium text-on-secondary"
+                >
+                  {totalMatches > 99 ? "99+" : totalMatches}
+                </Badge>
+              </>
+            }
+          />
+        ) : null}
+        <div className="p-4 sm:p-6">
+          <p className="mb-3 font-body text-xs text-on-surface-variant">
+            Showing {rows.length} of {totalMatches} matching accounts on this page.
+          </p>
+          {externalMobileCards ? table : <div className="hidden lg:block">{table}</div>}
+          {cards}
+        </div>
+      </CatalogBoardCard>
       {filtersSlot}
       {!externalMobileCards ? (
         <BulkActionsToolbar selectedIds={selectedIds} operations={bulkOperations} onClear={clear} />

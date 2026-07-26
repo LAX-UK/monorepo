@@ -10,16 +10,12 @@ import { Bell } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 
+import type { StaffAttentionItem } from "@/lib/admin/staff-attention.types";
+
+export type { StaffAttentionItem };
+
 const MENU_ID = "staff-attention-menu";
 const LAST_SEEN_COOKIE = "lax.staff.attention.lastSeen";
-
-export type StaffAttentionItem = {
-  id: string;
-  href: string;
-  label: string;
-  count: number;
-  hint?: string;
-};
 
 type Props = {
   items: StaffAttentionItem[];

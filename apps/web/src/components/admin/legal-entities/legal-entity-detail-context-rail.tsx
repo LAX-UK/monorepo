@@ -1,14 +1,20 @@
+"use client";
+
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { KpiStackRail, QuickActionsRail } from "@/components/admin/detail-rail";
+import { LegalEntityImpersonationButton } from "@/components/admin/legal-entities/legal-entity-impersonation-button";
 import { formatLegalEntityKindSubkind, statusLabel } from "@/lib/admin/legal-entity-list-presenter";
 import { stripeRequirementsAttentionCountForEntity } from "@/lib/admin/stripe-connect-staff-presenter";
 import type { LegalEntity } from "@auction/types";
 
 type Props = {
   entity: LegalEntity;
+  /** When true, impersonation is rendered in the page header instead. */
+  hideImpersonation?: boolean;
 };
 
-export function LegalEntityDetailContextRail({ entity }: Props) {
+/** Full-width support actions and entity summary (formerly the detail context rail). */
+export function LegalEntitySupportActionsSection({ entity, hideImpersonation = false }: Props) {
   const stripeSummary = entity.stripeConnectAccountId
     ? entity.stripeConnectPayoutsEnabled
       ? "Payouts enabled"
@@ -51,14 +57,23 @@ export function LegalEntityDetailContextRail({ entity }: Props) {
             : []),
         ]}
       />
+      {!hideImpersonation ? (
+        <div className="space-y-3 border-t border-border-hairline pt-4">
+          <p className="font-label text-[10px] uppercase text-on-surface-variant">
+            Support session
+          </p>
+          <LegalEntityImpersonationButton
+            legalEntityId={entity.id}
+            displayName={entity.displayName}
+            className="min-h-11 w-full"
+          />
+          <p className="font-body text-xs text-on-surface-variant">
+            Starts a four-hour impersonation session. Owners and admins are notified automatically.
+          </p>
+        </div>
+      ) : null}
       <QuickActionsRail
         actions={[
-          {
-            id: "impersonate",
-            label: "Impersonation",
-            href: "/admin/impersonation",
-            variant: "outline",
-          },
           {
             id: "onboarding",
             label: "Onboarding issues",
@@ -70,7 +85,7 @@ export function LegalEntityDetailContextRail({ entity }: Props) {
                 {
                   id: "stripe-tab",
                   label: "Stripe tab",
-                  href: `/admin/legal-entities/${entity.id}?tab=stripe`,
+                  href: `/admin/legal-entities/${entity.id}/stripe`,
                   variant: "outline" as const,
                 },
               ]
@@ -79,4 +94,9 @@ export function LegalEntityDetailContextRail({ entity }: Props) {
       />
     </div>
   );
+}
+
+/** @deprecated Use LegalEntitySupportActionsSection — kept for drawer/preview imports. */
+export function LegalEntityDetailContextRail({ entity, hideImpersonation = false }: Props) {
+  return <LegalEntitySupportActionsSection entity={entity} hideImpersonation={hideImpersonation} />;
 }

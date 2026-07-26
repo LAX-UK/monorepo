@@ -10,8 +10,8 @@ board, status, and KPI visual language while retaining drawer-based workflows.
 
 1. **Page shell** — `CatalogListShell` (list) or `CatalogDetailShell` + entity shell (detail)
 2. **Sticky lens bar** — `CatalogFilterBar` / entity `*-filter-toolbar` (page-level segments only)
-3. **Hero KPI band** — `AdminTrendKpiBand` (6 tiles max, period toggle in toolbar when applicable)
-4. **Board card** — `rounded-shell-card border-shell-stroke bg-surface-container-lowest shadow-rest`
+3. **KPI band** — `AdminTrendKpiBand` (6 tiles max, period toggle in toolbar when applicable)
+4. **Board card** — `CatalogBoardCard` / `catalogBoardCardClassName`
 5. **Table toolbar** — search → quick status segment (Lots only) → Filters → Export (inside board card)
 
 ### Elevation tokens
@@ -19,14 +19,14 @@ board, status, and KPI visual language while retaining drawer-based workflows.
 | Layer | Classes |
 |-------|---------|
 | Page bg | `bg-shell-page-bg` |
-| Hero KPI | `AdminTrendKpiBand` → `KpiRow variant="hero"` |
-| Board card | `rounded-shell-card border-shell-stroke shadow-[var(--shadow-rest)]` |
+| KPI band | `AdminTrendKpiBand` → flat `KpiRow` grid (no hero wrapper) |
+| Board card | `CatalogBoardCard` → `catalogBoardCardClassName` |
 | Count badge | `bg-on-surface text-surface-container-lowest rounded-full` |
 
 ## KPI rules
 
 - **One visual language:** `KpiTile variant="dashboard"` everywhere in catalog
-- **Six tiles max** on list pages (Figma 3×2 grid). No secondary metrics row on primary band
+- **Six tiles max** on list pages (standard 3×2 grid). No secondary metrics row on primary band
 - **Every tile gets a sparkline:**
   - Real trend API → `buildTrendKpiTile`
   - Snapshot count → `buildSnapshotKpiTile` (flat series for visual parity)
@@ -46,8 +46,7 @@ board, status, and KPI visual language while retaining drawer-based workflows.
 | Artists | `buildArtistsListKpiTiles` | Done |
 | Categories | `buildCategoriesListKpiTiles` | Done |
 
-Venues and operational queues currently build snapshot tiles at their route composition boundary;
-extract dedicated builders when those modules gain summary endpoints.
+| Venues | `buildVenuesListKpiTiles` | Done |
 
 ## Filter pattern
 

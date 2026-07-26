@@ -31,6 +31,24 @@ describe("AdminTrendKpiBand", () => {
     expect(classes).not.toContain("xl:grid-cols-6");
   });
 
+  it("does not wrap tiles in hero elevation or selling accent border", () => {
+    const { container } = render(
+      <AdminTrendKpiBand
+        tiles={[
+          { label: "Active sales", value: "3" },
+          { label: "Upcoming", value: "12" },
+        ]}
+      />,
+    );
+
+    const section = container.querySelector("section");
+    expect(section).toBeTruthy();
+    const classes = section?.className.split(/\s+/) ?? [];
+    expect(classes).not.toContain("shadow-lg");
+    expect(classes).not.toContain("border-lot-orange/30");
+    expect(classes).not.toContain("bg-surface-container-lowest");
+  });
+
   it("does not apply the six-tile grid override for smaller bands", () => {
     const { container } = render(
       <AdminTrendKpiBand

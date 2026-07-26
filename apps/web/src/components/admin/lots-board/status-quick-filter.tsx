@@ -9,7 +9,7 @@ type Props = {
   label?: string;
 };
 
-/** Figma table-card status segment — All / Live / Withdraw / Sold. */
+/** Table-card status segment — All / Live / Withdraw / Sold. */
 export function LotsBoardStatusQuickFilter({ chips, label = "Filter lots by status" }: Props) {
   const router = useRouter();
   const active = chips.find((chip) => chip.active)?.id ?? "all";

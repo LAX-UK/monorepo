@@ -29,7 +29,7 @@ type Props = {
   stickySubnav?: ReactNode;
   /** Title-adjacent nav (e.g. prev/next lot) */
   titleAddon?: ReactNode;
-  /** When true, meta renders below the title (Figma detail header order). */
+  /** When true, meta renders below the title (catalog detail header order). */
   metaBelowTitle?: boolean;
   children: ReactNode;
   className?: string;

@@ -1,6 +1,6 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminCategoriesListSummary } from "@auction/types";
 
 type Input = {
@@ -10,7 +10,7 @@ type Input = {
   summary: AdminCategoriesListSummary;
 };
 
-/** Figma-aligned 6-tile categories list KPI band — snapshot sparklines. */
+/** Six-tile categories list KPI band — snapshot sparklines. */
 export function buildCategoriesListKpiTiles({
   onPageCount,
   includeArchived,

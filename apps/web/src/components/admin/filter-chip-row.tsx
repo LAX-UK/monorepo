@@ -1,13 +1,9 @@
 "use client";
 
 import { FilterRowNav } from "@/components/dashboard/filter-row-nav";
+import type { FilterChip } from "@/lib/admin/filter-chip.types";
 
-export type FilterChip = {
-  id: string;
-  label: string;
-  href: string;
-  active?: boolean;
-};
+export type { FilterChip };
 
 export function FilterChipRow({ chips, label }: { chips: FilterChip[]; label: string }) {
   return (

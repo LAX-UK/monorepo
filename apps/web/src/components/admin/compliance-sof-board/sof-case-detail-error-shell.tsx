@@ -32,8 +32,6 @@ export function SofCaseDetailErrorShell({
 
   return (
     <AdminEntityDetailShell
-      detailHeader
-      detailHeaderSticky={false}
       backHref={backHref}
       backLabel="Source of Funds"
       eyebrow="Compliance review"

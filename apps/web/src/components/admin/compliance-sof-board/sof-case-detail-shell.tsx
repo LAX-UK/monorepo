@@ -1,6 +1,12 @@
-import { AdminEntityDetailShell } from "@/components/admin/admin-entity-detail-shell";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { SofCaseContextRail } from "@/components/admin/compliance-sof-board/sof-case-context-rail";
+import {
+  CatalogBreadcrumbs,
+  CatalogDetailMobileMeta,
+  CatalogDetailShell,
+  CatalogDetailTabPanel,
+  DetailBoardKpiStrip,
+} from "@/components/admin/catalog";
+import { SofCaseReviewActionsSection } from "@/components/admin/compliance-sof-board/sof-case-context-rail";
 import { SofCaseDetailClient } from "@/components/admin/compliance-sof-board/sof-case-detail-client";
 import { parseAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
 import {
@@ -37,13 +43,25 @@ export function SofCaseDetailShell({
 }: Props) {
   const listStatus = parseSofDetailListStatus({ listStatus: normalizeSofListStatus(row.status) });
   const backHref = parseAdminListReturnTarget(returnTo, buildSofListHref(listStatus));
+  const statusBadge = <AdminStatusBadge domain="sofCase" status={row.displayStatus} />;
+
+  const reviewActions = (
+    <SofCaseReviewActionsSection
+      row={row}
+      detail={detail}
+      canTriage={canTriage}
+      canDecide={canDecide}
+      currentUserId={currentUserId}
+    />
+  );
 
   return (
-    <AdminEntityDetailShell
-      detailHeader
-      detailHeaderSticky={false}
-      backHref={backHref}
-      backLabel="Source of Funds"
+    <CatalogDetailShell
+      breadcrumbs={
+        <CatalogBreadcrumbs
+          segments={[{ label: "Source of Funds", href: backHref }, { label: buyerLabel }]}
+        />
+      }
       eyebrow="Compliance review"
       title={
         <Link href={`/admin/clients/${row.userId}`} className="text-link hover:underline">
@@ -51,28 +69,43 @@ export function SofCaseDetailShell({
         </Link>
       }
       description={`${row.triggerLabel} · ${row.exposureLabel} · Opened ${row.openedLabel}`}
-      meta={<AdminStatusBadge domain="sofCase" status={row.displayStatus} />}
-      rail={
-        <SofCaseContextRail
+      meta={statusBadge}
+      metaBelowTitle
+      mobileMeta={<CatalogDetailMobileMeta entityId={row.id} status={statusBadge} />}
+    >
+      <CatalogDetailTabPanel framed={false}>
+        <DetailBoardKpiStrip
+          ariaLabel="Case summary"
+          tiles={[
+            { id: "trigger", label: "Trigger", value: row.triggerLabel, trendTone: "secondary" },
+            {
+              id: "exposure",
+              label: "Exposure",
+              value: row.exposureLabel,
+              trendTone: "accent-gold",
+            },
+            { id: "opened", label: "Opened", value: row.openedLabel, trendTone: "muted" },
+            {
+              id: "documents",
+              label: "Documents",
+              value: String(detail.submittedDocuments.length),
+              trendTone: detail.submittedDocuments.length > 0 ? "secondary" : "muted",
+            },
+          ]}
+          className="mb-0"
+        />
+        {reviewActions}
+        <SofCaseDetailClient
           row={row}
           detail={detail}
+          readOnly={row.status !== "pending"}
           canTriage={canTriage}
           canDecide={canDecide}
           currentUserId={currentUserId}
+          {...(success != null ? { success } : {})}
+          {...(error != null ? { error } : {})}
         />
-      }
-      railSticky={false}
-    >
-      <SofCaseDetailClient
-        row={row}
-        detail={detail}
-        readOnly={row.status !== "pending"}
-        canTriage={canTriage}
-        canDecide={canDecide}
-        currentUserId={currentUserId}
-        {...(success != null ? { success } : {})}
-        {...(error != null ? { error } : {})}
-      />
-    </AdminEntityDetailShell>
+      </CatalogDetailTabPanel>
+    </CatalogDetailShell>
   );
 }

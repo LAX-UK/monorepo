@@ -31,7 +31,7 @@ type Props = {
   mobileActions?: readonly CatalogMobileAction[];
   /** Where mobile actions render; default `none` (shells use fixed bottom bar). */
   mobileActionsPlacement?: CatalogMobileActionsPlacement;
-  /** When true, meta renders below the title (Figma detail header order). */
+  /** When true, meta renders below the title (catalog detail header order). */
   metaBelowTitle?: boolean;
   className?: string;
 };

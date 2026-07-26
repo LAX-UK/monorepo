@@ -1,5 +1,5 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminDisputeCaseSummary } from "@auction/types";
 
 export function buildDisputesListKpiTiles(summary: AdminDisputeCaseSummary): KpiRowTile[] {

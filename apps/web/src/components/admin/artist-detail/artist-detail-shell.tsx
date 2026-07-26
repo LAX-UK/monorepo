@@ -1,6 +1,6 @@
 import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { ArtistContextRail } from "@/components/admin/artist-detail/artist-context-rail";
+import { ArtistDestructivePanel } from "@/components/admin/artist-detail/artist-destructive-panel";
 import { artistDetailTabHref } from "@/components/admin/artist-detail/artist-detail-types";
 import {
   CatalogBreadcrumbs,
@@ -44,7 +44,6 @@ export function ArtistDetailShell({
   lotCount,
   duplicateCount,
   publicHref,
-  activityEvents = [],
   deleteEligibility = null,
   canManageDelete = false,
   canEdit = false,
@@ -159,20 +158,6 @@ export function ArtistDetailShell({
             }
           />
         }
-        aside={
-          <ArtistContextRail
-            artistId={artistId}
-            artist={artist}
-            lotCount={lotCount}
-            duplicateCount={duplicateCount}
-            publicHref={publicHref}
-            status={statusBadge}
-            activityEvents={activityEvents}
-            deleteEligibility={deleteEligibility}
-            canManageDelete={canManageDelete}
-            canEdit={canEdit}
-          />
-        }
         stickySubnav={
           <>
             <CatalogDetailTabNav tabs={tabSpecs} entityKind="artist" aria-label="Artist sections" />
@@ -193,6 +178,11 @@ export function ArtistDetailShell({
           />
         </Suspense>
         {children}
+        <ArtistDestructivePanel
+          artist={artist}
+          deleteEligibility={deleteEligibility}
+          canManageDelete={canManageDelete}
+        />
       </CatalogDetailShell>
     </CatalogPostCreateSessionRoot>
   );

@@ -1,6 +1,6 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminArtistStats } from "@auction/types";
 
 type Input = {
@@ -8,7 +8,7 @@ type Input = {
   periodDays: AdminKpiPeriodDays;
 };
 
-/** Figma-aligned 6-tile artists list KPI band — snapshot sparklines (no trend API). */
+/** Six-tile artists list KPI band — snapshot sparklines (no trend API). */
 export function buildArtistsListKpiTiles({ stats, periodDays }: Input): KpiRowTile[] {
   return [
     buildSnapshotKpiTile("Total", stats.total, periodDays, {

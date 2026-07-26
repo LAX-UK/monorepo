@@ -1,5 +1,5 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import type { DetailBoardKpiTile } from "@/lib/admin/detail-board/types";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 
 const deltaToneMap = {
   up: "positive",

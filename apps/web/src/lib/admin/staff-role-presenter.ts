@@ -1,5 +1,5 @@
-import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import type { SessionUser } from "@/lib/data/contracts";
+import { sessionUserToShellRole } from "@/lib/shell/session-user-shell-role";
 import type { UserStaffRole } from "@auction/types";
 import { userStaffRoles } from "@auction/types";
 

@@ -1,11 +1,12 @@
-import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
+import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
 import type { AdminFinanceIssuesPayload } from "@/lib/data/http/admin.server";
 
 type Props = {
   financeIssues: AdminFinanceIssuesPayload;
 };
 
-/** Finance + onboarding queues as full-width `KpiRow` bands (finance hub). */
+/** Finance + onboarding queues as unified KPI bands (finance hub). */
 export function AdminFinanceKpiRows({ financeIssues }: Props) {
   return (
     <div className="space-y-8">
@@ -16,38 +17,42 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
         <p className="font-body text-sm text-on-surface-variant">
           Failed transfers, blocked scheduled payouts, and outstanding Connect requirements.
         </p>
-        <KpiRow
-          columns={4}
-          aria-label="Stripe Connect and payouts"
+        <AdminTrendKpiBand
+          ariaLabel="Stripe Connect and payouts"
           tiles={[
-            {
-              id: "failed-payouts",
-              label: "Failed payouts",
-              value: String(financeIssues.failedPayoutCount),
+            buildSnapshotKpiTile("Failed payouts", financeIssues.failedPayoutCount, 30, {
+              compareHint: "Open list",
               semanticTone: financeIssues.failedPayoutCount > 0 ? "danger" : "default",
-              href: "/admin/payouts?status=failed",
-              trendSlot: <span className="text-xs font-semibold text-primary">Open list</span>,
-            },
-            {
-              id: "blocked",
-              label: "Blocked scheduled",
-              value: String(financeIssues.staleBlockedScheduledPayoutCount),
-              semanticTone:
-                financeIssues.staleBlockedScheduledPayoutCount > 0 ? "warning" : "default",
-              href: "/admin/payouts?status=scheduled",
-              trendSlot: <span className="text-xs font-semibold text-primary">Review</span>,
-            },
-            {
-              id: "connect-req",
-              label: "Connect requirements",
-              value: String(financeIssues.legalEntitiesWithStripeConnectRequirementsCount),
-              semanticTone:
-                financeIssues.legalEntitiesWithStripeConnectRequirementsCount > 0
-                  ? "warning"
-                  : "default",
-              href: "/admin/legal-entities?stripe=1",
-              trendSlot: <span className="text-xs font-semibold text-primary">View entities</span>,
-            },
+              trendTone: financeIssues.failedPayoutCount > 0 ? "live-red" : "muted",
+            }),
+            buildSnapshotKpiTile(
+              "Blocked scheduled",
+              financeIssues.staleBlockedScheduledPayoutCount,
+              30,
+              {
+                compareHint: "Review scheduled payouts",
+                semanticTone:
+                  financeIssues.staleBlockedScheduledPayoutCount > 0 ? "warning" : "default",
+                trendTone:
+                  financeIssues.staleBlockedScheduledPayoutCount > 0 ? "accent-gold" : "muted",
+              },
+            ),
+            buildSnapshotKpiTile(
+              "Connect requirements",
+              financeIssues.legalEntitiesWithStripeConnectRequirementsCount,
+              30,
+              {
+                compareHint: "View legal entities",
+                semanticTone:
+                  financeIssues.legalEntitiesWithStripeConnectRequirementsCount > 0
+                    ? "warning"
+                    : "default",
+                trendTone:
+                  financeIssues.legalEntitiesWithStripeConnectRequirementsCount > 0
+                    ? "accent-gold"
+                    : "muted",
+              },
+            ),
           ]}
         />
       </section>
@@ -59,45 +64,36 @@ export function AdminFinanceKpiRows({ financeIssues }: Props) {
         <p className="font-body text-sm text-on-surface-variant">
           KYB/KYC verification items with drill-down lists.
         </p>
-        <KpiRow
-          columns={5}
-          aria-label="Onboarding and verification issues"
+        <AdminTrendKpiBand
+          ariaLabel="Onboarding and verification issues"
           tiles={[
-            {
-              id: "entities",
-              label: "Entities pending",
-              value: String(financeIssues.entitiesPendingReviewCount ?? 0),
-              href: "/admin/onboarding-issues?tab=entities",
-              trendSlot: <span className="text-xs font-semibold text-primary">View issues</span>,
-            },
-            {
-              id: "artists",
-              label: "Artists pending",
-              value: String(financeIssues.artistsPendingApprovalCount ?? 0),
-              href: "/admin/onboarding-issues?tab=artists",
-              trendSlot: <span className="text-xs font-semibold text-primary">View issues</span>,
-            },
-            {
-              id: "identity",
-              label: "Stale KYC",
-              value: String(financeIssues.staleKycSessionsCount ?? 0),
-              href: "/admin/onboarding-issues?tab=kyc",
-              trendSlot: <span className="text-xs font-semibold text-primary">View issues</span>,
-            },
-            {
-              id: "documents",
-              label: "Documents awaiting",
-              value: String(financeIssues.documentsAwaitingReviewCount ?? 0),
-              href: "/admin/onboarding-issues?tab=documents",
-              trendSlot: <span className="text-xs font-semibold text-primary">View issues</span>,
-            },
-            {
-              id: "lead-orgs",
-              label: "Stale lead orgs",
-              value: String(financeIssues.staleLeadOrganisationsCount ?? 0),
-              href: "/admin/onboarding-issues?tab=orgs",
-              trendSlot: <span className="text-xs font-semibold text-primary">View issues</span>,
-            },
+            buildSnapshotKpiTile(
+              "Entities pending",
+              financeIssues.entitiesPendingReviewCount ?? 0,
+              30,
+              { compareHint: "View onboarding issues" },
+            ),
+            buildSnapshotKpiTile(
+              "Artists pending",
+              financeIssues.artistsPendingApprovalCount ?? 0,
+              30,
+              { compareHint: "View artist approvals" },
+            ),
+            buildSnapshotKpiTile("Stale KYC", financeIssues.staleKycSessionsCount ?? 0, 30, {
+              compareHint: "View KYC sessions",
+            }),
+            buildSnapshotKpiTile(
+              "Documents awaiting",
+              financeIssues.documentsAwaitingReviewCount ?? 0,
+              30,
+              { compareHint: "View document queue" },
+            ),
+            buildSnapshotKpiTile(
+              "Stale lead orgs",
+              financeIssues.staleLeadOrganisationsCount ?? 0,
+              30,
+              { compareHint: "View lead organisations" },
+            ),
           ]}
         />
       </section>

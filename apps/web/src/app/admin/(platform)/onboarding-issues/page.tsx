@@ -1,9 +1,9 @@
 import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListShell } from "@/components/admin/admin-list-shell";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { StaffHubShell } from "@/components/admin/catalog/staff-hub-shell";
 import { OnboardingIssuesBoardContainer } from "@/components/admin/onboarding-issues-board/container";
 import {
   buildOnboardingIssuesListKpiTiles,
@@ -40,8 +40,7 @@ export default async function AdminOnboardingIssuesPage({ searchParams }: Props)
   } = loaded;
 
   return (
-    <AdminListShell
-      layout="hub"
+    <StaffHubShell
       title="Onboarding issues"
       description="Verification items for entities, artists, KYC, and documents awaiting staff review."
       mobileSummary={

@@ -2,6 +2,7 @@
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { conditionReportColumns } from "@/components/admin/condition-reports-board/columns";
@@ -9,7 +10,6 @@ import { ConditionReportDrawerContent } from "@/components/admin/condition-repor
 import { ConditionReportsMobileCards } from "@/components/admin/condition-reports-board/mobile-cards";
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminConditionReportRequestRow } from "@/lib/data/http/admin-condition-reports.shared";
-import { cn } from "@auction/ui";
 import { EntityList, Sheet, SheetContent } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { useMemo } from "react";
@@ -43,11 +43,7 @@ export function AdminConditionReportsBoard({
 
   return (
     <>
-      <div
-        className={cn(
-          "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-        )}
-      >
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -86,7 +82,7 @@ export function AdminConditionReportsBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
       <Sheet open={!!selected} onOpenChange={(open) => !open && onCloseDrawer()}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">
           {selected ? (

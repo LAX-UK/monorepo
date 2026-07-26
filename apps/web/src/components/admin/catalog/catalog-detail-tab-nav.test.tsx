@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("CatalogDetailTabNav", () => {
-  it("renders active sale tab with Figma blue treatment", () => {
+  it("renders active sale tab with secondary border treatment", () => {
     render(
       <CatalogDetailTabNav
         entityKind="sale"

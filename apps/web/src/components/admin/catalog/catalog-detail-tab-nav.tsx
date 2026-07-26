@@ -1,5 +1,10 @@
 "use client";
 
+import type {
+  CatalogDetailTabBadge,
+  CatalogDetailTabEntityKind,
+  CatalogDetailTabSpec,
+} from "@/lib/admin/catalog/catalog-detail-tab.types";
 import { cn } from "@auction/ui";
 import {
   Activity,
@@ -18,26 +23,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
 
-export type CatalogDetailTabBadge = "pending" | "warning" | "default";
-
-export type CatalogDetailTabEntityKind =
-  | "lot"
-  | "sale"
-  | "category"
-  | "artist"
-  | "submission"
-  | "venue";
-
-export type CatalogDetailTabSpec = {
-  id: string;
-  label: ReactNode;
-  href: string;
-  badge?: CatalogDetailTabBadge;
-  /** Optional numeric count badge (Figma tab counts). */
-  count?: number;
-};
+export type { CatalogDetailTabBadge, CatalogDetailTabEntityKind, CatalogDetailTabSpec };
 
 const TAB_ICONS: Partial<Record<CatalogDetailTabEntityKind, Record<string, LucideIcon>>> = {
   lot: {
@@ -77,6 +64,14 @@ const TAB_ICONS: Partial<Record<CatalogDetailTabEntityKind, Record<string, Lucid
   },
   venue: {
     overview: LayoutGrid,
+    sales: Package,
+    activity: Activity,
+  },
+  "legal-entity": {
+    overview: LayoutGrid,
+    documents: FileText,
+    compliance: Scale,
+    stripe: Building2,
     sales: Package,
     activity: Activity,
   },

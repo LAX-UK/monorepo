@@ -3,6 +3,7 @@
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { amlColumns } from "@/components/admin/compliance-aml-board/columns";
@@ -12,7 +13,7 @@ import { AmlMobileCards } from "@/components/admin/compliance-aml-board/mobile-c
 import { useTableDensity } from "@/components/layout/density-provider";
 import { buildAmlDrawerHref } from "@/lib/admin/compliance/aml-list-href";
 import type { AdminAmlTableRow } from "@/lib/data/view-models/admin-aml-table.vm";
-import { EntityList, Sheet, SheetContent, cn } from "@auction/ui";
+import { EntityList, Sheet, SheetContent } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
@@ -44,11 +45,7 @@ export function ComplianceAmlBoard({
 
   return (
     <>
-      <div
-        className={cn(
-          "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-        )}
-      >
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -88,7 +85,7 @@ export function ComplianceAmlBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
 
       <Sheet open={!!selected} onOpenChange={(open) => !open && onCloseDrawer()}>
         <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-lg">

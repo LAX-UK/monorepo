@@ -1,9 +1,6 @@
-import { isSaleLiveish } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { SaleRegistrationsTab } from "@/components/admin/sale-detail/tabs/registrations-tab";
-import { loadAdminSaleDetail, loadAdminSaleRegistrations } from "@/lib/admin/load-sale-detail";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
-import { isSaleroomDeliveryMode } from "@auction/validators";
+import { loadAdminSaleRegistrationsPage } from "@/lib/admin/sales/load-sale-registrations-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -13,33 +10,18 @@ type Props = {
 export default async function AdminSaleRegistrationsPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const bundle = await loadAdminSaleDetail(id);
-  const liveish = isSaleLiveish(bundle.sale);
-
-  const registrationsResult = liveish
-    ? await loadAdminSaleRegistrations(id)
-        .then((rows) => ({ rows, error: null as string | null }))
-        .catch((err) => ({
-          rows: [],
-          error: err instanceof Error ? err.message : "Failed to load registrations.",
-        }))
-    : { rows: [], error: null as string | null };
-
-  const expectedGuests =
-    liveish && isSaleroomDeliveryMode(bundle.sale.deliveryMode)
-      ? await getAdminExpectedGuests(id).catch(() => null)
-      : null;
+  const page = await loadAdminSaleRegistrationsPage(id);
 
   return (
     <SaleRegistrationsTab
-      saleId={id}
-      sale={bundle.sale}
-      liveish={liveish}
-      rows={registrationsResult.rows}
-      fetchError={registrationsResult.error}
+      saleId={page.saleId}
+      sale={page.sale}
+      liveish={page.liveish}
+      rows={page.rows}
+      fetchError={page.fetchError}
       actionError={sp.error ? safeDecodeAdminErrorParam(sp.error) : null}
-      saleCurrency={bundle.lots[0]?.marketingDetails?.estimate?.currency ?? "GBP"}
-      expectedGuests={expectedGuests}
+      saleCurrency={page.saleCurrency}
+      expectedGuests={page.expectedGuests}
     />
   );
 }

@@ -3,6 +3,7 @@
 import { AdminDataTable } from "@/components/admin/admin-data-table";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { BulkActionsToolbar } from "@/components/admin/bulk-actions-toolbar";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import type {
@@ -20,7 +21,6 @@ import type { SaleLensId } from "@/lib/admin/catalog/sales-lenses";
 import { saleFilterAdapter } from "@/lib/admin/filters/sale-filter-adapter";
 import type { SaleListSortKey } from "@/lib/admin/sales-list-sort";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
-import { cn } from "@auction/ui";
 import { EntityList } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import type { ReactNode } from "react";
@@ -111,11 +111,7 @@ export function AdminSalesBoard({
   return (
     <div className="space-y-4">
       {listError ? <AdminListAlert title="Could not load sales">{listError}</AdminListAlert> : null}
-      <div
-        className={cn(
-          "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-        )}
-      >
+      <CatalogBoardCard>
         <CatalogBoardTableHeader
           leading={
             <>
@@ -184,7 +180,7 @@ export function AdminSalesBoard({
             <CatalogPagination {...pagination} />
           </div>
         ) : null}
-      </div>
+      </CatalogBoardCard>
       <BulkActionsToolbar
         selectedIds={selectedIds}
         operations={bulkOperations}

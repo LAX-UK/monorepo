@@ -263,6 +263,7 @@ export function AdminClientsBoard({
       totalMatches={totalMatches}
       bulkOperations={bulkOperations}
       drawerTitle="Client"
+      boardTitle="Clients"
       tableAriaLabel="Clients"
       emptyComponent={
         <FilterEmptyState

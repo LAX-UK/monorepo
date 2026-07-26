@@ -1,36 +1,25 @@
 import { CatalogDetailTabPanel } from "@/components/admin/catalog";
 import { CatalogDomainEventsTimeline } from "@/components/admin/catalog/catalog-domain-events-timeline";
 import { venueDetailTabHref } from "@/components/admin/venue-detail/venue-detail-types";
-import { getAdminDomainEventsForAggregate } from "@/lib/data/http/admin.server";
+import type { getAdminDomainEventsForAggregate } from "@/lib/data/http/admin.server";
 
 type Props = {
   venueId: string;
+  events: Awaited<ReturnType<typeof getAdminDomainEventsForAggregate>>;
 };
 
-export function VenueActivityTab({ venueId }: Props) {
+export function VenueActivityTab({ venueId, events }: Props) {
   return (
     <CatalogDetailTabPanel
       title="Activity"
       description="Timeline of changes and key events for this venue."
     >
-      <ActivityContent venueId={venueId} />
+      <CatalogDomainEventsTimeline
+        events={events}
+        exportFilters={{ aggregateType: "venue", aggregateId: venueId }}
+        showTechnicalDetails={false}
+      />
     </CatalogDetailTabPanel>
-  );
-}
-
-async function ActivityContent({ venueId }: { venueId: string }) {
-  const events = await getAdminDomainEventsForAggregate({
-    aggregateType: "venue",
-    aggregateId: venueId,
-    limit: 100,
-  }).catch(() => []);
-
-  return (
-    <CatalogDomainEventsTimeline
-      events={events}
-      exportFilters={{ aggregateType: "venue", aggregateId: venueId }}
-      showTechnicalDetails={false}
-    />
   );
 }
 

@@ -1,4 +1,4 @@
-import type { AdminTechnicalIdItem } from "@/components/admin/admin-technical-id-disclosure";
+import type { AdminTechnicalIdItem } from "@/lib/admin/admin-technical-id.types";
 import type { StaffFacingRef } from "@/lib/admin/staff-facing-ref";
 import {
   connectRequirementsAttentionCount,

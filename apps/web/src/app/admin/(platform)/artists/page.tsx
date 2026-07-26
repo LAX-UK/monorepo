@@ -10,19 +10,10 @@ import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-e
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
 import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPrimaryCta } from "@/components/admin/catalog/catalog-primary-cta";
-import { artistsListController } from "@/lib/admin/admin-list-controllers";
 import { buildListHref } from "@/lib/admin/admin-list-params";
-import type { ArtistPresetId } from "@/lib/admin/artist-list-presets";
-import { artistListActivePreset, artistListPresetHref } from "@/lib/admin/artist-list-presets";
 import { buildArtistsListKpiTiles } from "@/lib/admin/artists/build-artists-list-kpi-tiles";
-import { buildArtistsActiveFilterChips } from "@/lib/admin/catalog-active-filter-chips";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
-import { getAdminArtistStats } from "@/lib/data/http/admin.server";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { ARTIST_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { loadAdminArtistsListPage } from "@/lib/admin/catalog/load-artists-list-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { type CategoryNode, type UserRole, userHasAccessTo } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
@@ -33,22 +24,7 @@ export const metadata: Metadata = metadataForPrivate(
   "Manage canonical artist profiles and attribution.",
 );
 
-const NAV_PRESETS = new Set<ArtistPresetId>(["all", "pending", "makers", "featured", "archived"]);
-
 type SearchParams = Record<string, string | string[] | undefined>;
-
-/** Flatten the category tree into indented options for the department facet. */
-function flattenCategoryOptions(
-  nodes: readonly CategoryNode[],
-  depth = 0,
-): Array<{ value: string; label: string }> {
-  const out: Array<{ value: string; label: string }> = [];
-  for (const node of nodes) {
-    out.push({ value: node.id, label: `${"\u2014 ".repeat(depth)}${node.name}` });
-    if (node.children.length > 0) out.push(...flattenCategoryOptions(node.children, depth + 1));
-  }
-  return out;
-}
 
 export default async function AdminArtistsPage({
   searchParams,
@@ -56,107 +32,36 @@ export default async function AdminArtistsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
-  const error = safeDecodeAdminErrorParam(sp.error);
-  const showBackfill = sp.backfill === "1";
-  const showDuplicates = sp.duplicates === "1";
-  const skipIndexedList = showBackfill || showDuplicates;
-
-  const user = await getServerSessionUser();
-  const canCreateArtist =
-    user != null &&
-    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_WRITE_ACCESS);
-
-  const query = artistsListController.parseQuery(sp);
-  const q = query.q;
-
-  const categoryOptions = await (async () => {
-    if (skipIndexedList) return [];
-    try {
-      return flattenCategoryOptions(await (await getServerCategoryReader()).tree());
-    } catch {
-      return [];
-    }
-  })();
-
-  const hasFilters = Boolean(
-    showDuplicates ||
-      showBackfill ||
-      (!skipIndexedList &&
-        (q ||
-          query.includeArchived ||
-          query.archivedOnly ||
-          (query.kind && query.kind.trim() !== "") ||
-          (query.kinds && query.kinds.trim() !== "") ||
-          (query.status && query.status.trim() !== "") ||
-          (query.ownerUserId && query.ownerUserId.trim() !== "") ||
-          (query.categoryId && query.categoryId.trim() !== "") ||
-          (query.country && query.country.trim() !== "") ||
-          query.featured === true ||
-          query.verified === true ||
-          (query.linked && query.linked !== "any") ||
-          (query.sort && query.sort.trim() !== "" && query.sort !== "name_asc"))),
-  );
-
-  let loadError: string | null = null;
-  let artists: Awaited<ReturnType<typeof artistsListController.fetch>>["rows"] = [];
-  let total = 0;
-  let statsStrip: {
-    total: string;
-    pending: string;
-    makers: string;
-    historical: string;
-    brands: string;
-    featured: string;
-  } | null = null;
-  let pendingReviewCount = 0;
-
-  try {
-    if (!skipIndexedList) {
-      const [result, stats] = await Promise.all([
-        artistsListController.fetch(query),
-        getAdminArtistStats().catch(() => null),
-      ]);
-      artists = result.rows;
-      total = result.total ?? 0;
-      if (stats) {
-        pendingReviewCount = stats.pendingReview;
-        statsStrip = {
-          total: String(stats.total),
-          pending: String(stats.pendingReview),
-          makers: String(stats.makerSellers),
-          historical: String(stats.historical),
-          brands: String(stats.brands),
-          featured: String(stats.featured),
-        };
-      }
-    }
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Could not load artists.";
-  }
-
-  const preset = artistListActivePreset(sp);
-
-  const activeLensId =
-    showDuplicates === true
-      ? "queues"
-      : showBackfill === true
-        ? "backfill"
-        : NAV_PRESETS.has(preset)
-          ? preset
-          : "all";
-
-  const queuesHref = buildListHref("/admin/artists", sp, {
-    duplicates: "1",
-    backfill: "",
-    offset: 0,
-  });
+  const loaded = await loadAdminArtistsListPage(sp);
+  const {
+    error,
+    showBackfill,
+    showDuplicates,
+    skipIndexedList,
+    query,
+    q,
+    categoryOptions,
+    loadError,
+    artists,
+    total,
+    stats,
+    pendingReviewCount,
+    activeLensId,
+    queuesHref,
+    activeFilterChips,
+    activeFilterCount,
+    hasFilters,
+    boardPagination,
+    artistListPresetHref,
+    canCreateArtist,
+  } = loaded;
 
   const lenses: CatalogSegmentItem[] = [
-    { id: "all", label: "All", href: artistListPresetHref("all", sp) },
-    { id: "pending", label: "Pending", href: artistListPresetHref("pending", sp) },
-    { id: "makers", label: "Maker–sellers", href: artistListPresetHref("makers", sp) },
-    { id: "featured", label: "Featured", href: artistListPresetHref("featured", sp) },
-    { id: "archived", label: "Archived", href: artistListPresetHref("archived", sp) },
+    { id: "all", label: "All", href: artistListPresetHref("all") },
+    { id: "pending", label: "Pending", href: artistListPresetHref("pending") },
+    { id: "makers", label: "Maker–sellers", href: artistListPresetHref("makers") },
+    { id: "featured", label: "Featured", href: artistListPresetHref("featured") },
+    { id: "archived", label: "Archived", href: artistListPresetHref("archived") },
     {
       id: "queues",
       label: "Review tasks",
@@ -170,71 +75,10 @@ export default async function AdminArtistsPage({
     },
   ];
 
-  const categoryName =
-    query.categoryId && categoryOptions.length > 0
-      ? (categoryOptions.find((o) => o.value === query.categoryId)?.label ?? null)
-      : null;
-
-  const activeFilterChips = skipIndexedList
-    ? []
-    : buildArtistsActiveFilterChips(sp, {
-        ...(q ? { q } : {}),
-        ...(query.status ? { status: query.status } : {}),
-        ...(query.kind ? { kind: query.kind } : {}),
-        ...(query.sort ? { sort: query.sort } : {}),
-        ...(query.featured === true ? { featured: true } : {}),
-        ...(query.verified === true ? { verified: true } : {}),
-        ...(query.includeArchived === true ? { includeArchived: true } : {}),
-        ...(query.archivedOnly === true ? { archivedOnly: true } : {}),
-        ...(query.linked && query.linked !== "any" ? { linked: query.linked } : {}),
-        ...(query.categoryId ? { categoryId: query.categoryId, categoryName } : {}),
-        ...(query.country ? { country: query.country } : {}),
-      });
-
-  const activeFilterCount = skipIndexedList
-    ? 0
-    : [
-        q,
-        query.status,
-        query.kind,
-        query.kinds,
-        query.ownerUserId,
-        query.categoryId,
-        query.country,
-        query.linked && query.linked !== "any" ? query.linked : "",
-        query.archivedOnly ? "archivedOnly" : "",
-        query.sort && query.sort !== "name_asc" ? query.sort : "",
-        query.featured === true ? "featured" : "",
-        query.verified === true ? "verified" : "",
-        query.includeArchived === true ? "includeArchived" : "",
-      ].filter(Boolean).length;
-
   const errorAlert =
     error || loadError ? (
       <AdminListAlert title="Could not load artists">{loadError ?? error}</AdminListAlert>
     ) : null;
-
-  const boardPagination =
-    !skipIndexedList &&
-    !loadError &&
-    total > 0 &&
-    (query.offset > 0 || query.offset + artists.length < total)
-      ? {
-          offset: query.offset,
-          limit: query.limit,
-          countOnPage: artists.length,
-          prevHref:
-            query.offset > 0
-              ? buildListHref("/admin/artists", sp, {
-                  offset: Math.max(0, query.offset - query.limit),
-                })
-              : null,
-          nextHref:
-            query.offset + artists.length < total
-              ? buildListHref("/admin/artists", sp, { offset: query.offset + query.limit })
-              : null,
-        }
-      : null;
 
   const boardFilterControls = skipIndexedList
     ? undefined
@@ -363,20 +207,10 @@ export default async function AdminArtistsPage({
         )
       }
       kpiStrip={
-        !skipIndexedList && statsStrip ? (
+        !skipIndexedList && stats ? (
           <AdminTrendKpiBand
             ariaLabel="Artist summary"
-            tiles={buildArtistsListKpiTiles({
-              stats: {
-                total: Number(statsStrip.total),
-                pendingReview: Number(statsStrip.pending),
-                makerSellers: Number(statsStrip.makers),
-                historical: Number(statsStrip.historical),
-                brands: Number(statsStrip.brands),
-                featured: Number(statsStrip.featured),
-              },
-              periodDays: 30,
-            })}
+            tiles={buildArtistsListKpiTiles({ stats, periodDays: 30 })}
           />
         ) : null
       }

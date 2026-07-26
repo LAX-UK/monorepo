@@ -18,7 +18,9 @@ import {
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
 import { AdminUserReadinessPanel } from "@/components/admin/admin-user-readiness-panel";
 import { AdminUserSofPanel } from "@/components/admin/admin-user-sof-panel";
+import { PeopleOverviewTab } from "@/components/admin/people/people-overview-tab";
 import type { AdminClientDetailBundle } from "@/lib/admin/load-admin-client-detail";
+import { buildPeopleOverviewViewModel } from "@/lib/data/view-models/people-overview.vm";
 import type { ReactNode } from "react";
 
 export type AdminClientDetailTab = {
@@ -113,12 +115,23 @@ export function buildAdminClientDetailTabs(
   const { payments, wonLots, bids, attentionItems, canViewFinance, canViewBids } = bundle;
   const overviewSections = buildOverviewSections(bundle);
 
+  const overviewVm = buildPeopleOverviewViewModel({
+    summaryMetrics: bundle.summaryMetrics,
+    readinessSnapshot: bundle.readinessSnapshot,
+    attentionCount: attentionItems.length,
+    payments: bundle.payments,
+  });
+
   const tabs: AdminClientDetailTab[] = [
     {
       id: "overview",
       label: "Overview",
       badge: attentionItems.length > 0 ? <AdminDetailTabAttentionBadge /> : undefined,
-      content: <AdminUserOverviewSections sections={overviewSections} />,
+      content: (
+        <PeopleOverviewTab kpiTiles={overviewVm.kpiTiles} ariaLabel="Client summary">
+          <AdminUserOverviewSections sections={overviewSections} />
+        </PeopleOverviewTab>
+      ),
     },
     {
       id: "won-lots",
@@ -133,7 +146,7 @@ export function buildAdminClientDetailTabs(
       id: "bids",
       label: "Bids",
       badge: <AdminDetailTabCountBadge count={bids.length} />,
-      content: <AdminUserBidsPanel bids={bids} />,
+      content: <AdminUserBidsPanel bids={bids} clientLabel={bundle.user.name} />,
     });
   }
 

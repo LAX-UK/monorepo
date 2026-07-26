@@ -1,8 +1,9 @@
-import { DetailRailLayout } from "@/components/admin/detail-rail/detail-rail-layout";
-import { EntityDetailMeta } from "@/components/admin/entity-detail-meta";
-import { AppScreen } from "@/components/dashboard/dashboard-page";
-import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
-import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import {
+  CatalogBreadcrumbs,
+  CatalogDetailMobileMeta,
+  CatalogDetailShell,
+  type CatalogMobileAction,
+} from "@/components/admin/catalog";
 import type { ReactNode } from "react";
 
 export type AdminEntityDetailShellProps = {
@@ -12,13 +13,7 @@ export type AdminEntityDetailShellProps = {
   meta?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
-  /** Stripe-style sticky context rail (lg+) with mobile sheet */
-  rail?: ReactNode;
-  railSticky?: boolean;
   className?: string | undefined;
-  /** Use sticky `DashboardDetailHeader` (v3) instead of `DashboardPageHeader`. */
-  detailHeader?: boolean;
-  detailHeaderSticky?: boolean;
   backHref?: string;
   backLabel?: string;
   eyebrow?: ReactNode;
@@ -26,8 +21,22 @@ export type AdminEntityDetailShellProps = {
   updatedAt?: Date | string;
   publicHref?: string;
   publicLabel?: string;
+  /** Catalog-style sticky tab nav rendered above main content. */
+  stickySubnav?: ReactNode;
+  mobileActions?: readonly CatalogMobileAction[];
+  mobileMeta?: ReactNode;
+  /** Status badge or chips shown in the compact mobile meta row. */
+  mobileMetaStatus?: ReactNode;
+  mobileMetaQuickLinks?: readonly { label: string; href: string }[];
+  mobileMetaPrimaryAction?: ReactNode;
 };
 
+/**
+ * Compatibility wrapper over CatalogDetailShell for legacy entity detail call sites.
+ * Prefer domain shells (PeopleDetailShell, LegalEntityDetailShell, etc.) for new work.
+ *
+ * Side rails are deprecated — use header actions, tab content, and CatalogDetailMobileMeta.
+ */
 export function AdminEntityDetailShell({
   breadcrumbs,
   title,
@@ -35,58 +44,60 @@ export function AdminEntityDetailShell({
   meta,
   actions,
   children,
-  rail,
-  railSticky = true,
   className,
-  detailHeader = false,
-  detailHeaderSticky = true,
   backHref,
   backLabel,
   eyebrow,
   entityId,
   updatedAt,
   publicHref,
-  publicLabel,
+  publicLabel = "View on site",
+  stickySubnav,
+  mobileActions,
+  mobileMeta,
+  mobileMetaStatus,
+  mobileMetaQuickLinks,
+  mobileMetaPrimaryAction,
 }: AdminEntityDetailShellProps) {
-  const contextRail = rail;
+  const resolvedBreadcrumbs =
+    breadcrumbs ??
+    (backHref && backLabel ? (
+      <CatalogBreadcrumbs
+        segments={[
+          { label: backLabel, href: backHref },
+          { label: typeof title === "string" ? title : "Detail" },
+        ]}
+      />
+    ) : undefined);
 
-  return (
-    <AppScreen className={className ?? "space-y-8"}>
-      {detailHeader ? (
-        <DashboardDetailHeader
-          sticky={detailHeaderSticky}
-          title={title}
-          {...(description ? { description } : {})}
-          {...(breadcrumbs ? { crumbs: breadcrumbs } : {})}
-          {...(backHref && !breadcrumbs ? { backHref } : {})}
-          {...(backLabel ? { backLabel } : {})}
-          {...(eyebrow ? { eyebrow } : {})}
-          badges={meta}
-          actions={actions}
-        />
-      ) : (
-        <DashboardPageHeader
-          title={title}
-          {...(description ? { description } : {})}
-          {...(meta ? { meta } : {})}
-          {...(breadcrumbs ? { breadcrumbs } : {})}
-          {...(actions ? { actions } : {})}
-        />
-      )}
-      <EntityDetailMeta
+  const resolvedMobileMeta =
+    mobileMeta ??
+    (entityId || updatedAt || publicHref || mobileMetaStatus ? (
+      <CatalogDetailMobileMeta
         {...(entityId ? { entityId } : {})}
         {...(updatedAt ? { updatedAt } : {})}
         {...(publicHref ? { publicHref, publicLabel } : {})}
+        {...(mobileMetaStatus ? { status: mobileMetaStatus } : {})}
+        {...(mobileMetaQuickLinks ? { quickLinks: mobileMetaQuickLinks } : {})}
+        {...(mobileMetaPrimaryAction ? { primaryAction: mobileMetaPrimaryAction } : {})}
       />
-      {contextRail ? (
-        <DetailRailLayout rail={contextRail} sticky={railSticky}>
-          {children}
-        </DetailRailLayout>
-      ) : (
-        <div className="mx-auto max-w-6xl">
-          <div className="min-w-0 space-y-6">{children}</div>
-        </div>
-      )}
-    </AppScreen>
+    ) : undefined);
+
+  return (
+    <CatalogDetailShell
+      {...(className ? { className } : {})}
+      {...(resolvedBreadcrumbs ? { breadcrumbs: resolvedBreadcrumbs } : {})}
+      {...(eyebrow ? { eyebrow } : {})}
+      title={title}
+      {...(description ? { description } : {})}
+      {...(meta ? { meta } : {})}
+      metaBelowTitle
+      {...(actions ? { actions } : {})}
+      {...(mobileActions ? { mobileActions } : {})}
+      {...(resolvedMobileMeta ? { mobileMeta: resolvedMobileMeta } : {})}
+      {...(stickySubnav ? { stickySubnav } : {})}
+    >
+      {children}
+    </CatalogDetailShell>
   );
 }

@@ -1,5 +1,5 @@
 import { LotImagesTabBoard } from "@/components/admin/lot-detail/lot-images-tab-board";
-import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
+import { loadAdminLotImagesPage } from "@/lib/admin/lots/load-lot-images-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -7,8 +7,13 @@ type Props = {
 
 export default async function AdminLotImagesPage({ params }: Props) {
   const { id } = await params;
-  const { auction } = await loadAdminLotDetail(id);
-  const imageAlts = auction.marketingDetails.imageAlts ?? [];
+  const page = await loadAdminLotImagesPage(id);
 
-  return <LotImagesTabBoard lotId={id} initialImages={auction.images} initialAlts={imageAlts} />;
+  return (
+    <LotImagesTabBoard
+      lotId={page.lotId}
+      initialImages={page.images}
+      initialAlts={page.imageAlts}
+    />
+  );
 }

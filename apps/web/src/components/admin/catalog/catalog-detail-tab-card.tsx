@@ -9,7 +9,7 @@ type Props = Omit<DetailBoardShellProps, "count"> & {
 };
 
 /**
- * Figma-aligned card shell for catalog detail tabs.
+ * Card shell for catalog detail tabs.
  * Thin wrapper over entity-agnostic DetailBoardShell.
  */
 export function CatalogDetailTabCard({

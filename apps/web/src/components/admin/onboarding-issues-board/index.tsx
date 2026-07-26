@@ -3,6 +3,7 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminPreviewSheetHeader } from "@/components/admin/admin-preview-sheet-header";
 import { AdminQueueCountBadge, AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import {
@@ -302,11 +303,7 @@ export function OnboardingIssuesBoard({
           </div>
         </div>
 
-        <div
-          className={cn(
-            "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-          )}
-        >
+        <CatalogBoardCard>
           <CatalogBoardTableHeader
             leading={
               <>
@@ -343,7 +340,7 @@ export function OnboardingIssuesBoard({
               <CatalogPagination {...pagination} />
             </div>
           ) : null}
-        </div>
+        </CatalogBoardCard>
       </div>
 
       <Sheet open={!!selected} onOpenChange={(open) => !open && onCloseDrawer()}>

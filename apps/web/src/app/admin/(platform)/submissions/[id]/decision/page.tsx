@@ -1,8 +1,9 @@
 import { AdminSubmissionDecisionPanel } from "@/components/admin/admin-submission-decision-panel";
 import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
 import { SubmissionDecisionTab } from "@/components/admin/submission-detail/tabs/decision-tab";
-import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
-import { getAdminSubmissionById } from "@/lib/data/http/submissions.server";
+import { loadAdminSubmissionDecisionPage } from "@/lib/admin/submissions/load-submission-decision-page";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -13,28 +14,24 @@ type Props = {
 export default async function AdminSubmissionDecisionPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const s = await getAdminSubmissionById(id);
-  if (!s) notFound();
+  const user = await requireAdminCapability(SUBMISSIONS_ACCESS, `/admin/submissions/${id}`);
+  const loaded = await loadAdminSubmissionDecisionPage(id, user.id);
+  if (!loaded) notFound();
 
-  const submitterLegalEntityId = s.legalEntityId ?? s.sellerId ?? null;
-  const submitterEntity = submitterLegalEntityId
-    ? await getAdminLegalEntityById(submitterLegalEntityId).catch(() => null)
-    : null;
-  const submitterDisplayName = submitterEntity?.displayName ?? null;
-  const submitterUserId = submitterEntity?.createdByUserId ?? null;
+  const { submission, submitterDisplayName, submitterUserId } = loaded;
 
   const decision = (
     <AdminSubmissionDecisionPanel
-      submissionId={s.id}
-      status={s.status}
+      submissionId={submission.id}
+      status={submission.status}
       submission={{
-        title: s.title,
-        images: s.images,
-        description: s.description,
-        provenance: s.provenance ?? [],
-        categoryId: s.categoryId,
-        ...(s.categoryIds ? { categoryIds: s.categoryIds } : {}),
-        convertedLotId: s.convertedLotId,
+        title: submission.title,
+        images: submission.images,
+        description: submission.description,
+        provenance: submission.provenance ?? [],
+        categoryId: submission.categoryId,
+        ...(submission.categoryIds ? { categoryIds: submission.categoryIds } : {}),
+        convertedLotId: submission.convertedLotId,
       }}
       {...(submitterDisplayName ? { submitterDisplayName } : {})}
       {...(submitterUserId ? { submitterUserId } : {})}

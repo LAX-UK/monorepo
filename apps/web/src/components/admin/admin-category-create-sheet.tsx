@@ -5,7 +5,7 @@ import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import type { Category } from "@auction/types";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@auction/ui";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 type Props = {
   categories: Category[];
@@ -28,21 +28,12 @@ export function AdminCategoryCreateSheet({ categories, sheetFromQuery }: Props) 
   }, [pathname, router, searchParams]);
 
   const shouldOpen = Boolean(sheetFromQuery && searchParams.get("new") === "1");
-  const [open, setOpen] = useState(shouldOpen);
-
-  useEffect(() => {
-    setOpen(shouldOpen);
-  }, [shouldOpen]);
 
   return (
     <Sheet
-      open={open}
+      open={shouldOpen}
       onOpenChange={(next) => {
-        if (next) setOpen(true);
-        else {
-          setOpen(false);
-          stripNewParam();
-        }
+        if (!next) stripNewParam();
       }}
     >
       <SheetContent
@@ -63,7 +54,6 @@ export function AdminCategoryCreateSheet({ categories, sheetFromQuery }: Props) 
             preventNavigateAfterSave
             htmlFormId={CATALOG_FORM_IDS.category}
             afterSuccessfulSave={(categoryId) => {
-              setOpen(false);
               stripNewParam();
               if (categoryId) {
                 router.push(`/admin/categories/${categoryId}?created=1`);

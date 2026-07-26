@@ -1,4 +1,6 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
+import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { CatalogDetailTabCard } from "@/components/admin/catalog";
 import {
   capabilityDescription,
   capabilityLabel,
@@ -7,6 +9,13 @@ import {
 import { listCapabilitiesForStaffRole } from "@/lib/admin/staff-capabilities";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { UserStaffRole } from "@auction/types";
+
+/** Visible profile cards on staff overview (used for tab count badge). */
+export const STAFF_OVERVIEW_SECTION_COUNT = 4;
+
+export function countStaffCapabilities(staffRole: UserStaffRole | null): number {
+  return listCapabilitiesForStaffRole(staffRole).length;
+}
 
 export function AdminUserCapabilitiesPanel({
   staffRole,
@@ -43,26 +52,31 @@ export function AdminUserCapabilitiesPanel({
         in the current policy matrix.
       </p>
       {groups.map((group) => (
-        <section key={group.id} className="space-y-3">
-          <h3 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            {group.label}
-          </h3>
-          <ul className="grid gap-2 sm:grid-cols-2">
+        <CatalogDetailTabCard
+          key={group.id}
+          title={group.label}
+          description={`${group.capabilities.length} permission${group.capabilities.length === 1 ? "" : "s"}`}
+          countBadge={group.capabilities.length}
+        >
+          <ul className="divide-y divide-border-hairline">
             {group.capabilities.map((cap) => (
               <li
                 key={cap}
-                className="rounded-md border border-border-hairline bg-surface-container-lowest px-3 py-3"
+                className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
               >
-                <p className="font-body text-sm font-medium text-on-surface">
-                  {capabilityLabel(cap)}
-                </p>
-                <p className="mt-1 font-body text-xs text-on-surface-variant">
-                  {capabilityDescription(cap)}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="font-body text-sm font-medium text-on-surface">
+                    {capabilityLabel(cap)}
+                  </p>
+                  <p className="mt-1 font-body text-xs text-on-surface-variant">
+                    {capabilityDescription(cap)}
+                  </p>
+                </div>
+                <AdminStatusBadge domain="kyc" status="approved" label="Granted" size="sm" />
               </li>
             ))}
           </ul>
-        </section>
+        </CatalogDetailTabCard>
       ))}
     </div>
   );

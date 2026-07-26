@@ -10,13 +10,11 @@ import {
   CatalogPostCreateSessionRoot,
   CatalogWhatsNextBanner,
 } from "@/components/admin/catalog";
-import { CategoryContextRail } from "@/components/admin/category-detail/category-context-rail";
 import {
   categoryDetailTabHref,
   categoryEditHref,
 } from "@/components/admin/category-detail/category-detail-types";
 import { buildCategoryTaxonomyReadiness } from "@/lib/admin/catalog-readiness";
-import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import type { AdminCategory } from "@auction/types";
 import { Button } from "@auction/ui";
 import Link from "next/link";
@@ -31,7 +29,6 @@ type Props = {
   descendantCount?: number | null;
   lotCount?: number | null;
   saleCount?: number | null;
-  activityEvents?: readonly AdminDomainEventRow[];
   parentName?: string | null;
 };
 
@@ -43,7 +40,6 @@ export function CategoryDetailShell({
   descendantCount = null,
   lotCount = null,
   saleCount = null,
-  activityEvents = [],
   parentName = null,
 }: Props) {
   const archivedStatusBadge = (
@@ -146,16 +142,6 @@ export function CategoryDetailShell({
                 Edit category →
               </Link>
             }
-          />
-        }
-        aside={
-          <CategoryContextRail
-            categoryId={categoryId}
-            category={category}
-            directChildCount={resolvedDirectChildren}
-            status={archivedStatusBadge}
-            activityEvents={activityEvents}
-            parentName={parentName}
           />
         }
         stickySubnav={

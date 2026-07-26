@@ -1,6 +1,5 @@
 import { SaleDocumentsTab } from "@/components/admin/sale-detail/tabs/documents-tab";
-import { loadAdminSaleDetail } from "@/lib/admin/load-sale-detail";
-import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
+import { loadAdminSaleDocumentsPage } from "@/lib/admin/sales/load-sale-documents-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -8,8 +7,9 @@ type Props = {
 
 export default async function AdminSaleDocumentsPage({ params }: Props) {
   const { id } = await params;
-  const bundle = await loadAdminSaleDetail(id);
-  const documents = await getServerSaleDocuments(id).catch(() => []);
+  const page = await loadAdminSaleDocumentsPage(id);
 
-  return <SaleDocumentsTab saleId={id} saleTitle={bundle.sale.title} documents={documents} />;
+  return (
+    <SaleDocumentsTab saleId={page.saleId} saleTitle={page.saleTitle} documents={page.documents} />
+  );
 }

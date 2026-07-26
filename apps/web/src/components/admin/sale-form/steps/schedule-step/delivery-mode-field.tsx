@@ -21,7 +21,7 @@ type Props = {
   deliveryMode: AdminSaleFormValues["deliveryMode"];
 };
 
-const FIGMA_MODE_HEADINGS: Record<SaleDeliveryMode, string> = {
+const DELIVERY_MODE_HEADINGS: Record<SaleDeliveryMode, string> = {
   online: "Online (timed auction)",
   hybrid: "Hybrid (in-room + online)",
   onsite: "Live (real-time saleroom)",
@@ -62,7 +62,7 @@ export function DeliveryModeField({ form, isDraft, deliveryMode }: Props) {
                       )}
                     >
                       <span className="block font-headline text-sm text-on-surface">
-                        {FIGMA_MODE_HEADINGS[mode]}
+                        {DELIVERY_MODE_HEADINGS[mode]}
                       </span>
                       <span className="mt-1 block font-body text-xs text-on-surface-variant">
                         {deliveryModeLabel(mode)}

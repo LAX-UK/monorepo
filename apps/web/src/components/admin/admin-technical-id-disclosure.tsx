@@ -1,14 +1,11 @@
 "use client";
 
 import { AdminCopyField } from "@/components/admin/admin-copy-field";
+import type { AdminTechnicalIdItem } from "@/lib/admin/admin-technical-id.types";
 import { Button } from "@auction/ui/components/button";
 import { useId, useState } from "react";
 
-export type AdminTechnicalIdItem = {
-  label: string;
-  value: string | null | undefined;
-  copyLabel?: string;
-};
+export type { AdminTechnicalIdItem };
 
 type Props = {
   items: readonly AdminTechnicalIdItem[];

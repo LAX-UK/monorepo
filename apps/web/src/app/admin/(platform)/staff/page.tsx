@@ -3,8 +3,8 @@ import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminStaffFilterToolbar } from "@/components/admin/admin-staff-filter-toolbar";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
-import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import {
   AdminUserListBulkBar,
   PeopleStaffMobileCards,
@@ -37,13 +37,14 @@ export default async function AdminStaffPage({
 
   return (
     <AdminBulkSelectionProvider>
-      <PeopleListShell
+      <CatalogListShell
         title="Staff"
         description="Internal team directory. Filter by staff role or suspension, and manage capabilities from each profile."
         hasFilters={model.hasFilters}
         resetHref={model.basePath}
         bulkBar={<AdminUserListBulkBar />}
         filtersSelfContained
+        mobileCards={!loadError && rows.length > 0 ? <PeopleStaffMobileCards rows={rows} /> : null}
         mobileSummary={
           !loadError ? (
             <CatalogListMobileSummary metrics={buildStaffMobileMetrics(summary)} />
@@ -67,20 +68,6 @@ export default async function AdminStaffPage({
             />
           ) : null
         }
-        view={
-          !loadError && rows.length > 0 ? (
-            <AdminStaffBoardContainer
-              rows={rows}
-              totalMatches={total}
-              hasActiveFilters={model.hasFilters}
-              selectedStaffId={model.selectedStaffId}
-              listReturnTarget={model.listReturnTarget}
-              clearPreviewHref={model.buildDrawerHref(null)}
-              externalMobileCards
-            />
-          ) : null
-        }
-        mobileCards={!loadError && rows.length > 0 ? <PeopleStaffMobileCards rows={rows} /> : null}
         empty={
           !loadError && rows.length === 0 ? (
             <FilterEmptyState
@@ -109,7 +96,19 @@ export default async function AdminStaffPage({
             />
           ) : null
         }
-      />
+      >
+        {!loadError && rows.length > 0 ? (
+          <AdminStaffBoardContainer
+            rows={rows}
+            totalMatches={total}
+            hasActiveFilters={model.hasFilters}
+            selectedStaffId={model.selectedStaffId}
+            listReturnTarget={model.listReturnTarget}
+            clearPreviewHref={model.buildDrawerHref(null)}
+            externalMobileCards
+          />
+        ) : null}
+      </CatalogListShell>
     </AdminBulkSelectionProvider>
   );
 }

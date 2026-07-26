@@ -1,7 +1,7 @@
 import "server-only";
 
-import { isSaleLiveish } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { loadAdminSaleDetail } from "@/lib/admin/load-sale-detail";
+import { isSaleLiveish } from "@/lib/admin/sales/sale-detail-helpers";
 import type { AdminSaleOperationsSnapshot } from "@/lib/data/http/admin-operations-snapshot.types";
 import type { AdminPaddleRosterEntry } from "@/lib/data/http/admin-paddle.types";
 import { getAdminSalePaddleRoster } from "@/lib/data/http/admin-saleroom.reader";

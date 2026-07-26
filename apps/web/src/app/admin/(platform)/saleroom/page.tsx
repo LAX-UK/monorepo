@@ -1,11 +1,12 @@
 import { AdminEmptyState } from "@/components/admin/admin-empty-state";
 import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { AdminListKpiStrip } from "@/components/admin/admin-list-kpi-strip";
-import { AdminListShell } from "@/components/admin/admin-list-shell";
+import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { StaffHubShell } from "@/components/admin/catalog/staff-hub-shell";
 import { AdminSaleroomHubBoard } from "@/components/admin/saleroom-hub-board";
 import { SaleroomHubLiveGrid } from "@/components/admin/saleroom-hub-board/saleroom-hub-live-grid";
+import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
 import { loadSaleroomHubPage } from "@/lib/admin/saleroom/load-saleroom-hub-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
@@ -37,18 +38,24 @@ export default async function AdminSaleroomHubPage() {
     ) : null;
 
   return (
-    <AdminListShell
-      layout="hub"
+    <StaffHubShell
       title="Saleroom console"
       description="Monitor all live rooms or open a clerk console to run the floor."
       kpiStrip={
         !loadError ? (
-          <AdminListKpiStrip
+          <AdminTrendKpiBand
             ariaLabel="Saleroom summary"
             tiles={[
-              { label: "Live sales", value: liveCount },
-              { label: "Scheduled", value: scheduledCount },
-              { label: "Available", value: availableCount },
+              buildSnapshotKpiTile("Live sales", liveCount, 30, {
+                compareHint: "Active or paused rooms",
+                semanticTone: liveCount > 0 ? "emphasis" : "default",
+              }),
+              buildSnapshotKpiTile("Scheduled", scheduledCount, 30, {
+                compareHint: "Upcoming salerooms",
+              }),
+              buildSnapshotKpiTile("Available", availableCount, 30, {
+                compareHint: "Open clerk consoles",
+              }),
             ]}
           />
         ) : null

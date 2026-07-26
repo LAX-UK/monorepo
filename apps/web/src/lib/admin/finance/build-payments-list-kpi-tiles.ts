@@ -1,7 +1,7 @@
-import type { KpiRowTile } from "@/components/dashboard/primitives/kpi-row";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { buildSnapshotKpiTile } from "@/lib/admin/build-snapshot-kpi-tile";
 import { buildTrendKpiTile } from "@/lib/admin/build-trend-kpi-tile";
+import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import type { AdminKpiTrendBundle } from "@/lib/data/http/admin-kpi-trends.server";
 import { formatCompactMoney } from "@/lib/ui/format";
 

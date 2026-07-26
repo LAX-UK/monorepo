@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminDataTable } from "@/components/admin/admin-data-table";
+import { CatalogBoardCard } from "@/components/admin/catalog/catalog-board-card";
 import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-board-table-header";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { sofColumns, sofTableAriaLabel } from "@/components/admin/compliance-sof-board/columns";
@@ -9,7 +10,7 @@ import { SofMobileCards } from "@/components/admin/compliance-sof-board/mobile-c
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { SofListStatus } from "@/lib/admin/sof-list-query";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
-import { EntityList, cn } from "@auction/ui";
+import { EntityList } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
 import { useMemo } from "react";
 
@@ -48,11 +49,7 @@ export function ComplianceSofBoard({
         : "Approved cases";
 
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-shell-card border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]",
-      )}
-    >
+    <CatalogBoardCard>
       <CatalogBoardTableHeader
         leading={
           <>
@@ -98,6 +95,6 @@ export function ComplianceSofBoard({
           <CatalogPagination {...pagination} />
         </div>
       ) : null}
-    </div>
+    </CatalogBoardCard>
   );
 }

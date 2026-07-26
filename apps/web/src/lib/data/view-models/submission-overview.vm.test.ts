@@ -23,7 +23,7 @@ describe("buildSubmissionOverviewViewModel", () => {
     updatedAt: new Date("2026-01-02T10:00:00Z"),
   };
 
-  it("builds Figma KPI tiles and quality gaps for submission missing images", () => {
+  it("builds KPI tiles and quality gaps for submission missing images", () => {
     const vm = buildSubmissionOverviewViewModel({
       submissionId: "sub-1",
       submission: baseSubmission,

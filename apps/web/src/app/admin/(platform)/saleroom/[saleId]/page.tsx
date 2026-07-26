@@ -34,8 +34,6 @@ export default async function AdminSaleroomSalePage({ params, searchParams }: Pr
 
   return (
     <AdminEntityDetailShell
-      detailHeader
-      detailHeaderSticky={false}
       backHref="/admin/saleroom"
       backLabel="Saleroom hub"
       eyebrow="Saleroom clerk"

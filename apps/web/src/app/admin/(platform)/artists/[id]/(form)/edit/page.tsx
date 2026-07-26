@@ -5,9 +5,8 @@ import {
   CatalogDetailActionError,
   CatalogFormShell,
 } from "@/components/admin/catalog";
+import { loadAdminArtistEditPage } from "@/lib/admin/artists/load-artist-edit-page";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import { getAdminArtistById, getAdminLotList } from "@/lib/data/http/admin.server";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -20,19 +19,10 @@ export default async function EditAdminArtistPage({
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const [artist, lots, categories] = await Promise.all([
-    getAdminArtistById(id),
-    getAdminLotList({ artistId: id, limit: 25 }).catch(() => []),
-    (async () => {
-      try {
-        return await (await getServerCategoryReader()).tree();
-      } catch {
-        return [];
-      }
-    })(),
-  ]);
-  if (!artist) notFound();
+  const page = await loadAdminArtistEditPage(id);
+  if (page.notFound) notFound();
 
+  const { artist, lots, categories } = page;
   const isMerged = artist.status === "merged_into";
   const detailHref = `/admin/artists/${id}`;
 

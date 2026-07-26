@@ -6,7 +6,7 @@ import {
 } from "./lot-setup-stepper.vm";
 
 describe("lot-setup-stepper.vm", () => {
-  it("returns four Figma-aligned create steps", () => {
+  it("returns four create steps", () => {
     const steps = buildLotSetupStepperSteps();
     expect(steps).toHaveLength(4);
     expect(steps.map((s) => s.id)).toEqual(["identity", "sale-seller", "catalogue", "review"]);

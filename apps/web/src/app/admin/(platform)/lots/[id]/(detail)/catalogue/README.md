@@ -2,9 +2,7 @@
 
 **Decision (2026-07):** Catalogue content is owned by **Overview**, not a top-level tab.
 
-Verified Figma lot-detail frames are inconsistent (Overview shows six tabs; Media/Documents/Bid show five without Catalogue). Product alignment follows the **five-tab majority**:
-
-Overview · Media · Documents · Bidding · Activity
+Lot detail navigation uses five tabs (Overview · Media · Documents · Bidding · Activity). Catalogue fields live on Overview, not as a separate tab.
 
 ## Route behaviour
 

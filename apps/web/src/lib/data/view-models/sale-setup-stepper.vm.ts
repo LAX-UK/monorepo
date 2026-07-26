@@ -6,7 +6,7 @@ import {
   type SaleSetupStepId,
 } from "@/lib/admin/sale-setup/sale-setup-step-ids";
 
-const FIGMA_SETUP_LABELS: Record<SaleSetupStepId, string> = {
+const SETUP_STEP_LABELS: Record<SaleSetupStepId, string> = {
   identity: "Sale Information",
   schedule: "Schedule",
   documents: "Documents",
@@ -38,19 +38,18 @@ function buildStepSpec(
   };
 }
 
-/** Figma display steps for sale setup/create wizard (6 steps). */
+/** Display steps for sale setup/create wizard (6 steps). */
 export function buildSaleSetupStepperSteps(): WizardStepSpec[] {
   return SALE_SETUP_STEP_IDS.map((id) =>
-    buildStepSpec(id, FIGMA_SETUP_LABELS[id], stepIntro(id).body),
+    buildStepSpec(id, SETUP_STEP_LABELS[id], stepIntro(id).body),
   );
 }
 
-/** Figma display steps for sale edit wizard (4 steps). */
+/** Display steps for sale edit wizard (4 steps). */
 export function buildSaleEditStepperSteps(): WizardStepSpec[] {
   return EDIT_STEP_IDS.map((id) => {
     const intro = saleFormStepIntro(id, "edit");
-    const label =
-      id === "identity" ? "Sale Information" : FIGMA_SETUP_LABELS[id as SaleSetupStepId];
+    const label = id === "identity" ? "Sale Information" : SETUP_STEP_LABELS[id as SaleSetupStepId];
     return buildStepSpec(id, label, intro.body);
   });
 }

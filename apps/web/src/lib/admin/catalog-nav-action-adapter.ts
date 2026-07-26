@@ -1,5 +1,5 @@
-import type { QuickActionItem } from "@/components/admin/detail-rail/quick-actions-rail";
 import type { CatalogMobileAction } from "@/lib/admin/catalog/types";
+import type { QuickActionItem } from "@/lib/admin/detail-rail/quick-action.types";
 
 export type CatalogNavAction = {
   id: string;

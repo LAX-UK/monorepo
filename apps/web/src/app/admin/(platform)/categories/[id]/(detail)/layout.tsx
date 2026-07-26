@@ -5,7 +5,6 @@ import {
 } from "@/components/admin/category-detail/category-detail-helpers";
 import { CategoryDetailShell } from "@/components/admin/category-detail/category-detail-shell";
 import { loadAdminCategoryDetail, loadAdminCategoryTree } from "@/lib/admin/load-category-detail";
-import { getAdminDomainEventsForAggregate } from "@/lib/data/http/admin.server";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -15,14 +14,9 @@ type Props = {
 
 export default async function AdminCategoryDetailLayout({ params, children }: Props) {
   const { id } = await params;
-  const [category, allCategories, activityEvents] = await Promise.all([
+  const [category, allCategories] = await Promise.all([
     loadAdminCategoryDetail(id),
     loadAdminCategoryTree(),
-    getAdminDomainEventsForAggregate({
-      aggregateType: "category",
-      aggregateId: id,
-      limit: 5,
-    }).catch(() => []),
   ]);
   const directChildCount = categoryDirectChildrenOf(id, allCategories).length;
   const descendantCount = categoryDescendantsOf(id, allCategories).length;
@@ -38,7 +32,6 @@ export default async function AdminCategoryDetailLayout({ params, children }: Pr
       descendantCount={descendantCount}
       lotCount={category.usage.lots}
       saleCount={category.usage.sales}
-      activityEvents={activityEvents}
       parentName={parentName}
     >
       {children}

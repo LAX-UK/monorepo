@@ -1,6 +1,5 @@
 import { CategoryChildrenTab } from "@/components/admin/category-detail/tabs/children-lots-tabs";
-import { loadAdminCategoryDetail } from "@/lib/admin/load-category-detail";
-import { getAdminCategoryList } from "@/lib/data/http/admin.server";
+import { loadAdminCategoryChildrenPage } from "@/lib/admin/categories/load-category-children-page";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -8,8 +7,7 @@ type Props = {
 
 export default async function AdminCategoryChildrenPage({ params }: Props) {
   const { id } = await params;
-  await loadAdminCategoryDetail(id);
-  const allCategories = await getAdminCategoryList({ includeArchived: true });
+  const page = await loadAdminCategoryChildrenPage(id);
 
-  return <CategoryChildrenTab categoryId={id} allCategories={allCategories} />;
+  return <CategoryChildrenTab categoryId={page.categoryId} allCategories={page.allCategories} />;
 }

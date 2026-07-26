@@ -3,9 +3,9 @@ import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { AdminUsersFilterToolbar } from "@/components/admin/admin-users-filter-toolbar";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { CatalogPagination } from "@/components/admin/catalog/catalog-pagination";
 import { AdminClientsBoardContainer } from "@/components/admin/clients-board/container";
-import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import {
   AdminUserListBulkBar,
   PeopleClientsMobileCards,
@@ -38,12 +38,15 @@ export default async function AdminClientsPage({
 
   return (
     <AdminBulkSelectionProvider>
-      <PeopleListShell
+      <CatalogListShell
         title="Clients"
         description="Browse collector and seller accounts. Filter by verification, KYC, persona, activity dates, and more."
         hasFilters={model.hasFilters}
         resetHref={model.basePath}
         bulkBar={<AdminUserListBulkBar />}
+        mobileCards={
+          !loadError && rows.length > 0 ? <PeopleClientsMobileCards rows={rows} /> : null
+        }
         mobileSummary={
           !loadError ? (
             <CatalogListMobileSummary metrics={buildClientsMobileMetrics(summary)} />
@@ -73,22 +76,6 @@ export default async function AdminClientsPage({
           ) : null
         }
         filtersSelfContained
-        view={
-          !loadError && rows.length > 0 ? (
-            <AdminClientsBoardContainer
-              rows={rows}
-              totalMatches={total}
-              hasActiveFilters={model.hasFilters}
-              selectedClientId={model.selectedClientId}
-              listReturnTarget={model.listReturnTarget}
-              clearPreviewHref={model.buildDrawerHref(null)}
-              externalMobileCards
-            />
-          ) : null
-        }
-        mobileCards={
-          !loadError && rows.length > 0 ? <PeopleClientsMobileCards rows={rows} /> : null
-        }
         empty={
           !loadError && rows.length === 0 ? (
             <FilterEmptyState
@@ -121,7 +108,19 @@ export default async function AdminClientsPage({
             />
           ) : null
         }
-      />
+      >
+        {!loadError && rows.length > 0 ? (
+          <AdminClientsBoardContainer
+            rows={rows}
+            totalMatches={total}
+            hasActiveFilters={model.hasFilters}
+            selectedClientId={model.selectedClientId}
+            listReturnTarget={model.listReturnTarget}
+            clearPreviewHref={model.buildDrawerHref(null)}
+            externalMobileCards
+          />
+        ) : null}
+      </CatalogListShell>
     </AdminBulkSelectionProvider>
   );
 }

@@ -8,10 +8,10 @@ import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListPreviewDegradedAlert } from "@/components/admin/admin-list-preview-degraded-alert";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
+import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { InvitationsFilterToolbar } from "@/components/admin/invitations-filter-toolbar";
 import { InvitationsListPagination } from "@/components/admin/invitations-list-pagination";
 import { InvitationsMobileCards } from "@/components/admin/people/invitations-mobile-cards";
-import { PeopleListShell } from "@/components/admin/people/people-list-shell";
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import {
   buildInvitationsListKpiTiles,
@@ -52,7 +52,7 @@ export default async function AdminInvitationsPage({
 
   return (
     <AdminBulkSelectionProvider>
-      <PeopleListShell
+      <CatalogListShell
         title="Invitations"
         listHeadingId={ADMIN_PEOPLE_LIST_HEADING_ID}
         description="Invite staff or clients by email. They complete signup using the link we send."
@@ -106,18 +106,6 @@ export default async function AdminInvitationsPage({
           ) : null
         }
         filtersSelfContained
-        view={
-          !loadError && rows.length > 0 && dehydratedState ? (
-            <HydrationBoundary state={dehydratedState}>
-              <AdminInvitationsBoardContainer
-                params={model.listQueryParams}
-                externalMobileCards
-                selectedInvitationId={model.selectedInvitationId}
-                selectedInvitation={selectedInvitation}
-              />
-            </HydrationBoundary>
-          ) : null
-        }
         mobileCards={!loadError && rows.length > 0 ? <InvitationsMobileCards rows={rows} /> : null}
         empty={
           !loadError && rows.length === 0 ? (
@@ -152,7 +140,25 @@ export default async function AdminInvitationsPage({
             />
           ) : null
         }
-      />
+      >
+        {!loadError && (rows.length > 0 || selectedInvitation) && dehydratedState ? (
+          <HydrationBoundary state={dehydratedState}>
+            <AdminInvitationsBoardContainer
+              params={model.listQueryParams}
+              externalMobileCards
+              selectedInvitationId={model.selectedInvitationId}
+              selectedInvitation={selectedInvitation}
+            />
+          </HydrationBoundary>
+        ) : !loadError && selectedInvitation ? (
+          <AdminInvitationsBoardContainer
+            params={model.listQueryParams}
+            externalMobileCards
+            selectedInvitationId={model.selectedInvitationId}
+            selectedInvitation={selectedInvitation}
+          />
+        ) : null}
+      </CatalogListShell>
     </AdminBulkSelectionProvider>
   );
 }

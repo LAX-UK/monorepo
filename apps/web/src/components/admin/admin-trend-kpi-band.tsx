@@ -11,7 +11,7 @@ type Props = {
 };
 
 /**
- * Premium catalog KPI band — hero elevation, responsive grid, optional toolbar.
+ * Admin catalog KPI band — flat grid of dashboard tiles.
  * Six-tile bands stay 3-wide through xl and expand to 6 columns only at 2xl
  * so values + sparklines are not truncated in sidebar-constrained admin layouts.
  */
@@ -29,12 +29,10 @@ export function AdminTrendKpiBand({ tiles, ariaLabel, className, toolbarEnd }: P
       ) : null}
       <KpiRow
         tiles={tiles.map((tile) => ({ ...tile, variant: tile.variant ?? "dashboard" }))}
-        variant="hero"
         columns={columns}
         {...(stripClassName ? { stripClassName } : {})}
         aria-label={ariaLabel ?? "Summary at a glance"}
         className="mb-0"
-        track="selling"
       />
     </div>
   );
