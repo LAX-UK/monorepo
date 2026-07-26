@@ -131,12 +131,16 @@ export async function loadSaleroomDetailPage(input: {
   };
 }
 
-export async function loadSaleroomDetailMetadataShell(id: string, slug: string) {
+export async function loadSaleroomDetailMetadataShell(
+  id: string,
+  slug: string,
+  searchParams: Record<string, string | string[] | undefined>,
+) {
   const shell = await getServerSaleShell(id).catch(() => null);
   if (!shell) return null;
   const slugMismatch = saleSlugMismatchPath(slug, shell.sale);
   if (slugMismatch) {
-    permanentRedirect(slugMismatch);
+    permanentRedirect(canonicalSalePathWithQuery(shell.sale, searchParams));
   }
   return shell;
 }

@@ -5,6 +5,7 @@ import {
 import { parseUrlLayoutView } from "@/lib/preferences/resolve-layout-view";
 import { salePath, slugify } from "@/lib/seo/url";
 import type { Sale } from "@auction/types";
+import { appendMarketingPassthroughParams } from "@auction/validators";
 
 export const SALEROOM_CATALOG_PAGE_SIZE = 40;
 
@@ -68,6 +69,7 @@ export function canonicalSalePathWithQuery(
   if (page) qs.set("page", page);
   const view = parseUrlLayoutView(firstSearchParam(sp.view));
   if (view) qs.set("view", view);
+  appendMarketingPassthroughParams(qs, sp);
   const q = qs.toString();
   const path = salePath(sale);
   return q ? `${path}?${q}` : path;

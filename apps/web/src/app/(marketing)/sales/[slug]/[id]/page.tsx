@@ -13,9 +13,10 @@ type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { id, slug } = await params;
-  const shell = await loadSaleroomDetailMetadataShell(id, slug);
+  const sp = await searchParams;
+  const shell = await loadSaleroomDetailMetadataShell(id, slug, sp);
   if (!shell) {
     return metadataForNotFound("Sale not found");
   }
