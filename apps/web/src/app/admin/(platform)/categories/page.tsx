@@ -106,6 +106,7 @@ export default async function AdminCategoriesPage({
           offset: query.offset,
           limit: query.limit,
           countOnPage: categories.length,
+          total,
           prevHref:
             query.offset > 0
               ? buildListHref("/admin/categories", sp, {
@@ -170,10 +171,13 @@ export default async function AdminCategoriesPage({
         mobileSummary={
           !listError && categories.length > 0 ? (
             <CatalogListMobileSummary
-              segments={[
-                `${categories.length} on page`,
-                total > 0 ? `${total} total` : null,
-                includeArchived ? "Include archived" : null,
+              metrics={[
+                { id: "page", label: "On page", value: String(categories.length) },
+                { id: "total", label: "Total", value: String(total) },
+                { id: "active", label: "Active", value: String(summary.activeCount) },
+                ...(includeArchived
+                  ? [{ id: "lens", label: "Lens", value: "Include archived" }]
+                  : []),
               ]}
             />
           ) : null
@@ -183,8 +187,6 @@ export default async function AdminCategoriesPage({
             <AdminTrendKpiBand
               ariaLabel="Categories summary"
               tiles={buildCategoriesListKpiTiles({
-                onPageCount: categories.length,
-                includeArchived,
                 periodDays: 30,
                 summary,
               })}

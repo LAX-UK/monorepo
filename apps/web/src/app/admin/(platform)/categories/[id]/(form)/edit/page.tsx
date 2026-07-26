@@ -27,6 +27,13 @@ export default async function AdminCategoryEditPage({ params, searchParams }: Pr
         />
       }
       title="Edit category"
+      description="Update taxonomy placement, presentation, and archive state. Delete unused categories from the detail page when no lots, sales, or submissions reference them."
+      wizardMobile={{
+        formId: CATALOG_FORM_IDS.category,
+        submitLabel: "Save category",
+        cancelHref: page.overviewHref,
+        alwaysShowSubmit: true,
+      }}
       mobileActions={[
         {
           id: "save",

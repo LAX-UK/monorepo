@@ -14,10 +14,10 @@ export function buildCategorySummaryItems(
   return [
     {
       id: "children",
-      label: "Direct children",
+      label: "Subcategories",
       value: directChildCount,
       hint:
-        descendantCount > directChildCount ? `${descendantCount} descendants` : "Immediate branch",
+        descendantCount > directChildCount ? `${descendantCount} nested total` : "Immediate branch",
       href: categoryDetailTabHref(categoryId, "children"),
     },
     {

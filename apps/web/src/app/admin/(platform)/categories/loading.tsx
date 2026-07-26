@@ -5,9 +5,9 @@ export default function AdminCategoriesLoading() {
     <CatalogListPageSkeleton
       title="Categories"
       description="Loading categories…"
-      kpiTiles={6}
+      kpiTiles={3}
       tableRows={8}
-      tableColumns={4}
+      tableColumns={7}
     />
   );
 }

@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { category, lotCategories, saleCategories, submissionCategories } from "@auction/db/schema";
 import type {
   AdminCategoriesListSummary,
+  AdminCategoriesMostUsed,
   AdminCategory,
   AdminCategoryListResult,
   Category,
@@ -89,26 +90,65 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
     options: { includeArchived?: boolean } = {},
   ): Promise<AdminCategoriesListSummary> {
     const lensWhere = options.includeArchived ? undefined : eq(category.archived, false);
-    const [matching, active, archived, lots, sales, submissions] = await Promise.all([
-      this.db.select({ value: count() }).from(category).where(lensWhere),
-      this.db.select({ value: count() }).from(category).where(eq(category.archived, false)),
-      this.db.select({ value: count() }).from(category).where(eq(category.archived, true)),
-      this.db
-        .select({ value: count() })
-        .from(lotCategories)
-        .innerJoin(category, eq(lotCategories.categoryId, category.id))
-        .where(lensWhere),
-      this.db
-        .select({ value: count() })
-        .from(saleCategories)
-        .innerJoin(category, eq(saleCategories.categoryId, category.id))
-        .where(lensWhere),
-      this.db
-        .select({ value: count() })
-        .from(submissionCategories)
-        .innerJoin(category, eq(submissionCategories.categoryId, category.id))
-        .where(lensWhere),
-    ]);
+    const [matching, active, archived, lots, sales, submissions, categoriesInLens] =
+      await Promise.all([
+        this.db.select({ value: count() }).from(category).where(lensWhere),
+        this.db.select({ value: count() }).from(category).where(eq(category.archived, false)),
+        this.db.select({ value: count() }).from(category).where(eq(category.archived, true)),
+        this.db
+          .select({ value: count() })
+          .from(lotCategories)
+          .innerJoin(category, eq(lotCategories.categoryId, category.id))
+          .where(lensWhere),
+        this.db
+          .select({ value: count() })
+          .from(saleCategories)
+          .innerJoin(category, eq(saleCategories.categoryId, category.id))
+          .where(lensWhere),
+        this.db
+          .select({ value: count() })
+          .from(submissionCategories)
+          .innerJoin(category, eq(submissionCategories.categoryId, category.id))
+          .where(lensWhere),
+        this.db
+          .select({
+            id: category.id,
+            name: category.name,
+            slug: category.slug,
+          })
+          .from(category)
+          .where(lensWhere),
+      ]);
+
+    const usageById = await this.usageForMany(categoriesInLens.map((row) => row.id));
+    let mostUsedCategory: AdminCategoriesMostUsed | null = null;
+
+    for (const row of categoriesInLens) {
+      const usage = usageById.get(row.id) ?? emptyUsage();
+      if (usage.total === 0) continue;
+
+      const candidate: AdminCategoriesMostUsed = {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        usage: {
+          lots: usage.lots,
+          sales: usage.sales,
+          submissions: usage.submissions,
+          total: usage.total,
+        },
+      };
+
+      if (
+        !mostUsedCategory ||
+        usage.total > mostUsedCategory.usage.total ||
+        (usage.total === mostUsedCategory.usage.total &&
+          row.name.localeCompare(mostUsedCategory.name) < 0)
+      ) {
+        mostUsedCategory = candidate;
+      }
+    }
+
     return {
       totalCount: matching[0]?.value ?? 0,
       activeCount: active[0]?.value ?? 0,
@@ -118,6 +158,7 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
         sales: sales[0]?.value ?? 0,
         submissions: submissions[0]?.value ?? 0,
       },
+      mostUsedCategory,
     };
   }
 

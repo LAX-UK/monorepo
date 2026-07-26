@@ -3,6 +3,7 @@
 import { CatalogFormSection } from "@/components/admin/forms/catalog-form-section";
 import { UnderlineInput } from "@/components/ui/input";
 import { LabelCaps } from "@/components/ui/typography";
+import { flattenCategoryTaxonomyRows } from "@/lib/admin/categories/category-taxonomy-rows";
 import type { Category } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -22,8 +23,8 @@ import {
 } from "@auction/ui/components/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import type { adminCategoryFormSchema } from "@auction/validators";
-import { Check, ChevronsUpDown, X } from "lucide-react";
-import { useState } from "react";
+import { Check, ChevronRight, ChevronsUpDown, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import type { z } from "zod";
 
@@ -41,6 +42,16 @@ type Props = {
 export function CategoryBasicsStep({ form, mode, categoryId, slug, categories }: Props) {
   const [parentPopoverOpen, setParentPopoverOpen] = useState(false);
   const eligibleParents = categories.filter((c) => c.id !== categoryId && !c.archived);
+  const parentRows = useMemo(
+    () =>
+      flattenCategoryTaxonomyRows(
+        eligibleParents.map((c) => ({
+          ...c,
+          usage: { lots: 0, sales: 0, submissions: 0, total: 0 },
+        })),
+      ),
+    [eligibleParents],
+  );
 
   function getParentLabel(id: string | null | undefined): string {
     if (!id) return "No parent";
@@ -130,10 +141,10 @@ export function CategoryBasicsStep({ form, mode, categoryId, slug, categories }:
                             />
                             No parent
                           </CommandItem>
-                          {eligibleParents.map((c) => (
+                          {parentRows.map((c) => (
                             <CommandItem
                               key={c.id}
-                              value={c.id}
+                              value={`${c.name} ${c.slug}`}
                               onSelect={() => {
                                 field.onChange(c.id);
                                 setParentPopoverOpen(false);
@@ -142,7 +153,20 @@ export function CategoryBasicsStep({ form, mode, categoryId, slug, categories }:
                               <Check
                                 className={`mr-2 size-4 ${field.value === c.id ? "opacity-100" : "opacity-0"}`}
                               />
-                              {c.name}
+                              <span
+                                className="flex min-w-0 items-center gap-1"
+                                style={{
+                                  paddingInlineStart: `${Math.min(c.depth, 4) * 0.75}rem`,
+                                }}
+                              >
+                                {c.depth > 0 ? (
+                                  <ChevronRight
+                                    className="size-3 shrink-0 text-on-surface-variant"
+                                    aria-hidden
+                                  />
+                                ) : null}
+                                <span className="truncate">{c.name}</span>
+                              </span>
                             </CommandItem>
                           ))}
                         </CommandGroup>

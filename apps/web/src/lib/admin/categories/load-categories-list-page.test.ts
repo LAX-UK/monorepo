@@ -28,6 +28,7 @@ describe("loadAdminCategoriesListPage", () => {
       activeCount: 40,
       archivedCount: 2,
       usageTotals: { lots: 100, sales: 8, submissions: 12 },
+      mostUsedCategory: null,
     });
     getTree.mockResolvedValue([{ id: "root" }]);
   });

@@ -9,5 +9,5 @@ export default async function AdminCategoryLotsPage({ params }: Props) {
   const { id } = await params;
   const page = await loadAdminCategoryLotsPage(id);
 
-  return <CategoryLotsTab lots={page.lots} totalCount={page.totalCount} />;
+  return <CategoryLotsTab categoryId={id} lots={page.lots} totalCount={page.totalCount} />;
 }

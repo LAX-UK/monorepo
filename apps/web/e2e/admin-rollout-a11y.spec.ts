@@ -4,6 +4,7 @@ import {
   e2eSkipReason,
   expectNoSeriousAxeViolationsInMain,
   hasStaffCredentials,
+  seededStaffRoutes,
   staffLogin,
 } from "./helpers/auth";
 
@@ -18,6 +19,8 @@ test.describe("admin rollout accessibility gate", () => {
     "/admin/lots",
     "/admin/sales",
     "/admin/categories",
+    `/admin/categories/${seededStaffRoutes.categoryDetail}`,
+    `/admin/categories/${seededStaffRoutes.categoryDetail}/edit`,
     "/admin/payments",
     "/admin/disputes",
     "/admin/payouts",

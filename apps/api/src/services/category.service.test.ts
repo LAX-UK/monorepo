@@ -45,6 +45,7 @@ function createSut(categories: Category[]) {
     activeCount: 0,
     archivedCount: 0,
     usageTotals: { lots: 0, sales: 0, submissions: 0 },
+    mostUsedCategory: null,
   });
   const repo = {
     findAll,

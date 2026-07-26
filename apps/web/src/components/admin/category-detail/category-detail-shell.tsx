@@ -10,6 +10,7 @@ import {
   CatalogPostCreateSessionRoot,
   CatalogWhatsNextBanner,
 } from "@/components/admin/catalog";
+import { CategoryDestructivePanel } from "@/components/admin/category-detail/category-destructive-panel";
 import {
   categoryDetailTabHref,
   categoryEditHref,
@@ -56,18 +57,20 @@ export function CategoryDetailShell({
   ];
 
   const resolvedDirectChildren = directChildCount ?? 0;
+  const resolvedDescendants = descendantCount ?? resolvedDirectChildren;
+  const resolvedLots = lotCount ?? category.usage.lots;
   const resolvedSales = saleCount ?? category.usage.sales;
 
   const tabSpecs = [
     { id: "overview", label: "Overview", href: categoryDetailTabHref(categoryId, "overview") },
     {
       id: "children",
-      label: `Descendants${descendantCount != null && descendantCount > 0 ? ` (${descendantCount})` : ""}`,
+      label: `Subcategories${resolvedDescendants > 0 ? ` (${resolvedDescendants})` : ""}`,
       href: categoryDetailTabHref(categoryId, "children"),
     },
     {
       id: "lots",
-      label: `Lots${lotCount != null && lotCount > 0 ? ` (${lotCount})` : ""}`,
+      label: `Lots${resolvedLots > 0 ? ` (${resolvedLots})` : ""}`,
       href: categoryDetailTabHref(categoryId, "lots"),
     },
     {
@@ -154,25 +157,11 @@ export function CategoryDetailShell({
             <CatalogDetailStickyMiniBar
               items={[
                 {
-                  id: "children",
-                  label: "Direct children",
-                  value: String(resolvedDirectChildren),
-                },
-                {
                   id: "lots",
                   label: "Lots",
-                  value: String(lotCount ?? category.usage.lots),
+                  value: String(resolvedLots),
                 },
-                {
-                  id: "sales",
-                  label: "Sales",
-                  value: String(resolvedSales),
-                },
-                {
-                  id: "submissions",
-                  label: "Submissions",
-                  value: String(category.usage.submissions),
-                },
+                { id: "status", label: "Status", value: archivedStatusBadge },
               ]}
             />
           </>
@@ -186,6 +175,7 @@ export function CategoryDetailShell({
           />
         </Suspense>
         {children}
+        <CategoryDestructivePanel category={category} />
       </CatalogDetailShell>
     </CatalogPostCreateSessionRoot>
   );

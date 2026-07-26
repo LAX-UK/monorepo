@@ -50,6 +50,7 @@ describe("admin category list routes", () => {
       activeCount: 10,
       archivedCount: 2,
       usageTotals: { lots: 4, sales: 1, submissions: 3 },
+      mostUsedCategory: null,
     });
     const app = createApp({ getCategoriesListSummary } as never);
 

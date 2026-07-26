@@ -13,6 +13,7 @@ import {
   catalogueManagerLogin,
   e2eEnabled as enabled,
   hasCatalogueManagerCredentials,
+  seededStaffRoutes,
   e2eSkipReason as skipReason,
   staffLogin,
 } from "./helpers/auth";
@@ -44,6 +45,15 @@ test.describe("admin catalog navigation", () => {
     await staffLogin(page);
     await page.goto("/admin/categories");
     await expect(page.getByRole("heading", { name: /categories/i })).toBeVisible();
+  });
+
+  test("category detail and edit pages load", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await staffLogin(page);
+    await page.goto(`/admin/categories/${seededStaffRoutes.categoryDetail}`);
+    await expect(page.getByRole("heading", { name: /category/i, level: 1 })).toBeVisible();
+    await page.goto(`/admin/categories/${seededStaffRoutes.categoryDetail}/edit`);
+    await expect(page.getByRole("heading", { name: /edit category/i })).toBeVisible();
   });
 
   test("artists list page loads", async ({ page }) => {

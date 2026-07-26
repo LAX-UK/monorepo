@@ -1,8 +1,8 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
   CatalogDetailSection,
+  CatalogDetailSummaryStrip,
   CatalogInfoCard,
-  CatalogPublishReadiness,
   DetailBoardKpiStrip,
 } from "@/components/admin/catalog";
 import { DetailEntityTable } from "@/components/admin/catalog/detail-board";
@@ -12,7 +12,6 @@ import {
   categoryEditHref,
   categorySubmissionsHref,
 } from "@/components/admin/category-detail/category-detail-types";
-import { CategoryUsagePanel } from "@/components/admin/category-detail/category-usage-panel";
 import { categoryActivityTabHref } from "@/components/admin/category-detail/tabs/activity-tab";
 import { ActivitySnapshotRail } from "@/components/admin/detail-rail";
 import { MediaImage } from "@/components/ui/media-image";
@@ -69,22 +68,9 @@ export function CategoryOverviewTab({
 
   return (
     <div className="space-y-8">
-      {vm.readiness.percent < 100 ? (
-        <CatalogPublishReadiness
-          title="Taxonomy readiness"
-          readiness={vm.readiness}
-          dismissKey={`category-overview:${categoryId}`}
-        />
-      ) : null}
-
       <DetailBoardKpiStrip ariaLabel="Category usage" tiles={vm.kpiTiles} />
 
-      <CatalogDetailSection
-        title="Usage & lifecycle"
-        description="Where this category appears across the catalogue."
-      >
-        <CategoryUsagePanel categoryId={categoryId} usage={category.usage} />
-      </CatalogDetailSection>
+      <CatalogDetailSummaryStrip items={summaryItems} />
 
       <CatalogDetailSection title="Presentation" description="Public-facing copy and imagery.">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -144,16 +130,16 @@ export function CategoryOverviewTab({
           </CatalogInfoCard>
           <CatalogInfoCard title="Branch">
             <p className="text-sm text-on-surface">
-              {directChildCount} direct {directChildCount === 1 ? "child" : "children"}
+              {directChildCount} direct {directChildCount === 1 ? "subcategory" : "subcategories"}
               {descendantCount > directChildCount ? (
-                <span className="text-on-surface-variant"> · {descendantCount} descendants</span>
+                <span className="text-on-surface-variant"> · {descendantCount} nested total</span>
               ) : null}
             </p>
             <Link
               href={categoryDetailTabHref(categoryId, "children")}
               className="mt-2 inline-block text-sm text-link hover:underline"
             >
-              View descendants →
+              View subcategories →
             </Link>
           </CatalogInfoCard>
           <CatalogInfoCard title="Parent chain" className="sm:col-span-2">

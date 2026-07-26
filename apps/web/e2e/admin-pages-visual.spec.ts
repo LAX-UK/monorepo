@@ -99,6 +99,10 @@ const detailRoutes = [
     path: `/admin/categories/${seededStaffRoutes.categoryDetail}/activity`,
     slug: "admin-category-activity-tab",
   },
+  {
+    path: `/admin/categories/${seededStaffRoutes.categoryDetail}/edit`,
+    slug: "admin-category-edit",
+  },
   { path: `/admin/artists/${seededStaffRoutes.artistDetail}`, slug: "admin-artist-detail" },
   {
     path: `/admin/artists/${seededStaffRoutes.artistDetail}/lots`,

@@ -1,6 +1,6 @@
 import { Skeleton } from "@auction/ui/components/skeleton";
 
-const KPI_KEYS = ["kpi-0", "kpi-1", "kpi-2", "kpi-3"] as const;
+const KPI_KEYS = ["kpi-0", "kpi-1", "kpi-2", "kpi-3", "kpi-4"] as const;
 const TAB_KEYS = ["overview", "children", "lots", "sales", "activity"] as const;
 
 /** Loading placeholder aligned with category detail layout. */
@@ -33,16 +33,10 @@ export function AdminCategoryDetailSkeleton() {
           <Skeleton key={id} className="h-9 w-24 shrink-0" />
         ))}
       </div>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Skeleton className="h-32 w-full rounded-lg" />
-          <Skeleton className="h-32 w-full rounded-lg" />
-          <Skeleton className="h-32 w-full rounded-lg sm:col-span-2" />
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-40 w-full rounded-lg" />
-          <Skeleton className="h-32 w-full rounded-lg" />
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Skeleton className="h-32 w-full rounded-lg" />
+        <Skeleton className="h-32 w-full rounded-lg" />
+        <Skeleton className="h-32 w-full rounded-lg sm:col-span-2" />
       </div>
     </div>
   );

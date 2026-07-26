@@ -31,11 +31,19 @@ export type AdminCategoryListResult = {
   total: number;
 };
 
+export type AdminCategoriesMostUsed = {
+  id: string;
+  name: string;
+  slug: string;
+  usage: Pick<CategoryUsage, "lots" | "sales" | "submissions" | "total">;
+};
+
 export type AdminCategoriesListSummary = {
   totalCount: number;
   activeCount: number;
   archivedCount: number;
   usageTotals: Pick<CategoryUsage, "lots" | "sales" | "submissions">;
+  mostUsedCategory: AdminCategoriesMostUsed | null;
 };
 
 export function primaryCategoryId(categoryIds: readonly string[]): string | null {

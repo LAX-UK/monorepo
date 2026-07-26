@@ -125,6 +125,19 @@ export const adminCategoriesListSummarySchema = z.object({
     sales: z.coerce.number(),
     submissions: z.coerce.number(),
   }),
+  mostUsedCategory: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      slug: z.string(),
+      usage: z.object({
+        lots: z.coerce.number(),
+        sales: z.coerce.number(),
+        submissions: z.coerce.number(),
+        total: z.coerce.number(),
+      }),
+    })
+    .nullable(),
 }) satisfies z.ZodType<AdminCategoriesListSummary>;
 export const artistProfileRowSchema = artistProfileSchema as z.ZodType<ArtistProfile>;
 export const adminArtistListRowSchema =

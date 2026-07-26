@@ -9,6 +9,7 @@ const EMPTY_SUMMARY: AdminCategoriesListSummary = {
   activeCount: 0,
   archivedCount: 0,
   usageTotals: { lots: 0, sales: 0, submissions: 0 },
+  mostUsedCategory: null,
 };
 
 export async function loadAdminCategoriesListPage(

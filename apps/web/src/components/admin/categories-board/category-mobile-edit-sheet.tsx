@@ -39,12 +39,11 @@ export function CategoryMobileEditSheet({ category, categories }: Props) {
               {category.name}
             </SheetTitle>
             <SheetDescription>
-              Update name, parent, and archive state. Open the full detail page for usage and delete
-              safeguards.
+              Update name, parent, presentation, and archive state without leaving the list.
             </SheetDescription>
           </SheetHeader>
           <p className="font-body text-xs text-on-surface-variant">
-            Archive, usage counts, and delete safeguards are on the full edit page.
+            Archive and delete safeguards live on the category detail page.
           </p>
           <div className="pb-16 pt-4">
             <AdminCategoryForm
