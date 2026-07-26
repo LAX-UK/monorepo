@@ -23,6 +23,7 @@ import type {
   AdminSatelliteMarketingEventsRoutesContainer,
   AdminSatelliteOnsiteEventsRoutesContainer,
 } from "../services/interfaces/admin-routes/admin-route-container-slices.js";
+import type { IAuthOAuthAccountReader } from "../services/interfaces/auth-oauth-account-reader.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { BiddingRouteServices } from "../services/interfaces/bidding-routes.js";
 import type { CatalogRouteServices } from "../services/interfaces/catalog-routes/index.js";
@@ -98,6 +99,7 @@ export type ContainerRootSlice = {
   auth: Auth;
   authenticator: IAuthenticator;
   oauthAttributionStore: IOAuthAttributionStore;
+  authOAuthAccountReader: IAuthOAuthAccountReader;
 };
 
 /** Repository ports re-exposed on the flat container bag (internal repos stay in factories). */
@@ -460,10 +462,10 @@ export type ContainerMarketingRoutesSlice = Pick<
   Container,
   | "userSuspensionChecker"
   | "env"
-  | "authDb"
   | "clickIdStore"
   | "attributionStore"
   | "oauthAttributionStore"
+  | "authOAuthAccountReader"
   | "marketingEventService"
 >;
 

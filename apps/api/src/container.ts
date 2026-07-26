@@ -24,6 +24,7 @@ import { createUserMiscServices } from "./container/create-user-misc-services.js
 import { createUserNotificationComposition } from "./container/create-user-notification-composition.js";
 import { createUserRouteServices } from "./container/create-user-route-services.js";
 import type { Env } from "./env.js";
+import { DrizzleAuthOAuthAccountReader } from "./infrastructure/drizzle-auth-oauth-account.reader.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
@@ -35,6 +36,7 @@ export function createContainer(env: Env): Container {
   const authDb = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
   const infra = createInfra(env, db, authDb);
   const oauthAttributionStore = new RedisOAuthAttributionStore(infra.redis);
+  const authOAuthAccountReader = new DrizzleAuthOAuthAccountReader(authDb);
 
   const { sessionRepository } = createAuthRepositories(authDb);
   const sessionRevocation = new SessionRevocationService(sessionRepository);
@@ -222,6 +224,7 @@ export function createContainer(env: Env): Container {
     getPublicJwks: infra.getPublicJwks,
     authenticator,
     oauthAttributionStore,
+    authOAuthAccountReader,
     repoFactory: repos.repoFactory,
     lotService: catalog.lotService,
     conditionReportService: catalog.conditionReportService,

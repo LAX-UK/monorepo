@@ -24,22 +24,19 @@
  */
 
 import type { Database } from "@auction/db";
-import { session as sessionTable } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import type { IPhoneVerificationService } from "@auction/sms";
 import { betterAuth } from "better-auth";
-import { count, eq } from "drizzle-orm";
+import { buildDatabaseHooks } from "./auth-hooks/database-hooks.js";
 import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 import { parseAuthDekKey } from "./crypto/dek.js";
 import { createEnvelopeCrypto } from "./crypto/envelope.js";
-import { resetPhoneVerifiedIfNumberChanged } from "./phone-number-plugin.js";
 import {
   buildDrizzleDatabase,
   buildEmailAndPasswordBlock,
   buildEmailVerificationBlock,
   buildJwtAndOidcPlugins,
 } from "./server-plugins.js";
-import { assertUserNotSuspendedForSession } from "./session-suspended-guard.js";
 
 export type AuthEnv = {
   db: Database;
@@ -158,6 +155,8 @@ export function createAuth(env: AuthEnv): Auth {
         enabled: true,
         /** Empty: do not treat Google/Apple as "trusted" for linking without `email_verified`. */
         trustedProviders: [],
+        /** Better Auth only counts account rows; we enforce the full sign-in pool in delete.before. */
+        allowUnlinkingAll: true,
       },
     },
     user: {
@@ -201,127 +200,13 @@ export function createAuth(env: AuthEnv): Auth {
       email: env.email,
       onEmailVerified: env.onEmailVerified,
     }),
-    databaseHooks: {
-      account: {
-        create: {
-          after: async (authAccount) => {
-            if (!env.onAccountCreated) return;
-            try {
-              await env.onAccountCreated({
-                userId: authAccount.userId,
-                providerId: authAccount.providerId,
-              });
-            } catch (err) {
-              console.error("[auth.account.create.after] onAccountCreated failed", {
-                userId: authAccount.userId,
-                providerId: authAccount.providerId,
-                error: err instanceof Error ? err.message : String(err),
-              });
-            }
-          },
-        },
-      },
-      user: {
-        create: {
-          after: async (authUser) => {
-            if (env.onUserCreated) {
-              try {
-                await env.onUserCreated({
-                  id: authUser.id,
-                  email: authUser.email,
-                  name: authUser.name,
-                });
-              } catch (err) {
-                console.error("[auth.user.create.after] onUserCreated failed", {
-                  userId: authUser.id,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              }
-            }
-            if (!authUser.emailVerified) return;
-            env.email
-              ?.enqueue({
-                template: "welcome",
-                to: authUser.email,
-                userId: authUser.id,
-                category: "transactional",
-                vars: { userName: authUser.name },
-              })
-              .catch((err: unknown) => {
-                console.error("[auth] enqueue welcome failed", {
-                  userId: authUser.id,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              });
-          },
-        },
-        update: {
-          before: async (userData) => {
-            if (!("phoneNumber" in userData)) return;
-            const userId = (userData as { id?: string }).id;
-            if (!userId) return;
-            const existing = await env.db.query.user.findFirst({
-              where: (u, { eq }) => eq(u.id, userId),
-              columns: { phoneNumber: true },
-            });
-            const nextPhone =
-              userData.phoneNumber === null || userData.phoneNumber === undefined
-                ? null
-                : String(userData.phoneNumber);
-            await resetPhoneVerifiedIfNumberChanged(
-              env.db,
-              userId,
-              existing?.phoneNumber,
-              nextPhone,
-            );
-          },
-        },
-      },
-      session: {
-        create: {
-          before: async (sess) => {
-            await assertUserNotSuspendedForSession(env.db, sess.userId);
-          },
-          after: async (sess) => {
-            if (!env.enableNewDeviceLoginEmail) return;
-            // Count all sessions for this user (the new one is already committed).
-            // If count === 1 this is the very first session — the user just registered.
-            // Don't send a "new device login" email in that case; they already receive
-            // a welcome / email-verification email and the duplicate is confusing.
-            const countResult = await env.db
-              .select({ value: count() })
-              .from(sessionTable)
-              .where(eq(sessionTable.userId, sess.userId));
-            const sessionCount = countResult[0]?.value ?? 0;
-            if (sessionCount <= 1) return;
-            const userRow = await env.db.query.user.findFirst({
-              where: (u, { eq }) => eq(u.id, sess.userId),
-              columns: { email: true, name: true },
-            });
-            if (!userRow) return;
-            const when = new Date(sess.createdAt);
-            env.email
-              ?.enqueue({
-                template: "new-device-login",
-                to: userRow.email,
-                userId: sess.userId,
-                category: "auth",
-                vars: {
-                  userName: userRow.name,
-                  whenDisplay: when.toUTCString(),
-                  deviceSummary: (sess as { userAgent?: string | null }).userAgent ?? null,
-                },
-              })
-              .catch((err: unknown) => {
-                console.error("[auth] enqueue new-device-login failed", {
-                  userId: sess.userId,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              });
-          },
-        },
-      },
-    },
+    databaseHooks: buildDatabaseHooks({
+      db: env.db,
+      email: env.email,
+      onUserCreated: env.onUserCreated,
+      onAccountCreated: env.onAccountCreated,
+      enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
+    }),
     session: {
       expiresIn: AUTH_TIMINGS.sessionExpiresSec,
       updateAge: AUTH_TIMINGS.sessionUpdateAgeSec,
@@ -368,3 +253,9 @@ export {
 } from "./sign-in-turnstile-gate.js";
 export { verifyTurnstileResponse } from "./turnstile-siteverify.js";
 export { stampLastPasswordAuthFromSignInResponse } from "./stamp-last-password-auth.js";
+export {
+  assertCanUnlinkAccount,
+  shouldBlockLastAccountUnlink,
+  shouldNotifySocialAccountLinked,
+  SOCIAL_ACCOUNT_LINK_SIGNUP_THRESHOLD_MS,
+} from "./account-linking.js";

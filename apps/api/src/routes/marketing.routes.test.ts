@@ -20,22 +20,8 @@ function setup(input?: {
 }) {
   const attributionStore = { put: vi.fn(), get: vi.fn(), delete: vi.fn() };
   const marketingEventService = { emit: vi.fn(), stage: vi.fn(), enqueue: vi.fn() };
-  const authDb = {
-    select: vi.fn(() => ({
-      from: () => ({
-        where: () => ({
-          limit: vi.fn().mockResolvedValue(
-            input?.linkedProvider === false
-              ? []
-              : [
-                  {
-                    providerId: "google",
-                  },
-                ],
-          ),
-        }),
-      }),
-    })),
+  const authOAuthAccountReader = {
+    hasLinkedProvider: vi.fn().mockResolvedValue(input?.linkedProvider !== false),
   };
   const oauthAttributionStore = {
     markNewUser: vi.fn(),
@@ -54,7 +40,7 @@ function setup(input?: {
       MARKETING_ATTRIBUTION_ENABLED: input?.enabled === false ? "false" : "true",
     },
     attributionStore,
-    authDb,
+    authOAuthAccountReader,
     marketingEventService,
     oauthAttributionStore,
     clickIdStore: { put: vi.fn(), get: vi.fn() },

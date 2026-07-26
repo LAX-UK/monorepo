@@ -1,4 +1,3 @@
-import { account } from "@auction/db/schema";
 import {
   MARKETING_CONSENT_ANALYTICS_HEADER,
   MARKETING_CONSENT_MARKETING_HEADER,
@@ -7,7 +6,6 @@ import {
   marketingAttributionPutBodySchema,
   parseMarketingAttributionSnapshot,
 } from "@auction/validators";
-import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { ContainerMarketingRoutesSlice } from "../container.js";
@@ -100,11 +98,7 @@ export function createMarketingRoutes(
   r.post("/oauth-outcome", requireAuth, zValidator("json", oauthOutcomeBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const { provider } = c.req.valid("json");
-    const [linked] = await container.authDb
-      .select({ providerId: account.providerId })
-      .from(account)
-      .where(and(eq(account.userId, userId), eq(account.providerId, provider)))
-      .limit(1);
+    const linked = await container.authOAuthAccountReader.hasLinkedProvider(userId, provider);
     if (!linked) return c.json({ error: "oauth_provider_not_linked" }, 403);
 
     const authEvent = await container.oauthAttributionStore.resolveOutcome(userId, provider);

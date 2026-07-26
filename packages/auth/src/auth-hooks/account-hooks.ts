@@ -13,6 +13,20 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
         providerId: string;
         createdAt: Date;
       }) => {
+        if (deps.onAccountCreated) {
+          try {
+            await deps.onAccountCreated({
+              userId: acct.userId,
+              providerId: acct.providerId,
+            });
+          } catch (err) {
+            console.error("[auth.account.create.after] onAccountCreated failed", {
+              userId: acct.userId,
+              providerId: acct.providerId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
         if (acct.providerId === "credential") return;
         const userRow = await deps.db.query.user.findFirst({
           where: (u, { eq }) => eq(u.id, acct.userId),
