@@ -1,6 +1,2 @@
-/** Human-readable signup persona for admin user lists. */
-export function formatSignupPersona(persona: string | null): string {
-  if (!persona) return "Not set";
-  if (persona === "organisation") return "Organisation";
-  return persona.charAt(0).toUpperCase() + persona.slice(1);
-}
+/** @deprecated Import from signup-persona-presenter or signup-persona-registry. */
+export { formatSignupPersona } from "@/lib/presenters/signup-persona/signup-persona-registry";

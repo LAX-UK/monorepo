@@ -2,10 +2,8 @@
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
-import {
-  formatEmailDeliverabilityStatus,
-  formatSignupPersona,
-} from "@/lib/admin/admin-user-presenters";
+import { SignupPersonaBadge } from "@/components/admin/signup-persona-badge";
+import { formatEmailDeliverabilityStatus } from "@/lib/admin/admin-user-presenters";
 import { copyTextToClipboard } from "@/lib/admin/copy-text";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { InlineActionMenu } from "@auction/ui";
@@ -60,11 +58,7 @@ export function userPersonaColumn(): ColumnDef<AdminUserRow> {
   return {
     id: "persona",
     header: "Persona",
-    cell: ({ row }) => (
-      <span className="text-xs text-on-surface-variant">
-        {formatSignupPersona(row.original.signupPersona)}
-      </span>
-    ),
+    cell: ({ row }) => <SignupPersonaBadge persona={row.original.signupPersona} size="compact" />,
   };
 }
 

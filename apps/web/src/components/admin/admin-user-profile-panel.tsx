@@ -1,12 +1,9 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminTechnicalIdDisclosure } from "@/components/admin/admin-technical-id-disclosure";
 import { CatalogDetailTabCard } from "@/components/admin/catalog";
+import { SignupPersonaBadge } from "@/components/admin/signup-persona-badge";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
-import {
-  formatEmailDeliverabilityStatus,
-  formatSignupPersona,
-  formatUserRole,
-} from "@/lib/admin/admin-user-presenters";
+import { formatEmailDeliverabilityStatus, formatUserRole } from "@/lib/admin/admin-user-presenters";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
@@ -92,7 +89,9 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
           ) : null}
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">Persona</dt>
-            <dd>{formatSignupPersona(user.signupPersona)}</dd>
+            <dd>
+              <SignupPersonaBadge persona={user.signupPersona} />
+            </dd>
           </div>
           <div>
             <dt className="font-label text-[10px] uppercase text-on-surface-variant">Created</dt>

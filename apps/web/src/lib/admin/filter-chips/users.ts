@@ -1,5 +1,6 @@
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
+import { signupPersonaFilterLabel } from "@/lib/admin/signup-persona-presenter";
 import type { UsersListFilters } from "@/lib/admin/users-list-query";
 
 const USER_SORT_LABELS: Record<string, string> = {
@@ -74,7 +75,7 @@ export function buildUsersActiveFilterChips(
   if (filters.persona) {
     chips.push({
       id: "persona",
-      label: `Persona: ${filters.persona === "none" ? "Not set" : filters.persona}`,
+      label: `Persona: ${signupPersonaFilterLabel(filters.persona)}`,
       clearHref: omitParamsHref(basePath, sp, ["persona"]),
     });
   }

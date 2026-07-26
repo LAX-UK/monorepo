@@ -6,7 +6,6 @@ import {
   PeopleStaffMobileCard,
 } from "@/components/admin/people/people-mobile-card";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
-import { formatSignupPersona } from "@/lib/admin/format-signup-persona";
 import { buildClientsDrawerHref } from "@/lib/admin/people/clients-list-href";
 import { buildStaffDrawerHref } from "@/lib/admin/people/staff-list-href";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
@@ -61,7 +60,6 @@ export function PeopleClientsMobileCards({ rows }: Props) {
               onOpen={() =>
                 router.push(buildClientsDrawerHref(searchParams, user.id), { scroll: false })
               }
-              formatPersona={formatSignupPersona}
               formatJoined={formatAdminUserDate}
             />
           </UserMobileCardRow>

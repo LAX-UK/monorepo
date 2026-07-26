@@ -14,7 +14,6 @@ import {
 } from "@/components/admin/catalog";
 import { AdminUserDisplayNameEditableTitle } from "@/components/admin/editable-titles";
 import { UserDetailContextRail } from "@/components/admin/user-detail-context-rail";
-import { formatSignupPersona } from "@/lib/admin/admin-user-presenters";
 import type { UserAttentionItem, UserDetailRailContext } from "@/lib/admin/admin-user-readiness.vm";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
@@ -62,7 +61,7 @@ export function PeopleDetailShell({
   );
   const description = isStaff
     ? `${user.email} · ${staffRoleLabel(user.staffRole as UserStaffRole | null)}`
-    : `${user.email} · ${formatSignupPersona(user.signupPersona)}`;
+    : user.email;
 
   const queryTabs: CatalogDetailQueryTab[] = tabs.map((tab) => ({
     id: tab.id,

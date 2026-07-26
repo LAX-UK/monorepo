@@ -241,6 +241,14 @@
   --color-role-operations-fg: #4527a0;
   --color-role-staff-legacy-bg: #eeeeee;
   --color-role-staff-legacy-fg: #424242;
+
+  /* Signup persona categorical badges — admin people */
+  --color-persona-individual-bg: #e8f5e9;
+  --color-persona-individual-fg: #2e7d32;
+  --color-persona-organisation-bg: #e3f2fd;
+  --color-persona-organisation-fg: #1565c0;
+  --color-persona-unset-bg: #eceff1;
+  --color-persona-unset-fg: #546e7a;
 }
 
 :root {
@@ -407,5 +415,18 @@
   .platform-role-badge[data-platform-role="staff_legacy"] {
     background-color: var(--color-role-staff-legacy-bg);
     color: var(--color-role-staff-legacy-fg);
+  }
+
+  .signup-persona-badge[data-signup-persona="individual"] {
+    background-color: var(--color-persona-individual-bg);
+    color: var(--color-persona-individual-fg);
+  }
+  .signup-persona-badge[data-signup-persona="organisation"] {
+    background-color: var(--color-persona-organisation-bg);
+    color: var(--color-persona-organisation-fg);
+  }
+  .signup-persona-badge[data-signup-persona="unset"] {
+    background-color: var(--color-persona-unset-bg);
+    color: var(--color-persona-unset-fg);
   }
 }

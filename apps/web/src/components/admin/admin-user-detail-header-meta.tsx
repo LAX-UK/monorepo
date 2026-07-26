@@ -1,5 +1,6 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { PeopleDetailMetaRow } from "@/components/admin/people/people-detail-meta-row";
+import { SignupPersonaBadge } from "@/components/admin/signup-persona-badge";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import type { UserStaffRole } from "@auction/types";
@@ -21,7 +22,9 @@ export function AdminUserDetailHeaderMeta({ user }: Props) {
             status="active"
             label={staffRoleLabel(user.staffRole as UserStaffRole | null)}
           />
-        ) : null}
+        ) : (
+          <SignupPersonaBadge persona={user.signupPersona} size="compact" />
+        )}
         <AdminStatusBadge domain="user" status={user.suspendedAt ? "suspended" : "active"} />
         {user.emailVerified ? (
           <AdminStatusBadge domain="kyc" status="approved" label="Verified" size="sm" />

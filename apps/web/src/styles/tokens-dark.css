@@ -131,6 +131,14 @@ html.dark {
   --color-role-operations-fg: #b39ddb;
   --color-role-staff-legacy-bg: #424242;
   --color-role-staff-legacy-fg: #e0e0e0;
+
+  /* Signup persona categorical badges — dark theme */
+  --color-persona-individual-bg: #1b4332;
+  --color-persona-individual-fg: #a5d6a7;
+  --color-persona-organisation-bg: #1a3a5c;
+  --color-persona-organisation-fg: #90caf9;
+  --color-persona-unset-bg: #37474f;
+  --color-persona-unset-fg: #cfd8dc;
 }
 
 @keyframes bidPriceBump {

@@ -6,6 +6,7 @@ import { UserSuspendAction } from "@/components/admin/admin-user-actions";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
 import { AdminUserListShell } from "@/components/admin/admin-user-list-shell";
 import { PeopleClientMobileCard } from "@/components/admin/people/people-mobile-card";
+import { SignupPersonaBadge } from "@/components/admin/signup-persona-badge";
 import {
   userJoinedColumn,
   userKycVerifiedAtColumn,
@@ -19,7 +20,6 @@ import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import { copyTextToClipboard } from "@/lib/admin/copy-text";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
-import { formatSignupPersona } from "@/lib/admin/format-signup-persona";
 import { buildPeopleDetailHref } from "@/lib/admin/people/people-detail-href";
 import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
@@ -33,10 +33,6 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 type CopyStatus = "idle" | "copying" | "copied" | "unavailable";
-
-function formatPersona(persona: string | null): string {
-  return formatSignupPersona(persona);
-}
 
 function VerificationSummary({ u }: { u: AdminUserRow }) {
   return (
@@ -148,8 +144,10 @@ function ClientIdentityCell({ u, onOpen }: { u: AdminUserRow; onOpen: () => void
           {u.name}
         </Button>
         <p className="max-w-[14rem] truncate text-xs text-on-surface-variant">{u.email}</p>
-        <p className="mt-0.5 max-w-[14rem] truncate text-[10px] text-on-surface-variant">
-          {formatPersona(u.signupPersona)} - Joined {formatAdminUserDate(u.createdAt)}
+        <p className="mt-0.5 flex max-w-[14rem] flex-wrap items-center gap-1 truncate text-[10px] text-on-surface-variant">
+          <SignupPersonaBadge persona={u.signupPersona} size="compact" />
+          <span aria-hidden>·</span>
+          <span>Joined {formatAdminUserDate(u.createdAt)}</span>
         </p>
       </div>
     </div>
@@ -173,7 +171,9 @@ function ClientDrawerOverview({ u }: { u: AdminUserRow }) {
         <DetailItem label="KYC">
           <AdminStatusBadge domain="kyc" status={u.kycStatus ?? ""} size="sm" />
         </DetailItem>
-        <DetailItem label="Persona">{formatPersona(u.signupPersona)}</DetailItem>
+        <DetailItem label="Persona">
+          <SignupPersonaBadge persona={u.signupPersona} />
+        </DetailItem>
         <DetailItem label="2FA">
           <Badge variant={u.twoFactorEnabled ? "default" : "secondary"}>
             {u.twoFactorEnabled ? "On" : "Off"}
@@ -247,12 +247,7 @@ export function AdminClientsBoard({
 
   const renderMobileCard = useCallback(
     (u: AdminUserRow, onOpen: () => void) => (
-      <PeopleClientMobileCard
-        user={u}
-        onOpen={onOpen}
-        formatPersona={formatPersona}
-        formatJoined={formatAdminUserDate}
-      />
+      <PeopleClientMobileCard user={u} onOpen={onOpen} formatJoined={formatAdminUserDate} />
     ),
     [],
   );

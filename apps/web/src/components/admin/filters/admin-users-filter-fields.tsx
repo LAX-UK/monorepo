@@ -11,6 +11,7 @@ import {
 } from "@/components/admin/filters/admin-filter-section";
 import { useAdminFilterDraftContext } from "@/components/admin/filters/admin-filter-sheet-root";
 import type { UsersFilterDraft } from "@/lib/admin/filters/users-filter-adapter";
+import { signupPersonaFilterOptions } from "@/lib/admin/signup-persona-presenter";
 
 const triStateOptions = [
   { value: "", label: "Any" },
@@ -64,9 +65,10 @@ export function AdminUsersFilterFields() {
         onChange={(persona) => patch({ persona })}
         options={[
           { value: "", label: "Any" },
-          { value: "individual", label: "Individual" },
-          { value: "organisation", label: "Organisation" },
-          { value: "none", label: "Not set" },
+          ...signupPersonaFilterOptions.map(({ value, label }) => ({
+            value,
+            label,
+          })),
         ]}
       />
 

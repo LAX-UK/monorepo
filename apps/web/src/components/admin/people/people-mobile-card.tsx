@@ -2,6 +2,7 @@
 
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { AdminUserAvatar } from "@/components/admin/admin-user-avatar";
+import { SignupPersonaBadge } from "@/components/admin/signup-persona-badge";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
 import { Button } from "@auction/ui/components/button";
 import { ChevronRight } from "lucide-react";
@@ -41,16 +42,10 @@ export function PeopleMobileCard({ title, subtitle, onOpen, avatar, badges, meta
 type ClientCardProps = {
   user: AdminUserRow;
   onOpen: () => void;
-  formatPersona: (persona: string | null) => string;
   formatJoined: (iso: string) => string;
 };
 
-export function PeopleClientMobileCard({
-  user,
-  onOpen,
-  formatPersona,
-  formatJoined,
-}: ClientCardProps) {
+export function PeopleClientMobileCard({ user, onOpen, formatJoined }: ClientCardProps) {
   return (
     <PeopleMobileCard
       title={user.name}
@@ -70,13 +65,10 @@ export function PeopleClientMobileCard({
             <span className="text-[10px] text-on-surface-variant">Email unverified</span>
           )}
           <AdminStatusBadge domain="kyc" status={user.kycStatus ?? ""} size="sm" />
+          <SignupPersonaBadge persona={user.signupPersona} size="compact" />
         </>
       }
-      meta={
-        <>
-          {formatPersona(user.signupPersona)} · Joined {formatJoined(user.createdAt)}
-        </>
-      }
+      meta={<>Joined {formatJoined(user.createdAt)}</>}
     />
   );
 }

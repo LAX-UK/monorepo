@@ -20,12 +20,15 @@ vi.mock("@/components/admin/catalog", () => ({
     aside,
     children,
     mobileMeta,
+    description,
   }: {
     aside?: React.ReactNode;
     children?: React.ReactNode;
     mobileMeta?: React.ReactNode;
+    description?: string;
   }) => (
     <div>
+      {description ? <p data-testid="description">{description}</p> : null}
       <div data-testid="aside">{aside}</div>
       <div data-testid="mobile-meta-slot">{mobileMeta}</div>
       {children}
@@ -125,6 +128,20 @@ describe("PeopleDetailShell", () => {
     );
 
     expect(screen.getByTestId("client-context-rail")).toBeInTheDocument();
+  });
+
+  it("uses email-only description for clients (persona shown in header meta badge)", () => {
+    render(
+      <PeopleDetailShell
+        user={baseUser}
+        listHref="/admin/clients"
+        listLabel="Clients"
+        tabs={[{ id: "overview", label: "Overview", content: <p>Overview body</p> }]}
+      />,
+    );
+
+    expect(screen.getByTestId("description")).toHaveTextContent("client@example.com");
+    expect(screen.getByTestId("description")).not.toHaveTextContent("Individual");
   });
 
   it("omits client context rail for staff detail", () => {
