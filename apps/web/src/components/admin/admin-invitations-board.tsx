@@ -9,9 +9,9 @@ import { CatalogBoardTableHeader } from "@/components/admin/catalog/catalog-boar
 import { InvitationExpiryCountdown } from "@/components/admin/invitation-expiry-countdown";
 import { InvitationRowActions } from "@/components/admin/invitation-row-actions";
 import { InvitationDrawerContent } from "@/components/admin/invitations-board/drawer";
+import { PlatformRoleBadge } from "@/components/admin/platform-role-badge";
 import { useTableDensity } from "@/components/layout/density-provider";
 import { getInvitationBulkOperations } from "@/lib/admin/bulk-ops/invitations";
-import { invitationRoleLabel } from "@/lib/admin/invitation-role-label";
 import { invitationLifecycleDisplay } from "@/lib/admin/invite-lifecycle";
 import { useAdminListPreviewReturnFocus } from "@/lib/admin/use-admin-list-preview-return-focus";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
@@ -47,7 +47,12 @@ function columns(
     {
       accessorKey: "targetRole",
       header: "Role",
-      cell: ({ row }) => invitationRoleLabel(row.original.targetRole, row.original.targetStaffRole),
+      cell: ({ row }) => (
+        <PlatformRoleBadge
+          targetRole={row.original.targetRole}
+          targetStaffRole={row.original.targetStaffRole}
+        />
+      ),
     },
     {
       id: "status",

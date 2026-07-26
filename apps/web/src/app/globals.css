@@ -211,6 +211,36 @@
   --section-spacing: 5rem;
   --section-spacing-tight: 3rem;
   --section-spacing-loose: 7.5rem;
+
+  /* Platform role categorical badges — admin people (Okabe-Ito / Tol inspired) */
+  --color-role-client-bg: #e3f2fd;
+  --color-role-client-fg: #1565c0;
+  --color-role-super-admin-bg: #fce4ec;
+  --color-role-super-admin-fg: #880e4f;
+  --color-role-auction-manager-bg: #fbe9e7;
+  --color-role-auction-manager-fg: #bf360c;
+  --color-role-catalogue-manager-bg: #e8eaf6;
+  --color-role-catalogue-manager-fg: #283593;
+  --color-role-specialist-bg: #e8f5e9;
+  --color-role-specialist-fg: #2e7d32;
+  --color-role-finance-ops-bg: #e0f2f1;
+  --color-role-finance-ops-fg: #00695c;
+  --color-role-operations-fulfilment-bg: #fff3e0;
+  --color-role-operations-fulfilment-fg: #e65100;
+  --color-role-content-marketing-bg: #f3e5f5;
+  --color-role-content-marketing-fg: #6a1b9a;
+  --color-role-support-concierge-bg: #e0f7fa;
+  --color-role-support-concierge-fg: #006064;
+  --color-role-staff-viewer-bg: #eceff1;
+  --color-role-staff-viewer-fg: #455a64;
+  --color-role-compliance-officer-bg: #fff8e1;
+  --color-role-compliance-officer-fg: #ff6f00;
+  --color-role-client-advisor-bg: #f1f8e9;
+  --color-role-client-advisor-fg: #558b2f;
+  --color-role-operations-bg: #ede7f6;
+  --color-role-operations-fg: #4527a0;
+  --color-role-staff-legacy-bg: #eeeeee;
+  --color-role-staff-legacy-fg: #424242;
 }
 
 :root {
@@ -318,5 +348,64 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  .platform-role-badge[data-platform-role="client"] {
+    background-color: var(--color-role-client-bg);
+    color: var(--color-role-client-fg);
+  }
+  .platform-role-badge[data-platform-role="super_admin"] {
+    background-color: var(--color-role-super-admin-bg);
+    color: var(--color-role-super-admin-fg);
+  }
+  .platform-role-badge[data-platform-role="auction_manager"] {
+    background-color: var(--color-role-auction-manager-bg);
+    color: var(--color-role-auction-manager-fg);
+  }
+  .platform-role-badge[data-platform-role="catalogue_manager"] {
+    background-color: var(--color-role-catalogue-manager-bg);
+    color: var(--color-role-catalogue-manager-fg);
+  }
+  .platform-role-badge[data-platform-role="specialist"] {
+    background-color: var(--color-role-specialist-bg);
+    color: var(--color-role-specialist-fg);
+  }
+  .platform-role-badge[data-platform-role="finance_ops"] {
+    background-color: var(--color-role-finance-ops-bg);
+    color: var(--color-role-finance-ops-fg);
+  }
+  .platform-role-badge[data-platform-role="operations_fulfilment"] {
+    background-color: var(--color-role-operations-fulfilment-bg);
+    color: var(--color-role-operations-fulfilment-fg);
+  }
+  .platform-role-badge[data-platform-role="content_marketing"] {
+    background-color: var(--color-role-content-marketing-bg);
+    color: var(--color-role-content-marketing-fg);
+  }
+  .platform-role-badge[data-platform-role="support_concierge"] {
+    background-color: var(--color-role-support-concierge-bg);
+    color: var(--color-role-support-concierge-fg);
+  }
+  .platform-role-badge[data-platform-role="staff_viewer"] {
+    background-color: var(--color-role-staff-viewer-bg);
+    color: var(--color-role-staff-viewer-fg);
+  }
+  .platform-role-badge[data-platform-role="compliance_officer"] {
+    background-color: var(--color-role-compliance-officer-bg);
+    color: var(--color-role-compliance-officer-fg);
+  }
+  .platform-role-badge[data-platform-role="client_advisor"] {
+    background-color: var(--color-role-client-advisor-bg);
+    color: var(--color-role-client-advisor-fg);
+  }
+  .platform-role-badge[data-platform-role="operations"] {
+    background-color: var(--color-role-operations-bg);
+    color: var(--color-role-operations-fg);
+  }
+  .platform-role-badge[data-platform-role="staff_legacy"] {
+    background-color: var(--color-role-staff-legacy-bg);
+    color: var(--color-role-staff-legacy-fg);
   }
 }

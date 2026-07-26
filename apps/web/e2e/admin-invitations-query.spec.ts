@@ -11,7 +11,19 @@ test.describe("admin invitations (query + nuqs)", () => {
     await page.goto("/admin/invitations");
     await expect(page.getByRole("heading", { name: /^invitations$/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /sent invitations/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /invite users/i })).toBeVisible();
     await expect(page.getByPlaceholder(/search by email/i)).toBeVisible();
+  });
+
+  test("invite users opens modal with role controls", async ({ page }) => {
+    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
+    await staffLogin(page);
+    await page.goto("/admin/invitations");
+    await page.getByRole("button", { name: /invite users/i }).click();
+    await expect(page.getByRole("dialog", { name: /invite users/i })).toBeVisible();
+    await expect(page.getByLabel(/invitation role/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /^client$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^staff$/i })).toBeVisible();
   });
 
   test("status filter updates URL via nuqs", async ({ page }) => {

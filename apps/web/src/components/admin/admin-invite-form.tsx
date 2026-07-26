@@ -1,15 +1,16 @@
 "use client";
 
 import { InviteEmailChipInput } from "@/components/admin/invite-email-chip-input";
+import { PlatformRoleBadge } from "@/components/admin/platform-role-badge";
 import { RhfSelect } from "@/components/ui/rhf-select";
 import { adminCreateInvitationResultAction } from "@/lib/actions/admin";
-import { invitationRoleLabel } from "@/lib/admin/invitation-role-label";
 import { MAX_INVITE_BATCH } from "@/lib/admin/parse-invite-email-list";
-import { staffRoleFilterOptions } from "@/lib/admin/staff-role-presenter";
 import { useActionForm } from "@/lib/forms/use-action-form";
+import { staffRoleFilterOptions } from "@/lib/presenters/platform-role/platform-role-registry";
 import { notify } from "@/lib/ui/notify";
-import { type UserRole, userRoles } from "@auction/types";
+import type { UserRole } from "@auction/types";
 import type { UserStaffRole } from "@auction/types";
+import { cn } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -25,18 +26,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { useWatch } from "react-hook-form";
 
-function roleLabel(r: UserRole): string {
-  if (r === "staff") return "Staff";
-  return "Client";
-}
-
-const roleOptions = userRoles.map((r) => ({ value: r, label: roleLabel(r) }));
-
-const staffRoleOptions = staffRoleFilterOptions.map((o) => ({
-  value: o.value,
-  label: o.label,
-}));
-
 const labelCls =
   "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
 
@@ -47,7 +36,24 @@ type BatchResult = {
   failures: BatchFailure[];
 } | null;
 
-export function AdminInviteForm() {
+type Props = {
+  formId?: string;
+  layout?: "dialog";
+  onSubmittingChange?: (submitting: boolean) => void;
+  onCompleteSuccess?: () => void;
+};
+
+const coarseRoleOptions: { value: UserRole; label: string }[] = [
+  { value: "client", label: "Client" },
+  { value: "staff", label: "Staff" },
+];
+
+const staffRoleOptions = staffRoleFilterOptions.map((o) => ({
+  value: o.value,
+  label: o.label,
+}));
+
+export function AdminInviteForm({ formId, layout, onSubmittingChange, onCompleteSuccess }: Props) {
   const router = useRouter();
   const recipientsId = useId();
   const recipientsHintId = useId();
@@ -55,6 +61,7 @@ export function AdminInviteForm() {
   const [recipientError, setRecipientError] = useState<string | null>(null);
   const [batchResult, setBatchResult] = useState<BatchResult>(null);
   const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
+  const isDialog = layout === "dialog";
 
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
     schema: adminCreateInvitationBodySchema,
@@ -64,13 +71,17 @@ export function AdminInviteForm() {
       targetStaffRole: undefined,
     },
     action: adminCreateInvitationResultAction,
-    successToast: { title: "Invitation sent" },
+    ...(isDialog ? {} : { successToast: { title: "Invitation sent" } }),
     onSuccess: () => {
       setRecipientEmails([]);
       setBatchResult(null);
       setRecipientError(null);
       form.reset({ email: "", targetRole: "client", targetStaffRole: undefined });
       router.refresh();
+      if (isDialog) {
+        notify.success("Invitation sent");
+      }
+      onCompleteSuccess?.();
     },
   });
 
@@ -82,6 +93,12 @@ export function AdminInviteForm() {
       form.setValue("targetStaffRole", undefined);
     }
   }, [targetRole, form]);
+
+  const submitting = isSubmitting || isBatchSubmitting;
+
+  useEffect(() => {
+    onSubmittingChange?.(submitting);
+  }, [submitting, onSubmittingChange]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -142,14 +159,13 @@ export function AdminInviteForm() {
 
     if (failures.length === 0) {
       notify.success(`${sent} invitation${sent === 1 ? "" : "s"} sent`);
+      onCompleteSuccess?.();
     }
   }
 
-  const submitting = isSubmitting || isBatchSubmitting;
-  const accessPreview =
-    targetRole === "staff" && targetStaffRole
-      ? invitationRoleLabel("staff", targetStaffRole)
-      : null;
+  const accessPreviewRole =
+    targetRole === "staff" && targetStaffRole ? ("staff" as const) : targetRole;
+  const accessPreviewStaffRole = targetRole === "staff" ? (targetStaffRole ?? null) : null;
 
   return (
     <div className="space-y-5">
@@ -181,7 +197,7 @@ export function AdminInviteForm() {
       ) : null}
 
       <Form {...form}>
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <form id={formId} onSubmit={handleSubmit} className="space-y-5" noValidate>
           <FormField
             control={form.control}
             name="email"
@@ -214,48 +230,88 @@ export function AdminInviteForm() {
             )}
           />
 
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-            <FormField
-              control={form.control}
-              name="targetRole"
-              render={({ field }) => (
-                <FormItem className="grid gap-1.5">
-                  <FormLabel className={labelCls}>Role</FormLabel>
+          <FormField
+            control={form.control}
+            name="targetRole"
+            render={({ field }) => (
+              <FormItem className="grid gap-2.5">
+                <FormLabel className={labelCls}>Role</FormLabel>
+                {isDialog ? (
+                  <fieldset
+                    disabled={submitting}
+                    className="m-0 flex flex-wrap gap-2.5 border-0 p-0"
+                    aria-label="Invitation role"
+                  >
+                    {coarseRoleOptions.map((option) => {
+                      const selected = field.value === option.value;
+                      return (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          variant="outline"
+                          disabled={submitting}
+                          aria-pressed={selected}
+                          className={cn(
+                            "h-11 min-w-[9.375rem] rounded-lg border-2 font-body text-base font-medium",
+                            selected
+                              ? "border-on-surface bg-surface-container-low text-on-surface"
+                              : "border-border-soft bg-shell-search-bg text-on-surface-variant",
+                          )}
+                          onClick={() => field.onChange(option.value)}
+                        >
+                          {option.label}
+                        </Button>
+                      );
+                    })}
+                  </fieldset>
+                ) : (
                   <RhfSelect
                     value={field.value}
                     onValueChange={field.onChange}
                     onBlur={field.onBlur}
-                    options={roleOptions}
+                    options={coarseRoleOptions}
+                    triggerClassName="min-h-11 w-full font-body text-sm"
+                  />
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {targetRole === "staff" ? (
+            <FormField
+              control={form.control}
+              name="targetStaffRole"
+              render={({ field }) => (
+                <FormItem className="grid gap-1.5">
+                  <FormLabel className={labelCls}>Staff role</FormLabel>
+                  <RhfSelect
+                    value={field.value ?? ""}
+                    onValueChange={(v) =>
+                      field.onChange(v === "" ? undefined : (v as UserStaffRole))
+                    }
+                    onBlur={field.onBlur}
+                    options={staffRoleOptions}
+                    placeholder="Select staff role"
                     triggerClassName="min-h-11 w-full font-body text-sm"
                   />
                   <FormMessage />
                 </FormItem>
               )}
             />
-            {targetRole === "staff" ? (
-              <FormField
-                control={form.control}
-                name="targetStaffRole"
-                render={({ field }) => (
-                  <FormItem className="grid gap-1.5">
-                    <FormLabel className={labelCls}>Staff role</FormLabel>
-                    <RhfSelect
-                      value={field.value ?? ""}
-                      onValueChange={(v) =>
-                        field.onChange(v === "" ? undefined : (v as UserStaffRole))
-                      }
-                      onBlur={field.onBlur}
-                      options={staffRoleOptions}
-                      placeholder="Select staff role"
-                      triggerClassName="min-h-11 w-full font-body text-sm"
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )}
+          ) : null}
+
+          {accessPreviewStaffRole || targetRole === "client" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-body text-sm text-on-surface-variant">Inviting as</span>
+              <PlatformRoleBadge
+                targetRole={accessPreviewRole}
+                targetStaffRole={accessPreviewStaffRole}
               />
-            ) : (
-              <div className="hidden sm:block" aria-hidden />
-            )}
+            </div>
+          ) : null}
+
+          {!isDialog ? (
             <Button
               type="submit"
               className="min-h-11 w-full font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] sm:w-auto"
@@ -263,12 +319,6 @@ export function AdminInviteForm() {
             >
               {submitting ? "Sending…" : "Send invite"}
             </Button>
-          </div>
-
-          {accessPreview ? (
-            <p className="font-body text-sm text-on-surface-variant">
-              Inviting as <span className="font-medium text-on-surface">{accessPreview}</span>
-            </p>
           ) : null}
         </form>
       </Form>

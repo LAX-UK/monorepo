@@ -101,6 +101,36 @@ html.dark {
   );
   --color-nav-active-bg: var(--color-secondary-container);
   --color-nav-active-border: var(--color-secondary);
+
+  /* Platform role categorical badges — dark theme */
+  --color-role-client-bg: #1a3a5c;
+  --color-role-client-fg: #90caf9;
+  --color-role-super-admin-bg: #4a1942;
+  --color-role-super-admin-fg: #f48fb1;
+  --color-role-auction-manager-bg: #4a2c00;
+  --color-role-auction-manager-fg: #ffcc80;
+  --color-role-catalogue-manager-bg: #1a237e;
+  --color-role-catalogue-manager-fg: #9fa8da;
+  --color-role-specialist-bg: #1b4332;
+  --color-role-specialist-fg: #a5d6a7;
+  --color-role-finance-ops-bg: #004d40;
+  --color-role-finance-ops-fg: #80cbc4;
+  --color-role-operations-fulfilment-bg: #4a2600;
+  --color-role-operations-fulfilment-fg: #ffb74d;
+  --color-role-content-marketing-bg: #4a148c;
+  --color-role-content-marketing-fg: #ce93d8;
+  --color-role-support-concierge-bg: #004d57;
+  --color-role-support-concierge-fg: #80deea;
+  --color-role-staff-viewer-bg: #37474f;
+  --color-role-staff-viewer-fg: #cfd8dc;
+  --color-role-compliance-officer-bg: #4a3800;
+  --color-role-compliance-officer-fg: #ffca28;
+  --color-role-client-advisor-bg: #33691e;
+  --color-role-client-advisor-fg: #c5e1a5;
+  --color-role-operations-bg: #311b92;
+  --color-role-operations-fg: #b39ddb;
+  --color-role-staff-legacy-bg: #424242;
+  --color-role-staff-legacy-fg: #e0e0e0;
 }
 
 @keyframes bidPriceBump {

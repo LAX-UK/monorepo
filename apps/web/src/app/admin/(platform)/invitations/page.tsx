@@ -3,7 +3,7 @@ import {
   AdminBulkSelectionProvider,
 } from "@/components/admin/admin-bulk-selection-bridge";
 import { AdminInvitationsBoardContainer } from "@/components/admin/admin-invitations-board-container";
-import { AdminInviteCard } from "@/components/admin/admin-invite-card";
+import { AdminInviteUsersDialog } from "@/components/admin/admin-invite-users-dialog";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminListPreviewDegradedAlert } from "@/components/admin/admin-list-preview-degraded-alert";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
@@ -59,18 +59,16 @@ export default async function AdminInvitationsPage({
         hasFilters={model.hasFilters}
         resetHref={model.basePath}
         bulkBar={<AdminBulkSelectionBar />}
+        primaryAction={!loadError ? <AdminInviteUsersDialog /> : undefined}
         headerAfter={
           !loadError ? (
-            <div className="space-y-6">
-              <AdminInviteCard />
-              <div className="space-y-1 pt-2">
-                <h2 className="font-headline text-lg text-on-surface">Sent invitations</h2>
-                <p className="text-sm text-on-surface-variant">
-                  {total > 0
-                    ? `${total} invitation${total === 1 ? "" : "s"}${model.hasFilters ? " matching filters" : " total"}`
-                    : "All platform invitations"}
-                </p>
-              </div>
+            <div className="space-y-1 pt-2">
+              <h2 className="font-headline text-lg text-on-surface">Sent invitations</h2>
+              <p className="text-sm text-on-surface-variant">
+                {total > 0
+                  ? `${total} invitation${total === 1 ? "" : "s"}${model.hasFilters ? " matching filters" : " total"}`
+                  : "All platform invitations"}
+              </p>
             </div>
           ) : null
         }
@@ -123,7 +121,7 @@ export default async function AdminInvitationsPage({
                   ? {
                       title: "No invitations yet",
                       description:
-                        "Send an invite above — pending invitations will appear in this list.",
+                        "Use Invite users in the header to send invitations — pending ones will appear in this list.",
                       illustration: "queue" as const,
                     }
                   : {})}

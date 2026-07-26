@@ -3,7 +3,7 @@
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { InvitationExpiryCountdown } from "@/components/admin/invitation-expiry-countdown";
 import { InvitationRowActions } from "@/components/admin/invitation-row-actions";
-import { invitationRoleLabel } from "@/lib/admin/invitation-role-label";
+import { PlatformRoleBadge } from "@/components/admin/platform-role-badge";
 import { invitationLifecycleDisplay } from "@/lib/admin/invite-lifecycle";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.server";
 import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
@@ -36,7 +36,9 @@ export function InvitationDrawerContent({ invitation: r }: Props) {
         </div>
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Role</dt>
-          <dd className="mt-1">{invitationRoleLabel(r.targetRole, r.targetStaffRole)}</dd>
+          <dd className="mt-1">
+            <PlatformRoleBadge targetRole={r.targetRole} targetStaffRole={r.targetStaffRole} />
+          </dd>
         </div>
         <div>
           <dt className="font-label text-[10px] uppercase text-on-surface-variant">Status</dt>
