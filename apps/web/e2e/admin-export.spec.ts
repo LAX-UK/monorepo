@@ -1,32 +1,12 @@
 /**
  * Admin export E2E happy path.
- *
- * Requires:
- *   PLAYWRIGHT_E2E=1
- *   PLAYWRIGHT_BASE_URL pointing to a running dev instance
- *   PLAYWRIGHT_STAFF_EMAIL / PLAYWRIGHT_STAFF_PASSWORD for a seeded staff account
- *
- * Run: PLAYWRIGHT_E2E=1 pnpm --filter @auction/web test:e2e -- e2e/admin-export.spec.ts
  */
 import { expect, test } from "@playwright/test";
-
-const enabled = process.env.PLAYWRIGHT_E2E === "1";
-const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
-
-const staffEmail = process.env.PLAYWRIGHT_STAFF_EMAIL ?? "";
-const staffPassword = process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "";
-
-async function staffLogin(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel(/email/i).fill(staffEmail);
-  await page.getByLabel(/password/i).fill(staffPassword);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/dashboard/);
-}
+import { e2eEnabled, e2eSkipReason, hasStaffCredentials, staffLogin } from "./helpers/auth";
 
 test.describe("admin export flow", () => {
   test("lots export opens confirm sheet and starts download or async job", async ({ page }) => {
-    test.skip(!enabled, skipReason);
+    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
     await staffLogin(page);
     await page.goto("/admin/lots");
 

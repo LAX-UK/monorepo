@@ -1,10 +1,13 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import {
+  buyerLogin,
   e2eEnabled as enabled,
   expectNoSeriousAxeViolationsInMain,
   formatAxeViolations,
+  hasBuyerCredentials,
   hasStaffCredentials,
+  seededStaffRoutes,
   e2eSkipReason as skipReason,
   staffLogin,
 } from "./helpers/auth";
@@ -265,17 +268,9 @@ test.describe("admin a11y smoke", () => {
   });
 
   test("buyer source of funds page exposes progress landmarks", async ({ page }) => {
-    test.skip(!enabled, skipReason);
-    const buyerEmail = process.env.PLAYWRIGHT_BUYER_EMAIL ?? "";
-    const buyerPassword = process.env.PLAYWRIGHT_BUYER_PASSWORD ?? "";
-    test.skip(!buyerEmail, "Set PLAYWRIGHT_BUYER_EMAIL for buyer SoF a11y smoke");
+    test.skip(!enabled || !hasBuyerCredentials(), skipReason);
 
-    await page.goto("/login");
-    await page.getByLabel(/email/i).fill(buyerEmail);
-    await page.getByLabel(/password/i).fill(buyerPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/(admin|dashboard)/);
-
+    await buyerLogin(page);
     await page.goto("/dashboard/compliance/source-of-funds");
     if (!page.url().includes("/dashboard/compliance/source-of-funds")) {
       test.skip(true, "Buyer has no active Source of Funds case in this environment");
@@ -516,6 +511,47 @@ test.describe("admin a11y smoke", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/admin/payments");
     await expect(page.locator("#main-content")).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
+  });
+
+  test("clients preview drawer at mobile has no serious axe violations", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(`/admin/clients?client=${seededStaffRoutes.clientDetail}`);
+    await expect(page.getByRole("dialog")).toBeVisible();
+    const axe = await new AxeBuilder({ page })
+      .include('[role="dialog"]')
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
+  test("legal entities preview drawer passes serious axe checks", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto(`/admin/legal-entities?entity=${seededStaffRoutes.legalEntityDrawer}`);
+    await expect(page.getByRole("dialog")).toBeVisible();
+    const axe = await new AxeBuilder({ page })
+      .include('[role="dialog"]')
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
+    expect(
+      blocking,
+      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
+    ).toHaveLength(0);
+  });
+
+  test("source of funds detail evidence review passes serious axe checks", async ({ page }) => {
+    test.skip(!enabled || !staffEmail, skipReason);
+    await staffLogin(page);
+    await page.goto(`/admin/compliance/source-of-funds/${seededStaffRoutes.sofCaseDetail}`);
+    await expect(page.getByRole("heading", { name: /evidence review/i })).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
   });
 });

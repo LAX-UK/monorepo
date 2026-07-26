@@ -157,6 +157,18 @@ const UPLOAD = {
   charityHouseExtract: "f0000001-0000-4000-8000-000000000001",
   institutionBeneficialOwner: "f0000002-0000-4000-8000-000000000002",
   institutionVatCert: "f0000003-0000-4000-8000-000000000003",
+  sofBankStatement: "f0000004-0000-4000-8000-000000000004",
+  sofPropertySale: "f0000005-0000-4000-8000-000000000005",
+} as const;
+
+/** Stable invitation ids for E2E preview drawer tests. */
+const INV = {
+  pendingPlatform: "i1000001-0000-4000-8000-000000000001",
+} as const;
+
+const SOF_DOC = {
+  bankStatement: "93000001-0000-4000-8000-000000000001",
+  propertySale: "93000002-0000-4000-8000-000000000002",
 } as const;
 
 // ─── Original lookup maps ─────────────────────────────────────────────────────
@@ -249,6 +261,18 @@ const PAY = {
   amber: "90000001-0000-4000-8000-000000000001",
   marginal: "90000002-0000-4000-8000-000000000002",
   golden: "90000003-0000-4000-8000-000000000003",
+  manualReview: "90000004-0000-4000-8000-000000000004",
+} as const;
+
+const COMPLIANCE = {
+  amlPending: "92000001-0000-4000-8000-000000000001",
+  amlTriaged: "92000002-0000-4000-8000-000000000002",
+  sofPending: "92000003-0000-4000-8000-000000000003",
+} as const;
+
+const STRIPE = {
+  disputeOpen: "dp_seed_amber_open",
+  disputeClosed: "dp_seed_golden_closed",
 } as const;
 
 const PO = {
@@ -342,6 +366,10 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     domainEvent,
     jwksKey,
     kycVerification,
+    kycWatchlistScreening,
+    sourceOfFunds,
+    sourceOfFundsDocument,
+    sourceOfFundsDocumentReview,
     impersonationSession,
     legalEntityAddress,
     legalEntityDocument,
@@ -395,6 +423,10 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(pushSubscription);
   await db.delete(notificationPreference);
   await db.delete(userAddress);
+  await db.delete(sourceOfFundsDocumentReview);
+  await db.delete(sourceOfFundsDocument);
+  await db.delete(sourceOfFunds);
+  await db.delete(kycWatchlistScreening);
   await db.delete(kycVerification);
   await db.delete(payoutLine);
   await db.delete(payout);
@@ -473,6 +505,9 @@ export async function runLegacyDemoSeed() {
     legalEntityMember,
     legalEntityPayoutMethod,
     kycVerification,
+    kycWatchlistScreening,
+    sourceOfFunds,
+    sourceOfFundsDocument,
     notificationPreference,
     payout,
     payoutLine,
@@ -2516,6 +2551,7 @@ export async function runLegacyDemoSeed() {
     // ── Platform invitations ─────────────────────────────────────────────────
     /** pending — admin has invited a prospective second finance ops user. */
     {
+      id: INV.pendingPlatform,
       email: "new-accountant@example.com",
       targetRole: "staff",
       targetStaffRole: "finance_ops",
@@ -4227,6 +4263,19 @@ export async function runLegacyDemoSeed() {
       status: "refunded",
       createdAt: new Date(now - 14 * day),
     },
+    {
+      id: PAY.manualReview,
+      lotId: L.riverStudy,
+      buyerId: ESTATE_OWNER_ID,
+      sellerId: USER2_ID,
+      amount: "87500.00",
+      platformFee: "4375.00",
+      stripePaymentIntentId: "pi_seed_river_manual_review",
+      stripeChargeId: "ch_seed_river_manual_review",
+      stripeRefundId: null,
+      status: "requires_manual_review",
+      createdAt: new Date(now - 3 * day),
+    },
   ];
   await db.insert(payment).values(
     paymentRows.map(({ sellerId, buyerId, ...row }) => ({
@@ -4236,6 +4285,123 @@ export async function runLegacyDemoSeed() {
       sellerLegalEntityId: legalEntityIdForUser(sellerId),
     })),
   );
+
+  // ── Compliance & finance queue fixtures (deterministic E2E) ────────────────
+  await db.insert(kycWatchlistScreening).values([
+    {
+      id: COMPLIANCE.amlPending,
+      userId: KYC_PENDING_ID,
+      provider: "veriff",
+      providerSessionId: "veriff_seed_aml_pending",
+      matchStatus: "possible_match",
+      monitorStatus: "monitored",
+      totalHits: 1,
+      categories: ["sanction"],
+      hits: [{ category: "sanction", name: "Seed Match" }],
+      checkType: "initial_result",
+      decisionOutcome: "review",
+      reviewStatus: "pending",
+      screenedAt: new Date(now - 2 * day),
+      createdAt: new Date(now - 2 * day),
+    },
+    {
+      id: COMPLIANCE.amlTriaged,
+      userId: SUSPENDED_ID,
+      provider: "veriff",
+      providerSessionId: "veriff_seed_aml_triaged",
+      matchStatus: "possible_match",
+      monitorStatus: "monitored",
+      totalHits: 2,
+      categories: ["pep"],
+      hits: [{ category: "pep", name: "Seed PEP Hit" }],
+      checkType: "initial_result",
+      decisionOutcome: "review",
+      reviewStatus: "pending",
+      triageRecommendation: "recommend_block",
+      triagedByUserId: ADMIN_ID,
+      triagedAt: new Date(now - 1 * day),
+      triageNotes: "Seed triage — awaiting MLRO decision.",
+      screenedAt: new Date(now - 5 * day),
+      createdAt: new Date(now - 5 * day),
+    },
+  ]);
+
+  await db.insert(sourceOfFunds).values([
+    {
+      id: COMPLIANCE.sofPending,
+      userId: ESTATE_OWNER_ID,
+      status: "pending",
+      trigger: "threshold",
+      thresholdAmount: "10000.00",
+      exposureAmount: "87500.00",
+      currency: "GBP",
+      declaredSource: "Property sale proceeds (seed fixture).",
+      evidence: ["seed/sof/estate-owner-bank-letter.pdf"],
+      requestedDocumentTypes: ["bank_statement", "property_sale_agreement"],
+      documentsRequestedAt: new Date(now - 3 * day),
+      documentsRequestedByUserId: ADMIN_ID,
+      documentRequestNote: "Please upload a recent bank statement and property sale agreement.",
+      documentsSubmittedAt: new Date(now - 1 * day),
+      createdAt: new Date(now - 2 * day),
+      updatedAt: new Date(now - 1 * day),
+    },
+  ]);
+
+  await db.insert(uploadObject).values([
+    {
+      id: UPLOAD.sofBankStatement,
+      ownerUserId: ESTATE_OWNER_ID,
+      kind: "source_of_funds_document",
+      key: "seed/sof/estate-owner-bank-statement.pdf",
+      declaredContentType: "application/pdf",
+      declaredByteSize: 156_000,
+      actualContentType: "application/pdf",
+      actualByteSize: 156_000,
+      status: "confirmed",
+      createdAt: new Date(now - 2 * day),
+      uploadedAt: new Date(now - 2 * day),
+      validatedAt: new Date(now - 2 * day),
+      expiresAt: new Date(now + 365 * day),
+    },
+    {
+      id: UPLOAD.sofPropertySale,
+      ownerUserId: ESTATE_OWNER_ID,
+      kind: "source_of_funds_document",
+      key: "seed/sof/estate-owner-property-sale.pdf",
+      declaredContentType: "application/pdf",
+      declaredByteSize: 248_000,
+      actualContentType: "application/pdf",
+      actualByteSize: 248_000,
+      status: "confirmed",
+      createdAt: new Date(now - 2 * day),
+      uploadedAt: new Date(now - 2 * day),
+      validatedAt: new Date(now - 2 * day),
+      expiresAt: new Date(now + 365 * day),
+    },
+  ]);
+
+  await db.insert(sourceOfFundsDocument).values([
+    {
+      id: SOF_DOC.bankStatement,
+      sourceOfFundsId: COMPLIANCE.sofPending,
+      uploadObjectId: UPLOAD.sofBankStatement,
+      requestedType: "bank_statement",
+      label: "January bank statement",
+      reviewStatus: "pending",
+      uploadedByUserId: ESTATE_OWNER_ID,
+      uploadedAt: new Date(now - 2 * day),
+    },
+    {
+      id: SOF_DOC.propertySale,
+      sourceOfFundsId: COMPLIANCE.sofPending,
+      uploadObjectId: UPLOAD.sofPropertySale,
+      requestedType: "property_sale_agreement",
+      label: "Property sale completion statement",
+      reviewStatus: "pending",
+      uploadedByUserId: ESTATE_OWNER_ID,
+      uploadedAt: new Date(now - 2 * day),
+    },
+  ]);
 
   // ── Payouts ────────────────────────────────────────────────────────────────
   await db.insert(payout).values([
@@ -4348,6 +4514,77 @@ export async function runLegacyDemoSeed() {
       actorUserId: ADMIN_ID,
       actingLegalEntityId: LE.admin,
       occurredAt: new Date(now - 29 * day),
+    },
+    {
+      aggregateType: "payment",
+      aggregateId: PAY.amber,
+      eventType: "payment.dispute_opened",
+      payload: {
+        stripeDisputeId: STRIPE.disputeOpen,
+        stripeChargeId: "ch_seed_amber_captured",
+        paymentId: PAY.amber,
+        amountCents: 52500000,
+        currency: "gbp",
+        reason: "fraudulent",
+        sellerLegalEntityId: LE.user2,
+        lotId: L.amber,
+        buyerId: USER1_ID,
+      },
+      producer: "seed",
+      actorUserId: null,
+      actingLegalEntityId: LE.user2,
+      occurredAt: new Date(now - 5 * day),
+    },
+    {
+      aggregateType: "payment",
+      aggregateId: PAY.golden,
+      eventType: "payment.dispute_opened",
+      payload: {
+        stripeDisputeId: STRIPE.disputeClosed,
+        stripeChargeId: "ch_seed_golden_refunded",
+        paymentId: PAY.golden,
+        amountCents: 3500000,
+        currency: "gbp",
+        reason: "product_not_received",
+        sellerLegalEntityId: LE.user1,
+        lotId: L.golden,
+        buyerId: USER2_ID,
+      },
+      producer: "seed",
+      actorUserId: null,
+      actingLegalEntityId: LE.user1,
+      occurredAt: new Date(now - 12 * day),
+    },
+    {
+      aggregateType: "payment",
+      aggregateId: PAY.golden,
+      eventType: "payment.dispute_closed",
+      payload: {
+        stripeDisputeId: STRIPE.disputeClosed,
+        paymentId: PAY.golden,
+        outcome: "lost",
+      },
+      producer: "seed",
+      actorUserId: ADMIN_ID,
+      actingLegalEntityId: LE.admin,
+      occurredAt: new Date(now - 2 * day),
+    },
+    {
+      aggregateType: "payment",
+      aggregateId: PAY.manualReview,
+      eventType: "payment.requires_manual_review",
+      payload: {
+        paymentId: PAY.manualReview,
+        lotId: L.riverStudy,
+        buyerLegalEntityId: legalEntityIdForUser(ESTATE_OWNER_ID),
+        sellerLegalEntityId: LE.user2,
+        amount: "87500.00",
+        reason: "high_value",
+      },
+      producer: "seed",
+      actorUserId: null,
+      actingLegalEntityId: legalEntityIdForUser(ESTATE_OWNER_ID),
+      occurredAt: new Date(now - 3 * day),
     },
     {
       aggregateType: "payout",

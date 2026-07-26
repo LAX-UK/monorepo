@@ -6,24 +6,11 @@
  * Run: PLAYWRIGHT_E2E=1 pnpm --filter @auction/web test:e2e -- e2e/admin-disputes-query.spec.ts
  */
 import { expect, test } from "@playwright/test";
-
-const enabled = process.env.PLAYWRIGHT_E2E === "1";
-const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
-
-const staffEmail = process.env.PLAYWRIGHT_STAFF_EMAIL ?? "";
-const staffPassword = process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "";
-
-async function staffLogin(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel(/email/i).fill(staffEmail);
-  await page.getByLabel(/password/i).fill(staffPassword);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/dashboard/);
-}
+import { e2eEnabled, e2eSkipReason, hasStaffCredentials, staffLogin } from "./helpers/auth";
 
 test.describe("admin disputes (query + nuqs)", () => {
   test("disputes page loads with status chips and table shell", async ({ page }) => {
-    test.skip(!enabled, skipReason);
+    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
     await staffLogin(page);
     await page.goto("/admin/disputes");
     await expect(page.getByRole("heading", { name: /payment disputes/i })).toBeVisible();
@@ -31,7 +18,7 @@ test.describe("admin disputes (query + nuqs)", () => {
   });
 
   test("status filter updates URL", async ({ page }) => {
-    test.skip(!enabled, skipReason);
+    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
     await staffLogin(page);
     await page.goto("/admin/disputes");
     await page.getByRole("link", { name: /^open$/i }).click();
@@ -40,7 +27,7 @@ test.describe("admin disputes (query + nuqs)", () => {
   });
 
   test("pagination updates offset via nuqs when next is available", async ({ page }) => {
-    test.skip(!enabled, skipReason);
+    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
     await staffLogin(page);
     await page.goto("/admin/disputes?limit=1&offset=0");
     const next = page.getByRole("button", { name: /next page/i });

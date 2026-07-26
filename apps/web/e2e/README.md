@@ -11,6 +11,8 @@ PLAYWRIGHT_STAFF_EMAIL=admin@lax.bid
 PLAYWRIGHT_STAFF_PASSWORD=Password123!
 PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL=staff-catalogue@lax.bid
 PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD=Password123!
+PLAYWRIGHT_BUYER_EMAIL=estate-owner@lax.bid
+PLAYWRIGHT_BUYER_PASSWORD=Password123!
 ```
 
 Run functional and accessibility coverage:
