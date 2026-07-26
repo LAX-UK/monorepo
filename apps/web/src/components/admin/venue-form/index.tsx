@@ -44,6 +44,8 @@ type Props = {
   afterSuccessfulSave?: (venueId?: string) => void;
   /** When true, shows read-only archived banner and disables form submission. */
   isArchived?: boolean;
+  /** Full-page create/edit uses a right sidebar stepper; sheet flows keep horizontal chips. */
+  wizardLayout?: "default" | "sidebar";
 };
 
 function valueOrEmpty(value: string | number | null | undefined): string {
@@ -132,6 +134,7 @@ export function AdminVenueForm({
   preventNavigateAfterSave = false,
   afterSuccessfulSave,
   isArchived = false,
+  wizardLayout = "default",
 }: Props) {
   const router = useRouter();
   const { guardedPush } = useGuardedNavigation();
@@ -272,7 +275,9 @@ export function AdminVenueForm({
             steps={VENUE_SETUP_STEPS}
             isDirty={form.formState.isDirty}
             pending={pending}
-            showSubmitOnAllSteps={mode === "edit"}
+            layout={wizardLayout}
+            hideStickyOnMobile={wizardLayout === "sidebar" && Boolean(htmlFormId)}
+            showSubmitOnAllSteps={wizardLayout === "sidebar" && mode === "edit"}
             onStepControl={({ goTo }) => {
               wizardGoToRef.current = goTo;
             }}

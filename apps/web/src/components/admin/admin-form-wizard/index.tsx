@@ -287,7 +287,7 @@ export function AdminFormWizard({
         />
       ) : null}
       {useSidebar ? (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(220px,280px)] lg:items-start">
           <div className="min-w-0 space-y-6">
             <div className="flex flex-col gap-2 border-b border-border-hairline pb-4 lg:hidden">
               <WizardStepIndicator

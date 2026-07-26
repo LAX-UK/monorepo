@@ -2,20 +2,18 @@
  * Admin clients/staff directory smoke tests.
  */
 import { expect, test } from "@playwright/test";
-import { e2eEnabled, e2eSkipReason, hasStaffCredentials, staffLogin } from "./helpers/auth";
+import { e2eEnabled, e2eSkipReason, hasStaffCredentials } from "./helpers/auth";
 
-test.describe("admin user directories", () => {
+test.describe("admin user directories @journey", () => {
+  test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
+
   test("clients list loads", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/clients");
     await expect(page.getByRole("heading", { name: /^clients$/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /views/i })).toBeVisible();
   });
 
   test("clients list accepts verification filters in URL", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/clients?emailVerified=0&kycStatus=pending&status=active");
     await expect(page.getByRole("heading", { name: /^clients$/i })).toBeVisible();
     await expect(page.getByText(/email unverified/i).first())
@@ -24,15 +22,11 @@ test.describe("admin user directories", () => {
   });
 
   test("staff list loads", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/staff");
     await expect(page.getByRole("heading", { name: /^staff$/i })).toBeVisible();
   });
 
   test("client drawer quick actions tab is reachable", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/clients");
     const nameLink = page.locator("table tbody tr").first().getByRole("button").first();
     if ((await nameLink.count()) > 0) {
@@ -44,8 +38,6 @@ test.describe("admin user directories", () => {
   });
 
   test("client detail commerce tab loads", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/clients");
     const profileLink = page.locator("table tbody tr").first().getByRole("link").first();
     if ((await profileLink.count()) === 0) {

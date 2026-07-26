@@ -1,0 +1,65 @@
+name: Generate visual baseline candidates
+
+on:
+  workflow_dispatch:
+
+jobs:
+  admin-baselines:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      PLAYWRIGHT_E2E: "1"
+      PLAYWRIGHT_VISUAL: "1"
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+      PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
+      PLAYWRIGHT_STAFF_PASSWORD: Password123!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @auction/web exec playwright install chromium --with-deps
+      - run: |
+          pnpm --filter @auction/db db:migrate
+          pnpm --filter @auction/db db:seed:dev
+          pnpm --filter @auction/api build
+          pnpm --filter @auction/web build
+      - name: Start stack
+        run: |
+          pnpm --filter @auction/api start &
+          pnpm --filter @auction/web start &
+          npx --yes wait-on http://localhost:3000 --timeout 120000
+      - name: Generate reviewed candidates
+        run: pnpm --filter @auction/web test:e2e:admin-visual-update
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-visual-baseline-candidates-playwright-1.52.0
+          path: apps/web/e2e/__snapshots__/admin-pages-visual.spec.ts
+          retention-days: 14

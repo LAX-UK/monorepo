@@ -163,7 +163,7 @@ const UPLOAD = {
 
 /** Stable invitation ids for E2E preview drawer tests. */
 const INV = {
-  pendingPlatform: "i1000001-0000-4000-8000-000000000001",
+  pendingPlatform: "01100001-0000-4000-8000-000000000001",
 } as const;
 
 const SOF_DOC = {
@@ -243,6 +243,10 @@ const L = {
   hybridC1: "b1000301-0000-4000-8000-000000000301",
   hybridC2: "b1000302-0000-4000-8000-000000000302",
   hybridC3: "b1000303-0000-4000-8000-000000000303",
+} as const;
+
+const VENUE = {
+  mayfair: "01000001-0000-4000-8000-000000000001",
 } as const;
 
 const ARTIST = {
@@ -519,6 +523,7 @@ export async function runLegacyDemoSeed() {
     uploadObject,
     userAddress,
     userInvitation,
+    venue,
   } = schema;
 
   await clearAll(db);
@@ -3103,6 +3108,28 @@ export async function runLegacyDemoSeed() {
       };
     })(),
   ];
+
+  await db.insert(venue).values([
+    {
+      id: VENUE.mayfair,
+      legalEntityId: LEO.laxStockApproved,
+      name: "LAX Mayfair Saleroom",
+      slug: "lax-mayfair-saleroom",
+      addressLine1: "12 King Street",
+      addressLine2: "St James's",
+      city: "London",
+      county: null,
+      postcode: "SW1Y 6QU",
+      country: "United Kingdom",
+      mapUrl:
+        "https://www.google.com/maps/search/?api=1&query=12%20King%20Street%2C%20St%20James%27s%2C%20London%20SW1Y%206QU",
+      photos: [],
+      status: "active",
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+  ]);
+
   await db.insert(sale).values(
     saleRows.map(({ categoryId: _categoryId, createdBy: _createdBy, ...row }) => ({
       ...row,

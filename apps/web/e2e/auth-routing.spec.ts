@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and start apps/web (pnpm dev).";
 
-test.describe("marketing auth routing", () => {
+test.describe("marketing auth routing @smoke", () => {
   test("login page loads", async ({ page }) => {
     test.skip(!enabled, skipReason);
     const res = await page.goto("/login");

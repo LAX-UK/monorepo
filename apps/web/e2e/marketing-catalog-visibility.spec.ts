@@ -9,7 +9,7 @@ const draftLotPath =
     ? `/lot/draft-lot/${process.env.PLAYWRIGHT_DRAFT_LOT_ID}`
     : "");
 
-test.describe("marketing catalog visibility", () => {
+test.describe("marketing catalog visibility @smoke", () => {
   test("home loads without per-sale detail fetches for catalog strips", async ({ page }) => {
     test.skip(!enabled, skipReason);
 

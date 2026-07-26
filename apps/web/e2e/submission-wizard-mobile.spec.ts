@@ -26,7 +26,7 @@ async function clientLogin(page: import("@playwright/test").Page) {
   await page.waitForURL(/dashboard/);
 }
 
-test.describe("submission wizard mobile", () => {
+test.describe("submission wizard mobile @journey", () => {
   test.use({
     viewport: { width: 390, height: 844 },
     isMobile: true,

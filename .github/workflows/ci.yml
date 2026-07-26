@@ -67,6 +67,18 @@ jobs:
       - name: Web guardrails
         run: pnpm lint:web-guardrails
 
+      - name: Admin lib boundaries
+        run: pnpm lint:lib-admin-boundaries
+
+      - name: Staff UI guardrails
+        run: pnpm lint:staff-legacy-shell && pnpm lint:staff-route-composition
+
+      - name: E2E portfolio guard
+        run: pnpm lint:e2e-portfolio
+
+      - name: E2E tag guard
+        run: pnpm lint:e2e-tags
+
       - name: Zod schema transform lint
         run: pnpm lint:z-schema-transform
 

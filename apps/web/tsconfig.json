@@ -1,7 +1,6 @@
 {
   "extends": "@auction/config-ts/nextjs.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {

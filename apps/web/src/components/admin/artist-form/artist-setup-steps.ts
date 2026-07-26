@@ -13,26 +13,34 @@ export const ARTIST_SETUP_STEP_IDS = [
 
 export type ArtistSetupStepId = (typeof ARTIST_SETUP_STEP_IDS)[number];
 
-function stepLabel(id: ArtistSetupStepId): string {
-  switch (id) {
-    case "kind":
-      return "Kind";
-    case "identity":
-      return "Identity";
-    case "biography":
-      return "Biography";
-    case "departments":
-      return "Departments";
-    case "review":
-      return "Review";
-  }
-}
-
 /** Step specs consumed by {@link WizardStepIndicator}. */
-export const ARTIST_SETUP_STEPS: readonly WizardStepSpec[] = ARTIST_SETUP_STEP_IDS.map((id) => ({
-  id,
-  label: stepLabel(id),
-}));
+export const ARTIST_SETUP_STEPS: readonly WizardStepSpec[] = [
+  {
+    id: "kind",
+    label: "Kind",
+    subItems: ["Profile type"],
+  },
+  {
+    id: "identity",
+    label: "Identity",
+    subItems: ["Display name", "Dates", "User link"],
+  },
+  {
+    id: "biography",
+    label: "Biography",
+    subItems: ["Copy", "Media", "Website"],
+  },
+  {
+    id: "departments",
+    label: "Departments",
+    subItems: ["Categories", "Attributes"],
+  },
+  {
+    id: "review",
+    label: "Review",
+    subItems: ["Status", "Visibility"],
+  },
+];
 
 /**
  * Per-step field groups validated by {@link validateWizardStep} before advancing.

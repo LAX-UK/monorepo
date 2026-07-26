@@ -1,16 +1,25 @@
 # Visual regression baselines
 
-PNG baselines for [`marketing-pages-visual.spec.ts`](../marketing-pages-visual.spec.ts) live under `__snapshots__/marketing-pages-visual.spec.ts/` (see `snapshotPathTemplate` in [`playwright.config.ts`](../playwright.config.ts)).
+Admin PNG baselines for [`admin-pages-visual.spec.ts`](../admin-pages-visual.spec.ts)
+live under `__snapshots__/admin-pages-visual.spec.ts/`. The portfolio is curated via
+[`admin-visual-cases.ts`](../admin-visual-cases.ts) and enforced by
+`pnpm check:e2e-portfolio` (budget: 50 baselines).
 
-Generate or refresh them after UI changes:
+Marketing baselines are **not committed yet**. The
+[`marketing-pages-visual.spec.ts`](../marketing-pages-visual.spec.ts) spec exists for
+deliberate opt-in coverage; generate snapshots only when adopting that tier:
 
-1. Build and start the app (e.g. `pnpm --filter @auction/web build` then `pnpm --filter @auction/web start -- -p 3030 -H 127.0.0.1`).
-2. From `apps/web`, run:
+```bash
+UPDATE_MARKETING_VISUALS=1 pnpm ci:visual-baseline
+```
 
-   ```bash
-   PLAYWRIGHT_BASE_URL=http://127.0.0.1:3030 pnpm run test:e2e:visual-update
-   ```
+Admin baseline updates (review every PNG diff before commit):
 
-3. Commit the updated PNGs under `e2e/__snapshots__/`.
+```bash
+PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 PLAYWRIGHT_BASE_URL=http://localhost:3000 \
+  pnpm --filter @auction/web test:e2e:admin-visual-update
+```
 
-Tests are gated with `PLAYWRIGHT_E2E=1` and `PLAYWRIGHT_VISUAL=1` (see the spec file).
+Use the pinned Linux/Chromium environment from
+[`.github/workflows/visual-baselines.yml`](../../../../.github/workflows/visual-baselines.yml)
+for CI-parity candidates.

@@ -1,21 +1,15 @@
 import { expect, test } from "@playwright/test";
-import {
-  e2eEnabled,
-  e2eSkipReason,
-  seededHybridLotId,
-  seededHybridSaleId,
-  staffLogin,
-} from "./helpers/auth";
+import { e2eEnabled, e2eSkipReason, seededHybridLotId, seededHybridSaleId } from "./helpers/auth";
+import { roleAuthState } from "./helpers/auth-state";
 
 /** Use PLAYWRIGHT_BASE_URL=http://localhost:3000 — not 127.0.0.1 (API cookie domain). */
 
 const skipReason = `${e2eSkipReason} Hybrid sale id defaults to seeded S.hybridA when PLAYWRIGHT_HYBRID_SALE_ID is unset.`;
 
-test.describe("hybrid saleroom clerk", () => {
-  test("staff can open the clerk console for a hybrid sale", async ({ page }) => {
-    test.skip(!e2eEnabled, skipReason);
+test.describe("hybrid saleroom clerk @journey", () => {
+  test.skip(!e2eEnabled, skipReason);
 
-    await staffLogin(page);
+  test("staff can open the clerk console for a hybrid sale", async ({ page }) => {
     await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
     await expect(page.getByRole("button", { name: /go live/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /on the block/i })).toBeVisible();
@@ -24,9 +18,6 @@ test.describe("hybrid saleroom clerk", () => {
   });
 
   test("staff can go live and advance a lot on the block", async ({ page }) => {
-    test.skip(!e2eEnabled, skipReason);
-
-    await staffLogin(page);
     await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
     await page.getByRole("button", { name: /go live/i }).click();
     await expect(page.getByText(/^live$/i)).toBeVisible({ timeout: 15_000 });
@@ -35,9 +26,6 @@ test.describe("hybrid saleroom clerk", () => {
   });
 
   test("paddle and telephone bid amounts are independent", async ({ page }) => {
-    test.skip(!e2eEnabled, skipReason);
-
-    await staffLogin(page);
     await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
 
     const paddleAmount = page.locator('input[id^="paddle-bid-amount-"]');
@@ -54,13 +42,10 @@ test.describe("hybrid saleroom clerk", () => {
   });
 
   test("operations tab reflects live session without full reload", async ({ browser }) => {
-    test.skip(!e2eEnabled, skipReason);
-
-    const context = await browser.newContext();
+    const context = await browser.newContext({ storageState: roleAuthState.staff });
     const opsPage = await context.newPage();
     const clerkPage = await context.newPage();
 
-    await staffLogin(opsPage);
     await opsPage.goto(`/admin/sales/${seededHybridSaleId}/operations`);
     await expect(opsPage.getByText(/saleroom operations/i)).toBeVisible();
 
@@ -74,9 +59,6 @@ test.describe("hybrid saleroom clerk", () => {
   });
 
   test("clerk console refreshes roster after check-in redirect", async ({ page }) => {
-    test.skip(!e2eEnabled, skipReason);
-
-    await staffLogin(page);
     await page.goto(`/admin/sales/${seededHybridSaleId}/registrations#check-in`);
     await expect(page.locator("#check-in")).toBeVisible();
 
@@ -86,25 +68,17 @@ test.describe("hybrid saleroom clerk", () => {
   });
 
   test("marketing lot page shows live feed after clerk session is active", async ({ page }) => {
-    test.skip(
-      !e2eEnabled,
-      `${skipReason} Also uses seededHybridLotId when PLAYWRIGHT_HYBRID_LOT_ID is unset.`,
-    );
-
     await page.goto(`/lot/test/${seededHybridLotId}`);
     await expect(page.getByText(/live feed|watching/i)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/bidding closed/i)).not.toBeVisible();
   });
 
   test("clerk console price updates when another context places a bid", async ({ browser }) => {
-    test.skip(!e2eEnabled, skipReason);
-
-    const clerkContext = await browser.newContext();
+    const clerkContext = await browser.newContext({ storageState: roleAuthState.staff });
     const bidderContext = await browser.newContext();
     const clerkPage = await clerkContext.newPage();
     const bidderPage = await bidderContext.newPage();
 
-    await staffLogin(clerkPage);
     await clerkPage.goto(`/admin/saleroom/${seededHybridSaleId}`);
     await clerkPage.getByRole("button", { name: /go live/i }).click();
     await clerkPage.getByRole("button", { name: /on the block/i }).click();
@@ -135,9 +109,6 @@ test.describe("hybrid saleroom clerk", () => {
   });
 
   test("clerk console hydrates after reconnect", async ({ page, context }) => {
-    test.skip(!e2eEnabled, skipReason);
-
-    await staffLogin(page);
     await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
     await page.getByRole("button", { name: /go live/i }).click();
 
@@ -149,9 +120,6 @@ test.describe("hybrid saleroom clerk", () => {
   });
 
   test("clerk session bar shows lot-of-total progress", async ({ page }) => {
-    test.skip(!e2eEnabled, skipReason);
-
-    await staffLogin(page);
     await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
 
     await expect(
@@ -160,11 +128,10 @@ test.describe("hybrid saleroom clerk", () => {
   });
 });
 
-test.describe("hybrid saleroom hub (multi-room live grid)", () => {
-  test("live grid lists active hybrid rooms with progress", async ({ page }) => {
-    test.skip(!e2eEnabled, skipReason);
+test.describe("hybrid saleroom hub (multi-room live grid) @journey", () => {
+  test.skip(!e2eEnabled, skipReason);
 
-    await staffLogin(page);
+  test("live grid lists active hybrid rooms with progress", async ({ page }) => {
     await page.goto("/admin/saleroom");
 
     await expect(page.getByRole("heading", { name: /live rooms/i })).toBeVisible({
@@ -179,9 +146,6 @@ test.describe("hybrid saleroom hub (multi-room live grid)", () => {
   });
 
   test("opening a room from the grid lands on its clerk console", async ({ page }) => {
-    test.skip(!e2eEnabled, skipReason);
-
-    await staffLogin(page);
     await page.goto("/admin/saleroom");
     await expect(page.getByRole("heading", { name: /live rooms/i })).toBeVisible({
       timeout: 15_000,
@@ -196,9 +160,6 @@ test.describe("hybrid saleroom hub (multi-room live grid)", () => {
   });
 
   test("live grid renders a progress bar reflecting completed lots", async ({ page }) => {
-    test.skip(!e2eEnabled, skipReason);
-
-    await staffLogin(page);
     await page.goto("/admin/saleroom");
     await expect(page.getByRole("heading", { name: /live rooms/i })).toBeVisible({
       timeout: 15_000,

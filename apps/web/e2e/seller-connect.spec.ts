@@ -22,7 +22,7 @@ async function clientLogin(page: import("@playwright/test").Page) {
   await loginAs(page, clientEmail, clientPassword);
 }
 
-test.describe("seller connect embedded", () => {
+test.describe("seller connect embedded @journey", () => {
   test("seller connect page loads workspace shell", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
@@ -82,7 +82,7 @@ test.describe("seller connect embedded", () => {
   });
 });
 
-test.describe("seller workspace navigation", () => {
+test.describe("seller workspace navigation @journey", () => {
   test("mobile more sheet includes payout setup in selling workspace", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
@@ -123,7 +123,7 @@ test.describe("seller workspace navigation", () => {
   });
 });
 
-test.describe("organisation connect", () => {
+test.describe("organisation connect @journey", () => {
   test("org connect tab loads workspace shell", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
@@ -158,7 +158,7 @@ test.describe("organisation connect", () => {
   });
 });
 
-test.describe("connect role matrix", () => {
+test.describe("connect role matrix @roles", () => {
   test("finance member sees read-only guidance on org connect", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(
@@ -179,7 +179,7 @@ test.describe("connect role matrix", () => {
   });
 });
 
-test.describe("org onboarding connect wizard", () => {
+test.describe("org onboarding connect wizard @journey", () => {
   test("onboarding connect step shows payout setup and continue gate", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
@@ -204,7 +204,7 @@ test.describe("org onboarding connect wizard", () => {
   });
 });
 
-test.describe("buying workspace notifications", () => {
+test.describe("buying workspace notifications @journey", () => {
   test("notifications page loads inbox tabs", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");

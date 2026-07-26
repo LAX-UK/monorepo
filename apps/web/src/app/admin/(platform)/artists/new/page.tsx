@@ -1,8 +1,7 @@
-import { AdminArtistForm } from "@/components/admin/admin-artist-form";
-import { CatalogFormShell } from "@/components/admin/catalog/catalog-form-shell";
+import { ArtistCreateForm } from "@/components/admin/artist-detail/artist-create-form";
+import { CatalogBreadcrumbs, CatalogFormShell } from "@/components/admin/catalog";
 import { loadAdminArtistCreatePage } from "@/lib/admin/artists/load-artist-create-page";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import Link from "next/link";
 
 type Search = { ownerUserId?: string; displayName?: string; scenario?: string };
 
@@ -16,14 +15,11 @@ export default async function NewAdminArtistPage({
 
   return (
     <CatalogFormShell
-      className="md:max-w-4xl"
+      layout="wizard"
       breadcrumbs={
-        <Link
-          href="/admin/artists"
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-        >
-          ← Artists
-        </Link>
+        <CatalogBreadcrumbs
+          segments={[{ label: "Artists", href: "/admin/artists" }, { label: "New" }]}
+        />
       }
       title="New artist"
       description="Create a canonical catalogue profile. Choose catalogue-only (historical or external names) or a maker–seller linked to a platform user."
@@ -33,35 +29,11 @@ export default async function NewAdminArtistPage({
         cancelHref: "/admin/artists",
       }}
     >
-      <AdminArtistForm
-        mode="create"
-        initialScenario={page.initialScenario}
-        htmlFormId={CATALOG_FORM_IDS.artist}
+      <ArtistCreateForm
         categories={page.categories}
-        defaultValues={{
-          displayName: page.displayName,
-          kind: "artist",
-          status: "approved",
-          portraitUrl: "",
-          heroImageUrl: "",
-          shortBio: "",
-          longBio: "",
-          statement: "",
-          nationality: "",
-          location: "",
-          countryCode: "",
-          birthYear: "",
-          deathYear: "",
-          foundedYear: "",
-          dissolvedYear: "",
-          websiteUrl: "",
-          ownerUserId: page.ownerUserId,
-          featured: false,
-          verified: false,
-          archived: false,
-          categoryIds: [],
-          attributes: {},
-        }}
+        ownerUserId={page.ownerUserId}
+        displayName={page.displayName}
+        initialScenario={page.initialScenario}
       />
     </CatalogFormShell>
   );

@@ -233,4 +233,6 @@ All relative `next` targets must pass `isSafeNextPath` in [`apps/web/src/lib/aut
 
 ### Constitution
 
-See **VIII. Public Auth Routes And Post-Auth Navigation** in [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md).
+See post-auth routing rules in
+[`post-auth-destination.ts`](../../apps/web/src/lib/auth/post-auth-destination.ts)
+and the `?next=` safety section above.

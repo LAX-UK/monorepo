@@ -129,6 +129,7 @@ export function AdminLotMarketingForm({
               steps={LOT_MARKETING_FORM_STEPS}
               isDirty={form.formState.isDirty}
               pending={pending}
+              hideStickyOnMobile={Boolean(htmlFormId)}
               onStepControl={({ goTo }) => {
                 wizardGoToRef.current = goTo;
               }}

@@ -4,35 +4,16 @@ import {
   e2eSkipReason,
   expectNoSeriousAxeViolationsInMain,
   hasStaffCredentials,
-  seededStaffRoutes,
-  staffLogin,
 } from "./helpers/auth";
+import {
+  staffRolloutA11yRoutes,
+  staffRolloutConstrainedDesktopRoutes,
+} from "./helpers/staff-routes";
 
-test.describe("admin rollout accessibility gate", () => {
-  test.beforeEach(async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
-  });
+test.describe("admin rollout accessibility gate @a11y", () => {
+  test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
 
-  for (const route of [
-    "/admin",
-    "/admin/lots",
-    "/admin/sales",
-    "/admin/categories",
-    `/admin/categories/${seededStaffRoutes.categoryDetail}`,
-    `/admin/categories/${seededStaffRoutes.categoryDetail}/edit`,
-    "/admin/payments",
-    "/admin/disputes",
-    "/admin/payouts",
-    "/admin/payouts/settlement",
-    "/admin/compliance/aml",
-    "/admin/compliance/source-of-funds",
-    "/admin/invitations",
-    "/admin/clients",
-    "/admin/staff",
-    "/admin/legal-entities",
-    "/admin/onboarding-issues",
-  ]) {
+  for (const route of staffRolloutA11yRoutes) {
     test(`${route} passes serious axe checks in dark mode`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
       await page.goto(route);
@@ -43,16 +24,7 @@ test.describe("admin rollout accessibility gate", () => {
 
   test("catalog lists pass at the constrained desktop breakpoint", async ({ page }) => {
     await page.setViewportSize({ width: 1023, height: 900 });
-    for (const route of [
-      "/admin/lots",
-      "/admin/sales",
-      "/admin/categories",
-      "/admin/invitations",
-      "/admin/clients",
-      "/admin/staff",
-      "/admin/legal-entities",
-      "/admin/onboarding-issues",
-    ]) {
+    for (const route of staffRolloutConstrainedDesktopRoutes) {
       await page.goto(route);
       await expect(page.locator("#main-content")).toBeVisible();
       await expectNoSeriousAxeViolationsInMain(page);

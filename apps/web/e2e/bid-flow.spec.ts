@@ -28,7 +28,7 @@ async function gotoLiveLot(page: Page) {
   await page.waitForLoadState("networkidle");
 }
 
-test.describe("buyer bid flow", () => {
+test.describe("buyer bid flow @journey", () => {
   test("authenticated buyer can review and confirm a manual bid on a live lot", async ({
     page,
   }) => {

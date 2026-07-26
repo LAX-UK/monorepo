@@ -60,9 +60,9 @@ Use Node 22 (`nvm use 22`) — Playwright test discovery hangs on Node 25. Clear
 | `/admin/lots` | list | `248:7007` | `load-lots-list-page` | green | loader unit, route composition, catalog E2E | Attention lens + quick status segment |
 | `/admin/lots` | attention lens | extend | `load-lots-list-page` | green | catalog E2E, route composition | `?lens=attention` withdrawal queue |
 | `/admin/submissions` | list | `307:19512` | `load-submissions-list-page` | green | route composition, catalog E2E | Preview drawer URL state preserved |
-| `/admin/categories` | list | `380:19482` | `load-categories-list-page` | green | loader unit, route composition | Tree board + create sheet |
+| `/admin/categories` | list | `380:19482` | `load-categories-list-page` | green | loader unit, route composition | Tree board + full-page create CTA |
 | `/admin/artists` | list | extend | `load-artists-list-page` | green | route composition, catalog E2E | Extended staff KPI language |
-| `/admin/venues` | list | `400:37515` | `load-venues-list-page` | green | route composition | Legal-entity filter preserved |
+| `/admin/venues` | list | `400:37515` | `load-venues-list-page` | green | route composition | Tree board + full-page create CTA |
 
 ## Catalog forms
 
@@ -75,11 +75,12 @@ Use Node 22 (`nvm use 22`) — Playwright test discovery hangs on Node 25. Clear
 | `/admin/lots/[id]/edit` | edit | extend | `load-lot-edit-page` | green | loader unit, route composition | LotEditFormLayout |
 | `/admin/lots/[id]/edit/catalog` | edit catalog | extend | `load-lot-edit-page` | green | route composition | Section in edit layout |
 | `/admin/lots/[id]/edit/documents` | edit docs | extend | `load-lot-edit-page` | green | route composition | Section in edit layout |
-| `/admin/categories` | create (`?new=1`) | `384:21426` | categories board | green | catalog E2E, admin-pages-visual | URL-owned create sheet |
+| `/admin/categories/new` | create | `384:21426` | `load-category-create-page` | green | loader unit, route composition, catalog E2E, admin-pages-visual | CatalogFormShell + sidebar wizard |
 | `/admin/categories/[id]/edit` | edit | extend | `load-category-edit-page` | green | loader unit, route composition | CatalogFormShell |
-| `/admin/artists/new` | create | extend | `load-artist-create-page` | green | route composition | CatalogFormShell |
-| `/admin/artists/[id]/edit` | edit | extend | `load-artist-edit-page` | green | route composition | CatalogFormShell |
-| `/admin/venues/[id]/edit` | edit | extend | `load-venue-edit-page` | green | loader unit, route composition | CatalogFormShell |
+| `/admin/artists/new` | create | extend | `load-artist-create-page` | green | loader unit, route composition, catalog E2E, admin-pages-visual | CatalogFormShell + sidebar wizard |
+| `/admin/artists/[id]/edit` | edit | extend | `load-artist-edit-page` | green | route composition, admin-pages-visual | CatalogFormShell + sidebar wizard |
+| `/admin/venues/new` | create | extend | `load-venue-create-page` | green | loader unit, route composition, admin-pages-visual | CatalogFormShell + sidebar wizard |
+| `/admin/venues/[id]/edit` | edit | extend | `load-venue-edit-page` | green | loader unit, route composition, admin-pages-visual | CatalogFormShell + sidebar wizard |
 
 ## Catalog details
 

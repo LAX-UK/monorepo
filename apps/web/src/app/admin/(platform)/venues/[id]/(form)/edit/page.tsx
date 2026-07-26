@@ -3,7 +3,7 @@ import {
   CatalogDetailActionError,
   CatalogFormShell,
 } from "@/components/admin/catalog";
-import { AdminVenueForm } from "@/components/admin/venue-form";
+import { VenueEditForm } from "@/components/admin/venue-detail/venue-edit-form";
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { loadAdminVenueEditPage } from "@/lib/admin/venues/load-venue-edit-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
@@ -25,9 +25,11 @@ export default async function AdminVenueEditPage({ params, searchParams }: Props
   const sp = await searchParams;
   const page = await loadAdminVenueEditPage(id);
   const { venue, salesUsingCount, legalEntityDisplayName } = page;
+  const isArchived = venue.status === "archived";
 
   return (
     <CatalogFormShell
+      layout="wizard"
       breadcrumbs={
         <CatalogBreadcrumbs
           segments={[
@@ -39,29 +41,33 @@ export default async function AdminVenueEditPage({ params, searchParams }: Props
       }
       title="Edit venue"
       description="Update reusable gallery and branch details used by future onsite sales."
-      mobileActions={[
-        {
-          id: "save",
-          label: "Save changes",
-          variant: "primary",
-          htmlForm: CATALOG_FORM_IDS.venue,
-        },
-        {
-          id: "cancel",
-          label: "Cancel",
-          variant: "secondary",
-          href: page.detailHref,
-        },
-      ]}
+      {...(isArchived
+        ? {
+            mobileActions: [
+              {
+                id: "back" as const,
+                label: "Back to venue",
+                variant: "secondary" as const,
+                href: page.detailHref,
+              },
+            ],
+          }
+        : {
+            wizardMobile: {
+              formId: CATALOG_FORM_IDS.venue,
+              submitLabel: "Save changes",
+              cancelHref: page.detailHref,
+              alwaysShowSubmit: true,
+            },
+          })}
     >
       <CatalogDetailActionError error={sp.error} title="Could not save venue" />
-      <AdminVenueForm
-        mode="edit"
+      <VenueEditForm
         venue={venue}
         legalEntityDisplayName={legalEntityDisplayName ?? null}
         salesUsingCount={salesUsingCount}
         cancelHref={page.detailHref}
-        isArchived={venue.status === "archived"}
+        isArchived={isArchived}
       />
     </CatalogFormShell>
   );

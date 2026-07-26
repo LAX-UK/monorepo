@@ -409,7 +409,13 @@ export function AdminLotForm({
             </AdminFormWizard>
           )}
 
-          <div className="mt-6 flex flex-wrap gap-2">
+          <div
+            className={
+              mode === "edit" && htmlFormId
+                ? "mt-6 hidden flex-wrap gap-2 lg:flex"
+                : "mt-6 flex flex-wrap gap-2"
+            }
+          >
             {mode === "edit" ? (
               <>
                 <Button

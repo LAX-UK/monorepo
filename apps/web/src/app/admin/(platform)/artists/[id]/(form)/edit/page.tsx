@@ -1,5 +1,5 @@
-import { AdminArtistForm } from "@/components/admin/admin-artist-form";
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
+import { ArtistEditForm } from "@/components/admin/artist-detail/artist-edit-form";
 import {
   CatalogBreadcrumbs,
   CatalogDetailActionError,
@@ -45,7 +45,7 @@ export default async function EditAdminArtistPage({
 
   return (
     <CatalogFormShell
-      className="md:max-w-4xl"
+      layout="wizard"
       breadcrumbs={
         <CatalogBreadcrumbs
           segments={[
@@ -81,37 +81,11 @@ export default async function EditAdminArtistPage({
         <CatalogDetailActionError error={sp.error} title="Could not save artist" />
         {mergedNotice}
 
-        <AdminArtistForm
-          mode="edit"
-          artistId={artist.id}
-          slug={artist.slug}
-          readOnly={isMerged}
-          htmlFormId={CATALOG_FORM_IDS.artist}
+        <ArtistEditForm
+          artist={artist}
           categories={categories}
-          defaultValues={{
-            displayName: artist.displayName,
-            kind: artist.kind ?? "artist",
-            status: artist.status ?? "approved",
-            portraitUrl: artist.portraitUrl ?? "",
-            heroImageUrl: artist.heroImageUrl ?? "",
-            shortBio: artist.shortBio ?? "",
-            longBio: artist.longBio ?? "",
-            statement: artist.statement ?? "",
-            nationality: artist.nationality ?? "",
-            location: artist.location ?? "",
-            countryCode: artist.countryCode ?? "",
-            birthYear: artist.birthYear ?? "",
-            deathYear: artist.deathYear ?? "",
-            foundedYear: artist.foundedYear ?? "",
-            dissolvedYear: artist.dissolvedYear ?? "",
-            websiteUrl: artist.websiteUrl ?? "",
-            ownerUserId: artist.ownerUserId,
-            featured: artist.featured,
-            verified: artist.verified,
-            archived: artist.archived,
-            categoryIds: (artist.categories ?? []).map((c) => c.id),
-            attributes: artist.attributes ?? {},
-          }}
+          cancelHref={detailHref}
+          readOnly={isMerged}
         />
 
         <section className="space-y-3">

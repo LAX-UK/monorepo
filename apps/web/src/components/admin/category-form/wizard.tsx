@@ -34,8 +34,16 @@ import { CategoryBasicsStep } from "./steps/basics-step";
 import { CategoryPresentationStep } from "./steps/presentation-step";
 
 const CATEGORY_FORM_STEPS = [
-  { id: "basics", label: "Basics" },
-  { id: "presentation", label: "Presentation" },
+  {
+    id: "basics",
+    label: "Basics",
+    subItems: ["Identity", "Hierarchy"],
+  },
+  {
+    id: "presentation",
+    label: "Presentation",
+    subItems: ["Media", "Description", "Availability"],
+  },
 ] as const;
 
 type CategoryFormValues = z.infer<typeof adminCategoryFormSchema>;
@@ -60,6 +68,8 @@ type Props = {
   cancelHref?: string;
   /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
   htmlFormId?: string;
+  /** Full-page edit uses a right sidebar stepper; create sheet and quick edit keep horizontal chips. */
+  wizardLayout?: "default" | "sidebar";
 };
 
 export function AdminCategoryForm({
@@ -72,6 +82,7 @@ export function AdminCategoryForm({
   afterSuccessfulSave,
   cancelHref = "/admin/categories",
   htmlFormId,
+  wizardLayout = "default",
 }: Props) {
   const router = useRouter();
   const { guardedPush } = useGuardedNavigation();
@@ -182,6 +193,9 @@ export function AdminCategoryForm({
             steps={CATEGORY_FORM_STEPS}
             isDirty={form.formState.isDirty}
             pending={pending}
+            layout={wizardLayout}
+            hideStickyOnMobile={wizardLayout === "sidebar" && Boolean(htmlFormId)}
+            showSubmitOnAllSteps={wizardLayout === "sidebar" && mode === "edit"}
             onStepControl={({ goTo }) => {
               wizardGoToRef.current = goTo;
             }}

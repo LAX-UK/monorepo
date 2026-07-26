@@ -10,7 +10,7 @@ function pathToSlug(path: string) {
   return path.replace(/^\//, "").replace(/\//g, "-");
 }
 
-test.describe("marketing pages visual", () => {
+test.describe("marketing pages visual @optin", () => {
   test.describe.configure({ mode: "serial" });
   test.setTimeout(120_000);
 

@@ -11,7 +11,13 @@ concurrency:
 
 jobs:
   stabilization:
-    runs-on: ubuntu-latest
+    name: stabilization shard ${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     services:
       postgres:
         image: postgres:16
@@ -45,6 +51,7 @@ jobs:
       PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD: Password123!
       PLAYWRIGHT_BUYER_EMAIL: estate-owner@lax.bid
       PLAYWRIGHT_BUYER_PASSWORD: Password123!
+      CI: "true"
     steps:
       - uses: actions/checkout@v4
 
@@ -57,6 +64,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install pinned Chromium
+        run: pnpm --filter @auction/web exec playwright install chromium --with-deps
 
       - name: Migrate and seed dev data
         run: |
@@ -72,5 +82,43 @@ jobs:
           pnpm --filter @auction/web start &
           npx --yes wait-on http://localhost:3000 --timeout 120000
 
+      - name: Prepare role storage states
+        working-directory: apps/web
+        run: pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff --project=setup-catalogue --project=setup-buyer
+
       - name: Playwright stabilization suite
-        run: pnpm --filter @auction/web test:e2e:stabilization
+        run: pnpm --filter @auction/web test:e2e:stabilization -- --no-deps --shard=${{ matrix.shard }}/2
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-blob-${{ matrix.shard }}
+          path: apps/web/blob-report
+          retention-days: 7
+
+  report:
+    if: ${{ !cancelled() }}
+    needs: stabilization
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-blob-*
+          path: all-blob-reports
+          merge-multiple: true
+      - name: Merge Playwright reports
+        working-directory: apps/web
+        run: pnpm exec playwright merge-reports --reporter=html ../../all-blob-reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: e2e-html-report
+          path: apps/web/playwright-report
+          retention-days: 14

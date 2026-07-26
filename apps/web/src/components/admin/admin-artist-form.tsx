@@ -11,11 +11,11 @@ import { ArtistScenarioBadge } from "@/components/admin/artist-form/scenario-bad
 import type { ArtistFormValues, ArtistScenario } from "@/components/admin/artist-form/types";
 import { useAdminArtistForm } from "@/components/admin/artist-form/use-admin-artist-form";
 import { FormDirtyGuard } from "@/components/admin/form-dirty-guard";
+import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation";
 import type { CategoryNode } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Form } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
-import { useRouter } from "next/navigation";
 
 type Props = {
   mode: "create" | "edit";
@@ -25,7 +25,12 @@ type Props = {
   categories?: CategoryNode[];
   initialScenario?: ArtistScenario | null;
   readOnly?: boolean;
+  /** Cancel button navigates here (defaults to `/admin/artists`). */
+  cancelHref?: string;
+  /** DOM id on the root `<form>` for external submit triggers (e.g. mobile action bar). */
   htmlFormId?: string;
+  /** Full-page create/edit uses a right sidebar stepper; other flows keep horizontal chips. */
+  wizardLayout?: "default" | "sidebar";
 };
 
 export function AdminArtistForm({
@@ -36,9 +41,11 @@ export function AdminArtistForm({
   categories = [],
   initialScenario: _initialScenario = null,
   readOnly = false,
+  cancelHref = "/admin/artists",
   htmlFormId,
+  wizardLayout = "default",
 }: Props) {
-  const router = useRouter();
+  const { guardedPush } = useGuardedNavigation();
   const {
     form,
     submit,
@@ -92,8 +99,9 @@ export function AdminArtistForm({
             steps={ARTIST_SETUP_STEPS}
             isDirty={form.formState.isDirty}
             pending={isSubmitting}
-            hideStickyOnMobile
-            showSubmitOnAllSteps={mode === "edit"}
+            layout={wizardLayout}
+            hideStickyOnMobile={wizardLayout === "sidebar" && Boolean(htmlFormId)}
+            showSubmitOnAllSteps={wizardLayout === "sidebar" && mode === "edit"}
             onStepControl={({ goTo }) => {
               wizardGoToRef.current = goTo;
             }}
@@ -106,7 +114,7 @@ export function AdminArtistForm({
                 variant="outline"
                 disabled={isSubmitting}
                 className="min-h-11 w-full sm:w-auto"
-                onClick={() => router.push("/admin/artists")}
+                onClick={() => guardedPush(cancelHref)}
               >
                 Cancel
               </Button>

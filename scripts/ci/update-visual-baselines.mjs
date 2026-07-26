@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Refreshes Playwright visual regression baselines for marketing + admin surfaces.
- * Requires local stack: docker compose up, web :3000, API :3001.
+ * Refreshes Playwright visual regression baselines for admin surfaces.
+ * Marketing baselines are opt-in via UPDATE_MARKETING_VISUALS=1 (no committed set yet).
+ * Requires local stack: web :3000, API :3001, Node 22.
  */
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -19,8 +20,10 @@ function run(script) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-console.log("Updating marketing visual baselines…");
-run("test:e2e:visual-update");
 console.log("Updating admin visual baselines…");
 run("test:e2e:admin-visual-update");
+if (process.env.UPDATE_MARKETING_VISUALS === "1") {
+  console.log("Updating marketing visual baselines…");
+  run("test:e2e:marketing-visual-update");
+}
 console.log("Visual baselines updated. Commit snapshot diffs under apps/web/e2e/.");

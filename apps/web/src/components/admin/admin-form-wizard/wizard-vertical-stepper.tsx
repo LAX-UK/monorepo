@@ -12,38 +12,51 @@ type Props = {
   className?: string;
 };
 
+type StepState = "active" | "completed" | "future";
+
+function getStepState(index: number, currentIndex: number): StepState {
+  if (index === currentIndex) return "active";
+  if (index < currentIndex) return "completed";
+  return "future";
+}
+
 function StepDotRail({
-  reached,
+  state,
   subItems,
 }: {
-  reached: boolean;
+  state: StepState;
   subItems?: readonly string[];
 }) {
-  const dotClass = reached ? "bg-secondary" : "bg-on-surface-variant/40";
-  const showSubRail = subItems != null && subItems.length > 0 && reached;
+  const primaryDotClass = state === "future" ? "bg-on-surface-variant/40" : "bg-info";
+  const subDotClass = state === "future" ? "bg-on-surface-variant/40" : "bg-info";
+  const hasSubItems = subItems != null && subItems.length > 0;
 
-  if (showSubRail) {
+  if (hasSubItems) {
     return (
-      <div className="flex flex-col items-center gap-4 self-stretch pt-2" aria-hidden>
-        <span className={cn("size-2 shrink-0 rounded-full", dotClass)} />
+      <div className="flex w-2 shrink-0 flex-col items-center gap-4 self-stretch pt-2" aria-hidden>
+        <span className={cn("size-2 shrink-0 rounded-full", primaryDotClass)} />
         {subItems.map((item) => (
-          <span key={item} className={cn("size-1 shrink-0 rounded-full", dotClass)} />
+          <span key={item} className={cn("size-1 shrink-0 rounded-full", subDotClass)} />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center self-stretch" aria-hidden>
-      <span className={cn("size-2 shrink-0 rounded-full", dotClass)} />
+    <div className="flex w-2 shrink-0 items-center self-stretch pt-2" aria-hidden>
+      <span className={cn("size-2 shrink-0 rounded-full", primaryDotClass)} />
     </div>
   );
 }
 
-function StepDivider() {
+function StepConnector({ reached }: { reached: boolean }) {
   return (
-    <div className="flex h-[38px] items-center pl-[3px]" aria-hidden>
-      <div className="h-px w-[38px] bg-outline-variant/30" />
+    <div
+      className="flex h-[38px] w-2 shrink-0 justify-center"
+      aria-hidden
+      data-testid="wizard-step-connector"
+    >
+      <div className={cn("h-full w-px", reached ? "bg-info/35" : "bg-outline-variant/30")} />
     </div>
   );
 }
@@ -61,29 +74,34 @@ export function WizardVerticalStepper({
 }: Props) {
   return (
     <nav aria-label="Form steps" className={cn(className)}>
-      <ol className="flex flex-col gap-2">
+      <ol className="flex flex-col">
         {steps.map((step, index) => {
-          const active = index === currentIndex;
-          const reached = index <= currentIndex;
-          const future = index > currentIndex;
-          const showSubLabels = step.subItems != null && step.subItems.length > 0 && reached;
+          const state = getStepState(index, currentIndex);
+          const active = state === "active";
+          const future = state === "future";
+          const hasSubItems = step.subItems != null && step.subItems.length > 0;
 
           const copyBlock = (
             <span className="min-w-0">
               <span
                 className={cn(
                   "block font-body text-base leading-6",
-                  reached ? "text-on-surface" : "text-on-surface-variant",
+                  active && "font-medium text-on-surface",
+                  state === "completed" && "text-on-surface",
+                  future && "font-medium text-on-surface-variant",
                 )}
               >
                 {step.label}
               </span>
-              {showSubLabels ? (
+              {hasSubItems ? (
                 <span className="mt-0 block">
                   {step.subItems?.map((item) => (
                     <span
                       key={item}
-                      className="block font-body text-sm leading-[22px] text-on-surface-variant"
+                      className={cn(
+                        "block font-body text-sm leading-[22px]",
+                        future ? "text-on-surface-variant" : "text-on-surface-variant",
+                      )}
                     >
                       {item}
                     </span>
@@ -110,13 +128,26 @@ export function WizardVerticalStepper({
             stepNavigationDisabled && onStepClick != null && "cursor-not-allowed opacity-60",
           );
 
+          const buttonClass = cn(
+            rowClass,
+            "h-auto min-h-0 justify-start px-0 py-0 font-normal hover:bg-transparent",
+            onStepClick != null && !stepNavigationDisabled && "hover:bg-surface-container-low/60",
+          );
+
+          const stepRow = (
+            <div className="flex items-start gap-4">
+              <StepDotRail state={state} {...(step.subItems ? { subItems: step.subItems } : {})} />
+              {copyBlock}
+            </div>
+          );
+
           return (
             <li key={step.id} className="flex flex-col">
               {onStepClick ? (
                 <Button
                   type="button"
                   variant="ghost"
-                  className={rowClass}
+                  className={buttonClass}
                   disabled={stepNavigationDisabled}
                   aria-current={active ? "step" : undefined}
                   onClick={() => {
@@ -124,22 +155,19 @@ export function WizardVerticalStepper({
                     onStepClick(index);
                   }}
                 >
-                  <StepDotRail
-                    reached={reached}
-                    {...(step.subItems ? { subItems: step.subItems } : {})}
-                  />
-                  {copyBlock}
+                  {stepRow}
                 </Button>
               ) : (
                 <div className={rowClass} aria-current={active ? "step" : undefined}>
-                  <StepDotRail
-                    reached={reached}
-                    {...(step.subItems ? { subItems: step.subItems } : {})}
-                  />
-                  {copyBlock}
+                  {stepRow}
                 </div>
               )}
-              {index < steps.length - 1 ? <StepDivider /> : null}
+              {index < steps.length - 1 ? (
+                <div className="flex items-start gap-4">
+                  <StepConnector reached={index < currentIndex} />
+                  <span className="min-w-0" aria-hidden />
+                </div>
+              ) : null}
             </li>
           );
         })}

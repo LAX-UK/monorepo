@@ -105,7 +105,7 @@ export function VenueLocationFields({
               <p className="mt-2 font-body text-xs text-on-surface-variant">
                 No saved venues.{" "}
                 <a
-                  href="/admin/venues?new=1"
+                  href="/admin/venues/new"
                   className="text-link underline-offset-2 hover:underline"
                 >
                   Create a venue

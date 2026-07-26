@@ -21,7 +21,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.waitForURL(/dashboard/, { timeout: 20_000 });
 }
 
-test.describe("marketing header auth", () => {
+test.describe("marketing header auth @journey", () => {
   test("header shows authenticated state after client navigation from dashboard to search", async ({
     page,
   }) => {

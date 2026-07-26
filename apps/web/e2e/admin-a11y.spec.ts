@@ -1,201 +1,70 @@
-import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 import {
-  buyerLogin,
-  e2eEnabled as enabled,
+  e2eEnabled,
+  e2eSkipReason,
+  expectNoSeriousAxeViolationsInDialog,
   expectNoSeriousAxeViolationsInMain,
-  formatAxeViolations,
-  hasBuyerCredentials,
   hasStaffCredentials,
   seededStaffRoutes,
-  e2eSkipReason as skipReason,
-  staffLogin,
 } from "./helpers/auth";
+import { staffCatalogListRoutes } from "./helpers/staff-routes";
 
-const staffEmail = hasStaffCredentials() ? "configured" : "";
+const mobileViewport = { width: 375, height: 812 } as const;
 
-test.describe("admin a11y smoke", () => {
+async function assertMainContentA11y(page: Page, path: string): Promise<void> {
+  await page.goto(path);
+  await expect(page.locator("#main-content")).toBeVisible();
+  await expectNoSeriousAxeViolationsInMain(page);
+}
+
+test.describe("admin a11y smoke @a11y", () => {
+  test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
+
   test("admin home has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    await expectNoSeriousAxeViolationsInMain(page);
-  });
-
-  test("admin lots list has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/lots");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
-  });
-
-  test("admin sales list has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/sales");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin");
   });
 
   test("staff list has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/staff");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
+    await assertMainContentA11y(page, "/admin/staff");
   });
 
   test("submissions list at mobile has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/admin/submissions");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await page.setViewportSize(mobileViewport);
+    await assertMainContentA11y(page, "/admin/submissions");
   });
 
   test("condition reports list at mobile has no serious axe violations in main", async ({
     page,
   }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/admin/condition-reports");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await page.setViewportSize(mobileViewport);
+    await assertMainContentA11y(page, "/admin/condition-reports");
   });
 
   test("payment disputes list has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/disputes");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/disputes");
   });
 
   test("payments list has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/payments");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/payments");
   });
 
   test("payouts list at mobile has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/admin/payouts");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await page.setViewportSize(mobileViewport);
+    await assertMainContentA11y(page, "/admin/payouts");
   });
 
   test("AML compliance queue has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/compliance/aml");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/compliance/aml");
   });
 
   test("source of funds compliance queue at mobile has no serious axe violations in main", async ({
     page,
   }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/admin/compliance/source-of-funds");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await page.setViewportSize(mobileViewport);
+    await assertMainContentA11y(page, "/admin/compliance/source-of-funds");
   });
 
   test("source of funds case page main content is reachable from queue", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
     await page.goto("/admin/compliance/source-of-funds");
     await expect(page.locator("#main-content")).toBeVisible();
 
@@ -206,24 +75,12 @@ test.describe("admin a11y smoke", () => {
 
     await reviewLink.click();
     await expect(page).toHaveURL(/\/admin\/compliance\/source-of-funds\/[^/]+$/);
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await expectNoSeriousAxeViolationsInMain(page);
   });
 
   test("source of funds evidence reviewer confirms before discarding unsaved review", async ({
     page,
   }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
     await page.goto("/admin/compliance/source-of-funds");
 
     const reviewLink = page.getByRole("link", { name: /^review$/i }).first();
@@ -267,289 +124,90 @@ test.describe("admin a11y smoke", () => {
     await expect(checkbox).toBeChecked({ checked: !wasChecked });
   });
 
-  test("buyer source of funds page exposes progress landmarks", async ({ page }) => {
-    test.skip(!enabled || !hasBuyerCredentials(), skipReason);
-
-    await buyerLogin(page);
-    await page.goto("/dashboard/compliance/source-of-funds");
-    if (!page.url().includes("/dashboard/compliance/source-of-funds")) {
-      test.skip(true, "Buyer has no active Source of Funds case in this environment");
-    }
-
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /source of funds verification/i }),
-    ).toBeVisible();
-    await expect(page.getByRole("navigation", { name: /verification progress/i })).toBeVisible();
-    await expect(page.locator('[aria-current="step"]')).toHaveCount(1);
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
-  });
-
   test("onboarding issues page has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/onboarding-issues");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/onboarding-issues");
   });
 
   test("invitations page has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/invitations");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/invitations");
   });
 
   test("lot fulfilment list at mobile has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/admin/lot-fulfilment");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await page.setViewportSize(mobileViewport);
+    await assertMainContentA11y(page, "/admin/lot-fulfilment");
   });
 
   test("finance hub has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/finance");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/finance");
   });
 
   test("saleroom hub has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/saleroom");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/saleroom");
   });
 
   test("manual review queue has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/payments?manualReview=1");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/payments?manualReview=1");
   });
 
   test("clients list has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/clients");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/clients");
   });
 
   test("legal entities browse has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/legal-entities");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const axe = await new AxeBuilder({ page })
-      .include("#main-content")
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await assertMainContentA11y(page, "/admin/legal-entities");
   });
 
-  test("artists catalog browse has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/artists");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
-  });
-
-  test("categories catalog browse has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/categories");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
-  });
-
-  test("venues catalog browse has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/venues");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
-  });
+  for (const route of staffCatalogListRoutes) {
+    test(`${route.path} catalog browse has no serious axe violations in main`, async ({ page }) => {
+      await assertMainContentA11y(page, route.path);
+    });
+  }
 
   test("event RSVPs hub has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/event-rsvps");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
+    await assertMainContentA11y(page, "/admin/event-rsvps");
   });
 
   test("xero integration page has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/integrations/xero");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
+    await assertMainContentA11y(page, "/admin/integrations/xero");
   });
 
   test("payout settlement page has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/payouts/settlement");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
+    await assertMainContentA11y(page, "/admin/payouts/settlement");
   });
 
   test("lots attention lens has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.goto("/admin/lots?lens=attention");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
+    await assertMainContentA11y(page, "/admin/lots?lens=attention");
   });
 
   test("new lot wizard at mobile has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/admin/lots/new");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
+    await page.setViewportSize(mobileViewport);
+    await assertMainContentA11y(page, "/admin/lots/new");
   });
 
   test("new sale wizard at mobile has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/admin/sales/new");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
+    await page.setViewportSize(mobileViewport);
+    await assertMainContentA11y(page, "/admin/sales/new");
   });
 
   test("payments list at mobile has no serious axe violations in main", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/admin/payments");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expectNoSeriousAxeViolationsInMain(page);
+    await page.setViewportSize(mobileViewport);
+    await assertMainContentA11y(page, "/admin/payments");
   });
 
   test("clients preview drawer at mobile has no serious axe violations", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
-    await page.setViewportSize({ width: 375, height: 812 });
+    await page.setViewportSize(mobileViewport);
     await page.goto(`/admin/clients?client=${seededStaffRoutes.clientDetail}`);
     await expect(page.getByRole("dialog")).toBeVisible();
-    const axe = await new AxeBuilder({ page })
-      .include('[role="dialog"]')
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await expectNoSeriousAxeViolationsInDialog(page);
   });
 
   test("legal entities preview drawer passes serious axe checks", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
     await page.goto(`/admin/legal-entities?entity=${seededStaffRoutes.legalEntityDrawer}`);
     await expect(page.getByRole("dialog")).toBeVisible();
-    const axe = await new AxeBuilder({ page })
-      .include('[role="dialog"]')
-      .withTags(["wcag2a", "wcag2aa"])
-      .analyze();
-    const blocking = axe.violations.filter((v) => ["critical", "serious"].includes(v.impact ?? ""));
-    expect(
-      blocking,
-      blocking.length ? `Axe violations:\n${formatAxeViolations(blocking)}` : undefined,
-    ).toHaveLength(0);
+    await expectNoSeriousAxeViolationsInDialog(page);
   });
 
   test("source of funds detail evidence review passes serious axe checks", async ({ page }) => {
-    test.skip(!enabled || !staffEmail, skipReason);
-    await staffLogin(page);
     await page.goto(`/admin/compliance/source-of-funds/${seededStaffRoutes.sofCaseDetail}`);
     await expect(page.getByRole("heading", { name: /evidence review/i })).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);

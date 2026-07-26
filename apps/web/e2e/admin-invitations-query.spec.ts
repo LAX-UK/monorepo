@@ -2,12 +2,12 @@
  * Admin invitations list smoke (Query + nuqs pilot).
  */
 import { expect, test } from "@playwright/test";
-import { e2eEnabled, e2eSkipReason, hasStaffCredentials, staffLogin } from "./helpers/auth";
+import { e2eEnabled, e2eSkipReason, hasStaffCredentials } from "./helpers/auth";
 
-test.describe("admin invitations (query + nuqs)", () => {
+test.describe("admin invitations (query + nuqs) @journey", () => {
+  test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
+
   test("invitations page loads with filters and table shell", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/invitations");
     await expect(page.getByRole("heading", { name: /^invitations$/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /sent invitations/i })).toBeVisible();
@@ -16,8 +16,6 @@ test.describe("admin invitations (query + nuqs)", () => {
   });
 
   test("invite users opens modal with role controls", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/invitations");
     await page.getByRole("button", { name: /invite users/i }).click();
     await expect(page.getByRole("dialog", { name: /invite users/i })).toBeVisible();
@@ -27,8 +25,6 @@ test.describe("admin invitations (query + nuqs)", () => {
   });
 
   test("status filter updates URL via nuqs", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/invitations");
     await page
       .getByRole("button", { name: /views|filters/i })
@@ -40,8 +36,6 @@ test.describe("admin invitations (query + nuqs)", () => {
   });
 
   test("search submits q param to URL", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/invitations");
     const search = page.getByPlaceholder(/search by email/i);
     await search.fill("test@example.com");

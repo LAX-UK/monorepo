@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and start apps/web (pnpm dev).";
 
-test.describe("marketing header logo", () => {
+test.describe("marketing header logo @smoke", () => {
   test("mobile viewport shows a visible full logo in the header", async ({ page }) => {
     test.skip(!enabled, skipReason);
 

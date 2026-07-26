@@ -39,7 +39,7 @@ export function CategoryChildrenTab({ categoryId, allCategories }: ChildrenProps
         footer={
           children.length > 0 ? (
             <Button variant="secondary" size="sm" asChild>
-              <Link href="/admin/categories?new=1">New category</Link>
+              <Link href="/admin/categories/new">New category</Link>
             </Button>
           ) : undefined
         }

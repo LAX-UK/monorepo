@@ -90,6 +90,12 @@ How each external system talks to TheAlx and what to configure on the external s
 
 A few rules that apply across all docs:
 
+The [engineering standards index](./engineering-standards.md) links the
+repository-wide SOLID, scalability, test-pyramid, and release-evidence contract
+([quality standard](./engineering/quality-standard.md)), architecture SSOTs, and
+enforcement scripts. Domain-specific documents remain the source of truth for
+detailed boundaries.
+
 Architectural decisions are referenced by their D-number (D1, D2, ..., D11). When you see "per D8" in a doc or runbook, that means "the decision recorded in [02-decisions.md](./architecture/02-decisions.md) section D8." Decisions never change in place — when we revise one, we add a new D-number with a "supersedes Dn" header. The original stays so we have history.
 
 Risks are referenced by R-number (R1–R5). Implementation revisions made during planning are referenced by F-number (F1–F10) and M-number (M1–M2). Entry-gate decisions are G1–G4. These numbers never change.

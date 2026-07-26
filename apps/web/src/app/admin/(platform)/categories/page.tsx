@@ -1,5 +1,4 @@
 import { AdminCategoriesBoard } from "@/components/admin/admin-categories-board";
-import { AdminCategoryCreateSheet } from "@/components/admin/admin-category-create-sheet";
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
 import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
@@ -20,7 +19,7 @@ import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Categories",
@@ -40,19 +39,15 @@ export default async function AdminCategoriesPage({
   }>;
 }) {
   const sp = await searchParams;
-  const openNewSheet = (sp.new ?? "").trim() === "1";
+  if ((sp.new ?? "").trim() === "1") {
+    redirect("/admin/categories/new");
+  }
   const error = safeDecodeAdminErrorParam(sp.error);
   const includeArchived = (sp.includeArchived ?? "").trim() === "true";
   const query = categoriesListController.parseQuery(sp);
   const q = query.q ?? "";
 
-  const {
-    rows: categories,
-    total,
-    summary,
-    categoryTree,
-    listError,
-  } = await loadAdminCategoriesListPage(query);
+  const { rows: categories, total, summary, listError } = await loadAdminCategoriesListPage(query);
 
   const lenses: CatalogSegmentItem[] = [
     {
@@ -90,7 +85,7 @@ export default async function AdminCategoriesPage({
               <Link href="/admin/categories">Clear filters</Link>
             </Button>
           ) : (
-            <CatalogPrimaryCta href="/admin/categories?new=1" icon={Plus}>
+            <CatalogPrimaryCta href="/admin/categories/new" icon={Plus}>
               New category
             </CatalogPrimaryCta>
           )
@@ -139,63 +134,56 @@ export default async function AdminCategoriesPage({
     ) : null;
 
   return (
-    <>
-      <Suspense fallback={null}>
-        {!listError ? (
-          <AdminCategoryCreateSheet categories={categoryTree} sheetFromQuery={openNewSheet} />
-        ) : null}
-      </Suspense>
-      <CatalogListShell
-        title="Categories"
-        description="Manage the taxonomy used by sales, lots, and submissions. Archive used categories instead of deleting them."
-        breadcrumbs={
-          <CatalogBreadcrumbs
-            segments={[{ label: "Admin", href: "/admin" }, { label: "Categories" }]}
+    <CatalogListShell
+      title="Categories"
+      description="Manage the taxonomy used by sales, lots, and submissions. Archive used categories instead of deleting them."
+      breadcrumbs={
+        <CatalogBreadcrumbs
+          segments={[{ label: "Admin", href: "/admin" }, { label: "Categories" }]}
+        />
+      }
+      primaryAction={
+        <CatalogPrimaryCta href="/admin/categories/new" icon={Plus}>
+          New category
+        </CatalogPrimaryCta>
+      }
+      empty={empty}
+      errorAlert={errorAlert}
+      filterBar={
+        <CatalogCategoriesFilterToolbar
+          lenses={lenses}
+          activeLensId={activeLensId}
+          activeFilterCount={activeFilterCount}
+          activeFilterChips={activeFilterChips}
+        />
+      }
+      mobileSummary={
+        !listError && categories.length > 0 ? (
+          <CatalogListMobileSummary
+            metrics={[
+              { id: "page", label: "On page", value: String(categories.length) },
+              { id: "total", label: "Total", value: String(total) },
+              { id: "active", label: "Active", value: String(summary.activeCount) },
+              ...(includeArchived
+                ? [{ id: "lens", label: "Lens", value: "Include archived" }]
+                : []),
+            ]}
           />
-        }
-        primaryAction={
-          <CatalogPrimaryCta href="/admin/categories?new=1" icon={Plus}>
-            New category
-          </CatalogPrimaryCta>
-        }
-        empty={empty}
-        errorAlert={errorAlert}
-        filterBar={
-          <CatalogCategoriesFilterToolbar
-            lenses={lenses}
-            activeLensId={activeLensId}
-            activeFilterCount={activeFilterCount}
-            activeFilterChips={activeFilterChips}
+        ) : null
+      }
+      kpiStrip={
+        !listError ? (
+          <AdminTrendKpiBand
+            ariaLabel="Categories summary"
+            tiles={buildCategoriesListKpiTiles({
+              periodDays: 30,
+              summary,
+            })}
           />
-        }
-        mobileSummary={
-          !listError && categories.length > 0 ? (
-            <CatalogListMobileSummary
-              metrics={[
-                { id: "page", label: "On page", value: String(categories.length) },
-                { id: "total", label: "Total", value: String(total) },
-                { id: "active", label: "Active", value: String(summary.activeCount) },
-                ...(includeArchived
-                  ? [{ id: "lens", label: "Lens", value: "Include archived" }]
-                  : []),
-              ]}
-            />
-          ) : null
-        }
-        kpiStrip={
-          !listError ? (
-            <AdminTrendKpiBand
-              ariaLabel="Categories summary"
-              tiles={buildCategoriesListKpiTiles({
-                periodDays: 30,
-                summary,
-              })}
-            />
-          ) : null
-        }
-      >
-        {view}
-      </CatalogListShell>
-    </>
+        ) : null
+      }
+    >
+      {view}
+    </CatalogListShell>
   );
 }

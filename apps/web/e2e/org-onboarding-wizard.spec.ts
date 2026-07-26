@@ -15,7 +15,7 @@ async function clientLogin(page: import("@playwright/test").Page) {
   await page.waitForURL(/dashboard/);
 }
 
-test.describe("org onboarding wizard", () => {
+test.describe("org onboarding wizard @journey", () => {
   test("resume path shows progress, finish later, and mobile step sheet", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");

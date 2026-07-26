@@ -16,7 +16,7 @@ export default async function AdminCategoryEditPage({ params, searchParams }: Pr
 
   return (
     <CatalogFormShell
-      className="max-w-7xl"
+      layout="wizard"
       breadcrumbs={
         <CatalogBreadcrumbs
           segments={[
@@ -34,20 +34,6 @@ export default async function AdminCategoryEditPage({ params, searchParams }: Pr
         cancelHref: page.overviewHref,
         alwaysShowSubmit: true,
       }}
-      mobileActions={[
-        {
-          id: "save",
-          label: "Save changes",
-          variant: "primary",
-          htmlForm: CATALOG_FORM_IDS.category,
-        },
-        {
-          id: "cancel",
-          label: "Cancel",
-          variant: "secondary",
-          href: page.overviewHref,
-        },
-      ]}
     >
       <CatalogDetailActionError error={sp.error} title="Could not save category" />
       <CategoryEditForm

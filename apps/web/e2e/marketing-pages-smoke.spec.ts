@@ -10,7 +10,7 @@ function formatAxeViolations(
   return violations.map((v) => `  - ${v.id} (${v.impact ?? "?"}): ${v.help}`).join("\n");
 }
 
-test.describe("marketing pages smoke", () => {
+test.describe("marketing pages smoke @a11y", () => {
   for (const path of [
     "/",
     "/search",

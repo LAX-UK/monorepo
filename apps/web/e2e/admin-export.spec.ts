@@ -2,12 +2,12 @@
  * Admin export E2E happy path.
  */
 import { expect, test } from "@playwright/test";
-import { e2eEnabled, e2eSkipReason, hasStaffCredentials, staffLogin } from "./helpers/auth";
+import { e2eEnabled, e2eSkipReason, hasStaffCredentials } from "./helpers/auth";
 
-test.describe("admin export flow", () => {
+test.describe("admin export flow @journey", () => {
+  test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
+
   test("lots export opens confirm sheet and starts download or async job", async ({ page }) => {
-    test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-    await staffLogin(page);
     await page.goto("/admin/lots");
 
     await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible();

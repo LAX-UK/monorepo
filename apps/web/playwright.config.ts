@@ -1,22 +1,86 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 /**
  * E2E saleroom tests require PLAYWRIGHT_BASE_URL=http://localhost:3000 (not 127.0.0.1)
  * so auth cookies match the API host. Set PLAYWRIGHT_E2E=1 and staff credentials to run.
  */
 import { defineConfig } from "@playwright/test";
+import { roleAuthState } from "./e2e/helpers/auth-state";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
-const staffVisualAuthFile = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "e2e",
-  ".auth",
-  "staff-visual.json",
+const e2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
+const hasCatalogueManagerCredentials = Boolean(
+  process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL &&
+    process.env.PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD,
 );
+
+const chromium = {
+  browserName: "chromium" as const,
+  viewport: { width: 1280, height: 800 },
+  deviceScaleFactor: 1,
+};
+
+const roleProjects = [
+  {
+    name: "setup-staff",
+    testMatch: /auth\.setup\.ts/,
+    grep: /@setup-staff/,
+    use: chromium,
+  },
+  {
+    name: "setup-buyer",
+    testMatch: /auth\.setup\.ts/,
+    grep: /@setup-buyer/,
+    use: chromium,
+  },
+  ...(hasCatalogueManagerCredentials
+    ? [
+        {
+          name: "setup-catalogue",
+          testMatch: /auth\.setup\.ts/,
+          grep: /@setup-catalogue/,
+          use: chromium,
+        },
+      ]
+    : []),
+  {
+    name: "staff-chromium",
+    testMatch: [/admin-.*\.spec\.ts/, /saleroom-clerk\.spec\.ts/],
+    dependencies: ["setup-staff"],
+    use: { ...chromium, storageState: roleAuthState.staff },
+  },
+  {
+    name: "buyer-chromium",
+    testMatch: /buyer-.*\.spec\.ts/,
+    dependencies: ["setup-buyer"],
+    use: { ...chromium, storageState: roleAuthState.buyer },
+  },
+  ...(hasCatalogueManagerCredentials
+    ? [
+        {
+          name: "catalogue-chromium",
+          testMatch: /catalogue-manager-.*\.spec\.ts/,
+          dependencies: ["setup-catalogue"],
+          use: { ...chromium, storageState: roleAuthState.catalogueManager },
+        },
+      ]
+    : []),
+  {
+    name: "public-chromium",
+    testIgnore: [
+      /auth\.setup\.ts/,
+      /admin-.*\.spec\.ts/,
+      /buyer-.*\.spec\.ts/,
+      /catalogue-manager-.*\.spec\.ts/,
+      /saleroom-clerk\.spec\.ts/,
+    ],
+    use: chromium,
+  },
+];
 
 export default defineConfig({
   testDir: "e2e",
-  ...(process.env.PLAYWRIGHT_VISUAL === "1" ? { globalSetup: "./e2e/global-setup.ts" } : {}),
+  reporter: process.env.CI
+    ? [["blob", { outputDir: "blob-report" }]]
+    : [["list"], ["html", { open: "never" }]],
   snapshotPathTemplate: "{testDir}/__snapshots__/{testFilePath}/{arg}{ext}",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -27,16 +91,6 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
-    ...(process.env.PLAYWRIGHT_VISUAL === "1" ? { storageState: staffVisualAuthFile } : {}),
   },
-  projects: [
-    {
-      name: "chromium",
-      use: {
-        browserName: "chromium",
-        viewport: { width: 1280, height: 800 },
-        deviceScaleFactor: 1,
-      },
-    },
-  ],
+  projects: e2eEnabled ? roleProjects : [{ name: "chromium", use: chromium }],
 });

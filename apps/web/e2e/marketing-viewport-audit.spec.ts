@@ -19,7 +19,7 @@ async function assertNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(overflow).toBe(true);
 }
 
-test.describe("marketing viewport audit", () => {
+test.describe("marketing viewport audit @a11y", () => {
   for (const viewport of VIEWPORTS) {
     test(`${viewport.label} (${viewport.width}x${viewport.height}) — no horizontal overflow on / and /search`, async ({
       page,

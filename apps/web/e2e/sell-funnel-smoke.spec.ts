@@ -16,7 +16,7 @@ const skipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web (pnpm dev).";
 const clientEmail = process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "";
 const clientPassword = process.env.PLAYWRIGHT_CLIENT_PASSWORD ?? "";
 
-test.describe("sell funnel smoke", () => {
+test.describe("sell funnel smoke @journey", () => {
   test("/sell exposes LegalPage intro, toc sections, and primary CTA", async ({ page }) => {
     test.skip(!enabled, skipReason);
 

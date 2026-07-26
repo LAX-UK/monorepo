@@ -1,6 +1,5 @@
 import { AdminListAlert } from "@/components/admin/admin-list-alert";
 import { AdminTrendKpiBand } from "@/components/admin/admin-trend-kpi-band";
-import { AdminVenueCreateSheet } from "@/components/admin/admin-venue-create-sheet";
 import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
 import type { CatalogSegmentItem } from "@/components/admin/catalog/catalog-filter-bar";
 import { CatalogListEmptyState } from "@/components/admin/catalog/catalog-list-empty-state";
@@ -17,7 +16,7 @@ import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Venues",
@@ -32,14 +31,15 @@ export default async function AdminVenuesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  if ((sp.new ?? "").toString().trim() === "1") {
+    redirect("/admin/venues/new");
+  }
   const loaded = await loadAdminVenuesListPage(sp);
   const {
-    openNewSheet,
     error,
     venues,
     total,
     listError,
-    platformLegalEntityId,
     legalEntityId,
     legalEntityDisplayName,
     includeArchived,
@@ -83,7 +83,7 @@ export default async function AdminVenuesPage({
               <Link href="/admin/venues">Clear filters</Link>
             </Button>
           ) : (
-            <CatalogPrimaryCta href="/admin/venues?new=1" icon={Plus}>
+            <CatalogPrimaryCta href="/admin/venues/new" icon={Plus}>
               New venue
             </CatalogPrimaryCta>
           )
@@ -93,12 +93,6 @@ export default async function AdminVenuesPage({
 
   return (
     <>
-      <Suspense fallback={null}>
-        <AdminVenueCreateSheet
-          platformLegalEntityId={platformLegalEntityId}
-          sheetFromQuery={openNewSheet}
-        />
-      </Suspense>
       <CatalogListShell
         title="Venues"
         description="Reusable onsite gallery and branch locations. Each venue belongs to a legal entity — only venues owned by the sale operator can be attached to a sale."
@@ -108,7 +102,7 @@ export default async function AdminVenuesPage({
           />
         }
         primaryAction={
-          <CatalogPrimaryCta href="/admin/venues?new=1" icon={Plus}>
+          <CatalogPrimaryCta href="/admin/venues/new" icon={Plus}>
             New venue
           </CatalogPrimaryCta>
         }

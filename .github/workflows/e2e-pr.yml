@@ -1,0 +1,88 @@
+name: Web PR browser gates
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "apps/web/**"
+      - "apps/api/src/**"
+      - "packages/auth/**"
+      - "packages/db/src/seed/**"
+      - "packages/ui/**"
+      - "pnpm-lock.yaml"
+
+concurrency:
+  group: e2e-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-gates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      PLAYWRIGHT_E2E: "1"
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+      PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
+      PLAYWRIGHT_STAFF_PASSWORD: Password123!
+      PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL: staff-catalogue@lax.bid
+      PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD: Password123!
+      PLAYWRIGHT_BUYER_EMAIL: estate-owner@lax.bid
+      PLAYWRIGHT_BUYER_PASSWORD: Password123!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Install pinned Chromium
+        run: pnpm --filter @auction/web exec playwright install chromium --with-deps
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @auction/db db:migrate
+          pnpm --filter @auction/db db:seed:dev
+      - name: Build web and API
+        run: pnpm --filter @auction/api build && pnpm --filter @auction/web build
+      - name: Start stack
+        run: |
+          pnpm --filter @auction/api start &
+          pnpm --filter @auction/web start &
+          npx --yes wait-on http://localhost:3000 --timeout 120000
+      - name: Prepare staff session
+        working-directory: apps/web
+        run: pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff
+      - name: Critical browser and curated visual gates
+        run: pnpm --filter @auction/web test:e2e:pr -- --no-deps
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-pr-playwright-report
+          path: apps/web/blob-report
+          retention-days: 7
