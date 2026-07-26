@@ -18,6 +18,7 @@ import type { IDataExportJobRepository } from "../interfaces/data-export.reposit
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
 import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
+import type { IMarketingAttributionPurgeRepository } from "../interfaces/marketing-attribution-purge.repository.js";
 import type { IMarketingClickIdPurgeRepository } from "../interfaces/marketing-click-id-purge.repository.js";
 import type { IMarketingContactSyncRepository } from "../interfaces/marketing-contact-sync.repository.js";
 import type { IMarketingEventOutboxWorker } from "../interfaces/marketing-event-outbox.worker.js";
@@ -72,6 +73,7 @@ export type WorkerBootstrapDeps = {
   qrCodeScanPersister: IQrCodeScanPersister;
   qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;
   marketingClickIdPurgeRepo: IMarketingClickIdPurgeRepository;
+  marketingAttributionPurgeRepo: IMarketingAttributionPurgeRepository;
   notificationWriteRepo: INotificationWriteRepository;
   transactionRunner: ITransactionRunner;
   adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;

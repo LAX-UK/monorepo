@@ -30,6 +30,7 @@ import type { ComplianceRouteServices } from "../services/interfaces/compliance-
 import type { FinanceRouteServices } from "../services/interfaces/finance-routes/index.js";
 import type { IdentityRouteServices } from "../services/interfaces/identity-routes.js";
 import type { ILotLifecycleService, ILotReadService } from "../services/interfaces/lot-service.js";
+import type { IOAuthAttributionStore } from "../services/interfaces/oauth-attribution-store.js";
 import type { PlatformCronRouteServices } from "../services/interfaces/platform-cron-routes/index.js";
 import type { PlatformInboundWebhookRouteServices } from "../services/interfaces/platform-inbound-webhooks/index.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
@@ -96,6 +97,7 @@ export type ContainerRootSlice = {
   vapidPublicKey: string | null;
   auth: Auth;
   authenticator: IAuthenticator;
+  oauthAttributionStore: IOAuthAttributionStore;
 };
 
 /** Repository ports re-exposed on the flat container bag (internal repos stay in factories). */
@@ -456,7 +458,13 @@ export type ContainerQrRoutesSlice = Pick<Container, "qrCodeService">;
 /** Authenticated marketing click-id capture. */
 export type ContainerMarketingRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "env" | "clickIdStore" | "attributionStore"
+  | "userSuspensionChecker"
+  | "env"
+  | "authDb"
+  | "clickIdStore"
+  | "attributionStore"
+  | "oauthAttributionStore"
+  | "marketingEventService"
 >;
 
 /** Super-admin BullMQ queue inspector/mutator. */

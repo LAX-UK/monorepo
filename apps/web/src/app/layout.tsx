@@ -1,6 +1,7 @@
 import { AnalyticsBootstrap } from "@/components/analytics/analytics-bootstrap";
 import { AnalyticsDebugPanel } from "@/components/analytics/analytics-debug-panel";
 import { AnalyticsPageView } from "@/components/analytics/analytics-page-view";
+import { AuthAnalyticsSync } from "@/components/analytics/auth-analytics-sync";
 import { ConsentInit } from "@/components/analytics/consent-init";
 import { GtmNoscript } from "@/components/analytics/gtm-noscript";
 import { MarketingAttributionSync } from "@/components/analytics/marketing-attribution-sync";
@@ -30,7 +31,6 @@ import {
   THEME_COOKIE_NAME,
   parseThemeCookie,
 } from "@/lib/preferences/theme-cookie";
-import { AppQueryProvider } from "@/lib/query/query-provider";
 import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
@@ -137,16 +137,15 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <AnalyticsBootstrap nonce={nonce} />
           <Suspense fallback={null}>
             <AnalyticsPageView />
+            <AuthAnalyticsSync />
           </Suspense>
           <MarketingClickIdsSync />
           <MarketingAttributionSync />
           <BrowserOfflineBanner />
           <AuthSessionProvider serverUser={user} authCookiePresent={authCookiePresent}>
-            <AppQueryProvider>
-              <PushBootstrap />
-              <PwaInstallPrompt />
-              {children}
-            </AppQueryProvider>
+            <PushBootstrap />
+            <PwaInstallPrompt />
+            {children}
           </AuthSessionProvider>
           <Toaster />
           <WebVitalsReporter />

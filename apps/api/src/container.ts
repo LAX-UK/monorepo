@@ -24,6 +24,7 @@ import { createUserMiscServices } from "./container/create-user-misc-services.js
 import { createUserNotificationComposition } from "./container/create-user-notification-composition.js";
 import { createUserRouteServices } from "./container/create-user-route-services.js";
 import type { Env } from "./env.js";
+import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 
@@ -33,6 +34,7 @@ export function createContainer(env: Env): Container {
   const db = createDb(env.DATABASE_URL_API ?? env.DATABASE_URL);
   const authDb = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
   const infra = createInfra(env, db, authDb);
+  const oauthAttributionStore = new RedisOAuthAttributionStore(infra.redis);
 
   const { sessionRepository } = createAuthRepositories(authDb);
   const sessionRevocation = new SessionRevocationService(sessionRepository);
@@ -44,6 +46,7 @@ export function createContainer(env: Env): Container {
     emailService: infra.emailService,
     sessionRevocation,
     ensurePersonalLegalEntityService,
+    oauthAttributionStore,
   });
 
   const repos = createRepositories(db);
@@ -218,6 +221,7 @@ export function createContainer(env: Env): Container {
     auth,
     getPublicJwks: infra.getPublicJwks,
     authenticator,
+    oauthAttributionStore,
     repoFactory: repos.repoFactory,
     lotService: catalog.lotService,
     conditionReportService: catalog.conditionReportService,

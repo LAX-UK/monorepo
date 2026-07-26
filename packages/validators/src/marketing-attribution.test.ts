@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  appendCampaignSearchParams,
+  appendMarketingParamsToPath,
+  appendMarketingPassthroughParams,
   attributionToPublisherParams,
   decodeMarketingAttributionHeaderRaw,
   encodeMarketingAttributionHeaderJson,
@@ -45,6 +48,16 @@ describe("parseAttributionTouchFromSearch", () => {
         "2026-01-01T00:00:00.000Z",
       ),
     ).not.toThrow();
+  });
+
+  it("captures current Google click identifiers", () => {
+    expect(
+      parseAttributionTouchFromSearch(
+        "?gbraid=gb-1&wbraid=wb-1&dclid=dc-1",
+        "/ads",
+        "2026-01-01T00:00:00.000Z",
+      ),
+    ).toMatchObject({ gbraid: "gb-1", wbraid: "wb-1", dclid: "dc-1" });
   });
 });
 
@@ -154,5 +167,52 @@ describe("server attribution contract", () => {
     const wire = encodeMarketingAttributionHeaderJson(json);
     expect(wire).toMatch(/^1\./);
     expect(decodeMarketingAttributionHeaderRaw(wire ?? "")).toBe(json);
+  });
+});
+
+describe("marketing redirect preservation", () => {
+  it("copies only persisted campaign fields for attribution callbacks", () => {
+    const target = new URLSearchParams();
+    appendCampaignSearchParams(
+      target,
+      new URLSearchParams("utm_source=google&gbraid=gb-1&_gl=linker&gad_source=1&foo=bar"),
+    );
+    expect(target.toString()).toBe("utm_source=google&gbraid=gb-1");
+  });
+
+  it("preserves Google linker and gad parameters through redirects", () => {
+    const target = new URLSearchParams("page=2");
+    appendMarketingPassthroughParams(target, {
+      utm_campaign: "spring",
+      gclsrc: "aw.ds",
+      _gl: "long-linker-value",
+      gad_source: "1",
+      gad_campaignid: "123",
+      foo: "discard",
+    });
+    expect(target.get("page")).toBe("2");
+    expect(target.get("utm_campaign")).toBe("spring");
+    expect(target.get("gclsrc")).toBe("aw.ds");
+    expect(target.get("_gl")).toBe("long-linker-value");
+    expect(target.get("gad_source")).toBe("1");
+    expect(target.get("gad_campaignid")).toBe("123");
+    expect(target.has("foo")).toBe(false);
+  });
+
+  it("appends passthrough params without losing an existing query string", () => {
+    expect(
+      appendMarketingParamsToPath("/sales/spring?page=2", {
+        utm_source: "google",
+        view: "grid",
+      }),
+    ).toBe("/sales/spring?page=2&utm_source=google");
+  });
+
+  it("preserves fragments after the appended query string", () => {
+    expect(
+      appendMarketingParamsToPath("/sales/spring#catalog", {
+        utm_source: "google",
+      }),
+    ).toBe("/sales/spring?utm_source=google#catalog");
   });
 });

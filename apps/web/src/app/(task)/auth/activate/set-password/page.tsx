@@ -1,3 +1,4 @@
+import { MagicLinkLoginSync } from "@/components/analytics/magic-link-login-sync";
 import { ActivateSetPasswordForm } from "@/components/auth/activate-set-password-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { AuthRouteLoading } from "@/components/auth/auth-route-loading";
@@ -48,6 +49,7 @@ export default async function ActivateSetPasswordPage({
           title="Set a password"
           description="Optional — you can skip and continue into the auction."
         >
+          <MagicLinkLoginSync />
           <ActivateSetPasswordForm serverConfirmedNoPassword />
         </AuthLayout>
       </main>

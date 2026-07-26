@@ -1,5 +1,6 @@
 import { PURGE_MARKETING_CLICK_IDS_QUEUE_NAME } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
+import { purgeStaleMarketingAttribution } from "../../jobs/purge-stale-marketing-attribution.js";
 import { purgeStaleMarketingClickIds } from "../../jobs/purge-stale-marketing-click-ids.js";
 import { purgeStaleMarketingOutbox } from "../../jobs/purge-stale-marketing-outbox.js";
 import { withSentryCronMonitor } from "../../lib/sentry-cron.js";
@@ -12,7 +13,8 @@ export function registerMarketingPurgeWorkers(deps: WorkerBootstrapDeps): {
   queue: Queue;
 } {
   const { log, bullConnection, sentryMonitorSlugs, reportWorkerJobFailure } = deps;
-  const { marketingClickIdPurgeRepo, marketingEventOutboxWorker } = deps;
+  const { marketingClickIdPurgeRepo, marketingAttributionPurgeRepo, marketingEventOutboxWorker } =
+    deps;
 
   const purgeMarketingClickIdsQueue = new Queue(
     PURGE_MARKETING_CLICK_IDS_QUEUE_NAME,
@@ -23,6 +25,7 @@ export function registerMarketingPurgeWorkers(deps: WorkerBootstrapDeps): {
     async () => {
       await withSentryCronMonitor("purge-marketing-click-ids", sentryMonitorSlugs, async () => {
         await purgeStaleMarketingClickIds({ marketingClickIdPurgeRepo, log });
+        await purgeStaleMarketingAttribution({ marketingAttributionPurgeRepo, log });
         await purgeStaleMarketingOutbox({ marketingEventOutboxWorker, log });
       });
     },

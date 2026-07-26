@@ -509,15 +509,21 @@ variable "next_public_gtm_id" {
   description = "Google Tag Manager container ID (e.g. GTM-W6K4N67Z). GA4 is configured inside GTM. Empty disables analytics."
 }
 
+variable "next_public_ga4_measurement_id" {
+  type        = string
+  default     = "G-GDG4D2YELR"
+  description = "Public GA4 measurement ID used to select the matching first-party session cookie."
+}
+
 variable "marketing_attribution_enabled" {
   type        = string
-  default     = "true"
+  default     = "false"
   description = "Authoritative API kill switch for consented UTM persistence and event enrichment."
 }
 
 variable "next_public_marketing_attribution_enabled" {
   type        = string
-  default     = "true"
+  default     = "false"
   description = "Build-time web flag for consented UTM capture. Keep aligned with marketing_attribution_enabled."
 }
 

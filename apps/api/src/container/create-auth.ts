@@ -15,6 +15,7 @@ import { CompositeAuthenticator } from "../infrastructure/composite-authenticato
 import { JwtAuthenticator } from "../infrastructure/jwt-authenticator.js";
 import { trustedWebOrigins } from "../lib/trusted-origins.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import type { IOAuthAttributionStore } from "../services/interfaces/oauth-attribution-store.js";
 import type { EnsurePersonalLegalEntityService } from "../services/legal-entity/ensure-personal-legal-entity.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
 
@@ -30,11 +31,19 @@ export type CreateAuthInput = {
   emailService: IEmailService;
   sessionRevocation: SessionRevocationService;
   ensurePersonalLegalEntityService: EnsurePersonalLegalEntityService;
+  oauthAttributionStore: IOAuthAttributionStore;
 };
 
 export function createContainerAuth(input: CreateAuthInput): ContainerAuth {
-  const { env, db, authDb, emailService, sessionRevocation, ensurePersonalLegalEntityService } =
-    input;
+  const {
+    env,
+    db,
+    authDb,
+    emailService,
+    sessionRevocation,
+    ensurePersonalLegalEntityService,
+    oauthAttributionStore,
+  } = input;
 
   const phoneVerification: IPhoneVerificationService =
     env.ENABLE_PHONE_VERIFICATION && isTwilioVerifyConfigured(env)
@@ -61,6 +70,12 @@ export function createContainerAuth(input: CreateAuthInput): ContainerAuth {
     authDekKey: env.AUTH_DEK_KEY?.trim(),
     revokeAllSessions: (userId: string) => sessionRevocation.revokeAllForUser(userId),
     onUserCreated: async (authUser) => {
+      await oauthAttributionStore.markNewUser(authUser.id).catch((error: unknown) => {
+        console.error("[marketing] failed to mark new user for OAuth attribution", {
+          userId: authUser.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
       await ensurePersonalLegalEntityService.ensure({
         userId: authUser.id,
         displayName: authUser.name,
@@ -76,6 +91,8 @@ export function createContainerAuth(input: CreateAuthInput): ContainerAuth {
         { producer: "apps/api", accountDb: authDb },
       );
     },
+    onAccountCreated: ({ userId, providerId }) =>
+      oauthAttributionStore.completeNewUserAccount(userId, providerId),
     onEmailVerified: async (authUser) => {
       const { publishUserEmailVerified } = await import(
         "../services/publish-user-email-verified.js"
