@@ -83,7 +83,7 @@ export function MarketingAttributionSync() {
       persistedCookie.current = null;
       syncInFlight.current = null;
       const shouldDeleteServerCopy =
-        snapshot !== null || marketingWasGranted.current || hadStoredAttribution;
+        marketingWasGranted.current || hadStoredAttribution;
       marketingWasGranted.current = false;
       if (shouldDeleteServerCopy && !withdrawalHandled.current && !withdrawalInFlight.current) {
         withdrawalInFlight.current = true;
