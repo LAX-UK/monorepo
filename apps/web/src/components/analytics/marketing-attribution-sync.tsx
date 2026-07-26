@@ -1,6 +1,5 @@
 "use client";
 
-import { marketingConsentHeaderValues } from "@/lib/analytics/consent-headers";
 import { useConsent } from "@/lib/analytics/consent/context";
 import { isMarketingAttributionEnabled } from "@/lib/analytics/is-marketing-attribution-enabled";
 import {
@@ -13,7 +12,11 @@ import {
   clearAttributionCookieServer,
   persistAttributionCookieServer,
 } from "@/lib/analytics/persist-attribution-cookie.server";
-import type { MarketingAttributionSnapshot, MarketingAttributionTouch } from "@auction/types";
+import {
+  deleteMarketingAttribution,
+  syncMarketingAttribution,
+} from "@/lib/data/http/marketing-attribution.client";
+import type { MarketingAttributionTouch } from "@auction/types";
 import { mergeAttributionSnapshot } from "@auction/validators";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -31,39 +34,6 @@ async function retryRequest(operation: () => Promise<void>): Promise<void> {
     }
   }
   throw lastError;
-}
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
-}
-
-async function requireSuccessfulResponse(request: Promise<Response>): Promise<void> {
-  const response = await request;
-  if (!response.ok) throw new Error(`marketing_attribution_http_${response.status}`);
-}
-
-function syncAttribution(snapshot: MarketingAttributionSnapshot): Promise<void> {
-  return requireSuccessfulResponse(
-    fetch(`${apiBase()}/marketing/attribution`, {
-      method: "PUT",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...marketingConsentHeaderValues(),
-      },
-      body: JSON.stringify({ snapshot }),
-    }),
-  );
-}
-
-function deleteAttribution(): Promise<void> {
-  return requireSuccessfulResponse(
-    fetch(`${apiBase()}/marketing/attribution`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: marketingConsentHeaderValues(),
-    }),
-  );
 }
 
 /** Capture UTMs on first paint; persist + sync when marketing consent is granted. */
@@ -117,7 +87,7 @@ export function MarketingAttributionSync() {
       marketingWasGranted.current = false;
       if (shouldDeleteServerCopy && !withdrawalHandled.current && !withdrawalInFlight.current) {
         withdrawalInFlight.current = true;
-        void queueAttributionMutation(deleteAttribution)
+        void queueAttributionMutation(deleteMarketingAttribution)
           .then(() => {
             if (!marketingWasGranted.current) withdrawalHandled.current = true;
           })
@@ -172,7 +142,7 @@ export function MarketingAttributionSync() {
     if (syncedSnapshot.current === serialized || syncInFlight.current === serialized) return;
 
     syncInFlight.current = serialized;
-    void queueAttributionMutation(() => syncAttribution(attribution))
+    void queueAttributionMutation(() => syncMarketingAttribution(attribution))
       .then(() => {
         if (syncInFlight.current === serialized) {
           syncedSnapshot.current = serialized;
