@@ -30,15 +30,12 @@ jobs:
           --health-timeout=5s
           --health-retries=5
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
-      REDIS_URL: redis://127.0.0.1:6379
-      PLAYWRIGHT_E2E: "1"
+      CI: "true"
       PLAYWRIGHT_VISUAL: "1"
-      PLAYWRIGHT_BASE_URL: http://localhost:3000
-      PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
-      PLAYWRIGHT_STAFF_PASSWORD: Password123!
     steps:
       - uses: actions/checkout@v4
+      - name: Load shared e2e stack env
+        run: grep -Ev '^\s*(#|$)' .github/e2e.env >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -49,13 +46,9 @@ jobs:
       - run: |
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
-          pnpm --filter @auction/api build
-          pnpm --filter @auction/web build
-      - name: Start stack
-        run: |
-          pnpm --filter @auction/api start &
-          pnpm --filter @auction/web start &
-          npx --yes wait-on http://localhost:3000 --timeout 120000
+          pnpm turbo run build --filter=...@auction/api --filter=...@auction/web
+      # Playwright starts and stops the API and web servers itself
+      # (see apps/web/playwright.config.ts webServer).
       - name: Generate reviewed candidates
         run: pnpm --filter @auction/web test:e2e:admin-visual-update
       - uses: actions/upload-artifact@v4

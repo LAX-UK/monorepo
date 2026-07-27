@@ -61,9 +61,27 @@ The complete local gate is `pnpm ci:verify`. The focused pre-push gate is
 
 ## Browser test commands
 
-Run with Node.js 22, seeded stack on `:3000` (web) and `:3001` (API), and
-`PLAYWRIGHT_E2E=1`. Role setup projects write ignored state under
-`apps/web/e2e/.auth/`.
+Run with Node.js 22 against a seeded database. Playwright starts the API on
+`:3001` and web on `:3000` itself via `webServer` in
+`apps/web/playwright.config.ts`, so CI and local runs exercise the same
+processes. Set `PLAYWRIGHT_EXTERNAL_STACK=1` to target a stack you already run.
+
+Stack environment lives in one file, `.github/e2e.env`, shared by `e2e-pr.yml`,
+`e2e-stabilization.yml`, and `visual-baselines.yml`. Load it locally with
+`set -a && . .github/e2e.env && set +a`. Do not redeclare these values in a
+workflow: three drifting copies is what previously broke the PR gate.
+
+Two constraints are easy to reintroduce and expensive to diagnose:
+
+- Never set `PORT` for the whole job. A shared `PORT` binds the API and web to
+  the same socket, and the second process dies with `EADDRINUSE`.
+- Serve web with `next start`. The standalone server omits `.next/static` and
+  `public/` unless they are copied beside it (see `apps/web/Dockerfile`); without
+  them the client bundle 404s, the page never hydrates, and form submits fall
+  back to a native GET. `apps/web/e2e/helpers/auth.ts` now fails fast and names
+  this cause rather than timing out.
+
+Role setup projects write ignored state under `apps/web/e2e/.auth/`.
 
 | Tier | Command | Owner | CI |
 |------|---------|-------|-----|
@@ -81,3 +99,8 @@ Tag ownership in specs: `@smoke`, `@journey`, `@a11y`, `@roles`, `@visual`,
 `@optin`. Every `test.describe` block must declare one tier tag; `pnpm lint:e2e-tags`
 enforces the taxonomy. Prefer the lowest tier that proves the behavior; do not
 expand the visual Cartesian product.
+
+`e2e-pr.yml` is advisory until it records its first green run: treat a red
+`browser-gates` as a signal to investigate, not as proof that a PR is unsafe, and
+do not add it to required checks before it passes. Verify changes to it locally
+first — it is in its own `paths:` trigger, so a workflow edit runs the gate.

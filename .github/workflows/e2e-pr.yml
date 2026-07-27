@@ -10,6 +10,9 @@ on:
       - "packages/db/src/seed/**"
       - "packages/ui/**"
       - "pnpm-lock.yaml"
+      # Self-testing: changes to the gate itself must run the gate.
+      - ".github/workflows/e2e-pr.yml"
+      - ".github/e2e.env"
 
 concurrency:
   group: e2e-pr-${{ github.ref }}
@@ -18,6 +21,9 @@ concurrency:
 jobs:
   browser-gates:
     runs-on: ubuntu-24.04
+    # Advisory until this workflow records its first green run — see
+    # docs/engineering/quality-standard.md. Core CI remains the merge gate.
+    continue-on-error: true
     timeout-minutes: 25
     services:
       postgres:
@@ -43,18 +49,12 @@ jobs:
           --health-retries=5
     env:
       CI: "true"
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
-      REDIS_URL: redis://127.0.0.1:6379
-      PLAYWRIGHT_E2E: "1"
-      PLAYWRIGHT_BASE_URL: http://localhost:3000
-      PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
-      PLAYWRIGHT_STAFF_PASSWORD: Password123!
-      PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL: staff-catalogue@lax.bid
-      PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD: Password123!
-      PLAYWRIGHT_BUYER_EMAIL: estate-owner@lax.bid
-      PLAYWRIGHT_BUYER_PASSWORD: Password123!
     steps:
       - uses: actions/checkout@v4
+      # Stack configuration lives in one file shared with the other e2e workflows
+      # and with local runs. Comments and blank lines are not valid in $GITHUB_ENV.
+      - name: Load shared e2e stack env
+        run: grep -Ev '^\s*(#|$)' .github/e2e.env >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -67,13 +67,12 @@ jobs:
         run: |
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
+      # `...@auction/api` includes workspace dependencies; filtering the package
+      # alone compiles against unbuilt @auction/* and fails to resolve them.
       - name: Build web and API
-        run: pnpm --filter @auction/api build && pnpm --filter @auction/web build
-      - name: Start stack
-        run: |
-          pnpm --filter @auction/api start &
-          pnpm --filter @auction/web start &
-          npx --yes wait-on http://localhost:3000 --timeout 120000
+        run: pnpm turbo run build --filter=...@auction/api --filter=...@auction/web
+      # Playwright starts and stops the API and web servers itself
+      # (see apps/web/playwright.config.ts webServer).
       - name: Prepare staff session
         working-directory: apps/web
         run: pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff

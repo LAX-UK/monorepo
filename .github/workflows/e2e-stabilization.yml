@@ -41,19 +41,12 @@ jobs:
           --health-timeout=5s
           --health-retries=5
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
-      REDIS_URL: redis://127.0.0.1:6379
-      PLAYWRIGHT_E2E: "1"
-      PLAYWRIGHT_BASE_URL: http://localhost:3000
-      PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
-      PLAYWRIGHT_STAFF_PASSWORD: Password123!
-      PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL: staff-catalogue@lax.bid
-      PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD: Password123!
-      PLAYWRIGHT_BUYER_EMAIL: estate-owner@lax.bid
-      PLAYWRIGHT_BUYER_PASSWORD: Password123!
       CI: "true"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Load shared e2e stack env
+        run: grep -Ev '^\s*(#|$)' .github/e2e.env >> "$GITHUB_ENV"
 
       - uses: pnpm/action-setup@v4
 
@@ -74,14 +67,10 @@ jobs:
           pnpm --filter @auction/db db:seed:dev
 
       - name: Build web and API
-        run: pnpm --filter @auction/api build && pnpm --filter @auction/web build
+        run: pnpm turbo run build --filter=...@auction/api --filter=...@auction/web
 
-      - name: Start API and web
-        run: |
-          pnpm --filter @auction/api start &
-          pnpm --filter @auction/web start &
-          npx --yes wait-on http://localhost:3000 --timeout 120000
-
+      # Playwright starts and stops the API and web servers itself
+      # (see apps/web/playwright.config.ts webServer).
       - name: Prepare role storage states
         working-directory: apps/web
         run: pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff --project=setup-catalogue --project=setup-buyer

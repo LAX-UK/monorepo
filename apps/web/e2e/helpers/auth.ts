@@ -82,10 +82,55 @@ async function readLoginBannerErrors(page: Page): Promise<string> {
   return bannerError.filter(Boolean).join(" · ");
 }
 
+/** Collects failed `/_next/static` requests. A missing client bundle still renders
+ * server HTML, so without this the only symptom is an unexplained timeout. */
+function trackFailedClientAssets(page: Page): string[] {
+  const failures: string[] = [];
+  page.on("response", (response) => {
+    const url = response.url();
+    if (response.status() >= 400 && url.includes("/_next/static/")) {
+      failures.push(`${response.status()} ${new URL(url).pathname}`);
+    }
+  });
+  return failures;
+}
+
+function hydrationFailureDetail(failedAssets: readonly string[]): string {
+  if (failedAssets.length === 0) {
+    return "The client bundle did not run. Confirm apps/web serves /_next/static.";
+  }
+  return `${failedAssets.length} client asset request(s) failed (${failedAssets
+    .slice(0, 3)
+    .join(
+      ", ",
+    )}). Serve apps/web with \`next start\`, or copy .next/static and public/ beside the standalone server (see apps/web/Dockerfile).`;
+}
+
+/** React tags hydrated DOM nodes with `__reactFiber$*` / `__reactProps$*` keys.
+ * Waiting on that proves submits go through React instead of the browser's
+ * native GET, which would put the password in the query string. */
+async function waitForLoginFormHydration(
+  page: Page,
+  failedAssets: readonly string[],
+): Promise<void> {
+  await page
+    .waitForFunction(
+      () => {
+        const form = document.querySelector("form");
+        return Boolean(form) && Object.keys(form as object).some((k) => k.startsWith("__react"));
+      },
+      undefined,
+      { timeout: 30_000 },
+    )
+    .catch(() => {
+      throw new Error(`Login page never hydrated. ${hydrationFailureDetail(failedAssets)}`);
+    });
+}
+
 async function login(page: Page, credentials: Credentials): Promise<void> {
+  const failedAssets = trackFailedClientAssets(page);
   const loginUrl = `/login?email=${encodeURIComponent(credentials.email)}`;
   await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
-  await dismissCookieConsentIfVisible(page);
 
   const serverError = page.getByText(/internal server error/i);
   if (await serverError.isVisible().catch(() => false)) {
@@ -93,6 +138,10 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
       "Login page returned Internal Server Error — restart apps/web (dev .next may be stale after pnpm build).",
     );
   }
+
+  // Every interaction below depends on React handlers, including the cookie banner.
+  await waitForLoginFormHydration(page, failedAssets);
+  await dismissCookieConsentIfVisible(page);
 
   const continueAuthed = page.getByRole("link", { name: /^continue/i });
   const continueToCredentials = page.getByRole("button", { name: /^continue$/i });
@@ -125,7 +174,13 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
     return;
   }
 
+  // Email-first login (the production default) gates the password step behind
+  // "Continue", which validates the email field before advancing.
   if (await continueToCredentials.isVisible().catch(() => false)) {
+    const emailField = page.locator('input[name="email"], input[type="email"]').first();
+    if (!(await emailField.inputValue().catch(() => "")).trim()) {
+      await emailField.fill(credentials.email);
+    }
     await continueToCredentials.click();
   }
 
@@ -133,22 +188,21 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
   await password.click();
   await password.fill(credentials.password);
   const submit = page.getByRole("button", { name: /^sign in$/i });
+  await submit.waitFor({ state: "visible", timeout: 20_000 });
   await Promise.all([
     page.waitForURL(/\/(admin|dashboard)/, {
       timeout: 60_000,
       waitUntil: "domcontentloaded",
     }),
-    (async () => {
-      if (await submit.isVisible().catch(() => false)) {
-        await submit.click();
-        return;
-      }
-      await page
-        .locator("form")
-        .first()
-        .evaluate((form) => (form as HTMLFormElement).requestSubmit());
-    })(),
+    submit.click(),
   ]).catch(async (error) => {
+    // Credentials in the query string mean the browser submitted the form itself,
+    // so React was not listening. Report the cause without echoing the password.
+    if (/[?&]password=/.test(page.url())) {
+      throw new Error(
+        `Sign-in submitted as a native GET, so the login page was not hydrated. ${hydrationFailureDetail(failedAssets)}`,
+      );
+    }
     const detail = await readLoginBannerErrors(page);
     throw new Error(
       detail
