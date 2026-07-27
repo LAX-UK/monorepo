@@ -17,6 +17,7 @@ import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validat
 import {
   findLotsOutsideSaleWindow,
   proposeLotTimesWithinWindow,
+  saleInheritsLotTiming,
 } from "@/lib/admin/sale-lot-window-sync";
 import {
   type SaleSetupLotRowContext,
@@ -31,6 +32,7 @@ import {
   mergeWizardRowsWithServerLots,
   safeParseSaleSetupLotRowForApi,
   scheduleLotConflictBanner,
+  scheduleLotConflictInheritedTimingBanner,
   scheduleOutOfSyncBadge,
   syncLotsToSaleWindowLabel,
   updateLotScheduleLabel,
@@ -38,7 +40,6 @@ import {
 import { applySellerLegalEntitySelection } from "@/lib/admin/seller-legal-entity-form";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
-import { formatDateTime } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
 import { lotAuctionTypes } from "@auction/types";
@@ -55,6 +56,7 @@ import {
 } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
+import { formatAuctionDatetimeDisplay } from "@auction/validators";
 import { saleModeInheritsLotTiming } from "@auction/validators";
 import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
@@ -534,8 +536,9 @@ function LotRowEditor({
                 />
               </div>
               <p className="font-body text-xs text-on-surface-variant">
-                Sale runs {formatDateTime(ctx.saleStartTime)} – {formatDateTime(ctx.saleEndTime)}{" "}
-                (London time). Lot times must fall within this window.
+                Sale runs {formatAuctionDatetimeDisplay(ctx.saleStartTime)} –{" "}
+                {formatAuctionDatetimeDisplay(ctx.saleEndTime)} (London time). Lot times must fall
+                within this window.
               </p>
             </div>
           ) : (
@@ -703,6 +706,8 @@ export function SaleLotRowsEditor({
     });
   }, [lotWindowConflicts, onLotsChange, sale.deliveryMode, sale.endTime, sale.startTime]);
 
+  const inheritsLotTiming = saleInheritsLotTiming(sale);
+
   return (
     <div className="space-y-6">
       <Alert>
@@ -710,18 +715,30 @@ export function SaleLotRowsEditor({
       </Alert>
 
       {lotWindowConflicts.length > 0 && !readOnly ? (
-        <Alert className="border-warning/40 bg-warning/5">
+        <Alert
+          className={
+            inheritsLotTiming
+              ? "border-outline-variant/40 bg-surface-container-low/40"
+              : "border-warning/40 bg-warning/5"
+          }
+        >
           <AlertDescription className="space-y-3 font-body text-sm text-on-surface-variant">
-            <p>{scheduleLotConflictBanner(lotWindowConflicts.length)}</p>
-            <LoadingButton
-              type="button"
-              size="sm"
-              variant="secondary"
-              loading={syncPending}
-              onClick={() => setSyncConfirmOpen(true)}
-            >
-              {syncLotsToSaleWindowLabel(lotWindowConflicts.length)}
-            </LoadingButton>
+            <p>
+              {inheritsLotTiming
+                ? scheduleLotConflictInheritedTimingBanner(lotWindowConflicts.length)
+                : scheduleLotConflictBanner(lotWindowConflicts.length)}
+            </p>
+            {!inheritsLotTiming ? (
+              <LoadingButton
+                type="button"
+                size="sm"
+                variant="secondary"
+                loading={syncPending}
+                onClick={() => setSyncConfirmOpen(true)}
+              >
+                {syncLotsToSaleWindowLabel(lotWindowConflicts.length)}
+              </LoadingButton>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : null}

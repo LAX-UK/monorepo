@@ -25,7 +25,6 @@ import {
 } from "@/lib/admin/sale-setup";
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
 import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
-import { formatDateTime } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
@@ -33,7 +32,7 @@ import { Button } from "@auction/ui/components/button";
 import { Form, FormField, FormItem, FormLabel, FormMessage } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { toDatetimeFormString } from "@auction/ui/lib/datetime";
-import { saleModeInheritsLotTiming } from "@auction/validators";
+import { formatAuctionDatetimeDisplay, saleModeInheritsLotTiming } from "@auction/validators";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -349,7 +348,8 @@ export function AttachExistingLotReview({
             {inheritsTiming ? (
               <p className="font-body text-xs text-on-surface-variant">
                 Lot times match the sale schedule automatically for onsite sales (
-                {formatDateTime(saleWindow.startTime)} – {formatDateTime(saleWindow.endTime)}).
+                {formatAuctionDatetimeDisplay(saleWindow.startTime)} –{" "}
+                {formatAuctionDatetimeDisplay(saleWindow.endTime)}).
               </p>
             ) : (
               <div className="space-y-4">
@@ -408,9 +408,9 @@ export function AttachExistingLotReview({
                   />
                 </div>
                 <p className="font-body text-xs text-on-surface-variant">
-                  Sale runs {formatDateTime(saleWindow.startTime)} –{" "}
-                  {formatDateTime(saleWindow.endTime)} (London time). Lot times must fall within
-                  this window.
+                  Sale runs {formatAuctionDatetimeDisplay(saleWindow.startTime)} –{" "}
+                  {formatAuctionDatetimeDisplay(saleWindow.endTime)} (London time). Lot times must
+                  fall within this window.
                 </p>
               </div>
             )}

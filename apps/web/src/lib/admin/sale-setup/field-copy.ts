@@ -165,6 +165,11 @@ export function scheduleLotConflictBanner(count: number): string {
   return `${count} ${noun} schedule updates — the new sale window conflicts with existing lot times. Save will fail until you update them on the Lots step (or use Sync lot times).`;
 }
 
+export function scheduleLotConflictInheritedTimingBanner(count: number): string {
+  const noun = count === 1 ? "lot still has" : "lots still have";
+  return `${count} ${noun} the previous sale window. Saving this schedule will update all draft lots to match automatically.`;
+}
+
 export function scheduleLotConflictPersistBlocked(titles: readonly string[]): string {
   const shown = titles.slice(0, 3);
   const suffix = titles.length > 3 ? ` and ${titles.length - 3} more` : "";

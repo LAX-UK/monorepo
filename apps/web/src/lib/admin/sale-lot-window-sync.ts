@@ -46,6 +46,22 @@ export function parseSaleWindowFromSale(
   };
 }
 
+/** True when lots inherit the sale window (onsite/hybrid). */
+export function saleInheritsLotTiming(window: Pick<SaleWindow, "deliveryMode">): boolean {
+  return getSaleModeCapabilities(window.deliveryMode).inheritsLotTiming;
+}
+
+/** Lot conflicts that should block persisting a draft sale schedule update. */
+export function findPersistBlockingLotWindowConflicts(
+  lots: readonly Pick<Lot, "id" | "title" | "startTime" | "endTime">[],
+  pendingWindow: SaleWindow,
+): LotWindowConflict[] {
+  if (saleInheritsLotTiming(pendingWindow)) {
+    return [];
+  }
+  return findLotsOutsideSaleWindow(lots, pendingWindow);
+}
+
 export function findLotsOutsideSaleWindow(
   lots: readonly Pick<Lot, "id" | "title" | "startTime" | "endTime">[],
   window: SaleWindow,
