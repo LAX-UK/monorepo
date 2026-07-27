@@ -5,7 +5,7 @@ import { adminUpdateSaleResultAction } from "@/lib/actions/admin-sales";
 import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validation-notify";
 import { saleFormStepLabel, saleFormValidationBanner } from "@/lib/admin/sale-form-step-copy";
 import {
-  findLotsOutsideSaleWindow,
+  findPersistBlockingLotWindowConflicts,
   parseSaleWindowFromForm,
 } from "@/lib/admin/sale-lot-window-sync";
 import { scheduleLotConflictPersistBlocked } from "@/lib/admin/sale-setup/field-copy";
@@ -121,7 +121,7 @@ export async function submitSaleForm(values: AdminSaleFormValues, args: SubmitAr
   if (args.isDraft && args.lots.length > 0) {
     const pendingWindow = parseSaleWindowFromForm(values);
     if (pendingWindow) {
-      const conflicts = findLotsOutsideSaleWindow(args.lots, pendingWindow);
+      const conflicts = findPersistBlockingLotWindowConflicts(args.lots, pendingWindow);
       if (conflicts.length > 0) {
         const titles = conflicts.map((c) => c.lot.title.trim() || "Untitled lot");
         args.onSaveNotice(scheduleLotConflictPersistBlocked(titles));

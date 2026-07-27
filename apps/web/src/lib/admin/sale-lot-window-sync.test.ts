@@ -2,6 +2,7 @@ import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   findLotsOutsideSaleWindow,
+  findPersistBlockingLotWindowConflicts,
   parseSaleWindowFromForm,
   proposeLotTimesWithinWindow,
 } from "./sale-lot-window-sync";
@@ -81,6 +82,40 @@ describe("findLotsOutsideSaleWindow", () => {
     );
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.violation).toContain("Onsite lots");
+  });
+});
+
+describe("findPersistBlockingLotWindowConflicts", () => {
+  const mismatchedLot = lot({
+    startTime: new Date("2020-01-01T00:00:00Z"),
+    endTime: new Date("2020-01-02T00:00:00Z"),
+  });
+
+  it("blocks online sales when lots drift from the pending window", () => {
+    const conflicts = findPersistBlockingLotWindowConflicts([mismatchedLot], {
+      deliveryMode: "online",
+      startTime: saleStart,
+      endTime: saleEnd,
+    });
+    expect(conflicts).toHaveLength(1);
+  });
+
+  it("does not block onsite sales because saving the schedule syncs draft lots", () => {
+    const conflicts = findPersistBlockingLotWindowConflicts([mismatchedLot], {
+      deliveryMode: "onsite",
+      startTime: saleStart,
+      endTime: saleEnd,
+    });
+    expect(conflicts).toHaveLength(0);
+  });
+
+  it("does not block hybrid sales because saving the schedule syncs draft lots", () => {
+    const conflicts = findPersistBlockingLotWindowConflicts([mismatchedLot], {
+      deliveryMode: "hybrid",
+      startTime: saleStart,
+      endTime: saleEnd,
+    });
+    expect(conflicts).toHaveLength(0);
   });
 });
 

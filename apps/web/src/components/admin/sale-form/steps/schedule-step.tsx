@@ -8,16 +8,19 @@ import { LabelCaps } from "@/components/ui/typography";
 import {
   findLotsOutsideSaleWindow,
   parseSaleWindowFromForm,
+  saleInheritsLotTiming,
 } from "@/lib/admin/sale-lot-window-sync";
 import {
   deliveryModeExplanation,
   deliveryModeLabel,
   scheduleLotConflictBanner,
+  scheduleLotConflictInheritedTimingBanner,
 } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import { formatDateTime, formatNumber } from "@/lib/ui/format";
+import { formatNumber } from "@/lib/ui/format";
 import type { Lot, Venue } from "@auction/types";
 import { saleDeliveryModes } from "@auction/types";
+import { formatAuctionDatetimeDisplay } from "@auction/validators";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
@@ -107,6 +110,7 @@ export function SaleScheduleStep({
     return findLotsOutsideSaleWindow(lots, window);
   }, [deliveryMode, endTime, lots, startTime]);
   const pendingWindow = parseSaleWindowFromForm({ deliveryMode, startTime, endTime });
+  const inheritsLotTiming = pendingWindow ? saleInheritsLotTiming(pendingWindow) : false;
 
   function applyVenue(venue: Venue) {
     form.setValue("venueId", venue.id, { shouldDirty: true, shouldValidate: true });
@@ -135,16 +139,24 @@ export function SaleScheduleStep({
   return (
     <>
       {lotConflicts.length > 0 && pendingWindow ? (
-        <Alert className="border-warning/40 bg-warning/5">
+        <Alert
+          className={
+            inheritsLotTiming
+              ? "border-outline-variant/40 bg-surface-container-low/40"
+              : "border-warning/40 bg-warning/5"
+          }
+        >
           <AlertDescription className="space-y-2 text-pretty font-body text-sm text-on-surface-variant">
             <p className="font-medium text-on-surface">
-              {scheduleLotConflictBanner(lotConflicts.length)}
+              {inheritsLotTiming
+                ? scheduleLotConflictInheritedTimingBanner(lotConflicts.length)
+                : scheduleLotConflictBanner(lotConflicts.length)}
             </p>
             <p>
-              Pending sale window: {formatDateTime(pendingWindow.startTime)} –{" "}
-              {formatDateTime(pendingWindow.endTime)} (London time).
+              Pending sale window: {formatAuctionDatetimeDisplay(pendingWindow.startTime)} –{" "}
+              {formatAuctionDatetimeDisplay(pendingWindow.endTime)} (London time).
             </p>
-            {lotsSetupHref ? (
+            {!inheritsLotTiming && lotsSetupHref ? (
               <Button type="button" size="sm" variant="outline" asChild>
                 <a href={lotsSetupHref}>Adjust lot schedules</a>
               </Button>

@@ -680,6 +680,79 @@ describe("SaleService.updateDraft", () => {
     expect(result.error.message).toContain(";");
     expect(saleRepo.update).not.toHaveBeenCalled();
   });
+
+  it("syncs draft lots when an onsite draft sale schedule changes", async () => {
+    const oldStart = new Date("2030-06-01T10:00:00Z");
+    const oldEnd = new Date("2030-06-07T18:00:00Z");
+    const newStart = new Date("2030-06-02T10:00:00Z");
+    const newEnd = new Date("2030-06-08T18:00:00Z");
+    const sale = baseSale({
+      status: "draft",
+      deliveryMode: "onsite",
+      startTime: oldStart,
+      endTime: oldEnd,
+    });
+    const lot: Lot = {
+      id: "lot-1",
+      saleId: sale.id,
+      lotNumber: 1,
+      sellerLegalEntityId: "seller-1",
+      artistId: null,
+      title: "Blue vase",
+      description: null,
+      medium: null,
+      dimensions: null,
+      images: [],
+      categoryId: "c1",
+      auctionType: "english",
+      startingPrice: "100",
+      reservePrice: null,
+      buyNowPrice: null,
+      currentPrice: "100",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "10",
+      dutchDecrementAmount: null,
+      dutchDecrementIntervalMs: 60_000,
+      dutchLastDecrementAt: null,
+      startTime: oldStart,
+      endTime: oldEnd,
+      status: "draft",
+      winnerId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      marketingDetails: {},
+    };
+    const lotUpdate = vi.fn().mockResolvedValue({ ...lot, startTime: newStart, endTime: newEnd });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue({ ...sale, startTime: newStart, endTime: newEnd }),
+    } as unknown as ISaleRepository;
+    const lotRepo: ILotRepository = {
+      findBySaleId: vi.fn().mockResolvedValue([lot]),
+      update: lotUpdate,
+    } as unknown as ILotRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { startTime: newStart, endTime: newEnd },
+      "super_admin",
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(lotUpdate).toHaveBeenCalledWith("lot-1", {
+      startTime: newStart,
+      endTime: newEnd,
+    });
+    expect(saleRepo.update).toHaveBeenCalled();
+  });
 });
 
 describe("SaleService.publish authorization", () => {

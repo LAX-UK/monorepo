@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   auctionMinuteEpoch,
+  formatAuctionDatetimeDisplay,
   instantFromAuctionDatetimeFormString,
   isStartInFutureForPublish,
   toAuctionDatetimeFormString,
@@ -27,6 +28,13 @@ const onsiteSale: LotSaleTimingWindow = {
   startTime: saleStart,
   endTime: saleEnd,
 };
+
+describe("formatAuctionDatetimeDisplay", () => {
+  it("formats wall-clock time in Europe/London regardless of runtime timezone", () => {
+    const instant = instantFromAuctionDatetimeFormString("2030-06-01T21:00");
+    expect(formatAuctionDatetimeDisplay(instant)).toBe("Sat 1 Jun 2030, 21:00");
+  });
+});
 
 describe("auctionMinuteEpoch", () => {
   it("treats sub-minute offsets within the same London minute as equal", () => {
