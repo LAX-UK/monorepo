@@ -34,6 +34,7 @@ export {
   scheduleLotConflictPersistBlocked,
   syncLotsToSaleWindowLabel,
   scheduleLotConflictBanner,
+  scheduleLotConflictInheritedTimingBanner,
   scheduleOutOfSyncBadge,
   updateLotScheduleLabel,
   type FieldTier,

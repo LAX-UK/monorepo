@@ -15,8 +15,8 @@ import {
   updateLotScheduleLabel,
 } from "@/lib/admin/sale-setup";
 import { applySellerLegalEntitySelection } from "@/lib/admin/seller-legal-entity-form";
-import { formatDateTime } from "@/lib/ui/format";
 import type { ArtistProfile, CategoryNode, LotAuctionType } from "@auction/types";
+import { formatAuctionDatetimeDisplay } from "@auction/validators";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -274,8 +274,9 @@ export function EditableLotRowForm({
                 />
               </div>
               <p className="font-body text-xs text-on-surface-variant">
-                Sale runs {formatDateTime(ctx.saleStartTime)} – {formatDateTime(ctx.saleEndTime)}{" "}
-                (London time). Lot times must fall within this window.
+                Sale runs {formatAuctionDatetimeDisplay(ctx.saleStartTime)} –{" "}
+                {formatAuctionDatetimeDisplay(ctx.saleEndTime)} (London time). Lot times must fall
+                within this window.
               </p>
             </div>
           ) : (
