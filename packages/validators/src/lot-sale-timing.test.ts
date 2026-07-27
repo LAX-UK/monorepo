@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   auctionMinuteEpoch,
   formatAuctionDatetimeDisplay,
@@ -30,9 +30,26 @@ const onsiteSale: LotSaleTimingWindow = {
 };
 
 describe("formatAuctionDatetimeDisplay", () => {
-  it("formats wall-clock time in Europe/London regardless of runtime timezone", () => {
+  const originalTz = process.env.TZ;
+
+  afterEach(() => {
+    if (originalTz === undefined) {
+      process.env.TZ = undefined;
+    } else {
+      process.env.TZ = originalTz;
+    }
+  });
+
+  it("formats wall-clock time in Europe/London during BST", () => {
+    process.env.TZ = "America/New_York";
     const instant = instantFromAuctionDatetimeFormString("2030-06-01T21:00");
     expect(formatAuctionDatetimeDisplay(instant)).toBe("Sat 1 Jun 2030, 21:00");
+  });
+
+  it("formats wall-clock time in Europe/London during GMT", () => {
+    process.env.TZ = "Asia/Tokyo";
+    const instant = instantFromAuctionDatetimeFormString("2030-01-15T14:30");
+    expect(formatAuctionDatetimeDisplay(instant)).toBe("Tue 15 Jan 2030, 14:30");
   });
 });
 
