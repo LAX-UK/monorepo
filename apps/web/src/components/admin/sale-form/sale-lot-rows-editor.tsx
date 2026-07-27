@@ -43,7 +43,6 @@ import { actionFailureNotifyMessage } from "@/lib/ui/action-error-message";
 import { notify } from "@/lib/ui/notify";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
 import { lotAuctionTypes } from "@auction/types";
-import { formatAuctionDatetimeDisplay } from "@auction/validators";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
@@ -57,6 +56,7 @@ import {
 } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
+import { formatAuctionDatetimeDisplay } from "@auction/validators";
 import { saleModeInheritsLotTiming } from "@auction/validators";
 import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";

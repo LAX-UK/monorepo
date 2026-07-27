@@ -409,8 +409,8 @@ export function AttachExistingLotReview({
                 </div>
                 <p className="font-body text-xs text-on-surface-variant">
                   Sale runs {formatAuctionDatetimeDisplay(saleWindow.startTime)} –{" "}
-                  {formatAuctionDatetimeDisplay(saleWindow.endTime)} (London time). Lot times must fall within
-                  this window.
+                  {formatAuctionDatetimeDisplay(saleWindow.endTime)} (London time). Lot times must
+                  fall within this window.
                 </p>
               </div>
             )}

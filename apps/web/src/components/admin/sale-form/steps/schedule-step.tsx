@@ -20,7 +20,6 @@ import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import { formatNumber } from "@/lib/ui/format";
 import type { Lot, Venue } from "@auction/types";
 import { saleDeliveryModes } from "@auction/types";
-import { formatAuctionDatetimeDisplay } from "@auction/validators";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
@@ -32,6 +31,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
+import { formatAuctionDatetimeDisplay } from "@auction/validators";
 import { normalizeUkPostcode } from "@auction/validators";
 import { useMemo, useRef } from "react";
 import type { RefObject } from "react";
