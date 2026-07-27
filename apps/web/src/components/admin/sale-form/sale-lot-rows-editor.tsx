@@ -1,9 +1,11 @@
 "use client";
 
+import { saleInheritsLotTiming } from "@/lib/admin/sale-lot-window-sync";
 import {
   deliveryModeExplanation,
   lotsStepFirstLotPrompt,
   scheduleLotConflictBanner,
+  scheduleLotConflictInheritedTimingBanner,
 } from "@/lib/admin/sale-setup";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -56,6 +58,8 @@ export function SaleLotRowsEditor({
     onUnsavedChange,
   });
 
+  const inheritsLotTiming = saleInheritsLotTiming(sale);
+
   return (
     <div className="space-y-6">
       <Alert>
@@ -63,18 +67,30 @@ export function SaleLotRowsEditor({
       </Alert>
 
       {lotWindowConflicts.length > 0 && !readOnly ? (
-        <Alert className="border-warning/40 bg-warning/5">
+        <Alert
+          className={
+            inheritsLotTiming
+              ? "border-outline-variant/40 bg-surface-container-low/40"
+              : "border-warning/40 bg-warning/5"
+          }
+        >
           <AlertDescription className="space-y-3 font-body text-sm text-on-surface-variant">
-            <p>{scheduleLotConflictBanner(lotWindowConflicts.length)}</p>
-            <LoadingButton
-              type="button"
-              size="sm"
-              variant="secondary"
-              loading={syncPending}
-              onClick={() => setSyncConfirmOpen(true)}
-            >
-              {syncConfirmTitle}
-            </LoadingButton>
+            <p>
+              {inheritsLotTiming
+                ? scheduleLotConflictInheritedTimingBanner(lotWindowConflicts.length)
+                : scheduleLotConflictBanner(lotWindowConflicts.length)}
+            </p>
+            {!inheritsLotTiming ? (
+              <LoadingButton
+                type="button"
+                size="sm"
+                variant="secondary"
+                loading={syncPending}
+                onClick={() => setSyncConfirmOpen(true)}
+              >
+                {syncConfirmTitle}
+              </LoadingButton>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : null}

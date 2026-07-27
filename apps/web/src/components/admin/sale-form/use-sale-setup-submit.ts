@@ -13,7 +13,7 @@ import { notifyAdminFormValidationFailure } from "@/lib/admin/admin-form-validat
 import { applyCatalogZodIssueToForm } from "@/lib/admin/catalog-form-zod";
 import { adminPublishSaleResultAction } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import {
-  findLotsOutsideSaleWindow,
+  findPersistBlockingLotWindowConflicts,
   parseSaleWindowFromForm,
 } from "@/lib/admin/sale-lot-window-sync";
 import {
@@ -113,7 +113,7 @@ export function useSaleSetupSubmit({
       }
       const pendingWindow = parseSaleWindowFromForm(values);
       if (pendingWindow && lots.length > 0) {
-        const conflicts = findLotsOutsideSaleWindow(lots, pendingWindow);
+        const conflicts = findPersistBlockingLotWindowConflicts(lots, pendingWindow);
         if (conflicts.length > 0) {
           const titles = conflicts.map((c) => c.lot.title.trim() || "Untitled lot");
           setStepNotice(scheduleLotConflictPersistBlocked(titles));
