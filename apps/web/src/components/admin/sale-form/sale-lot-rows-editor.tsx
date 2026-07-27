@@ -1,12 +1,12 @@
 "use client";
 
+import { saleInheritsLotTiming } from "@/lib/admin/sale-lot-window-sync";
 import {
   deliveryModeExplanation,
   lotsStepFirstLotPrompt,
   scheduleLotConflictBanner,
   scheduleLotConflictInheritedTimingBanner,
 } from "@/lib/admin/sale-setup";
-import { saleInheritsLotTiming } from "@/lib/admin/sale-lot-window-sync";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";

@@ -37,7 +37,9 @@ describe("LotConflictAlert", () => {
       />,
     );
 
-    expect(screen.getByText(/Saving this schedule will update all draft lots/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Saving this schedule will update all draft lots/i),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Adjust lot schedules" })).not.toBeInTheDocument();
   });
 

@@ -16,7 +16,6 @@ import {
 } from "@/lib/admin/sale-setup";
 import { applySellerLegalEntitySelection } from "@/lib/admin/seller-legal-entity-form";
 import type { ArtistProfile, CategoryNode, LotAuctionType } from "@auction/types";
-import { formatAuctionDatetimeDisplay } from "@auction/validators";
 import { Button } from "@auction/ui/components/button";
 import {
   Form,
@@ -27,6 +26,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { LoadingButton } from "@auction/ui/components/loading-button";
+import { formatAuctionDatetimeDisplay } from "@auction/validators";
 import { CheckCircle2, Trash2 } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 
