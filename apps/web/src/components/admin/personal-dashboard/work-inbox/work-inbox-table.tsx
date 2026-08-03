@@ -9,6 +9,7 @@ import {
 } from "@/components/admin/personal-dashboard/work-inbox/work-inbox-utils";
 import { useTableDensity } from "@/components/layout/density-provider";
 import type { AdminWorkItem } from "@/lib/data/http/admin-work-items.schema";
+import { Button } from "@auction/ui/components/button";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -50,9 +51,11 @@ export function WorkInboxTable({
         cell: ({ row }) => {
           const accent = showSeverityAccent(row.original.severity);
           return (
-            <button
+            <Button
               type="button"
-              className={`lift-row -mx-2 w-full text-left ${accent ? `border-l-2 pl-3 ${severityAccentClass(row.original.severity)}` : "pl-0.5"}`}
+              variant="ghost"
+              size="link"
+              className={`lift-row -mx-2 h-auto w-full justify-start whitespace-normal px-0 py-0 text-left hover:bg-transparent ${accent ? `border-l-2 pl-3 ${severityAccentClass(row.original.severity)}` : "pl-0.5"}`}
               onClick={() => onOpenPreview(row.original)}
             >
               <div className="font-headline text-sm font-medium text-on-surface">
@@ -64,7 +67,7 @@ export function WorkInboxTable({
               <div className="mt-0.5 font-body text-xs text-on-surface-variant">
                 {itemMetaLine(row.original, actorUserId)}
               </div>
-            </button>
+            </Button>
           );
         },
       },

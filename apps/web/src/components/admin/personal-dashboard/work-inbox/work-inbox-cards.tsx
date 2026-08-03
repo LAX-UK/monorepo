@@ -7,6 +7,7 @@ import {
   severityAccentClass,
 } from "@/components/admin/personal-dashboard/work-inbox/work-inbox-utils";
 import type { AdminWorkItem } from "@/lib/data/http/admin-work-items.schema";
+import { Button } from "@auction/ui/components/button";
 
 type Props = {
   items: readonly AdminWorkItem[];
@@ -32,9 +33,11 @@ export function WorkInboxCards({ items, actorUserId, onOpenPreview }: Props) {
             <div
               className={`flex flex-col gap-3 py-4 ${accent ? `border-l-2 pl-3 ${severityAccentClass(item.severity)}` : ""}`}
             >
-              <button
+              <Button
                 type="button"
-                className="w-full text-left"
+                variant="ghost"
+                size="link"
+                className="h-auto w-full justify-start whitespace-normal px-0 py-0 text-left hover:bg-transparent"
                 onClick={() => onOpenPreview(item)}
               >
                 <p className="font-headline text-sm font-medium text-on-surface">{item.title}</p>
@@ -51,7 +54,7 @@ export function WorkInboxCards({ items, actorUserId, onOpenPreview }: Props) {
                     className="inline-block"
                   />
                 </div>
-              </button>
+              </Button>
               <WorkInboxRowActions item={item} layout="inline" />
             </div>
           </li>

@@ -4,6 +4,7 @@ import { executeWorkItemActionAction } from "@/lib/actions/admin/admin-work-item
 import type { AdminWorkItem, AdminWorkItemAction } from "@/lib/data/http/admin-work-items.schema";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +13,7 @@ import {
 } from "@auction/ui/components/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 
 const ACTION_LABELS: Record<AdminWorkItemAction, string> = {
   start_review: "Start review",
@@ -41,6 +42,16 @@ const CONFIRM_ACTIONS = new Set<AdminWorkItemAction>([
   "delivered",
 ]);
 
+const DESTRUCTIVE_CONFIRM_ACTIONS = new Set<AdminWorkItemAction>([
+  "reject",
+  "refund",
+  "reject_registration",
+]);
+
+function confirmTone(action: AdminWorkItemAction): "danger" | "warning" {
+  return DESTRUCTIVE_CONFIRM_ACTIONS.has(action) ? "danger" : "warning";
+}
+
 type Props = {
   item: AdminWorkItem;
   layout: "inline" | "drawer";
@@ -54,12 +65,9 @@ function entityId(item: AdminWorkItem): string {
 export function WorkInboxRowActions({ item, layout }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [confirmAction, setConfirmAction] = useState<AdminWorkItemAction | null>(null);
 
-  function run(action: AdminWorkItemAction) {
-    if (CONFIRM_ACTIONS.has(action)) {
-      const ok = window.confirm(`Confirm ${ACTION_LABELS[action]} for this item?`);
-      if (!ok) return;
-    }
+  function executeAction(action: AdminWorkItemAction, onSuccess?: () => void) {
     startTransition(async () => {
       const result = await executeWorkItemActionAction({
         itemId: item.id,
@@ -71,6 +79,7 @@ export function WorkInboxRowActions({ item, layout }: Props) {
       });
       if (result.ok) {
         notify.success(`${ACTION_LABELS[action]} completed`);
+        onSuccess?.();
         router.refresh();
       } else {
         notify.error(result.error);
@@ -78,29 +87,61 @@ export function WorkInboxRowActions({ item, layout }: Props) {
     });
   }
 
+  function run(action: AdminWorkItemAction) {
+    if (CONFIRM_ACTIONS.has(action)) {
+      setConfirmAction(action);
+      return;
+    }
+    executeAction(action);
+  }
+
+  const confirmDialog =
+    confirmAction !== null ? (
+      <ConfirmDialog
+        open
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null);
+        }}
+        title={`Confirm ${ACTION_LABELS[confirmAction]}`}
+        body={`Confirm ${ACTION_LABELS[confirmAction]} for this item?`}
+        confirmLabel={ACTION_LABELS[confirmAction]}
+        tone={confirmTone(confirmAction)}
+        loading={pending}
+        onConfirm={() => {
+          if (confirmAction) executeAction(confirmAction, () => setConfirmAction(null));
+        }}
+      />
+    ) : null;
+
   if (item.actions.length === 0) {
     return (
-      <Button asChild size="sm" variant="ghost">
-        <a href={item.href}>Open</a>
-      </Button>
+      <>
+        <Button asChild size="sm" variant="ghost">
+          <a href={item.href}>Open</a>
+        </Button>
+        {confirmDialog}
+      </>
     );
   }
 
   if (layout === "drawer") {
     return (
-      <div className="flex flex-wrap gap-2">
-        {item.actions.slice(0, 6).map((action) => (
-          <Button
-            key={action}
-            size="sm"
-            variant={action === "reject" || action === "refund" ? "outline" : "default"}
-            disabled={pending}
-            onClick={() => run(action)}
-          >
-            {pending ? "Working…" : ACTION_LABELS[action]}
-          </Button>
-        ))}
-      </div>
+      <>
+        <div className="flex flex-wrap gap-2">
+          {item.actions.slice(0, 6).map((action) => (
+            <Button
+              key={action}
+              size="sm"
+              variant={action === "reject" || action === "refund" ? "outline" : "default"}
+              disabled={pending}
+              onClick={() => run(action)}
+            >
+              {pending ? "Working…" : ACTION_LABELS[action]}
+            </Button>
+          ))}
+        </div>
+        {confirmDialog}
+      </>
     );
   }
 
@@ -108,44 +149,47 @@ export function WorkInboxRowActions({ item, layout }: Props) {
   if (!primary) return null;
 
   return (
-    <div className="flex items-center justify-end gap-1">
-      <Button
-        size="sm"
-        variant={primary === "reject" || primary === "refund" ? "outline" : "default"}
-        disabled={pending}
-        onClick={() => run(primary)}
-      >
-        {pending ? "Working…" : ACTION_LABELS[primary]}
-      </Button>
-      {overflow.length > 0 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="size-8 px-0"
-              aria-label="More actions"
-            >
-              <MoreHorizontal className="size-4" aria-hidden />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {overflow.map((action) => (
-              <DropdownMenuItem key={action} disabled={pending} onClick={() => run(action)}>
-                {ACTION_LABELS[action]}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuItem asChild>
-              <a href={item.href}>Open record</a>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
-        <Button asChild size="sm" variant="ghost">
-          <a href={item.href}>Open</a>
+    <>
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          size="sm"
+          variant={primary === "reject" || primary === "refund" ? "outline" : "default"}
+          disabled={pending}
+          onClick={() => run(primary)}
+        >
+          {pending ? "Working…" : ACTION_LABELS[primary]}
         </Button>
-      )}
-    </div>
+        {overflow.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="size-8 px-0"
+                aria-label="More actions"
+              >
+                <MoreHorizontal className="size-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {overflow.map((action) => (
+                <DropdownMenuItem key={action} disabled={pending} onClick={() => run(action)}>
+                  {ACTION_LABELS[action]}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem asChild>
+                <a href={item.href}>Open record</a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button asChild size="sm" variant="ghost">
+            <a href={item.href}>Open</a>
+          </Button>
+        )}
+      </div>
+      {confirmDialog}
+    </>
   );
 }
