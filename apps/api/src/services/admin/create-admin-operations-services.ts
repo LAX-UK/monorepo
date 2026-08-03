@@ -5,6 +5,8 @@ import type { IAdminFinanceIssueSnapshotReader } from "@auction/persistence/inte
 import type { IAdminManualReviewPaymentEnrichmentReader } from "@auction/persistence/interfaces";
 import type { IAdminManualReviewPaymentReader } from "@auction/persistence/interfaces";
 import type { IAdminReviewTaskReader } from "@auction/persistence/interfaces";
+import type { IAdminSaleReadinessReader } from "@auction/persistence/interfaces";
+import type { IAdminWorkItemsReader } from "@auction/persistence/interfaces";
 import type { IAttentionFeedReader } from "@auction/persistence/interfaces";
 import type { IEmailObservabilityRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
@@ -32,7 +34,9 @@ import { AdminManualReviewPaymentQueryService } from "./admin-manual-review-paym
 import { AdminOpsReadApplicationService } from "./admin-ops-read-application.service.js";
 import { AdminRequestLifecycleApplicationService } from "./admin-request-lifecycle-application.service.js";
 import { AdminReviewTaskQueryService } from "./admin-review-task-query.service.js";
+import { AdminSaleReadinessService } from "./admin-sale-readiness.service.js";
 import { AdminTelephoneBookingApplicationService } from "./admin-telephone-booking-application.service.js";
+import { AdminWorkItemsService } from "./admin-work-items.service.js";
 import {
   createAdminSaleroomRouteServices,
   paddleServiceAsClerkOperations,
@@ -62,6 +66,8 @@ export type CreateAdminOperationsServicesInput = {
   adminManualReviewPaymentReader: IAdminManualReviewPaymentReader;
   adminManualReviewPaymentEnrichmentReader: IAdminManualReviewPaymentEnrichmentReader;
   adminReviewTaskReader: IAdminReviewTaskReader;
+  adminWorkItemsReader: IAdminWorkItemsReader;
+  adminSaleReadinessReader: IAdminSaleReadinessReader;
   bidRepo: IBidRepository;
 };
 
@@ -110,6 +116,8 @@ export function createAdminOperationsServices(
       input.adminManualReviewPaymentEnrichmentReader,
     ),
     reviewTasks: new AdminReviewTaskQueryService(input.adminReviewTaskReader),
+    workItems: new AdminWorkItemsService(input.adminWorkItemsReader),
+    saleReadiness: new AdminSaleReadinessService(input.adminSaleReadinessReader),
     email: new AdminEmailApplicationService(input.emailObservabilityRepository),
     telephoneBookings: new AdminTelephoneBookingApplicationService(
       input.telephoneBidBookingService,

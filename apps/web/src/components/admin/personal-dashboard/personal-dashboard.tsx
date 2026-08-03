@@ -1,157 +1,90 @@
+import { OperationalContextSection } from "@/components/admin/personal-dashboard/operational-context-section";
+import type { AssignmentFilter } from "@/components/admin/personal-dashboard/work-inbox/work-inbox-utils";
+import { WorkInboxWidget } from "@/components/admin/personal-dashboard/work-inbox/work-inbox-widget";
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { getDashboardProfile } from "@/lib/admin/dashboard-profile-registry";
 import {
-  type AdminHubQuickLink,
-  AdminHubQuickLinks,
-} from "@/components/admin/admin-hub-quick-links";
-import { AnomalyCalloutsWidget } from "@/components/admin/personal-dashboard/anomaly-callouts-widget";
-import { GreetingWidget } from "@/components/admin/personal-dashboard/greeting-widget";
-import { MyQueueWidget } from "@/components/admin/personal-dashboard/my-queue-widget";
-import { OnsiteSalesRadarWidget } from "@/components/admin/personal-dashboard/onsite-sales-radar-widget";
-import type { OnsiteSalesRadarRow } from "@/components/admin/personal-dashboard/onsite-sales-radar-widget";
-import { RecentActivityWidget } from "@/components/admin/personal-dashboard/recent-activity-widget";
-import { SaleroomLiveWidget } from "@/components/admin/personal-dashboard/saleroom-live-widget";
-import { TrendKpiBandWidget } from "@/components/admin/personal-dashboard/trend-kpi-band-widget";
-import type { AdminActivityRow, AdminAttentionRow } from "@/lib/admin/admin-home-types";
-import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
-import type { AdminAnomaly } from "@/lib/admin/anomaly-detection";
-import {
-  type DashboardWidgetId,
   type DashboardWidgetState,
   isDashboardWidgetVisible,
 } from "@/lib/admin/dashboard-widgets.vm";
-import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
-import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
+import type { RecentActivitySlice } from "@/lib/admin/dashboard/recent-activity.slice";
+import type { SaleReadinessSlice } from "@/lib/admin/dashboard/sale-readiness.slice";
+import type { WorkInboxSlice } from "@/lib/admin/dashboard/work-inbox.slice";
 import type { UserStaffRole } from "@auction/types";
+import { Surface } from "@auction/ui/components/surface";
 
 type Props = {
-  userName: string;
-  periodDays: AdminKpiPeriodDays;
+  actorUserId: string;
   widgets: readonly DashboardWidgetState[];
-  metrics: AdminTodayMetricsPayload;
-  trends: AdminHomeKpiTrends;
-  bidsPerMinute: number;
-  activeLotIds: readonly string[];
-  attention: readonly AdminAttentionRow[];
-  activity: readonly AdminActivityRow[];
-  anomalies: readonly AdminAnomaly[];
-  onsiteRadarRows?: readonly OnsiteSalesRadarRow[];
-  activeSaleroomSessions?: number;
   staffRole?: UserStaffRole | null;
-  hubLinks?: readonly AdminHubQuickLink[];
-  /** When false, KPI band is rendered by StaffHubShell `kpiStrip`. */
-  includeKpiBand?: boolean;
+  activeLotIds: readonly string[];
+  workAssignment?: AssignmentFilter;
+  workInbox: WorkInboxSlice;
+  saleReadiness: SaleReadinessSlice;
+  recentActivity: RecentActivitySlice;
 };
 
-export function PersonalDashboardKpiBand({
-  periodDays,
-  metrics,
-  trends,
-  bidsPerMinute,
-}: Pick<Props, "periodDays" | "metrics" | "trends" | "bidsPerMinute">) {
+function SliceUnavailable({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
   return (
-    <TrendKpiBandWidget
-      periodDays={periodDays}
-      metrics={metrics}
-      trends={trends}
-      bidsPerMinute={bidsPerMinute}
-    />
+    <Surface variant="section" padding="md" className="border-border-hairline">
+      <DashboardEmptyState variant="quiet" title={title} description={message} headingLevel="h3" />
+    </Surface>
   );
 }
 
 export function PersonalDashboard({
-  userName,
-  periodDays,
+  actorUserId,
   widgets,
-  metrics,
-  trends,
-  bidsPerMinute,
+  staffRole = null,
   activeLotIds,
-  attention,
-  activity,
-  anomalies,
-  onsiteRadarRows = [],
-  activeSaleroomSessions = 0,
-  staffRole: _staffRole = null,
-  hubLinks = [],
-  includeKpiBand = true,
+  workAssignment = "all",
+  workInbox,
+  saleReadiness,
+  recentActivity,
 }: Props) {
   const show = (id: DashboardWidgetState["id"]) => isDashboardWidgetVisible(widgets, id);
-  const orderOf = (id: DashboardWidgetId) => widgets.find((w) => w.id === id)?.order ?? 999;
-  const blocks = [
-    {
-      id: "greeting",
-      order: orderOf("greeting"),
-      node: show("greeting") ? <GreetingWidget name={userName} /> : null,
-    },
-    {
-      id: "anomalies",
-      order: orderOf("anomalies"),
-      node:
-        show("anomalies") && anomalies.length > 0 ? (
-          <AnomalyCalloutsWidget anomalies={anomalies} />
-        ) : null,
-    },
-    {
-      id: "kpi-band",
-      order: orderOf("kpi-band"),
-      node:
-        includeKpiBand && show("kpi-band") ? (
-          <PersonalDashboardKpiBand
-            periodDays={periodDays}
-            metrics={metrics}
-            trends={trends}
-            bidsPerMinute={bidsPerMinute}
-          />
-        ) : null,
-    },
-    {
-      id: "queue-saleroom",
-      order: Math.min(orderOf("my-queue"), orderOf("saleroom-live")),
-      node:
-        show("my-queue") || show("saleroom-live") ? (
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-            {show("my-queue") ? (
-              <section className="lg:col-span-7">
-                <MyQueueWidget attention={attention} />
-              </section>
-            ) : null}
-            {show("saleroom-live") ? (
-              <aside className={show("my-queue") ? "lg:col-span-5" : "lg:col-span-12"}>
-                <SaleroomLiveWidget
-                  bidsPerMinute={bidsPerMinute}
-                  activeLotIds={activeLotIds}
-                  activeSaleroomSessions={activeSaleroomSessions}
-                />
-              </aside>
-            ) : null}
-          </div>
-        ) : null,
-    },
-    {
-      id: "onsite-radar",
-      order: orderOf("onsite-radar"),
-      node:
-        show("onsite-radar") && onsiteRadarRows.length > 0 ? (
-          <OnsiteSalesRadarWidget rows={[...onsiteRadarRows]} />
-        ) : null,
-    },
-    {
-      id: "activity",
-      order: orderOf("activity"),
-      node: show("activity") ? <RecentActivityWidget activity={activity} /> : null,
-    },
-  ]
-    .filter((block) => block.node)
-    .sort((a, b) => a.order - b.order);
+  const profile = getDashboardProfile(staffRole);
+
+  const activityRows =
+    recentActivity.status === "ready" || recentActivity.status === "empty"
+      ? recentActivity.data.rows
+      : [];
+
+  const showOperations = show("saleroom-live") || show("onsite-radar");
+  const showActivity = show("activity");
+  const showContext = showOperations || showActivity;
 
   return (
-    <div className="space-y-8">
-      {hubLinks.length > 0 ? (
-        <AdminHubQuickLinks ariaLabel="Staff hub shortcuts" links={hubLinks} />
+    <div className="space-y-10">
+      {show("my-queue") ? (
+        workInbox.status === "unavailable" ? (
+          <SliceUnavailable title="Work inbox unavailable" message={workInbox.message} />
+        ) : (
+          <WorkInboxWidget
+            workInbox={workInbox}
+            actorUserId={actorUserId}
+            queueDomains={profile.queueDomains}
+            initialAssignment={workAssignment}
+          />
+        )
       ) : null}
 
-      {blocks.map((block) => (
-        <div key={block.id}>{block.node}</div>
-      ))}
+      {showContext ? (
+        <OperationalContextSection
+          showOperations={showOperations}
+          showActivity={showActivity}
+          saleReadiness={saleReadiness}
+          recentActivity={recentActivity}
+          activeLotIds={activeLotIds}
+          activityRows={activityRows}
+        />
+      ) : null}
     </div>
   );
 }

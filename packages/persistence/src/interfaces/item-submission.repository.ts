@@ -63,4 +63,5 @@ export interface IItemSubmissionRepository {
   countAdmin(f: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
   countAdminForLegalEntityIds(legalEntityIds: readonly string[]): Promise<number>;
   listStaleDraftsWithoutReminder(cutoff: Date, limit: number): Promise<ItemSubmission[]>;
+  countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
 }

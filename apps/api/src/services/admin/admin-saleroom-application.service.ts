@@ -61,4 +61,8 @@ export class AdminSaleroomApplicationService implements IAdminSaleroomApplicatio
   getOperationsSnapshot(saleId: string) {
     return this.operationsSnapshot.getSnapshot(saleId);
   }
+
+  listOperationsRadar(limit?: number) {
+    return this.operationsSnapshot.listOperationsRadar(limit);
+  }
 }

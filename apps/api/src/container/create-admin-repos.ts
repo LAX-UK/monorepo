@@ -12,11 +12,13 @@ import type {
   IAdminReviewTaskReader,
   IAdminReviewTaskRepository,
   IAdminSaleOperationsSnapshotReader,
+  IAdminSaleReadinessReader,
   IAdminUserActivityReader,
   IAdminUserBidsReader,
   IAdminUserKycReader,
   IAdminUserReader,
   IAdminUserRoleManager,
+  IAdminWorkItemsReader,
   IFailedJobRepository,
   ILegalEntityDocumentAdminRepository,
   ILegalEntityLifecycleAdminRepository,
@@ -35,11 +37,13 @@ import {
   DrizzleAdminReviewTaskReader,
   DrizzleAdminReviewTaskRepository,
   DrizzleAdminSaleOperationsSnapshotReader,
+  DrizzleAdminSaleReadinessReader,
   DrizzleAdminUserActivityReader,
   DrizzleAdminUserBidsReader,
   DrizzleAdminUserKycReader,
   DrizzleAdminUserReader,
   DrizzleAdminUserRoleManager,
+  DrizzleAdminWorkItemsReader,
   DrizzleFailedJobRepository,
   DrizzleLegalEntityDocumentAdminRepository,
   DrizzleLegalEntityLifecycleAdminRepository,
@@ -53,6 +57,8 @@ export type AdminRepositories = {
   adminActivityReader: IAdminUserActivityReader;
   adminUserBidsReader: IAdminUserBidsReader;
   adminSaleOperationsSnapshotReader: IAdminSaleOperationsSnapshotReader;
+  adminSaleReadinessReader: IAdminSaleReadinessReader;
+  adminWorkItemsReader: IAdminWorkItemsReader;
   adminLotBrowseReader: IAdminLotBrowseReader;
   adminFinanceIssueSnapshotReader: IAdminFinanceIssueSnapshotReader;
   adminOnboardingIssuesReader: IAdminOnboardingIssuesReader;
@@ -77,6 +83,8 @@ export function createAdminRepositories(db: Database): AdminRepositories {
   const adminActivityReader = new DrizzleAdminUserActivityReader(db);
   const adminUserBidsReader = new DrizzleAdminUserBidsReader(db);
   const adminSaleOperationsSnapshotReader = new DrizzleAdminSaleOperationsSnapshotReader(db);
+  const adminSaleReadinessReader = new DrizzleAdminSaleReadinessReader(db);
+  const adminWorkItemsReader = new DrizzleAdminWorkItemsReader(db);
   const adminLotBrowseReader = new DrizzleAdminLotBrowseReader(db);
   const adminFinanceIssueSnapshotReader = new DrizzleAdminFinanceIssueSnapshotReader(db);
   const adminOnboardingIssuesReader = new DrizzleAdminOnboardingIssuesReader(db);
@@ -101,6 +109,8 @@ export function createAdminRepositories(db: Database): AdminRepositories {
     adminActivityReader,
     adminUserBidsReader,
     adminSaleOperationsSnapshotReader,
+    adminSaleReadinessReader,
+    adminWorkItemsReader,
     adminLotBrowseReader,
     adminFinanceIssueSnapshotReader,
     adminOnboardingIssuesReader,

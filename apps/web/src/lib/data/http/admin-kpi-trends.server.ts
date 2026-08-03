@@ -36,7 +36,7 @@ async function fetchAdminKpiTrend(
     };
   } catch (err) {
     console.error(`[${logLabel}] Failed to load KPI trend:`, err);
-    return emptyKpiTrend(periodDays);
+    throw err;
   }
 }
 
@@ -86,6 +86,21 @@ export async function getAdminPayoutsKpiTrend(
   return fetchAdminKpiTrend("/admin/kpi/payouts-trend", periodDays, "getAdminPayoutsKpiTrend");
 }
 
+export async function getAdminSubmissionsKpiTrend(
+  periodDays: AdminKpiPeriodDays,
+): Promise<AdminKpiTrendBundle> {
+  return fetchAdminKpiTrend(
+    "/admin/kpi/submissions-trend",
+    periodDays,
+    "getAdminSubmissionsKpiTrend",
+  );
+}
+
+export type AdminHomeKpiTrendsOptions = {
+  includeSubmissions?: boolean;
+  includePayments?: boolean;
+};
+
 export type AdminHomeKpiTrends = {
   lots: AdminKpiTrendBundle;
   submissions: AdminKpiTrendBundle;
@@ -94,14 +109,24 @@ export type AdminHomeKpiTrends = {
 
 export async function getAdminHomeKpiTrends(
   periodDays: AdminKpiPeriodDays,
+  options: AdminHomeKpiTrendsOptions = {},
 ): Promise<AdminHomeKpiTrends> {
-  const [lots, payments] = await Promise.all([
+  const includeSubmissions = options.includeSubmissions ?? false;
+  const includePayments = options.includePayments ?? false;
+
+  const [lots, submissions, payments] = await Promise.all([
     getAdminLotsKpiTrend(periodDays),
-    getAdminPaymentsKpiTrend(periodDays),
+    includeSubmissions
+      ? getAdminSubmissionsKpiTrend(periodDays)
+      : Promise.resolve(emptyKpiTrend(periodDays)),
+    includePayments
+      ? getAdminPaymentsKpiTrend(periodDays)
+      : Promise.resolve(emptyKpiTrend(periodDays)),
   ]);
+
   return {
     lots,
-    submissions: lots,
+    submissions,
     payments,
   };
 }

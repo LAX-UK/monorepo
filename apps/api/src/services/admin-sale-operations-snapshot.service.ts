@@ -107,4 +107,15 @@ export class AdminSaleOperationsSnapshotService {
       },
     };
   }
+
+  /** Batched dashboard radar read — one service call replaces per-sale HTTP fan-out. */
+  async listOperationsRadar(limit = 6): Promise<AdminSaleOperationsSnapshot[]> {
+    const saleIds = await this.reader.listActiveSaleroomSaleIds(limit);
+    const snapshots = await Promise.all(
+      saleIds.map((saleId) => this.getSnapshot(saleId).catch(() => null)),
+    );
+    return snapshots.filter(
+      (snapshot): snapshot is AdminSaleOperationsSnapshot => snapshot != null,
+    );
+  }
 }

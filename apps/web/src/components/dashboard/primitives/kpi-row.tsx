@@ -72,6 +72,7 @@ export function KpiRow({
               <Link
                 key={id ?? `${String(tile.label)}-${index}`}
                 href={href}
+                data-kpi-tile-index={index}
                 className="block h-full min-w-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 {content}
@@ -79,7 +80,11 @@ export function KpiRow({
             );
           }
           return (
-            <div key={id ?? `${String(tile.label)}-${index}`} className="h-full min-w-0">
+            <div
+              key={id ?? `${String(tile.label)}-${index}`}
+              data-kpi-tile-index={index}
+              className="h-full min-w-0"
+            >
               {content}
             </div>
           );

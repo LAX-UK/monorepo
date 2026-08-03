@@ -2,6 +2,7 @@ import {
   adminKpiTrendQuerySchema,
   adminSubmissionCountBySellersQuerySchema,
   adminSubmissionCountQuerySchema,
+  adminWorkItemsQuerySchema,
 } from "@auction/validators";
 import { zValidator } from "../../lib/z-validator.js";
 import {
@@ -91,6 +92,17 @@ export function attachAdminOpsRoutes(
     async (c) => {
       const q = c.req.valid("query");
       const data = await container.admin.kpiTrends.getLotsTrend(q.periodDays);
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/kpi/submissions-trend",
+    requireSubmissionsAccess,
+    zValidator("query", adminKpiTrendQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.kpiTrends.getSubmissionsTrend(q.periodDays);
       return c.json({ data });
     },
   );
@@ -221,6 +233,25 @@ export function attachAdminOpsRoutes(
     async (c) => {
       const q = c.req.valid("query");
       const data = await container.admin.kpiTrends.getPayoutsTrend(q.periodDays);
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/work-items",
+    requireAdminDashboard,
+    zValidator("query", adminWorkItemsQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const userId = c.get("userId") as string;
+      const role = (c.get("userRole") ?? "client") as import("@auction/types").UserRole;
+      const staffRole = c.get("userStaffRole") as import("@auction/types").UserStaffRole | null;
+      const data = await container.admin.workItems.listWorkItems({
+        actorUserId: userId,
+        actorRole: role,
+        actorStaffRole: staffRole,
+        query: q,
+      });
       return c.json({ data });
     },
   );

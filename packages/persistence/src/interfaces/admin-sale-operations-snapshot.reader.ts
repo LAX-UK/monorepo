@@ -27,6 +27,7 @@ export type AdminSaleOperationsCurrentLotBidding = {
 
 export interface IAdminSaleOperationsSnapshotReader {
   findSaleroomSale(saleId: string): Promise<AdminSaleOperationsSaleRow | null>;
+  listActiveSaleroomSaleIds(limit: number): Promise<string[]>;
   findSession(saleId: string): Promise<AdminSaleOperationsSessionRow | null>;
   findCurrentLot(lotId: string): Promise<AdminSaleOperationsCurrentLotRow | null>;
   loadCurrentLotBidding(lotId: string): Promise<AdminSaleOperationsCurrentLotBidding | null>;

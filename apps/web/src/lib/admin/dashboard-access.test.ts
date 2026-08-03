@@ -1,27 +1,30 @@
 import type { DashboardWidgetState } from "@/lib/admin/dashboard-widgets.vm";
 import { describe, expect, it } from "vitest";
-import { allowedDashboardWidgets, hubQuickLinksFor, isWidgetAllowed } from "./dashboard-access";
+import {
+  allowedDashboardWidgets,
+  greetingActionsFor,
+  hubQuickLinksFor,
+  isWidgetAllowed,
+} from "./dashboard-access";
 
 describe("dashboard-access", () => {
   const allWidgets: DashboardWidgetState[] = [
     { id: "greeting", order: 0, hidden: false },
     { id: "kpi-band", order: 1, hidden: false },
     { id: "my-queue", order: 2, hidden: false },
-    { id: "anomalies", order: 3, hidden: false },
-    { id: "saleroom-live", order: 4, hidden: false },
-    { id: "onsite-radar", order: 5, hidden: false },
-    { id: "activity", order: 6, hidden: false },
+    { id: "saleroom-live", order: 3, hidden: false },
+    { id: "onsite-radar", order: 4, hidden: false },
+    { id: "activity", order: 5, hidden: false },
   ];
 
   describe("allowedDashboardWidgets", () => {
     it("super_admin can access all widgets", () => {
       const result = allowedDashboardWidgets("staff", "super_admin", allWidgets);
-      expect(result).toHaveLength(7);
+      expect(result).toHaveLength(6);
       expect(result.map((w) => w.id)).toEqual([
         "greeting",
         "kpi-band",
         "my-queue",
-        "anomalies",
         "saleroom-live",
         "onsite-radar",
         "activity",
@@ -30,7 +33,7 @@ describe("dashboard-access", () => {
 
     it("client_advisor cannot access saleroom-live, onsite-radar, or activity", () => {
       const result = allowedDashboardWidgets("staff", "client_advisor", allWidgets);
-      expect(result.map((w) => w.id)).toEqual(["greeting", "kpi-band", "my-queue", "anomalies"]);
+      expect(result.map((w) => w.id)).toEqual(["greeting", "kpi-band", "my-queue"]);
     });
 
     it("specialist cannot access saleroom-live or onsite-radar but can access activity", () => {
@@ -48,7 +51,7 @@ describe("dashboard-access", () => {
 
     it("staff_viewer cannot access saleroom-live, onsite-radar, or activity", () => {
       const result = allowedDashboardWidgets("staff", "staff_viewer", allWidgets);
-      expect(result.map((w) => w.id)).toEqual(["greeting", "kpi-band", "my-queue", "anomalies"]);
+      expect(result.map((w) => w.id)).toEqual(["greeting", "kpi-band", "my-queue"]);
     });
   });
 
@@ -102,6 +105,18 @@ describe("dashboard-access", () => {
       expect(links.map((l) => l.href)).toContain("/admin/lot-fulfilment");
       expect(links.map((l) => l.href)).toContain("/admin/submissions");
       expect(links.map((l) => l.href)).toContain("/admin/clients");
+    });
+  });
+
+  describe("greetingActionsFor", () => {
+    it("hides New lot for staff without lots access", () => {
+      const actions = greetingActionsFor("staff", "finance_ops");
+      expect(actions.map((a) => a.label)).not.toContain("New lot");
+    });
+
+    it("includes submissions for catalogue roles", () => {
+      const actions = greetingActionsFor("staff", "catalogue_manager");
+      expect(actions.map((a) => a.label)).toContain("Submissions");
     });
   });
 });

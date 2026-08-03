@@ -98,7 +98,7 @@ page.tsx → build*ListPageModel → CatalogListShell → *Board
 
 - **List/board:** `CatalogListShell` + presenters (`StatusChip`, `DeliveryModePill`) — see catalog sales/lots and finance payments.
 - **Detail tab:** `detail-board/` primitives + entity VM — see [`detail-board/README.md`](../components/admin/catalog/detail-board/README.md).
-- **Entity attention:** `packages/domain` contributors (sale-scoped) or `buildSyntheticAttentionRows` (platform-scoped).
+- **Entity attention:** `packages/domain` contributors (sale-scoped) or sidebar/header nav-count specs (`staff-nav.ts`, `build-staff-header-attention-items.ts`).
 
 ## Related docs
 

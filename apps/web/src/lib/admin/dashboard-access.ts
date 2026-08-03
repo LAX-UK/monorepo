@@ -25,7 +25,6 @@ export const DASHBOARD_WIDGET_REQUIREMENTS: Record<
   greeting: null,
   "kpi-band": null,
   "my-queue": null,
-  anomalies: null,
   "saleroom-live": SALEROOM_ACCESS,
   "onsite-radar": SALEROOM_ACCESS,
   activity: LOTS_ACCESS,
@@ -104,4 +103,24 @@ export function canAccess(
   requirement: CapabilityRequirement,
 ): boolean {
   return userHasAccessTo(role, staffRole, requirement);
+}
+
+export type DashboardQuickAction = {
+  href: string;
+  label: string;
+  requirement: CapabilityRequirement | null;
+};
+
+export const DASHBOARD_GREETING_ACTIONS: readonly DashboardQuickAction[] = [
+  { href: "/admin/lots/new", label: "New lot", requirement: LOTS_ACCESS },
+  { href: "/admin/submissions", label: "Submissions", requirement: SUBMISSIONS_ACCESS },
+];
+
+export function greetingActionsFor(
+  role: UserRole,
+  staffRole: UserStaffRole | null,
+): DashboardQuickAction[] {
+  return DASHBOARD_GREETING_ACTIONS.filter(
+    (action) => action.requirement == null || userHasAccessTo(role, staffRole, action.requirement),
+  );
 }

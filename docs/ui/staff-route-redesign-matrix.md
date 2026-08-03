@@ -49,7 +49,7 @@ Use Node 22 (`nvm use 22`) — Playwright test discovery hangs on Node 25. Clear
 
 | Route | State | Figma | Owner | Arch | Visual | Functional | Notes |
 |-------|-------|-------|-------|------|--------|------------|-------|
-| `/admin` | home | extend | `load-admin-dashboard-page` | green | green | green | StaffHubShell + KPI period toggle + widget customize |
+| `/admin` | home | extend | `load-admin-dashboard-page` | green | pending | green | Workspace redesign (2026-07-27): work inbox + sale readiness rail, inline/bulk actions, KPI anomaly tones, queue chips; Figma + Linux visual review pending — see `staff-dashboard-rollout-evidence.md` |
 | `/admin/impersonation` | utility | extend | redirect → legal entities | green | n/a | green | Deep-link compatibility retained |
 
 ## Catalog lists

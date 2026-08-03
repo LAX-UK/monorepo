@@ -511,6 +511,17 @@ export type { IAdminManualReviewPaymentReader } from "./admin-manual-review-paym
 
 export type { IAdminManualReviewPaymentEnrichmentReader } from "./admin-manual-review-payment-enrichment.reader.js";
 
+export type {
+  AdminWorkItemSourceKind,
+  AdminWorkItemSourceRow,
+  IAdminWorkItemsReader,
+} from "./admin-work-items.reader.js";
+
+export type {
+  AdminSaleReadinessSourceRow,
+  IAdminSaleReadinessReader,
+} from "./admin-sale-readiness.reader.js";
+
 export type { IAdminReviewTaskReader } from "./admin-review-task.reader.js";
 export type { IAdminReviewTaskRepository } from "./admin-review-task.repository.js";
 export type { IMediaAssetReader, MediaAssetRecord } from "./media-asset.reader.js";

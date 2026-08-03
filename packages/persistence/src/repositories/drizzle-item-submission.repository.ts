@@ -19,6 +19,7 @@ import type {
   ListSubmissionsFilter,
 } from "../interfaces/index.js";
 import { mapItemSubmissionRow } from "../lib/entity-row-mappers.js";
+import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 function qualityGapsSql() {
   return sql`(
@@ -316,5 +317,9 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
       .orderBy(asc(itemSubmission.updatedAt))
       .limit(limit);
     return this.withCategoryIds(rows);
+  }
+
+  async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {
+    return queryCreatedAtDailyCounts(this.db, itemSubmission, itemSubmission.createdAt, rangeStart);
   }
 }

@@ -14,7 +14,13 @@ export type AdminLotsRoutesContainer = AdminRoutePick<"lots" | "reviewTasks">;
 export type AdminCatalogBrowseRoutesContainer = AdminRoutePick<"catalog" | "legalEntityBrowse">;
 
 export type AdminOpsMetricsRoutesContainer = AdminRoutePick<
-  "ops" | "navCounts" | "kpiTrends" | "listSummaries" | "saleDetailBoard" | "lotDetailBoard"
+  | "ops"
+  | "navCounts"
+  | "kpiTrends"
+  | "listSummaries"
+  | "saleDetailBoard"
+  | "lotDetailBoard"
+  | "workItems"
 >;
 
 export type AdminOpsDashboardRoutesContainer = AdminRoutePick<
@@ -34,7 +40,7 @@ export type AdminPeopleUsersRoutesContainer = AdminRoutePick<"users" | "aml" | "
 export type AdminPeopleImpersonationRoutesContainer = AdminRoutePick<"impersonation">;
 
 export type AdminOperationsSaleroomRoutesContainer = AdminRoutePick<
-  "saleroom" | "saleroomCheckIn" | "liveBidding" | "display"
+  "saleroom" | "saleroomCheckIn" | "liveBidding" | "display" | "saleReadiness"
 >;
 
 export type AdminTelephoneBookingRoutesContainer = AdminRoutePick<"telephoneBookings">;

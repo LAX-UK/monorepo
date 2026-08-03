@@ -124,6 +124,7 @@ export interface IAdminSaleroomApplicationService {
   getSessionWithRecentEvents: ISaleroomSessionReadService["getSessionWithRecentEvents"];
   publishClerkPaddleBidSummary: ISaleroomDisplayControlService["publishClerkPaddleBidSummary"];
   getOperationsSnapshot: AdminSaleOperationsSnapshotService["getSnapshot"];
+  listOperationsRadar: AdminSaleOperationsSnapshotService["listOperationsRadar"];
 }
 
 export interface IAdminSaleroomCheckInApplicationService {
@@ -195,9 +196,24 @@ export interface IAdminSaleroomDisplayService {
   clearOverlay: IDisplayOverlayService["clearOverlay"];
 }
 
+export interface IAdminWorkItemsQueryService {
+  listWorkItems(input: {
+    actorUserId: string;
+    actorRole: import("@auction/types").UserRole;
+    actorStaffRole: import("@auction/types").UserStaffRole | null | undefined;
+    query: import("@auction/validators").AdminWorkItemsQuery;
+  }): Promise<import("@auction/validators").AdminWorkItemsResponseDto>;
+}
+
+export interface IAdminSaleReadinessQueryService {
+  listReadiness(limit: number): Promise<import("@auction/validators").AdminSaleReadinessRowDto[]>;
+}
+
 export type AdminOperationsRouteServices = {
   requestLifecycle: IAdminRequestLifecycleService;
   ops: IAdminOpsReadService;
+  workItems: IAdminWorkItemsQueryService;
+  saleReadiness: IAdminSaleReadinessQueryService;
   domainEvents: IAdminDomainEventQueryService;
   financeIssueSnapshot: IAdminFinanceIssueSnapshotQueryService;
   manualReviewPayments: IAdminManualReviewPaymentQueryService;

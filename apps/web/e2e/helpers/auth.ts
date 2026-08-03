@@ -19,6 +19,21 @@ const catalogueCredentials: Credentials = {
   password: process.env.PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD ?? "",
 };
 
+const financeCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_FINANCE_EMAIL ?? "accountant@lax.bid",
+  password: process.env.PLAYWRIGHT_FINANCE_PASSWORD ?? "Password123!",
+};
+
+const readonlyCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_READONLY_EMAIL ?? "staff-readonly@lax.bid",
+  password: process.env.PLAYWRIGHT_READONLY_PASSWORD ?? "Password123!",
+};
+
+const operationsCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_OPERATIONS_EMAIL ?? "staff-operations@lax.bid",
+  password: process.env.PLAYWRIGHT_OPERATIONS_PASSWORD ?? "Password123!",
+};
+
 const buyerCredentials: Credentials = {
   email: process.env.PLAYWRIGHT_BUYER_EMAIL ?? "estate-owner@lax.bid",
   password: process.env.PLAYWRIGHT_BUYER_PASSWORD ?? "Password123!",
@@ -205,6 +220,18 @@ export function hasBuyerCredentials(): boolean {
   return Boolean(buyerCredentials.email && buyerCredentials.password);
 }
 
+export function hasFinanceCredentials(): boolean {
+  return Boolean(financeCredentials.email && financeCredentials.password);
+}
+
+export function hasReadonlyCredentials(): boolean {
+  return Boolean(readonlyCredentials.email && readonlyCredentials.password);
+}
+
+export function hasOperationsCredentials(): boolean {
+  return Boolean(operationsCredentials.email && operationsCredentials.password);
+}
+
 export async function staffLogin(page: Page): Promise<void> {
   await gotoStaffPage(page, "/admin");
   if (!/\/login(?:\?|$)/.test(page.url())) {
@@ -232,6 +259,24 @@ export async function catalogueManagerLogin(page: Page): Promise<void> {
   await login(page, catalogueCredentials);
   await page.goto("/admin/lots", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible({ timeout: 20_000 });
+}
+
+export async function financeLogin(page: Page): Promise<void> {
+  await login(page, financeCredentials);
+  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await assertAuthenticatedStaffSession(page);
+}
+
+export async function readonlyStaffLogin(page: Page): Promise<void> {
+  await login(page, readonlyCredentials);
+  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await assertAuthenticatedStaffSession(page);
+}
+
+export async function operationsLogin(page: Page): Promise<void> {
+  await login(page, operationsCredentials);
+  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await assertAuthenticatedStaffSession(page);
 }
 
 export async function buyerLogin(page: Page): Promise<void> {

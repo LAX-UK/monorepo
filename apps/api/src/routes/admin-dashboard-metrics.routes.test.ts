@@ -1,6 +1,8 @@
+import type { IAdminWorkItemsReader } from "@auction/persistence/interfaces";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
+import { AdminWorkItemsService } from "../services/admin/admin-work-items.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createAdminRoutes } from "./admin.js";
 
@@ -10,12 +12,14 @@ type NavCountsMock = Partial<Container["admin"]["navCounts"]>;
 type KpiTrendsMock = Partial<Container["admin"]["kpiTrends"]>;
 type ListSummariesMock = Partial<Container["admin"]["listSummaries"]>;
 type SaleDetailBoardMock = Partial<Container["admin"]["saleDetailBoard"]>;
+type WorkItemsMock = Partial<Container["admin"]["workItems"]>;
 
 function createDashboardMetricsContainer(
   navCounts: NavCountsMock,
   kpiTrends: KpiTrendsMock = {},
   listSummaries: ListSummariesMock = {},
   saleDetailBoard: SaleDetailBoardMock = {},
+  workItems: WorkItemsMock = {},
 ) {
   return {
     env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
@@ -27,6 +31,7 @@ function createDashboardMetricsContainer(
       navCounts,
       kpiTrends,
       listSummaries,
+      workItems,
       saleDetailBoard: {
         getMetrics: vi.fn(),
         getAttention: vi.fn(),
@@ -67,9 +72,11 @@ describe("admin dashboard metrics routes", () => {
     const container = createDashboardMetricsContainer({ getNavCounts });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -83,15 +90,41 @@ describe("admin dashboard metrics routes", () => {
     expect(getNavCounts).toHaveBeenCalledOnce();
   });
 
+  it("GET /kpi/submissions-trend returns trend bundle for authorized staff", async () => {
+    const trend = { currentTotal: 5, priorTotal: 3, dailyCounts: [1, 2] };
+    const getSubmissionsTrend = vi.fn().mockResolvedValue(trend);
+    const container = createDashboardMetricsContainer({}, { getSubmissionsTrend });
+
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "catalogue_manager",
+      }),
+    };
+
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request("http://test/admin/kpi/submissions-trend?periodDays=7");
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: typeof trend };
+    expect(body.data).toEqual(trend);
+    expect(getSubmissionsTrend).toHaveBeenCalledWith(7);
+  });
+
   it("GET /kpi/lots-trend returns trend bundle for authorized staff", async () => {
     const trend = { currentTotal: 10, priorTotal: 8, dailyCounts: [1, 2, 3] };
     const getLotsTrend = vi.fn().mockResolvedValue(trend);
     const container = createDashboardMetricsContainer({}, { getLotsTrend });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -111,9 +144,11 @@ describe("admin dashboard metrics routes", () => {
     const container = createDashboardMetricsContainer({}, { getLotsEndedTrend });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -128,14 +163,20 @@ describe("admin dashboard metrics routes", () => {
   });
 
   it("GET /kpi/lots-hammer-trend returns hammer trend bundle for authorized staff", async () => {
-    const trend = { currentTotal: 45000, priorTotal: 38000, dailyCounts: [1000, 2000, 3000] };
+    const trend = {
+      currentTotal: 45000,
+      priorTotal: 38000,
+      dailyCounts: [1000, 2000, 3000],
+    };
     const getLotsHammerTrend = vi.fn().mockResolvedValue(trend);
     const container = createDashboardMetricsContainer({}, { getLotsHammerTrend });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -170,9 +211,11 @@ describe("admin dashboard metrics routes", () => {
     const container = createDashboardMetricsContainer({}, {}, { getSalesListSummary });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -207,9 +250,11 @@ describe("admin dashboard metrics routes", () => {
     const container = createDashboardMetricsContainer({}, {}, { getLotsListSummary });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -244,9 +289,11 @@ describe("admin dashboard metrics routes", () => {
     const container = createDashboardMetricsContainer({}, {}, {}, { getMetrics });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -279,9 +326,11 @@ describe("admin dashboard metrics routes", () => {
     const container = createDashboardMetricsContainer({}, {}, {}, { getAttention });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -306,9 +355,11 @@ describe("admin dashboard metrics routes", () => {
     const container = createDashboardMetricsContainer({}, {}, {}, { getAttention });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -334,9 +385,11 @@ describe("admin dashboard metrics routes", () => {
     const container = createDashboardMetricsContainer({}, {}, {}, { getOverviewKpiTrends });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -355,9 +408,11 @@ describe("admin dashboard metrics routes", () => {
     const container = createDashboardMetricsContainer({}, {}, {}, { getOverviewKpiTrends });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
     };
 
     const app = new Hono();
@@ -368,6 +423,128 @@ describe("admin dashboard metrics routes", () => {
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("not_found");
+  });
+
+  it("GET /work-items returns inbox payload for authorized staff", async () => {
+    const payload = {
+      items: [
+        {
+          id: "payment:pay-1",
+          kind: "payment_manual_review" as const,
+          domain: "finance" as const,
+          title: "Payment manual review",
+          subtitle: null,
+          href: "/admin/payments/pay-1",
+          saleId: null,
+          createdAt: "2026-07-27T10:00:00.000Z",
+          sourceUpdatedAt: "2026-07-27T10:00:00.000Z",
+          dueAt: null,
+          severity: "critical" as const,
+          assignedToUserId: null,
+          actions: ["capture", "refund"] as const,
+        },
+      ],
+      nextCursor: null,
+      counts: {
+        total: 1,
+        urgent: 1,
+        byDomain: {
+          finance: 1,
+          compliance: 0,
+          catalogue: 0,
+          saleroom: 0,
+          fulfilment: 0,
+          clients: 0,
+        },
+      },
+    };
+    const listWorkItems = vi.fn().mockResolvedValue(payload);
+    const container = createDashboardMetricsContainer({}, {}, {}, {}, { listWorkItems });
+
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+      }),
+    };
+
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request("http://test/admin/work-items?limit=10");
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: typeof payload };
+    expect(body.data).toEqual(payload);
+    expect(listWorkItems).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: staffUserId,
+        query: expect.objectContaining({ limit: 10 }),
+      }),
+    );
+  });
+
+  it("GET /work-items returns 403 for non-staff users", async () => {
+    const listWorkItems = vi.fn();
+    const container = createDashboardMetricsContainer({}, {}, {}, {}, { listWorkItems });
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "client-1", role: "client", staffRole: null }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request("http://test/admin/work-items");
+
+    expect(res.status).toBe(403);
+    expect(listWorkItems).not.toHaveBeenCalled();
+  });
+
+  it("GET /work-items does not leak compliance rows to catalogue staff", async () => {
+    const empty = vi.fn().mockResolvedValue([]);
+    const reader: IAdminWorkItemsReader = {
+      listManualReviewPayments: vi.fn().mockResolvedValue([]),
+      listPendingReviewTasks: vi.fn().mockResolvedValue([
+        {
+          sourceId: "aml-1",
+          kind: "aml_screening",
+          domain: "compliance",
+          title: "AML review",
+          subtitle: null,
+          href: "/admin/compliance/aml/aml-1",
+          saleId: null,
+          createdAt: new Date("2026-07-27T10:00:00.000Z"),
+          sourceUpdatedAt: new Date("2026-07-27T10:00:00.000Z"),
+          assignedToUserId: null,
+        },
+      ]),
+      listSubmissionReviews: empty,
+      listConditionReports: empty,
+      listLotFulfilment: empty,
+      listPendingRegistrations: empty,
+      listPendingTelephoneBookings: empty,
+      listDraftLotsPastStart: empty,
+    };
+    const workItems = new AdminWorkItemsService(reader);
+    const container = createDashboardMetricsContainer({}, {}, {}, {}, workItems);
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "catalogue-1",
+        role: "staff",
+        staffRole: "catalogue_manager",
+      }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request("http://test/admin/work-items");
+    const body = (await res.json()) as { data: { items: unknown[] } };
+
+    expect(res.status).toBe(200);
+    expect(body.data.items).toEqual([]);
+    expect(reader.listPendingReviewTasks).not.toHaveBeenCalled();
   });
 
   it("GET /nav-counts returns 401 when unauthenticated", async () => {

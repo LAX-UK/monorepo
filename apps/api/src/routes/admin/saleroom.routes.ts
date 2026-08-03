@@ -3,6 +3,7 @@ import {
   adminPaddlePlaceBidBodySchema,
   adminPaddleRegistrationParamsSchema,
   adminSalePaddleRosterParamsSchema,
+  adminSaleReadinessQuerySchema,
   adminSaleroomCheckInBodySchema,
   adminSaleroomCheckInCandidatesQuerySchema,
   adminSaleroomSaleIdParamSchema,
@@ -20,6 +21,17 @@ export function attachAdminSaleroomRoutes(
   platform: AdminHono,
   container: AdminOperationsSaleroomRoutesContainer,
 ): void {
+  platform.get(
+    "/sales/readiness",
+    requireAuctionManage,
+    zValidator("query", adminSaleReadinessQuerySchema),
+    async (c) => {
+      const { limit } = c.req.valid("query");
+      const items = await container.admin.saleReadiness.listReadiness(limit);
+      return c.json({ data: { items } });
+    },
+  );
+
   platform.get(
     "/sales/:saleId/expected-guests",
     requireAuctionManage,
@@ -193,6 +205,22 @@ export function attachAdminSaleroomRoutes(
       const { saleId } = c.req.valid("param");
       const roster = await container.admin.liveBidding.listSaleRoster(saleId);
       return c.json({ data: { items: roster } });
+    },
+  );
+
+  platform.get(
+    "/saleroom/operations-radar",
+    requireAuctionManage,
+    zValidator(
+      "query",
+      z.object({
+        limit: z.coerce.number().int().min(1).max(12).optional(),
+      }),
+    ),
+    async (c) => {
+      const { limit } = c.req.valid("query");
+      const data = await container.admin.saleroom.listOperationsRadar(limit);
+      return c.json({ data: { items: data } });
     },
   );
 

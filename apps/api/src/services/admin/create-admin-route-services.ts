@@ -15,6 +15,8 @@ import type { IAdminManualReviewPaymentEnrichmentReader } from "@auction/persist
 import type { IAdminManualReviewPaymentReader } from "@auction/persistence/interfaces";
 import type { IAdminOnboardingIssuesReader } from "@auction/persistence/interfaces";
 import type { IAdminReviewTaskReader } from "@auction/persistence/interfaces";
+import type { IAdminSaleReadinessReader } from "@auction/persistence/interfaces";
+import type { IAdminWorkItemsReader } from "@auction/persistence/interfaces";
 import type { IImpersonationDomainEventReader } from "@auction/persistence/interfaces";
 import type { IAttentionFeedReader } from "@auction/persistence/interfaces";
 import type { IEmailObservabilityRepository } from "@auction/persistence/interfaces";
@@ -93,6 +95,7 @@ import type { AdminSaleOverviewKpiTrendService } from "./admin-sale-overview-kpi
 import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.js";
 import type { AdminSalesListSummaryService } from "./admin-sales-list-summary.service.js";
 import type { AdminSourceOfFundsQueryService } from "./admin-source-of-funds-query.service.js";
+import type { AdminSubmissionsKpiTrendService } from "./admin-submissions-kpi-trend.service.js";
 import type { AdminSubmissionsListSummaryService } from "./admin-submissions-list-summary.service.js";
 import { createAdminCatalogServices } from "./create-admin-catalog-services.js";
 import { createAdminComplianceServices } from "./create-admin-compliance-services.js";
@@ -174,6 +177,8 @@ export type CreateAdminRouteServicesInput = {
   adminManualReviewPaymentEnrichmentReader: IAdminManualReviewPaymentEnrichmentReader;
   adminOnboardingIssuesReader: IAdminOnboardingIssuesReader;
   adminReviewTaskReader: IAdminReviewTaskReader;
+  adminWorkItemsReader: IAdminWorkItemsReader;
+  adminSaleReadinessReader: IAdminSaleReadinessReader;
   adminLegalEntityBrowseReader: IAdminLegalEntityBrowseReader;
   adminDisputeCaseEnrichmentReader: IAdminDisputeCaseEnrichmentReader;
   bidRepo: IBidRepository;
@@ -218,6 +223,8 @@ export function createAdminRouteServices(
     adminManualReviewPaymentReader: input.adminManualReviewPaymentReader,
     adminManualReviewPaymentEnrichmentReader: input.adminManualReviewPaymentEnrichmentReader,
     adminReviewTaskReader: input.adminReviewTaskReader,
+    adminWorkItemsReader: input.adminWorkItemsReader,
+    adminSaleReadinessReader: input.adminSaleReadinessReader,
     bidRepo: input.bidRepo,
   });
 
@@ -306,6 +313,7 @@ export type AttachAdminDashboardMetricsInput = {
   paymentsKpiTrend: AdminPaymentsKpiTrendService;
   salesKpiTrend: AdminSalesKpiTrendService;
   payoutsKpiTrend: AdminPayoutsKpiTrendService;
+  submissionsKpiTrend: AdminSubmissionsKpiTrendService;
   salesListSummary: AdminSalesListSummaryService;
   lotsListSummary: AdminLotsListSummaryService;
   submissionsListSummary: AdminSubmissionsListSummaryService;
@@ -326,6 +334,7 @@ export function attachAdminMetricsQueries(
     metrics.paymentsKpiTrend,
     metrics.salesKpiTrend,
     metrics.payoutsKpiTrend,
+    metrics.submissionsKpiTrend,
     metrics.salesListSummary,
     metrics.lotsListSummary,
     metrics.submissionsListSummary,

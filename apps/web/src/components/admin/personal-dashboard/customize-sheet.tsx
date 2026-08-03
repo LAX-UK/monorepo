@@ -24,8 +24,7 @@ import { useState, useTransition } from "react";
 const WIDGET_LABELS: Record<DashboardWidgetId, { label: string; description: string }> = {
   greeting: { label: "Greeting", description: "Personal welcome and quick links" },
   "kpi-band": { label: "Trend KPIs", description: "Period comparison metrics with sparklines" },
-  "my-queue": { label: "Needs attention", description: "Attention items needing action" },
-  anomalies: { label: "Anomalies", description: "Operational callouts above threshold" },
+  "my-queue": { label: "Work inbox", description: "Actionable items assigned to your role" },
   "saleroom-live": { label: "Saleroom live", description: "Live bidding pulse and saleroom link" },
   "onsite-radar": {
     label: "Onsite radar",
@@ -37,9 +36,15 @@ const WIDGET_LABELS: Record<DashboardWidgetId, { label: string; description: str
 type Props = {
   widgets: readonly DashboardWidgetState[];
   staffRole?: UserStaffRole | null;
+  /** Icon-only trigger for calm page headers */
+  iconOnly?: boolean;
 };
 
-export function PersonalDashboardCustomizeSheet({ widgets, staffRole = null }: Props) {
+export function PersonalDashboardCustomizeSheet({
+  widgets,
+  staffRole = null,
+  iconOnly = false,
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DashboardWidgetState[]>([...widgets]);
@@ -82,10 +87,22 @@ export function PersonalDashboardCustomizeSheet({ widgets, staffRole = null }: P
       }}
     >
       <SheetTrigger asChild>
-        <Button type="button" variant="secondary" size="sm" className="min-h-9 gap-1">
-          <Settings2 className="size-4" aria-hidden />
-          Customize
-        </Button>
+        {iconOnly ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0 text-on-surface-variant"
+            aria-label="Customize dashboard"
+          >
+            <Settings2 className="size-4" aria-hidden />
+          </Button>
+        ) : (
+          <Button type="button" variant="secondary" size="sm" className="min-h-9 gap-1">
+            <Settings2 className="size-4" aria-hidden />
+            Customize
+          </Button>
+        )}
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>

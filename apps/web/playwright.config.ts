@@ -31,6 +31,24 @@ const roleProjects = [
     grep: /@setup-buyer/,
     use: chromium,
   },
+  {
+    name: "setup-finance",
+    testMatch: /auth\.setup\.ts/,
+    grep: /@setup-finance/,
+    use: chromium,
+  },
+  {
+    name: "setup-readonly",
+    testMatch: /auth\.setup\.ts/,
+    grep: /@setup-readonly/,
+    use: chromium,
+  },
+  {
+    name: "setup-operations",
+    testMatch: /auth\.setup\.ts/,
+    grep: /@setup-operations/,
+    use: chromium,
+  },
   ...(hasCatalogueManagerCredentials
     ? [
         {
@@ -44,8 +62,15 @@ const roleProjects = [
   {
     name: "staff-chromium",
     testMatch: [/admin-.*\.spec\.ts/, /saleroom-clerk\.spec\.ts/],
+    testIgnore: /admin-dashboard-roles\.spec\.ts/,
     dependencies: ["setup-staff"],
     use: { ...chromium, storageState: roleAuthState.staff },
+  },
+  {
+    name: "dashboard-roles-chromium",
+    testMatch: /admin-dashboard-roles\.spec\.ts/,
+    dependencies: ["setup-staff", "setup-finance", "setup-readonly", "setup-operations"],
+    use: chromium,
   },
   {
     name: "buyer-chromium",

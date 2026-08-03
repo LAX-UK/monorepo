@@ -46,6 +46,8 @@ export * from "./admin-marketing-events.js";
 export * from "./admin-audit.js";
 export * from "./admin-lot.js";
 export * from "./admin-kpi.js";
+export * from "./admin-work-items.js";
+export * from "./admin-sale-readiness.js";
 export * from "./admin-sale-overview-kpi-trends.js";
 export {
   computeSaleExpectedRevenue,

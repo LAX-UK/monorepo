@@ -1,12 +1,13 @@
+import { getDashboardProfile } from "@/lib/admin/dashboard-profile-registry";
 import type { UserStaffRole } from "@auction/types";
 
 export const ADMIN_DASHBOARD_WIDGETS_COOKIE = "lax_admin_dashboard_widgets";
+export const ADMIN_DASHBOARD_WIDGETS_COOKIE_VERSION = 3 as const;
 
 export type DashboardWidgetId =
   | "greeting"
   | "kpi-band"
   | "my-queue"
-  | "anomalies"
   | "saleroom-live"
   | "onsite-radar"
   | "activity";
@@ -17,36 +18,40 @@ export type DashboardWidgetState = {
   hidden: boolean;
 };
 
+type VersionedDashboardWidgetsCookie = {
+  v: typeof ADMIN_DASHBOARD_WIDGETS_COOKIE_VERSION;
+  widgets: Partial<DashboardWidgetState>[];
+};
+
 export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetState[] = [
   { id: "greeting", order: 0, hidden: false },
   { id: "kpi-band", order: 1, hidden: false },
   { id: "my-queue", order: 2, hidden: false },
-  { id: "anomalies", order: 3, hidden: false },
-  { id: "saleroom-live", order: 4, hidden: false },
-  { id: "onsite-radar", order: 5, hidden: false },
-  { id: "activity", order: 6, hidden: false },
+  { id: "saleroom-live", order: 3, hidden: false },
+  { id: "onsite-radar", order: 4, hidden: false },
+  { id: "activity", order: 5, hidden: false },
 ] as const;
 
-/** Role-specific first-visit layout when no saved cookie exists. */
-export const DEFAULT_DASHBOARD_WIDGETS_BY_STAFF_ROLE: Partial<
-  Record<UserStaffRole, readonly DashboardWidgetState[]>
-> = {
-  super_admin: [
-    { id: "greeting", order: 0, hidden: false },
-    { id: "kpi-band", order: 1, hidden: false },
-    { id: "my-queue", order: 2, hidden: false },
-    { id: "anomalies", order: 3, hidden: false },
-    { id: "saleroom-live", order: 4, hidden: true },
-    { id: "onsite-radar", order: 5, hidden: true },
-    { id: "activity", order: 6, hidden: true },
-  ],
-};
+const SECONDARY_WIDGET_IDS = new Set<DashboardWidgetId>([
+  "saleroom-live",
+  "onsite-radar",
+  "activity",
+]);
 
+function widgetsFromProfile(staffRole: UserStaffRole | null | undefined): DashboardWidgetState[] {
+  const profile = getDashboardProfile(staffRole ?? null);
+  const secondary = new Set(profile.secondaryWidgets);
+  return DEFAULT_DASHBOARD_WIDGETS.map((widget) => ({
+    ...widget,
+    hidden: SECONDARY_WIDGET_IDS.has(widget.id) ? !secondary.has(widget.id) : widget.hidden,
+  }));
+}
+
+/** Role-specific first-visit layout when no saved cookie exists. */
 export function defaultDashboardWidgetsForStaffRole(
   staffRole: UserStaffRole | null | undefined,
 ): readonly DashboardWidgetState[] {
-  if (staffRole == null) return DEFAULT_DASHBOARD_WIDGETS;
-  return DEFAULT_DASHBOARD_WIDGETS_BY_STAFF_ROLE[staffRole] ?? DEFAULT_DASHBOARD_WIDGETS;
+  return widgetsFromProfile(staffRole);
 }
 
 export function mergeDashboardWidgets(
@@ -71,22 +76,48 @@ export function mergeDashboardWidgets(
   return [...byId.values()].sort((a, b) => a.order - b.order);
 }
 
+function parseLegacyCookieArray(raw: string): Partial<DashboardWidgetState>[] | null {
+  const parsed = JSON.parse(raw) as unknown;
+  if (!Array.isArray(parsed)) return null;
+  return parsed as Partial<DashboardWidgetState>[];
+}
+
+function parseVersionedCookie(raw: string): Partial<DashboardWidgetState>[] | null {
+  const parsed = JSON.parse(raw) as unknown;
+  if (
+    parsed != null &&
+    typeof parsed === "object" &&
+    "v" in parsed &&
+    (parsed as VersionedDashboardWidgetsCookie).v === ADMIN_DASHBOARD_WIDGETS_COOKIE_VERSION &&
+    Array.isArray((parsed as VersionedDashboardWidgetsCookie).widgets)
+  ) {
+    return (parsed as VersionedDashboardWidgetsCookie).widgets;
+  }
+  return null;
+}
+
 export function parseDashboardWidgetsCookie(
   raw: string | null | undefined,
   staffRole?: UserStaffRole | null,
 ): DashboardWidgetState[] {
   if (!raw?.trim()) return mergeDashboardWidgets(null, staffRole);
   try {
-    const parsed = JSON.parse(raw) as Partial<DashboardWidgetState>[];
-    if (!Array.isArray(parsed)) return mergeDashboardWidgets(null, staffRole);
-    return mergeDashboardWidgets(parsed, staffRole);
+    const versioned = parseVersionedCookie(raw);
+    if (versioned) return mergeDashboardWidgets(versioned, staffRole);
+    const legacy = parseLegacyCookieArray(raw);
+    if (legacy) return mergeDashboardWidgets(legacy, staffRole);
+    return mergeDashboardWidgets(null, staffRole);
   } catch {
     return mergeDashboardWidgets(null, staffRole);
   }
 }
 
 export function serializeDashboardWidgetsCookie(widgets: readonly DashboardWidgetState[]): string {
-  return JSON.stringify(widgets);
+  const payload: VersionedDashboardWidgetsCookie = {
+    v: ADMIN_DASHBOARD_WIDGETS_COOKIE_VERSION,
+    widgets: widgets.map(({ id, order, hidden }) => ({ id, order, hidden })),
+  };
+  return JSON.stringify(payload);
 }
 
 export function isDashboardWidgetVisible(

@@ -1,206 +1,138 @@
 import "server-only";
 
-import type { AdminActivityRow, AdminAttentionRow } from "@/lib/admin/admin-home-types";
+import type { AdminActivityRow } from "@/lib/admin/admin-home-types";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
-import { buildSyntheticAttentionRows } from "@/lib/admin/build-synthetic-attention-rows";
 import {
-  type HubQuickLink,
-  canAccess,
-  hubQuickLinksFor,
-  isWidgetAllowed,
-} from "@/lib/admin/dashboard-access";
+  type getDashboardProfile,
+  resolvePrimaryActionForProfile,
+} from "@/lib/admin/dashboard-profile-registry";
 import type { DashboardWidgetState } from "@/lib/admin/dashboard-widgets.vm";
-import {
-  type OnsiteSalesRadarRow,
-  mapOperationsSnapshotToRadarRow,
-} from "@/lib/admin/saleroom/map-operations-snapshot-to-radar-row";
-import { getAdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
-import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
-import {
-  getAdminAttentionFeed,
-  getAdminFinanceIssues,
-  getAdminLotList,
-  getAdminMetricsLive,
-  getAdminMetricsToday,
-  getAdminSaleOperationsSnapshot,
-  getAdminSalesList,
-} from "@/lib/data/http/admin.server";
-import { formatDateTime, formatMoney } from "@/lib/ui/format";
-import {
-  FINANCE_ACCESS,
-  LOTS_ACCESS,
-  SALEROOM_ACCESS,
-  type UserRole,
-  type UserStaffRole,
-} from "@auction/types";
-import { isSaleroomDeliveryMode } from "@auction/validators";
+import type { DashboardDataSources } from "@/lib/admin/dashboard/dashboard-data-sources";
+import { dashboardHttpDataSources } from "@/lib/admin/dashboard/dashboard-http-data-sources";
+import { createDashboardLoadContext } from "@/lib/admin/dashboard/dashboard-load-context";
+import { recordDashboardSliceFailure } from "@/lib/admin/dashboard/dashboard-telemetry";
+import type { buildLiveOperationsSlice } from "@/lib/admin/dashboard/live-operations.slice";
+import { loadDashboardMetricsSlice } from "@/lib/admin/dashboard/load-dashboard-metrics.slice";
+import { loadLiveOperationsSlice } from "@/lib/admin/dashboard/load-live-operations.slice";
+import { loadRecentActivitySlice } from "@/lib/admin/dashboard/load-recent-activity.slice";
+import { loadRoleKpisSlice } from "@/lib/admin/dashboard/load-role-kpis.slice";
+import { loadSaleReadinessSlice } from "@/lib/admin/dashboard/load-sale-readiness.slice";
+import { loadWorkInboxSlice } from "@/lib/admin/dashboard/load-work-inbox.slice";
+import type { buildRecentActivitySlice } from "@/lib/admin/dashboard/recent-activity.slice";
+import type { buildRoleKpisSlice } from "@/lib/admin/dashboard/role-kpis.slice";
+import type { buildSaleReadinessSlice } from "@/lib/admin/dashboard/sale-readiness.slice";
+import type { buildWorkInboxSlice } from "@/lib/admin/dashboard/work-inbox.slice";
+import type { OnsiteSalesRadarRow } from "@/lib/admin/saleroom/map-operations-snapshot-to-radar-row";
+import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
+import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
+import { FINANCE_ACCESS, type UserRole, type UserStaffRole } from "@auction/types";
 
 export type AdminDashboardPageInput = {
   periodDays: AdminKpiPeriodDays;
   role: UserRole;
   staffRole: UserStaffRole | null;
+  actorUserId: string;
+  workAssignment?: "mine" | "unassigned" | "all";
   widgets: readonly DashboardWidgetState[];
+  dataSources?: DashboardDataSources;
 };
 
 export type AdminDashboardPageModel = {
-  metrics: Awaited<ReturnType<typeof getAdminMetricsToday>>;
-  trends: Awaited<ReturnType<typeof getAdminHomeKpiTrends>>;
+  profileId: ReturnType<typeof getDashboardProfile>["id"];
+  primaryAction: { href: string; label: string };
+  metrics: AdminTodayMetricsPayload;
+  trends: AdminHomeKpiTrends;
   bidsPerMinute: number;
   activeLotIds: string[];
-  attention: AdminAttentionRow[];
+  workInbox: ReturnType<typeof buildWorkInboxSlice>;
+  saleReadiness: ReturnType<typeof buildSaleReadinessSlice>;
+  liveOperations: ReturnType<typeof buildLiveOperationsSlice>;
+  roleKpis: ReturnType<typeof buildRoleKpisSlice>;
+  recentActivity: ReturnType<typeof buildRecentActivitySlice>;
   activity: AdminActivityRow[];
   anomalies: ReturnType<typeof detectAnomaliesFromNavCounts>;
   onsiteRadarRows: OnsiteSalesRadarRow[];
   activeSaleroomSessions: number;
   loadWarning: string | null;
-  hubLinks: HubQuickLink[];
 };
 
 /** Data/composition boundary for `/admin` home dashboard. */
 export async function loadAdminDashboardPage(
   input: AdminDashboardPageInput,
 ): Promise<AdminDashboardPageModel> {
-  const { periodDays, role, staffRole } = input;
-  const can = (req: Parameters<typeof canAccess>[2]) => canAccess(role, staffRole, req);
-  const canAccessLots = can(LOTS_ACCESS);
-  const canAccessFinance = can(FINANCE_ACCESS);
-  const canAccessSaleroom = can(SALEROOM_ACCESS);
+  const sources = input.dataSources ?? dashboardHttpDataSources;
+  const ctx = createDashboardLoadContext({ ...input, sources });
+  const profile = ctx.profile;
 
-  let metrics = {
-    liveLots: 0,
-    endingWithinHour: 0,
-    draftLots: 0,
-    pendingSubmissions: 0,
-    stalePendingPayments: 0,
-    revenueToday: "0",
-  };
-  let bidsPerMinute = 0;
-  let activeLotIds: string[] = [];
-  let attention: AdminAttentionRow[] = [];
-  let recentLots: Awaited<ReturnType<typeof getAdminLotList>> = [];
-  let financeIssues: Awaited<ReturnType<typeof getAdminFinanceIssues>> | null = null;
-  let onsiteRadarRows: OnsiteSalesRadarRow[] = [];
-  let dashboardLoadWarning: string | null = null;
-  let trends: Awaited<ReturnType<typeof getAdminHomeKpiTrends>> = {
-    lots: { currentTotal: 0, priorTotal: 0, dailyCounts: [] },
-    submissions: { currentTotal: 0, priorTotal: 0, dailyCounts: [] },
-    payments: { currentTotal: 0, priorTotal: 0, dailyCounts: [] },
-  };
-
-  const results = await Promise.allSettled([
-    getAdminMetricsToday(),
-    getAdminMetricsLive(),
-    canAccessLots
-      ? getAdminLotList({ status: "active", limit: 20, sort: "endingAsc" })
-      : Promise.resolve([]),
-    getAdminAttentionFeed(),
-    canAccessLots ? getAdminLotList({ limit: 12, sort: "endingAsc" }) : Promise.resolve([]),
-    getAdminHomeKpiTrends(periodDays),
-    canAccessFinance ? getAdminFinanceIssues() : Promise.resolve(null),
-  ]);
-
-  const [metricsR, liveR, activeR, feedR, recentR, trendsR, financeR] = results;
-
-  if (metricsR.status === "fulfilled") {
-    metrics = metricsR.value;
-  } else {
-    dashboardLoadWarning = "Could not load dashboard metrics.";
-  }
-
-  if (liveR.status === "fulfilled") {
-    bidsPerMinute = liveR.value.bidsPerMinute;
-  }
-
-  if (activeR.status === "fulfilled") {
-    activeLotIds = activeR.value.map((a) => a.id);
-  } else if (canAccessLots) {
-    dashboardLoadWarning ??= "Could not load active lots.";
-  }
-
-  if (feedR.status === "fulfilled") {
-    attention = feedR.value.map((item) => ({
-      id: item.id,
-      title: item.title,
-      hint: item.hint,
-      href: item.kind === "lot_draft_past_start" ? "/admin/lots?lens=attention" : item.href,
-      ctaLabel: item.ctaLabel ?? "Open",
-    }));
-  }
-
-  if (recentR.status === "fulfilled") {
-    recentLots = recentR.value;
-  }
-
-  if (trendsR.status === "fulfilled") {
-    trends = trendsR.value;
-  }
-
-  if (financeR.status === "fulfilled") {
-    financeIssues = financeR.value;
-  } else if (canAccessFinance) {
-    dashboardLoadWarning ??= "Could not load finance dashboard alerts.";
-  }
-
-  const activity: AdminActivityRow[] = recentLots.slice(0, 10).map((l) => ({
-    id: l.id,
-    title: l.title,
-    meta: `${l.status} · ends ${formatDateTime(l.endTime)}`,
-    href: `/admin/lots/${l.id}`,
-    statusLabel: l.status,
-    winnerId: l.winnerId,
-    priceLabel: formatMoney(l.currentPrice),
-    endsLabel: formatDateTime(l.endTime),
-  }));
-
-  let navCounts = EMPTY_ADMIN_NAV_COUNTS;
-  try {
-    navCounts = await getAdminNavCounts();
-  } catch {
-    /* use empty */
-  }
-  const anomalies = detectAnomaliesFromNavCounts(navCounts, {
-    stalePendingPayments: metrics.stalePendingPayments,
-    pendingSubmissions: metrics.pendingSubmissions,
-    failedPayouts: financeIssues?.failedPayoutCount ?? 0,
+  const metricsSlice = await loadDashboardMetricsSlice(ctx);
+  const workInbox = await loadWorkInboxSlice(ctx, {
+    actorUserId: input.actorUserId,
+    assignment: input.workAssignment ?? "all",
   });
 
-  const syntheticAttention = buildSyntheticAttentionRows(navCounts, role, staffRole);
-  const attentionForDashboard = [...syntheticAttention, ...attention];
+  const [live, recent] = await Promise.all([
+    loadLiveOperationsSlice(ctx),
+    loadRecentActivitySlice(ctx),
+  ]);
 
-  if (canAccessSaleroom && isWidgetAllowed(role, staffRole, "onsite-radar")) {
+  const saleReadiness = await loadSaleReadinessSlice(ctx, {
+    bidsPerMinute: live.bidsPerMinute,
+    activeSaleroomSessions: live.onsiteRadarRows.filter((row) => row.isLiveSession).length,
+  });
+
+  let loadWarning =
+    metricsSlice.loadWarning ??
+    live.loadWarning ??
+    workInbox.loadWarning ??
+    saleReadiness.loadWarning;
+  let financeIssues: Awaited<ReturnType<DashboardDataSources["getFinanceIssues"]>> | null = null;
+  if (ctx.can(FINANCE_ACCESS)) {
     try {
-      const onsiteSales = await getAdminSalesList({ limit: 12, status: "active" });
-      const onsiteCandidates = onsiteSales.filter((row) =>
-        isSaleroomDeliveryMode(row.sale.deliveryMode),
-      );
-      const snapshots = await Promise.all(
-        onsiteCandidates
-          .slice(0, 6)
-          .map((row) => getAdminSaleOperationsSnapshot(row.sale.id).catch(() => null)),
-      );
-      onsiteRadarRows = snapshots
-        .map((snapshot) => (snapshot ? mapOperationsSnapshotToRadarRow(snapshot) : null))
-        .filter((row): row is OnsiteSalesRadarRow => row != null);
+      financeIssues = await sources.getFinanceIssues();
     } catch {
-      /* optional widget */
+      recordDashboardSliceFailure({
+        slice: "finance-issues",
+        profileId: ctx.profileId,
+        retryable: true,
+      });
+      loadWarning ??= "Could not load finance dashboard alerts.";
     }
   }
 
+  const roleKpis = await loadRoleKpisSlice(ctx, {
+    metrics: metricsSlice.metrics,
+    bidsPerMinute: live.bidsPerMinute,
+  });
+
+  const anomalies = detectAnomaliesFromNavCounts(metricsSlice.navCounts, {
+    stalePendingPayments: metricsSlice.metrics.stalePendingPayments,
+    pendingSubmissions: metricsSlice.metrics.pendingSubmissions,
+    failedPayouts: financeIssues?.failedPayoutCount ?? 0,
+  });
+
+  const onsiteRadarRows = live.onsiteRadarRows;
   const activeSaleroomSessions = onsiteRadarRows.filter((row) => row.isLiveSession).length;
+  const primaryAction = resolvePrimaryActionForProfile(profile, (requirement) =>
+    requirement == null ? true : ctx.can(requirement),
+  );
 
   return {
-    metrics,
-    trends,
-    bidsPerMinute,
-    activeLotIds,
-    attention: attentionForDashboard,
-    activity,
+    profileId: profile.id,
+    primaryAction,
+    metrics: metricsSlice.metrics,
+    trends: roleKpis.trends,
+    bidsPerMinute: live.bidsPerMinute,
+    activeLotIds: live.activeLotIds,
+    workInbox: workInbox.slice,
+    saleReadiness: saleReadiness.slice,
+    liveOperations: live.slice,
+    roleKpis: roleKpis.slice,
+    recentActivity: recent.slice,
+    activity: recent.activity,
     anomalies,
     onsiteRadarRows,
     activeSaleroomSessions,
-    loadWarning: dashboardLoadWarning,
-    hubLinks: hubQuickLinksFor(role, staffRole),
+    loadWarning: loadWarning ?? null,
   };
 }

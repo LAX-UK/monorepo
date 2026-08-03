@@ -23,6 +23,7 @@ import { AdminSaleDetailMetricsService } from "../services/admin/admin-sale-deta
 import { AdminSaleOverviewKpiTrendService } from "../services/admin/admin-sale-overview-kpi-trend.service.js";
 import { AdminSalesKpiTrendService } from "../services/admin/admin-sales-kpi-trend.service.js";
 import { AdminSalesListSummaryService } from "../services/admin/admin-sales-list-summary.service.js";
+import { AdminSubmissionsKpiTrendService } from "../services/admin/admin-submissions-kpi-trend.service.js";
 import { AdminSubmissionsListSummaryService } from "../services/admin/admin-submissions-list-summary.service.js";
 import {
   attachAdminDashboardMetrics,
@@ -68,6 +69,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     paymentRepo,
     saleRepo,
     payoutRepository,
+    itemSubmissionRepository,
     saleOverviewKpiTrendReader,
     saleRevenueSnapshotReader,
     repoFactory,
@@ -85,6 +87,8 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     adminOnboardingIssuesReader,
     adminReviewTaskReader,
     adminReviewTaskRepository,
+    adminWorkItemsReader,
+    adminSaleReadinessReader,
     adminLegalEntityBrowseReader,
     adminDisputeCaseEnrichmentReader,
     impersonationSessionRepository,
@@ -222,6 +226,8 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     adminManualReviewPaymentEnrichmentReader,
     adminOnboardingIssuesReader,
     adminReviewTaskReader,
+    adminWorkItemsReader,
+    adminSaleReadinessReader,
     adminLegalEntityBrowseReader,
     adminDisputeCaseEnrichmentReader,
     bidRepo: repoFactory.root.bid,
@@ -237,6 +243,9 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
   const adminPaymentsKpiTrendService = new AdminPaymentsKpiTrendService(paymentRepo);
   const adminSalesKpiTrendService = new AdminSalesKpiTrendService(saleRepo);
   const adminPayoutsKpiTrendService = new AdminPayoutsKpiTrendService(payoutRepository);
+  const adminSubmissionsKpiTrendService = new AdminSubmissionsKpiTrendService(
+    itemSubmissionRepository,
+  );
   const adminSalesListSummaryService = new AdminSalesListSummaryService(saleRepo, lotRepo);
   const adminLotsListSummaryService = new AdminLotsListSummaryService(
     lotRepo,
@@ -302,6 +311,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
         paymentsKpiTrend: adminPaymentsKpiTrendService,
         salesKpiTrend: adminSalesKpiTrendService,
         payoutsKpiTrend: adminPayoutsKpiTrendService,
+        submissionsKpiTrend: adminSubmissionsKpiTrendService,
         salesListSummary: adminSalesListSummaryService,
         lotsListSummary: adminLotsListSummaryService,
         submissionsListSummary: adminSubmissionsListSummaryService,

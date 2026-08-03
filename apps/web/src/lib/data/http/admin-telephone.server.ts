@@ -33,6 +33,25 @@ export async function getAdminTelephoneBookingsPendingCount(): Promise<number> {
   return typeof body.data?.count === "number" ? body.data.count : 0;
 }
 
+export async function getAdminSaleroomOperationsRadar(
+  limit = 6,
+): Promise<AdminSaleOperationsSnapshot[]> {
+  try {
+    const qs = new URLSearchParams({ limit: String(limit) });
+    const res = await authedServerFetch(`/admin/saleroom/operations-radar?${qs.toString()}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`Failed to load operations radar: ${res.status}`);
+    const body = (await res.json()) as { data?: { items?: unknown[] } };
+    return (body.data?.items ?? [])
+      .map(parseAdminSaleOperationsSnapshot)
+      .filter((row): row is AdminSaleOperationsSnapshot => row != null);
+  } catch (err) {
+    console.error("[getAdminSaleroomOperationsRadar] Failed to load batched radar:", err);
+    return [];
+  }
+}
+
 export async function getAdminSaleOperationsSnapshot(
   saleId: string,
 ): Promise<AdminSaleOperationsSnapshot | null> {

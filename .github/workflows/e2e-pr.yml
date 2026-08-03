@@ -76,7 +76,11 @@ jobs:
           npx --yes wait-on http://localhost:3000 --timeout 120000
       - name: Prepare staff session
         working-directory: apps/web
-        run: pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff
+        run: |
+          pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff
+          pnpm exec playwright test e2e/auth.setup.ts --project=setup-finance
+          pnpm exec playwright test e2e/auth.setup.ts --project=setup-readonly
+          pnpm exec playwright test e2e/auth.setup.ts --project=setup-operations
       - name: Critical browser and curated visual gates
         run: pnpm --filter @auction/web test:e2e:pr -- --no-deps
       - name: Upload Playwright report

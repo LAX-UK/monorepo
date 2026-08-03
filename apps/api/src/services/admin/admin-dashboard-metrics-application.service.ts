@@ -14,6 +14,7 @@ import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.se
 import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.service.js";
 import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.js";
 import type { AdminSalesListSummaryService } from "./admin-sales-list-summary.service.js";
+import type { AdminSubmissionsKpiTrendService } from "./admin-submissions-kpi-trend.service.js";
 import type { AdminSubmissionsListSummaryService } from "./admin-submissions-list-summary.service.js";
 
 export class AdminDashboardMetricsApplicationService
@@ -31,6 +32,7 @@ export class AdminDashboardMetricsApplicationService
     private readonly paymentsKpiTrend: AdminPaymentsKpiTrendService,
     private readonly salesKpiTrend: AdminSalesKpiTrendService,
     private readonly payoutsKpiTrend: AdminPayoutsKpiTrendService,
+    private readonly submissionsKpiTrend: AdminSubmissionsKpiTrendService,
     private readonly salesListSummary: AdminSalesListSummaryService,
     private readonly lotsListSummary: AdminLotsListSummaryService,
     private readonly submissionsListSummary: AdminSubmissionsListSummaryService,
@@ -62,6 +64,10 @@ export class AdminDashboardMetricsApplicationService
 
   getPayoutsTrend(periodDays: AdminKpiPeriodDays) {
     return this.payoutsKpiTrend.getTrend(periodDays);
+  }
+
+  getSubmissionsTrend(periodDays: AdminKpiPeriodDays) {
+    return this.submissionsKpiTrend.getTrend(periodDays);
   }
 
   getSalesListSummary() {

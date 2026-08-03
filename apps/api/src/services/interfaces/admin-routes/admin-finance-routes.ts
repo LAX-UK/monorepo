@@ -104,6 +104,7 @@ export interface IAdminKpiTrendsQueryService {
   getPaymentsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
   getSalesTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
   getPayoutsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
+  getSubmissionsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
 }
 
 export interface IAdminCatalogListSummariesQueryService {

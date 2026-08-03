@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { bid, lot, sale, saleroomSession } from "@auction/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type {
   AdminSaleOperationsCurrentLotBidding,
   AdminSaleOperationsCurrentLotRow,
@@ -30,6 +30,22 @@ export class DrizzleAdminSaleOperationsSnapshotReader
       .where(and(eq(sale.id, saleId), saleNotDeleted()))
       .limit(1);
     return saleRow ?? null;
+  }
+
+  async listActiveSaleroomSaleIds(limit: number): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: sale.id })
+      .from(sale)
+      .where(
+        and(
+          eq(sale.status, "active"),
+          inArray(sale.deliveryMode, ["onsite", "hybrid"]),
+          saleNotDeleted(),
+        ),
+      )
+      .orderBy(sql`${sale.startTime} ASC NULLS LAST`)
+      .limit(limit);
+    return rows.map((row) => row.id);
   }
 
   async findSession(saleId: string): Promise<AdminSaleOperationsSessionRow | null> {
