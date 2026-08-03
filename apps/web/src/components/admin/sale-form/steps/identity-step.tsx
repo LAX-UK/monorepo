@@ -16,15 +16,24 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Label } from "@auction/ui/components/label";
+import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
 import { Textarea } from "@auction/ui/components/textarea";
-import { useState } from "react";
+import type { RefObject } from "react";
+import { useRef, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
+import {
+  type StreamUrlVerificationGate,
+  StreamUrlVerifyControl,
+} from "../stream-url-verify-control";
 
 type Props = {
   form: UseFormReturn<AdminSaleFormValues>;
   categories: CategoryNode[];
   pending: boolean;
   previewUrlByKey: Record<string, string>;
+  initialHeroVideoUrl?: string;
+  heroVideoUrlGateRef?: RefObject<StreamUrlVerificationGate | null>;
 };
 
 function SaleCoverImagesField({
@@ -87,7 +96,17 @@ function SaleCoverImagesField({
   );
 }
 
-export function SaleIdentityStep({ form, categories, pending, previewUrlByKey }: Props) {
+export function SaleIdentityStep({
+  form,
+  categories,
+  pending,
+  previewUrlByKey,
+  initialHeroVideoUrl = "",
+  heroVideoUrlGateRef,
+}: Props) {
+  const heroPresentation = form.watch("heroPresentation");
+  const heroBlurRef = useRef<(() => void) | null>(null);
+
   return (
     <div className="space-y-6">
       <CatalogFormSection
@@ -165,6 +184,103 @@ export function SaleIdentityStep({ form, categories, pending, previewUrlByKey }:
             </FormItem>
           )}
         />
+      </CatalogFormSection>
+
+      <CatalogFormSection
+        title="Homepage hero"
+        description="Choose how this sale appears in the lax.bid homepage hero when featured."
+        collapsible={false}
+        anchorId="sale-homepage-hero"
+      >
+        <FormField
+          control={form.control}
+          name="heroPresentation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="mb-2 block">
+                <LabelCaps>Hero presentation</LabelCaps>
+              </FormLabel>
+              <FormControl>
+                <RadioGroup
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  className="grid gap-3 sm:grid-cols-2"
+                  disabled={pending}
+                >
+                  <div className="flex items-start gap-3 rounded-md border border-outline-variant/40 p-3">
+                    <RadioGroupItem
+                      value="cover"
+                      id="hero-presentation-cover"
+                      aria-label="Cover images"
+                      className="mt-1"
+                    />
+                    <Label htmlFor="hero-presentation-cover" className="cursor-pointer space-y-1">
+                      <span className="block font-body text-sm font-medium">Cover images</span>
+                      <span className="block font-body text-xs text-on-surface-variant">
+                        Rotating sale cover slides (default).
+                      </span>
+                    </Label>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-md border border-outline-variant/40 p-3">
+                    <RadioGroupItem
+                      value="video"
+                      id="hero-presentation-video"
+                      aria-label="Video"
+                      className="mt-1"
+                    />
+                    <Label htmlFor="hero-presentation-video" className="cursor-pointer space-y-1">
+                      <span className="block font-body text-sm font-medium">Video</span>
+                      <span className="block font-body text-xs text-on-surface-variant">
+                        Marketing embed on the homepage — not the live saleroom feed.
+                      </span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {heroPresentation === "video" ? (
+          <FormField
+            control={form.control}
+            name="heroVideoUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="mb-2 block">
+                  <LabelCaps>Homepage hero video URL</LabelCaps>
+                </FormLabel>
+                <FormControl>
+                  <UnderlineInput
+                    id="heroVideoUrl"
+                    placeholder="https://www.youtube.com/watch?v=… or https://vimeo.com/event/…"
+                    disabled={pending}
+                    {...field}
+                    onBlur={() => {
+                      field.onBlur();
+                      heroBlurRef.current?.();
+                    }}
+                  />
+                </FormControl>
+                <p className="mt-2 font-body text-xs text-on-surface-variant">
+                  Shown on the lax.bid homepage when this sale is featured. Allowed: YouTube, Vimeo
+                  (including live event links), Twitch, Cloudflare Stream.
+                </p>
+                {!pending ? (
+                  <StreamUrlVerifyControl
+                    value={field.value}
+                    initialValue={initialHeroVideoUrl}
+                    disabled={pending}
+                    {...(heroVideoUrlGateRef ? { gateRef: heroVideoUrlGateRef } : {})}
+                    blurHandlerRef={heroBlurRef}
+                  />
+                ) : null}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
       </CatalogFormSection>
 
       <CatalogFormSection

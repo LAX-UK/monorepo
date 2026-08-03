@@ -16,7 +16,7 @@ const baseInput = {
 };
 
 describe("sale-mode-policy", () => {
-  it("describes online as biddable, no stream/location, per-lot timing", () => {
+  it("describes online as biddable without stream URL, no location, per-lot timing", () => {
     const caps = getSaleModeCapabilities("online");
     expect(caps.allowsBidding).toBe(true);
     expect(caps.allowsStreamUrl).toBe(false);
@@ -66,9 +66,20 @@ describe("createSaleSchema", () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      const messages = result.error.issues.map((i) => i.message);
-      expect(messages).toContain("Stream URL is only allowed for onsite auctions");
+      const paths = result.error.issues.map((i) => i.path.join("."));
+      expect(paths).toContain("streamUrl");
     }
+  });
+
+  it("accepts hero video URL on online sales when presentation is video", () => {
+    const result = createSaleSchema.safeParse({
+      ...baseInput,
+      deliveryMode: "online",
+      allowOnlineBidsBeforeGoLive: false,
+      heroPresentation: "video",
+      heroVideoUrl: "https://www.youtube.com/watch?v=abc12345678",
+    });
+    expect(result.success).toBe(true);
   });
 
   it("rejects location fields on online sales", () => {
@@ -185,5 +196,37 @@ describe("updateSaleSchema", () => {
       streamUrl: "https://www.youtube.com/watch?v=abc12345678",
     });
     expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join("."));
+      expect(paths).toContain("streamUrl");
+    }
+  });
+
+  it("defers presentation-only video patches to state-aware service validation", () => {
+    const result = updateSaleSchema.safeParse({
+      heroPresentation: "video",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("defers URL-only clears to state-aware service validation", () => {
+    const result = updateSaleSchema.safeParse({
+      heroVideoUrl: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an explicitly invalid video hero pair", () => {
+    const result = updateSaleSchema.safeParse({
+      heroPresentation: "video",
+      heroVideoUrl: null,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("heroVideoUrl");
+    }
   });
 });

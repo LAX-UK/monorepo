@@ -11,6 +11,8 @@ const baseSale = {
   deliveryMode: "onsite",
   allowOnlineBidsBeforeGoLive: false,
   streamUrl: null,
+  heroPresentation: "cover",
+  heroVideoUrl: null,
   locationName: null,
   locationAddress: null,
   locationMapUrl: null,

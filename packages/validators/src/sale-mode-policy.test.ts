@@ -32,6 +32,8 @@ describe("sale-mode-policy", () => {
   });
 
   it("online does not inherit lot timing or saleroom delivery", () => {
+    const online = getSaleModeCapabilities("online");
+    expect(online.allowsStreamUrl).toBe(false);
     expect(saleModeInheritsLotTiming("online")).toBe(false);
     expect(isSaleroomDeliveryMode("online")).toBe(false);
   });

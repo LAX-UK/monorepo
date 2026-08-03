@@ -5,6 +5,10 @@ import { buyerPremiumTiersSchema } from "../buyer-premium.js";
 import { createNestedLotForSaleSchema } from "../lot/create-update.js";
 import { mediaReferenceSchema } from "../media.js";
 import { isUkPostcode, normalizeUkPostcode } from "../onsite-location.js";
+import {
+  HERO_VIDEO_URL_REQUIRED,
+  isValidHeroPresentationState,
+} from "../sale-hero-presentation-policy.js";
 import { getSaleModeCapabilities } from "../sale-mode-policy.js";
 import { isAllowedStreamUrl } from "../stream-embed.js";
 
@@ -36,6 +40,17 @@ export const streamUrlField = z
   .refine((v) => v == null || isAllowedStreamUrl(v), {
     message: "Unsupported stream URL host",
   });
+
+export const heroVideoUrlField = z
+  .union([z.string().url().max(500), z.literal("")])
+  .optional()
+  .nullable()
+  .transform((v) => (v === "" ? null : v))
+  .refine((v) => v == null || isAllowedStreamUrl(v), {
+    message: "Unsupported video URL host",
+  });
+
+export const heroPresentationField = z.enum(["cover", "video"]).optional();
 
 export const locationTextField = z
   .union([z.string().min(1).max(500), z.literal("")])
@@ -175,6 +190,8 @@ export const saleCreateBodySchema = z.object({
   deliveryMode: z.enum(saleDeliveryModes).optional(),
   allowOnlineBidsBeforeGoLive: z.coerce.boolean().optional(),
   streamUrl: streamUrlField,
+  heroPresentation: heroPresentationField,
+  heroVideoUrl: heroVideoUrlField,
   locationName: locationTextField,
   locationAddress: locationTextField,
   locationMapUrl: locationMapUrlField,
@@ -218,6 +235,30 @@ export const LOCATION_FIELD_KEYS: readonly LocationFieldKey[] = [
   "locationCountry",
 ];
 
+export function refineHeroPresentation(
+  data: {
+    heroPresentation?: "cover" | "video" | undefined;
+    heroVideoUrl?: string | null | undefined;
+  },
+  ctx: z.RefinementCtx,
+  complete: boolean,
+): void {
+  if (!complete && (data.heroPresentation === undefined || data.heroVideoUrl === undefined)) {
+    return;
+  }
+  const state = {
+    heroPresentation: data.heroPresentation ?? "cover",
+    heroVideoUrl: data.heroVideoUrl ?? null,
+  };
+  if (!isValidHeroPresentationState(state)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: HERO_VIDEO_URL_REQUIRED,
+      path: ["heroVideoUrl"],
+    });
+  }
+}
+
 export function refineByMode(
   data: {
     deliveryMode?: SaleDeliveryMode | undefined;
@@ -232,7 +273,7 @@ export function refineByMode(
   if (!caps.allowsStreamUrl && data.streamUrl) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Stream URL is only allowed for onsite auctions",
+      message: "Stream URL is not supported for this delivery mode",
       path: ["streamUrl"],
     });
   }
@@ -278,10 +319,12 @@ export function refineSaleCreateBody(
   ctx: z.RefinementCtx,
 ) {
   refineByMode(data, ctx, "onsite");
+  refineHeroPresentation(data, ctx, true);
   refinePreviewStartTime(data, ctx);
 }
 
 export function refineSaleUpdateBody(data: Record<string, unknown>, ctx: z.RefinementCtx) {
   refineByMode(data as Parameters<typeof refineByMode>[0], ctx, "onsite");
+  refineHeroPresentation(data as Parameters<typeof refineHeroPresentation>[0], ctx, false);
   refinePreviewStartTime(data as Parameters<typeof refinePreviewStartTime>[0], ctx);
 }

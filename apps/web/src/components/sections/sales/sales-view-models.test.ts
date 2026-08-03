@@ -21,6 +21,8 @@ function makeSale(overrides: Partial<Sale> = {}): Sale {
     deliveryMode: "online",
     allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
+    heroPresentation: "cover",
+    heroVideoUrl: null,
     locationName: "London",
     locationAddress: null,
     locationMapUrl: null,

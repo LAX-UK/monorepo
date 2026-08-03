@@ -83,6 +83,8 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     deliveryMode: (row.deliveryMode ?? "onsite") as SaleDeliveryMode,
     allowOnlineBidsBeforeGoLive: row.allowOnlineBidsBeforeGoLive ?? false,
     streamUrl: row.streamUrl ?? null,
+    heroPresentation: row.heroPresentation,
+    heroVideoUrl: row.heroVideoUrl ?? null,
     locationName: row.locationName ?? null,
     locationAddress: row.locationAddress ?? null,
     locationMapUrl: row.locationMapUrl ?? null,

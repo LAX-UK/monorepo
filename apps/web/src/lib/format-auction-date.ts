@@ -19,7 +19,7 @@ export function formatLotAuctionLine(lot: Lot): string {
 }
 
 /** Sale card subtitle: "9–16 April 2026 | London" style range when possible. */
-export function formatSaleDateRange(sale: Sale): string {
+export function formatSaleDateRange(sale: Pick<Sale, "startTime" | "endTime">): string {
   const sameMonth =
     sale.startTime.getMonth() === sale.endTime.getMonth() &&
     sale.startTime.getFullYear() === sale.endTime.getFullYear();

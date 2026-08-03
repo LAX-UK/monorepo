@@ -228,7 +228,12 @@ export function heroLotCoverSources(
   });
 }
 
-export function toHeroSaleSlideVM(sale: Sale): HeroSaleSlideVM {
+export function toHeroSaleSlideVM(
+  sale: Pick<
+    Sale,
+    "id" | "title" | "deliveryMode" | "status" | "startTime" | "endTime" | "coverImages"
+  >,
+): HeroSaleSlideVM {
   const pres = getSaleTypePresentation(sale.deliveryMode);
   const startIso = toOptionalIsoString(sale.startTime);
   const endIso = toOptionalIsoString(sale.endTime);

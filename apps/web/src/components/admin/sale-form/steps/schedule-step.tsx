@@ -37,9 +37,9 @@ export function SaleScheduleStep({
   initialStreamUrl = "",
   streamUrlGateRef,
 }: SaleScheduleStepProps) {
+  const deliveryMode = form.watch("deliveryMode");
   const streamFieldEnabled = isSaleroom && (streamUrlEditable ?? isDraft);
   const streamBlurRef = useRef<(() => void) | null>(null);
-  const deliveryMode = form.watch("deliveryMode");
   const startTime = form.watch("startTime");
   const endTime = form.watch("endTime");
   const lotConflicts = useMemo(() => {

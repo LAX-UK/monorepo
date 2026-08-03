@@ -15,6 +15,8 @@ function mockSaleRepo(row: Pick<Sale, "id" | "title" | "deliveryMode"> | null): 
             categoryId: null,
             allowOnlineBidsBeforeGoLive: false,
             streamUrl: null,
+            heroPresentation: "cover",
+            heroVideoUrl: null,
             locationName: null,
             locationAddress: null,
             locationMapUrl: null,

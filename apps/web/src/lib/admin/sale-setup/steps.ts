@@ -14,7 +14,14 @@ export {
 
 /** Sale form field groups per setup step (steps 1–3 only). */
 export const SALE_SETUP_SALE_STEP_FIELDS = {
-  identity: ["title", "description", "coverImages", "categoryId"],
+  identity: [
+    "title",
+    "description",
+    "coverImages",
+    "heroPresentation",
+    "heroVideoUrl",
+    "categoryId",
+  ],
   schedule: [
     "deliveryMode",
     "requireSaleroomGoLiveBeforeOnlineBids",

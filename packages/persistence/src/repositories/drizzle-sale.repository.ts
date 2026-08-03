@@ -137,6 +137,8 @@ export class DrizzleSaleRepository implements ISaleRepository {
         deliveryMode: input.deliveryMode ?? "onsite",
         allowOnlineBidsBeforeGoLive: input.allowOnlineBidsBeforeGoLive ?? false,
         streamUrl: input.streamUrl ?? null,
+        heroPresentation: input.heroPresentation ?? "cover",
+        heroVideoUrl: input.heroVideoUrl ?? null,
         locationName: input.locationName ?? null,
         locationAddress: input.locationAddress ?? null,
         locationMapUrl: input.locationMapUrl ?? null,
@@ -234,6 +236,8 @@ export class DrizzleSaleRepository implements ISaleRepository {
       rowPatch.allowOnlineBidsBeforeGoLive = patch.allowOnlineBidsBeforeGoLive;
     }
     if (patch.streamUrl !== undefined) rowPatch.streamUrl = patch.streamUrl;
+    if (patch.heroPresentation !== undefined) rowPatch.heroPresentation = patch.heroPresentation;
+    if (patch.heroVideoUrl !== undefined) rowPatch.heroVideoUrl = patch.heroVideoUrl;
     if (patch.locationName !== undefined) rowPatch.locationName = patch.locationName ?? null;
     if (patch.locationAddress !== undefined)
       rowPatch.locationAddress = patch.locationAddress ?? null;

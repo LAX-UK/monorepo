@@ -13,6 +13,8 @@ const baseSale: Sale = {
   deliveryMode: "onsite",
   allowOnlineBidsBeforeGoLive: false,
   streamUrl: "https://www.youtube.com/watch?v=abc",
+  heroPresentation: "cover",
+  heroVideoUrl: null,
   locationName: null,
   locationAddress: null,
   locationMapUrl: null,

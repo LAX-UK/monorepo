@@ -60,6 +60,7 @@ type SubmitArgs = {
   onValidationBanner?: (message: string | null, stepIndex?: number) => void;
   router: { push: (href: string) => void };
   streamUrlGateRef?: RefObject<StreamUrlVerificationGate | null>;
+  heroVideoUrlGateRef?: RefObject<StreamUrlVerificationGate | null>;
 };
 
 export async function validateAllSaleWizardSteps(
@@ -117,6 +118,16 @@ export async function submitSaleForm(values: AdminSaleFormValues, args: SubmitAr
     args.wizardGoTo(1);
     notifyAdminFormValidationFailure({});
     return;
+  }
+  if (values.heroPresentation === "video") {
+    const heroBlockMsg = args.heroVideoUrlGateRef?.current?.assertCanSubmit(values.heroVideoUrl);
+    if (heroBlockMsg) {
+      args.form.setError("heroVideoUrl", { type: "manual", message: heroBlockMsg });
+      args.onValidationBanner?.(heroBlockMsg, 0);
+      args.wizardGoTo(0);
+      notifyAdminFormValidationFailure({});
+      return;
+    }
   }
   if (args.isDraft && args.lots.length > 0) {
     const pendingWindow = parseSaleWindowFromForm(values);

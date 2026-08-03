@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { saleAllowsStreamUrl, saleAllowsWebBidding, saleInheritsLotTiming } from "./sale-mode";
 
 describe("sale-mode web facade", () => {
-  it("online allows web bidding and not stream URLs", () => {
+  it("online allows web bidding without saleroom stream URLs", () => {
     expect(saleAllowsWebBidding("online")).toBe(true);
     expect(saleAllowsStreamUrl("online")).toBe(false);
     expect(saleInheritsLotTiming("online")).toBe(false);

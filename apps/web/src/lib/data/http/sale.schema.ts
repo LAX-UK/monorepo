@@ -179,6 +179,8 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     deliveryMode: parseSaleDeliveryMode(row.deliveryMode),
     allowOnlineBidsBeforeGoLive: row.allowOnlineBidsBeforeGoLive === true,
     streamUrl: nullableString(row.streamUrl),
+    heroPresentation: row.heroPresentation === "video" ? "video" : "cover",
+    heroVideoUrl: nullableString(row.heroVideoUrl),
     locationName: nullableString(row.locationName),
     locationAddress: nullableString(row.locationAddress),
     locationMapUrl: nullableString(row.locationMapUrl),

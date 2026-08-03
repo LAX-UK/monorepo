@@ -4,7 +4,7 @@ import {
   getSaleTypePresentation,
 } from "@/lib/sale-type-presentation";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
-import { isSaleroomGatedForOnlineBids, saleModeAllowsStreamUrl } from "@auction/validators";
+import { isSaleroomDeliveryMode, isSaleroomGatedForOnlineBids } from "@auction/validators";
 
 export type SaleFormatExplainerContext = {
   deliveryMode: SaleDeliveryMode;
@@ -69,10 +69,13 @@ function resolveStepDescription(
   }
 
   if (stepKey === "stream") {
-    if (!saleModeAllowsStreamUrl(ctx.deliveryMode)) {
+    if (!isSaleroomDeliveryMode(ctx.deliveryMode)) {
       return null;
     }
-    return hasStreamUrl(ctx.streamUrl) ? STREAM_AVAILABLE : null;
+    if (!hasStreamUrl(ctx.streamUrl)) {
+      return null;
+    }
+    return STREAM_AVAILABLE;
   }
 
   return baseDescription;
@@ -83,7 +86,7 @@ function shouldIncludeStep(
   stepKey: ParticipationStepKey,
 ): boolean {
   if (stepKey === "stream") {
-    return saleModeAllowsStreamUrl(ctx.deliveryMode) && hasStreamUrl(ctx.streamUrl);
+    return isSaleroomDeliveryMode(ctx.deliveryMode) && hasStreamUrl(ctx.streamUrl);
   }
   return true;
 }
@@ -108,7 +111,7 @@ export function resolveSaleFormatExplainer(
   });
 
   const footnotes: string[] = [];
-  if (saleModeAllowsStreamUrl(ctx.deliveryMode) && !hasStreamUrl(ctx.streamUrl)) {
+  if (isSaleroomDeliveryMode(ctx.deliveryMode) && !hasStreamUrl(ctx.streamUrl)) {
     footnotes.push(STREAM_UNAVAILABLE);
   }
 

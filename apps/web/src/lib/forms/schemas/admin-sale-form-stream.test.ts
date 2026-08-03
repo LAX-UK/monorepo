@@ -41,4 +41,35 @@ describe("safeParseUpdatePublishedSaleFromForm", () => {
     if (!parsed.success) return;
     expect(parsed.data.streamUrl).toBeUndefined();
   });
+
+  it("includes hero video fields for online sales", () => {
+    const values = {
+      ...emptyAdminSaleFormValues(),
+      title: "Online sale",
+      deliveryMode: "online" as const,
+      heroPresentation: "video" as const,
+      heroVideoUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    };
+    const parsed = safeParseUpdatePublishedSaleFromForm(values);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.heroPresentation).toBe("video");
+    expect(parsed.data.heroVideoUrl).toBe("https://www.youtube.com/watch?v=jNQXAC9IVRw");
+  });
+
+  it("normalizes a full cover-mode form write to a null hero video URL", () => {
+    const values = {
+      ...emptyAdminSaleFormValues(),
+      title: "Cover-led sale",
+      deliveryMode: "online" as const,
+      heroPresentation: "cover" as const,
+      heroVideoUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    };
+
+    const parsed = safeParseUpdatePublishedSaleFromForm(values);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.heroPresentation).toBe("cover");
+    expect(parsed.data.heroVideoUrl).toBeNull();
+  });
 });

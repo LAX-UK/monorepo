@@ -32,10 +32,18 @@ describe("resolveSaleFormatExplainer", () => {
     expect(closeStep?.description).not.toContain("catalogue closes on");
   });
 
-  it("online never shows stream step (mode disallows stream)", () => {
+  it("online never shows stream step even when streamUrl is set", () => {
     const vm = resolveSaleFormatExplainer({
       deliveryMode: "online",
-      streamUrl: "https://stream.example.com/live",
+      streamUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    });
+    expect(vm.steps.every((s) => s.title !== "Watch the Broadcast")).toBe(true);
+    expect(vm.footnotes).toHaveLength(0);
+  });
+
+  it("online without streamUrl omits stream step and footnote", () => {
+    const vm = resolveSaleFormatExplainer({
+      deliveryMode: "online",
     });
     expect(vm.steps.every((s) => s.title !== "Watch the Broadcast")).toBe(true);
     expect(vm.footnotes).toHaveLength(0);

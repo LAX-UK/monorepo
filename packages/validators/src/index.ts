@@ -7,6 +7,7 @@ export * from "./phone/index.js";
 export * from "./onsite-location.js";
 export * from "./sale.js";
 export * from "./venue.js";
+export * from "./sale-hero-presentation-policy.js";
 export * from "./sale-mode-policy.js";
 export * from "./sale-registration-policy.js";
 export * from "./lot-sale-timing.js";

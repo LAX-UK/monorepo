@@ -79,6 +79,9 @@ export type SaleDayMedia = SaleDayPhoto | SaleDayVideo;
 export const saleDeliveryModes = ["online", "onsite", "hybrid"] as const;
 export type SaleDeliveryMode = (typeof saleDeliveryModes)[number];
 
+export const saleHeroPresentations = ["cover", "video"] as const;
+export type SaleHeroPresentation = (typeof saleHeroPresentations)[number];
+
 export type Sale = {
   id: string;
   title: string;
@@ -102,6 +105,9 @@ export type Sale = {
    */
   allowOnlineBidsBeforeGoLive: boolean;
   streamUrl: string | null;
+  /** Homepage hero: cover image rotator (default) or marketing video embed. */
+  heroPresentation: SaleHeroPresentation;
+  heroVideoUrl: string | null;
   /** Onsite venue name (free-form). */
   locationName: string | null;
   /** Free-form single-line/multi-line address used for fallback display and
@@ -186,6 +192,8 @@ export type CreateSaleInput = {
   deliveryMode?: SaleDeliveryMode | undefined;
   allowOnlineBidsBeforeGoLive?: boolean | undefined;
   streamUrl?: string | null | undefined;
+  heroPresentation?: SaleHeroPresentation | undefined;
+  heroVideoUrl?: string | null | undefined;
   locationName?: string | null | undefined;
   locationAddress?: string | null | undefined;
   locationMapUrl?: string | null | undefined;

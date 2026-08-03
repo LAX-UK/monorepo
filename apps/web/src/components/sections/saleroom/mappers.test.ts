@@ -16,6 +16,8 @@ const baseSale: Sale = {
   deliveryMode: "onsite",
   allowOnlineBidsBeforeGoLive: false,
   streamUrl: "https://example.com/stream",
+  heroPresentation: "cover",
+  heroVideoUrl: null,
   locationName: "TheLax Saleroom",
   locationAddress: "12 King Street, London",
   locationMapUrl: null,

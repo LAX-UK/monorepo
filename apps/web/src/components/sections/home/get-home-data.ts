@@ -27,7 +27,6 @@ import {
   toEditorsPickLotCardVMs,
   toEndingSoonLotCardVMs,
   toHeroLotVM,
-  toHeroSaleSlideVM,
   toHomeUpcomingAuctionTileVMs,
   toPrivateSaleHighlightVMs,
 } from "@/components/sections/home/home-view-models";
@@ -41,11 +40,13 @@ import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { parseLot } from "@/lib/data/http/parse";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
+import {
+  resolveHomeHeroLiveFromSale,
+  resolveHomeHeroRotatorFromSales,
+} from "@/lib/home-hero-policy";
 import { type SaleListRow, parseSaleListRowApiPayload } from "@/lib/sale-list-row";
-import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
-import { lotPath, salePath } from "@/lib/seo/url";
+import { lotPath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
-import { parseStreamEmbedUrl } from "@auction/validators";
 import { cache } from "react";
 
 export {
@@ -158,30 +159,8 @@ async function resolveHomeHeroState(heroVm: HeroLotVM): Promise<HeroStateVM> {
   try {
     const activeRows = await fetchHomeSales({ status: "active", limit: 10 });
     for (const row of activeRows) {
-      const { sale } = row;
-      if (sale.deliveryMode !== "onsite") continue;
-      if (!sale.streamUrl) continue;
-      const embed = parseStreamEmbedUrl(sale.streamUrl);
-      if (!embed) continue;
-      const modeLabel = getSaleDeliveryModeLabel("onsite");
-      return {
-        kind: "live",
-        saleId: sale.id,
-        saleTitle: sale.title,
-        embedSrc: embed.src,
-        provider: embed.provider,
-        modeLabel,
-        saleroomHref: salePath(sale),
-        ...(embed.provider === "youtube" && embed.videoId
-          ? {
-              videoId: embed.videoId,
-              ...(embed.startSeconds !== undefined ? { startSeconds: embed.startSeconds } : {}),
-            }
-          : {}),
-        posterImageUrl: sale.coverImages[0] ?? null,
-        posterImageMobileUrl: sale.coverImages[1] ?? null,
-        posterImageDesktopWideUrl: sale.coverImages[2] ?? null,
-      };
+      const hero = resolveHomeHeroLiveFromSale(row.sale);
+      if (hero) return hero;
     }
 
     const rotatorRows = await fetchHomeSales({
@@ -189,12 +168,12 @@ async function resolveHomeHeroState(heroVm: HeroLotVM): Promise<HeroStateVM> {
       sort: "startAsc",
       limit: 5,
     });
-    if (rotatorRows.length > 0) {
-      return {
-        kind: "rotator",
-        slides: rotatorRows.map((r) => toHeroSaleSlideVM(r.sale)),
-      };
+    for (const row of rotatorRows) {
+      const hero = resolveHomeHeroLiveFromSale(row.sale);
+      if (hero) return hero;
     }
+    const rotator = resolveHomeHeroRotatorFromSales(rotatorRows.map((row) => row.sale));
+    if (rotator) return rotator;
   } catch (err) {
     console.error("[getHomeData] hero sale load failed", err);
   }

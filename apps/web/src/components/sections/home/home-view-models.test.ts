@@ -47,6 +47,8 @@ function baseSale(overrides: Partial<Sale> = {}): Sale {
     deliveryMode: "online",
     allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
+    heroPresentation: "cover",
+    heroVideoUrl: null,
     locationName: null,
     locationAddress: null,
     locationMapUrl: null,

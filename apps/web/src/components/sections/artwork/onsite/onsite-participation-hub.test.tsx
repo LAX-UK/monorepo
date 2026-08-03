@@ -24,6 +24,8 @@ const baseSale: Sale = {
   deliveryMode: "onsite",
   allowOnlineBidsBeforeGoLive: false,
   streamUrl: null,
+  heroPresentation: "cover",
+  heroVideoUrl: null,
   locationName: "London Gallery",
   locationAddress: null,
   locationMapUrl: null,

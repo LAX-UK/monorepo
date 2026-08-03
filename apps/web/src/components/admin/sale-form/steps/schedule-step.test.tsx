@@ -49,6 +49,12 @@ function ScheduleStepHarness() {
 }
 
 describe("SaleScheduleStep", () => {
+  it("does not render saleroom stream URL for a draft online sale", () => {
+    render(<ScheduleStepHarness />);
+
+    expect(screen.queryByText("Live stream URL (optional)")).not.toBeInTheDocument();
+  });
+
   it("renders delivery and schedule sections for draft online sale", () => {
     render(<ScheduleStepHarness />);
 

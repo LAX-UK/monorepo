@@ -84,6 +84,7 @@ export function AdminSaleForm({
   const isDraft = !saleStatus || saleStatus === "draft";
   const streamUrlEditable = isDraft || saleStatus === "scheduled" || saleStatus === "active";
   const streamUrlGateRef = useRef<StreamUrlVerificationGate | null>(null);
+  const heroVideoUrlGateRef = useRef<StreamUrlVerificationGate | null>(null);
   const formSchema = useMemo(
     () => (isDraft ? adminSaleDraftScheduleSchema() : adminSaleFormValuesSchema),
     [isDraft],
@@ -168,6 +169,7 @@ export function AdminSaleForm({
                   },
                   router,
                   streamUrlGateRef,
+                  heroVideoUrlGateRef,
                 });
               });
             },
@@ -281,6 +283,8 @@ export function AdminSaleForm({
                       categories={categories}
                       pending={pending}
                       previewUrlByKey={previewUrlByKey}
+                      initialHeroVideoUrl={defaultValues.heroVideoUrl}
+                      heroVideoUrlGateRef={heroVideoUrlGateRef}
                     />
                   ) : null}
                   {stepIndex === 1 ? (

@@ -52,8 +52,8 @@ export function StreamUrlField({
             />
           </FormControl>
           <p className="mt-2 font-body text-xs text-on-surface-variant">
-            Optional livestream for the onsite event. Allowed: YouTube, Vimeo (including live event
-            links), Twitch, Cloudflare Stream.
+            Live venue broadcast shown on lot pages and the sale overview during the auction.
+            Allowed: YouTube, Vimeo (including live event links), Twitch, Cloudflare Stream.
           </p>
           {streamFieldEnabled ? (
             <StreamUrlVerifyControl

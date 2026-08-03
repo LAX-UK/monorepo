@@ -1,5 +1,5 @@
 import type { SaleDeliveryMode } from "@auction/types";
-import { saleModeAllowsStreamUrl } from "@auction/validators";
+import { isSaleroomDeliveryMode } from "@auction/validators";
 
 // ─── Core types ──────────────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ export type StreamPresentation = {
 export type SaleStreamContext = {
   hasStreamUrl: boolean;
   allowsStream: boolean;
-  /** Null when status is draft/cancelled/voided or deliveryMode is online. */
+  /** Null when status is draft/cancelled/voided. */
   phase: StreamPhase | null;
   showOnLotPage: boolean;
   showOnSalePage: boolean;
@@ -123,10 +123,11 @@ function buildPresentation(
  *
  * - lotPage:  scheduled + active only (viewer can watch while bidding)
  * - salePage: scheduled + active + ended (recording archive)
+ * - Live venue streams are saleroom delivery modes only (onsite/hybrid).
  */
 export function shouldShowStreamOnSurface(input: SaleStreamInput, surface: StreamSurface): boolean {
   if (!hasValidStreamUrl(input.streamUrl)) return false;
-  if (!saleModeAllowsStreamUrl(input.deliveryMode)) return false;
+  if (!isSaleroomDeliveryMode(input.deliveryMode)) return false;
 
   const phase = resolveStreamPhase(input.status);
   if (phase === null) return false;
@@ -156,7 +157,7 @@ export function resolveStreamPresentation(
  */
 export function resolveSaleStreamContext(input: SaleStreamInput): SaleStreamContext {
   const hasStreamUrl = hasValidStreamUrl(input.streamUrl);
-  const allowsStream = saleModeAllowsStreamUrl(input.deliveryMode);
+  const allowsStream = isSaleroomDeliveryMode(input.deliveryMode);
   const phase = resolveStreamPhase(input.status);
 
   const showOnLotPage = shouldShowStreamOnSurface(input, "lotPage");

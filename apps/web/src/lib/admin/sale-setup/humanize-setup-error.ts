@@ -35,8 +35,8 @@ const MESSAGE_MAP: ReadonlyArray<[pattern: RegExp | string, message: string]> = 
   ],
   ["Unsupported stream URL host", "Use a YouTube, Vimeo, or Twitch link."],
   [
-    "Stream URL is only allowed for onsite auctions",
-    "Live stream links are only for onsite sales.",
+    "Stream URL is not supported for this delivery mode",
+    "Live stream links are not supported for this delivery mode.",
   ],
   ["Location is only allowed for onsite auctions", "Venue details are only for onsite sales."],
   ["Sale must have at least one lot to publish", "Add at least one lot before going live."],

@@ -1,7 +1,12 @@
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { CreateSaleInput, Sale, UserRole } from "@auction/types";
 import { normalizeUserStaffRole } from "@auction/types";
-import { getSaleModeCapabilities } from "@auction/validators";
+import {
+  HERO_VIDEO_URL_REQUIRED,
+  applyHeroPresentationPatch,
+  getSaleModeCapabilities,
+  isValidHeroPresentationState,
+} from "@auction/validators";
 import type { updateSaleSchema } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import type { z } from "zod";
@@ -36,6 +41,13 @@ export async function updateDraftSale(
   const sale = await deps.saleRepo.findById(saleId);
   if (!sale) return err(new LotError("Sale not found", 404));
 
+  if (patch.heroPresentation !== undefined || patch.heroVideoUrl !== undefined) {
+    const nextHero = applyHeroPresentationPatch(sale, patch);
+    if (!isValidHeroPresentationState(nextHero)) {
+      return err(new LotError(HERO_VIDEO_URL_REQUIRED, 422));
+    }
+  }
+
   let pressCoverage = patch.pressCoverage;
   if (pressCoverage !== undefined) {
     pressCoverage = await enrichPressCoverageWithOpenGraphImages(sale.pressCoverage, pressCoverage);
@@ -46,6 +58,12 @@ export async function updateDraftSale(
     if (patch.coverImages !== undefined) publishedPatch.coverImages = patch.coverImages;
     if (patch.title !== undefined) publishedPatch.title = patch.title;
     if (patch.description !== undefined) publishedPatch.description = patch.description;
+    if (patch.heroPresentation !== undefined) {
+      publishedPatch.heroPresentation = patch.heroPresentation;
+    }
+    if (patch.heroVideoUrl !== undefined) {
+      publishedPatch.heroVideoUrl = patch.heroVideoUrl ?? null;
+    }
     const caps = getSaleModeCapabilities(sale.deliveryMode);
     const canEditStreamUrl =
       caps.allowsStreamUrl &&

@@ -47,11 +47,14 @@ describe("resolveStreamPhase", () => {
 // ─── shouldShowStreamOnSurface — delivery mode guard ─────────────────────────
 
 describe("shouldShowStreamOnSurface — online mode never shows stream", () => {
-  it.each(["scheduled", "active", "ended"] as const)("status %s", (status) => {
-    const input = make({ deliveryMode: "online", status });
-    expect(shouldShowStreamOnSurface(input, "lotPage")).toBe(false);
-    expect(shouldShowStreamOnSurface(input, "salePage")).toBe(false);
-  });
+  it.each(["scheduled", "active", "ended"] as const)(
+    "status %s hidden on both surfaces",
+    (status) => {
+      const input = make({ deliveryMode: "online", status });
+      expect(shouldShowStreamOnSurface(input, "lotPage")).toBe(false);
+      expect(shouldShowStreamOnSurface(input, "salePage")).toBe(false);
+    },
+  );
 });
 
 // ─── shouldShowStreamOnSurface — streamUrl guard ─────────────────────────────
@@ -251,7 +254,7 @@ describe("resolveSaleStreamContext", () => {
     }
   });
 
-  it("online + active + URL → both hidden (mode disallows stream)", () => {
+  it("online + active + URL → hidden on both surfaces", () => {
     const ctx = resolveSaleStreamContext(make({ status: "active", deliveryMode: "online" }));
     expect(ctx.showOnLotPage).toBe(false);
     expect(ctx.showOnSalePage).toBe(false);
@@ -291,7 +294,7 @@ describe("resolveSaleStreamContext", () => {
     expect(ctx.presentation?.embedCtaLabel).toBe("Watch recording");
   });
 
-  it("allowsStream reflects delivery mode policy", () => {
+  it("allowsStream reflects saleroom delivery mode only", () => {
     expect(resolveSaleStreamContext(make({ deliveryMode: "online" })).allowsStream).toBe(false);
     expect(resolveSaleStreamContext(make({ deliveryMode: "onsite" })).allowsStream).toBe(true);
     expect(resolveSaleStreamContext(make({ deliveryMode: "hybrid" })).allowsStream).toBe(true);

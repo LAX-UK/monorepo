@@ -47,6 +47,8 @@ export const adminSaleFormValuesSchema = z
     /** UI-only: true = gated (allowOnlineBidsBeforeGoLive false). Hybrid sales only. */
     requireSaleroomGoLiveBeforeOnlineBids: z.boolean(),
     streamUrl: z.string().max(500),
+    heroPresentation: z.enum(["cover", "video"]),
+    heroVideoUrl: z.string().max(500),
     locationName: z.string().max(500),
     locationAddress: z.string().max(500),
     locationMapUrl: z.string().max(2048),
@@ -93,11 +95,26 @@ export const adminSaleFormValuesSchema = z
       }
     }
     const stream = values.streamUrl.trim();
-    if (stream && !isAllowedStreamUrl(stream)) {
+    if (isSaleroomDeliveryMode(values.deliveryMode) && stream && !isAllowedStreamUrl(stream)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Unsupported stream URL host",
         path: ["streamUrl"],
+      });
+    }
+    const heroVideo = values.heroVideoUrl.trim();
+    if (heroVideo && !isAllowedStreamUrl(heroVideo)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Unsupported video URL host",
+        path: ["heroVideoUrl"],
+      });
+    }
+    if (values.heroPresentation === "video" && !heroVideo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Hero video URL is required when homepage hero is set to video",
+        path: ["heroVideoUrl"],
       });
     }
     if (isSaleroomDeliveryMode(values.deliveryMode)) {
@@ -213,6 +230,20 @@ export const buildSaleLocationCreatePayload = pickLocationCreate;
 /** @internal Shared by create/update sale form parsers. */
 export const buildSaleLocationUpdatePayload = pickLocationUpdate;
 
+function pickHeroFields(values: AdminSaleFormValues): {
+  heroPresentation: AdminSaleFormValues["heroPresentation"];
+  heroVideoUrl: string | null;
+} {
+  const heroVideoRaw = values.heroVideoUrl.trim();
+  if (values.heroPresentation === "video") {
+    return {
+      heroPresentation: "video",
+      heroVideoUrl: heroVideoRaw === "" ? null : heroVideoRaw,
+    };
+  }
+  return { heroPresentation: "cover", heroVideoUrl: null };
+}
+
 export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
   const tiers = normalizeAdminFormTiersToApi(values.buyerPremiumTiers);
   if (!tiers.ok) {
@@ -229,6 +260,7 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
       ? { allowOnlineBidsBeforeGoLive: !values.requireSaleroomGoLiveBeforeOnlineBids }
       : {}),
     streamUrl: isSaleroom ? values.streamUrl.trim() || undefined : undefined,
+    ...pickHeroFields(values),
     venueId: isSaleroom ? values.venueId.trim() || undefined : undefined,
     ...pickLocationCreate(values, isSaleroom),
     startTime: instantFromDatetimeFormString(values.startTime),
@@ -242,7 +274,7 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
   });
 }
 
-/** Minimal patch for published sales (title, description, cover images, stream URL on live sales). */
+/** Minimal patch for published sales (title, description, cover images, hero, stream URL on live sales). */
 export function safeParseUpdatePublishedSaleFromForm(values: AdminSaleFormValues) {
   const streamRaw = values.streamUrl.trim();
   const isSaleroom = isSaleroomDeliveryMode(values.deliveryMode);
@@ -250,6 +282,7 @@ export function safeParseUpdatePublishedSaleFromForm(values: AdminSaleFormValues
     title: values.title.trim() || undefined,
     description: values.description.trim() || undefined,
     coverImages: values.coverImages,
+    ...pickHeroFields(values),
     ...(isSaleroom ? { streamUrl: streamRaw === "" ? null : streamRaw } : {}),
   });
 }
@@ -271,6 +304,7 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
       ? { allowOnlineBidsBeforeGoLive: !values.requireSaleroomGoLiveBeforeOnlineBids }
       : {}),
     streamUrl: isSaleroom ? (streamRaw === "" ? null : streamRaw) : null,
+    ...pickHeroFields(values),
     venueId: isSaleroom ? values.venueId.trim() || null : null,
     ...pickLocationUpdate(values, isSaleroom),
     startTime: values.startTime.trim()

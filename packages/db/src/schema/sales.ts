@@ -61,6 +61,8 @@ export const saleStatusEnum = pgEnum("sale_status", [
 
 export const saleDeliveryModeEnum = pgEnum("sale_delivery_mode", ["online", "onsite", "hybrid"]);
 
+export const saleHeroPresentationEnum = pgEnum("sale_hero_presentation", ["cover", "video"]);
+
 export const sale = pgTable(
   "sale",
   {
@@ -77,6 +79,9 @@ export const sale = pgTable(
       .notNull()
       .default(false),
     streamUrl: text("stream_url"),
+    /** Homepage hero: cover image rotator (default) or marketing video embed. */
+    heroPresentation: saleHeroPresentationEnum("hero_presentation").notNull().default("cover"),
+    heroVideoUrl: text("hero_video_url"),
     locationName: text("location_name"),
     locationAddress: text("location_address"),
     locationMapUrl: text("location_map_url"),

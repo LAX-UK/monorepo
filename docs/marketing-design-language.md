@@ -178,7 +178,7 @@ Shared UI: `SaleroomSessionCaption`, `SaleroomSessionStatusBadge`, `SaleroomMobi
 
 **Intentional duplicates on the sale page:** countdown + lifecycle on hero and mobile summary bar; live stream link on mobile bar and overview embed — kept for viewport-specific affordances, not deduped.
 
-**Stream surface policy** — all visibility + copy rules live in [`sale-stream-policy.ts`](apps/web/src/lib/sale-stream-policy.ts). Summary:
+**Live stream surface policy** — venue broadcast visibility + copy live in [`sale-stream-policy.ts`](apps/web/src/lib/sale-stream-policy.ts). Summary:
 
 | Status | Lot page (onsite/hybrid) | Sale page | Tag |
 |--------|--------------------------|-----------|-----|
@@ -186,7 +186,19 @@ Shared UI: `SaleroomSessionCaption`, `SaleroomSessionStatusBadge`, `SaleroomMobi
 | `active` | same, with pulse icon | Overview "Live stream" (pulse icon) | "Live stream" |
 | `ended` | **hidden** | Overview **"Saleroom recording"** + "Watch recording" | "Saleroom recording" |
 | `cancelled` / `draft` | hidden | hidden | — |
-| `online` mode | never (policy disallows stream for online mode) | never | — |
+| `online` mode | never | never | — |
+
+**Home hero policy** — marketing homepage hero (`/` only) lives in [`home-hero-policy.ts`](apps/web/src/lib/home-hero-policy.ts). Uses `heroPresentation` (`cover` | `video`) and `heroVideoUrl`; never reads live `streamUrl`.
+
+| `heroPresentation` | Valid `heroVideoUrl` | Sale status | Homepage hero |
+|--------------------|----------------------|-------------|---------------|
+| `video` | embeddable URL | `scheduled` or `active` | YouTube/Vimeo embed (`LaxHeroLiveStream`) |
+| `cover` (default) | — | `scheduled` or `active` | Cover image rotator slides |
+| any | any | other | Falls through to lot fallback hero |
+
+Admin sets hero mode on the sale Identity step; live venue `streamUrl` remains on the Schedule step for onsite/hybrid only.
+
+**Rollout:** migration `0136_sale_hero_presentation` deliberately defaults every existing sale to `heroPresentation='cover'` with a null `heroVideoUrl`. Do not backfill from `streamUrl`: that field is an operational saleroom broadcast, not homepage marketing content. Operators opt a sale into homepage video and verify its marketing URL from the dashboard Identity step. Rollback drops both hero columns and the enum after deploying code that no longer reads them.
 
 Ended sale pages also emit a [`VideoObject`](https://schema.org/VideoObject) JSON-LD entry alongside `EventCompleted` for SEO when the stream URL is embeddable. Mobile sticky bar stream CTA remains live-only (active state only, unchanged).
 

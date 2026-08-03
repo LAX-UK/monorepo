@@ -91,6 +91,8 @@ function baseSale(overrides: Partial<Sale> = {}): Sale {
     deliveryMode: "onsite",
     allowOnlineBidsBeforeGoLive: false,
     streamUrl: null,
+    heroPresentation: "cover",
+    heroVideoUrl: null,
     locationName: null,
     locationAddress: null,
     locationMapUrl: null,
@@ -126,6 +128,8 @@ describe("SaleService.create", () => {
       deliveryMode: "onsite",
       allowOnlineBidsBeforeGoLive: false,
       streamUrl: null,
+      heroPresentation: "cover",
+      heroVideoUrl: null,
       locationName: null,
       locationAddress: null,
       locationMapUrl: null,
@@ -198,6 +202,7 @@ describe("SaleService.create", () => {
       startTime: start,
       endTime: end,
       streamUrl: null,
+      heroVideoUrl: null,
       locationName: null,
       locationAddress: null,
       locationMapUrl: null,
@@ -245,6 +250,8 @@ describe("SaleService.create", () => {
       deliveryMode: "onsite",
       allowOnlineBidsBeforeGoLive: false,
       streamUrl: null,
+      heroPresentation: "cover",
+      heroVideoUrl: null,
       locationName: null,
       locationAddress: null,
       locationMapUrl: null,
@@ -289,6 +296,7 @@ describe("SaleService.create", () => {
         startTime: start,
         endTime: end,
         streamUrl: null,
+        heroVideoUrl: null,
         locationName: null,
         locationAddress: null,
         locationMapUrl: null,
@@ -337,6 +345,7 @@ describe("SaleService.create", () => {
         startTime: start,
         endTime: end,
         streamUrl: null,
+        heroVideoUrl: null,
         locationName: null,
         locationAddress: null,
         locationMapUrl: null,
@@ -469,6 +478,99 @@ describe("SaleService.updateDraft", () => {
     expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { title: "Renamed" });
   });
 
+  it("allows unrelated partial updates to an existing video hero sale", async () => {
+    const sale = baseSale({
+      status: "scheduled",
+      heroPresentation: "video",
+      heroVideoUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue({ ...sale, title: "Renamed" }),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { title: "Renamed" },
+      "catalogue_manager",
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { title: "Renamed" });
+  });
+
+  it("uses persisted URL when a partial patch selects video presentation", async () => {
+    const sale = baseSale({
+      status: "scheduled",
+      heroPresentation: "cover",
+      heroVideoUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn().mockResolvedValue({ ...sale, heroPresentation: "video" }),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { heroPresentation: "video" },
+      "catalogue_manager",
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { heroPresentation: "video" });
+  });
+
+  it("rejects clearing the persisted URL while hero presentation remains video", async () => {
+    const sale = baseSale({
+      status: "scheduled",
+      heroPresentation: "video",
+      heroVideoUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    });
+    const saleRepo: ISaleRepository = {
+      findById: vi.fn().mockResolvedValue(sale),
+      update: vi.fn(),
+    } as unknown as ISaleRepository;
+    const svc = new SaleService(
+      saleServiceOpts({
+        saleRepo,
+        lotRepo: {} as ILotRepository,
+        jobScheduler: null,
+      }),
+    );
+
+    const result = await svc.updateDraft(
+      "staff",
+      sale.id,
+      { heroVideoUrl: null },
+      "catalogue_manager",
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toMatchObject({
+        message: "Hero video URL is required when homepage hero is set to video",
+        status: 422,
+      });
+    }
+    expect(saleRepo.update).not.toHaveBeenCalled();
+  });
+
   it("rejects scheduled sale patch with only disallowed fields", async () => {
     const sale = baseSale({ status: "scheduled" });
     const saleRepo: ISaleRepository = {
@@ -583,15 +685,17 @@ describe("SaleService.updateDraft", () => {
     expect(saleRepo.update).not.toHaveBeenCalled();
   });
 
-  it("ignores streamUrl patch on online sale", async () => {
+  it("allows streamUrl patch on active hybrid sale", async () => {
     const sale = baseSale({
       status: "active",
-      deliveryMode: "online",
+      deliveryMode: "hybrid",
       streamUrl: null,
     });
+    const streamUrl = "https://www.youtube.com/watch?v=jNQXAC9IVRw";
+    const updated = { ...sale, streamUrl };
     const saleRepo: ISaleRepository = {
       findById: vi.fn().mockResolvedValue(sale),
-      update: vi.fn(),
+      update: vi.fn().mockResolvedValue(updated),
     } as unknown as ISaleRepository;
     const svc = new SaleService(
       saleServiceOpts({
@@ -601,15 +705,10 @@ describe("SaleService.updateDraft", () => {
       }),
     );
 
-    const result = await svc.updateDraft(
-      "staff",
-      sale.id,
-      { streamUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw" },
-      "catalogue_manager",
-    );
+    const result = await svc.updateDraft("staff", sale.id, { streamUrl }, "catalogue_manager");
 
-    expect(result.isErr()).toBe(true);
-    expect(saleRepo.update).not.toHaveBeenCalled();
+    expect(result.isOk()).toBe(true);
+    expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { streamUrl });
   });
 
   it("rejects catalogue.write staff without auction.manage when patch is not image-only", async () => {
@@ -1527,6 +1626,8 @@ describe("SaleService.getSaleDetailForPublicApi", () => {
       deliveryMode: "onsite",
       allowOnlineBidsBeforeGoLive: false,
       streamUrl: null,
+      heroPresentation: "cover",
+      heroVideoUrl: null,
       locationName: null,
       locationAddress: null,
       locationMapUrl: null,
@@ -1743,6 +1844,7 @@ describe("SaleService venue assignment", () => {
         startTime: new Date(Date.now() + 86_400_000),
         endTime: new Date(Date.now() + 172_800_000),
         streamUrl: null,
+        heroVideoUrl: null,
         locationName: "Custom Hall",
         locationAddress: null,
         locationMapUrl: null,
@@ -1786,6 +1888,7 @@ describe("SaleService venue assignment", () => {
       startTime: new Date(Date.now() + 86_400_000),
       endTime: new Date(Date.now() + 172_800_000),
       streamUrl: null,
+      heroVideoUrl: null,
       locationName: "Custom Hall",
       locationAddress: null,
       locationMapUrl: null,
