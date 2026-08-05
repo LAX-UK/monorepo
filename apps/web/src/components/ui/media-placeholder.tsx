@@ -64,11 +64,11 @@ export function MediaPlaceholder({
         height="100%"
         className={cn("block h-full w-full", SURFACE_CLASS[tone], LINE_CLASS[tone])}
         xmlns="http://www.w3.org/2000/svg"
-        aria-hidden
+        aria-hidden="true"
       >
-        <title>
-          {normalizedLabel ? `${normalizedLabel} placeholder pattern` : "Image placeholder pattern"}
-        </title>
+        {/* No <title>: this svg is aria-hidden and the wrapper above carries the
+            role="img" accessible name, so a <title> is invisible to screen readers
+            yet readable by crawlers that take the document's first <title>. */}
         <defs>
           {/* `useId()` can resolve to different values between SSR-stream and
               client-hydrate when this component lives inside a Suspense boundary;

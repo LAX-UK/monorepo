@@ -19,10 +19,12 @@ function Frame({ children, className, ...props }: SVGProps<SVGSVGElement>) {
       xmlns="http://www.w3.org/2000/svg"
       preserveAspectRatio="xMidYMid slice"
       className={cn("block h-full w-full text-brand-200 dark:text-brand-400", className)}
-      aria-hidden
+      aria-hidden="true"
       {...props}
     >
-      <title>Decorative illustration</title>
+      {/* Decorative only — aria-hidden, so no <title>: it would be ignored by
+          screen readers but read as the page title by crawlers that take the
+          document's first <title>. */}
       <defs>
         <pattern
           id={hatchId}

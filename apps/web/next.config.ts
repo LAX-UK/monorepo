@@ -20,11 +20,81 @@ if (
   );
 }
 
+// Next streams metadata into the <body> and relies on client JS to hoist it into <head>.
+// Only Googlebot and the UAs matched here get a blocking render that puts <title> and
+// <meta name="description"> in <head> — every other crawler sees a head with no title,
+// and then attributes whatever <title> it finds first (an inline SVG icon, say) to the
+// page. That is what made Semrush report every lax.bid URL as titled "YouTube".
+//
+// This value REPLACES Next's built-in list, so the built-ins are reproduced first and
+// the SEO/AI crawlers we care about are appended. Re-check against
+// next/dist/shared/lib/router/utils/html-bots.js on major Next upgrades.
+const HTML_LIMITED_BOTS = new RegExp(
+  [
+    // Next.js built-in defaults
+    "[\\w-]+-Google",
+    "Google-[\\w-]+",
+    "Chrome-Lighthouse",
+    "Slurp",
+    "DuckDuckBot",
+    "baiduspider",
+    "yandex",
+    "sogou",
+    "bitlybot",
+    "tumblr",
+    "vkShare",
+    "quora link preview",
+    "redditbot",
+    "ia_archiver",
+    "Bingbot",
+    "BingPreview",
+    "applebot",
+    "facebookexternalhit",
+    "facebookcatalog",
+    "Twitterbot",
+    "LinkedInBot",
+    "Slackbot",
+    "Discordbot",
+    "WhatsApp",
+    "SkypeUriPreview",
+    "Yeti",
+    "googleweblight",
+    // SEO auditors and backlink crawlers — these do not execute JavaScript
+    "SemrushBot",
+    "SiteAuditBot",
+    "AhrefsBot",
+    "AhrefsSiteAudit",
+    "Screaming Frog SEO Spider",
+    "MJ12bot",
+    "DotBot",
+    "rogerbot",
+    "DataForSeoBot",
+    "serpstatbot",
+    "Barkrowler",
+    "PetalBot",
+    "SeekportBot",
+    // AI answer engines that read static HTML
+    "GPTBot",
+    "OAI-SearchBot",
+    "ChatGPT-User",
+    "ClaudeBot",
+    "Claude-User",
+    "Claude-SearchBot",
+    "anthropic-ai",
+    "PerplexityBot",
+    "Perplexity-User",
+    "Bytespider",
+    "CCBot",
+  ].join("|"),
+  "i",
+);
+
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: workspaceRoot,
   poweredByHeader: false,
   reactStrictMode: true,
+  htmlLimitedBots: HTML_LIMITED_BOTS,
   transpilePackages: ["@auction/api", "@auction/types", "@auction/ui"],
   async headers() {
     return [
