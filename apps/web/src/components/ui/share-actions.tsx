@@ -30,10 +30,19 @@ const ICON_BUTTON_CLASS = cn(
   FOCUS_RING,
 );
 
+// No <title>: the icon is aria-hidden and its button carries the accessible name, so a
+// <title> is inert for screen readers but crawlers that take the document's first
+// <title> would read it as the page title.
 function LinkedInIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <title>LinkedIn</title>
+    <svg
+      className={className}
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         fill="currentColor"
         d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM3 8.75h4V21H3V8.75Zm7.5 0h3.8v1.7h.1c.5-1 1.8-2 3.7-2 4 0 4.7 2.6 4.7 6v7.5h-4V15c0-1.6 0-3.6-2.2-3.6-2.2 0-2.5 1.7-2.5 3.5V21h-4V8.75Z"

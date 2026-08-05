@@ -32,7 +32,6 @@ import {
   type CalendarPrimaryTab,
   type CalendarSalesUrlState,
   calendarClearFiltersHref,
-  calendarSalesHref,
   countActiveCalendarFilters,
   hasExplicitCalendarTab,
   parseCalendarPage,
@@ -167,25 +166,16 @@ export default async function SalesListPage({
   const { minPrice, maxPrice } = parsePriceRange(sp);
   const calendarPage = parseCalendarPage(sp);
 
-  if (!hasExplicitCalendarTab(sp) && resolveDefaultCalendarPrimaryTab(hasLiveSales) === "live") {
-    redirect(
-      calendarSalesHref({
-        tab: "live",
-        ...(categoryId ? { categoryId } : {}),
-        ...(deliveryMode !== "all" ? { deliveryMode } : {}),
-        ...(location !== "all" ? { location } : {}),
-        ...(sort !== "startAsc" ? { sort } : {}),
-        ...(month != null ? { month } : {}),
-        ...(year != null ? { year } : {}),
-        ...(minPrice != null ? { minPrice } : {}),
-        ...(maxPrice != null ? { maxPrice } : {}),
-        ...(calendarView !== "grid" ? { view: calendarView } : {}),
-        ...(calendarPage > 1 ? { page: calendarPage } : {}),
-      }),
-    );
-  }
-
-  const tab = parseCalendarPrimaryTab(sp);
+  // Resolve the default tab in place rather than redirecting to `?tab=live`. This page
+  // sits inside the `(marketing)/loading.tsx` Suspense boundary, so the HTML shell is
+  // always flushed before the page body renders and Next can no longer answer with a
+  // real 307 — it degrades `redirect()` to `<meta http-equiv="refresh">` on a 200. To a
+  // crawler that reads only static HTML, `/sales` was therefore an empty <main>: no H1
+  // and ~900 characters of header/footer chrome. Selecting the tab here keeps `/sales`
+  // a 200 content page, which is what the main nav and sitemap point at.
+  const tab = hasExplicitCalendarTab(sp)
+    ? parseCalendarPrimaryTab(sp)
+    : resolveDefaultCalendarPrimaryTab(hasLiveSales);
 
   const calendarState: CalendarSalesUrlState = {
     tab,
