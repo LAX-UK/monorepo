@@ -14,6 +14,11 @@ on:
         type: string
         default: release
         required: false
+      infra_ref:
+        description: auction-infra branch, tag, or commit
+        type: string
+        required: false
+        default: main
 concurrency:
   group: terraform-prod-${{ inputs.layer }}
   cancel-in-progress: false
@@ -105,6 +110,11 @@ jobs:
       TF_VAR_container_registry_subscription_tier: ${{ vars.DOCR_REGISTRY_TIER || 'professional' }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: ${{ inputs.infra_ref }}
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
       - name: App Platform Git branch (ephemeral prod only)
         if: inputs.layer == 'ephemeral'
         run: |
@@ -118,10 +128,10 @@ jobs:
           team-slug: lax-engineering
       - uses: ./.github/actions/terraform-setup
         with:
-          working-directory: infra/terraform/${{ inputs.layer }}/prod
+          working-directory: .infra-config/terraform/${{ inputs.layer }}/prod
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - uses: ./.github/actions/terraform-apply
         with:
-          working-directory: infra/terraform/${{ inputs.layer }}/prod
+          working-directory: .infra-config/terraform/${{ inputs.layer }}/prod
           state-key: ${{ inputs.layer }}-prod

@@ -6,9 +6,8 @@ name: Build images
 # source, which is the bulk of the ~30 min deploy time.
 #
 # Scope: api, auth, ws, worker, migrate, web, clamav, event (prod only). `web` bakes
-# NEXT_PUBLIC_* at build time, so its build args come from infra/web-build/<env>.env
-# (public values) plus GitHub env vars/secrets (GTM, Turnstile site key, Sentry
-# client DSN) — see scripts/ci/web-build-args.sh and infra/web-build/README.md.
+# NEXT_PUBLIC_* at build time, so its public build args come from the private
+# LAX-UK/auction-infra repository plus GitHub env vars/secrets.
 #
 # Each image is pushed with two tags:
 #   - <environment>  (rolling tag the Terraform app spec pins to; the deploy step
@@ -63,19 +62,43 @@ jobs:
     env:
       # Account-level DOCR registry name (registry.digitalocean.com/<name>).
       # Set as a repository or environment variable. Terraform output:
-      # `terraform -chdir=infra/terraform/persistent/prod output container_registry_name`.
+      # Private infra repo: `terraform -chdir=terraform/persistent/prod output container_registry_name`.
       REGISTRY: ${{ vars.DOCR_REGISTRY }}
       ENVIRONMENT: ${{ inputs.environment }}
       SHA: ${{ inputs.git_sha || github.sha }}
+      INFRA_CONFIG_ROOT: ${{ github.workspace }}/.infra-config
     steps:
       - name: Validate registry configured
         run: |
           if [ -z "${REGISTRY}" ]; then
-            echo "::error::vars.DOCR_REGISTRY is not set. Create the DOCR registry (infra/terraform/persistent/prod) and set the DOCR_REGISTRY variable before enabling prebuilt images."
+            echo "::error::vars.DOCR_REGISTRY is not set. Create the registry from LAX-UK/auction-infra and set the DOCR_REGISTRY variable."
             exit 1
           fi
 
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+
+      - name: Create read-only infra token
+        if: matrix.component == 'web'
+        id: infra-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+          owner: LAX-UK
+          repositories: auction-infra
+
+      - name: Check out web build configuration
+        if: matrix.component == 'web'
+        uses: actions/checkout@v4
+        with:
+          repository: LAX-UK/auction-infra
+          ref: main
+          token: ${{ steps.infra-token.outputs.token }}
+          sparse-checkout: web-build
+          path: .infra-config
+          persist-credentials: false
 
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
@@ -98,16 +121,6 @@ jobs:
           sudo mkswap /swapfile
           sudo swapon /swapfile
           free -h
-
-      # Guard + compose build args for web (see scripts/ci/web-build-args.sh and
-      # infra/web-build/README.md).
-      - name: Verify web origin matches Terraform
-        if: matrix.component == 'web'
-        env:
-          ENVIRONMENT: ${{ env.ENVIRONMENT }}
-        run: |
-          chmod +x scripts/ci/web-build-args.sh
-          ./scripts/ci/web-build-args.sh verify-origin
 
       - name: Compose web build args
         id: webargs
@@ -158,11 +171,13 @@ jobs:
       - name: Validate registry configured
         run: |
           if [ -z "${REGISTRY}" ]; then
-            echo "::error::vars.DOCR_REGISTRY is not set. Create the DOCR registry (infra/terraform/persistent/prod) and set the DOCR_REGISTRY variable before enabling prebuilt images."
+            echo "::error::vars.DOCR_REGISTRY is not set. Create the registry from LAX-UK/auction-infra and set the DOCR_REGISTRY variable."
             exit 1
           fi
 
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
 
       - name: Install doctl
         uses: digitalocean/action-doctl@v2

@@ -21,6 +21,7 @@ apps/web/e2e/.auth
 specs/
 docs/SPEC_KIT_WORKFLOW.md
 docs/SPEC_PILOT_CANDIDATES.md
+/infra/
 apps/event/.upload/
 
 # Pre-go-live audit artifact — keep local only (do not commit or stage).

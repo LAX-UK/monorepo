@@ -5,6 +5,7 @@ node_modules
 **/dist
 .git
 .cursor
+.infra-config
 coverage
 **/*.tsbuildinfo
 *.md

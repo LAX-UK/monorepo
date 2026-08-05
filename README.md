@@ -54,7 +54,7 @@ See `docs/development.md` for OAuth callback testing with ngrok, least-privilege
 | Auth | http://localhost:3003 | OIDC issuer, JWKS, `/api/auth/*` (parallel to API today; D7 dual-stack) |
 | Worker | http://localhost:3004 | `/health/live`, `/health/ready`, `/metrics` only — BullMQ consumers and projector runner |
 
-**ClamAV (optional locally):** production worker sets `CLAMAV_URL=http://clamav:9000` (see `infra/terraform/ephemeral/prod/main.tf`). For local dev, leave `CLAMAV_HOST` / `CLAMAV_URL` unset and SoF uploads skip scanning (no-op). To exercise scanning, run the image from `apps/clamav/Dockerfile` and point the worker at `CLAMAV_URL=http://127.0.0.1:9000` or `CLAMAV_HOST=127.0.0.1` + `CLAMAV_PORT=3310`.
+**ClamAV (optional locally):** production worker sets `CLAMAV_URL=http://clamav:9000` through the private `LAX-UK/auction-infra` configuration. For local dev, leave `CLAMAV_HOST` / `CLAMAV_URL` unset and SoF uploads skip scanning (no-op). To exercise scanning, run the image from `apps/clamav/Dockerfile` and point the worker at `CLAMAV_URL=http://127.0.0.1:9000` or `CLAMAV_HOST=127.0.0.1` + `CLAMAV_PORT=3310`.
 
 **Typed client:** `apps/web/src/lib/hc.ts` uses Hono `hc<AppType>` with `AppType` from `@auction/api/app`.
 

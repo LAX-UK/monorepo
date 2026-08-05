@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
-# Validate and compose Docker build-args for the prebuilt apps/web image.
+# Compose Docker build-args for the prebuilt apps/web image.
 #
-# Public values: infra/web-build/<env>.env (must mirror Terraform locals).
-# GitHub vars/secrets: passed as environment variables by the caller (see
-# infra/web-build/README.md).
+# Public values are checked out from the private infra repository at
+# <INFRA_CONFIG_ROOT>/web-build/<env>.env. GitHub vars/secrets are passed as
+# environment variables by the caller.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+INFRA_CONFIG_ROOT="${INFRA_CONFIG_ROOT:-${REPO_ROOT}/.infra-config}"
 
 env_file_path() {
-  echo "${REPO_ROOT}/infra/web-build/${ENVIRONMENT}.env"
-}
-
-tf_main_path() {
-  echo "${REPO_ROOT}/infra/terraform/ephemeral/${ENVIRONMENT}/main.tf"
+  echo "${INFRA_CONFIG_ROOT}/web-build/${ENVIRONMENT}.env"
 }
 
 require_environment() {
@@ -29,26 +26,6 @@ require_environment() {
 
 emit() {
   printf '%s=%s\n' "$1" "${2:-}"
-}
-
-cmd_verify_origin() {
-  require_environment
-  local env_file tf_file env_origin tf_origin
-  env_file="$(env_file_path)"
-  tf_file="$(tf_main_path)"
-
-  env_origin="$(grep -E '^NEXT_PUBLIC_WEB_ORIGIN=' "$env_file" | head -n1 | cut -d= -f2-)"
-  tf_origin="$(grep -E '^[[:space:]]*web_origin[[:space:]]*=' "$tf_file" | head -n1 | sed -E 's/.*"([^"]*)".*/\1/')"
-
-  if [[ -z "$env_origin" || -z "$tf_origin" ]]; then
-    echo "::error::Could not read web origin from $env_file ('$env_origin') or $tf_file ('$tf_origin')" >&2
-    exit 1
-  fi
-  if [[ "$env_origin" != "$tf_origin" ]]; then
-    echo "::error::NEXT_PUBLIC_WEB_ORIGIN mismatch: $env_file='$env_origin' vs $tf_file web_origin='$tf_origin'" >&2
-    exit 1
-  fi
-  echo "web origin OK: $env_origin"
 }
 
 cmd_compose_args() {
@@ -80,11 +57,10 @@ cmd_compose_args() {
 }
 
 usage() {
-  echo "usage: ENVIRONMENT=<test|prod> $0 {verify-origin|compose-args}" >&2
+  echo "usage: ENVIRONMENT=<test|prod> $0 compose-args" >&2
 }
 
 case "${1:-}" in
-  verify-origin) cmd_verify_origin ;;
   compose-args) cmd_compose_args ;;
   *) usage; exit 1 ;;
 esac

@@ -7,7 +7,6 @@ on:
       - packages/**
       - package.json
       - pnpm-lock.yaml
-      - infra/web-build/**
 permissions:
   contents: read
   actions: read

@@ -42,14 +42,6 @@ jobs:
       - name: Queue registry lint
         run: node scripts/lint-queue-registry.mjs
 
-      - name: Verify web build args match Terraform
-        run: |
-          set -euo pipefail
-          chmod +x scripts/ci/web-build-args.sh
-          for env in test prod; do
-            ENVIRONMENT="$env" ./scripts/ci/web-build-args.sh verify-origin
-          done
-
       # OSS binary — avoids gitleaks/gitleaks-action@v2 org license requirement (GITLEAKS_LICENSE).
       - name: Gitleaks secret scan
         run: |

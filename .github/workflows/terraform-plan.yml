@@ -1,13 +1,14 @@
 name: Terraform plan
 on:
-  pull_request:
-    paths:
-      - infra/terraform/**
-      - .github/workflows/terraform-*.yml
-      - .github/actions/terraform-*/**
+  workflow_dispatch:
+    inputs:
+      infra_ref:
+        description: auction-infra branch, tag, or commit
+        type: string
+        required: false
+        default: main
 permissions:
   contents: read
-  pull-requests: write
 jobs:
   plan:
     strategy:
@@ -61,17 +62,22 @@ jobs:
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: ${{ inputs.infra_ref }}
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
       - name: Terraform quality gates
         run: |
-          terraform fmt -check -recursive infra/terraform
-          terraform -chdir=infra/terraform/${{ matrix.layer }}/${{ matrix.env }} init -backend=false -input=false
-          terraform -chdir=infra/terraform/${{ matrix.layer }}/${{ matrix.env }} validate
+          terraform fmt -check -recursive .infra-config/terraform
+          terraform -chdir=.infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }} init -backend=false -input=false
+          terraform -chdir=.infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }} validate
       - uses: ./.github/actions/terraform-setup
         with:
-          working-directory: infra/terraform/${{ matrix.layer }}/${{ matrix.env }}
+          working-directory: .infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }}
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - name: Resolve sentry remote state (ephemeral)
@@ -89,13 +95,11 @@ jobs:
           fi
       - uses: ./.github/actions/terraform-plan
         with:
-          working-directory: infra/terraform/${{ matrix.layer }}/${{ matrix.env }}
+          working-directory: .infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }}
           plan-name: terraform-${{ matrix.layer }}-${{ matrix.env }}
       - uses: infracost/actions/setup@v3
         if: env.INFRACOST_API_KEY != ''
-      - name: Post plan summary
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const body = `Terraform plan generated for ${{ matrix.layer }}/${{ matrix.env }}. Download the artifact to review full diffs.`;
-            await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+      - name: Record plan summary
+        run: |
+          echo "Terraform plan generated for ${{ matrix.layer }}/${{ matrix.env }}." >> "$GITHUB_STEP_SUMMARY"
+          echo "Infra ref: ${{ inputs.infra_ref }}" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,32 @@
+name: Checkout private infrastructure
+description: Create a short-lived GitHub App token and check out auction-infra.
+inputs:
+  ref:
+    description: Branch, tag, or commit to check out.
+    required: false
+    default: main
+  app-id:
+    description: GitHub App ID with read access to auction-infra.
+    required: true
+  private-key:
+    description: GitHub App private key.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Create read-only infra token
+      id: token
+      uses: actions/create-github-app-token@v3
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: LAX-UK
+        repositories: auction-infra
+    - name: Check out private infra
+      uses: actions/checkout@v4
+      with:
+        repository: LAX-UK/auction-infra
+        ref: ${{ inputs.ref }}
+        token: ${{ steps.token.outputs.token }}
+        path: .infra-config
+        persist-credentials: false

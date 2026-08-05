@@ -1,5 +1,12 @@
 name: Terraform test up
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      infra_ref:
+        description: auction-infra branch, tag, or commit
+        type: string
+        required: false
+        default: main
 concurrency:
   group: terraform-test-ephemeral
   cancel-in-progress: false
@@ -61,6 +68,11 @@ jobs:
       SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: ${{ inputs.infra_ref }}
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -69,12 +81,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: ./.github/actions/terraform-setup
         with:
-          working-directory: infra/terraform/ephemeral/test
+          working-directory: .infra-config/terraform/ephemeral/test
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - uses: ./.github/actions/terraform-apply
         with:
-          working-directory: infra/terraform/ephemeral/test
+          working-directory: .infra-config/terraform/ephemeral/test
           state-key: ephemeral-test
       - run: pnpm tsx scripts/jwks-restore.ts test
       - run: pnpm db:seed

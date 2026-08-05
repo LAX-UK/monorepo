@@ -6,6 +6,11 @@ on:
         type: choice
         required: true
         options: [persistent, sentry, ephemeral]
+      infra_ref:
+        description: auction-infra branch, tag, or commit
+        type: string
+        required: false
+        default: main
 concurrency:
   group: terraform-test-${{ inputs.layer }}
   cancel-in-progress: false
@@ -73,6 +78,11 @@ jobs:
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: ${{ inputs.infra_ref }}
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
       - uses: ./.github/actions/sentry-auth-preflight
         if: inputs.layer == 'sentry'
         with:
@@ -80,10 +90,10 @@ jobs:
           team-slug: lax-engineering
       - uses: ./.github/actions/terraform-setup
         with:
-          working-directory: infra/terraform/${{ inputs.layer }}/test
+          working-directory: .infra-config/terraform/${{ inputs.layer }}/test
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - uses: ./.github/actions/terraform-apply
         with:
-          working-directory: infra/terraform/${{ inputs.layer }}/test
+          working-directory: .infra-config/terraform/${{ inputs.layer }}/test
           state-key: ${{ inputs.layer }}-test
