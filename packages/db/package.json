@@ -18,6 +18,7 @@
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:auth-role-contract": "vitest run src/auth-app-role.contract.test.ts src/auth-schema-grants.contract.test.ts",
     "test:worker-role-contract": "vitest run src/worker-app-role.contract.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",

@@ -1,5 +1,5 @@
+import { buildTrustedAuthOrigins } from "@auction/auth/server";
 import type { Context } from "hono";
-import { trustedWebOrigins } from "./trusted-origins.js";
 
 /** Allow audited SoF document previews to embed in the staff web app iframe. */
 export function applyStaffPreviewFramingHeaders(
@@ -10,7 +10,11 @@ export function applyStaffPreviewFramingHeaders(
     SSR_TRUSTED_ORIGINS?: string[] | undefined;
   },
 ): void {
-  const ancestors = trustedWebOrigins(env).join(" ");
+  const ancestors = buildTrustedAuthOrigins({
+    webOrigin: env.WEB_ORIGIN,
+    webOrigins: env.WEB_ORIGINS,
+    additionalOrigins: env.SSR_TRUSTED_ORIGINS,
+  }).join(" ");
   c.res.headers.delete("X-Frame-Options");
   c.header("Content-Security-Policy", `frame-ancestors ${ancestors}`);
 }

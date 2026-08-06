@@ -14,8 +14,8 @@ export type ConnectedAccount = {
   id: string;
   accountId: string;
   providerId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
   scopes: string[];
 };
 

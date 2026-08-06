@@ -1,44 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { slidingWindowRetryAfterSec } from "@auction/auth";
+import { AUTH_RATE_LIMIT_POLICY, slidingWindowRetryAfterSec } from "@auction/auth";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
 import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 
 /** Central auth rate-limit policy (sliding window, Redis sorted sets). */
-export const RATE_LIMIT_CONFIG = {
-  authGeneralWindowSec: 60,
-  authGeneralMax: 30,
-  signInWindowSec: 15 * 60,
-  signInMax: 5,
-  forgotIpWindowSec: 60,
-  forgotIpMax: 5,
-  forgotEmailWindowSec: 60 * 60,
-  forgotEmailMax: 3,
-  setupPasswordWindowSec: 60,
-  setupPasswordMax: 3,
-  totpWindowSec: 15 * 60,
-  totpMax: 5,
-  totpLockoutSec: 30 * 60,
-  confirmEmailChangeWindowSec: 60,
-  confirmEmailChangeMax: 10,
-  magicLinkIpWindowSec: 60,
-  magicLinkIpMax: 5,
-  magicLinkEmailWindowSec: 60 * 60,
-  magicLinkEmailMax: 3,
-  inviteWindowSec: 60 * 60,
-  inviteMax: 30,
-  invitePreviewWindowSec: 60,
-  invitePreviewMax: 20,
-  registerIpWindowSec: 60 * 60,
-  registerIpMax: 10,
-  registerEmailWindowSec: 60 * 60,
-  registerEmailMax: 3,
-  sendVerificationIpWindowSec: 60,
-  sendVerificationIpMax: 5,
-  sendVerificationEmailWindowSec: 60 * 60,
-  sendVerificationEmailMax: 3,
-} as const;
+export const RATE_LIMIT_CONFIG = AUTH_RATE_LIMIT_POLICY;
 
 function rateLimited(c: Context, retryAfterSec: number) {
   c.header("Retry-After", String(retryAfterSec));

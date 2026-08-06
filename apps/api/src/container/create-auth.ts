@@ -1,4 +1,10 @@
-import { type Auth, DEFAULT_JWT_AUDIENCE, createAuth } from "@auction/auth/server";
+import {
+  type Auth,
+  DEFAULT_JWT_AUDIENCE,
+  buildTrustedAuthOrigins,
+  createAuth,
+  createAuthLifecycleCallbacks,
+} from "@auction/auth/server";
 import { publishUserRegistered } from "@auction/db";
 import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
@@ -13,7 +19,6 @@ import type { Env } from "../env.js";
 import { BetterAuthAuthenticator } from "../infrastructure/better-auth-authenticator.js";
 import { CompositeAuthenticator } from "../infrastructure/composite-authenticator.js";
 import { JwtAuthenticator } from "../infrastructure/jwt-authenticator.js";
-import { trustedWebOrigins } from "../lib/trusted-origins.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { IOAuthAttributionStore } from "../services/interfaces/oauth-attribution-store.js";
 import type { EnsurePersonalLegalEntityService } from "../services/legal-entity/ensure-personal-legal-entity.service.js";
@@ -50,12 +55,62 @@ export function createContainerAuth(input: CreateAuthInput): ContainerAuth {
       ? TwilioVerifyService.fromEnv(env)
       : new ConsolePhoneVerificationService();
 
+  const lifecycle = createAuthLifecycleCallbacks({
+    markUserForOAuthAttribution: (userId) => oauthAttributionStore.markNewUser(userId),
+    ensurePersonalLegalEntity: (authUser) =>
+      ensurePersonalLegalEntityService.ensure({
+        userId: authUser.id,
+        displayName: authUser.name,
+        email: authUser.email,
+      }),
+    publishUserRegisteredForAccount: async ({ userId }) => {
+      const authUser = await authDb.query.user.findFirst({
+        where: (users, { eq }) => eq(users.id, userId),
+        columns: { id: true, email: true, name: true },
+      });
+      if (!authUser) {
+        throw new Error(`Cannot publish user.registered: auth user ${userId} was not found`);
+      }
+      await publishUserRegistered(
+        db,
+        {
+          userId: authUser.id,
+          email: authUser.email,
+          name: authUser.name,
+        },
+        { producer: "apps/api", accountDb: authDb },
+      );
+    },
+    completeOAuthAttribution: ({ userId, providerId }) =>
+      oauthAttributionStore.completeNewUserAccount(userId, providerId),
+    publishUserEmailVerified: async (authUser) => {
+      const { publishUserEmailVerified } = await import(
+        "../services/publish-user-email-verified.js"
+      );
+      const publisher = new DrizzleUserEmailVerifiedPublisher(db);
+      await publishUserEmailVerified(publisher, {
+        userId: authUser.id,
+        email: authUser.email,
+      });
+    },
+    onNonBlockingError: (_stage, error, userId) => {
+      console.error("[marketing] failed to mark new user for OAuth attribution", {
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    },
+  });
+
   const auth = createAuth({
     db: authDb,
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.API_PUBLIC_URL,
     issuerURL: env.OIDC_ISSUER_URL,
-    trustedOrigins: trustedWebOrigins(env),
+    trustedOrigins: buildTrustedAuthOrigins({
+      webOrigin: env.WEB_ORIGIN,
+      webOrigins: env.WEB_ORIGINS,
+      additionalOrigins: env.SSR_TRUSTED_ORIGINS,
+    }),
     allowInsecureCookies: env.ALLOW_HTTP_COOKIES,
     cookieDomain: env.COOKIE_DOMAIN,
     webOrigin: env.WEB_ORIGIN,
@@ -69,40 +124,7 @@ export function createContainerAuth(input: CreateAuthInput): ContainerAuth {
     jwtAudience: env.JWT_AUDIENCE ?? DEFAULT_JWT_AUDIENCE,
     authDekKey: env.AUTH_DEK_KEY?.trim(),
     revokeAllSessions: (userId: string) => sessionRevocation.revokeAllForUser(userId),
-    onUserCreated: async (authUser) => {
-      await oauthAttributionStore.markNewUser(authUser.id).catch((error: unknown) => {
-        console.error("[marketing] failed to mark new user for OAuth attribution", {
-          userId: authUser.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-      await ensurePersonalLegalEntityService.ensure({
-        userId: authUser.id,
-        displayName: authUser.name,
-        email: authUser.email,
-      });
-      await publishUserRegistered(
-        db,
-        {
-          userId: authUser.id,
-          email: authUser.email,
-          name: authUser.name,
-        },
-        { producer: "apps/api", accountDb: authDb },
-      );
-    },
-    onAccountCreated: ({ userId, providerId }) =>
-      oauthAttributionStore.completeNewUserAccount(userId, providerId),
-    onEmailVerified: async (authUser) => {
-      const { publishUserEmailVerified } = await import(
-        "../services/publish-user-email-verified.js"
-      );
-      const publisher = new DrizzleUserEmailVerifiedPublisher(db);
-      await publishUserEmailVerified(publisher, {
-        userId: authUser.id,
-        email: authUser.email,
-      });
-    },
+    ...lifecycle,
     enableNewDeviceLoginEmail: env.NODE_ENV === "production",
   });
 

@@ -6,9 +6,13 @@ on:
     paths:
       - "apps/web/**"
       - "apps/api/src/**"
+      - "apps/auth/**"
       - "packages/auth/**"
+      - "packages/db/src/migrate-roles.ts"
+      - "packages/db/src/auth-*.contract.test.ts"
       - "packages/db/src/seed/**"
       - "packages/ui/**"
+      - ".github/workflows/e2e-pr.yml"
       - "pnpm-lock.yaml"
 
 concurrency:
@@ -45,6 +49,14 @@ jobs:
       CI: "true"
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       REDIS_URL: redis://127.0.0.1:6379
+      BETTER_AUTH_SECRET: ci-auth-secret-at-least-sixteen-characters
+      API_PUBLIC_URL: http://localhost:3001
+      OIDC_ISSUER_URL: http://localhost:3003
+      WEB_ORIGIN: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_AUTH_URL: http://localhost:3003
+      ALLOW_HTTP_COOKIES: "true"
+      REQUIRE_EMAIL_VERIFICATION: "false"
       PLAYWRIGHT_E2E: "1"
       PLAYWRIGHT_BASE_URL: http://localhost:3000
       PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
@@ -67,13 +79,21 @@ jobs:
         run: |
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
-      - name: Build web and API
-        run: pnpm --filter @auction/api build && pnpm --filter @auction/web build
+      - name: Build web, API, and auth issuer
+        run: pnpm --filter @auction/api build && pnpm --filter @auction/auth-app build && pnpm --filter @auction/web build
       - name: Start stack
         run: |
-          pnpm --filter @auction/api start &
-          pnpm --filter @auction/web start &
-          npx --yes wait-on http://localhost:3000 --timeout 120000
+          PORT=3001 pnpm --filter @auction/api start &
+          PORT=3003 pnpm --filter @auction/auth-app start &
+          PORT=3000 pnpm --filter @auction/web start &
+          npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live --timeout 120000
+      - name: Verify dual-host OIDC and auth response parity
+        env:
+          AUTH_PUBLIC_URL: http://localhost:3003
+          AUTH_PARITY_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
+          AUTH_PARITY_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
+        run: |
+          node scripts/ci/verify-auth-dual-host.mjs
       - name: Prepare staff session
         working-directory: apps/web
         run: |

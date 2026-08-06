@@ -3,7 +3,7 @@ import { buildPgConnectionConfig } from "./ssl.js";
 
 const { Client } = pg;
 
-/** Tables Better Auth runs as `auth_app` must have full DML on (see `createAuth` in apps/api + apps/auth). */
+/** Tables Better Auth runs as `auth_app` must have CRUD DML on (never TRUNCATE/REFERENCES/TRIGGER). */
 export const AUTH_FULL_TABLES = [
   "user",
   "session",
@@ -28,7 +28,7 @@ export const AUTH_FULL_TABLES = [
  * - `domain_events`: append `user.registered` (INSERT) and `user.email_verified`
  *   (`publishUserEmailVerified` SELECT pre-check + INSERT; see apps/auth). */
 export const AUTH_INSERT_SELECT_TABLES = ["email_outbox", "domain_events"] as const;
-const AUTH_SELECT_TABLES = ["email_suppression"];
+export const AUTH_SELECT_TABLES = ["email_suppression"] as const;
 const API_DENY_TABLES = [
   "session",
   "account",
@@ -287,7 +287,7 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     const tables = await existingPublicTables(client);
 
     for (const tableName of AUTH_FULL_TABLES) {
-      await grantIfExists(client, "auth_app", tableName, "ALL PRIVILEGES");
+      await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT, UPDATE, DELETE");
     }
     for (const tableName of AUTH_INSERT_SELECT_TABLES) {
       await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");

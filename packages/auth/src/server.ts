@@ -29,6 +29,7 @@ import type { IPhoneVerificationService } from "@auction/sms";
 import { betterAuth } from "better-auth";
 import { buildDatabaseHooks } from "./auth-hooks/database-hooks.js";
 import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
+import type { AuthLifecycleCallbacks } from "./contracts.js";
 import { parseAuthDekKey } from "./crypto/dek.js";
 import { createEnvelopeCrypto } from "./crypto/envelope.js";
 import {
@@ -68,19 +69,13 @@ export type AuthEnv = {
    * The api wires this to provision the user's personal legal entity (Phase B / SE-P24).
    * Errors are caught + logged and never block account creation.
    */
-  onUserCreated?:
-    | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
-    | undefined;
+  onUserCreated?: AuthLifecycleCallbacks["onUserCreated"];
   /** Called after the first account row is created. OAuth signup attribution uses
    * this because Better Auth creates the user before its provider account.
    */
-  onAccountCreated?:
-    | ((account: { userId: string; providerId: string }) => Promise<void>)
-    | undefined;
+  onAccountCreated?: AuthLifecycleCallbacks["onAccountCreated"];
   /** Invoked from `emailVerification.afterEmailVerification` when the user confirms their email. */
-  onEmailVerified?:
-    | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
-    | undefined;
+  onEmailVerified?: AuthLifecycleCallbacks["onEmailVerified"];
   /**
    * When `true`, `databaseHooks.session.create.after` fires a `new-device-login` email
    * for every new session. Enabled in production; leave unset in tests.
@@ -245,6 +240,24 @@ export function createAuth(env: AuthEnv): Auth {
 }
 
 export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
+export {
+  applyAuthNoStoreHeaders,
+  AUTH_NO_STORE_HEADERS,
+  AUTH_RATE_LIMIT_POLICY,
+  AUTH_ROUTE_PATH,
+  buildOidcDiscoveryDocument,
+  buildTrustedAuthOrigins,
+  createAuthNoStoreMiddleware,
+  createAuthLifecycleCallbacks,
+  JWKS_PATH,
+  normalizeAuthIssuerUrl,
+  OIDC_DISCOVERY_PATH,
+  type AuthLifecycleAccount,
+  type AuthLifecycleAdapters,
+  type AuthLifecycleCallbacks,
+  type AuthLifecycleUser,
+  type OidcDiscoveryDocument,
+} from "./contracts.js";
 export {
   runSignInTurnstileGate,
   isSignInEmailPost,

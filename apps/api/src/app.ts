@@ -1,4 +1,6 @@
 import {
+  buildTrustedAuthOrigins,
+  createAuthNoStoreMiddleware,
   runSignInTurnstileGate,
   stampLastPasswordAuthFromSignInResponse,
 } from "@auction/auth/server";
@@ -15,9 +17,7 @@ import type { Env } from "./env.js";
 import { assertBullBoardProductionSafety, mountBullBoard } from "./lib/bull-board.js";
 import { createAppLogger } from "./lib/logger.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
-import { trustedWebOrigins } from "./lib/trusted-origins.js";
 import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
-import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
 import {
   createAuthRateLimitMiddleware,
   createMagicLinkRateLimitMiddleware,
@@ -80,7 +80,11 @@ import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 export const BROWSER_CORS_ALLOW_HEADERS = BROWSER_API_CUSTOM_HEADERS;
 
 export function createApp(container: Container, env: Env, authenticator: IAuthenticator) {
-  const webOrigins = trustedWebOrigins(env);
+  const webOrigins = buildTrustedAuthOrigins({
+    webOrigin: env.WEB_ORIGIN,
+    webOrigins: env.WEB_ORIGINS,
+    additionalOrigins: env.SSR_TRUSTED_ORIGINS,
+  });
   const app = new Hono();
   app.onError((err, c) => container.httpErrorHandler.handle(err, c));
   const appLogger = createAppLogger(env);

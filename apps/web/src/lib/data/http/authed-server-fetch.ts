@@ -8,6 +8,8 @@ export type AuthedServerFetchInit = RequestInit & {
    * you pass an explicit header via {@link authedServerFetch} from
    * `authed-fetch.server` or entity-scoped server actions). */
   skipActingLegalEntityHeader?: boolean;
+  /** Override the API origin for issuer-hosted Better Auth endpoints. */
+  baseUrl?: string;
 };
 
 /** Cookie-authenticated `fetch` for Server Components and Server Actions.
@@ -19,7 +21,7 @@ export async function authedServerFetch(
   path: string,
   init?: AuthedServerFetchInit,
 ): Promise<Response> {
-  const { skipActingLegalEntityHeader, ...fetchInit } = init ?? {};
+  const { skipActingLegalEntityHeader, baseUrl, ...fetchInit } = init ?? {};
   const headerOpts: Parameters<typeof buildAuthedSsrHeaders>[0] = {};
   if (skipActingLegalEntityHeader !== undefined) {
     headerOpts.skipActingLegalEntityHeader = skipActingLegalEntityHeader;
@@ -28,7 +30,7 @@ export async function authedServerFetch(
     headerOpts.init = fetchInit.headers;
   }
   const headers = await buildAuthedSsrHeaders(headerOpts);
-  return fetch(`${getServerApiBase()}${path}`, {
+  return fetch(`${baseUrl ?? getServerApiBase()}${path}`, {
     ...fetchInit,
     cache: fetchInit.cache ?? "no-store",
     headers,

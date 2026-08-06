@@ -38,6 +38,29 @@ psql "$DATABASE_URL_API" -c 'select * from jwks_key'
 
 The second command should fail for `api_app`.
 
+Role-contract gate (after migrations and `pnpm --filter @auction/db db:roles`):
+
+```sh
+AUTH_ROLE_CONTRACT_REQUIRED=true pnpm --filter @auction/db test:auth-role-contract
+```
+
+## Dual-host auth production parity
+
+Keep both issuers running locally with the same `DATABASE_URL_AUTH`,
+`BETTER_AUTH_SECRET`, `AUTH_DEK_KEY`, `OIDC_ISSUER_URL`, `COOKIE_DOMAIN`, and
+`JWT_AUDIENCE`. Use `NEXT_PUBLIC_AUTH_URL=http://localhost:3003` for the standalone
+path while the API remains on 3001. Then compare:
+
+```sh
+curl -fsS http://localhost:3001/.well-known/openid-configuration
+curl -fsS http://localhost:3003/.well-known/openid-configuration
+curl -fsSI http://localhost:3003/api/auth/get-session
+```
+
+Discovery must match, JWKS must expose the same keys, and auth responses must include
+`Cache-Control: no-store, no-cache, must-revalidate, private`. The PR browser workflow
+also runs this topology before the sign-in/session journey.
+
 ## OAuth callback testing
 
 Use a stable ngrok or `cloudflared` tunnel when testing Google/Apple callbacks.

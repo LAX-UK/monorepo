@@ -204,6 +204,46 @@ jobs:
       - name: Worker app role contract
         run: pnpm --filter @auction/db test -- worker-app-role
 
+  auth-role-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_AUTH: postgresql://auth_app:postgres@localhost:5432/auction_ci
+      WORKER_APP_DB_PASSWORD: postgres
+      API_APP_DB_PASSWORD: postgres
+      AUTH_APP_DB_PASSWORD: postgres
+      AUTH_ROLE_CONTRACT_REQUIRED: "true"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+      - name: Apply application role grants
+        run: pnpm --filter @auction/db db:roles
+      - name: Auth app role and schema contracts
+        run: pnpm --filter @auction/db test:auth-role-contract
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -263,10 +303,12 @@ jobs:
       REDIS_URL: redis://127.0.0.1:6379
       DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
       DATABASE_URL_WORKER: postgresql://worker_app:postgres@localhost:5432/auction_ci
+      DATABASE_URL_AUTH: postgresql://auth_app:postgres@localhost:5432/auction_ci
       WORKER_APP_DB_PASSWORD: postgres
       API_APP_DB_PASSWORD: postgres
       AUTH_APP_DB_PASSWORD: postgres
       WORKER_ROLE_CONTRACT_REQUIRED: "true"
+      AUTH_ROLE_CONTRACT_REQUIRED: "true"
       CI: "true"
     steps:
       - uses: actions/checkout@v4
@@ -298,3 +340,6 @@ jobs:
 
       - name: Worker app role contract
         run: pnpm --filter @auction/db test -- worker-app-role
+
+      - name: Auth app role and schema contracts
+        run: pnpm --filter @auction/db test:auth-role-contract

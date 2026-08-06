@@ -44,6 +44,15 @@ const envSchema = z
         .filter((s) => s.length > 0);
       return parts.length > 0 ? parts : undefined;
     }, z.array(z.string().url()).optional()),
+    SSR_TRUSTED_ORIGINS: z.preprocess((val) => {
+      if (val === undefined || val === "" || val == null) return undefined;
+      if (typeof val !== "string") return undefined;
+      const parts = val
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      return parts.length > 0 ? parts : undefined;
+    }, z.array(z.string().url()).optional()),
     JWT_AUDIENCE: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     AUTH_DEK_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     METRICS_TOKEN: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
@@ -169,11 +178,19 @@ const envSchema = z
 
 export type AuthAppEnv = z.infer<typeof envSchema>;
 
-export function loadAuthEnv(): AuthAppEnv {
-  const parsed = envSchema.safeParse(process.env);
+export function parseAuthEnv(input: NodeJS.ProcessEnv): AuthAppEnv {
+  const parsed = envSchema.safeParse(input);
   if (!parsed.success) {
-    console.error(parsed.error.flatten());
     throw new Error("Invalid auth app environment variables");
   }
   return parsed.data;
+}
+
+export function loadAuthEnv(): AuthAppEnv {
+  try {
+    return parseAuthEnv(process.env);
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
 }

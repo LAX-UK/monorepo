@@ -1,23 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { slidingWindowRetryAfterSec } from "@auction/auth";
+import { AUTH_RATE_LIMIT_POLICY, slidingWindowRetryAfterSec } from "@auction/auth";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
 
 /** Sliding-window thresholds mirroring apps/api to protect the auth issuer from distributed attacks. */
-const RL = {
-  authGeneralWindowSec: 60,
-  authGeneralMax: 30,
-  signInWindowSec: 15 * 60,
-  signInMax: 5,
-  totpWindowSec: 15 * 60,
-  totpMax: 5,
-  totpLockoutSec: 30 * 60,
-  magicLinkIpWindowSec: 60,
-  magicLinkIpMax: 5,
-  magicLinkEmailWindowSec: 60 * 60,
-  magicLinkEmailMax: 3,
-} as const;
+const RL = AUTH_RATE_LIMIT_POLICY;
 
 function rateLimited(c: Context, retryAfterSec: number) {
   c.header("Retry-After", String(retryAfterSec));
@@ -36,6 +24,51 @@ async function slidingIncrement(redis: Redis, key: string, windowSec: number): P
   const results = await pipeline.exec();
   const card = results?.[3]?.[1];
   return typeof card === "number" ? card : Number(card ?? 0);
+}
+
+async function emailFromJsonBody(req: Request): Promise<string | null> {
+  try {
+    const body = (await req.clone().json()) as { email?: unknown };
+    if (typeof body.email !== "string") return null;
+    const normalized = body.email.trim().toLowerCase();
+    return normalized.length > 0 && normalized.length <= 254 ? normalized : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Match the API host's strict resend-verification IP and email buckets. */
+export function createSendVerificationIssuerRateLimitMiddleware(redis: Redis) {
+  return createMiddleware(async (c, next) => {
+    if (c.req.method !== "POST" || !c.req.path.endsWith("/send-verification-email")) {
+      await next();
+      return;
+    }
+    const ip =
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+      c.req.header("x-real-ip") ??
+      "unknown";
+    const ipCount = await slidingIncrement(
+      redis,
+      `rl:auth-issuer:send-verification-ip:${ip}`,
+      RL.sendVerificationIpWindowSec,
+    );
+    if (ipCount > RL.sendVerificationIpMax) {
+      return rateLimited(c, RL.sendVerificationIpWindowSec);
+    }
+    const email = await emailFromJsonBody(c.req.raw);
+    if (email) {
+      const emailCount = await slidingIncrement(
+        redis,
+        `rl:auth-issuer:send-verification-email:${email}`,
+        RL.sendVerificationEmailWindowSec,
+      );
+      if (emailCount > RL.sendVerificationEmailMax) {
+        return rateLimited(c, RL.sendVerificationEmailWindowSec);
+      }
+    }
+    await next();
+  });
 }
 
 /**

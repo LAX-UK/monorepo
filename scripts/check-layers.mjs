@@ -25,6 +25,11 @@ const rules = [
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
   },
   {
+    dir: "packages/auth",
+    label: "packages/auth must not import from apps/**",
+    forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
+  },
+  {
     dir: "packages/domain",
     label: "packages/domain must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],

@@ -1,7 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import {
   DEFAULT_JWT_AUDIENCE,
+  buildOidcDiscoveryDocument,
+  buildTrustedAuthOrigins,
   createAuth,
+  createAuthLifecycleCallbacks,
+  createAuthNoStoreMiddleware,
   createEnvelopeCrypto,
   createJwksAdapter,
   parseAuthDekKey,
@@ -29,11 +33,10 @@ import pino from "pino";
 import { Registry, collectDefaultMetrics } from "prom-client";
 import { createAuthRepositories } from "./container/create-auth-repositories.js";
 import { loadAuthEnv } from "./env.js";
-import { trustedWebOrigins } from "./lib/trusted-web-origins.js";
-import { createAuthNoStoreMiddleware } from "./middleware/auth-cache-control.js";
 import {
   createAuthIssuerRateLimitMiddleware,
   createMagicLinkIssuerRateLimitMiddleware,
+  createSendVerificationIssuerRateLimitMiddleware,
 } from "./middleware/auth-rate-limit.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { publishUserEmailVerified } from "./services/publish-user-email-verified.js";
@@ -74,7 +77,11 @@ const emailService =
     ? new PostmarkEmailService(db, bindEmailQueue(emailQueue))
     : new ConsoleEmailService(db, bindEmailQueue(emailQueue));
 
-const webOrigins = trustedWebOrigins(env);
+const webOrigins = buildTrustedAuthOrigins({
+  webOrigin: env.WEB_ORIGIN,
+  webOrigins: env.WEB_ORIGINS,
+  additionalOrigins: env.SSR_TRUSTED_ORIGINS,
+});
 const envelope =
   env.AUTH_DEK_KEY && env.AUTH_DEK_KEY.trim().length > 0
     ? createEnvelopeCrypto(parseAuthDekKey(env.AUTH_DEK_KEY.trim()))
@@ -84,6 +91,55 @@ const phoneVerification =
   env.ENABLE_PHONE_VERIFICATION && isTwilioVerifyConfigured(env)
     ? TwilioVerifyService.fromEnv(env)
     : new ConsolePhoneVerificationService();
+
+const lifecycle = createAuthLifecycleCallbacks({
+  markUserForOAuthAttribution: (userId) =>
+    redis.set(`marketing:new-user:${userId}`, "1", "EX", 30 * 60, "NX").then(() => undefined),
+  completeOAuthAttribution: async ({ userId, providerId }) => {
+    await redis.eval(
+      `
+        if redis.call("EXISTS", KEYS[1]) ~= 1 then return 0 end
+        redis.call("DEL", KEYS[1])
+        if ARGV[1] == "google" or ARGV[1] == "apple" then
+          redis.call("SET", KEYS[2], ARGV[1], "EX", ARGV[2], "NX")
+          return 1
+        end
+        return 0
+      `,
+      2,
+      `marketing:new-user:${userId}`,
+      `marketing:oauth-signup:${userId}`,
+      providerId,
+      30 * 60,
+    );
+  },
+  publishUserRegisteredForAccount: async ({ userId }) => {
+    const authUser = await db.query.user.findFirst({
+      where: (users, { eq: equals }) => equals(users.id, userId),
+      columns: { id: true, email: true, name: true },
+    });
+    if (!authUser) {
+      throw new Error(`Cannot publish user.registered: auth user ${userId} was not found`);
+    }
+    await publishUserRegistered(
+      db,
+      {
+        userId: authUser.id,
+        name: authUser.name,
+        email: authUser.email,
+      },
+      { producer: "apps/auth" },
+    );
+  },
+  publishUserEmailVerified: (authUser) =>
+    publishUserEmailVerified(authRepositories.userEmailVerifiedPublisher, {
+      userId: authUser.id,
+      email: authUser.email,
+    }),
+  onNonBlockingError: (_stage, error, userId) => {
+    log.error({ error, userId }, "failed to mark new user for OAuth attribution");
+  },
+});
 
 const auth = createAuth({
   db,
@@ -110,23 +166,8 @@ const auth = createAuth({
       .returning({ id: session.id });
     return rows.length;
   },
-  onUserCreated: async (authUser) => {
-    await publishUserRegistered(
-      db,
-      {
-        userId: authUser.id,
-        name: authUser.name,
-        email: authUser.email,
-      },
-      { producer: "apps/auth" },
-    );
-  },
-  onEmailVerified: async (authUser) => {
-    await publishUserEmailVerified(authRepositories.userEmailVerifiedPublisher, {
-      userId: authUser.id,
-      email: authUser.email,
-    });
-  },
+  ...lifecycle,
+  enableNewDeviceLoginEmail: env.NODE_ENV === "production",
 });
 const jwks = createJwksAdapter(db, envelope);
 const retirementSchedule = startJwksRetirementSchedule({ db, log });
@@ -194,6 +235,7 @@ app.use(
   }),
 );
 app.use("/api/auth/*", createAuthNoStoreMiddleware());
+app.use("/api/auth/*", createSendVerificationIssuerRateLimitMiddleware(redis));
 app.use("/api/auth/*", createAuthIssuerRateLimitMiddleware(redis));
 app.use("/api/auth/*", createMagicLinkIssuerRateLimitMiddleware(redis));
 app.get("/.well-known/jwks.json", async (c) => {
@@ -210,23 +252,8 @@ app.get("/.well-known/apple-developer-domain-association.txt", (c) => {
   });
 });
 app.get("/.well-known/openid-configuration", (c) => {
-  const issuer = env.OIDC_ISSUER_URL.replace(/\/$/, "");
-  const authBase = `${issuer}/api/auth`;
   c.header("Cache-Control", "public, max-age=60");
-  return c.json({
-    issuer,
-    authorization_endpoint: `${authBase}/oauth2/authorize`,
-    token_endpoint: `${authBase}/oauth2/token`,
-    userinfo_endpoint: `${authBase}/oauth2/userinfo`,
-    jwks_uri: `${issuer}/.well-known/jwks.json`,
-    response_types_supported: ["code"],
-    subject_types_supported: ["public"],
-    id_token_signing_alg_values_supported: ["RS256"],
-    scopes_supported: ["openid", "profile", "email", "offline_access"],
-    token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],
-    claims_supported: ["sub", "email", "email_verified", "name", "image", "role"],
-    code_challenge_methods_supported: ["S256"],
-  });
+  return c.json(buildOidcDiscoveryDocument(env.OIDC_ISSUER_URL));
 });
 app.all("/api/auth/*", async (c) =>
   runSignInTurnstileGate({

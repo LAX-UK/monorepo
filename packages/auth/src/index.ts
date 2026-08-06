@@ -2,7 +2,14 @@ export { createAuth, type Auth, type AuthEnv } from "./server.js";
 export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 export { createEnvelopeCrypto } from "./crypto/envelope.js";
 export { parseAuthDekKey } from "./crypto/dek.js";
-export { createAuthClientInstance } from "./client.js";
+export {
+  createAuctionAuthClient,
+  createAuthClientInstance,
+  resolveAuthBaseUrl,
+  type AuctionAuthClient,
+  type AuthClientError,
+} from "./client.js";
+export * from "./contracts.js";
 export { createJwksAdapter } from "./jwks.js";
 export { retireExpiredJwksKeys, startJwksRetirementSchedule } from "./jwks-retirement.js";
 export { verifyBearerToken, type VerifiedToken } from "./middleware.js";

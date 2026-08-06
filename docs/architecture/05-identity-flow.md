@@ -4,12 +4,13 @@ This document walks through what happens when a user authenticates across the th
 
 If you understand these three flows, you understand the identity layer.
 
-> **Implementation status (last reviewed 2026-05-05)**
+> **Implementation status (last reviewed 2026-08-06)**
 >
 > - **Implemented:** better-auth issuing both session cookies and OIDC + JWT tokens with the canonical issuer URL `https://auth.lax.bid` ([packages/auth/src/server.ts](../../packages/auth/src/server.ts)). Google and Apple social providers, conditional on env vars. Cookie scoped to `.lax.bid` when `COOKIE_DOMAIN` is set ([apps/api/src/container.ts](../../apps/api/src/container.ts), [apps/auth/src/index.ts](../../apps/auth/src/index.ts), `.env.production.example`). Apple privacy-relay branch in [apps/api/src/services/account-linking.service.ts](../../apps/api/src/services/account-linking.service.ts). JWT verification on the `apps/ws` Socket.IO handshake ([apps/ws/src/services/jwt-verifier.ts](../../apps/ws/src/services/jwt-verifier.ts)).
 > - **Dual-stack today:** `apps/auth` and `apps/api` both serve OIDC discovery, JWKS, and `/api/auth/*` (D7); WordPress can target either. Issuer claim is identical (`OIDC_ISSUER_URL`) so consumers do not see the topology.
+> - **Frozen extraction contract:** [`packages/auth/src/contracts.ts`](../../packages/auth/src/contracts.ts) owns issuer normalization, discovery fields, JWKS/auth paths, trusted origins, no-store headers, and lifecycle ordering. Both composition roots provide their own database, Redis, email, and event adapters. [`packages/auth/src/client.ts`](../../packages/auth/src/client.ts) is the web-client boundary.
 > - **Hybrid today:** `apps/ws` validates JWT-on-handshake, **but also still falls back to a cookie relay** against `apps/api/users/me` when `LEGACY_WS_COOKIE_RELAY` is enabled ([apps/ws/src/handlers/socket-handler-registry.ts](../../apps/ws/src/handlers/socket-handler-registry.ts)). Removing the relay is **(Phase 2)**.
-> - **Not implemented:** the `domain_events` insert in the auth transactions shown below — see [04-domain-events.md](./04-domain-events.md). Refresh-token rotation with reuse detection is **(planned)**; today better-auth issues sessions and short-lived JWTs only.
+> - **Implemented asynchronously:** registration and email-verification lifecycle callbacks append `domain_events`; personal legal entities are provisioned directly by the API-hosted composition and by the worker projector for standalone-auth events. Better Auth issues rotating OIDC refresh tokens; integrating the repository's explicit reuse-detection guard remains planned. Browser continuity uses the Better Auth session.
 
 ## Flow 1: First-time sign-up via Google on lax.bid
 
@@ -42,8 +43,8 @@ sequenceDiagram
   A->>DB: SELECT user WHERE email=? AND email_verified=true
   Note over A,DB: no match found, this is a new user
   A->>DB: INSERT user, account, external_accounts(provider=google)
-  A->>DB: INSERT domain_events(user.registered, schema_v=1)
   A->>DB: COMMIT
+  A->>DB: lifecycle callback appends domain_events(user.registered, schema_v=1)
   A->>A: issue JWT + set session cookie on .lax.bid
   A-->>U: 302 redirect to lax.bid with session
   U->>W: GET lax.bid/ (cookie attached)
@@ -55,7 +56,11 @@ A few things in this flow are worth dwelling on.
 
 **Steps 12–14 (token exchange and verification).** Google returns an `id_token`, which is a JWT signed by Google. Our auth server fetches Google's JWKS (cached) to verify the signature locally — this proves the token was actually issued by Google and not forged. The `id_token`'s payload contains `sub` (Google's stable user identifier), `email`, `email_verified`, and `name`. We trust `email_verified` from Google because Google itself verified it; we do not re-verify the email on our side.
 
-**Steps 16–19 (the all-important transaction).** Inserting the user, the account, the external_accounts link, *and* the `user.registered` domain event all happen in a single database transaction. If any step fails, all of them roll back. There is no scenario where the user record is created but the event is lost — the outbox pattern from D5/D8 enforces this at the database level.
+**Steps 16–19 (identity write plus lifecycle publication).** Better Auth owns the
+identity transaction. Its post-create lifecycle callback then appends the
+`user.registered` domain event, which the worker consumes idempotently. Publication
+failure is logged and does not roll back the identity; the backfill procedure in the
+auth rollout runbook is the recovery path for that rare gap.
 
 **Step 22 (the cookie).** The session cookie is set with `Domain=.lax.bid` per F7. The leading dot means both `lax.bid` (the web app) and `auth.lax.bid` (the auth server) can read it. Cross-registrable-suffix domains (`.lax.art`, `.lax.shop`) cannot share cookies by browser policy, which is why those domains use JWTs instead.
 
@@ -138,8 +143,8 @@ sequenceDiagram
   A->>DB: BEGIN tx
   A->>DB: INSERT user(email=abc123@privaterelay..., email_verified=true)
   A->>DB: INSERT external_accounts(provider=apple, external_id=001234.5678abcd, email=abc123@privaterelay...)
-  A->>DB: INSERT domain_events(user.registered, source=apple, hidden_email=true)
   A->>DB: COMMIT
+  A->>DB: lifecycle callback appends domain_events(user.registered)
   A-->>U: redirect to lax.bid authenticated
 ```
 
@@ -173,7 +178,7 @@ The access token issued by our auth server is an RS256-signed JWT with a 15-minu
 {
   "iss": "https://auth.lax.bid",
   "sub": "01HQXY7JGPVE2T8NVV0AM6S3ZQ",
-  "aud": "lax.bid",
+  "aud": "lax-api",
   "iat": 1730409600,
   "exp": 1730410500,
   "email": "alice@example.com",
@@ -184,9 +189,14 @@ The access token issued by our auth server is an RS256-signed JWT with a 15-minu
 
 Notice what's not there: no `role` claim. Roles are looked up server-side every request because role changes need to take effect immediately (revoking admin access, etc.) and a JWT-cached role would persist for up to 15 minutes after the change. PII is also limited — no phone, no address, no payment details. The minimum needed to identify the user; everything else is a server-side lookup.
 
-**The `aud` claim is per-domain.** Per Q5, we issue tokens with `aud=lax.bid`, `aud=lax.art`, or `aud=lax.shop` depending on which client requested the token. Each consumer verifies that the `aud` matches their expectation; a token issued for one domain won't validate on another. This bounds the blast radius of a stolen token to a single domain.
+**The first-party JWT `aud` claim is stable.** Tokens from the JWT plugin default to `aud=lax-api` (`DEFAULT_JWT_AUDIENCE`) and API/WS consumers must verify the configured `JWT_AUDIENCE`. OIDC clients retain their own client/audience semantics in the OIDC provider.
 
-**Refresh tokens are server-side and rotation-detecting per Q3 (planned).** The target design is server-side, single-use refresh tokens whose replacement is a new refresh token; if a refresh token is ever reused, the entire token family is invalidated and the user is forced to re-authenticate. **Today better-auth issues sessions plus short-lived JWTs without a refresh-token rotation flow** — extending sessions across the 15-minute JWT lifetime relies on the cookie session, not on a refresh token. Implementing rotation-with-reuse-detection is **(planned)**.
+**Refresh tokens are server-side.** Better Auth's OIDC provider supports
+`authorization_code` and rotating `refresh_token` grants. The repository also
+contains an explicit reuse-detection guard, but wiring it into the live token
+endpoint and invalidating a reused token family remains **planned**. Browser
+session continuity relies on the Better Auth cookie rather than exposing refresh
+tokens to the web application.
 
 ## Where things go wrong
 

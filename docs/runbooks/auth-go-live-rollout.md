@@ -8,7 +8,26 @@
 6. **CSP**: Start `Content-Security-Policy-Report-Only` on marketing surfaces; fix violations; switch to enforce (`CSP_ENFORCE=1` on `apps/web`). Before enforcing, in **Cloudflare** disable **Scrape Shield → Email Address Obfuscation** for each zone (`lax.bid`, `test.lax.bid`, etc.): Cloudflare injects `cdn-cgi/scripts/.../email-decode.min.js`, which violates `script-src 'strict-dynamic'` and cannot be allowlisted by host when enforcing.
 7. **GDPR purge**: Apply `0058_user_pii_purge.sql`; worker job `purge-soft-deleted-users` calls `SELECT user_pii_purge(id)` for users past deletion cooling-off.
 
-See also: [auth-secrets-rotation.md](./auth-secrets-rotation.md), [jwks-rotation.md](./jwks-rotation.md).
+See also: [key rotation](../security/key-rotation.md) and
+[JWKS rotation](./jwks-rotation.md).
+
+## Standalone issuer decision gate
+
+Extraction readiness does **not** switch production traffic. Keep API-hosted
+`/api/auth/*` and `/.well-known/*` available until a separate cutover is approved.
+Approval requires all of the following:
+
+- API and `apps/auth` discovery documents and JWKS responses are byte-equivalent
+  against the same database, and auth responses retain the frozen no-store policy.
+- Sign-in, cookie round-trip, session refresh, password change, OIDC code exchange,
+  lifecycle events, and email verification pass with `NEXT_PUBLIC_AUTH_URL` pointed
+  at `apps/auth`.
+- `auth_app` role and schema/grant drift contracts pass after production migrations.
+- Dashboards, alerting, rollback routing, and a JWKS/key snapshot are confirmed.
+- No consumer still assumes the API base for issuer-hosted operations.
+
+Only after that evidence is reviewed may DNS/edge routing change. Database
+separation, API auth-route removal, and package publication are separate decisions.
 
 ## Backfill: personal legal entity for users missing provisioning (LAX-PROD-AUTH-2)
 
