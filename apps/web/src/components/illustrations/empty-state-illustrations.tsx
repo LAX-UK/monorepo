@@ -9,10 +9,12 @@ function IllustrationFrame({ children, className, ...props }: IllustrationProps)
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-hidden
+      aria-hidden="true"
       {...props}
     >
-      <title>Decorative illustration</title>
+      {/* Decorative only — aria-hidden, so no <title>: it would be ignored by
+          screen readers but read as the page title by crawlers that take the
+          document's first <title>. */}
       {children}
     </svg>
   );

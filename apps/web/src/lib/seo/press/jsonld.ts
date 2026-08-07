@@ -23,8 +23,12 @@ function pressCoverageItemJsonLd(
       "@type": "NewsMediaOrganization",
       name: item.outletName,
     },
+    // Deliberately `Thing`, not `Event`: schema.org Event requires `startDate` and
+    // `location`, and the press-archive sale reference carries neither (only `endTime`).
+    // Emitting an incomplete Event makes validators flag every list item as a markup
+    // error, whereas a Thing states the same article→sale relationship and validates.
     about: {
-      "@type": "Event",
+      "@type": "Thing",
       name: sale.title,
       url: saleUrl,
     },
