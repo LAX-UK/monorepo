@@ -215,6 +215,9 @@ jobs:
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
 
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
+
       - name: Seed worker role contract probes
         run: pnpm --filter @auction/db exec tsx scripts/seed-worker-role-contract-probes.ts
 

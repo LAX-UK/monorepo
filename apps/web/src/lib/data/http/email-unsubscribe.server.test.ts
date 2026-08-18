@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/data/http/hc-server", () => ({
-  getServerApiBase: () => "http://api.internal:3001",
+  getServerApiBase: () => "http://127.0.0.1:3001",
 }));
 
 const { getUnsubscribePreview } = await import("./email-unsubscribe.server");
@@ -26,7 +26,7 @@ describe("getUnsubscribePreview", () => {
     await getUnsubscribePreview("token/with spaces");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://api.internal:3001/email/unsubscribe/preview?t=token%2Fwith%20spaces",
+      "http://127.0.0.1:3001/email/unsubscribe/preview?t=token%2Fwith%20spaces",
       { cache: "no-store" },
     );
   });

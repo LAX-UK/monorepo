@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/data/http/hc-server", () => ({
-  getServerApiBase: () => "http://api.internal:3001",
+  getServerApiBase: () => "http://127.0.0.1:3001",
 }));
 vi.mock("@/lib/data/http/server-request-headers", () => ({
   deriveSsrOrigin: async () => "https://lax.bid",
@@ -21,7 +21,7 @@ describe("forwardNewsletterSubscribe", () => {
     await forwardNewsletterSubscribe({ email: "buyer@example.com" });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://api.internal:3001/newsletter/subscribe",
+      "http://127.0.0.1:3001/newsletter/subscribe",
       expect.objectContaining({
         method: "POST",
         headers: {

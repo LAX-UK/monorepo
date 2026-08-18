@@ -6,7 +6,7 @@ const fetchBidApi = vi.fn();
 vi.mock("@/lib/bff/config.server", () => ({
   bffConfig: () => ({
     publicOrigin: "https://lax.bid",
-    apiBaseUrl: "http://api.internal:3001",
+    apiBaseUrl: "http://127.0.0.1:3001",
   }),
 }));
 vi.mock("@/lib/data/http/bid-api.server", () => ({ fetchBidApi }));
@@ -41,7 +41,7 @@ describe("display API forwarding route", () => {
     expect(response.status).toBe(200);
     expect(fetchBidApi).toHaveBeenCalledOnce();
     const [target, init] = fetchBidApi.mock.calls[0] as [URL, RequestInit];
-    expect(target.href).toBe(`http://api.internal:3001/display/${saleId}/snapshot`);
+    expect(target.href).toBe(`http://127.0.0.1:3001/display/${saleId}/snapshot`);
     const headers = new Headers(init.headers);
     expect(headers.get("authorization")).toBe("Bearer display-secret");
     expect(headers.get("origin")).toBe("https://lax.bid");
@@ -67,7 +67,7 @@ describe("display API forwarding route", () => {
 
     expect(response.status).toBe(200);
     const [target, init] = fetchBidApi.mock.calls[0] as [URL, RequestInit];
-    expect(target.href).toBe("http://api.internal:3001/display/pair/poll");
+    expect(target.href).toBe("http://127.0.0.1:3001/display/pair/poll");
     const headers = new Headers(init.headers);
     expect(headers.has("authorization")).toBe(false);
     expect(headers.has("cookie")).toBe(false);

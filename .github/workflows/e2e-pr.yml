@@ -115,6 +115,7 @@ jobs:
       - name: Migrate and seed
         run: |
           pnpm --filter @auction/db db:migrate
+          pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:seed:dev
           DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
           DATABASE_URL_AUTH="$DATABASE_URL" \
