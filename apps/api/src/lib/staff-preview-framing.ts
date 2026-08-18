@@ -1,5 +1,5 @@
-import { buildTrustedAuthOrigins } from "@auction/auth/server";
 import type { Context } from "hono";
+import { buildTrustedWebOrigins } from "./trusted-web-origins.js";
 
 /** Allow audited SoF document previews to embed in the staff web app iframe. */
 export function applyStaffPreviewFramingHeaders(
@@ -10,7 +10,7 @@ export function applyStaffPreviewFramingHeaders(
     SSR_TRUSTED_ORIGINS?: string[] | undefined;
   },
 ): void {
-  const ancestors = buildTrustedAuthOrigins({
+  const ancestors = buildTrustedWebOrigins({
     webOrigin: env.WEB_ORIGIN,
     webOrigins: env.WEB_ORIGINS,
     additionalOrigins: env.SSR_TRUSTED_ORIGINS,

@@ -16,8 +16,10 @@ export function buildMagicLinkVerifyUrl(
   const webBase = (webOrigin?.trim() ? webOrigin : getSiteUrl()).replace(/\/$/, "");
   const safeNext = next && isSafeNextPath(next) ? next : undefined;
   const url = new URL(`${authBase}/api/auth/magic-link/verify`);
-  const callbackUrl = new URL(buildMagicLinkSetPasswordCallbackUrl(webBase, safeNext));
-  callbackUrl.searchParams.set("auth_method", "magic_link");
+  const activationUrl = new URL(buildMagicLinkSetPasswordCallbackUrl(webBase, safeNext));
+  activationUrl.searchParams.set("auth_method", "magic_link");
+  const callbackUrl = new URL("/api/auth/login", webBase);
+  callbackUrl.searchParams.set("next", `${activationUrl.pathname}${activationUrl.search}`);
   url.searchParams.set("token", token);
   url.searchParams.set("callbackURL", callbackUrl.toString());
   url.searchParams.set("errorCallbackURL", buildMagicLinkExpiredCallbackUrl(webBase));

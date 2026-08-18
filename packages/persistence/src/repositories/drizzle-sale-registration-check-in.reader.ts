@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { saleNotDeleted } from "@auction/db";
-import { sale, user } from "@auction/db/schema";
+import { bidUserProfile, sale, user } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type {
   ISaleRegistrationCheckInReader,
@@ -25,10 +25,11 @@ export class DrizzleSaleRegistrationCheckInReader implements ISaleRegistrationCh
       .select({
         id: user.id,
         emailVerified: user.emailVerified,
-        kycStatus: user.kycStatus,
-        suspendedAt: user.suspendedAt,
+        kycStatus: bidUserProfile.kycStatus,
+        suspendedAt: bidUserProfile.suspendedAt,
       })
       .from(user)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(eq(user.id, userId))
       .limit(1);
     return row ?? null;

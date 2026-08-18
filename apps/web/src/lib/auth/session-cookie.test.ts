@@ -7,14 +7,15 @@ describe("hasAuthSessionCookie", () => {
     expect(hasAuthSessionCookie("")).toBe(false);
   });
 
-  it("detects Better Auth session cookies", () => {
-    expect(hasAuthSessionCookie("better-auth.session_token=abc")).toBe(true);
-    expect(hasAuthSessionCookie("__Secure-better-auth.session_token=abc")).toBe(true);
-    expect(hasAuthSessionCookie("other=x; better-auth.session_token=abc")).toBe(true);
-    expect(hasAuthSessionCookie("other=x; __Secure-better-auth.session_token=abc")).toBe(true);
+  it("detects development and production Bid BFF cookies", () => {
+    expect(hasAuthSessionCookie("lax-bid-session=abc")).toBe(true);
+    expect(hasAuthSessionCookie("__Host-lax-bid-session=abc")).toBe(true);
+    expect(hasAuthSessionCookie("other=x; __Host-lax-bid-session=abc")).toBe(true);
   });
 
-  it("ignores non-session Better Auth cookies", () => {
+  it("ignores Identity issuer cookies", () => {
+    expect(hasAuthSessionCookie("better-auth.session_token=abc")).toBe(false);
+    expect(hasAuthSessionCookie("__Secure-better-auth.session_token=abc")).toBe(false);
     expect(hasAuthSessionCookie("better-auth.session_data=abc")).toBe(false);
     expect(hasAuthSessionCookie("better-auth.dont_remember=1")).toBe(false);
     expect(hasAuthSessionCookie("session_token=legacy")).toBe(false);

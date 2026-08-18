@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { hasSessionCredential } from "./session-credential.js";
 
 describe("hasSessionCredential", () => {
-  it("detects Better Auth session cookie", () => {
+  it("rejects product-server cookie credentials", () => {
     const headers = new Headers({
-      cookie: "better-auth.session_token=abc123",
+      cookie: "identity.session_token=abc123",
     });
-    expect(hasSessionCredential(headers)).toBe(true);
+    expect(hasSessionCredential(headers)).toBe(false);
   });
 
   it("detects Bearer authorization", () => {

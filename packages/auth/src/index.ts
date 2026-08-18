@@ -3,6 +3,10 @@ export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 export { createEnvelopeCrypto } from "./crypto/envelope.js";
 export { parseAuthDekKey } from "./crypto/dek.js";
 export {
+  OIDC_CONSENT_SCRIPT,
+  buildOidcConsentHtml,
+} from "./oidc-consent-html.js";
+export {
   createAuctionAuthClient,
   createAuthClientInstance,
   resolveAuthBaseUrl,
@@ -20,14 +24,11 @@ export {
   isSignInMagicLinkPost,
   type SignInGateRedis,
 } from "./sign-in-turnstile-gate.js";
-export { stampLastPasswordAuthFromSignInResponse } from "./stamp-last-password-auth.js";
-export { hasSessionCredential } from "./session-credential.js";
 export {
-  checkAndRotateRefreshToken,
-  RedisRefreshReplayStore,
-  type RefreshReplayStore,
-  type RefreshReplayResult,
-} from "./refresh-replay.js";
+  stampLastPasswordAuthFromSignInResponse,
+  stampMfaCompletedFromResponse,
+} from "./stamp-last-password-auth.js";
+export { hasSessionCredential } from "./session-credential.js";
 export {
   buildMagicLinkExpiredCallbackUrl,
   buildMagicLinkSetPasswordCallbackUrl,

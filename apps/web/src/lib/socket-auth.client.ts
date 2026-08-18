@@ -1,32 +1,27 @@
-import { getAuthIssuerBaseUrl } from "@/lib/auth-client";
-import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
-
 type AuthTokenResponse = {
-  token?: string;
+  ticket?: string;
 };
 
-export type SocketHandshakeAuth = Record<string, never> | { token: string };
+export type SocketHandshakeAuth = Record<string, never> | { ticket: string };
 
-/** Socket.IO auth payload: JWT when a session cookie exists, else anonymous. */
+/** Socket.IO receives only a one-time, 60-second connection ticket, never an OAuth token. */
 export async function resolveSocketHandshakeAuth(): Promise<SocketHandshakeAuth> {
   if (typeof window === "undefined") return {};
-  if (!hasAuthSessionCookie(document.cookie)) return {};
-  const token = await fetchAuthJwtForSocket();
-  return token ? { token } : {};
+  const ticket = await fetchSocketTicket();
+  return ticket ? { ticket } : {};
 }
 
-/** Fetch a short-lived JWT for Socket.IO handshake (better-auth jwt plugin). */
-export async function fetchAuthJwtForSocket(): Promise<string | null> {
+export async function fetchSocketTicket(): Promise<string | null> {
   if (typeof window === "undefined") return null;
-  const base = getAuthIssuerBaseUrl().replace(/\/$/, "");
   try {
-    const res = await fetch(`${base}/api/auth/token`, {
-      credentials: "include",
+    const res = await fetch("/api/auth/ws-ticket", {
+      method: "POST",
+      credentials: "same-origin",
       headers: { accept: "application/json" },
     });
     if (!res.ok) return null;
     const json = (await res.json()) as AuthTokenResponse;
-    return typeof json.token === "string" && json.token.length > 0 ? json.token : null;
+    return typeof json.ticket === "string" && json.ticket.length > 0 ? json.ticket : null;
   } catch {
     return null;
   }

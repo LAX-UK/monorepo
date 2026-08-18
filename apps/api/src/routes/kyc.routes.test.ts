@@ -10,7 +10,9 @@ function buildApp(kycHttp: ContainerKycRoutesSlice["compliance"]["kycHttp"]) {
     compliance: { kycHttp },
   } as unknown as ContainerKycRoutesSlice;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "user-1", role: "client" }),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue({ id: "user-1", role: "client", scopes: ["bid.read", "bid.write"] }),
   };
   const app = new Hono();
   app.route("/kyc", createKycRoutes(container, authenticator));

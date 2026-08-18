@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { user } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
+import { writeBidUserProfile } from "@auction/persistence/bid-user-profile-sync";
 import type { IAdminUserSuspender } from "@auction/persistence/interfaces";
 import { eq } from "drizzle-orm";
 import type { IAuthAuditPublisher } from "../../services/interfaces/auth-audit-publisher.js";
@@ -8,7 +9,6 @@ import type { IAuthAuditPublisher } from "../../services/interfaces/auth-audit-p
 export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
   constructor(
     private readonly db: Database,
-    private readonly sessions: { revokeAllForUser: (userId: string) => Promise<unknown> },
     private readonly hooks?: {
       authAudit?: IAuthAuditPublisher;
       emailService?: IEmailService;
@@ -23,19 +23,14 @@ export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
       .where(eq(user.id, userId))
       .limit(1);
 
-    await this.db
-      .update(user)
-      .set({
-        suspendedAt: new Date(),
-        suspendedReason: reason,
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
-    await this.sessions.revokeAllForUser(userId);
+    await writeBidUserProfile(this.db, userId, {
+      suspendedAt: new Date(),
+      suspendedReason: reason,
+    });
 
     void this.hooks?.authAudit
       ?.publish({
-        eventType: "auth.account_suspended",
+        eventType: "bid.user_suspended",
         aggregateId: userId,
         payload: {},
         actorUserId: null,
@@ -57,13 +52,9 @@ export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
   }
 
   async unsuspend(userId: string): Promise<void> {
-    await this.db
-      .update(user)
-      .set({
-        suspendedAt: null,
-        suspendedReason: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
+    await writeBidUserProfile(this.db, userId, {
+      suspendedAt: null,
+      suspendedReason: null,
+    });
   }
 }

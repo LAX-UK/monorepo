@@ -11,11 +11,11 @@ and edge rate limits). This page is the human-readable reference; Terraform is t
 |---|---|---|
 | Web (Next.js) | `lax.bid` | `test.lax.bid` |
 | API (Hono) | `api.lax.bid` | `test-api.lax.bid` |
-| Auth (OIDC issuer; D7 dual-stack with API today) | `auth.lax.bid` | `test-auth.lax.bid` |
+| Auth (canonical OIDC issuer) | `auth.lax.bid` | `test-auth.lax.bid` |
 | WebSocket gateway | `ws.lax.bid` | `test-ws.lax.bid` |
 | Media CDN (Spaces) | `media.lax.bid` | `test-media.lax.bid` |
-| WordPress marketing (Hostgator) | `lax.art` | — |
-| Shopify storefront | `lax.shop` | — |
+| Marketing site (static initially) | `lax.art` | — |
+| Custom Shop | `shop.lax.art` | — |
 
 ## TLS
 
@@ -25,7 +25,17 @@ for the App Platform domains; Cloudflare verifies the chain on every request.
 ## Cache and WAF
 
 - `/.well-known/*`: cache 200s for ≤60s; bypass cache for non-200 responses.
-- Do not cache `/api/auth/*`, `/webhooks/*`, `/users/*`, `/bids/*`.
+- Do not cache `/api/auth/*`, `/ssf/*`, `/ssf/events`,
+  `/api/ssf/events`, `/webhooks/*`, `/users/*`, `/bids/*`.
+
+`auth.lax.bid`, `lax.bid`, and `shop.lax.art` terminate separate host-only
+authentication sessions. DNS proximity does not authorize a parent-domain
+credential.
+Route `https://lax.bid/api/auth/backchannel-logout`,
+`https://api.lax.bid/ssf/events`,
+`https://shop.lax.art/api/auth/backchannel-logout`, and
+`https://shop.lax.art/api/ssf/events` to their exact receivers without redirects
+or cache.
 
 ## Rate limiting
 
@@ -52,8 +62,8 @@ guarded at the app layer until the zone is upgraded.
   is reserved for when the zone moves to Pro.
 - `/.well-known/*`: handled by app-layer middleware; the cache-edge rule above
   still absorbs steady-state read traffic.
-- Keep provider-aware limits for any future `/webhooks/*` (e.g. Shopify retries
-  on non-2xx, so prefer 429 only on obvious abuse).
+- Keep provider-aware limits for any future `/webhooks/*`; providers generally
+  retry non-2xx responses, so prefer 429 only on obvious abuse.
 
 ### Bot allowlist (Free plan)
 

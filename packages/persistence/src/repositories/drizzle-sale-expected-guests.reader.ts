@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { saleNotDeleted } from "@auction/db";
 import {
+  bidUserProfile,
   legalEntity,
   legalEntityMember,
   onsiteEvent,
@@ -45,15 +46,16 @@ export class DrizzleSaleExpectedGuestsReader implements ISaleExpectedGuestsReade
         userId: user.id,
         name: user.name,
         email: user.email,
-        kycStatus: user.kycStatus,
+        kycStatus: bidUserProfile.kycStatus,
         emailVerified: user.emailVerified,
-        suspendedAt: user.suspendedAt,
+        suspendedAt: bidUserProfile.suspendedAt,
         attendanceSegment: onsiteEventRsvp.attendanceSegment,
         galaCheckedInAt: onsiteEventRsvp.checkedInAt,
         plusOne: onsiteEventRsvp.plusOne,
       })
       .from(onsiteEventRsvp)
       .innerJoin(user, eq(user.id, onsiteEventRsvp.userId))
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, onsiteEventRsvp.userId))
       .where(eq(onsiteEventRsvp.eventSlug, eventRow.slug))
       .orderBy(asc(user.name), asc(user.email));
 

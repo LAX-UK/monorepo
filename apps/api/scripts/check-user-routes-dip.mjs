@@ -17,6 +17,7 @@ const files = [
   "src/routes/users/preferences.routes.ts",
   "src/routes/users/profile.routes.ts",
   "src/routes/users/security.routes.ts",
+  "src/routes/ssf-events.ts",
 ];
 
 const ALLOWED_CONTAINER_KEYS = new Set(["userRoutes", "userSuspensionChecker", "env", "authDb"]);

@@ -63,14 +63,15 @@ function appWithGetProfile(row: ProfileMeRow | null, opts?: { suspended?: boolea
   const app = new Hono();
   const container = {
     env: {},
-    authDb: {},
     userSuspensionChecker: {
       isSuspended: vi.fn().mockResolvedValue(opts?.suspended ?? false),
     },
     userRoutes,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read", "bid.write"] }),
   };
   app.route("/users", createUserRoutes(container, authenticator));
   return { app, profileService };
@@ -142,12 +143,13 @@ describe("PATCH /users/me/profile", () => {
     const app = new Hono();
     const container = {
       env: {},
-      authDb: {},
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       userRoutes,
     } as unknown as Container;
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read", "bid.write"] }),
     };
     app.route("/users", createUserRoutes(container, authenticator));
     return app;

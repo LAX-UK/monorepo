@@ -1,11 +1,11 @@
 import type { Database } from "@auction/db";
 import {
+  bidUserProfile,
   legalEntity,
   legalEntityAddress,
   legalEntityDocument,
   legalEntityMember,
   legalEntityOnboardingProgress,
-  user,
 } from "@auction/db/schema";
 import type { LegalEntityStatus, OrgOnboardingStepKey } from "@auction/types";
 import { and, eq, ne, sql } from "drizzle-orm";
@@ -301,9 +301,9 @@ export class DrizzleLegalEntityOnboardingRepository implements ILegalEntityOnboa
 
   async findUserKycStatus(userId: string): Promise<string | null> {
     const [row] = await this.db
-      .select({ kycStatus: user.kycStatus })
-      .from(user)
-      .where(eq(user.id, userId))
+      .select({ kycStatus: bidUserProfile.kycStatus })
+      .from(bidUserProfile)
+      .where(eq(bidUserProfile.userId, userId))
       .limit(1);
     return row?.kycStatus ?? null;
   }

@@ -28,7 +28,6 @@ const envSchema = z
     DATABASE_URL_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
     BETTER_AUTH_SECRET: z.string().min(16),
-    API_PUBLIC_URL: z.string().url().default("http://localhost:3003"),
     OIDC_ISSUER_URL: z.string().url().default("http://localhost:3003"),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     WEB_ORIGINS: z.preprocess((val) => {
@@ -56,7 +55,17 @@ const envSchema = z
     JWT_AUDIENCE: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     AUTH_DEK_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     METRICS_TOKEN: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
-    COOKIE_DOMAIN: z.preprocess(emptyToUndefined, z.string().optional()),
+    IDENTITY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    IDENTITY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    IDENTITY_MERGE_ENABLED: z
+      .preprocess((value) => value === "true" || value === true, z.boolean())
+      .default(false),
+    /** First-party SSF streams and delivery worker are opt-in in every environment. */
+    SSF_DELIVERY_ENABLED: z
+      .preprocess((value) => value === "true" || value === true, z.boolean())
+      .default(false),
+    SSF_DELIVERY_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5_000),
+    SSF_DELIVERY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(8),
     ALLOW_HTTP_COOKIES: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
@@ -111,7 +120,7 @@ const envSchema = z
           path: ["BETTER_AUTH_SECRET"],
         });
       }
-      for (const u of [e.WEB_ORIGIN, e.API_PUBLIC_URL, e.OIDC_ISSUER_URL]) {
+      for (const u of [e.WEB_ORIGIN, e.OIDC_ISSUER_URL]) {
         if (u.includes("localhost") || u.includes("127.0.0.1")) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -145,6 +154,14 @@ const envSchema = z
             path: ["AUTH_DEK_KEY"],
           });
         }
+      }
+      if (!e.IDENTITY_MACHINE_CLIENT_ID || !e.IDENTITY_MACHINE_CLIENT_SECRET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "IDENTITY_MACHINE_CLIENT_ID and IDENTITY_MACHINE_CLIENT_SECRET are required in production",
+          path: ["IDENTITY_MACHINE_CLIENT_ID"],
+        });
       }
     }
     if (e.NODE_ENV === "production" && e.ENABLE_PHONE_VERIFICATION) {

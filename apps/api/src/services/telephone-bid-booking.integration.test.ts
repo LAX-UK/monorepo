@@ -1,6 +1,7 @@
 import { createDb } from "@auction/db";
 import {
   bid,
+  bidUserProfile,
   legalEntity,
   legalEntityMember,
   lot,
@@ -57,6 +58,9 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
     await db
       .delete(legalEntity)
       .where(sql`${legalEntity.id} IN (${buyerLeId}::uuid, ${sellerLeId}::uuid)`);
+    await db
+      .delete(bidUserProfile)
+      .where(sql`${bidUserProfile.userId} IN (${buyerUserId}, ${staffUserId})`);
     await db.delete(user).where(sql`${user.id} IN (${buyerUserId}, ${staffUserId})`);
   }
 
@@ -79,6 +83,22 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
         name: "Tel Staff",
         email: "tel_int_staff@integration.test",
         emailVerified: true,
+        role: "staff",
+        staffRole: "super_admin",
+        createdAt: t,
+        updatedAt: t,
+      },
+    ]);
+    await db.insert(bidUserProfile).values([
+      {
+        userId: buyerUserId,
+        role: "client",
+        mobile: "+447700900123",
+        createdAt: t,
+        updatedAt: t,
+      },
+      {
+        userId: staffUserId,
         role: "staff",
         staffRole: "super_admin",
         createdAt: t,

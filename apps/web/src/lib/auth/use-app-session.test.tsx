@@ -4,12 +4,12 @@ import {
   BETTER_AUTH_MESSAGE_STORAGE_KEY,
 } from "@/lib/auth/auth-session-provider";
 import { useAppSession } from "@/lib/auth/use-app-session";
+import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import type { SessionUser } from "@/lib/data/contracts";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const refetchMock = vi.fn();
-const useSessionMock = vi.fn();
 const broadcastCloseMock = vi.fn();
 
 class MockBroadcastChannel {
@@ -31,10 +31,8 @@ class MockBroadcastChannel {
   }
 }
 
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    useSession: () => useSessionMock(),
-  },
+vi.mock("@/lib/data/http/auth-session.client", () => ({
+  fetchCurrentBffSession: () => refetchMock(),
 }));
 
 const serverUser: SessionUser = {
@@ -44,16 +42,6 @@ const serverUser: SessionUser = {
   role: "client",
   image: null,
 };
-
-function sessionState(data: { user?: Record<string, unknown> } | null, isPending = false) {
-  return {
-    data,
-    isPending,
-    isRefetching: false,
-    error: null,
-    refetch: refetchMock,
-  };
-}
 
 function renderWithProvider(serverUserValue: SessionUser | null = null, authCookiePresent = false) {
   return renderHook(() => useAppSession(), {
@@ -71,7 +59,7 @@ describe("useAppSession", () => {
     broadcastCloseMock.mockClear();
     MockBroadcastChannel.instances = [];
     vi.stubGlobal("BroadcastChannel", MockBroadcastChannel);
-    useSessionMock.mockReturnValue(sessionState(null));
+    refetchMock.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -84,22 +72,26 @@ describe("useAppSession", () => {
     }).toThrow("useAppSession must be used within AuthSessionProvider");
   });
 
-  it("prefers client session over SSR fallback", () => {
-    useSessionMock.mockReturnValue(
-      sessionState({
-        user: {
-          id: "cli-1",
-          email: "client@example.com",
-          name: "Client User",
-          role: "client",
-        },
-      }),
+  it("replaces the SSR fallback after a BFF refetch", async () => {
+    refetchMock.mockResolvedValue({
+      id: "cli-1",
+      email: "client@example.com",
+      name: "Client User",
+      role: "client",
+    });
+    const { result } = renderHook(
+      () => ({ session: useAppSession(), refetch: useRefetchAppSession() }),
+      {
+        wrapper: ({ children }) => (
+          <AuthSessionProvider serverUser={serverUser} authCookiePresent={false}>
+            {children}
+          </AuthSessionProvider>
+        ),
+      },
     );
-
-    const { result } = renderWithProvider(serverUser);
-
-    expect(result.current.user?.id).toBe("cli-1");
-    expect(result.current.pending).toBe(false);
+    await act(() => result.current.refetch());
+    expect(result.current.session.user?.id).toBe("cli-1");
+    expect(result.current.session.pending).toBe(false);
   });
 
   it("falls back to SSR user when client session is empty", () => {
@@ -110,8 +102,6 @@ describe("useAppSession", () => {
   });
 
   it("returns pending=true when client session is loading and no server fallback", () => {
-    useSessionMock.mockReturnValue(sessionState(null, true));
-
     const { result } = renderWithProvider(null, true);
 
     expect(result.current.user).toBeNull();
@@ -119,8 +109,6 @@ describe("useAppSession", () => {
   });
 
   it("returns pending=false for confirmed guests without an auth cookie", () => {
-    useSessionMock.mockReturnValue(sessionState(null, true));
-
     const { result } = renderWithProvider(null, false);
 
     expect(result.current.user).toBeNull();
@@ -128,8 +116,6 @@ describe("useAppSession", () => {
   });
 
   it("returns pending=false when client session is loading but server fallback exists", () => {
-    useSessionMock.mockReturnValue(sessionState(null, true));
-
     const { result } = renderWithProvider(serverUser, true);
 
     expect(result.current.user).toEqual(serverUser);
@@ -147,7 +133,7 @@ describe("useAppSession", () => {
     });
 
     await waitFor(() => {
-      expect(refetchMock).toHaveBeenCalledWith({ query: { disableCookieCache: true } });
+      expect(refetchMock).toHaveBeenCalledOnce();
     });
   });
 
@@ -164,7 +150,7 @@ describe("useAppSession", () => {
     });
 
     await waitFor(() => {
-      expect(refetchMock).toHaveBeenCalledWith({ query: { disableCookieCache: true } });
+      expect(refetchMock).toHaveBeenCalledOnce();
     });
   });
 

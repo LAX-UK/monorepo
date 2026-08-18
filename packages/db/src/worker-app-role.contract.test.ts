@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { createDb } from "./client.js";
+import { WORKER_DENY_TABLES } from "./migrate-roles.js";
 import {
   absenteeBid,
   bid,
@@ -19,6 +20,55 @@ const WORKER_URL = process.env.DATABASE_URL_WORKER ?? process.env.WORKER_APP_DAT
 
 /** Cutover gate: worker_app can perform delivery, payment maintenance, and lifecycle writes. */
 describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
+  it("has no DML privileges on Identity and receiver-local tables", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
+    const db = createDb(WORKER_URL!);
+    for (const table of WORKER_DENY_TABLES) {
+      const privileges = await db.execute(sql`
+        SELECT
+          has_table_privilege(current_user, ${`public.${table}`}, 'SELECT') AS can_select,
+          has_table_privilege(current_user, ${`public.${table}`}, 'INSERT') AS can_insert,
+          has_table_privilege(current_user, ${`public.${table}`}, 'UPDATE') AS can_update,
+          has_table_privilege(current_user, ${`public.${table}`}, 'DELETE') AS can_delete
+      `);
+      expect(privileges.rows[0], table).toMatchObject({
+        can_select: false,
+        can_insert: false,
+        can_update: false,
+        can_delete: false,
+      });
+    }
+  });
+
+  it("can provision and update product identity profiles without deleting them", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
+    const db = createDb(WORKER_URL!);
+    const privileges = await db.execute(sql`
+      SELECT
+        has_table_privilege(current_user, 'public.bid_user_profile', 'INSERT') AS can_insert,
+        has_table_privilege(current_user, 'public.bid_user_profile', 'SELECT') AS can_select,
+        has_table_privilege(current_user, 'public.bid_user_profile', 'UPDATE') AS can_update
+    `);
+    expect(privileges.rows[0]).toMatchObject({
+      can_insert: true,
+      can_select: true,
+      can_update: true,
+    });
+    const shopPrivileges = await db.execute(sql`
+      SELECT
+        has_table_privilege(current_user, 'public.shop_user_profile', 'INSERT') AS can_insert,
+        has_table_privilege(current_user, 'public.shop_user_profile', 'SELECT') AS can_select,
+        has_table_privilege(current_user, 'public.shop_user_profile', 'UPDATE') AS can_update,
+        has_table_privilege(current_user, 'public.shop_user_profile', 'DELETE') AS can_delete
+    `);
+    expect(shopPrivileges.rows[0]).toMatchObject({
+      can_insert: true,
+      can_select: true,
+      can_update: true,
+      can_delete: false,
+    });
+  });
+
   it("can lease domain_event_delivery and append domain_events", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);
@@ -311,7 +361,19 @@ describe("worker_app role contract (static cutover gate)", () => {
   });
 
   it("denies worker_app writes to auth session table (static grant model)", async () => {
-    const { AUTH_FULL_TABLES } = await import("./migrate-roles.js");
+    const { AUTH_FULL_TABLES, WORKER_DENY_TABLES } = await import("./migrate-roles.js");
     expect(AUTH_FULL_TABLES).toContain("session");
+    expect(AUTH_FULL_TABLES).toContain("oidc_rp_session");
+    expect(AUTH_FULL_TABLES).toContain("oidc_backchannel_logout_delivery");
+    expect(AUTH_FULL_TABLES).toContain("ssf_stream");
+    expect(WORKER_DENY_TABLES).toContain("oidc_rp_session");
+    expect(WORKER_DENY_TABLES).toContain("ssf_stream");
+    expect(WORKER_DENY_TABLES).toContain("bid_ssf_replay");
+  });
+
+  it("grants worker_app product profile projection tables", async () => {
+    const { WORKER_PRODUCT_PROFILE_TABLES } = await import("./migrate-roles.js");
+    expect(WORKER_PRODUCT_PROFILE_TABLES).toEqual(["shop_user_profile", "bid_user_profile"]);
+    expect(WORKER_PRODUCT_PROFILE_TABLES).not.toContain("shop_identity_session");
   });
 });

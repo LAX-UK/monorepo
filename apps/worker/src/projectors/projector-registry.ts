@@ -1,5 +1,9 @@
 import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
 import { AML_MATCH_REVIEW_PROJECTOR, processAmlMatchReview } from "./aml-match-review.js";
+import {
+  BID_PROFILE_PROVISIONING_PROJECTOR,
+  processBidProfileProvisioning,
+} from "./bid-profile-provisioning.js";
 import { processClearArtistBlocks } from "./clear-artist-blocks.js";
 import { processLegalEntityProvisioning } from "./legal-entity-provisioning.js";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
@@ -12,6 +16,10 @@ import { createMarketingContactsProjector } from "./marketing-contacts-projector
 import { NOTIFICATION_FANOUT_PROJECTOR, processNotificationFanout } from "./notification-fanout.js";
 import { processPaymentRefundNotify } from "./payment-refund-notify.js";
 import { processPayoutTransferFailedNotify } from "./payout-transfer-failed-notify.js";
+import {
+  SHOP_IDENTITY_PROJECTION_PROJECTOR,
+  processShopIdentityProjection,
+} from "./shop-identity-projection.js";
 import {
   SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR,
   processSourceOfFundsDocumentReview,
@@ -68,6 +76,15 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
     createZohoProjector(),
     createXeroProjector(),
     createMarketingContactsProjector(),
+    {
+      name: SHOP_IDENTITY_PROJECTION_PROJECTOR,
+      isEnabled(ctx) {
+        return ctx.shopIdentityProjection != null;
+      },
+      async run(ctx) {
+        await processShopIdentityProjection(ctx);
+      },
+    },
     {
       name: "admin_impersonation_notify",
       isEnabled(ctx) {
@@ -142,6 +159,12 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
       name: "legal_entity_provisioning",
       async run(ctx) {
         await processLegalEntityProvisioning({ ctx, log: ctx.log });
+      },
+    },
+    {
+      name: BID_PROFILE_PROVISIONING_PROJECTOR,
+      async run(ctx) {
+        await processBidProfileProvisioning({ ctx, log: ctx.log });
       },
     },
     {

@@ -31,7 +31,10 @@ export class DrizzleAdminSaleReadinessReader implements IAdminSaleReadinessReade
         and(
           saleNotDeleted(),
           inArray(sale.status, ["draft", "scheduled", "active"]),
-          or(isNull(sale.startTime), sql`${sale.startTime} >= ${now} - interval '7 days'`),
+          or(
+            isNull(sale.startTime),
+            sql`${sale.startTime} >= ${now}::timestamptz - interval '7 days'`,
+          ),
         ),
       )
       .orderBy(sql`${sale.startTime} ASC NULLS LAST`)

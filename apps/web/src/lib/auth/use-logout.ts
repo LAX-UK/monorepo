@@ -1,7 +1,7 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
+import { requestBffLogout } from "@/lib/data/http/auth-session.client";
 import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
 import { clearPendingEntityInviteAction } from "@/lib/legal-entity/pending-invite-cookie.actions";
 import { notify } from "@/lib/ui/notify";
@@ -25,16 +25,20 @@ export function useLogout(options?: UseLogoutOptions) {
     onBeforeNavigate?.();
     setPending(true);
     try {
-      const { error } = await authClient.signOut();
-      if (error) {
-        notify.error(error.message ?? "Could not sign out");
+      const result = await requestBffLogout();
+      if (!result.ok) {
+        notify.error("Could not sign out");
         return;
       }
       await refetchSession();
       clearClientActingLegalEntityId();
       await clearPendingEntityInviteAction();
-      router.push(redirectTo);
-      router.refresh();
+      if (result.redirectTo) {
+        window.location.assign(result.redirectTo);
+      } else {
+        router.push(redirectTo);
+        router.refresh();
+      }
     } catch {
       notify.error("Could not sign out");
     } finally {

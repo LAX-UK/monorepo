@@ -41,9 +41,12 @@ describe("admin read routes (DIP facade)", () => {
     });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.read"],
+      }),
     };
 
     const app = new Hono();
@@ -75,9 +78,12 @@ describe("admin read routes (DIP facade)", () => {
     });
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "specialist" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "specialist",
+        scopes: ["bid.read"],
+      }),
     };
 
     const app = new Hono();

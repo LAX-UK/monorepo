@@ -3,11 +3,10 @@ import { describe, expect, it } from "vitest";
 import { STALE_AUTH_COOKIE_NAMES, purgeStaleAuthCookies } from "./purge-stale-auth-cookies";
 
 describe("purgeStaleAuthCookies", () => {
-  it("sets Domain and Secure in production", () => {
+  it("expires only host-bound Bid session cookies in production", () => {
     const res = NextResponse.next();
     purgeStaleAuthCookies(res, {
       nodeEnv: "production",
-      cookieDomain: ".lax.bid",
     });
 
     for (const name of STALE_AUTH_COOKIE_NAMES) {
@@ -16,7 +15,7 @@ describe("purgeStaleAuthCookies", () => {
     }
 
     const setCookie = res.headers.get("set-cookie") ?? "";
-    expect(setCookie).toContain("Domain=.lax.bid");
+    expect(setCookie).not.toContain("Domain=");
     expect(setCookie).toContain("Secure");
   });
 });

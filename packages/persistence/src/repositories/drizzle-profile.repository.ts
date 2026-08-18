@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { bidUserProfile, user } from "@auction/db/schema";
+import { eq, sql } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   IProfileReader,
   IProfileWriter,
@@ -17,25 +18,40 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         id: user.id,
         email: user.email,
         name: user.name,
-        mobile: user.mobile,
-        mobileCountry: user.mobileCountry,
+        mobile: sql<string | null>`coalesce(${bidUserProfile.mobile}, ${user.mobile})`,
+        mobileCountry: sql<
+          string | null
+        >`coalesce(${bidUserProfile.mobileCountry}, ${user.mobileCountry})`,
         phoneNumber: user.phoneNumber,
         phoneNumberVerified: user.phoneNumberVerified,
         image: user.image,
-        role: user.role,
-        staffRole: user.staffRole,
+        role: sql<string>`coalesce(${bidUserProfile.role}, ${user.role})`,
+        staffRole: sql<
+          (typeof bidUserProfile.staffRole.enumValues)[number] | null
+        >`coalesce(${bidUserProfile.staffRole}, ${user.staffRole})`,
         emailVerified: user.emailVerified,
-        emailStatus: user.emailStatus,
-        emailStatusChangedAt: user.emailStatusChangedAt,
+        emailStatus: sql<string>`coalesce(${bidUserProfile.emailStatus}, ${user.emailStatus})`,
+        emailStatusChangedAt: sql<Date | null>`coalesce(
+          ${bidUserProfile.emailStatusChangedAt},
+          ${user.emailStatusChangedAt}
+        )`,
         pendingNewEmail: user.pendingNewEmail,
-        hasSeenActingContextTooltip: user.hasSeenActingContextTooltip,
-        kycStatus: user.kycStatus,
-        signupPersona: user.signupPersona,
+        hasSeenActingContextTooltip: sql<boolean>`coalesce(
+          ${bidUserProfile.hasSeenActingContextTooltip},
+          ${user.hasSeenActingContextTooltip}
+        )`,
+        kycStatus: sql<
+          (typeof bidUserProfile.kycStatus.enumValues)[number]
+        >`coalesce(${bidUserProfile.kycStatus}, ${user.kycStatus})`,
+        signupPersona: sql<
+          string | null
+        >`coalesce(${bidUserProfile.signupPersona}, ${user.signupPersona})`,
         deletionRequestedAt: user.deletionRequestedAt,
         twoFactorEnabled: user.twoFactorEnabled,
-        suspendedAt: user.suspendedAt,
+        suspendedAt: sql<Date | null>`coalesce(${bidUserProfile.suspendedAt}, ${user.suspendedAt})`,
       })
       .from(user)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(eq(user.id, userId))
       .limit(1);
     if (!row) return null;
@@ -68,15 +84,13 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
   }
 
   async updateProfile(userId: string, input: ProfileUpdateInput): Promise<void> {
-    await this.db
-      .update(user)
-      .set({
-        ...(input.name !== undefined ? { name: input.name } : {}),
-        ...(input.image !== undefined ? { image: input.image } : {}),
-        ...(input.mobile !== undefined ? { mobile: input.mobile } : {}),
-        ...(input.mobileCountry !== undefined ? { mobileCountry: input.mobileCountry } : {}),
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
+    if (input.mobile !== undefined || input.mobileCountry !== undefined) {
+      await this.db.transaction(async (tx) => {
+        await writeBidUserProfile(tx, userId, {
+          ...(input.mobile !== undefined ? { mobile: input.mobile } : {}),
+          ...(input.mobileCountry !== undefined ? { mobileCountry: input.mobileCountry } : {}),
+        });
+      });
+    }
   }
 }

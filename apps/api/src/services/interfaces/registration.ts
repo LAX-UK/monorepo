@@ -11,6 +11,7 @@ export type RegistrationInput = {
   mobile?: string;
   mobileCountry?: string;
   inviteToken?: string | undefined;
+  requestHeaders?: Headers;
   /** When false (org module disabled), entity-scoped invites are rejected but
    * platform invites (staff/client role grants) still register normally. */
   allowEntityInvites?: boolean;
@@ -28,6 +29,7 @@ export interface IEmailSignupPersister {
     password: string;
     persona?: SignupPersona;
     inviteToken?: string;
+    headers?: Headers;
   }): Promise<
     { ok: true; userId: string } | { ok: false; message: string; status?: number | undefined }
   >;
@@ -69,6 +71,7 @@ export interface IVerificationEmailResender {
     email: string;
     persona?: SignupPersona;
     inviteToken?: string;
+    headers?: Headers;
   }): Promise<{ ok: boolean }>;
 }
 

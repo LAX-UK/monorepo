@@ -1,7 +1,14 @@
 import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, saleRegistration, user } from "@auction/db/schema";
+import {
+  bidUserProfile,
+  legalEntity,
+  legalEntityMember,
+  saleRegistration,
+  user,
+} from "@auction/db/schema";
 import { PADDLE_NUMBER_MIN } from "@auction/validators";
 import { and, eq, ilike, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   CheckInCandidateRow,
   CheckInWithPaddleInput,
@@ -32,10 +39,11 @@ export class DrizzleSaleroomCheckInRepository implements ISaleroomCheckInReposit
         name: user.name,
         email: user.email,
         emailVerified: user.emailVerified,
-        kycStatus: user.kycStatus,
-        suspendedAt: user.suspendedAt,
+        kycStatus: bidUserProfile.kycStatus,
+        suspendedAt: bidUserProfile.suspendedAt,
       })
       .from(user)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(or(ilike(user.email, needle), ilike(user.name, needle)))
       .limit(limit);
 
@@ -157,10 +165,9 @@ export class DrizzleSaleroomCheckInRepository implements ISaleroomCheckInReposit
         if (!row) throw new Error("Could not upsert sale registration");
 
         if (paddleNumber != null) {
-          await tx
-            .update(user)
-            .set({ preferredPaddleNumber: paddleNumber })
-            .where(eq(user.id, input.userId));
+          await writeBidUserProfile(tx, input.userId, {
+            preferredPaddleNumber: paddleNumber,
+          });
         }
 
         return { registrationId: row.id, paddleNumber, checkedInAt: now };

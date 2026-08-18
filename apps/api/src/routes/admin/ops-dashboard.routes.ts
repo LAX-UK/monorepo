@@ -1,6 +1,5 @@
 import { zValidator } from "../../lib/z-validator.js";
 import {
-  requireAdminDashboard,
   requireLegalEntityBrowse,
   requireOnboardingQueues,
 } from "../../middleware/require-capability.js";
@@ -13,15 +12,20 @@ import type { AdminHono } from "./_shared.js";
 
 const requireLegalEntityRead = requireLegalEntityBrowse;
 
+export function attachAdminFinanceIssueRoutes(
+  finance: AdminHono,
+  container: AdminOpsDashboardRoutesContainer,
+): void {
+  finance.get("/metrics/finance-issues", async (c) => {
+    const data = await container.admin.financeIssueSnapshot.getFinanceIssueSnapshot();
+    return c.json({ data });
+  });
+}
+
 export function attachAdminOpsDashboardRoutes(
   platform: AdminHono,
   container: AdminOpsDashboardRoutesContainer,
 ): void {
-  platform.get("/metrics/finance-issues", requireAdminDashboard, async (c) => {
-    const data = await container.admin.financeIssueSnapshot.getFinanceIssueSnapshot();
-    return c.json({ data });
-  });
-
   /** Paginated onboarding / compliance queues (DSE20). */
   platform.get(
     "/onboarding-issues",

@@ -1,15 +1,16 @@
 import type { Database } from "@auction/db";
 import {
   bid,
+  bidUserProfile,
   itemSubmission,
   kycVerification,
   legalEntity,
   lot,
   payment,
-  user,
 } from "@auction/db/schema";
 import type { KycVerification } from "@auction/types";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { incrementBidProfileKycRetryCount, writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   CreateKycVerificationInput,
   IKycSessionRepository,
@@ -80,13 +81,9 @@ export class DrizzleKycRepository implements IKycRepository, IKycSessionReposito
         })
         .returning();
       if (!row) throw new Error("kyc_create_failed");
-      await tx
-        .update(user)
-        .set({
-          currentKycSessionId: input.providerSessionId,
-          updatedAt: new Date(),
-        })
-        .where(eq(user.id, input.userId));
+      await writeBidUserProfile(tx, input.userId, {
+        currentKycSessionId: input.providerSessionId,
+      });
       return rowToKyc(row);
     });
   }
@@ -101,11 +98,11 @@ export class DrizzleKycRepository implements IKycRepository, IKycSessionReposito
     const db = this.resolveConn(conn);
     const rows = await db
       .select({
-        currentKycSessionId: user.currentKycSessionId,
-        kycRetryCount: user.kycRetryCount,
+        currentKycSessionId: bidUserProfile.currentKycSessionId,
+        kycRetryCount: bidUserProfile.kycRetryCount,
       })
-      .from(user)
-      .where(eq(user.id, userId))
+      .from(bidUserProfile)
+      .where(eq(bidUserProfile.userId, userId))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
@@ -117,13 +114,7 @@ export class DrizzleKycRepository implements IKycRepository, IKycSessionReposito
 
   async incrementUserKycRetryCount(userId: string, conn?: Database): Promise<void> {
     const db = this.resolveConn(conn);
-    await db
-      .update(user)
-      .set({
-        kycRetryCount: sql`${user.kycRetryCount} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
+    await incrementBidProfileKycRetryCount(db, userId);
   }
 
   async getUserKycState(
@@ -136,11 +127,11 @@ export class DrizzleKycRepository implements IKycRepository, IKycSessionReposito
     const db = this.resolveConn(conn);
     const rows = await db
       .select({
-        kycStatus: user.kycStatus,
-        kycVerifiedAt: user.kycVerifiedAt,
+        kycStatus: bidUserProfile.kycStatus,
+        kycVerifiedAt: bidUserProfile.kycVerifiedAt,
       })
-      .from(user)
-      .where(eq(user.id, userId))
+      .from(bidUserProfile)
+      .where(eq(bidUserProfile.userId, userId))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
@@ -310,14 +301,10 @@ export class DrizzleKycRepository implements IKycRepository, IKycSessionReposito
     conn?: Database,
   ): Promise<void> {
     const db = this.resolveConn(conn);
-    await db
-      .update(user)
-      .set({
-        kycStatus: status,
-        kycVerifiedAt: verifiedAt,
-        ...(status === "approved" ? { kycRetryCount: 0 } : {}),
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
+    await writeBidUserProfile(db, userId, {
+      kycStatus: status,
+      kycVerifiedAt: verifiedAt,
+      ...(status === "approved" ? { kycRetryCount: 0 } : {}),
+    });
   }
 }

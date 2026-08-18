@@ -24,9 +24,9 @@ The list below is the curated set of things that have actually surprised people.
 
 ## Webhooks
 
-**Shopify HMAC verification rejects every request.** The verifier hashes the raw body, not the parsed JSON. If you've added a JSON body parser middleware ahead of the webhook route, the raw bytes are already consumed. Make sure the webhook handler reads `c.req.raw.text()` (or equivalent) before any parsing.
+**A provider signature rejects every request.** Signature schemes such as Stripe and Xero hash the raw body, not parsed JSON. Ensure the handler reads the raw request before any middleware consumes or rewrites it.
 
-**The `webhook_event` row is created but the worker never processes it.** Today the API does **not** enqueue a BullMQ job after writing to `webhook_event` — the producer side of the `webhook-events` queue is **(Phase 2)**. The worker's heartbeat for that queue therefore never fires, which can also cause its `/health/ready` to flap. See [docs/architecture/02-decisions.md](../architecture/02-decisions.md) D4 for the status.
+**The `webhook_event` row is created but the worker never processes it.** Check `WEBHOOK_EVENTS_ENQUEUE`, `WEBHOOK_EVENTS_PROCESS`, the `webhook-events` queue heartbeat, and the stored row's source/routing fields. The generic worker currently dispatches Xero invoice events.
 
 ## Domain events
 
@@ -36,6 +36,12 @@ The list below is the curated set of things that have actually surprised people.
 
 ## Auth
 
-**Why is `apps/web` checking the cookie, not the JWT?** `apps/web` is same-origin with `apps/api` and `apps/auth` (all `.lax.bid`), so the cookie is the cheaper credential. JWT verification is for cross-domain consumers (WordPress, future mobile apps, `apps/ws`). See [docs/architecture/05-identity-flow.md](../architecture/05-identity-flow.md) flow 2 for the cross-domain handshake.
+**Why does `apps/web` use a cookie while API requires JWT?** Web is the Bid
+BFF. It validates an opaque host-only Bid session, keeps OIDC tokens
+server-side, exchanges for `lax-bid-api` or `lax-ws`, and sends the resulting
+Bearer token to the resource server. API never receives the browser session
+cookie. See [Identity flow](../architecture/05-identity-flow.md).
 
-**`apps/ws` sometimes accepts a cookie I expected it to reject.** `LEGACY_WS_COOKIE_RELAY` is enabled. That's intentional during the migration to JWT-only handshake (D10). Disable it in your env to test the JWT path in isolation.
+**`apps/ws` rejects a cookie-only connection.** This is expected. Obtain the
+short-lived Identity JWT and pass it as `handshake.auth.token`; WS no longer
+relays browser cookies.

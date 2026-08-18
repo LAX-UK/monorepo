@@ -4,11 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { assertUserNotSuspendedForSession } from "./session-suspended-guard.js";
 
 describe("assertUserNotSuspendedForSession", () => {
-  it("rejects suspended users with APIError 403", async () => {
+  it("rejects globally disabled users with APIError 403", async () => {
     const db = {
       query: {
         user: {
-          findFirst: vi.fn().mockResolvedValue({ suspendedAt: new Date("2026-01-01") }),
+          findFirst: vi.fn().mockResolvedValue({
+            identityDisabledAt: new Date("2026-01-01"),
+            mergedIntoSubjectId: null,
+          }),
         },
       },
     } as unknown as Database;
@@ -17,7 +20,7 @@ describe("assertUserNotSuspendedForSession", () => {
       expect(err).toBeInstanceOf(APIError);
       const apiErr = err as APIError;
       expect(apiErr.statusCode).toBe(403);
-      expect(apiErr.body?.code).toBe("ACCOUNT_SUSPENDED");
+      expect(apiErr.body?.code).toBe("IDENTITY_DISABLED");
       return true;
     });
   });
@@ -26,7 +29,10 @@ describe("assertUserNotSuspendedForSession", () => {
     const db = {
       query: {
         user: {
-          findFirst: vi.fn().mockResolvedValue({ suspendedAt: null }),
+          findFirst: vi.fn().mockResolvedValue({
+            identityDisabledAt: null,
+            mergedIntoSubjectId: null,
+          }),
         },
       },
     } as unknown as Database;

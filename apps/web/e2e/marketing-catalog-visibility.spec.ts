@@ -24,7 +24,7 @@ test.describe("marketing catalog visibility @smoke", () => {
 
     await page.goto("/");
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.locator("#main-content")).toBeVisible();
+    await expect(page.locator("#main-content").last()).toBeVisible();
 
     expect(saleDetailRequests.length).toBe(0);
   });
@@ -53,7 +53,7 @@ test.describe("marketing catalog visibility @smoke", () => {
     test.skip(!enabled, skipReason);
     const res = await page.goto("/search");
     expect(res?.ok()).toBeTruthy();
-    await expect(page.locator("#main-content")).toBeVisible();
+    await expect(page.locator("#main-content").last()).toBeVisible();
   });
 
   test("search default lot payloads exclude draft status", async ({ page }) => {

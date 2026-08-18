@@ -29,7 +29,6 @@ describe("auth app environment contract", () => {
         NODE_ENV: "production",
         APP_ENV: "production",
         BETTER_AUTH_SECRET: "x".repeat(48),
-        API_PUBLIC_URL: "https://api.example.com",
         OIDC_ISSUER_URL: "https://auth.example.com",
         WEB_ORIGIN: "https://example.com",
         ALLOW_HTTP_COOKIES: "true",

@@ -14,9 +14,9 @@ Apps:
 pnpm turbo dev --parallel
 ```
 
-This starts all five apps: `apps/web` (3000), `apps/api` (3001), `apps/ws`
-(3002), `apps/auth` (3003), and `apps/worker` (3004 — `/health` and `/metrics`
-only).
+This starts all six apps: `apps/web` (3000), `apps/api` (3001), `apps/ws`
+(3002), `apps/auth` (3003), `apps/worker` (3004 — `/health` and `/metrics`
+only), and `apps/shop-identity` (3010).
 
 ## Database URLs
 
@@ -44,35 +44,32 @@ Role-contract gate (after migrations and `pnpm --filter @auction/db db:roles`):
 AUTH_ROLE_CONTRACT_REQUIRED=true pnpm --filter @auction/db test:auth-role-contract
 ```
 
-## Dual-host auth production parity
+## Auth production parity
 
-Keep both issuers running locally with the same `DATABASE_URL_AUTH`,
+Run the canonical issuer on `apps/auth` with `DATABASE_URL_AUTH`,
 `BETTER_AUTH_SECRET`, `AUTH_DEK_KEY`, `OIDC_ISSUER_URL`, `COOKIE_DOMAIN`, and
-`JWT_AUDIENCE`. Use `NEXT_PUBLIC_AUTH_URL=http://localhost:3003` for the standalone
-path while the API remains on 3001. Then compare:
+`JWT_AUDIENCE`. Use `NEXT_PUBLIC_AUTH_URL=http://localhost:3003`, then verify:
 
 ```sh
-curl -fsS http://localhost:3001/.well-known/openid-configuration
 curl -fsS http://localhost:3003/.well-known/openid-configuration
 curl -fsSI http://localhost:3003/api/auth/get-session
 ```
 
-Discovery must match, JWKS must expose the same keys, and auth responses must include
+Discovery and JWKS must expose the canonical issuer and keys, and auth responses must include
 `Cache-Control: no-store, no-cache, must-revalidate, private`. The PR browser workflow
 also runs this topology before the sign-in/session journey.
 
 ## OAuth callback testing
 
 Use a stable ngrok or `cloudflared` tunnel when testing Google/Apple callbacks.
-Point the tunnel at whichever app currently serves `/api/auth/*` — either
-`apps/api` (port 3001) or `apps/auth` (port 3003); both are valid today
-(D7 dual-stack).
+Point the tunnel at `apps/auth` (port 3003), the sole process serving
+`/api/auth/*` and `/.well-known/*`.
 
 ```sh
-ngrok http 3003   # or 3001 if pointing at apps/api
+ngrok http 3003
 ```
 
-Set these on the auth/api process:
+Set these on the auth process:
 
 ```env
 API_PUBLIC_URL=https://YOUR-TUNNEL.ngrok-free.app

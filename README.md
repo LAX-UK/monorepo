@@ -1,6 +1,6 @@
 # Auction monorepo
 
-Turborepo + pnpm. Five Node.js apps, a ClamAV malware-scan service, and seventeen shared packages.
+Turborepo + pnpm. Six Node.js apps, a ClamAV malware-scan service, and shared packages.
 
 | App | Stack | Role |
 |---|---|---|
@@ -9,6 +9,7 @@ Turborepo + pnpm. Five Node.js apps, a ClamAV malware-scan service, and seventee
 | `apps/auth` | Hono + Better Auth | OIDC issuer (auth.lax.bid), JWKS, social providers |
 | `apps/ws` | Socket.IO + Redis | Real-time bid/lot fan-out |
 | `apps/worker` | BullMQ + Hono | Async jobs: email outbox, image validation, projectors, GC, marketing-sync |
+| `apps/shop-identity` | Hono | Executable confidential OIDC/BFF boundary for the custom Shop at `shop.lax.art` |
 | `apps/clamav` | ClamAV REST (`ajilaag/clamav-rest`) | Internal malware scanning for Source-of-Funds document uploads (`/v2/scan` on port 9000); worker-only, prod App Platform |
 
 Shared workspaces (`packages/`):
@@ -49,10 +50,11 @@ See `docs/development.md` for OAuth callback testing with ngrok, least-privilege
 | Service | URL | Notes |
 |--------|-----|--------|
 | Web | http://localhost:3000 | Next.js frontend |
-| API | http://localhost:3001 | `/health`, `/lots`, `/sales`, `/bids`, `/payments`, `/users/me`, `/api/auth/*`, `/.well-known/*`, `/webhooks/*` |
+| API | http://localhost:3001 | Bid resource server: `/health`, `/lots`, `/sales`, `/bids`, `/payments`, `/users/me`, `/ssf/events`, `/webhooks/*` |
 | WS | http://localhost:3002 | Socket.IO rooms + Redis fan-out |
-| Auth | http://localhost:3003 | OIDC issuer, JWKS, `/api/auth/*` (parallel to API today; D7 dual-stack) |
+| Auth | http://localhost:3003 | Sole OIDC issuer, JWKS, `/api/auth/*`, `/ssf/*` |
 | Worker | http://localhost:3004 | `/health/live`, `/health/ready`, `/metrics` only — BullMQ consumers and projector runner |
+| Shop boundary | http://localhost:3010 | Confidential `lax-shop-web` RP/BFF, Shop-local profile, logout and SSF receivers |
 
 **ClamAV (optional locally):** production worker sets `CLAMAV_URL=http://clamav:9000` through the private `LAX-UK/auction-infra` configuration. For local dev, leave `CLAMAV_HOST` / `CLAMAV_URL` unset and SoF uploads skip scanning (no-op). To exercise scanning, run the image from `apps/clamav/Dockerfile` and point the worker at `CLAMAV_URL=http://127.0.0.1:9000` or `CLAMAV_HOST=127.0.0.1` + `CLAMAV_PORT=3310`.
 
@@ -60,7 +62,9 @@ See `docs/development.md` for OAuth callback testing with ngrok, least-privilege
 
 **Real-time:** API publishes to Redis `lot:{lotId}:events` and `user:{userId}:notifications`; `apps/ws` bridges to Socket.IO (`bidUpdate`, `lotExtended`, `lotEnded`, `userNotification`).
 
-**SOLID:** Auction strategies, `IRepositoryFactory`, repository interfaces, `IAuthenticator` + `CompositeAuthenticator`, `NotificationService`, `IEmailService` / `IEmailSender` seams, composition roots (`apps/api/src/container.ts`).
+**Identity:** Every browser product is an OIDC RP/BFF with a host-only opaque
+session. APIs accept audience-bound Bearer tokens and load product authorization
+locally. See `docs/architecture/09-lax-identity-boundary.md`.
 
 ## Docker
 

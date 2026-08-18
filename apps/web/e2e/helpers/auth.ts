@@ -190,7 +190,7 @@ export async function assertAuthenticatedStaffSession(page: Page): Promise<void>
   await expect(main).toBeVisible({ timeout: 15_000 });
 
   const staffNav = page.getByRole("navigation", {
-    name: /staff dashboard|primary mobile dashboard navigation/i,
+    name: /dashboard|primary mobile dashboard navigation/i,
   });
   await expect(staffNav).toBeVisible({ timeout: 15_000 });
 }
@@ -258,7 +258,9 @@ export async function ensureAuthenticatedStaffSession(page: Page): Promise<void>
 export async function catalogueManagerLogin(page: Page): Promise<void> {
   await login(page, catalogueCredentials);
   await page.goto("/admin/lots", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: /lots/i, level: 1 })).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 export async function financeLogin(page: Page): Promise<void> {
@@ -297,7 +299,16 @@ export function formatAxeViolations(
     .join("\n");
 }
 
+async function disableMotion(page: Page): Promise<void> {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addStyleTag({
+    content:
+      "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}",
+  });
+}
+
 export async function expectNoSeriousAxeViolationsInMain(page: Page): Promise<void> {
+  await disableMotion(page);
   const result = await new AxeBuilder({ page })
     .include("#main-content")
     .withTags(["wcag2a", "wcag2aa"])
@@ -310,6 +321,7 @@ export async function expectNoSeriousAxeViolationsInMain(page: Page): Promise<vo
 }
 
 export async function expectNoSeriousAxeViolationsInDialog(page: Page): Promise<void> {
+  await disableMotion(page);
   const result = await new AxeBuilder({ page })
     .include('[role="dialog"]')
     .withTags(["wcag2a", "wcag2aa"])
@@ -324,9 +336,5 @@ export async function expectNoSeriousAxeViolationsInDialog(page: Page): Promise<
 export async function stabilizeVisualPage(page: Page): Promise<void> {
   await dismissCookieConsentIfVisible(page);
   await dismissStaffPaletteIfOpen(page);
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.addStyleTag({
-    content:
-      "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}",
-  });
+  await disableMotion(page);
 }

@@ -6,13 +6,18 @@
  *   AUTH_DEK_KEY=... DATABASE_URL=... pnpm exec tsx scripts/backfill-auth-at-rest.ts
  */
 import { Buffer } from "node:buffer";
-import { createCipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import pg from "pg";
 import { buildPgConnectionConfig } from "../src/ssl.js";
 
 const { Pool } = pg;
 
 const PREFIX = "v1:";
+const TOKEN_HASH_PREFIX = "h1:";
+
+function fingerprint(token: string): string {
+  return `${TOKEN_HASH_PREFIX}${createHash("sha256").update(token).digest("base64url")}`;
+}
 
 function parseDek(raw: string): Buffer {
   const trimmed = raw.trim();
@@ -71,6 +76,36 @@ async function main() {
     }
   }
 
+  const { rows: oauthTokens } = await pool.query<{
+    id: string;
+    access_token: string;
+    refresh_token: string;
+    refresh_token_hash: string | null;
+  }>("select id, access_token, refresh_token, refresh_token_hash from oauth_access_token");
+  let o = 0;
+  for (const row of oauthTokens) {
+    const accessToken = row.access_token.startsWith(TOKEN_HASH_PREFIX)
+      ? row.access_token
+      : fingerprint(row.access_token);
+    const refreshToken = row.refresh_token.startsWith(TOKEN_HASH_PREFIX)
+      ? row.refresh_token
+      : fingerprint(row.refresh_token);
+    const refreshTokenHash = row.refresh_token_hash ?? refreshToken.slice(TOKEN_HASH_PREFIX.length);
+    if (
+      accessToken !== row.access_token ||
+      refreshToken !== row.refresh_token ||
+      refreshTokenHash !== row.refresh_token_hash
+    ) {
+      await pool.query(
+        `update oauth_access_token
+         set access_token = $2, refresh_token = $3, refresh_token_hash = $4, updated_at = now()
+         where id = $1`,
+        [row.id, accessToken, refreshToken, refreshTokenHash],
+      );
+      o += 1;
+    }
+  }
+
   const { rows: tf } = await pool.query<{
     id: string;
     secret: string;
@@ -109,7 +144,7 @@ async function main() {
     k += 1;
   }
 
-  console.log(`Updated accounts=${a}, two_factor=${t}, jwks_key=${k}`);
+  console.log(`Updated accounts=${a}, oauth_access_token=${o}, two_factor=${t}, jwks_key=${k}`);
   await pool.end();
 }
 

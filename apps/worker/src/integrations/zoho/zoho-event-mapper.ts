@@ -47,17 +47,6 @@ export function mapDomainEventToZohoUpsert(event: DomainEventRowForZoho): ZohoUp
         },
       };
     }
-    case "user.linked_external": {
-      const p = payload as { userId: string; provider: string; externalId: string };
-      return {
-        module: "Contacts",
-        externalId: `user:${p.userId}`,
-        fields: {
-          External_Provider: p.provider,
-          External_Account_Id: p.externalId,
-        },
-      };
-    }
     case "bid.lot_won": {
       const p = payload as {
         lotId: string;

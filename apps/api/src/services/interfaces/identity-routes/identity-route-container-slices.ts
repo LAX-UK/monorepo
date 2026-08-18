@@ -7,7 +7,7 @@ type IdentityRoutePick<K extends keyof IdentityRouteServices> = {
 export type IdentityAuthRoutesContainer = IdentityRoutePick<"accountSecurityHttp"> &
   Pick<
     import("../../../container.js").Container,
-    "env" | "redis" | "authenticator" | "userSuspensionChecker" | "authDb"
+    "env" | "redis" | "authenticator" | "userSuspensionChecker" | "identityIssuer"
   >;
 
 export type IdentityLegalEntityRoutesContainer = IdentityRoutePick<"legalEntityHttp"> &

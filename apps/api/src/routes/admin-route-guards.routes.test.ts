@@ -54,6 +54,9 @@ function buildApp(staffRole: string) {
       telephoneBookings: {
         countGlobalPending: vi.fn().mockResolvedValue({ count: 0 }),
       },
+      financeIssueSnapshot: {
+        getFinanceIssueSnapshot: vi.fn().mockResolvedValue({}),
+      },
       onsiteEvents: {
         listAdminEvents: vi.fn().mockResolvedValue([]),
       },
@@ -75,7 +78,9 @@ function buildApp(staffRole: string) {
   } as unknown as Container;
 
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "staff-user-id", role: "staff", staffRole }),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue({ id: "staff-user-id", role: "staff", staffRole, scopes: ["bid.read"] }),
   };
 
   const app = new Hono();
@@ -93,6 +98,7 @@ describe("admin route guard composition", () => {
     expect((await get(app, "/admin/telephone-bookings/pending-count")).status).toBe(403);
     expect((await get(app, "/admin/event-rsvps")).status).toBe(403);
     expect((await get(app, "/admin/finance/disputes/open-count")).status).toBe(403);
+    expect((await get(app, "/admin/metrics/finance-issues")).status).toBe(403);
     expect(
       (await get(app, "/admin/sales/00000000-0000-4000-8000-000000000001/expected-guests")).status,
     ).toBe(403);
@@ -105,6 +111,7 @@ describe("admin route guard composition", () => {
     expect((await get(app, "/admin/telephone-bookings/pending-count")).status).toBe(200);
     expect((await get(app, "/admin/event-rsvps")).status).toBe(200);
     expect((await get(app, "/admin/finance/disputes/open-count")).status).toBe(200);
+    expect((await get(app, "/admin/metrics/finance-issues")).status).toBe(200);
     expect(
       (await get(app, "/admin/sales/00000000-0000-4000-8000-000000000001/expected-guests")).status,
     ).toBe(200);
@@ -114,6 +121,7 @@ describe("admin route guard composition", () => {
     const app = buildApp("finance_ops");
 
     expect((await get(app, "/admin/finance/disputes/open-count")).status).toBe(200);
+    expect((await get(app, "/admin/metrics/finance-issues")).status).toBe(200);
     expect((await get(app, "/admin/users?limit=1")).status).toBe(403);
     expect((await get(app, "/admin/telephone-bookings/pending-count")).status).toBe(403);
   });

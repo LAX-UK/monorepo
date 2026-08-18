@@ -9,7 +9,7 @@ import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services
 import { createLotRoutes } from "./lots.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const SESSION_COOKIE = "better-auth.session_token=test-session-token-fixture";
+const RESOURCE_AUTHORIZATION = "Bearer test-lax-bid-api-token";
 
 function draftLot(): Lot {
   return {
@@ -86,7 +86,7 @@ function mount(
     requireSubmissionsLegalEntityContext: vi.fn(),
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue(user),
+    getSessionUser: vi.fn().mockResolvedValue(user ? { ...user, scopes: ["bid.read"] } : null),
   };
   app.route("/lots", createLotRoutes(container, authenticator));
   return { app, listLotsForPublicApi, getById };
@@ -171,7 +171,7 @@ describe("lots public contract", () => {
   it("returns 200 for draft lot detail when catalogue staff", async () => {
     const { app } = mount({ id: "staff-1", role: "staff", staffRole: "catalogue_manager" });
     const res = await app.request(`http://t/lots/${lotId}`, {
-      headers: { cookie: SESSION_COOKIE },
+      headers: { authorization: RESOURCE_AUTHORIZATION },
     });
     expect(res.status).toBe(200);
   });

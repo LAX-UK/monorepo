@@ -953,6 +953,83 @@
       "when": 1788000012000,
       "tag": "0136_sale_hero_presentation",
       "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1788000013000,
+      "tag": "0137_identity_boundary_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1788000015000,
+      "tag": "0138_identity_boundary_clients",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1788000017000,
+      "tag": "0139_identity_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1788000018000,
+      "tag": "0140_bid_profile_authoritative",
+      "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1788000019000,
+      "tag": "0141_repair_sale_hero_presentation",
+      "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1788000020000,
+      "tag": "0142_bid_identity_lifecycle_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1788000021000,
+      "tag": "0143_oauth_consent_client_user_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1788000022000,
+      "tag": "0144_oidc_rp_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1788000023000,
+      "tag": "0145_oidc_logout_and_shop_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1788000024000,
+      "tag": "0146_ssf_signal_transport",
+      "breakpoints": true
+    },
+    {
+      "idx": 146,
+      "version": "7",
+      "when": 1788000025000,
+      "tag": "0147_remove_shop_session_id_token",
+      "breakpoints": true
     }
   ]
 }

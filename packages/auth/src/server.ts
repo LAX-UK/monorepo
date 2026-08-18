@@ -49,7 +49,6 @@ export type AuthEnv = {
   trustedOrigins?: string[] | undefined;
   /** Set to true to allow cookies over HTTP (non-HTTPS). Only for testing! */
   allowInsecureCookies?: boolean;
-  cookieDomain?: string | undefined;
   webOrigin?: string | undefined;
   googleClientId?: string | undefined;
   googleClientSecret?: string | undefined;
@@ -59,7 +58,7 @@ export type AuthEnv = {
   email?: IEmailService | undefined;
   phoneVerification?: IPhoneVerificationService | undefined;
   requireEmailVerification?: boolean | undefined;
-  /** `aud` claim for JWTs consumed by `lax-api` (Bearer). OIDC clients may use separate audiences via issuer config. */
+  /** `aud` claim for first-party JWTs consumed by the Bid API. */
   jwtAudience?: string | undefined;
   /** When set (64 hex or base64 of 32 bytes), envelope-encrypts OAuth tokens, 2FA secrets, and JWKS private keys at rest. */
   authDekKey?: string | undefined;
@@ -76,18 +75,41 @@ export type AuthEnv = {
   onAccountCreated?: AuthLifecycleCallbacks["onAccountCreated"];
   /** Invoked from `emailVerification.afterEmailVerification` when the user confirms their email. */
   onEmailVerified?: AuthLifecycleCallbacks["onEmailVerified"];
+  /** Invoked from `databaseHooks.user.update.after` when canonical profile fields change. */
+  onUserUpdated?:
+    | ((authUser: {
+        id: string;
+        email: string;
+        name: string;
+        phoneNumber?: string | null;
+      }) => Promise<void>)
+    | undefined;
   /**
    * When `true`, `databaseHooks.session.create.after` fires a `new-device-login` email
    * for every new session. Enabled in production; leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
+  /** Request-scoped claims resolver used by the OIDC authorization-code flow. */
+  resolveOidcIdTokenClaims?:
+    | ((input: {
+        subjectId: string;
+        clientId: string;
+      }) => Promise<{
+        sid?: string;
+        auth_time?: number;
+        acr?: string;
+        amr?: string[];
+      }>)
+    | undefined;
 };
 
 export type Auth = {
   handler: (request: Request) => Promise<Response>;
   api: {
+    getJwks(): Promise<{ keys: unknown[] }>;
     getSession(input: { headers: Headers }): Promise<{
-      user?: { id?: string; role?: string | null; staffRole?: string | null } | null;
+      session?: { id?: string } | null;
+      user?: { id?: string } | null;
     } | null>;
     signUpEmail(input: {
       body: { name: string; email: string; password: string; callbackURL?: string };
@@ -156,17 +178,6 @@ export function createAuth(env: AuthEnv): Auth {
     },
     user: {
       additionalFields: {
-        role: {
-          type: "string",
-          required: false,
-          defaultValue: "client",
-          input: false,
-        },
-        staffRole: {
-          type: "string",
-          required: false,
-          input: false,
-        },
         phoneNumber: {
           type: "string",
           required: false,
@@ -176,11 +187,6 @@ export function createAuth(env: AuthEnv): Auth {
           type: "boolean",
           required: false,
           defaultValue: false,
-          input: false,
-        },
-        mobileCountry: {
-          type: "string",
-          required: false,
           input: false,
         },
       },
@@ -200,6 +206,7 @@ export function createAuth(env: AuthEnv): Auth {
       email: env.email,
       onUserCreated: env.onUserCreated,
       onAccountCreated: env.onAccountCreated,
+      onUserUpdated: env.onUserUpdated,
       enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
     }),
     session: {
@@ -219,24 +226,12 @@ export function createAuth(env: AuthEnv): Auth {
       email: env.email,
       phoneVerification: env.phoneVerification,
       onEmailVerified: env.onEmailVerified,
+      resolveOidcIdTokenClaims: env.resolveOidcIdTokenClaims,
     }),
     advanced: {
       useSecureCookies: env.allowInsecureCookies ? false : undefined,
-      crossSubDomainCookies: env.cookieDomain
-        ? {
-            enabled: true,
-            domain: env.cookieDomain,
-          }
-        : undefined,
-      defaultCookieAttributes: env.cookieDomain
-        ? {
-            domain: env.cookieDomain,
-            sameSite: "lax",
-            secure: true,
-          }
-        : undefined,
     },
-  }) as Auth;
+  }) as unknown as Auth;
 }
 
 export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";

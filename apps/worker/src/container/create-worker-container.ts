@@ -2,11 +2,7 @@ import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
 import { getBullMqTelemetry, initNodeSentry } from "@auction/observability";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
-import {
-  DrizzleExternalAccountRepository,
-  DrizzleUserRepository,
-  DrizzleWebhookEventRepository,
-} from "@auction/persistence/repositories";
+import { DrizzleWebhookEventRepository } from "@auction/persistence/repositories";
 import {
   DEAD_LETTER_QUEUE_NAME,
   LOT_LIFECYCLE_QUEUE_NAME,
@@ -54,7 +50,7 @@ import {
 } from "../lifecycle/worker-lifecycle-executor.js";
 import { marketingEventsCapiBatchSize } from "../marketing/meta-capi-batch-collector.js";
 import { createProjectorRunner } from "../projectors/runner.js";
-import { LinkExternalAccountWorkerService } from "../services/link-external-account.service.js";
+import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import { registerComplianceWorkers } from "../workers/register-compliance-workers.js";
 import { registerCronWorkers } from "../workers/register-cron-workers.js";
 import { registerEmailWorker } from "../workers/register-email-worker.js";
@@ -321,13 +317,6 @@ export function createWorkerContainer(): WorkerContainer {
     env,
     log,
     webhookEvents: new DrizzleWebhookEventRepository(db),
-    externalAccounts: new DrizzleExternalAccountRepository(db),
-    users: new DrizzleUserRepository(db),
-    transactionRunner: repositories.transactionRunner,
-    linkExternalAccount: new LinkExternalAccountWorkerService(
-      new DrizzleExternalAccountRepository(db),
-      repositories.domainEventSink,
-    ),
     ...(internalCronSecret && workerFinanceServices
       ? {
           syncXeroInvoiceWebhook: async (input) =>
@@ -414,6 +403,7 @@ export function createWorkerContainer(): WorkerContainer {
 
   const adminPayoutsUrl = `${env.WEB_ORIGIN.replace(/\/$/, "")}/admin/payouts`;
   const adminEmailAddress = env.ADMIN_EMAIL_ADDRESS ?? "admin@lax.bid";
+  const shopIdentityProjection = new ShopIdentityProjectionService(db);
   const projectorRunner = createProjectorRunner({
     transactionRunner: repositories.transactionRunner,
     notificationWriteRepo: repositories.notificationWriteRepo,
@@ -448,6 +438,7 @@ export function createWorkerContainer(): WorkerContainer {
       webOrigin: env.WEB_ORIGIN,
       staffOpsRecipientReader: repositories.staffOpsRecipientReader,
       complianceRecipientReader: repositories.complianceRecipientReader,
+      shopIdentityProjection,
       ...(marketingWorkers.marketingContactSync
         ? {
             enqueueMarketingContactSync: async (data: {

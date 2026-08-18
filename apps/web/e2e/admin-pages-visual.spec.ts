@@ -16,12 +16,17 @@ async function prepareCase(
   page: Page,
   visualCase: (typeof adminVisualCases)[number],
 ): Promise<void> {
-  const response = await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
+  const initialPath =
+    visualCase.setup === "client-drawer"
+      ? (visualCase.path.split("?")[0] ?? visualCase.path)
+      : visualCase.path;
+  const response = await page.goto(initialPath, { waitUntil: "domcontentloaded" });
   expect(response?.ok()).toBeTruthy();
   await assertAdminRouteReady(page);
   await dismissStaffPaletteIfOpen(page);
 
   if (visualCase.setup === "client-drawer") {
+    await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
     await expect(
       page.getByRole("dialog").filter({ hasText: /Victoria Harrington|Overview/i }),
     ).toBeVisible({ timeout: visualTimeout });
@@ -45,7 +50,12 @@ async function prepareCase(
 
 function captureTarget(page: Page, capture: VisualCapture): Page | Locator {
   if (capture === "main") return page.locator("#main-content");
-  if (capture === "dialog") return page.getByRole("dialog").last();
+  if (capture === "dialog") {
+    // Vaul's transformed mobile dialog can detach during an element screenshot;
+    // capture the viewport so the open drawer remains a stable visual contract.
+    if ((page.viewportSize()?.width ?? 0) < 600) return page;
+    return page.getByRole("dialog").last();
+  }
   return page;
 }
 

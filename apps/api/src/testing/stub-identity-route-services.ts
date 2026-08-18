@@ -7,6 +7,7 @@ export function stubIdentityRouteServices(
   return {
     accountSecurityHttp: {
       reauth: vi.fn(),
+      changePassword: vi.fn(),
       forgotPassword: vi.fn(),
       setupPassword: vi.fn(),
       requestEmailChange: vi.fn(),

@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type { EmailEventType } from "@auction/db/schema";
 import { emailEvent, emailOutbox, user } from "@auction/db/schema";
 import { and, eq, gt, sql } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type { IEmailWebhookIngestRepository } from "../interfaces/email-webhook-ingest.repository.js";
 
 export class DrizzleEmailWebhookIngestRepository implements IEmailWebhookIngestRepository {
@@ -54,25 +55,26 @@ export class DrizzleEmailWebhookIngestRepository implements IEmailWebhookIngestR
     emailLower: string,
     status: "bounced" | "complained",
   ): Promise<void> {
-    await this.db
-      .update(user)
-      .set({
-        emailStatus: status,
-        emailStatusChangedAt: new Date(),
-      })
+    const rows = await this.db
+      .select({ id: user.id })
+      .from(user)
       .where(sql`lower(${user.email}) = ${emailLower}`);
+    const changedAt = new Date();
+    for (const row of rows) {
+      await writeBidUserProfile(this.db, row.id, {
+        emailStatus: status,
+        emailStatusChangedAt: changedAt,
+      });
+    }
   }
 
   async updateUserEmailStatusByUserId(
     userId: string,
     status: "bounced" | "complained",
   ): Promise<void> {
-    await this.db
-      .update(user)
-      .set({
-        emailStatus: status,
-        emailStatusChangedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
+    await writeBidUserProfile(this.db, userId, {
+      emailStatus: status,
+      emailStatusChangedAt: new Date(),
+    });
   }
 }

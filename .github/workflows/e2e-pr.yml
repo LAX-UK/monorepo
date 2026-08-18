@@ -7,9 +7,28 @@ on:
       - "apps/web/**"
       - "apps/api/src/**"
       - "apps/auth/**"
+      - "apps/ws/**"
+      - "apps/worker/src/projectors/*identity*"
+      - "apps/worker/src/projectors/bid-profile-provisioning*"
+      - "apps/worker/src/services/shop-identity-projection*"
+      - "apps/shop-identity/**"
       - "packages/auth/**"
+      - "packages/identity-contracts/**"
+      - "packages/db/drizzle/0137*"
+      - "packages/db/drizzle/0138*"
+      - "packages/db/drizzle/0139*"
+      - "packages/db/drizzle/0140*"
+      - "packages/db/drizzle/0141*"
+      - "packages/db/drizzle/0142*"
+      - "packages/db/drizzle/0147*"
+      - "packages/types/src/domain-event-catalog/**"
       - "packages/db/src/migrate-roles.ts"
       - "packages/db/src/auth-*.contract.test.ts"
+      - "packages/db/src/shop-*.contract.test.ts"
+      - "packages/db/src/scripts/configure-oidc-clients.ts"
+      - "scripts/ci/verify-identity-boundary.mjs"
+      - "scripts/ci/verify-shop-oidc-roundtrip.mjs"
+      - "scripts/ci/verify-refresh-reuse.mjs"
       - "packages/db/src/seed/**"
       - "packages/ui/**"
       - ".github/workflows/e2e-pr.yml"
@@ -50,11 +69,29 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       REDIS_URL: redis://127.0.0.1:6379
       BETTER_AUTH_SECRET: ci-auth-secret-at-least-sixteen-characters
+      AUTH_DEK_KEY: "0707070707070707070707070707070707070707070707070707070707070707"
+      CHECK_IN_TOKEN_SECRET: ci-api-token-secret-at-least-sixteen-characters
+      IDENTITY_MACHINE_CLIENT_ID: api-service
+      IDENTITY_MACHINE_CLIENT_SECRET: ci-identity-machine-secret-at-least-32
       API_PUBLIC_URL: http://localhost:3001
       OIDC_ISSUER_URL: http://localhost:3003
+      OIDC_INTERNAL_BASE_URL: http://localhost:3003
+      OIDC_CLIENT_SECRET_LAX_BID_WEB: ci-bid-web-client-secret-at-least-32
+      BID_BFF_SESSION_ENCRYPTION_KEY: "0808080808080808080808080808080808080808080808080808080808080808"
+      OIDC_CLIENT_ID: lax-shop-web
+      OIDC_CLIENT_SECRET: ci-shop-identity-client-secret-at-least-32
+      OIDC_REDIRECT_URI: http://localhost:3010/auth/callback
+      OIDC_POST_LOGOUT_REDIRECT_URI: http://localhost:3010/
+      SESSION_SECRET: ci-shop-identity-session-secret-at-least-32
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      AUTH_APP_DB_PASSWORD: postgres
+      API_APP_DB_PASSWORD: postgres
+      SHOP_APP_DB_PASSWORD: postgres
+      WORKER_APP_DB_PASSWORD: postgres
       WEB_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_API_URL: http://localhost:3001
       NEXT_PUBLIC_AUTH_URL: http://localhost:3003
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
       ALLOW_HTTP_COOKIES: "true"
       REQUIRE_EMAIL_VERIFICATION: "false"
       PLAYWRIGHT_E2E: "1"
@@ -79,21 +116,42 @@ jobs:
         run: |
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
-      - name: Build web, API, and auth issuer
-        run: pnpm --filter @auction/api build && pnpm --filter @auction/auth-app build && pnpm --filter @auction/web build
+          DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
+          DATABASE_URL_AUTH="$DATABASE_URL" \
+            OIDC_CLIENT_IDS=lax-bid-web,lax-shop-web \
+            OIDC_CLIENT_SECRET_LAX_BID_WEB="$OIDC_CLIENT_SECRET_LAX_BID_WEB" \
+            OIDC_CLIENT_SECRET_LAX_SHOP_WEB="$OIDC_CLIENT_SECRET" \
+            pnpm --filter @auction/db db:configure-oidc-clients
+      - name: Build web, API, auth issuer, and Shop Identity app
+        run: pnpm --filter @auction/api build && pnpm --filter @auction/auth-app build && pnpm --filter @auction/shop-identity build && pnpm --filter @auction/web build
       - name: Start stack
         run: |
           PORT=3001 pnpm --filter @auction/api start &
           PORT=3003 pnpm --filter @auction/auth-app start &
+          PORT=3010 pnpm --filter @auction/shop-identity start &
           PORT=3000 pnpm --filter @auction/web start &
-          npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live --timeout 120000
-      - name: Verify dual-host OIDC and auth response parity
+          npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live http://localhost:3010/health/ready --timeout 120000
+      - name: Verify canonical identity boundary
         env:
-          AUTH_PUBLIC_URL: http://localhost:3003
-          AUTH_PARITY_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
-          AUTH_PARITY_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
-        run: |
-          node scripts/ci/verify-auth-dual-host.mjs
+          AUTH_BASE_URL: http://localhost:3003
+          API_BASE_URL: http://localhost:3001
+          SHOP_IDENTITY_BASE_URL: http://localhost:3010
+          IDENTITY_BOUNDARY_SHOP_REQUIRED: "true"
+        run: node scripts/ci/verify-identity-boundary.mjs --live
+      - name: Verify Shop OIDC roundtrip
+        env:
+          AUTH_BASE_URL: http://localhost:3003
+          SHOP_IDENTITY_BASE_URL: http://localhost:3010
+          SHOP_OIDC_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
+        run: node scripts/ci/verify-shop-oidc-roundtrip.mjs
+      - name: Verify refresh replay protection
+        env:
+          AUTH_BASE_URL: http://localhost:3003
+          REFRESH_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
+          REFRESH_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
+          REFRESH_TEST_CLIENT_SECRET: ${{ env.OIDC_CLIENT_SECRET }}
+        run: node scripts/ci/verify-refresh-reuse.mjs
       - name: Prepare staff session
         working-directory: apps/web
         run: |
@@ -101,8 +159,10 @@ jobs:
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-finance
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-readonly
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-operations
+          pnpm exec playwright test e2e/auth.setup.ts --project=setup-buyer
+          pnpm exec playwright test e2e/auth.setup.ts --project=setup-catalogue
       - name: Critical browser and curated visual gates
-        run: pnpm --filter @auction/web test:e2e:pr -- --no-deps
+        run: pnpm --filter @auction/web test:e2e:pr --no-deps
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

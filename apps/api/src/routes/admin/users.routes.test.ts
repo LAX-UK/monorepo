@@ -37,9 +37,12 @@ describe("admin users routes — list page", () => {
     });
     const container = createUsersListContainer(getPage);
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));

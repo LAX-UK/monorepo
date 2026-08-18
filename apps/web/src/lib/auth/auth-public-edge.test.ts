@@ -44,17 +44,17 @@ describe("getAuthPublicCookieRedirectUrl", () => {
 
   it("bypasses when verify_pending=1", () => {
     const u = new URL("http://localhost:3000/login?verify_pending=1");
-    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=1")).toBeNull();
+    expect(getAuthPublicCookieRedirectUrl(u, "lax-bid-session=1")).toBeNull();
   });
 
   it("bypasses when social_error=1 (OAuth cancel / failure recovery)", () => {
     const u = new URL("http://localhost:3000/login?social_error=1&reason=access_denied");
-    expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=1")).toBeNull();
+    expect(getAuthPublicCookieRedirectUrl(u, "lax-bid-session=1")).toBeNull();
   });
 
   it("redirects login with cookie to safe next", () => {
     const u = new URL("http://localhost:3000/login?next=/dashboard/bids");
-    const out = getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=1");
+    const out = getAuthPublicCookieRedirectUrl(u, "lax-bid-session=1");
     expect(out?.pathname).toBe("/dashboard/bids");
     expect(out?.searchParams.get("from")).toBe("auth-edge");
     expect(out?.searchParams.get("welcome")).toBe("back");
@@ -62,7 +62,7 @@ describe("getAuthPublicCookieRedirectUrl", () => {
 
   it("routes public next through social-callback instead of marketing pages", () => {
     const u = new URL("http://localhost:3000/login?next=/");
-    const out = getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=1");
+    const out = getAuthPublicCookieRedirectUrl(u, "lax-bid-session=1");
     expect(out?.pathname).toBe("/auth/social-callback");
     expect(out?.searchParams.get("next")).toBe("/");
     expect(out?.searchParams.get("from")).toBeNull();
@@ -70,7 +70,7 @@ describe("getAuthPublicCookieRedirectUrl", () => {
 
   it("falls back to post-auth callback when next is unsafe", () => {
     const u = new URL("http://localhost:3000/login?next=//evil.com");
-    const out = getAuthPublicCookieRedirectUrl(u, "better-auth.session_token=x");
+    const out = getAuthPublicCookieRedirectUrl(u, "lax-bid-session=x");
     expect(out?.pathname).toBe("/auth/social-callback");
     expect(out?.searchParams.get("from")).toBeNull();
   });
@@ -81,7 +81,7 @@ describe("isStaleAuthEdgePublicLanding", () => {
     expect(
       isStaleAuthEdgePublicLanding(
         new URL("http://localhost:3000/?from=auth-edge&welcome=back"),
-        "better-auth.session_token=1",
+        "lax-bid-session=1",
       ),
     ).toBe(true);
   });
@@ -90,7 +90,7 @@ describe("isStaleAuthEdgePublicLanding", () => {
     expect(
       isStaleAuthEdgePublicLanding(
         new URL("http://localhost:3000/dashboard?from=auth-edge&welcome=back"),
-        "better-auth.session_token=1",
+        "lax-bid-session=1",
       ),
     ).toBe(false);
   });

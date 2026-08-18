@@ -1,0 +1,79 @@
+import { timingSafeEqual } from "node:crypto";
+import { OIDC_CONSENT_SCRIPT, type createAuth } from "@auction/auth";
+import type { Database } from "@auction/db";
+import { sql } from "drizzle-orm";
+import type { Hono } from "hono";
+import type { Redis } from "ioredis";
+import type pino from "pino";
+import { createMachineTokenRateLimitMiddleware } from "../middleware/auth-rate-limit.js";
+
+export type AuthOperationalRoutes = {
+  db: Pick<Database, "execute">;
+  auth: ReturnType<typeof createAuth>;
+  log: pino.Logger;
+  nodeEnv: "development" | "test" | "production";
+  metricsToken?: string | undefined;
+  metrics: { metrics(): Promise<string> };
+  internal?: { redis: Redis; routes: Hono } | undefined;
+};
+
+export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRoutes): void {
+  app.get("/oidc-consent.js", (c) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(OIDC_CONSENT_SCRIPT, 200, {
+      "Content-Type": "text/javascript; charset=utf-8",
+    });
+  });
+  if (options.internal) {
+    app.use("/internal/oauth/token", createMachineTokenRateLimitMiddleware(options.internal.redis));
+    app.route("/internal", options.internal.routes);
+  }
+  app.get("/health/live", (c) => c.json({ service: "auction-auth", status: "ok" }));
+  app.get("/health/ready", async (c) => {
+    try {
+      await options.db.execute(sql`select 1`);
+      if (options.nodeEnv === "production") {
+        const atRest = await options.db.execute<{ pending: boolean }>(sql`
+          select exists (
+            select 1 from "account"
+            where ("access_token" is not null and "access_token" not like 'v1:%')
+               or ("refresh_token" is not null and "refresh_token" not like 'v1:%')
+               or ("id_token" is not null and "id_token" not like 'v1:%')
+            union all
+            select 1 from "oauth_access_token"
+            where "access_token" not like 'h1:%'
+               or "refresh_token" not like 'h1:%'
+            union all
+            select 1 from "two_factor"
+            where "secret" not like 'v1:%' or "backup_codes" not like 'v1:%'
+            union all
+            select 1 from "jwks_key"
+            where "private_jwk" #>> '{}' not like 'v1:%'
+          ) as "pending"
+        `);
+        if (atRest.rows[0]?.pending) throw new Error("auth_at_rest_backfill_required");
+      }
+      const keySet = await options.auth.api.getJwks();
+      if (keySet.keys.length === 0) throw new Error("jwks_empty");
+      return c.json({ service: "auction-auth", status: "ok", database: "ok", jwks: "ok" });
+    } catch (err) {
+      options.log.error({ err }, "auth readiness failed");
+      return c.json({ service: "auction-auth", status: "degraded" }, 503);
+    }
+  });
+  app.get("/metrics", async (c) => {
+    if (options.nodeEnv === "production" && !options.metricsToken) {
+      return c.json({ error: "not_found" }, 404);
+    }
+    if (options.metricsToken) {
+      const actual = Buffer.from(c.req.header("authorization") ?? "");
+      const expected = Buffer.from(`Bearer ${options.metricsToken}`);
+      if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+    }
+    return c.text(await options.metrics.metrics(), 200, {
+      "Content-Type": "text/plain; version=0.0.4; charset=utf-8",
+    });
+  });
+}

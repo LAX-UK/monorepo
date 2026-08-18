@@ -39,9 +39,12 @@ describe("admin compliance routes (DIP facade)", () => {
       aml: { getPage } as never,
     });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "compliance_officer" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "compliance_officer",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -68,9 +71,12 @@ describe("admin compliance routes (DIP facade)", () => {
     const decide = vi.fn().mockRejectedValue(new Error("aml_triage_required"));
     const container = createComplianceContainer({ aml: { decide } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "compliance_officer" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "compliance_officer",
+        scopes: ["bid.write"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -100,9 +106,12 @@ describe("admin compliance routes (DIP facade)", () => {
       sourceOfFunds: { getPage } as never,
     });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "compliance_officer" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "compliance_officer",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -141,9 +150,12 @@ describe("admin compliance routes (DIP facade)", () => {
       } as never,
     });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "compliance_officer" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "compliance_officer",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));

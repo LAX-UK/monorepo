@@ -16,9 +16,12 @@ function mountApp() {
     admin: { payouts },
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi
-      .fn()
-      .mockResolvedValue({ id: "u1", role: "staff", staffRole: "finance_ops" }),
+    getSessionUser: vi.fn().mockResolvedValue({
+      id: "u1",
+      role: "staff",
+      staffRole: "finance_ops",
+      scopes: ["bid.read"],
+    }),
   };
   app.route("/admin/payouts", createAdminPayoutRoutes(container, authenticator));
   return { app, payouts };

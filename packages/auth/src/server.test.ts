@@ -45,13 +45,12 @@ describe("createAuth", () => {
     ).not.toThrow();
   });
 
-  it("boots with crossSubDomainCookies when cookieDomain is set (__Host- is incompatible with Domain)", () => {
+  it("boots with host-only issuer cookies", () => {
     expect(() =>
       createAuth({
         db: {} as Database,
         secret: "test-secret-that-is-long-enough",
         baseURL: "https://auth.example.com",
-        cookieDomain: ".example.com",
       }),
     ).not.toThrow();
   });

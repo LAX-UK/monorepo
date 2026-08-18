@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
-import { saleRegistration, user } from "@auction/db/schema";
+import { bidUserProfile, saleRegistration, user } from "@auction/db/schema";
 import { and, eq, isNotNull, max } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type { IPaddleRepository, PaddleRegistrationRow } from "../interfaces/paddle.repository.js";
 
 export class DrizzlePaddleRepository implements IPaddleRepository {
@@ -20,10 +21,11 @@ export class DrizzlePaddleRepository implements IPaddleRepository {
         bidLimit: saleRegistration.bidLimit,
         userName: user.name,
         userEmail: user.email,
-        kycStatus: user.kycStatus,
+        kycStatus: bidUserProfile.kycStatus,
       })
       .from(saleRegistration)
       .innerJoin(user, eq(user.id, saleRegistration.userId))
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, saleRegistration.userId))
       .where(
         and(
           eq(saleRegistration.saleId, saleId),
@@ -56,11 +58,12 @@ export class DrizzlePaddleRepository implements IPaddleRepository {
         status: saleRegistration.status,
         paddleNumber: saleRegistration.paddleNumber,
         bidLimit: saleRegistration.bidLimit,
-        kycStatus: user.kycStatus,
-        preferredPaddleNumber: user.preferredPaddleNumber,
+        kycStatus: bidUserProfile.kycStatus,
+        preferredPaddleNumber: bidUserProfile.preferredPaddleNumber,
       })
       .from(saleRegistration)
       .innerJoin(user, eq(user.id, saleRegistration.userId))
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, saleRegistration.userId))
       .where(and(eq(saleRegistration.id, registrationId), eq(saleRegistration.saleId, saleId)))
       .limit(1);
     return row ?? null;
@@ -77,10 +80,11 @@ export class DrizzlePaddleRepository implements IPaddleRepository {
         bidLimit: saleRegistration.bidLimit,
         userName: user.name,
         userEmail: user.email,
-        kycStatus: user.kycStatus,
+        kycStatus: bidUserProfile.kycStatus,
       })
       .from(saleRegistration)
       .innerJoin(user, eq(user.id, saleRegistration.userId))
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, saleRegistration.userId))
       .where(
         and(
           eq(saleRegistration.saleId, saleId),
@@ -147,10 +151,7 @@ export class DrizzlePaddleRepository implements IPaddleRepository {
   }
 
   async updatePreferredPaddle(userId: string, paddleNumber: number): Promise<void> {
-    await this.db
-      .update(user)
-      .set({ preferredPaddleNumber: paddleNumber })
-      .where(eq(user.id, userId));
+    await writeBidUserProfile(this.db, userId, { preferredPaddleNumber: paddleNumber });
   }
 }
 

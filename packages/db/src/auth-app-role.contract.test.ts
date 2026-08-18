@@ -1,8 +1,10 @@
 import pg from "pg";
 import { describe, expect, it } from "vitest";
 import {
+  AUTH_EXTERNAL_ACCOUNT_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
+  AUTH_PRODUCT_LINK_READ_TABLES,
   AUTH_SELECT_TABLES,
 } from "./migrate-roles.js";
 import { buildPgConnectionConfig } from "./ssl.js";
@@ -80,6 +82,46 @@ describe.skipIf(!AUTH_URL)("auth_app role contract", () => {
           "REFERENCES",
           "TRIGGER",
         ]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
+        }
+      }
+    });
+  });
+
+  it("can only read Bid product links for signup compensation", async () => {
+    await withAuthClient(async (client) => {
+      for (const table of AUTH_PRODUCT_LINK_READ_TABLES) {
+        const read = await client.query<{ allowed: boolean }>(
+          "select has_table_privilege(current_user, $1, 'SELECT') as allowed",
+          [`public.${table}`],
+        );
+        expect(read.rows[0]?.allowed, `${table}:SELECT`).toBe(true);
+        for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
+        }
+      }
+    });
+  });
+
+  it("can retarget but cannot create or delete external account links", async () => {
+    await withAuthClient(async (client) => {
+      for (const table of AUTH_EXTERNAL_ACCOUNT_TABLES) {
+        for (const privilege of ["SELECT", "UPDATE"]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(true);
+        }
+        for (const privilege of ["INSERT", "DELETE"]) {
           const result = await client.query<{ allowed: boolean }>(
             "select has_table_privilege(current_user, $1, $2) as allowed",
             [`public.${table}`, privilege],

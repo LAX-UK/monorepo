@@ -1,9 +1,9 @@
-import { DrizzleUserEmailChangeRepository } from "@auction/persistence/repositories";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
+import { IdentityIssuerClientError } from "../infrastructure/http-identity-issuer.client.js";
 import { createEmailChangeToken } from "../lib/email-change-token.js";
 import { IdentityAccountSecurityHttpApplicationService } from "../services/identity/identity-account-security-http-application.service.js";
-import { createAuthRoutes } from "./auth.js";
+import { createProductAuthRoutes } from "./auth.js";
 /** Deterministic HMAC input for tests only (not a production credential). */
 const fixtureHmacKey = ["vitest", "email-change", "routes", "fixture"].join(":");
 
@@ -42,27 +42,23 @@ function createTxMock(initial: UserRow, opts?: { otherUserOnThirdLimit?: boolean
     }),
   };
   const db = {
+    state,
+    otherUserOnConfirmation: opts?.otherUserOnThirdLimit ?? false,
     transaction: vi.fn(async (fn: (t: typeof tx) => Promise<boolean>) => fn(tx)),
   };
   return { db, getState: () => state, getLimitCalls: () => limitCalls };
 }
 
-/**
- * Fake session token included in requests that reach `requireRecentPasswordAuth`.
- * The value must match what `extractBetterAuthSessionToken` can parse.
- */
-const FAKE_SESSION_COOKIE = "better-auth.session_token=test-session-token-fixture";
+const API_AUTHORIZATION = "Bearer test-lax-bid-api-token";
 
 /**
- * Minimal `authDb` stub for `requireRecentPasswordAuth`.
+ * Legacy step-up query fixture retained by older cases.
  *
  * Call order mirrors the middleware:
  *  1st `.limit()` → session row with recent `lastPasswordAuthAt`
  *  2nd `.limit()` → credential account row (non-empty → triggers the age check,
  *                   which passes because `lastPasswordAuthAt` is fresh)
  *
- * Routes that use `container.authDb` directly (e.g. `POST /confirm-email-change`)
- * receive a dedicated `authDb` override through the second parameter of `mountAuthDb`.
  */
 function makeRecentAuthDb() {
   let callIdx = 0;
@@ -83,55 +79,100 @@ function makeRecentAuthDb() {
   };
 }
 
-function mountAuthDb(db: object, authDb: object = db) {
+function mountIdentity(db: object, _stepUpFixture: object = db, authenticated = true) {
   const env = {
-    BETTER_AUTH_SECRET: fixtureHmacKey,
+    CHECK_IN_TOKEN_SECRET: fixtureHmacKey,
     WEB_ORIGIN: "http://localhost:3000",
     LOG_LEVEL: "error",
     NODE_ENV: "test",
   };
-  const auth = {
-    api: {
-      getSession: vi.fn(async () => ({ user: { id: "u1" } })),
-    },
+  const identityIssuer = {
+    signUpEmail: vi.fn(),
+    sendVerificationEmail: vi.fn(),
+    requestPasswordReset: vi.fn(),
+    requestMagicLink: vi.fn(),
+    stepUpStatus: vi.fn(async () => ({ hasCredential: true, lastPasswordAuthAt: new Date() })),
+    pendingEmailChange: vi.fn(async () => {
+      return (db as { state?: UserRow }).state?.pendingNewEmail ?? null;
+    }),
+    cancelEmailChange: vi.fn(async () => {
+      const state = (db as { state?: UserRow }).state;
+      if (state) {
+        state.pendingNewEmail = null;
+        state.emailChangeOldOk = false;
+        state.emailChangeNewOk = false;
+        state.emailChangeExpiresAt = null;
+      }
+    }),
+    startEmailChange: vi.fn(async () => undefined),
+    confirmEmailChange: vi.fn(
+      async (input: {
+        oldEmail: string;
+        newEmail: string;
+        confirmFor: "old" | "new";
+      }) => {
+        const fixture = db as { state?: UserRow; otherUserOnConfirmation?: boolean };
+        const state = fixture.state;
+        if (!state || state.pendingNewEmail !== input.newEmail || state.email !== input.oldEmail) {
+          throw new IdentityIssuerClientError("http", "stale", 409, "stale_flow");
+        }
+        if (state.emailChangeExpiresAt && state.emailChangeExpiresAt.getTime() < Date.now()) {
+          throw new IdentityIssuerClientError("http", "expired", 410, "expired");
+        }
+        if (input.confirmFor === "old") state.emailChangeOldOk = true;
+        else state.emailChangeNewOk = true;
+        if (!state.emailChangeOldOk || !state.emailChangeNewOk) return false;
+        if (fixture.otherUserOnConfirmation) {
+          throw new IdentityIssuerClientError("http", "taken", 409, "email_taken");
+        }
+        state.email = state.pendingNewEmail;
+        state.pendingNewEmail = null;
+        state.emailChangeOldOk = false;
+        state.emailChangeNewOk = false;
+        state.emailChangeExpiresAt = null;
+        return true;
+      },
+    ),
   };
   const userService = { getById: vi.fn(async () => null) };
-  const userEmailChangeRepository = new DrizzleUserEmailChangeRepository(db as never);
   const emailService = { enqueue: vi.fn() };
   const authAuditPublisher = { publish: vi.fn(async () => {}) };
-  const sessionRevocation = { revokeAllForUser: vi.fn(async () => 0) };
   const container = {
     env,
     db,
-    authDb,
-    auth,
+    identityIssuer: identityIssuer as never,
     authenticator: {
-      getSessionUser: vi.fn(async () => ({ id: "u1", role: "client" as const, staffRole: null })),
+      getSessionUser: vi.fn(async () =>
+        authenticated
+          ? {
+              id: "u1",
+              role: "client" as const,
+              staffRole: null,
+              identitySessionId: "identity-session-1",
+
+              scopes: ["bid.write"],
+            }
+          : null,
+      ),
     },
     userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
-    sessionRevocation,
     userService,
-    userEmailChangeRepository,
     emailService,
     authAuditPublisher,
     redis: null,
     identityRoutes: {
       accountSecurityHttp: new IdentityAccountSecurityHttpApplicationService({
         env: env as never,
-        authDb: authDb as never,
-        auth: auth as never,
-        db: db as never,
+        identityIssuer: identityIssuer as never,
         userService: userService as never,
-        userEmailChangeRepository,
         emailService: emailService as never,
-        sessionRevocation: sessionRevocation as never,
         authAuditPublisher,
         authCredentialReader: { hasCredentialAccount: vi.fn(async () => false) },
       }),
     },
   };
-  const app = new Hono().route("/auth", createAuthRoutes(container as never));
-  return { app, auth: container.auth };
+  const app = new Hono().route("/auth", createProductAuthRoutes(container as never));
+  return { app };
 }
 
 describe("POST /auth/confirm-email-change", () => {
@@ -144,7 +185,7 @@ describe("POST /auth/confirm-email-change", () => {
       emailChangeNewOk: false,
       emailChangeExpiresAt: new Date(Date.now() + 86_400_000),
     });
-    const { app } = mountAuthDb(db);
+    const { app } = mountIdentity(db);
     const res = await app.request("/auth/confirm-email-change", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -173,7 +214,7 @@ describe("POST /auth/confirm-email-change", () => {
       emailChangeNewOk: false,
       emailChangeExpiresAt: new Date(Date.now() + 86_400_000),
     });
-    const { app } = mountAuthDb(db);
+    const { app } = mountIdentity(db);
     const res = await app.request("/auth/confirm-email-change", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -203,7 +244,7 @@ describe("POST /auth/confirm-email-change", () => {
       emailChangeNewOk: false,
       emailChangeExpiresAt: new Date(Date.now() - 86_400_000),
     });
-    const { app } = mountAuthDb(db);
+    const { app } = mountIdentity(db);
     const res = await app.request("/auth/confirm-email-change", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -234,7 +275,7 @@ describe("POST /auth/confirm-email-change", () => {
       },
       { otherUserOnThirdLimit: true },
     );
-    const { app } = mountAuthDb(db);
+    const { app } = mountIdentity(db);
     const res = await app.request("/auth/confirm-email-change", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -264,7 +305,7 @@ describe("POST /auth/confirm-email-change", () => {
       emailChangeNewOk: false,
       emailChangeExpiresAt: new Date(Date.now() + 86_400_000),
     });
-    const { app } = mountAuthDb(db);
+    const { app } = mountIdentity(db);
     const res = await app.request("/auth/confirm-email-change", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -297,7 +338,7 @@ describe("POST /auth/confirm-email-change", () => {
       emailChangeNewOk: false,
       emailChangeExpiresAt: new Date(Date.now() + 86_400_000),
     });
-    const { app } = mountAuthDb(db);
+    const { app } = mountIdentity(db);
     const res = await app.request("/auth/confirm-email-change", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -314,7 +355,7 @@ describe("POST /auth/confirm-email-change", () => {
 describe("DELETE /auth/change-email", () => {
   it("returns 401 without a session", async () => {
     const db = { transaction: vi.fn() };
-    const { app } = mountAuthDb(db);
+    const { app } = mountIdentity(db, db, false);
     const res = await app.request("/auth/change-email", { method: "DELETE" });
     expect(res.status).toBe(401);
   });
@@ -322,6 +363,14 @@ describe("DELETE /auth/change-email", () => {
   it("returns 400 when no change is in progress", async () => {
     const selectLimit = vi.fn().mockResolvedValue([{ pendingNewEmail: null }]);
     const db = {
+      state: {
+        id: "u1",
+        email: "old@example.com",
+        pendingNewEmail: null,
+        emailChangeOldOk: false,
+        emailChangeNewOk: false,
+        emailChangeExpiresAt: new Date(Date.now() + 60_000),
+      } satisfies UserRow,
       select: vi.fn(() => ({
         from: vi.fn(() => ({
           where: vi.fn(() => ({
@@ -331,12 +380,12 @@ describe("DELETE /auth/change-email", () => {
       })),
       update: vi.fn(),
     };
-    // Use a dedicated authDb so requireRecentPasswordAuth can validate the session
+    // Supply a fresh step-up fixture for the protected cancellation route.
     // independently from the route's own DB queries.
-    const { app } = mountAuthDb(db, makeRecentAuthDb());
+    const { app } = mountIdentity(db, makeRecentAuthDb());
     const res = await app.request("/auth/change-email", {
       method: "DELETE",
-      headers: { cookie: FAKE_SESSION_COOKIE },
+      headers: { authorization: API_AUTHORIZATION },
     });
     expect(res.status).toBe(400);
     expect(db.update).not.toHaveBeenCalled();
@@ -348,6 +397,14 @@ describe("DELETE /auth/change-email", () => {
       where: vi.fn().mockResolvedValue(undefined),
     });
     const db = {
+      state: {
+        id: "u1",
+        email: "old@example.com",
+        pendingNewEmail: "next@example.com",
+        emailChangeOldOk: true,
+        emailChangeNewOk: false,
+        emailChangeExpiresAt: new Date(Date.now() + 60_000),
+      } satisfies UserRow,
       select: vi.fn(() => ({
         from: vi.fn(() => ({
           where: vi.fn(() => ({
@@ -357,16 +414,15 @@ describe("DELETE /auth/change-email", () => {
       })),
       update: vi.fn(() => ({ set: setSpy })),
     };
-    // Use a dedicated authDb so requireRecentPasswordAuth can validate the session
+    // Supply a fresh step-up fixture for the protected cancellation route.
     // independently from the route's own DB queries.
-    const { app } = mountAuthDb(db, makeRecentAuthDb());
+    const { app } = mountIdentity(db, makeRecentAuthDb());
     const res = await app.request("/auth/change-email", {
       method: "DELETE",
-      headers: { cookie: FAKE_SESSION_COOKIE },
+      headers: { authorization: API_AUTHORIZATION },
     });
     expect(res.status).toBe(200);
-    expect(db.update).toHaveBeenCalled();
-    expect(setSpy).toHaveBeenCalledWith(
+    expect(db.state).toEqual(
       expect.objectContaining({
         pendingNewEmail: null,
         emailChangeOldOk: false,

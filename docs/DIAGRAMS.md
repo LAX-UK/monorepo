@@ -19,10 +19,11 @@ flowchart TB
         AUTH["Auth issuer<br/>(apps/auth, :3003)"]
         WS["Socket.IO Gateway<br/>(apps/ws, :3002)"]
         WORKER["BullMQ + projectors<br/>(apps/worker, :3004)"]
+        SHOP["Shop RP/BFF boundary<br/>(apps/shop-identity, :3010)"]
     end
 
     subgraph Data["Data + Async"]
-        PG[("PostgreSQL 16<br/>Drizzle ORM<br/>3 app roles")]
+        PG[("PostgreSQL 16<br/>Drizzle ORM<br/>4 app roles")]
         REDIS[("Redis<br/>Cache + Pub/Sub + BullMQ")]
     end
 
@@ -32,8 +33,10 @@ flowchart TB
         ZOHO_C["Zoho Campaigns<br/>newsletter push"]
     end
 
-    WEB -->|"REST/RPC JSON<br/>Better Auth cookies"| API
+    WEB -->|"Bearer lax-bid-api token"| API
     WEB -->|"OIDC sign-in"| AUTH
+    SHOP -->|"OIDC sign-in"| AUTH
+    SHOP -->|"shop_app role"| PG
     WEB <-->|"Socket.IO"| WS
     API -->|"Drizzle queries"| PG
     AUTH -->|"Drizzle queries"| PG
@@ -286,7 +289,6 @@ flowchart LR
         S2["GET /sales/:id"]
         S3["GET /sales/:id/lots"]
         C1["GET /categories"]
-        WK["GET /.well-known/openid-configuration<br/>GET /.well-known/jwks.json"]
     end
 
     subgraph Authenticated
@@ -310,13 +312,13 @@ flowchart LR
     end
 
     subgraph Auth
-        AUTH["/api/auth/* Better Auth<br/>(served by apps/api and apps/auth — D7)"]
+        AUTH["apps/auth canonical issuer<br/>/api/auth/* + /.well-known/*"]
     end
 
     subgraph Webhooks
         WHX["POST /webhooks/xero"]
-        WHS["POST /webhooks/shopify"]
-        WHW["POST /webhooks/wordpress"]
+        WHS["POST /webhooks/stripe"]
+        WHV["POST /webhooks/veriff"]
         WHP["POST /webhooks/postmark"]
     end
 ```

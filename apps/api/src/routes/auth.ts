@@ -1,5 +1,6 @@
 import {
   forgotPasswordBodySchema,
+  passwordChangeFormSchema,
   reauthBodySchema,
   requestEmailChangeSchema,
   setupPasswordBodySchema,
@@ -8,7 +9,6 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { ContainerAuthRoutesSlice } from "../container.js";
 import { respondIdentityHttpJson } from "../lib/identity-route-response.js";
-import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 import { zValidator } from "../lib/z-validator.js";
 import {
   createConfirmEmailChangeRateLimitMiddleware,
@@ -22,7 +22,7 @@ import {
 } from "../middleware/require-recent-password-auth.js";
 import { createTurnstileMiddleware } from "../middleware/turnstile.js";
 
-export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
+export function createProductAuthRoutes(container: ContainerAuthRoutesSlice) {
   const r = new Hono();
   const requireTurnstile = createTurnstileMiddleware(container.env.TURNSTILE_SECRET_KEY);
   const accountSecurity = container.identityRoutes.accountSecurityHttp;
@@ -40,14 +40,30 @@ export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
 
   r.post("/reauth", requireAuth, zValidator("json", reauthBodySchema), async (c) => {
     const { password } = c.req.valid("json");
-    const token = extractBetterAuthSessionToken(c.req.header("cookie"));
+    const identitySessionId = c.get("identitySessionId");
     const response = await accountSecurity.reauth({
       userId: c.get("userId"),
       password,
-      sessionTokenFromCookie: token ?? null,
+      sessionTokenFromCookie: identitySessionId ?? null,
     });
     return respondIdentityHttpJson(c, response);
   });
+
+  r.post(
+    "/change-password",
+    requireAuth,
+    zValidator("json", passwordChangeFormSchema),
+    async (c) => {
+      const body = c.req.valid("json");
+      const response = await accountSecurity.changePassword({
+        userId: c.get("userId"),
+        currentPassword: body.currentPassword,
+        newPassword: body.newPassword,
+        sessionToken: c.get("identitySessionId"),
+      });
+      return respondIdentityHttpJson(c, response);
+    },
+  );
 
   r.post(
     "/forgot-password",
@@ -78,11 +94,11 @@ export function createAuthRoutes(container: ContainerAuthRoutesSlice) {
     zValidator("json", setupPasswordBodySchema),
     async (c) => {
       const { password } = c.req.valid("json");
-      const token = extractBetterAuthSessionToken(c.req.header("cookie"));
+      const identitySessionId = c.get("identitySessionId");
       const response = await accountSecurity.setupPassword({
         userId: c.get("userId"),
         password,
-        sessionTokenFromCookie: token ?? null,
+        sessionTokenFromCookie: identitySessionId ?? null,
       });
       return respondIdentityHttpJson(c, response);
     },

@@ -4,11 +4,19 @@ info:
   version: 1.0.0
   description: |
     Hono REST API for sales, lots, bids, payments, submissions, users, and admin operations.
-    Authentication is handled by Better Auth at `/api/auth/*` (also served by `apps/auth` per D7 dual-stack).
+    Authentication is issued by `apps/auth`; this resource server accepts only
+    Bearer tokens for audience `lax-bid-api` and loads Bid authorization locally.
+    Per [D13](./docs/architecture/09-lax-identity-boundary.md), Bid authorization state lives in
+    `bid_user_profile`; cross-product tokens carry only Identity claims (`sub`, `iss`, `aud`, optional
+    `email`/`name`). Canonical issuer: `https://auth.lax.bid` (`apps/auth`).
 servers:
   - url: http://localhost:3001
   - url: https://api.lax.bid
   - url: https://test-api.lax.bid
+  - url: http://localhost:3003
+    description: Canonical Identity issuer (apps/auth)
+  - url: https://auth.lax.bid
+    description: Production Identity issuer
 paths:
   /health/live:
     get:

@@ -1,4 +1,9 @@
-import { user, type userKycStatusEnum, type userStaffRoleEnum } from "@auction/db/schema";
+import {
+  bidUserProfile,
+  user,
+  type userKycStatusEnum,
+  type userStaffRoleEnum,
+} from "@auction/db/schema";
 import {
   type SQL,
   and,
@@ -27,25 +32,32 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
     const searchClause = or(
       ilike(user.email, `%${q}%`),
       ilike(user.name, `%${q}%`),
-      ilike(user.mobile, `%${q}%`),
+      ilike(bidUserProfile.mobile, `%${q}%`),
     );
     if (searchClause) clauses.push(searchClause);
   }
 
   if (filter.role) {
-    clauses.push(eq(user.role, filter.role));
+    const roleClause =
+      filter.role === "client"
+        ? or(eq(bidUserProfile.role, "client"), isNull(bidUserProfile.userId))
+        : eq(bidUserProfile.role, filter.role);
+    if (roleClause) clauses.push(roleClause);
   }
 
   if (filter.staffRole) {
     clauses.push(
-      eq(user.staffRole, filter.staffRole as (typeof userStaffRoleEnum.enumValues)[number]),
+      eq(
+        bidUserProfile.staffRole,
+        filter.staffRole as (typeof userStaffRoleEnum.enumValues)[number],
+      ),
     );
   }
 
   if (filter.accountStatus === "active") {
-    clauses.push(isNull(user.suspendedAt));
+    clauses.push(isNull(bidUserProfile.suspendedAt));
   } else if (filter.accountStatus === "suspended" || filter.suspendedOnly) {
-    clauses.push(isNotNull(user.suspendedAt));
+    clauses.push(isNotNull(bidUserProfile.suspendedAt));
   }
 
   if (filter.emailVerified !== undefined) {
@@ -53,24 +65,32 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   }
 
   if (filter.emailStatus) {
-    clauses.push(eq(user.emailStatus, filter.emailStatus));
+    const emailStatusClause =
+      filter.emailStatus === "ok"
+        ? or(eq(bidUserProfile.emailStatus, "ok"), isNull(bidUserProfile.userId))
+        : eq(bidUserProfile.emailStatus, filter.emailStatus);
+    if (emailStatusClause) clauses.push(emailStatusClause);
   }
 
   if (filter.kycStatuses?.length) {
     clauses.push(
       inArray(
-        user.kycStatus,
+        bidUserProfile.kycStatus,
         filter.kycStatuses as (typeof userKycStatusEnum.enumValues)[number][],
       ),
     );
   } else if (filter.kycStatus) {
-    clauses.push(eq(user.kycStatus, filter.kycStatus));
+    const kycClause =
+      filter.kycStatus === "unverified"
+        ? or(eq(bidUserProfile.kycStatus, "unverified"), isNull(bidUserProfile.userId))
+        : eq(bidUserProfile.kycStatus, filter.kycStatus);
+    if (kycClause) clauses.push(kycClause);
   }
 
   if (filter.persona === "none") {
-    clauses.push(isNull(user.signupPersona));
+    clauses.push(isNull(bidUserProfile.signupPersona));
   } else if (filter.persona) {
-    clauses.push(eq(user.signupPersona, filter.persona));
+    clauses.push(eq(bidUserProfile.signupPersona, filter.persona));
   }
 
   if (filter.twoFactorEnabled !== undefined) {
@@ -82,10 +102,16 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   }
 
   if (filter.hasMobile === true) {
-    const hasMobileClause = and(isNotNull(user.mobile), sql`trim(${user.mobile}) <> ''`);
+    const hasMobileClause = and(
+      isNotNull(bidUserProfile.mobile),
+      sql`trim(${bidUserProfile.mobile}) <> ''`,
+    );
     if (hasMobileClause) clauses.push(hasMobileClause);
   } else if (filter.hasMobile === false) {
-    const noMobileClause = or(isNull(user.mobile), sql`trim(coalesce(${user.mobile}, '')) = ''`);
+    const noMobileClause = or(
+      isNull(bidUserProfile.mobile),
+      sql`trim(coalesce(${bidUserProfile.mobile}, '')) = ''`,
+    );
     if (noMobileClause) clauses.push(noMobileClause);
   }
 
@@ -97,10 +123,10 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   }
 
   if (filter.kycVerifiedFrom) {
-    clauses.push(gte(user.kycVerifiedAt, filter.kycVerifiedFrom));
+    clauses.push(gte(bidUserProfile.kycVerifiedAt, filter.kycVerifiedFrom));
   }
   if (filter.kycVerifiedToExclusive) {
-    clauses.push(lt(user.kycVerifiedAt, filter.kycVerifiedToExclusive));
+    clauses.push(lt(bidUserProfile.kycVerifiedAt, filter.kycVerifiedToExclusive));
   }
 
   if (filter.lastActiveFrom) {
@@ -124,7 +150,7 @@ export function buildAdminUserListOrderBy(sort: AdminUserListSort | undefined) {
     case "last_active_desc":
       return desc(user.updatedAt);
     case "kyc_status":
-      return asc(user.kycStatus);
+      return asc(bidUserProfile.kycStatus);
     default:
       return desc(user.createdAt);
   }
@@ -135,23 +161,23 @@ export const adminUserListSelect = {
   id: user.id,
   email: user.email,
   name: user.name,
-  firstName: user.firstName,
-  lastName: user.lastName,
-  role: user.role,
-  staffRole: user.staffRole,
+  firstName: bidUserProfile.firstName,
+  lastName: bidUserProfile.lastName,
+  role: sql<string>`coalesce(${bidUserProfile.role}, 'client')`,
+  staffRole: bidUserProfile.staffRole,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
-  suspendedAt: user.suspendedAt,
+  suspendedAt: bidUserProfile.suspendedAt,
   image: user.image,
-  mobile: user.mobile,
-  mobileCountry: user.mobileCountry,
+  mobile: bidUserProfile.mobile,
+  mobileCountry: bidUserProfile.mobileCountry,
   emailVerified: user.emailVerified,
-  emailStatus: user.emailStatus,
-  signupPersona: user.signupPersona,
+  emailStatus: sql<string>`coalesce(${bidUserProfile.emailStatus}, 'ok')`,
+  signupPersona: bidUserProfile.signupPersona,
   twoFactorEnabled: user.twoFactorEnabled,
-  kycStatus: user.kycStatus,
-  kycVerifiedAt: user.kycVerifiedAt,
-  kycRetryCount: user.kycRetryCount,
+  kycStatus: sql<string>`coalesce(${bidUserProfile.kycStatus}, 'unverified')`,
+  kycVerifiedAt: bidUserProfile.kycVerifiedAt,
+  kycRetryCount: sql<number>`coalesce(${bidUserProfile.kycRetryCount}, 0)::int`,
   deletionRequestedAt: user.deletionRequestedAt,
 } as const;
 

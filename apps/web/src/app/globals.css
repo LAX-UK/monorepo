@@ -105,7 +105,7 @@
   --color-accent-live: var(--color-live-red);
 
   /* Semantic trend / status (oklch — perceptually even in light + dark) */
-  --color-warning: oklch(0.72 0.14 55);
+  --color-warning: #b45309;
   --color-on-warning: oklch(0.22 0.04 55);
   --color-warning-container: oklch(0.94 0.06 85);
   --color-danger: oklch(0.55 0.2 25);
@@ -116,7 +116,7 @@
   --color-on-positive: oklch(0.98 0.01 145);
   --color-negative: oklch(0.55 0.2 25);
   --color-on-negative: oklch(0.98 0.01 25);
-  --color-neutral-delta: oklch(0.55 0.02 250);
+  --color-neutral-delta: oklch(0.5 0.02 250);
   --color-trend-line: oklch(0.55 0.08 250 / 0.35);
 
   /* Elevation */

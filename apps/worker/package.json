@@ -21,6 +21,7 @@
     "@auction/exports": "workspace:*",
     "@auction/finance-runtime": "workspace:*",
     "@auction/finance-cron-app": "workspace:*",
+    "@auction/identity-contracts": "workspace:*",
     "@auction/persistence": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",

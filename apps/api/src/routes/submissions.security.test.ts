@@ -29,7 +29,7 @@ describe("submissions API contract", () => {
     });
     const container = mockContainer({ sellerHttp: { listMine } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read"] }),
     };
     app.route("/submissions", createSubmissionRoutes(container, authenticator));
     const res = await app.request(
@@ -49,7 +49,7 @@ describe("submissions API contract", () => {
     });
     const container = mockContainer({ sellerHttp: { getById } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read"] }),
     };
     app.route("/submissions", createSubmissionRoutes(container, authenticator));
     const res = await app.request(`http://t/submissions/${submissionId}`);
@@ -69,7 +69,9 @@ describe("submissions API contract", () => {
     });
     const container = mockContainer({ sellerHttp: { patch } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.write"] }),
     };
     app.route("/submissions", createSubmissionRoutes(container, authenticator));
     const res = await app.request(`http://t/submissions/${submissionId}`, {
@@ -89,7 +91,9 @@ describe("submissions API contract", () => {
     const createDraft = vi.fn().mockResolvedValue({ status: 201, body: { data: created } });
     const container = mockContainer({ sellerHttp: { createDraft } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.write"] }),
     };
     app.route("/submissions", createSubmissionRoutes(container, authenticator));
     const res = await app.request("http://t/submissions", {

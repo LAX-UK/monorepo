@@ -1,4 +1,4 @@
-import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
+import { browserFetch } from "@/lib/data/http/hc-browser";
 import type {
   SaleroomDisplayPairPollResult,
   SaleroomDisplayPairingStart,
@@ -20,12 +20,12 @@ export type DisplayDataClient = {
 };
 
 export function createDisplayDataClient(): DisplayDataClient {
-  const base = browserApiBase();
+  const base = "/api/display";
 
   return {
     async startPairing() {
       try {
-        const res = await browserFetch(`${base}/display/pair/start`, { method: "POST" });
+        const res = await browserFetch(`${base}/pair/start`, { method: "POST" });
         if (!res.ok) return null;
         const body = (await res.json()) as { data?: SaleroomDisplayPairingStart };
         return body.data ?? null;
@@ -35,7 +35,7 @@ export function createDisplayDataClient(): DisplayDataClient {
     },
     async pollPairing(deviceCode) {
       try {
-        const res = await browserFetch(`${base}/display/pair/poll`, {
+        const res = await browserFetch(`${base}/pair/poll`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ deviceCode }),
@@ -49,7 +49,7 @@ export function createDisplayDataClient(): DisplayDataClient {
     },
     async fetchSnapshot(saleId, displayToken) {
       try {
-        const res = await browserFetch(`${base}/display/${encodeURIComponent(saleId)}/snapshot`, {
+        const res = await browserFetch(`${base}/${encodeURIComponent(saleId)}/snapshot`, {
           cache: "no-store",
           headers: { Authorization: `Bearer ${displayToken}` },
         });
@@ -64,7 +64,7 @@ export function createDisplayDataClient(): DisplayDataClient {
     },
     async sendHeartbeat(displayToken) {
       try {
-        const res = await browserFetch(`${base}/display/heartbeat`, {
+        const res = await browserFetch(`${base}/heartbeat`, {
           method: "POST",
           headers: { Authorization: `Bearer ${displayToken}` },
         });

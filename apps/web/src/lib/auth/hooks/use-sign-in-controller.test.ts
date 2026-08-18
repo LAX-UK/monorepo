@@ -1,10 +1,12 @@
-import { POST_AUTH_SESSION_LOAD_ERROR } from "@/lib/auth/fetch-session-user-with-retry.client";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSignInController } from "./use-sign-in-controller";
 
-const push = vi.fn();
-const refresh = vi.fn();
+const { beginBidOidcLogin, push, refresh } = vi.hoisted(() => ({
+  beginBidOidcLogin: vi.fn(),
+  push: vi.fn(),
+  refresh: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh }),
@@ -30,15 +32,8 @@ vi.mock("@/lib/ui/notify", () => ({
   notify: { error: vi.fn() },
 }));
 
-const fetchSessionUserWithRetry = vi.fn();
-
-vi.mock("@/lib/auth/fetch-session-user-with-retry.client", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/lib/auth/fetch-session-user-with-retry.client")>();
-  return {
-    ...actual,
-    fetchSessionUserWithRetry: (...args: unknown[]) => fetchSessionUserWithRetry(...args),
-  };
+vi.mock("@/lib/auth/begin-bid-oidc-login.client", () => {
+  return { beginBidOidcLogin };
 });
 
 const run = vi.fn();
@@ -63,7 +58,7 @@ describe("useSignInController", () => {
     push.mockClear();
     refresh.mockClear();
     run.mockReset();
-    fetchSessionUserWithRetry.mockReset();
+    beginBidOidcLogin.mockReset();
     requestMagicLinkService.mockReset();
     requestMagicLinkService.mockResolvedValue({ ok: true });
   });
@@ -79,12 +74,11 @@ describe("useSignInController", () => {
     });
 
     expect(push).toHaveBeenCalledWith(expect.stringContaining("/login/two-factor"));
-    expect(fetchSessionUserWithRetry).not.toHaveBeenCalled();
+    expect(beginBidOidcLogin).not.toHaveBeenCalled();
   });
 
-  it("shows error instead of redirecting when session load fails after sign-in", async () => {
+  it("starts the top-level Bid OIDC flow after Identity sign-in", async () => {
     run.mockResolvedValueOnce({ ok: true, requiresTwoFactor: false });
-    fetchSessionUserWithRetry.mockResolvedValueOnce(null);
     const { result } = renderHook(() => useSignInController("/dashboard"));
 
     await act(async () => {
@@ -93,28 +87,8 @@ describe("useSignInController", () => {
       await result.current.onSubmit();
     });
 
-    expect(result.current.bannerError).toBe(POST_AUTH_SESSION_LOAD_ERROR);
+    expect(beginBidOidcLogin).toHaveBeenCalledWith("/dashboard");
     expect(push).not.toHaveBeenCalled();
-  });
-
-  it("redirects with resolved user after successful session load", async () => {
-    run.mockResolvedValueOnce({ ok: true, requiresTwoFactor: false });
-    fetchSessionUserWithRetry.mockResolvedValueOnce({
-      id: "u1",
-      email: "ada@example.com",
-      role: "client",
-      emailVerified: true,
-      suspended: false,
-    });
-    const { result } = renderHook(() => useSignInController("/dashboard"));
-
-    await act(async () => {
-      result.current.form.setValue("email", "ada@example.com");
-      result.current.form.setValue("password", "supersecret1!");
-      await result.current.onSubmit();
-    });
-
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("/dashboard"));
     expect(result.current.bannerError).toBeNull();
   });
 

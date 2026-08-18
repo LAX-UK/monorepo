@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { extractBetterAuthSessionToken } from "../../lib/session-cookie.js";
 import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
@@ -19,7 +18,7 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
     const userId = c.get("userId") as string;
     const response = await container.userRoutes.securityHttp.listSessions({
       userId,
-      sessionTokenFromCookie: extractBetterAuthSessionToken(c.req.header("cookie")),
+      sessionTokenFromCookie: c.get("identitySessionId") ?? null,
     });
     return respondUserHttpJson(c, response);
   });
@@ -35,7 +34,7 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
       const response = await container.userRoutes.securityHttp.deleteSession({
         userId,
         sessionId,
-        sessionTokenFromCookie: extractBetterAuthSessionToken(c.req.header("cookie")),
+        sessionTokenFromCookie: c.get("identitySessionId") ?? null,
       });
       return respondUserHttpJson(c, response);
     },
@@ -45,7 +44,7 @@ export function attachUserSecurityRoutes(r: UserHono, deps: UserRouteDeps): void
     const userId = c.get("userId") as string;
     const response = await container.userRoutes.securityHttp.revokeAllSessionsExceptCurrent({
       userId,
-      sessionTokenFromCookie: extractBetterAuthSessionToken(c.req.header("cookie")),
+      sessionTokenFromCookie: c.get("identitySessionId") ?? null,
     });
     return respondUserHttpJson(c, response);
   });

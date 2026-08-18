@@ -5,7 +5,7 @@ import type {
 import type { BuyerConditionReportRequestRowDto } from "@/lib/condition-report/map-buyer-condition-report-requests.vm";
 
 function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
+  return "/api/bff";
 }
 
 function parseRequestRow(raw: unknown): ConditionReportRequestSnapshot | null {

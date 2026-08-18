@@ -1,16 +1,29 @@
 # Identity flow
 
-This document walks through what happens when a user authenticates across the three TheAlx domains. There are three flows worth understanding deeply: sign-up via a social provider on the main auction site, cross-domain recognition on a domain that doesn't share cookies with the auction site, and the Apple "Hide My Email" relay path that explains why D11/F6 exists.
+This document walks through authentication at the canonical Identity issuer and
+the Bid and Shop RP/BFFs. Marketing at `lax.art` is initially static and has no
+authentication client.
 
 If you understand these three flows, you understand the identity layer.
 
 > **Implementation status (last reviewed 2026-08-06)**
 >
-> - **Implemented:** better-auth issuing both session cookies and OIDC + JWT tokens with the canonical issuer URL `https://auth.lax.bid` ([packages/auth/src/server.ts](../../packages/auth/src/server.ts)). Google and Apple social providers, conditional on env vars. Cookie scoped to `.lax.bid` when `COOKIE_DOMAIN` is set ([apps/api/src/container.ts](../../apps/api/src/container.ts), [apps/auth/src/index.ts](../../apps/auth/src/index.ts), `.env.production.example`). Apple privacy-relay branch in [apps/api/src/services/account-linking.service.ts](../../apps/api/src/services/account-linking.service.ts). JWT verification on the `apps/ws` Socket.IO handshake ([apps/ws/src/services/jwt-verifier.ts](../../apps/ws/src/services/jwt-verifier.ts)).
-> - **Dual-stack today:** `apps/auth` and `apps/api` both serve OIDC discovery, JWKS, and `/api/auth/*` (D7); WordPress can target either. Issuer claim is identical (`OIDC_ISSUER_URL`) so consumers do not see the topology.
+> - **Implemented in code:** Better Auth issuance at
+>   `https://auth.lax.bid`; confidential Bid and Shop authorization-code + PKCE
+>   BFFs; host-only opaque product sessions; RFC 8693 resource exchange; local
+>   API/WS verification; OIDC back-channel logout; and opt-in SSF.
+> - **Canonical issuer:** `apps/auth` alone serves discovery, JWKS, credentials,
+>   sessions, and `/api/auth/*`; the duplicate API issuer routes are retired.
 > - **Frozen extraction contract:** [`packages/auth/src/contracts.ts`](../../packages/auth/src/contracts.ts) owns issuer normalization, discovery fields, JWKS/auth paths, trusted origins, no-store headers, and lifecycle ordering. Both composition roots provide their own database, Redis, email, and event adapters. [`packages/auth/src/client.ts`](../../packages/auth/src/client.ts) is the web-client boundary.
-> - **Hybrid today:** `apps/ws` validates JWT-on-handshake, **but also still falls back to a cookie relay** against `apps/api/users/me` when `LEGACY_WS_COOKIE_RELAY` is enabled ([apps/ws/src/handlers/socket-handler-registry.ts](../../apps/ws/src/handlers/socket-handler-registry.ts)). Removing the relay is **(Phase 2)**.
-> - **Implemented asynchronously:** registration and email-verification lifecycle callbacks append `domain_events`; personal legal entities are provisioned directly by the API-hosted composition and by the worker projector for standalone-auth events. Better Auth issues rotating OIDC refresh tokens; integrating the repository's explicit reuse-detection guard remains planned. Browser continuity uses the Better Auth session.
+> - **JWT-only WS:** `apps/ws` verifies the Identity JWT, then loads Bid roles
+>   through `apps/api/users/me`; cookie-only handshakes fail.
+> - **Implemented asynchronously:** versioned Identity lifecycle events feed the
+>   Shop projection and Bid provisioning. OIDC refresh rotation tracks token
+>   families, detects reuse atomically, revokes the family and sessions, and
+>   provides an encrypted short retry-grace response.
+> - **Identity boundary (D13–D18):** `@auction/identity-contracts` owns exact
+>   clients, resources, claims, discovery, logout, and SSF contracts. APIs
+>   accept Bearer resource tokens only and load product authorization locally.
 
 ## Flow 1: First-time sign-up via Google on lax.bid
 
@@ -42,13 +55,15 @@ sequenceDiagram
   A->>DB: BEGIN transaction
   A->>DB: SELECT user WHERE email=? AND email_verified=true
   Note over A,DB: no match found, this is a new user
-  A->>DB: INSERT user, account, external_accounts(provider=google)
+  A->>DB: INSERT user and Better Auth account(provider=google)
   A->>DB: COMMIT
   A->>DB: lifecycle callback appends domain_events(user.registered, schema_v=1)
-  A->>A: issue JWT + set session cookie on .lax.bid
-  A-->>U: 302 redirect to lax.bid with session
-  U->>W: GET lax.bid/ (cookie attached)
-  W->>A: validate session via JWKS
+  A->>A: issue code-bound OIDC tokens
+  A-->>U: 302 redirect to Bid callback
+  U->>W: callback with authorization code
+  W->>A: exchange code as lax-bid-web
+  W->>W: verify ID token; store tokens server-side
+  W-->>U: set opaque host-only Bid cookie
   W-->>U: render authenticated page
 ```
 
@@ -62,58 +77,21 @@ identity transaction. Its post-create lifecycle callback then appends the
 failure is logged and does not roll back the identity; the backfill procedure in the
 auth rollout runbook is the recovery path for that rare gap.
 
-**Step 22 (the cookie).** The session cookie is set with `Domain=.lax.bid` per F7. The leading dot means both `lax.bid` (the web app) and `auth.lax.bid` (the auth server) can read it. Cross-registrable-suffix domains (`.lax.art`, `.lax.shop`) cannot share cookies by browser policy, which is why those domains use JWTs instead.
+**The product cookie.** The Identity cookie remains host-only to
+`auth.lax.bid`. Bid stores OIDC tokens server-side and sets a different opaque
+host-only cookie at `lax.bid`. Before an API call, the BFF exchanges for a
+single-resource token; API verifies it locally and
+`BidContextEnrichedAuthenticator` loads product authorization.
 
-**Step 25 (validating the session).** Same-origin requests from `apps/web` to `apps/api` carry the `.lax.bid` session cookie. `apps/api`'s `CompositeAuthenticator` first asks better-auth to resolve the cookie ([apps/api/src/infrastructure/composite-authenticator.ts](../../apps/api/src/infrastructure/composite-authenticator.ts), composed in [apps/api/src/container.ts](../../apps/api/src/container.ts)). The Bearer-token / JWKS path is the **second** authenticator in the chain — it covers cross-domain consumers (the WordPress plugin, future mobile apps, `apps/ws`) that cannot share cookies with `.lax.bid`. JWKS verification is implemented with `jose`'s `createRemoteJWKSet` (10-minute `cacheMaxAge`, 30-second `cooldownDuration`) in [packages/auth/src/middleware.ts](../../packages/auth/src/middleware.ts) — that's library-default stale-while-revalidate, not a custom cache layer.
+## Flow 2: Shop OIDC BFF
 
-## Flow 2: Cross-domain recognition on lax.art (WordPress)
+A user opens `shop.lax.art`. Shop starts authorization code + PKCE against
+Identity as confidential client `lax-shop-web`. If the host-only Identity
+session remains valid, Identity can authorize without prompting. Shop verifies
+the ID token and creates its own opaque host-only session; it never reads Bid's
+cookie.
 
-The user has signed in on lax.bid. Some time later, they visit lax.art (the WordPress marketing site on Hostgator). They click "Sign in" on the WordPress site. Because lax.art is on a different registrable domain than lax.bid, the browser does not send the .lax.bid cookie — WordPress has no idea who the user is, even though our system does.
-
-This is the OIDC handshake that bridges the two domains.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant U as User
-  participant WP as lax.art (WP)
-  participant A as apps/auth
-  participant DB as Postgres
-
-  U->>WP: GET lax.art/sign-in
-  WP-->>U: render WP login with sign in via TheAlx button
-  U->>WP: click sign in via TheAlx
-  WP-->>U: 302 redirect to OIDC authorize
-  U->>A: GET auth.lax.bid/api/auth/authorize?client_id=wp&redirect_uri=...
-  A->>A: read .lax.bid session cookie (still valid)
-  Note over A: user already authenticated, skip login
-  A->>A: generate authorization code bound to user
-  A-->>U: 302 redirect to lax.art callback with code
-  U->>WP: GET lax.art/?code=...&state=...
-  WP->>A: POST auth.lax.bid/api/auth/token (code + client_secret)
-  A->>DB: validate code, look up user
-  A->>A: issue id_token signed with active jwks_key
-  A-->>WP: id_token + access_token
-  WP->>A: GET auth.lax.bid/.well-known/jwks.json
-  A-->>WP: public key set
-  WP->>WP: verify id_token signature using JWKS
-  WP->>WP: extract email, name, sub from id_token
-  WP->>WP: find or create WP user with matching email
-  WP->>WP: set WP session cookie on .lax.art
-  WP-->>U: redirect to lax.art/dashboard authenticated
-```
-
-The user clicks "Sign in" once on lax.art and is authenticated without entering any credentials, because their .lax.bid session cookie was still valid when WordPress redirected them to our authorize endpoint. Our auth server saw the cookie, recognized the user, and issued an OIDC code and id_token without prompting for credentials.
-
-**Steps 5–8 (silent re-authentication).** This is where the cookie scoping pays off. When the browser hits `auth.lax.bid/api/auth/authorize`, it sends the `.lax.bid` cookie automatically. Our auth server reads the cookie, finds the active session, and skips the login UI entirely. From the user's perspective, they clicked one link and were "magically" recognized.
-
-**Step 11 (token exchange).** WordPress's OpenID Connect Generic plugin exchanges the authorization code for an id_token using its registered `client_secret`. This is back-channel — it never goes through the user's browser, so the secret is safe.
-
-**Steps 14–16 (signature verification).** WordPress fetches our JWKS endpoint to get the public key, then verifies the id_token's signature locally. This proves the token was issued by us. If we rotate keys (D2 + the rotation runbook), retired keys remain in JWKS for 30 minutes so any in-flight token verifications continue to succeed during the transition.
-
-**Step 19 (find or create WP user).** WordPress's plugin matches the OIDC `sub` (or `email`) to a WP user record. On first sign-in this creates a new WP user; on subsequent sign-ins this finds the existing record. The WP user is independent of our auction user — they live in different databases — but they're tied together by the `sub` claim, which is stable for the lifetime of the OIDC client.
-
-The user now has two parallel sessions: the original .lax.bid cookie for the auction app, and a new .lax.art cookie for WordPress. Each is scoped to its own domain. If they sign out of WordPress, their auction session is unaffected, and vice versa.
+Shop then verifies the JWT locally via JWKS, upserts its local `shop_user_profile`, and keeps product authorization separate from Identity. See [Shop identity boundary runbook](../runbooks/identity-boundary-cutover.md) and `scripts/ci/verify-shop-oidc-roundtrip.mjs`.
 
 ## Flow 3: Apple "Hide My Email" — why F6 exists
 
@@ -136,39 +114,44 @@ sequenceDiagram
   U->>A: GET callback with code
   A->>Apple: exchange code for id_token
   Apple-->>A: id_token with email=abc123@privaterelay.appleid.com sub=001234.5678abcd
-  A->>A: detect email ends with @privaterelay.appleid.com
-  Note over A: SKIP D3 email-based lookup
-  A->>DB: SELECT user FROM external_accounts WHERE provider=apple AND external_id=001234.5678abcd
+  A->>DB: SELECT Better Auth account WHERE provider=apple AND account_id=001234.5678abcd
   Note over A,DB: no match, treat as new user
   A->>DB: BEGIN tx
   A->>DB: INSERT user(email=abc123@privaterelay..., email_verified=true)
-  A->>DB: INSERT external_accounts(provider=apple, external_id=001234.5678abcd, email=abc123@privaterelay...)
+  A->>DB: INSERT account(provider=apple, account_id=001234.5678abcd)
   A->>DB: COMMIT
   A->>DB: lifecycle callback appends domain_events(user.registered)
   A-->>U: redirect to lax.bid authenticated
 ```
 
-The same user later signs up via email/password on lax.shop using their real address `alice@example.com`. Without F6, our system might try to link these two identities by email — but the privacy-relay address and the real address don't match, and even if we tried to match by Apple `sub`, the email/password signup has no Apple `sub`. The user appears as two separate identities until they explicitly link.
+The same user later starts a separate email/password sign-up with their real address `alice@example.com`. The privacy-relay address and real address do not match, and the credential identity has no Apple `sub`, so the subjects remain separate until the user explicitly proves control of both.
 
 **Why this is the correct behavior.** Apple's privacy contract says: the relay email is private; we should not tie it to other knowledge about the user without their consent. If we silently merged the two identities by some other heuristic, we'd be defeating Apple's privacy feature and potentially violating Apple's developer agreement. The "two identities until explicitly linked" outcome is what the user actually wants.
 
-**The fallback path.** The architecture allows for an explicit "link my accounts" flow in v2 — a logged-in user can prove they own both identities (e.g., by logging into both and confirming) and the system stitches them via `external_accounts`. This is deferred per the out-of-scope list, but the database supports it today: just write a new row in `external_accounts` linking the existing Apple-relay user to the email/password account.
+**The fallback path.** An explicit account-merge flow can be added later. A
+logged-in user must prove control of both subjects before the canonical Identity
+service merges them; product projections then consume `identity.subject_merged`.
+There is no heuristic merge based on relay addresses.
 
-**Step 11 (the detection).** The check is a simple string suffix: `email.endsWith('@privaterelay.appleid.com')` plus `provider === 'apple'`. The same defensive pattern applies if Google ever returns a no-email signup (rare but possible) — see D11.
-
-## What you need to know about the cookie
+## What you need to know about cookies
 
 A few things that have surprised engineers in the past:
 
-**The cookie domain is set in production but empty in local dev.** Setting `Domain=.lax.bid` requires actually running on .lax.bid. Local dev runs on localhost, where setting a cookie with a `Domain` attribute fails silently (or visibly, depending on the browser). The `COOKIE_DOMAIN` env var is empty in dev so the cookie is set as a host-only cookie scoped to localhost.
+**Authentication cookies are host-only.** Identity, Bid, and Shop each set their
+own cookie without a `Domain` attribute. `NEXT_PUBLIC_COOKIE_DOMAIN` is limited
+to non-auth preference/analytics cookies. The cutover from a parent-domain auth
+cookie causes one intentional logout.
 
 **The `SameSite=Lax` attribute is non-negotiable.** Lax means the cookie is sent on top-level navigation (link clicks, form submissions) but not on cross-origin XHR. This protects against CSRF without breaking the OIDC redirect flow. `SameSite=Strict` would block the redirect-back-from-Google flow because Google's redirect counts as cross-site. `SameSite=None` would require `Secure` and would expose us to CSRF on third-party iframes — not worth it for a public-facing site.
 
 **The `Secure` attribute is non-negotiable in production.** Cookies with `Secure` are only sent over HTTPS. Cloudflare's full-strict TLS configuration (D38) ensures the entire path from user to origin is HTTPS, so `Secure` adds defense-in-depth without breaking anything. In local dev where we run plain HTTP, `Secure` is omitted.
 
-**Cross-registrable-suffix domains do not share cookies, period.** lax.art and lax.shop are different registrable domains than lax.bid. There is no browser configuration that makes them share cookies — this is a fundamental limitation of the cookie spec to prevent supercookie tracking. Hence OIDC. The handshake from Flow 2 is the only way to recognize a user across registrable-suffix boundaries.
+**Cross-registrable-suffix domains do not share cookies, period.** `lax.art` and its `shop.lax.art` subdomain have a different registrable domain from `lax.bid`. There is no browser configuration that makes them share cookies — this is a fundamental limitation of the cookie spec to prevent supercookie tracking. Hence OIDC. The handshake from Flow 2 is the only way to recognize a user across registrable-suffix boundaries.
 
-**`apps/ws` uses JWT on handshake (Phase 2 complete on web).** Socket.IO clients on `lax.bid` fetch a short-lived JWT from `GET /api/auth/token` (better-auth jwt plugin) and pass it as `handshake.auth.token`. The WS server verifies via JWKS (`OIDC_ISSUER`, `JWKS_URL`). `LEGACY_WS_COOKIE_RELAY=false` in production — cookies alone are not used for identity. Anonymous visitors still join public rooms (`joinLot`, `joinSaleroom`) without a token.
+**`apps/ws` uses JWT on handshake.** Socket.IO clients fetch a short-lived JWT
+from the canonical auth host and pass it as `handshake.auth.token`. WS verifies
+issuer, audience, and signature, then asks Bid API for local authorization.
+Anonymous visitors may still join explicitly public rooms.
 
 ## What you need to know about the JWT
 
@@ -178,39 +161,42 @@ The access token issued by our auth server is an RS256-signed JWT with a 15-minu
 {
   "iss": "https://auth.lax.bid",
   "sub": "01HQXY7JGPVE2T8NVV0AM6S3ZQ",
-  "aud": "lax-api",
+  "aud": "lax-bid-api",
   "iat": 1730409600,
   "exp": 1730410500,
-  "email": "alice@example.com",
-  "email_verified": true,
-  "name": "Alice Example"
+  "sid": "identity-session-id"
 }
 ```
 
 Notice what's not there: no `role` claim. Roles are looked up server-side every request because role changes need to take effect immediately (revoking admin access, etc.) and a JWT-cached role would persist for up to 15 minutes after the change. PII is also limited — no phone, no address, no payment details. The minimum needed to identify the user; everything else is a server-side lookup.
 
-**The first-party JWT `aud` claim is stable.** Tokens from the JWT plugin default to `aud=lax-api` (`DEFAULT_JWT_AUDIENCE`) and API/WS consumers must verify the configured `JWT_AUDIENCE`. OIDC clients retain their own client/audience semantics in the OIDC provider.
+**Audience is resource-specific.** `lax-bid-api`, `lax-ws`, and
+`lax-shop-api` are distinct. The BFF exchanges a client-bound subject token
+through RFC 8693 for exactly one resource and namespaced scopes. ID tokens retain
+the OIDC client id as audience and are never API credentials.
 
-**Refresh tokens are server-side.** Better Auth's OIDC provider supports
-`authorization_code` and rotating `refresh_token` grants. The repository also
-contains an explicit reuse-detection guard, but wiring it into the live token
-endpoint and invalidating a reused token family remains **planned**. Browser
-session continuity relies on the Better Auth cookie rather than exposing refresh
-tokens to the web application.
+**Refresh tokens are server-side.** Successful rotation links predecessor and
+successor rows to a stable family and marks the predecessor consumed. Reuse
+outside the short retry grace revokes the family and Identity sessions. The
+retry response is encrypted in Redis; browser continuity uses the Better Auth
+cookie rather than exposing refresh tokens to the web application.
 
 ## Where things go wrong
 
 The failure modes that have actually happened in production at other companies running this pattern. None of these are theoretical.
 
-**Clock skew between our auth server and a relying party.** A WordPress plugin running on a server with a clock 60 seconds slow will reject our id_token as "issued in the future." Mitigation: ensure NTP is configured on every host, and accept up to 5 seconds of clock skew in JWT validation (`jose` does this by default with the `clockTolerance` option).
+**Clock skew between our auth server and a relying party.** An OIDC consumer with a clock 60 seconds slow may reject our id_token as "issued in the future." Mitigation: ensure NTP is configured on every host, and accept up to 5 seconds of clock skew in JWT validation (`jose` does this by default with the `clockTolerance` option).
 
 **JWKS cache stampede after rotation.** If 1000 worker processes all hit the JWKS endpoint at the same moment after a key rotation, that's a small DDoS on our auth server. Mitigation: each verifier uses `jose`'s `createRemoteJWKSet` with `cacheMaxAge: 600000` (10 min) and `cooldownDuration: 30000` (30 s) so refreshes are coalesced per process and stale keys keep working during the cooldown. The downstream Cloudflare cache TTL on `/.well-known/jwks.json` (60 s, configured at the edge per `docs/integrations/cloudflare.md`) absorbs the cross-process burst.
 
-**Cookie not being set due to misconfigured `Domain`.** If `COOKIE_DOMAIN=.lax.bid` is set on a deployment that's actually serving on `staging.lax.bid`, the cookie attempt is rejected by the browser as "domain mismatch" and the user appears to log in successfully but every subsequent request shows them as logged out. Mitigation: the auth server logs cookie-set attempts at debug level; production smoke tests verify the cookie round-trip.
+**Unexpected `Domain` on an authentication cookie.** Treat this as a release
+blocker. Identity and each product BFF must issue host-only cookies. Confirm the
+response omits the `Domain` attribute and clear any historical parent-domain
+cookie during cutover.
 
 **Apple email-relay rate limiting.** If we send too many emails too quickly through Apple's relay, Apple may throttle or stop forwarding. Mitigation: rate-limit our outbound mailers, and monitor bounce rates from privacy-relay addresses specifically (different bounce signature than regular emails).
 
-**WordPress plugin caching the wrong issuer URL.** If the WP plugin was configured during a brief window where the issuer was misconfigured, its cached discovery doc may have the wrong URL. Mitigation: when we change anything in the discovery doc, we also instruct ops to flush the WP plugin's cache (admin → tools → flush OIDC cache). Documented in [the WordPress integration guide](../integrations/wordpress.md).
+**Relying party caching the wrong issuer URL.** If a consumer cached discovery during a brief misconfiguration window, it may keep the wrong issuer. Mitigation: flush the consumer's OIDC discovery cache after issuer or JWKS changes and verify with the Shop round-trip script.
 
 The single best operational practice is reading the access logs on `apps/auth` after any auth-related change. Most issues show up there as 4xx responses with informative error codes. Sentry catches exceptions; structured logs catch policy decisions (cookie rejected, claim missing, replay detected).
 

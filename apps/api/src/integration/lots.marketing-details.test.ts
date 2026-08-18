@@ -13,11 +13,20 @@ const lotId = "00000000-0000-4000-8000-000000000001";
 const noAuth: IAuthenticator = { getSessionUser: async () => null };
 
 const adminAuth: IAuthenticator = {
-  getSessionUser: async () => ({ id: "ad", role: "staff", staffRole: "super_admin" }),
+  getSessionUser: async () => ({
+    id: "ad",
+    role: "staff",
+    staffRole: "super_admin",
+    scopes: ["bid.read", "bid.write"],
+  }),
 };
 
 const userAuth: IAuthenticator = {
-  getSessionUser: async () => ({ id: "u1", role: "client" }),
+  getSessionUser: async () => ({
+    id: "u1",
+    role: "client",
+    scopes: ["bid.read", "bid.write"],
+  }),
 };
 
 const sampleLot: Lot = {

@@ -8,6 +8,7 @@ import {
   API_COLUMN_UPDATE_GRANTS,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
+  AUTH_PRODUCT_LINK_READ_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_FULL_TABLES,
@@ -33,6 +34,8 @@ import { user } from "./schema/auth.js";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const repoRoot = join(__dirname, "../../..");
 const apiSrc = join(repoRoot, "apps/api/src");
+const persistenceSrc = join(repoRoot, "packages/persistence/src");
+const apiRuntimeRoots = [apiSrc, persistenceSrc];
 
 const USER_TABLE_IDENTIFIERS = new Set(["user", "userTable"]);
 
@@ -294,32 +297,34 @@ type CallSiteRecord = {
 
 async function collectCallSites(): Promise<CallSiteRecord[]> {
   const records: CallSiteRecord[] = [];
-  for await (const absPath of walkTsFiles(apiSrc)) {
-    const rel = relative(repoRoot, absPath);
-    const content = await readFile(absPath, "utf8");
-    const source = ts.createSourceFile(
-      absPath,
-      content,
-      ts.ScriptTarget.ES2022,
-      /*setParentNodes*/ true,
-      ts.ScriptKind.TS,
-    );
+  for (const root of apiRuntimeRoots) {
+    for await (const absPath of walkTsFiles(root)) {
+      const rel = relative(repoRoot, absPath);
+      const content = await readFile(absPath, "utf8");
+      const source = ts.createSourceFile(
+        absPath,
+        content,
+        ts.ScriptTarget.ES2022,
+        /*setParentNodes*/ true,
+        ts.ScriptKind.TS,
+      );
 
-    function visit(node: ts.Node): void {
-      if (ts.isCallExpression(node) && isUserTableUpdate(node)) {
-        const owner = resolveUpdateOwner(node, source);
-        if (!ownerIsAuthDb(owner)) {
-          const setCall = findSetCall(node);
-          if (setCall && setCall.arguments.length > 0) {
-            const { props, dynamic } = extractSetProps(setCall.arguments[0], source);
-            const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
-            records.push({ file: rel, line: line + 1, props, dynamic });
+      function visit(node: ts.Node): void {
+        if (ts.isCallExpression(node) && isUserTableUpdate(node)) {
+          const owner = resolveUpdateOwner(node, source);
+          if (!ownerIsAuthDb(owner)) {
+            const setCall = findSetCall(node);
+            if (setCall && setCall.arguments.length > 0) {
+              const { props, dynamic } = extractSetProps(setCall.arguments[0], source);
+              const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
+              records.push({ file: rel, line: line + 1, props, dynamic });
+            }
           }
         }
+        ts.forEachChild(node, visit);
       }
-      ts.forEachChild(node, visit);
+      visit(source);
     }
-    visit(source);
   }
   return records;
 }
@@ -363,6 +368,10 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_DOMAIN_EVENT_DELIVERY_TABLES]).toContain("domain_event_delivery");
   });
 
+  it("limits auth_app Bid profile access to the signup compensation read path", () => {
+    expect(AUTH_PRODUCT_LINK_READ_TABLES).toEqual(["bid_user_profile"]);
+  });
+
   it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {
     expect([...WORKER_PAYMENT_MAINTENANCE_TABLES]).toContain("payment");
   });
@@ -377,7 +386,7 @@ describe("migrate-roles invariants", () => {
   });
 });
 
-describe("api_app user UPDATE grants vs apps/api sources", { timeout: 60_000 }, () => {
+describe("api_app grants vs API runtime sources", { timeout: 60_000 }, () => {
   let records: CallSiteRecord[];
 
   beforeAll(async () => {
@@ -436,6 +445,75 @@ describe("api_app user UPDATE grants vs apps/api sources", { timeout: 60_000 }, 
     expect(missing.size).toBe(0);
   });
 
+  it("forbids direct Identity-table access from API and persistence runtime", async () => {
+    const forbiddenImports: string[] = [];
+    const forbiddenTables = new Set([
+      "account",
+      "session",
+      "verification",
+      "twoFactor",
+      "oauthAccessToken",
+      "oauthConsent",
+      "jwksKey",
+    ]);
+    for (const root of apiRuntimeRoots) {
+      for await (const absPath of walkTsFiles(root)) {
+        const source = ts.createSourceFile(
+          absPath,
+          await readFile(absPath, "utf8"),
+          ts.ScriptTarget.ES2022,
+          true,
+          ts.ScriptKind.TS,
+        );
+        for (const statement of source.statements) {
+          if (
+            !ts.isImportDeclaration(statement) ||
+            statement.moduleSpecifier.getText(source).replaceAll(/['"]/g, "") !==
+              "@auction/db/schema"
+          ) {
+            continue;
+          }
+          const bindings = statement.importClause?.namedBindings;
+          if (!bindings || !ts.isNamedImports(bindings)) continue;
+          for (const element of bindings.elements) {
+            if (forbiddenTables.has(element.propertyName?.text ?? element.name.text)) {
+              forbiddenImports.push(
+                `${relative(repoRoot, absPath)}:${source.getLineAndCharacterOfPosition(element.getStart(source)).line + 1}`,
+              );
+            }
+          }
+        }
+      }
+    }
+    expect(forbiddenImports, "direct Identity table imports").toEqual([]);
+  });
+
+  it("forbids Identity-owned user writes from API and persistence runtime", () => {
+    const identityFields = new Set([
+      "name",
+      "email",
+      "emailVerified",
+      "image",
+      "phoneNumber",
+      "phoneNumberVerified",
+      "twoFactorEnabled",
+      "pendingNewEmail",
+      "emailChangeOldOk",
+      "emailChangeNewOk",
+      "emailChangeExpiresAt",
+      "deletionRequestedAt",
+      "identityDisabledAt",
+      "identityDisabledReason",
+      "mergedIntoSubjectId",
+    ]);
+    const violations = records.flatMap((record) =>
+      [...record.props]
+        .filter((property) => identityFields.has(property))
+        .map((property) => `${record.file}:${record.line} user.${property}`),
+    );
+    expect(violations).toEqual([]);
+  });
+
   it("API_COLUMN_UPDATE_GRANTS.user has no over-granted columns (reverse drift)", () => {
     const observed = new Set<string>();
     for (const r of records) {
@@ -448,7 +526,7 @@ describe("api_app user UPDATE grants vs apps/api sources", { timeout: 60_000 }, 
     // negative for it because Drizzle may add it implicitly elsewhere. Keep it
     // exempt from reverse-drift; same for any future column that lives in the
     // allow-list intentionally for forward-compat.
-    const EXEMPT = new Set<string>(["updated_at"]);
+    const EXEMPT = new Set<string>(["name", "image", "deletion_requested_at", "updated_at"]);
     const unused: string[] = [];
     for (const col of API_COLUMN_UPDATE_GRANTS.user) {
       if (EXEMPT.has(col)) continue;
@@ -462,5 +540,33 @@ describe("api_app user UPDATE grants vs apps/api sources", { timeout: 60_000 }, 
       );
     }
     expect(unused).toEqual([]);
+  });
+
+  it("denies direct api_app updates to Bid-owned legacy user columns", () => {
+    const allowed = new Set(API_COLUMN_UPDATE_GRANTS.user);
+    for (const column of [
+      "role",
+      "staff_role",
+      "first_name",
+      "last_name",
+      "mobile",
+      "mobile_country",
+      "signup_persona",
+      "suspended_at",
+      "suspended_reason",
+      "kyc_status",
+      "current_kyc_session_id",
+      "kyc_retry_count",
+      "kyc_verified_at",
+      "preferred_paddle_number",
+      "aml_hold_status",
+      "aml_hold_reason",
+      "aml_hold_at",
+      "email_status",
+      "email_status_changed_at",
+      "has_seen_acting_context_tooltip",
+    ]) {
+      expect(allowed.has(column), column).toBe(false);
+    }
   });
 });

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
-import { sql } from "drizzle-orm";
+import { bidUserProfile, user } from "@auction/db/schema";
+import { eq, sql } from "drizzle-orm";
 import type {
   IOnsiteEventClientReader,
   OnsiteEventClientRow,
@@ -16,9 +16,10 @@ export class DrizzleOnsiteEventClientReader implements IOnsiteEventClientReader 
         id: user.id,
         email: user.email,
         name: user.name,
-        suspendedAt: user.suspendedAt,
+        suspendedAt: bidUserProfile.suspendedAt,
       })
       .from(user)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(sql`lower(${user.email}) = ${norm}`)
       .limit(1);
 

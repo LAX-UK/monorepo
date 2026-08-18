@@ -1,33 +1,35 @@
 # Auth go-live rollout (phased)
 
 1. **DB**: Run collision report → apply `0057_auth_hardening` during a maintenance window.
-2. **JWKS + env**: Deploy `apps/auth` + `apps/api` with `pg_try_advisory_xact_lock` retirement; set `JWT_AUDIENCE`, `AUTH_DEK_KEY`, `WEB_ORIGINS`, production `superRefine` validations.
+2. **JWKS + env**: Deploy `apps/auth` with `pg_try_advisory_xact_lock` retirement and `AUTH_DEK_KEY`; deploy `apps/api` with its separate `CHECK_IN_TOKEN_SECRET`; set `JWT_AUDIENCE`, `WEB_ORIGINS`, and production `superRefine` validations.
 3. **Encryption**: Set `AUTH_DEK_KEY`, deploy auth stack with adapter + JWKS envelope writes; run `pnpm --filter @auction/db db:backfill-auth-at-rest` once against the auth DB.
 4. **Core + UX**: Deploy web redirect hardening, logout broadcast, reset-password URL strip, session revocation hooks.
 5. **Sessions UI + step-up + Turnstile**: Enable after API routes for `/me/sessions` and `POST /auth/reauth` ship.
 6. **CSP**: Start `Content-Security-Policy-Report-Only` on marketing surfaces; fix violations; switch to enforce (`CSP_ENFORCE=1` on `apps/web`). Before enforcing, in **Cloudflare** disable **Scrape Shield → Email Address Obfuscation** for each zone (`lax.bid`, `test.lax.bid`, etc.): Cloudflare injects `cdn-cgi/scripts/.../email-decode.min.js`, which violates `script-src 'strict-dynamic'` and cannot be allowlisted by host when enforcing.
 7. **GDPR purge**: Apply `0058_user_pii_purge.sql`; worker job `purge-soft-deleted-users` calls `SELECT user_pii_purge(id)` for users past deletion cooling-off.
 
-See also: [key rotation](../security/key-rotation.md) and
-[JWKS rotation](./jwks-rotation.md).
+See also: [key rotation](../security/key-rotation.md),
+[JWKS rotation](./jwks-rotation.md), and
+[identity boundary cutover](./identity-boundary-cutover.md).
 
-## Standalone issuer decision gate
+## Canonical issuer and BFF gate
 
-Extraction readiness does **not** switch production traffic. Keep API-hosted
-`/api/auth/*` and `/.well-known/*` available until a separate cutover is approved.
-Approval requires all of the following:
+`apps/auth` is the sole issuer and API issuer routes are retired. Promotion of
+the host-only RP/BFF architecture requires all of the following:
 
-- API and `apps/auth` discovery documents and JWKS responses are byte-equivalent
-  against the same database, and auth responses retain the frozen no-store policy.
-- Sign-in, cookie round-trip, session refresh, password change, OIDC code exchange,
-  lifecycle events, and email verification pass with `NEXT_PUBLIC_AUTH_URL` pointed
-  at `apps/auth`.
+- Discovery/JWKS issuer, signing keys, and no-store policy are correct at
+  `auth.lax.bid`.
+- Bid and Shop code exchange, host-only product sessions, resource exchange,
+  password change, lifecycle events, and email verification pass.
 - `auth_app` role and schema/grant drift contracts pass after production migrations.
 - Dashboards, alerting, rollback routing, and a JWKS/key snapshot are confirmed.
-- No consumer still assumes the API base for issuer-hosted operations.
+- No API accepts a browser cookie or calls an Identity session endpoint to
+  authenticate a resource request.
+- Back-channel logout passes for Bid and Shop. SSF streams remain disabled until
+  verification and the dedicated operations runbook pass.
 
-Only after that evidence is reviewed may DNS/edge routing change. Database
-separation, API auth-route removal, and package publication are separate decisions.
+The cookie cutover causes one intentional logout. Do not claim production
+readiness until target-environment migration and E2E evidence is reviewed.
 
 ## Backfill: personal legal entity for users missing provisioning (LAX-PROD-AUTH-2)
 

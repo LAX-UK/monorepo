@@ -2,9 +2,6 @@ export { DrizzleLotRepository } from "./drizzle-lot.repository.js";
 export { DrizzleBidRepository } from "./drizzle-bid.repository.js";
 export { DrizzleSaleRepository } from "./drizzle-sale.repository.js";
 export { DrizzleItemSubmissionRepository } from "./drizzle-item-submission.repository.js";
-export { DrizzleSessionRepository } from "./drizzle-session.repository.js";
-export { DrizzleAuthCredentialReader } from "./drizzle-auth-credential.reader.js";
-export { DrizzleUserEmailChangeRepository } from "./drizzle-user-email-change.repository.js";
 export { DrizzleImpersonationSessionRepository } from "./drizzle-impersonation-session.repository.js";
 export { DrizzleEmailSuppressionRepository } from "./drizzle-email-suppression.repository.js";
 export { DrizzleEmailWebhookIngestRepository } from "./drizzle-email-webhook-ingest.repository.js";
@@ -101,7 +98,6 @@ export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repos
 export { DrizzleXeroWebhookEventRepository } from "./drizzle-xero-webhook-event.repository.js";
 export { DrizzleAdminUserReader } from "./drizzle-admin-user.reader.js";
 export { DrizzleAdminUserRoleManager } from "./drizzle-admin-user.reader.js";
-export { DrizzleAdminUserActivityReader } from "./drizzle-admin-user.reader.js";
 export { DrizzleAdminUserBidsReader } from "./drizzle-admin-user-bids.reader.js";
 export { DrizzleAdminDomainEventReader } from "./drizzle-admin-domain-event.reader.js";
 export { DrizzleAdminFinanceIssueSnapshotReader } from "./drizzle-admin-finance-issue-snapshot.reader.js";

@@ -28,7 +28,7 @@ export const adminVisualCases: readonly AdminVisualCase[] = [
   {
     path: "/admin",
     slug: "admin-home",
-    heading: /your dashboard/i,
+    heading: /good day/i,
     variants: ["desktop-light", "desktop-dark", "mobile-light", "mobile-dark"],
     capture: "page",
   },

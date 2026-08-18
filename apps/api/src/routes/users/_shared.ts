@@ -7,7 +7,11 @@ import type { createRequireRecentPasswordAuth } from "../../middleware/require-r
 import type { createTurnstileMiddleware } from "../../middleware/turnstile.js";
 
 export type UserHono = Hono<{
-  Variables: { userId?: string; userRole?: string } & MarketingConsentVars &
+  Variables: {
+    userId?: string;
+    userRole?: string;
+    identitySessionId?: string;
+  } & MarketingConsentVars &
     MarketingClientContextVars;
 }>;
 

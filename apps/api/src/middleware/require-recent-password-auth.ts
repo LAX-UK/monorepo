@@ -1,9 +1,7 @@
-import { AUTH_TIMINGS } from "@auction/auth/server";
-import { account, session } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
+import { AUTH_TIMINGS } from "@auction/auth/timings";
 import { createMiddleware } from "hono/factory";
 import type { ContainerPasswordStepUpSlice } from "../container/container-slices.js";
-import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
+import { IdentityIssuerClientError } from "../infrastructure/http-identity-issuer.client.js";
 
 /**
  * How to treat users who have no password-backed `credential` account row.
@@ -34,29 +32,42 @@ export function createRequireRecentPasswordAuth(
 ) {
   const maxAgeMs = AUTH_TIMINGS.recentPasswordProofMaxAgeSec * 1000;
   return createMiddleware<{
-    Variables: { userId?: string };
+    Variables: { userId?: string; identitySessionId?: string };
   }>(async (c, next) => {
     const userId = c.get("userId");
     if (!userId) {
       return c.json({ error: "Unauthorized", code: "session_required" }, 401);
     }
-    const token = extractBetterAuthSessionToken(c.req.header("cookie"));
-    if (!token) {
+    const identitySessionId = c.get("identitySessionId");
+    if (!identitySessionId) {
       return c.json({ error: "Unauthorized", code: "session_required" }, 401);
     }
-    const [row] = await container.authDb
-      .select({ lastPasswordAuthAt: session.lastPasswordAuthAt })
-      .from(session)
-      .where(and(eq(session.userId, userId), eq(session.token, token)))
-      .limit(1);
-    const last = row?.lastPasswordAuthAt;
-    const [cred] = await container.authDb
-      .select({ id: account.id })
-      .from(account)
-      .where(and(eq(account.userId, userId), eq(account.providerId, "credential")))
-      .limit(1);
+    let status: Awaited<ReturnType<typeof container.identityIssuer.stepUpStatus>>;
+    try {
+      status = await container.identityIssuer.stepUpStatus({
+        subjectId: userId,
+        sessionToken: identitySessionId,
+      });
+    } catch (error) {
+      if (
+        error instanceof IdentityIssuerClientError &&
+        (error.code === "no_session" || error.status === 401)
+      ) {
+        return c.json({ error: "Unauthorized", code: "session_required" }, 401);
+      }
+      if (
+        error instanceof IdentityIssuerClientError &&
+        (error.kind === "timeout" ||
+          error.kind === "network" ||
+          error.kind === "invalid_response" ||
+          (error.status !== undefined && error.status >= 500))
+      ) {
+        return c.json({ error: "Identity service unavailable", code: "identity_unavailable" }, 503);
+      }
+      throw error;
+    }
 
-    if (!cred) {
+    if (!status.hasCredential) {
       if (policy.onMissingCredential === "allow") {
         await next();
         return;
@@ -68,7 +79,7 @@ export function createRequireRecentPasswordAuth(
     }
 
     const now = Date.now();
-    if (!last || now - last.getTime() > maxAgeMs) {
+    if (!status.lastPasswordAuthAt || now - status.lastPasswordAuthAt.getTime() > maxAgeMs) {
       return c.json({ error: "Recent sign-in required", code: "recent_auth_required" }, 403);
     }
 

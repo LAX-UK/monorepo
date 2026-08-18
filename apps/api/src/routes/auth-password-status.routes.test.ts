@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { IdentityAccountSecurityHttpApplicationService } from "../services/identity/identity-account-security-http-application.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
-import { createAuthRoutes } from "./auth.js";
+import { createProductAuthRoutes } from "./auth.js";
 
 function mountAuth(opts: {
   hasCredential?: boolean;
@@ -10,33 +10,34 @@ function mountAuth(opts: {
 }) {
   const authenticator: IAuthenticator = {
     getSessionUser:
-      opts.getSessionUser ?? vi.fn(async () => ({ id: "u1", role: "client" as const })),
+      opts.getSessionUser ??
+      vi.fn(async () => ({ id: "u1", role: "client" as const, scopes: ["bid.read"] })),
   };
   const authCredentialReader = {
     hasCredentialAccount: vi.fn(async () => opts.hasCredential ?? false),
   };
   const container = {
     env: { WEB_ORIGIN: "http://localhost:3000" },
-    authDb: {},
     redis: null,
     authenticator,
     userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
     identityRoutes: {
       accountSecurityHttp: new IdentityAccountSecurityHttpApplicationService({
         env: { WEB_ORIGIN: "http://localhost:3000" } as never,
-        authDb: {} as never,
-        auth: {} as never,
-        db: {} as never,
+        identityIssuer: {
+          signUpEmail: vi.fn(),
+          sendVerificationEmail: vi.fn(),
+          requestPasswordReset: vi.fn(),
+          requestMagicLink: vi.fn(),
+        } as never,
         userService: {} as never,
-        userEmailChangeRepository: {} as never,
         emailService: {} as never,
-        sessionRevocation: {} as never,
         authAuditPublisher: { publish: vi.fn(async () => {}) },
         authCredentialReader,
       }),
     },
   };
-  const app = new Hono().route("/auth", createAuthRoutes(container as never));
+  const app = new Hono().route("/auth", createProductAuthRoutes(container as never));
   return { app };
 }
 

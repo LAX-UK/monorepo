@@ -8,13 +8,13 @@ This document is the source of truth for *why* the system is built the way it is
 
 ## D1. Webhook code lives in apps/api, projection logic in apps/worker
 
-**Chosen.** Inbound HTTP handlers for Shopify, WordPress, Xero, and Zoho webhooks live in `apps/api/src/routes/webhooks/`. The handler's job is narrow: verify the signature, claim the event into `webhook_event`, enqueue a BullMQ job for `apps/worker`, return 200. Outbound projection logic — calling Zoho's API, calling Xero's API, transforming events into the shape each external service expects — lives in `apps/worker/src/projectors/`.
+**Chosen.** Inbound HTTP handlers for external providers live in `apps/api`. Handlers authenticate the provider, persist the provider event when asynchronous processing is required, enqueue work, and return promptly. Outbound projection logic — calling Zoho's API, calling Xero's API, and transforming domain events into each external contract — lives in `apps/worker/src/projectors/`.
 
 **Alternatives considered.** A standalone `packages/webhooks` workspace package was rejected as premature; one HTTP handler and one outbound integration do not justify the overhead of a separate package boundary. A dedicated webhook microservice was rejected as over-engineered at our scale — receiving webhooks is HTTP request handling, which `apps/api` already does well.
 
 **Why this wins.** The HTTP request boundary is where authentication, rate limiting, and origin verification already happen — adding webhook ingest there means it inherits all of that. Splitting outbound into the worker means we can scale Zoho throughput without scaling the API, and a Zoho outage doesn't backpressure into HTTP request handlers.
 
-**Status.** *Partially implemented.* Inbound: Shopify and WordPress handlers verify HMAC and write `webhook_event` ([apps/api/src/routes/webhooks/](../../apps/api/src/routes/webhooks/)); the Xero handler in [apps/api/src/routes/xero-webhook.ts](../../apps/api/src/routes/xero-webhook.ts) verifies signature but writes through accounting repositories rather than `webhook_event` and is therefore an exception to the unified pattern. Outbound: [apps/worker/src/projectors/zoho.ts](../../apps/worker/src/projectors/zoho.ts) and [apps/worker/src/projectors/xero.ts](../../apps/worker/src/projectors/xero.ts) exist but do not call external APIs (the Zoho client returns synthetic `{ ok: true }` payloads) — outbound projection is **(Phase 2)**.
+**Status.** *Implemented.* Xero ingress is handled by [apps/api/src/routes/xero-webhook.ts](../../apps/api/src/routes/xero-webhook.ts), while Postmark, Brevo, Stripe, and Veriff use their provider-specific routes. Generic `webhook_event` persistence and the `webhook-events` worker remain available for asynchronous provider processing. Zoho and Xero projectors perform outbound work in `apps/worker` and default to disabled modes.
 
 ## D2. JWKS keys live in Postgres, scoped to the auth_app role
 
@@ -30,25 +30,39 @@ A retired key remains in the published JWKS for thirty minutes before deletion. 
 
 ## D3. Account linking happens at sign-in, gated on email verification
 
+**Status.** *Amended by D17.* This decision applies to authentication methods
+managed by Identity. It does not describe a commerce-platform identity bridge.
+
 **Chosen.** When a user authenticates on any of our domains, the auth service looks up an existing user record by `email` where `email_verified = true`. If a match is found, the new authentication is recorded as a row in `external_accounts` linked to that existing user. If no match is found, a new user record is created. The verified-email gate is non-negotiable — an unverified email cannot be used to claim ownership of an existing account.
 
-**Alternatives considered.** Lazy linking on first cross-domain visit was rejected because it delays Zoho enrichment — we want the unified customer view as soon as the second sign-up happens, not later. Explicit "Link my Shopify account" UX was rejected because it converts worse than transparent stitching and most users will never click it.
+**Alternatives considered.** Lazy linking on first cross-domain visit was rejected because it delays profile projection and CRM enrichment. An explicit account-linking UX remains an option for identities that cannot prove a verified-email match.
 
-**Why this wins.** Email is the only universal identifier across WordPress users, Shopify customers, and our auction users. The verification gate is what prevents account takeover via email impersonation: if a malicious actor signs up on Shopify with a victim's email, we don't link those accounts until the victim's email has been verified on our side via a real possession check.
+**Why this wins.** A verified email is the common identifier across credential and social sign-in methods. The possession check prevents an unverified address from claiming an existing account.
 
 The Apple "Hide My Email" relay flow is a deliberate exception — see D11 for details.
 
-**Status.** *Implemented.* The verified-email lookup and Apple-relay branch live in [apps/api/src/services/account-linking.service.ts](../../apps/api/src/services/account-linking.service.ts) and are exercised through better-auth's account-linking config in [packages/auth/src/server.ts](../../packages/auth/src/server.ts).
+Social account policy is enforced by Better Auth's
+account-linking configuration in [packages/auth/src/server.ts](../../packages/auth/src/server.ts).
+The generic `external_accounts` repository remains available for future trusted
+identity providers; no commerce webhook writes to it.
 
-## D4. Shopify integration uses the hosted storefront with email-based linking
+## D4. The custom Shop uses the canonical Identity issuer
 
-**Chosen.** Non-Plus Shopify, hosted storefront on `lax.shop` (no headless rebuild). Identity is stitched via Shopify webhooks: `customers/create` and `orders/*` fire to our `/webhooks/shopify` endpoint, which verifies the HMAC, claims the event into `webhook_event`, and enqueues a worker job. The worker's Shopify processor either creates a new user record (with `external_accounts(provider='shopify', external_id=<shopify_customer_id>)`) or links to an existing user matched by verified email per D3.
+**Status.** *Retired and superseded by D17.* This entry is retained as decision
+history. The current Shop and estate decision is D17.
 
-**Alternatives considered.** Shopify Multipass was rejected because it requires Shopify Plus, which costs $2,000+/month — vastly more than the engineering value it adds at our scale. Headless via the Storefront API was rejected because it forces us to rebuild the entire commerce UX, which is months of work for a feature (the storefront) where Shopify's defaults are perfectly adequate. The newer Customer Account API was deferred because it's less documented and the Multipass-replacement story is still maturing.
+**Chosen.** The customer storefront is a first-party Shop at `shop.lax.art`. It delegates authentication to the canonical issuer at `auth.lax.bid` using authorization-code OIDC and stores only Shop-owned profile data in `shop_user_profile`. Identity lifecycle events project the minimum profile fields Shop needs; Bid authorization remains isolated.
 
-**Why this wins.** Cheapest path that gives us CRM-quality data unification. Customers may need to sign in twice in v1 (once on Shopify, once on our auth flow), but their identity is stitched on the backend so the CRM never has duplicate records. v2 can adopt the Customer Account API once that pattern is more proven.
+**Alternatives considered.** An outsourced commerce stack with a separate
+customer identity was rejected because it would duplicate authentication,
+lifecycle, and deletion boundaries. Reusing Bid's local authorization model was
+rejected because Shop and Bid own different product profiles.
 
-**Status.** *Partially implemented.* Inbound HMAC verification and `webhook_event` ingest exist at [apps/api/src/routes/webhooks/shopify.ts](../../apps/api/src/routes/webhooks/shopify.ts). Worker-side processing of those rows — creating the user, writing the `external_accounts` link, dispatching domain events — is **(Phase 2)**: the `webhook-events` BullMQ queue has a consumer in [apps/worker/src/index.ts](../../apps/worker/src/index.ts) but no producer enqueues into it from the API yet.
+**Why this wins.** One issuer gives users a consistent sign-in while preserving product isolation. The Shop can evolve independently without copying credentials or widening database grants.
+
+The isolated implementation in [apps/shop-identity/](../../apps/shop-identity/)
+is the current executable Shop BFF boundary; the customer-facing Shop remains a
+later delivery.
 
 ## D5. Zoho writes are async via BullMQ, sourced from domain_events
 
@@ -60,35 +74,49 @@ The Apple "Hide My Email" relay flow is a deliberate exception — see D11 for d
 
 This is the single highest-leverage decision in the architecture. Every other decision pays its rent because of this one.
 
-**Status.** *Partially implemented.* `domain_events` and `projector_state` tables exist with all the columns the contract assumes (`actor_user_id`, `correlation_id`, `schema_version`). [apps/api/src/services/domain-event.publisher.ts](../../apps/api/src/services/domain-event.publisher.ts) implements `publish(tx, event)` and is wired in the container. **No service currently calls it** — registration, bid, and payment paths emit no events yet, and the projector runner only advances the `zoho` cursor. The Zoho client is a no-op stub. Wiring services to publish and turning the projectors into real outbound calls is the **(Phase 2)** delivery for D5.
+**Status.** *Implemented behind cutover flags.* Live producers exist across
+API/auth/worker, the typed catalog is in `@auction/types`, and each consumer uses
+the durable `domain_event_delivery` ledger. External Zoho/Xero writes remain
+off by default; see [04-domain-events.md](./04-domain-events.md).
 
 ## D6. Webhook authenticity verified per source, with replay window
 
-**Chosen.** Each inbound webhook source has its own verification mechanism, all binding the signature to the raw request body to prevent tampering or replay:
+**Status.** *Amended by D17.* This decision covers active external webhook
+providers only. Shop identity and lifecycle synchronization use OIDC,
+back-channel logout, SSF, and internal domain events rather than commerce
+webhooks.
 
-Shopify uses HMAC SHA-256 of the raw body, transmitted in the `X-Shopify-Hmac-SHA256` header. This is mandated by Shopify and our verifier uses Node's `crypto.timingSafeEqual` to prevent timing-based key extraction.
-
-WordPress uses a shared-secret HMAC of the body in `X-Thealx-Signature`. This applies only if WordPress emits events to us, which is unlikely in v1 (Q22 default treats WordPress as a pure relying party).
-
-Zoho's inbound webhooks (if used in v2 for bidirectional sync) would use Zoho's native notification token mechanism. v1 is one-way push only.
+**Chosen.** Each inbound webhook source has its own verification mechanism. Stripe and Xero bind signatures to the raw request body. Postmark uses a dedicated Basic Auth credential, Brevo uses its configured webhook secret, and Veriff verifies its provider signature.
 
 All sources reject any payload whose timestamp is more than five minutes old, comparing against the `Date` header or a source-specific `X-*-Triggered-At` header. This bounds replay-attack windows to five minutes.
 
-**Alternatives considered.** Mutual TLS was rejected because Hostgator (where WordPress lives) cannot terminate it cleanly and the operational cost is high. A naive shared secret in the request body without HMAC was rejected as replay-vulnerable.
+**Alternatives considered.** Mutual TLS was rejected for webhook sources that cannot terminate it cleanly at the edge — the operational cost is high relative to HMAC verification. A naive shared secret in the request body without HMAC was rejected as replay-vulnerable.
 
 **Why this wins.** Each source uses the verification primitive its platform mandates or recommends, which means we benefit from their existing tooling. The replay window is short enough to defeat practical attacks but long enough to absorb clock skew and webhook retry latency.
 
-**Status.** *Partially implemented.* HMAC + timing-safe compare exist for Shopify ([apps/api/src/lib/shopify-hmac.ts](../../apps/api/src/lib/shopify-hmac.ts)) and WordPress ([apps/api/src/lib/wordpress-secret.ts](../../apps/api/src/lib/wordpress-secret.ts)). The 5-minute replay window check is **(planned)** — neither verifier currently enforces a `Date`/`X-*-Triggered-At` skew bound; replay protection today is the dedupe key on `webhook_event`.
+Provider-specific verification lives beside each active ingress route. Persisted
+provider events use unique event keys for idempotency; timestamp/replay policy
+follows each provider contract.
 
-## D7. apps/auth extracts only if WordPress relying-party test reveals friction
+## D7. apps/auth is the canonical OIDC issuer
 
-**Chosen.** OIDC routes ship inside `apps/api` in Phase 1. At the end of Phase 2, a WordPress relying-party round-trip test verifies that the OpenID Connect Generic plugin can authenticate against our endpoints end to end. If that test reveals friction — auth-burst rate limits colliding with API queries, deploy-cadence conflicts, blast-radius concerns about co-locating auth with the rest of the API surface — we extract `apps/auth` as a Phase 2 sub-phase. If the test passes cleanly, extraction is deferred one quarter and revisited.
+**Status.** *Amended by D15 and D17.* `apps/auth` remains the sole issuer.
+Products are OIDC relying parties/BFFs; `apps/api` does not resolve browser
+cookies or publish issuer routes.
 
-**Alternatives considered.** Extracting upfront in Phase 1 was rejected because it costs roughly two days of work that is wasted if the friction never materializes — YAGNI applies. Never extracting was rejected because it forfeits the security boundary the medium-grade tier deliberately wants.
+**Chosen.** OIDC discovery, JWKS, and `/api/auth/*` live in `apps/auth` only.
+`apps/api` verifies resource access tokens and does not accept browser session
+cookies. The issuer URL `https://auth.lax.bid` is canonical; Cloudflare routes
+that host to `apps/auth`.
 
-**Why this wins.** YAGNI-disciplined with an empirical gate. The issuer URL `https://auth.lax.bid` is canonical from day one — Cloudflare CNAMEs the subdomain to whichever component currently serves OIDC. So the eventual cutover is DNS-only, not a client migration. No OIDC consumer (WordPress plugin, Shopify integration, future mobile app) ever sees a URL change. We get the option value of extraction without paying for it upfront.
+**Alternatives considered.** Keeping OIDC inside `apps/api` indefinitely was rejected because it co-locates auth burst traffic with auction API queries and widens blast radius. Extracting upfront in Phase 1 was rejected as premature before the identity boundary (D13) proved the split.
 
-**Status.** *Partially implemented.* [apps/auth/](../../apps/auth/) exists with its own Hono server, OIDC discovery, JWKS, `/api/auth/*` proxy, health checks, and metrics. **`apps/api` still serves the same routes in parallel** — see [apps/api/src/app.ts](../../apps/api/src/app.ts) and [apps/api/src/routes/well-known.ts](../../apps/api/src/routes/well-known.ts). The relying-party gate per D7 has not yet been declared cleared, so the Cloudflare flip and removal of duplicate routes from `apps/api` remain **(Phase 2)**.
+**Why this wins.** A dedicated auth deployable isolates JWKS private-key access
+(D2), auth rate limits, and deploy cadence from product traffic. Products keep a
+stable trust anchor while auth infrastructure changes behind the hostname.
+
+[apps/auth/](../../apps/auth/) is the sole issuer. `apps/api` no longer serves
+`/.well-known/*` or `/api/auth/*`.
 
 ## D8. domain_events outbox uses same-transaction writes and SKIP LOCKED polling
 
@@ -100,35 +128,63 @@ The worker reads from `domain_events` using `SELECT ... FOR UPDATE SKIP LOCKED` 
 
 **Why this wins.** Strong consistency by default. Operationally simple — there's nothing to debug except SQL. Replayable — rewind the cursor, restart the worker, and the projector recomputes everything since that point. SKIP LOCKED costs nothing on a single worker instance and makes horizontal scaling safe the moment we need it.
 
-**Status.** *Partially implemented.* The polling SQL with `FOR UPDATE SKIP LOCKED` is in [apps/worker/src/projectors/runner.ts](../../apps/worker/src/projectors/runner.ts) and the `DomainEventPublisher.publish(tx, event)` signature exists in [apps/api/src/services/domain-event.publisher.ts](../../apps/api/src/services/domain-event.publisher.ts). The runner today only advances a single cursor (`zoho`); the `xero` row is created but never updated. No service emits events yet — same gap as D5.
+**Status.** *Implemented behind cutover flags.* Worker consumers use durable
+per-consumer leases, retries, dead-letter state, and replay. Producers append
+events through the outbox boundary; external modes default to `off`.
 
 ## D9. The OIDC issuer URL is auth.lax.bid from day one
 
-**Chosen.** OIDC discovery returns `"issuer": "https://auth.lax.bid"` even when the routes are physically served by `apps/api` in Phase 1. Cloudflare CNAMEs the `auth` subdomain to whichever app currently runs the OIDC routes. The issuer URL is stable across the eventual extraction (D7).
+**Status.** *Amended by D15.* The issuer remains `https://auth.lax.bid`; every
+product now consumes it through its own OIDC client and BFF boundary.
 
-**Alternatives considered.** Issuing from `https://api.lax.bid` and renaming later was rejected because issuer changes are equivalent to a key rotation event for every consumer — every WordPress plugin, every Shopify integration, every mobile app would need to re-register and re-link. The cost is paid by every consumer, every time we change the URL.
+**Chosen.** OIDC discovery returns `"issuer": "https://auth.lax.bid"` from the
+canonical `apps/auth` issuer. Cloudflare CNAMEs the `auth` subdomain to that
+deployment, and the issuer URL remains stable across infrastructure changes.
+
+**Alternatives considered.** Issuing from a product API and renaming later was
+rejected because issuer changes require every OIDC client and verifier to change
+trust configuration.
 
 **Why this wins.** Stability from day one is free if planned for. Renaming the issuer is the kind of decision that looks small at the time and becomes the single most regretted choice when you realize it forces every external integration to redo their config.
 
-**Status.** *Implemented in code.* `OIDC_ISSUER_URL` is read in both [apps/api/src/env.ts](../../apps/api/src/env.ts) and [apps/auth/src/env.ts](../../apps/auth/src/env.ts), and the discovery doc returns it as the `issuer` field. The Cloudflare CNAME is **(operational, not in repo)** — no Terraform/IaC commits this in code, so it lives in DNS as configured by ops.
+`apps/auth` is the sole issuer and returns
+`OIDC_ISSUER_URL` from discovery. `apps/api` reads the same value only to verify
+tokens and call the canonical service; it does not serve issuer routes.
 
-## D10. Authentication uses CompositeAuthenticator (cookie then Bearer)
+## D10. Historical cookie-then-Bearer API authentication
 
-**Chosen.** A new `CompositeAuthenticator implements IAuthenticator` is bound at the composition root. It tries cookie-based session lookup first (existing `BetterAuthAuthenticator`), and if that returns no user, falls back to verifying an `Authorization: Bearer` JWT against the JWKS endpoint using the `jose` library. Route handlers depend only on the `IAuthenticator` interface — they don't know which path produced the user.
+**Status.** *Superseded by D15.* The historical composite and remote-session
+implementations have been removed. Bid API authentication is Bearer-only; the
+Bid BFF owns its host-only browser session.
 
-The websocket app (`apps/ws`) migrates to JWT-only verification on the Socket.IO handshake in Phase 2, removing the legacy cookie-relay model. A `LEGACY_WS_COOKIE_RELAY` flag exists during the migration as a sunset switch.
+**Chosen (historical).** The Bid API once tried a remotely resolved browser
+session before local Bearer verification, then enriched the global subject from
+`bid_user_profile`.
 
-**Alternatives considered.** Bearer-only would break the current web app's cookie-based session flow, which works perfectly for same-origin users. Cookie-only would block any cross-domain consumer (WordPress, mobile app, Shopify integration) from authenticating against our API.
+The websocket app (`apps/ws`) uses JWT-only verification on the Socket.IO
+handshake and resolves Bid authorization through `apps/api/users/me`.
 
-**Why this wins.** Preserves the `IAuthenticator` boundary completely. No route handler changes. The composition root in `apps/api/src/container.ts` swaps a single binding to enable the composite — that's the entire ripple. This is a textbook OCP/LSP win: the same interface, two implementations selected by configuration.
+**Alternatives considered (historical).** Bearer-only required a Bid BFF cutover;
+cookie-only blocked mobile and cross-product clients.
 
-**Status.** *Partially implemented.* [apps/api/src/infrastructure/composite-authenticator.ts](../../apps/api/src/infrastructure/composite-authenticator.ts) is bound in the container with `BetterAuthAuthenticator` first and `JwtAuthenticator` (jose-backed JWKS verification, library-default cache + cooldown) second. `apps/ws` already verifies JWT on the Socket.IO handshake via [apps/ws/src/services/jwt-verifier.ts](../../apps/ws/src/services/jwt-verifier.ts) but still falls back to the cookie relay against `apps/api/users/me` while `LEGACY_WS_COOKIE_RELAY` is set — see [apps/ws/src/handlers/socket-handler-registry.ts](../../apps/ws/src/handlers/socket-handler-registry.ts). Removing the legacy relay is **(Phase 2)** once web traffic has been observed not to need it.
+**Why it was chosen.** It preserved the route-level `IAuthenticator` boundary
+during migration. D15 removed the transitional runtime without changing route
+handlers.
+
+The surviving adapter is `JwtAuthenticator`, wrapped by
+`BidContextEnrichedAuthenticator` to load product-local authorization. WS also
+rejects cookie-only handshakes.
 
 ## D11. Social login via better-auth's Google and Apple plugins, account linking enabled
 
 **Chosen.** `packages/auth/src/server.ts` registers better-auth's `socialProviders.google` and `socialProviders.apple`. Email/password remains as a fallback credential. The `accountLinking` config is `{ enabled: true, trustedProviders: [] }`. With an empty trusted-provider list, Better Auth does not auto-link social accounts without a verified email match — Google sign-ins link when the provider returns a verified email; Apple relay emails link by `sub` via the `account` table. Email/password credential users link to social signups via the email-verification gate from D3.
 
-**Apple "Hide My Email" handling.** Apple's privacy relay returns email addresses ending in `@privaterelay.appleid.com`. These are stable per-(app, user) pair but are not the user's real inbox. The account-linking service detects this domain when `provider='apple'` and skips the D3 email-based lookup entirely — instead, the linking happens by Apple's `sub` claim via `external_accounts(provider='apple', external_id=<sub>)`. The relay email is persisted as-is in `external_accounts.email` so we can still send transactional email through Apple's relay. This means a user who later signs in via email/password with their real address will appear as a *different* identity until they explicitly link — which is the correct privacy behavior for the user, even though it produces apparent duplicates in our database.
+**Apple "Hide My Email" handling.** Apple's privacy relay returns email addresses
+ending in `@privaterelay.appleid.com`. Better Auth keys the social account by
+Apple's stable provider account ID and stores the relay address on the Identity
+user. Because that address does not match the user's real email, a later
+email/password signup remains a different subject until an explicit,
+proof-of-control merge. We do not infer a relationship from the relay address.
 
 The same defensive pattern applies if Google ever returns a no-email signup (unusual but possible if the user has revoked email access at the provider level).
 
@@ -159,3 +215,129 @@ Reference D-numbers in code comments where the rationale matters: `// D8: same-t
 **Follow-up (accepted debt).** When repository + provider wiring stabilizes, extract a shared `@auction/data-access` (or similar) package and point both `apps/api` and `apps/worker` at it so worker no longer depends on the API app package.
 
 **Status.** *Implemented.* Worker imports in [apps/worker/src/index.ts](../../apps/worker/src/index.ts), [apps/worker/src/jobs/data-export.ts](../../apps/worker/src/jobs/data-export.ts), and [apps/worker/src/jobs/legal-entity-archive-cascade.ts](../../apps/worker/src/jobs/legal-entity-archive-cascade.ts).
+
+## D13. LAX Identity boundary separates authentication from product authorization
+
+**Chosen.** `apps/auth` is the sole credentials/session/OIDC issuer. Products
+consume Identity through OIDC/JWKS and versioned domain events—not by importing
+`@auction/auth/server` or reading auth tables. Bid-owned state lives in
+`bid_user_profile`, keyed by the unchanged Identity subject. Tokens carry
+verification-essential claims only; Bid loads authorization locally.
+
+**Alternatives considered.** Embedding Bid roles in JWT claims was rejected because revocation must take effect immediately. Sharing the monolithic `user` row across products was rejected because it couples auction compliance to global Identity extraction. SCIM for internal sync was rejected — event-driven projection with idempotent consumers matches the existing `domain_events` model.
+
+**Why this wins.** Matches industry pattern: central issuance, edge verification, stateful governance. Preserves immutable `user.id` for existing FK references while enabling future Shop and other LAX products without auth DB access. `@auction/identity-contracts` gives consumers a dependency-light boundary.
+
+**Status.** *Implemented in code; production cutover evidence pending.* SSOT:
+[09-lax-identity-boundary.md](./09-lax-identity-boundary.md). Schema:
+`bid_user_profile`, `shop_user_profile`. Package:
+`@auction/identity-contracts`. `apps/auth` is canonical; promotion still follows
+the staged cutover runbook.
+
+## D14. Resource indicators, audiences, scopes, and token exchange are explicit
+
+**Chosen.** Identity maintains exact client and resource registries. RFC 8707
+resource indicators map one-to-one to access-token audiences:
+`https://api.lax.bid` → `lax-bid-api`, `https://ws.lax.bid` → `lax-ws`, and
+`https://shop.lax.art/api` → `lax-shop-api`. Product scopes are namespaced:
+`bid.read`, `bid.write`, `shop.read`, and `shop.write`. Confidential clients use
+RFC 8693 token exchange to turn a client-bound Identity token into a 15-minute,
+single-resource access token.
+
+**Alternatives considered.** One estate-wide audience was rejected because it
+lets a token minted for one product be replayed at another. Unnamespaced scopes
+were rejected because their owner is ambiguous. Sending ID tokens directly to
+resource servers was rejected because ID tokens are client assertions, not API
+capabilities.
+
+**Why this wins.** Each verifier can enforce one issuer, one audience, and its
+required scopes. The exchange endpoint rejects arbitrary or multiple resources,
+disabled or merged subjects, and scopes outside both client and resource policy.
+
+**Status.** *Implemented.* Registries live in
+`packages/identity-contracts/src/clients.ts` and `resources.ts`; exchange policy
+lives in `apps/auth/src/services/token-exchange.service.ts`.
+
+## D15. Every product is an OIDC RP/BFF with a host-only session
+
+**Supersedes D10 and amends D7/D9.**
+
+**Chosen.** Browser-facing products are confidential OIDC relying parties backed
+by a BFF. The BFF performs authorization code + PKCE, stores Identity and
+resource tokens server-side, and sends the browser only an opaque, Secure,
+HttpOnly, SameSite=Lax, host-only session cookie. No authentication cookie is
+shared across subdomains. Product APIs accept Bearer resource tokens, not
+Identity or product browser cookies. `auth.lax.bid` remains the issuer because
+issuer stability is a security contract and must not follow product hosting.
+
+**Alternatives considered.** Parent-domain cookies were rejected because they
+widen credential exposure to every subdomain. Remote session lookup from the API
+was rejected because it couples resource availability to Identity and confuses
+browser sessions with API credentials.
+
+**Why this wins.** A compromise of one product host cannot steal another
+product's browser session, APIs verify locally during an Identity outage, and
+each BFF can revoke its own session independently.
+
+**Status.** *Implemented in code; environment promotion evidence pending.* Bid
+BFF code is in `apps/web/src/lib/bff/`; the Shop reference BFF is
+`apps/shop-identity/`.
+
+## D16. OIDC back-channel logout and SSF are separate mechanisms
+
+**Chosen.** OIDC Back-Channel Logout terminates RP sessions using a signed
+`logout+jwt` addressed to the client. SSF carries signed `secevent+jwt` CAEP,
+RISC, and first-party lifecycle signals to an API receiver. Logout is immediate
+session invalidation; SSF is durable security-state synchronization. A failure
+in one does not silently count as success in the other.
+
+**Alternatives considered.** Using only browser front-channel logout was
+rejected because other RP sessions remain active. Encoding every lifecycle event
+as a logout token was rejected because logout tokens do not provide stream
+configuration, replay controls, or event semantics.
+
+**Why this wins.** Receivers have narrow validation and idempotency contracts.
+Logout can remain enabled while SSF streams are disabled or paused.
+
+**Status.** *Implemented; SSF delivery defaults disabled.* See
+`apps/auth/src/services/backchannel-logout.service.ts`,
+`apps/auth/src/services/ssf.service.ts`, and D16 operations runbooks.
+
+## D17. LAX owns the Shop at shop.lax.art
+
+**Retires D4 and amends D3/D6/D7/D9.**
+
+**Chosen.** The custom Shop is a first-party product at `shop.lax.art`; there is
+no hosted commerce identity or storefront provider. Marketing at `lax.art` is
+initially static. Shop uses client `lax-shop-web`, resource `lax-shop-api`, a
+host-only BFF session, `shop_user_profile`, OIDC logout, and SSF.
+
+**Alternatives considered.** An outsourced commerce stack and separate customer
+identity were rejected because they duplicate identity lifecycle, deletion, and
+incident response. Reusing Bid authorization was rejected because Shop owns a
+separate profile and policy boundary.
+
+**Why this wins.** The estate has one issuer without making products share
+sessions or authorization data, and Shop can be deployed independently.
+
+**Status.** *Boundary implemented; customer-facing Shop not yet delivered.*
+
+## D18. OIDC subjects are public until pairwise separation is required
+
+**Chosen.** Discovery advertises `subject_types_supported: ["public"]`.
+`sub` is the immutable canonical Identity subject across first-party products.
+Move to pairwise subjects only when an external or independently controlled
+client must not correlate a person across relying parties; that change requires
+sector identifiers, a subject-mapping store, migration contracts, and a new
+decision.
+
+**Alternatives considered.** Pairwise subjects for all current first-party
+clients were rejected because they add mapping and merge complexity without a
+privacy boundary between independent controllers.
+
+**Why this wins.** Product profiles and lifecycle events can key directly by
+immutable `sub` today, while the condition for a privacy-driven change is
+explicit.
+
+**Status.** *Implemented.* Discovery contracts in `packages/auth/src/contracts.ts`
+and `packages/identity-contracts/src/discovery.ts` advertise public subjects.

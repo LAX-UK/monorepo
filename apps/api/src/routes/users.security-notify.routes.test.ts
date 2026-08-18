@@ -18,7 +18,6 @@ function securityNotifyTestApp(opts: {
   const enqueue = opts.enqueue ?? vi.fn().mockResolvedValue(undefined);
   const container = {
     env: {},
-    authDb: {},
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     userRoutes: createUserRouteServices(
       createTestUserRouteServicesInput({
@@ -32,7 +31,9 @@ function securityNotifyTestApp(opts: {
     ),
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", staffRole: null }),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue({ id: "u1", role: "client", staffRole: null, scopes: ["bid.write"] }),
   };
   const app = new Hono();
   app.route("/users", createUserRoutes(container, authenticator));

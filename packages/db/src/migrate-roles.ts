@@ -10,11 +10,14 @@ export const AUTH_FULL_TABLES = [
   "account",
   "verification",
   "jwks_key",
-  "external_accounts",
   "oauth_application",
   "oauth_access_token",
   "oauth_consent",
-  /** `twoFactor` plugin backing table — required for `requestPasswordReset` / sign-in hooks on apps/api. */
+  "oidc_rp_session",
+  "oidc_backchannel_logout_delivery",
+  "ssf_stream",
+  "ssf_delivery",
+  /** `twoFactor` plugin backing table used only by the canonical auth issuer. */
   "two_factor",
 ] as const;
 // apps/auth (auth_app) needs to enqueue email via IEmailService.enqueue() from the
@@ -29,16 +32,49 @@ export const AUTH_FULL_TABLES = [
  *   (`publishUserEmailVerified` SELECT pre-check + INSERT; see apps/auth). */
 export const AUTH_INSERT_SELECT_TABLES = ["email_outbox", "domain_events"] as const;
 export const AUTH_SELECT_TABLES = ["email_suppression"] as const;
-const API_DENY_TABLES = [
+/** Identity merge retargets existing external links; auth never creates or deletes them. */
+export const AUTH_EXTERNAL_ACCOUNT_TABLES = ["external_accounts"] as const;
+/** Signup compensation checks that no Bid product profile has been provisioned. */
+export const AUTH_PRODUCT_LINK_READ_TABLES = ["bid_user_profile"] as const;
+export const API_DENY_TABLES = [
   "session",
   "account",
   "verification",
+  "two_factor",
   "jwks_key",
   "oauth_application",
   "oauth_access_token",
   "oauth_consent",
-];
+  "oidc_rp_session",
+  "oidc_backchannel_logout_delivery",
+  "shop_user_profile",
+  "shop_identity_session",
+  "shop_logout_token_replay",
+  "ssf_stream",
+  "ssf_delivery",
+  "shop_ssf_replay",
+] as const;
 const API_READ_TABLES = ["user"];
+/** Product-local profile tables owned by apps/api (Bid). */
+export const API_PRODUCT_PROFILE_TABLES = ["bid_user_profile"] as const;
+export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;
+/** Shop Identity owns only its local Identity projection. */
+export const SHOP_PRODUCT_PROFILE_TABLES = [
+  "shop_user_profile",
+  "shop_identity_session",
+  "shop_logout_token_replay",
+] as const;
+export const SHOP_SSF_RECEIVER_TABLES = ["shop_ssf_replay"] as const;
+/** Worker projectors upsert Shop/Bid local profiles from Identity domain events. */
+export const WORKER_PRODUCT_PROFILE_TABLES = ["shop_user_profile", "bid_user_profile"] as const;
+/** Tables whose DML must remain unavailable to worker_app. */
+export const WORKER_DENY_TABLES = [
+  ...AUTH_FULL_TABLES.filter((tableName) => tableName !== "user"),
+  ...API_SSF_RECEIVER_TABLES,
+  "shop_identity_session",
+  "shop_logout_token_replay",
+  ...SHOP_SSF_RECEIVER_TABLES,
+] as const;
 const WORKER_READ_TABLES = [
   "user",
   /** Catalogue tables scanned by backfill-media-assets (read image key columns only). */
@@ -56,26 +92,9 @@ const WORKER_READ_TABLES = [
   /** SoF projectors read case status / exposure for emails and retention job. */
   "source_of_funds",
 ];
-/** Columns `api_app` may UPDATE on `public.user` — must cover every `apps/api` write path
- * that uses `container.db`. Anything missing here surfaces as `permission denied for table user`.
- *
- * Intentionally denied to api_app (writes routed through `container.authDb` / `auth_app`):
- *   - `email`, `email_verified` — identity rewrite; only the dual-confirm email-change flow
- *     in `routes/auth.ts:confirm-email-change` may flip these, and it goes through authDb.
- *   - `two_factor_enabled` — managed by the Better Auth two-factor plugin.
- *   - `id`, `created_at` — never updatable from app code.
- */
+/** Identity-owned `user` writes are exclusively routed through apps/auth. */
 export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
-  user: [
-    "first_name",
-    "last_name",
-    "mobile",
-    "mobile_country",
-    "signup_persona",
-    "suspended_at",
-    "suspended_reason",
-    "updated_at",
-  ],
+  user: [],
 };
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -164,11 +183,12 @@ export const WORKER_ABSENTEE_BID_TABLES = ["absentee_bid"] as const;
 /** Worker absentee replay inserts bids during activation replay. */
 export const WORKER_BID_PLACEMENT_TABLES = ["bid"] as const;
 
-type RoleName = "auth_app" | "api_app" | "worker_app";
+type RoleName = "auth_app" | "api_app" | "shop_app" | "worker_app";
 
 const ROLE_PASSWORD_ENV: Record<RoleName, string> = {
   auth_app: "AUTH_APP_DB_PASSWORD",
   api_app: "API_APP_DB_PASSWORD",
+  shop_app: "SHOP_APP_DB_PASSWORD",
   worker_app: "WORKER_APP_DB_PASSWORD",
 };
 
@@ -229,6 +249,7 @@ async function grantIfExists(
     | "SELECT, UPDATE, DELETE"
     | "INSERT"
     | "INSERT, SELECT"
+    | "INSERT, SELECT, DELETE"
     | "INSERT, SELECT, UPDATE"
     | "INSERT, SELECT, UPDATE, DELETE"
     | "ALL PRIVILEGES",
@@ -276,7 +297,7 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
   try {
     await client.query("begin");
 
-    for (const role of ["auth_app", "api_app", "worker_app"] as const) {
+    for (const role of ["auth_app", "api_app", "shop_app", "worker_app"] as const) {
       await ensureRole(client, role);
       await client.query(`grant usage on schema public to ${quoteIdent(role)}`);
       await client.query(
@@ -295,8 +316,14 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     for (const tableName of AUTH_SELECT_TABLES) {
       await grantIfExists(client, "auth_app", tableName, "SELECT");
     }
+    for (const tableName of AUTH_EXTERNAL_ACCOUNT_TABLES) {
+      await grantIfExists(client, "auth_app", tableName, "SELECT, UPDATE");
+    }
+    for (const tableName of AUTH_PRODUCT_LINK_READ_TABLES) {
+      await grantIfExists(client, "auth_app", tableName, "SELECT");
+    }
     for (const tableName of tables) {
-      if (API_DENY_TABLES.includes(tableName)) {
+      if ((API_DENY_TABLES as readonly string[]).includes(tableName)) {
         await revokeIfExists(client, "api_app", tableName);
         continue;
       }
@@ -310,10 +337,31 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         );
         continue;
       }
+      if ((API_PRODUCT_PROFILE_TABLES as readonly string[]).includes(tableName)) {
+        await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, UPDATE");
+        continue;
+      }
+      if ((API_SSF_RECEIVER_TABLES as readonly string[]).includes(tableName)) {
+        await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
+        continue;
+      }
       await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");
     }
     for (const tableName of WORKER_READ_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "SELECT");
+    }
+    for (const tableName of SHOP_PRODUCT_PROFILE_TABLES) {
+      await grantIfExists(
+        client,
+        "shop_app",
+        tableName,
+        tableName === "shop_user_profile"
+          ? "INSERT, SELECT, UPDATE"
+          : "INSERT, SELECT, UPDATE, DELETE",
+      );
+    }
+    for (const tableName of SHOP_SSF_RECEIVER_TABLES) {
+      await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT, DELETE");
     }
     for (const tableName of WORKER_LOCK_READ_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
@@ -345,6 +393,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     await grantIfExists(client, "worker_app", "marketing_contact_sync_log", "INSERT, SELECT");
     for (const tableName of WORKER_DATA_EXPORT_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
+    }
+    for (const tableName of WORKER_PRODUCT_PROFILE_TABLES) {
+      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
     }
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");

@@ -54,7 +54,9 @@ function mountApp(role: LegalEntitySummary["role"]) {
   >;
 
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "user-1", role: "client" }),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue({ id: "user-1", role: "client", scopes: ["bid.write"] }),
   };
 
   const app = new Hono<{

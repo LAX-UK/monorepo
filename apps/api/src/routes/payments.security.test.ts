@@ -106,6 +106,7 @@ function mount(role: string, opts: MountOptions = {}) {
             id: sessionUserId,
             role: role as UserRole,
             staffRole: (opts.staffRole ?? null) as UserStaffRole | null,
+            scopes: ["bid.read", "bid.write"],
           }
         : null,
     ),

@@ -32,18 +32,6 @@ export type {
   IAdminSubmissionsSummaryReader,
 } from "./admin-submissions-summary.reader.js";
 
-export type { ISessionRepository } from "./session.repository.js";
-export type { AuthSessionListRow } from "./session.types.js";
-
-export type { IAuthCredentialReader } from "./auth-credential.reader.js";
-
-export type { IUserEmailChangeRepository } from "./user-email-change.repository.js";
-export {
-  EmailChangeConfirmError,
-  type EmailChangeConfirmFailureKind,
-  type EmailChangeConfirmPayload,
-} from "./user-email-change.types.js";
-
 export type {
   IImpersonationSessionRepository,
   ImpersonationDbClient,

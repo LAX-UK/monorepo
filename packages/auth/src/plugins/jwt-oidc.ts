@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { account } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
+import { ACCESS_TOKEN_TTL_SECONDS } from "@auction/identity-contracts";
 import type { IPhoneVerificationService } from "@auction/sms";
 import type { BetterAuthPlugin } from "better-auth";
 import { magicLink, twoFactor } from "better-auth/plugins";
@@ -12,6 +13,7 @@ import type { EnvelopeCrypto } from "../crypto/envelope.js";
 import { createJwksAdapter } from "../jwks.js";
 import { pickMagicLinkTemplate } from "../magic-link-email.js";
 import { buildMagicLinkVerifyPlugin } from "../magic-link-verify-hooks.js";
+import { buildOidcConsentHtml } from "../oidc-consent-html.js";
 import {
   buildPhoneNumberGuardPlugin,
   buildPhoneNumberPlugin,
@@ -30,6 +32,17 @@ export function buildJwtAndOidcPlugins(options: {
   onEmailVerified?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
     | undefined;
+  resolveOidcIdTokenClaims?:
+    | ((input: {
+        subjectId: string;
+        clientId: string;
+      }) => Promise<{
+        sid?: string;
+        auth_time?: number;
+        acr?: string;
+        amr?: string[];
+      }>)
+    | undefined;
 }): BetterAuthPlugin[] {
   const jwksAdapter = createJwksAdapter(options.db, options.envelope);
   const { db, issuer, webOrigin, jwtAudience, email, phoneVerification, onEmailVerified } = options;
@@ -47,15 +60,13 @@ export function buildJwtAndOidcPlugins(options: {
       jwt: {
         issuer,
         audience: jwtAudience,
-        expirationTime: "15 minutes",
+        expirationTime: `${ACCESS_TOKEN_TTL_SECONDS} seconds`,
         definePayload: ({ user: sessionUser }) => ({
           email: sessionUser.email,
           email_verified: sessionUser.emailVerified,
           name: sessionUser.name,
           // `image` is intentionally excluded — it is PII (avatar URL) and not required
           // for authorization decisions; clients should fetch it from the userinfo endpoint.
-          role: (sessionUser as { role?: string }).role ?? "client",
-          staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
         }),
       },
       adapter: {
@@ -65,20 +76,36 @@ export function buildJwtAndOidcPlugins(options: {
     }),
     oidcProvider({
       __skipDeprecationWarning: true,
-      accessTokenExpiresIn: 60 * 15,
+      accessTokenExpiresIn: ACCESS_TOKEN_TTL_SECONDS,
       refreshTokenExpiresIn: AUTH_TIMINGS.oidcRefreshTokenExpiresSec,
+      storeClientSecret: "hashed",
       loginPage: `${webOrigin ?? issuer}/login`,
       useJWTPlugin: true,
       requirePKCE: true,
-      scopes: ["openid", "profile", "email", "offline_access"],
+      scopes: [
+        "openid",
+        "profile",
+        "email",
+        "offline_access",
+        "bid.read",
+        "bid.write",
+        "shop.read",
+        "shop.write",
+      ],
+      getConsentHTML: ({ clientName, scopes, code }) =>
+        buildOidcConsentHtml({ clientName, scopes, code }),
       metadata: {
         issuer,
         jwks_uri: `${issuer.replace(/\/$/, "")}/.well-known/jwks.json`,
       },
-      getAdditionalUserInfoClaim: (sessionUser) => ({
+      getAdditionalUserInfoClaim: async (sessionUser, _scopes, client) => ({
         email_verified: sessionUser.emailVerified,
-        role: (sessionUser as { role?: string }).role ?? "client",
-        staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
+        ...(options.resolveOidcIdTokenClaims
+          ? await options.resolveOidcIdTokenClaims({
+              subjectId: sessionUser.id,
+              clientId: client.clientId,
+            })
+          : {}),
       }),
     }),
     twoFactor({ issuer: "LAX", allowPasswordless: true }),

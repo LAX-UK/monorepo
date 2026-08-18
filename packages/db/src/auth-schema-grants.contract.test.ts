@@ -1,18 +1,24 @@
 import { getTableName } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
+  API_DENY_TABLES,
+  AUTH_EXTERNAL_ACCOUNT_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
+  AUTH_PRODUCT_LINK_READ_TABLES,
   AUTH_SELECT_TABLES,
 } from "./migrate-roles.js";
 import {
   account,
-  externalAccount,
   jwksKey,
   oauthAccessToken,
   oauthApplication,
   oauthConsent,
+  oidcBackchannelLogoutDelivery,
+  oidcRpSession,
   session,
+  ssfDelivery,
+  ssfStream,
   twoFactor,
   user,
   verification,
@@ -27,18 +33,30 @@ describe("Better Auth schema and auth_app grant drift", () => {
       verification,
       twoFactor,
       jwksKey,
-      externalAccount,
       oauthApplication,
       oauthAccessToken,
       oauthConsent,
+      oidcRpSession,
+      oidcBackchannelLogoutDelivery,
+      ssfStream,
+      ssfDelivery,
     ]
       .map(getTableName)
       .sort();
     expect([...AUTH_FULL_TABLES].sort()).toEqual(configuredAuthTables);
+    expect(AUTH_EXTERNAL_ACCOUNT_TABLES).toEqual(["external_accounts"]);
+    expect(AUTH_PRODUCT_LINK_READ_TABLES).toEqual(["bid_user_profile"]);
   });
 
   it("keeps lifecycle and email side-effect grants narrow", () => {
     expect(AUTH_INSERT_SELECT_TABLES).toEqual(["email_outbox", "domain_events"]);
     expect(AUTH_SELECT_TABLES).toEqual(["email_suppression"]);
+  });
+
+  it("denies api_app every auth-owned table except the public subject projection", () => {
+    const denied = new Set<string>(API_DENY_TABLES);
+    for (const table of AUTH_FULL_TABLES) {
+      expect(denied.has(table), table).toBe(table !== "user");
+    }
   });
 });

@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { emailOutbox, user, userInvitation, type userStaffRoleEnum } from "@auction/db/schema";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import { type SQL, and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   ConsumeInviteResult,
   IUserInvitationRepository,
@@ -179,10 +180,10 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
           updatedAt: new Date(),
         })
         .where(eq(userInvitation.id, row.id));
-      await tx
-        .update(user)
-        .set({ role: targetRole, staffRole: targetStaff, updatedAt: new Date() })
-        .where(eq(user.id, newUserId));
+      await writeBidUserProfile(tx, newUserId, {
+        role: targetRole,
+        staffRole: targetStaff,
+      });
 
       return { outcome: "ok", targetRole };
     });

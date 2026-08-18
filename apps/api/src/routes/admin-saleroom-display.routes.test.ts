@@ -28,9 +28,12 @@ describe("admin saleroom display routes", () => {
     const container = createDisplayContainer({ listDevices } as never);
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.read"],
+      }),
     };
 
     const app = new Hono();
@@ -49,9 +52,12 @@ describe("admin saleroom display routes", () => {
     const container = createDisplayContainer({ approvePairing } as never);
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.write"],
+      }),
     };
 
     const app = new Hono();
@@ -83,9 +89,12 @@ describe("admin saleroom display routes", () => {
     const container = createDisplayContainer({ setOverlay } as never);
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.write"],
+      }),
     };
 
     const app = new Hono();

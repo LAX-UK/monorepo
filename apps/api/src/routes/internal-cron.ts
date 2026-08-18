@@ -218,13 +218,6 @@ export function createInternalCronRoutes(container: ContainerInternalCronRoutesS
     return c.json({ data: result.data });
   });
 
-  r.post("/purge-expired-verifications", async (c) => {
-    const gate = auth(c);
-    if (!gate.ok) return c.json(gate.body, gate.status);
-    const data = await container.platformCron.hygiene.purgeExpiredVerifications();
-    return c.json({ data });
-  });
-
   r.post("/stale-submission-draft-reminders", async (c) => {
     const gate = auth(c);
     if (!gate.ok) return c.json(gate.body, gate.status);

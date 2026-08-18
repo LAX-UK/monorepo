@@ -4,7 +4,7 @@ export interface ArtistWatchlistClient {
 }
 
 function browserApiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
+  return "/api/bff";
 }
 
 export const defaultArtistWatchlistClient: ArtistWatchlistClient = {

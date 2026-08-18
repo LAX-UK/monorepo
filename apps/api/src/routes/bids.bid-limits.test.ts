@@ -111,9 +111,11 @@ function mount(opts?: {
     requireSubmissionsLegalEntityContext: stubLegalEntityMiddleware(),
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi
-      .fn()
-      .mockResolvedValue({ id: opts?.userId ?? "user-rate-test", role: "client" }),
+    getSessionUser: vi.fn().mockResolvedValue({
+      id: opts?.userId ?? "user-rate-test",
+      role: "client",
+      scopes: ["bid.write"],
+    }),
   };
   const app = new Hono();
   app.route("/bids", createBidRoutes(container, authenticator));
@@ -260,7 +262,9 @@ describe("POST /bids middleware gates", () => {
       requireSubmissionsLegalEntityContext: stubLegalEntityMiddleware(agentEntityId),
     } as unknown as Container;
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "agent-user", role: "client" }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "agent-user", role: "client", scopes: ["bid.write"] }),
     };
     const app = new Hono();
     app.route("/bids", createBidRoutes(container, authenticator));
@@ -310,7 +314,9 @@ describe("POST /bids success contract", () => {
       requireSubmissionsLegalEntityContext: stubLegalEntityMiddleware(),
     } as unknown as Container;
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u-contract", role: "client" }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "u-contract", role: "client", scopes: ["bid.write"] }),
     };
     const app = new Hono();
     app.route("/bids", createBidRoutes(container, authenticator));

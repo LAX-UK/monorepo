@@ -20,7 +20,6 @@ import type {
   IPushSubscriptionRepository,
   ISavedSearchRepository,
   IUiPreferenceRepository,
-  IUserEmailChangeRepository,
   IUserInvitationRepository,
   IUserRepository,
   IUserSuspensionChecker,
@@ -43,7 +42,6 @@ import {
   DrizzlePushSubscriptionRepository,
   DrizzleSavedSearchRepository,
   DrizzleUiPreferenceRepository,
-  DrizzleUserEmailChangeRepository,
   DrizzleUserInvitationRepository,
   DrizzleUserRepository,
   DrizzleUserSuspensionChecker,
@@ -54,7 +52,6 @@ export type IProfileRepository = IProfileReader & IProfileWriter;
 
 export type IdentityRepositories = {
   userRepo: IUserRepository;
-  userEmailChangeRepository: IUserEmailChangeRepository;
   profileRepo: IProfileRepository;
   addressRepo: IAddressRepository;
   legalEntityRepository: ILegalEntityRepository;
@@ -80,7 +77,6 @@ export type IdentityRepositories = {
 
 export function createIdentityRepositories(db: Database): IdentityRepositories {
   const userRepo = new DrizzleUserRepository(db);
-  const userEmailChangeRepository = new DrizzleUserEmailChangeRepository(db);
   const profileRepo = new DrizzleProfileRepository(db);
   const addressRepo = new DrizzleAddressRepository(db);
   const legalEntityRepository = createDrizzleLegalEntityRepository(db);
@@ -108,7 +104,6 @@ export function createIdentityRepositories(db: Database): IdentityRepositories {
 
   return {
     userRepo,
-    userEmailChangeRepository,
     profileRepo,
     addressRepo,
     legalEntityRepository,

@@ -5,16 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 
 const refetchMock = vi.fn();
 
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    useSession: () => ({
-      data: null,
-      isPending: false,
-      isRefetching: false,
-      error: null,
-      refetch: refetchMock,
-    }),
-  },
+vi.mock("@/lib/data/http/auth-session.client", () => ({
+  fetchCurrentBffSession: () => refetchMock(),
 }));
 
 describe("useRefetchAppSession", () => {
@@ -37,6 +29,6 @@ describe("useRefetchAppSession", () => {
 
     await result.current();
 
-    expect(refetchMock).toHaveBeenCalledWith({ query: { disableCookieCache: true } });
+    expect(refetchMock).toHaveBeenCalledOnce();
   });
 });

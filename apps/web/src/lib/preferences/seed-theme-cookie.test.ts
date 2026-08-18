@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 describe("seedDefaultThemeCookieIfNeeded", () => {
   it("sets default theme when authed and theme cookie absent", () => {
     const req = new NextRequest("https://lax.bid/dashboard", {
-      headers: { cookie: "better-auth.session_token=abc" },
+      headers: { cookie: "lax-bid-session=abc" },
     });
     const res = NextResponse.next();
 
@@ -18,7 +18,7 @@ describe("seedDefaultThemeCookieIfNeeded", () => {
 
   it("does not overwrite existing theme cookie", () => {
     const req = new NextRequest("https://lax.bid/dashboard", {
-      headers: { cookie: "better-auth.session_token=abc; lax_theme=dark" },
+      headers: { cookie: "lax-bid-session=abc; lax_theme=dark" },
     });
     const res = NextResponse.next();
 

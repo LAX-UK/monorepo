@@ -8,6 +8,13 @@ export interface IIdentityAccountSecurityHttpApplicationService {
     sessionTokenFromCookie: string | null | undefined;
   }): Promise<IdentityHttpJson>;
 
+  changePassword(input: {
+    userId: string | undefined;
+    currentPassword: string;
+    newPassword: string;
+    sessionToken: string | null | undefined;
+  }): Promise<IdentityHttpJson>;
+
   forgotPassword(input: {
     email: string;
     webOrigin: string;

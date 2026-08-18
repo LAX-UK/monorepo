@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { captureBackgroundError } from "@auction/observability";
 import {
   type UserRole,
@@ -7,14 +8,64 @@ import {
 } from "@auction/types";
 import type { Server, Socket } from "socket.io";
 import type { WsEnv } from "../env.js";
-import { verifySocketToken } from "../services/jwt-verifier.js";
 
 export type HandlerContext = {
   io: Server;
   env: WsEnv;
   /** Optional: record server-side latency probe ack duration (seconds). */
   recordLatencyProbeAckSeconds?: (seconds: number) => void;
+  ticketStore: { getdel(key: string): Promise<string | null> };
 };
+
+type TicketUser = { id: string; sid?: string; role: string; staff_role?: string };
+
+/** Consume and bind the one-time BFF ticket during the Socket.IO handshake. */
+export async function consumeSocketTicket(
+  socket: Socket,
+  ticketStore: HandlerContext["ticketStore"],
+): Promise<"anonymous" | "authenticated" | "invalid"> {
+  const ticket =
+    typeof socket.handshake.auth?.ticket === "string" ? socket.handshake.auth.ticket : undefined;
+  if (!ticket) return "anonymous";
+  if (!/^[A-Za-z0-9_-]{43}$/.test(ticket)) return "invalid";
+  try {
+    const key = `bid:ws-ticket:${createHash("sha256").update(ticket).digest("base64url")}`;
+    const raw = await ticketStore.getdel(key);
+    if (!raw) return "invalid";
+    const value = JSON.parse(raw) as {
+      subject?: unknown;
+      sid?: unknown;
+      role?: unknown;
+      staffRole?: unknown;
+      audience?: unknown;
+      scopes?: unknown;
+      apiResourceToken?: unknown;
+    };
+    if (
+      typeof value.subject !== "string" ||
+      typeof value.sid !== "string" ||
+      typeof value.role !== "string" ||
+      value.audience !== "lax-ws" ||
+      !Array.isArray(value.scopes) ||
+      !value.scopes.includes("bid.read")
+    ) {
+      return "invalid";
+    }
+    const user: TicketUser =
+      typeof value.staffRole === "string"
+        ? { id: value.subject, role: value.role, staff_role: value.staffRole }
+        : { id: value.subject, role: value.role };
+    socket.data.ticketUser = user;
+    socket.data.authSubject = value.subject;
+    socket.data.authSid = value.sid;
+    if (typeof value.apiResourceToken === "string" && value.apiResourceToken.length > 0) {
+      socket.data.privilegeToken = value.apiResourceToken;
+    }
+    return "authenticated";
+  } catch {
+    return "invalid";
+  }
+}
 
 function roomForLot(lotId: string): string {
   return `lot:${lotId}`;
@@ -36,37 +87,57 @@ type AckFn = ((result: unknown) => void) | undefined;
 
 async function resolveSessionUser(
   socket: Socket,
-  env: WsEnv,
+  ctx: HandlerContext,
 ): Promise<{ id: string; role: string; staff_role?: string } | null> {
-  const token =
-    typeof socket.handshake.auth?.token === "string" ? socket.handshake.auth.token : undefined;
-  const jwtUser = await verifySocketToken({
-    token,
-    issuer: env.OIDC_ISSUER,
-    jwksUrl: env.JWKS_URL,
-  });
-  if (jwtUser) {
-    return {
-      id: jwtUser.id,
-      role: jwtUser.role,
-      ...(jwtUser.staff_role !== undefined ? { staff_role: jwtUser.staff_role } : {}),
-    };
-  }
+  const cached = socket.data.ticketUser as TicketUser | undefined;
+  if (cached) return cached;
+  const consumed = await consumeSocketTicket(socket, ctx.ticketStore);
+  return consumed === "authenticated" ? (socket.data.ticketUser as TicketUser) : null;
+}
 
-  if (!env.LEGACY_WS_COOKIE_RELAY) return null;
-  const cookie = socket.handshake.headers.cookie;
-  if (!cookie) return null;
+async function resolveCurrentCapability(
+  socket: Socket,
+  ctx: HandlerContext,
+  capability: "auction.manage" | "platform.admin.full",
+): Promise<boolean> {
+  const cached = await resolveSessionUser(socket, ctx);
+  if (!cached) return false;
+  const cachedRole = normalizeUserRoleOrClient(cached.role) as UserRole;
+  const cachedStaff = normalizeUserStaffRole(cached.staff_role);
+  if (!roleHasCapability(cachedRole, capability, cachedStaff)) return false;
+
+  const token =
+    typeof socket.data.privilegeToken === "string" ? socket.data.privilegeToken : undefined;
+  if (!token) return false;
   try {
-    const res = await fetch(`${env.API_URL}/users/me`, {
-      headers: { cookie, accept: "application/json" },
+    const response = await fetch(`${ctx.env.API_URL}/users/me`, {
+      headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+      signal: AbortSignal.timeout(3_000),
     });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { data?: { id?: string; role?: string } };
-    const id = json.data?.id;
-    const role = json.data?.role;
-    return typeof id === "string" && typeof role === "string" ? { id, role } : null;
+    if (!response.ok) return false;
+    const body = (await response.json()) as {
+      data?: {
+        id?: unknown;
+        role?: unknown;
+        staffRole?: unknown;
+        suspended?: unknown;
+      };
+    };
+    if (
+      body.data?.id !== cached.id ||
+      typeof body.data.role !== "string" ||
+      body.data.suspended === true
+    ) {
+      return false;
+    }
+    const role = normalizeUserRoleOrClient(body.data.role) as UserRole;
+    const staff =
+      typeof body.data.staffRole === "string"
+        ? normalizeUserStaffRole(body.data.staffRole)
+        : undefined;
+    return roleHasCapability(role, capability, staff);
   } catch {
-    return null;
+    return false;
   }
 }
 
@@ -81,11 +152,11 @@ async function handleJoinLot(
     ack?.({ ok: false, error: "lotId required" });
     return;
   }
-  const me = await resolveSessionUser(socket, ctx.env);
+  const me = await resolveSessionUser(socket, ctx);
   socket.data.userId = me?.id;
-  const role = me ? (normalizeUserRoleOrClient(me.role) as UserRole) : null;
-  const staff = me ? normalizeUserStaffRole(me.staff_role) : null;
-  socket.data.isAdmin = role != null && roleHasCapability(role, "platform.admin.full", staff);
+  socket.data.isAdmin = me
+    ? await resolveCurrentCapability(socket, ctx, "platform.admin.full")
+    : false;
   await socket.join(roomForLot(lotId));
   ack?.({ ok: true });
 }
@@ -125,11 +196,11 @@ async function handleJoinSaleroomAsync(
     ack?.({ ok: false, error: "saleId required" });
     return;
   }
-  const me = await resolveSessionUser(socket, ctx.env);
+  const me = await resolveSessionUser(socket, ctx);
   socket.data.userId = me?.id;
-  const role = me ? (normalizeUserRoleOrClient(me.role) as UserRole) : null;
-  const staff = me ? normalizeUserStaffRole(me.staff_role) : null;
-  const canManageSaleroom = role != null && roleHasCapability(role, "auction.manage", staff);
+  const canManageSaleroom = me
+    ? await resolveCurrentCapability(socket, ctx, "auction.manage")
+    : false;
   await socket.join(roomForSale(saleId));
   if (canManageSaleroom) {
     await socket.join(roomForDisplay(saleId));
@@ -139,32 +210,21 @@ async function handleJoinSaleroomAsync(
 
 function handleLeaveSaleroom(
   socket: Socket,
-  ctx: HandlerContext,
+  _ctx: HandlerContext,
   payload: { saleId?: string },
   ack: AckFn,
 ) {
-  void handleLeaveSaleroomAsync(socket, ctx, payload, ack);
+  void handleLeaveSaleroomAsync(socket, payload, ack);
 }
 
-async function handleLeaveSaleroomAsync(
-  socket: Socket,
-  ctx: HandlerContext,
-  payload: { saleId?: string },
-  ack: AckFn,
-) {
+async function handleLeaveSaleroomAsync(socket: Socket, payload: { saleId?: string }, ack: AckFn) {
   const saleId = payload?.saleId;
   if (!saleId) {
     ack?.({ ok: false, error: "saleId required" });
     return;
   }
-  const me = await resolveSessionUser(socket, ctx.env);
-  const role = me ? (normalizeUserRoleOrClient(me.role) as UserRole) : null;
-  const staff = me ? normalizeUserStaffRole(me.staff_role) : null;
-  const canManageSaleroom = role != null && roleHasCapability(role, "auction.manage", staff);
   await socket.leave(roomForSale(saleId));
-  if (canManageSaleroom) {
-    await socket.leave(roomForDisplay(saleId));
-  }
+  await socket.leave(roomForDisplay(saleId));
   ack?.({ ok: true });
 }
 
@@ -220,21 +280,19 @@ function handleLeaveDisplay(
 }
 
 async function handleJoinUser(socket: Socket, ctx: HandlerContext, _payload: unknown, ack: AckFn) {
-  const me = await resolveSessionUser(socket, ctx.env);
+  const me = await resolveSessionUser(socket, ctx);
   if (!me) {
     ack?.({ ok: false, error: "unauthenticated" });
     return;
   }
   socket.data.userId = me.id;
-  const role = normalizeUserRoleOrClient(me.role) as UserRole;
-  const staff = normalizeUserStaffRole(me.staff_role);
-  socket.data.isAdmin = roleHasCapability(role, "platform.admin.full", staff);
+  socket.data.isAdmin = await resolveCurrentCapability(socket, ctx, "platform.admin.full");
   await socket.join(roomForUser(me.id));
   ack?.({ ok: true });
 }
 
 async function handleLeaveUser(socket: Socket, ctx: HandlerContext, _payload: unknown, ack: AckFn) {
-  const me = await resolveSessionUser(socket, ctx.env);
+  const me = await resolveSessionUser(socket, ctx);
   if (!me) {
     ack?.({ ok: false, error: "unauthenticated" });
     return;

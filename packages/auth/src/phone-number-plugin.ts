@@ -7,12 +7,6 @@ import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { phoneNumber } from "better-auth/plugins";
 import { eq, lt } from "drizzle-orm";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
-
-function resolveCountryFromE164(phoneE164: string): string | null {
-  const parsed = parsePhoneNumberFromString(phoneE164);
-  return parsed?.country ?? null;
-}
 
 function extractClientIp(headers: Headers | undefined): string | undefined {
   if (!headers) return undefined;
@@ -22,22 +16,6 @@ function extractClientIp(headers: Headers | undefined): string | undefined {
     if (first) return first;
   }
   return headers.get("x-real-ip")?.trim() ?? undefined;
-}
-
-async function syncLegacyMobileFields(
-  db: Database,
-  userId: string,
-  phoneE164: string,
-): Promise<void> {
-  const country = resolveCountryFromE164(phoneE164);
-  await db
-    .update(user)
-    .set({
-      mobile: phoneE164,
-      ...(country ? { mobileCountry: country } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(user.id, userId));
 }
 
 async function purgeExpiredVerificationRows(db: Database): Promise<void> {
@@ -105,15 +83,6 @@ export function buildPhoneNumberPlugin(options: {
       }
     },
     callbackOnVerification: async ({ phoneNumber: phoneE164, user: authUser }) => {
-      try {
-        await syncLegacyMobileFields(db, authUser.id, phoneE164);
-      } catch (err) {
-        console.error("[auth.phoneNumber] syncLegacyMobileFields failed", {
-          userId: authUser.id,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-
       email
         ?.enqueue({
           template: "new-device-login",
@@ -176,10 +145,10 @@ export async function resetPhoneVerifiedIfNumberChanged(
   const next = nextPhone?.trim() ?? null;
   if (prev === next) return;
   if (next === null) {
-    // Phone cleared: reset verified flag and clear legacy display fields.
+    // Phone cleared: reset the Identity-owned verification flag.
     await db
       .update(user)
-      .set({ phoneNumberVerified: false, mobile: null, mobileCountry: null, updatedAt: new Date() })
+      .set({ phoneNumberVerified: false, updatedAt: new Date() })
       .where(eq(user.id, userId));
   } else {
     // Phone changed to a different number: reset verified flag.

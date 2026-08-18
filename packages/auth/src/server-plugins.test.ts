@@ -38,7 +38,7 @@ describe("buildJwtAndOidcPlugins", () => {
     const plugins = buildJwtAndOidcPlugins({
       db: {} as never,
       issuer: "https://auth.lax.bid",
-      jwtAudience: "lax-api",
+      jwtAudience: "lax-bid-api",
     });
 
     const twoFactorPlugin = plugins.find((plugin) => {

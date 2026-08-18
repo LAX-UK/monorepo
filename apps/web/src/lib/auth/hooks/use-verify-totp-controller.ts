@@ -2,27 +2,18 @@
 
 import { trackLogin } from "@/lib/analytics/events";
 import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
-import {
-  POST_AUTH_SESSION_LOAD_ERROR,
-  fetchSessionUserWithRetry,
-} from "@/lib/auth/fetch-session-user-with-retry.client";
-import { resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { beginBidOidcLogin } from "@/lib/auth/begin-bid-oidc-login.client";
 import { verifyBackupCodeService } from "@/lib/auth/services/verify-backup-code.service";
 import { verifyTotpService } from "@/lib/auth/services/verify-totp.service";
-import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { notify } from "@/lib/ui/notify";
-import { normalizeUserRoleOrClient } from "@auction/types";
 import { backupCodeFormSchema, totpVerifyFormSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 
 export type TwoFactorVerifyMode = "totp" | "backup";
 
 export function useVerifyTotpController(nextHref: string) {
-  const router = useRouter();
-  const refetchSession = useRefetchAppSession();
   const [mode, setMode] = useState<TwoFactorVerifyMode>("totp");
   const [trustDevice, setTrustDevice] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -39,28 +30,9 @@ export function useVerifyTotpController(nextHref: string) {
   });
 
   const completeSignIn = useCallback(async () => {
-    await refetchSession();
     postAuthBroadcast({ type: "signed-in" });
-    const me = await fetchSessionUserWithRetry();
-    if (!me) {
-      setBannerError(POST_AUTH_SESSION_LOAD_ERROR);
-      notify.error(POST_AUTH_SESSION_LOAD_ERROR);
-      return;
-    }
-    router.push(
-      resolvePostAuthDestination({
-        user: {
-          ...me,
-          role: normalizeUserRoleOrClient(me.role),
-        },
-        requestedNext: nextHref,
-        context: "sign-in",
-        requireEmailVerification: false,
-        withWelcomeBack: true,
-      }),
-    );
-    router.refresh();
-  }, [nextHref, refetchSession, router]);
+    beginBidOidcLogin(nextHref);
+  }, [nextHref]);
 
   const submitTotp = useCallback(
     async (code: string) => {

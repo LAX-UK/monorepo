@@ -1,24 +1,17 @@
-import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import {
-  EmailChangeConfirmError,
-  type IUserEmailChangeRepository,
-} from "@auction/persistence/interfaces";
 import type { RequestEmailChangeInput } from "@auction/validators";
 import type { Env } from "../../env.js";
+import { IdentityIssuerClientError } from "../../infrastructure/http-identity-issuer.client.js";
 import { createEmailChangeToken, verifyEmailChangeToken } from "../../lib/email-change-token.js";
-import { createAppLogger } from "../../lib/logger.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
-import type { SessionRevocationService } from "../session-revocation.service.js";
+import type { IIdentityEmailChangeClient } from "../interfaces/identity-issuer-client.js";
 import type { UserService } from "../user.service.js";
 
 export type EmailChangeDeps = {
   userService: Pick<UserService, "getById">;
-  emailChange: IUserEmailChangeRepository;
+  identityIssuer: IIdentityEmailChangeClient;
   emailService: Pick<IEmailService, "enqueue">;
-  env: Pick<Env, "BETTER_AUTH_SECRET" | "WEB_ORIGIN" | "LOG_LEVEL" | "NODE_ENV">;
-  authDb: Database;
-  sessionRevocation: SessionRevocationService;
+  env: Pick<Env, "CHECK_IN_TOKEN_SECRET" | "WEB_ORIGIN" | "LOG_LEVEL" | "NODE_ENV">;
 };
 
 export async function requestEmailChange(args: {
@@ -35,22 +28,32 @@ export async function requestEmailChange(args: {
   const currentNorm = current.email.trim().toLowerCase();
   if (newEmailNorm === currentNorm) return { ok: false, kind: "same_email" };
 
-  if (await deps.emailChange.isEmailTakenByOtherUser(newEmailNorm, userId)) {
-    return { ok: false, kind: "email_taken" };
-  }
-
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await deps.emailChange.setPendingChange(userId, newEmailNorm, expiresAt);
+  try {
+    await deps.identityIssuer.startEmailChange({
+      subjectId: userId,
+      newEmail: newEmailNorm,
+      expiresAt,
+    });
+  } catch (error) {
+    if (error instanceof IdentityIssuerClientError && error.code === "email_taken") {
+      return { ok: false, kind: "email_taken" };
+    }
+    if (error instanceof IdentityIssuerClientError && error.code === "subject_not_found") {
+      return { ok: false, kind: "user_not_found" };
+    }
+    throw error;
+  }
 
   const ttlSeconds = 7 * 24 * 60 * 60;
   const tokenOld = createEmailChangeToken(
     { userId, oldEmail: current.email, newEmail: newEmailNorm, confirmFor: "old" },
-    deps.env.BETTER_AUTH_SECRET,
+    deps.env.CHECK_IN_TOKEN_SECRET,
     ttlSeconds,
   );
   const tokenNew = createEmailChangeToken(
     { userId, oldEmail: current.email, newEmail: newEmailNorm, confirmFor: "new" },
-    deps.env.BETTER_AUTH_SECRET,
+    deps.env.CHECK_IN_TOKEN_SECRET,
     ttlSeconds,
   );
   const base = `${deps.env.WEB_ORIGIN.replace(/\/$/, "")}/dashboard/settings/account/confirm`;
@@ -103,10 +106,10 @@ export async function clearEmailChangeInProgress(args: {
 }): Promise<{ ok: true } | { ok: false; kind: "none_in_progress" }> {
   const { deps, userId, authAudit } = args;
 
-  const pending = await deps.emailChange.getPendingNewEmail(userId);
+  const pending = await deps.identityIssuer.pendingEmailChange(userId);
   if (!pending) return { ok: false, kind: "none_in_progress" };
 
-  await deps.emailChange.clearPendingChange(userId);
+  await deps.identityIssuer.cancelEmailChange(userId);
 
   void authAudit
     ?.publish({
@@ -136,31 +139,20 @@ export async function confirmEmailChangeFromToken(args: {
   const { deps, token, authAudit } = args;
   let payload: ReturnType<typeof verifyEmailChangeToken>;
   try {
-    payload = verifyEmailChangeToken(token, deps.env.BETTER_AUTH_SECRET);
+    payload = verifyEmailChangeToken(token, deps.env.CHECK_IN_TOKEN_SECRET);
   } catch {
     return { ok: false, kind: "invalid_token" };
   }
 
   try {
-    const completed = await deps.emailChange.confirmInAuthTransaction(deps.authDb, {
-      userId: payload.userId,
+    const completed = await deps.identityIssuer.confirmEmailChange({
+      subjectId: payload.userId,
       oldEmail: payload.oldEmail,
       newEmail: payload.newEmail,
       confirmFor: payload.confirmFor,
     });
 
     if (completed) {
-      try {
-        await deps.sessionRevocation.revokeAllForUser(payload.userId);
-      } catch (revErr) {
-        createAppLogger({
-          LOG_LEVEL: deps.env.LOG_LEVEL ?? "info",
-          NODE_ENV: deps.env.NODE_ENV ?? "production",
-        }).error(
-          { err: revErr instanceof Error ? revErr.message : String(revErr) },
-          "email_change_revoke_sessions_failed",
-        );
-      }
       void authAudit
         ?.publish({
           eventType: "auth.email_change_completed",
@@ -173,7 +165,18 @@ export async function confirmEmailChangeFromToken(args: {
     }
     return { ok: true, completed: false, confirmFor: payload.confirmFor };
   } catch (e) {
-    if (e instanceof EmailChangeConfirmError) return { ok: false, kind: e.kind };
+    if (
+      e instanceof IdentityIssuerClientError &&
+      (e.code === "subject_not_found" ||
+        e.code === "stale_flow" ||
+        e.code === "expired" ||
+        e.code === "email_taken")
+    ) {
+      return {
+        ok: false,
+        kind: e.code === "subject_not_found" ? "user_not_found" : e.code,
+      };
+    }
     return { ok: false, kind: "invalid_token" };
   }
 }

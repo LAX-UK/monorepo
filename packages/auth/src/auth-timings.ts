@@ -16,5 +16,7 @@ export const AUTH_TIMINGS = {
   recentPasswordProofMaxAgeSec: 10 * 60,
 } as const;
 
-/** Default `aud` claim for first-party JWTs issued by the jwt plugin. */
-export const DEFAULT_JWT_AUDIENCE = "lax-api";
+export {
+  ACCESS_TOKEN_TTL_SECONDS,
+  DEFAULT_JWT_AUDIENCE,
+} from "@auction/identity-contracts";

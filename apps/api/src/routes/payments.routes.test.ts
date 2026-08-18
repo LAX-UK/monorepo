@@ -42,6 +42,7 @@ function mountPaymentRoutes(
       id: "buyer-1",
       role: "client" as UserRole,
       staffRole: null,
+      scopes: ["bid.read", "bid.write"],
     })),
   };
   app.route("/payments", createPaymentRoutes(container, authenticator));

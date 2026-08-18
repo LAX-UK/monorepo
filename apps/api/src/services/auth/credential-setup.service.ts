@@ -1,53 +1,31 @@
-import { account } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
 import type { ContainerCredentialSetupSlice } from "../../container/container-slices.js";
+import { IdentityIssuerClientError } from "../../infrastructure/http-identity-issuer.client.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 
 export async function setupCredentialPassword(args: {
   container: ContainerCredentialSetupSlice;
   userId: string;
   password: string;
+  sessionTokenFromCookie?: string | undefined;
   authAudit?: IAuthAuditPublisher | undefined;
 }): Promise<{ ok: true } | { ok: false; kind: "user_not_found" | "already_set" | "db_error" }> {
   const { container, userId, password, authAudit } = args;
 
-  const current = await container.userService.getById(userId);
-  if (!current) return { ok: false, kind: "user_not_found" };
-
-  const auth = container.auth as unknown as {
-    $context: Promise<{ password: { hash: (pw: string) => Promise<string> } }>;
-  };
-  const ctx = await auth.$context;
-  const hash = await ctx.password.hash(password);
-
-  let alreadySet = false;
   try {
-    await container.authDb.transaction(async (tx) => {
-      const existing = await tx
-        .select({ id: account.id })
-        .from(account)
-        .where(and(eq(account.userId, userId), eq(account.providerId, "credential")))
-        .limit(1);
-      if (existing.length > 0) {
-        alreadySet = true;
-        return;
-      }
-      const now = new Date();
-      await tx.insert(account).values({
-        id: crypto.randomUUID(),
-        accountId: userId,
-        providerId: "credential",
-        userId,
-        password: hash,
-        createdAt: now,
-        updatedAt: now,
-      });
+    await container.identityIssuer.setupPassword({
+      subjectId: userId,
+      password,
+      ...(args.sessionTokenFromCookie ? { sessionToken: args.sessionTokenFromCookie } : {}),
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof IdentityIssuerClientError && error.code === "subject_not_found") {
+      return { ok: false, kind: "user_not_found" };
+    }
+    if (error instanceof IdentityIssuerClientError && error.code === "already_set") {
+      return { ok: false, kind: "already_set" };
+    }
     return { ok: false, kind: "db_error" };
   }
-
-  if (alreadySet) return { ok: false, kind: "already_set" };
 
   void authAudit
     ?.publish({
@@ -57,14 +35,6 @@ export async function setupCredentialPassword(args: {
       actorUserId: userId,
     })
     .catch(() => {});
-
-  void container.emailService.enqueue({
-    template: "password-changed",
-    to: current.email,
-    userId,
-    category: "auth",
-    vars: { userName: current.name },
-  });
 
   return { ok: true };
 }

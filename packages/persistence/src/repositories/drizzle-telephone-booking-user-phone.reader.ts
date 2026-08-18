@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
+import { bidUserProfile, user } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type {
   ITelephoneBookingUserPhoneReader,
@@ -14,9 +14,10 @@ export class DrizzleTelephoneBookingUserPhoneReader implements ITelephoneBooking
       .select({
         phoneNumber: user.phoneNumber,
         phoneNumberVerified: user.phoneNumberVerified,
-        mobile: user.mobile,
+        mobile: bidUserProfile.mobile,
       })
       .from(user)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(eq(user.id, userId))
       .limit(1);
     return row ?? null;

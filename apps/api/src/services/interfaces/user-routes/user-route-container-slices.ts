@@ -13,4 +13,7 @@ export type UserAccountRoutesContainer = UserRoutePick<
   | "profileHttp"
   | "securityHttp"
 > &
-  Pick<import("../../../container.js").Container, "userSuspensionChecker" | "env" | "authDb">;
+  Pick<
+    import("../../../container.js").Container,
+    "userSuspensionChecker" | "env" | "identityIssuer"
+  >;

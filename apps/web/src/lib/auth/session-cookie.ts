@@ -1,5 +1,5 @@
-/** True when the request carries a Better Auth session cookie (cheap gate before `/users/me`). */
+/** True when the request carries the opaque Bid BFF session cookie. */
 export function hasAuthSessionCookie(cookieHeader: string | null | undefined): boolean {
   if (!cookieHeader) return false;
-  return /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/.test(cookieHeader);
+  return /(?:^|;\s*)(?:__Host-)?lax-bid-session=/.test(cookieHeader);
 }

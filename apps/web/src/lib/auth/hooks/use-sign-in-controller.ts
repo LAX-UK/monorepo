@@ -3,22 +3,16 @@
 import { trackLogin } from "@/lib/analytics/events";
 import { trackSellAuthHandoff } from "@/lib/analytics/sell-funnel";
 import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
+import { beginBidOidcLogin } from "@/lib/auth/begin-bid-oidc-login.client";
 import { isEmailFirstLoginEnabled } from "@/lib/auth/email-first-login";
-import {
-  POST_AUTH_SESSION_LOAD_ERROR,
-  fetchSessionUserWithRetry,
-} from "@/lib/auth/fetch-session-user-with-retry.client";
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
-import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { type SignInFormValues, signInFormSchema } from "@/lib/auth/schemas";
 import { requestMagicLinkService } from "@/lib/auth/services/request-magic-link.client";
 import { signInService } from "@/lib/auth/services/sign-in.client";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
-import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
-import { notify } from "@/lib/ui/notify";
-import { normalizeUserRoleOrClient } from "@auction/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
@@ -36,7 +30,6 @@ type SignInControllerOptions = {
 
 export function useSignInController(nextHref: string, options: SignInControllerOptions = {}) {
   const router = useRouter();
-  const refetchSession = useRefetchAppSession();
   const emailFirst = options.emailFirst ?? isEmailFirstLoginEnabled();
   const turnstileRef = useRef<string | undefined>(undefined);
   const [magicLinkTurnstileToken, setMagicLinkTurnstileToken] = useState<string | null>(null);
@@ -48,7 +41,6 @@ export function useSignInController(nextHref: string, options: SignInControllerO
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [signInCaptchaToken, setSignInCaptchaToken] = useState<string | null>(null);
   const [captchaGateError, setCaptchaGateError] = useState<string | null>(null);
-  const [postAuthError, setPostAuthError] = useState<string | null>(null);
   const [step, setStep] = useState<SignInStep>(
     emailFirst ? (options.initialStep ?? "email") : "credentials",
   );
@@ -181,32 +173,9 @@ export function useSignInController(nextHref: string, options: SignInControllerO
       if (options.sellIntent) {
         trackSellAuthHandoff();
       }
-      await refetchSession();
-      // Reset acting context to the personal entity on every fresh sign-in so a
-      // stale `lax_acting_legal_entity_id` cookie from a previous account/org
-      // cannot leak into API calls (e.g. bids -> not_a_member_of_legal_entity).
       clearClientActingLegalEntityId();
       postAuthBroadcast({ type: "signed-in" });
-      setPostAuthError(null);
-      const me = await fetchSessionUserWithRetry();
-      if (!me) {
-        setPostAuthError(POST_AUTH_SESSION_LOAD_ERROR);
-        notify.error(POST_AUTH_SESSION_LOAD_ERROR);
-        return;
-      }
-      router.push(
-        resolvePostAuthDestination({
-          user: {
-            ...me,
-            role: normalizeUserRoleOrClient(me.role),
-          },
-          requestedNext: nextHref,
-          context: "sign-in",
-          requireEmailVerification: false,
-          withWelcomeBack: true,
-        }),
-      );
-      router.refresh();
+      beginBidOidcLogin(nextHref);
       return;
     }
     const maybeUnverified = result.code === "email_not_verified";
@@ -223,7 +192,7 @@ export function useSignInController(nextHref: string, options: SignInControllerO
     form,
     onSubmit,
     loading,
-    bannerError: captchaGateError ?? bannerError ?? postAuthError,
+    bannerError: captchaGateError ?? bannerError,
     lastErrorCode,
     showCaptcha: showCaptcha && Boolean(siteKey),
     turnstileSiteKey: siteKey ?? null,

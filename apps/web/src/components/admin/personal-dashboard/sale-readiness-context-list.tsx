@@ -26,7 +26,7 @@ export function SaleReadinessContextList({ saleReadiness, activeLotIds }: Props)
         <div className="flex items-baseline justify-between gap-3">
           <p className="font-body text-sm font-medium text-on-surface">Saleroom pulse</p>
           {pulseData.activeSaleroomSessions > 0 ? (
-            <span className="font-body text-xs text-live-red">Live</span>
+            <span className="font-body text-xs text-danger">Live</span>
           ) : null}
         </div>
         <AdminLiveBidActivity

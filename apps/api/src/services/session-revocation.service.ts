@@ -1,27 +1,31 @@
-import type { AuthSessionListRow, ISessionRepository } from "@auction/persistence/interfaces";
+import type {
+  IIdentitySessionClient,
+  IdentitySession,
+} from "./interfaces/identity-issuer-client.js";
 
-/** Deletes Better Auth `session` rows (auth DB). Used after password reset / email change / suspension. */
+/** Identity-owned session operations exposed through the auth issuer boundary. */
 export class SessionRevocationService {
-  constructor(private readonly sessions: ISessionRepository) {}
+  constructor(private readonly identity: IIdentitySessionClient) {}
 
   async revokeAllForUser(userId: string): Promise<number> {
-    return this.sessions.deleteAllForUser(userId);
+    return this.identity.revokeAllSessions(userId);
   }
 
-  /** Revoke all sessions except the current one (e.g. after email change while keeping this browser signed in). */
-  async revokeAllForUserExcept(userId: string, exceptSessionId: string): Promise<void> {
-    await this.sessions.deleteAllForUserExcept(userId, exceptSessionId);
+  /** Revoke all sessions except the exact cookie session. */
+  async revokeAllForUserExcept(userId: string, exceptSessionToken: string): Promise<void> {
+    await this.identity.revokeAllSessions(userId, exceptSessionToken);
   }
 
-  async listForUser(userId: string): Promise<AuthSessionListRow[]> {
-    return this.sessions.listForUser(userId);
+  async listForUser(userId: string, currentSessionToken?: string): Promise<IdentitySession[]> {
+    return this.identity.listSessions(userId, currentSessionToken);
   }
 
   async deleteSessionForUser(userId: string, sessionId: string): Promise<boolean> {
-    return this.sessions.deleteSessionForUser(userId, sessionId);
+    return this.identity.revokeSession(userId, sessionId);
   }
 
   async getSessionIdForCookieToken(userId: string, token: string): Promise<string | null> {
-    return this.sessions.getSessionIdForCookieToken(userId, token);
+    const sessions = await this.identity.listSessions(userId, token);
+    return sessions.find((session) => session.isCurrent)?.id ?? null;
   }
 }

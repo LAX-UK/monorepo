@@ -5,7 +5,6 @@ import {
   bidFirstForUserPayloadSchemaV1,
   bidOutbidPayloadSchemaV1,
   parseDomainEventPayload,
-  userLinkedExternalPayloadSchemaV1,
 } from "./index.js";
 
 describe("DOMAIN_EVENT_REGISTRY", () => {
@@ -15,7 +14,7 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     expect(keys.sort()).toEqual([...ALL_LIVE_DOMAIN_EVENT_TYPES].sort());
   });
 
-  it("parses v1 fixtures for newly frozen bid/user events", () => {
+  it("parses v1 fixtures for newly frozen bid events", () => {
     const firstBid = {
       bidId: "11111111-1111-4111-8111-111111111111",
       lotId: "22222222-2222-4222-8222-222222222222",
@@ -37,17 +36,6 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     expect(parseDomainEventPayload("bid.outbid", 1, outbid)).toEqual({
       ok: true,
       data: bidOutbidPayloadSchemaV1.parse(outbid),
-    });
-
-    const linked = {
-      userId: "user_1",
-      provider: "google",
-      externalId: "sub_123",
-      linkedAt: "2026-07-21T12:00:00.000Z",
-    };
-    expect(parseDomainEventPayload("user.linked_external", 1, linked)).toEqual({
-      ok: true,
-      data: userLinkedExternalPayloadSchemaV1.parse(linked),
     });
   });
 

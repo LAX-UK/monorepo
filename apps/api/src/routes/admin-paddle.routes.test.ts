@@ -54,9 +54,12 @@ function buildPaddleApp() {
   } as unknown as Container;
 
   const authenticator: IAuthenticator = {
-    getSessionUser: vi
-      .fn()
-      .mockResolvedValue({ id: "clerk-1", role: "staff", staffRole: "super_admin" }),
+    getSessionUser: vi.fn().mockResolvedValue({
+      id: "clerk-1",
+      role: "staff",
+      staffRole: "super_admin",
+      scopes: ["bid.read", "bid.write"],
+    }),
   };
 
   const app = new Hono();

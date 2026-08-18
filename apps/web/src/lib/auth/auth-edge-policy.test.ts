@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth/auth-edge-policy";
 import { describe, expect, it } from "vitest";
 
-const SESSION_COOKIE = "better-auth.session_token=abc";
+const SESSION_COOKIE = "lax-bid-session=abc";
 
 describe("isProtectedPostAuthPath", () => {
   it("recognizes dashboard and admin shells", () => {

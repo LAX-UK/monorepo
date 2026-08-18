@@ -19,7 +19,6 @@ const httpRequests = new Counter({
   labelNames: ["method", "route", "status"] as const,
   registers: [metricsRegistry],
 });
-
 /** Counters for money-path alerting (Prometheus / Grafana). */
 const moneyPathEvents = new Counter({
   name: "auction_api_money_path_events_total",

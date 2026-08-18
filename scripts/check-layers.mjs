@@ -45,12 +45,16 @@ const rules = [
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
   },
   {
+    dir: "packages/identity-contracts",
+    label: "packages/identity-contracts must not import from apps/** or @auction/db",
+    forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event|db)(\/|$)/, /(^|\/)apps\//],
+  },
+  {
     dir: "packages/lot-lifecycle-app",
     label: "packages/lot-lifecycle-app must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
   },
 ];
-
 const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", "coverage"]);
 const SOURCE_RE = /\.(ts|tsx)$/;
 const TEST_RE = /\.(test|spec|integration\.test)\.(ts|tsx)$/;
@@ -125,6 +129,46 @@ const PUBLISH_TX_RE = /publish\s*\(\s*tx\b/;
 /** @param {string} rel POSIX path relative to repo root */
 function isTestSource(rel) {
   return /\.(test|spec|integration\.test)\.(ts|tsx)$/.test(rel);
+}
+
+// ─── API Identity storage boundary ───────────────────────────────────────────
+
+const IDENTITY_TABLE_IMPORT_RE =
+  /import\s+(?:type\s+)?\{([\s\S]*?)\}\s+from\s+["']@auction\/db\/schema["']/g;
+const API_FORBIDDEN_IDENTITY_TABLES = new Set([
+  "account",
+  "session",
+  "verification",
+  "twoFactor",
+  "oauthAccessToken",
+  "oauthConsent",
+  "jwksKey",
+]);
+const identityStorageViolations = [];
+
+for (const sourceRoot of ["apps/api/src", "packages/persistence/src"]) {
+  for (const file of listSources(join(root, sourceRoot))) {
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(IDENTITY_TABLE_IMPORT_RE)) {
+      const imported = (match[1] ?? "")
+        .split(",")
+        .map((name) => name.trim().split(/\s+as\s+/)[0])
+        .filter(Boolean);
+      for (const table of imported) {
+        if (API_FORBIDDEN_IDENTITY_TABLES.has(table)) {
+          identityStorageViolations.push(
+            `${relative(root, file)} imports Identity-owned table "${table}"`,
+          );
+        }
+      }
+    }
+  }
+}
+
+if (identityStorageViolations.length > 0) {
+  console.error("API Identity storage boundary violations detected:\n");
+  for (const violation of identityStorageViolations) console.error(`  ${violation}`);
+  process.exit(1);
 }
 
 /** @param {string} rel */
@@ -359,6 +403,45 @@ for (const file of listAllSources(join(root, "apps/api/src/routes"))) {
 if (concreteFacadeRouteViolations.length > 0) {
   console.error("Concrete service facade route import violations detected:\n");
   for (const v of concreteFacadeRouteViolations) {
+    console.error(`  ${v}`);
+  }
+  process.exit(1);
+}
+
+// ─── Identity consumer boundary (D13) ───────────────────────────────────────
+
+const IDENTITY_SERVER_IMPORT_RE = /^@auction\/auth\/server(\/|$)/;
+const IDENTITY_CONSUMER_APPS = ["apps/shop-identity", "apps/ws"];
+
+/** @type {string[]} */
+const identityConsumerViolations = [];
+
+for (const appDir of IDENTITY_CONSUMER_APPS) {
+  const abs = join(root, appDir, "src");
+  if (!statSync(abs, { throwIfNoEntry: false })?.isDirectory()) continue;
+  for (const file of listAllSources(abs)) {
+    const rel = relative(root, file).replace(/\\/g, "/");
+    if (isTestSource(rel)) continue;
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(SPECIFIER_RE)) {
+      const specifier = match[1] ?? match[2] ?? match[3];
+      if (specifier && IDENTITY_SERVER_IMPORT_RE.test(specifier)) {
+        identityConsumerViolations.push(
+          `${rel}: imports "${specifier}" — use @auction/identity-contracts instead`,
+        );
+      }
+      if (appDir === "apps/shop-identity" && specifier && DB_IMPORT_RE.test(specifier)) {
+        identityConsumerViolations.push(
+          `${rel}: imports "${specifier}" — Shop Identity app must not access shared DB package`,
+        );
+      }
+    }
+  }
+}
+
+if (identityConsumerViolations.length > 0) {
+  console.error("Identity consumer boundary violations detected:\n");
+  for (const v of identityConsumerViolations) {
     console.error(`  ${v}`);
   }
   process.exit(1);

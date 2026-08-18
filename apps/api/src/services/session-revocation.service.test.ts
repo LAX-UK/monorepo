@@ -1,28 +1,25 @@
-import type { AuthSessionListRow, ISessionRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { SessionRevocationService } from "./session-revocation.service.js";
 
 const NOW = new Date("2026-01-01T00:00:00Z");
 
-function makeRow(partial: Partial<{ id: string; token: string }> = {}): AuthSessionListRow {
+function makeRow(partial: Partial<{ id: string; isCurrent: boolean }> = {}) {
   return {
     id: partial.id ?? "sess-1",
-    token: partial.token ?? "token-abc",
     createdAt: NOW,
     expiresAt: new Date(NOW.getTime() + 7 * 24 * 60 * 60 * 1000),
     ipAddress: "1.2.3.4",
     userAgent: "Mozilla/5.0",
     lastPasswordAuthAt: null,
+    isCurrent: partial.isCurrent ?? false,
   };
 }
 
-function fakeRepo(overrides: Partial<ISessionRepository> = {}): ISessionRepository {
+function fakeClient(overrides: Record<string, unknown> = {}) {
   return {
-    deleteAllForUser: vi.fn(async () => 1),
-    deleteAllForUserExcept: vi.fn(async () => undefined),
-    listForUser: vi.fn(async () => []),
-    deleteSessionForUser: vi.fn(async () => false),
-    getSessionIdForCookieToken: vi.fn(async () => null),
+    revokeAllSessions: vi.fn(async () => 1),
+    listSessions: vi.fn(async () => []),
+    revokeSession: vi.fn(async () => false),
     ...overrides,
   };
 }
@@ -30,26 +27,28 @@ function fakeRepo(overrides: Partial<ISessionRepository> = {}): ISessionReposito
 describe("SessionRevocationService", () => {
   describe("revokeAllForUser", () => {
     it("delegates to session repository", async () => {
-      const sessions = fakeRepo();
-      const svc = new SessionRevocationService(sessions);
+      const sessions = fakeClient();
+      const svc = new SessionRevocationService(sessions as never);
       await svc.revokeAllForUser("user-1");
-      expect(sessions.deleteAllForUser).toHaveBeenCalledWith("user-1");
+      expect(sessions.revokeAllSessions).toHaveBeenCalledWith("user-1");
     });
   });
 
   describe("revokeAllForUserExcept", () => {
     it("delegates to session repository", async () => {
-      const sessions = fakeRepo();
-      const svc = new SessionRevocationService(sessions);
-      await svc.revokeAllForUserExcept("user-1", "sess-keep");
-      expect(sessions.deleteAllForUserExcept).toHaveBeenCalledWith("user-1", "sess-keep");
+      const sessions = fakeClient();
+      const svc = new SessionRevocationService(sessions as never);
+      await svc.revokeAllForUserExcept("user-1", "token-keep");
+      expect(sessions.revokeAllSessions).toHaveBeenCalledWith("user-1", "token-keep");
     });
   });
 
   describe("listForUser", () => {
     it("returns session rows from repository", async () => {
       const row = makeRow();
-      const svc = new SessionRevocationService(fakeRepo({ listForUser: vi.fn(async () => [row]) }));
+      const svc = new SessionRevocationService(
+        fakeClient({ listSessions: vi.fn(async () => [row]) }) as never,
+      );
       const list = await svc.listForUser("user-1");
       expect(list).toHaveLength(1);
     });
@@ -58,7 +57,7 @@ describe("SessionRevocationService", () => {
   describe("deleteSessionForUser", () => {
     it("returns true when repository deletes a row", async () => {
       const svc = new SessionRevocationService(
-        fakeRepo({ deleteSessionForUser: vi.fn(async () => true) }),
+        fakeClient({ revokeSession: vi.fn(async () => true) }) as never,
       );
       const ok = await svc.deleteSessionForUser("user-1", "sess-1");
       expect(ok).toBe(true);
@@ -66,7 +65,7 @@ describe("SessionRevocationService", () => {
 
     it("returns false when repository finds no row", async () => {
       const svc = new SessionRevocationService(
-        fakeRepo({ deleteSessionForUser: vi.fn(async () => false) }),
+        fakeClient({ revokeSession: vi.fn(async () => false) }) as never,
       );
       const ok = await svc.deleteSessionForUser("user-1", "nonexistent");
       expect(ok).toBe(false);
@@ -76,7 +75,9 @@ describe("SessionRevocationService", () => {
   describe("getSessionIdForCookieToken", () => {
     it("returns session id when repository finds a match", async () => {
       const svc = new SessionRevocationService(
-        fakeRepo({ getSessionIdForCookieToken: vi.fn(async () => "sess-abc") }),
+        fakeClient({
+          listSessions: vi.fn(async () => [makeRow({ id: "sess-abc", isCurrent: true })]),
+        }) as never,
       );
       const id = await svc.getSessionIdForCookieToken("user-1", "tok-xyz");
       expect(id).toBe("sess-abc");
@@ -84,7 +85,7 @@ describe("SessionRevocationService", () => {
 
     it("returns null when repository finds no session", async () => {
       const svc = new SessionRevocationService(
-        fakeRepo({ getSessionIdForCookieToken: vi.fn(async () => null) }),
+        fakeClient({ listSessions: vi.fn(async () => []) }) as never,
       );
       const id = await svc.getSessionIdForCookieToken("user-1", "no-match");
       expect(id).toBeNull();

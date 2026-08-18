@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer";
 import { z } from "zod";
 
 /** Docker Compose uses `VAR=` for unset substitutions, which is `""`, not missing. */
@@ -23,20 +22,6 @@ function trimEmptyToUndefined(val: unknown): unknown {
   return val;
 }
 
-function validateAuthDekKey(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (/^[0-9a-fA-F]{64}$/.test(trimmed)) return null;
-  try {
-    const b64 = trimmed.replace(/-/g, "+").replace(/_/g, "/");
-    const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
-    const buf = Buffer.from(b64 + pad, "base64");
-    if (buf.length !== 32) return "AUTH_DEK_KEY must decode to exactly 32 bytes";
-    return null;
-  } catch {
-    return "Invalid AUTH_DEK_KEY encoding";
-  }
-}
-
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -46,11 +31,13 @@ const envSchema = z
     PORT: z.coerce.number().default(3001),
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
-    BETTER_AUTH_SECRET: z.string().min(16),
-    /** AES key for encrypted onsite-event pass tokens (resend). Falls back to BETTER_AUTH_SECRET. */
-    CHECK_IN_TOKEN_SECRET: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
+    /** API-owned HMAC secret for email-change and onsite-event pass tokens. */
+    CHECK_IN_TOKEN_SECRET: z.string().min(16),
     API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
-    OIDC_ISSUER_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    OIDC_ISSUER_URL: z.string().url(),
+    OIDC_INTERNAL_BASE_URL: z.string().url().optional(),
+    IDENTITY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    IDENTITY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /** Comma-separated browser origins allowed for CORS (e.g. main web + event microsite). */
     WEB_ORIGINS: z.preprocess((val) => {
@@ -76,20 +63,18 @@ const envSchema = z
         .filter((s) => s.length > 0);
       return parts.length > 0 ? parts : undefined;
     }, z.array(z.string().url()).optional()),
-    JWT_AUDIENCE: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
-    /** Same 32-byte DEK as the auth issuer (64 hex or base64). Required in NODE_ENV=production. */
-    AUTH_DEK_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    JWT_AUDIENCE: z.preprocess(emptyToUndefined, z.string().min(1).default("lax-bid-api")),
+    /**
+     * Temporary migration escape hatch. Remove after legacy-token traffic is
+     * zero for 30 consecutive days; every acceptance emits telemetry.
+     */
+    ALLOW_LEGACY_LAX_API_AUDIENCE: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
     /** Cloudflare Turnstile secret; when set, register + forgot-password require `turnstileToken`. */
     TURNSTILE_SECRET_KEY: z.preprocess(trimEmptyToUndefined, z.string().min(1).optional()),
-    COOKIE_DOMAIN: z.preprocess(emptyToUndefined, z.string().optional()),
-    DATABASE_URL_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
     DATABASE_URL_API: z.preprocess(emptyToUndefined, z.string().optional()),
     VERIFY_ORIGIN: z.preprocess((val) => {
-      if (val === undefined || val === "") return false;
-      return val === "true" || val === true;
-    }, z.boolean()),
-    /** Allow auth cookies over HTTP (insecure). Only for testing without HTTPS! */
-    ALLOW_HTTP_COOKIES: z.preprocess((val) => {
       if (val === undefined || val === "") return false;
       return val === "true" || val === true;
     }, z.boolean()),
@@ -105,21 +90,6 @@ const envSchema = z
     /** Shared secret for the Brevo marketing-contacts webhook (opt-out / bounce ingest). */
     BREVO_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     EMAIL_UNSUBSCRIBE_SECRET: z.string().min(16).default("dev-email-unsubscribe-secret"),
-    REQUIRE_EMAIL_VERIFICATION: z
-      .preprocess((val) => {
-        if (val === undefined || val === "") return true;
-        return val === "true" || val === true;
-      }, z.boolean())
-      .default(true),
-    GOOGLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
-    GOOGLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
-    APPLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
-    APPLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
-    APPLE_TEAM_ID: z.preprocess(emptyToUndefined, z.string().optional()),
-    APPLE_KEY_ID: z.preprocess(emptyToUndefined, z.string().optional()),
-    APPLE_PRIVATE_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
-    SHOPIFY_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
-    WORDPRESS_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     WEBHOOK_EVENTS_ENQUEUE: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
@@ -378,24 +348,6 @@ const envSchema = z
         path: ["STRIPE_MANUAL_REVIEW_MIN"],
       });
     }
-    const hasGoogleId = Boolean(e.GOOGLE_CLIENT_ID);
-    const hasGoogleSecret = Boolean(e.GOOGLE_CLIENT_SECRET);
-    if (hasGoogleId !== hasGoogleSecret) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together",
-      });
-    }
-    const hasAppleId = Boolean(e.APPLE_CLIENT_ID);
-    const hasAppleSecret = Boolean(e.APPLE_CLIENT_SECRET);
-    if (hasAppleId !== hasAppleSecret) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "APPLE_CLIENT_ID and APPLE_CLIENT_SECRET must be set together; leave both empty to feature-flag Apple off",
-      });
-    }
-
     // Stripe key format — enforced per deployment environment.
     // production: live keys required. test: test keys required (prevents accidental live key use).
     if (appEnv === "production") {
@@ -496,21 +448,21 @@ const envSchema = z
           path: ["CRON_INTERNAL_SECRET"],
         });
       }
+      if (!e.IDENTITY_MACHINE_CLIENT_ID || !e.IDENTITY_MACHINE_CLIENT_SECRET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Identity machine client credentials are required in deployed environments",
+          path: ["IDENTITY_MACHINE_CLIENT_ID"],
+        });
+      }
     }
 
     if (e.NODE_ENV === "production") {
-      if (e.ALLOW_HTTP_COOKIES) {
+      if (e.CHECK_IN_TOKEN_SECRET.length < 48) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "ALLOW_HTTP_COOKIES must be false in NODE_ENV=production",
-          path: ["ALLOW_HTTP_COOKIES"],
-        });
-      }
-      if (e.BETTER_AUTH_SECRET.length < 48) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "BETTER_AUTH_SECRET must be at least 48 characters in NODE_ENV=production",
-          path: ["BETTER_AUTH_SECRET"],
+          message: "CHECK_IN_TOKEN_SECRET must be at least 48 characters in NODE_ENV=production",
+          path: ["CHECK_IN_TOKEN_SECRET"],
         });
       }
       const originChecks: string[] = [e.WEB_ORIGIN, e.API_PUBLIC_URL];
@@ -532,22 +484,6 @@ const envSchema = z
               path: ["WEB_ORIGINS"],
             });
           }
-        }
-      }
-      if (!e.AUTH_DEK_KEY?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "AUTH_DEK_KEY is required in NODE_ENV=production",
-          path: ["AUTH_DEK_KEY"],
-        });
-      } else {
-        const dekErr = validateAuthDekKey(e.AUTH_DEK_KEY);
-        if (dekErr) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: dekErr,
-            path: ["AUTH_DEK_KEY"],
-          });
         }
       }
     }

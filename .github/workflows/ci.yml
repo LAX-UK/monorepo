@@ -10,6 +10,11 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  SSF_DELIVERY_ENABLED: "false"
+  SSF_DELIVERY_TIMEOUT_MS: "5000"
+  SSF_DELIVERY_MAX_ATTEMPTS: "8"
+
 jobs:
   static-checks:
     runs-on: ubuntu-latest
@@ -142,6 +147,21 @@ jobs:
 
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
+      - name: Verify Identity migration rollback
+        run: |
+          pnpm --filter @auction/db db:verify-migration-pair 0137_identity_boundary_profiles
+          pnpm --filter @auction/db db:verify-migration-pair 0138_identity_boundary_clients
+          pnpm --filter @auction/db db:verify-migration-pair 0139_identity_lifecycle
+          pnpm --filter @auction/db db:verify-migration-pair 0140_bid_profile_authoritative
+          pnpm --filter @auction/db db:verify-migration-pair 0141_repair_sale_hero_presentation
+          pnpm --filter @auction/db db:verify-migration-pair 0142_bid_identity_lifecycle_projection
+          pnpm --filter @auction/db db:verify-migration-pair 0143_oauth_consent_client_user_unique
+          pnpm --filter @auction/db db:verify-migration-pair 0144_oidc_rp_sessions
+          pnpm --filter @auction/db db:verify-migration-pair 0145_oidc_logout_and_shop_sessions
+          pnpm --filter @auction/db db:verify-migration-pair 0146_ssf_signal_transport
+
+      - name: Identity boundary conformance
+        run: pnpm ci:identity-boundary
 
       - name: Test
         run: pnpm turbo run test --affected
@@ -223,9 +243,12 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
       DATABASE_URL_AUTH: postgresql://auth_app:postgres@localhost:5432/auction_ci
+      DATABASE_URL_API: postgresql://api_app:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
       WORKER_APP_DB_PASSWORD: postgres
       API_APP_DB_PASSWORD: postgres
       AUTH_APP_DB_PASSWORD: postgres
+      SHOP_APP_DB_PASSWORD: postgres
       AUTH_ROLE_CONTRACT_REQUIRED: "true"
       CI: "true"
     steps:
@@ -243,6 +266,10 @@ jobs:
         run: pnpm --filter @auction/db db:roles
       - name: Auth app role and schema contracts
         run: pnpm --filter @auction/db test:auth-role-contract
+      - name: API app role contract
+        run: pnpm --filter @auction/db test:api-role-contract
+      - name: Shop app role contract
+        run: pnpm --filter @auction/db test:shop-role-contract
 
   build:
     runs-on: ubuntu-latest
@@ -304,9 +331,12 @@ jobs:
       DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
       DATABASE_URL_WORKER: postgresql://worker_app:postgres@localhost:5432/auction_ci
       DATABASE_URL_AUTH: postgresql://auth_app:postgres@localhost:5432/auction_ci
+      DATABASE_URL_API: postgresql://api_app:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
       WORKER_APP_DB_PASSWORD: postgres
       API_APP_DB_PASSWORD: postgres
       AUTH_APP_DB_PASSWORD: postgres
+      SHOP_APP_DB_PASSWORD: postgres
       WORKER_ROLE_CONTRACT_REQUIRED: "true"
       AUTH_ROLE_CONTRACT_REQUIRED: "true"
       CI: "true"
@@ -326,6 +356,16 @@ jobs:
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
 
+      - name: Verify Identity migration rollback
+        run: |
+          pnpm --filter @auction/db db:verify-migration-pair 0139_identity_lifecycle
+          pnpm --filter @auction/db db:verify-migration-pair 0140_bid_profile_authoritative
+          pnpm --filter @auction/db db:verify-migration-pair 0141_repair_sale_hero_presentation
+          pnpm --filter @auction/db db:verify-migration-pair 0143_oauth_consent_client_user_unique
+          pnpm --filter @auction/db db:verify-migration-pair 0144_oidc_rp_sessions
+          pnpm --filter @auction/db db:verify-migration-pair 0145_oidc_logout_and_shop_sessions
+          pnpm --filter @auction/db db:verify-migration-pair 0146_ssf_signal_transport
+
       - name: Seed worker role contract probes
         run: pnpm --filter @auction/db exec tsx scripts/seed-worker-role-contract-probes.ts
 
@@ -343,3 +383,9 @@ jobs:
 
       - name: Auth app role and schema contracts
         run: pnpm --filter @auction/db test:auth-role-contract
+
+      - name: API app role contract
+        run: pnpm --filter @auction/db test:api-role-contract
+
+      - name: Shop app role contract
+        run: pnpm --filter @auction/db test:shop-role-contract

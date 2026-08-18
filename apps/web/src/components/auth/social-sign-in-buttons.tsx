@@ -30,14 +30,19 @@ export function SocialSignInButtons({ next = "/dashboard" }: Props) {
     setPending(provider);
     const webOrigin = window.location.origin;
     const safeNext = isSafeNextPath(next) ? next : "/dashboard";
-    const { error } = await authClient.signIn.social({
-      provider,
-      callbackURL: buildOAuthCallbackUrl({
+    const postIdentity = new URL(
+      buildOAuthCallbackUrl({
         webOrigin,
         next: safeNext,
         provider,
         source: new URLSearchParams(window.location.search),
       }),
+    );
+    const callback = new URL("/api/auth/login", webOrigin);
+    callback.searchParams.set("next", `${postIdentity.pathname}${postIdentity.search}`);
+    const { error } = await authClient.signIn.social({
+      provider,
+      callbackURL: callback.toString(),
       errorCallbackURL: `${webOrigin}/login?social_error=1`,
     });
     if (error) {

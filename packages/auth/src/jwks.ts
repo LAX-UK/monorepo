@@ -1,6 +1,6 @@
 import { type Database, jwksKey } from "@auction/db";
 import type { Jwk } from "better-auth/plugins/jwt";
-import { eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import type { EnvelopeCrypto } from "./crypto/envelope.js";
 
 type StoredJwk = {
@@ -51,6 +51,22 @@ export function createJwksAdapter(db: Database, envelope?: EnvelopeCrypto) {
         createdAt: row.createdAt,
         alg: row.algorithm as Jwk["alg"],
       }));
+    },
+    async getActiveSigningJwk(): Promise<Jwk | null> {
+      const [row] = await db
+        .select()
+        .from(jwksKey)
+        .where(eq(jwksKey.status, "active"))
+        .orderBy(desc(jwksKey.createdAt))
+        .limit(1);
+      if (!row) return null;
+      return {
+        id: row.kid,
+        publicKey: parseKey(row.publicJwk),
+        privateKey: privatePayloadToSignInput(row.privateJwk, envelope),
+        createdAt: row.createdAt,
+        alg: row.algorithm as Jwk["alg"],
+      };
     },
     async createJwk(data: Omit<Jwk, "id">): Promise<Jwk> {
       const kid = crypto.randomUUID();

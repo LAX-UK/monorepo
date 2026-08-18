@@ -1,10 +1,9 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { IdentityAccountSecurityHttpApplicationService } from "../services/identity/identity-account-security-http-application.service.js";
-import { createAuthRoutes } from "./auth.js";
+import { createProductAuthRoutes } from "./auth.js";
 
-/** Drizzle query builders are deeply chained; tests stub `db` (user lookup,
- * `api_app`) and `authDb` (linked `account` rows, `auth_app`) separately —
+/** Legacy query-builder fixtures retained for route response compatibility.
  * production routes them through different Postgres roles.
  */
 type UserRow = { id: string; email: string; name: string | null };
@@ -12,6 +11,7 @@ type AccountRow = { providerId: string };
 
 function buildFakeUserDb(userResult: UserRow[]) {
   return {
+    rows: userResult,
     select: vi.fn(() => ({
       from: vi.fn(() => ({
         where: vi.fn(() => ({
@@ -24,6 +24,7 @@ function buildFakeUserDb(userResult: UserRow[]) {
 
 function buildFakeAuthDb(accountResult: AccountRow[]) {
   return {
+    rows: accountResult,
     select: vi.fn(() => ({
       from: vi.fn(() => ({
         where: vi.fn(async () => accountResult),
@@ -40,7 +41,7 @@ type FakeDbOpts = {
 function buildForgotPasswordDbPair(opts: FakeDbOpts) {
   return {
     db: buildFakeUserDb(opts.userResult),
-    authDb: buildFakeAuthDb(opts.accountResult),
+    identityDb: buildFakeAuthDb(opts.accountResult),
   };
 }
 
@@ -65,34 +66,46 @@ function buildFakeRedis() {
 
 function mountAuth(opts: {
   db: object;
-  authDb: object;
+  identityDb: object;
   emailEnqueue?: ReturnType<typeof vi.fn>;
   requestPasswordReset?: ReturnType<typeof vi.fn>;
-  authHandler?: ReturnType<typeof vi.fn>;
+  requestMagicLink?: ReturnType<typeof vi.fn>;
 }) {
   const enqueue = opts.emailEnqueue ?? vi.fn(async () => ({ outboxId: "out-1" }));
-  const requestPasswordReset = opts.requestPasswordReset ?? vi.fn(async () => ({ status: true }));
-  const authHandler = opts.authHandler ?? vi.fn(async () => new Response(null, { status: 200 }));
+  const requestPasswordReset = opts.requestPasswordReset ?? vi.fn(async () => {});
+  const requestMagicLink = opts.requestMagicLink ?? vi.fn(async () => {});
   const env = {
-    BETTER_AUTH_SECRET: "test",
+    CHECK_IN_TOKEN_SECRET: "test-secret-at-least-16-characters",
     WEB_ORIGIN: "http://localhost:3000",
     API_PUBLIC_URL: "http://localhost:4000",
   };
-  const auth = {
-    api: {
-      getSession: vi.fn(async () => null),
-      requestPasswordReset,
-    },
-    handler: authHandler,
+  const identityIssuer = {
+    signUpEmail: vi.fn(),
+    sendVerificationEmail: vi.fn(),
+    requestPasswordReset,
+    requestMagicLink,
+    findSubjectByEmail: vi.fn(async () => {
+      const found = (opts.db as { rows?: UserRow[] }).rows?.[0];
+      return found
+        ? { id: found.id, email: found.email, name: found.name ?? "", emailVerified: false }
+        : null;
+    }),
+    credentialSummary: vi.fn(async () => {
+      const providers =
+        (opts.identityDb as { rows?: AccountRow[] }).rows?.map((row) => row.providerId) ?? [];
+      return {
+        hasPassword: providers.includes("credential"),
+        linkedProviders: providers,
+      };
+    }),
   };
   const authAuditPublisher = { publish: vi.fn(async () => {}) };
   const emailService = { enqueue };
   const container = {
     env,
     db: opts.db,
-    authDb: opts.authDb,
     redis: buildFakeRedis(),
-    auth,
+    identityIssuer: identityIssuer as never,
     authenticator: {
       getSessionUser: vi.fn(async () => null),
     },
@@ -103,20 +116,16 @@ function mountAuth(opts: {
     identityRoutes: {
       accountSecurityHttp: new IdentityAccountSecurityHttpApplicationService({
         env: env as never,
-        authDb: opts.authDb as never,
-        auth: auth as never,
-        db: opts.db as never,
+        identityIssuer: identityIssuer as never,
         userService: {} as never,
-        userEmailChangeRepository: {} as never,
         emailService: emailService as never,
-        sessionRevocation: {} as never,
         authAuditPublisher,
         authCredentialReader: { hasCredentialAccount: vi.fn(async () => false) },
       }),
     },
   };
-  const app = new Hono().route("/auth", createAuthRoutes(container as never));
-  return { app, enqueue, requestPasswordReset, authHandler };
+  const app = new Hono().route("/auth", createProductAuthRoutes(container as never));
+  return { app, enqueue, requestPasswordReset, requestMagicLink };
 }
 
 async function callForgotPassword(app: Hono, email: string) {
@@ -127,7 +136,7 @@ async function callForgotPassword(app: Hono, email: string) {
   });
 }
 
-/** Side-effects (DB lookup, email enqueue, Better Auth reset) are
+/** Side-effects (DB lookup, email enqueue, Identity issuer reset) are
  * dispatched fire-and-forget so the response latency does not depend on
  * the email being registered. Tests need to flush the queued microtasks
  * before asserting on the mocked side effects.
@@ -138,8 +147,8 @@ async function flushSideEffects(): Promise<void> {
 
 describe("POST /auth/forgot-password (provider-aware)", () => {
   it("returns identical {ok:true} for an unknown email and enqueues nothing", async () => {
-    const { db, authDb } = buildForgotPasswordDbPair({ userResult: [], accountResult: [] });
-    const { app, enqueue, requestPasswordReset } = mountAuth({ db, authDb });
+    const { db, identityDb } = buildForgotPasswordDbPair({ userResult: [], accountResult: [] });
+    const { app, enqueue, requestPasswordReset } = mountAuth({ db, identityDb });
 
     const res = await callForgotPassword(app, "nobody@example.com");
     expect(res.status).toBe(200);
@@ -150,12 +159,12 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
     expect(requestPasswordReset).not.toHaveBeenCalled();
   });
 
-  it("still triggers Better Auth reset for an unverified credential user", async () => {
-    const { db, authDb } = buildForgotPasswordDbPair({
+  it("still triggers an issuer reset for an unverified credential user", async () => {
+    const { db, identityDb } = buildForgotPasswordDbPair({
       userResult: [{ id: "u-unv", email: "new@example.com", name: "N" }],
       accountResult: [{ providerId: "credential" }],
     });
-    const { app, requestPasswordReset } = mountAuth({ db, authDb });
+    const { app, requestPasswordReset } = mountAuth({ db, identityDb });
 
     const res = await callForgotPassword(app, "new@example.com");
     expect(res.status).toBe(200);
@@ -163,12 +172,12 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
     expect(requestPasswordReset).toHaveBeenCalledTimes(1);
   });
 
-  it("returns {ok:true} for a credential user and triggers Better Auth reset exactly once", async () => {
-    const { db, authDb } = buildForgotPasswordDbPair({
+  it("returns {ok:true} for a credential user and triggers an issuer reset exactly once", async () => {
+    const { db, identityDb } = buildForgotPasswordDbPair({
       userResult: [{ id: "u1", email: "alice@example.com", name: "Alice" }],
       accountResult: [{ providerId: "credential" }],
     });
-    const { app, enqueue, requestPasswordReset } = mountAuth({ db, authDb });
+    const { app, enqueue, requestPasswordReset } = mountAuth({ db, identityDb });
 
     const res = await callForgotPassword(app, "alice@example.com");
     expect(res.status).toBe(200);
@@ -176,21 +185,23 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
     await flushSideEffects();
     expect(requestPasswordReset).toHaveBeenCalledTimes(1);
     expect(requestPasswordReset).toHaveBeenCalledWith({
-      body: {
-        email: "alice@example.com",
-        redirectTo: "http://localhost:3000/reset-password",
-      },
+      email: "alice@example.com",
+      redirectTo: "http://localhost:3000/reset-password",
     });
     expect(enqueue).not.toHaveBeenCalled();
   });
 
   it("returns {ok:true} for a passwordless user and triggers magic-link sign-in", async () => {
-    const { db, authDb } = buildForgotPasswordDbPair({
+    const { db, identityDb } = buildForgotPasswordDbPair({
       userResult: [{ id: "u3", email: "seeded@example.com", name: "Seeded" }],
       accountResult: [],
     });
-    const authHandler = vi.fn(async (_request: Request) => new Response(null, { status: 200 }));
-    const { app, enqueue, requestPasswordReset } = mountAuth({ db, authDb, authHandler });
+    const requestMagicLink = vi.fn(async () => {});
+    const { app, enqueue, requestPasswordReset } = mountAuth({
+      db,
+      identityDb,
+      requestMagicLink,
+    });
 
     const res = await callForgotPassword(app, "seeded@example.com");
     expect(res.status).toBe(200);
@@ -198,20 +209,19 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
     await flushSideEffects();
     expect(requestPasswordReset).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();
-    expect(authHandler).toHaveBeenCalledTimes(1);
-    const req = authHandler.mock.calls[0]?.[0] as Request;
-    expect(req.url).toContain("/api/auth/sign-in/magic-link");
-    const body = (await req.json()) as { email: string; callbackURL: string };
-    expect(body.email).toBe("seeded@example.com");
-    expect(body.callbackURL).toBe("http://localhost:3000/auth/activate/set-password");
+    expect(requestMagicLink).toHaveBeenCalledWith({
+      email: "seeded@example.com",
+      callbackURL: "http://localhost:3000/auth/activate/set-password",
+      errorCallbackURL: "http://localhost:3000/auth/activate/expired",
+    });
   });
 
   it("returns {ok:true} for an oauth-only user and enqueues a tailored email exactly once", async () => {
-    const { db, authDb } = buildForgotPasswordDbPair({
+    const { db, identityDb } = buildForgotPasswordDbPair({
       userResult: [{ id: "u2", email: "bob@example.com", name: null }],
       accountResult: [{ providerId: "google" }],
     });
-    const { app, enqueue, requestPasswordReset } = mountAuth({ db, authDb });
+    const { app, enqueue, requestPasswordReset } = mountAuth({ db, identityDb });
 
     const res = await callForgotPassword(app, "bob@example.com");
     expect(res.status).toBe(200);
@@ -231,7 +241,7 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
         signInUrl: "http://localhost:3000/login",
         settingsUrl: "http://localhost:3000/dashboard/settings?tab=security",
         userEmail: "bob@example.com",
-        userName: null,
+        userName: "",
       },
     });
   });
@@ -240,26 +250,26 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
     const responses: string[] = [];
 
     {
-      const { db, authDb } = buildForgotPasswordDbPair({ userResult: [], accountResult: [] });
-      const { app } = mountAuth({ db, authDb });
+      const { db, identityDb } = buildForgotPasswordDbPair({ userResult: [], accountResult: [] });
+      const { app } = mountAuth({ db, identityDb });
       const res = await callForgotPassword(app, "nobody@example.com");
       responses.push(await res.text());
     }
     {
-      const { db, authDb } = buildForgotPasswordDbPair({
+      const { db, identityDb } = buildForgotPasswordDbPair({
         userResult: [{ id: "u1", email: "alice@example.com", name: "Alice" }],
         accountResult: [{ providerId: "credential" }],
       });
-      const { app } = mountAuth({ db, authDb });
+      const { app } = mountAuth({ db, identityDb });
       const res = await callForgotPassword(app, "alice@example.com");
       responses.push(await res.text());
     }
     {
-      const { db, authDb } = buildForgotPasswordDbPair({
+      const { db, identityDb } = buildForgotPasswordDbPair({
         userResult: [{ id: "u2", email: "bob@example.com", name: null }],
         accountResult: [{ providerId: "apple" }],
       });
-      const { app } = mountAuth({ db, authDb });
+      const { app } = mountAuth({ db, identityDb });
       const res = await callForgotPassword(app, "bob@example.com");
       responses.push(await res.text());
     }
@@ -268,15 +278,15 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
     expect(responses[0]).toBe('{"ok":true}');
   });
 
-  it("still returns {ok:true} when Better Auth requestPasswordReset throws (no leak)", async () => {
-    const { db, authDb } = buildForgotPasswordDbPair({
+  it("still returns {ok:true} when the issuer reset request throws (no leak)", async () => {
+    const { db, identityDb } = buildForgotPasswordDbPair({
       userResult: [{ id: "u1", email: "alice@example.com", name: "Alice" }],
       accountResult: [{ providerId: "credential" }],
     });
     const requestPasswordReset = vi.fn(async () => {
       throw new Error("rate-limited");
     });
-    const { app } = mountAuth({ db, authDb, requestPasswordReset });
+    const { app } = mountAuth({ db, identityDb, requestPasswordReset });
     const res = await callForgotPassword(app, "alice@example.com");
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('{"ok":true}');

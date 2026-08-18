@@ -129,7 +129,7 @@ export const QUEUE_REGISTRY = {
       removeOnComplete: 200,
       removeOnFail: 500,
     },
-    description: "Webhook ingest processing (Shopify / WordPress)",
+    description: "Webhook ingest processing",
   },
   [DATA_EXPORT_QUEUE_NAME]: {
     producers: ["api"],

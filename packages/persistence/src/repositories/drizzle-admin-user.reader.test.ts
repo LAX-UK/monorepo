@@ -29,7 +29,8 @@ describe("DrizzleAdminUserReader.summarize", () => {
         role_operations: 0,
       },
     ]);
-    const from = vi.fn().mockReturnValue({ where });
+    const leftJoin = vi.fn().mockReturnValue({ where });
+    const from = vi.fn().mockReturnValue({ leftJoin });
     const select = vi.fn().mockReturnValue({ from });
     const reader = new DrizzleAdminUserReader({ select } as never);
 

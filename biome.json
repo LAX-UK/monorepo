@@ -11,6 +11,7 @@
       "**/node_modules/**",
       "**/dist/**",
       "**/.next/**",
+      "**/e2e/.auth/**",
       "**/pnpm-lock.yaml",
       "**/.terraform/**"
     ]

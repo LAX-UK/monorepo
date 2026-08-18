@@ -104,6 +104,14 @@ export const user = pgTable(
       mode: "date",
       withTimezone: true,
     }),
+    /** Global Identity security disablement; distinct from Bid product suspension. */
+    identityDisabledAt: timestamp("identity_disabled_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    identityDisabledReason: text("identity_disabled_reason"),
+    /** Canonical subject after an explicit account merge; retired rows remain as aliases. */
+    mergedIntoSubjectId: text("merged_into_subject_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull(),
   },
@@ -116,6 +124,7 @@ export const user = pgTable(
     uniqueIndex("user_phone_number_uidx")
       .on(table.phoneNumber)
       .where(sql`${table.phoneNumber} IS NOT NULL`),
+    index("user_merged_into_subject_idx").on(table.mergedIntoSubjectId),
     index("user_role_active_idx").on(table.role).where(sql`${table.suspendedAt} IS NULL`),
   ],
 );
@@ -132,6 +141,16 @@ export const session = pgTable(
     userAgent: text("user_agent"),
     /** Step-up re-auth: last time user proved password on this session (password sign-in or /auth/reauth). */
     lastPasswordAuthAt: timestamp("last_password_auth_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    /** Evidence that this exact browser session completed the TOTP challenge. */
+    mfaCompletedAt: timestamp("mfa_completed_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    /** Explicit successful reauthentication, distinct from ordinary password sign-in. */
+    lastStepUpAt: timestamp("last_step_up_at", {
       mode: "date",
       withTimezone: true,
     }),

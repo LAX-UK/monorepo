@@ -15,10 +15,9 @@ test.describe("marketing auth routing @smoke", () => {
     test.skip(!enabled, skipReason);
     await page.context().addCookies([
       {
-        name: "better-auth.session_token",
+        name: "lax-bid-session",
         value: "test-stale-or-valid",
-        domain: "127.0.0.1",
-        path: "/",
+        url: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
       },
     ]);
     await page.goto("/login?next=%2F%2Fevil.com");

@@ -45,6 +45,7 @@ export function createSendVerificationIssuerRateLimitMiddleware(redis: Redis) {
       return;
     }
     const ip =
+      c.req.header("cf-connecting-ip") ??
       c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
       c.req.header("x-real-ip") ??
       "unknown";
@@ -87,6 +88,7 @@ export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis) {
     }
 
     const ip =
+      c.req.header("cf-connecting-ip") ??
       c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
       c.req.header("x-real-ip") ??
       "unknown";
@@ -134,12 +136,14 @@ export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis) {
 export function createAuthIssuerRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
     const ip =
+      c.req.header("cf-connecting-ip") ??
       c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
       c.req.header("x-real-ip") ??
       "unknown";
     const path = c.req.path;
     const isTotp = path.includes("two-factor");
     const isSignIn = path.includes("/sign-in");
+    const isSessionRead = c.req.method === "GET" && path.endsWith("/get-session");
 
     if (isTotp) {
       const lockKey = `rl:auth-issuer:totp-lock:${ip}`;
@@ -158,13 +162,58 @@ export function createAuthIssuerRateLimitMiddleware(redis: Redis) {
       return;
     }
 
-    const key = isSignIn ? `rl:auth-issuer:signin:${ip}` : `rl:auth-issuer:${ip}`;
-    const windowSec = isSignIn ? RL.signInWindowSec : RL.authGeneralWindowSec;
-    const max = isSignIn ? RL.signInMax : RL.authGeneralMax;
+    if (isSignIn && c.req.method === "POST") {
+      const email = await emailFromJsonBody(c.req.raw);
+      if (email) {
+        const emailKey = `rl:auth-issuer:signin-email:${email}`;
+        const emailCount = await slidingIncrement(redis, emailKey, RL.signInEmailWindowSec);
+        if (emailCount > RL.signInEmailMax) {
+          const retryAfterSec = await slidingWindowRetryAfterSec(
+            redis,
+            emailKey,
+            RL.signInEmailWindowSec,
+            emailCount,
+            RL.signInEmailMax,
+          );
+          return rateLimited(c, retryAfterSec);
+        }
+      }
+    }
+
+    const key = isSignIn
+      ? `rl:auth-issuer:signin:${ip}`
+      : isSessionRead
+        ? `rl:auth-issuer:session-read:${ip}`
+        : `rl:auth-issuer:${ip}`;
+    const windowSec = isSignIn
+      ? RL.signInWindowSec
+      : isSessionRead
+        ? RL.sessionReadWindowSec
+        : RL.authGeneralWindowSec;
+    const max = isSignIn ? RL.signInMax : isSessionRead ? RL.sessionReadMax : RL.authGeneralMax;
     const n = await slidingIncrement(redis, key, windowSec);
     if (n > max) {
       const retryAfterSec = await slidingWindowRetryAfterSec(redis, key, windowSec, n, max);
       return rateLimited(c, retryAfterSec);
+    }
+    await next();
+  });
+}
+
+/** Protect the public edge from brute-force attempts against machine credentials. */
+export function createMachineTokenRateLimitMiddleware(redis: Redis) {
+  return createMiddleware(async (c, next) => {
+    const ip =
+      c.req.header("cf-connecting-ip") ??
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+      c.req.header("x-real-ip") ??
+      "unknown";
+    const windowSec = 60;
+    const max = 10;
+    const key = `rl:auth-issuer:machine-token:${ip}`;
+    const count = await slidingIncrement(redis, key, windowSec);
+    if (count > max) {
+      return rateLimited(c, windowSec);
     }
     await next();
   });

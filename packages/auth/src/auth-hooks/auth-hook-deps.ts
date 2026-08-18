@@ -8,6 +8,15 @@ export type AuthHookDeps = {
   onUserCreated?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
     | undefined;
+  /** Invoked from `databaseHooks.user.update.after` when canonical profile fields change. */
+  onUserUpdated?:
+    | ((authUser: {
+        id: string;
+        email: string;
+        name: string;
+        phoneNumber?: string | null;
+      }) => Promise<void>)
+    | undefined;
   onAccountCreated?:
     | ((account: { userId: string; providerId: string }) => Promise<void>)
     | undefined;

@@ -12,5 +12,6 @@ export function buildVerifyEmailCallbackUrl(email: string, next?: string | null)
   const origin = window.location.origin.replace(/\/$/, "");
   const nextQs =
     next != null && next !== "" && isSafeNextPath(next) ? `&next=${encodeURIComponent(next)}` : "";
-  return `${origin}/verify-email?email=${encodeURIComponent(email)}${nextQs}`;
+  const verifiedPath = `/verify-email?email=${encodeURIComponent(email)}${nextQs}`;
+  return `${origin}/api/auth/login?next=${encodeURIComponent(verifiedPath)}`;
 }

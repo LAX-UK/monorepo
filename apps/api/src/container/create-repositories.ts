@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { IAdminUserActivityReader } from "@auction/persistence/interfaces";
 import { type AdminRepositories, createAdminRepositories } from "./create-admin-repos.js";
 import { type CatalogRepositories, createCatalogRepositories } from "./create-catalog-repos.js";
 import {
@@ -19,12 +20,15 @@ export type ContainerRepositories = IdentityRepositories &
   AdminRepositories &
   ComplianceRepositories;
 
-export function createRepositories(db: Database): ContainerRepositories {
+export function createRepositories(
+  db: Database,
+  adminActivityReader: IAdminUserActivityReader,
+): ContainerRepositories {
   return {
     ...createIdentityRepositories(db),
     ...createCatalogRepositories(db),
     ...createPaymentsRepositories(db),
-    ...createAdminRepositories(db),
+    ...createAdminRepositories(db, adminActivityReader),
     ...createComplianceRepositories(db),
   };
 }
