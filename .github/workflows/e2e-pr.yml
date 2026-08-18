@@ -124,7 +124,7 @@ jobs:
             OIDC_CLIENT_SECRET_LAX_SHOP_WEB="$OIDC_CLIENT_SECRET" \
             pnpm --filter @auction/db db:configure-oidc-clients
       - name: Build web, API, auth issuer, and Shop Identity app
-        run: pnpm --filter @auction/api build && pnpm --filter @auction/auth-app build && pnpm --filter @auction/shop-identity build && pnpm --filter @auction/web build
+        run: pnpm --filter @auction/api... build && pnpm --filter @auction/auth-app... build && pnpm --filter @auction/shop-identity... build && pnpm --filter @auction/web... build
       - name: Start stack
         run: |
           PORT=3001 pnpm --filter @auction/api start &

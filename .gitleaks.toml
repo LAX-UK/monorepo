@@ -11,6 +11,9 @@ paths = [
   '''packages/validators/src/password-policy\.ts''',
   # Vitest-only HMAC fixture; historical commits used a hex-looking literal.
   '''apps/api/src/routes/auth-email-change\.routes\.test\.ts''',
+  # Server-side fetch fixtures use synthetic internal base URLs, not secrets.
+  '''apps/web/src/lib/data/http/.*\.server\.test\.ts''',
+  '''apps/web/src/app/api/display/.*\.test\.ts''',
   # Runbook uses sk_test_YOUR_KEY placeholder in curl examples.
   '''docs/runbooks/xero-stripe-payment-setup\.md''',
   # Never scan pnpm content-store or node_modules (minified code triggers generic-api-key / jwt).

@@ -7,7 +7,7 @@ import {
 } from "./migrate-roles.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
-const API_URL = process.env.DATABASE_URL_API ?? process.env.DATABASE_URL;
+const API_URL = process.env.DATABASE_URL_API ?? process.env.API_APP_DATABASE_URL;
 const { Client } = pg;
 
 async function withApiClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {

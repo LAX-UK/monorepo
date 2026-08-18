@@ -33,7 +33,8 @@ function request() {
   return new Request("https://lax.bid/api/auth/backchannel-logout", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ logout_token: "signed.jwt" }),
+    // Use a literal body: jsdom's URLSearchParams is not accepted by Node's Request on CI.
+    body: "logout_token=signed.jwt",
   });
 }
 

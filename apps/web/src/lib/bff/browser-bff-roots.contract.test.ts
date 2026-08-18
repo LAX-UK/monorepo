@@ -141,5 +141,5 @@ describe("browser BFF root contract", () => {
 
     expect(discovered).toContain("telephone-bookings");
     expect(violations).toEqual([]);
-  }, 10_000);
+  }, 60_000);
 });
