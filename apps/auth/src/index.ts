@@ -11,12 +11,12 @@ import { createAuthMetrics } from "./container/create-auth-metrics.js";
 import { createAuthRepositories } from "./container/create-auth-repositories.js";
 import { createAuthRequestHandler } from "./container/create-auth-request-handler.js";
 import { createAuthSchedules } from "./container/create-auth-schedules.js";
+import { createIdentityLifecycleService } from "./container/create-identity-lifecycle-service.js";
 import { createOidcRouteServices } from "./container/create-oidc-route-services.js";
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
 import { loadAuthEnv } from "./env.js";
 import { createDrizzleProductSubjectUsageProbe } from "./infrastructure/drizzle-product-subject-usage-probe.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
-import { IdentityLifecycleService } from "./services/identity-lifecycle.service.js";
 import { IdentityOperationsService } from "./services/identity-operations.service.js";
 
 const env = loadAuthEnv();
@@ -66,11 +66,11 @@ const identityOperations = new IdentityOperationsService(
   repositories.identityEventPublisher,
   services.oidc.logout,
 );
-const identityLifecycle = new IdentityLifecycleService(
+const identityLifecycle = createIdentityLifecycleService({
   db,
-  repositories.identityEventPublisher,
-  services.oidc.logout,
-);
+  identityEventPublisher: repositories.identityEventPublisher,
+  logout: services.oidc.logout,
+});
 const authHandler = createAuthRequestHandler({
   events: repositories.identityEventPublisher,
   sessionStampStore: identityPorts.sessionStampStore,

@@ -484,8 +484,6 @@ function isAuthAppCompositionSite(rel) {
  * repository port is extracted.
  */
 const AUTH_APP_TRANSITIONAL_IMPORTS = new Set([
-  "apps/auth/src/services/identity-lifecycle.service.ts|@auction/db",
-  "apps/auth/src/services/identity-lifecycle.service.ts|@auction/db/schema",
   "apps/auth/src/services/identity-operations.service.ts|@auction/db",
   "apps/auth/src/services/identity-operations.service.ts|@auction/db/schema",
   "apps/auth/src/services/identity-operations.service.ts|@auction/email",
