@@ -12,12 +12,12 @@ import { createAuthRepositories } from "./container/create-auth-repositories.js"
 import { createAuthRequestHandler } from "./container/create-auth-request-handler.js";
 import { createAuthSchedules } from "./container/create-auth-schedules.js";
 import { createIdentityLifecycleService } from "./container/create-identity-lifecycle-service.js";
+import { createIdentityOperationsService } from "./container/create-identity-operations-service.js";
 import { createOidcRouteServices } from "./container/create-oidc-route-services.js";
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
 import { loadAuthEnv } from "./env.js";
 import { createDrizzleProductSubjectUsageProbe } from "./infrastructure/drizzle-product-subject-usage-probe.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
-import { IdentityOperationsService } from "./services/identity-operations.service.js";
 
 const env = loadAuthEnv();
 if (env.SENTRY_DSN_AUTH) {
@@ -59,13 +59,13 @@ const auth = createAuthIssuer({
   identityEventPublisher: repositories.identityEventPublisher,
 });
 const productSubjectUsage = createDrizzleProductSubjectUsageProbe(db);
-const identityOperations = new IdentityOperationsService(
+const identityOperations = createIdentityOperationsService({
   db,
-  emailService,
+  email: emailService,
   productSubjectUsage,
-  repositories.identityEventPublisher,
-  services.oidc.logout,
-);
+  identityEventPublisher: repositories.identityEventPublisher,
+  logout: services.oidc.logout,
+});
 const identityLifecycle = createIdentityLifecycleService({
   db,
   identityEventPublisher: repositories.identityEventPublisher,

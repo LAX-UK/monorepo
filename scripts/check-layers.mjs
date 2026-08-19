@@ -483,12 +483,7 @@ function isAuthAppCompositionSite(rel) {
  * file-specific so new coupling fails CI and each entry can be removed as its
  * repository port is extracted.
  */
-const AUTH_APP_TRANSITIONAL_IMPORTS = new Set([
-  "apps/auth/src/services/identity-operations.service.ts|@auction/db",
-  "apps/auth/src/services/identity-operations.service.ts|@auction/db/schema",
-  "apps/auth/src/services/identity-operations.service.ts|@auction/email",
-  "apps/auth/src/services/identity-retention.schedule.ts|@auction/db",
-]);
+const AUTH_APP_TRANSITIONAL_IMPORTS = new Set([]);
 
 /** @param {string} rel */
 function isAuthAppCompositionAdapterSite(rel) {

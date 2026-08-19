@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { IdentityDatabase } from "@auction/identity-db";
 import { sql } from "drizzle-orm";
 
 export const IDENTITY_RETENTION_INTERVAL_MS = 15 * 60_000;
@@ -10,7 +10,7 @@ export const FAILED_SIGNAL_RETENTION_DAYS = 90;
 const DAY_MS = 24 * 60 * 60_000;
 
 export async function purgeIdentityRetentionBatch(
-  db: Pick<Database, "execute">,
+  db: Pick<IdentityDatabase, "execute">,
   now: Date = new Date(),
 ): Promise<void> {
   const rpCutoff = new Date(now.getTime() - OIDC_RP_SESSION_RETENTION_DAYS * DAY_MS);
@@ -60,7 +60,7 @@ export async function purgeIdentityRetentionBatch(
 }
 
 export function startIdentityRetentionSchedule(options: {
-  db: Pick<Database, "execute">;
+  db: Pick<IdentityDatabase, "execute">;
   onError: (error: unknown) => void;
   intervalMs?: number;
 }): { stop: () => Promise<void> } {

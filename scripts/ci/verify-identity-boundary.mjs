@@ -34,7 +34,7 @@ const focusedTests = [
       "src/routes/token-exchange.routes.test.ts",
       "src/services/backchannel-logout.service.test.ts",
       "src/services/backchannel-logout.schedule.test.ts",
-      "src/services/identity-retention.schedule.test.ts",
+      "src/infrastructure/identity-retention.schedule.test.ts",
       "src/services/oidc-session-coordinator.test.ts",
       "src/services/ssf-delivery.worker.test.ts",
       "src/services/ssf.service.test.ts",

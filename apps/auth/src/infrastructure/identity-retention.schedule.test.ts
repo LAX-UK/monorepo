@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { IdentityDatabase } from "@auction/identity-db";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -18,7 +18,10 @@ describe("Identity retention", () => {
   it("uses bounded deletes and distinct terminal-state cutoffs", async () => {
     const execute = vi.fn().mockResolvedValue({});
     const now = new Date("2026-08-13T00:00:00Z");
-    await purgeIdentityRetentionBatch({ execute } as unknown as Pick<Database, "execute">, now);
+    await purgeIdentityRetentionBatch(
+      { execute } as unknown as Pick<IdentityDatabase, "execute">,
+      now,
+    );
 
     expect(IDENTITY_RETENTION_BATCH_SIZE).toBe(500);
     expect(execute).toHaveBeenCalledTimes(3);
@@ -63,7 +66,7 @@ describe("Identity retention", () => {
       )
       .mockResolvedValue({});
     const schedule = startIdentityRetentionSchedule({
-      db: { execute } as unknown as Pick<Database, "execute">,
+      db: { execute } as unknown as Pick<IdentityDatabase, "execute">,
       onError: vi.fn(),
       intervalMs: 10,
     });

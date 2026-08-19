@@ -1,12 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { IdentityEventPublisher, ProductSubjectUsageProbe } from "@auction/auth";
-import type { Database } from "@auction/db";
-import { account, oauthAccessToken, session, user, verification } from "@auction/db/schema";
-import type { IEmailService } from "@auction/email";
 import { hashPassword, verifyPassword } from "@better-auth/utils/password";
-import { and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { setupPasswordBodySchema } from "../schemas/setup-password.js";
 import type { BackchannelLogoutService } from "./backchannel-logout.service.js";
+import type { IIdentityNotifier } from "./identity-notification.ports.js";
+import type {
+  IdentityOperationsRepositories,
+  IdentitySessionRecord,
+  IdentitySubjectRecord,
+} from "./identity-operations.ports.js";
 import { publishIdentityProfileUpdated } from "./publish-identity-profile-updated.js";
 
 export type IdentityOperationErrorCode =
@@ -48,79 +50,37 @@ export function isCompensatableOrphan(input: {
   );
 }
 
-export type IdentitySubject = {
-  id: string;
-  email: string;
-  name: string;
-  emailVerified: boolean;
-  identityDisabledAt: Date | null;
-  mergedIntoSubjectId: string | null;
-};
-
-export type IdentitySession = {
-  id: string;
-  createdAt: Date;
-  expiresAt: Date;
-  ipAddress: string | null;
-  userAgent: string | null;
-  lastPasswordAuthAt: Date | null;
-  isCurrent: boolean;
-};
+export type IdentitySubject = IdentitySubjectRecord;
+export type IdentitySession = IdentitySessionRecord;
 
 export class IdentityOperationsService {
   constructor(
-    private readonly db: Database,
-    private readonly emailService: Pick<IEmailService, "enqueue">,
+    private readonly repositories: IdentityOperationsRepositories,
+    private readonly notifier: IIdentityNotifier,
     private readonly productSubjectUsage: ProductSubjectUsageProbe,
     private readonly identityEventPublisher: IdentityEventPublisher,
     private readonly logout?: Pick<
       BackchannelLogoutService,
       "revokeIdentitySessions" | "revokeSubject"
     >,
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
-  async readSubject(subjectId: string): Promise<IdentitySubject | null> {
-    const [row] = await this.db
-      .select({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        emailVerified: user.emailVerified,
-        identityDisabledAt: user.identityDisabledAt,
-        mergedIntoSubjectId: user.mergedIntoSubjectId,
-      })
-      .from(user)
-      .where(eq(user.id, subjectId))
-      .limit(1);
-    return row ?? null;
+  readSubject(subjectId: string): Promise<IdentitySubject | null> {
+    return this.repositories.subjects.findById(subjectId);
   }
 
-  async findSubjectByEmail(email: string): Promise<IdentitySubject | null> {
-    const [row] = await this.db
-      .select({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        emailVerified: user.emailVerified,
-        identityDisabledAt: user.identityDisabledAt,
-        mergedIntoSubjectId: user.mergedIntoSubjectId,
-      })
-      .from(user)
-      .where(sql`lower(trim(${user.email})) = ${email.trim().toLowerCase()}`)
-      .limit(1);
-    return row ?? null;
+  findSubjectByEmail(email: string): Promise<IdentitySubject | null> {
+    return this.repositories.subjects.findByEmail(email);
   }
 
   async credentialSummary(subjectId: string): Promise<{
     hasPassword: boolean;
     linkedProviders: string[];
   }> {
-    const rows = await this.db
-      .select({ providerId: account.providerId, password: account.password })
-      .from(account)
-      .where(eq(account.userId, subjectId));
+    const rows = await this.repositories.credentials.listProviders(subjectId);
     return {
-      hasPassword: rows.some((row) => row.providerId === "credential" && Boolean(row.password)),
+      hasPassword: rows.some((row) => row.providerId === "credential" && row.hasPassword),
       linkedProviders: [...new Set(rows.map((row) => row.providerId))],
     };
   }
@@ -132,48 +92,34 @@ export class IdentityOperationsService {
     const subject = await this.readSubject(subjectId);
     if (!subject) throw new IdentityOperationError("subject_not_found");
     const passwordHash = await hashPassword(password);
-    await this.db.transaction(async (tx) => {
-      const [existing] = await tx
-        .select({ id: account.id })
-        .from(account)
-        .where(and(eq(account.userId, subjectId), eq(account.providerId, "credential")))
-        .limit(1);
-      if (existing) throw new IdentityOperationError("already_set");
-      const now = new Date();
-      await tx.insert(account).values({
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const now = this.now();
+      const outcome = await this.repositories.credentials.insertCredential(transaction, {
         id: randomUUID(),
-        accountId: subjectId,
-        providerId: "credential",
-        userId: subjectId,
-        password: passwordHash,
-        createdAt: now,
-        updatedAt: now,
+        subjectId,
+        passwordHash,
+        now,
       });
+      if (outcome === "already_set") throw new IdentityOperationError("already_set");
       if (sessionToken) {
-        await tx
-          .update(session)
-          .set({ lastPasswordAuthAt: now, updatedAt: now })
-          .where(
-            and(
-              eq(session.userId, subjectId),
-              or(eq(session.token, sessionToken), eq(session.id, sessionToken)),
-            ),
-          );
+        await this.repositories.sessions.stampPasswordAuth(transaction, {
+          subjectId,
+          sessionToken,
+          now,
+          stepUp: false,
+        });
       }
       await this.identityEventPublisher.publish(
         { type: "user.credential_changed", userId: subjectId, changeType: "create" },
-        { transaction: tx },
+        { transaction },
       );
     });
     await this.logout?.revokeSubject(subjectId);
-    await this.db.delete(session).where(eq(session.userId, subjectId));
-    await this.db.delete(oauthAccessToken).where(eq(oauthAccessToken.userId, subjectId));
-    await this.emailService.enqueue({
-      template: "password-changed",
+    await this.repositories.sessions.purgeSubjectSessionsAndTokens(null, subjectId);
+    await this.notifier.passwordChanged({
       to: subject.email,
-      userId: subjectId,
-      category: "auth",
-      vars: { userName: subject.name },
+      subjectId,
+      userName: subject.name,
     });
   }
 
@@ -185,26 +131,13 @@ export class IdentityOperationsService {
     lastPasswordAuthAt: Date | null;
   }> {
     const [credential, currentSession] = await Promise.all([
-      this.db
-        .select({ id: account.id })
-        .from(account)
-        .where(and(eq(account.userId, subjectId), eq(account.providerId, "credential")))
-        .limit(1),
-      this.db
-        .select({ lastPasswordAuthAt: session.lastPasswordAuthAt })
-        .from(session)
-        .where(
-          and(
-            eq(session.userId, subjectId),
-            or(eq(session.token, sessionToken), eq(session.id, sessionToken)),
-          ),
-        )
-        .limit(1),
+      this.repositories.credentials.findCredential(subjectId),
+      this.repositories.sessions.findStamp(subjectId, sessionToken),
     ]);
-    if (!currentSession[0]) throw new IdentityOperationError("no_session");
+    if (!currentSession) throw new IdentityOperationError("no_session");
     return {
-      hasCredential: Boolean(credential[0]),
-      lastPasswordAuthAt: currentSession[0].lastPasswordAuthAt,
+      hasCredential: Boolean(credential),
+      lastPasswordAuthAt: currentSession.lastPasswordAuthAt,
     };
   }
 
@@ -213,27 +146,18 @@ export class IdentityOperationsService {
     password: string,
     sessionToken: string,
   ): Promise<void> {
-    const [credential] = await this.db
-      .select({ password: account.password })
-      .from(account)
-      .where(and(eq(account.userId, subjectId), eq(account.providerId, "credential")))
-      .limit(1);
-    if (!credential?.password) throw new IdentityOperationError("no_credential");
-    if (!(await verifyPassword(credential.password, password))) {
+    const credential = await this.repositories.credentials.findCredential(subjectId);
+    if (!credential?.passwordHash) throw new IdentityOperationError("no_credential");
+    if (!(await verifyPassword(credential.passwordHash, password))) {
       throw new IdentityOperationError("invalid_password");
     }
-    const now = new Date();
-    const updated = await this.db
-      .update(session)
-      .set({ lastPasswordAuthAt: now, lastStepUpAt: now, updatedAt: now })
-      .where(
-        and(
-          eq(session.userId, subjectId),
-          or(eq(session.token, sessionToken), eq(session.id, sessionToken)),
-        ),
-      )
-      .returning({ id: session.id });
-    if (!updated[0]) throw new IdentityOperationError("no_session");
+    const updated = await this.repositories.sessions.stampPasswordAuth(null, {
+      subjectId,
+      sessionToken,
+      now: this.now(),
+      stepUp: true,
+    });
+    if (!updated) throw new IdentityOperationError("no_session");
   }
 
   async changePassword(
@@ -245,103 +169,77 @@ export class IdentityOperationsService {
     if (!setupPasswordBodySchema.safeParse({ password: newPassword }).success) {
       throw new IdentityOperationError("invalid_password_policy");
     }
-    const [credential] = await this.db
-      .select({ id: account.id, password: account.password })
-      .from(account)
-      .where(and(eq(account.userId, subjectId), eq(account.providerId, "credential")))
-      .limit(1);
-    if (!credential?.password || !(await verifyPassword(credential.password, currentPassword))) {
+    const credential = await this.repositories.credentials.findCredential(subjectId);
+    if (
+      !credential?.passwordHash ||
+      !(await verifyPassword(credential.passwordHash, currentPassword))
+    ) {
       throw new IdentityOperationError("invalid_password");
     }
-    const password = await hashPassword(newPassword);
-    await this.db.transaction(async (tx) => {
-      const changedAt = new Date();
-      await tx
-        .update(account)
-        .set({ password, updatedAt: changedAt })
-        .where(and(eq(account.id, credential.id), eq(account.userId, subjectId)));
-      const updated = await tx
-        .update(session)
-        .set({ lastPasswordAuthAt: new Date(), lastStepUpAt: new Date(), updatedAt: new Date() })
-        .where(
-          and(
-            eq(session.userId, subjectId),
-            or(eq(session.token, sessionToken), eq(session.id, sessionToken)),
-          ),
-        )
-        .returning({ id: session.id });
-      if (!updated[0]) throw new IdentityOperationError("no_session");
+    const passwordHash = await hashPassword(newPassword);
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const changedAt = this.now();
+      await this.repositories.credentials.updatePassword(transaction, {
+        credentialId: credential.id,
+        subjectId,
+        passwordHash,
+        now: changedAt,
+      });
+      const updated = await this.repositories.sessions.stampPasswordAuth(transaction, {
+        subjectId,
+        sessionToken,
+        now: changedAt,
+        stepUp: true,
+      });
+      if (!updated) throw new IdentityOperationError("no_session");
       await this.identityEventPublisher.publish(
         { type: "user.credential_changed", userId: subjectId, changeType: "update" },
-        { transaction: tx },
+        { transaction },
       );
     });
   }
 
-  async listSessions(subjectId: string, currentSessionToken?: string): Promise<IdentitySession[]> {
-    const rows = await this.db
-      .select({
-        id: session.id,
-        token: session.token,
-        createdAt: session.createdAt,
-        expiresAt: session.expiresAt,
-        ipAddress: session.ipAddress,
-        userAgent: session.userAgent,
-        lastPasswordAuthAt: session.lastPasswordAuthAt,
-      })
-      .from(session)
-      .where(eq(session.userId, subjectId))
-      .orderBy(desc(session.createdAt));
-    return rows.map(({ token, ...row }) => ({
-      ...row,
-      isCurrent: Boolean(currentSessionToken) && token === currentSessionToken,
-    }));
+  listSessions(subjectId: string, currentSessionToken?: string): Promise<IdentitySession[]> {
+    return this.repositories.sessions.listForSubject(subjectId, currentSessionToken);
   }
 
   async revokeSession(subjectId: string, sessionId: string): Promise<boolean> {
-    const [owned] = await this.db
-      .select({ id: session.id })
-      .from(session)
-      .where(and(eq(session.userId, subjectId), eq(session.id, sessionId)))
-      .limit(1);
-    if (!owned) return false;
+    if (!(await this.repositories.sessions.ownsSession(subjectId, sessionId))) return false;
     await this.logout?.revokeIdentitySessions([sessionId]);
-    const rows = await this.db.transaction(async (tx) => {
-      const deleted = await tx
-        .delete(session)
-        .where(and(eq(session.userId, subjectId), eq(session.id, sessionId)))
-        .returning({ id: session.id });
-      if (deleted.length > 0) {
+    let deleted = false;
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      deleted = await this.repositories.sessions.deleteSession(transaction, subjectId, sessionId);
+      if (deleted) {
         await this.identityEventPublisher.publish(
           { type: "user.session_revoked", userId: subjectId, sessionId },
-          { transaction: tx },
+          { transaction },
         );
       }
-      return deleted;
     });
-    return rows.length > 0;
+    return deleted;
   }
 
   async revokeAllSessions(subjectId: string, exceptSessionToken?: string): Promise<number> {
     await this.logout?.revokeSubject(subjectId);
-    const where = exceptSessionToken
-      ? and(eq(session.userId, subjectId), ne(session.token, exceptSessionToken))
-      : eq(session.userId, subjectId);
-    const rows = await this.db.transaction(async (tx) => {
-      const deleted = await tx.delete(session).where(where).returning({ id: session.id });
-      if (deleted.length > 0) {
+    let deletedCount = 0;
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      deletedCount = await this.repositories.sessions.deleteAllSessions(
+        transaction,
+        subjectId,
+        exceptSessionToken,
+      );
+      if (deletedCount > 0) {
         await this.identityEventPublisher.publish(
           { type: "user.session_revoked", userId: subjectId },
-          { transaction: tx },
+          { transaction },
         );
       }
-      return deleted;
     });
-    return rows.length;
+    return deletedCount;
   }
 
   async startEmailChange(subjectId: string, newEmail: string, expiresAt: Date): Promise<void> {
-    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= this.now().getTime()) {
       throw new IdentityOperationError("invalid_expiry");
     }
     const normalized = newEmail.trim().toLowerCase();
@@ -351,31 +249,22 @@ export class IdentityOperationsService {
     ]);
     if (!subject) throw new IdentityOperationError("subject_not_found");
     if (clash && clash.id !== subjectId) throw new IdentityOperationError("email_taken");
-    await this.db
-      .update(user)
-      .set({
-        pendingNewEmail: normalized,
-        emailChangeOldOk: false,
-        emailChangeNewOk: false,
-        emailChangeExpiresAt: expiresAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, subjectId));
+    await this.repositories.emailChanges.startChange({
+      subjectId,
+      newEmail: normalized,
+      expiresAt,
+      now: this.now(),
+    });
   }
 
-  async pendingEmailChange(subjectId: string): Promise<string | null> {
-    const [row] = await this.db
-      .select({ pendingNewEmail: user.pendingNewEmail })
-      .from(user)
-      .where(eq(user.id, subjectId))
-      .limit(1);
-    return row?.pendingNewEmail ?? null;
+  pendingEmailChange(subjectId: string): Promise<string | null> {
+    return this.repositories.emailChanges.readPending(subjectId);
   }
 
   async cancelEmailChange(subjectId: string): Promise<void> {
     const pending = await this.pendingEmailChange(subjectId);
     if (!pending) throw new IdentityOperationError("none_in_progress");
-    await this.clearPendingEmailChange(subjectId);
+    await this.repositories.emailChanges.clearPending(subjectId, this.now());
   }
 
   async confirmEmailChange(input: {
@@ -384,82 +273,69 @@ export class IdentityOperationsService {
     newEmail: string;
     confirmFor: "old" | "new";
   }): Promise<boolean> {
-    const changed = await this.db.transaction(async (tx) => {
-      const [row] = await tx.select().from(user).where(eq(user.id, input.subjectId)).limit(1);
+    let changed = false;
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const row = await this.repositories.emailChanges.loadForConfirmation(
+        transaction,
+        input.subjectId,
+      );
       if (!row) throw new IdentityOperationError("subject_not_found");
       if (row.pendingNewEmail !== input.newEmail || row.email !== input.oldEmail) {
         throw new IdentityOperationError("stale_flow");
       }
-      if (row.emailChangeExpiresAt && row.emailChangeExpiresAt.getTime() < Date.now()) {
+      if (row.emailChangeExpiresAt && row.emailChangeExpiresAt.getTime() < this.now().getTime()) {
         throw new IdentityOperationError("expired");
       }
-      const confirmation =
-        input.confirmFor === "old" ? { emailChangeOldOk: true } : { emailChangeNewOk: true };
-      await tx
-        .update(user)
-        .set({ ...confirmation, updatedAt: new Date() })
-        .where(eq(user.id, input.subjectId));
-      const [fresh] = await tx.select().from(user).where(eq(user.id, input.subjectId)).limit(1);
-      if (!fresh?.emailChangeOldOk || !fresh.emailChangeNewOk || !fresh.pendingNewEmail)
-        return false;
-      const [clash] = await tx
-        .select({ id: user.id })
-        .from(user)
-        .where(
-          and(
-            sql`lower(trim(${user.email})) = ${fresh.pendingNewEmail.trim().toLowerCase()}`,
-            ne(user.id, input.subjectId),
-          ),
-        )
-        .limit(1);
+      await this.repositories.emailChanges.markConfirmed(
+        transaction,
+        input.subjectId,
+        input.confirmFor,
+        this.now(),
+      );
+      const fresh = await this.repositories.emailChanges.loadForConfirmation(
+        transaction,
+        input.subjectId,
+      );
+      if (!fresh?.emailChangeOldOk || !fresh.emailChangeNewOk || !fresh.pendingNewEmail) return;
+      const clash = await this.repositories.emailChanges.findEmailOwner(
+        transaction,
+        fresh.pendingNewEmail,
+        input.subjectId,
+      );
       if (clash) throw new IdentityOperationError("email_taken");
-      const now = new Date();
-      await tx
-        .update(user)
-        .set({
-          email: fresh.pendingNewEmail,
-          emailVerified: true,
-          pendingNewEmail: null,
-          emailChangeOldOk: false,
-          emailChangeNewOk: false,
-          emailChangeExpiresAt: null,
-          updatedAt: now,
-        })
-        .where(eq(user.id, input.subjectId));
-      await tx.delete(session).where(eq(session.userId, input.subjectId));
-      await tx.delete(oauthAccessToken).where(eq(oauthAccessToken.userId, input.subjectId));
+      const now = this.now();
+      await this.repositories.emailChanges.applyPendingEmail(
+        transaction,
+        input.subjectId,
+        fresh.pendingNewEmail,
+        now,
+      );
+      await this.repositories.sessions.purgeSubjectSessionsAndTokens(transaction, input.subjectId);
       await publishIdentityProfileUpdated(
         this.identityEventPublisher,
         {
           subjectId: input.subjectId,
           email: fresh.pendingNewEmail,
           name: fresh.name,
-          phone: fresh.phoneNumber ?? null,
+          phone: fresh.phoneNumber,
         },
-        { transaction: tx },
+        { transaction },
       );
-      return true;
+      changed = true;
     });
     if (changed) await this.logout?.revokeSubject(input.subjectId);
     return changed;
   }
 
   async deleteOrphanSubject(subjectId: string): Promise<boolean> {
-    return this.db.transaction(async (tx) => {
-      const [subject] = await tx
-        .select({ id: user.id, createdAt: user.createdAt })
-        .from(user)
-        .where(eq(user.id, subjectId))
-        .limit(1)
-        .for("update");
-      if (!subject) return false;
-
-      // Compensation is only valid immediately after API-managed email signup.
-      // Never let this endpoint become a general-purpose subject delete.
-      const accounts = await tx
-        .select({ providerId: account.providerId })
-        .from(account)
-        .where(eq(account.userId, subjectId));
+    let deleted = false;
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const subject = await this.repositories.subjects.lockForCompensation(transaction, subjectId);
+      if (!subject) return;
+      const accountProviderIds = await this.repositories.subjects.listAccountProviders(
+        transaction,
+        subjectId,
+      );
       const [hasProductProfile, hasExternalLink] = await Promise.all([
         this.productSubjectUsage.hasProductProfile(subjectId),
         this.productSubjectUsage.hasExternalLink(subjectId),
@@ -467,35 +343,28 @@ export class IdentityOperationsService {
       if (
         !isCompensatableOrphan({
           createdAt: subject.createdAt,
-          accountProviderIds: accounts.map((row) => row.providerId),
+          accountProviderIds,
           hasProductProfile,
           hasExternalLink,
+          now: this.now().getTime(),
         })
       ) {
         throw new IdentityOperationError("not_orphan");
       }
-
       await this.identityEventPublisher.publish(
         { type: "user.identity_deleted", userId: subjectId },
-        { transaction: tx },
+        { transaction },
       );
-      const rows = await tx.delete(user).where(eq(user.id, subjectId)).returning({ id: user.id });
-      return rows.length > 0;
+      deleted = await this.repositories.subjects.deleteSubject(transaction, subjectId);
     });
+    return deleted;
   }
 
   async updateSubjectProfile(
     subjectId: string,
     patch: { name?: string; image?: string | null },
   ): Promise<void> {
-    const [updated] = await this.db
-      .update(user)
-      .set({ ...patch, updatedAt: new Date() })
-      .where(eq(user.id, subjectId))
-      .returning({
-        id: user.id,
-        name: user.name,
-      });
+    const updated = await this.repositories.subjects.updateProfile(subjectId, patch, this.now());
     if (!updated) throw new IdentityOperationError("subject_not_found");
     await publishIdentityProfileUpdated(this.identityEventPublisher, {
       subjectId: updated.id,
@@ -504,41 +373,11 @@ export class IdentityOperationsService {
   }
 
   async markDeletionRequested(subjectId: string): Promise<void> {
-    const rows = await this.db
-      .update(user)
-      .set({ deletionRequestedAt: new Date(), updatedAt: new Date() })
-      .where(eq(user.id, subjectId))
-      .returning({ id: user.id });
-    if (!rows[0]) throw new IdentityOperationError("subject_not_found");
+    const updated = await this.repositories.subjects.markDeletionRequested(subjectId, this.now());
+    if (!updated) throw new IdentityOperationError("subject_not_found");
   }
 
-  async purgeExpiredVerifications(now = new Date(), batchSize = 500): Promise<number> {
-    const rows = await this.db
-      .delete(verification)
-      .where(
-        inArray(
-          verification.id,
-          this.db
-            .select({ id: verification.id })
-            .from(verification)
-            .where(sql`${verification.expiresAt} < ${now}`)
-            .limit(batchSize),
-        ),
-      )
-      .returning({ id: verification.id });
-    return rows.length;
-  }
-
-  private async clearPendingEmailChange(subjectId: string): Promise<void> {
-    await this.db
-      .update(user)
-      .set({
-        pendingNewEmail: null,
-        emailChangeOldOk: false,
-        emailChangeNewOk: false,
-        emailChangeExpiresAt: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, subjectId));
+  purgeExpiredVerifications(now = new Date(), batchSize = 500): Promise<number> {
+    return this.repositories.verifications.purgeExpired(now, batchSize);
   }
 }
