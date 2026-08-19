@@ -97,6 +97,26 @@ async function readLoginBannerErrors(page: Page): Promise<string> {
   return bannerError.filter(Boolean).join(" · ");
 }
 
+async function completeOidcConsentIfNeeded(page: Page): Promise<void> {
+  if (!/oauth2\/authorize/i.test(page.url())) return;
+  const allow = page.getByRole("button", { name: /^allow$/i });
+  if (!(await allow.isVisible().catch(() => false))) return;
+  await Promise.all([
+    page.waitForURL(/\/(admin|dashboard)/, {
+      timeout: 60_000,
+      waitUntil: "domcontentloaded",
+    }),
+    allow.click(),
+  ]);
+}
+
+async function waitForAuthenticatedLanding(page: Page): Promise<void> {
+  await page.waitForURL(/\/(admin|dashboard)/, {
+    timeout: 60_000,
+    waitUntil: "domcontentloaded",
+  });
+}
+
 async function login(page: Page, credentials: Credentials): Promise<void> {
   const loginUrl = `/login?email=${encodeURIComponent(credentials.email)}`;
   await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
@@ -133,10 +153,8 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
 
   if (await continueAuthed.isVisible().catch(() => false)) {
     await continueAuthed.click();
-    await page.waitForURL(/\/(admin|dashboard)/, {
-      timeout: 60_000,
-      waitUntil: "domcontentloaded",
-    });
+    await completeOidcConsentIfNeeded(page).catch(() => undefined);
+    await waitForAuthenticatedLanding(page);
     return;
   }
 
@@ -148,29 +166,33 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
   await password.click();
   await password.fill(credentials.password);
   const submit = page.getByRole("button", { name: /^sign in$/i });
-  await Promise.all([
-    page.waitForURL(/\/(admin|dashboard)/, {
-      timeout: 60_000,
-      waitUntil: "domcontentloaded",
-    }),
-    (async () => {
-      if (await submit.isVisible().catch(() => false)) {
-        await submit.click();
-        return;
-      }
-      await page
-        .locator("form")
-        .first()
-        .evaluate((form) => (form as HTMLFormElement).requestSubmit());
-    })(),
-  ]).catch(async (error) => {
-    const detail = await readLoginBannerErrors(page);
-    throw new Error(
-      detail
-        ? `Sign-in did not redirect (${page.url()}). ${detail}`
-        : `Sign-in did not redirect (${page.url()}). ${String(error)}`,
-    );
-  });
+  try {
+    await Promise.all([
+      waitForAuthenticatedLanding(page),
+      (async () => {
+        if (await submit.isVisible().catch(() => false)) {
+          await submit.click();
+          return;
+        }
+        await page
+          .locator("form")
+          .first()
+          .evaluate((form) => (form as HTMLFormElement).requestSubmit());
+      })(),
+    ]);
+  } catch (error) {
+    await completeOidcConsentIfNeeded(page);
+    if (!/\/(admin|dashboard)/.test(page.url())) {
+      await waitForAuthenticatedLanding(page).catch(async () => {
+        const detail = await readLoginBannerErrors(page);
+        throw new Error(
+          detail
+            ? `Sign-in did not redirect (${page.url()}). ${detail}`
+            : `Sign-in did not redirect (${page.url()}). ${String(error)}`,
+        );
+      });
+    }
+  }
 }
 
 /** Fails fast when auth cookies were not seeded — avoids login-page PNG corruption. */
