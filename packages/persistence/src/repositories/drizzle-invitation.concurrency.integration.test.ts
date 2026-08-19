@@ -1,5 +1,5 @@
 import { createDb } from "@auction/db";
-import { user, userInvitation } from "@auction/db/schema";
+import { bidUserProfile, user, userInvitation } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { DrizzleUserInvitationRepository } from "./drizzle-invitation.repository.js";
@@ -20,12 +20,18 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
 
   afterAll(async () => {
     await db.delete(userInvitation).where(sql`lower(${userInvitation.email}) = ${email}`);
+    await db
+      .delete(bidUserProfile)
+      .where(sql`${bidUserProfile.userId} IN (${redeemer1Id}, ${redeemer2Id})`);
     await db.delete(user).where(sql`${user.id} IN (${inviterId}, ${redeemer1Id}, ${redeemer2Id})`);
   });
 
   async function seedUsersAndInvite(): Promise<void> {
     const t = new Date();
     await db.delete(userInvitation).where(sql`lower(${userInvitation.email}) = ${email}`);
+    await db
+      .delete(bidUserProfile)
+      .where(sql`${bidUserProfile.userId} IN (${redeemer1Id}, ${redeemer2Id})`);
     await db.delete(user).where(sql`${user.id} IN (${inviterId}, ${redeemer1Id}, ${redeemer2Id})`);
     await db.insert(user).values([
       {
@@ -86,7 +92,11 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
     const winnerId = a.outcome === "ok" ? redeemer1Id : redeemer2Id;
     expect(row?.acceptedUserId).toBe(winnerId);
 
-    const [winner] = await db.select().from(user).where(eq(user.id, winnerId)).limit(1);
+    const [winner] = await db
+      .select()
+      .from(bidUserProfile)
+      .where(eq(bidUserProfile.userId, winnerId))
+      .limit(1);
     expect(winner?.role).toBe("staff");
     expect(winner?.staffRole).toBe("specialist");
   });

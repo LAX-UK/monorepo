@@ -115,6 +115,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
           await tx.insert(bid).values({
             lotId,
             bidderId: buyerUser(i),
+            subjectId: buyerUser(i),
             buyerLegalEntityId: buyerLeId(i),
             amount: `${amt}.00`,
             isWinning: false,

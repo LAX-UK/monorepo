@@ -28,10 +28,7 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
           }
         }
         if (acct.providerId === "credential") return;
-        const userRow = await deps.db.query.user.findFirst({
-          where: (u, { eq }) => eq(u.id, acct.userId),
-          columns: { createdAt: true },
-        });
+        const userRow = await deps.ports.accountLinkReader.findUserEmailProfile(acct.userId);
         if (!userRow) return;
         if (
           !shouldNotifySocialAccountLinked({
@@ -42,8 +39,8 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
           return;
         }
         await notifySocialAccountChange({
-          db: deps.db,
-          email: deps.email,
+          accounts: deps.ports.accountLinkReader,
+          email: deps.ports.email,
           userId: acct.userId,
           providerId: acct.providerId,
           template: "social-account-linked",
@@ -52,13 +49,16 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
     },
     delete: {
       before: async (acct: { userId: string }) => {
-        await assertCanUnlinkAccount({ db: deps.db, userId: acct.userId });
+        await assertCanUnlinkAccount({
+          accounts: deps.ports.accountLinkReader,
+          userId: acct.userId,
+        });
       },
       after: async (acct: { userId: string; providerId: string }) => {
         if (acct.providerId === "credential") return;
         await notifySocialAccountChange({
-          db: deps.db,
-          email: deps.email,
+          accounts: deps.ports.accountLinkReader,
+          email: deps.ports.email,
           userId: acct.userId,
           providerId: acct.providerId,
           template: "social-account-unlinked",

@@ -16,10 +16,6 @@
       "types": "./dist/client.d.ts",
       "default": "./dist/client.js"
     },
-    "./permissions": {
-      "types": "./dist/permissions.d.ts",
-      "default": "./dist/permissions.js"
-    },
     "./magic-link-callback": {
       "types": "./dist/magic-link-callback.d.ts",
       "default": "./dist/magic-link-callback.js"
@@ -48,19 +44,15 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@auction/db": "workspace:*",
-    "@auction/email": "workspace:^",
     "@auction/identity-contracts": "workspace:^",
-    "@auction/sms": "workspace:^",
-    "@auction/types": "workspace:*",
     "@better-auth/utils": "0.4.0",
     "better-auth": "^1.6.9",
-    "drizzle-orm": "^0.41.0",
     "jose": "^6.2.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@auction/identity-db": "workspace:*",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   }

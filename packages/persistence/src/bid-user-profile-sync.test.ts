@@ -3,13 +3,20 @@ import { describe, expect, it, vi } from "vitest";
 import { ensureBidUserProfile, writeBidUserProfile } from "./bid-user-profile-sync.js";
 
 function createDbMock() {
-  const sourceWhere = vi.fn().mockReturnValue({ query: "user-profile-source" });
+  const sourceWhere = vi.fn().mockResolvedValue([
+    {
+      userId: "u-1",
+      identityDisabledAt: null,
+      mergedIntoSubjectId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ]);
   const sourceFrom = vi.fn().mockReturnValue({ where: sourceWhere });
   const select = vi.fn().mockReturnValue({ from: sourceFrom });
-  const returning = vi.fn().mockResolvedValue([{ userId: "u-1" }]);
-  const onConflictDoUpdate = vi.fn().mockReturnValue({ returning });
-  const insertSelect = vi.fn().mockReturnValue({ onConflictDoUpdate });
-  const insert = vi.fn().mockReturnValue({ select: insertSelect });
+  const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+  const values = vi.fn().mockReturnValue({ onConflictDoUpdate });
+  const insert = vi.fn().mockReturnValue({ values });
   const updateWhere = vi.fn().mockResolvedValue(undefined);
   const set = vi.fn().mockReturnValue({ where: updateWhere });
   const update = vi.fn().mockReturnValue({ set });

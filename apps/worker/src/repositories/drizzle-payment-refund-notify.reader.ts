@@ -1,6 +1,13 @@
 import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, lot, payment, user } from "@auction/db/schema";
-import { and, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import {
+  bidUserProfile,
+  legalEntity,
+  legalEntityMember,
+  lot,
+  payment,
+  user,
+} from "@auction/db/schema";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { IPaymentRefundNotifyReader } from "../interfaces/payment-refund-notify.reader.js";
 
 export class DrizzlePaymentRefundNotifyReader implements IPaymentRefundNotifyReader {
@@ -35,10 +42,11 @@ export class DrizzlePaymentRefundNotifyReader implements IPaymentRefundNotifyRea
       .selectDistinct({
         email: user.email,
         userId: user.id,
-        firstName: user.firstName,
+        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
       })
       .from(legalEntityMember)
       .innerJoin(user, eq(user.id, legalEntityMember.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(
         and(
           eq(legalEntityMember.legalEntityId, sellerLegalEntityId),

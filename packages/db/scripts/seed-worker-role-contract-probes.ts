@@ -75,6 +75,7 @@ async function main() {
       id: PROBE_BID_ID,
       lotId: PROBE_LOT_ID,
       bidderId: PROBE_USER_ID,
+      subjectId: PROBE_USER_ID,
       buyerLegalEntityId: PROBE_LE_ID,
       amount: "100.00",
       placedVia: "web",

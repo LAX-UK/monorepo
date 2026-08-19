@@ -1,4 +1,9 @@
-import { user, type userKycStatusEnum, type userStaffRoleEnum } from "@auction/db/schema";
+import {
+  bidUserProfile,
+  user,
+  type userKycStatusEnum,
+  type userStaffRoleEnum,
+} from "@auction/db/schema";
 import {
   type SQL,
   and,
@@ -24,25 +29,28 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
     const searchClause = or(
       ilike(user.email, `%${q}%`),
       ilike(user.name, `%${q}%`),
-      ilike(user.mobile, `%${q}%`),
+      ilike(bidUserProfile.mobile, `%${q}%`),
     );
     if (searchClause) clauses.push(searchClause);
   }
 
   if (filter.role) {
-    clauses.push(eq(user.role, filter.role));
+    clauses.push(eq(bidUserProfile.role, filter.role));
   }
 
   if (filter.staffRole) {
     clauses.push(
-      eq(user.staffRole, filter.staffRole as (typeof userStaffRoleEnum.enumValues)[number]),
+      eq(
+        bidUserProfile.staffRole,
+        filter.staffRole as (typeof userStaffRoleEnum.enumValues)[number],
+      ),
     );
   }
 
   if (filter.accountStatus === "active") {
-    clauses.push(isNull(user.suspendedAt));
+    clauses.push(isNull(bidUserProfile.suspendedAt));
   } else if (filter.accountStatus === "suspended" || filter.suspendedOnly) {
-    clauses.push(isNotNull(user.suspendedAt));
+    clauses.push(isNotNull(bidUserProfile.suspendedAt));
   }
 
   if (filter.emailVerified !== undefined) {
@@ -50,24 +58,24 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   }
 
   if (filter.emailStatus) {
-    clauses.push(eq(user.emailStatus, filter.emailStatus));
+    clauses.push(eq(bidUserProfile.emailStatus, filter.emailStatus));
   }
 
   if (filter.kycStatuses?.length) {
     clauses.push(
       inArray(
-        user.kycStatus,
+        bidUserProfile.kycStatus,
         filter.kycStatuses as (typeof userKycStatusEnum.enumValues)[number][],
       ),
     );
   } else if (filter.kycStatus) {
-    clauses.push(eq(user.kycStatus, filter.kycStatus));
+    clauses.push(eq(bidUserProfile.kycStatus, filter.kycStatus));
   }
 
   if (filter.persona === "none") {
-    clauses.push(isNull(user.signupPersona));
+    clauses.push(isNull(bidUserProfile.signupPersona));
   } else if (filter.persona) {
-    clauses.push(eq(user.signupPersona, filter.persona));
+    clauses.push(eq(bidUserProfile.signupPersona, filter.persona));
   }
 
   if (filter.twoFactorEnabled !== undefined) {
@@ -79,10 +87,16 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   }
 
   if (filter.hasMobile === true) {
-    const hasMobileClause = and(isNotNull(user.mobile), sql`trim(${user.mobile}) <> ''`);
+    const hasMobileClause = and(
+      isNotNull(bidUserProfile.mobile),
+      sql`trim(${bidUserProfile.mobile}) <> ''`,
+    );
     if (hasMobileClause) clauses.push(hasMobileClause);
   } else if (filter.hasMobile === false) {
-    const noMobileClause = or(isNull(user.mobile), sql`trim(coalesce(${user.mobile}, '')) = ''`);
+    const noMobileClause = or(
+      isNull(bidUserProfile.mobile),
+      sql`trim(coalesce(${bidUserProfile.mobile}, '')) = ''`,
+    );
     if (noMobileClause) clauses.push(noMobileClause);
   }
 
@@ -94,10 +108,10 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   }
 
   if (filter.kycVerifiedFrom) {
-    clauses.push(gte(user.kycVerifiedAt, filter.kycVerifiedFrom));
+    clauses.push(gte(bidUserProfile.kycVerifiedAt, filter.kycVerifiedFrom));
   }
   if (filter.kycVerifiedToExclusive) {
-    clauses.push(lt(user.kycVerifiedAt, filter.kycVerifiedToExclusive));
+    clauses.push(lt(bidUserProfile.kycVerifiedAt, filter.kycVerifiedToExclusive));
   }
 
   if (filter.lastActiveFrom) {
@@ -121,7 +135,7 @@ export function buildAdminUserListOrderBy(sort: AdminUserListSort | undefined) {
     case "last_active_desc":
       return desc(user.updatedAt);
     case "kyc_status":
-      return asc(user.kycStatus);
+      return asc(bidUserProfile.kycStatus);
     default:
       return desc(user.createdAt);
   }
@@ -132,23 +146,23 @@ export const adminUserListSelect = {
   id: user.id,
   email: user.email,
   name: user.name,
-  firstName: user.firstName,
-  lastName: user.lastName,
-  role: user.role,
-  staffRole: user.staffRole,
+  firstName: bidUserProfile.firstName,
+  lastName: bidUserProfile.lastName,
+  role: bidUserProfile.role,
+  staffRole: bidUserProfile.staffRole,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
-  suspendedAt: user.suspendedAt,
+  suspendedAt: bidUserProfile.suspendedAt,
   image: user.image,
-  mobile: user.mobile,
-  mobileCountry: user.mobileCountry,
+  mobile: bidUserProfile.mobile,
+  mobileCountry: bidUserProfile.mobileCountry,
   emailVerified: user.emailVerified,
-  emailStatus: user.emailStatus,
-  signupPersona: user.signupPersona,
+  emailStatus: bidUserProfile.emailStatus,
+  signupPersona: bidUserProfile.signupPersona,
   twoFactorEnabled: user.twoFactorEnabled,
-  kycStatus: user.kycStatus,
-  kycVerifiedAt: user.kycVerifiedAt,
-  kycRetryCount: user.kycRetryCount,
+  kycStatus: bidUserProfile.kycStatus,
+  kycVerifiedAt: bidUserProfile.kycVerifiedAt,
+  kycRetryCount: bidUserProfile.kycRetryCount,
   deletionRequestedAt: user.deletionRequestedAt,
 } as const;
 
@@ -158,7 +172,7 @@ export function mapAdminUserListRow(r: {
   name: string;
   firstName: string | null;
   lastName: string | null;
-  role: string;
+  role: string | null;
   staffRole: (typeof userStaffRoleEnum.enumValues)[number] | null;
   createdAt: Date;
   updatedAt: Date;
@@ -167,12 +181,12 @@ export function mapAdminUserListRow(r: {
   mobile: string | null;
   mobileCountry: string | null;
   emailVerified: boolean;
-  emailStatus: string;
+  emailStatus: string | null;
   signupPersona: string | null;
   twoFactorEnabled: boolean;
-  kycStatus: string;
+  kycStatus: string | null;
   kycVerifiedAt: Date | null;
-  kycRetryCount: number;
+  kycRetryCount: number | null;
   deletionRequestedAt: Date | null;
 }) {
   return {
@@ -181,7 +195,7 @@ export function mapAdminUserListRow(r: {
     name: r.name,
     firstName: r.firstName ?? null,
     lastName: r.lastName ?? null,
-    role: r.role,
+    role: r.role ?? "client",
     staffRole: r.staffRole ?? null,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
@@ -190,12 +204,12 @@ export function mapAdminUserListRow(r: {
     mobile: r.mobile ?? null,
     mobileCountry: r.mobileCountry ?? null,
     emailVerified: r.emailVerified,
-    emailStatus: r.emailStatus,
+    emailStatus: r.emailStatus ?? "ok",
     signupPersona: r.signupPersona ?? null,
     twoFactorEnabled: r.twoFactorEnabled,
-    kycStatus: r.kycStatus,
+    kycStatus: r.kycStatus ?? "unverified",
     kycVerifiedAt: r.kycVerifiedAt ?? null,
-    kycRetryCount: r.kycRetryCount,
+    kycRetryCount: r.kycRetryCount ?? 0,
     deletionRequestedAt: r.deletionRequestedAt ?? null,
   };
 }

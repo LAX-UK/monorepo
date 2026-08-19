@@ -1,9 +1,9 @@
-import type {
-  IUserEmailVerifiedPublisher,
-  PublishUserEmailVerifiedInput,
-} from "@auction/persistence/interfaces";
+import type { IdentityEventPublisher } from "@auction/auth";
 
-export type { PublishUserEmailVerifiedInput };
+export type PublishUserEmailVerifiedInput = {
+  userId: string;
+  email: string;
+};
 
 /** Emits `user.email_verified` for the worker marketing-contacts projector.
  *
@@ -13,8 +13,11 @@ export type { PublishUserEmailVerifiedInput };
  * concurrency race so at most one event ever exists per user.
  */
 export async function publishUserEmailVerified(
-  publisher: IUserEmailVerifiedPublisher,
+  publisher: IdentityEventPublisher,
   input: PublishUserEmailVerifiedInput,
 ): Promise<void> {
-  await publisher.publishIfAbsent(input);
+  await publisher.publish(
+    { type: "user.email_verified", userId: input.userId, email: input.email },
+    { producer: "apps/auth" },
+  );
 }

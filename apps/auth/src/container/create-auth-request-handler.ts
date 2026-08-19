@@ -1,4 +1,4 @@
-import { stampMfaCompletedFromResponse } from "@auction/auth";
+import { type SessionStampStore, stampMfaCompletedFromResponse } from "@auction/auth";
 import type { createAuth } from "@auction/auth";
 import {
   type Database,
@@ -19,6 +19,7 @@ export type AuthRequestHandler = (
 
 export function createAuthRequestHandler(options: {
   db: Database;
+  sessionStampStore: SessionStampStore;
   auth: ReturnType<typeof createAuth>;
   oidcSessions: Pick<OidcSessionCoordinator, "runTokenRequest" | "captureAuthorizationSession">;
   logout: BackchannelLogoutRevoker;
@@ -81,7 +82,7 @@ export function createAuthRequestHandler(options: {
       response.ok &&
       (path.endsWith("/two-factor/verify-totp") || path.endsWith("/two-factor/verify-backup-code"))
     ) {
-      await stampMfaCompletedFromResponse(options.db, response);
+      await stampMfaCompletedFromResponse(options.sessionStampStore, response);
     }
     if (await readAuthorizationCodeFromResponse(response)) {
       const sessionHeaders = new Headers(request.headers);

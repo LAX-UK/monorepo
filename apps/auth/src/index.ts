@@ -1,5 +1,6 @@
 import { AUTH_TIMINGS } from "@auction/auth";
 import { closeDb } from "@auction/db";
+import { createIdentityAuthPorts } from "@auction/identity-db";
 import { initNodeSentry } from "@auction/observability";
 import { serve } from "@hono/node-server";
 import pino from "pino";
@@ -13,6 +14,7 @@ import { createAuthSchedules } from "./container/create-auth-schedules.js";
 import { createOidcRouteServices } from "./container/create-oidc-route-services.js";
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
 import { loadAuthEnv } from "./env.js";
+import { createDrizzleProductSubjectUsageProbe } from "./infrastructure/drizzle-product-subject-usage-probe.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { IdentityLifecycleService } from "./services/identity-lifecycle.service.js";
 import { IdentityOperationsService } from "./services/identity-operations.service.js";
@@ -35,6 +37,7 @@ const log = pino({
 const infra = createAuthInfra(env, log);
 const { db, redis, emailQueue, emailService, webOrigins, envelope, phoneVerification } = infra;
 const repositories = createAuthRepositories(db);
+const identityPorts = createIdentityAuthPorts(db, { envelope: envelope ?? undefined });
 const services = createOidcRouteServices({
   db,
   redis,
@@ -53,12 +56,24 @@ const auth = createAuthIssuer({
   trustedOrigins: webOrigins,
   logout: services.oidc.logout,
   oidcSessions: services.oidc.sessions,
-  userEmailVerifiedPublisher: repositories.userEmailVerifiedPublisher,
+  identityEventPublisher: repositories.identityEventPublisher,
 });
-const identityOperations = new IdentityOperationsService(db, emailService, services.oidc.logout);
-const identityLifecycle = new IdentityLifecycleService(db, services.oidc.logout);
+const productSubjectUsage = createDrizzleProductSubjectUsageProbe(db);
+const identityOperations = new IdentityOperationsService(
+  db,
+  emailService,
+  productSubjectUsage,
+  repositories.identityEventPublisher,
+  services.oidc.logout,
+);
+const identityLifecycle = new IdentityLifecycleService(
+  db,
+  repositories.identityEventPublisher,
+  services.oidc.logout,
+);
 const authHandler = createAuthRequestHandler({
   db,
+  sessionStampStore: identityPorts.sessionStampStore,
   auth,
   oidcSessions: services.oidc.sessions,
   logout: services.oidc.logout,
@@ -112,6 +127,7 @@ const app = createAuthApp({
   oidc: {
     env,
     db,
+    sessionStampStore: identityPorts.sessionStampStore,
     redis,
     auth,
     webOrigins,

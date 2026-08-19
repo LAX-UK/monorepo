@@ -13,15 +13,10 @@ export class DrizzleUserRepository implements IUserRepository {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: sql<string>`coalesce(${bidUserProfile.role}, ${user.role})`,
-        staffRole: sql<
-          (typeof bidUserProfile.staffRole.enumValues)[number] | null
-        >`coalesce(${bidUserProfile.staffRole}, ${user.staffRole})`,
+        role: bidUserProfile.role,
+        staffRole: bidUserProfile.staffRole,
         image: user.image,
-        hasSeenActingContextTooltip: sql<boolean>`coalesce(
-          ${bidUserProfile.hasSeenActingContextTooltip},
-          ${user.hasSeenActingContextTooltip}
-        )`,
+        hasSeenActingContextTooltip: bidUserProfile.hasSeenActingContextTooltip,
       })
       .from(user)
       .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
@@ -33,7 +28,7 @@ export class DrizzleUserRepository implements IUserRepository {
       id: row.id,
       email: row.email,
       name: row.name,
-      role: row.role,
+      role: row.role ?? "client",
       staffRole: row.staffRole ?? null,
       image: row.image ?? null,
       hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
@@ -47,15 +42,10 @@ export class DrizzleUserRepository implements IUserRepository {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: sql<string>`coalesce(${bidUserProfile.role}, ${user.role})`,
-        staffRole: sql<
-          (typeof bidUserProfile.staffRole.enumValues)[number] | null
-        >`coalesce(${bidUserProfile.staffRole}, ${user.staffRole})`,
+        role: bidUserProfile.role,
+        staffRole: bidUserProfile.staffRole,
         image: user.image,
-        hasSeenActingContextTooltip: sql<boolean>`coalesce(
-          ${bidUserProfile.hasSeenActingContextTooltip},
-          ${user.hasSeenActingContextTooltip}
-        )`,
+        hasSeenActingContextTooltip: bidUserProfile.hasSeenActingContextTooltip,
       })
       .from(user)
       .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
@@ -67,7 +57,7 @@ export class DrizzleUserRepository implements IUserRepository {
       id: row.id,
       email: row.email,
       name: row.name,
-      role: row.role,
+      role: row.role ?? "client",
       staffRole: row.staffRole ?? null,
       image: row.image ?? null,
       hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
@@ -80,7 +70,7 @@ export class DrizzleUserRepository implements IUserRepository {
     const [row] = await this.db
       .select({ id: user.id })
       .from(user)
-      .where(and(eq(user.emailVerified, true), sql`lower(${user.email}) = ${normalized}`))
+      .where(and(eq(user.emailVerified, true), eq(user.email, normalized)))
       .limit(1);
     return row?.id ?? null;
   }
@@ -89,8 +79,8 @@ export class DrizzleUserRepository implements IUserRepository {
     const rows = await this.db
       .select({ id: user.id })
       .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(sql`coalesce(${bidUserProfile.role}, ${user.role}) = ${role}`);
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .where(eq(bidUserProfile.role, role));
     return rows.map((r) => r.id);
   }
 
@@ -105,12 +95,9 @@ export class DrizzleUserRepository implements IUserRepository {
     const rows = await this.db
       .select({ id: user.id })
       .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(
-        and(
-          sql`coalesce(${bidUserProfile.role}, ${user.role}) = 'staff'`,
-          inArray(sql`coalesce(${bidUserProfile.staffRole}, ${user.staffRole})`, [...staffRoles]),
-        ),
+        and(eq(bidUserProfile.role, "staff"), inArray(bidUserProfile.staffRole, [...staffRoles])),
       );
     return rows.map((r) => r.id);
   }
@@ -119,8 +106,8 @@ export class DrizzleUserRepository implements IUserRepository {
     const rows = await this.db
       .select({ email: user.email })
       .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(sql`coalesce(${bidUserProfile.role}, ${user.role}) = 'staff'`);
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .where(eq(bidUserProfile.role, "staff"));
     return [...new Set(rows.map((r) => r.email).filter((e): e is string => Boolean(e?.trim())))];
   }
 

@@ -1,68 +1,63 @@
 import { describe, expect, it, vi } from "vitest";
 import { wrapOAuthConsentUpsertAdapter } from "./oauth-consent-upsert.js";
+import type { ConsentStore } from "./ports/consent-store.js";
 
 describe("oauth consent upsert adapter", () => {
-  it("updates existing consent and merges scopes instead of inserting a duplicate row", async () => {
-    const create = vi.fn(async (args) => args.data);
-    const update = vi.fn(async (args) => ({ ...args.update, id: "consent-1" }));
-    const findOne = vi.fn(async () => ({
-      clientId: "lax-shop-web",
-      userId: "user-1",
-      scopes: "openid profile email",
-      consentGiven: true,
-    }));
-    const adapter = wrapOAuthConsentUpsertAdapter({
-      create,
-      findOne,
-      update,
-      transaction: async (callback) => callback({}),
-    } as never);
+  it("routes oauthConsent creates through ConsentStore.upsert", async () => {
+    const upsert = vi.fn(async (input) => input);
+    const consentStore: ConsentStore = { upsert };
+    const create = vi.fn();
+    const adapter = wrapOAuthConsentUpsertAdapter(
+      {
+        create,
+        transaction: async (callback) => callback({}),
+      } as never,
+      consentStore,
+    );
 
-    const row = await adapter.create({
+    const now = new Date();
+    await adapter.create({
       model: "oauthConsent",
       data: {
+        id: "consent-1",
         clientId: "lax-shop-web",
         userId: "user-1",
         scopes: "openid profile email offline_access",
         consentGiven: true,
+        createdAt: now,
+        updatedAt: now,
       },
     });
 
     expect(create).not.toHaveBeenCalled();
-    expect(update).toHaveBeenCalledWith({
-      model: "oauthConsent",
-      where: [
-        { field: "clientId", value: "lax-shop-web" },
-        { field: "userId", value: "user-1" },
-      ],
-      update: expect.objectContaining({
-        scopes: "openid profile email offline_access",
-        consentGiven: true,
-      }),
+    expect(upsert).toHaveBeenCalledWith({
+      id: "consent-1",
+      clientId: "lax-shop-web",
+      userId: "user-1",
+      scopes: "openid profile email offline_access",
+      consentGiven: true,
+      createdAt: now,
+      updatedAt: now,
     });
-    expect(row).toMatchObject({ scopes: "openid profile email offline_access" });
   });
 
-  it("creates consent when no row exists yet", async () => {
+  it("delegates non-consent models to the base adapter", async () => {
     const create = vi.fn(async (args) => args.data);
-    const findOne = vi.fn(async () => null);
-    const adapter = wrapOAuthConsentUpsertAdapter({
-      create,
-      findOne,
-      update: vi.fn(),
-      transaction: async (callback) => callback({}),
-    } as never);
+    const upsert = vi.fn();
+    const adapter = wrapOAuthConsentUpsertAdapter(
+      {
+        create,
+        transaction: async (callback) => callback({}),
+      } as never,
+      { upsert },
+    );
 
     await adapter.create({
-      model: "oauthConsent",
-      data: {
-        clientId: "lax-shop-web",
-        userId: "user-1",
-        scopes: "openid",
-        consentGiven: true,
-      },
+      model: "session",
+      data: { id: "session-1" },
     });
 
     expect(create).toHaveBeenCalledOnce();
+    expect(upsert).not.toHaveBeenCalled();
   });
 });

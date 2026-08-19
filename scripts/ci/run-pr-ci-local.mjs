@@ -128,16 +128,16 @@ run("Zod schema transform lint", "pnpm", ["lint:z-schema-transform"]);
 run("Turbo lint (affected)", "pnpm", ["turbo", "run", "lint", "--affected"]);
 run("Dependency graph", "pnpm", ["lint:deps"]);
 run("Package layers", "node", ["scripts/check-layers.mjs"]);
+run("Identity extractability", "node", ["scripts/ci/verify-identity-extractability.mjs"]);
 run("API route DIP coverage", "node", ["apps/api/scripts/check-route-dip-coverage.mjs"]);
 run("Turbo typecheck (affected)", "pnpm", ["turbo", "run", "typecheck", "--affected"]);
 
 run("Ensure CI database", "node", ["scripts/ci/ensure-ci-database.mjs"]);
 run("DB migrate", "pnpm", ["--filter", "@auction/db", "db:migrate"]);
+// 0137-0140 are superseded expand/dual-write migrations. Their forward SQL
+// intentionally reads legacy user columns removed by 0150, so replaying those
+// pairs against the fully contracted schema is invalid.
 for (const tag of [
-  "0137_identity_boundary_profiles",
-  "0138_identity_boundary_clients",
-  "0139_identity_lifecycle",
-  "0140_bid_profile_authoritative",
   "0141_repair_sale_hero_presentation",
   "0142_bid_identity_lifecycle_projection",
   "0143_oauth_consent_client_user_unique",

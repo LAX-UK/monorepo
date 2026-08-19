@@ -8,7 +8,6 @@ import {
   API_COLUMN_UPDATE_GRANTS,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
-  AUTH_PRODUCT_LINK_READ_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_FULL_TABLES,
@@ -17,6 +16,7 @@ import {
   WORKER_PAYMENT_MAINTENANCE_TABLES,
   WORKER_PROVISIONING_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
+  WORKER_READ_TABLES,
 } from "./migrate-roles.js";
 import { user } from "./schema/auth.js";
 
@@ -330,12 +330,17 @@ async function collectCallSites(): Promise<CallSiteRecord[]> {
 }
 
 describe("migrate-roles invariants", () => {
+  it("grants append-only access to identity_lifecycle_outbox", () => {
+    expect([...AUTH_INSERT_SELECT_TABLES]).toContain("identity_lifecycle_outbox");
+    expect([...AUTH_FULL_TABLES]).not.toContain("identity_lifecycle_outbox");
+  });
+
   it("AUTH_FULL_TABLES includes two_factor (Better Auth twoFactor plugin uses auth_app)", () => {
     expect([...AUTH_FULL_TABLES]).toContain("two_factor");
   });
 
-  it("AUTH_INSERT_SELECT_TABLES includes domain_events (auth emits user.registered + user.email_verified)", () => {
-    expect([...AUTH_INSERT_SELECT_TABLES]).toContain("domain_events");
+  it("WORKER_READ_TABLES includes identity_lifecycle_outbox (outbox relay job)", () => {
+    expect([...WORKER_READ_TABLES]).toContain("identity_lifecycle_outbox");
   });
 
   it("WORKER_PROVISIONING_TABLES includes legal_entity tables", () => {
@@ -366,10 +371,6 @@ describe("migrate-roles invariants", () => {
 
   it("WORKER_DOMAIN_EVENT_DELIVERY_TABLES includes domain_event_delivery ledger", () => {
     expect([...WORKER_DOMAIN_EVENT_DELIVERY_TABLES]).toContain("domain_event_delivery");
-  });
-
-  it("limits auth_app Bid profile access to the signup compensation read path", () => {
-    expect(AUTH_PRODUCT_LINK_READ_TABLES).toEqual(["bid_user_profile"]);
   });
 
   it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LAX_RESOURCES,
   LAX_RESOURCE_IDS,
+  allRegisteredOidcScopes,
   findLaxResource,
   findLaxResourceById,
   findLaxResourceByUri,
@@ -29,6 +30,19 @@ describe("LAX resource registry", () => {
     expect(
       Object.values(LAX_RESOURCES).some((resource) => resource.uri.includes("lax.art/marketing")),
     ).toBe(false);
+  });
+
+  it("derives OIDC scopes from registered product resources", () => {
+    expect(allRegisteredOidcScopes()).toEqual([
+      "openid",
+      "profile",
+      "email",
+      "offline_access",
+      "bid.read",
+      "bid.write",
+      "shop.read",
+      "shop.write",
+    ]);
   });
 
   it("resolves only registered ids and canonical resource indicators", () => {

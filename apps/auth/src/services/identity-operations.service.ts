@@ -1,23 +1,16 @@
 import { randomUUID } from "node:crypto";
+import type { IdentityEventPublisher, ProductSubjectUsageProbe } from "@auction/auth";
 import {
   type Database,
   publishUserCredentialChanged,
   publishUserIdentityDeleted,
   publishUserSessionRevoked,
 } from "@auction/db";
-import {
-  account,
-  bidUserProfile,
-  externalAccount,
-  oauthAccessToken,
-  session,
-  user,
-  verification,
-} from "@auction/db/schema";
+import { account, oauthAccessToken, session, user, verification } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { setupPasswordBodySchema } from "@auction/validators";
 import { hashPassword, verifyPassword } from "@better-auth/utils/password";
 import { and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
+import { setupPasswordBodySchema } from "../schemas/setup-password.js";
 import type { BackchannelLogoutService } from "./backchannel-logout.service.js";
 import { publishIdentityProfileUpdated } from "./publish-identity-profile-updated.js";
 
@@ -83,6 +76,8 @@ export class IdentityOperationsService {
   constructor(
     private readonly db: Database,
     private readonly emailService: Pick<IEmailService, "enqueue">,
+    private readonly productSubjectUsage: ProductSubjectUsageProbe,
+    private readonly identityEventPublisher: IdentityEventPublisher,
     private readonly logout?: Pick<
       BackchannelLogoutService,
       "revokeIdentitySessions" | "revokeSubject"
@@ -452,12 +447,16 @@ export class IdentityOperationsService {
         .where(eq(user.id, input.subjectId));
       await tx.delete(session).where(eq(session.userId, input.subjectId));
       await tx.delete(oauthAccessToken).where(eq(oauthAccessToken.userId, input.subjectId));
-      await publishIdentityProfileUpdated(tx, {
-        subjectId: input.subjectId,
-        email: fresh.pendingNewEmail,
-        name: fresh.name,
-        phone: fresh.phoneNumber ?? null,
-      });
+      await publishIdentityProfileUpdated(
+        this.identityEventPublisher,
+        {
+          subjectId: input.subjectId,
+          email: fresh.pendingNewEmail,
+          name: fresh.name,
+          phone: fresh.phoneNumber ?? null,
+        },
+        { transaction: tx },
+      );
       return true;
     });
     if (changed) await this.logout?.revokeSubject(input.subjectId);
@@ -480,22 +479,16 @@ export class IdentityOperationsService {
         .select({ providerId: account.providerId })
         .from(account)
         .where(eq(account.userId, subjectId));
-      const productProfile = await tx
-        .select({ userId: bidUserProfile.userId })
-        .from(bidUserProfile)
-        .where(eq(bidUserProfile.userId, subjectId))
-        .limit(1);
-      const externalLink = await tx
-        .select({ id: externalAccount.id })
-        .from(externalAccount)
-        .where(eq(externalAccount.userId, subjectId))
-        .limit(1);
+      const [hasProductProfile, hasExternalLink] = await Promise.all([
+        this.productSubjectUsage.hasProductProfile(subjectId),
+        this.productSubjectUsage.hasExternalLink(subjectId),
+      ]);
       if (
         !isCompensatableOrphan({
           createdAt: subject.createdAt,
           accountProviderIds: accounts.map((row) => row.providerId),
-          hasProductProfile: productProfile.length > 0,
-          hasExternalLink: externalLink.length > 0,
+          hasProductProfile,
+          hasExternalLink,
         })
       ) {
         throw new IdentityOperationError("not_orphan");
@@ -525,7 +518,7 @@ export class IdentityOperationsService {
         name: user.name,
       });
     if (!updated) throw new IdentityOperationError("subject_not_found");
-    await publishIdentityProfileUpdated(this.db, {
+    await publishIdentityProfileUpdated(this.identityEventPublisher, {
       subjectId: updated.id,
       name: updated.name,
     });

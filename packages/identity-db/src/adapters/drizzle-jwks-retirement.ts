@@ -1,5 +1,6 @@
-import { type Database, jwksKey } from "@auction/db";
 import { and, eq, lt, sql } from "drizzle-orm";
+import { jwksKey } from "../schema/jwks-key.js";
+import type { IdentityDatabase } from "./drizzle-consent-store.js";
 
 const RETIREMENT_WINDOW_MS = 30 * 60 * 1000;
 const DEFAULT_INTERVAL_MS = 15 * 60 * 1000;
@@ -17,7 +18,7 @@ type LockRow = {
 };
 
 type ScheduleOptions = {
-  db: Database;
+  db: IdentityDatabase;
   log: Logger;
   intervalMs?: number;
   lockKey?: bigint;
@@ -31,7 +32,7 @@ function rowsFromExecuteResult(result: unknown): LockRow[] {
   return [];
 }
 
-export async function retireExpiredJwksKeys(db: Database, now = new Date()): Promise<void> {
+export async function retireExpiredJwksKeys(db: IdentityDatabase, now = new Date()): Promise<void> {
   const cutoff = new Date(now.getTime() - RETIREMENT_WINDOW_MS);
   await db
     .update(jwksKey)

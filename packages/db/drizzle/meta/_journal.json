@@ -1030,6 +1030,34 @@
       "when": 1788000025000,
       "tag": "0147_remove_shop_session_id_token",
       "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1788000026000,
+      "tag": "0148_identity_lifecycle_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1788000027000,
+      "tag": "0149_ssf_drop_domain_events_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1788000028000,
+      "tag": "0150_contract_user_identity_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1788000029000,
+      "tag": "0151_subject_id_expand",
+      "breakpoints": true
     }
   ]
 }

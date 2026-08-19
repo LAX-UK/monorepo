@@ -1,13 +1,22 @@
-import { DEFAULT_JWT_AUDIENCE, createAuth, createAuthLifecycleCallbacks } from "@auction/auth";
-import { type Database, publishUserRegistered } from "@auction/db";
+import {
+  type AuthPorts,
+  DEFAULT_JWT_AUDIENCE,
+  createAuth,
+  createAuthLifecycleCallbacks,
+  createEnvelopeCrypto,
+  parseAuthDekKey,
+} from "@auction/auth";
+import type { IdentityEventPublisher } from "@auction/auth";
+import type { Database } from "@auction/db";
 import { session } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import type { IUserEmailVerifiedPublisher } from "@auction/persistence/interfaces";
+import { createIdentityAuthPorts } from "@auction/identity-db";
 import type { IPhoneVerificationService } from "@auction/sms";
 import { eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
+import { buildDrizzleDatabase } from "../infrastructure/build-drizzle-database.js";
 import { adaptOidcClaimsResolver } from "../infrastructure/oidc-claim-resolver-adapter.js";
 import type { BackchannelLogoutRevoker } from "../services/backchannel-logout-revocation.service.js";
 import type { OidcSessionCoordinator } from "../services/oidc-session-coordinator.js";
@@ -24,7 +33,7 @@ export function createAuthIssuer(options: {
   trustedOrigins: string[];
   logout: BackchannelLogoutRevoker;
   oidcSessions: Pick<OidcSessionCoordinator, "resolveIdTokenClaims">;
-  userEmailVerifiedPublisher: IUserEmailVerifiedPublisher;
+  identityEventPublisher: IdentityEventPublisher;
 }): ReturnType<typeof createAuth> {
   const lifecycle = createAuthLifecycleCallbacks({
     markUserForOAuthAttribution: (userId) =>
@@ -56,14 +65,13 @@ export function createAuthIssuer(options: {
       });
       if (!user)
         throw new Error(`Cannot publish user.registered: auth user ${userId} was not found`);
-      await publishUserRegistered(
-        options.db,
-        { userId: user.id, name: user.name, email: user.email },
+      await options.identityEventPublisher.publish(
+        { type: "user.registered", userId: user.id, email: user.email, name: user.name },
         { producer: "apps/auth" },
       );
     },
     publishUserEmailVerified: (user) =>
-      publishUserEmailVerified(options.userEmailVerifiedPublisher, {
+      publishUserEmailVerified(options.identityEventPublisher, {
         userId: user.id,
         email: user.email,
       }),
@@ -72,8 +80,20 @@ export function createAuthIssuer(options: {
     },
   });
   const env = options.env;
+  const envelope =
+    env.AUTH_DEK_KEY && env.AUTH_DEK_KEY.trim().length > 0
+      ? createEnvelopeCrypto(parseAuthDekKey(env.AUTH_DEK_KEY.trim()))
+      : undefined;
+  const identityPorts = createIdentityAuthPorts(options.db, { envelope });
+  const ports: AuthPorts = {
+    ...identityPorts,
+    email: options.email,
+    sms: options.phoneVerification,
+    events: options.identityEventPublisher,
+  };
   return createAuth({
-    db: options.db,
+    database: buildDrizzleDatabase(options.db, envelope),
+    ports,
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.OIDC_ISSUER_URL,
     issuerURL: env.OIDC_ISSUER_URL,
@@ -84,11 +104,10 @@ export function createAuthIssuer(options: {
     googleClientSecret: env.GOOGLE_CLIENT_SECRET,
     appleClientId: env.APPLE_CLIENT_ID,
     appleClientSecret: env.APPLE_CLIENT_SECRET,
-    email: options.email,
-    phoneVerification: options.phoneVerification,
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
     jwtAudience: env.JWT_AUDIENCE ?? DEFAULT_JWT_AUDIENCE,
-    authDekKey: env.AUTH_DEK_KEY?.trim(),
+    totpIssuer: env.TOTP_ISSUER ?? "LAX",
+    sessionsSettingsUrl: `${env.WEB_ORIGIN.replace(/\/$/, "")}/dashboard/settings/sessions`,
     revokeAllSessions: async (userId) => {
       await options.logout.revokeSubject(userId);
       const rows = await options.db
@@ -99,7 +118,7 @@ export function createAuthIssuer(options: {
     },
     ...lifecycle,
     onUserUpdated: (user) =>
-      publishIdentityProfileUpdated(options.db, {
+      publishIdentityProfileUpdated(options.identityEventPublisher, {
         subjectId: user.id,
         email: user.email,
         name: user.name,

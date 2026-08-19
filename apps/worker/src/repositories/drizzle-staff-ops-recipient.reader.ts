@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { bidUserProfile, user } from "@auction/db/schema";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 
 export class DrizzleStaffOpsRecipientReader implements IStaffOpsRecipientReader {
@@ -8,8 +8,13 @@ export class DrizzleStaffOpsRecipientReader implements IStaffOpsRecipientReader 
 
   async listRecipients() {
     return this.db
-      .select({ id: user.id, email: user.email, firstName: user.firstName })
+      .select({
+        id: user.id,
+        email: user.email,
+        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+      })
       .from(user)
-      .where(and(eq(user.role, "staff"), isNull(user.suspendedAt)));
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .where(and(eq(bidUserProfile.role, "staff"), isNull(bidUserProfile.suspendedAt)));
   }
 }

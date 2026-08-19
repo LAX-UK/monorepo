@@ -236,6 +236,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
         await tx.insert(bid).values({
           lotId,
           bidderId,
+          subjectId: bidderId,
           buyerLegalEntityId,
           amount: "1.00",
           internalPlacementKey: placementKey,

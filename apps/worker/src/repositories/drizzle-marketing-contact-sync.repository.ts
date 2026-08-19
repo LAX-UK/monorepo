@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
-import { emailSuppression, marketingContactSyncLog, user } from "@auction/db/schema";
+import {
+  bidUserProfile,
+  emailSuppression,
+  marketingContactSyncLog,
+  user,
+} from "@auction/db/schema";
 import { emailHash } from "@auction/email";
 import { eq } from "drizzle-orm";
 import type {
@@ -17,21 +22,28 @@ export class DrizzleMarketingContactSyncRepository implements IMarketingContactS
         id: user.id,
         email: user.email,
         emailVerified: user.emailVerified,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        country: user.mobileCountry,
-        kycStatus: user.kycStatus,
-        signupPersona: user.signupPersona,
-        emailStatus: user.emailStatus,
-        suspendedAt: user.suspendedAt,
+        role: bidUserProfile.role,
+        firstName: bidUserProfile.firstName,
+        lastName: bidUserProfile.lastName,
+        country: bidUserProfile.mobileCountry,
+        kycStatus: bidUserProfile.kycStatus,
+        signupPersona: bidUserProfile.signupPersona,
+        emailStatus: bidUserProfile.emailStatus,
+        suspendedAt: bidUserProfile.suspendedAt,
         deletionRequestedAt: user.deletionRequestedAt,
         createdAt: user.createdAt,
       })
       .from(user)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(eq(user.id, userId))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    return {
+      ...row,
+      role: row.role ?? "client",
+      emailStatus: row.emailStatus ?? "ok",
+      kycStatus: row.kycStatus ?? "unverified",
+    };
   }
 
   async isEmailSuppressed(email: string): Promise<boolean> {

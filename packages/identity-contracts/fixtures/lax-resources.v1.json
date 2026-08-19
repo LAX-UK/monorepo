@@ -1,0 +1,29 @@
+{
+  "resources": {
+    "lax-bid-api": {
+      "id": "lax-bid-api",
+      "uri": "https://api.lax.bid",
+      "allowedScopes": ["bid.read", "bid.write"]
+    },
+    "lax-ws": {
+      "id": "lax-ws",
+      "uri": "https://ws.lax.bid",
+      "allowedScopes": ["bid.read"]
+    },
+    "lax-shop-api": {
+      "id": "lax-shop-api",
+      "uri": "https://shop.lax.art/api",
+      "allowedScopes": ["shop.read", "shop.write"]
+    }
+  },
+  "derivedOidcScopes": [
+    "openid",
+    "profile",
+    "email",
+    "offline_access",
+    "bid.read",
+    "bid.write",
+    "shop.read",
+    "shop.write"
+  ]
+}

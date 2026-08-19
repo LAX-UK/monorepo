@@ -1,10 +1,10 @@
+import type { ConsentStore } from "./ports/consent-store.js";
+
 // biome-ignore lint/suspicious/noExplicitAny: Better Auth adapter methods use heterogeneous per-model args
 type AdapterMethod = (...args: any[]) => Promise<any>;
 
 type AuthDbAdapter = {
   create: AdapterMethod;
-  findOne: AdapterMethod;
-  update: AdapterMethod;
   transaction: (cb: (tx: AuthDbAdapter) => Promise<unknown>) => Promise<unknown>;
   [key: string]: unknown;
 };
@@ -15,21 +15,38 @@ function isAlreadyWrapped(adapter: AuthDbAdapter): boolean {
   return Object.getOwnPropertyDescriptor(adapter, wrappedSym)?.value === true;
 }
 
-function mergeConsentScopes(existing: unknown, incoming: unknown): string {
-  const parts = [
-    ...(typeof existing === "string" ? existing.split(" ") : []),
-    ...(typeof incoming === "string" ? incoming.split(" ") : []),
-  ].filter(Boolean);
-  return [...new Set(parts)].join(" ");
+function parseConsentRecord(data: Record<string, unknown>) {
+  const clientId = data.clientId;
+  const userId = data.userId;
+  const scopes = data.scopes;
+  const consentGiven = data.consentGiven;
+  const id = data.id;
+  const createdAt = data.createdAt;
+  const updatedAt = data.updatedAt;
+  if (
+    typeof clientId !== "string" ||
+    typeof userId !== "string" ||
+    typeof scopes !== "string" ||
+    typeof consentGiven !== "boolean" ||
+    typeof id !== "string" ||
+    !(createdAt instanceof Date) ||
+    !(updatedAt instanceof Date)
+  ) {
+    return null;
+  }
+  return { id, clientId, userId, scopes, consentGiven, createdAt, updatedAt };
 }
 
-/** Better Auth always inserts oauthConsent; upsert when the client/user pair already exists. */
-export function wrapOAuthConsentUpsertAdapter(base: AuthDbAdapter): AuthDbAdapter {
+/** Routes Better Auth oauthConsent inserts through the atomic ConsentStore port. */
+export function wrapOAuthConsentUpsertAdapter(
+  base: AuthDbAdapter,
+  consentStore: ConsentStore,
+): AuthDbAdapter {
   if (isAlreadyWrapped(base)) {
     return base;
   }
 
-  const wrap = (adapter: AuthDbAdapter): AuthDbAdapter => {
+  const wrap = (adapter: AuthDbAdapter, store: ConsentStore): AuthDbAdapter => {
     if (isAlreadyWrapped(adapter)) {
       return adapter;
     }
@@ -42,40 +59,14 @@ export function wrapOAuthConsentUpsertAdapter(base: AuthDbAdapter): AuthDbAdapte
         if (args.model !== "oauthConsent") {
           return adapter.create(args);
         }
-
-        const clientId = args.data.clientId;
-        const userId = args.data.userId;
-        if (typeof clientId !== "string" || typeof userId !== "string") {
+        const record = parseConsentRecord(args.data);
+        if (!record) {
           return adapter.create(args);
         }
-
-        const existing = (await adapter.findOne({
-          model: "oauthConsent",
-          where: [
-            { field: "clientId", value: clientId },
-            { field: "userId", value: userId },
-          ],
-        })) as Record<string, unknown> | null;
-
-        if (!existing) {
-          return adapter.create(args);
-        }
-
-        return adapter.update({
-          model: "oauthConsent",
-          where: [
-            { field: "clientId", value: clientId },
-            { field: "userId", value: userId },
-          ],
-          update: {
-            ...args.data,
-            scopes: mergeConsentScopes(existing.scopes, args.data.scopes),
-            updatedAt: new Date(),
-          },
-        });
+        return store.upsert(record);
       },
       async transaction(cb: (tx: AuthDbAdapter) => Promise<unknown>) {
-        return adapter.transaction(async (tx) => cb(wrap(tx as AuthDbAdapter)));
+        return adapter.transaction(async (tx) => cb(wrap(tx as AuthDbAdapter, store)));
       },
     };
 
@@ -83,5 +74,5 @@ export function wrapOAuthConsentUpsertAdapter(base: AuthDbAdapter): AuthDbAdapte
     return out;
   };
 
-  return wrap(base);
+  return wrap(base, consentStore);
 }

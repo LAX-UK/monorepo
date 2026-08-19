@@ -63,6 +63,7 @@ function bidRow(
     id: "00000000-0000-4000-8000-000000000002",
     lotId: "00000000-0000-4000-8000-000000000001",
     bidderId: "buyer-1",
+    subjectId: null,
     buyerLegalEntityId: "00000000-0000-4000-8000-000000000011",
     amount: "110.00",
     isWinning: true,

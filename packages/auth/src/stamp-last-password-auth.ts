@@ -1,6 +1,4 @@
-import type { Database } from "@auction/db";
-import { session } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import type { SessionStampStore } from "./ports/session-stamp-store.js";
 
 function readSessionToken(res: Response): string | null {
   const cookies =
@@ -20,30 +18,22 @@ function readSessionToken(res: Response): string | null {
   return token;
 }
 
-/** Reads `Set-Cookie` from a Better Auth sign-in response and stamps `last_password_auth_at` on that session row. */
+/** Reads `Set-Cookie` from a Better Auth sign-in response and stamps `last_password_auth_at`. */
 export async function stampLastPasswordAuthFromSignInResponse(
-  authDb: Database,
+  store: SessionStampStore,
   res: Response,
 ): Promise<void> {
   const token = readSessionToken(res);
   if (!token) return;
-  const now = new Date();
-  await authDb
-    .update(session)
-    .set({ lastPasswordAuthAt: now, updatedAt: now })
-    .where(eq(session.token, token));
+  await store.stampPasswordAuth(token, new Date());
 }
 
 /** Records successful TOTP/backup-code completion against the exact new browser session. */
 export async function stampMfaCompletedFromResponse(
-  authDb: Database,
+  store: SessionStampStore,
   res: Response,
 ): Promise<void> {
   const token = readSessionToken(res);
   if (!token) return;
-  const now = new Date();
-  await authDb
-    .update(session)
-    .set({ mfaCompletedAt: now, updatedAt: now })
-    .where(eq(session.token, token));
+  await store.stampMfaCompleted(token, new Date());
 }

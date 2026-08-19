@@ -23,24 +23,22 @@
  * the DB-backed session cookie TTL (`session.expiresIn` / `updateAge` below).
  */
 
-import type { Database } from "@auction/db";
-import type { IEmailService } from "@auction/email";
-import type { IPhoneVerificationService } from "@auction/sms";
 import { betterAuth } from "better-auth";
 import { buildDatabaseHooks } from "./auth-hooks/database-hooks.js";
 import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 import type { AuthLifecycleCallbacks } from "./contracts.js";
-import { parseAuthDekKey } from "./crypto/dek.js";
-import { createEnvelopeCrypto } from "./crypto/envelope.js";
+import type { AuthDatabase } from "./phone-number-plugin.js";
+import type { AuthPorts } from "./ports/index.js";
 import {
-  buildDrizzleDatabase,
   buildEmailAndPasswordBlock,
   buildEmailVerificationBlock,
   buildJwtAndOidcPlugins,
 } from "./server-plugins.js";
 
 export type AuthEnv = {
-  db: Database;
+  /** Better Auth database adapter from `buildDrizzleDatabase` in apps/auth. */
+  database: AuthDatabase;
+  ports: AuthPorts;
   secret: string;
   /** e.g. http://localhost:3001 */
   baseURL: string;
@@ -55,13 +53,13 @@ export type AuthEnv = {
   appleClientId?: string | undefined;
   /** Apple client secret JWT. If absent, Apple is feature-flagged off. */
   appleClientSecret?: string | undefined;
-  email?: IEmailService | undefined;
-  phoneVerification?: IPhoneVerificationService | undefined;
   requireEmailVerification?: boolean | undefined;
-  /** `aud` claim for first-party JWTs consumed by the Bid API. */
+  /** First-party JWT `aud` claim consumed by product APIs. */
   jwtAudience?: string | undefined;
-  /** When set (64 hex or base64 of 32 bytes), envelope-encrypts OAuth tokens, 2FA secrets, and JWKS private keys at rest. */
-  authDekKey?: string | undefined;
+  /** TOTP issuer label shown in authenticator apps. */
+  totpIssuer?: string | undefined;
+  /** URL for the sessions settings page linked from password-reset emails. */
+  sessionsSettingsUrl?: string | undefined;
   /** Called after password reset succeeds — revoke all other sessions; returns count of revoked rows (optional; wired in apps/api). */
   revokeAllSessions?: ((userId: string) => Promise<number>) | undefined;
   /** Invoked from `databaseHooks.user.create.after` for every new auth user (email + OAuth).
@@ -155,17 +153,18 @@ export function createAuth(env: AuthEnv): Auth {
   const issuer = env.issuerURL ?? env.baseURL;
   const socialProviders = createSocialProviders(env);
   const jwtAudience = env.jwtAudience ?? DEFAULT_JWT_AUDIENCE;
-  const envelope =
-    env.authDekKey && env.authDekKey.trim().length > 0
-      ? createEnvelopeCrypto(parseAuthDekKey(env.authDekKey.trim()))
-      : undefined;
+  const totpIssuer = env.totpIssuer ?? "LAX";
+  const sessionsSettingsUrl =
+    env.sessionsSettingsUrl ??
+    `${(env.webOrigin ?? "https://lax.bid").replace(/\/$/, "")}/dashboard/settings/sessions`;
+  const { ports } = env;
 
   return betterAuth({
     secret: env.secret,
     baseURL: issuer,
     basePath: "/api/auth",
     trustedOrigins: env.trustedOrigins,
-    database: buildDrizzleDatabase(env.db, envelope),
+    database: env.database,
     socialProviders,
     account: {
       accountLinking: {
@@ -192,18 +191,23 @@ export function createAuth(env: AuthEnv): Auth {
       },
     },
     emailAndPassword: buildEmailAndPasswordBlock({
-      email: env.email,
+      email: ports.email,
       requireEmailVerification: env.requireEmailVerification,
       revokeAllSessions: env.revokeAllSessions,
-      webOrigin: env.webOrigin,
+      sessionsSettingsUrl,
     }),
     emailVerification: buildEmailVerificationBlock({
-      email: env.email,
+      email: ports.email,
       onEmailVerified: env.onEmailVerified,
     }),
     databaseHooks: buildDatabaseHooks({
-      db: env.db,
-      email: env.email,
+      ports: {
+        subjectStatusReader: ports.subjectStatusReader,
+        sessionCountReader: ports.sessionCountReader,
+        accountLinkReader: ports.accountLinkReader,
+        phoneNumberStore: ports.phoneNumberStore,
+        email: ports.email,
+      },
       onUserCreated: env.onUserCreated,
       onAccountCreated: env.onAccountCreated,
       onUserUpdated: env.onUserUpdated,
@@ -218,13 +222,15 @@ export function createAuth(env: AuthEnv): Auth {
       },
     },
     plugins: buildJwtAndOidcPlugins({
-      db: env.db,
+      jwksStore: ports.jwksStore,
+      accountLinkReader: ports.accountLinkReader,
+      phoneNumberStore: ports.phoneNumberStore,
       issuer,
       webOrigin: env.webOrigin,
       jwtAudience,
-      envelope,
-      email: env.email,
-      phoneVerification: env.phoneVerification,
+      totpIssuer,
+      email: ports.email,
+      phoneVerification: ports.sms,
       onEmailVerified: env.onEmailVerified,
       resolveOidcIdTokenClaims: env.resolveOidcIdTokenClaims,
     }),

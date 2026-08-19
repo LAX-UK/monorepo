@@ -20,21 +20,19 @@ export const AUTH_FULL_TABLES = [
   /** `twoFactor` plugin backing table used only by the canonical auth issuer. */
   "two_factor",
 ] as const;
-// apps/auth (auth_app) needs to enqueue email via IEmailService.enqueue() from the
-// Better Auth send-verification-email / send-reset-password / databaseHooks.user.create.after
-// hooks. That requires INSERT + SELECT on email_outbox, plus SELECT on email_suppression
-// to honour suppression at enqueue time. Auth must NOT be able to update the outbox
-// (that's the worker's job) or write to the suppression table (that's apps/api via the
-// Postmark webhook and the unsubscribe route).
-/** Tables `auth_app` may INSERT and SELECT (no UPDATE/DELETE).
- * - `email_outbox`: enqueue transactional mail from Better Auth hooks.
- * - `domain_events`: append `user.registered` (INSERT) and `user.email_verified`
- *   (`publishUserEmailVerified` SELECT pre-check + INSERT; see apps/auth). */
-export const AUTH_INSERT_SELECT_TABLES = ["email_outbox", "domain_events"] as const;
+/**
+ * Transitional side-effect access. Remove each entry only after apps/auth has
+ * stopped using the corresponding shared-table adapter.
+ */
+export const AUTH_INSERT_SELECT_TABLES = [
+  "email_outbox",
+  "domain_events",
+  "identity_lifecycle_outbox",
+] as const;
 export const AUTH_SELECT_TABLES = ["email_suppression"] as const;
-/** Identity merge retargets existing external links; auth never creates or deletes them. */
+/** Identity merge currently retargets existing product links. */
 export const AUTH_EXTERNAL_ACCOUNT_TABLES = ["external_accounts"] as const;
-/** Signup compensation checks that no Bid product profile has been provisioned. */
+/** Signup compensation currently checks for an existing Bid profile. */
 export const AUTH_PRODUCT_LINK_READ_TABLES = ["bid_user_profile"] as const;
 export const API_DENY_TABLES = [
   "session",
@@ -52,6 +50,7 @@ export const API_DENY_TABLES = [
   "shop_logout_token_replay",
   "ssf_stream",
   "ssf_delivery",
+  "identity_lifecycle_outbox",
   "shop_ssf_replay",
 ] as const;
 const API_READ_TABLES = ["user"];
@@ -75,8 +74,10 @@ export const WORKER_DENY_TABLES = [
   "shop_logout_token_replay",
   ...SHOP_SSF_RECEIVER_TABLES,
 ] as const;
-const WORKER_READ_TABLES = [
+export const WORKER_READ_TABLES = [
   "user",
+  /** Identity lifecycle outbox relay reads pending rows before inserting into domain_events. */
+  "identity_lifecycle_outbox",
   /** Catalogue tables scanned by backfill-media-assets (read image key columns only). */
   "sale",
   "item_submission",
@@ -200,13 +201,17 @@ function quoteLiteral(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
 }
 
-async function tableExists(client: pg.Client, tableName: string): Promise<boolean> {
+async function tableExists(
+  client: pg.Client,
+  tableName: string,
+  schemaName = "public",
+): Promise<boolean> {
   const res = await client.query<{ exists: boolean }>(
     `select exists (
       select 1 from information_schema.tables
-      where table_schema = 'public' and table_name = $1
+      where table_schema = $1 and table_name = $2
     )`,
-    [tableName],
+    [schemaName, tableName],
   );
   return Boolean(res.rows[0]?.exists);
 }
@@ -253,10 +258,11 @@ async function grantIfExists(
     | "INSERT, SELECT, UPDATE"
     | "INSERT, SELECT, UPDATE, DELETE"
     | "ALL PRIVILEGES",
+  schemaName = "public",
 ): Promise<void> {
-  if (!(await tableExists(client, tableName))) return;
+  if (!(await tableExists(client, tableName, schemaName))) return;
   await client.query(
-    `grant ${privileges} on table public.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
+    `grant ${privileges} on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
   );
 }
 
@@ -265,11 +271,12 @@ async function grantColumnUpdateIfExists(
   role: RoleName,
   tableName: string,
   columns: readonly string[],
+  schemaName = "public",
 ): Promise<void> {
-  if (!(await tableExists(client, tableName)) || columns.length === 0) return;
+  if (!(await tableExists(client, tableName, schemaName)) || columns.length === 0) return;
   const columnList = columns.map(quoteIdent).join(", ");
   await client.query(
-    `grant update (${columnList}) on table public.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
+    `grant update (${columnList}) on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
   );
 }
 
@@ -278,16 +285,21 @@ async function revokeIfExists(
   role: RoleName,
   tableName: string,
   privileges = "ALL PRIVILEGES",
+  schemaName = "public",
 ): Promise<void> {
-  if (!(await tableExists(client, tableName))) return;
+  if (!(await tableExists(client, tableName, schemaName))) return;
   await client.query(
-    `revoke ${privileges} on table public.${quoteIdent(tableName)} from ${quoteIdent(role)}`,
+    `revoke ${privileges} on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} from ${quoteIdent(role)}`,
   );
 }
 
-async function grantSequences(client: pg.Client, role: RoleName): Promise<void> {
+async function grantSequences(
+  client: pg.Client,
+  role: RoleName,
+  schemaName: string,
+): Promise<void> {
   await client.query(
-    `grant usage, select on all sequences in schema public to ${quoteIdent(role)}`,
+    `grant usage, select on all sequences in schema ${quoteIdent(schemaName)} to ${quoteIdent(role)}`,
   );
 }
 
@@ -328,13 +340,6 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         continue;
       }
       if (API_READ_TABLES.includes(tableName)) {
-        await grantIfExists(client, "api_app", tableName, "SELECT");
-        await grantColumnUpdateIfExists(
-          client,
-          "api_app",
-          tableName,
-          API_COLUMN_UPDATE_GRANTS[tableName] ?? [],
-        );
         continue;
       }
       if ((API_PRODUCT_PROFILE_TABLES as readonly string[]).includes(tableName)) {
@@ -348,6 +353,7 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");
     }
     for (const tableName of WORKER_READ_TABLES) {
+      if (tableName === "user") continue;
       await grantIfExists(client, "worker_app", tableName, "SELECT");
     }
     for (const tableName of SHOP_PRODUCT_PROFILE_TABLES) {
@@ -451,8 +457,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS,
     );
 
+    await grantIfExists(client, "api_app", "user", "SELECT");
+    await grantColumnUpdateIfExists(client, "api_app", "user", API_COLUMN_UPDATE_GRANTS.user ?? []);
+    await grantIfExists(client, "worker_app", "user", "SELECT");
+
     for (const role of ["auth_app", "api_app", "worker_app"] as const) {
-      await grantSequences(client, role);
+      await grantSequences(client, role, "public");
     }
 
     await client.query("commit");

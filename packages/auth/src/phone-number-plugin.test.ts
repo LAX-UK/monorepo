@@ -1,17 +1,23 @@
-import type { Database } from "@auction/db";
-import type { IPhoneVerificationService } from "@auction/sms";
-import { InvalidPhoneNumberError, PhoneVerificationRateLimitedError } from "@auction/sms";
 import { APIError } from "better-auth/api";
 import { describe, expect, it, vi } from "vitest";
 import {
-  buildPhoneNumberPlugin,
-  buildPhoneNumberRateLimitPlugin,
-  resetPhoneVerifiedIfNumberChanged,
-} from "./phone-number-plugin.js";
+  InvalidPhoneNumberError,
+  PhoneVerificationRateLimitedError,
+} from "./phone-number-errors.js";
+import { buildPhoneNumberPlugin, buildPhoneNumberRateLimitPlugin } from "./phone-number-plugin.js";
+import type { PhoneNumberStore } from "./ports/phone-number-store.js";
+import type { SmsSender } from "./ports/sms-sender.js";
 
-function fakePhoneService(
-  overrides: Partial<IPhoneVerificationService> = {},
-): IPhoneVerificationService {
+function fakePhoneNumberStore(overrides: Partial<PhoneNumberStore> = {}): PhoneNumberStore {
+  return {
+    purgeExpiredVerifications: vi.fn(async () => undefined),
+    findPhoneNumber: vi.fn(async () => null),
+    resetPhoneVerifiedIfNumberChanged: vi.fn(async () => undefined),
+    ...overrides,
+  };
+}
+
+function fakePhoneService(overrides: Partial<SmsSender> = {}): SmsSender {
   return {
     isConfigured: () => true,
     sendOtp: vi.fn(async () => ({ sid: "VE123" })),
@@ -23,12 +29,9 @@ function fakePhoneService(
 describe("buildPhoneNumberPlugin", () => {
   it("delegates sendOTP to phoneVerification and ignores Better Auth code", async () => {
     const phoneVerification = fakePhoneService();
+    const phoneNumberStore = fakePhoneNumberStore();
     const plugin = buildPhoneNumberPlugin({
-      db: {
-        delete: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(undefined),
-        }),
-      } as unknown as Database,
+      phoneNumberStore,
       phoneVerification,
     });
 
@@ -43,6 +46,7 @@ describe("buildPhoneNumberPlugin", () => {
     expect(phoneVerification.sendOtp).toHaveBeenCalledWith("+14155550100", {
       ipAddress: "203.0.113.1",
     });
+    expect(phoneNumberStore.purgeExpiredVerifications).toHaveBeenCalled();
   });
 
   it("maps InvalidPhoneNumberError to BAD_REQUEST on send", async () => {
@@ -52,7 +56,7 @@ describe("buildPhoneNumberPlugin", () => {
       }),
     });
     const plugin = buildPhoneNumberPlugin({
-      db: {} as Database,
+      phoneNumberStore: fakePhoneNumberStore(),
       phoneVerification,
     });
 
@@ -68,7 +72,7 @@ describe("buildPhoneNumberPlugin", () => {
       }),
     });
     const plugin = buildPhoneNumberPlugin({
-      db: {} as Database,
+      phoneNumberStore: fakePhoneNumberStore(),
       phoneVerification,
     });
 
@@ -82,7 +86,7 @@ describe("buildPhoneNumberPlugin", () => {
       checkOtp: vi.fn(async () => ({ valid: false })),
     });
     const plugin = buildPhoneNumberPlugin({
-      db: {} as Database,
+      phoneNumberStore: fakePhoneNumberStore(),
       phoneVerification,
     });
 
@@ -105,14 +109,16 @@ describe("buildPhoneNumberRateLimitPlugin", () => {
   });
 });
 
-describe("resetPhoneVerifiedIfNumberChanged", () => {
+describe("PhoneNumberStore.resetPhoneVerifiedIfNumberChanged", () => {
   it("no-ops when phone unchanged", async () => {
-    const where = vi.fn().mockReturnValue({ set: vi.fn() });
-    const db = {
-      update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where }) }),
-    } as unknown as Database;
+    const resetPhoneVerifiedIfNumberChanged = vi.fn(async () => undefined);
+    const store = fakePhoneNumberStore({ resetPhoneVerifiedIfNumberChanged });
 
-    await resetPhoneVerifiedIfNumberChanged(db, "u1", "+14155550100", "+14155550100");
-    expect(db.update).not.toHaveBeenCalled();
+    await store.resetPhoneVerifiedIfNumberChanged("u1", "+14155550100", "+14155550100");
+    expect(resetPhoneVerifiedIfNumberChanged).toHaveBeenCalledWith(
+      "u1",
+      "+14155550100",
+      "+14155550100",
+    );
   });
 });

@@ -1,5 +1,7 @@
-import { type Database, domainEvent, ssfDelivery, ssfStream } from "@auction/db";
+import type { Database } from "@auction/db";
 import { SSF_VERIFICATION_EVENT } from "@auction/identity-contracts";
+import { identityLifecycleOutbox, ssfDelivery } from "@auction/identity-db/schema";
+import { ssfStream } from "@auction/identity-db/schema";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type {
   SsfDeliveryRepository,
@@ -25,8 +27,8 @@ export class DrizzleSsfStreamRepository implements SsfStreamRepository {
 
   async currentDomainEventId(): Promise<number> {
     const [row] = await this.db
-      .select({ id: sql<number>`coalesce(max(${domainEvent.id}), 0)::bigint` })
-      .from(domainEvent);
+      .select({ id: sql<number>`coalesce(max(${identityLifecycleOutbox.id}), 0)::bigint` })
+      .from(identityLifecycleOutbox);
     return Number(row?.id ?? 0);
   }
 
@@ -149,26 +151,26 @@ export class DrizzleSsfSourceEventReader implements SsfSourceEventReader {
   ) {
     return this.db
       .select({
-        id: domainEvent.id,
-        eventType: domainEvent.eventType,
-        aggregateId: domainEvent.aggregateId,
-        payload: domainEvent.payload,
-        correlationId: domainEvent.correlationId,
-        occurredAt: domainEvent.occurredAt,
+        id: identityLifecycleOutbox.id,
+        eventType: identityLifecycleOutbox.eventType,
+        aggregateId: identityLifecycleOutbox.aggregateId,
+        payload: identityLifecycleOutbox.payload,
+        correlationId: identityLifecycleOutbox.correlationId,
+        occurredAt: identityLifecycleOutbox.occurredAt,
       })
-      .from(domainEvent)
+      .from(identityLifecycleOutbox)
       .where(
         and(
-          inArray(domainEvent.eventType, [...domainEventTypes]),
-          sql`${domainEvent.id} > ${afterEventId}`,
+          inArray(identityLifecycleOutbox.eventType, [...domainEventTypes]),
+          sql`${identityLifecycleOutbox.id} > ${afterEventId}`,
           sql`not exists (
             select 1 from ${ssfDelivery}
             where ${ssfDelivery.streamId} = ${streamId}
-              and ${ssfDelivery.sourceEventId} = ${domainEvent.id}
+              and ${ssfDelivery.sourceEventId} = ${identityLifecycleOutbox.id}
           )`,
         ),
       )
-      .orderBy(asc(domainEvent.id))
+      .orderBy(asc(identityLifecycleOutbox.id))
       .limit(limit);
   }
 }

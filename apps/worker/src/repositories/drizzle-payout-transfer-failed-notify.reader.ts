@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, payout, user } from "@auction/db/schema";
-import { and, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { bidUserProfile, legalEntity, legalEntityMember, payout, user } from "@auction/db/schema";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { IPayoutTransferFailedNotifyReader } from "../interfaces/payout-transfer-failed-notify.reader.js";
 
 export class DrizzlePayoutTransferFailedNotifyReader implements IPayoutTransferFailedNotifyReader {
@@ -28,10 +28,11 @@ export class DrizzlePayoutTransferFailedNotifyReader implements IPayoutTransferF
       .selectDistinct({
         email: user.email,
         userId: user.id,
-        firstName: user.firstName,
+        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
       })
       .from(legalEntityMember)
       .innerJoin(user, eq(user.id, legalEntityMember.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(
         and(
           eq(legalEntityMember.legalEntityId, legalEntityId),

@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { DrizzleBidUserContextLoader } from "./drizzle-bid-user-context.loader.js";
 
+function databaseReturning(row: Record<string, unknown>) {
+  const limit = vi.fn().mockResolvedValue([row]);
+  const where = vi.fn(() => ({ limit }));
+  const leftJoin = vi.fn(() => ({ where }));
+  const from = vi.fn(() => ({ leftJoin }));
+  return { select: vi.fn(() => ({ from })) };
+}
+
 describe("DrizzleBidUserContextLoader", () => {
   it("fails closed on legacy lifecycle state while the local projection catches up", async () => {
     const profile = {
@@ -15,12 +23,13 @@ describe("DrizzleBidUserContextLoader", () => {
       identityDisabledAt: new Date("2026-08-01T00:00:00.000Z"),
       mergedIntoSubjectId: "canonical",
     };
-    const db = {
-      query: {
-        bidUserProfile: { findFirst: vi.fn().mockResolvedValue(profile) },
-        user: { findFirst: vi.fn().mockResolvedValue(legacy) },
-      },
-    };
+    const db = databaseReturning({
+      ...profile,
+      profileIdentityDisabledAt: profile.identityDisabledAt,
+      profileMergedIntoSubjectId: profile.mergedIntoSubjectId,
+      identityDisabledAt: legacy.identityDisabledAt,
+      mergedIntoSubjectId: legacy.mergedIntoSubjectId,
+    });
 
     const context = await new DrizzleBidUserContextLoader(db as never).loadContext("retired");
 
@@ -39,12 +48,11 @@ describe("DrizzleBidUserContextLoader", () => {
       identityDisabledAt: null,
       mergedIntoSubjectId: null,
     };
-    const db = {
-      query: {
-        bidUserProfile: { findFirst: vi.fn().mockResolvedValue(profile) },
-        user: { findFirst: vi.fn().mockResolvedValue(profile) },
-      },
-    };
+    const db = databaseReturning({
+      ...profile,
+      profileIdentityDisabledAt: profile.identityDisabledAt,
+      profileMergedIntoSubjectId: profile.mergedIntoSubjectId,
+    });
 
     await expect(
       new DrizzleBidUserContextLoader(db as never).loadContext("bid-suspended"),

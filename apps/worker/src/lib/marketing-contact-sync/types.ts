@@ -9,7 +9,7 @@ export type MarketingContact = {
   email: string;
   firstName?: string | null;
   lastName?: string | null;
-  /** ISO 3166-1 alpha-2 region (from `user.mobile_country`). */
+  /** ISO 3166-1 alpha-2 region (from `bid_user_profile.mobile_country`). */
   country?: string | null;
   kycStatus: string;
   emailVerified: boolean;

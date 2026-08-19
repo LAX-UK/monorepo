@@ -1,9 +1,4 @@
-import {
-  buildTrustedAuthOrigins,
-  createEnvelopeCrypto,
-  createJwksAdapter,
-  parseAuthDekKey,
-} from "@auction/auth";
+import { buildTrustedAuthOrigins, createEnvelopeCrypto, parseAuthDekKey } from "@auction/auth";
 import { type Database, createDb } from "@auction/db";
 import {
   ConsoleEmailService,
@@ -11,6 +6,7 @@ import {
   PostmarkEmailService,
   bindEmailQueue,
 } from "@auction/email";
+import { createDrizzleJwksStore } from "@auction/identity-db";
 import { Sentry, getBullMqTelemetry } from "@auction/observability";
 import { EMAIL_QUEUE_NAME, createBullQueueOptions } from "@auction/queues";
 import {
@@ -71,7 +67,7 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
     emailService,
     webOrigins,
     envelope,
-    jwks: createJwksAdapter(db, envelope),
+    jwks: createDrizzleJwksStore(db, envelope),
     phoneVerification:
       env.ENABLE_PHONE_VERIFICATION && isTwilioVerifyConfigured(env)
         ? TwilioVerifyService.fromEnv(env)

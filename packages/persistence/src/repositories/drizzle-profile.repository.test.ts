@@ -52,11 +52,18 @@ describe("DrizzleProfileRepository.updateProfile", () => {
     const where = vi.fn().mockResolvedValue(undefined);
     const set = vi.fn().mockReturnValue({ where });
     const update = vi.fn().mockReturnValue({ set });
-    const returning = vi.fn().mockResolvedValue([{ userId: "u1" }]);
-    const onConflictDoUpdate = vi.fn().mockReturnValue({ returning });
-    const insertSelect = vi.fn().mockReturnValue({ onConflictDoUpdate });
-    const insert = vi.fn().mockReturnValue({ select: insertSelect });
-    const sourceWhere = vi.fn().mockReturnValue({ query: "source" });
+    const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+    const values = vi.fn().mockReturnValue({ onConflictDoUpdate });
+    const insert = vi.fn().mockReturnValue({ values });
+    const sourceWhere = vi.fn().mockResolvedValue([
+      {
+        userId: "u1",
+        identityDisabledAt: null,
+        mergedIntoSubjectId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
     const sourceFrom = vi.fn().mockReturnValue({ where: sourceWhere });
     const select = vi.fn().mockReturnValue({ from: sourceFrom });
     const tx = { insert, select, update };

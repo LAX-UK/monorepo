@@ -15,12 +15,16 @@ export function createProjectorRunner(options: {
   buildContext: () => ProjectorRunContext;
   /** transactional email outbox for impersonation notices. */
   emailService?: IEmailService;
+  relayIdentityOutbox?: () => Promise<void>;
 }) {
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;
   const registry = createDefaultProjectorRegistry();
 
   async function tick() {
+    if (options.relayIdentityOutbox) {
+      await options.relayIdentityOutbox();
+    }
     const ctx = options.buildContext();
     await registry.runAll(ctx);
     await options.heartbeat();

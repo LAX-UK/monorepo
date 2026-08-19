@@ -1,6 +1,13 @@
 import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, lot, payout, user } from "@auction/db/schema";
-import { and, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import {
+  bidUserProfile,
+  legalEntity,
+  legalEntityMember,
+  lot,
+  payout,
+  user,
+} from "@auction/db/schema";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { INotificationFanoutReader } from "../interfaces/notification-fanout.reader.js";
 
 export class DrizzleNotificationFanoutReader implements INotificationFanoutReader {
@@ -11,10 +18,11 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
       .selectDistinct({
         email: user.email,
         userId: user.id,
-        firstName: user.firstName,
+        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
       })
       .from(legalEntityMember)
       .innerJoin(user, eq(user.id, legalEntityMember.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(
         and(
           eq(legalEntityMember.legalEntityId, legalEntityId),
@@ -75,8 +83,13 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
 
   async getUserForProxyNotice(userId: string) {
     const [row] = await this.db
-      .select({ email: user.email, name: user.name, firstName: user.firstName })
+      .select({
+        email: user.email,
+        name: user.name,
+        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+      })
       .from(user)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(eq(user.id, userId))
       .limit(1);
     return row ?? null;
@@ -84,8 +97,12 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
 
   async getWinnerContact(userId: string) {
     const [row] = await this.db
-      .select({ email: user.email, firstName: user.firstName })
+      .select({
+        email: user.email,
+        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+      })
       .from(user)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(eq(user.id, userId))
       .limit(1);
     return row ?? null;
@@ -98,8 +115,13 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
       .where(eq(lot.id, lotId))
       .limit(1);
     const [buyerRow] = await this.db
-      .select({ email: user.email, name: user.name, firstName: user.firstName })
+      .select({
+        email: user.email,
+        name: user.name,
+        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+      })
       .from(user)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(eq(user.id, buyerUserId))
       .limit(1);
     const [sellerRow] = await this.db

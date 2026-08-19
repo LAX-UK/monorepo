@@ -1,5 +1,5 @@
-import type { Database } from "@auction/db";
-import { jwksKey } from "@auction/db";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { jwksKey } from "@auction/identity-db/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const orm = vi.hoisted(() => ({
@@ -24,7 +24,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   };
 });
 
-const { retireExpiredJwksKeys, startJwksRetirementSchedule } = await import("./jwks-retirement.js");
+const { retireExpiredJwksKeys, startJwksRetirementSchedule } = await import("@auction/identity-db");
 
 function createMockDb() {
   const where = vi.fn(async () => undefined);
@@ -36,7 +36,7 @@ function createMockDb() {
   const transaction = vi.fn(async (callback: (tx: Tx) => Promise<void>) => callback(tx));
 
   return {
-    db: { execute, transaction, update } as unknown as Database,
+    db: { execute, transaction, update } as unknown as IdentityDatabase,
     execute,
     set,
     transaction,

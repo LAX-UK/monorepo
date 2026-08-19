@@ -42,6 +42,7 @@ export {
 export {
   LAX_RESOURCES,
   LAX_RESOURCE_IDS,
+  allRegisteredOidcScopes,
   findLaxResource,
   findLaxResourceById,
   findLaxResourceByUri,

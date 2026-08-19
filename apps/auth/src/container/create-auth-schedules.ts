@@ -1,5 +1,5 @@
-import { startJwksRetirementSchedule } from "@auction/auth";
 import type { Database } from "@auction/db";
+import { startJwksRetirementSchedule } from "@auction/identity-db";
 import { Sentry } from "@auction/observability";
 import type pino from "pino";
 import type { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";

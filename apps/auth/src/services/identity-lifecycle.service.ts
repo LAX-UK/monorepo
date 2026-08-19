@@ -1,17 +1,6 @@
-import {
-  type Database,
-  publishUserIdentityDisabled,
-  publishUserIdentityEnabled,
-  publishUserIdentityMerged,
-} from "@auction/db";
-import {
-  account,
-  externalAccount,
-  oauthAccessToken,
-  oauthConsent,
-  session,
-  user,
-} from "@auction/db/schema";
+import type { IdentityEventPublisher } from "@auction/auth";
+import type { Database } from "@auction/db";
+import { account, oauthAccessToken, oauthConsent, session, user } from "@auction/db/schema";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { BackchannelLogoutService } from "./backchannel-logout.service.js";
 
@@ -31,6 +20,7 @@ export class IdentityLifecycleConflictError extends Error {
 export class IdentityLifecycleService implements IIdentityLifecycleService {
   constructor(
     private readonly db: Database,
+    private readonly identityEventPublisher: IdentityEventPublisher,
     private readonly logout?: Pick<BackchannelLogoutService, "revokeSubject">,
   ) {}
 
@@ -65,14 +55,13 @@ export class IdentityLifecycleService implements IIdentityLifecycleService {
 
       await tx.delete(session).where(eq(session.userId, subjectId));
       await tx.delete(oauthAccessToken).where(eq(oauthAccessToken.userId, subjectId));
-      await publishUserIdentityDisabled(
-        tx,
+      await this.identityEventPublisher.publish(
         {
-          subjectId,
-          disabledAt: (updated.disabledAt ?? new Date()).toISOString(),
+          type: "user.identity_disabled",
+          userId: subjectId,
           ...(reason?.trim() ? { reason: reason.trim() } : {}),
         },
-        { producer: "apps/auth" },
+        { producer: "apps/auth", transaction: tx },
       );
     });
     await this.logout?.revokeSubject(subjectId);
@@ -108,10 +97,9 @@ export class IdentityLifecycleService implements IIdentityLifecycleService {
         return;
       }
 
-      await publishUserIdentityEnabled(
-        tx,
-        { subjectId, enabledAt: enabledAt.toISOString() },
-        { producer: "apps/auth" },
+      await this.identityEventPublisher.publish(
+        { type: "user.identity_enabled", userId: subjectId },
+        { producer: "apps/auth", transaction: tx },
       );
     });
   }
@@ -171,10 +159,8 @@ export class IdentityLifecycleService implements IIdentityLifecycleService {
             .where(eq(account.id, retiredAccount.id));
         }
       }
-      await tx
-        .update(externalAccount)
-        .set({ userId: canonicalSubjectId })
-        .where(eq(externalAccount.userId, retiredSubjectId));
+      // Product-owned externalAccount rows keep their original FK; merge projectors
+      // rewrite userId when handling user.identity_merged.
       await tx
         .update(oauthConsent)
         .set({ userId: canonicalSubjectId, updatedAt: new Date() })
@@ -193,14 +179,13 @@ export class IdentityLifecycleService implements IIdentityLifecycleService {
         })
         .where(eq(user.id, retiredSubjectId));
 
-      await publishUserIdentityMerged(
-        tx,
+      await this.identityEventPublisher.publish(
         {
-          subjectId: canonicalSubjectId,
+          type: "user.identity_merged",
           retiredSubjectId,
-          mergedAt: mergedAt.toISOString(),
+          canonicalSubjectId,
         },
-        { producer: "apps/auth" },
+        { producer: "apps/auth", transaction: tx },
       );
     });
     await this.logout?.revokeSubject(retiredSubjectId);

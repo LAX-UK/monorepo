@@ -29,6 +29,8 @@ export const bid = pgTable(
     buyerLegalEntityId: uuid("buyer_legal_entity_id")
       .notNull()
       .references(() => legalEntity.id, { onDelete: "restrict" }),
+    /** Immutable Identity subject at placement time; mirrors `bidder_id` during FK removal expand. */
+    subjectId: text("subject_id").references(() => user.id, { onDelete: "cascade" }),
     amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
     isWinning: boolean("is_winning").notNull().default(false),
     isAutoBid: boolean("is_auto_bid").notNull().default(false),
@@ -51,6 +53,8 @@ export const bid = pgTable(
     index("bid_lot_id_amount_created_at_idx").on(table.lotId, table.amount, table.createdAt),
     index("bid_bidder_id_idx").on(table.bidderId),
     index("bid_bidder_id_created_at_idx").on(table.bidderId, table.createdAt),
+    index("bid_subject_id_idx").on(table.subjectId),
+    index("bid_subject_id_created_at_idx").on(table.subjectId, table.createdAt),
     index("bid_buyer_legal_entity_id_idx").on(table.buyerLegalEntityId),
     index("bid_lot_id_created_at_idx").on(table.lotId, table.createdAt),
     index("bid_clerk_user_id_idx").on(table.clerkUserId),

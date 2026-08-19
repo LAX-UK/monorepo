@@ -1,4 +1,5 @@
 import {
+  type SessionStampStore,
   type createAuth,
   createAuthNoStoreMiddleware,
   runSignInTurnstileGate,
@@ -41,6 +42,7 @@ type Counter = { inc(labels: Record<string, string>): void };
 export type OidcRouteMountOptions = {
   env: AuthAppEnv;
   db: Database;
+  sessionStampStore: SessionStampStore;
   redis: Redis;
   auth: ReturnType<typeof createAuth>;
   webOrigins: string[];
@@ -176,7 +178,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       authHandler: (request) =>
         options.authHandler(request, getOAuthTokenRequestContext(c)?.authorizationCode ?? null),
       onEmailPasswordSignInSuccess: (response) =>
-        stampLastPasswordAuthFromSignInResponse(options.db, response),
+        stampLastPasswordAuthFromSignInResponse(options.sessionStampStore, response),
     }),
   );
 }

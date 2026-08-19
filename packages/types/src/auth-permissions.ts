@@ -1,4 +1,4 @@
-import type { UserRole } from "@auction/types";
+import type { UserRole } from "./user.js";
 
 export const permissions = {
   auction: {

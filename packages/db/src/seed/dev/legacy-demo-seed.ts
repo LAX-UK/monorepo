@@ -488,6 +488,7 @@ export async function runLegacyDemoSeed() {
     artistAlias,
     artistCategories,
     artistProfile,
+    bidUserProfile,
     user,
     account,
     category,
@@ -550,7 +551,75 @@ export async function runLegacyDemoSeed() {
   // kycStatus, firstName, lastName, dateOfBirth, kycVerifiedAt are now set
   // consistently with the corresponding kycVerification records below.
 
-  await db.insert(user).values([
+  type SeedUserRow = {
+    id: string;
+    name: string;
+    email: string;
+    emailVerified: boolean;
+    image: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    firstName?: string | null;
+    lastName?: string | null;
+    mobile?: string | null;
+    mobileCountry?: string | null;
+    role?: string;
+    staffRole?: (typeof schema.userStaffRoleEnum.enumValues)[number] | null;
+    emailStatus?: string;
+    emailStatusChangedAt?: Date | null;
+    suspendedAt?: Date | null;
+    suspendedReason?: string | null;
+    kycStatus?: (typeof schema.userKycStatusEnum.enumValues)[number];
+    currentKycSessionId?: string | null;
+    kycRetryCount?: number;
+    kycVerifiedAt?: Date | null;
+    preferredPaddleNumber?: number | null;
+    amlHoldStatus?: (typeof schema.userAmlHoldStatusEnum.enumValues)[number];
+    amlHoldReason?: string | null;
+    amlHoldAt?: Date | null;
+    signupPersona?: string | null;
+    dateOfBirth?: string | null;
+    hasSeenActingContextTooltip?: boolean;
+  };
+
+  const toIdentityUser = (row: SeedUserRow) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    emailVerified: row.emailVerified,
+    image: row.image,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  });
+
+  const toBidUserProfile = (row: SeedUserRow) => ({
+    userId: row.id,
+    role: row.role ?? "client",
+    staffRole: row.staffRole ?? null,
+    emailStatus: row.emailStatus ?? "ok",
+    emailStatusChangedAt: row.emailStatusChangedAt ?? null,
+    suspendedAt: row.suspendedAt ?? null,
+    suspendedReason: row.suspendedReason ?? null,
+    kycStatus: row.kycStatus ?? "unverified",
+    currentKycSessionId: row.currentKycSessionId ?? null,
+    kycRetryCount: row.kycRetryCount ?? 0,
+    kycVerifiedAt: row.kycVerifiedAt ?? null,
+    preferredPaddleNumber: row.preferredPaddleNumber ?? null,
+    amlHoldStatus: row.amlHoldStatus ?? "none",
+    amlHoldReason: row.amlHoldReason ?? null,
+    amlHoldAt: row.amlHoldAt ?? null,
+    signupPersona: row.signupPersona ?? null,
+    dateOfBirth: row.dateOfBirth ?? null,
+    firstName: row.firstName ?? null,
+    lastName: row.lastName ?? null,
+    mobile: row.mobile ?? null,
+    mobileCountry: row.mobileCountry ?? null,
+    hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  });
+
+  const seedUserRows: SeedUserRow[] = [
     // ── Platform staff ───────────────────────────────────────────────────────
     {
       id: ADMIN_ID,
@@ -990,7 +1059,10 @@ export async function runLegacyDemoSeed() {
       createdAt: new Date(now - 60 * day),
       updatedAt: stamp,
     },
-  ]);
+  ];
+
+  await db.insert(user).values(seedUserRows.map(toIdentityUser));
+  await db.insert(bidUserProfile).values(seedUserRows.map(toBidUserProfile));
 
   // ── Credential accounts ────────────────────────────────────────────────────
   await db
@@ -4093,6 +4165,7 @@ export async function runLegacyDemoSeed() {
   ): typeof bid.$inferInsert => ({
     lotId,
     bidderId,
+    subjectId: bidderId,
     buyerLegalEntityId: legalEntityIdForUser(bidderId),
     amount,
     isWinning,

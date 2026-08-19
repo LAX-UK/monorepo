@@ -2,6 +2,9 @@
  * Enforces package layering (DIP direction between workspace layers):
  *   1. packages/persistence, packages/domain, packages/db must not import from apps/**.
  *   2. packages/domain must not import @auction/persistence or @auction/db.
+ *   3. Identity extractability: packages/auth and apps/auth import boundaries,
+ *      packages/auth must not import drizzle-orm, packages/identity-db must not
+ *      import @auction/db or @auction/persistence.
  *
  * Scans import/export-from specifiers in .ts/.tsx sources (tests and dist excluded).
  */
@@ -444,6 +447,142 @@ if (identityConsumerViolations.length > 0) {
   for (const v of identityConsumerViolations) {
     console.error(`  ${v}`);
   }
+  process.exit(1);
+}
+
+// ─── Identity extractability (Phase 8) ────────────────────────────────────
+
+const AUCTION_PKG_RE = /^@auction\//;
+const IDENTITY_CONTRACTS_RE = /^@auction\/identity-contracts(\/|$)/;
+const IDENTITY_DB_RE = /^@auction\/identity-db(\/|$)/;
+const DRIZZLE_ORM_RE = /^drizzle-orm(\/|$)/;
+const IDENTITY_DB_FORBIDDEN_RE = /^@auction\/(db|persistence)(\/|$)/;
+
+/** @param {string} rel */
+function isAuthPkgConsentStoreReexport(rel) {
+  return rel === "packages/auth/src/ports/consent-store.ts";
+}
+
+const AUTH_APP_COMPOSITION_PRODUCT_DEPS = [
+  /^@auction\/db(\/|$)/,
+  /^@auction\/email(\/|$)/,
+  /^@auction\/sms(\/|$)/,
+  /^@auction\/persistence(\/|$)/,
+  /^@auction\/queues(\/|$)/,
+];
+
+/** @param {string} rel */
+function isAuthAppCompositionSite(rel) {
+  return (
+    /^apps\/auth\/src\/(container|infrastructure)\//.test(rel) || rel === "apps/auth/src/index.ts"
+  );
+}
+
+/**
+ * Existing service-layer storage dependencies. This list is deliberately
+ * file-specific so new coupling fails CI and each entry can be removed as its
+ * repository port is extracted.
+ */
+const AUTH_APP_TRANSITIONAL_IMPORTS = new Set([
+  "apps/auth/src/services/identity-lifecycle.service.ts|@auction/db",
+  "apps/auth/src/services/identity-lifecycle.service.ts|@auction/db/schema",
+  "apps/auth/src/services/identity-operations.service.ts|@auction/db",
+  "apps/auth/src/services/identity-operations.service.ts|@auction/db/schema",
+  "apps/auth/src/services/identity-operations.service.ts|@auction/email",
+  "apps/auth/src/services/identity-retention.schedule.ts|@auction/db",
+  "apps/auth/src/services/oauth-token-management.service.ts|@auction/db",
+  "apps/auth/src/services/oauth-token-management.service.ts|@auction/db/schema",
+  "apps/auth/src/services/refresh-token-family.repository.ts|@auction/db",
+  "apps/auth/src/services/refresh-token-family.repository.ts|@auction/db/schema",
+]);
+
+/** @param {string} rel */
+function isAuthAppCompositionAdapterSite(rel) {
+  return isAuthAppCompositionSite(rel);
+}
+
+/** @param {string} rel @param {string} specifier */
+function isAllowedPackagesAuthAuctionImport(rel, specifier) {
+  if (IDENTITY_CONTRACTS_RE.test(specifier)) return true;
+  if (IDENTITY_DB_RE.test(specifier) && isAuthPkgConsentStoreReexport(rel)) return true;
+  return false;
+}
+
+/** @param {string} rel @param {string} specifier */
+function isAllowedAppsAuthAuctionImport(rel, specifier) {
+  if (IDENTITY_CONTRACTS_RE.test(specifier)) return true;
+  // Composition root wires the extractable library and observability adapters.
+  if (/^@auction\/auth(\/|$)/.test(specifier)) return true;
+  if (/^@auction\/observability(\/|$)/.test(specifier)) return true;
+  if (IDENTITY_DB_RE.test(specifier) && isAuthAppCompositionAdapterSite(rel)) return true;
+  if (
+    isAuthAppCompositionSite(rel) &&
+    AUTH_APP_COMPOSITION_PRODUCT_DEPS.some((re) => re.test(specifier))
+  ) {
+    return true;
+  }
+  if (AUTH_APP_TRANSITIONAL_IMPORTS.has(`${rel}|${specifier}`)) return true;
+  return false;
+}
+
+/** @type {string[]} */
+const identityExtractabilityViolations = [];
+
+for (const file of listSources(join(root, "packages/auth/src"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (!specifier) continue;
+    if (AUCTION_PKG_RE.test(specifier) && !isAllowedPackagesAuthAuctionImport(rel, specifier)) {
+      identityExtractabilityViolations.push(
+        `${rel}: imports "${specifier}" — packages/auth may only import @auction/identity-contracts and re-export @auction/identity-db from ports/consent-store.ts`,
+      );
+    }
+    if (DRIZZLE_ORM_RE.test(specifier)) {
+      identityExtractabilityViolations.push(
+        `${rel}: imports "${specifier}" — packages/auth must not import drizzle-orm (use ports + adapters in apps/auth or packages/identity-db)`,
+      );
+    }
+  }
+}
+
+for (const file of listSources(join(root, "apps/auth/src"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (!specifier) continue;
+    if (AUCTION_PKG_RE.test(specifier) && !isAllowedAppsAuthAuctionImport(rel, specifier)) {
+      identityExtractabilityViolations.push(
+        `${rel}: imports "${specifier}" — apps/auth may only import @auction/auth, @auction/identity-contracts, @auction/observability, and @auction/identity-db from container/** or infrastructure/**`,
+      );
+    }
+  }
+}
+
+for (const file of listSources(join(root, "packages/identity-db"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  if (isTestSource(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (specifier && IDENTITY_DB_FORBIDDEN_RE.test(specifier)) {
+      identityExtractabilityViolations.push(
+        `${rel}: imports "${specifier}" — packages/identity-db must not depend on @auction/db or @auction/persistence`,
+      );
+    }
+  }
+}
+
+if (identityExtractabilityViolations.length > 0) {
+  console.error("Identity extractability violations detected:\n");
+  for (const violation of identityExtractabilityViolations) {
+    console.error(`  ${violation}`);
+  }
+  console.error(
+    "\nSee scripts/check-layers.mjs (Identity extractability) and docs/architecture/09-lax-identity-boundary.md.",
+  );
   process.exit(1);
 }
 

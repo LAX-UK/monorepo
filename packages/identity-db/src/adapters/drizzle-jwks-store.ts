@@ -1,7 +1,8 @@
-import { type Database, jwksKey } from "@auction/db";
 import type { Jwk } from "better-auth/plugins/jwt";
 import { desc, eq, inArray } from "drizzle-orm";
-import type { EnvelopeCrypto } from "./crypto/envelope.js";
+import { jwksKey } from "../schema/jwks-key.js";
+import type { IdentityDatabase } from "./drizzle-consent-store.js";
+import type { EnvelopeCrypto } from "./envelope.js";
 
 type StoredJwk = {
   kid?: string;
@@ -36,7 +37,7 @@ function sealPrivateForDb(data: Omit<Jwk, "id">, envelope?: EnvelopeCrypto): unk
   return envelope.seal(raw);
 }
 
-export function createJwksAdapter(db: Database, envelope?: EnvelopeCrypto) {
+export function createDrizzleJwksStore(db: IdentityDatabase, envelope?: EnvelopeCrypto) {
   return {
     async getJwks(): Promise<Jwk[]> {
       const rows = await db

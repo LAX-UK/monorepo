@@ -49,7 +49,11 @@ describe("Better Auth schema and auth_app grant drift", () => {
   });
 
   it("keeps lifecycle and email side-effect grants narrow", () => {
-    expect(AUTH_INSERT_SELECT_TABLES).toEqual(["email_outbox", "domain_events"]);
+    expect(AUTH_INSERT_SELECT_TABLES).toEqual([
+      "email_outbox",
+      "domain_events",
+      "identity_lifecycle_outbox",
+    ]);
     expect(AUTH_SELECT_TABLES).toEqual(["email_suppression"]);
   });
 

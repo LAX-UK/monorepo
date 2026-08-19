@@ -1,4 +1,3 @@
-import { resetPhoneVerifiedIfNumberChanged } from "../phone-number-plugin.js";
 import type { AuthHookDeps } from "./auth-hook-deps.js";
 
 export function buildUserDatabaseHooks(deps: AuthHookDeps) {
@@ -26,7 +25,7 @@ export function buildUserDatabaseHooks(deps: AuthHookDeps) {
           }
         }
         if (!authUser.emailVerified) return;
-        deps.email
+        deps.ports.email
           ?.enqueue({
             template: "welcome",
             to: authUser.email,
@@ -52,15 +51,16 @@ export function buildUserDatabaseHooks(deps: AuthHookDeps) {
           profileUpdateSubjects.add(userId);
         }
         if (!("phoneNumber" in userData)) return;
-        const existing = await deps.db.query.user.findFirst({
-          where: (u, { eq }) => eq(u.id, userId),
-          columns: { phoneNumber: true },
-        });
+        const existingPhone = await deps.ports.phoneNumberStore.findPhoneNumber(userId);
         const nextPhone =
           userData.phoneNumber === null || userData.phoneNumber === undefined
             ? null
             : String(userData.phoneNumber);
-        await resetPhoneVerifiedIfNumberChanged(deps.db, userId, existing?.phoneNumber, nextPhone);
+        await deps.ports.phoneNumberStore.resetPhoneVerifiedIfNumberChanged(
+          userId,
+          existingPhone,
+          nextPhone,
+        );
       },
       after: async (authUser: {
         id: string;

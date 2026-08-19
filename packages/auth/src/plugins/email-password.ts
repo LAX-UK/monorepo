@@ -1,16 +1,15 @@
-import type { IEmailService } from "@auction/email";
 import { AUTH_TIMINGS } from "../auth-timings.js";
+import type { EmailSender } from "../ports/email-sender.js";
 
 type RevokeSessions = (userId: string) => Promise<number>;
 
 export function buildEmailAndPasswordBlock(options: {
-  email?: IEmailService | undefined;
+  email?: EmailSender | undefined;
   requireEmailVerification?: boolean | undefined;
   revokeAllSessions?: RevokeSessions | undefined;
-  webOrigin?: string | undefined;
+  sessionsSettingsUrl: string;
 }) {
-  const { email, requireEmailVerification, revokeAllSessions, webOrigin } = options;
-  const sessionsSettingsUrl = `${(webOrigin ?? "https://lax.bid").replace(/\/$/, "")}/dashboard/settings/sessions`;
+  const { email, requireEmailVerification, revokeAllSessions, sessionsSettingsUrl } = options;
   return {
     enabled: true,
     requireEmailVerification: requireEmailVerification ?? true,

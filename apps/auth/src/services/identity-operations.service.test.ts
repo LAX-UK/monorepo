@@ -11,7 +11,16 @@ vi.mock("./publish-identity-profile-updated.js", () => ({
 import { IdentityOperationsService, isCompensatableOrphan } from "./identity-operations.service.js";
 
 describe("IdentityOperationsService boundary validation", () => {
-  const service = new IdentityOperationsService({} as never, { enqueue: vi.fn() } as never);
+  const productSubjectUsage = {
+    hasProductProfile: vi.fn(),
+    hasExternalLink: vi.fn(),
+  };
+  const service = new IdentityOperationsService(
+    {} as never,
+    { enqueue: vi.fn() } as never,
+    productSubjectUsage,
+    { publish: vi.fn() },
+  );
 
   it("enforces the established setup-password policy before hashing or storage", async () => {
     await expect(service.setupPassword("subject", "short")).rejects.toMatchObject({
@@ -33,11 +42,17 @@ describe("IdentityOperationsService boundary validation", () => {
     const where = vi.fn(() => ({ returning }));
     const set = vi.fn(() => ({ where }));
     const db = { update: vi.fn(() => ({ set })) };
-    const service = new IdentityOperationsService(db as never, { enqueue: vi.fn() } as never);
+    const identityEventPublisher = { publish: vi.fn() };
+    const service = new IdentityOperationsService(
+      db as never,
+      { enqueue: vi.fn() } as never,
+      productSubjectUsage,
+      identityEventPublisher,
+    );
 
     await service.updateSubjectProfile("subject", { name: "Updated Name" });
 
-    expect(publishIdentityProfileUpdated).toHaveBeenCalledWith(db, {
+    expect(publishIdentityProfileUpdated).toHaveBeenCalledWith(identityEventPublisher, {
       subjectId: "subject",
       name: "Updated Name",
     });

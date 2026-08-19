@@ -54,6 +54,7 @@ export * from "./processed-webhook-events.js";
 export * from "./domain-events.js";
 export * from "./domain-event-delivery.js";
 export * from "./ssf.js";
+export * from "./identity-lifecycle-outbox.js";
 export * from "./impersonation-sessions.js";
 export * from "./upload-objects.js";
 export * from "./media-assets.js";

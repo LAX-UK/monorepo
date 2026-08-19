@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { bidUserProfile, user } from "@auction/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   IProfileReader,
@@ -18,37 +18,23 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         id: user.id,
         email: user.email,
         name: user.name,
-        mobile: sql<string | null>`coalesce(${bidUserProfile.mobile}, ${user.mobile})`,
-        mobileCountry: sql<
-          string | null
-        >`coalesce(${bidUserProfile.mobileCountry}, ${user.mobileCountry})`,
+        mobile: bidUserProfile.mobile,
+        mobileCountry: bidUserProfile.mobileCountry,
         phoneNumber: user.phoneNumber,
         phoneNumberVerified: user.phoneNumberVerified,
         image: user.image,
-        role: sql<string>`coalesce(${bidUserProfile.role}, ${user.role})`,
-        staffRole: sql<
-          (typeof bidUserProfile.staffRole.enumValues)[number] | null
-        >`coalesce(${bidUserProfile.staffRole}, ${user.staffRole})`,
+        role: bidUserProfile.role,
+        staffRole: bidUserProfile.staffRole,
         emailVerified: user.emailVerified,
-        emailStatus: sql<string>`coalesce(${bidUserProfile.emailStatus}, ${user.emailStatus})`,
-        emailStatusChangedAt: sql<Date | null>`coalesce(
-          ${bidUserProfile.emailStatusChangedAt},
-          ${user.emailStatusChangedAt}
-        )`,
+        emailStatus: bidUserProfile.emailStatus,
+        emailStatusChangedAt: bidUserProfile.emailStatusChangedAt,
         pendingNewEmail: user.pendingNewEmail,
-        hasSeenActingContextTooltip: sql<boolean>`coalesce(
-          ${bidUserProfile.hasSeenActingContextTooltip},
-          ${user.hasSeenActingContextTooltip}
-        )`,
-        kycStatus: sql<
-          (typeof bidUserProfile.kycStatus.enumValues)[number]
-        >`coalesce(${bidUserProfile.kycStatus}, ${user.kycStatus})`,
-        signupPersona: sql<
-          string | null
-        >`coalesce(${bidUserProfile.signupPersona}, ${user.signupPersona})`,
+        hasSeenActingContextTooltip: bidUserProfile.hasSeenActingContextTooltip,
+        kycStatus: bidUserProfile.kycStatus,
+        signupPersona: bidUserProfile.signupPersona,
         deletionRequestedAt: user.deletionRequestedAt,
         twoFactorEnabled: user.twoFactorEnabled,
-        suspendedAt: sql<Date | null>`coalesce(${bidUserProfile.suspendedAt}, ${user.suspendedAt})`,
+        suspendedAt: bidUserProfile.suspendedAt,
       })
       .from(user)
       .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
@@ -68,14 +54,14 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       phoneNumber: row.phoneNumber ?? null,
       phoneNumberVerified: row.phoneNumberVerified ?? false,
       image: row.image ?? null,
-      role: row.role,
+      role: row.role ?? "client",
       staffRole: row.staffRole ?? null,
       emailVerified: row.emailVerified,
-      emailStatus: row.emailStatus as "ok" | "bounced" | "complained",
+      emailStatus: (row.emailStatus ?? "ok") as "ok" | "bounced" | "complained",
       emailStatusChangedAt: row.emailStatusChangedAt,
       pendingNewEmail: row.pendingNewEmail ?? null,
       hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
-      kycStatus: row.kycStatus,
+      kycStatus: row.kycStatus ?? "unverified",
       signupPersona: persona,
       deletionRequestedAt: row.deletionRequestedAt ?? null,
       twoFactorEnabled: row.twoFactorEnabled ?? false,

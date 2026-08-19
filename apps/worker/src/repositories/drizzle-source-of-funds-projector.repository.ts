@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { adminReviewTask, sourceOfFunds, user } from "@auction/db";
+import { adminReviewTask, bidUserProfile, sourceOfFunds, user } from "@auction/db";
 import { and, eq, sql } from "drizzle-orm";
 import type {
   ISourceOfFundsBuyerReader,
@@ -36,8 +36,12 @@ export class DrizzleSourceOfFundsBuyerReader implements ISourceOfFundsBuyerReade
 
   async getBuyerContact(userId: string) {
     const [row] = await this.db
-      .select({ email: user.email, firstName: user.firstName })
+      .select({
+        email: user.email,
+        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+      })
       .from(user)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
       .where(eq(user.id, userId))
       .limit(1);
     return row ?? null;

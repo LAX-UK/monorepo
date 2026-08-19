@@ -29,6 +29,7 @@ import {
   createXeroLiveExecutorPortsFromStack,
   syncXeroInvoiceWebhookLocal,
 } from "../integrations/xero/create-xero-live-executor-ports-local.js";
+import { runIdentityOutboxRelayJob } from "../jobs/identity-outbox-relay.job.js";
 import type { MarketingContactSyncJobData } from "../jobs/marketing-contact-sync.js";
 import { marketingEventsOutcomeTotal } from "../jobs/marketing-event-processor.js";
 import type { ProcessInboundWebhookDeps } from "../jobs/process-inbound-webhook-event.js";
@@ -409,6 +410,12 @@ export function createWorkerContainer(): WorkerContainer {
     notificationWriteRepo: repositories.notificationWriteRepo,
     log,
     heartbeat: () => heartbeat("domain-events"),
+    relayIdentityOutbox: async () => {
+      await runIdentityOutboxRelayJob({
+        identityOutboxRelayRepo: repositories.identityOutboxRelayRepo,
+        log,
+      });
+    },
     buildContext: () => ({
       projectorStateRepo: repositories.projectorStateRepo,
       domainEventReader: repositories.domainEventReader,

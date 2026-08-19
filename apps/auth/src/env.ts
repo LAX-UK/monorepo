@@ -89,6 +89,7 @@ const envSchema = z
     APPLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     APPLE_DOMAIN_ASSOCIATION: z.preprocess(emptyToUndefined, z.string().optional()),
     TURNSTILE_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    TOTP_ISSUER: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     ENABLE_PHONE_VERIFICATION: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

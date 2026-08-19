@@ -48,3 +48,16 @@ export function findLaxResourceById(resourceId: string): LaxResourceMetadata | u
 export function findLaxResourceByUri(resourceUri: string): LaxResourceMetadata | undefined {
   return Object.values(LAX_RESOURCES).find((candidate) => candidate.uri === resourceUri);
 }
+
+const STANDARD_OIDC_SCOPES = ["openid", "profile", "email", "offline_access"] as const;
+
+/** Product scopes registered in {@link LAX_RESOURCES}, plus standard OIDC scopes. */
+export function allRegisteredOidcScopes(): readonly string[] {
+  const productScopes = new Set<ProductScope>();
+  for (const resource of Object.values(LAX_RESOURCES)) {
+    for (const scope of resource.allowedScopes) {
+      productScopes.add(scope);
+    }
+  }
+  return [...STANDARD_OIDC_SCOPES, ...Array.from(productScopes).sort()];
+}
