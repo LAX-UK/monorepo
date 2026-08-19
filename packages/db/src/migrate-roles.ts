@@ -24,11 +24,7 @@ export const AUTH_FULL_TABLES = [
  * Transitional side-effect access. Remove each entry only after apps/auth has
  * stopped using the corresponding shared-table adapter.
  */
-export const AUTH_INSERT_SELECT_TABLES = [
-  "email_outbox",
-  "domain_events",
-  "identity_lifecycle_outbox",
-] as const;
+export const AUTH_INSERT_SELECT_TABLES = ["email_outbox", "identity_lifecycle_outbox"] as const;
 export const AUTH_SELECT_TABLES = ["email_suppression"] as const;
 /** Identity merge currently retargets existing product links. */
 export const AUTH_EXTERNAL_ACCOUNT_TABLES = ["external_accounts"] as const;

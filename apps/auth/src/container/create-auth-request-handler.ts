@@ -1,10 +1,9 @@
-import { type SessionStampStore, stampMfaCompletedFromResponse } from "@auction/auth";
-import type { createAuth } from "@auction/auth";
 import {
-  type Database,
-  publishUserCredentialChanged,
-  publishUserSessionRevoked,
-} from "@auction/db";
+  type IdentityEventPublisher,
+  type SessionStampStore,
+  stampMfaCompletedFromResponse,
+} from "@auction/auth";
+import type { createAuth } from "@auction/auth";
 import type { BackchannelLogoutRevoker } from "../services/backchannel-logout-revocation.service.js";
 import {
   type OidcSessionCoordinator,
@@ -18,7 +17,7 @@ export type AuthRequestHandler = (
 ) => Promise<Response>;
 
 export function createAuthRequestHandler(options: {
-  db: Database;
+  events: IdentityEventPublisher;
   sessionStampStore: SessionStampStore;
   auth: ReturnType<typeof createAuth>;
   oidcSessions: Pick<OidcSessionCoordinator, "runTokenRequest" | "captureAuthorizationSession">;
@@ -45,36 +44,26 @@ export function createAuthRequestHandler(options: {
       if (path.endsWith("/sign-out") || path.endsWith("/oauth2/endsession")) {
         if (priorSessionId) {
           await options.logout.revokeIdentitySessions([priorSessionId]);
-          await publishUserSessionRevoked(
-            options.db,
-            {
-              subjectId: priorSubjectId,
-              sessionId: priorSessionId,
-              revokedAt: new Date().toISOString(),
-            },
-            { producer: "apps/auth" },
-          );
+          await options.events.publish({
+            type: "user.session_revoked",
+            userId: priorSubjectId,
+            sessionId: priorSessionId,
+          });
         }
       } else if (logoutSensitive) {
         await options.logout.revokeSubject(priorSubjectId);
         if (path.endsWith("/revoke-sessions")) {
-          await publishUserSessionRevoked(
-            options.db,
-            { subjectId: priorSubjectId, revokedAt: new Date().toISOString() },
-            { producer: "apps/auth" },
-          );
+          await options.events.publish({
+            type: "user.session_revoked",
+            userId: priorSubjectId,
+          });
         }
         if (path.endsWith("/change-password")) {
-          await publishUserCredentialChanged(
-            options.db,
-            {
-              subjectId: priorSubjectId,
-              credentialType: "password",
-              changeType: "update",
-              changedAt: new Date().toISOString(),
-            },
-            { producer: "apps/auth" },
-          );
+          await options.events.publish({
+            type: "user.credential_changed",
+            userId: priorSubjectId,
+            changeType: "update",
+          });
         }
       }
     }

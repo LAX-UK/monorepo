@@ -1,11 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { IdentityEventPublisher, ProductSubjectUsageProbe } from "@auction/auth";
-import {
-  type Database,
-  publishUserCredentialChanged,
-  publishUserIdentityDeleted,
-  publishUserSessionRevoked,
-} from "@auction/db";
+import type { Database } from "@auction/db";
 import { account, oauthAccessToken, session, user, verification } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { hashPassword, verifyPassword } from "@better-auth/utils/password";
@@ -165,15 +160,9 @@ export class IdentityOperationsService {
             ),
           );
       }
-      await publishUserCredentialChanged(
-        tx,
-        {
-          subjectId,
-          credentialType: "password",
-          changeType: "create",
-          changedAt: now.toISOString(),
-        },
-        { producer: "apps/auth" },
+      await this.identityEventPublisher.publish(
+        { type: "user.credential_changed", userId: subjectId, changeType: "create" },
+        { transaction: tx },
       );
     });
     await this.logout?.revokeSubject(subjectId);
@@ -282,15 +271,9 @@ export class IdentityOperationsService {
         )
         .returning({ id: session.id });
       if (!updated[0]) throw new IdentityOperationError("no_session");
-      await publishUserCredentialChanged(
-        tx,
-        {
-          subjectId,
-          credentialType: "password",
-          changeType: "update",
-          changedAt: changedAt.toISOString(),
-        },
-        { producer: "apps/auth" },
+      await this.identityEventPublisher.publish(
+        { type: "user.credential_changed", userId: subjectId, changeType: "update" },
+        { transaction: tx },
       );
     });
   }
@@ -329,10 +312,9 @@ export class IdentityOperationsService {
         .where(and(eq(session.userId, subjectId), eq(session.id, sessionId)))
         .returning({ id: session.id });
       if (deleted.length > 0) {
-        await publishUserSessionRevoked(
-          tx,
-          { subjectId, sessionId, revokedAt: new Date().toISOString() },
-          { producer: "apps/auth" },
+        await this.identityEventPublisher.publish(
+          { type: "user.session_revoked", userId: subjectId, sessionId },
+          { transaction: tx },
         );
       }
       return deleted;
@@ -348,10 +330,9 @@ export class IdentityOperationsService {
     const rows = await this.db.transaction(async (tx) => {
       const deleted = await tx.delete(session).where(where).returning({ id: session.id });
       if (deleted.length > 0) {
-        await publishUserSessionRevoked(
-          tx,
-          { subjectId, revokedAt: new Date().toISOString() },
-          { producer: "apps/auth" },
+        await this.identityEventPublisher.publish(
+          { type: "user.session_revoked", userId: subjectId },
+          { transaction: tx },
         );
       }
       return deleted;
@@ -494,11 +475,9 @@ export class IdentityOperationsService {
         throw new IdentityOperationError("not_orphan");
       }
 
-      const deletedAt = new Date();
-      await publishUserIdentityDeleted(
-        tx,
-        { subjectId, deletedAt: deletedAt.toISOString() },
-        { producer: "apps/auth" },
+      await this.identityEventPublisher.publish(
+        { type: "user.identity_deleted", userId: subjectId },
+        { transaction: tx },
       );
       const rows = await tx.delete(user).where(eq(user.id, subjectId)).returning({ id: user.id });
       return rows.length > 0;

@@ -550,6 +550,13 @@ for (const file of listSources(join(root, "packages/auth/src"))) {
 for (const file of listSources(join(root, "apps/auth/src"))) {
   const rel = relative(root, file).replace(/\\/g, "/");
   const text = readFileSync(file, "utf8");
+  if (
+    /import\s*\{[^}]*\bdomainEvent\b[^}]*\}\s*from\s*["']@auction\/db(?:\/schema)?["']/s.test(text)
+  ) {
+    identityExtractabilityViolations.push(
+      `${rel}: imports domainEvent — apps/auth must publish identity events through IdentityEventPublisher`,
+    );
+  }
   for (const match of text.matchAll(SPECIFIER_RE)) {
     const specifier = match[1] ?? match[2] ?? match[3];
     if (!specifier) continue;

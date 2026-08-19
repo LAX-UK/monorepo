@@ -13,7 +13,11 @@ export type IdentityLifecycleEvent =
   | { type: "user.identity_merged"; retiredSubjectId: string; canonicalSubjectId: string }
   | { type: "user.identity_deleted"; userId: string }
   | { type: "user.session_revoked"; userId: string; sessionId?: string }
-  | { type: "user.credential_changed"; userId: string };
+  | {
+      type: "user.credential_changed";
+      userId: string;
+      changeType?: "create" | "update";
+    };
 
 export type IdentityEventPublisher = {
   publish(

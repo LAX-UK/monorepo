@@ -170,6 +170,14 @@ account-merged event. A verification SET is separate. Each SET has one event,
 opaque `sub_id`, unique `jti`, optional transaction correlation `txn`, current
 signing `kid`, and the exact receiver audience.
 
+All Identity lifecycle changes are written transactionally to
+`identity_lifecycle_outbox`. SSF maps signals directly from that outbox, while
+the worker relays the same rows to `domain_events` for product projectors.
+Migration `0152_ssf_reset_outbox_checkpoint` must run before deploying an Auth
+build that publishes the final credential, session, and deletion events through
+the outbox; it moves existing stream checkpoints to the outbox id space without
+replaying historical signals.
+
 Receivers require `application/secevent+jwt`, RS256, `typ=secevent+jwt`, issuer,
 audience, known event schema, one event, `iat` no older than 300 seconds and no
 more than 30 seconds in the future. JTI reservation and event application must

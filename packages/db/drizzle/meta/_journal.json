@@ -1058,6 +1058,13 @@
       "when": 1788000029000,
       "tag": "0151_subject_id_expand",
       "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1788000030000,
+      "tag": "0152_ssf_reset_outbox_checkpoint",
+      "breakpoints": true
     }
   ]
 }

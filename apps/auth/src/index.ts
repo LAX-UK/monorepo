@@ -72,7 +72,7 @@ const identityLifecycle = new IdentityLifecycleService(
   services.oidc.logout,
 );
 const authHandler = createAuthRequestHandler({
-  db,
+  events: repositories.identityEventPublisher,
   sessionStampStore: identityPorts.sessionStampStore,
   auth,
   oidcSessions: services.oidc.sessions,
