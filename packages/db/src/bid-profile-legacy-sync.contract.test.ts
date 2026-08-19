@@ -7,8 +7,8 @@ const OWNER_URL = process.env.DATABASE_URL_OWNER;
 const API_URL = process.env.DATABASE_URL_API;
 const { Client } = pg;
 
-describe.skipIf(!OWNER_URL || !API_URL)("Bid profile legacy synchronization contract", () => {
-  it("lets api_app update the profile while the owner trigger mirrors legacy columns", async () => {
+describe.skipIf(!OWNER_URL || !API_URL)("Bid profile authoritative contract", () => {
+  it("lets api_app update bid_user_profile after legacy user mirror retirement", async () => {
     const subjectId = randomUUID();
     const owner = new Client(buildPgConnectionConfig(OWNER_URL as string));
     const api = new Client(buildPgConnectionConfig(API_URL as string));
@@ -32,20 +32,30 @@ describe.skipIf(!OWNER_URL || !API_URL)("Bid profile legacy synchronization cont
          where user_id = $1`,
         [subjectId],
       );
-      const mirrored = await owner.query<{
+      const profile = await owner.query<{
         role: string;
         staff_role: string | null;
         kyc_retry_count: number;
       }>(
         `select role, staff_role, kyc_retry_count
-         from public."user" where id = $1`,
+         from public.bid_user_profile where user_id = $1`,
         [subjectId],
       );
-      expect(mirrored.rows[0]).toEqual({
+      expect(profile.rows[0]).toEqual({
         role: "staff",
         staff_role: "operations",
         kyc_retry_count: 3,
       });
+
+      const legacyColumns = await owner.query<{ count: number }>(
+        `select count(*)::int as count
+         from information_schema.columns
+         where table_schema = 'public'
+           and table_name = 'user'
+           and column_name = any($1::text[])`,
+        [["role", "staff_role", "kyc_retry_count"]],
+      );
+      expect(legacyColumns.rows[0]?.count).toBe(0);
     } finally {
       await owner
         .query(`delete from public."user" where id = $1`, [subjectId])

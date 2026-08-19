@@ -74,7 +74,7 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
     });
   });
 
-  it("cannot update Bid-owned legacy user columns", async () => {
+  it("does not expose retired Bid-owned columns on user", async () => {
     await withApiClient(async (client) => {
       for (const column of [
         "role",
@@ -85,11 +85,15 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
         "mobile",
         "email_status",
       ]) {
-        const result = await client.query<{ allowed: boolean }>(
-          "select has_column_privilege(current_user, 'public.user', $1, 'UPDATE') as allowed",
+        const result = await client.query<{ count: number }>(
+          `select count(*)::int as count
+           from information_schema.columns
+           where table_schema = 'public'
+             and table_name = 'user'
+             and column_name = $1`,
           [column],
         );
-        expect(result.rows[0]?.allowed, column).toBe(false);
+        expect(result.rows[0]?.count, column).toBe(0);
       }
     });
   });

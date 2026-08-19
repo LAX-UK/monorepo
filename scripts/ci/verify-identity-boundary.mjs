@@ -161,6 +161,7 @@ function verifyStaticContracts() {
 
 function runFixtureVerification() {
   verifyStaticContracts();
+  run("pnpm", ["--filter", "@auction/types", "run", "build"]);
   run("pnpm", ["--filter", "@auction/auth...", "run", "build"]);
   for (const [packageName, tests] of focusedTests) {
     run("pnpm", ["--filter", packageName, "exec", "vitest", "run", ...tests]);
