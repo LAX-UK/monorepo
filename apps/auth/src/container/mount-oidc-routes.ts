@@ -33,7 +33,7 @@ import {
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";
 import { createTokenExchangeRoutes } from "../routes/token-exchange.routes.js";
-import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.repository.js";
+import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
 import type { AuthRouteServicesSlice } from "./auth-container-slices.js";
 import type { AuthRequestHandler } from "./create-auth-request-handler.js";
 

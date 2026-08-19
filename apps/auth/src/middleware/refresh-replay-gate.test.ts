@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
-import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.repository.js";
+import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
 import { createOAuthTokenRequestContextMiddleware } from "./oauth-token-request-context.js";
 import {
   type RefreshReplayRedis,

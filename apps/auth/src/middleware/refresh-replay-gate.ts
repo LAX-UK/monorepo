@@ -3,7 +3,7 @@ import type { MiddlewareHandler } from "hono";
 import {
   type IRefreshTokenFamilyRepository,
   hashRefreshToken,
-} from "../services/refresh-token-family.repository.js";
+} from "../services/refresh-token-family.ports.js";
 import { getOAuthTokenRequestContext } from "./oauth-token-request-context.js";
 
 export type RefreshReplayRedis = {

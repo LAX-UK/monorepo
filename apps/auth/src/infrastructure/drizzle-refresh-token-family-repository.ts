@@ -1,29 +1,12 @@
-import { createHash } from "node:crypto";
-import type { Database } from "@auction/db";
-import { oauthAccessToken, session } from "@auction/db/schema";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { oauthAccessToken, session } from "@auction/identity-db/schema";
 import { eq, or } from "drizzle-orm";
-import type { BackchannelLogoutService } from "./backchannel-logout.service.js";
-
-export type RefreshTokenFamilyRecord = {
-  tokenId: string;
-  userId: string | null;
-  familyId: string;
-  expiresAt: Date;
-};
-
-export interface IRefreshTokenFamilyRepository {
-  findAndPrepare(rawToken: string): Promise<RefreshTokenFamilyRecord | null>;
-  completeRotation(input: {
-    consumedTokenId: string;
-    newRawToken: string;
-    familyId: string;
-  }): Promise<void>;
-  revokeFamily(familyId: string, userId: string | null): Promise<void>;
-}
-
-export function hashRefreshToken(token: string): string {
-  return createHash("sha256").update(token).digest("base64url");
-}
+import type { BackchannelLogoutService } from "../services/backchannel-logout.service.js";
+import {
+  type IRefreshTokenFamilyRepository,
+  type RefreshTokenFamilyRecord,
+  hashRefreshToken,
+} from "../services/refresh-token-family.ports.js";
 
 function storedTokenFingerprint(token: string): string {
   return `h1:${hashRefreshToken(token)}`;
@@ -32,7 +15,7 @@ function storedTokenFingerprint(token: string): string {
 /** Bridges Better Auth's token rows to explicit rotation-family state. */
 export class DrizzleRefreshTokenFamilyRepository implements IRefreshTokenFamilyRepository {
   constructor(
-    private readonly db: Database,
+    private readonly db: IdentityDatabase,
     private readonly logout?: Pick<BackchannelLogoutService, "revokeSubject">,
   ) {}
 
