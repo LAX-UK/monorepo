@@ -162,7 +162,7 @@ function verifyStaticContracts() {
 function runFixtureVerification() {
   verifyStaticContracts();
   for (const [packageName] of focusedTests) {
-    run("pnpm", ["--filter", `${packageName}...`, "run", "build"]);
+    run("pnpm", ["--filter", `${packageName}^...`, "run", "build"]);
   }
   for (const [packageName, tests] of focusedTests) {
     run("pnpm", ["--filter", packageName, "exec", "vitest", "run", ...tests]);
