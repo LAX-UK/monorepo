@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { ContainerInternalIdentityEmailRoutesSlice } from "../container.js";
 import type { Env } from "../env.js";
-import { timingSafeSecretMatches } from "../lib/internal-cron-auth.js";
+import { createIdentityMachineAuth } from "../middleware/identity-machine-auth.js";
 
 const identityEmailInputSchema = z
   .object({
@@ -24,20 +24,9 @@ export function createInternalIdentityEmailRoutes(
   env: Pick<Env, "IDENTITY_MACHINE_CLIENT_ID" | "IDENTITY_MACHINE_CLIENT_SECRET">,
 ) {
   const routes = new Hono();
+  routes.use("*", createIdentityMachineAuth(env));
 
   routes.post("/emails", async (c) => {
-    if (!env.IDENTITY_MACHINE_CLIENT_ID || !env.IDENTITY_MACHINE_CLIENT_SECRET) {
-      return c.json({ error: "identity_email_not_configured" }, 503);
-    }
-    const clientId = c.req.header("x-identity-client-id");
-    const clientSecret = c.req.header("x-identity-client-secret");
-    if (
-      !timingSafeSecretMatches(clientId, env.IDENTITY_MACHINE_CLIENT_ID) ||
-      !timingSafeSecretMatches(clientSecret, env.IDENTITY_MACHINE_CLIENT_SECRET)
-    ) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-
     const payload = await c.req.json().catch(() => null);
     const parsed = identityEmailInputSchema.safeParse(payload);
     if (!parsed.success) {

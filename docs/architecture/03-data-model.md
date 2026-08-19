@@ -10,7 +10,7 @@ job; no long-running app process holds DDL grants.
 
 > **Implementation status (last reviewed 2026-05-05)**
 >
-> - **Implemented:** every table in the ERD below exists at [packages/db/src/schema/](../../packages/db/src/schema/), including `domain_events.actor_user_id`, `domain_events.correlation_id` (DB default `gen_random_uuid()`), and `domain_events.schema_version` (DB default 1). Email-pipeline tables (`email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`) plus `user.email_status` / `user.email_status_changed_at` and the `notification_preference.*Email` / `*Whatsapp` columns ship in migration `0021_email_integration_schema.sql`. Role grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) enforce the role split: `api_app` owns synchronous email enqueue and `worker_app` has SELECT/UPDATE on `email_outbox` and `newsletter_signup_log`; migration `0154` removes all direct email-pipeline access from `auth_app`.
+> - **Implemented:** every table in the ERD below exists at [packages/db/src/schema/](../../packages/db/src/schema/), including `domain_events.actor_user_id`, `domain_events.correlation_id` (DB default `gen_random_uuid()`), and `domain_events.schema_version` (DB default 1). Email-pipeline tables (`email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`) plus `user.email_status` / `user.email_status_changed_at` and the `notification_preference.*Email` / `*Whatsapp` columns ship in migration `0021_email_integration_schema.sql`. Role grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) enforce the role split: `api_app` owns synchronous email enqueue and product-subject usage reads, and `worker_app` has SELECT/UPDATE on `email_outbox` and `newsletter_signup_log`; migrations `0154` and `0155` remove all direct email-pipeline and product-table access from `auth_app`.
 > - **Recent additions since the original schema landing:** multi-category for lots/sales/submissions (`lot_categories`, `sale_categories`, `submission_categories` join tables in migration `0022`), category admin metadata (`category.archived`, `sort_order`, etc. in migration `0024`), structured `user_address` (migration `0025`), `artist_profile` (migration `0026`; admin-curated catalogue registry with `kind`/`status` lifecycle), and the submission-expansion fields (`item_submissions` extended in migration `0023`).
 > - **Artist consolidation (migration `0046`)**: `lot.artist_id` (uuid → `artist_profile.id`) is the canonical link between a lot and its catalogue artist (legacy `marketing_details.sellerArtistId` was backfilled then cleared). `artist_watchlist.artist_id` was repointed from `user.id` to `artist_profile.id` in the same migration. Artist creation is admin-only via `POST /artists` (capability `artist.review`); clients never produce pending artist rows.
 > - **Scaffolded:** `external_accounts` exists with `(provider, external_id)` unique and `(email, provider)` index, but no service writes to it yet outside the seed script. Generic `webhook_event` persistence and worker processing remain available for providers that require asynchronous ingest.
@@ -288,6 +288,11 @@ Bid and Shop products maintain **local profiles** keyed by the immutable Identit
 |-------|------------|---------|
 | `bid_user_profile` | `api_app` (writes), `worker_app` (provisioning) | Bid roles, staff roles, KYC/AML summary, persona, paddle preference, Bid suspension, deliverability mirror |
 | `shop_user_profile` | `shop_app` (writes), `worker_app` (projection) | Shop-local name/email mirror plus disable and subject-merge markers |
+
+`apps/auth` does not query either product profile table. Its orphan-signup
+compensation calls the machine-authenticated product API, where `api_app` checks
+`bid_user_profile` and `external_accounts` in one query. Migration `0155`
+removes the former `auth_app` grants on both product-owned tables.
 
 During migration, Bid-owned columns and migration `0140` compatibility triggers
 may remain. Remove them only after the split exit criteria in

@@ -17,6 +17,11 @@ The threat model is real. We have actual attackers — every public-facing aucti
 >   `email_outbox` and `newsletter_signup_log`. Wired in
 >   [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts)
 >   (`AUTH_DENY_TABLES`, `WORKER_LOCK_READ_TABLES`).
+> - **Product-storage boundary (resolved for Identity):** orphan-signup
+>   compensation reads `bid_user_profile` and `external_accounts` through a
+>   machine-authenticated internal API endpoint. Migration `0155` removes
+>   `auth_app` privileges on both product tables; the role now has DML only on
+>   Identity tables plus append/select access to `identity_lifecycle_outbox`.
 > - **Implemented in code:** OIDC bearer columns are one-way `h1:` fingerprints;
 >   refresh reuse has family tracking, atomic reservation, whole-family/session
 >   revocation, post-success consumption, and encrypted retry grace. Existing

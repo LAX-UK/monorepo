@@ -22,6 +22,7 @@ import { createUserMiscServices } from "./container/create-user-misc-services.js
 import { createUserNotificationComposition } from "./container/create-user-notification-composition.js";
 import { createUserRouteServices } from "./container/create-user-route-services.js";
 import type { Env } from "./env.js";
+import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
@@ -42,6 +43,7 @@ export function createContainer(env: Env): Container {
       : {}),
   });
   const sessionRevocation = new SessionRevocationService(identityIssuer);
+  const subjectUsageReader = new DrizzleSubjectUsageReader(db);
   const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
   const authenticator = createContainerAuthenticator({ env, db });
 
@@ -207,6 +209,7 @@ export function createContainer(env: Env): Container {
     vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
     authenticator,
     identityIssuer,
+    subjectUsageReader,
     oauthAttributionStore,
     authOAuthAccountReader: identityIssuer,
     repoFactory: repos.repoFactory,
@@ -459,6 +462,7 @@ export type {
   ContainerInboundWebhookRoutesSlice,
   ContainerInternalCronRoutesSlice,
   ContainerInternalIdentityEmailRoutesSlice,
+  ContainerInternalIdentitySubjectUsageRoutesSlice,
   ContainerKycRoutesSlice,
   ContainerLegalEntityMemberRoutesSlice,
   ContainerLegalEntityRoutesSlice,

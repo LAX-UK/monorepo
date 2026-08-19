@@ -72,8 +72,10 @@ function createRepositories(): IdentityOperationsRepositories {
 function createService(repositories = createRepositories()) {
   const notifier: IIdentityNotifier = { passwordChanged: vi.fn().mockResolvedValue(undefined) };
   const productSubjectUsage = {
-    hasProductProfile: vi.fn().mockResolvedValue(false),
-    hasExternalLink: vi.fn().mockResolvedValue(false),
+    getSubjectUsage: vi.fn().mockResolvedValue({
+      hasProductProfile: false,
+      hasExternalLink: false,
+    }),
   };
   const identityEventPublisher = { publish: vi.fn().mockResolvedValue(undefined) };
   const logout = {
@@ -345,10 +347,25 @@ describe("IdentityOperationsService", () => {
       { transaction },
     );
 
-    valid.productSubjectUsage.hasProductProfile.mockResolvedValue(true);
+    valid.productSubjectUsage.getSubjectUsage.mockResolvedValue({
+      hasProductProfile: true,
+      hasExternalLink: false,
+    });
     await expect(valid.service.deleteOrphanSubject("subject")).rejects.toMatchObject({
       code: "not_orphan",
     });
+  });
+
+  it("fails orphan compensation closed before opening a transaction when product usage is unavailable", async () => {
+    const repositories = createRepositories();
+    const { productSubjectUsage, service } = createService(repositories);
+    productSubjectUsage.getSubjectUsage.mockRejectedValue(new Error("product API unavailable"));
+
+    await expect(service.deleteOrphanSubject("subject")).rejects.toMatchObject({
+      code: "product_usage_unavailable",
+    });
+    expect(repositories.unitOfWork.transaction).not.toHaveBeenCalled();
+    expect(repositories.subjects.deleteSubject).not.toHaveBeenCalled();
   });
 
   it("publishes only changed profile fields and reports missing subjects", async () => {

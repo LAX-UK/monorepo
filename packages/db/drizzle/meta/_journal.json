@@ -1079,6 +1079,13 @@
       "when": 1788000032000,
       "tag": "0154_revoke_auth_email_pipeline",
       "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1788000033000,
+      "tag": "0155_revoke_auth_product_reads",
+      "breakpoints": true
     }
   ]
 }

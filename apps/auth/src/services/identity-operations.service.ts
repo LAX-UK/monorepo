@@ -22,6 +22,7 @@ export type IdentityOperationErrorCode =
   | "no_session"
   | "none_in_progress"
   | "not_orphan"
+  | "product_usage_unavailable"
   | "stale_flow"
   | "subject_not_found";
 
@@ -328,6 +329,19 @@ export class IdentityOperationsService {
   }
 
   async deleteOrphanSubject(subjectId: string): Promise<boolean> {
+    const existingSubject = await this.repositories.subjects.findById(subjectId);
+    if (!existingSubject) return false;
+
+    let productUsage: {
+      hasProductProfile: boolean;
+      hasExternalLink: boolean;
+    };
+    try {
+      productUsage = await this.productSubjectUsage.getSubjectUsage(subjectId);
+    } catch {
+      throw new IdentityOperationError("product_usage_unavailable");
+    }
+
     let deleted = false;
     await this.repositories.unitOfWork.transaction(async (transaction) => {
       const subject = await this.repositories.subjects.lockForCompensation(transaction, subjectId);
@@ -336,16 +350,12 @@ export class IdentityOperationsService {
         transaction,
         subjectId,
       );
-      const [hasProductProfile, hasExternalLink] = await Promise.all([
-        this.productSubjectUsage.hasProductProfile(subjectId),
-        this.productSubjectUsage.hasExternalLink(subjectId),
-      ]);
       if (
         !isCompensatableOrphan({
           createdAt: subject.createdAt,
           accountProviderIds,
-          hasProductProfile,
-          hasExternalLink,
+          hasProductProfile: productUsage.hasProductProfile,
+          hasExternalLink: productUsage.hasExternalLink,
           now: this.now().getTime(),
         })
       ) {

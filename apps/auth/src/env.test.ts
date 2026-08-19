@@ -18,12 +18,14 @@ describe("auth app environment contract", () => {
       JWT_AUDIENCE: "example-api",
       API_INTERNAL_BASE_URL: "https://api.internal.example.com",
       IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS: "2500",
+      IDENTITY_SUBJECT_USAGE_TIMEOUT_MS: "1250",
     });
     expect(env.WEB_ORIGINS).toEqual(["https://example.com", "https://event.example.com"]);
     expect(env.SSR_TRUSTED_ORIGINS).toEqual(["https://internal.example.com"]);
     expect(env.JWT_AUDIENCE).toBe("example-api");
     expect(env.API_INTERNAL_BASE_URL).toBe("https://api.internal.example.com");
     expect(env.IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS).toBe(2500);
+    expect(env.IDENTITY_SUBJECT_USAGE_TIMEOUT_MS).toBe(1250);
   });
 
   it("rejects insecure production cookies and missing envelope encryption", () => {

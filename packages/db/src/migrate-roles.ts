@@ -22,11 +22,12 @@ export const AUTH_FULL_TABLES = [
 ] as const;
 /** Append-only Identity side effects emitted by apps/auth. */
 export const AUTH_INSERT_SELECT_TABLES = ["identity_lifecycle_outbox"] as const;
-export const AUTH_DENY_TABLES = ["email_outbox", "email_suppression"] as const;
-/** Identity merge currently retargets existing product links. */
-export const AUTH_EXTERNAL_ACCOUNT_TABLES = ["external_accounts"] as const;
-/** Signup compensation currently checks for an existing Bid profile. */
-export const AUTH_PRODUCT_LINK_READ_TABLES = ["bid_user_profile"] as const;
+export const AUTH_DENY_TABLES = [
+  "email_outbox",
+  "email_suppression",
+  "external_accounts",
+  "bid_user_profile",
+] as const;
 export const API_DENY_TABLES = [
   "session",
   "account",
@@ -317,12 +318,6 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     }
     for (const tableName of AUTH_INSERT_SELECT_TABLES) {
       await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
-    }
-    for (const tableName of AUTH_EXTERNAL_ACCOUNT_TABLES) {
-      await grantIfExists(client, "auth_app", tableName, "SELECT, UPDATE");
-    }
-    for (const tableName of AUTH_PRODUCT_LINK_READ_TABLES) {
-      await grantIfExists(client, "auth_app", tableName, "SELECT");
     }
     for (const tableName of tables) {
       if ((API_DENY_TABLES as readonly string[]).includes(tableName)) {

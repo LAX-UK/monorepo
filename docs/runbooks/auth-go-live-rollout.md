@@ -21,6 +21,13 @@
    and verify a password-reset/verification intent reaches `email_outbox`.
    Apply `0154_revoke_auth_email_pipeline` only after that verification; applying
    it while an old auth instance is still serving removes its enqueue access.
+10. **Identity product-usage boundary**: deploy the API
+    `/internal/identity/subject-usage/:subjectId` endpoint first. Configure
+    auth's `IDENTITY_SUBJECT_USAGE_TIMEOUT_MS`, deploy the HTTP probe, and verify
+    an orphan-compensation request reaches the API and fails closed when the API
+    is unavailable. Apply `0155_revoke_auth_product_reads` only after that
+    verification; applying it while an old auth instance is serving removes its
+    direct `bid_user_profile` and `external_accounts` access.
 
 See also: [key rotation](../security/key-rotation.md),
 [JWKS rotation](./jwks-rotation.md), and

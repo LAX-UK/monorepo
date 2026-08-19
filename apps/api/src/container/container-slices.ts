@@ -50,6 +50,7 @@ import type {
   ISaleroomSessionReadService,
   SaleroomServicePort,
 } from "../services/interfaces/saleroom-service.js";
+import type { ISubjectUsageReader } from "../services/interfaces/subject-usage-reader.js";
 import type { SubmissionRouteServices } from "../services/interfaces/submission-routes/index.js";
 import type {
   ITelephoneBidBookingBuyerService,
@@ -109,6 +110,7 @@ export type ContainerRootSlice = {
     IIdentityProfileClient;
   oauthAttributionStore: IOAuthAttributionStore;
   authOAuthAccountReader: IAuthOAuthAccountReader;
+  subjectUsageReader: ISubjectUsageReader;
 };
 
 /** Repository ports re-exposed on the flat container bag (internal repos stay in factories). */
@@ -437,6 +439,12 @@ export type ContainerEmailRoutesSlice = Pick<
 
 /** Machine-authenticated Identity email enqueue boundary. */
 export type ContainerInternalIdentityEmailRoutesSlice = Pick<Container, "emailService">;
+
+/** Machine-authenticated Identity product-subject usage boundary. */
+export type ContainerInternalIdentitySubjectUsageRoutesSlice = Pick<
+  Container,
+  "subjectUsageReader"
+>;
 
 /** Brevo marketing webhook ingest. */
 export type ContainerBrevoWebhookRoutesSlice = Pick<Container, "env" | "brevoWebhookIngestService">;

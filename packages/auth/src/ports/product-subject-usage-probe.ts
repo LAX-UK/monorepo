@@ -1,4 +1,6 @@
 export type ProductSubjectUsageProbe = {
-  hasProductProfile(subjectId: string): Promise<boolean>;
-  hasExternalLink(subjectId: string): Promise<boolean>;
+  getSubjectUsage(subjectId: string): Promise<{
+    hasProductProfile: boolean;
+    hasExternalLink: boolean;
+  }>;
 };

@@ -64,8 +64,10 @@ describe("identity port surface contract", () => {
     publish: async () => {},
   };
   const productSubjectUsageProbe: ProductSubjectUsageProbe = {
-    hasProductProfile: async () => false,
-    hasExternalLink: async () => false,
+    getSubjectUsage: async () => ({
+      hasProductProfile: false,
+      hasExternalLink: false,
+    }),
   };
   const phoneNumberStore: PhoneNumberStore = {
     purgeExpiredVerifications: async () => {},
@@ -109,10 +111,7 @@ describe("identity port surface contract", () => {
     "resetPhoneVerifiedIfNumberChanged",
   ]);
   expectMethods("IdentityEventPublisher", identityEventPublisher, ["publish"]);
-  expectMethods("ProductSubjectUsageProbe", productSubjectUsageProbe, [
-    "hasProductProfile",
-    "hasExternalLink",
-  ]);
+  expectMethods("ProductSubjectUsageProbe", productSubjectUsageProbe, ["getSubjectUsage"]);
 
   it("exports AuthPorts with the composition-root wiring keys", () => {
     expect(Object.keys(authPorts).sort()).toEqual([

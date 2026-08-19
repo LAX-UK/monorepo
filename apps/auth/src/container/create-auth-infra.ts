@@ -1,22 +1,18 @@
 import {
   type EmailSender,
+  type ProductSubjectUsageProbe,
   type SmsSender,
   buildTrustedAuthOrigins,
   createEnvelopeCrypto,
   parseAuthDekKey,
 } from "@auction/auth";
-import { type Database, createDbFromPool } from "@auction/db";
-import {
-  type IdentityDb,
-  createDrizzleJwksStore,
-  createIdentityDb,
-  getIdentityPool,
-} from "@auction/identity-db";
+import { type IdentityDb, createDrizzleJwksStore, createIdentityDb } from "@auction/identity-db";
 import { Sentry } from "@auction/observability";
 import { Redis } from "ioredis";
 import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import { HttpEmailSender } from "../infrastructure/http-email-sender.js";
+import { HttpProductSubjectUsageProbe } from "../infrastructure/http-product-subject-usage-probe.js";
 import { ConsolePhoneVerificationService } from "../infrastructure/phone-verification/console.service.js";
 import {
   TwilioVerifyService,
@@ -26,9 +22,9 @@ import type { JwksProvider } from "../infrastructure/token-exchange-adapters.js"
 
 export type AuthInfra = {
   db: IdentityDb;
-  productDb: Database;
   redis: Redis;
   emailSender: EmailSender;
+  productSubjectUsage: ProductSubjectUsageProbe;
   webOrigins: string[];
   envelope: { seal(plaintext: string): string; open(sealed: string): string } | undefined;
   jwks: JwksProvider;
@@ -37,7 +33,6 @@ export type AuthInfra = {
 
 export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
   const db = createIdentityDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
-  const productDb = createDbFromPool(getIdentityPool(db));
   const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
   redis.on("error", (err: Error) => {
     log.error({ err }, "redis connection error");
@@ -48,6 +43,12 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
     clientId: env.IDENTITY_MACHINE_CLIENT_ID,
     clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
     timeoutMs: env.IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS,
+  });
+  const productSubjectUsage = new HttpProductSubjectUsageProbe({
+    baseUrl: env.API_INTERNAL_BASE_URL,
+    clientId: env.IDENTITY_MACHINE_CLIENT_ID,
+    clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
+    timeoutMs: env.IDENTITY_SUBJECT_USAGE_TIMEOUT_MS,
   });
   const webOrigins = buildTrustedAuthOrigins({
     webOrigin: env.WEB_ORIGIN,
@@ -60,9 +61,9 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
       : undefined;
   return {
     db,
-    productDb,
     redis,
     emailSender,
+    productSubjectUsage,
     webOrigins,
     envelope,
     jwks: createDrizzleJwksStore(db, envelope),

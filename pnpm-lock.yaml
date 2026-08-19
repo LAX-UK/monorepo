@@ -195,9 +195,6 @@ importers:
       '@auction/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@auction/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../../packages/identity-contracts

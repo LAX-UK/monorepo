@@ -15,7 +15,6 @@ import { createIdentityOperationsService } from "./container/create-identity-ope
 import { createOidcRouteServices } from "./container/create-oidc-route-services.js";
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
 import { loadAuthEnv } from "./env.js";
-import { createDrizzleProductSubjectUsageProbe } from "./infrastructure/drizzle-product-subject-usage-probe.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 
 const env = loadAuthEnv();
@@ -34,7 +33,8 @@ const log = pino({
 });
 
 const infra = createAuthInfra(env, log);
-const { db, productDb, redis, emailSender, webOrigins, envelope, phoneVerification } = infra;
+const { db, redis, emailSender, productSubjectUsage, webOrigins, envelope, phoneVerification } =
+  infra;
 const repositories = createAuthRepositories(db);
 const identityPorts = createIdentityAuthPorts(db, { envelope: envelope ?? undefined });
 const services = createOidcRouteServices({
@@ -57,7 +57,6 @@ const auth = createAuthIssuer({
   oidcSessions: services.oidc.sessions,
   identityEventPublisher: repositories.identityEventPublisher,
 });
-const productSubjectUsage = createDrizzleProductSubjectUsageProbe(productDb);
 const identityOperations = createIdentityOperationsService({
   db,
   email: emailSender,

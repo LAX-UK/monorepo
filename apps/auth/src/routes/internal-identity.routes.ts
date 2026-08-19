@@ -336,16 +336,18 @@ async function runIdentityOperation(c: Context, action: () => Promise<unknown>) 
       const status =
         error.code === "subject_not_found"
           ? 404
-          : error.code === "invalid_password" || error.code === "no_session"
-            ? 401
-            : error.code === "already_set" ||
-                error.code === "email_taken" ||
-                error.code === "not_orphan" ||
-                error.code === "stale_flow"
-              ? 409
-              : error.code === "expired"
-                ? 410
-                : 400;
+          : error.code === "product_usage_unavailable"
+            ? 503
+            : error.code === "invalid_password" || error.code === "no_session"
+              ? 401
+              : error.code === "already_set" ||
+                  error.code === "email_taken" ||
+                  error.code === "not_orphan" ||
+                  error.code === "stale_flow"
+                ? 409
+                : error.code === "expired"
+                  ? 410
+                  : 400;
       return c.json({ error: error.code }, status);
     }
     throw error;

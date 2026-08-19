@@ -31,8 +31,6 @@ const ALLOWED_AUCTION_PACKAGES = new Set([
   "@auction/observability",
   "@auction/config-ts",
 ]);
-/** Composition-root dependencies retained until their ports are fully externalized. */
-const AUTH_APP_TRANSITIONAL_PACKAGES = new Set(["@auction/db"]);
 
 /** @type {Map<string, string>} */
 const packageJsonByName = new Map();
@@ -123,9 +121,7 @@ for (const rootPackage of ROOT_PACKAGES) {
   for (const [from, deps] of closure.entries()) {
     checked.add(from);
     for (const dep of deps) {
-      const isTransitionalAuthAppDependency =
-        from === "@auction/auth-app" && AUTH_APP_TRANSITIONAL_PACKAGES.has(dep);
-      if (!ALLOWED_AUCTION_PACKAGES.has(dep) && !isTransitionalAuthAppDependency) {
+      if (!ALLOWED_AUCTION_PACKAGES.has(dep)) {
         violations.push(`${from} depends on forbidden ${dep}`);
       }
     }

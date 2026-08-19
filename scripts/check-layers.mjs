@@ -463,24 +463,12 @@ function isAuthPkgConsentStoreReexport(rel) {
   return rel === "packages/auth/src/ports/consent-store.ts";
 }
 
-const AUTH_APP_PRODUCT_DB_SITES = new Set([
-  "apps/auth/src/container/create-auth-infra.ts",
-  "apps/auth/src/infrastructure/drizzle-product-subject-usage-probe.ts",
-]);
-
 /** @param {string} rel */
 function isAuthAppCompositionSite(rel) {
   return (
     /^apps\/auth\/src\/(container|infrastructure)\//.test(rel) || rel === "apps/auth/src/index.ts"
   );
 }
-
-/**
- * Existing service-layer storage dependencies. This list is deliberately
- * file-specific so new coupling fails CI and each entry can be removed as its
- * repository port is extracted.
- */
-const AUTH_APP_TRANSITIONAL_IMPORTS = new Set([]);
 
 /** @param {string} rel */
 function isAuthAppCompositionAdapterSite(rel) {
@@ -501,8 +489,6 @@ function isAllowedAppsAuthAuctionImport(rel, specifier) {
   if (/^@auction\/auth(\/|$)/.test(specifier)) return true;
   if (/^@auction\/observability(\/|$)/.test(specifier)) return true;
   if (IDENTITY_DB_RE.test(specifier) && isAuthAppCompositionAdapterSite(rel)) return true;
-  if (/^@auction\/db(\/|$)/.test(specifier) && AUTH_APP_PRODUCT_DB_SITES.has(rel)) return true;
-  if (AUTH_APP_TRANSITIONAL_IMPORTS.has(`${rel}|${specifier}`)) return true;
   return false;
 }
 

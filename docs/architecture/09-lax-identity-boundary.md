@@ -220,10 +220,11 @@ move to its own database only after all of these are true:
    pass in a disposable and target environment.
 
 `apps/auth` owns its Postgres pool and exposes only the `packages/identity-db`
-schema to Identity adapters. Its remaining product-storage coupling is isolated
-to `drizzle-product-subject-usage-probe.ts`, which uses a separately typed
-product database view to protect orphan-signup compensation until criterion 5
-removes that read.
+schema to Identity adapters. Orphan-signup compensation checks Bid profile and
+external-link usage through the machine-authenticated product API with a bounded,
+fail-closed request; `apps/auth` has no product database package, query, or grant.
+This completes the Identity side of criterion 5. Product-side reads and joins of
+Identity tables remain open until product-local projections replace them.
 
 Identity maintenance is also issuer-owned: `apps/auth` performs bounded
 verification cleanup and the 30-day deletion/PII scrub. No product process

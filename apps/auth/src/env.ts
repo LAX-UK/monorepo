@@ -28,6 +28,7 @@ const envSchema = z
     DATABASE_URL_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
     API_INTERNAL_BASE_URL: z.string().url().default("http://127.0.0.1:3001"),
     IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS: z.coerce.number().int().min(250).max(10_000).default(3_000),
+    IDENTITY_SUBJECT_USAGE_TIMEOUT_MS: z.coerce.number().int().min(250).max(10_000).default(1_500),
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
     BETTER_AUTH_SECRET: z.string().min(16),
     OIDC_ISSUER_URL: z.string().url().default("http://localhost:3003"),
