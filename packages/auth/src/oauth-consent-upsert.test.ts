@@ -104,6 +104,40 @@ describe("oauth consent upsert adapter", () => {
     );
   });
 
+  it("generates an id when Better Auth omits one on consent create", async () => {
+    const upsert = vi.fn(async (input) => input);
+    const create = vi.fn();
+    const adapter = wrapOAuthConsentUpsertAdapter(
+      {
+        create,
+        transaction: async (callback) => callback({}),
+      } as never,
+      { upsert },
+    );
+
+    const now = new Date();
+    await adapter.create({
+      model: "oauthConsent",
+      data: {
+        clientId: "lax-shop-web",
+        userId: "user-1",
+        scopes: "openid profile email offline_access",
+        consentGiven: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+    });
+
+    expect(create).not.toHaveBeenCalled();
+    expect(upsert).toHaveBeenCalledOnce();
+    expect(upsert.mock.calls[0]?.[0]).toMatchObject({
+      clientId: "lax-shop-web",
+      userId: "user-1",
+      scopes: "openid profile email offline_access",
+      consentGiven: true,
+    });
+  });
+
   it("delegates non-consent models to the base adapter", async () => {
     const create = vi.fn(async (args) => args.data);
     const upsert = vi.fn();

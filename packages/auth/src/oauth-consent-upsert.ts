@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { ConsentStore } from "./ports/consent-store.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: Better Auth adapter methods use heterogeneous per-model args
@@ -46,7 +47,8 @@ function coerceConsentGiven(value: unknown): boolean {
 function parseConsentRecord(data: Record<string, unknown>) {
   const clientId = readField(data, "clientId", "client_id");
   const userId = readField(data, "userId", "user_id");
-  const id = readField(data, "id", "id");
+  const rawId = readField(data, "id", "id");
+  const id = typeof rawId === "string" ? rawId : randomUUID();
   const scopes = coerceScopes(readField(data, "scopes", "scopes"));
   const createdAt = coerceDate(readField(data, "createdAt", "created_at"));
   const updatedAt = coerceDate(readField(data, "updatedAt", "updated_at"));
@@ -54,7 +56,6 @@ function parseConsentRecord(data: Record<string, unknown>) {
     typeof clientId !== "string" ||
     typeof userId !== "string" ||
     scopes === null ||
-    typeof id !== "string" ||
     createdAt === null ||
     updatedAt === null
   ) {
