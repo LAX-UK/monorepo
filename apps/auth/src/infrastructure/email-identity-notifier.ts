@@ -1,8 +1,8 @@
-import type { IEmailService } from "@auction/email";
+import type { EmailSender } from "@auction/auth";
 import type { IIdentityNotifier } from "../services/identity-notification.ports.js";
 
 export class EmailIdentityNotifier implements IIdentityNotifier {
-  constructor(private readonly email: Pick<IEmailService, "enqueue">) {}
+  constructor(private readonly email: EmailSender) {}
 
   async passwordChanged(input: {
     to: string;

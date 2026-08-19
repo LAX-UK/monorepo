@@ -1,4 +1,4 @@
-import type { IPhoneVerificationService, SendOtpOptions } from "./service.js";
+import type { SendOtpOptions, SmsSender } from "@auction/auth";
 
 /** In-memory OTP store for local/dev — mirrors Twilio Verify lifecycle. */
 const pendingByPhone = new Map<string, { code: string; expiresAt: number }>();
@@ -9,7 +9,7 @@ function randomSixDigitCode(): string {
   return String(Math.floor(100_000 + Math.random() * 900_000));
 }
 
-export class ConsolePhoneVerificationService implements IPhoneVerificationService {
+export class ConsolePhoneVerificationService implements SmsSender {
   isConfigured(): boolean {
     return true;
   }

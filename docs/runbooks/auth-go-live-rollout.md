@@ -6,7 +6,21 @@
 4. **Core + UX**: Deploy web redirect hardening, logout broadcast, reset-password URL strip, session revocation hooks.
 5. **Sessions UI + step-up + Turnstile**: Enable after API routes for `/me/sessions` and `POST /auth/reauth` ship.
 6. **CSP**: Start `Content-Security-Policy-Report-Only` on marketing surfaces; fix violations; switch to enforce (`CSP_ENFORCE=1` on `apps/web`). Before enforcing, in **Cloudflare** disable **Scrape Shield → Email Address Obfuscation** for each zone (`lax.bid`, `test.lax.bid`, etc.): Cloudflare injects `cdn-cgi/scripts/.../email-decode.min.js`, which violates `script-src 'strict-dynamic'` and cannot be allowlisted by host when enforcing.
-7. **GDPR purge**: Apply `0058_user_pii_purge.sql`; worker job `purge-soft-deleted-users` calls `SELECT user_pii_purge(id)` for users past deletion cooling-off.
+7. **GDPR purge**: Apply `0058_user_pii_purge.sql` and
+   `0153_repair_user_pii_purge.sql`; the daily `apps/auth` deletion schedule
+   calls `SELECT user_pii_purge(id)` in batches for subjects past the 30-day
+   cooling-off period.
+8. **Retired maintenance queues**: after deploying the auth-owned schedules,
+   remove the stale BullMQ repeatable entries `purge-expired-verifications-6h`
+   and `purge-soft-deleted-users-weekly` from Redis. The worker no longer
+   registers or consumes either queue.
+9. **Identity email boundary**: deploy the API
+   `/internal/identity/emails` endpoint first, with the same
+   `IDENTITY_MACHINE_CLIENT_ID` and `IDENTITY_MACHINE_CLIENT_SECRET` configured
+   on API and auth. Set auth's `API_INTERNAL_BASE_URL`, deploy the HTTP sender,
+   and verify a password-reset/verification intent reaches `email_outbox`.
+   Apply `0154_revoke_auth_email_pipeline` only after that verification; applying
+   it while an old auth instance is still serving removes its enqueue access.
 
 See also: [key rotation](../security/key-rotation.md),
 [JWKS rotation](./jwks-rotation.md), and

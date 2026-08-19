@@ -34,8 +34,7 @@ const log = pino({
 });
 
 const infra = createAuthInfra(env, log);
-const { db, productDb, redis, emailQueue, emailService, webOrigins, envelope, phoneVerification } =
-  infra;
+const { db, productDb, redis, emailSender, webOrigins, envelope, phoneVerification } = infra;
 const repositories = createAuthRepositories(db);
 const identityPorts = createIdentityAuthPorts(db, { envelope: envelope ?? undefined });
 const services = createOidcRouteServices({
@@ -51,7 +50,7 @@ const auth = createAuthIssuer({
   db,
   redis,
   log,
-  email: emailService,
+  email: emailSender,
   phoneVerification,
   trustedOrigins: webOrigins,
   logout: services.oidc.logout,
@@ -61,7 +60,7 @@ const auth = createAuthIssuer({
 const productSubjectUsage = createDrizzleProductSubjectUsageProbe(productDb);
 const identityOperations = createIdentityOperationsService({
   db,
-  email: emailService,
+  email: emailSender,
   productSubjectUsage,
   identityEventPublisher: repositories.identityEventPublisher,
   logout: services.oidc.logout,
@@ -168,7 +167,7 @@ function shutdown(signal: NodeJS.Signals) {
     }
     void schedules
       .stop()
-      .then(() => Promise.allSettled([emailQueue.close(), redis.quit(), closeIdentityDb(db)]))
+      .then(() => Promise.allSettled([redis.quit(), closeIdentityDb(db)]))
       .finally(() => {
         clearTimeout(timeout);
         process.exit(0);

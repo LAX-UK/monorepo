@@ -1065,6 +1065,20 @@
       "when": 1788000030000,
       "tag": "0152_ssf_reset_outbox_checkpoint",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1788000031000,
+      "tag": "0153_repair_user_pii_purge",
+      "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1788000032000,
+      "tag": "0154_revoke_auth_email_pipeline",
+      "breakpoints": true
     }
   ]
 }

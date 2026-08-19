@@ -1,16 +1,16 @@
 import {
   type AuthPorts,
   DEFAULT_JWT_AUDIENCE,
+  type EmailSender,
+  type SmsSender,
   createAuth,
   createAuthLifecycleCallbacks,
   createEnvelopeCrypto,
   parseAuthDekKey,
 } from "@auction/auth";
 import type { IdentityEventPublisher } from "@auction/auth";
-import type { IEmailService } from "@auction/email";
 import { type IdentityDatabase, createIdentityAuthPorts } from "@auction/identity-db";
 import { session } from "@auction/identity-db/schema";
-import type { IPhoneVerificationService } from "@auction/sms";
 import { eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type pino from "pino";
@@ -27,8 +27,8 @@ export function createAuthIssuer(options: {
   db: IdentityDatabase;
   redis: Redis;
   log: pino.Logger;
-  email: IEmailService;
-  phoneVerification: IPhoneVerificationService;
+  email: EmailSender;
+  phoneVerification: SmsSender;
   trustedOrigins: string[];
   logout: BackchannelLogoutRevoker;
   oidcSessions: Pick<OidcSessionCoordinator, "resolveIdTokenClaims">;

@@ -20,12 +20,9 @@ export const AUTH_FULL_TABLES = [
   /** `twoFactor` plugin backing table used only by the canonical auth issuer. */
   "two_factor",
 ] as const;
-/**
- * Transitional side-effect access. Remove each entry only after apps/auth has
- * stopped using the corresponding shared-table adapter.
- */
-export const AUTH_INSERT_SELECT_TABLES = ["email_outbox", "identity_lifecycle_outbox"] as const;
-export const AUTH_SELECT_TABLES = ["email_suppression"] as const;
+/** Append-only Identity side effects emitted by apps/auth. */
+export const AUTH_INSERT_SELECT_TABLES = ["identity_lifecycle_outbox"] as const;
+export const AUTH_DENY_TABLES = ["email_outbox", "email_suppression"] as const;
 /** Identity merge currently retargets existing product links. */
 export const AUTH_EXTERNAL_ACCOUNT_TABLES = ["external_accounts"] as const;
 /** Signup compensation currently checks for an existing Bid profile. */
@@ -320,9 +317,6 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     }
     for (const tableName of AUTH_INSERT_SELECT_TABLES) {
       await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
-    }
-    for (const tableName of AUTH_SELECT_TABLES) {
-      await grantIfExists(client, "auth_app", tableName, "SELECT");
     }
     for (const tableName of AUTH_EXTERNAL_ACCOUNT_TABLES) {
       await grantIfExists(client, "auth_app", tableName, "SELECT, UPDATE");

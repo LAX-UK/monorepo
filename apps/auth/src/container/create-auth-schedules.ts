@@ -1,6 +1,7 @@
 import { type IdentityDatabase, startJwksRetirementSchedule } from "@auction/identity-db";
 import { Sentry } from "@auction/observability";
 import type pino from "pino";
+import { startIdentityDeletionPurgeSchedule } from "../infrastructure/identity-deletion-purge.schedule.js";
 import { startIdentityRetentionSchedule } from "../infrastructure/identity-retention.schedule.js";
 import type { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";
 import { startBackchannelLogoutSchedule } from "../services/backchannel-logout.schedule.js";
@@ -48,6 +49,14 @@ export function createAuthSchedules(options: {
       Sentry.captureException(err);
     },
   });
+  const deletionPurge = startIdentityDeletionPurgeSchedule({
+    db: options.db,
+    onError: (err) => {
+      options.log.error({ err }, "identity_deletion_purge_failed");
+      Sentry.captureException(err);
+    },
+    onPurged: (count) => options.log.info({ count }, "identity_deletion_purge_batch"),
+  });
   let ssfDrain: Promise<void> | null = null;
   const ssf = options.ssfEnabled
     ? setInterval(() => {
@@ -79,7 +88,12 @@ export function createAuthSchedules(options: {
       retirement.stop();
       clearInterval(verification);
       if (ssf) clearInterval(ssf);
-      await Promise.allSettled([logout.stop(), retention.stop(), ssfDrain ?? Promise.resolve()]);
+      await Promise.allSettled([
+        logout.stop(),
+        retention.stop(),
+        deletionPurge.stop(),
+        ssfDrain ?? Promise.resolve(),
+      ]);
     },
   };
 }

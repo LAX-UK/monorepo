@@ -1,12 +1,11 @@
+import { InvalidPhoneNumberError, PhoneVerificationRateLimitedError } from "@auction/auth";
 import twilio from "twilio";
 import { describe, expect, it, vi } from "vitest";
 import { ConsolePhoneVerificationService } from "./console.service.js";
 import {
-  InvalidPhoneNumberError,
   PhoneVerificationNotConfiguredError,
-  PhoneVerificationRateLimitedError,
-} from "./errors.js";
-import { TwilioVerifyService } from "./twilio-verify.service.js";
+  TwilioVerifyService,
+} from "./twilio-verify.service.js";
 
 const { RestException } = twilio;
 

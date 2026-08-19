@@ -32,12 +32,7 @@ const ALLOWED_AUCTION_PACKAGES = new Set([
   "@auction/config-ts",
 ]);
 /** Composition-root dependencies retained until their ports are fully externalized. */
-const AUTH_APP_TRANSITIONAL_PACKAGES = new Set([
-  "@auction/db",
-  "@auction/email",
-  "@auction/queues",
-  "@auction/sms",
-]);
+const AUTH_APP_TRANSITIONAL_PACKAGES = new Set(["@auction/db"]);
 
 /** @type {Map<string, string>} */
 const packageJsonByName = new Map();

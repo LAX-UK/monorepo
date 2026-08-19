@@ -435,6 +435,9 @@ export type ContainerEmailRoutesSlice = Pick<
   "env" | "userService" | "emailUnsubscribeService"
 >;
 
+/** Machine-authenticated Identity email enqueue boundary. */
+export type ContainerInternalIdentityEmailRoutesSlice = Pick<Container, "emailService">;
+
 /** Brevo marketing webhook ingest. */
 export type ContainerBrevoWebhookRoutesSlice = Pick<Container, "env" | "brevoWebhookIngestService">;
 

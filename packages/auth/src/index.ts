@@ -19,14 +19,20 @@ export {
   InvalidPhoneNumberError,
   PhoneVerificationRateLimitedError,
 } from "./phone-number-errors.js";
+export { IDENTITY_EMAIL_TEMPLATE_NAMES } from "./ports/index.js";
 export { verifyBearerToken, type VerifiedToken } from "./middleware.js";
 export type {
+  EmailEnqueueInput,
+  EmailSender,
+  IdentityEmailTemplate,
   IdentityEventPublisher,
   IdentityLifecycleEvent,
   ProductSubjectUsageProbe,
   AuthPorts,
   PhoneNumberStore,
+  SendOtpOptions,
   SessionStampStore,
+  SmsSender,
   SubjectStatusReader,
 } from "./ports/index.js";
 export {

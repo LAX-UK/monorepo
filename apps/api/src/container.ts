@@ -458,6 +458,7 @@ export type {
   ContainerInfraSlice,
   ContainerInboundWebhookRoutesSlice,
   ContainerInternalCronRoutesSlice,
+  ContainerInternalIdentityEmailRoutesSlice,
   ContainerKycRoutesSlice,
   ContainerLegalEntityMemberRoutesSlice,
   ContainerLegalEntityRoutesSlice,

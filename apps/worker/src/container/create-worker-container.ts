@@ -302,8 +302,6 @@ export function createWorkerContainer(): WorkerContainer {
     transactionRunner: repositories.transactionRunner,
     adminReviewTaskProjectorRepo: repositories.adminReviewTaskProjectorRepo,
     impersonationSweepRepo: repositories.impersonationSweepRepo,
-    verificationPurgeRepo: repositories.verificationPurgeRepo,
-    userPiiPurgeRepo: repositories.userPiiPurgeRepo,
     legalEntityArchiveCascadeReader: repositories.legalEntityArchiveCascadeReader,
     domainEventSink: repositories.domainEventSink,
     exportProviderDeps,
@@ -384,7 +382,6 @@ export function createWorkerContainer(): WorkerContainer {
     heartbeat("payout-statements"),
     heartbeat("legal-entity-archive"),
     heartbeat("impersonation-sweeper"),
-    heartbeat("purge-expired-verifications"),
     ...(env.CRON_INTERNAL_SECRET
       ? [
           heartbeat("payout-settlement"),

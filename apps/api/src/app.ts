@@ -36,6 +36,7 @@ import { createCategoryRoutes } from "./routes/categories.js";
 import { createEmailRoutes } from "./routes/email.js";
 import { createExportRoutes } from "./routes/exports.js";
 import { createInternalCronRoutes } from "./routes/internal-cron.js";
+import { createInternalIdentityEmailRoutes } from "./routes/internal-identity-email.routes.js";
 import { createKycRoutes } from "./routes/kyc.js";
 import { createActingContextUserRoutes, createLegalEntityRoutes } from "./routes/legal-entities.js";
 import { createLegalEntityMemberRoutes } from "./routes/legal-entity-members.js";
@@ -201,6 +202,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
 
   const routed = app
     .route("/internal/jobs", createInternalCronRoutes(container, env))
+    .route("/internal/identity", createInternalIdentityEmailRoutes(container, env))
     .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
     .route("/lots", createLotRoutes(container, authenticator))
     .route("/lots", createLotDocumentRoutes(container, authenticator))

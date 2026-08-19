@@ -225,6 +225,19 @@ to `drizzle-product-subject-usage-probe.ts`, which uses a separately typed
 product database view to protect orphan-signup compensation until criterion 5
 removes that read.
 
+Identity maintenance is also issuer-owned: `apps/auth` performs bounded
+verification cleanup and the 30-day deletion/PII scrub. No product process
+writes an Identity table. Migration `0153_repair_user_pii_purge` keeps the
+deletion function aligned with the Identity-only `user` schema contracted by
+`0150`.
+
+Identity email delivery depends only on the `EmailSender` port. The issuer posts
+email intents to the machine-authenticated Bid internal API, which snapshots the
+Identity-supplied recipient into the existing product email outbox. `apps/auth`
+does not import the email or queue packages and `auth_app` has no email-pipeline
+table grants. Requests use a bounded timeout and one idempotent retry; accepted
+intents retain the existing outbox and BullMQ delivery guarantees.
+
 Until every criterion passes, role isolation is a boundary but not a claim of
 physical database separation.
 

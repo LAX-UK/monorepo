@@ -1,6 +1,8 @@
 export type { ConsentRecord, ConsentStore } from "./consent-store.js";
 export type { EmailEnqueueInput, EmailSender } from "./email-sender.js";
-export type { SmsSender } from "./sms-sender.js";
+export { IDENTITY_EMAIL_TEMPLATE_NAMES } from "./email-sender.js";
+export type { IdentityEmailTemplate } from "./email-sender.js";
+export type { SendOtpOptions, SmsSender } from "./sms-sender.js";
 export type { SubjectStatusReader } from "./subject-status-reader.js";
 export type { SessionStampStore } from "./session-stamp-store.js";
 export type { AccountLinkReader } from "./account-link-reader.js";

@@ -23,7 +23,7 @@ export * from "./queue-names.js";
  */
 export const QUEUE_REGISTRY = {
   [EMAIL_QUEUE_NAME]: {
-    producers: ["api", "auth", "worker"],
+    producers: ["api", "worker"],
     consumer: "worker",
     criticality: "high",
     pauseOrder: 6,

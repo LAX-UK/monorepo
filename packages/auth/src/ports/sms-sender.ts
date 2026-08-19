@@ -1,4 +1,4 @@
-/** Identity-owned SMS verification port; mirrors @auction/sms without that dependency. */
+/** Identity-owned SMS verification port implemented by the issuer infrastructure. */
 
 export type SendOtpOptions = {
   ipAddress?: string | undefined;

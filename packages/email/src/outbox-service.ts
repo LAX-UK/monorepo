@@ -5,7 +5,7 @@ import type { JobsOptions, Queue } from "bullmq";
 import { eq } from "drizzle-orm";
 import stringify from "safe-stable-stringify";
 import type { EmailEnqueueInput, IEmailService } from "./service.js";
-import type { TemplateName } from "./types.js";
+import type { RecipientResolution, TemplateName } from "./types.js";
 import { RECIPIENT_RESOLUTION } from "./types.js";
 
 export type EmailQueuePayload = {
@@ -31,8 +31,12 @@ function hashPayload(value: unknown): string {
   return crypto.createHash("sha256").update(canonical).digest("hex");
 }
 
-function defaultIdempotencyKey(input: EmailEnqueueInput): string {
-  return `${input.template}:${input.userId ?? emailHash(input.to)}:${hashPayload(input.vars)}`;
+function defaultIdempotencyKey(input: EmailEnqueueInput, resolution: RecipientResolution): string {
+  const recipient =
+    resolution === "snapshot" && input.userId
+      ? `${input.userId}:${emailHash(input.to)}`
+      : (input.userId ?? emailHash(input.to));
+  return `${input.template}:${recipient}:${hashPayload(input.vars)}`;
 }
 
 function snapshotPurgeDate(now = new Date()): Date {
@@ -50,7 +54,8 @@ export class PostmarkEmailService implements IEmailService {
   async enqueue<T extends EmailEnqueueInput["template"]>(
     input: EmailEnqueueInput<T>,
   ): Promise<{ outboxId: string }> {
-    const idempotencyKey = input.idempotencyKey ?? defaultIdempotencyKey(input);
+    const resolution = input.recipientResolution ?? RECIPIENT_RESOLUTION[input.template];
+    const idempotencyKey = input.idempotencyKey ?? defaultIdempotencyKey(input, resolution);
     const existing = await this.findByIdempotencyKey(idempotencyKey);
     if (existing) {
       // A terminally-failed row (5 exhausted attempts) must not permanently block this
@@ -88,7 +93,6 @@ export class PostmarkEmailService implements IEmailService {
     const suppressed = Boolean(suppression);
     const status = suppressed && input.category === "transactional" ? "suppressed" : "pending";
     const flaggedAddress = suppressed && input.category === "auth";
-    const resolution = input.recipientResolution ?? RECIPIENT_RESOLUTION[input.template];
     const shouldSnapshot = resolution === "snapshot";
     const now = new Date();
 

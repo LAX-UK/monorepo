@@ -1,11 +1,11 @@
 import pg from "pg";
 import { describe, expect, it } from "vitest";
 import {
+  AUTH_DENY_TABLES,
   AUTH_EXTERNAL_ACCOUNT_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
   AUTH_PRODUCT_LINK_READ_TABLES,
-  AUTH_SELECT_TABLES,
 } from "./migrate-roles.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
@@ -66,22 +66,15 @@ describe.skipIf(!AUTH_URL)("auth_app role contract", () => {
     });
   });
 
-  it("can only read suppression tables", async () => {
+  it("can only read Bid product links for signup compensation", async () => {
     await withAuthClient(async (client) => {
-      for (const table of AUTH_SELECT_TABLES) {
+      for (const table of AUTH_PRODUCT_LINK_READ_TABLES) {
         const read = await client.query<{ allowed: boolean }>(
           "select has_table_privilege(current_user, $1, 'SELECT') as allowed",
           [`public.${table}`],
         );
         expect(read.rows[0]?.allowed, `${table}:SELECT`).toBe(true);
-        for (const privilege of [
-          "INSERT",
-          "UPDATE",
-          "DELETE",
-          "TRUNCATE",
-          "REFERENCES",
-          "TRIGGER",
-        ]) {
+        for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
           const result = await client.query<{ allowed: boolean }>(
             "select has_table_privilege(current_user, $1, $2) as allowed",
             [`public.${table}`, privilege],
@@ -92,15 +85,10 @@ describe.skipIf(!AUTH_URL)("auth_app role contract", () => {
     });
   });
 
-  it("can only read Bid product links for signup compensation", async () => {
+  it("cannot access product-owned email pipeline tables", async () => {
     await withAuthClient(async (client) => {
-      for (const table of AUTH_PRODUCT_LINK_READ_TABLES) {
-        const read = await client.query<{ allowed: boolean }>(
-          "select has_table_privilege(current_user, $1, 'SELECT') as allowed",
-          [`public.${table}`],
-        );
-        expect(read.rows[0]?.allowed, `${table}:SELECT`).toBe(true);
-        for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
+      for (const table of AUTH_DENY_TABLES) {
+        for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
           const result = await client.query<{ allowed: boolean }>(
             "select has_table_privilege(current_user, $1, $2) as allowed",
             [`public.${table}`, privilege],
@@ -134,6 +122,11 @@ describe.skipIf(!AUTH_URL)("auth_app role contract", () => {
 });
 
 describe("auth_app role contract (static cutover gate)", () => {
+  it("keeps product email pipeline tables denied", () => {
+    expect(AUTH_DENY_TABLES).toEqual(["email_outbox", "email_suppression"]);
+    expect(AUTH_INSERT_SELECT_TABLES).not.toContain("email_outbox");
+  });
+
   it("requires DATABASE_URL_AUTH in required CI jobs", () => {
     expect(
       process.env.CI === "true" && process.env.AUTH_ROLE_CONTRACT_REQUIRED === "true"

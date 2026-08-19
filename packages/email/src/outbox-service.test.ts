@@ -76,6 +76,56 @@ describe("PostmarkEmailService.enqueue", () => {
     );
   });
 
+  it("persists an explicitly snapshotted Identity recipient for later delivery", async () => {
+    const { db, insertCalls } = createFakeDb({
+      outboxLookups: [undefined],
+      insertReturning: [{ id: "row-snapshot", status: "pending" }],
+    });
+    const service = new PostmarkEmailService(db, { add: vi.fn().mockResolvedValue(undefined) });
+
+    await service.enqueue({
+      template: "verify-email",
+      to: "identity@example.com",
+      userId: "subject-1",
+      category: "auth",
+      recipientResolution: "snapshot",
+      vars: { verificationUrl: "https://auth.example.com/verify" },
+    });
+
+    expect(insertCalls[0]).toEqual(
+      expect.objectContaining({
+        toSnapshot: "identity@example.com",
+        toSnapshotPurgeAt: expect.any(Date),
+      }),
+    );
+  });
+
+  it("includes the snapshotted address in default idempotency for the same subject", async () => {
+    const { db, insertCalls } = createFakeDb({
+      outboxLookups: [undefined, undefined],
+      insertReturning: [
+        { id: "row-old-address", status: "pending" },
+        { id: "row-new-address", status: "pending" },
+      ],
+    });
+    const service = new PostmarkEmailService(db, { add: vi.fn().mockResolvedValue(undefined) });
+    const common = {
+      template: "password-changed",
+      userId: "subject-1",
+      category: "auth",
+      recipientResolution: "snapshot",
+      vars: { userName: "Ada" },
+    } as const;
+
+    await service.enqueue({ ...common, to: "old@example.com" });
+    await service.enqueue({ ...common, to: "new@example.com" });
+
+    const [oldRow, newRow] = insertCalls as Array<{ idempotencyKey: string }>;
+    expect(oldRow?.idempotencyKey).not.toBe(newRow?.idempotencyKey);
+    expect(oldRow?.idempotencyKey).not.toContain("old@example.com");
+    expect(newRow?.idempotencyKey).not.toContain("new@example.com");
+  });
+
   it("dedupes without re-queuing when a live (non-failed) row already exists for this idempotency key", async () => {
     const { db, updateCalls } = createFakeDb({
       outboxLookups: [{ id: "row-pending", status: "pending" }],

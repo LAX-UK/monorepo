@@ -52,8 +52,6 @@ import type {
 } from "../interfaces/source-of-funds-review-projector.repository.js";
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
-import type { IUserPiiPurgeRepository } from "../interfaces/user-pii-purge.repository.js";
-import type { IVerificationPurgeRepository } from "../interfaces/verification-purge.repository.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import { WorkerDomainEventPublisher } from "../lib/domain-event-publisher.js";
 import { WorkerDomainEventSink } from "../lib/worker-domain-event-sink.js";
@@ -95,8 +93,6 @@ import {
 } from "../repositories/drizzle-source-of-funds-review-projector.repository.js";
 import { DrizzleStaffOpsRecipientReader } from "../repositories/drizzle-staff-ops-recipient.reader.js";
 import { DrizzleUploadValidationRepository } from "../repositories/drizzle-upload-validation.repository.js";
-import { DrizzleUserPiiPurgeRepository } from "../repositories/drizzle-user-pii-purge.repository.js";
-import { DrizzleVerificationPurgeRepository } from "../repositories/drizzle-verification-purge.repository.js";
 import type { WorkerDb } from "../workers/types.js";
 
 export type WorkerRepositories = {
@@ -122,8 +118,6 @@ export type WorkerRepositories = {
   adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
   impersonationSweepRepo: IImpersonationSweepRepository;
   identityOutboxRelayRepo: IIdentityOutboxRelayRepository;
-  verificationPurgeRepo: IVerificationPurgeRepository;
-  userPiiPurgeRepo: IUserPiiPurgeRepository;
   legalEntityArchiveCascadeReader: ILegalEntityArchiveCascadeReader;
   domainEventSink: IWorkerDomainEventSink;
   projectorStateRepo: IProjectorStateRepository;
@@ -177,8 +171,6 @@ export function createWorkerRepositories(
     adminReviewTaskProjectorRepo: new DrizzleAdminReviewTaskProjectorRepository(db),
     impersonationSweepRepo: new DrizzleImpersonationSweepRepository(db),
     identityOutboxRelayRepo: new DrizzleIdentityOutboxRelayRepository(db),
-    verificationPurgeRepo: new DrizzleVerificationPurgeRepository(db),
-    userPiiPurgeRepo: new DrizzleUserPiiPurgeRepository(db),
     legalEntityArchiveCascadeReader: new DrizzleLegalEntityArchiveCascadeReader(db),
     domainEventSink: new WorkerDomainEventSink(domainEventPublisher, db),
     projectorStateRepo,

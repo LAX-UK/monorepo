@@ -11,7 +11,12 @@ The threat model is real. We have actual attackers — every public-facing aucti
 >   secure cookies; backend security headers; signed webhooks and unsubscribe
 >   links; and conditional Sentry initialization.
 > - **Edge controls (codified in Terraform, applied via the GitHub Actions workflow):** Cloudflare DDoS, full-strict TLS, a single shared edge rate-limit rule on `/api/auth/sign-up` + `/api/auth/send-verification-email` (Cloudflare Free caps the `http_ratelimit` phase at one rule per zone and requires **10s** `period` and **10s** `mitigation_timeout` in that phase; production auth abuse takes the slot), WAF challenges on `/api/auth/authorize`, and zone-level DDoS protection — all live in [infra/terraform/modules/cloudflare-domain/](../../infra/terraform/modules/cloudflare-domain/) and are applied from `infra/terraform/persistent/<env>/`. Lower-priority paths (`/.well-known/*`, `/webhooks/postmark`) are rate-limited at the app layer until the zone is upgraded to Pro and the per-path edge rules are restored. See [../integrations/cloudflare.md](../integrations/cloudflare.md) for the full rule layout.
-> - **Email-pipeline role grants (resolved):** `auth_app` has `INSERT, SELECT` on `email_outbox` and `SELECT` on `email_suppression`; `worker_app` has `SELECT, UPDATE` on `email_outbox` and `newsletter_signup_log`. Wired in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (`AUTH_INSERT_SELECT_TABLES`, `AUTH_SELECT_TABLES`, `WORKER_LOCK_READ_TABLES`).
+> - **Email-pipeline boundary (resolved):** Identity email intents cross a
+>   machine-authenticated internal API route. `auth_app` has no email-pipeline
+>   table privilege; `api_app` enqueues and `worker_app` has `SELECT, UPDATE` on
+>   `email_outbox` and `newsletter_signup_log`. Wired in
+>   [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts)
+>   (`AUTH_DENY_TABLES`, `WORKER_LOCK_READ_TABLES`).
 > - **Implemented in code:** OIDC bearer columns are one-way `h1:` fingerprints;
 >   refresh reuse has family tracking, atomic reservation, whole-family/session
 >   revocation, post-success consumption, and encrypted retry grace. Existing

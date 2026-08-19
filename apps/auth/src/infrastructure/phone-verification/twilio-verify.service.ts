@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
-import twilio, { type Twilio } from "twilio";
 import {
   InvalidPhoneNumberError,
-  PhoneVerificationNotConfiguredError,
   PhoneVerificationRateLimitedError,
-} from "./errors.js";
-import type { IPhoneVerificationService, SendOtpOptions } from "./service.js";
+  type SendOtpOptions,
+  type SmsSender,
+} from "@auction/auth";
+import twilio, { type Twilio } from "twilio";
 import {
   type TwilioVerifyEnv,
   createTwilioClient,
@@ -13,6 +13,13 @@ import {
 } from "./twilio-verify-client.js";
 
 const { RestException } = twilio;
+
+export class PhoneVerificationNotConfiguredError extends Error {
+  constructor() {
+    super("phone_verification_not_configured");
+    this.name = "PhoneVerificationNotConfiguredError";
+  }
+}
 
 function hashIpForRateLimit(ip: string): string {
   return createHash("sha256").update(ip.trim()).digest("hex").slice(0, 32);
@@ -36,7 +43,7 @@ export type TwilioVerifyServiceDeps = {
   serviceSid: string;
 };
 
-export class TwilioVerifyService implements IPhoneVerificationService {
+export class TwilioVerifyService implements SmsSender {
   private readonly client: Twilio | null;
   private readonly serviceSid: string | null;
 
@@ -93,7 +100,7 @@ export class TwilioVerifyService implements IPhoneVerificationService {
           throw new PhoneVerificationRateLimitedError();
         }
         if (isInvalidNumberError(error)) {
-          throw new InvalidPhoneNumberError(phoneE164, error.message);
+          throw new InvalidPhoneNumberError(phoneE164);
         }
       }
       throw error;

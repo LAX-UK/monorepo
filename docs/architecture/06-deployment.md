@@ -100,7 +100,12 @@ The OIDC issuer per D9. It runs better-auth with the OIDC Provider plugin, the G
 
 The auth server is the only component with direct read access to the JWKS private keys via the `auth_app` Postgres role. No other component can read those keys — that's the security boundary that the role split enforces (D2). `apps/auth` also runs the JWKS retirement scheduler ([packages/auth/src/jwks-retirement.ts](../../packages/auth/src/jwks-retirement.ts)) under a Postgres advisory lock so only one auth replica retires expired keys per tick.
 
-`apps/auth` also holds a Redis connection so the Better Auth `sendVerificationEmail`, `sendResetPassword`, and `databaseHooks.user.create.after` hooks can call `IEmailService.enqueue()`, which inserts an `email_outbox` row and pushes a job onto the `email` BullMQ queue for `apps/worker` to drain. The role grants required for that path (`auth_app` `INSERT, SELECT` on `email_outbox`, `SELECT` on `email_suppression`) are wired in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts).
+`apps/auth` retains Redis for issuer-local rate limits, replay protection, and
+coordination. Better Auth email hooks depend on the Identity-owned `EmailSender`
+port, whose HTTP adapter posts to the machine-authenticated
+`apps/api /internal/identity/emails` endpoint. API persists the intent in the
+existing product email outbox and BullMQ pipeline with a 30-day recipient
+snapshot. `auth_app` has no direct email-pipeline table privilege.
 
 Health checks: `GET /health/live` returns 200 unconditionally; `GET /health/ready` validates DB connectivity and the ability to load JWKS keys ([apps/auth/src/index.ts](../../apps/auth/src/index.ts)).
 

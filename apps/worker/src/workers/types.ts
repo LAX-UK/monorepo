@@ -30,8 +30,6 @@ import type { IQrCodeScanPurgeRepository } from "../interfaces/qr-code-scan-purg
 import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source-of-funds-document-purge.repository.js";
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
-import type { IUserPiiPurgeRepository } from "../interfaces/user-pii-purge.repository.js";
-import type { IVerificationPurgeRepository } from "../interfaces/verification-purge.repository.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import type { IMalwareScanner } from "../lib/malware-scanner.js";
 import type { SharpImageProcessor } from "../lib/sharp-image-processor.js";
@@ -78,8 +76,6 @@ export type WorkerBootstrapDeps = {
   transactionRunner: ITransactionRunner;
   adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
   impersonationSweepRepo: IImpersonationSweepRepository;
-  verificationPurgeRepo: IVerificationPurgeRepository;
-  userPiiPurgeRepo: IUserPiiPurgeRepository;
   legalEntityArchiveCascadeReader: ILegalEntityArchiveCascadeReader;
   domainEventSink: IWorkerDomainEventSink;
   exportProviderDeps: IExportProviderDeps;

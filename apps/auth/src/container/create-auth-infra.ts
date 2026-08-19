@@ -1,41 +1,38 @@
-import { buildTrustedAuthOrigins, createEnvelopeCrypto, parseAuthDekKey } from "@auction/auth";
-import { type Database, createDbFromPool } from "@auction/db";
 import {
-  ConsoleEmailService,
-  type IEmailService,
-  PostmarkEmailService,
-  bindEmailQueue,
-} from "@auction/email";
+  type EmailSender,
+  type SmsSender,
+  buildTrustedAuthOrigins,
+  createEnvelopeCrypto,
+  parseAuthDekKey,
+} from "@auction/auth";
+import { type Database, createDbFromPool } from "@auction/db";
 import {
   type IdentityDb,
   createDrizzleJwksStore,
   createIdentityDb,
   getIdentityPool,
 } from "@auction/identity-db";
-import { Sentry, getBullMqTelemetry } from "@auction/observability";
-import { EMAIL_QUEUE_NAME, createBullQueueOptions } from "@auction/queues";
-import {
-  ConsolePhoneVerificationService,
-  type IPhoneVerificationService,
-  TwilioVerifyService,
-  isTwilioVerifyConfigured,
-} from "@auction/sms";
-import { Queue } from "bullmq";
+import { Sentry } from "@auction/observability";
 import { Redis } from "ioredis";
 import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
+import { HttpEmailSender } from "../infrastructure/http-email-sender.js";
+import { ConsolePhoneVerificationService } from "../infrastructure/phone-verification/console.service.js";
+import {
+  TwilioVerifyService,
+  isTwilioVerifyConfigured,
+} from "../infrastructure/phone-verification/twilio-verify.service.js";
 import type { JwksProvider } from "../infrastructure/token-exchange-adapters.js";
 
 export type AuthInfra = {
   db: IdentityDb;
   productDb: Database;
   redis: Redis;
-  emailQueue: Queue<{ outboxId: string }>;
-  emailService: IEmailService;
+  emailSender: EmailSender;
   webOrigins: string[];
   envelope: { seal(plaintext: string): string; open(sealed: string): string } | undefined;
   jwks: JwksProvider;
-  phoneVerification: IPhoneVerificationService;
+  phoneVerification: SmsSender;
 };
 
 export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
@@ -46,18 +43,12 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
     log.error({ err }, "redis connection error");
     Sentry.captureException(err);
   });
-  const telemetry = getBullMqTelemetry("auction-auth");
-  const emailQueue = new Queue<{ outboxId: string }>(
-    EMAIL_QUEUE_NAME,
-    createBullQueueOptions(EMAIL_QUEUE_NAME, {
-      connection: redis,
-      ...(telemetry ? { telemetry } : {}),
-    }),
-  );
-  const emailService =
-    env.EMAIL_PROVIDER === "postmark"
-      ? new PostmarkEmailService(productDb, bindEmailQueue(emailQueue))
-      : new ConsoleEmailService(productDb, bindEmailQueue(emailQueue));
+  const emailSender = new HttpEmailSender({
+    baseUrl: env.API_INTERNAL_BASE_URL,
+    clientId: env.IDENTITY_MACHINE_CLIENT_ID,
+    clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
+    timeoutMs: env.IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS,
+  });
   const webOrigins = buildTrustedAuthOrigins({
     webOrigin: env.WEB_ORIGIN,
     webOrigins: env.WEB_ORIGINS,
@@ -71,8 +62,7 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
     db,
     productDb,
     redis,
-    emailQueue,
-    emailService,
+    emailSender,
     webOrigins,
     envelope,
     jwks: createDrizzleJwksStore(db, envelope),

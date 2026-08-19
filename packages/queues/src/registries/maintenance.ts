@@ -2,9 +2,7 @@ import {
   GC_PENDING_UPLOADS_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
   IMPERSONATION_SWEEPER_QUEUE_NAME,
-  PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME,
   PURGE_QR_CODE_SCANS_QUEUE_NAME,
-  PURGE_SOFT_DELETED_USERS_QUEUE_NAME,
 } from "../queue-names.js";
 import type { QueueDefinition } from "../types.js";
 
@@ -80,41 +78,5 @@ export const MAINTENANCE_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Sweep stale impersonation sessions",
-  },
-  [PURGE_EXPIRED_VERIFICATIONS_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "background",
-    pauseOrder: null,
-    heartbeatKey: "purge-expired-verifications",
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 10,
-      removeOnFail: 50,
-    },
-    description: "Purge expired KYC verifications",
-  },
-  [PURGE_SOFT_DELETED_USERS_QUEUE_NAME]: {
-    producers: ["worker"],
-    consumer: "worker",
-    criticality: "background",
-    pauseOrder: null,
-    heartbeatKey: null,
-    dlq: false,
-    showInUi: true,
-    allowUiRetries: false,
-    repeatable: true,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5000 },
-      removeOnComplete: 10,
-      removeOnFail: 50,
-    },
-    description: "Weekly purge of soft-deleted users",
   },
 } as const satisfies Record<string, QueueDefinition>;
