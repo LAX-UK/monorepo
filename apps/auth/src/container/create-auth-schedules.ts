@@ -1,6 +1,4 @@
-import type { Database } from "@auction/db";
-import type { IdentityDatabase } from "@auction/identity-db";
-import { startJwksRetirementSchedule } from "@auction/identity-db";
+import { type IdentityDatabase, startJwksRetirementSchedule } from "@auction/identity-db";
 import { Sentry } from "@auction/observability";
 import type pino from "pino";
 import { startIdentityRetentionSchedule } from "../infrastructure/identity-retention.schedule.js";
@@ -10,7 +8,7 @@ import type { SsfDeliveryWorker } from "../services/ssf-delivery.worker.js";
 import type { SsfStreamService } from "../services/ssf-stream.service.js";
 
 export function createAuthSchedules(options: {
-  db: Database;
+  db: IdentityDatabase;
   log: pino.Logger;
   identityOperations: { purgeExpiredVerifications(): Promise<number> };
   logoutDelivery: Pick<BackchannelLogoutDeliveryWorker, "drain">;
@@ -44,7 +42,7 @@ export function createAuthSchedules(options: {
     },
   });
   const retention = startIdentityRetentionSchedule({
-    db: options.db as unknown as IdentityDatabase,
+    db: options.db,
     onError: (err) => {
       options.log.error({ err }, "identity_retention_purge_failed");
       Sentry.captureException(err);

@@ -1,13 +1,12 @@
-import { createDb } from "@auction/db";
-import { oauthApplication, oauthConsent, user } from "@auction/db/schema";
-import { createDrizzleConsentStore } from "@auction/identity-db";
+import { createDrizzleConsentStore, createIdentityDb } from "@auction/identity-db";
+import { oauthApplication, oauthConsent, user } from "@auction/identity-db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
 describe.skipIf(!DATABASE_URL)("drizzle consent store", () => {
-  const db = DATABASE_URL ? createDb(DATABASE_URL) : undefined;
+  const db = DATABASE_URL ? createIdentityDb(DATABASE_URL) : undefined;
   const store = db ? createDrizzleConsentStore(db) : undefined;
   const userId = "90000000-0000-4000-8000-000000000099";
   const clientId = "consent-store-integration-client";

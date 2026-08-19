@@ -1,10 +1,10 @@
 import { sql } from "drizzle-orm";
-import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { ConsentRecord, ConsentStore } from "../ports/consent-store.js";
 import type * as schema from "../schema/index.js";
 import { oauthConsent } from "../schema/oauth.js";
 
-export type IdentityDatabase = PgDatabase<PgQueryResultHKT, typeof schema>;
+export type IdentityDatabase = NodePgDatabase<typeof schema>;
 
 export function createDrizzleConsentStore(db: IdentityDatabase): ConsentStore {
   return {

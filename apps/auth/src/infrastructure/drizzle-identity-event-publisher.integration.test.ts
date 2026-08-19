@@ -1,4 +1,4 @@
-import { createDb } from "@auction/db";
+import { createIdentityDb } from "@auction/identity-db";
 import { identityLifecycleOutbox } from "@auction/identity-db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
@@ -9,7 +9,7 @@ const DATABASE_URL = process.env.DATABASE_URL;
 const describeWithDatabase = DATABASE_URL ? describe : describe.skip;
 
 describeWithDatabase("createDrizzleIdentityEventPublisher transaction", () => {
-  const db = DATABASE_URL ? createDb(DATABASE_URL) : undefined;
+  const db = DATABASE_URL ? createIdentityDb(DATABASE_URL) : undefined;
 
   it("rolls the outbox row back with the state transaction", async () => {
     if (!db) return;

@@ -1,5 +1,5 @@
-import type { Database } from "@auction/db";
-import { oidcRpSession, session } from "@auction/db/schema";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { oidcRpSession, session } from "@auction/identity-db/schema";
 import { eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type {
@@ -30,7 +30,7 @@ export class RedisOidcCodeCorrelationStore implements OidcCodeCorrelationStore {
 }
 
 export class DrizzleOidcRpSessionRepository implements OidcRpSessionRepository {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly db: IdentityDatabase) {}
 
   async findIdentitySession(identitySessionId: string) {
     const [row] = await this.db

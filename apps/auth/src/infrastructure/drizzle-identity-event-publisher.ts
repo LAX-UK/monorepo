@@ -1,5 +1,4 @@
 import type { IdentityEventPublisher, IdentityLifecycleEvent } from "@auction/auth";
-import type { Database } from "@auction/db";
 import {
   type IdentityDatabase,
   type IdentityOutboxLifecycleEvent,
@@ -27,13 +26,12 @@ function toOutboxEvent(event: IdentityLifecycleEvent): IdentityOutboxLifecycleEv
 }
 
 export function createDrizzleIdentityEventPublisher(
-  db: Database,
+  db: IdentityDatabase,
   defaultProducer = "apps/auth",
 ): IdentityEventPublisher {
-  const identityDb = db as unknown as IdentityDatabase;
-  const publisher = createDrizzleIdentityOutboxPublisher(identityDb, {
+  const publisher = createDrizzleIdentityOutboxPublisher(db, {
     defaultProducer,
-    accountDb: identityDb,
+    accountDb: db,
   });
   return {
     publish(event, options) {

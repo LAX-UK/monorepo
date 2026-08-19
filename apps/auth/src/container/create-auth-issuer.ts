@@ -7,10 +7,9 @@ import {
   parseAuthDekKey,
 } from "@auction/auth";
 import type { IdentityEventPublisher } from "@auction/auth";
-import type { Database } from "@auction/db";
-import { session } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
-import { createIdentityAuthPorts } from "@auction/identity-db";
+import { type IdentityDatabase, createIdentityAuthPorts } from "@auction/identity-db";
+import { session } from "@auction/identity-db/schema";
 import type { IPhoneVerificationService } from "@auction/sms";
 import { eq } from "drizzle-orm";
 import type { Redis } from "ioredis";
@@ -25,7 +24,7 @@ import { publishUserEmailVerified } from "../services/publish-user-email-verifie
 
 export function createAuthIssuer(options: {
   env: AuthAppEnv;
-  db: Database;
+  db: IdentityDatabase;
   redis: Redis;
   log: pino.Logger;
   email: IEmailService;

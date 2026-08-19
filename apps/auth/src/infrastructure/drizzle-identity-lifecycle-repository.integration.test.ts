@@ -1,6 +1,5 @@
 import type { IdentityEventPublisher } from "@auction/auth";
-import { createDb } from "@auction/db";
-import type { IdentityDatabase } from "@auction/identity-db";
+import { createIdentityDb } from "@auction/identity-db";
 import {
   account,
   identityLifecycleOutbox,
@@ -23,10 +22,8 @@ const DATABASE_URL = process.env.DATABASE_URL;
 const NOW = new Date("2026-08-19T00:00:00.000Z");
 
 describe.skipIf(!DATABASE_URL)("drizzle identity lifecycle repository", () => {
-  const db = DATABASE_URL ? createDb(DATABASE_URL) : undefined;
-  const repository = db
-    ? new DrizzleIdentityLifecycleRepository(db as unknown as IdentityDatabase)
-    : undefined;
+  const db = DATABASE_URL ? createIdentityDb(DATABASE_URL) : undefined;
+  const repository = db ? new DrizzleIdentityLifecycleRepository(db) : undefined;
   const canonicalSubjectId = "90000000-0000-4000-8000-000000000095";
   const retiredSubjectId = "90000000-0000-4000-8000-000000000096";
   const subjectIds = [canonicalSubjectId, retiredSubjectId];

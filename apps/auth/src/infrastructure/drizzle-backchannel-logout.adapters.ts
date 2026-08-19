@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { Database } from "@auction/db";
-import { oauthApplication, oidcBackchannelLogoutDelivery, oidcRpSession } from "@auction/db/schema";
+import type { IdentityDatabase } from "@auction/identity-db";
+import {
+  oauthApplication,
+  oidcBackchannelLogoutDelivery,
+  oidcRpSession,
+} from "@auction/identity-db/schema";
 import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import type {
   BackchannelLogoutDeliveryRepository,
@@ -20,7 +24,7 @@ export function backchannelDeliveryEventKey(clientId: string, sid: string): stri
 }
 
 export class DrizzleRpLogoutRepository implements RpLogoutRepository {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly db: IdentityDatabase) {}
 
   revokeIdentitySessionsAndEnqueue(ids: readonly string[], now: Date): Promise<number> {
     const condition = and(
@@ -106,7 +110,7 @@ export class DrizzleRpLogoutRepository implements RpLogoutRepository {
 export class DrizzleBackchannelLogoutDeliveryRepository
   implements BackchannelLogoutDeliveryRepository
 {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly db: IdentityDatabase) {}
 
   async claimDue(input: { now: Date; staleBefore: Date; batchSize: number }) {
     await this.db

@@ -1,5 +1,4 @@
-import { createDb } from "@auction/db";
-import type { IdentityDatabase } from "@auction/identity-db";
+import { createIdentityDb } from "@auction/identity-db";
 import { oauthAccessToken, oauthApplication, user } from "@auction/identity-db/schema";
 import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -8,8 +7,8 @@ import { DrizzleOauthTokenStore } from "./drizzle-oauth-token-store.js";
 const DATABASE_URL = process.env.DATABASE_URL;
 
 describe.skipIf(!DATABASE_URL)("drizzle OAuth token store", () => {
-  const db = DATABASE_URL ? createDb(DATABASE_URL) : undefined;
-  const store = db ? new DrizzleOauthTokenStore(db as unknown as IdentityDatabase) : undefined;
+  const db = DATABASE_URL ? createIdentityDb(DATABASE_URL) : undefined;
+  const store = db ? new DrizzleOauthTokenStore(db) : undefined;
   const subjectId = "90000000-0000-4000-8000-000000000098";
   const tokenIds = ["oauth-token-store-a", "oauth-token-store-b"];
   const now = new Date();

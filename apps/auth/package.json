@@ -18,7 +18,6 @@
     "@auction/identity-contracts": "workspace:*",
     "@auction/identity-db": "workspace:*",
     "@auction/observability": "workspace:*",
-    "@auction/persistence": "workspace:*",
     "@auction/queues": "workspace:*",
     "@auction/sms": "workspace:^",
     "@better-auth/utils": "^0.4.0",

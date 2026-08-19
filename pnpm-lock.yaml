@@ -213,9 +213,6 @@ importers:
       '@auction/observability':
         specifier: workspace:*
         version: link:../../packages/observability
-      '@auction/persistence':
-        specifier: workspace:*
-        version: link:../../packages/persistence
       '@auction/queues':
         specifier: workspace:*
         version: link:../../packages/queues
@@ -1077,10 +1074,16 @@ importers:
       drizzle-orm:
         specifier: ^0.41.0
         version: 0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0)
+      pg:
+        specifier: ^8.13.1
+        version: 8.20.0
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../config-ts
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

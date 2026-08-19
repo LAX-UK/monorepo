@@ -1,5 +1,4 @@
 import type { IdentityEventPublisher, ProductSubjectUsageProbe } from "@auction/auth";
-import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { DrizzleIdentityCredentialRepository } from "../infrastructure/drizzle-identity-credential-repository.js";
@@ -13,13 +12,13 @@ import type { BackchannelLogoutService } from "../services/backchannel-logout.se
 import { IdentityOperationsService } from "../services/identity-operations.service.js";
 
 export function createIdentityOperationsService(options: {
-  db: Database;
+  db: IdentityDatabase;
   email: Pick<IEmailService, "enqueue">;
   productSubjectUsage: ProductSubjectUsageProbe;
   identityEventPublisher: IdentityEventPublisher;
   logout?: Pick<BackchannelLogoutService, "revokeIdentitySessions" | "revokeSubject">;
 }) {
-  const db = options.db as unknown as IdentityDatabase;
+  const db = options.db;
   return new IdentityOperationsService(
     {
       unitOfWork: new DrizzleIdentityUnitOfWork(db),

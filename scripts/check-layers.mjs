@@ -464,12 +464,15 @@ function isAuthPkgConsentStoreReexport(rel) {
 }
 
 const AUTH_APP_COMPOSITION_PRODUCT_DEPS = [
-  /^@auction\/db(\/|$)/,
   /^@auction\/email(\/|$)/,
   /^@auction\/sms(\/|$)/,
-  /^@auction\/persistence(\/|$)/,
   /^@auction\/queues(\/|$)/,
 ];
+
+const AUTH_APP_PRODUCT_DB_SITES = new Set([
+  "apps/auth/src/container/create-auth-infra.ts",
+  "apps/auth/src/infrastructure/drizzle-product-subject-usage-probe.ts",
+]);
 
 /** @param {string} rel */
 function isAuthAppCompositionSite(rel) {
@@ -504,6 +507,7 @@ function isAllowedAppsAuthAuctionImport(rel, specifier) {
   if (/^@auction\/auth(\/|$)/.test(specifier)) return true;
   if (/^@auction\/observability(\/|$)/.test(specifier)) return true;
   if (IDENTITY_DB_RE.test(specifier) && isAuthAppCompositionAdapterSite(rel)) return true;
+  if (/^@auction\/db(\/|$)/.test(specifier) && AUTH_APP_PRODUCT_DB_SITES.has(rel)) return true;
   if (
     isAuthAppCompositionSite(rel) &&
     AUTH_APP_COMPOSITION_PRODUCT_DEPS.some((re) => re.test(specifier))

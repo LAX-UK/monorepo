@@ -5,13 +5,13 @@ import {
   runSignInTurnstileGate,
   stampLastPasswordAuthFromSignInResponse,
 } from "@auction/auth";
-import type { Database } from "@auction/db";
 import {
   FIRST_PARTY_SSF_EVENT_TYPES,
   REGISTERED_OIDC_CLIENTS,
   type RegisteredOidcClientId,
   buildOidcDiscoveryDocument,
 } from "@auction/identity-contracts";
+import type { IdentityDatabase } from "@auction/identity-db";
 import type { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Redis } from "ioredis";
@@ -41,7 +41,7 @@ type Counter = { inc(labels: Record<string, string>): void };
 
 export type OidcRouteMountOptions = {
   env: AuthAppEnv;
-  db: Database;
+  db: IdentityDatabase;
   sessionStampStore: SessionStampStore;
   redis: Redis;
   auth: ReturnType<typeof createAuth>;

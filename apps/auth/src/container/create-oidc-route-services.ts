@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { IdentityDatabase } from "@auction/identity-db";
 import type { Redis } from "ioredis";
 import { createTokenExchangePorts } from "../infrastructure/token-exchange-adapters.js";
 import type { JwksProvider } from "../infrastructure/token-exchange-adapters.js";
@@ -8,7 +8,7 @@ import { createOidcPhase3Services } from "./create-oidc-phase3-services.js";
 import { createSsfServices } from "./create-ssf-services.js";
 
 export function createOidcRouteServices(options: {
-  db: Database;
+  db: IdentityDatabase;
   redis: Redis;
   issuer: string;
   jwks: JwksProvider;

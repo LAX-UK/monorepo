@@ -219,6 +219,12 @@ move to its own database only after all of these are true:
 6. Backup, deletion, merge, disablement, incident rollback, and event-lag gates
    pass in a disposable and target environment.
 
+`apps/auth` owns its Postgres pool and exposes only the `packages/identity-db`
+schema to Identity adapters. Its remaining product-storage coupling is isolated
+to `drizzle-product-subject-usage-probe.ts`, which uses a separately typed
+product database view to protect orphan-signup compensation until criterion 5
+removes that read.
+
 Until every criterion passes, role isolation is a boundary but not a claim of
 physical database separation.
 

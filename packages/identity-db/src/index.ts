@@ -1,3 +1,9 @@
+export {
+  closeIdentityDb,
+  createIdentityDb,
+  getIdentityPool,
+  type IdentityDb,
+} from "./client.js";
 export type { IdentityDatabase } from "./adapters/drizzle-consent-store.js";
 export { createDrizzleConsentStore } from "./adapters/drizzle-consent-store.js";
 export {

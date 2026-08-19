@@ -3,6 +3,8 @@ import type { Database } from "@auction/db";
 import { bidUserProfile, externalAccount } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 
+// Last intentional cross-boundary read in apps/auth. Keep this adapter on the
+// product database handle until Identity boundary exit criterion 5 is complete.
 export function createDrizzleProductSubjectUsageProbe(db: Database): ProductSubjectUsageProbe {
   return {
     async hasProductProfile(subjectId) {

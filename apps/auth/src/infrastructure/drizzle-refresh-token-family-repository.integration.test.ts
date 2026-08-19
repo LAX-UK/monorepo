@@ -1,5 +1,4 @@
-import { createDb } from "@auction/db";
-import type { IdentityDatabase } from "@auction/identity-db";
+import { createIdentityDb } from "@auction/identity-db";
 import { oauthAccessToken, oauthApplication, session, user } from "@auction/identity-db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,10 +8,9 @@ import { DrizzleRefreshTokenFamilyRepository } from "./drizzle-refresh-token-fam
 const DATABASE_URL = process.env.DATABASE_URL;
 
 describe.skipIf(!DATABASE_URL)("drizzle refresh token family repository", () => {
-  const db = DATABASE_URL ? createDb(DATABASE_URL) : undefined;
-  const identityDb = db as unknown as IdentityDatabase;
+  const db = DATABASE_URL ? createIdentityDb(DATABASE_URL) : undefined;
   const logout = { revokeSubject: vi.fn(async () => 0) };
-  const repository = db ? new DrizzleRefreshTokenFamilyRepository(identityDb, logout) : undefined;
+  const repository = db ? new DrizzleRefreshTokenFamilyRepository(db, logout) : undefined;
   const subjectId = "90000000-0000-4000-8000-000000000097";
   const clientId = "refresh-family-test-client";
   const applicationId = "refresh-family-test-app";

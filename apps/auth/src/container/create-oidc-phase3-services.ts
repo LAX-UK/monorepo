@@ -1,4 +1,3 @@
-import type { Database } from "@auction/db";
 import { type IdentityDatabase, createDrizzleSubjectStatusReader } from "@auction/identity-db";
 import type { Redis } from "ioredis";
 import {
@@ -22,13 +21,12 @@ import { OauthTokenManagementService } from "../services/oauth-token-management.
 import { OidcSessionCoordinator } from "../services/oidc-session-coordinator.js";
 
 export function createOidcPhase3Services(options: {
-  db: Database;
+  db: IdentityDatabase;
   redis: Redis;
   issuer: string;
   jwks: JwksProvider;
   recentStepUpMaxAgeSec: number;
 }) {
-  const identityDb = options.db as unknown as IdentityDatabase;
   const signer = createLogoutTokenSigner(options.jwks);
   const logout = new BackchannelLogoutRevocationCoordinator(
     new DrizzleRpLogoutRepository(options.db),
@@ -41,8 +39,8 @@ export function createOidcPhase3Services(options: {
     ),
     confidentialClients: new DrizzleConfidentialClientAuthenticator(options.db),
     tokenManagement: new OauthTokenManagementService(
-      new DrizzleOauthTokenStore(identityDb),
-      createDrizzleSubjectStatusReader(identityDb),
+      new DrizzleOauthTokenStore(options.db),
+      createDrizzleSubjectStatusReader(options.db),
       options.issuer,
       options.jwks,
     ),

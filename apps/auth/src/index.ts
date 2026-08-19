@@ -1,6 +1,5 @@
 import { AUTH_TIMINGS } from "@auction/auth";
-import { closeDb } from "@auction/db";
-import { createIdentityAuthPorts } from "@auction/identity-db";
+import { closeIdentityDb, createIdentityAuthPorts } from "@auction/identity-db";
 import { initNodeSentry } from "@auction/observability";
 import { serve } from "@hono/node-server";
 import pino from "pino";
@@ -35,7 +34,8 @@ const log = pino({
 });
 
 const infra = createAuthInfra(env, log);
-const { db, redis, emailQueue, emailService, webOrigins, envelope, phoneVerification } = infra;
+const { db, productDb, redis, emailQueue, emailService, webOrigins, envelope, phoneVerification } =
+  infra;
 const repositories = createAuthRepositories(db);
 const identityPorts = createIdentityAuthPorts(db, { envelope: envelope ?? undefined });
 const services = createOidcRouteServices({
@@ -58,7 +58,7 @@ const auth = createAuthIssuer({
   oidcSessions: services.oidc.sessions,
   identityEventPublisher: repositories.identityEventPublisher,
 });
-const productSubjectUsage = createDrizzleProductSubjectUsageProbe(db);
+const productSubjectUsage = createDrizzleProductSubjectUsageProbe(productDb);
 const identityOperations = createIdentityOperationsService({
   db,
   email: emailService,
@@ -168,7 +168,7 @@ function shutdown(signal: NodeJS.Signals) {
     }
     void schedules
       .stop()
-      .then(() => Promise.allSettled([emailQueue.close(), redis.quit(), closeDb(db)]))
+      .then(() => Promise.allSettled([emailQueue.close(), redis.quit(), closeIdentityDb(db)]))
       .finally(() => {
         clearTimeout(timeout);
         process.exit(0);

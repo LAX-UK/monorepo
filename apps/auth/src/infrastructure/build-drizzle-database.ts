@@ -3,7 +3,8 @@ import {
   wrapAuthDatabaseAdapter,
   wrapOAuthConsentUpsertAdapter,
 } from "@auction/auth";
-import type { Database } from "@auction/db";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { createDrizzleConsentStore } from "@auction/identity-db";
 import {
   account,
   oauthAccessToken,
@@ -13,11 +14,10 @@ import {
   twoFactor as twoFactorTable,
   user,
   verification,
-} from "@auction/db/schema";
-import { createDrizzleConsentStore } from "@auction/identity-db";
+} from "@auction/identity-db/schema";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
-export function buildDrizzleDatabase(db: Database, envelope?: EnvelopeCrypto) {
+export function buildDrizzleDatabase(db: IdentityDatabase, envelope?: EnvelopeCrypto) {
   const consentStore = createDrizzleConsentStore(db);
   const inner = drizzleAdapter(db, {
     provider: "pg",

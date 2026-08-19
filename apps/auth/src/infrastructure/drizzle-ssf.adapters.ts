@@ -1,5 +1,5 @@
-import type { Database } from "@auction/db";
 import { SSF_VERIFICATION_EVENT } from "@auction/identity-contracts";
+import type { IdentityDatabase } from "@auction/identity-db";
 import { identityLifecycleOutbox, ssfDelivery } from "@auction/identity-db/schema";
 import { ssfStream } from "@auction/identity-db/schema";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
@@ -23,7 +23,7 @@ const toRecord = (row: typeof ssfStream.$inferSelect): SsfStreamRecord => ({
 });
 
 export class DrizzleSsfStreamRepository implements SsfStreamRepository {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly db: IdentityDatabase) {}
 
   async currentDomainEventId(): Promise<number> {
     const [row] = await this.db
@@ -141,7 +141,7 @@ export class DrizzleSsfStreamRepository implements SsfStreamRepository {
 }
 
 export class DrizzleSsfSourceEventReader implements SsfSourceEventReader {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly db: IdentityDatabase) {}
 
   readUnmapped(
     streamId: string,
@@ -176,7 +176,7 @@ export class DrizzleSsfSourceEventReader implements SsfSourceEventReader {
 }
 
 export class DrizzleSsfDeliveryRepository implements SsfDeliveryRepository {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly db: IdentityDatabase) {}
 
   async enqueue(input: Parameters<SsfDeliveryRepository["enqueue"]>[0]): Promise<boolean> {
     const rows = await this.db

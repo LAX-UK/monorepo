@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { IdentityDatabase } from "@auction/identity-db";
 import {
   DrizzleSsfDeliveryRepository,
   DrizzleSsfSourceEventReader,
@@ -12,7 +12,7 @@ import { SsfEventMapper } from "../services/ssf-event.mapper.js";
 import { SsfStreamService } from "../services/ssf-stream.service.js";
 
 export function createSsfServices(options: {
-  db: Database;
+  db: IdentityDatabase;
   issuer: string;
   jwks: JwksProvider;
   environment: "development" | "test" | "production";

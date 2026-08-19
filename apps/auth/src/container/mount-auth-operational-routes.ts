@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { OIDC_CONSENT_SCRIPT, type createAuth } from "@auction/auth";
-import type { Database } from "@auction/db";
+import type { IdentityDatabase } from "@auction/identity-db";
 import { sql } from "drizzle-orm";
 import type { Hono } from "hono";
 import type { Redis } from "ioredis";
@@ -8,7 +8,7 @@ import type pino from "pino";
 import { createMachineTokenRateLimitMiddleware } from "../middleware/auth-rate-limit.js";
 
 export type AuthOperationalRoutes = {
-  db: Pick<Database, "execute">;
+  db: Pick<IdentityDatabase, "execute">;
   auth: ReturnType<typeof createAuth>;
   log: pino.Logger;
   nodeEnv: "development" | "test" | "production";

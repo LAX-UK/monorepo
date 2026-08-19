@@ -1,5 +1,4 @@
-import { createDb } from "@auction/db";
-import type { IdentityDatabase } from "@auction/identity-db";
+import { createIdentityDb } from "@auction/identity-db";
 import { account, session, user, verification } from "@auction/identity-db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -29,14 +28,13 @@ const verificationIds = [
 ] as const;
 
 describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
-  const db = DATABASE_URL ? createDb(DATABASE_URL) : undefined;
-  const identityDb = db as unknown as IdentityDatabase;
-  const unitOfWork = db ? new DrizzleIdentityUnitOfWork(identityDb) : undefined;
-  const subjects = db ? new DrizzleIdentitySubjectRepository(identityDb) : undefined;
-  const credentials = db ? new DrizzleIdentityCredentialRepository(identityDb) : undefined;
-  const sessions = db ? new DrizzleIdentitySessionRepository(identityDb) : undefined;
-  const emailChanges = db ? new DrizzleIdentityEmailChangeRepository(identityDb) : undefined;
-  const verifications = db ? new DrizzleIdentityVerificationPurger(identityDb) : undefined;
+  const db = DATABASE_URL ? createIdentityDb(DATABASE_URL) : undefined;
+  const unitOfWork = db ? new DrizzleIdentityUnitOfWork(db) : undefined;
+  const subjects = db ? new DrizzleIdentitySubjectRepository(db) : undefined;
+  const credentials = db ? new DrizzleIdentityCredentialRepository(db) : undefined;
+  const sessions = db ? new DrizzleIdentitySessionRepository(db) : undefined;
+  const emailChanges = db ? new DrizzleIdentityEmailChangeRepository(db) : undefined;
+  const verifications = db ? new DrizzleIdentityVerificationPurger(db) : undefined;
 
   async function clearState(): Promise<void> {
     if (!db) return;

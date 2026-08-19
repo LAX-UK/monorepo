@@ -1,12 +1,17 @@
 import { buildTrustedAuthOrigins, createEnvelopeCrypto, parseAuthDekKey } from "@auction/auth";
-import { type Database, createDb } from "@auction/db";
+import { type Database, createDbFromPool } from "@auction/db";
 import {
   ConsoleEmailService,
   type IEmailService,
   PostmarkEmailService,
   bindEmailQueue,
 } from "@auction/email";
-import { createDrizzleJwksStore } from "@auction/identity-db";
+import {
+  type IdentityDb,
+  createDrizzleJwksStore,
+  createIdentityDb,
+  getIdentityPool,
+} from "@auction/identity-db";
 import { Sentry, getBullMqTelemetry } from "@auction/observability";
 import { EMAIL_QUEUE_NAME, createBullQueueOptions } from "@auction/queues";
 import {
@@ -22,7 +27,8 @@ import type { AuthAppEnv } from "../env.js";
 import type { JwksProvider } from "../infrastructure/token-exchange-adapters.js";
 
 export type AuthInfra = {
-  db: Database;
+  db: IdentityDb;
+  productDb: Database;
   redis: Redis;
   emailQueue: Queue<{ outboxId: string }>;
   emailService: IEmailService;
@@ -33,7 +39,8 @@ export type AuthInfra = {
 };
 
 export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
-  const db = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
+  const db = createIdentityDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
+  const productDb = createDbFromPool(getIdentityPool(db));
   const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
   redis.on("error", (err: Error) => {
     log.error({ err }, "redis connection error");
@@ -49,8 +56,8 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
   );
   const emailService =
     env.EMAIL_PROVIDER === "postmark"
-      ? new PostmarkEmailService(db, bindEmailQueue(emailQueue))
-      : new ConsoleEmailService(db, bindEmailQueue(emailQueue));
+      ? new PostmarkEmailService(productDb, bindEmailQueue(emailQueue))
+      : new ConsoleEmailService(productDb, bindEmailQueue(emailQueue));
   const webOrigins = buildTrustedAuthOrigins({
     webOrigin: env.WEB_ORIGIN,
     webOrigins: env.WEB_ORIGINS,
@@ -62,6 +69,7 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
       : undefined;
   return {
     db,
+    productDb,
     redis,
     emailQueue,
     emailService,

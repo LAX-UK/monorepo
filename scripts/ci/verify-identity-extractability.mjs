@@ -35,7 +35,6 @@ const ALLOWED_AUCTION_PACKAGES = new Set([
 const AUTH_APP_TRANSITIONAL_PACKAGES = new Set([
   "@auction/db",
   "@auction/email",
-  "@auction/persistence",
   "@auction/queues",
   "@auction/sms",
 ]);

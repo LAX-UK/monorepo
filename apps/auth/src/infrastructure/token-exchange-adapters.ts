@@ -1,12 +1,12 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
-import type { Database } from "@auction/db";
-import { oauthApplication, user } from "@auction/db/schema";
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   OidcClientKind,
   REGISTERED_OIDC_CLIENTS,
   type RegisteredOidcClientId,
 } from "@auction/identity-contracts";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { oauthApplication, user } from "@auction/identity-db/schema";
 import { eq } from "drizzle-orm";
 import { SignJWT, createLocalJWKSet, importJWK, jwtVerify } from "jose";
 import type { ConfidentialClientAuthenticator } from "../routes/token-exchange.routes.js";
@@ -61,7 +61,7 @@ function safeSecretEquals(stored: string, supplied: string): boolean {
 }
 
 export class DrizzleConfidentialClientAuthenticator implements ConfidentialClientAuthenticator {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly db: IdentityDatabase) {}
 
   async authenticate(
     clientId: string,
@@ -93,7 +93,7 @@ export class DrizzleConfidentialClientAuthenticator implements ConfidentialClien
 }
 
 export function createTokenExchangePorts(options: {
-  db: Database;
+  db: IdentityDatabase;
   issuer: string;
   jwks: JwksProvider;
 }): TokenExchangePorts {
