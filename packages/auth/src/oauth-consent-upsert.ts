@@ -32,26 +32,43 @@ function coerceScopes(value: unknown): string | null {
   return null;
 }
 
+function readField(data: Record<string, unknown>, camel: string, snake: string): unknown {
+  return data[camel] ?? data[snake];
+}
+
+function coerceConsentGiven(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (value === 1 || value === "1" || value === "true" || value === "t") return true;
+  if (value === 0 || value === "0" || value === "false" || value === "f") return false;
+  return false;
+}
+
 function parseConsentRecord(data: Record<string, unknown>) {
-  const clientId = data.clientId;
-  const userId = data.userId;
-  const scopes = coerceScopes(data.scopes);
-  const consentGiven = data.consentGiven;
-  const id = data.id;
-  const createdAt = coerceDate(data.createdAt);
-  const updatedAt = coerceDate(data.updatedAt);
+  const clientId = readField(data, "clientId", "client_id");
+  const userId = readField(data, "userId", "user_id");
+  const id = readField(data, "id", "id");
+  const scopes = coerceScopes(readField(data, "scopes", "scopes"));
+  const createdAt = coerceDate(readField(data, "createdAt", "created_at"));
+  const updatedAt = coerceDate(readField(data, "updatedAt", "updated_at"));
   if (
     typeof clientId !== "string" ||
     typeof userId !== "string" ||
     scopes === null ||
-    typeof consentGiven !== "boolean" ||
     typeof id !== "string" ||
     createdAt === null ||
     updatedAt === null
   ) {
     return null;
   }
-  return { id, clientId, userId, scopes, consentGiven, createdAt, updatedAt };
+  return {
+    id,
+    clientId,
+    userId,
+    scopes,
+    consentGiven: coerceConsentGiven(readField(data, "consentGiven", "consent_given")),
+    createdAt,
+    updatedAt,
+  };
 }
 
 /** Routes Better Auth oauthConsent inserts through the atomic ConsentStore port. */

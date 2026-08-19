@@ -69,6 +69,41 @@ describe("oauth consent upsert adapter", () => {
     expect(upsert).toHaveBeenCalledOnce();
   });
 
+  it("accepts snake_case fields and numeric consent flags", async () => {
+    const upsert = vi.fn(async (input) => input);
+    const create = vi.fn();
+    const adapter = wrapOAuthConsentUpsertAdapter(
+      {
+        create,
+        transaction: async (callback) => callback({}),
+      } as never,
+      { upsert },
+    );
+
+    await adapter.create({
+      model: "oauthConsent",
+      data: {
+        id: "consent-3",
+        client_id: "lax-shop-web",
+        user_id: "user-1",
+        scopes: ["openid", "offline_access"],
+        consent_given: 1,
+        created_at: "2026-08-19T00:00:00.000Z",
+        updated_at: "2026-08-19T00:00:00.000Z",
+      },
+    });
+
+    expect(create).not.toHaveBeenCalled();
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: "lax-shop-web",
+        userId: "user-1",
+        scopes: "openid offline_access",
+        consentGiven: true,
+      }),
+    );
+  });
+
   it("delegates non-consent models to the base adapter", async () => {
     const create = vi.fn(async (args) => args.data);
     const upsert = vi.fn();
