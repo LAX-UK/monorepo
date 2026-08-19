@@ -15,22 +15,39 @@ function isAlreadyWrapped(adapter: AuthDbAdapter): boolean {
   return Object.getOwnPropertyDescriptor(adapter, wrappedSym)?.value === true;
 }
 
+function coerceDate(value: unknown): Date | null {
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}
+
+function coerceScopes(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && value.every((scope) => typeof scope === "string")) {
+    return value.join(" ");
+  }
+  return null;
+}
+
 function parseConsentRecord(data: Record<string, unknown>) {
   const clientId = data.clientId;
   const userId = data.userId;
-  const scopes = data.scopes;
+  const scopes = coerceScopes(data.scopes);
   const consentGiven = data.consentGiven;
   const id = data.id;
-  const createdAt = data.createdAt;
-  const updatedAt = data.updatedAt;
+  const createdAt = coerceDate(data.createdAt);
+  const updatedAt = coerceDate(data.updatedAt);
   if (
     typeof clientId !== "string" ||
     typeof userId !== "string" ||
-    typeof scopes !== "string" ||
+    scopes === null ||
     typeof consentGiven !== "boolean" ||
     typeof id !== "string" ||
-    !(createdAt instanceof Date) ||
-    !(updatedAt instanceof Date)
+    createdAt === null ||
+    updatedAt === null
   ) {
     return null;
   }

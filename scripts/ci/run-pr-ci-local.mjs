@@ -144,6 +144,7 @@ for (const tag of [
   "0144_oidc_rp_sessions",
   "0145_oidc_logout_and_shop_sessions",
   "0146_ssf_signal_transport",
+  "0152_ssf_reset_outbox_checkpoint",
 ]) {
   run(`Migration pair ${tag}`, "pnpm", [
     "--filter",
@@ -181,6 +182,9 @@ run(
   ["--filter", "@auction/db", "test", "--", "worker-app-role"],
   { env: workerRoleEnv },
 );
+run("Build db dependencies (auth)", "pnpm", ["--filter", "@auction/db...", "build"], {
+  env: authRoleEnv,
+});
 run("Apply application role grants (auth)", "pnpm", ["--filter", "@auction/db", "db:roles"], {
   env: authRoleEnv,
 });

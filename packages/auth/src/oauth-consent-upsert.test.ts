@@ -41,6 +41,34 @@ describe("oauth consent upsert adapter", () => {
     });
   });
 
+  it("accepts ISO date strings from the Better Auth drizzle adapter", async () => {
+    const upsert = vi.fn(async (input) => input);
+    const create = vi.fn();
+    const adapter = wrapOAuthConsentUpsertAdapter(
+      {
+        create,
+        transaction: async (callback) => callback({}),
+      } as never,
+      { upsert },
+    );
+
+    await adapter.create({
+      model: "oauthConsent",
+      data: {
+        id: "consent-2",
+        clientId: "lax-shop-web",
+        userId: "user-1",
+        scopes: "openid profile email offline_access",
+        consentGiven: true,
+        createdAt: "2026-08-19T00:00:00.000Z",
+        updatedAt: "2026-08-19T00:00:00.000Z",
+      },
+    });
+
+    expect(create).not.toHaveBeenCalled();
+    expect(upsert).toHaveBeenCalledOnce();
+  });
+
   it("delegates non-consent models to the base adapter", async () => {
     const create = vi.fn(async (args) => args.data);
     const upsert = vi.fn();
