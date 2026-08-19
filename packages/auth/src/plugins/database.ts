@@ -11,6 +11,7 @@ import {
 } from "@auction/db/schema";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { wrapAuthDatabaseAdapter } from "../adapter-at-rest.js";
+import { wrapOAuthConsentUpsertAdapter } from "../oauth-consent-upsert.js";
 import type { EnvelopeCrypto } from "../crypto/envelope.js";
 
 export function buildDrizzleDatabase(db: Database, envelope?: EnvelopeCrypto) {
@@ -27,10 +28,14 @@ export function buildDrizzleDatabase(db: Database, envelope?: EnvelopeCrypto) {
       twoFactor: twoFactorTable,
     },
   });
-  if (!envelope) return inner;
   type DrizzleAdapterOptions = Parameters<typeof inner>[0];
+  const withConsentUpsert = ((options: DrizzleAdapterOptions) =>
+    wrapOAuthConsentUpsertAdapter(inner(options) as never)) as unknown as ReturnType<
+    typeof drizzleAdapter
+  >;
+  if (!envelope) return withConsentUpsert;
   return ((options: DrizzleAdapterOptions) =>
-    wrapAuthDatabaseAdapter(inner(options) as never, envelope)) as unknown as ReturnType<
+    wrapAuthDatabaseAdapter(withConsentUpsert(options) as never, envelope)) as unknown as ReturnType<
     typeof drizzleAdapter
   >;
 }
