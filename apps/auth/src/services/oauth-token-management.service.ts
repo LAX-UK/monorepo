@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
-import type { Database } from "@auction/db";
-import { oauthAccessToken, user } from "@auction/db/schema";
+import type { SubjectStatusReader } from "@auction/auth";
 import { REGISTERED_OIDC_CLIENTS, type RegisteredOidcClientId } from "@auction/identity-contracts";
-import { and, eq, or } from "drizzle-orm";
 import { createLocalJWKSet, jwtVerify } from "jose";
+import type { OauthTokenLookup, OauthTokenStore } from "./oauth-token-management.ports.js";
 
 type JwksReader = {
   getJwks(): Promise<{ id: string; publicKey: string; alg?: string | undefined }[]>;
@@ -26,6 +25,19 @@ function fingerprint(token: string): string {
   return `h1:${createHash("sha256").update(token).digest("base64url")}`;
 }
 
+function buildTokenLookup(input: {
+  requesterClientId: RegisteredOidcClientId;
+  token: string;
+  tokenTypeHint?: string | undefined;
+}): OauthTokenLookup {
+  const candidates = [fingerprint(input.token), input.token];
+  return {
+    requesterClientId: input.requesterClientId,
+    accessTokenCandidates: input.tokenTypeHint === "refresh_token" ? [] : candidates,
+    refreshTokenCandidates: input.tokenTypeHint === "access_token" ? [] : candidates,
+  };
+}
+
 export function isTokenOwnedByClient(
   tokenClientId: string,
   requesterClientId: RegisteredOidcClientId,
@@ -44,7 +56,8 @@ export function canClientIntrospectAudience(
 
 export class OauthTokenManagementService {
   constructor(
-    private readonly db: Database,
+    private readonly tokens: OauthTokenStore,
+    private readonly subjectStatus: SubjectStatusReader,
     private readonly issuer: string,
     private readonly jwks: JwksReader,
     private readonly now: () => Date = () => new Date(),
@@ -55,51 +68,19 @@ export class OauthTokenManagementService {
     token: string;
     tokenTypeHint?: string | undefined;
   }): Promise<{ subjectId: string | null; refreshRevoked: boolean }> {
-    const accessAllowed = input.tokenTypeHint !== "refresh_token";
     const refreshAllowed = input.tokenTypeHint !== "access_token";
-    const [row] = await this.db
-      .select({
-        id: oauthAccessToken.id,
-        clientId: oauthAccessToken.clientId,
-        userId: oauthAccessToken.userId,
-        refreshFamilyId: oauthAccessToken.refreshFamilyId,
-        accessToken: oauthAccessToken.accessToken,
-        refreshToken: oauthAccessToken.refreshToken,
-      })
-      .from(oauthAccessToken)
-      .where(
-        and(
-          eq(oauthAccessToken.clientId, input.requesterClientId),
-          or(
-            ...(accessAllowed
-              ? [
-                  eq(oauthAccessToken.accessToken, fingerprint(input.token)),
-                  eq(oauthAccessToken.accessToken, input.token),
-                ]
-              : []),
-            ...(refreshAllowed
-              ? [
-                  eq(oauthAccessToken.refreshToken, fingerprint(input.token)),
-                  eq(oauthAccessToken.refreshToken, input.token),
-                ]
-              : []),
-          ),
-        ),
-      )
-      .limit(1);
+    const row = await this.tokens.findByClientAndToken(buildTokenLookup(input));
     if (!row || !isTokenOwnedByClient(row.clientId, input.requesterClientId)) {
       return { subjectId: null, refreshRevoked: false };
     }
     const isRefresh =
       refreshAllowed &&
       (row.refreshToken === input.token || row.refreshToken === fingerprint(input.token));
-    await this.db
-      .delete(oauthAccessToken)
-      .where(
-        isRefresh && row.refreshFamilyId
-          ? eq(oauthAccessToken.refreshFamilyId, row.refreshFamilyId)
-          : eq(oauthAccessToken.id, row.id),
-      );
+    if (isRefresh && row.refreshFamilyId) {
+      await this.tokens.deleteRefreshFamily(row.refreshFamilyId);
+    } else {
+      await this.tokens.deleteToken(row.id);
+    }
     return { subjectId: row.userId, refreshRevoked: isRefresh };
   }
 
@@ -119,55 +100,18 @@ export class OauthTokenManagementService {
     tokenTypeHint?: string | undefined;
   }): Promise<TokenIntrospection> {
     const accessAllowed = input.tokenTypeHint !== "refresh_token";
-    const refreshAllowed = input.tokenTypeHint !== "access_token";
-    const [row] = await this.db
-      .select({
-        clientId: oauthAccessToken.clientId,
-        userId: oauthAccessToken.userId,
-        scopes: oauthAccessToken.scopes,
-        accessToken: oauthAccessToken.accessToken,
-        refreshToken: oauthAccessToken.refreshToken,
-        accessExpiresAt: oauthAccessToken.accessTokenExpiresAt,
-        refreshExpiresAt: oauthAccessToken.refreshTokenExpiresAt,
-        refreshConsumedAt: oauthAccessToken.refreshConsumedAt,
-        createdAt: oauthAccessToken.createdAt,
-        disabledAt: user.identityDisabledAt,
-        mergedInto: user.mergedIntoSubjectId,
-      })
-      .from(oauthAccessToken)
-      .leftJoin(user, eq(user.id, oauthAccessToken.userId))
-      .where(
-        and(
-          eq(oauthAccessToken.clientId, input.requesterClientId),
-          or(
-            ...(accessAllowed
-              ? [
-                  eq(oauthAccessToken.accessToken, fingerprint(input.token)),
-                  eq(oauthAccessToken.accessToken, input.token),
-                ]
-              : []),
-            ...(refreshAllowed
-              ? [
-                  eq(oauthAccessToken.refreshToken, fingerprint(input.token)),
-                  eq(oauthAccessToken.refreshToken, input.token),
-                ]
-              : []),
-          ),
-        ),
-      )
-      .limit(1);
+    const row = await this.tokens.findByClientAndToken(buildTokenLookup(input));
     if (
       !row?.userId ||
       !isTokenOwnedByClient(row.clientId, input.requesterClientId) ||
-      row.disabledAt ||
-      row.mergedInto
+      (await this.subjectStatus.isDisabledOrMerged(row.userId))
     ) {
       return { active: false };
     }
     const accessMatch =
       accessAllowed &&
       (row.accessToken === input.token || row.accessToken === fingerprint(input.token));
-    const expiresAt = accessMatch ? row.accessExpiresAt : row.refreshExpiresAt;
+    const expiresAt = accessMatch ? row.accessTokenExpiresAt : row.refreshTokenExpiresAt;
     if (
       expiresAt.getTime() <= this.now().getTime() ||
       (!accessMatch && row.refreshConsumedAt !== null)
@@ -214,12 +158,7 @@ export class OauthTokenManagementService {
       ) {
         return { active: false };
       }
-      const [identity] = await this.db
-        .select({ disabledAt: user.identityDisabledAt, mergedInto: user.mergedIntoSubjectId })
-        .from(user)
-        .where(eq(user.id, subject))
-        .limit(1);
-      if (!identity || identity.disabledAt || identity.mergedInto) return { active: false };
+      if (await this.subjectStatus.isDisabledOrMerged(subject)) return { active: false };
       return {
         active: true,
         ...(typeof verified.payload.scope === "string" ? { scope: verified.payload.scope } : {}),

@@ -27,6 +27,7 @@ export type {
   AuthPorts,
   PhoneNumberStore,
   SessionStampStore,
+  SubjectStatusReader,
 } from "./ports/index.js";
 export {
   runSignInTurnstileGate,

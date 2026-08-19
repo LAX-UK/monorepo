@@ -1,9 +1,11 @@
 import type { Database } from "@auction/db";
+import { type IdentityDatabase, createDrizzleSubjectStatusReader } from "@auction/identity-db";
 import type { Redis } from "ioredis";
 import {
   DrizzleBackchannelLogoutDeliveryRepository,
   DrizzleRpLogoutRepository,
 } from "../infrastructure/drizzle-backchannel-logout.adapters.js";
+import { DrizzleOauthTokenStore } from "../infrastructure/drizzle-oauth-token-store.js";
 import { HttpBackchannelLogoutDispatcher } from "../infrastructure/http-backchannel-logout.dispatcher.js";
 import {
   DrizzleOidcRpSessionRepository,
@@ -26,6 +28,7 @@ export function createOidcPhase3Services(options: {
   jwks: JwksProvider;
   recentStepUpMaxAgeSec: number;
 }) {
+  const identityDb = options.db as unknown as IdentityDatabase;
   const signer = createLogoutTokenSigner(options.jwks);
   const logout = new BackchannelLogoutRevocationCoordinator(
     new DrizzleRpLogoutRepository(options.db),
@@ -37,7 +40,12 @@ export function createOidcPhase3Services(options: {
       options.recentStepUpMaxAgeSec,
     ),
     confidentialClients: new DrizzleConfidentialClientAuthenticator(options.db),
-    tokenManagement: new OauthTokenManagementService(options.db, options.issuer, options.jwks),
+    tokenManagement: new OauthTokenManagementService(
+      new DrizzleOauthTokenStore(identityDb),
+      createDrizzleSubjectStatusReader(identityDb),
+      options.issuer,
+      options.jwks,
+    ),
     logout,
     logoutDelivery: new BackchannelLogoutDeliveryWorker(
       new DrizzleBackchannelLogoutDeliveryRepository(options.db),
