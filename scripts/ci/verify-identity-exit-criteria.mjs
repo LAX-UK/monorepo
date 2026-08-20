@@ -3,9 +3,16 @@
  * Static verification of documented database-split exit criteria from
  * docs/architecture/09-lax-identity-boundary.md.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, relative } from "node:path";
 
-const EXIT_CRITERIA_MIGRATIONS = ["0150_contract_user_identity_only", "0151_subject_id_expand"];
+const EXIT_CRITERIA_MIGRATIONS = [
+  "0150_contract_user_identity_only",
+  "0151_subject_id_expand",
+  "0156_bid_identity_directory",
+  "0157_revoke_worker_user_reads",
+  "0158_revoke_api_user_reads",
+];
 
 const BID_OWNED_USER_COLUMNS = [
   "firstName",
@@ -94,8 +101,8 @@ function verifyProductReaders() {
   const persistenceProfile = read(
     "packages/persistence/src/repositories/drizzle-profile.repository.ts",
   );
-  if (/user\.role/.test(persistenceProfile) || /user\.kycStatus/.test(persistenceProfile)) {
-    throw new Error("drizzle-profile.repository still reads bid columns from user");
+  if (/\buser\./.test(persistenceProfile) || /\.from\(user\)/.test(persistenceProfile)) {
+    throw new Error("drizzle-profile.repository still reads Identity user");
   }
 
   const workerMarketing = read(
@@ -104,13 +111,74 @@ function verifyProductReaders() {
   if (/user\.role/.test(workerMarketing) || /user\.firstName/.test(workerMarketing)) {
     throw new Error("worker marketing sync still reads bid columns from user");
   }
+
+  const roles = read("packages/db/src/migrate-roles.ts");
+  if (/API_READ_TABLES\s*=\s*\[[^\]]*["']user["']/.test(roles)) {
+    throw new Error("api_app still has user in API_READ_TABLES");
+  }
+  if (/API_DENY_TABLES\s*=\s*\[[^\]]*["']user["']/.test(roles)) {
+    throw new Error("api_app user must be migration-controlled, not in API_DENY_TABLES");
+  }
+  if (
+    !/restoreApiUserSelect[\s\S]*hasTablePrivilege[\s\S]*restoreApiUserSelect[\s\S]*grantIfExists\(\s*client,\s*["']api_app["'],\s*["']user["'],\s*["']SELECT["']/m.test(
+      roles,
+    )
+  ) {
+    throw new Error("migrate-roles must preserve only an existing api_app user SELECT grant");
+  }
+}
+
+function verifyDirectoryCutoverMigrations() {
+  const create = read("packages/db/drizzle/0156_bid_identity_directory.sql");
+  if (
+    !/FROM "user" AS u/i.test(create) ||
+    !/GRANT SELECT[\s\S]*bid_identity_directory TO api_app/i.test(create)
+  ) {
+    throw new Error("0156 must backfill and grant the Bid Identity directory");
+  }
+  const workerRevoke = read("packages/db/drizzle/0157_revoke_worker_user_reads.sql");
+  if (!/REVOKE SELECT ON TABLE public\."user" FROM worker_app/i.test(workerRevoke)) {
+    throw new Error("0157 must revoke worker_app user SELECT");
+  }
+  const apiRevoke = read("packages/db/drizzle/0158_revoke_api_user_reads.sql");
+  if (!/REVOKE SELECT ON TABLE public\."user" FROM api_app/i.test(apiRevoke)) {
+    throw new Error("0158 must revoke api_app user SELECT");
+  }
+}
+
+function listTypeScriptFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return listTypeScriptFiles(path);
+    return entry.isFile() && /\.(ts|tsx)$/.test(entry.name) ? [path] : [];
+  });
+}
+
+function verifyApiTestImports() {
+  const root = "apps/api/src";
+  const violations = [];
+  for (const path of listTypeScriptFiles(root)) {
+    if (!/\.(?:test|spec|integration\.test)\.(?:ts|tsx)$/.test(path)) continue;
+    const source = read(path);
+    for (const match of source.matchAll(
+      /import\s+(?:type\s+)?\{([\s\S]*?)\}\s+from\s+["']@auction\/db\/schema["']/g,
+    )) {
+      const imports = (match[1] ?? "").split(",").map((name) => name.trim().split(/\s+as\s+/)[0]);
+      if (imports.includes("user")) violations.push(relative(".", path));
+    }
+  }
+  if (violations.length > 0) {
+    throw new Error(`API tests import Identity-owned user directly: ${violations.join(", ")}`);
+  }
 }
 
 function main() {
   verifyMigrationRegistry();
   verifyPhase5ContractUser();
   verifyPhase6SubjectExpand();
+  verifyDirectoryCutoverMigrations();
   verifyProductReaders();
+  verifyApiTestImports();
   console.log("identity exit criteria verification passed (static)");
 }
 

@@ -167,6 +167,8 @@ export type SessionUser = {
   pendingNewEmail?: string | null;
   /** From GET /users/me — TOTP / backup-code 2FA enrolment. */
   twoFactorEnabled?: boolean;
+  /** True only when live Identity security fields were available for this response. */
+  securityStatusAvailable?: boolean;
   /** From GET /users/me — synced UI preferences (theme, catalogue layout defaults, density). */
   uiPreferences?: {
     theme: "light" | "dark" | "system";

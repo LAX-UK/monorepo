@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
 import {
+  bidIdentityDirectory,
   bidUserProfile,
   kycVerification,
   legalEntity,
   legalEntityAddress,
-  user,
   userAddress,
 } from "@auction/db/schema";
 import { and, desc, eq } from "drizzle-orm";
@@ -51,16 +51,19 @@ export class DrizzleLegalEntityConnectRepository
     const entityRows = await this.db
       .select({
         entity: legalEntity,
-        ownerEmail: user.email,
+        ownerEmail: bidIdentityDirectory.email,
         ownerFirstName: bidUserProfile.firstName,
         ownerLastName: bidUserProfile.lastName,
-        ownerDisplayName: user.name,
+        ownerDisplayName: bidIdentityDirectory.name,
         ownerKycStatus: bidUserProfile.kycStatus,
         ownerMobile: bidUserProfile.mobile,
-        ownerUserId: user.id,
+        ownerUserId: bidIdentityDirectory.subjectId,
       })
       .from(legalEntity)
-      .innerJoin(user, eq(user.id, legalEntity.createdByUserId))
+      .innerJoin(
+        bidIdentityDirectory,
+        eq(bidIdentityDirectory.subjectId, legalEntity.createdByUserId),
+      )
       .innerJoin(bidUserProfile, eq(bidUserProfile.userId, legalEntity.createdByUserId))
       .where(eq(legalEntity.id, legalEntityId))
       .limit(1);

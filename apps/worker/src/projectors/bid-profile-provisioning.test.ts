@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 
-const { ensureBidUserProfile, writeBidUserProfile } = vi.hoisted(() => ({
-  ensureBidUserProfile: vi.fn(),
+const { provisionBidUserProfileShell, writeBidUserProfile } = vi.hoisted(() => ({
+  provisionBidUserProfileShell: vi.fn(),
   writeBidUserProfile: vi.fn(),
 }));
 
 vi.mock("@auction/persistence/bid-user-profile-sync", () => ({
-  ensureBidUserProfile,
+  provisionBidUserProfileShell,
   writeBidUserProfile,
 }));
 
@@ -101,7 +101,89 @@ describe("processBidProfileProvisioning", () => {
       mergedIntoSubjectId: "canonical",
     });
     expect(writeBidUserProfile).toHaveBeenCalledTimes(4);
-    expect(ensureBidUserProfile).not.toHaveBeenCalled();
+    expect(provisionBidUserProfileShell).not.toHaveBeenCalled();
     expect(advanceCursor).toHaveBeenCalledWith("bid_profile_provisioning", 5);
+  });
+
+  it("strictly parses registration and provisions from its Identity timestamp", async () => {
+    const advanceCursor = vi.fn();
+    const createdAt = "2026-08-20T08:00:00.000Z";
+    const ctx = {
+      projectorStateRepo: {
+        ensureCursor: vi.fn(),
+        getCursor: vi.fn().mockResolvedValue(0),
+        advanceCursor,
+        recordError: vi.fn(),
+      },
+      domainEventReader: {
+        listAfterCursor: vi.fn().mockResolvedValue([
+          {
+            id: 1,
+            eventType: "user.registered",
+            payload: {
+              userId: "subject-1",
+              email: "ada@example.test",
+              name: "Ada Lovelace",
+              source: "credential",
+              createdAt,
+            },
+          },
+        ]),
+      },
+      transactionRunner: {
+        runInTransaction: vi.fn(async (fn: (tx: object) => Promise<void>) => fn({})),
+      },
+    } as unknown as ProjectorRunContext;
+    const log = { error: vi.fn() } as unknown as Parameters<
+      typeof processBidProfileProvisioning
+    >[0]["log"];
+
+    await processBidProfileProvisioning({ ctx, log });
+
+    expect(provisionBidUserProfileShell).toHaveBeenCalledWith({}, "subject-1", new Date(createdAt));
+    expect(advanceCursor).toHaveBeenCalledWith("bid_profile_provisioning", 1);
+  });
+
+  it("rejects registration payloads with unknown fields", async () => {
+    const recordError = vi.fn();
+    const advanceCursor = vi.fn();
+    const ctx = {
+      projectorStateRepo: {
+        ensureCursor: vi.fn(),
+        getCursor: vi.fn().mockResolvedValue(0),
+        advanceCursor,
+        recordError,
+      },
+      domainEventReader: {
+        listAfterCursor: vi.fn().mockResolvedValue([
+          {
+            id: 1,
+            eventType: "user.registered",
+            payload: {
+              userId: "subject-1",
+              email: "ada@example.test",
+              name: "Ada Lovelace",
+              source: "credential",
+              unexpected: true,
+            },
+          },
+        ]),
+      },
+      transactionRunner: {
+        runInTransaction: vi.fn(async (fn: (tx: object) => Promise<void>) => fn({})),
+      },
+    } as unknown as ProjectorRunContext;
+    const log = { error: vi.fn() } as unknown as Parameters<
+      typeof processBidProfileProvisioning
+    >[0]["log"];
+
+    await processBidProfileProvisioning({ ctx, log });
+
+    expect(provisionBidUserProfileShell).not.toHaveBeenCalled();
+    expect(recordError).toHaveBeenCalledWith(
+      "bid_profile_provisioning",
+      expect.stringContaining("Unrecognized key"),
+    );
+    expect(advanceCursor).not.toHaveBeenCalled();
   });
 });

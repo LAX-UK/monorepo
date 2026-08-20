@@ -28,6 +28,14 @@ export type IdentitySession = {
   isCurrent: boolean;
 };
 
+export type IdentitySecurityStatus = {
+  twoFactorEnabled: boolean;
+  phoneNumber: string | null;
+  phoneNumberVerified: boolean;
+  pendingNewEmail: string | null;
+  emailChangeExpiresAt: Date | null;
+};
+
 export interface IIdentityIssuerClient {
   signUpEmail(input: IdentityIssuerSignUpInput): Promise<{ userId: string }>;
   sendVerificationEmail(
@@ -50,6 +58,10 @@ export interface IIdentitySubjectClient {
   findSubjectByEmail(email: string): Promise<IdentitySubject | null>;
   findByEmail(email: string): Promise<{ userId: string; emailVerified: boolean } | null>;
   deleteOrphanSubject(subjectId: string): Promise<boolean>;
+}
+
+export interface IIdentitySecurityClient {
+  readSecurityStatus(subjectId: string): Promise<IdentitySecurityStatus | null>;
 }
 
 export interface IIdentityCredentialClient {

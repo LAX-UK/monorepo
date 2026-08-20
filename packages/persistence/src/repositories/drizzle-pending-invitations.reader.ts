@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { legalEntity, user, userInvitation } from "@auction/db/schema";
+import { bidIdentityDirectory, legalEntity, userInvitation } from "@auction/db/schema";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { and, eq, gt, isNotNull, sql } from "drizzle-orm";
 import type {
@@ -21,12 +21,15 @@ export class DrizzlePendingInvitationsReader implements IPendingInvitationsReade
         orgDisplayName: legalEntity.displayName,
         orgSubkind: legalEntity.subkind,
         inviterUserId: userInvitation.createdByUserId,
-        inviterName: user.name,
+        inviterName: bidIdentityDirectory.name,
         roleOffered: userInvitation.targetLegalEntityMemberRole,
       })
       .from(userInvitation)
       .innerJoin(legalEntity, eq(legalEntity.id, userInvitation.targetLegalEntityId))
-      .innerJoin(user, eq(user.id, userInvitation.createdByUserId))
+      .innerJoin(
+        bidIdentityDirectory,
+        eq(bidIdentityDirectory.subjectId, userInvitation.createdByUserId),
+      )
       .where(
         and(
           eq(sql`lower(${userInvitation.email})`, norm),

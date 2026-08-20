@@ -1,8 +1,12 @@
 import type { Database } from "@auction/db";
-import { bidUserProfile, user } from "@auction/db/schema";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type { IUserRepository } from "../interfaces/user.repository.js";
+import {
+  activeIdentitySubject,
+  normalizedIdentityEmailEquals,
+} from "../lib/bid-identity-directory-query.js";
 
 export class DrizzleUserRepository implements IUserRepository {
   constructor(private readonly db: Database) {}
@@ -10,17 +14,17 @@ export class DrizzleUserRepository implements IUserRepository {
   async findById(id: string) {
     const rows = await this.db
       .select({
-        id: user.id,
-        email: user.email,
-        name: user.name,
+        id: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+        name: bidIdentityDirectory.name,
         role: bidUserProfile.role,
         staffRole: bidUserProfile.staffRole,
-        image: user.image,
+        image: bidIdentityDirectory.image,
         hasSeenActingContextTooltip: bidUserProfile.hasSeenActingContextTooltip,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, id))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, id))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
@@ -36,20 +40,24 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async findByEmail(email: string) {
-    const normalized = email.trim().toLowerCase();
     const rows = await this.db
       .select({
-        id: user.id,
-        email: user.email,
-        name: user.name,
+        id: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+        name: bidIdentityDirectory.name,
         role: bidUserProfile.role,
         staffRole: bidUserProfile.staffRole,
-        image: user.image,
+        image: bidIdentityDirectory.image,
         hasSeenActingContextTooltip: bidUserProfile.hasSeenActingContextTooltip,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(sql`lower(${user.email}) = ${normalized}`)
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(
+        and(
+          normalizedIdentityEmailEquals(bidIdentityDirectory.email, email),
+          activeIdentitySubject(),
+        ),
+      )
       .limit(1);
     const row = rows[0];
     if (!row) return null;
@@ -65,21 +73,25 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async findVerifiedIdByEmail(email: string): Promise<string | null> {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized) return null;
+    if (!email.trim()) return null;
     const [row] = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .where(and(eq(user.emailVerified, true), eq(user.email, normalized)))
+      .select({ id: bidIdentityDirectory.subjectId })
+      .from(bidIdentityDirectory)
+      .where(
+        and(
+          eq(bidIdentityDirectory.emailVerified, true),
+          normalizedIdentityEmailEquals(bidIdentityDirectory.email, email),
+          activeIdentitySubject(),
+        ),
+      )
       .limit(1);
     return row?.id ?? null;
   }
 
   async listIdsByRole(role: string): Promise<string[]> {
     const rows = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .select({ id: bidUserProfile.userId })
+      .from(bidUserProfile)
       .where(eq(bidUserProfile.role, role));
     return rows.map((r) => r.id);
   }
@@ -93,9 +105,8 @@ export class DrizzleUserRepository implements IUserRepository {
       "operations",
     ] as const;
     const rows = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .select({ id: bidUserProfile.userId })
+      .from(bidUserProfile)
       .where(
         and(eq(bidUserProfile.role, "staff"), inArray(bidUserProfile.staffRole, [...staffRoles])),
       );
@@ -104,18 +115,23 @@ export class DrizzleUserRepository implements IUserRepository {
 
   async listStaffEmails(): Promise<string[]> {
     const rows = await this.db
-      .select({ email: user.email })
-      .from(user)
-      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(bidUserProfile.role, "staff"));
+      .select({ email: bidIdentityDirectory.email })
+      .from(bidIdentityDirectory)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(and(eq(bidUserProfile.role, "staff"), activeIdentitySubject()));
     return [...new Set(rows.map((r) => r.email).filter((e): e is string => Boolean(e?.trim())))];
   }
 
   async listPublicProfiles(params: { limit: number; offset: number }) {
     const rows = await this.db
-      .select({ id: user.id, name: user.name, image: user.image })
-      .from(user)
-      .orderBy(asc(user.name))
+      .select({
+        id: bidIdentityDirectory.subjectId,
+        name: bidIdentityDirectory.name,
+        image: bidIdentityDirectory.image,
+      })
+      .from(bidIdentityDirectory)
+      .where(activeIdentitySubject())
+      .orderBy(asc(bidIdentityDirectory.name))
       .limit(params.limit)
       .offset(params.offset);
     return rows;

@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
 import {
   artistProfile,
+  bidIdentityDirectory,
   kycVerification,
   legalEntity,
   legalEntityDocument,
-  user,
 } from "@auction/db/schema";
 import { type SQL, and, asc, count, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
@@ -177,14 +177,14 @@ export class DrizzleAdminOnboardingIssuesReader implements IAdminOnboardingIssue
         .select({
           id: kycVerification.id,
           userId: kycVerification.userId,
-          userName: user.name,
-          userEmail: user.email,
+          userName: bidIdentityDirectory.name,
+          userEmail: bidIdentityDirectory.email,
           provider: kycVerification.provider,
           status: kycVerification.status,
           createdAt: kycVerification.createdAt,
         })
         .from(kycVerification)
-        .innerJoin(user, eq(kycVerification.userId, user.id))
+        .leftJoin(bidIdentityDirectory, eq(kycVerification.userId, bidIdentityDirectory.subjectId))
         .where(where)
         .orderBy(desc(kycVerification.createdAt))
         .limit(limit)
@@ -333,14 +333,17 @@ export class DrizzleAdminOnboardingIssuesReader implements IAdminOnboardingIssue
           .select({
             id: kycVerification.id,
             userId: kycVerification.userId,
-            userName: user.name,
-            userEmail: user.email,
+            userName: bidIdentityDirectory.name,
+            userEmail: bidIdentityDirectory.email,
             provider: kycVerification.provider,
             status: kycVerification.status,
             createdAt: kycVerification.createdAt,
           })
           .from(kycVerification)
-          .innerJoin(user, eq(kycVerification.userId, user.id))
+          .leftJoin(
+            bidIdentityDirectory,
+            eq(kycVerification.userId, bidIdentityDirectory.subjectId),
+          )
           .where(where)
           .limit(1);
         return row ?? null;

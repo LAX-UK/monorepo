@@ -55,10 +55,14 @@ describe("Better Auth schema and auth_app grant drift", () => {
     ]);
   });
 
-  it("denies api_app every auth-owned table except the public subject projection", () => {
+  it("statically denies api_app auth tables except migration-controlled user", () => {
     const denied = new Set<string>(API_DENY_TABLES);
     for (const table of AUTH_FULL_TABLES) {
-      expect(denied.has(table), table).toBe(table !== "user");
+      if (table === "user") {
+        expect(denied.has(table), table).toBe(false);
+        continue;
+      }
+      expect(denied.has(table), table).toBe(true);
     }
   });
 });

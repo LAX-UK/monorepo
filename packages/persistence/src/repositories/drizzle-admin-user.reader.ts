@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { bidUserProfile, user, userStaffRoleEnum } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile, userStaffRoleEnum } from "@auction/db/schema";
 import { count, eq, inArray, sql } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
@@ -26,15 +26,15 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
 
     const countQuery = this.db
       .select({ n: count() })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id));
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId));
     const [countRow] = whereClause ? await countQuery.where(whereClause) : await countQuery;
     const total = Number(countRow?.n ?? 0);
 
     const base = this.db
       .select(adminUserListSelect)
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .orderBy(buildAdminUserListOrderBy(filter.sort))
       .limit(filter.limit)
       .offset(filter.offset);
@@ -60,13 +60,13 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         total: sql<number>`count(*)::int`,
         active: sql<number>`count(*) filter (where ${bidUserProfile.suspendedAt} is null)::int`,
         suspended: sql<number>`count(*) filter (where ${bidUserProfile.suspendedAt} is not null)::int`,
-        emailVerified: sql<number>`count(*) filter (where ${user.emailVerified} = true)::int`,
+        emailVerified: sql<number>`count(*) filter (where ${bidIdentityDirectory.emailVerified} = true)::int`,
         kycVerified: sql<number>`count(*) filter (where ${bidUserProfile.kycStatus} = 'approved')::int`,
         legacyStaffRole: sql<number>`count(*) filter (where ${bidUserProfile.role} = 'staff' and ${bidUserProfile.staffRole} is null)::int`,
         ...staffRoleCountSelect,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id));
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId));
     const [row] = whereClause ? await countBase.where(whereClause) : await countBase;
     const byStaffRole: Record<string, number> = {};
     for (const role of userStaffRoleEnum.enumValues) {
@@ -91,16 +91,14 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
         suspendedReason: bidUserProfile.suspendedReason,
         dateOfBirth: bidUserProfile.dateOfBirth,
         emailStatusChangedAt: bidUserProfile.emailStatusChangedAt,
-        pendingNewEmail: user.pendingNewEmail,
-        emailChangeExpiresAt: user.emailChangeExpiresAt,
         currentKycSessionId: bidUserProfile.currentKycSessionId,
         amlHoldStatus: bidUserProfile.amlHoldStatus,
         amlHoldReason: bidUserProfile.amlHoldReason,
         amlHoldAt: bidUserProfile.amlHoldAt,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, id))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, id))
       .limit(1);
     if (!row) return null;
     return {
@@ -108,8 +106,8 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
       suspendedReason: row.suspendedReason ?? null,
       dateOfBirth: row.dateOfBirth ?? null,
       emailStatusChangedAt: row.emailStatusChangedAt ?? null,
-      pendingNewEmail: row.pendingNewEmail ?? null,
-      emailChangeExpiresAt: row.emailChangeExpiresAt ?? null,
+      pendingNewEmail: null,
+      emailChangeExpiresAt: null,
       currentKycSessionId: row.currentKycSessionId ?? null,
       amlHoldStatus: row.amlHoldStatus ?? null,
       amlHoldReason: row.amlHoldReason ?? null,
@@ -121,9 +119,9 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
     if (ids.length === 0) return [];
     const rows = await this.db
       .select(adminUserListSelect)
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(inArray(user.id, ids));
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(inArray(bidIdentityDirectory.subjectId, ids));
     return rows.map(mapAdminUserListRow);
   }
 }

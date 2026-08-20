@@ -200,6 +200,39 @@ if (workerIdentityReadViolations.length > 0) {
   process.exit(1);
 }
 
+// ─── Bid API Identity directory boundary ────────────────────────────────────
+
+/** @type {string[]} */
+const apiIdentityReadViolations = [];
+
+for (const sourceRoot of ["apps/api/src", "packages/persistence/src", "packages/exports/src"]) {
+  const files =
+    sourceRoot === "apps/api/src"
+      ? listAllSources(join(root, sourceRoot))
+      : listSources(join(root, sourceRoot));
+  for (const file of files) {
+    const rel = relative(root, file).replace(/\\/g, "/");
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(IDENTITY_TABLE_IMPORT_RE)) {
+      const imported = (match[1] ?? "")
+        .split(",")
+        .map((name) => name.trim().split(/\s+as\s+/)[0])
+        .filter(Boolean);
+      if (imported.includes("user")) {
+        apiIdentityReadViolations.push(
+          `${rel}: imports Identity-owned table "user" — read bidIdentityDirectory or call the live Identity boundary`,
+        );
+      }
+    }
+  }
+}
+
+if (apiIdentityReadViolations.length > 0) {
+  console.error("Bid API Identity directory boundary violations detected:\n");
+  for (const violation of apiIdentityReadViolations) console.error(`  ${violation}`);
+  process.exit(1);
+}
+
 /** @param {string} rel */
 function isAllowedDrizzleSite(rel) {
   if (rel.startsWith("packages/persistence/")) return true;

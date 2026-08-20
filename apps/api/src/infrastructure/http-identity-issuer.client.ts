@@ -3,6 +3,7 @@ import type {
   IIdentityEmailChangeClient,
   IIdentityIssuerClient,
   IIdentityProfileClient,
+  IIdentitySecurityClient,
   IIdentitySessionClient,
   IIdentitySubjectClient,
   IdentityIssuerRequestContext,
@@ -42,7 +43,8 @@ export class HttpIdentityIssuerClient
     IIdentityCredentialClient,
     IIdentitySessionClient,
     IIdentityEmailChangeClient,
-    IIdentityProfileClient
+    IIdentityProfileClient,
+    IIdentitySecurityClient
 {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -135,7 +137,13 @@ export class HttpIdentityIssuerClient
       );
       return readSubject(body);
     } catch (error) {
-      if (error instanceof IdentityIssuerClientError && error.status === 404) return null;
+      if (
+        error instanceof IdentityIssuerClientError &&
+        error.status === 404 &&
+        error.code === "subject_not_found"
+      ) {
+        return null;
+      }
       throw error;
     }
   }
@@ -149,6 +157,44 @@ export class HttpIdentityIssuerClient
   async findByEmail(email: string): Promise<{ userId: string; emailVerified: boolean } | null> {
     const subject = await this.findSubjectByEmail(email);
     return subject ? { userId: subject.id, emailVerified: subject.emailVerified } : null;
+  }
+
+  async readSecurityStatus(subjectId: string) {
+    try {
+      const body = await this.machineRequest(
+        "GET",
+        `/identity/subjects/${encodeURIComponent(subjectId)}/security-status`,
+      );
+      if (!isRecord(body) || !isRecord(body.status)) throw invalidResponse("security status");
+      const status = body.status;
+      if (
+        typeof status.twoFactorEnabled !== "boolean" ||
+        (status.phoneNumber !== null && typeof status.phoneNumber !== "string") ||
+        typeof status.phoneNumberVerified !== "boolean" ||
+        (status.pendingNewEmail !== null && typeof status.pendingNewEmail !== "string")
+      ) {
+        throw invalidResponse("security status");
+      }
+      return {
+        twoFactorEnabled: status.twoFactorEnabled,
+        phoneNumber: status.phoneNumber,
+        phoneNumberVerified: status.phoneNumberVerified,
+        pendingNewEmail: status.pendingNewEmail,
+        emailChangeExpiresAt: readNullableDate(
+          status.emailChangeExpiresAt,
+          "securityStatus.emailChangeExpiresAt",
+        ),
+      };
+    } catch (error) {
+      if (
+        error instanceof IdentityIssuerClientError &&
+        error.status === 404 &&
+        error.code === "subject_not_found"
+      ) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async credentialSummary(

@@ -4,6 +4,7 @@ import type { LegalEntity } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   buildAdminUserReadinessNextAction,
+  buildAdminUserReadinessSnapshot,
   buildUserAttentionItems,
 } from "./admin-user-readiness.vm";
 
@@ -24,6 +25,7 @@ const baseUser: AdminUserDetailPayload = {
   emailVerified: true,
   emailStatus: "ok",
   signupPersona: "individual",
+  securityStatusAvailable: true,
   twoFactorEnabled: false,
   kycStatus: "approved",
   kycVerifiedAt: "2024-02-01T00:00:00.000Z",
@@ -95,6 +97,20 @@ describe("buildAdminUserReadinessNextAction", () => {
     const action = buildAdminUserReadinessNextAction(baseInput);
     expect(action.tone).toBe("ready");
     expect(action.label).toMatch(/ready/i);
+  });
+});
+
+describe("buildAdminUserReadinessSnapshot", () => {
+  it("preserves unavailable security status instead of deriving 2FA off", () => {
+    const snapshot = buildAdminUserReadinessSnapshot({
+      ...baseInput,
+      user: { ...baseUser, securityStatusAvailable: false, twoFactorEnabled: false },
+    });
+
+    expect(snapshot.identity).toMatchObject({
+      securityStatusAvailable: false,
+      twoFactorEnabled: false,
+    });
   });
 });
 

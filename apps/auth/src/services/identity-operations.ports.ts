@@ -9,6 +9,14 @@ export type IdentitySubjectRecord = {
   mergedIntoSubjectId: string | null;
 };
 
+export type IdentitySecurityStatusRecord = {
+  twoFactorEnabled: boolean;
+  phoneNumber: string | null;
+  phoneNumberVerified: boolean;
+  pendingNewEmail: string | null;
+  emailChangeExpiresAt: Date | null;
+};
+
 export type IdentitySessionRecord = {
   id: string;
   createdAt: Date;
@@ -38,6 +46,7 @@ export interface IIdentityUnitOfWork {
 export interface IIdentitySubjectRepository {
   findById(subjectId: string): Promise<IdentitySubjectRecord | null>;
   findByEmail(email: string): Promise<IdentitySubjectRecord | null>;
+  readSecurityStatus(subjectId: string): Promise<IdentitySecurityStatusRecord | null>;
   updateProfile(
     transaction: IdentityOperationTransaction,
     subjectId: string,

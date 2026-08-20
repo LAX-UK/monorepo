@@ -75,6 +75,10 @@ export class IdentityOperationsService {
     return this.repositories.subjects.findByEmail(email);
   }
 
+  readSecurityStatus(subjectId: string) {
+    return this.repositories.subjects.readSecurityStatus(subjectId);
+  }
+
   async credentialSummary(subjectId: string): Promise<{
     hasPassword: boolean;
     linkedProviders: string[];

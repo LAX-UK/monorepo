@@ -8,17 +8,35 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError } from "../lib/errors.js";
 import { AdminUserService } from "./admin-user.service.js";
+import type { IIdentitySecurityClient } from "./interfaces/identity-issuer-client.js";
 
-function makeService(bids: IAdminUserBidsReader) {
-  const reader = {
-    list: vi.fn(),
-    getById: vi.fn(),
-    getByIds: vi.fn(),
-  } as unknown as IAdminUserReader;
+function makeService(
+  bids: IAdminUserBidsReader,
+  input: {
+    reader?: IAdminUserReader;
+    identitySecurity?: IIdentitySecurityClient;
+  } = {},
+) {
+  const reader =
+    input.reader ??
+    ({
+      list: vi.fn(),
+      getById: vi.fn(),
+      getByIds: vi.fn(),
+    } as unknown as IAdminUserReader);
   const roles = { setRoleAndStaff: vi.fn() } as unknown as IAdminUserRoleManager;
   const suspender = { suspend: vi.fn(), unsuspend: vi.fn() } as unknown as IAdminUserSuspender;
   const activity = { getRecentSessions: vi.fn() } as unknown as IAdminUserActivityReader;
-  return new AdminUserService(reader, roles, suspender, activity, bids);
+  return new AdminUserService(
+    reader,
+    roles,
+    suspender,
+    activity,
+    bids,
+    undefined,
+    undefined,
+    input.identitySecurity,
+  );
 }
 
 describe("AdminUserService.bidsFor", () => {
@@ -71,5 +89,68 @@ describe("AdminUserService PII least-privilege", () => {
   it("denies client_advisor from reading session activity", () => {
     const svc = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader);
     expect(() => svc.activityFor("staff", "client_advisor", "user-1", 20)).toThrow(AuthzError);
+  });
+});
+
+describe("AdminUserService.getById", () => {
+  it("marks live Identity security fields as available", async () => {
+    const detail = { id: "user-1", twoFactorEnabled: false, pendingNewEmail: null };
+    const service = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader, {
+      reader: {
+        list: vi.fn(),
+        getById: vi.fn().mockResolvedValue(detail),
+        getByIds: vi.fn(),
+      } as unknown as IAdminUserReader,
+      identitySecurity: {
+        readSecurityStatus: vi.fn().mockResolvedValue({
+          twoFactorEnabled: true,
+          phoneNumber: null,
+          phoneNumberVerified: false,
+          pendingNewEmail: "new@example.com",
+          emailChangeExpiresAt: null,
+        }),
+      },
+    });
+
+    await expect(service.getById("staff", "client_advisor", "user-1")).resolves.toMatchObject({
+      securityStatusAvailable: true,
+      twoFactorEnabled: true,
+      pendingNewEmail: "new@example.com",
+    });
+  });
+
+  it.each([
+    ["returns null", vi.fn().mockResolvedValue(null)],
+    ["throws", vi.fn().mockRejectedValue(new Error("Identity unavailable"))],
+  ])("keeps local detail when Identity %s", async (_scenario, readSecurityStatus) => {
+    const detail = { id: "user-1", twoFactorEnabled: false, pendingNewEmail: null };
+    const service = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader, {
+      reader: {
+        list: vi.fn(),
+        getById: vi.fn().mockResolvedValue(detail),
+        getByIds: vi.fn(),
+      } as unknown as IAdminUserReader,
+      identitySecurity: { readSecurityStatus },
+    });
+
+    await expect(service.getById("staff", "client_advisor", "user-1")).resolves.toEqual({
+      ...detail,
+      securityStatusAvailable: false,
+    });
+  });
+
+  it("returns null only when local detail is absent", async () => {
+    const readSecurityStatus = vi.fn();
+    const service = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader, {
+      reader: {
+        list: vi.fn(),
+        getById: vi.fn().mockResolvedValue(null),
+        getByIds: vi.fn(),
+      } as unknown as IAdminUserReader,
+      identitySecurity: { readSecurityStatus },
+    });
+
+    await expect(service.getById("staff", "client_advisor", "missing")).resolves.toBeNull();
+    expect(readSecurityStatus).not.toHaveBeenCalled();
   });
 });

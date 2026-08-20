@@ -188,4 +188,86 @@ describe("HttpIdentityIssuerClient", () => {
       mergedIntoSubjectId: "canonical",
     });
   });
+
+  it.each([
+    ["subject", (client: HttpIdentityIssuerClient) => client.readSubject("missing")],
+    ["security status", (client: HttpIdentityIssuerClient) => client.readSecurityStatus("missing")],
+  ])("treats subject_not_found as absent for %s reads", async (_label, read) => {
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      if (String(input).endsWith("/internal/oauth/token")) {
+        return Response.json({ access_token: "machine-token", expires_in: 300 });
+      }
+      return Response.json(
+        { code: "subject_not_found", message: "Subject not found" },
+        { status: 404 },
+      );
+    });
+    const client = new HttpIdentityIssuerClient({
+      issuerBaseUrl: "https://identity.example.com",
+      fetchImpl,
+      machineClientId: "api-service",
+      machineClientSecret: "machine-secret-at-least-32-characters",
+    });
+
+    await expect(read(client)).resolves.toBeNull();
+  });
+
+  it.each([
+    ["subject", (client: HttpIdentityIssuerClient) => client.readSubject("user-1")],
+    ["security status", (client: HttpIdentityIssuerClient) => client.readSecurityStatus("user-1")],
+  ])("propagates generic 404 failures for %s reads", async (_label, read) => {
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      if (String(input).endsWith("/internal/oauth/token")) {
+        return Response.json({ access_token: "machine-token", expires_in: 300 });
+      }
+      return Response.json({ message: "Route not found" }, { status: 404 });
+    });
+    const client = new HttpIdentityIssuerClient({
+      issuerBaseUrl: "https://identity.example.com",
+      fetchImpl,
+      machineClientId: "api-service",
+      machineClientSecret: "machine-secret-at-least-32-characters",
+    });
+
+    await expect(read(client)).rejects.toMatchObject({
+      kind: "http",
+      status: 404,
+      message: "Route not found",
+    });
+  });
+
+  it("parses authoritative security status from the machine boundary", async () => {
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      if (String(input).endsWith("/internal/oauth/token")) {
+        return Response.json({
+          access_token: "machine-token",
+          token_type: "Bearer",
+          expires_in: 300,
+        });
+      }
+      return Response.json({
+        status: {
+          twoFactorEnabled: true,
+          phoneNumber: "+442012345678",
+          phoneNumberVerified: true,
+          pendingNewEmail: "next@example.com",
+          emailChangeExpiresAt: "2026-08-21T00:00:00.000Z",
+        },
+      });
+    });
+    const client = new HttpIdentityIssuerClient({
+      issuerBaseUrl: "https://identity.example.com",
+      fetchImpl,
+      machineClientId: "api-service",
+      machineClientSecret: "machine-secret-at-least-32-characters",
+    });
+
+    await expect(client.readSecurityStatus("user-1")).resolves.toEqual({
+      twoFactorEnabled: true,
+      phoneNumber: "+442012345678",
+      phoneNumberVerified: true,
+      pendingNewEmail: "next@example.com",
+      emailChangeExpiresAt: new Date("2026-08-21T00:00:00.000Z"),
+    });
+  });
 });

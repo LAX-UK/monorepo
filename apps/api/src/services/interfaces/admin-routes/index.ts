@@ -48,6 +48,7 @@ export type {
   AdminImpersonationRecordFailedEndResult,
   AdminImpersonationStartResult,
   AdminPeopleRouteServices,
+  AdminUserDetailResponse,
   IAdminImpersonationService,
   IAdminInvitationApplicationService,
   IAdminUserApplicationService,

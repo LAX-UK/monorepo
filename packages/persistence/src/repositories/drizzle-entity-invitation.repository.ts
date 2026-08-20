@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, user, userInvitation } from "@auction/db/schema";
+import {
+  bidIdentityDirectory,
+  legalEntity,
+  legalEntityMember,
+  userInvitation,
+} from "@auction/db/schema";
 import type { LegalEntityMember } from "@auction/types";
 import { and, eq, isNull } from "drizzle-orm";
 import type {
@@ -8,6 +13,10 @@ import type {
   IEntityInvitationRepository,
 } from "../interfaces/entity-invitation.repository.js";
 import type { InvitationRow } from "../interfaces/invitation.repository.js";
+import {
+  activeIdentitySubject,
+  normalizedIdentityEmailEquals,
+} from "../lib/bid-identity-directory-query.js";
 import { rowToLegalEntityMember } from "../lib/legal-entity-member.mapper.js";
 
 function mapInvitationRow(row: typeof userInvitation.$inferSelect): InvitationRow {
@@ -40,9 +49,14 @@ export class DrizzleEntityInvitationRepository implements IEntityInvitationRepos
 
   async findUserIdByEmail(email: string): Promise<string | null> {
     const [row] = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.email, email))
+      .select({ id: bidIdentityDirectory.subjectId })
+      .from(bidIdentityDirectory)
+      .where(
+        and(
+          normalizedIdentityEmailEquals(bidIdentityDirectory.email, email),
+          activeIdentitySubject(),
+        ),
+      )
       .limit(1);
     return row?.id ?? null;
   }
@@ -153,18 +167,18 @@ export class DrizzleEntityInvitationRepository implements IEntityInvitationRepos
 
   async findUserName(userId: string): Promise<string | null> {
     const [row] = await this.db
-      .select({ name: user.name })
-      .from(user)
-      .where(eq(user.id, userId))
+      .select({ name: bidIdentityDirectory.name })
+      .from(bidIdentityDirectory)
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     return row?.name ?? null;
   }
 
   async findUserEmail(userId: string): Promise<string | null> {
     const [row] = await this.db
-      .select({ email: user.email })
-      .from(user)
-      .where(eq(user.id, userId))
+      .select({ email: bidIdentityDirectory.email })
+      .from(bidIdentityDirectory)
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     return row?.email ?? null;
   }

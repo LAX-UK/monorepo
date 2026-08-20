@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
-import { emailEvent, emailOutbox, emailSuppression, user } from "@auction/db/schema";
+import {
+  bidIdentityDirectory,
+  emailEvent,
+  emailOutbox,
+  emailSuppression,
+} from "@auction/db/schema";
 import { desc, eq } from "drizzle-orm";
 import type {
   EmailEventRow,
@@ -16,7 +21,7 @@ export class DrizzleEmailObservabilityRepository implements IEmailObservabilityR
       .select({
         id: emailOutbox.id,
         userId: emailOutbox.userId,
-        userEmail: user.email,
+        userEmail: bidIdentityDirectory.email,
         toEmailHash: emailOutbox.toEmailHash,
         template: emailOutbox.template,
         status: emailOutbox.status,
@@ -26,7 +31,7 @@ export class DrizzleEmailObservabilityRepository implements IEmailObservabilityR
         sentAt: emailOutbox.sentAt,
       })
       .from(emailOutbox)
-      .leftJoin(user, eq(emailOutbox.userId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(emailOutbox.userId, bidIdentityDirectory.subjectId))
       .where(input.status ? eq(emailOutbox.status, input.status) : undefined)
       .orderBy(desc(emailOutbox.createdAt))
       .limit(input.limit)

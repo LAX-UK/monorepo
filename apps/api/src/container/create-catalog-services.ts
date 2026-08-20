@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { Env } from "../env.js";
+import type { IIdentitySecurityClient } from "../services/interfaces/identity-issuer-client.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
 import { createCatalogAdminReaders } from "./create-catalog-admin-readers.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
@@ -24,6 +25,7 @@ export type ContainerCatalogServices = ContainerLotSaleServices &
 export type CreateCatalogServicesInput = {
   env: Env;
   db: Database;
+  identitySecurity: IIdentitySecurityClient;
   infra: ContainerInfra;
   repos: ContainerRepositories;
   platform: ContainerPlatformServices;
@@ -32,12 +34,14 @@ export type CreateCatalogServicesInput = {
 };
 
 export function createCatalogServices(input: CreateCatalogServicesInput): ContainerCatalogServices {
-  const { env, db, infra, repos, platform, lotLifecycle, complianceMedia } = input;
+  const { env, db, identitySecurity, infra, repos, platform, lotLifecycle, complianceMedia } =
+    input;
 
   const adminReaders = createCatalogAdminReaders({ env, db, infra, repos });
   const saleRegistration = createSaleRegistrationServices({
     env,
     db,
+    identitySecurity,
     infra,
     repos,
     platform,

@@ -51,12 +51,19 @@ export function createContainer(env: Env): Container {
 
   const userNotification = createUserNotificationComposition(repos);
 
-  const platform = createPlatformServices({ env, db, infra, repos });
+  const platform = createPlatformServices({
+    env,
+    db,
+    infra,
+    repos,
+    identitySubjects: identityIssuer,
+  });
   const lotLifecycle = createLotLifecycle({ infra, repos, platform });
   const complianceMedia = createComplianceMedia({ env, db, infra, repos, platform });
   const catalog = createCatalogServices({
     env,
     db,
+    identitySecurity: identityIssuer,
     infra,
     repos,
     platform,

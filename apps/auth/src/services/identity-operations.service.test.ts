@@ -31,6 +31,13 @@ function createRepositories(): IdentityOperationsRepositories {
     subjects: {
       findById: vi.fn().mockResolvedValue(subject),
       findByEmail: vi.fn().mockResolvedValue(null),
+      readSecurityStatus: vi.fn().mockResolvedValue({
+        twoFactorEnabled: true,
+        phoneNumber: "+442012345678",
+        phoneNumberVerified: true,
+        pendingNewEmail: null,
+        emailChangeExpiresAt: null,
+      }),
       updateProfile: vi
         .fn()
         .mockResolvedValue({ id: "subject", name: "Updated Name", image: "https://cdn/image.jpg" }),

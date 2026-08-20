@@ -1,6 +1,6 @@
 import { lotNotDeleted } from "@auction/db";
 import type { Database } from "@auction/db";
-import { legalEntityMember, lot, payment, payout, user as userTable } from "@auction/db/schema";
+import { bidIdentityDirectory, legalEntityMember, lot, payment, payout } from "@auction/db/schema";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { IAccountDeletionEligibilityReader } from "../interfaces/account-deletion-eligibility.reader.js";
 
@@ -9,9 +9,9 @@ export class DrizzleAccountDeletionEligibilityReader implements IAccountDeletion
 
   async getDeletionRequestedAt(userId: string): Promise<Date | null> {
     const [row] = await this.db
-      .select({ deletionRequestedAt: userTable.deletionRequestedAt })
-      .from(userTable)
-      .where(eq(userTable.id, userId))
+      .select({ deletionRequestedAt: bidIdentityDirectory.deletionRequestedAt })
+      .from(bidIdentityDirectory)
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     return row?.deletionRequestedAt ?? null;
   }

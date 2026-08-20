@@ -38,19 +38,17 @@ export type GetAdminUserListParams = {
   kycStatus?: string;
   kycStatuses?: string[];
   persona?: "individual" | "organisation" | "none";
-  twoFactorEnabled?: boolean;
   deletionRequestedOnly?: boolean;
   hasMobile?: boolean;
   createdFrom?: string;
   createdTo?: string;
   kycVerifiedFrom?: string;
   kycVerifiedTo?: string;
-  lastActiveFrom?: string;
-  lastActiveTo?: string;
   sort?: string;
 };
 
 export type AdminUserDetailPayload = AdminUserRow & {
+  securityStatusAvailable: boolean;
   suspendedReason: string | null;
   dateOfBirth: string | null;
   emailStatusChangedAt: string | null;

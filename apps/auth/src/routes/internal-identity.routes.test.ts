@@ -16,6 +16,13 @@ function setup() {
     verifyPasswordAndStamp: vi.fn(async () => undefined),
     revokeSession: vi.fn(async () => true),
     startEmailChange: vi.fn(async () => undefined),
+    readSecurityStatus: vi.fn(async () => ({
+      twoFactorEnabled: true,
+      phoneNumber: "+442012345678",
+      phoneNumberVerified: true,
+      pendingNewEmail: "next@example.com",
+      emailChangeExpiresAt: new Date("2026-08-21T00:00:00.000Z"),
+    })),
     markDeletionRequested: vi.fn(async () => undefined),
     cancelDeletionRequested: vi.fn(async () => undefined),
   };
@@ -96,6 +103,24 @@ describe("internal Identity machine routes", () => {
     });
     expect(response.status).toBe(200);
     expect(operations.listSessions).toHaveBeenCalledWith("u1", "cookie-session-token");
+  });
+
+  it("returns authoritative security status only with a machine token", async () => {
+    const { app, operations } = setup();
+    const token = await issueToken(app);
+    const response = await app.request("/identity/subjects/u1/security-status", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(response.status).toBe(200);
+    expect(operations.readSecurityStatus).toHaveBeenCalledWith("u1");
+    await expect(response.json()).resolves.toMatchObject({
+      status: {
+        twoFactorEnabled: true,
+        phoneNumberVerified: true,
+        pendingNewEmail: "next@example.com",
+      },
+    });
   });
 
   it("routes deletion requests and cancellations through auth operations", async () => {

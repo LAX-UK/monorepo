@@ -94,6 +94,7 @@ export class UserProfileHttpApplicationService implements IUserProfileHttpApplic
           signupPersona: row.signupPersona,
           deletionRequestedAt: row.deletionRequestedAt,
           twoFactorEnabled: row.twoFactorEnabled,
+          securityStatusAvailable: row.securityStatusAvailable,
           suspended: row.suspended,
           uiPreferences: uiPrefs,
         },

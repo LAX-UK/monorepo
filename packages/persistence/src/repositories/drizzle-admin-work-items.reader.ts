@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import {
   adminReviewTask,
+  bidIdentityDirectory,
   conditionReportRequest,
   itemSubmission,
   lot,
@@ -10,7 +11,6 @@ import {
   sale,
   saleRegistration,
   telephoneBidBooking,
-  user,
 } from "@auction/db/schema";
 import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import type {
@@ -109,13 +109,13 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         paymentId: payment.id,
         lotTitle: lot.title,
         lotNumber: lot.lotNumber,
-        winnerEmail: user.email,
+        winnerEmail: bidIdentityDirectory.email,
         amount: payment.amount,
         createdAt: payment.createdAt,
       })
       .from(payment)
       .innerJoin(lot, eq(payment.lotId, lot.id))
-      .innerJoin(user, eq(payment.buyerId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .where(eq(payment.status, "requires_manual_review"))
       .orderBy(desc(payment.createdAt))
       .limit(limit);
@@ -289,13 +289,13 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         id: saleRegistration.id,
         saleId: saleRegistration.saleId,
         saleTitle: sale.title,
-        userEmail: user.email,
-        userName: user.name,
+        userEmail: bidIdentityDirectory.email,
+        userName: bidIdentityDirectory.name,
         requestedAt: saleRegistration.requestedAt,
       })
       .from(saleRegistration)
       .innerJoin(sale, eq(saleRegistration.saleId, sale.id))
-      .innerJoin(user, eq(saleRegistration.userId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(saleRegistration.userId, bidIdentityDirectory.subjectId))
       .where(and(eq(saleRegistration.status, "pending"), saleNotDeleted()))
       .orderBy(desc(saleRegistration.requestedAt))
       .limit(limit);
@@ -321,15 +321,18 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         id: telephoneBidBooking.id,
         saleId: telephoneBidBooking.saleId,
         saleTitle: sale.title,
-        userEmail: user.email,
-        userName: user.name,
+        userEmail: bidIdentityDirectory.email,
+        userName: bidIdentityDirectory.name,
         status: telephoneBidBooking.status,
         createdAt: telephoneBidBooking.createdAt,
         updatedAt: telephoneBidBooking.updatedAt,
       })
       .from(telephoneBidBooking)
       .innerJoin(sale, eq(telephoneBidBooking.saleId, sale.id))
-      .innerJoin(user, eq(telephoneBidBooking.userId, user.id))
+      .leftJoin(
+        bidIdentityDirectory,
+        eq(telephoneBidBooking.userId, bidIdentityDirectory.subjectId),
+      )
       .where(
         and(
           inArray(telephoneBidBooking.status, ["requested", "confirmed"]),

@@ -64,8 +64,6 @@ export function buildAdminUserSearchParams(params: AdminUserPageParams): URLSear
   if (params.kycStatuses?.length) qs.set("kycStatuses", params.kycStatuses.join(","));
   else if (params.kycStatus) qs.set("kycStatus", params.kycStatus);
   if (params.persona) qs.set("persona", params.persona);
-  if (params.twoFactorEnabled === true) qs.set("twoFactor", "1");
-  else if (params.twoFactorEnabled === false) qs.set("twoFactor", "0");
   if (params.deletionRequestedOnly) qs.set("deletionRequested", "1");
   if (params.hasMobile === true) qs.set("hasMobile", "1");
   else if (params.hasMobile === false) qs.set("hasMobile", "0");
@@ -73,8 +71,6 @@ export function buildAdminUserSearchParams(params: AdminUserPageParams): URLSear
   if (params.createdTo) qs.set("createdTo", params.createdTo);
   if (params.kycVerifiedFrom) qs.set("kycVerifiedFrom", params.kycVerifiedFrom);
   if (params.kycVerifiedTo) qs.set("kycVerifiedTo", params.kycVerifiedTo);
-  if (params.lastActiveFrom) qs.set("lastActiveFrom", params.lastActiveFrom);
-  if (params.lastActiveTo) qs.set("lastActiveTo", params.lastActiveTo);
   if (params.sort) qs.set("sort", params.sort);
   return qs;
 }

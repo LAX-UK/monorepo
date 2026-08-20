@@ -129,6 +129,7 @@ run("Turbo lint (affected)", "pnpm", ["turbo", "run", "lint", "--affected"]);
 run("Dependency graph", "pnpm", ["lint:deps"]);
 run("Package layers", "node", ["scripts/check-layers.mjs"]);
 run("Identity extractability", "node", ["scripts/ci/verify-identity-extractability.mjs"]);
+run("Identity exit criteria", "node", ["scripts/ci/verify-identity-exit-criteria.mjs"]);
 run("API route DIP coverage", "node", ["apps/api/scripts/check-route-dip-coverage.mjs"]);
 run("Turbo typecheck (affected)", "pnpm", ["turbo", "run", "typecheck", "--affected"]);
 

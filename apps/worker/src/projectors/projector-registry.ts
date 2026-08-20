@@ -166,15 +166,15 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
       },
     },
     {
-      name: BID_PROFILE_PROVISIONING_PROJECTOR,
-      async run(ctx) {
-        await processBidProfileProvisioning({ ctx, log: ctx.log });
-      },
-    },
-    {
       name: BID_IDENTITY_DIRECTORY_PROJECTOR,
       async run(ctx) {
         await processBidIdentityDirectory(ctx);
+      },
+    },
+    {
+      name: BID_PROFILE_PROVISIONING_PROJECTOR,
+      async run(ctx) {
+        await processBidProfileProvisioning({ ctx, log: ctx.log });
       },
     },
     {

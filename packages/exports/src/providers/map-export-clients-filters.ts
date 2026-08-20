@@ -33,7 +33,6 @@ export function mapExportClientsFilters(
   if (raw.kycStatuses?.length) filter.kycStatuses = raw.kycStatuses;
   else if (raw.kycStatus) filter.kycStatus = raw.kycStatus;
   if (raw.persona) filter.persona = raw.persona;
-  if (raw.twoFactorEnabled !== undefined) filter.twoFactorEnabled = raw.twoFactorEnabled;
   if (raw.deletionRequestedOnly) filter.deletionRequestedOnly = true;
   if (raw.hasMobile !== undefined) filter.hasMobile = raw.hasMobile;
 
@@ -41,8 +40,5 @@ export function mapExportClientsFilters(
   if (raw.createdTo) filter.createdToExclusive = isoDateEndExclusive(raw.createdTo);
   if (raw.kycVerifiedFrom) filter.kycVerifiedFrom = isoDateStart(raw.kycVerifiedFrom);
   if (raw.kycVerifiedTo) filter.kycVerifiedToExclusive = isoDateEndExclusive(raw.kycVerifiedTo);
-  if (raw.lastActiveFrom) filter.lastActiveFrom = isoDateStart(raw.lastActiveFrom);
-  if (raw.lastActiveTo) filter.lastActiveToExclusive = isoDateEndExclusive(raw.lastActiveTo);
-
   return filter;
 }

@@ -24,6 +24,21 @@ Staged rollout for the LAX Identity boundary ([architecture/09-lax-identity-boun
 3. Run reconciliation job / backfill for missing `user.registered` rows (existing runbook SQL).
 4. Monitor projector lag vs signup rate.
 
+### Bid Identity directory cutover (implemented code path)
+
+1. Apply `0156`, deploy the worker-owned `bid_identity_directory` projector and
+   directory-backed worker readers, then reconcile and soak.
+2. Apply `0157` only after worker drift and lag remain clean.
+3. Deploy and soak directory-backed API, persistence, and export readers. Their
+   durable product-record joins must be left joins: Identity hard deletion
+   removes copied PII, not bids, payments, or audit history.
+4. Apply `0158`, then run role reconciliation. Probe that `api_app` can select
+   but cannot write the directory and has no access to `user`.
+
+`identity_created_at` is issuer subject creation time; `replicated_at` is the
+latest local projection-application time used for freshness checks; neither is
+product activity. `last_event_id` is the projector ordering/idempotency cursor.
+
 ## Phase 3 — Standalone issuer traffic
 
 1. Set `NEXT_PUBLIC_AUTH_URL` and `OIDC_ISSUER_URL` to `https://auth.lax.bid`.
@@ -75,6 +90,9 @@ Staged rollout for the LAX Identity boundary ([architecture/09-lax-identity-boun
   `0143`, then earlier migrations in descending order. Earlier profile
   rollbacks are unsafe while later triggers or columns still exist.
 - Bid profile dual-read continues from `user` legacy columns until forward migration is reversed.
+- Reverse `0158` before rolling API readers back, and reverse `0157` before
+  rolling worker readers back. The role script preserves a pre-`0158` soak
+  grant but deliberately cannot recreate it after revocation.
 
 ## Evidence checklist
 
@@ -90,4 +108,6 @@ Staged rollout for the LAX Identity boundary ([architecture/09-lax-identity-boun
 - [ ] SSF verification, enablement, retry, dead-letter, and replay
 - [ ] All four application role contracts pass against live Postgres
 - [ ] Reconciliation job green; no unbounded projector lag
+- [x] Code: migrations `0156`–`0158`, directory-backed readers, and static exit gates
+- [ ] Target: directory reconciliation soak, `0157`/`0158`, and live API/worker role probes
 - [ ] Dashboards and rollback routing documented

@@ -60,15 +60,12 @@ export const exportClientsFiltersSchema = z.object({
   kycStatus: z.enum(userKycStatuses).optional(),
   kycStatuses: z.array(z.enum(userKycStatuses)).optional(),
   persona: adminUserListPersonaFilterEnum.optional(),
-  twoFactorEnabled: z.coerce.boolean().optional(),
   deletionRequestedOnly: z.coerce.boolean().optional(),
   hasMobile: z.coerce.boolean().optional(),
   createdFrom: exportClientsIsoDateSchema.optional(),
   createdTo: exportClientsIsoDateSchema.optional(),
   kycVerifiedFrom: exportClientsIsoDateSchema.optional(),
   kycVerifiedTo: exportClientsIsoDateSchema.optional(),
-  lastActiveFrom: exportClientsIsoDateSchema.optional(),
-  lastActiveTo: exportClientsIsoDateSchema.optional(),
   sort: adminUserListSortEnum.optional(),
 });
 

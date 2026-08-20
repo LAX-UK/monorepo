@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { bidUserProfile, user } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
@@ -15,30 +15,27 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
   async getProfile(userId: string): Promise<ProfileMeRow | null> {
     const [row] = await this.db
       .select({
-        id: user.id,
-        email: user.email,
-        name: user.name,
+        id: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+        name: bidIdentityDirectory.name,
         mobile: bidUserProfile.mobile,
         mobileCountry: bidUserProfile.mobileCountry,
-        phoneNumber: user.phoneNumber,
-        phoneNumberVerified: user.phoneNumberVerified,
-        image: user.image,
+        phoneNumber: bidIdentityDirectory.phone,
+        image: bidIdentityDirectory.image,
         role: bidUserProfile.role,
         staffRole: bidUserProfile.staffRole,
-        emailVerified: user.emailVerified,
+        emailVerified: bidIdentityDirectory.emailVerified,
         emailStatus: bidUserProfile.emailStatus,
         emailStatusChangedAt: bidUserProfile.emailStatusChangedAt,
-        pendingNewEmail: user.pendingNewEmail,
         hasSeenActingContextTooltip: bidUserProfile.hasSeenActingContextTooltip,
         kycStatus: bidUserProfile.kycStatus,
         signupPersona: bidUserProfile.signupPersona,
-        deletionRequestedAt: user.deletionRequestedAt,
-        twoFactorEnabled: user.twoFactorEnabled,
+        deletionRequestedAt: bidIdentityDirectory.deletionRequestedAt,
         suspendedAt: bidUserProfile.suspendedAt,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, userId))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     if (!row) return null;
     const persona =
@@ -52,19 +49,19 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       mobile: row.mobile ?? null,
       mobileCountry: row.mobileCountry ?? null,
       phoneNumber: row.phoneNumber ?? null,
-      phoneNumberVerified: row.phoneNumberVerified ?? false,
+      phoneNumberVerified: false,
       image: row.image ?? null,
       role: row.role ?? "client",
       staffRole: row.staffRole ?? null,
       emailVerified: row.emailVerified,
       emailStatus: (row.emailStatus ?? "ok") as "ok" | "bounced" | "complained",
       emailStatusChangedAt: row.emailStatusChangedAt,
-      pendingNewEmail: row.pendingNewEmail ?? null,
+      pendingNewEmail: null,
       hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
       kycStatus: row.kycStatus ?? "unverified",
       signupPersona: persona,
       deletionRequestedAt: row.deletionRequestedAt ?? null,
-      twoFactorEnabled: row.twoFactorEnabled ?? false,
+      twoFactorEnabled: false,
       suspended: row.suspendedAt != null,
     };
   }

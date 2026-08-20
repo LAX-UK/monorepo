@@ -17,15 +17,12 @@ export type UsersListFilters = {
   kycStatus?: string | undefined;
   kycStatuses?: string[] | undefined;
   persona?: "individual" | "organisation" | "none" | undefined;
-  twoFactorEnabled?: boolean | undefined;
   deletionRequestedOnly?: boolean | undefined;
   hasMobile?: boolean | undefined;
   createdFrom?: string | undefined;
   createdTo?: string | undefined;
   kycVerifiedFrom?: string | undefined;
   kycVerifiedTo?: string | undefined;
-  lastActiveFrom?: string | undefined;
-  lastActiveTo?: string | undefined;
   sort?: AdminUserListSort | undefined;
 };
 
@@ -80,8 +77,6 @@ export function parseUsersListFilters(
   if (kycStatuses?.length) out.kycStatuses = kycStatuses;
   else if (kycStatus) out.kycStatus = kycStatus;
   if (persona) out.persona = persona;
-  const twoFactorEnabled = triState(sp, "twoFactor");
-  if (twoFactorEnabled !== undefined) out.twoFactorEnabled = twoFactorEnabled;
   if (firstString(sp.deletionRequested) === "1") out.deletionRequestedOnly = true;
   const hasMobile = triState(sp, "hasMobile");
   if (hasMobile !== undefined) out.hasMobile = hasMobile;
@@ -93,10 +88,6 @@ export function parseUsersListFilters(
   if (kycVerifiedFrom) out.kycVerifiedFrom = kycVerifiedFrom;
   const kycVerifiedTo = firstString(sp.kycVerifiedTo);
   if (kycVerifiedTo) out.kycVerifiedTo = kycVerifiedTo;
-  const lastActiveFrom = firstString(sp.lastActiveFrom);
-  if (lastActiveFrom) out.lastActiveFrom = lastActiveFrom;
-  const lastActiveTo = firstString(sp.lastActiveTo);
-  if (lastActiveTo) out.lastActiveTo = lastActiveTo;
   if (sort) out.sort = sort;
   return out;
 }
@@ -117,17 +108,12 @@ export function usersListFiltersToGetAdminUserListParams(
     ...(filters.kycStatuses?.length ? { kycStatuses: filters.kycStatuses } : {}),
     ...(filters.kycStatus ? { kycStatus: filters.kycStatus } : {}),
     ...(filters.persona ? { persona: filters.persona } : {}),
-    ...(filters.twoFactorEnabled !== undefined
-      ? { twoFactorEnabled: filters.twoFactorEnabled }
-      : {}),
     ...(filters.deletionRequestedOnly ? { deletionRequestedOnly: true } : {}),
     ...(filters.hasMobile !== undefined ? { hasMobile: filters.hasMobile } : {}),
     ...(filters.createdFrom ? { createdFrom: filters.createdFrom } : {}),
     ...(filters.createdTo ? { createdTo: filters.createdTo } : {}),
     ...(filters.kycVerifiedFrom ? { kycVerifiedFrom: filters.kycVerifiedFrom } : {}),
     ...(filters.kycVerifiedTo ? { kycVerifiedTo: filters.kycVerifiedTo } : {}),
-    ...(filters.lastActiveFrom ? { lastActiveFrom: filters.lastActiveFrom } : {}),
-    ...(filters.lastActiveTo ? { lastActiveTo: filters.lastActiveTo } : {}),
     ...(filters.sort ? { sort: filters.sort } : {}),
   };
 }
@@ -154,9 +140,6 @@ export function usersListFiltersToApiParams(
   else if (filters.kycStatus) qs.kycStatus = filters.kycStatus;
   if (filters.persona) qs.persona = filters.persona;
 
-  if (filters.twoFactorEnabled === true) qs.twoFactor = "1";
-  else if (filters.twoFactorEnabled === false) qs.twoFactor = "0";
-
   if (filters.deletionRequestedOnly) qs.deletionRequested = "1";
   if (filters.hasMobile === true) qs.hasMobile = "1";
   else if (filters.hasMobile === false) qs.hasMobile = "0";
@@ -165,8 +148,6 @@ export function usersListFiltersToApiParams(
   if (filters.createdTo) qs.createdTo = filters.createdTo;
   if (filters.kycVerifiedFrom) qs.kycVerifiedFrom = filters.kycVerifiedFrom;
   if (filters.kycVerifiedTo) qs.kycVerifiedTo = filters.kycVerifiedTo;
-  if (filters.lastActiveFrom) qs.lastActiveFrom = filters.lastActiveFrom;
-  if (filters.lastActiveTo) qs.lastActiveTo = filters.lastActiveTo;
   if (filters.sort) qs.sort = filters.sort;
 
   return qs;
@@ -185,15 +166,12 @@ export function usersListFiltersToExportFilters(
   if (filters.kycStatuses?.length) out.kycStatuses = filters.kycStatuses;
   else if (filters.kycStatus) out.kycStatus = filters.kycStatus;
   if (filters.persona) out.persona = filters.persona;
-  if (filters.twoFactorEnabled !== undefined) out.twoFactorEnabled = filters.twoFactorEnabled;
   if (filters.deletionRequestedOnly) out.deletionRequestedOnly = true;
   if (filters.hasMobile !== undefined) out.hasMobile = filters.hasMobile;
   if (filters.createdFrom) out.createdFrom = filters.createdFrom;
   if (filters.createdTo) out.createdTo = filters.createdTo;
   if (filters.kycVerifiedFrom) out.kycVerifiedFrom = filters.kycVerifiedFrom;
   if (filters.kycVerifiedTo) out.kycVerifiedTo = filters.kycVerifiedTo;
-  if (filters.lastActiveFrom) out.lastActiveFrom = filters.lastActiveFrom;
-  if (filters.lastActiveTo) out.lastActiveTo = filters.lastActiveTo;
   if (filters.sort) out.sort = filters.sort;
   return out;
 }
@@ -205,12 +183,10 @@ export function countUsersListActiveFilters(filters: UsersListFilters): number {
   if (filters.emailVerified !== undefined) n += 1;
   if (filters.kycStatus || filters.kycStatuses?.length) n += 1;
   if (filters.persona) n += 1;
-  if (filters.twoFactorEnabled !== undefined) n += 1;
   if (filters.deletionRequestedOnly) n += 1;
   if (filters.hasMobile !== undefined) n += 1;
   if (filters.createdFrom || filters.createdTo) n += 1;
   if (filters.kycVerifiedFrom || filters.kycVerifiedTo) n += 1;
-  if (filters.lastActiveFrom || filters.lastActiveTo) n += 1;
   if (filters.sort && filters.sort !== "created_desc") n += 1;
   return n;
 }

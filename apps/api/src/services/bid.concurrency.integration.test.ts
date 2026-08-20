@@ -1,9 +1,13 @@
 import { createDb } from "@auction/db";
-import { bid, legalEntity, legalEntityMember, lot, user } from "@auction/db/schema";
+import { bid, legalEntity, legalEntityMember, lot } from "@auction/db/schema";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { count, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
+import {
+  deleteIdentityUserFixtures,
+  seedIdentityUserFixtures,
+} from "../testing/identity-user-fixtures.js";
 import { BidService } from "./bid.service.js";
 import { NotificationFactory } from "./notification.factory.js";
 import { NotificationService } from "./notification.service.js";
@@ -53,11 +57,7 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
       .where(
         sql`${legalEntity.id} IN (${sellerLeId}::uuid, ${buyer1LeId}::uuid, ${buyer2LeId}::uuid, ${buyer3LeId}::uuid)`,
       );
-    await db
-      .delete(user)
-      .where(
-        sql`${user.id} IN (${sellerUserId}, ${buyer1UserId}, ${buyer2UserId}, ${buyer3UserId})`,
-      );
+    await deleteIdentityUserFixtures(db, [sellerUserId, buyer1UserId, buyer2UserId, buyer3UserId]);
   }
 
   beforeEach(async () => {
@@ -80,12 +80,11 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
 
   it("serializes overlapping placeBid calls with a single winner and correct final price", async () => {
     const t = new Date();
-    await db.insert(user).values([
+    await seedIdentityUserFixtures(db, [
       {
         id: sellerUserId,
         name: "Seller",
         email: "p22_seller_u@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },
@@ -93,7 +92,6 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
         id: buyer1UserId,
         name: "Buyer 1",
         email: "p22_buyer1_u@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },
@@ -101,7 +99,6 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
         id: buyer2UserId,
         name: "Buyer 2",
         email: "p22_buyer2_u@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },
@@ -219,12 +216,11 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
 
   it("serializes three overlapping placeBid calls with one winner", async () => {
     const t = new Date();
-    await db.insert(user).values([
+    await seedIdentityUserFixtures(db, [
       {
         id: sellerUserId,
         name: "Seller",
         email: "p22_seller_u3@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },
@@ -232,7 +228,6 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
         id: buyer1UserId,
         name: "Buyer 1",
         email: "p22_buyer1_u3@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },
@@ -240,7 +235,6 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
         id: buyer2UserId,
         name: "Buyer 2",
         email: "p22_buyer2_u3@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },
@@ -248,7 +242,6 @@ describe.skipIf(!HAS_DB)("BidService.placeBid concurrency (integration)", () => 
         id: buyer3UserId,
         name: "Buyer 3",
         email: "p22_buyer3_u3@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },

@@ -1,7 +1,8 @@
 import { createDb } from "@auction/db";
-import { legalEntity, lot, sale, user } from "@auction/db/schema";
+import { legalEntity, lot, sale } from "@auction/db/schema";
 import { DrizzleLotRepository } from "@auction/persistence/repositories";
 import { describe, expect, it } from "vitest";
+import { seedIdentityUserFixtures } from "../testing/identity-user-fixtures.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
@@ -19,14 +20,15 @@ describe.skipIf(!HAS_DB)("DrizzleLotRepository.listCatalogLotsBySalePage (integr
     try {
       await db.transaction(async (tx) => {
         const t = new Date();
-        await tx.insert(user).values({
-          id: sellerUserId,
-          name: "Seller",
-          email: "catalog-page-seller@integration.test",
-          emailVerified: true,
-          createdAt: t,
-          updatedAt: t,
-        });
+        await seedIdentityUserFixtures(tx, [
+          {
+            id: sellerUserId,
+            name: "Seller",
+            email: "catalog-page-seller@integration.test",
+            createdAt: t,
+            updatedAt: t,
+          },
+        ]);
         await tx.insert(legalEntity).values({
           id: sellerLeId,
           displayName: "Gallery",

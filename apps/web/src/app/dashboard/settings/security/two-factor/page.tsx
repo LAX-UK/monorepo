@@ -4,6 +4,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SETTINGS_NARROW_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -16,8 +17,6 @@ export default async function SecurityTwoFactorPage() {
     shell: "client",
     loginNext: "/dashboard/settings/security/two-factor",
   });
-
-  const enabled = user.twoFactorEnabled === true;
 
   return (
     <DashboardPage className={`space-y-8 ${SETTINGS_NARROW_MAX_WIDTH}`}>
@@ -32,7 +31,21 @@ export default async function SecurityTwoFactorPage() {
           </Link>
         }
       />
-      {enabled ? <TwoFactorStatusCard twoFactorEnabled /> : <TwoFactorEnableWizard />}
+      {user.securityStatusAvailable === true ? (
+        user.twoFactorEnabled === true ? (
+          <TwoFactorStatusCard twoFactorEnabled />
+        ) : (
+          <TwoFactorEnableWizard />
+        )
+      ) : (
+        <Alert>
+          <AlertTitle>Two-factor status unavailable</AlertTitle>
+          <AlertDescription>
+            We could not load your current two-factor authentication status. Try again later before
+            changing this setting.
+          </AlertDescription>
+        </Alert>
+      )}
     </DashboardPage>
   );
 }

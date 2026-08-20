@@ -1,3 +1,5 @@
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DomainEventProjectorRow } from "../interfaces/domain-event-projector.reader.js";
 import {
@@ -263,6 +265,8 @@ describe("applyBidIdentityDirectoryEvent", () => {
       }),
     );
     expect(db.execute).toHaveBeenCalledOnce();
+    const mergeQuery = new PgDialect().sqlToQuery(db.execute.mock.calls[0]?.[0] as SQL);
+    expect(mergeQuery.sql).toContain("retired.merged_into_subject_id");
   });
 
   it("advances an existing canonical marker when the retired row is unavailable", async () => {

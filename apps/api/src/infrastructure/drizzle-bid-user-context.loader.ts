@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { bidUserProfile, user } from "@auction/db/schema";
+import { bidUserProfile } from "@auction/db/schema";
 import { normalizeUserRoleOrClient, normalizeUserStaffRole } from "@auction/types";
 import { eq } from "drizzle-orm";
 import type {
@@ -7,7 +7,7 @@ import type {
   IBidUserContextLoader,
 } from "../services/interfaces/bid-user-context.js";
 
-/** Loads Bid authorization context from `bid_user_profile` with Identity lifecycle from `user`. */
+/** Loads Bid authorization and projected Identity lifecycle from the Bid-owned profile. */
 export class DrizzleBidUserContextLoader implements IBidUserContextLoader {
   constructor(private readonly db: Database) {}
 
@@ -17,14 +17,11 @@ export class DrizzleBidUserContextLoader implements IBidUserContextLoader {
         role: bidUserProfile.role,
         staffRole: bidUserProfile.staffRole,
         suspendedAt: bidUserProfile.suspendedAt,
-        profileIdentityDisabledAt: bidUserProfile.identityDisabledAt,
-        profileMergedIntoSubjectId: bidUserProfile.mergedIntoSubjectId,
-        identityDisabledAt: user.identityDisabledAt,
-        mergedIntoSubjectId: user.mergedIntoSubjectId,
+        identityDisabledAt: bidUserProfile.identityDisabledAt,
+        mergedIntoSubjectId: bidUserProfile.mergedIntoSubjectId,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, userId))
+      .from(bidUserProfile)
+      .where(eq(bidUserProfile.userId, userId))
       .limit(1);
     if (!row) return null;
 
@@ -32,8 +29,8 @@ export class DrizzleBidUserContextLoader implements IBidUserContextLoader {
       role: normalizeUserRoleOrClient(row.role ?? "client"),
       staffRole: normalizeUserStaffRole(row.staffRole),
       suspendedAt: row.suspendedAt,
-      identityDisabledAt: row.profileIdentityDisabledAt ?? row.identityDisabledAt,
-      mergedIntoSubjectId: row.profileMergedIntoSubjectId ?? row.mergedIntoSubjectId,
+      identityDisabledAt: row.identityDisabledAt,
+      mergedIntoSubjectId: row.mergedIntoSubjectId,
     };
   }
 }

@@ -27,6 +27,7 @@ export type AdminUserReadinessSnapshot = {
   identity: {
     emailVerified: boolean;
     kycStatus: string;
+    securityStatusAvailable: boolean;
     twoFactorEnabled: boolean;
   };
   compliance: {
@@ -216,6 +217,7 @@ export function buildAdminUserReadinessSnapshot(input: BuildInput): AdminUserRea
     identity: {
       emailVerified: user.emailVerified,
       kycStatus: user.kycStatus ?? "unknown",
+      securityStatusAvailable: user.securityStatusAvailable,
       twoFactorEnabled: user.twoFactorEnabled,
     },
     compliance: {

@@ -127,6 +127,11 @@ export function createInternalIdentityRoutes(options: {
     return subject ? c.json({ subject }) : c.json({ error: "subject_not_found" }, 404);
   });
 
+  app.get("/identity/subjects/:subjectId/security-status", async (c) => {
+    const status = await options.operations.readSecurityStatus(c.req.param("subjectId"));
+    return status ? c.json({ status }) : c.json({ error: "subject_not_found" }, 404);
+  });
+
   app.post("/identity/subjects/lookup", async (c) => {
     const body = await readJson(c);
     if (typeof body.email !== "string" || !body.email) {

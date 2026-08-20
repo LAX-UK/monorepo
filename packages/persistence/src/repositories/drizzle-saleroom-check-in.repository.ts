@@ -1,10 +1,10 @@
 import type { Database } from "@auction/db";
 import {
+  bidIdentityDirectory,
   bidUserProfile,
   legalEntity,
   legalEntityMember,
   saleRegistration,
-  user,
 } from "@auction/db/schema";
 import { PADDLE_NUMBER_MIN } from "@auction/validators";
 import { and, eq, ilike, inArray, isNotNull, isNull, or } from "drizzle-orm";
@@ -35,16 +35,18 @@ export class DrizzleSaleroomCheckInRepository implements ISaleroomCheckInReposit
     const needle = `%${q.trim()}%`;
     const userRows = await this.db
       .select({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        emailVerified: user.emailVerified,
+        id: bidIdentityDirectory.subjectId,
+        name: bidIdentityDirectory.name,
+        email: bidIdentityDirectory.email,
+        emailVerified: bidIdentityDirectory.emailVerified,
         kycStatus: bidUserProfile.kycStatus,
         suspendedAt: bidUserProfile.suspendedAt,
       })
-      .from(user)
-      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(or(ilike(user.email, needle), ilike(user.name, needle)))
+      .from(bidIdentityDirectory)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(
+        or(ilike(bidIdentityDirectory.email, needle), ilike(bidIdentityDirectory.name, needle)),
+      )
       .limit(limit);
 
     if (userRows.length === 0) return [];

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { saleNotDeleted } from "@auction/db";
-import { bidUserProfile, sale, user } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile, sale } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type {
   ISaleRegistrationCheckInReader,
@@ -23,14 +23,14 @@ export class DrizzleSaleRegistrationCheckInReader implements ISaleRegistrationCh
   async findUserForCheckIn(userId: string): Promise<UserCheckInGateRow | null> {
     const [row] = await this.db
       .select({
-        id: user.id,
-        emailVerified: user.emailVerified,
+        id: bidIdentityDirectory.subjectId,
+        emailVerified: bidIdentityDirectory.emailVerified,
         kycStatus: bidUserProfile.kycStatus,
         suspendedAt: bidUserProfile.suspendedAt,
       })
-      .from(user)
-      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, userId))
+      .from(bidIdentityDirectory)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     return row ?? null;
   }

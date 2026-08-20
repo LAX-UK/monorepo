@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { bid, bidUserProfile, lot, user } from "@auction/db/schema";
+import { bid, bidIdentityDirectory, bidUserProfile, lot } from "@auction/db/schema";
 import { asc, eq, min, sql } from "drizzle-orm";
 import type { ISaleBiddersReader, SaleBidderRow } from "../interfaces/sale-bidders.reader.js";
 
@@ -26,17 +26,22 @@ export class DrizzleSaleBiddersReader implements ISaleBiddersReader {
     const firstBidAt = min(bid.createdAt);
     const rows = await this.db
       .select({
-        name: user.name,
+        name: bidIdentityDirectory.name,
         firstName: bidUserProfile.firstName,
         lastName: bidUserProfile.lastName,
         firstBidAt,
       })
       .from(bid)
       .innerJoin(lot, eq(lot.id, bid.lotId))
-      .innerJoin(user, eq(user.id, bid.bidderId))
-      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bid.bidderId))
+      .leftJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, bid.bidderId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bid.bidderId))
       .where(eq(lot.saleId, saleId))
-      .groupBy(user.id, user.name, bidUserProfile.firstName, bidUserProfile.lastName)
+      .groupBy(
+        bid.bidderId,
+        bidIdentityDirectory.name,
+        bidUserProfile.firstName,
+        bidUserProfile.lastName,
+      )
       .orderBy(asc(firstBidAt))
       .limit(opts.limit)
       .offset(opts.offset);

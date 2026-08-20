@@ -22,7 +22,6 @@ export { DrizzlePaddleBidWindowReader } from "./drizzle-paddle-bid-window.reader
 export { DrizzleOperatorPlacementReader } from "./drizzle-operator-placement.reader.js";
 export { DrizzleSaleroomDisplaySessionRepository } from "./drizzle-saleroom-display-session.repository.js";
 export { DrizzleSaleroomSessionRepository } from "./drizzle-saleroom-session.repository.js";
-export { DrizzleTelephoneBookingUserPhoneReader } from "./drizzle-telephone-booking-user-phone.reader.js";
 export { DrizzleSaleRegistrationBidReader } from "./drizzle-sale-registration-bid.reader.js";
 export { DrizzleSaleRegistrationCheckInReader } from "./drizzle-sale-registration-check-in.reader.js";
 export { DrizzleSaleRegistrationRepository } from "./drizzle-sale-registration.repository.js";
@@ -98,6 +97,12 @@ export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repos
 export { DrizzleXeroWebhookEventRepository } from "./drizzle-xero-webhook-event.repository.js";
 export { DrizzleAdminUserReader } from "./drizzle-admin-user.reader.js";
 export { DrizzleAdminUserRoleManager } from "./drizzle-admin-user.reader.js";
+export {
+  adminUserListSelect,
+  buildAdminUserListOrderBy,
+  buildAdminUserListWhere,
+  mapAdminUserListRow,
+} from "./admin-user-list-sql.js";
 export { DrizzleAdminUserBidsReader } from "./drizzle-admin-user-bids.reader.js";
 export { DrizzleAdminDomainEventReader } from "./drizzle-admin-domain-event.reader.js";
 export { DrizzleAdminFinanceIssueSnapshotReader } from "./drizzle-admin-finance-issue-snapshot.reader.js";

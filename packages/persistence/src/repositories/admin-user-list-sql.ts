@@ -1,6 +1,6 @@
 import {
+  bidIdentityDirectory,
   bidUserProfile,
-  user,
   type userKycStatusEnum,
   type userStaffRoleEnum,
 } from "@auction/db/schema";
@@ -23,15 +23,16 @@ import type {
   AdminUserListFilter,
   AdminUserListSort,
 } from "../interfaces/admin-user.repository.js";
+import { activeIdentitySubject } from "../lib/bid-identity-directory-query.js";
 
 export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | undefined {
-  const clauses: SQL[] = [];
+  const clauses: SQL[] = [activeIdentitySubject()];
 
   const q = filter.q?.trim();
   if (q) {
     const searchClause = or(
-      ilike(user.email, `%${q}%`),
-      ilike(user.name, `%${q}%`),
+      ilike(bidIdentityDirectory.email, `%${q}%`),
+      ilike(bidIdentityDirectory.name, `%${q}%`),
       ilike(bidUserProfile.mobile, `%${q}%`),
     );
     if (searchClause) clauses.push(searchClause);
@@ -61,7 +62,7 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   }
 
   if (filter.emailVerified !== undefined) {
-    clauses.push(eq(user.emailVerified, filter.emailVerified));
+    clauses.push(eq(bidIdentityDirectory.emailVerified, filter.emailVerified));
   }
 
   if (filter.emailStatus) {
@@ -93,12 +94,8 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
     clauses.push(eq(bidUserProfile.signupPersona, filter.persona));
   }
 
-  if (filter.twoFactorEnabled !== undefined) {
-    clauses.push(eq(user.twoFactorEnabled, filter.twoFactorEnabled));
-  }
-
   if (filter.deletionRequestedOnly) {
-    clauses.push(isNotNull(user.deletionRequestedAt));
+    clauses.push(isNotNull(bidIdentityDirectory.deletionRequestedAt));
   }
 
   if (filter.hasMobile === true) {
@@ -116,10 +113,10 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   }
 
   if (filter.createdFrom) {
-    clauses.push(gte(user.createdAt, filter.createdFrom));
+    clauses.push(gte(bidIdentityDirectory.identityCreatedAt, filter.createdFrom));
   }
   if (filter.createdToExclusive) {
-    clauses.push(lt(user.createdAt, filter.createdToExclusive));
+    clauses.push(lt(bidIdentityDirectory.identityCreatedAt, filter.createdToExclusive));
   }
 
   if (filter.kycVerifiedFrom) {
@@ -129,56 +126,46 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
     clauses.push(lt(bidUserProfile.kycVerifiedAt, filter.kycVerifiedToExclusive));
   }
 
-  if (filter.lastActiveFrom) {
-    clauses.push(gte(user.updatedAt, filter.lastActiveFrom));
-  }
-  if (filter.lastActiveToExclusive) {
-    clauses.push(lt(user.updatedAt, filter.lastActiveToExclusive));
-  }
-
   return clauses.length > 0 ? and(...clauses) : undefined;
 }
 
 export function buildAdminUserListOrderBy(sort: AdminUserListSort | undefined) {
   switch (sort ?? "created_desc") {
     case "created_asc":
-      return asc(user.createdAt);
+      return asc(bidIdentityDirectory.identityCreatedAt);
     case "name_asc":
-      return asc(user.name);
+      return asc(bidIdentityDirectory.name);
     case "name_desc":
-      return desc(user.name);
-    case "last_active_desc":
-      return desc(user.updatedAt);
+      return desc(bidIdentityDirectory.name);
     case "kyc_status":
       return asc(bidUserProfile.kycStatus);
     default:
-      return desc(user.createdAt);
+      return desc(bidIdentityDirectory.identityCreatedAt);
   }
 }
 
 /** Shared projection for list and detail list-shaped fields. */
 export const adminUserListSelect = {
-  id: user.id,
-  email: user.email,
-  name: user.name,
+  id: bidIdentityDirectory.subjectId,
+  email: bidIdentityDirectory.email,
+  name: bidIdentityDirectory.name,
   firstName: bidUserProfile.firstName,
   lastName: bidUserProfile.lastName,
   role: sql<string>`coalesce(${bidUserProfile.role}, 'client')`,
   staffRole: bidUserProfile.staffRole,
-  createdAt: user.createdAt,
-  updatedAt: user.updatedAt,
+  createdAt: bidIdentityDirectory.identityCreatedAt,
+  updatedAt: sql<Date>`greatest(${bidUserProfile.updatedAt}, ${bidIdentityDirectory.replicatedAt})`,
   suspendedAt: bidUserProfile.suspendedAt,
-  image: user.image,
+  image: bidIdentityDirectory.image,
   mobile: bidUserProfile.mobile,
   mobileCountry: bidUserProfile.mobileCountry,
-  emailVerified: user.emailVerified,
+  emailVerified: bidIdentityDirectory.emailVerified,
   emailStatus: sql<string>`coalesce(${bidUserProfile.emailStatus}, 'ok')`,
   signupPersona: bidUserProfile.signupPersona,
-  twoFactorEnabled: user.twoFactorEnabled,
   kycStatus: sql<string>`coalesce(${bidUserProfile.kycStatus}, 'unverified')`,
   kycVerifiedAt: bidUserProfile.kycVerifiedAt,
   kycRetryCount: sql<number>`coalesce(${bidUserProfile.kycRetryCount}, 0)::int`,
-  deletionRequestedAt: user.deletionRequestedAt,
+  deletionRequestedAt: bidIdentityDirectory.deletionRequestedAt,
 } as const;
 
 export function mapAdminUserListRow(r: {
@@ -198,7 +185,6 @@ export function mapAdminUserListRow(r: {
   emailVerified: boolean;
   emailStatus: string;
   signupPersona: string | null;
-  twoFactorEnabled: boolean;
   kycStatus: string;
   kycVerifiedAt: Date | null;
   kycRetryCount: number;
@@ -221,7 +207,7 @@ export function mapAdminUserListRow(r: {
     emailVerified: r.emailVerified,
     emailStatus: r.emailStatus,
     signupPersona: r.signupPersona ?? null,
-    twoFactorEnabled: r.twoFactorEnabled,
+    twoFactorEnabled: false,
     kycStatus: r.kycStatus,
     kycVerifiedAt: r.kycVerifiedAt ?? null,
     kycRetryCount: r.kycRetryCount,

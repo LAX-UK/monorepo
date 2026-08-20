@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
-import { legalEntityMember, user } from "@auction/db/schema";
+import { bidIdentityDirectory, legalEntityMember } from "@auction/db/schema";
 import type { LegalEntityMember, LegalEntityMemberRole } from "@auction/types";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type {
   ILegalEntityMemberRepository,
   MemberWithUser,
@@ -19,14 +19,14 @@ export class DrizzleLegalEntityMemberRepository implements ILegalEntityMemberRep
       .select({
         member: legalEntityMember,
         user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
+          id: legalEntityMember.userId,
+          email: sql<string>`coalesce(${bidIdentityDirectory.email}, '[deleted]')`,
+          name: sql<string>`coalesce(${bidIdentityDirectory.name}, 'Deleted user')`,
+          image: bidIdentityDirectory.image,
         },
       })
       .from(legalEntityMember)
-      .innerJoin(user, eq(user.id, legalEntityMember.userId))
+      .leftJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, legalEntityMember.userId))
       .where(
         and(
           eq(legalEntityMember.legalEntityId, legalEntityId),
@@ -53,10 +53,10 @@ export class DrizzleLegalEntityMemberRepository implements ILegalEntityMemberRep
     const [row] = await this.db
       .select({
         role: legalEntityMember.role,
-        memberName: user.name,
+        memberName: bidIdentityDirectory.name,
       })
       .from(legalEntityMember)
-      .innerJoin(user, eq(user.id, legalEntityMember.userId))
+      .innerJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, legalEntityMember.userId))
       .where(
         and(
           eq(legalEntityMember.id, memberId),

@@ -7,18 +7,20 @@ import {
   lot,
   sale,
   telephoneBidBooking,
-  user,
 } from "@auction/db/schema";
 import {
   DrizzleLotRepository,
   DrizzleSaleRepository,
   DrizzleTelephoneBidBookingDetailReader,
   DrizzleTelephoneBidBookingRepository,
-  DrizzleTelephoneBookingUserPhoneReader,
   createDrizzleLegalEntityRepository,
 } from "@auction/persistence/repositories";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  deleteIdentityUserFixtures,
+  seedIdentityUserFixtures,
+} from "../testing/identity-user-fixtures.js";
 import { buildTelephoneBidBookingService } from "./telephone-bid-booking.service.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -43,7 +45,15 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
     detailReader: new DrizzleTelephoneBidBookingDetailReader(db),
     saleRepo,
     lotRepo,
-    userPhoneReader: new DrizzleTelephoneBookingUserPhoneReader(db),
+    userPhoneReader: {
+      findByUserId: async (userId) =>
+        userId === buyerUserId
+          ? {
+              phoneNumber: "+447700900123",
+              phoneNumberVerified: true,
+            }
+          : null,
+    },
     legalEntityRepository,
   });
 
@@ -61,17 +71,16 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
     await db
       .delete(bidUserProfile)
       .where(sql`${bidUserProfile.userId} IN (${buyerUserId}, ${staffUserId})`);
-    await db.delete(user).where(sql`${user.id} IN (${buyerUserId}, ${staffUserId})`);
+    await deleteIdentityUserFixtures(db, [buyerUserId, staffUserId]);
   }
 
   async function seedBase() {
     const t = new Date();
-    await db.insert(user).values([
+    await seedIdentityUserFixtures(db, [
       {
         id: buyerUserId,
         name: "Tel Buyer",
         email: "tel_int_buyer@integration.test",
-        emailVerified: true,
         phoneNumber: "+447700900123",
         phoneNumberVerified: true,
         createdAt: t,
@@ -81,7 +90,6 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
         id: staffUserId,
         name: "Tel Staff",
         email: "tel_int_staff@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },

@@ -1,9 +1,9 @@
-import { bidUserProfile, user } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
 import { describe, expect, it, vi } from "vitest";
 import { DrizzleProfileRepository } from "./drizzle-profile.repository.js";
 
 describe("DrizzleProfileRepository.getProfile", () => {
-  it("selects twoFactorEnabled from the user row", async () => {
+  it("reads product-safe Identity facts from the local directory", async () => {
     const limit = vi.fn().mockResolvedValue([
       {
         id: "u1",
@@ -17,12 +17,10 @@ describe("DrizzleProfileRepository.getProfile", () => {
         emailVerified: true,
         emailStatus: "ok",
         emailStatusChangedAt: null,
-        pendingNewEmail: null,
         hasSeenActingContextTooltip: false,
         kycStatus: "unverified",
         signupPersona: null,
         deletionRequestedAt: null,
-        twoFactorEnabled: true,
       },
     ]);
     const where = vi.fn().mockReturnValue({ limit });
@@ -36,14 +34,15 @@ describe("DrizzleProfileRepository.getProfile", () => {
 
     expect(select).toHaveBeenCalledWith(
       expect.objectContaining({
-        twoFactorEnabled: user.twoFactorEnabled,
+        email: bidIdentityDirectory.email,
+        phoneNumber: bidIdentityDirectory.phone,
       }),
     );
-    expect(from).toHaveBeenCalledWith(user);
+    expect(from).toHaveBeenCalledWith(bidIdentityDirectory);
     expect(where).toHaveBeenCalled();
     expect(row?.mobile).toBe("+447400123456");
     expect(row?.mobileCountry).toBe("GB");
-    expect(row?.twoFactorEnabled).toBe(true);
+    expect(row?.twoFactorEnabled).toBe(false);
   });
 });
 

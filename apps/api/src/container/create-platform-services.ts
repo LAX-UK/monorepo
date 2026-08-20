@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { Env } from "../env.js";
+import type { IIdentitySubjectClient } from "../services/interfaces/identity-issuer-client.js";
 import type { ContainerInfra } from "./create-infra.js";
 import { createPlatformCore } from "./create-platform-core.js";
 import { createPlatformIdentityServices } from "./create-platform-identity-services.js";
@@ -15,12 +16,13 @@ export type CreatePlatformServicesInput = {
   db: Database;
   infra: ContainerInfra;
   repos: ContainerRepositories;
+  identitySubjects: IIdentitySubjectClient;
 };
 
 export function createPlatformServices(
   input: CreatePlatformServicesInput,
 ): ContainerPlatformServices {
-  const { env, db, infra, repos } = input;
+  const { env, db, infra, repos, identitySubjects } = input;
 
   const core = createPlatformCore(db, repos, env);
   const payout = createPlatformPayoutServices({ env, db, infra, repos, core });
@@ -31,6 +33,7 @@ export function createPlatformServices(
     infra,
     repos,
     core,
+    identitySubjects,
     stripeConnectService: payout.stripeConnectService,
   });
 

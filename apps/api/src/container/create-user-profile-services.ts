@@ -15,6 +15,7 @@ import { ArtistWatchlistService } from "../services/artist-watchlist.service.js"
 import type {
   IIdentityIssuerClient,
   IIdentityProfileClient,
+  IIdentitySecurityClient,
   IIdentitySubjectClient,
 } from "../services/interfaces/identity-issuer-client.js";
 import { InvitationConsumptionService } from "../services/invitation-consumption.service.js";
@@ -56,7 +57,10 @@ export type ContainerUserProfileServices = {
 export type CreateUserProfileServicesInput = {
   env: Env;
   db: Database;
-  identityIssuer: IIdentityIssuerClient & IIdentitySubjectClient & IIdentityProfileClient;
+  identityIssuer: IIdentityIssuerClient &
+    IIdentitySubjectClient &
+    IIdentityProfileClient &
+    IIdentitySecurityClient;
   ensurePersonalLegalEntityService: EnsurePersonalLegalEntityService;
   infra: ContainerInfra;
   repos: ContainerRepositories;
@@ -157,8 +161,9 @@ export function createUserProfileServices(
       },
     },
     imageCleanupService,
+    identityIssuer,
   );
-  const userSecurityReadService = new UserSecurityReadService(profileRepo);
+  const userSecurityReadService = new UserSecurityReadService(identityIssuer);
   const addressService = new AddressService(addressRepo);
 
   const invitationService = new InvitationService(
@@ -195,6 +200,7 @@ export function createUserProfileServices(
     adminUserBidsReader,
     adminUserKycReader,
     cachedUserSuspensionChecker,
+    identityIssuer,
   );
 
   return {

@@ -1,11 +1,9 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getTableColumns } from "drizzle-orm";
 import ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-  API_COLUMN_UPDATE_GRANTS,
   API_READ_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
@@ -21,7 +19,6 @@ import {
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
 } from "./migrate-roles.js";
-import { user } from "./schema/auth.js";
 
 /** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
  *
@@ -41,12 +38,6 @@ const persistenceSrc = join(repoRoot, "packages/persistence/src");
 const apiRuntimeRoots = [apiSrc, persistenceSrc];
 
 const USER_TABLE_IDENTIFIERS = new Set(["user", "userTable"]);
-
-function propToDbColumn(prop: string): string | null {
-  const cols = getTableColumns(user);
-  const col = cols[prop as keyof typeof cols];
-  return col ? col.name : null;
-}
 
 async function* walkTsFiles(dir: string): AsyncGenerator<string> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -404,56 +395,11 @@ describe("api_app grants vs API runtime sources", { timeout: 60_000 }, () => {
     records = await collectCallSites();
   }, 60_000);
 
-  it("every .update(user|userTable).set(...) column maps to API_COLUMN_UPDATE_GRANTS.user", () => {
-    const allowed = new Set(API_COLUMN_UPDATE_GRANTS.user);
-    const missing = new Map<string, string[]>();
-    const dynamicSites: string[] = [];
-    const unknownProps = new Map<string, string[]>();
-
-    for (const r of records) {
-      if (r.dynamic) dynamicSites.push(`${r.file}:${r.line}`);
-      for (const prop of r.props) {
-        const col = propToDbColumn(prop);
-        if (!col) {
-          const arr = unknownProps.get(prop) ?? [];
-          arr.push(`${r.file}:${r.line}`);
-          unknownProps.set(prop, arr);
-          continue;
-        }
-        if (!allowed.has(col)) {
-          const arr = missing.get(col) ?? [];
-          arr.push(`${r.file}:${r.line}`);
-          missing.set(col, arr);
-        }
-      }
-    }
-
-    const failures: string[] = [];
-    if (missing.size > 0) {
-      const detail = [...missing.entries()]
-        .map(([col, locs]) => `  - ${col} (used at ${locs.join(", ")})`)
-        .join("\n");
-      failures.push(
-        `api_app column UPDATE allow-list missing columns used by apps/api.\nAdd to API_COLUMN_UPDATE_GRANTS.user in migrate-roles.ts:\n${detail}`,
-      );
-    }
-    if (unknownProps.size > 0) {
-      const detail = [...unknownProps.entries()]
-        .map(([p, locs]) => `  - ${p} (at ${locs.join(", ")})`)
-        .join("\n");
-      failures.push(
-        `Unknown user-table property in .set({...}) — either it isn't on the Drizzle schema or it's a typo:\n${detail}`,
-      );
-    }
-    if (dynamicSites.length > 0) {
-      failures.push(
-        `Could not statically enumerate columns at these .set(...) sites — refactor to a literal object so the static guard can audit them:\n${dynamicSites
-          .map((s) => `  - ${s}`)
-          .join("\n")}`,
-      );
-    }
-    if (failures.length > 0) throw new Error(failures.join("\n\n"));
-    expect(missing.size).toBe(0);
+  it("forbids direct Identity-owned user updates from API and persistence runtime", () => {
+    expect(
+      records.map((record) => `${record.file}:${record.line}`),
+      "direct user update call sites",
+    ).toEqual([]);
   });
 
   it("forbids direct Identity-table access from API and persistence runtime", async () => {
@@ -497,87 +443,5 @@ describe("api_app grants vs API runtime sources", { timeout: 60_000 }, () => {
       }
     }
     expect(forbiddenImports, "direct Identity table imports").toEqual([]);
-  });
-
-  it("forbids Identity-owned user writes from API and persistence runtime", () => {
-    const identityFields = new Set([
-      "name",
-      "email",
-      "emailVerified",
-      "image",
-      "phoneNumber",
-      "phoneNumberVerified",
-      "twoFactorEnabled",
-      "pendingNewEmail",
-      "emailChangeOldOk",
-      "emailChangeNewOk",
-      "emailChangeExpiresAt",
-      "deletionRequestedAt",
-      "identityDisabledAt",
-      "identityDisabledReason",
-      "mergedIntoSubjectId",
-    ]);
-    const violations = records.flatMap((record) =>
-      [...record.props]
-        .filter((property) => identityFields.has(property))
-        .map((property) => `${record.file}:${record.line} user.${property}`),
-    );
-    expect(violations).toEqual([]);
-  });
-
-  it("API_COLUMN_UPDATE_GRANTS.user has no over-granted columns (reverse drift)", () => {
-    const observed = new Set<string>();
-    for (const r of records) {
-      for (const prop of r.props) {
-        const col = propToDbColumn(prop);
-        if (col) observed.add(col);
-      }
-    }
-    // updated_at is touched by virtually every UPDATE; the audit cannot prove a
-    // negative for it because Drizzle may add it implicitly elsewhere. Keep it
-    // exempt from reverse-drift; same for any future column that lives in the
-    // allow-list intentionally for forward-compat.
-    const EXEMPT = new Set<string>(["name", "image", "deletion_requested_at", "updated_at"]);
-    const unused: string[] = [];
-    for (const col of API_COLUMN_UPDATE_GRANTS.user) {
-      if (EXEMPT.has(col)) continue;
-      if (!observed.has(col)) unused.push(col);
-    }
-    if (unused.length > 0) {
-      throw new Error(
-        `API_COLUMN_UPDATE_GRANTS.user contains columns no apps/api code writes anymore — drop them from migrate-roles.ts to keep api_app least-privileged:\n${unused
-          .map((c) => `  - ${c}`)
-          .join("\n")}`,
-      );
-    }
-    expect(unused).toEqual([]);
-  });
-
-  it("denies direct api_app updates to Bid-owned legacy user columns", () => {
-    const allowed = new Set(API_COLUMN_UPDATE_GRANTS.user);
-    for (const column of [
-      "role",
-      "staff_role",
-      "first_name",
-      "last_name",
-      "mobile",
-      "mobile_country",
-      "signup_persona",
-      "suspended_at",
-      "suspended_reason",
-      "kyc_status",
-      "current_kyc_session_id",
-      "kyc_retry_count",
-      "kyc_verified_at",
-      "preferred_paddle_number",
-      "aml_hold_status",
-      "aml_hold_reason",
-      "aml_hold_at",
-      "email_status",
-      "email_status_changed_at",
-      "has_seen_acting_context_tooltip",
-    ]) {
-      expect(allowed.has(column), column).toBe(false);
-    }
   });
 });

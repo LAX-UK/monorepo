@@ -5,17 +5,14 @@ import {
   userProfileUpdatedPayloadSchemaV1,
 } from "@auction/identity-contracts";
 import {
-  ensureBidUserProfile,
+  provisionBidUserProfileShell,
   writeBidUserProfile,
 } from "@auction/persistence/bid-user-profile-sync";
+import { userRegisteredPayloadSchemaV1 } from "@auction/types";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 export const BID_PROFILE_PROVISIONING_PROJECTOR = "bid_profile_provisioning";
-
-type UserRegisteredPayload = {
-  userId?: string;
-};
 
 export async function processBidProfileProvisioning(options: {
   ctx: ProjectorRunContext;
@@ -44,11 +41,11 @@ export async function processBidProfileProvisioning(options: {
     try {
       await ctx.transactionRunner.runInTransaction(async (tx) => {
         if (row.eventType === "user.registered") {
-          const payload = row.payload as UserRegisteredPayload;
-          if (!payload?.userId) {
-            throw new Error("user_registered_missing_user_id");
-          }
-          await ensureBidUserProfile(tx, payload.userId);
+          const payload = userRegisteredPayloadSchemaV1.strict().parse(row.payload);
+          const registeredAt = payload.createdAt
+            ? new Date(payload.createdAt)
+            : (row.occurredAt ?? new Date());
+          await provisionBidUserProfileShell(tx, payload.userId, registeredAt);
           return;
         }
         if (row.eventType === "user.profile_updated") {

@@ -4,6 +4,9 @@ import { mediaReferenceSchema } from "./media.js";
 import { phoneCountrySchema, phoneInputSchema } from "./mobile.js";
 import { resolvePhoneFromBody } from "./phone/resolve.js";
 
+/** Whether live Identity security fields were available for this response. */
+export const securityStatusAvailableSchema = z.boolean();
+
 export const updateProfileSchema = z
   .object({
     name: z.string().min(1).max(200).optional(),
@@ -92,7 +95,6 @@ export const adminUserListSortEnum = z.enum([
   "created_asc",
   "name_asc",
   "name_desc",
-  "last_active_desc",
   "kyc_status",
 ]);
 
@@ -139,22 +141,18 @@ export const adminUserListQuerySchema = z
         return out.length ? out : undefined;
       }),
     persona: adminUserListPersonaFilterEnum.optional(),
-    twoFactor: adminUserListTriStateSchema.optional(),
     deletionRequested: z.enum(["1"]).optional(),
     hasMobile: adminUserListTriStateSchema.optional(),
     createdFrom: adminUserListIsoDateSchema.optional(),
     createdTo: adminUserListIsoDateSchema.optional(),
     kycVerifiedFrom: adminUserListIsoDateSchema.optional(),
     kycVerifiedTo: adminUserListIsoDateSchema.optional(),
-    lastActiveFrom: adminUserListIsoDateSchema.optional(),
-    lastActiveTo: adminUserListIsoDateSchema.optional(),
     sort: adminUserListSortEnum.optional().default("created_desc"),
   })
   .superRefine((data, ctx) => {
     const ranges: [string | undefined, string | undefined, string][] = [
       [data.createdFrom, data.createdTo, "created"],
       [data.kycVerifiedFrom, data.kycVerifiedTo, "kycVerified"],
-      [data.lastActiveFrom, data.lastActiveTo, "lastActive"],
     ];
     for (const [from, to, label] of ranges) {
       if (from && to && from > to) {

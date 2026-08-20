@@ -38,6 +38,21 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
     return row ?? null;
   }
 
+  async readSecurityStatus(subjectId: string) {
+    const [row] = await this.db
+      .select({
+        twoFactorEnabled: user.twoFactorEnabled,
+        phoneNumber: user.phoneNumber,
+        phoneNumberVerified: user.phoneNumberVerified,
+        pendingNewEmail: user.pendingNewEmail,
+        emailChangeExpiresAt: user.emailChangeExpiresAt,
+      })
+      .from(user)
+      .where(eq(user.id, subjectId))
+      .limit(1);
+    return row ?? null;
+  }
+
   async updateProfile(
     transaction: IdentityOperationTransaction,
     subjectId: string,

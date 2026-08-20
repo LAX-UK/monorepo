@@ -1,6 +1,7 @@
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "./domain-event-sink.js";
+import type { IIdentitySubjectClient } from "./interfaces/identity-issuer-client.js";
 import type {
   IInvitationLifecycleService,
   InvitationOutcome,
@@ -25,6 +26,7 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
     membershipInviteNotifier: IMembershipInviteNotifier,
     webOrigin: string,
     membershipGuard: LegalEntityMembershipGuard,
+    identitySubjects?: IIdentitySubjectClient,
   ) {
     const tokenService = new InvitationTokenService();
     const notifications = new InvitationNotificationService(
@@ -40,6 +42,7 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
       notifications,
       domainEventSink,
       membershipGuard,
+      identitySubjects,
     );
     this.acceptanceService = new InvitationAcceptanceService(
       transactionRunner,

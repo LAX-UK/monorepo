@@ -8,7 +8,7 @@ The database is a single PostgreSQL 16 cluster. Four application roles
 The privileged `DATABASE_URL_OWNER` connection is held only by the migration
 job; no long-running app process holds DDL grants.
 
-> **Implementation status (last reviewed 2026-05-05)**
+> **Implementation status (last reviewed 2026-08-20)**
 >
 > - **Implemented:** every table in the ERD below exists at [packages/db/src/schema/](../../packages/db/src/schema/), including `domain_events.actor_user_id`, `domain_events.correlation_id` (DB default `gen_random_uuid()`), and `domain_events.schema_version` (DB default 1). Email-pipeline tables (`email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`) plus `user.email_status` / `user.email_status_changed_at` and the `notification_preference.*Email` / `*Whatsapp` columns ship in migration `0021_email_integration_schema.sql`. Role grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) enforce the role split: `api_app` owns synchronous email enqueue and product-subject usage reads, and `worker_app` has SELECT/UPDATE on `email_outbox` and `newsletter_signup_log`; migrations `0154` and `0155` remove all direct email-pipeline and product-table access from `auth_app`.
 > - **Recent additions since the original schema landing:** multi-category for lots/sales/submissions (`lot_categories`, `sale_categories`, `submission_categories` join tables in migration `0022`), category admin metadata (`category.archived`, `sort_order`, etc. in migration `0024`), structured `user_address` (migration `0025`), `artist_profile` (migration `0026`; admin-curated catalogue registry with `kind`/`status` lifecycle), and the submission-expansion fields (`item_submissions` extended in migration `0023`).
@@ -280,7 +280,7 @@ pattern.
 
 The `jwks_key` table holds the OIDC signing keys per D2. Only `auth_app` reads the `private_jwk` column. The `api_app` and `worker_app` roles have no grant on this table at all. Status transitions are `active` → `rotating` → `retired` → row deleted. Multiple rows can be `active` or `rotating` simultaneously during a 30-minute key rotation window — the runbook in [jwks-rotation.md](../runbooks/jwks-rotation.md) is the procedure.
 
-### Product profiles and Identity read models — D13 boundary (partial migration)
+### Product profiles and Identity read models — D13 boundary
 
 Bid and Shop products maintain **local profiles** keyed by the immutable Identity subject (`user.id`).
 Product-local read models may copy the minimum Identity facts needed for asynchronous work, but
@@ -306,7 +306,20 @@ update the directory and its aliases, and `user.identity_deleted` hard-deletes t
 subject and aliases containing its PII. `api_app` has SELECT only; `worker_app` is
 granted DML solely because it hosts the projector. The
 `verify-identity-directory-drift.mjs` reconciliation must be clean before direct
-worker reads of `user` are revoked by migration `0157`.
+worker reads of `user` are revoked by migration `0157` and before API reads are
+revoked by migration `0158`. API repositories join the directory for product-safe
+Identity facts. MFA, phone-verification, pending email-change, and authoritative
+verified-email ownership remain live machine-authenticated Identity reads.
+
+Directory joins from durable product records are deliberately `LEFT JOIN`s.
+Identity hard deletion removes the directory row and its copied PII but does not
+erase auction history; callers must render a deleted/unavailable identity rather
+than dropping the product row. `identity_created_at` is the canonical Identity
+subject creation time copied from the lifecycle event/backfill.
+`replicated_at` is when this projection last applied a snapshot and is the
+freshness timestamp used by reconciliation; it is not a user activity time.
+`last_event_id` is the monotonic projector ordering/idempotency checkpoint.
+The worker projector is the only runtime writer of this table.
 
 Migration `0150` removed the former `0140` compatibility triggers and Bid-owned
 legacy columns from `user`. The remaining product reads and foreign keys are tracked
@@ -406,6 +419,14 @@ Identity connection.
 Adding a new column with a default value is safe online. Adding a `NOT NULL` column without a default requires a multi-step migration: add nullable, backfill, then add the constraint in a separate migration. Renaming a column requires the same multi-step pattern (add new, dual-write from app, backfill old to new, switch reads, drop old) — Drizzle's automatic migration generation will not produce this safely.
 
 Role grants are applied by [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (script: `pnpm db:roles`, also called automatically at the end of `pnpm db:migrate:prod`). The script is idempotent. **When you add a new table, also add it to the appropriate `*_FULL_TABLES` / `*_DENY_TABLES` / `*_SELECT_TABLES` constant in `migrate-roles.ts`** — without that, the apps will fail at runtime trying to read tables they don't have permission for.
+
+`api_app` access to Identity `user` is the exception: it is migration-controlled,
+not a static role list entry. Role reconciliation captures and restores an
+existing pre-`0158` `SELECT` grant across its global revoke, but never recreates
+the grant after `0158`. Deploy and soak directory-backed API code, apply `0158`,
+then run role reconciliation. Rolling application code back across this boundary
+requires applying `0158_rollback.sql` first; re-running roles alone cannot restore
+the source-table grant.
 
 ## Where to look in the code
 

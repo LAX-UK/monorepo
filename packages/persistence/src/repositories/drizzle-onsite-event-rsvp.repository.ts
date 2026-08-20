@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { onsiteEventRsvp, user } from "@auction/db/schema";
+import { bidIdentityDirectory, onsiteEventRsvp } from "@auction/db/schema";
 import type {
   OnsiteEventCheckInSearchRow,
   OnsiteEventRsvp,
@@ -29,7 +29,7 @@ function mapRsvpWithGuest(row: {
   };
 }
 
-const checkedInByUser = alias(user, "checked_in_by");
+const checkedInByUser = alias(bidIdentityDirectory, "checked_in_by");
 
 export class DrizzleOnsiteEventRsvpRepository implements IOnsiteEventRsvpRepository {
   constructor(private readonly db: Database) {}
@@ -47,13 +47,13 @@ export class DrizzleOnsiteEventRsvpRepository implements IOnsiteEventRsvpReposit
     const [row] = await this.db
       .select({
         rsvp: onsiteEventRsvp,
-        guestName: user.name,
-        guestEmail: user.email,
+        guestName: sql<string>`coalesce(${bidIdentityDirectory.name}, 'Deleted user')`,
+        guestEmail: sql<string>`coalesce(${bidIdentityDirectory.email}, '[deleted]')`,
         checkedInByName: checkedInByUser.name,
       })
       .from(onsiteEventRsvp)
-      .innerJoin(user, eq(onsiteEventRsvp.userId, user.id))
-      .leftJoin(checkedInByUser, eq(onsiteEventRsvp.checkedInByUserId, checkedInByUser.id))
+      .leftJoin(bidIdentityDirectory, eq(onsiteEventRsvp.userId, bidIdentityDirectory.subjectId))
+      .leftJoin(checkedInByUser, eq(onsiteEventRsvp.checkedInByUserId, checkedInByUser.subjectId))
       .where(eq(onsiteEventRsvp.id, rsvpId))
       .limit(1);
     return row ? mapRsvpWithGuest(row) : null;
@@ -63,13 +63,13 @@ export class DrizzleOnsiteEventRsvpRepository implements IOnsiteEventRsvpReposit
     const [row] = await this.db
       .select({
         rsvp: onsiteEventRsvp,
-        guestName: user.name,
-        guestEmail: user.email,
+        guestName: bidIdentityDirectory.name,
+        guestEmail: bidIdentityDirectory.email,
         checkedInByName: checkedInByUser.name,
       })
       .from(onsiteEventRsvp)
-      .innerJoin(user, eq(onsiteEventRsvp.userId, user.id))
-      .leftJoin(checkedInByUser, eq(onsiteEventRsvp.checkedInByUserId, checkedInByUser.id))
+      .innerJoin(bidIdentityDirectory, eq(onsiteEventRsvp.userId, bidIdentityDirectory.subjectId))
+      .leftJoin(checkedInByUser, eq(onsiteEventRsvp.checkedInByUserId, checkedInByUser.subjectId))
       .where(eq(onsiteEventRsvp.checkInTokenHash, tokenHash))
       .limit(1);
     return row ? mapRsvpWithGuest(row) : null;
@@ -79,8 +79,8 @@ export class DrizzleOnsiteEventRsvpRepository implements IOnsiteEventRsvpReposit
     const rows = await this.db
       .select({
         id: onsiteEventRsvp.id,
-        name: user.name,
-        email: user.email,
+        name: sql<string>`coalesce(${bidIdentityDirectory.name}, 'Deleted user')`,
+        email: sql<string>`coalesce(${bidIdentityDirectory.email}, '[deleted]')`,
         attendanceSegment: onsiteEventRsvp.attendanceSegment,
         plusOne: onsiteEventRsvp.plusOne,
         plusOneGuestName: onsiteEventRsvp.plusOneGuestName,
@@ -91,7 +91,7 @@ export class DrizzleOnsiteEventRsvpRepository implements IOnsiteEventRsvpReposit
         updatedAt: onsiteEventRsvp.updatedAt,
       })
       .from(onsiteEventRsvp)
-      .innerJoin(user, eq(onsiteEventRsvp.userId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(onsiteEventRsvp.userId, bidIdentityDirectory.subjectId))
       .where(eq(onsiteEventRsvp.eventSlug, eventSlug))
       .orderBy(desc(onsiteEventRsvp.updatedAt));
 
@@ -202,13 +202,13 @@ export class DrizzleOnsiteEventRsvpRepository implements IOnsiteEventRsvpReposit
     const [row] = await this.db
       .select({
         rsvp: onsiteEventRsvp,
-        guestName: user.name,
-        guestEmail: user.email,
+        guestName: bidIdentityDirectory.name,
+        guestEmail: bidIdentityDirectory.email,
         checkedInByName: checkedInByUser.name,
       })
       .from(onsiteEventRsvp)
-      .innerJoin(user, eq(onsiteEventRsvp.userId, user.id))
-      .leftJoin(checkedInByUser, eq(onsiteEventRsvp.checkedInByUserId, checkedInByUser.id))
+      .innerJoin(bidIdentityDirectory, eq(onsiteEventRsvp.userId, bidIdentityDirectory.subjectId))
+      .leftJoin(checkedInByUser, eq(onsiteEventRsvp.checkedInByUserId, checkedInByUser.subjectId))
       .where(eq(onsiteEventRsvp.id, input.rsvpId))
       .limit(1);
 
@@ -224,19 +224,19 @@ export class DrizzleOnsiteEventRsvpRepository implements IOnsiteEventRsvpReposit
     const rows = await this.db
       .select({
         id: onsiteEventRsvp.id,
-        name: user.name,
-        email: user.email,
+        name: bidIdentityDirectory.name,
+        email: bidIdentityDirectory.email,
         attendanceSegment: onsiteEventRsvp.attendanceSegment,
         plusOne: onsiteEventRsvp.plusOne,
         plusOneGuestName: onsiteEventRsvp.plusOneGuestName,
         checkedInAt: onsiteEventRsvp.checkedInAt,
       })
       .from(onsiteEventRsvp)
-      .innerJoin(user, eq(onsiteEventRsvp.userId, user.id))
+      .innerJoin(bidIdentityDirectory, eq(onsiteEventRsvp.userId, bidIdentityDirectory.subjectId))
       .where(
         and(
           eq(onsiteEventRsvp.eventSlug, eventSlug),
-          or(ilike(user.name, pattern), ilike(user.email, pattern)),
+          or(ilike(bidIdentityDirectory.name, pattern), ilike(bidIdentityDirectory.email, pattern)),
         ),
       )
       .orderBy(desc(onsiteEventRsvp.updatedAt))

@@ -38,6 +38,24 @@
     60000). Only then apply `0157_revoke_worker_user_reads`.
     Applying `0157` while an old worker instance is serving breaks its direct
     notification, marketing, finance, and media-cleanup reads from `user`.
+12. **Bid API Identity directory boundary**: deploy auth's machine-authenticated
+    subject security-status read first, then deploy API, persistence, exports,
+    and web admin filtering together. API contact/display reads must use
+    `bid_identity_directory`; MFA, phone-verification, pending email-change, and
+    verified-email ownership checks must use the live Identity boundary. Soak
+    until `verify-identity-directory-drift.mjs` remains clean, then apply
+    `0158_revoke_api_user_reads`. Applying `0158` while an old API instance is
+    serving breaks profile, admin, invitation, payment, saleroom, and export
+    reads that still join `user`. Run the normal role reconciliation only after
+    `0158`; it preserves an existing soak grant before `0158` but will not
+    recreate the grant afterward. Confirm the live API role can `SELECT` but
+    cannot write `bid_identity_directory`, and has no `user` privilege.
+    Directory-backed product records use left joins so Identity hard deletion
+    removes copied PII without deleting durable auction history.
+13. **Rollback coupling**: before rolling API code back across step 12, apply
+    `0158_rollback.sql`; before rolling worker readers back across step 11, apply
+    `0157_rollback.sql`. Roll deployments and grants back as one change. A
+    `db:roles` rerun is not a substitute for either rollback migration.
 
 See also: [key rotation](../security/key-rotation.md),
 [JWKS rotation](./jwks-rotation.md), and

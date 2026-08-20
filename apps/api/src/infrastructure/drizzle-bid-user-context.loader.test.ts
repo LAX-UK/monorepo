@@ -4,39 +4,25 @@ import { DrizzleBidUserContextLoader } from "./drizzle-bid-user-context.loader.j
 function databaseReturning(row: Record<string, unknown>) {
   const limit = vi.fn().mockResolvedValue([row]);
   const where = vi.fn(() => ({ limit }));
-  const leftJoin = vi.fn(() => ({ where }));
-  const from = vi.fn(() => ({ leftJoin }));
+  const from = vi.fn(() => ({ where }));
   return { select: vi.fn(() => ({ from })) };
 }
 
 describe("DrizzleBidUserContextLoader", () => {
-  it("fails closed on legacy lifecycle state while the local projection catches up", async () => {
+  it("uses the product lifecycle projection without an Identity fallback", async () => {
+    const identityDisabledAt = new Date("2026-08-01T00:00:00.000Z");
     const profile = {
       role: "client",
       staffRole: null,
       suspendedAt: null,
-      identityDisabledAt: null,
-      mergedIntoSubjectId: null,
-    };
-    const legacy = {
-      ...profile,
-      identityDisabledAt: new Date("2026-08-01T00:00:00.000Z"),
+      identityDisabledAt,
       mergedIntoSubjectId: "canonical",
     };
-    const db = databaseReturning({
-      ...profile,
-      profileIdentityDisabledAt: profile.identityDisabledAt,
-      profileMergedIntoSubjectId: profile.mergedIntoSubjectId,
-      identityDisabledAt: legacy.identityDisabledAt,
-      mergedIntoSubjectId: legacy.mergedIntoSubjectId,
-    });
+    const db = databaseReturning(profile);
 
     const context = await new DrizzleBidUserContextLoader(db as never).loadContext("retired");
 
-    expect(context).toMatchObject({
-      identityDisabledAt: legacy.identityDisabledAt,
-      mergedIntoSubjectId: "canonical",
-    });
+    expect(context).toEqual(profile);
   });
 
   it("preserves Bid suspension independently from Identity lifecycle state", async () => {
@@ -48,11 +34,7 @@ describe("DrizzleBidUserContextLoader", () => {
       identityDisabledAt: null,
       mergedIntoSubjectId: null,
     };
-    const db = databaseReturning({
-      ...profile,
-      profileIdentityDisabledAt: profile.identityDisabledAt,
-      profileMergedIntoSubjectId: profile.mergedIntoSubjectId,
-    });
+    const db = databaseReturning(profile);
 
     await expect(
       new DrizzleBidUserContextLoader(db as never).loadContext("bid-suspended"),

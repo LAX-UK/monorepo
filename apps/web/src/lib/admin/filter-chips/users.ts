@@ -8,7 +8,6 @@ const USER_SORT_LABELS: Record<string, string> = {
   created_asc: "Oldest first",
   name_asc: "Name A–Z",
   name_desc: "Name Z–A",
-  last_active_desc: "Last active",
   kyc_status: "KYC status",
 };
 
@@ -79,19 +78,6 @@ export function buildUsersActiveFilterChips(
       clearHref: omitParamsHref(basePath, sp, ["persona"]),
     });
   }
-  if (filters.twoFactorEnabled === true) {
-    chips.push({
-      id: "twoFactor",
-      label: "2FA enabled",
-      clearHref: omitParamsHref(basePath, sp, ["twoFactor"]),
-    });
-  } else if (filters.twoFactorEnabled === false) {
-    chips.push({
-      id: "twoFactor",
-      label: "2FA off",
-      clearHref: omitParamsHref(basePath, sp, ["twoFactor"]),
-    });
-  }
   if (filters.deletionRequestedOnly) {
     chips.push({
       id: "deletionRequested",
@@ -124,13 +110,6 @@ export function buildUsersActiveFilterChips(
       id: "kycVerified",
       label: `KYC verified: ${filters.kycVerifiedFrom ?? "…"} – ${filters.kycVerifiedTo ?? "…"}`,
       clearHref: omitParamsHref(basePath, sp, ["kycVerifiedFrom", "kycVerifiedTo"]),
-    });
-  }
-  if (filters.lastActiveFrom || filters.lastActiveTo) {
-    chips.push({
-      id: "lastActive",
-      label: `Last active: ${filters.lastActiveFrom ?? "…"} – ${filters.lastActiveTo ?? "…"}`,
-      clearHref: omitParamsHref(basePath, sp, ["lastActiveFrom", "lastActiveTo"]),
     });
   }
   if (filters.sort && filters.sort !== "created_desc") {

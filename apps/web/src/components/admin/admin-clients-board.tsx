@@ -10,20 +10,16 @@ import { SignupPersonaBadge } from "@/components/admin/signup-persona-badge";
 import {
   userJoinedColumn,
   userKycVerifiedAtColumn,
-  userLastActivityColumn,
   userPersonaColumn,
   userRowActionsColumn,
   userStatusColumn,
-  userTwoFactorColumn,
 } from "@/components/admin/users-board";
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import { copyTextToClipboard } from "@/lib/admin/copy-text";
 import { formatAdminUserDate } from "@/lib/admin/format-admin-user-date";
 import { buildPeopleDetailHref } from "@/lib/admin/people/people-detail-href";
-import { relativeFromIso } from "@/lib/admin/relative-time";
 import type { AdminUserRow } from "@/lib/data/http/admin.server";
-import { Badge } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { formatPhoneDisplay } from "@auction/validators";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -122,10 +118,8 @@ function clientColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRo
     },
     userStatusColumn(),
     userPersonaColumn(),
-    userTwoFactorColumn(),
     userKycVerifiedAtColumn(),
     userJoinedColumn(),
-    userLastActivityColumn("Updated"),
     userRowActionsColumn(onOpen),
   ];
 }
@@ -174,13 +168,7 @@ function ClientDrawerOverview({ u }: { u: AdminUserRow }) {
         <DetailItem label="Persona">
           <SignupPersonaBadge persona={u.signupPersona} />
         </DetailItem>
-        <DetailItem label="2FA">
-          <Badge variant={u.twoFactorEnabled ? "default" : "secondary"}>
-            {u.twoFactorEnabled ? "On" : "Off"}
-          </Badge>
-        </DetailItem>
         <DetailItem label="Joined">{formatAdminUserDate(u.createdAt)}</DetailItem>
-        <DetailItem label="Updated">{relativeFromIso(u.updatedAt)}</DetailItem>
         {mobile ? (
           <DetailItem label="Mobile" className="sm:col-span-2">
             <span title={u.mobile ?? undefined}>

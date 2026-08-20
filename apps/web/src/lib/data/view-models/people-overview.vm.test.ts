@@ -11,7 +11,12 @@ describe("buildPeopleOverviewViewModel", () => {
         memberSinceIso: "2024-06-01T00:00:00.000Z",
       },
       readinessSnapshot: {
-        identity: { emailVerified: true, kycStatus: "approved", twoFactorEnabled: true },
+        identity: {
+          emailVerified: true,
+          kycStatus: "approved",
+          securityStatusAvailable: true,
+          twoFactorEnabled: true,
+        },
         compliance: { amlHoldActive: false, amlReviewPending: false, latestAmlDecision: null },
         commerce: {
           legalEntityCount: 1,

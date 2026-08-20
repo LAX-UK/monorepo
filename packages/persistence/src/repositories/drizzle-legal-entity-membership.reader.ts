@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, user } from "@auction/db/schema";
+import { bidIdentityDirectory, legalEntity, legalEntityMember } from "@auction/db/schema";
 import type { LegalEntitySummary } from "@auction/types";
 import { and, eq, inArray, isNotNull, isNull, notInArray, or } from "drizzle-orm";
 import type { ILegalEntityMembershipReader } from "../interfaces/legal-entity.reader.js";
@@ -72,9 +72,12 @@ export class DrizzleLegalEntityMembershipReader implements ILegalEntityMembershi
     legalEntityId: string,
   ): Promise<{ email: string; userId: string }[]> {
     const rows = await this.db
-      .selectDistinct({ email: user.email, userId: user.id })
+      .selectDistinct({
+        email: bidIdentityDirectory.email,
+        userId: bidIdentityDirectory.subjectId,
+      })
       .from(legalEntityMember)
-      .innerJoin(user, eq(user.id, legalEntityMember.userId))
+      .innerJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, legalEntityMember.userId))
       .where(
         and(
           eq(legalEntityMember.legalEntityId, legalEntityId),

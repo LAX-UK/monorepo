@@ -10,6 +10,7 @@ import { CachedCatalogueListService } from "../services/cached-catalogue-list.se
 import { ImpersonationAuditService } from "../services/impersonation-audit.service.js";
 import { ImpersonationSessionService } from "../services/impersonation-session.service.js";
 import type { IArtistRegistryService } from "../services/interfaces/artist-registry.js";
+import type { IIdentitySubjectClient } from "../services/interfaces/identity-issuer-client.js";
 import type { IInvitationLifecycleService } from "../services/interfaces/invitation-lifecycle.js";
 import type { IMemberManagementService } from "../services/interfaces/member-management.js";
 import type { IOrganizationOnboardingService } from "../services/interfaces/organization-onboarding.js";
@@ -51,13 +52,14 @@ export type CreatePlatformIdentityServicesInput = {
   infra: ContainerInfra;
   repos: ContainerRepositories;
   core: ContainerPlatformCore;
+  identitySubjects: IIdentitySubjectClient;
   stripeConnectService: IStripeConnectService;
 };
 
 export function createPlatformIdentityServices(
   input: CreatePlatformIdentityServicesInput,
 ): ContainerPlatformIdentityServices {
-  const { env, infra, repos, core, stripeConnectService } = input;
+  const { env, infra, repos, core, identitySubjects, stripeConnectService } = input;
   const { cache, emailService, legalEntityArchiveQueue } = infra;
   const {
     legalEntityRepository,
@@ -111,6 +113,7 @@ export function createPlatformIdentityServices(
     membershipInviteNotifier,
     env.WEB_ORIGIN,
     membershipGuard,
+    identitySubjects,
   );
   const organizationOnboardingFlowService = new OrganizationOnboardingFlowService(
     core.transactionRunner,

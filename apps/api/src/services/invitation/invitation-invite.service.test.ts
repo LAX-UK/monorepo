@@ -3,6 +3,7 @@ import type { IEntityInvitationRepository } from "@auction/persistence/interface
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
+import type { IIdentitySubjectClient } from "../interfaces/identity-issuer-client.js";
 import { MemberPermissionError } from "../interfaces/member-management.js";
 import type { LegalEntityMembershipGuard } from "../legal-entity-membership.guard.js";
 import { InvitationInviteService } from "./invitation-invite.service.js";
@@ -102,5 +103,62 @@ describe("InvitationInviteService", () => {
     await expect(
       service.invite(ACTOR_ID, ENTITY_ID, { email: "member@example.com", role: "admin" }),
     ).rejects.toBeInstanceOf(MemberPermissionError);
+  });
+
+  it("rejects an email-unverified Identity subject who is already a member", async () => {
+    const hasActiveMember = vi.fn().mockResolvedValue(true);
+    const service = new InvitationInviteService(
+      transactionRunnerFromDb(makeDb()),
+      makeRepo({ hasActiveMember }),
+      tokenService,
+      { notifyInviteSent: vi.fn() } as unknown as InvitationNotificationService,
+      makePublisher(),
+      { assertActorIsAdmin: vi.fn(async () => ({})) } as unknown as LegalEntityMembershipGuard,
+      {
+        findSubjectByEmail: vi.fn().mockResolvedValue({
+          id: "unverified-user",
+          email: "member@example.com",
+          name: "Member",
+          emailVerified: false,
+          identityDisabledAt: null,
+          mergedIntoSubjectId: null,
+        }),
+      } as unknown as IIdentitySubjectClient,
+    );
+
+    await expect(
+      service.invite(ACTOR_ID, ENTITY_ID, { email: "member@example.com", role: "admin" }),
+    ).rejects.toBeInstanceOf(MemberPermissionError);
+    expect(hasActiveMember).toHaveBeenCalledWith(ENTITY_ID, "unverified-user");
+  });
+
+  it("routes an email-unverified Identity subject through existing-user notification", async () => {
+    const notifications = {
+      notifyInviteSent: vi.fn(async () => {}),
+    } as unknown as InvitationNotificationService;
+    const service = new InvitationInviteService(
+      transactionRunnerFromDb(makeDb()),
+      makeRepo(),
+      tokenService,
+      notifications,
+      makePublisher(),
+      { assertActorIsAdmin: vi.fn(async () => ({})) } as unknown as LegalEntityMembershipGuard,
+      {
+        findSubjectByEmail: vi.fn().mockResolvedValue({
+          id: "unverified-user",
+          email: "member@example.com",
+          name: "Member",
+          emailVerified: false,
+          identityDisabledAt: null,
+          mergedIntoSubjectId: null,
+        }),
+      } as unknown as IIdentitySubjectClient,
+    );
+
+    await service.invite(ACTOR_ID, ENTITY_ID, { email: "member@example.com", role: "admin" });
+
+    expect(notifications.notifyInviteSent).toHaveBeenCalledWith(
+      expect.objectContaining({ existingUser: true }),
+    );
   });
 });

@@ -234,12 +234,34 @@ merge, and deletion events; deletion hard-removes the directory row. Worker
 notification, marketing, finance, and cleanup readers use this directory rather
 than joining Identity `user`.
 
+The worker owns projection writes and ordering. `identity_created_at` preserves
+the issuer's subject creation time, `replicated_at` records the latest local
+projection application time for freshness/lag checks, and `last_event_id`
+prevents stale or duplicate events from overwriting newer state. Product readers
+must `LEFT JOIN` the directory: a hard-deleted Identity subject intentionally has
+no directory row, while durable bids, payments, and audit records remain.
+
 After the directory reconciliation reports no missing, orphaned, mismatched, or
 pending rows through the agreed soak, migration `0157` revokes `worker_app`
-SELECT on `user`. `api_app` product reads remain open and are a later criterion-5
-slice. The directory does not contain credentials, MFA state, pending email-change
-state, or any other security decision input; those remain authoritative Identity
-facts and require a live Identity boundary when needed.
+SELECT on `user`. API and shared persistence readers use the same directory for
+contact, display, verification, deletion-request, and merge facts. Authoritative
+MFA, phone-verification, pending email-change, and verified-email ownership reads
+use the machine-authenticated Identity HTTP boundary instead of widening the
+projection. Admin directory filtering is product-local; Identity-only 2FA and
+activity filters are intentionally absent, while selected-user security detail is
+loaded live. After the same reconciliation soak, migration `0158` revokes
+`api_app` SELECT on `user`.
+
+Code and static exit gates for migrations `0156`–`0158` are implemented. Target
+environment reconciliation, soak, migration application, and live role probes
+remain operational promotion evidence; they are not implied by a green source
+check. `migrate-roles` preserves an already-present pre-`0158` API read during
+the soak, but treats `user` as migration-controlled and cannot regrant it after
+`0158`.
+
+The directory does not contain credentials, MFA state, pending email-change state,
+or any other security decision input; those remain authoritative Identity facts
+and require a live Identity boundary when needed.
 
 Identity maintenance is also issuer-owned: `apps/auth` performs bounded
 verification cleanup and the 30-day deletion/PII scrub. No product process
@@ -265,6 +287,13 @@ Apply migrations `0143`, `0144`, `0145`, then `0146`. Rollback only in reverse:
 Do not claim production readiness until migrations, role contracts, target-host
 OIDC/BFF E2E, logout delivery, SSF verification/delivery, and reconciliation
 gates have run.
+
+For the Bid directory cutover, apply `0156`, deploy the projector and
+directory-backed readers, reconcile and soak, apply `0157`, deploy/soak all API
+and export readers, apply `0158`, and only then run the normal role
+reconciliation. Rollback is coupled in reverse: restore the `0158` grant before
+rolling API code back, and restore `0157` before rolling worker readers back.
+Never use a role-script rerun as a migration rollback.
 
 See [new-platform onboarding](../runbooks/onboard-lax-platform.md),
 [SSF operations](../runbooks/ssf-stream-operations.md),

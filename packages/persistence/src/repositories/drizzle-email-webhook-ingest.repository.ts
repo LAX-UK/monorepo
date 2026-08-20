@@ -1,9 +1,13 @@
 import type { Database } from "@auction/db";
 import type { EmailEventType } from "@auction/db/schema";
-import { emailEvent, emailOutbox, user } from "@auction/db/schema";
+import { bidIdentityDirectory, emailEvent, emailOutbox } from "@auction/db/schema";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type { IEmailWebhookIngestRepository } from "../interfaces/email-webhook-ingest.repository.js";
+import {
+  activeIdentitySubject,
+  normalizedIdentityEmailEquals,
+} from "../lib/bid-identity-directory-query.js";
 
 export class DrizzleEmailWebhookIngestRepository implements IEmailWebhookIngestRepository {
   constructor(private readonly db: Database) {}
@@ -56,9 +60,14 @@ export class DrizzleEmailWebhookIngestRepository implements IEmailWebhookIngestR
     status: "bounced" | "complained",
   ): Promise<void> {
     const rows = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .where(sql`lower(${user.email}) = ${emailLower}`);
+      .select({ id: bidIdentityDirectory.subjectId })
+      .from(bidIdentityDirectory)
+      .where(
+        and(
+          normalizedIdentityEmailEquals(bidIdentityDirectory.email, emailLower),
+          activeIdentitySubject(),
+        ),
+      );
     const changedAt = new Date();
     for (const row of rows) {
       await writeBidUserProfile(this.db, row.id, {

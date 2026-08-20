@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { legalEntity, lot, payment, user } from "@auction/db/schema";
+import { bidIdentityDirectory, legalEntity, lot, payment } from "@auction/db/schema";
 import type { AdminDisputeCaseRow } from "@auction/types";
 import { inArray } from "drizzle-orm";
 import type { IAdminDisputeCaseEnrichmentReader } from "../interfaces/admin-dispute-case-enrichment.reader.js";
@@ -32,9 +32,13 @@ export class DrizzleAdminDisputeCaseEnrichmentReader implements IAdminDisputeCas
   async findBuyerLabelsByIds(buyerIds: string[]): Promise<Map<string, string | null>> {
     if (buyerIds.length === 0) return new Map();
     const buyerRows = await this.db
-      .select({ id: user.id, name: user.name, email: user.email })
-      .from(user)
-      .where(inArray(user.id, buyerIds));
+      .select({
+        id: bidIdentityDirectory.subjectId,
+        name: bidIdentityDirectory.name,
+        email: bidIdentityDirectory.email,
+      })
+      .from(bidIdentityDirectory)
+      .where(inArray(bidIdentityDirectory.subjectId, buyerIds));
     return new Map(buyerRows.map((b) => [b.id, b.name?.trim() || b.email || null] as const));
   }
 

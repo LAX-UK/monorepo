@@ -72,6 +72,18 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
     });
   });
 
+  it("cannot access migration-controlled Identity user after 0158", async () => {
+    await withApiClient(async (client) => {
+      for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
+        const result = await client.query<{ allowed: boolean }>(
+          `select has_table_privilege(current_user, 'public."user"', $1) as allowed`,
+          [privilege],
+        );
+        expect(result.rows[0]?.allowed, `user:${privilege}`).toBe(false);
+      }
+    });
+  });
+
   it("owns only the Bid SSF replay ledger", async () => {
     await withApiClient(async (client) => {
       for (const table of API_SSF_RECEIVER_TABLES) {
@@ -137,8 +149,10 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
 });
 
 describe("api_app role contract (static identity directory gate)", () => {
-  it("keeps the identity directory read-only", () => {
+  it("keeps the directory static and leaves user migration-controlled", () => {
     expect(API_READ_TABLES).toContain("bid_identity_directory");
+    expect(API_READ_TABLES).not.toContain("user");
+    expect(API_DENY_TABLES).not.toContain("user");
     expect(API_PRODUCT_PROFILE_TABLES).not.toContain("bid_identity_directory");
   });
 });

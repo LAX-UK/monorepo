@@ -9,7 +9,6 @@ export type UsersFilterDraft = {
   emailVerified: string;
   kycStatus: string;
   persona: string;
-  twoFactor: string;
   hasMobile: string;
   sort: string;
   deletionRequested: boolean;
@@ -17,8 +16,6 @@ export type UsersFilterDraft = {
   createdTo: string;
   kycVerifiedFrom: string;
   kycVerifiedTo: string;
-  lastActiveFrom: string;
-  lastActiveTo: string;
 };
 
 function parseDraft(
@@ -30,7 +27,6 @@ function parseDraft(
     emailVerified: searchParams.get("emailVerified")?.trim() ?? "",
     kycStatus: searchParams.get("kycStatus")?.trim() ?? "",
     persona: searchParams.get("persona")?.trim() ?? "",
-    twoFactor: searchParams.get("twoFactor")?.trim() ?? "",
     hasMobile: searchParams.get("hasMobile")?.trim() ?? "",
     sort: searchParams.get("sort")?.trim() || "created_desc",
     deletionRequested: searchParams.get("deletionRequested") === "1",
@@ -38,8 +34,6 @@ function parseDraft(
     createdTo: searchParams.get("createdTo")?.trim() ?? "",
     kycVerifiedFrom: searchParams.get("kycVerifiedFrom")?.trim() ?? "",
     kycVerifiedTo: searchParams.get("kycVerifiedTo")?.trim() ?? "",
-    lastActiveFrom: searchParams.get("lastActiveFrom")?.trim() ?? "",
-    lastActiveTo: searchParams.get("lastActiveTo")?.trim() ?? "",
   };
 }
 
@@ -50,7 +44,6 @@ export const usersFilterAdapter: AdminFilterAdapter<UsersFilterDraft> = {
     emailVerified: "",
     kycStatus: "",
     persona: "",
-    twoFactor: "",
     hasMobile: "",
     sort: "created_desc",
     deletionRequested: false,
@@ -58,8 +51,6 @@ export const usersFilterAdapter: AdminFilterAdapter<UsersFilterDraft> = {
     createdTo: "",
     kycVerifiedFrom: "",
     kycVerifiedTo: "",
-    lastActiveFrom: "",
-    lastActiveTo: "",
   }),
   buildHref(pathname, current, draft, preserved) {
     const patch: Record<string, string | boolean | undefined | null> = {
@@ -68,7 +59,6 @@ export const usersFilterAdapter: AdminFilterAdapter<UsersFilterDraft> = {
       kycStatus: draft.kycStatus.trim() || null,
       kycStatuses: draft.kycStatus.trim() ? null : null,
       persona: draft.persona.trim() || null,
-      twoFactor: draft.twoFactor.trim() || null,
       hasMobile: draft.hasMobile.trim() || null,
       sort: draft.sort === "created_desc" ? null : draft.sort,
       deletionRequested: draft.deletionRequested ? "1" : null,
@@ -76,8 +66,6 @@ export const usersFilterAdapter: AdminFilterAdapter<UsersFilterDraft> = {
       createdTo: draft.createdTo.trim() || null,
       kycVerifiedFrom: draft.kycVerifiedFrom.trim() || null,
       kycVerifiedTo: draft.kycVerifiedTo.trim() || null,
-      lastActiveFrom: draft.lastActiveFrom.trim() || null,
-      lastActiveTo: draft.lastActiveTo.trim() || null,
     };
     if (draft.status.trim()) patch.suspended = null;
 

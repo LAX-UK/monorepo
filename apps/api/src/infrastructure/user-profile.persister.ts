@@ -1,5 +1,8 @@
 import type { Database } from "@auction/db";
-import { writeBidUserProfile } from "@auction/persistence/bid-user-profile-sync";
+import {
+  provisionBidUserProfileShell,
+  writeBidUserProfile,
+} from "@auction/persistence/bid-user-profile-sync";
 import type { SignupPersona } from "@auction/validators";
 import type { IUserProfilePersister } from "../services/interfaces/registration.js";
 
@@ -15,6 +18,7 @@ export class DrizzleUserProfilePersister implements IUserProfilePersister {
     mobileCountry?: string;
   }): Promise<{ ok: true } | { ok: false; message: string }> {
     try {
+      await provisionBidUserProfileShell(this.db, input.userId, new Date());
       await writeBidUserProfile(this.db, input.userId, {
         firstName: input.firstName,
         lastName: input.lastName,

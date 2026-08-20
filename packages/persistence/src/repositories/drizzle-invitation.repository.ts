@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
-import { emailOutbox, user, userInvitation, type userStaffRoleEnum } from "@auction/db/schema";
+import {
+  bidIdentityDirectory,
+  emailOutbox,
+  userInvitation,
+  type userStaffRoleEnum,
+} from "@auction/db/schema";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import { type SQL, and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
@@ -13,7 +18,7 @@ import type {
   InvitationSummary,
 } from "../interfaces/invitation.repository.js";
 
-const inviter = user;
+const inviter = bidIdentityDirectory;
 
 function buildAdminListWhere(filters: InvitationAdminListFilters): SQL | undefined {
   const clauses: SQL[] = [];
@@ -236,7 +241,7 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
       })
       .from(userInvitation)
       .leftJoin(emailOutbox, eq(userInvitation.lastEmailOutboxId, emailOutbox.id))
-      .leftJoin(inviter, eq(userInvitation.createdByUserId, inviter.id))
+      .leftJoin(inviter, eq(userInvitation.createdByUserId, inviter.subjectId))
       .where(where)
       .orderBy(desc(userInvitation.createdAt))
       .limit(page.limit)

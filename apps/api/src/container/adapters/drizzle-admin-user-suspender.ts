@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
+import { bidIdentityDirectory } from "@auction/db/schema";
 import type { IEmailService } from "@auction/email";
 import { writeBidUserProfile } from "@auction/persistence/bid-user-profile-sync";
 import type { IAdminUserSuspender } from "@auction/persistence/interfaces";
@@ -18,9 +18,9 @@ export class DrizzleAdminUserSuspender implements IAdminUserSuspender {
 
   async suspend(userId: string, reason: string | null): Promise<void> {
     const [before] = await this.db
-      .select({ email: user.email, name: user.name })
-      .from(user)
-      .where(eq(user.id, userId))
+      .select({ email: bidIdentityDirectory.email, name: bidIdentityDirectory.name })
+      .from(bidIdentityDirectory)
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
 
     await writeBidUserProfile(this.db, userId, {

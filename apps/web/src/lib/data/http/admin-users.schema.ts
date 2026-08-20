@@ -42,6 +42,8 @@ export const adminUserDetailRowSchema = z
     const base = adminUserRowSchema.parse(row);
     return {
       ...base,
+      securityStatusAvailable:
+        typeof row.securityStatusAvailable === "boolean" ? row.securityStatusAvailable : false,
       suspendedReason: row.suspendedReason == null ? null : String(row.suspendedReason),
       dateOfBirth: row.dateOfBirth == null ? null : String(row.dateOfBirth),
       emailStatusChangedAt:

@@ -144,7 +144,10 @@ async function mergeIdentity(
         replicated_at = ${replicatedAt},
         last_event_id = ${row.id}
       FROM ${bidIdentityDirectory} AS canonical
-      WHERE retired.subject_id = ${payload.retiredSubjectId}
+      WHERE (
+          retired.subject_id = ${payload.retiredSubjectId}
+          OR retired.merged_into_subject_id = ${payload.retiredSubjectId}
+        )
         AND canonical.subject_id = ${payload.subjectId}
         AND retired.last_event_id < ${row.id}
     `);
