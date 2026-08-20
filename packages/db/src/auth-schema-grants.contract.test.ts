@@ -50,6 +50,7 @@ describe("Better Auth schema and auth_app grant drift", () => {
       "email_outbox",
       "email_suppression",
       "external_accounts",
+      "bid_identity_directory",
       "bid_user_profile",
     ]);
   });

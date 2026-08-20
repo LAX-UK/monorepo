@@ -81,6 +81,7 @@ describe("auth_app role contract (static cutover gate)", () => {
       "email_outbox",
       "email_suppression",
       "external_accounts",
+      "bid_identity_directory",
       "bid_user_profile",
     ]);
     expect(AUTH_INSERT_SELECT_TABLES).not.toContain("email_outbox");

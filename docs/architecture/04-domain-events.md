@@ -67,10 +67,19 @@ The pattern's only meaningful cost is the discipline required to never bypass it
 
 ## Identity lifecycle and SSF
 
-Identity emits versioned registration, profile, credential, session,
-disable/enable, deletion, and merge events. Bid and Shop project only the fields
-they own, keyed by immutable `sub`; payloads never contain credentials, tokens,
-MFA secrets, Bid KYC/AML, or Shop authorization.
+Identity emits versioned registration, profile, email-verification,
+deletion-request/cancellation, credential, session, disable/enable, deletion,
+and merge events. Bid and Shop own their authorization/profile facts and may
+maintain minimal, read-only Identity projections keyed by immutable `sub`;
+payloads never contain credentials, tokens, MFA secrets, Bid KYC/AML, or Shop
+authorization.
+
+The `bid_identity_directory` projector consumes `user.registered`,
+`user.profile_updated`, `user.email_verified`, `user.deletion_requested`,
+`user.deletion_cancelled`, `user.identity_merged`, and
+`user.identity_deleted`. It copies only contact/display and deletion lifecycle
+facts needed by worker jobs. It has an independent cursor and reconciliation
+gate; `user.identity_deleted` hard-deletes the local PII row.
 
 `apps/auth/src/services/ssf.service.ts` maps session revocation and credential
 change to CAEP, account disable/enable/purge to RISC, and account merge to the
@@ -115,9 +124,12 @@ This catalog is the contract between event producers and projectors. When you ad
 
 | Event type | Producer | Consumers | Triggered by | Payload (v1) |
 |---|---|---|---|---|
-| `user.registered` | apps/auth or DB backfill | bid/shop provisioning, zoho, marketing contacts | New Identity subject created | `{userId, email, name, source: 'credential'\|'google'\|'apple'\|'backfill'}` |
+| `user.registered` | apps/auth or DB backfill | bid/shop provisioning, identity directory, zoho, marketing contacts | New Identity subject created | `{userId, email, name, source, image?, phone?, emailVerified?, createdAt?}` |
 | `user.email_verified` | apps/auth | zoho, marketing_contacts | Email verification token redeemed | `{userId, email, verifiedAt}` |
-| `user.deletion_requested` | apps/api | marketing_contacts | Self-serve account deletion requested (`POST /users/me/delete`) | `{userId}` |
+| `user.profile_updated` | apps/auth | bid identity directory, product lifecycle projectors | Identity contact/display field changed | `{schemaVersion, subjectId, email?, name?, phone?, image?, updatedAt}` |
+| `user.deletion_requested` | apps/auth | bid identity directory, marketing contacts | Self-serve account deletion requested | `{schemaVersion, subjectId, requestedAt}` |
+| `user.deletion_cancelled` | apps/auth | bid identity directory, marketing contacts | Pending account deletion cancelled | `{schemaVersion, subjectId, cancelledAt}` |
+| `user.identity_deleted` | apps/auth | bid identity directory, product lifecycle projectors | Identity PII purge completed | `{schemaVersion, subjectId, deletedAt}` |
 | `kyc.verified` | apps/api | marketing_contacts | Individual KYC approved; sole-trader `lead` → `connect_pending` | `{legalEntityIdsAdvancedToConnectPending[]}` (aggregate type `user`, id = userId) |
 | `bid.first_for_user` | apps/api | zoho | First bid by this user on this lot | `{bidId, lotId, userId, amountCents, placedAt}` |
 | `bid.outbid` | apps/api | zoho, notifications | This user's bid was exceeded | `{previousBidId, lotId, userId, newHighAmountCents}` |

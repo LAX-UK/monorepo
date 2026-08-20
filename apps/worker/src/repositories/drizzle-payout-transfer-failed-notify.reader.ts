@@ -1,5 +1,11 @@
 import type { Database } from "@auction/db";
-import { bidUserProfile, legalEntity, legalEntityMember, payout, user } from "@auction/db/schema";
+import {
+  bidIdentityDirectory,
+  bidUserProfile,
+  legalEntity,
+  legalEntityMember,
+  payout,
+} from "@auction/db/schema";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { IPayoutTransferFailedNotifyReader } from "../interfaces/payout-transfer-failed-notify.reader.js";
 
@@ -26,13 +32,15 @@ export class DrizzlePayoutTransferFailedNotifyReader implements IPayoutTransferF
 
     const financeMembers = await this.db
       .selectDistinct({
-        email: user.email,
-        userId: user.id,
-        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+        email: bidIdentityDirectory.email,
+        userId: bidIdentityDirectory.subjectId,
+        firstName: sql<
+          string | null
+        >`coalesce(${bidUserProfile.firstName}, ${bidIdentityDirectory.name})`,
       })
       .from(legalEntityMember)
-      .innerJoin(user, eq(user.id, legalEntityMember.userId))
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .innerJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, legalEntityMember.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .where(
         and(
           eq(legalEntityMember.legalEntityId, legalEntityId),

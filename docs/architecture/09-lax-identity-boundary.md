@@ -226,6 +226,21 @@ fail-closed request; `apps/auth` has no product database package, query, or gran
 This completes the Identity side of criterion 5. Product-side reads and joins of
 Identity tables remain open until product-local projections replace them.
 
+The first product-side cut is the worker Identity directory. Migration `0156`
+creates and backfills `bid_identity_directory`, a minimal non-authoritative PII
+read model with an unconstrained immutable `subject_id`. A dedicated worker
+projector consumes registration, profile, email-verification, deletion-request,
+merge, and deletion events; deletion hard-removes the directory row. Worker
+notification, marketing, finance, and cleanup readers use this directory rather
+than joining Identity `user`.
+
+After the directory reconciliation reports no missing, orphaned, mismatched, or
+pending rows through the agreed soak, migration `0157` revokes `worker_app`
+SELECT on `user`. `api_app` product reads remain open and are a later criterion-5
+slice. The directory does not contain credentials, MFA state, pending email-change
+state, or any other security decision input; those remain authoritative Identity
+facts and require a live Identity boundary when needed.
+
 Identity maintenance is also issuer-owned: `apps/auth` performs bounded
 verification cleanup and the 30-day deletion/PII scrub. No product process
 writes an Identity table. Migration `0153_repair_user_pii_purge` keeps the

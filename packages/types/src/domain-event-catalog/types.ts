@@ -18,6 +18,7 @@ export type DomainEventConsumer =
   | "clear_artist_blocks"
   | "legal_entity_provisioning"
   | "bid_profile_provisioning"
+  | "bid_identity_directory"
   | "shop_identity_projection"
   | "ssf_transmitter"
   | "lot_invoice_initiation"

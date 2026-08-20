@@ -5,7 +5,16 @@ import { identityLifecycleOutbox } from "../schema/outbox.js";
 import type { IdentityDatabase } from "./drizzle-consent-store.js";
 
 export type IdentityOutboxLifecycleEvent =
-  | { type: "user.registered"; userId: string; email: string; name: string }
+  | {
+      type: "user.registered";
+      userId: string;
+      email: string;
+      name: string;
+      image?: string | null;
+      phone?: string | null;
+      emailVerified?: boolean;
+      createdAt?: Date;
+    }
   | { type: "user.email_verified"; userId: string; email: string }
   | {
       type: "user.profile_updated";
@@ -13,7 +22,10 @@ export type IdentityOutboxLifecycleEvent =
       email?: string;
       name?: string;
       phone?: string | null;
+      image?: string | null;
     }
+  | { type: "user.deletion_requested"; userId: string; requestedAt?: Date }
+  | { type: "user.deletion_cancelled"; userId: string; cancelledAt?: Date }
   | { type: "user.identity_disabled"; userId: string; reason?: string }
   | { type: "user.identity_enabled"; userId: string }
   | { type: "user.identity_merged"; retiredSubjectId: string; canonicalSubjectId: string }
@@ -77,6 +89,10 @@ function buildOutboxRow(
           email: event.email,
           name: event.name,
           source: source ?? "credential",
+          ...(event.image !== undefined ? { image: event.image } : {}),
+          ...(event.phone !== undefined ? { phone: event.phone } : {}),
+          ...(event.emailVerified !== undefined ? { emailVerified: event.emailVerified } : {}),
+          ...(event.createdAt ? { createdAt: event.createdAt.toISOString() } : {}),
         },
       };
     case "user.email_verified":
@@ -107,7 +123,36 @@ function buildOutboxRow(
           ...(event.email !== undefined ? { email: event.email } : {}),
           ...(event.name !== undefined ? { name: event.name } : {}),
           ...(event.phone !== undefined ? { phone: event.phone } : {}),
+          ...(event.image !== undefined ? { image: event.image } : {}),
           updatedAt: new Date().toISOString(),
+        },
+      };
+    case "user.deletion_requested":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.DELETION_REQUESTED,
+        producer,
+        actorUserId: event.userId,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          requestedAt: (event.requestedAt ?? new Date()).toISOString(),
+        },
+      };
+    case "user.deletion_cancelled":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.DELETION_CANCELLED,
+        producer,
+        actorUserId: event.userId,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          cancelledAt: (event.cancelledAt ?? new Date()).toISOString(),
         },
       };
     case "user.identity_disabled":

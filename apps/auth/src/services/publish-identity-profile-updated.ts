@@ -7,6 +7,7 @@ export async function publishIdentityProfileUpdated(
     email?: string;
     name?: string;
     phone?: string | null;
+    image?: string | null;
   },
   options?: { transaction?: unknown },
 ): Promise<void> {
@@ -17,6 +18,7 @@ export async function publishIdentityProfileUpdated(
       ...(input.email !== undefined ? { email: input.email } : {}),
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
+      ...(input.image !== undefined ? { image: input.image } : {}),
     },
     { producer: "apps/auth", transaction: options?.transaction },
   );

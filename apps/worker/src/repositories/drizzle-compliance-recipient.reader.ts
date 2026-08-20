@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { bidUserProfile, user } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 
@@ -11,12 +11,14 @@ export class DrizzleComplianceRecipientReader implements IComplianceRecipientRea
   async listRecipients() {
     return this.db
       .select({
-        id: user.id,
-        email: user.email,
-        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+        id: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+        firstName: sql<
+          string | null
+        >`coalesce(${bidUserProfile.firstName}, ${bidIdentityDirectory.name})`,
       })
-      .from(user)
-      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .from(bidIdentityDirectory)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .where(
         and(
           eq(bidUserProfile.role, "staff"),

@@ -1086,6 +1086,20 @@
       "when": 1788000033000,
       "tag": "0155_revoke_auth_product_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1788000034000,
+      "tag": "0156_bid_identity_directory",
+      "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1788000035000,
+      "tag": "0157_revoke_worker_user_reads",
+      "breakpoints": true
     }
   ]
 }

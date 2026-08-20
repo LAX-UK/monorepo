@@ -28,6 +28,16 @@
     is unavailable. Apply `0155_revoke_auth_product_reads` only after that
     verification; applying it while an old auth instance is serving removes its
     direct `bid_user_profile` and `external_accounts` access.
+11. **Worker Identity directory boundary**: apply `0156` first to create and
+    backfill `bid_identity_directory`. Deploy auth with profile-image and
+    deletion-request lifecycle publishers, then deploy worker with the dedicated
+    directory projector and directory-backed readers. Soak until
+    `DATABASE_URL_OWNER=... node scripts/ci/verify-identity-directory-drift.mjs`
+    reports no missing, orphaned, mismatched, or pending rows within the configured
+    processing-lag threshold (`IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS`, default
+    60000). Only then apply `0157_revoke_worker_user_reads`.
+    Applying `0157` while an old worker instance is serving breaks its direct
+    notification, marketing, finance, and media-cleanup reads from `user`.
 
 See also: [key rotation](../security/key-rotation.md),
 [JWKS rotation](./jwks-rotation.md), and

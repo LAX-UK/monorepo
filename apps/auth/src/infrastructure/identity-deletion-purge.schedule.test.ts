@@ -26,6 +26,8 @@ describe("Identity deletion purge", () => {
     expect(query.sql).toContain("LIMIT $");
     expect(query.sql).toContain("FOR UPDATE SKIP LOCKED");
     expect(query.sql).toContain("user_pii_purge");
+    expect(query.sql).toContain("INSERT INTO identity_lifecycle_outbox");
+    expect(query.sql).toContain("user.identity_deleted");
     expect(query.sql).toContain("@purged.invalid");
     expect(query.params).toContain(IDENTITY_DELETION_PURGE_BATCH_SIZE);
     expect(query.params).toContainEqual(

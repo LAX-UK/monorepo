@@ -16,6 +16,8 @@ function setup() {
     verifyPasswordAndStamp: vi.fn(async () => undefined),
     revokeSession: vi.fn(async () => true),
     startEmailChange: vi.fn(async () => undefined),
+    markDeletionRequested: vi.fn(async () => undefined),
+    cancelDeletionRequested: vi.fn(async () => undefined),
   };
   const app = createInternalIdentityRoutes({
     lifecycle,
@@ -94,6 +96,26 @@ describe("internal Identity machine routes", () => {
     });
     expect(response.status).toBe(200);
     expect(operations.listSessions).toHaveBeenCalledWith("u1", "cookie-session-token");
+  });
+
+  it("routes deletion requests and cancellations through auth operations", async () => {
+    const { app, operations } = setup();
+    const token = await issueToken(app);
+    const headers = { authorization: `Bearer ${token}` };
+
+    const requested = await app.request("/identity/subjects/u1/deletion-request", {
+      method: "POST",
+      headers,
+    });
+    const cancelled = await app.request("/identity/subjects/u1/deletion-request", {
+      method: "DELETE",
+      headers,
+    });
+
+    expect(requested.status).toBe(200);
+    expect(cancelled.status).toBe(200);
+    expect(operations.markDeletionRequested).toHaveBeenCalledWith("u1");
+    expect(operations.cancelDeletionRequested).toHaveBeenCalledWith("u1");
   });
 
   it("validates password and session operation bodies", async () => {

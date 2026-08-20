@@ -317,6 +317,13 @@ export function createInternalIdentityRoutes(options: {
     }),
   );
 
+  app.delete("/identity/subjects/:subjectId/deletion-request", (c) =>
+    runIdentityOperation(c, async () => {
+      await options.operations.cancelDeletionRequested(c.req.param("subjectId"));
+      return { ok: true };
+    }),
+  );
+
   app.post("/identity/maintenance/purge-expired-verifications", async (c) =>
     c.json({ deleted: await options.operations.purgeExpiredVerifications() }),
   );

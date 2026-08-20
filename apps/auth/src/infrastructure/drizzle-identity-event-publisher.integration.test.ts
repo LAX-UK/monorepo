@@ -1,3 +1,8 @@
+import {
+  userDeletionCancelledPayloadSchemaV1,
+  userDeletionRequestedPayloadSchemaV1,
+  userProfileUpdatedPayloadSchemaV1,
+} from "@auction/identity-contracts";
 import { createIdentityDb } from "@auction/identity-db";
 import { identityLifecycleOutbox } from "@auction/identity-db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -67,6 +72,45 @@ describeWithDatabase("createDrizzleIdentityEventPublisher transaction", () => {
         ),
       );
     expect(rows).toEqual([]);
+  });
+
+  it("persists profile image and deletion lifecycle contract payloads", async () => {
+    if (!db) return;
+    const subjectId = `publisher-contract-${crypto.randomUUID()}`;
+    const publisher = createDrizzleIdentityEventPublisher(db);
+
+    try {
+      await publisher.publish({
+        type: "user.profile_updated",
+        userId: subjectId,
+        image: null,
+      });
+      await publisher.publish({ type: "user.deletion_requested", userId: subjectId });
+      await publisher.publish({ type: "user.deletion_cancelled", userId: subjectId });
+
+      const rows = await db
+        .select({
+          eventType: identityLifecycleOutbox.eventType,
+          payload: identityLifecycleOutbox.payload,
+        })
+        .from(identityLifecycleOutbox)
+        .where(eq(identityLifecycleOutbox.aggregateId, subjectId));
+      const payloadByType = new Map(rows.map((row) => [row.eventType, row.payload]));
+
+      expect(
+        userProfileUpdatedPayloadSchemaV1.parse(payloadByType.get("user.profile_updated")),
+      ).toMatchObject({ subjectId, image: null });
+      expect(
+        userDeletionRequestedPayloadSchemaV1.parse(payloadByType.get("user.deletion_requested")),
+      ).toMatchObject({ subjectId });
+      expect(
+        userDeletionCancelledPayloadSchemaV1.parse(payloadByType.get("user.deletion_cancelled")),
+      ).toMatchObject({ subjectId });
+    } finally {
+      await db
+        .delete(identityLifecycleOutbox)
+        .where(eq(identityLifecycleOutbox.aggregateId, subjectId));
+    }
   });
 
   it("makes security lifecycle events available to the SSF source reader", async () => {

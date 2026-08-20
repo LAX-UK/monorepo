@@ -23,8 +23,34 @@ export async function purgeDeletedSubjectsBatch(
       LIMIT ${IDENTITY_DELETION_PURGE_BATCH_SIZE}
       FOR UPDATE SKIP LOCKED
     )
-    SELECT user_pii_purge("id")
-    FROM candidates
+    , purged AS (
+      SELECT "id", user_pii_purge("id")
+      FROM candidates
+    )
+    INSERT INTO identity_lifecycle_outbox (
+      aggregate_type,
+      aggregate_id,
+      event_type,
+      payload,
+      producer,
+      actor_user_id,
+      schema_version,
+      occurred_at
+    )
+    SELECT
+      'user',
+      "id",
+      'user.identity_deleted',
+      jsonb_build_object(
+        'schemaVersion', 1,
+        'subjectId', "id",
+        'deletedAt', ${now}::timestamptz
+      ),
+      'apps/auth-deletion-purge',
+      NULL,
+      1,
+      ${now}::timestamptz
+    FROM purged
   `);
   return result.rowCount ?? 0;
 }

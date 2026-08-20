@@ -1,5 +1,14 @@
 export type IdentityLifecycleEvent =
-  | { type: "user.registered"; userId: string; email: string; name: string }
+  | {
+      type: "user.registered";
+      userId: string;
+      email: string;
+      name: string;
+      image?: string | null;
+      phone?: string | null;
+      emailVerified?: boolean;
+      createdAt?: Date;
+    }
   | { type: "user.email_verified"; userId: string; email: string }
   | {
       type: "user.profile_updated";
@@ -7,7 +16,10 @@ export type IdentityLifecycleEvent =
       email?: string;
       name?: string;
       phone?: string | null;
+      image?: string | null;
     }
+  | { type: "user.deletion_requested"; userId: string; requestedAt?: Date }
+  | { type: "user.deletion_cancelled"; userId: string; cancelledAt?: Date }
   | { type: "user.identity_disabled"; userId: string; reason?: string }
   | { type: "user.identity_enabled"; userId: string }
   | { type: "user.identity_merged"; retiredSubjectId: string; canonicalSubjectId: string }

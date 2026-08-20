@@ -4,6 +4,8 @@ export const IDENTITY_EVENT_SCHEMA_VERSION = 1 as const;
 
 export const IDENTITY_EVENT_TYPES = {
   PROFILE_UPDATED: "user.profile_updated",
+  DELETION_REQUESTED: "user.deletion_requested",
+  DELETION_CANCELLED: "user.deletion_cancelled",
   IDENTITY_DISABLED: "user.identity_disabled",
   IDENTITY_ENABLED: "user.identity_enabled",
   IDENTITY_MERGED: "user.identity_merged",
@@ -23,7 +25,16 @@ export const userProfileUpdatedPayloadSchemaV1 = identityEventBaseSchemaV1.exten
   email: z.string().email().optional(),
   name: z.string().optional(),
   phone: z.string().nullable().optional(),
+  image: z.string().nullable().optional(),
   updatedAt: z.string().datetime(),
+});
+
+export const userDeletionRequestedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
+  requestedAt: z.string().datetime(),
+});
+
+export const userDeletionCancelledPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
+  cancelledAt: z.string().datetime(),
 });
 
 export const userIdentityDisabledPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
@@ -56,6 +67,8 @@ export const userIdentityDeletedPayloadSchemaV1 = identityEventBaseSchemaV1.exte
 });
 
 export type UserProfileUpdatedPayloadV1 = z.infer<typeof userProfileUpdatedPayloadSchemaV1>;
+export type UserDeletionRequestedPayloadV1 = z.infer<typeof userDeletionRequestedPayloadSchemaV1>;
+export type UserDeletionCancelledPayloadV1 = z.infer<typeof userDeletionCancelledPayloadSchemaV1>;
 export type UserIdentityDisabledPayloadV1 = z.infer<typeof userIdentityDisabledPayloadSchemaV1>;
 export type UserIdentityEnabledPayloadV1 = z.infer<typeof userIdentityEnabledPayloadSchemaV1>;
 export type UserIdentityMergedPayloadV1 = z.infer<typeof userIdentityMergedPayloadSchemaV1>;
@@ -65,6 +78,8 @@ export type UserIdentityDeletedPayloadV1 = z.infer<typeof userIdentityDeletedPay
 
 export type IdentityEventPayloadV1 =
   | UserProfileUpdatedPayloadV1
+  | UserDeletionRequestedPayloadV1
+  | UserDeletionCancelledPayloadV1
   | UserIdentityDisabledPayloadV1
   | UserIdentityEnabledPayloadV1
   | UserIdentityMergedPayloadV1
@@ -74,6 +89,8 @@ export type IdentityEventPayloadV1 =
 
 export const identityEventPayloadSchemasV1 = {
   [IDENTITY_EVENT_TYPES.PROFILE_UPDATED]: userProfileUpdatedPayloadSchemaV1,
+  [IDENTITY_EVENT_TYPES.DELETION_REQUESTED]: userDeletionRequestedPayloadSchemaV1,
+  [IDENTITY_EVENT_TYPES.DELETION_CANCELLED]: userDeletionCancelledPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.IDENTITY_DISABLED]: userIdentityDisabledPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.IDENTITY_ENABLED]: userIdentityEnabledPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.IDENTITY_MERGED]: userIdentityMergedPayloadSchemaV1,

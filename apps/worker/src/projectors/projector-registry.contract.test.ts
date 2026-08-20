@@ -5,6 +5,7 @@ import {
   defineCompileTimeContract,
 } from "../testing/compile-time-contract.js";
 import { AML_MATCH_REVIEW_PROJECTOR } from "./aml-match-review.js";
+import { BID_IDENTITY_DIRECTORY_PROJECTOR } from "./bid-identity-directory.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { LOT_INVOICE_INITIATION_PROJECTOR } from "./lot-invoice-initiation.js";
 import { MARKETING_CONTACTS_PROJECTOR } from "./marketing-contacts-projector.js";
@@ -31,6 +32,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   "clear_artist_blocks",
   "legal_entity_provisioning",
   "bid_profile_provisioning",
+  BID_IDENTITY_DIRECTORY_PROJECTOR,
   AML_MATCH_REVIEW_PROJECTOR,
   SOURCE_OF_FUNDS_REVIEW_PROJECTOR,
   SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR,

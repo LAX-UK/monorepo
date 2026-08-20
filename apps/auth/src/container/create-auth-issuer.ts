@@ -60,12 +60,29 @@ export function createAuthIssuer(options: {
     publishUserRegisteredForAccount: async ({ userId }) => {
       const user = await options.db.query.user.findFirst({
         where: (users, { eq: equals }) => equals(users.id, userId),
-        columns: { id: true, email: true, name: true },
+        columns: {
+          id: true,
+          email: true,
+          name: true,
+          image: true,
+          phoneNumber: true,
+          emailVerified: true,
+          createdAt: true,
+        },
       });
       if (!user)
         throw new Error(`Cannot publish user.registered: auth user ${userId} was not found`);
       await options.identityEventPublisher.publish(
-        { type: "user.registered", userId: user.id, email: user.email, name: user.name },
+        {
+          type: "user.registered",
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+          phone: user.phoneNumber,
+          emailVerified: user.emailVerified,
+          createdAt: user.createdAt,
+        },
         { producer: "apps/auth" },
       );
     },
@@ -122,6 +139,7 @@ export function createAuthIssuer(options: {
         email: user.email,
         name: user.name,
         phone: user.phoneNumber ?? null,
+        image: user.image ?? null,
       }),
     enableNewDeviceLoginEmail: env.NODE_ENV === "production",
     resolveOidcIdTokenClaims: adaptOidcClaimsResolver((input) =>

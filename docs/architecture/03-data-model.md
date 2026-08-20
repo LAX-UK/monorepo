@@ -280,13 +280,17 @@ pattern.
 
 The `jwks_key` table holds the OIDC signing keys per D2. Only `auth_app` reads the `private_jwk` column. The `api_app` and `worker_app` roles have no grant on this table at all. Status transitions are `active` → `rotating` → `retired` → row deleted. Multiple rows can be `active` or `rotating` simultaneously during a 30-minute key rotation window — the runbook in [jwks-rotation.md](../runbooks/jwks-rotation.md) is the procedure.
 
-### Product profile tables — D13 boundary (partial migration)
+### Product profiles and Identity read models — D13 boundary (partial migration)
 
-Bid and Shop products maintain **local profiles** keyed by the immutable Identity subject (`user.id`). They never read credentials, sessions, or JWKS tables.
+Bid and Shop products maintain **local profiles** keyed by the immutable Identity subject (`user.id`).
+Product-local read models may copy the minimum Identity facts needed for asynchronous work, but
+those copies are never authoritative or product-writable. Products never read credentials,
+sessions, or JWKS tables.
 
 | Table | Owner role | Purpose |
 |-------|------------|---------|
 | `bid_user_profile` | `api_app` (writes), `worker_app` (provisioning) | Bid roles, staff roles, KYC/AML summary, persona, paddle preference, Bid suspension, deliverability mirror |
+| `bid_identity_directory` | Identity-owned facts; `worker_app` projects, product roles read | Minimal PII directory (`email`, `name`, `image`, `phone`) plus verification/deletion lifecycle needed by notifications, marketing sync, and media cleanup |
 | `shop_user_profile` | `shop_app` (writes), `worker_app` (projection) | Shop-local name/email mirror plus disable and subject-merge markers |
 
 `apps/auth` does not query either product profile table. Its orphan-signup
@@ -294,9 +298,19 @@ compensation calls the machine-authenticated product API, where `api_app` checks
 `bid_user_profile` and `external_accounts` in one query. Migration `0155`
 removes the former `auth_app` grants on both product-owned tables.
 
-During migration, Bid-owned columns and migration `0140` compatibility triggers
-may remain. Remove them only after the split exit criteria in
-[09-lax-identity-boundary.md](./09-lax-identity-boundary.md) pass.
+`bid_identity_directory` has no foreign key to Identity `user`; `subject_id` is an
+immutable external subject identifier. A retired merge alias is retained with
+`merged_into_subject_id` and the canonical contact snapshot so historical product
+records continue resolving locally. Identity lifecycle outbox events create and
+update the directory and its aliases, and `user.identity_deleted` hard-deletes the
+subject and aliases containing its PII. `api_app` has SELECT only; `worker_app` is
+granted DML solely because it hosts the projector. The
+`verify-identity-directory-drift.mjs` reconciliation must be clean before direct
+worker reads of `user` are revoked by migration `0157`.
+
+Migration `0150` removed the former `0140` compatibility triggers and Bid-owned
+legacy columns from `user`. The remaining product reads and foreign keys are tracked
+by the split exit criteria in [09-lax-identity-boundary.md](./09-lax-identity-boundary.md).
 
 ### Application tables — owned by apps/api, role api_app
 

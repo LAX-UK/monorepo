@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { bidUserProfile, legalEntityMember, user } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile, legalEntityMember } from "@auction/db/schema";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { IAdminImpersonationNotifyReader } from "../interfaces/admin-impersonation-notify.reader.js";
 
@@ -9,12 +9,12 @@ export class DrizzleAdminImpersonationNotifyReader implements IAdminImpersonatio
   async getAdminDisplayName(userId: string): Promise<string> {
     const [row] = await this.db
       .select({
-        name: user.name,
+        name: bidIdentityDirectory.name,
         firstName: bidUserProfile.firstName,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, userId))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     return row?.firstName?.trim() || row?.name?.trim() || "LAX support";
   }
@@ -22,13 +22,15 @@ export class DrizzleAdminImpersonationNotifyReader implements IAdminImpersonatio
   async listEntityOwnerAdmins(legalEntityId: string) {
     return this.db
       .selectDistinct({
-        email: user.email,
-        userId: user.id,
-        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+        email: bidIdentityDirectory.email,
+        userId: bidIdentityDirectory.subjectId,
+        firstName: sql<
+          string | null
+        >`coalesce(${bidUserProfile.firstName}, ${bidIdentityDirectory.name})`,
       })
       .from(legalEntityMember)
-      .innerJoin(user, eq(user.id, legalEntityMember.userId))
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .innerJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, legalEntityMember.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .where(
         and(
           eq(legalEntityMember.legalEntityId, legalEntityId),

@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { itemSubmission, lot, mediaAsset, sale, user } from "@auction/db";
+import { bidIdentityDirectory, itemSubmission, lot, mediaAsset, sale } from "@auction/db";
 import { eq, sql } from "drizzle-orm";
 import type { IMediaAssetCleanupRepository } from "../interfaces/media-asset-cleanup.repository.js";
 
@@ -13,7 +13,8 @@ export class DrizzleMediaAssetCleanupRepository implements IMediaAssetCleanupRep
     )}]::text[]`;
     const result = await this.db.execute<{ referenced: boolean }>(sql`
       select exists (
-          select 1 from ${user} where ${user.image} = any(${values})
+          select 1 from ${bidIdentityDirectory}
+          where ${bidIdentityDirectory.image} = any(${values})
           union all
           select 1 from ${lot} where ${lot.images} && ${refs}
           union all

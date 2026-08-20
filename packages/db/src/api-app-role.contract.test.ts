@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   API_DENY_TABLES,
   API_PRODUCT_PROFILE_TABLES,
+  API_READ_TABLES,
   API_SSF_RECEIVER_TABLES,
 } from "./migrate-roles.js";
 import { buildPgConnectionConfig } from "./ssl.js";
@@ -22,6 +23,22 @@ async function withApiClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<
 }
 
 describe.skipIf(!API_URL)("api_app role contract", () => {
+  it("can read but not write the Bid identity directory", async () => {
+    await withApiClient(async (client) => {
+      const read = await client.query<{ allowed: boolean }>(
+        "select has_table_privilege(current_user, 'public.bid_identity_directory', 'SELECT') as allowed",
+      );
+      expect(read.rows[0]?.allowed).toBe(true);
+      for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
+        const result = await client.query<{ allowed: boolean }>(
+          "select has_table_privilege(current_user, 'public.bid_identity_directory', $1) as allowed",
+          [privilege],
+        );
+        expect(result.rows[0]?.allowed, privilege).toBe(false);
+      }
+    });
+  });
+
   it("can provision product profiles but cannot delete them", async () => {
     await withApiClient(async (client) => {
       for (const table of API_PRODUCT_PROFILE_TABLES) {
@@ -116,5 +133,12 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
         expect(result.rows[0]?.allowed, column).toBe(false);
       }
     });
+  });
+});
+
+describe("api_app role contract (static identity directory gate)", () => {
+  it("keeps the identity directory read-only", () => {
+    expect(API_READ_TABLES).toContain("bid_identity_directory");
+    expect(API_PRODUCT_PROFILE_TABLES).not.toContain("bid_identity_directory");
   });
 });

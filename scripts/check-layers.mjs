@@ -174,6 +174,32 @@ if (identityStorageViolations.length > 0) {
   process.exit(1);
 }
 
+// ─── Worker Identity directory boundary ─────────────────────────────────────
+
+/** @type {string[]} */
+const workerIdentityReadViolations = [];
+
+for (const file of listSources(join(root, "apps/worker/src"))) {
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(IDENTITY_TABLE_IMPORT_RE)) {
+    const imported = (match[1] ?? "")
+      .split(",")
+      .map((name) => name.trim().split(/\s+as\s+/)[0])
+      .filter(Boolean);
+    if (imported.includes("user")) {
+      workerIdentityReadViolations.push(
+        `${relative(root, file)} imports Identity-owned table "user" — read bidIdentityDirectory`,
+      );
+    }
+  }
+}
+
+if (workerIdentityReadViolations.length > 0) {
+  console.error("Worker Identity directory boundary violations detected:\n");
+  for (const violation of workerIdentityReadViolations) console.error(`  ${violation}`);
+  process.exit(1);
+}
+
 /** @param {string} rel */
 function isAllowedDrizzleSite(rel) {
   if (rel.startsWith("packages/persistence/")) return true;

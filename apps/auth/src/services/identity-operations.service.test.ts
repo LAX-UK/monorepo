@@ -31,8 +31,11 @@ function createRepositories(): IdentityOperationsRepositories {
     subjects: {
       findById: vi.fn().mockResolvedValue(subject),
       findByEmail: vi.fn().mockResolvedValue(null),
-      updateProfile: vi.fn().mockResolvedValue({ id: "subject", name: "Updated Name" }),
+      updateProfile: vi
+        .fn()
+        .mockResolvedValue({ id: "subject", name: "Updated Name", image: "https://cdn/image.jpg" }),
       markDeletionRequested: vi.fn().mockResolvedValue(true),
+      cancelDeletionRequested: vi.fn().mockResolvedValue(true),
       lockForCompensation: vi
         .fn()
         .mockResolvedValue({ id: "subject", createdAt: new Date("2026-08-10T00:05:00.000Z") }),
@@ -368,19 +371,51 @@ describe("IdentityOperationsService", () => {
     expect(repositories.subjects.deleteSubject).not.toHaveBeenCalled();
   });
 
-  it("publishes only changed profile fields and reports missing subjects", async () => {
+  it("publishes the canonical profile including image in the state transaction", async () => {
     const repositories = createRepositories();
     const { service, identityEventPublisher } = createService(repositories);
 
     await service.updateSubjectProfile("subject", { name: "Updated Name" });
     expect(identityEventPublisher.publish).toHaveBeenCalledWith(
-      { type: "user.profile_updated", userId: "subject", name: "Updated Name" },
-      expect.any(Object),
+      {
+        type: "user.profile_updated",
+        userId: "subject",
+        name: "Updated Name",
+        image: "https://cdn/image.jpg",
+      },
+      expect.objectContaining({ transaction }),
     );
 
     vi.mocked(repositories.subjects.updateProfile).mockResolvedValue(null);
     await expect(service.updateSubjectProfile("missing", { name: "Name" })).rejects.toBeInstanceOf(
       IdentityOperationError,
+    );
+  });
+
+  it("publishes deletion request and cancellation in their state transactions", async () => {
+    const repositories = createRepositories();
+    const { service, identityEventPublisher } = createService(repositories);
+
+    await service.markDeletionRequested("subject");
+    expect(repositories.subjects.markDeletionRequested).toHaveBeenCalledWith(
+      transaction,
+      "subject",
+      now,
+    );
+    expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+      { type: "user.deletion_requested", userId: "subject", requestedAt: now },
+      { producer: "apps/auth", transaction },
+    );
+
+    await service.cancelDeletionRequested("subject");
+    expect(repositories.subjects.cancelDeletionRequested).toHaveBeenCalledWith(
+      transaction,
+      "subject",
+      now,
+    );
+    expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+      { type: "user.deletion_cancelled", userId: "subject", cancelledAt: now },
+      { producer: "apps/auth", transaction },
     );
   });
 });

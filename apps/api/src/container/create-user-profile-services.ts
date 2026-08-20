@@ -97,7 +97,6 @@ export function createUserProfileServices(
     savedSearchRepository,
   } = repos;
   const {
-    domainEventSink,
     impersonationSessionService,
     impersonationAuditService,
     authAuditPublisher,
@@ -107,12 +106,7 @@ export function createUserProfileServices(
     complianceMedia;
   const { dashboardQueryService, saleService, artistProfileService } = catalog;
 
-  const userService = new UserService(
-    userRepo,
-    platform.transactionRunner,
-    domainEventSink,
-    identityIssuer,
-  );
+  const userService = new UserService(userRepo, identityIssuer);
   const personalLegalEntityResolver = new PersonalLegalEntityResolver(
     legalEntityRepository,
     ensurePersonalLegalEntityService,

@@ -1,6 +1,10 @@
 import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
 import { AML_MATCH_REVIEW_PROJECTOR, processAmlMatchReview } from "./aml-match-review.js";
 import {
+  BID_IDENTITY_DIRECTORY_PROJECTOR,
+  processBidIdentityDirectory,
+} from "./bid-identity-directory.js";
+import {
   BID_PROFILE_PROVISIONING_PROJECTOR,
   processBidProfileProvisioning,
 } from "./bid-profile-provisioning.js";
@@ -165,6 +169,12 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
       name: BID_PROFILE_PROVISIONING_PROJECTOR,
       async run(ctx) {
         await processBidProfileProvisioning({ ctx, log: ctx.log });
+      },
+    },
+    {
+      name: BID_IDENTITY_DIRECTORY_PROJECTOR,
+      async run(ctx) {
+        await processBidIdentityDirectory(ctx);
       },
     },
     {

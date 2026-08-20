@@ -374,17 +374,56 @@ export class IdentityOperationsService {
     subjectId: string,
     patch: { name?: string; image?: string | null },
   ): Promise<void> {
-    const updated = await this.repositories.subjects.updateProfile(subjectId, patch, this.now());
-    if (!updated) throw new IdentityOperationError("subject_not_found");
-    await publishIdentityProfileUpdated(this.identityEventPublisher, {
-      subjectId: updated.id,
-      name: updated.name,
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const updated = await this.repositories.subjects.updateProfile(
+        transaction,
+        subjectId,
+        patch,
+        this.now(),
+      );
+      if (!updated) throw new IdentityOperationError("subject_not_found");
+      await publishIdentityProfileUpdated(
+        this.identityEventPublisher,
+        {
+          subjectId: updated.id,
+          name: updated.name,
+          image: updated.image,
+        },
+        { transaction },
+      );
     });
   }
 
   async markDeletionRequested(subjectId: string): Promise<void> {
-    const updated = await this.repositories.subjects.markDeletionRequested(subjectId, this.now());
-    if (!updated) throw new IdentityOperationError("subject_not_found");
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const requestedAt = this.now();
+      const updated = await this.repositories.subjects.markDeletionRequested(
+        transaction,
+        subjectId,
+        requestedAt,
+      );
+      if (!updated) throw new IdentityOperationError("subject_not_found");
+      await this.identityEventPublisher.publish(
+        { type: "user.deletion_requested", userId: subjectId, requestedAt },
+        { producer: "apps/auth", transaction },
+      );
+    });
+  }
+
+  async cancelDeletionRequested(subjectId: string): Promise<void> {
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const cancelledAt = this.now();
+      const updated = await this.repositories.subjects.cancelDeletionRequested(
+        transaction,
+        subjectId,
+        cancelledAt,
+      );
+      if (!updated) throw new IdentityOperationError("subject_not_found");
+      await this.identityEventPublisher.publish(
+        { type: "user.deletion_cancelled", userId: subjectId, cancelledAt },
+        { producer: "apps/auth", transaction },
+      );
+    });
   }
 
   purgeExpiredVerifications(now = new Date(), batchSize = 500): Promise<number> {

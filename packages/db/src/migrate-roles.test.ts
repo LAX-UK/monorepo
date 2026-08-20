@@ -6,14 +6,17 @@ import ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   API_COLUMN_UPDATE_GRANTS,
+  API_READ_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
   WORKER_DATA_EXPORT_TABLES,
+  WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_FULL_TABLES,
   WORKER_LIFECYCLE_READ_TABLES,
   WORKER_NOTIFICATION_OUTBOX_TABLES,
   WORKER_PAYMENT_MAINTENANCE_TABLES,
+  WORKER_PRODUCT_PROFILE_TABLES,
   WORKER_PROVISIONING_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
@@ -341,6 +344,13 @@ describe("migrate-roles invariants", () => {
 
   it("WORKER_READ_TABLES includes identity_lifecycle_outbox (outbox relay job)", () => {
     expect([...WORKER_READ_TABLES]).toContain("identity_lifecycle_outbox");
+  });
+
+  it("models the post-0157 Identity directory cutover", () => {
+    expect([...API_READ_TABLES]).toContain("bid_identity_directory");
+    expect([...WORKER_PRODUCT_PROFILE_TABLES]).toContain("bid_identity_directory");
+    expect([...WORKER_READ_TABLES]).not.toContain("user");
+    expect([...WORKER_DENY_TABLES]).toContain("user");
   });
 
   it("WORKER_PROVISIONING_TABLES includes legal_entity tables", () => {

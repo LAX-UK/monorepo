@@ -1,7 +1,7 @@
 import type { AuthHookDeps } from "./auth-hook-deps.js";
 
 export function buildUserDatabaseHooks(deps: AuthHookDeps) {
-  const profileUpdateSubjects = new Set<string>();
+  const pendingProfileUpdates = new Map<string, number>();
   return {
     create: {
       after: async (authUser: {
@@ -47,8 +47,13 @@ export function buildUserDatabaseHooks(deps: AuthHookDeps) {
       ) => {
         const userId = (userData as { id?: string }).id;
         if (!userId) return;
-        if ("email" in userData || "name" in userData || "phoneNumber" in userData) {
-          profileUpdateSubjects.add(userId);
+        if (
+          "email" in userData ||
+          "name" in userData ||
+          "phoneNumber" in userData ||
+          "image" in userData
+        ) {
+          pendingProfileUpdates.set(userId, (pendingProfileUpdates.get(userId) ?? 0) + 1);
         }
         if (!("phoneNumber" in userData)) return;
         const existingPhone = await deps.ports.phoneNumberStore.findPhoneNumber(userId);
@@ -67,14 +72,20 @@ export function buildUserDatabaseHooks(deps: AuthHookDeps) {
         email: string;
         name: string;
         phoneNumber?: string | null;
+        image?: string | null | undefined;
       }) => {
-        if (!profileUpdateSubjects.delete(authUser.id) || !deps.onUserUpdated) return;
+        const pending = pendingProfileUpdates.get(authUser.id) ?? 0;
+        if (pending === 0) return;
+        if (pending === 1) pendingProfileUpdates.delete(authUser.id);
+        else pendingProfileUpdates.set(authUser.id, pending - 1);
+        if (!deps.onUserUpdated) return;
         try {
           await deps.onUserUpdated({
             id: authUser.id,
             email: authUser.email,
             name: authUser.name,
             phoneNumber: authUser.phoneNumber ?? null,
+            image: authUser.image ?? null,
           });
         } catch (err) {
           console.error("[auth.user.update.after] onUserUpdated failed", {

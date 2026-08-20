@@ -1,11 +1,11 @@
 import type { Database } from "@auction/db";
 import {
+  bidIdentityDirectory,
   bidUserProfile,
   legalEntity,
   legalEntityMember,
   lot,
   payout,
-  user,
 } from "@auction/db/schema";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { INotificationFanoutReader } from "../interfaces/notification-fanout.reader.js";
@@ -16,13 +16,15 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
   async listEntityRecipients(legalEntityId: string) {
     return this.db
       .selectDistinct({
-        email: user.email,
-        userId: user.id,
-        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+        email: bidIdentityDirectory.email,
+        userId: bidIdentityDirectory.subjectId,
+        firstName: sql<
+          string | null
+        >`coalesce(${bidUserProfile.firstName}, ${bidIdentityDirectory.name})`,
       })
       .from(legalEntityMember)
-      .innerJoin(user, eq(user.id, legalEntityMember.userId))
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
+      .innerJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, legalEntityMember.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .where(
         and(
           eq(legalEntityMember.legalEntityId, legalEntityId),
@@ -84,13 +86,15 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
   async getUserForProxyNotice(userId: string) {
     const [row] = await this.db
       .select({
-        email: user.email,
-        name: user.name,
-        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+        email: bidIdentityDirectory.email,
+        name: bidIdentityDirectory.name,
+        firstName: sql<
+          string | null
+        >`coalesce(${bidUserProfile.firstName}, ${bidIdentityDirectory.name})`,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, userId))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     return row ?? null;
   }
@@ -98,12 +102,14 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
   async getWinnerContact(userId: string) {
     const [row] = await this.db
       .select({
-        email: user.email,
-        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+        email: bidIdentityDirectory.email,
+        firstName: sql<
+          string | null
+        >`coalesce(${bidUserProfile.firstName}, ${bidIdentityDirectory.name})`,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, userId))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     return row ?? null;
   }
@@ -116,13 +122,15 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
       .limit(1);
     const [buyerRow] = await this.db
       .select({
-        email: user.email,
-        name: user.name,
-        firstName: sql<string | null>`coalesce(${bidUserProfile.firstName}, ${user.name})`,
+        email: bidIdentityDirectory.email,
+        name: bidIdentityDirectory.name,
+        firstName: sql<
+          string | null
+        >`coalesce(${bidUserProfile.firstName}, ${bidIdentityDirectory.name})`,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, buyerUserId))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, buyerUserId))
       .limit(1);
     const [sellerRow] = await this.db
       .select({ displayName: legalEntity.displayName })

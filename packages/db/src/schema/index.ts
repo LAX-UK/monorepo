@@ -1,4 +1,5 @@
 export * from "./auth.js";
+export * from "./bid-identity-directory.js";
 export * from "./bid-user-profile.js";
 export * from "./shop-user-profile.js";
 export * from "./shop-session.js";

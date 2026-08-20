@@ -1,5 +1,12 @@
 import type { Database } from "@auction/db";
-import { legalEntity, lot, payment, payout, payoutLine, user } from "@auction/db/schema";
+import {
+  bidIdentityDirectory,
+  legalEntity,
+  lot,
+  payment,
+  payout,
+  payoutLine,
+} from "@auction/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import type {
   IPayoutStatementRepository,
@@ -56,12 +63,12 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
         createdByUserId: payoutLine.createdByUserId,
         lotTitle: lot.title,
         lotNumber: lot.lotNumber,
-        buyerName: user.name,
+        buyerName: bidIdentityDirectory.name,
       })
       .from(payoutLine)
       .leftJoin(payment, eq(payoutLine.paymentId, payment.id))
       .leftJoin(lot, eq(payment.lotId, lot.id))
-      .leftJoin(user, eq(payment.buyerId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .where(eq(payoutLine.payoutId, payoutId));
   }
 
@@ -69,9 +76,9 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
     const authorMap = new Map<string, string>();
     if (userIds.length === 0) return authorMap;
     const authors = await this.db
-      .select({ id: user.id, name: user.name })
-      .from(user)
-      .where(inArray(user.id, userIds));
+      .select({ id: bidIdentityDirectory.subjectId, name: bidIdentityDirectory.name })
+      .from(bidIdentityDirectory)
+      .where(inArray(bidIdentityDirectory.subjectId, userIds));
     for (const author of authors) {
       authorMap.set(author.id, author.name);
     }

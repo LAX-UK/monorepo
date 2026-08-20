@@ -26,6 +26,7 @@ export const AUTH_DENY_TABLES = [
   "email_outbox",
   "email_suppression",
   "external_accounts",
+  "bid_identity_directory",
   "bid_user_profile",
 ] as const;
 export const API_DENY_TABLES = [
@@ -47,7 +48,8 @@ export const API_DENY_TABLES = [
   "identity_lifecycle_outbox",
   "shop_ssf_replay",
 ] as const;
-const API_READ_TABLES = ["user"];
+/** Identity-backed read models exposed to the Bid API without write privileges. */
+export const API_READ_TABLES = ["user", "bid_identity_directory"] as const;
 /** Product-local profile tables owned by apps/api (Bid). */
 export const API_PRODUCT_PROFILE_TABLES = ["bid_user_profile"] as const;
 export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;
@@ -58,18 +60,21 @@ export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_logout_token_replay",
 ] as const;
 export const SHOP_SSF_RECEIVER_TABLES = ["shop_ssf_replay"] as const;
-/** Worker projectors upsert Shop/Bid local profiles from Identity domain events. */
-export const WORKER_PRODUCT_PROFILE_TABLES = ["shop_user_profile", "bid_user_profile"] as const;
+/** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
+export const WORKER_PRODUCT_PROFILE_TABLES = [
+  "shop_user_profile",
+  "bid_user_profile",
+  "bid_identity_directory",
+] as const;
 /** Tables whose DML must remain unavailable to worker_app. */
 export const WORKER_DENY_TABLES = [
-  ...AUTH_FULL_TABLES.filter((tableName) => tableName !== "user"),
+  ...AUTH_FULL_TABLES,
   ...API_SSF_RECEIVER_TABLES,
   "shop_identity_session",
   "shop_logout_token_replay",
   ...SHOP_SSF_RECEIVER_TABLES,
 ] as const;
 export const WORKER_READ_TABLES = [
-  "user",
   /** Identity lifecycle outbox relay reads pending rows before inserting into domain_events. */
   "identity_lifecycle_outbox",
   /** Catalogue tables scanned by backfill-media-assets (read image key columns only). */
@@ -324,7 +329,7 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         await revokeIfExists(client, "api_app", tableName);
         continue;
       }
-      if (API_READ_TABLES.includes(tableName)) {
+      if ((API_READ_TABLES as readonly string[]).includes(tableName)) {
         continue;
       }
       if ((API_PRODUCT_PROFILE_TABLES as readonly string[]).includes(tableName)) {
@@ -338,7 +343,6 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");
     }
     for (const tableName of WORKER_READ_TABLES) {
-      if (tableName === "user") continue;
       await grantIfExists(client, "worker_app", tableName, "SELECT");
     }
     for (const tableName of SHOP_PRODUCT_PROFILE_TABLES) {
@@ -386,7 +390,14 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
     }
     for (const tableName of WORKER_PRODUCT_PROFILE_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+      await grantIfExists(
+        client,
+        "worker_app",
+        tableName,
+        tableName === "bid_identity_directory"
+          ? "INSERT, SELECT, UPDATE, DELETE"
+          : "INSERT, SELECT, UPDATE",
+      );
     }
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
@@ -442,9 +453,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS,
     );
 
-    await grantIfExists(client, "api_app", "user", "SELECT");
+    for (const tableName of API_READ_TABLES) {
+      await grantIfExists(client, "api_app", tableName, "SELECT");
+    }
     await grantColumnUpdateIfExists(client, "api_app", "user", API_COLUMN_UPDATE_GRANTS.user ?? []);
-    await grantIfExists(client, "worker_app", "user", "SELECT");
 
     for (const role of ["auth_app", "api_app", "worker_app"] as const) {
       await grantSequences(client, role, "public");

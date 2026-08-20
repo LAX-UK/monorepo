@@ -9,6 +9,10 @@ export const userRegisteredPayloadSchemaV1 = z.object({
   email: z.string(),
   name: z.string(),
   source: z.enum(["credential", "google", "apple", "backfill"]),
+  image: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  emailVerified: z.boolean().optional(),
+  createdAt: z.string().datetime().optional(),
 });
 
 export const userProfileUpdatedPayloadSchemaV1 = z.object({
@@ -16,8 +20,21 @@ export const userProfileUpdatedPayloadSchemaV1 = z.object({
   subjectId: z.string(),
   email: z.string().email().optional(),
   name: z.string().optional(),
-  phone: z.string().optional(),
+  phone: z.string().nullable().optional(),
+  image: z.string().nullable().optional(),
   updatedAt: z.string().datetime(),
+});
+
+export const userDeletionRequestedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  requestedAt: z.string().datetime(),
+});
+
+export const userDeletionCancelledPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  cancelledAt: z.string().datetime(),
 });
 
 export const userIdentityDisabledPayloadSchemaV1 = z.object({

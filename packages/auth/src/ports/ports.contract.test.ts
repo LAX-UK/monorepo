@@ -5,6 +5,7 @@ import type {
   ConsentStore,
   EmailSender,
   IdentityEventPublisher,
+  IdentityLifecycleEvent,
   JwksStore,
   PhoneNumberStore,
   ProductSubjectUsageProbe,
@@ -125,6 +126,20 @@ describe("identity port surface contract", () => {
       "sessionStampStore",
       "sms",
       "subjectStatusReader",
+    ]);
+  });
+
+  it("defines profile image and deletion lifecycle publisher contracts", () => {
+    const events: IdentityLifecycleEvent[] = [
+      { type: "user.profile_updated", userId: "subject", image: null },
+      { type: "user.deletion_requested", userId: "subject" },
+      { type: "user.deletion_cancelled", userId: "subject" },
+    ];
+
+    expect(events.map((event) => event.type)).toEqual([
+      "user.profile_updated",
+      "user.deletion_requested",
+      "user.deletion_cancelled",
     ]);
   });
 });

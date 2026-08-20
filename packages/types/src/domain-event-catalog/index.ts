@@ -44,6 +44,8 @@ export {
   looseDomainEventPayloadV1,
   sourceOfFundsRequiredPayloadSchemaV1,
   sourceOfFundsReviewedPayloadSchemaV1,
+  userDeletionCancelledPayloadSchemaV1,
+  userDeletionRequestedPayloadSchemaV1,
   userEmailVerifiedPayloadSchemaV1,
   userCredentialChangedPayloadSchemaV1,
   userIdentityDeletedPayloadSchemaV1,

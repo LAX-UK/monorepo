@@ -39,11 +39,21 @@ export interface IIdentitySubjectRepository {
   findById(subjectId: string): Promise<IdentitySubjectRecord | null>;
   findByEmail(email: string): Promise<IdentitySubjectRecord | null>;
   updateProfile(
+    transaction: IdentityOperationTransaction,
     subjectId: string,
     patch: { name?: string; image?: string | null },
     now: Date,
-  ): Promise<{ id: string; name: string } | null>;
-  markDeletionRequested(subjectId: string, now: Date): Promise<boolean>;
+  ): Promise<{ id: string; name: string; image: string | null } | null>;
+  markDeletionRequested(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<boolean>;
+  cancelDeletionRequested(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<boolean>;
   lockForCompensation(
     transaction: IdentityOperationTransaction,
     subjectId: string,

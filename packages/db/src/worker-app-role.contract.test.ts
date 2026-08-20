@@ -40,7 +40,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
     }
   });
 
-  it("can provision and update product identity profiles without deleting them", async () => {
+  it("has the DML required by each product identity projection", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);
     const privileges = await db.execute(sql`
@@ -66,6 +66,35 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
       can_select: true,
       can_update: true,
       can_delete: false,
+    });
+    const directoryPrivileges = await db.execute(sql`
+      SELECT
+        has_table_privilege(
+          current_user,
+          'public.bid_identity_directory',
+          'INSERT'
+        ) AS can_insert,
+        has_table_privilege(
+          current_user,
+          'public.bid_identity_directory',
+          'SELECT'
+        ) AS can_select,
+        has_table_privilege(
+          current_user,
+          'public.bid_identity_directory',
+          'UPDATE'
+        ) AS can_update,
+        has_table_privilege(
+          current_user,
+          'public.bid_identity_directory',
+          'DELETE'
+        ) AS can_delete
+    `);
+    expect(directoryPrivileges.rows[0]).toMatchObject({
+      can_insert: true,
+      can_select: true,
+      can_update: true,
+      can_delete: true,
     });
   });
 
@@ -180,9 +209,9 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);
     const probe = await db.execute(sql`
-      SELECT l.id AS lot_id, u.id AS user_id, le.id AS legal_entity_id
+      SELECT l.id AS lot_id, d.subject_id AS user_id, le.id AS legal_entity_id
       FROM lot l
-      CROSS JOIN "user" u
+      CROSS JOIN bid_identity_directory d
       CROSS JOIN legal_entity le
       LIMIT 1
     `);
@@ -211,9 +240,9 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);
     const probe = await db.execute(sql`
-      SELECT l.id AS lot_id, u.id AS user_id, le.id AS legal_entity_id
+      SELECT l.id AS lot_id, d.subject_id AS user_id, le.id AS legal_entity_id
       FROM lot l
-      CROSS JOIN "user" u
+      CROSS JOIN bid_identity_directory d
       CROSS JOIN legal_entity le
       LIMIT 1
     `);
@@ -374,7 +403,17 @@ describe("worker_app role contract (static cutover gate)", () => {
 
   it("grants worker_app product profile projection tables", async () => {
     const { WORKER_PRODUCT_PROFILE_TABLES } = await import("./migrate-roles.js");
-    expect(WORKER_PRODUCT_PROFILE_TABLES).toEqual(["shop_user_profile", "bid_user_profile"]);
+    expect(WORKER_PRODUCT_PROFILE_TABLES).toEqual([
+      "shop_user_profile",
+      "bid_user_profile",
+      "bid_identity_directory",
+    ]);
     expect(WORKER_PRODUCT_PROFILE_TABLES).not.toContain("shop_identity_session");
+  });
+
+  it("denies worker_app direct user reads after the directory cutover", async () => {
+    const { WORKER_DENY_TABLES, WORKER_READ_TABLES } = await import("./migrate-roles.js");
+    expect(WORKER_DENY_TABLES).toContain("user");
+    expect(WORKER_READ_TABLES).not.toContain("user");
   });
 });

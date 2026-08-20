@@ -39,22 +39,43 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
   }
 
   async updateProfile(
+    transaction: IdentityOperationTransaction,
     subjectId: string,
     patch: { name?: string; image?: string | null },
     now: Date,
-  ): Promise<{ id: string; name: string } | null> {
-    const [updated] = await this.db
+  ): Promise<{ id: string; name: string; image: string | null } | null> {
+    const tx = identityOperationDb(this.db, transaction);
+    const [updated] = await tx
       .update(user)
       .set({ ...patch, updatedAt: now })
       .where(eq(user.id, subjectId))
-      .returning({ id: user.id, name: user.name });
+      .returning({ id: user.id, name: user.name, image: user.image });
     return updated ?? null;
   }
 
-  async markDeletionRequested(subjectId: string, now: Date): Promise<boolean> {
-    const rows = await this.db
+  async markDeletionRequested(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const tx = identityOperationDb(this.db, transaction);
+    const rows = await tx
       .update(user)
       .set({ deletionRequestedAt: now, updatedAt: now })
+      .where(eq(user.id, subjectId))
+      .returning({ id: user.id });
+    return Boolean(rows[0]);
+  }
+
+  async cancelDeletionRequested(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const tx = identityOperationDb(this.db, transaction);
+    const rows = await tx
+      .update(user)
+      .set({ deletionRequestedAt: null, updatedAt: now })
       .where(eq(user.id, subjectId))
       .returning({ id: user.id });
     return Boolean(rows[0]);

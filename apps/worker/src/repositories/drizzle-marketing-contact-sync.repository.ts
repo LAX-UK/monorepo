@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
 import {
+  bidIdentityDirectory,
   bidUserProfile,
   emailSuppression,
   marketingContactSyncLog,
-  user,
 } from "@auction/db/schema";
 import { emailHash } from "@auction/email";
 import { eq } from "drizzle-orm";
@@ -19,9 +19,9 @@ export class DrizzleMarketingContactSyncRepository implements IMarketingContactS
   async findUserById(userId: string): Promise<MarketingContactSyncUserRow | null> {
     const [row] = await this.db
       .select({
-        id: user.id,
-        email: user.email,
-        emailVerified: user.emailVerified,
+        id: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+        emailVerified: bidIdentityDirectory.emailVerified,
         role: bidUserProfile.role,
         firstName: bidUserProfile.firstName,
         lastName: bidUserProfile.lastName,
@@ -30,12 +30,12 @@ export class DrizzleMarketingContactSyncRepository implements IMarketingContactS
         signupPersona: bidUserProfile.signupPersona,
         emailStatus: bidUserProfile.emailStatus,
         suspendedAt: bidUserProfile.suspendedAt,
-        deletionRequestedAt: user.deletionRequestedAt,
-        createdAt: user.createdAt,
+        deletionRequestedAt: bidIdentityDirectory.deletionRequestedAt,
+        createdAt: bidIdentityDirectory.identityCreatedAt,
       })
-      .from(user)
-      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
-      .where(eq(user.id, userId))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     if (!row) return null;
     return {

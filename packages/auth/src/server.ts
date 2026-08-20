@@ -80,6 +80,7 @@ export type AuthEnv = {
         email: string;
         name: string;
         phoneNumber?: string | null;
+        image?: string | null;
       }) => Promise<void>)
     | undefined;
   /**
