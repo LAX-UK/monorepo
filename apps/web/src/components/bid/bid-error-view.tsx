@@ -1,5 +1,6 @@
 import type { BidErrorPresentation, BidErrorSeverity } from "@/lib/ui/bid-error";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
 const severityClass: Record<BidErrorSeverity, string> = {
@@ -63,13 +64,15 @@ export function BidErrorView({
         </Link>
       ) : null}
       {showActionButton && actionKey ? (
-        <button
+        <Button
           type="button"
+          variant="link"
+          size="link"
           onClick={() => onAction?.(actionKey)}
-          className={cn("mt-2 inline-block text-sm font-medium underline underline-offset-2", tone)}
+          className={cn("mt-2 h-auto p-0 text-sm font-medium underline underline-offset-2", tone)}
         >
           {error.actionLabel ?? "Continue"}
-        </button>
+        </Button>
       ) : null}
     </div>
   );

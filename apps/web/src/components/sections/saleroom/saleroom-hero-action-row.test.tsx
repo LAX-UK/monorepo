@@ -89,7 +89,7 @@ describe("SaleroomHeroActionRow", () => {
       />,
     );
 
-    const verifyLink = screen.getByRole("link", { name: /verify identity/i });
+    const verifyLink = screen.getByRole("link", { name: /verify to continue bidding/i });
     const primaryBand = verifyLink.closest("div");
     expect(primaryBand).toBeTruthy();
     if (!primaryBand) return;

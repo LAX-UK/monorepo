@@ -68,7 +68,7 @@ describe("SaleroomRegisterToBid", () => {
     );
 
     expect(screen.queryByText(KYC_BID_BLOCKED_DESCRIPTION)).toBeNull();
-    expect(screen.getByRole("link", { name: /verify identity/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /verify to continue bidding/i })).toBeInTheDocument();
   });
 
   it("uses overlay-tone copy for KYC detail in default layout when inside overlay frame", () => {

@@ -252,6 +252,7 @@ export function LotAutoBidPanel({
         reportError(
           mapBidError(result.error, {
             verifyReturnPath: loginNextPath,
+            lotId: lot.id,
             code: result.code ?? null,
             kycFeedback,
           }),
@@ -307,6 +308,7 @@ export function LotAutoBidPanel({
       reportError(
         mapBidError(result.error, {
           verifyReturnPath: loginNextPath,
+          lotId: lot.id,
           code: result.code ?? null,
           kycFeedback,
         }),

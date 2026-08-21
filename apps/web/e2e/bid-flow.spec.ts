@@ -28,7 +28,7 @@ async function gotoLiveLot(page: Page) {
   await page.waitForLoadState("networkidle");
 }
 
-test.describe("buyer bid flow", () => {
+test.describe("buyer bid flow @journey", () => {
   test("authenticated buyer can review and confirm a manual bid on a live lot", async ({
     page,
   }) => {
@@ -89,5 +89,71 @@ test.describe("buyer bid flow", () => {
     await expect(
       page.getByRole("button", { name: /review bid|save auto-bid/i }).first(),
     ).toBeVisible({ timeout: 10_000 });
+  });
+});
+
+const strictEligibilityEnabled = ["1", "true", "yes", "on"].includes(
+  process.env.STRICT_BID_ELIGIBILITY_ENABLED?.trim().toLowerCase() ?? "",
+);
+
+async function loginWithCredentials(page: Page, email: string, password: string) {
+  await page.goto(`/login?email=${encodeURIComponent(email)}`);
+  const continueButton = page.getByRole("button", { name: /^continue$/i });
+  if (await continueButton.isVisible().catch(() => false)) await continueButton.click();
+  await page.locator('input[name="password"]').fill(password);
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+  await page.waitForURL(/dashboard|onboarding|lot|search|sales/, { timeout: 20_000 });
+}
+
+test.describe("strict bid eligibility @journey", () => {
+  test("unverified email cannot reach live-lot bid controls", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(!strictEligibilityEnabled, "Start web, API, and Playwright with strict eligibility.");
+
+    await page.goto(`/login?email=${encodeURIComponent("unverified@lax.bid")}`);
+    const continueButton = page.getByRole("button", { name: /^continue$/i });
+    if (await continueButton.isVisible().catch(() => false)) await continueButton.click();
+    await expect(page).toHaveURL(/\/register\/verify-pending|\/login/);
+    await expect(page.locator("#lot-bid-entry")).toHaveCount(0);
+  });
+
+  test("pending identity blocks all live-lot bid controls", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(!strictEligibilityEnabled, "Start web, API, and Playwright with strict eligibility.");
+    test.skip(
+      process.env.PLAYWRIGHT_LIVE_LOT_PATH == null,
+      "Set PLAYWRIGHT_LIVE_LOT_PATH to an active online lot.",
+    );
+
+    await loginWithCredentials(
+      page,
+      process.env.PLAYWRIGHT_STRICT_UNAPPROVED_EMAIL ?? "google-test@lax.bid",
+      process.env.PLAYWRIGHT_STRICT_UNAPPROVED_PASSWORD ?? "Password123!",
+    );
+    await gotoLiveLot(page);
+
+    await expect(
+      page.getByText("Your identity must be approved before you can place bids.").first(),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /review bid|save auto-bid/i })).toHaveCount(0);
+  });
+
+  test("approved identity retains manual and auto controls", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    test.skip(!strictEligibilityEnabled, "Start web, API, and Playwright with strict eligibility.");
+    test.skip(
+      process.env.PLAYWRIGHT_LIVE_LOT_PATH == null,
+      "Set PLAYWRIGHT_LIVE_LOT_PATH to an active online lot.",
+    );
+
+    await loginWithCredentials(
+      page,
+      process.env.PLAYWRIGHT_STRICT_APPROVED_EMAIL ?? "user1@lax.bid",
+      process.env.PLAYWRIGHT_STRICT_APPROVED_PASSWORD ?? "Password123!",
+    );
+    await gotoLiveLot(page);
+    await expect(page.getByRole("button", { name: /save auto-bid/i }).first()).toBeEnabled();
+    await selectManualBidMode(page);
+    await expect(page.getByRole("button", { name: /review bid/i }).first()).toBeEnabled();
   });
 });
