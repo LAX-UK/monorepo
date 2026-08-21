@@ -216,6 +216,38 @@ describe("POST /bids middleware gates", () => {
     expect(placeBid).not.toHaveBeenCalled();
   });
 
+  it("defers to the runtime eligibility result when strict eligibility is enabled", async () => {
+    const enforceThreshold = vi.fn();
+    const { app } = mount({
+      env: {
+        APP_ENV: "test",
+        STRICT_BID_ELIGIBILITY_ENABLED: true,
+      } as Container["env"],
+      kycService: {
+        isConfigured: () => true,
+        enforceThreshold,
+      } as unknown as Container["kycService"],
+      placeBid: vi.fn().mockResolvedValue({
+        kind: "err",
+        error: {
+          message: "Verify your email before bidding",
+          status: 403,
+          code: "email_not_verified",
+        },
+      }),
+    });
+
+    const res = await app.request("/bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: bidBody(),
+    });
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "email_not_verified" });
+    expect(enforceThreshold).not.toHaveBeenCalled();
+  });
+
   it("returns eligibility error code from bid service", async () => {
     const { app } = mount({
       placeBid: vi.fn().mockResolvedValue({

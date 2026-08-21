@@ -1,9 +1,11 @@
+import { buyerEntityCanBid } from "@auction/domain";
 import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { IBidRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
+import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
 import type { AbsenteeBidServiceError, IAbsenteeBidService, IBidPlacer } from "./ports.js";
 
 export const ABSENTEE_EXECUTING_LEASE_MS = 15 * 60 * 1000;
@@ -28,6 +30,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     private readonly lotRepo: ILotRepository,
     private readonly legalEntityRepository: ILegalEntityRepository | null,
     private readonly bidRepo: IBidRepository | null = null,
+    private readonly identityEligibilityGate: IBidIdentityEligibilityGate | null = null,
   ) {}
 
   private async reconcileStaleExecutingLeases(cutoff: Date): Promise<void> {
@@ -62,13 +65,40 @@ export class AbsenteeBidService implements IAbsenteeBidService {
         status: 400,
       });
     }
+    if (this.identityEligibilityGate) {
+      const identityResult = await this.identityEligibilityGate.assertSelfServiceEligible(
+        input.userId,
+      );
+      if (identityResult.isErr()) {
+        return err({
+          message: identityResult.error.message,
+          status: identityResult.error.status,
+          ...(identityResult.error.code ? { code: identityResult.error.code } : {}),
+        });
+      }
+    }
     if (this.legalEntityRepository) {
+      const entity = await this.legalEntityRepository.findById(input.buyerLegalEntityId);
+      if (!entity) {
+        return err({ message: "Buyer legal entity not found", status: 404 });
+      }
+      if (!buyerEntityCanBid(entity.status)) {
+        return err({
+          message: "Buyer legal entity is not authorised to bid",
+          status: 403,
+          code: "entity_not_authorised_to_bid",
+        });
+      }
       const mem = await this.legalEntityRepository.findActiveMembership(
         input.userId,
         input.buyerLegalEntityId,
       );
       if (!mem) {
-        return err({ message: "Not a member of the selected legal entity", status: 403 });
+        return err({
+          message: "Not a member of the selected legal entity",
+          status: 403,
+          code: "membership_required",
+        });
       }
     }
 

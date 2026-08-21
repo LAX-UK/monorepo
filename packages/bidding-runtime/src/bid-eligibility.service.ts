@@ -4,14 +4,14 @@ import { type Result, err, ok } from "neverthrow";
 import { BidError } from "./bid-error.js";
 import type { IAmlBidGate } from "./bid/aml-bid.gate.js";
 import type { BuyerAgentBidGate } from "./bid/buyer-agent-bid.gate.js";
-import type { IKycBidGate } from "./bid/kyc-bid.gate.js";
+import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
 import type { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";
 import type { SaleRegistrationBidGate } from "./bid/sale-registration-bid.gate.js";
 import type { BidEligibilityCheckInput, IBidEligibility } from "./ports.js";
 
 export class BidEligibilityService implements IBidEligibility {
   constructor(
-    private readonly kycGate: IKycBidGate,
+    private readonly identityEligibilityGate: IBidIdentityEligibilityGate,
     private readonly amlGate: IAmlBidGate,
     private readonly lotRulesReader: IBidLotRulesReader,
     private readonly membershipReader: IBidMembershipReader,
@@ -37,9 +37,13 @@ export class BidEligibilityService implements IBidEligibility {
       maxAutoBidAmount != null && Number.isFinite(maxAutoBidAmount)
         ? Math.max(amount, maxAutoBidAmount)
         : amount;
+    const validatedOperatorChannel = placedVia === "telephone" || placedVia === "saleroom";
 
-    const kycResult = await this.kycGate.assertCanBid(placedByUserId);
-    if (kycResult.isErr()) return kycResult;
+    if (!validatedOperatorChannel) {
+      const identityResult =
+        await this.identityEligibilityGate.assertSelfServiceEligible(placedByUserId);
+      if (identityResult.isErr()) return identityResult;
+    }
 
     const amlResult = await this.amlGate.assertCanBid(placedByUserId);
     if (amlResult.isErr()) return amlResult;
@@ -99,6 +103,13 @@ export class BidEligibilityService implements IBidEligibility {
         if (e instanceof BidError) return err(e);
         throw e;
       }
+    }
+
+    if (validatedOperatorChannel) {
+      const identityResult = operatorBypass
+        ? await this.identityEligibilityGate.assertValidatedOperatorEligible(placedByUserId)
+        : await this.identityEligibilityGate.assertSelfServiceEligible(placedByUserId);
+      if (identityResult.isErr()) return identityResult;
     }
 
     if (saleId) {

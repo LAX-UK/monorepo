@@ -58,8 +58,11 @@ export function createBiddingKillSwitchMiddleware(env: Env | undefined) {
   });
 }
 
-export function createOptionalKycGate(kyc: Container["kycService"]) {
-  return kyc?.isConfigured() === true
+export function createOptionalKycGate(
+  kyc: Container["kycService"],
+  strictBidEligibilityEnabled = false,
+) {
+  return !strictBidEligibilityEnabled && kyc?.isConfigured() === true
     ? createRequireKyc(kyc)
     : createMiddleware<{ Variables: { userId?: string } }>(async (_c, next) => {
         await next();
@@ -96,7 +99,10 @@ export function createBuyerParticipationMiddleware(
   const requireAuth = createRequireAuth(input.authenticator, {
     isSuspended: (id) => input.userSuspensionChecker.isSuspended(id),
   });
-  const kycGate = createOptionalKycGate(input.kycService);
+  const strictBidEligibilityEnabled =
+    input.env?.STRICT_BID_ELIGIBILITY_ENABLED ??
+    (input.env?.APP_ENV != null && input.env.APP_ENV !== "production");
+  const kycGate = createOptionalKycGate(input.kycService, strictBidEligibilityEnabled);
   const biddingKillSwitch = createBiddingKillSwitchMiddleware(input.env);
   const bidUserRateLimit = createBidUserRateLimitMiddleware(input.redis);
   const requireLegalEntity = input.requireSubmissionsLegalEntityContext;

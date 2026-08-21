@@ -232,6 +232,11 @@ const envSchema = z
     KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
     /** ISO currency code for KYC threshold comparisons (e.g. GBP). */
     KYC_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
+    /** Hard self-service bid gate; defaults off in production and on elsewhere. */
+    STRICT_BID_ELIGIBILITY_ENABLED: z.preprocess((val) => {
+      if (val === undefined || val === "") return undefined;
+      return val === "true" || val === true;
+    }, z.boolean().optional()),
     /**
      * Source-of-Funds threshold (GBP major units). At/above this settlement value
      * (or when AML risk indicators are present) SoF evidence must be collected and
@@ -593,6 +598,13 @@ export type Env = z.infer<typeof envSchema>;
 /** Exported for unit tests validating deployment env constraints. */
 export { envSchema };
 
+export function resolveStrictBidEligibilityEnabled(input: {
+  APP_ENV: Env["APP_ENV"];
+  STRICT_BID_ELIGIBILITY_ENABLED?: boolean | undefined;
+}): boolean {
+  return input.STRICT_BID_ELIGIBILITY_ENABLED ?? input.APP_ENV !== "production";
+}
+
 export function loadEnv(): Env {
   const parsed = envSchema.safeParse(process.env);
   if (!parsed.success) {
@@ -603,5 +615,6 @@ export function loadEnv(): Env {
   return {
     ...env,
     ENABLE_BULL_BOARD: env.ENABLE_BULL_BOARD ?? env.APP_ENV !== "production",
+    STRICT_BID_ELIGIBILITY_ENABLED: resolveStrictBidEligibilityEnabled(env),
   };
 }

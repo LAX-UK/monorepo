@@ -8,6 +8,13 @@ export {
 } from "./sale-status-policy.js";
 export { buyerEntityCanBid } from "./buyer-entity-bid-eligibility.js";
 export {
+  evaluateSelfServiceActorBidEligibility,
+  type SelfServiceActorBidEligibility,
+  type SelfServiceActorBidEligibilityInput,
+  type SelfServiceActorBidIneligibilityCode,
+  type SelfServiceActorKycStatus,
+} from "./self-service-actor-bid-eligibility.js";
+export {
   bidAmountBelowMinimum,
   effectiveBidderStepMoney,
   lotDefaultAutoBidStepMin,

@@ -55,6 +55,7 @@ export type ProfileMeRow = {
   hasSeenActingContextTooltip: boolean;
   kycStatus: "unverified" | "pending" | "approved" | "rejected";
   signupPersona: "individual" | "organisation" | null;
+  categoryInterestsOnboardingCompletedAt?: Date | null;
   /** When set, a self-serve deletion has been requested (GDPR). */
   deletionRequestedAt: Date | null;
   /** TOTP / backup-code 2FA enabled for this account (Better Auth). */

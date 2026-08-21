@@ -368,6 +368,48 @@ describe("BidService.placeBid", () => {
     expect(lotRepo.findByIdForUpdate).not.toHaveBeenCalled();
   });
 
+  it("returns actor identity errors before a lead entity status", async () => {
+    const lotRepo = baseLotRepo({
+      findByIdForUpdate: vi.fn(),
+    });
+    const bidEligibility: IBidEligibility = {
+      assertCanPlaceBid: vi
+        .fn()
+        .mockResolvedValue(
+          err(new BidError("Verify your email before bidding", 403, "email_not_verified")),
+        ),
+    };
+    const legalEntityRepository = {
+      findById: vi.fn().mockResolvedValue({ id: "le-collector", status: "lead" }),
+    };
+    const service = createBidService({
+      repos: createMockFactory(lotRepo, baseBidRepo()),
+      strategyFactory,
+      cache: { set: vi.fn(), get: vi.fn(), del: vi.fn() },
+      notifications: new NotificationService(
+        { notifyBidPlaced: vi.fn() },
+        { notifyLotExtended: vi.fn(), notifyLotEnded: vi.fn(), notifyProxyCancelled: vi.fn() },
+      ),
+      lotJobs: null,
+      bidEligibility,
+      legalEntityRepository: legalEntityRepository as never,
+    });
+
+    const result = await service.placeBid({
+      placedByUserId: "u1",
+      buyerLegalEntityId: "le-collector",
+      lotId: "auc-1",
+      amount: 150,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("email_not_verified");
+    }
+    expect(legalEntityRepository.findById).not.toHaveBeenCalled();
+    expect(lotRepo.findByIdForUpdate).not.toHaveBeenCalled();
+  });
+
   it("still enforces KYC when buyer entity is connect_pending", async () => {
     const lotRepo = baseLotRepo({
       findByIdForUpdate: vi.fn(),

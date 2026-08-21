@@ -1,8 +1,10 @@
 import {
   AmlBidGate,
   BidEligibilityService,
+  BidIdentityEligibilityGate,
   BuyerAgentBidGate,
   type IBidEligibility,
+  type IBidIdentityEligibilityGate,
   type IKycThresholdGate,
   KycBidGate,
   NoOpKycBidGate,
@@ -14,6 +16,7 @@ import type { Database } from "@auction/db";
 import type { IAmlHoldStore } from "@auction/persistence/interfaces";
 import {
   DrizzleAmlHoldStore,
+  DrizzleBidActorEligibilityReader,
   DrizzleBidLotRulesReader,
   DrizzleBidMembershipReader,
   DrizzleBuyerAgentAuthorisationReader,
@@ -26,9 +29,11 @@ import type { WorkerEnv } from "../env.js";
 
 export type CreateWorkerBidEligibilityInput = {
   db: Database;
-  env: Pick<WorkerEnv, "KYC_THRESHOLD_AMOUNT" | "ABSENTEE_REPLAY_OWNER">;
+  env: Pick<WorkerEnv, "KYC_THRESHOLD_AMOUNT" | "ABSENTEE_REPLAY_OWNER"> &
+    Partial<Pick<WorkerEnv, "STRICT_BID_ELIGIBILITY_ENABLED" | "APP_ENV">>;
   amlHoldStore?: IAmlHoldStore;
   kycThresholdGate?: IKycThresholdGate;
+  identityEligibilityGate?: IBidIdentityEligibilityGate;
 };
 
 export function isWorkerBidKycEnforcementActive(
@@ -46,20 +51,38 @@ export function createWorkerBidEligibility(
   const { db, env } = input;
   const operatorReader = new DrizzleOperatorPlacementReader(db);
   const amlHoldStore = input.amlHoldStore ?? new DrizzleAmlHoldStore(db);
-  const kycEnforcementActive = isWorkerBidKycEnforcementActive(env);
-  const kycGate =
-    input.kycThresholdGate ??
-    (kycEnforcementActive
-      ? new WorkerKycThresholdGate(new DrizzleKycRepository(db), env.KYC_THRESHOLD_AMOUNT)
-      : null);
+  const identityEligibilityGate =
+    input.identityEligibilityGate ??
+    createWorkerBidIdentityEligibilityGate(db, env, input.kycThresholdGate);
 
   return new BidEligibilityService(
-    kycGate ? new KycBidGate(kycGate) : new NoOpKycBidGate(),
+    identityEligibilityGate,
     new AmlBidGate(amlHoldStore),
     new DrizzleBidLotRulesReader(db),
     new DrizzleBidMembershipReader(db),
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
     new BuyerAgentBidGate(new DrizzleBuyerAgentAuthorisationReader(db)),
+  );
+}
+
+export function createWorkerBidIdentityEligibilityGate(
+  db: Database,
+  env: Pick<WorkerEnv, "KYC_THRESHOLD_AMOUNT" | "ABSENTEE_REPLAY_OWNER"> &
+    Partial<Pick<WorkerEnv, "STRICT_BID_ELIGIBILITY_ENABLED" | "APP_ENV">>,
+  kycThresholdGate?: IKycThresholdGate,
+): IBidIdentityEligibilityGate {
+  const thresholdService =
+    kycThresholdGate ??
+    (isWorkerBidKycEnforcementActive(env)
+      ? new WorkerKycThresholdGate(new DrizzleKycRepository(db), env.KYC_THRESHOLD_AMOUNT)
+      : null);
+  const thresholdGate = thresholdService ? new KycBidGate(thresholdService) : new NoOpKycBidGate();
+  const enabled =
+    env.STRICT_BID_ELIGIBILITY_ENABLED ?? (env.APP_ENV ?? "development") !== "production";
+  return new BidIdentityEligibilityGate(
+    new DrizzleBidActorEligibilityReader(db),
+    thresholdGate,
+    enabled,
   );
 }

@@ -40,6 +40,10 @@ export { BidService, type BidServiceOptions } from "./bid.service.js";
 export { createBidPlacer, type CreateBidPlacerDeps } from "./create-bid-placer.js";
 export { AmlBidGate, NoOpAmlBidGate, type IAmlBidGate } from "./bid/aml-bid.gate.js";
 export { BuyerAgentBidGate } from "./bid/buyer-agent-bid.gate.js";
+export {
+  BidIdentityEligibilityGate,
+  type IBidIdentityEligibilityGate,
+} from "./bid/identity-bid-eligibility.gate.js";
 export { KycBidGate, NoOpKycBidGate, type IKycBidGate } from "./bid/kyc-bid.gate.js";
 export { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";
 export { SaleRegistrationBidGate } from "./bid/sale-registration-bid.gate.js";

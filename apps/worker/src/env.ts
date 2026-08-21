@@ -83,6 +83,10 @@ const envSchema = z
     VERIFF_SHARED_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
     KYC_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
+    STRICT_BID_ELIGIBILITY_ENABLED: z.preprocess((val) => {
+      if (val === undefined || val === "") return undefined;
+      return val === "true" || val === true;
+    }, z.boolean().optional()),
     XERO_API_WRITES_DISABLED: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
@@ -189,5 +193,9 @@ export function loadWorkerEnv(): WorkerEnv {
     console.error(parsed.error.flatten());
     throw new Error("Invalid worker environment variables");
   }
-  return parsed.data;
+  return {
+    ...parsed.data,
+    STRICT_BID_ELIGIBILITY_ENABLED:
+      parsed.data.STRICT_BID_ELIGIBILITY_ENABLED ?? parsed.data.APP_ENV !== "production",
+  };
 }
