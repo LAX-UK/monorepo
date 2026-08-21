@@ -9,6 +9,7 @@ import {
 } from "@/components/kyc/kyc-copy";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
 import type { DashboardOverviewVm } from "@/lib/data/view-models/dashboard-overview.vm";
+import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { portfolioSettlementAttentionAction } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
 
@@ -44,7 +45,7 @@ export function buildAttentionItems({
         id: "kyc-resubmit",
         title: kyc.feedback.headline,
         hint: kyc.feedback.detail ?? "Complete the missing checks and resubmit.",
-        href: "/dashboard/verify-identity",
+        href: dashboardIdentityOnboardingHref(),
         ctaLabel: kycLinkActionLabel(feedback, "short"),
       });
     } else if (isKycInReview(kyc)) {
@@ -52,7 +53,7 @@ export function buildAttentionItems({
         id: "kyc-pending",
         title: "Identity verification in review",
         hint: feedback.detail ?? "We will notify you once the check completes",
-        href: "/dashboard/verify-identity",
+        href: dashboardIdentityOnboardingHref(),
         ctaLabel: kycLinkActionLabel(feedback, "short"),
       });
     } else if (isKycSessionContinuable(kyc)) {
@@ -60,7 +61,7 @@ export function buildAttentionItems({
         id: "kyc-continuable",
         title: feedback.headline,
         hint: feedback.detail ?? "Complete the document and selfie checks in the secure window.",
-        href: "/dashboard/verify-identity",
+        href: dashboardIdentityOnboardingHref(),
         ctaLabel: kycLinkActionLabel(feedback, "short"),
       });
     } else if (kyc.status === "rejected") {
@@ -68,7 +69,7 @@ export function buildAttentionItems({
         id: "kyc-rejected",
         title: kyc.feedback?.headline ?? "Identity verification was rejected",
         hint: kyc.feedback?.detail ?? "Resubmit to keep bidding above the threshold",
-        href: "/dashboard/verify-identity",
+        href: dashboardIdentityOnboardingHref(),
         ctaLabel: "Resubmit",
       });
     } else if (kyc.requiresKyc && kyc.status !== "approved") {
@@ -76,7 +77,7 @@ export function buildAttentionItems({
         id: "kyc-required",
         title: "Identity verification required",
         hint: KYC_ATTENTION_REQUIRED_HINT,
-        href: "/dashboard/verify-identity",
+        href: dashboardIdentityOnboardingHref(),
         ctaLabel: "Verify",
       });
     }

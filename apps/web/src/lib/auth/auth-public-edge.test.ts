@@ -46,19 +46,19 @@ describe("getAuthPublicCookieRedirectUrl", () => {
     expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session=1")).toBeNull();
   });
 
-  it("redirects login with cookie to safe next", () => {
+  it("routes cookie login through the server decision with safe next", () => {
     const u = new URL("http://localhost:3000/login?next=/dashboard/bids");
     const out = getAuthPublicCookieRedirectUrl(u, "better-auth.session=1");
-    expect(out?.pathname).toBe("/dashboard/bids");
-    expect(out?.searchParams.get("from")).toBe("auth-edge");
+    expect(out?.pathname).toBe("/auth/post-login");
+    expect(out?.searchParams.get("next")).toBe("/dashboard/bids");
     expect(out?.searchParams.get("welcome")).toBe("back");
   });
 
-  it("falls back to post-auth callback when next is unsafe", () => {
+  it("drops an unsafe next before the server decision", () => {
     const u = new URL("http://localhost:3000/login?next=//evil.com");
     const out = getAuthPublicCookieRedirectUrl(u, "session_token=x");
-    expect(out?.pathname).toBe("/auth/social-callback");
-    expect(out?.searchParams.get("from")).toBeNull();
+    expect(out?.pathname).toBe("/auth/post-login");
+    expect(out?.searchParams.get("next")).toBeNull();
   });
 });
 

@@ -1,4 +1,7 @@
 import type { KycStatusSummaryDto, KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import { type KycLinkActionFeedback, kycLinkActionLabel } from "@/lib/kyc/kyc-link-action-copy";
+
+export { kycLinkActionLabel, type KycLinkActionFeedback };
 
 export const KYC_PROVIDER_NAME = "Veriff";
 
@@ -90,20 +93,6 @@ export function effectiveKycPhase(
   return kycInitialPhase(summary);
 }
 
-export function kycLinkActionLabel(
-  feedback: KycLinkActionFeedback | null | undefined,
-  variant: "short" | "long" = "long",
-): string {
-  if (feedback?.needsResubmit || feedback?.action === "continue") {
-    return variant === "short" ? "Continue" : "Continue verification";
-  }
-  if (feedback?.action === "retry") return variant === "short" ? "Retry" : "Try again";
-  if (feedback?.action === "wait") {
-    return variant === "short" ? "In review" : "Verification in review";
-  }
-  return variant === "short" ? "Verify" : "Verify identity";
-}
-
 export function kycVerifyButtonLabel(
   summary: KycStatusSummaryDto | null,
   phase: KycUiPhase,
@@ -141,9 +130,6 @@ export type KycComplianceIdentityPill = {
   tone: KycCompliancePillTone;
   hint?: string;
 };
-
-/** Subset of KYC feedback used for CTA label copy (bid errors, callouts). */
-export type KycLinkActionFeedback = Partial<Pick<KycUserFeedbackDto, "needsResubmit" | "action">>;
 
 /**
  * User-facing KYC UX must not branch on raw `summary.status` alone — use these helpers

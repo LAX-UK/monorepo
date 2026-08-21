@@ -25,7 +25,7 @@ import {
 } from "../interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import { KycDecisionProcessor } from "./kyc-decision-processor.js";
-import { assertHttpsReturnUrl, normalizeKycReturnUrl } from "./kyc-return-url.js";
+import { assertKycReturnUrlAllowed, normalizeKycReturnUrl } from "./kyc-return-url.js";
 import {
   buildKycUserFeedback,
   mergeKycDecisionPayload,
@@ -130,7 +130,7 @@ export class VeriffKycService implements IKycService {
     }
 
     const callbackUrl = normalizeKycReturnUrl(returnUrl, this.webOrigin);
-    assertHttpsReturnUrl(callbackUrl);
+    assertKycReturnUrlAllowed(callbackUrl, this.webOrigin);
 
     const { sessionId, verificationUrl } = await this.veriffClient.createSession({
       userId,

@@ -51,7 +51,11 @@ export function createKycRoutes(container: Container, authenticator: IAuthentica
         return c.json({ error: err.code }, 409);
       }
       const message = err instanceof Error ? err.message : "";
-      if (message === "kyc_return_url_must_be_https" || message === "kyc_return_url_invalid") {
+      if (
+        message === "kyc_return_url_must_be_https" ||
+        message === "kyc_return_url_invalid" ||
+        message === "kyc_return_url_origin_not_allowed"
+      ) {
         return c.json({ error: message }, 400);
       }
       throw err;

@@ -31,6 +31,7 @@ type Props = {
   variant?: "default" | "outline" | "secondary";
   disabled?: boolean;
   className?: string;
+  buttonClassName?: string;
 };
 
 export function KycVerificationLauncher({
@@ -43,6 +44,7 @@ export function KycVerificationLauncher({
   variant = "default",
   disabled = false,
   className,
+  buttonClassName,
 }: Props) {
   const router = useRouter();
   const [clientPhase, setClientPhase] = useState<KycUiPhase>(() => kycInitialPhase(kycSummary));
@@ -142,6 +144,7 @@ export function KycVerificationLauncher({
       <Button
         type="button"
         variant={variant}
+        className={buttonClassName}
         disabled={disabled || busy || !canStart}
         onClick={() => void onStart()}
       >

@@ -5,6 +5,7 @@ import {
   artistWatchlistArtistIdParamSchema,
   artistWatchlistBodySchema,
   biddingPreferencesPatchSchema,
+  categoryInterestsPutSchema,
   createAddressBodySchema,
   formatPhoneDisplay,
   listMyConditionReportRequestsQuerySchema,
@@ -54,6 +55,33 @@ const deleteAccountBodySchema = z.object({
 const sessionIdParamSchema = z.object({
   sessionId: z.string().min(8, "Invalid session id"),
 });
+
+function presentCategoryInterests(state: {
+  categoryIds: string[];
+  onboardingCompletedAt: Date | null;
+}) {
+  return {
+    categoryIds: state.categoryIds,
+    onboardingCompleted: state.onboardingCompletedAt !== null,
+    onboardingCompletedAt: state.onboardingCompletedAt?.toISOString() ?? null,
+  };
+}
+
+function isCategoryInterestsEligible(
+  profile: {
+    role: string;
+    suspended: boolean;
+    emailVerified: boolean;
+    signupPersona: "individual" | "organisation" | null;
+  } | null,
+): boolean {
+  return (
+    profile?.role === "client" &&
+    !profile.suspended &&
+    profile.emailVerified &&
+    profile.signupPersona === "individual"
+  );
+}
 
 export function createUserRoutes(container: Container, authenticator: IAuthenticator) {
   const requireAuth = createRequireAuth(authenticator, {
@@ -558,6 +586,79 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     return c.json({ data });
   });
 
+  r.get("/me/category-interests", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const state = await container.categoryInterestsRepository.getForUser(userId);
+    return c.json({ data: presentCategoryInterests(state) });
+  });
+
+  r.put(
+    "/me/category-interests",
+    requireAuth,
+    zValidator("json", categoryInterestsPutSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { categoryIds } = c.req.valid("json");
+      const profile = await container.profileService.getProfile(userId);
+      if (!isCategoryInterestsEligible(profile)) {
+        return c.json(
+          {
+            error: "Category-interest onboarding is not available for this account",
+            code: "category_interests_not_eligible",
+          },
+          403,
+        );
+      }
+      const result = await container.categoryInterestsRepository.replaceAndComplete(
+        userId,
+        categoryIds,
+      );
+      if (!result.ok) {
+        return c.json(
+          {
+            error: "One or more categories do not exist",
+            code: "category_interests_invalid_category",
+            invalidCategoryIds: result.invalidCategoryIds,
+          },
+          422,
+        );
+      }
+      return c.json({ data: presentCategoryInterests(result.state) });
+    },
+  );
+
+  r.put(
+    "/me/category-interests/preferences",
+    requireAuth,
+    zValidator("json", categoryInterestsPutSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { categoryIds } = c.req.valid("json");
+      const profile = await container.profileService.getProfile(userId);
+      if (!isCategoryInterestsEligible(profile)) {
+        return c.json(
+          {
+            error: "Category-interest onboarding is not available for this account",
+            code: "category_interests_not_eligible",
+          },
+          403,
+        );
+      }
+      const result = await container.categoryInterestsRepository.replace(userId, categoryIds);
+      if (!result.ok) {
+        return c.json(
+          {
+            error: "One or more categories do not exist",
+            code: "category_interests_invalid_category",
+            invalidCategoryIds: result.invalidCategoryIds,
+          },
+          422,
+        );
+      }
+      return c.json({ data: presentCategoryInterests(result.state) });
+    },
+  );
+
   r.patch(
     "/me/preferences/ui",
     requireAuth,
@@ -899,6 +1000,7 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
         hasSeenActingContextTooltip: row.hasSeenActingContextTooltip,
         kycStatus: row.kycStatus,
         signupPersona: row.signupPersona,
+        categoryInterestsOnboardingCompletedAt: row.categoryInterestsOnboardingCompletedAt,
         deletionRequestedAt: row.deletionRequestedAt,
         twoFactorEnabled: row.twoFactorEnabled,
         suspended: row.suspended,

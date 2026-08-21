@@ -14,6 +14,7 @@ import { OrgOnboardingResumeBanner } from "@/components/dashboard/org-onboarding
 import { EmailStatusBanner } from "@/components/layout/email-status-banner";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto, OrgOnboardingResumeVm } from "@/lib/data/dto/dashboard-dtos";
+import { shouldOfferIdentityOnboarding } from "@/lib/kyc/identity-onboarding";
 import type { LegalEntitySummary } from "@auction/types";
 import Link from "next/link";
 
@@ -34,6 +35,7 @@ type StackProps = {
   kycSummary: KycStatusSummaryDto | null;
   orgOnboardingResume: OrgOnboardingResumeVm | null;
   orgModuleEnabled?: boolean;
+  kycOnboardingEnabled?: boolean;
   maxVisible?: number;
   compactOverflow?: boolean;
   /** Skip org entity status banner (e.g. org detail layout renders its own). */
@@ -55,6 +57,7 @@ export function DashboardBannerStack({
   kycSummary,
   orgOnboardingResume,
   orgModuleEnabled = true,
+  kycOnboardingEnabled = false,
   maxVisible = 2,
   compactOverflow = false,
   suppressOrgStatusBanner = false,
@@ -63,12 +66,25 @@ export function DashboardBannerStack({
   suppressConnectPendingEntityBanner = false,
 }: StackProps) {
   const candidates: DashboardBannerCandidate[] = [];
+  const proactiveKyc =
+    !kycSummary?.requiresKyc &&
+    shouldOfferIdentityOnboarding({
+      enabled: kycOnboardingEnabled,
+      summary: kycSummary,
+      signupPersona: user.signupPersona,
+    });
 
-  if (kycSummary?.requiresKyc && !suppressKycOnOverview) {
+  if (kycSummary && (kycSummary.requiresKyc || proactiveKyc) && !suppressKycOnOverview) {
     candidates.push({
       id: "kyc",
       priority: DASHBOARD_BANNER_PRIORITIES.kyc,
-      node: <KycVerificationBanner summary={kycSummary} />,
+      node: (
+        <KycVerificationBanner
+          summary={kycSummary}
+          proactive={proactiveKyc}
+          onboardingEnabled={kycOnboardingEnabled}
+        />
+      ),
     });
   }
 

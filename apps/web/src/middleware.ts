@@ -72,10 +72,10 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
 
 const CSP_REPORT_ONLY = process.env.CSP_ENFORCE !== "1";
 
-/** Pass pathname + search to server components for org onboarding auth redirects. */
-function applyOrgOnboardingPathHeaders(request: NextRequest, reqHeaders: Headers): void {
+/** Pass pathname + search to server components for onboarding auth/rollback redirects. */
+function applyOnboardingPathHeaders(request: NextRequest, reqHeaders: Headers): void {
   const { pathname, search } = request.nextUrl;
-  if (pathname.startsWith("/onboarding/organisation")) {
+  if (pathname.startsWith("/onboarding/")) {
     reqHeaders.set("x-pathname", pathname);
     reqHeaders.set("x-search", search);
   }
@@ -98,7 +98,7 @@ export async function middleware(request: NextRequest) {
   let baseResponse: ReturnType<typeof NextResponse.next> | ReturnType<typeof NextResponse.redirect>;
 
   if (tagged) {
-    applyOrgOnboardingPathHeaders(request, tagged.request.headers);
+    applyOnboardingPathHeaders(request, tagged.request.headers);
     const res = NextResponse.next(tagged);
     res.headers.set("x-nonce", nonce);
     baseResponse = res;
@@ -113,7 +113,7 @@ export async function middleware(request: NextRequest) {
 
     const reqHeaders = new Headers(request.headers);
     reqHeaders.set("x-nonce", nonce);
-    applyOrgOnboardingPathHeaders(request, reqHeaders);
+    applyOnboardingPathHeaders(request, reqHeaders);
     baseResponse = NextResponse.next({ request: { headers: reqHeaders } });
   }
 

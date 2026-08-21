@@ -9,6 +9,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav-badge";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -31,9 +32,17 @@ export const metadata: Metadata = {
   title: { default: "Dashboard", template: "%s \u00B7 Dashboard \u00B7 LAX" },
 };
 
-export default async function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
-  const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
+  const kycOnboardingEnabled = isIdentityOnboardingEnabled();
+  const user = await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: "/dashboard",
+  });
   const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
   const c = await getServerDataContainer();
   const pendingGw = createPendingInvitationsGateway();
@@ -84,7 +93,10 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const cookieDensity =
     fromUserDensity ?? parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
 
-  const { acting, safeActing } = deriveActingContext({ actingContext, orgModuleEnabled });
+  const { acting, safeActing } = deriveActingContext({
+    actingContext,
+    orgModuleEnabled,
+  });
 
   // Prefetch for pathname-resolved selling nav (cookie may still be "buying" on /dashboard/seller/*).
   const sellerConnectNavBadge = await loadSellerConnectNavBadge(user.role, user.staffRole ?? null);
@@ -122,6 +134,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               kycSummary={kycSummary}
               orgOnboardingResume={orgModuleEnabled ? orgOnboardingResume : null}
               orgModuleEnabled={orgModuleEnabled}
+              kycOnboardingEnabled={kycOnboardingEnabled}
             />
           </>
         }

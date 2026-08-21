@@ -6,12 +6,11 @@ import {
   POST_AUTH_SESSION_LOAD_ERROR,
   fetchSessionUserWithRetry,
 } from "@/lib/auth/fetch-session-user-with-retry.client";
-import { resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { postLoginHandoffHref } from "@/lib/auth/post-login-handoff";
 import { verifyBackupCodeService } from "@/lib/auth/services/verify-backup-code.service";
 import { verifyTotpService } from "@/lib/auth/services/verify-totp.service";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { notify } from "@/lib/ui/notify";
-import { normalizeUserRoleOrClient } from "@auction/types";
 import { backupCodeFormSchema, totpVerifyFormSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -47,18 +46,7 @@ export function useVerifyTotpController(nextHref: string) {
       notify.error(POST_AUTH_SESSION_LOAD_ERROR);
       return;
     }
-    router.push(
-      resolvePostAuthDestination({
-        user: {
-          ...me,
-          role: normalizeUserRoleOrClient(me.role),
-        },
-        requestedNext: nextHref,
-        context: "sign-in",
-        requireEmailVerification: false,
-        withWelcomeBack: true,
-      }),
-    );
+    router.push(postLoginHandoffHref(nextHref, { withWelcomeBack: true }));
     router.refresh();
   }, [nextHref, refetchSession, router]);
 

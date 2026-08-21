@@ -1,7 +1,8 @@
 "use client";
 
 import { useConnectedAccounts } from "@/lib/auth/hooks/use-connected-accounts";
-import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import { postLoginHandoffHref } from "@/lib/auth/post-login-handoff";
 import { type ResetPasswordFormValues, resetPasswordFormSchema } from "@/lib/auth/schemas";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,15 +33,7 @@ export function useActivateSetPasswordController(
     defaultValues: { newPassword: "", confirmPassword: "" },
   });
 
-  const destination =
-    safeNext ??
-    (user != null
-      ? resolvePostAuthDestination({
-          user,
-          context: "sign-in",
-          requireEmailVerification: false,
-        })
-      : "/dashboard");
+  const destination = postLoginHandoffHref(safeNext);
 
   const finish = useCallback(() => {
     if (navigatedRef.current) return;

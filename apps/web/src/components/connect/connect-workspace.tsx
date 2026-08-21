@@ -33,6 +33,7 @@ import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { normalizeKycReturnUrl } from "@/lib/kyc";
+import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { isActionableStripeDisabledReason, shouldSkipConnect } from "@auction/connect";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -204,7 +205,9 @@ export function ConnectWorkspace({
             />
           ) : (
             <Button asChild variant="cta" size="sm">
-              <a href="/dashboard/verify-identity">Verify identity</a>
+              <a href={dashboardIdentityOnboardingHref("/dashboard/seller/connect")}>
+                Verify identity
+              </a>
             </Button>
           )}
         </Surface>
