@@ -9,6 +9,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav-badge";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -33,6 +34,7 @@ export const metadata: Metadata = {
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  const kycOnboardingEnabled = isIdentityOnboardingEnabled();
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
   const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
   const c = await getServerDataContainer();
@@ -122,6 +124,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               kycSummary={kycSummary}
               orgOnboardingResume={orgModuleEnabled ? orgOnboardingResume : null}
               orgModuleEnabled={orgModuleEnabled}
+              kycOnboardingEnabled={kycOnboardingEnabled}
             />
           </>
         }

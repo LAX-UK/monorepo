@@ -3,6 +3,11 @@ import type { UserRouteServices } from "../services/interfaces/user-routes/index
 
 export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): UserRouteServices {
   return {
+    categoryInterestsHttp: {
+      getForUser: vi.fn(),
+      replacePreferences: vi.fn(),
+      replaceAndComplete: vi.fn(),
+    },
     publicHttp: {
       register: vi.fn(),
       listPublicArtists: vi.fn(),

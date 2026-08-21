@@ -134,7 +134,10 @@ export function trackSearch(query: string): string | null {
   return eventId;
 }
 
-export function trackQuickLookOpen(input: { lotId: string; source?: string }): string | null {
+export function trackQuickLookOpen(input: {
+  lotId: string;
+  source?: string;
+}): string | null {
   if (!guardAnalytics()) return null;
   const eventId = newEventId();
   pushDataLayer({
@@ -267,6 +270,81 @@ export function trackPurchase(input: {
     currency: input.currency ?? "GBP",
   });
   return eventId;
+}
+
+export type KycOnboardingEvent =
+  | "kyc_onboarding_view"
+  | "kyc_onboarding_skip"
+  | "kyc_onboarding_started"
+  | "kyc_onboarding_resumed"
+  | "kyc_onboarding_submitted";
+
+export type BuyerPersonalizationEvent =
+  | "buyer_interests_viewed"
+  | "buyer_interests_completed"
+  | "buyer_interests_skipped"
+  | "buyer_recommendations_viewed"
+  | "buyer_recommendations_empty"
+  | "buyer_recommendations_continued"
+  | "contextual_kyc_gate_triggered"
+  | "contextual_kyc_returned";
+
+export type BuyerOnboardingAnalyticsSource =
+  | "post_verify"
+  | "sign_in_resume"
+  | "sign_in"
+  | "dashboard"
+  | "direct"
+  | "bid_gate"
+  | "registration"
+  | "telephone"
+  | "condition_report";
+
+export function trackKycOnboarding(input: {
+  event: KycOnboardingEvent;
+  step: "why" | "verify";
+  source?: BuyerOnboardingAnalyticsSource;
+}): string | null {
+  if (!guardAnalytics()) return null;
+  const eventId = newEventId();
+  pushDataLayer({
+    event: input.event,
+    event_id: eventId,
+    onboarding_step: input.step,
+    ...(input.source ? { onboarding_source: input.source } : {}),
+  });
+  return eventId;
+}
+
+export function trackBuyerPersonalization(input: {
+  event: BuyerPersonalizationEvent;
+  source?: BuyerOnboardingAnalyticsSource;
+  selectedCount?: number;
+}): string | null {
+  if (!guardAnalytics()) return null;
+  const eventId = newEventId();
+  pushDataLayer({
+    event: input.event,
+    event_id: eventId,
+    ...(input.source ? { onboarding_source: input.source } : {}),
+    ...(typeof input.selectedCount === "number"
+      ? { interest_selection_count: input.selectedCount }
+      : {}),
+  });
+  return eventId;
+}
+
+export function trackContextualKycGate(input: {
+  event: Extract<
+    BuyerPersonalizationEvent,
+    "contextual_kyc_gate_triggered" | "contextual_kyc_returned"
+  >;
+  source: Extract<
+    BuyerOnboardingAnalyticsSource,
+    "bid_gate" | "registration" | "telephone" | "condition_report"
+  >;
+}): string | null {
+  return trackBuyerPersonalization(input);
 }
 
 export type { MarketingEventName };

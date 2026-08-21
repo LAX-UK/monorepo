@@ -15,5 +15,5 @@ export function kycLinkActionLabel(
   if (feedback?.action === "wait") {
     return variant === "short" ? "In review" : "Verification in review";
   }
-  return variant === "short" ? "Verify" : "Verify identity";
+  return variant === "short" ? "Verify" : "Verify to continue bidding";
 }

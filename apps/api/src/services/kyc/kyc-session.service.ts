@@ -6,7 +6,7 @@ import {
   KycAlreadyApprovedError,
   KycNotConfiguredError,
 } from "../interfaces/kyc-service.js";
-import { assertHttpsReturnUrl, normalizeKycReturnUrl } from "./kyc-return-url.js";
+import { assertKycReturnUrlAllowed, normalizeKycReturnUrl } from "./kyc-return-url.js";
 import {
   readKycSessionUrl,
   readVeriffReasonCode,
@@ -70,7 +70,7 @@ export class KycSessionService implements IKycSessionService {
     }
 
     const callbackUrl = normalizeKycReturnUrl(returnUrl, this.webOrigin);
-    assertHttpsReturnUrl(callbackUrl);
+    assertKycReturnUrlAllowed(callbackUrl, this.webOrigin);
 
     const { sessionId, verificationUrl } = await this.veriffClient.createSession({
       userId,

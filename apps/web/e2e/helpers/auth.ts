@@ -4,9 +4,13 @@ import { type Page, type Response, expect } from "@playwright/test";
 export const e2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
 export const e2eSkipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web with seeded credentials.";
 
-type Credentials = {
+export type Credentials = {
   email: string;
   password: string;
+};
+
+type LoginOptions = {
+  destination?: RegExp;
 };
 
 const staffCredentials: Credentials = {
@@ -97,7 +101,12 @@ async function readLoginBannerErrors(page: Page): Promise<string> {
   return bannerError.filter(Boolean).join(" · ");
 }
 
-async function login(page: Page, credentials: Credentials): Promise<void> {
+async function login(
+  page: Page,
+  credentials: Credentials,
+  options: LoginOptions = {},
+): Promise<void> {
+  const destination = options.destination ?? /\/(admin|dashboard)/;
   const loginUrl = `/login?email=${encodeURIComponent(credentials.email)}`;
   await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
   await dismissCookieConsentIfVisible(page);
@@ -133,7 +142,7 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
 
   if (await continueAuthed.isVisible().catch(() => false)) {
     await continueAuthed.click();
-    await page.waitForURL(/\/(admin|dashboard)/, {
+    await page.waitForURL(destination, {
       timeout: 60_000,
       waitUntil: "domcontentloaded",
     });
@@ -149,7 +158,7 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
   await password.fill(credentials.password);
   const submit = page.getByRole("button", { name: /^sign in$/i });
   await Promise.all([
-    page.waitForURL(/\/(admin|dashboard)/, {
+    page.waitForURL(destination, {
       timeout: 60_000,
       waitUntil: "domcontentloaded",
     }),
@@ -171,6 +180,15 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
         : `Sign-in did not redirect (${page.url()}). ${String(error)}`,
     );
   });
+}
+
+/** Sign in with a named seeded fixture without duplicating the login journey in specs. */
+export async function loginWithCredentials(
+  page: Page,
+  credentials: Credentials,
+  options?: LoginOptions,
+): Promise<void> {
+  await login(page, credentials, options);
 }
 
 /** Fails fast when auth cookies were not seeded — avoids login-page PNG corruption. */

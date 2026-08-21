@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertHttpsReturnUrl, normalizeKycReturnUrl } from "./kyc-return-url.js";
+import { assertKycReturnUrlAllowed, normalizeKycReturnUrl } from "./kyc-return-url.js";
 
 describe("normalizeKycReturnUrl", () => {
   it("rewrites http localhost using WEB_ORIGIN", () => {
@@ -17,16 +17,25 @@ describe("normalizeKycReturnUrl", () => {
   });
 });
 
-describe("assertHttpsReturnUrl", () => {
-  it("accepts https URLs", () => {
+describe("assertKycReturnUrlAllowed", () => {
+  it("accepts HTTPS URLs on the trusted web origin", () => {
     expect(() =>
-      assertHttpsReturnUrl("https://test.lax.bid/dashboard/verify-identity"),
+      assertKycReturnUrlAllowed(
+        "https://test.lax.bid/dashboard/verify-identity",
+        "https://test.lax.bid",
+      ),
     ).not.toThrow();
   });
 
   it("rejects http URLs", () => {
-    expect(() => assertHttpsReturnUrl("http://localhost:3000/dashboard")).toThrow(
-      "kyc_return_url_must_be_https",
-    );
+    expect(() =>
+      assertKycReturnUrlAllowed("http://localhost:3000/dashboard", "http://localhost:3000"),
+    ).toThrow("kyc_return_url_must_be_https");
+  });
+
+  it("rejects HTTPS URLs on an untrusted origin", () => {
+    expect(() =>
+      assertKycReturnUrlAllowed("https://evil.example/phish", "https://test.lax.bid"),
+    ).toThrow("kyc_return_url_origin_not_allowed");
   });
 });

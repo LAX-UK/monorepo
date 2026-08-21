@@ -1,0 +1,38 @@
+import { AuctionInterestsSettingsForm } from "@/components/dashboard/auction-interests-settings-form";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/app/dashboard/settings/interests/actions", () => ({
+  saveAuctionInterestPreferences: vi.fn(),
+}));
+vi.mock("next/image", () => ({
+  default: ({
+    fill: _fill,
+    priority: _priority,
+    sizes: _sizes,
+    ...props
+  }: React.ImgHTMLAttributes<HTMLImageElement> & {
+    fill?: boolean;
+    priority?: boolean;
+    sizes?: string;
+  }) => (
+    // biome-ignore lint/a11y/useAltText: alt is supplied by the component under test.
+    <img {...props} />
+  ),
+}));
+
+describe("AuctionInterestsSettingsForm", () => {
+  it("updates selections without onboarding skip copy", () => {
+    render(
+      <AuctionInterestsSettingsForm
+        categoryIdBySlug={{ paintings: "category-art" }}
+        initialCategoryIds={[]}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /skip personalization/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/changes here do not repeat onboarding/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Art" }));
+    expect(screen.getByRole("button", { name: "Save interests" })).toBeVisible();
+  });
+});

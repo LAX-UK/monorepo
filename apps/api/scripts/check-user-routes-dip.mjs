@@ -11,6 +11,7 @@ const root = join(__dirname, "..");
 const files = [
   "src/routes/users.ts",
   "src/routes/users/public.routes.ts",
+  "src/routes/users/category-interests.routes.ts",
   "src/routes/users/dashboard.routes.ts",
   "src/routes/users/watchlist.routes.ts",
   "src/routes/users/notifications.routes.ts",

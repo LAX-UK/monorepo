@@ -1,3 +1,4 @@
+import type { IUserCategoryInterestsHttpApplicationService } from "./user-category-interests-http.js";
 import type { IUserDashboardHttpApplicationService } from "./user-dashboard-http.js";
 import type { IUserNotificationsHttpApplicationService } from "./user-notifications-http.js";
 import type { IUserPreferencesHttpApplicationService } from "./user-preferences-http.js";
@@ -7,6 +8,7 @@ import type { IUserSecurityHttpApplicationService } from "./user-security-http.j
 import type { IUserWatchlistHttpApplicationService } from "./user-watchlist-http.js";
 
 export type UserRouteServices = {
+  categoryInterestsHttp: IUserCategoryInterestsHttpApplicationService;
   publicHttp: IUserPublicHttpApplicationService;
   dashboardHttp: IUserDashboardHttpApplicationService;
   watchlistHttp: IUserWatchlistHttpApplicationService;
@@ -17,6 +19,7 @@ export type UserRouteServices = {
 };
 
 export type {
+  IUserCategoryInterestsHttpApplicationService,
   IUserDashboardHttpApplicationService,
   IUserNotificationsHttpApplicationService,
   IUserPreferencesHttpApplicationService,

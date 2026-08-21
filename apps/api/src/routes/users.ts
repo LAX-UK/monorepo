@@ -11,6 +11,7 @@ import {
 import { createTurnstileMiddleware } from "../middleware/turnstile.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { UserRouteDeps } from "./users/_shared.js";
+import { attachUserCategoryInterestsRoutes } from "./users/category-interests.routes.js";
 import { attachUserDashboardRoutes } from "./users/dashboard.routes.js";
 import { attachUserNotificationsRoutes } from "./users/notifications.routes.js";
 import { attachUserPreferencesRoutes } from "./users/preferences.routes.js";
@@ -54,6 +55,7 @@ export function createUserRoutes(
   };
 
   attachUserPublicRoutes(r, deps);
+  attachUserCategoryInterestsRoutes(r, deps);
   attachUserDashboardRoutes(r, deps);
   attachUserWatchlistRoutes(r, deps);
   attachUserNotificationsRoutes(r, deps);

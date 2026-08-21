@@ -1,6 +1,9 @@
 import type { IEmailService } from "@auction/email";
 import type { IAttributionStore } from "@auction/marketing-events";
-import type { INotificationPreferenceRepository } from "@auction/persistence/interfaces";
+import type {
+  ICategoryInterestsRepository,
+  INotificationPreferenceRepository,
+} from "@auction/persistence/interfaces";
 import type { LotReadPort, SaleLookupPort } from "../container/container-slices.js";
 import type { Env } from "../env.js";
 import type { AccountDeletionEligibilityService } from "../services/account-deletion-eligibility.service.js";
@@ -23,6 +26,7 @@ import type { UiPreferenceService } from "../services/ui-preference.service.js";
 import type { UserDashboardReadService } from "../services/user-dashboard-read.service.js";
 import type { UserSecurityReadService } from "../services/user-security-read.service.js";
 import type { UserService } from "../services/user.service.js";
+import { UserCategoryInterestsHttpApplicationService } from "../services/user/user-category-interests-http-application.service.js";
 import { UserDashboardHttpApplicationService } from "../services/user/user-dashboard-http-application.service.js";
 import { UserNotificationsHttpApplicationService } from "../services/user/user-notifications-http-application.service.js";
 import { UserPreferencesHttpApplicationService } from "../services/user/user-preferences-http-application.service.js";
@@ -34,6 +38,7 @@ import type { WatchlistService } from "../services/watchlist.service.js";
 
 export type CreateUserRouteServicesInput = {
   env: Pick<Env, "WEB_ORIGIN" | "DISABLE_NEW_USER_REGISTRATION">;
+  categoryInterestsRepository: ICategoryInterestsRepository;
   registrationService: RegistrationService;
   marketingEventService: IMarketingEventService;
   attributionStore: IAttributionStore;
@@ -65,6 +70,10 @@ export type CreateUserRouteServicesInput = {
 
 export function createUserRouteServices(input: CreateUserRouteServicesInput): UserRouteServices {
   return {
+    categoryInterestsHttp: new UserCategoryInterestsHttpApplicationService(
+      input.categoryInterestsRepository,
+      input.profileService,
+    ),
     publicHttp: new UserPublicHttpApplicationService({
       env: input.env,
       registrationService: input.registrationService,

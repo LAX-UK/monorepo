@@ -198,7 +198,7 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
   kyc: {
     title: "Verification unavailable",
     message: () => "Could not load identity verification status. Try again.",
-    retryHref: "/dashboard/verify-identity",
+    retryHref: "/onboarding/identity?next=%2Fdashboard&source=dashboard",
   },
   orgOnboarding: {
     title: "Onboarding status unavailable",

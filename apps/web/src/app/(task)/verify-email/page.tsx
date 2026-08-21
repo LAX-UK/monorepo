@@ -4,6 +4,8 @@ import { VerifyPendingActions } from "@/components/auth/verify-pending-actions";
 import { resolvePostVerifyDestination } from "@/lib/auth/post-verify-destination";
 import { tryConsumePendingInviteAfterVerify } from "@/lib/auth/post-verify-invite.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { isFullBuyerOnboardingEnabled } from "@/lib/kyc/full-buyer-onboarding-rollout.server";
+import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import {
@@ -42,6 +44,8 @@ export default async function VerifyEmailPage({
   const queryInvite = typeof sp.invite === "string" && sp.invite.length > 0 ? sp.invite : null;
 
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
+  const identityOnboardingEnabled = isIdentityOnboardingEnabled();
+  const fullBuyerOnboardingEnabled = isFullBuyerOnboardingEnabled();
   const sessionUser = await getServerSessionUser();
 
   // Invited staff land straight in the admin shell instead of bouncing
@@ -60,6 +64,14 @@ export default async function VerifyEmailPage({
           queryPersona,
           sessionPersona: sessionUser?.signupPersona ?? null,
           orgModuleEnabled,
+          identityOnboardingEnabled,
+          fullBuyerOnboardingEnabled,
+          ...(sessionUser?.categoryInterestsOnboardingCompletedAt !== undefined
+            ? {
+                categoryInterestsOnboardingCompletedAt:
+                  sessionUser.categoryInterestsOnboardingCompletedAt,
+              }
+            : {}),
         });
 
   if (error) {

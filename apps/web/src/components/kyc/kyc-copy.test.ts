@@ -128,7 +128,7 @@ describe("kycLinkActionLabel", () => {
       "Continue",
     );
     expect(kycLinkActionLabel({ action: "retry" } as never, "long")).toBe("Try again");
-    expect(kycLinkActionLabel({ action: "wait" } as never, "short")).toBe("In review");
+    expect(kycLinkActionLabel({ action: "wait" } as never, "long")).toBe("Verification in review");
   });
 });
 

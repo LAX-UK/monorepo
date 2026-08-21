@@ -161,6 +161,8 @@ export type SessionUser = {
   kycStatus?: "unverified" | "pending" | "approved" | "rejected";
   /** Persona captured at signup; null for users created before Phase B. */
   signupPersona?: "individual" | "organisation" | null;
+  /** Null only for newly verified users who have not completed/skipped interests. */
+  categoryInterestsOnboardingCompletedAt?: string | Date | null;
   /** From GET /users/me when a self-serve account deletion has been requested. */
   deletionRequestedAt?: string | Date | null;
   /** From GET /users/me — new address awaiting confirmation (email change flow). */
