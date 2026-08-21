@@ -179,6 +179,8 @@ locals {
         { key = "NEXT_PUBLIC_GTM_ID", value = var.next_public_gtm_id, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_GA4_MEASUREMENT_ID", value = var.next_public_ga4_measurement_id, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
         { key = "NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED", value = var.next_public_marketing_attribution_enabled, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
+        { key = "KYC_ONBOARDING_ENABLED", value = tostring(var.kyc_onboarding_enabled), type = "GENERAL", scope = "RUN_TIME" },
+        { key = "FULL_BUYER_ONBOARDING_ENABLED", value = tostring(var.full_buyer_onboarding_enabled), type = "GENERAL", scope = "RUN_TIME" },
         { key = "INTERNAL_API_URL", value = local.api_public_url, type = "GENERAL", scope = "RUN_TIME" },
         { key = "PLATFORM_CATALOG_LEGAL_ENTITY_ID", value = "30000000-0000-4000-9000-000000000001", type = "GENERAL", scope = "RUN_TIME" },
         { key = "NEXT_PUBLIC_WEB_ORIGIN", value = local.web_origin, type = "GENERAL", scope = "RUN_AND_BUILD_TIME" },
