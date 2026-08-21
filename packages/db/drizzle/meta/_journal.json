@@ -897,6 +897,20 @@
       "when": 1788000004000,
       "tag": "0128_marketing_attribution",
       "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1788000005000,
+      "tag": "0129_user_category_interests",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1788000006000,
+      "tag": "0130_buyer_interest_categories",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,7 @@ export * from "./bid-anti-sniping-policy.js";
 export * from "./auto-bid.js";
 export * from "./buyer-premium.js";
 export * from "./category.js";
+export * from "./category-interests.js";
 export * from "./notification.js";
 export * from "./payment.js";
 export * from "./password-policy.js";
