@@ -4,7 +4,8 @@ Browser tests prove critical cross-stack journeys. Unit and component tests own
 field behavior, validation, and presentation details.
 
 The stack must be seeded and available at `http://localhost:3000` (web) and
-`http://localhost:3001` (API). Use Node.js 22.
+`http://localhost:3001` (API). Use **Node.js 22** (`nvm use` reads `.nvmrc`;
+Playwright hangs on Node 25+ in local runs).
 
 ```bash
 PLAYWRIGHT_E2E=1

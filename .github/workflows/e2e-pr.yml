@@ -80,7 +80,7 @@ jobs:
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
       - name: Build web, API, and auth issuer
-        run: pnpm --filter @auction/api build && pnpm --filter @auction/auth-app build && pnpm --filter @auction/web build
+        run: pnpm turbo run build --filter=@auction/api --filter=@auction/auth-app --filter=@auction/web
       - name: Start stack
         run: |
           PORT=3001 pnpm --filter @auction/api start &

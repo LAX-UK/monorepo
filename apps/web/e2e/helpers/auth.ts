@@ -208,7 +208,7 @@ export async function assertAuthenticatedStaffSession(page: Page): Promise<void>
   await expect(main).toBeVisible({ timeout: 15_000 });
 
   const staffNav = page.getByRole("navigation", {
-    name: /staff dashboard|primary mobile dashboard navigation/i,
+    name: /staff dashboard|finance dashboard|primary mobile dashboard navigation/i,
   });
   await expect(staffNav).toBeVisible({ timeout: 15_000 });
 }
