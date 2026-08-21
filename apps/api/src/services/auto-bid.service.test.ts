@@ -153,7 +153,9 @@ describe("AutoBidService", () => {
       bidEligibility: {
         assertCanPlaceBid: vi.fn().mockResolvedValue(ok(undefined)),
       } as unknown as IBidEligibility,
-      legalEntityRepository: { ensurePersonalEntity: vi.fn() } as never,
+      legalEntityRepository: {
+        findById: vi.fn().mockResolvedValue({ status: "approved" }),
+      } as never,
     });
     const result = await service.setAutoBid({
       lotId: "lot-1",
@@ -217,7 +219,9 @@ describe("AutoBidService", () => {
       bidEligibility: {
         assertCanPlaceBid: vi.fn().mockResolvedValue(ok(undefined)),
       } as unknown as IBidEligibility,
-      legalEntityRepository: { ensurePersonalEntity: vi.fn() } as never,
+      legalEntityRepository: {
+        findById: vi.fn().mockResolvedValue({ status: "approved" }),
+      } as never,
     });
     const result = await service.setAutoBid({
       lotId: "lot-1",
@@ -252,7 +256,9 @@ describe("AutoBidService", () => {
       bidEligibility: {
         assertCanPlaceBid: vi.fn().mockResolvedValue(ok(undefined)),
       } as unknown as IBidEligibility,
-      legalEntityRepository: { ensurePersonalEntity: vi.fn() } as never,
+      legalEntityRepository: {
+        findById: vi.fn().mockResolvedValue({ status: "approved" }),
+      } as never,
     });
     const result = await service.setAutoBid({
       lotId: "lot-1",
@@ -308,6 +314,29 @@ describe("AutoBidService", () => {
     expect(result._unsafeUnwrapErr().code).toBe("auto_bid_disabled");
   });
 
+  it("returns 404 when buyer legal entity is missing", async () => {
+    const service = new AutoBidService({
+      repos: repos({}),
+      bidPlacer: { placeBid: vi.fn() },
+      bidEligibility: {
+        assertCanPlaceBid: vi.fn().mockResolvedValue(ok(undefined)),
+      } as unknown as IBidEligibility,
+      legalEntityRepository: {
+        findById: vi.fn().mockResolvedValue(null),
+      } as never,
+    });
+    const result = await service.setAutoBid({
+      lotId: "lot-1",
+      placedByUserId: "u1",
+      buyerLegalEntityId: "missing-entity",
+      maxAutoBidAmount: 200,
+      autoBidStepAmount: 10,
+    });
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr().status).toBe(404);
+    expect(result._unsafeUnwrapErr().message).toBe("Buyer legal entity not found");
+  });
+
   it("accepts max auto-bid exactly equal to next minimum bid", async () => {
     const placeBid = vi.fn().mockResolvedValue(
       ok({
@@ -329,7 +358,9 @@ describe("AutoBidService", () => {
       bidEligibility: {
         assertCanPlaceBid: vi.fn().mockResolvedValue(ok(undefined)),
       } as unknown as IBidEligibility,
-      legalEntityRepository: { ensurePersonalEntity: vi.fn() } as never,
+      legalEntityRepository: {
+        findById: vi.fn().mockResolvedValue({ status: "approved" }),
+      } as never,
     });
     const result = await service.setAutoBid({
       lotId: "lot-1",

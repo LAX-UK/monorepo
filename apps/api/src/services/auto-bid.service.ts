@@ -1,3 +1,4 @@
+import { buyerEntityCanBid } from "@auction/domain";
 import type { Bid, Lot } from "@auction/types";
 import {
   listAllowedAutoBidSteps,
@@ -123,6 +124,20 @@ export class AutoBidService {
         autoBidStepAmount: input.autoBidStepAmount,
       });
       if (elig.isErr()) return err(elig.error);
+    }
+
+    const buyerEntity = await this.opts.legalEntityRepository.findById(input.buyerLegalEntityId);
+    if (!buyerEntity) {
+      return err(new BidError("Buyer legal entity not found", 404));
+    }
+    if (!buyerEntityCanBid(buyerEntity.status)) {
+      return err(
+        new BidError(
+          "Buyer legal entity is not authorised to bid",
+          403,
+          "entity_not_authorised_to_bid",
+        ),
+      );
     }
 
     const winning = await this.opts.repos.root.bid.findWinningBid(input.lotId);
