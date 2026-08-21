@@ -16,7 +16,7 @@ describe("kycRequiredBidErrorMatcher", () => {
       title: "More information needed",
       message: "Retake your selfie in good lighting.",
       actionLabel: "Continue verification",
-      actionHref: "/dashboard/verify-identity?next=%2Flot%2Ffoo%2F1",
+      actionHref: "/onboarding/identity?next=%2Flot%2Ffoo%2F1&source=bid_gate",
     });
   });
 
@@ -24,7 +24,7 @@ describe("kycRequiredBidErrorMatcher", () => {
     const result = kycRequiredBidErrorMatcher.match("kyc_required");
     expect(result).toMatchObject({
       title: "Identity verification required",
-      actionLabel: "Verify identity",
+      actionLabel: "Verify to continue bidding",
     });
   });
 });

@@ -28,6 +28,7 @@ import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
 import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
+import { isStrictBidEligibilityEnabled } from "@/lib/bid/strict-bid-eligibility-rollout.server";
 import {
   isPublicCatalogLot,
   viewerCanSeeNonPublicCatalog,
@@ -428,6 +429,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
         saleForLifecycle={saleLifecyclePick}
         isOwnLot={isOwnLot}
         actingLegalEntityId={actingLegalEntityId}
+        strictBidEligibilityEnabled={isStrictBidEligibilityEnabled()}
       />
     </OnlineBidsView>
   );

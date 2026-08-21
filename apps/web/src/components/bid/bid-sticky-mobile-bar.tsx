@@ -1,8 +1,10 @@
 "use client";
 
+import { SendVerificationEmailButton } from "@/components/auth/send-verification-email-button";
 import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import type { LotTimerState } from "@/components/lot-timer";
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
+import { markContextualKycGateNavigation } from "@/components/onboarding/buyer-onboarding-analytics";
 import {
   type LotBidPosition,
   lotBidPositionAutoStickyLabel,
@@ -13,6 +15,7 @@ import type { BidPolicyDecision } from "@/lib/bid/policies/types";
 import { useMarketingBidBarChromeRegistration } from "@/lib/context/marketing-bid-bar-chrome";
 import { countdownTier } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
+import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
 import { liveUrgencyTextClass } from "@/lib/presenters/status-presentation";
@@ -31,6 +34,8 @@ type Props = {
   live: boolean;
   decision: BidPolicyDecision;
   loginNextPath: string;
+  lotId?: string;
+  userEmail?: string | null;
   kycFeedback?: import("@/lib/data/dto/dashboard-dtos").KycUserFeedbackDto | null;
   saleRegistrationPath?: string | null;
   step: 1 | 2;
@@ -108,6 +113,8 @@ export function BidStickyMobileBar({
   live,
   decision,
   loginNextPath,
+  lotId,
+  userEmail = null,
   kycFeedback = null,
   saleRegistrationPath = null,
   step,
@@ -161,8 +168,11 @@ export function BidStickyMobileBar({
       : "text-on-surface-variant";
 
   if (compact) {
-    const next = encodeURIComponent(loginNextPath);
-    const kycBlocked = decision.kind === "block" && decision.viewId === "kyc-threshold";
+    const kycBlocked =
+      decision.kind === "block" &&
+      (decision.viewId === "kyc-threshold" || decision.viewId === "strict-kyc-required");
+    const emailBlocked =
+      decision.kind === "block" && decision.viewId === "email-verification-required";
     const regBlocked =
       decision.kind === "block" &&
       (decision.viewId === "sale-registration-required" ||
@@ -181,16 +191,25 @@ export function BidStickyMobileBar({
         >
           {statusLine}
         </p>
-        {kycBlocked ? (
+        {emailBlocked && userEmail ? (
+          <SendVerificationEmailButton
+            email={userEmail}
+            next={loginNextPath}
+            label="Verify email"
+            variant="default"
+            className="h-auto shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
+          />
+        ) : kycBlocked ? (
           <Link
-            href={`/dashboard/verify-identity?next=${next}`}
+            href={contextualIdentityOnboardingHref(loginNextPath, "bid_gate", lotId)}
+            onClick={() => markContextualKycGateNavigation("bid_gate", loginNextPath)}
             className="shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
           >
             {kycLinkActionLabel(kycFeedback, "short")}
           </Link>
         ) : null}
-        {!kycBlocked && regAction}
-        {!kycBlocked && !regAction && showBidCta && outbid ? (
+        {!emailBlocked && !kycBlocked && regAction}
+        {!emailBlocked && !kycBlocked && !regAction && showBidCta && outbid ? (
           <Button
             type="button"
             onClick={hasActiveAutoBid && onFocusAutoBid ? onFocusAutoBid : onFocusManualBid}
@@ -199,7 +218,7 @@ export function BidStickyMobileBar({
             {hasActiveAutoBid ? "Raise max" : "Increase bid"}
           </Button>
         ) : null}
-        {!kycBlocked && !regAction && (autoBidLabel || positionLabel) ? (
+        {!emailBlocked && !kycBlocked && !regAction && (autoBidLabel || positionLabel) ? (
           <span className="shrink-0 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1.5 font-label text-[0.65rem] font-bold uppercase tracking-wider text-primary">
             {autoBidLabel ?? positionLabel}
           </span>
@@ -242,14 +261,27 @@ export function BidStickyMobileBar({
         );
         break;
       case "kyc-threshold":
+      case "strict-kyc-required":
         right = (
           <Link
-            href={`/dashboard/verify-identity?next=${next}`}
+            href={contextualIdentityOnboardingHref(loginNextPath, "bid_gate", lotId)}
+            onClick={() => markContextualKycGateNavigation("bid_gate", loginNextPath)}
             className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
           >
             {kycLinkActionLabel(kycFeedback, "short")}
           </Link>
         );
+        break;
+      case "email-verification-required":
+        right = userEmail ? (
+          <SendVerificationEmailButton
+            email={userEmail}
+            next={loginNextPath}
+            label="Verify email"
+            variant="default"
+            className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
+          />
+        ) : null;
         break;
       case "sale-registration-required":
       case "sale-registration-pending":

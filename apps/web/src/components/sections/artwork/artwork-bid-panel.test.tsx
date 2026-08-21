@@ -152,7 +152,7 @@ describe("ArtworkBidPanel", () => {
       summarySeed,
       initialAutoBidSettings: null,
     });
-    expect(screen.getByText(/your listing/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/your listing/i).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
   });
 
@@ -195,6 +195,49 @@ describe("ArtworkBidPanel", () => {
     });
     expect(screen.getByRole("button", { name: /save auto-bid/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/max amount/i)).toBeInTheDocument();
+  });
+
+  it("replaces auto and manual controls with the strict email blocker", () => {
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: { ...buyerSession, emailVerified: false, kycStatus: "unverified" },
+      summarySeed,
+      initialAutoBidSettings: null,
+      strictBidEligibilityEnabled: true,
+    });
+
+    expect(screen.getAllByText("Email verification required").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("button", { name: /send verification email|verify email/i }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByLabelText(/max amount/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /save auto-bid/i })).not.toBeInTheDocument();
+  });
+
+  it("shows strict KYC approval action in panel and sticky surfaces", () => {
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: { ...buyerSession, emailVerified: true, kycStatus: "pending" },
+      summarySeed,
+      initialAutoBidSettings: null,
+      strictBidEligibilityEnabled: true,
+    });
+
+    expect(
+      screen.getByText("Your identity must be approved before you can place bids."),
+    ).toBeInTheDocument();
+    const links = screen.getAllByRole("link", { name: /verify|verification|identity/i });
+    expect(
+      links.some(
+        (link) =>
+          link.getAttribute("href") ===
+          "/onboarding/identity?next=%2Flot%2Fpiece%2Flot-x&source=bid_gate&lot=lot-x",
+      ),
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
   });
 
   it("submits a bid on confirm and shows success", async () => {

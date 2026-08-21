@@ -46,6 +46,7 @@ type Props = {
     | null;
   isOwnLot?: boolean;
   actingLegalEntityId?: string | null;
+  strictBidEligibilityEnabled?: boolean;
 };
 
 export function ArtworkBidPanel({
@@ -67,6 +68,7 @@ export function ArtworkBidPanel({
   saleForLifecycle = null,
   isOwnLot = false,
   actingLegalEntityId = null,
+  strictBidEligibilityEnabled = false,
 }: Props) {
   const { bidWriter } = useLotPorts();
   const { refreshFromServer } = useLotBidHistory();
@@ -185,6 +187,7 @@ export function ArtworkBidPanel({
           : null
       }
       saleRegistrationBidGate={saleRegistrationBidGate}
+      strictBidEligibilityEnabled={strictBidEligibilityEnabled}
       biddingLifecycle={{ kind: lifecycle.kind, isOnBlock: isLotOnBlock }}
       orgModuleEnabled={orgModuleEnabled}
     >
@@ -192,6 +195,8 @@ export function ArtworkBidPanel({
         const sticky: BidPanelStickyVM = {
           live: biddingLive,
           loginNextPath: loginNext,
+          lotId: auction.id,
+          userEmail: sessionUser?.email ?? null,
           kycFeedback: kycSummary?.feedback ?? null,
           ...(saleRegistrationPath ? { saleRegistrationPath } : {}),
           step,

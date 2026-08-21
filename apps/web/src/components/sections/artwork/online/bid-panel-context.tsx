@@ -22,6 +22,8 @@ export const FIGMA_PRIMARY =
 export type BidPanelStickyVM = {
   live: boolean;
   loginNextPath: string;
+  lotId: string;
+  userEmail: string | null;
   kycFeedback: KycStatusSummaryDto["feedback"] | null;
   saleRegistrationPath?: string | null;
   step: 1 | 2;

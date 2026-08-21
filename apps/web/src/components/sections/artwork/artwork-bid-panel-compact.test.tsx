@@ -233,16 +233,24 @@ describe("ArtworkBidPanel — videoCompact surface", () => {
   });
 
   it("shows the block message instead of form when decision blocks bidding", () => {
-    // Not signed in → BidGate blocks; sessionUser: null triggers the not-signed-in gate
     renderCompact({ sessionUser: null });
 
-    // Expand — on a blocked gate the expanded area renders decision.render()
-    fireEvent.click(screen.getByRole("button", { name: /^bid$/i }));
-
-    // BidGate "not-signed-in" renders a login link/button
-    // The exact text varies; check that no bid form is shown and no bid is placed
+    expect(screen.getByText(/sign in to place a bid/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^bid$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
     expect(placeBidMock).not.toHaveBeenCalled();
+  });
+
+  it("shows strict email eligibility inline with no video bid action", () => {
+    renderCompact({
+      strictBidEligibilityEnabled: true,
+      sessionUser: { ...buyerSession, emailVerified: false, kycStatus: "unverified" },
+    });
+
+    expect(screen.getByText("Email verification required")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send verification email" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^bid$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
   });
 
   it("id='lot-bid-entry' is NOT present in the DOM in compact surface (no duplicate id)", () => {
