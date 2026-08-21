@@ -2,6 +2,7 @@
 
 import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -16,12 +17,14 @@ export function CommandPaletteHint({ className }: { className?: string }) {
   const shortcut = isMac ? "⌘K" : "Ctrl+K";
 
   return (
-    <button
+    <Button
       type="button"
+      variant="link"
+      size="link"
       onClick={openCommandPalette}
       aria-label="Open search"
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md font-body text-xs text-on-surface-variant transition-colors hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+        "inline-flex h-auto items-center gap-1.5 rounded-md p-0 font-body text-xs text-on-surface-variant transition-colors hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         className,
       )}
     >
@@ -31,6 +34,6 @@ export function CommandPaletteHint({ className }: { className?: string }) {
         {shortcut}
       </kbd>{" "}
       to find any admin page or record.
-    </button>
+    </Button>
   );
 }

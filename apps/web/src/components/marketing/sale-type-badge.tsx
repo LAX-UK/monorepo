@@ -7,6 +7,7 @@ import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Badge } from "@auction/ui";
 import { LiveDot } from "@auction/ui";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { HelpCircle } from "lucide-react";
 import { SaleTypeExplainerPopover } from "./sale-type-explainer";
 
@@ -74,13 +75,14 @@ export function SaleTypeBadge({
   if (withExplainer) {
     return (
       <SaleTypeExplainerPopover context={context} align="start">
-        <button
+        <Button
           type="button"
-          className="group inline-flex items-center rounded-full text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          variant="ghost"
+          className="group inline-flex h-auto items-center rounded-full p-0 text-left hover:bg-transparent"
           aria-label={`${pres.label} — format details`}
         >
           {badgeElement}
-        </button>
+        </Button>
       </SaleTypeExplainerPopover>
     );
   }
