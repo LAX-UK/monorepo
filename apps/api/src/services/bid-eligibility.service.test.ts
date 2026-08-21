@@ -88,7 +88,10 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
   });
 
   it("returns kyc_required when threshold exceeded", async () => {
-    const db = createSequentialDb([]);
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ saleId: null }] },
+      { kind: "limit", rows: [{ role: "owner" }] },
+    ]);
     const kycService: IKycService = {
       isConfigured: () => true,
       enforceThreshold: vi.fn().mockRejectedValue(
@@ -344,6 +347,40 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       amount: 100,
     });
     expect(r.isOk()).toBe(true);
+  });
+
+  it("enforces strict actor eligibility before membership for self-service bids", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ emailVerified: false, kycStatus: "approved" }] },
+    ]);
+    const svc = new BidEligibilityService(db, null, null, true);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect([r.error.status, r.error.code]).toEqual([403, "email_not_verified"]);
+    }
+  });
+
+  it("blocks an organisation admin without approved personal KYC", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ emailVerified: true, kycStatus: "unverified" }] },
+    ]);
+    const svc = new BidEligibilityService(db, null, null, true);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect([r.error.status, r.error.code]).toEqual([402, "kyc_required"]);
+    }
   });
 });
 

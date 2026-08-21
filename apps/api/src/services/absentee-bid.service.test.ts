@@ -1,8 +1,10 @@
 import type { Database } from "@auction/db";
 import type { Lot } from "@auction/types";
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
+import { BidError } from "../lib/errors.js";
 import { AbsenteeBidService } from "./absentee-bid.service.js";
+import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
 
@@ -59,6 +61,34 @@ describe("AbsenteeBidService", () => {
     });
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error.status).toBe(400);
+  });
+
+  it("fully validates the absentee ceiling before scheduling", async () => {
+    const lotRepo = {
+      findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
+    } as unknown as ILotRepository;
+    const assertCanPlaceBid = vi
+      .fn()
+      .mockResolvedValue(err(new BidError("Verify your email", 403, "email_not_verified")));
+    const service = new AbsenteeBidService({} as Database, {} as IBidPlacer, lotRepo, null, {
+      assertCanPlaceBid,
+    } as IBidEligibility);
+
+    const result = await service.schedule({
+      userId: "u1",
+      lotId: "lot-1",
+      buyerLegalEntityId: "le-1",
+      maxAmount: 500,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("email_not_verified");
+    expect(assertCanPlaceBid).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 500,
+        maxAutoBidAmount: 500,
+        placedVia: "absentee",
+      }),
+    );
   });
 
   it("returns 409 on duplicate scheduled absentee bid", async () => {

@@ -65,6 +65,10 @@ const envSchema = z
     CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
     /** Optional ClamAV REST endpoint for SoF document malware scanning. */
     CLAMAV_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    STRICT_BID_ELIGIBILITY_ENABLED: z.preprocess((val) => {
+      if (val === undefined || val === "") return undefined;
+      return val === "true" || val === true;
+    }, z.boolean().optional()),
   })
   .superRefine((e, ctx) => {
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
@@ -131,5 +135,9 @@ export function loadWorkerEnv(): WorkerEnv {
     console.error(parsed.error.flatten());
     throw new Error("Invalid worker environment variables");
   }
-  return parsed.data;
+  return {
+    ...parsed.data,
+    STRICT_BID_ELIGIBILITY_ENABLED:
+      parsed.data.STRICT_BID_ELIGIBILITY_ENABLED ?? parsed.data.APP_ENV !== "production",
+  };
 }

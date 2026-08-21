@@ -17,6 +17,14 @@ export {
   type LotReadinessResult,
   type LotReadinessInput,
 } from "./lot-readiness.js";
+export { buyerEntityCanBid } from "./buyer-entity-bid-eligibility.js";
+export {
+  evaluateSelfServiceActorBidEligibility,
+  type SelfServiceActorBidEligibility,
+  type SelfServiceActorBidEligibilityInput,
+  type SelfServiceActorBidIneligibilityCode,
+  type SelfServiceActorKycStatus,
+} from "./self-service-actor-bid-eligibility.js";
 export {
   deriveNoSaleReason,
   deriveReserveStatus,

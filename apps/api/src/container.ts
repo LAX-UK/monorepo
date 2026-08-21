@@ -45,6 +45,7 @@ import {
 import { Queue } from "bullmq";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import type { Redis, RedisOptions } from "ioredis";
+import { createBidEligibility } from "./container/create-bid-eligibility.js";
 import type { Env } from "./env.js";
 import { createExportProviderDeps } from "./exports/deps.js";
 import { createExportProviders } from "./exports/registry.js";
@@ -135,6 +136,7 @@ import {
 import { DrizzleAntiShillingRepository } from "./repositories/drizzle-anti-shilling.repository.js";
 import { DrizzleArtistProfileRepository } from "./repositories/drizzle-artist-profile.repository.js";
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
+import { DrizzleCategoryInterestsRepository } from "./repositories/drizzle-category-interests.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
 import { DrizzleConveyorPipelineReader } from "./repositories/drizzle-conveyor-pipeline.reader.js";
 import { DrizzleDisplayPairingRepository } from "./repositories/drizzle-display-pairing.repository.js";
@@ -224,7 +226,6 @@ import { ArtistWatchlistService } from "./services/artist-watchlist.service.js";
 import { DrizzleAttentionFeedReader } from "./services/attention-feed.service.js";
 import { AuthAuditPublisher } from "./services/auth-audit.publisher.js";
 import { AutoBidService } from "./services/auto-bid.service.js";
-import { BidEligibilityService } from "./services/bid-eligibility.service.js";
 import { BidService } from "./services/bid.service.js";
 import { DEFAULT_BID_POLICY } from "./services/bid/bid-policy.js";
 import { SaleroomOnBlockPolicy } from "./services/bid/saleroom-on-block.policy.js";
@@ -248,6 +249,7 @@ import type { IAntiShillingGuard } from "./services/interfaces/anti-shilling.js"
 import type { IArtistRegistryService } from "./services/interfaces/artist-registry.js";
 import type { IAttentionFeedReader } from "./services/interfaces/attention-feed.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
+import type { ICategoryInterestsRepository } from "./services/interfaces/category-interests.js";
 import type { IConditionReportService } from "./services/interfaces/condition-report.js";
 import type { IDisplayOverlayService } from "./services/interfaces/display-overlay-service.js";
 import type { IDisplayPairingService } from "./services/interfaces/display-pairing-service.js";
@@ -457,6 +459,7 @@ export type Container = {
   artistWatchlistService: ArtistWatchlistService;
   notificationService: NotificationService;
   notificationPreferenceRepository: INotificationPreferenceRepository;
+  categoryInterestsRepository: ICategoryInterestsRepository;
   uiPreferenceRepository: IUiPreferenceRepository;
   uiPreferenceService: UiPreferenceService;
   pushSubscriptionRepository: IPushSubscriptionRepository;
@@ -813,6 +816,7 @@ export function createContainer(env: Env): Container {
     paymentRefundReconcileRepository,
   );
   const notificationPreferenceRepository = new DrizzleNotificationPreferenceRepository(db);
+  const categoryInterestsRepository = new DrizzleCategoryInterestsRepository(db);
   const uiPreferenceRepository = new DrizzleUiPreferenceRepository(db);
   const uiPreferenceService = new UiPreferenceService(uiPreferenceRepository);
   const emailObservabilityRepository = new DrizzleEmailObservabilityRepository(db);
@@ -1510,7 +1514,19 @@ export function createContainer(env: Env): Container {
   const saleModeLookup = new DrizzleSaleModeLookup(db);
 
   const saleRegistrationService = new SaleRegistrationService(db, legalEntityRepository);
-  const bidEligibilityService = new BidEligibilityService(db, kycService, amlHoldStore);
+  const strictBidEligibilityEnabled =
+    env.STRICT_BID_ELIGIBILITY_ENABLED ?? env.APP_ENV !== "production";
+  if (strictBidEligibilityEnabled && kycService?.isConfigured() !== true) {
+    console.warn(
+      "[BidEligibility] STRICT_BID_ELIGIBILITY_ENABLED is active while Veriff is unconfigured; bidding remains fail-closed until users are approved in the database",
+    );
+  }
+  const bidEligibilityService = createBidEligibility({
+    db,
+    kycService,
+    amlHoldStore,
+    strictEnabled: strictBidEligibilityEnabled,
+  });
 
   const bidIdempotencyStore = new RedisIdempotencyStore(redis);
   const bidService = new BidService({
@@ -1538,7 +1554,13 @@ export function createContainer(env: Env): Container {
     notificationFactory,
     saleRepo,
   });
-  const absenteeBidService = new AbsenteeBidService(db, bidService, lotRepo, legalEntityRepository);
+  const absenteeBidService = new AbsenteeBidService(
+    db,
+    bidService,
+    lotRepo,
+    legalEntityRepository,
+    bidEligibilityService,
+  );
   const adminSaleOperationsSnapshotService = new AdminSaleOperationsSnapshotService(
     db,
     saleRegistrationService,
@@ -1828,6 +1850,7 @@ export function createContainer(env: Env): Container {
     artistWatchlistService,
     notificationService,
     notificationPreferenceRepository,
+    categoryInterestsRepository,
     uiPreferenceRepository,
     uiPreferenceService,
     pushSubscriptionRepository,

@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@auction/auth": "workspace:*",
+    "@auction/bidding-runtime": "workspace:*",
     "@auction/connect": "workspace:*",
     "@auction/db": "workspace:*",
     "@auction/domain": "workspace:*",
@@ -37,6 +38,7 @@
     "@auction/http-headers": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",
+    "@auction/persistence": "workspace:*",
     "@auction/queues": "workspace:*",
     "@auction/sms": "workspace:^",
     "@auction/types": "workspace:*",
