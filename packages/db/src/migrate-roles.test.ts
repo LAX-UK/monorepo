@@ -19,7 +19,8 @@ import {
 } from "./migrate-roles.js";
 import { user } from "./schema/auth.js";
 
-/** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
+/** AST-based audit of every `db.update(user|userTable).set({ ... })` call in the
+ * API runtime, including persistence adapters composed by `apps/api`.
  *
  * Why AST and not regex: aliased imports, helpers that take a `set` parameter,
  * spread `...patch`, and comments containing the pattern all cause regex parsers
@@ -33,6 +34,9 @@ import { user } from "./schema/auth.js";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const repoRoot = join(__dirname, "../../..");
 const apiSrc = join(repoRoot, "apps/api/src");
+const apiOwnedPersistenceFiles = [
+  join(repoRoot, "packages/persistence/src/repositories/drizzle-category-interests.repository.ts"),
+];
 
 const USER_TABLE_IDENTIFIERS = new Set(["user", "userTable"]);
 
@@ -49,6 +53,11 @@ async function* walkTsFiles(dir: string): AsyncGenerator<string> {
     if (e.isDirectory()) yield* walkTsFiles(p);
     else if (e.isFile() && p.endsWith(".ts") && !p.endsWith(".test.ts")) yield p;
   }
+}
+
+async function* apiRuntimeTsFiles(): AsyncGenerator<string> {
+  yield* walkTsFiles(apiSrc);
+  yield* apiOwnedPersistenceFiles;
 }
 
 /** Pulls a string property name out of an object-literal property assignment.
@@ -294,7 +303,7 @@ type CallSiteRecord = {
 
 async function collectCallSites(): Promise<CallSiteRecord[]> {
   const records: CallSiteRecord[] = [];
-  for await (const absPath of walkTsFiles(apiSrc)) {
+  for await (const absPath of apiRuntimeTsFiles()) {
     const rel = relative(repoRoot, absPath);
     const content = await readFile(absPath, "utf8");
     const source = ts.createSourceFile(
@@ -377,7 +386,7 @@ describe("migrate-roles invariants", () => {
   });
 });
 
-describe("api_app user UPDATE grants vs apps/api sources", { timeout: 60_000 }, () => {
+describe("api_app user UPDATE grants vs API runtime sources", { timeout: 60_000 }, () => {
   let records: CallSiteRecord[];
 
   beforeAll(async () => {
@@ -414,7 +423,7 @@ describe("api_app user UPDATE grants vs apps/api sources", { timeout: 60_000 }, 
         .map(([col, locs]) => `  - ${col} (used at ${locs.join(", ")})`)
         .join("\n");
       failures.push(
-        `api_app column UPDATE allow-list missing columns used by apps/api.\nAdd to API_COLUMN_UPDATE_GRANTS.user in migrate-roles.ts:\n${detail}`,
+        `api_app column UPDATE allow-list missing columns used by the API runtime.\nAdd to API_COLUMN_UPDATE_GRANTS.user in migrate-roles.ts:\n${detail}`,
       );
     }
     if (unknownProps.size > 0) {
@@ -456,7 +465,7 @@ describe("api_app user UPDATE grants vs apps/api sources", { timeout: 60_000 }, 
     }
     if (unused.length > 0) {
       throw new Error(
-        `API_COLUMN_UPDATE_GRANTS.user contains columns no apps/api code writes anymore — drop them from migrate-roles.ts to keep api_app least-privileged:\n${unused
+        `API_COLUMN_UPDATE_GRANTS.user contains columns no API runtime code writes anymore — drop them from migrate-roles.ts to keep api_app least-privileged:\n${unused
           .map((c) => `  - ${c}`)
           .join("\n")}`,
       );

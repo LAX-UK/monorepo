@@ -189,6 +189,9 @@ const CAT = {
   books: "c1000013-0000-4000-8000-000000000013",
   coins: "c1000014-0000-4000-8000-000000000014",
   design: "c1000016-0000-4000-8000-000000000016",
+  jewellery: "c1000017-0000-4000-8000-000000000017",
+  antiques: "c1000018-0000-4000-8000-000000000018",
+  memorabilia: "c1000019-0000-4000-8000-000000000019",
 } as const;
 
 const S = {
@@ -2684,6 +2687,9 @@ export async function runLegacyDemoSeed() {
       slug: "design-decorative-arts",
       parentId: null,
     },
+    { id: CAT.jewellery, name: "Jewellery", slug: "jewellery", parentId: null },
+    { id: CAT.antiques, name: "Antiques", slug: "antiques", parentId: null },
+    { id: CAT.memorabilia, name: "Memorabilia", slug: "memorabilia", parentId: null },
   ]);
 
   // ── Artist profiles ────────────────────────────────────────────────────────

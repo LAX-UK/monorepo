@@ -72,6 +72,7 @@ export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
     "mobile",
     "mobile_country",
     "signup_persona",
+    "category_interests_onboarding_completed_at",
     "suspended_at",
     "suspended_reason",
     "updated_at",
