@@ -159,3 +159,48 @@ Reference D-numbers in code comments where the rationale matters: `// D8: same-t
 **Follow-up (accepted debt).** When repository + provider wiring stabilizes, extract a shared `@auction/data-access` (or similar) package and point both `apps/api` and `apps/worker` at it so worker no longer depends on the API app package.
 
 **Status.** *Implemented.* Worker imports in [apps/worker/src/index.ts](../../apps/worker/src/index.ts), [apps/worker/src/jobs/data-export.ts](../../apps/worker/src/jobs/data-export.ts), and [apps/worker/src/jobs/legal-entity-archive-cascade.ts](../../apps/worker/src/jobs/legal-entity-archive-cascade.ts).
+
+## D13. Buyer onboarding UX: policy, narrow persistence commands, contextual KYC entry
+
+**Chosen.** Post-auth routing resolves safe destinations only. Full interests onboarding runs once for newly verified individuals (`categoryInterestsOnboardingCompletedAt === null`). Settings edits use a separate `replace` repository command and `PUT /users/me/category-interests/preferences`; onboarding completion keeps the existing atomic `replaceAndComplete` command. User-facing KYC entry links target `/onboarding/identity` with typed `source` and safe `next`; when `KYC_ONBOARDING_ENABLED=false`, the identity layout redirects to the legacy `/dashboard/verify-identity` page. Restricted actions remain server-enforced (`402 kyc_required`); client links are anticipatory UX only.
+
+**Alternatives considered.** Forcing KYC on every login was rejected (poor UX, repeated interruption). A `complete=true` flag on the existing PUT endpoint was rejected (ambiguous contract during mixed-version deploys).
+
+**Why this wins.** Clear separation between one-time onboarding completion and editable preferences; pure policy modules; additive API compatibility; contextual return intent preserved for bid, registration, telephone, and condition-report gates.
+
+**Status.** *Implemented.* Policy in [apps/web/src/lib/kyc/](../../apps/web/src/lib/kyc/), persistence in [packages/persistence/src/interfaces/category-interests.repository.ts](../../packages/persistence/src/interfaces/category-interests.repository.ts), HTTP in [apps/api/src/routes/users/category-interests.routes.ts](../../apps/api/src/routes/users/category-interests.routes.ts).
+
+## D14. Strict self-service bid identity eligibility
+
+**Chosen.** When `STRICT_BID_ELIGIBILITY_ENABLED=true`, every self-service web,
+auto, proxy, or absentee bid requires the acting user's email to be verified and
+personal KYC status to be `approved`. The bidding runtime is authoritative and
+returns `403 email_not_verified` before `402 kyc_required`. UI policies mirror
+the rule but are not trusted for enforcement. Validated telephone and saleroom
+operator placements retain threshold KYC behavior.
+
+Organisation bidding evaluates independent dimensions: acting-user identity,
+buyer-entity status, active membership, and—when acting as `buyer_agent`—sale
+registration and buyer-agent authorisation. The existing buyer entity allowlist
+(`connect_pending`, `approved`, `restricted`) remains the SSOT. Stripe Connect
+readiness is seller publishing and payout policy and never gates buying.
+
+Standing proxy ceilings are revalidated before settlement and invalid ceilings
+are cancelled without aborting another bidder's transaction. Absentee requests
+are checked before scheduling and again at replay. The rollout flag defaults
+off in production and may be disabled without a code rollback; when enabled,
+missing Veriff configuration remains fail-closed against persisted user status
+and emits an operational warning.
+
+**Alternatives considered.** Frontend-only blocking was rejected because direct
+API and internal replay paths bypass it. Reusing seller Connect readiness was
+rejected because payout setup is unrelated to buyer authority. Throwing when an
+invalid proxy ceiling is encountered was rejected because it could roll back an
+eligible bidder's live transaction.
+
+**Why this wins.** One pure identity rule and narrow read port are reused across
+all bid channels, error contracts remain stable, organisation authority stays
+separate from seller payouts, and the kill/rollout switch limits operational
+risk.
+
+**Status.** *Implemented.* Domain policy in [packages/domain/src/self-service-actor-bid-eligibility.ts](../../packages/domain/src/self-service-actor-bid-eligibility.ts), identity gate in [packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts](../../packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts), persistence in [packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts](../../packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts), UI policy in [apps/web/src/lib/bid/policies/strict-eligibility.policy.tsx](../../apps/web/src/lib/bid/policies/strict-eligibility.policy.tsx).

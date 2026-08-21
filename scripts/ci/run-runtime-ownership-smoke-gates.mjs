@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RUNTIME_OWNERSHIP_SMOKE_GATE_SUITE_MAP } from "../../packages/background-runtime/dist/runtime-ownership-smoke-gate-map.js";
 import { RUNTIME_OWNERSHIP_SMOKE_GATES } from "../../packages/background-runtime/dist/smoke-gates.js";
+import { smokeGateEnv } from "./redis-smoke-env.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -26,10 +27,11 @@ const suitePaths = [...new Set(Object.values(RUNTIME_OWNERSHIP_SMOKE_GATE_SUITE_
 );
 
 const jsonOut = join(repoRoot, "tmp/runtime-ownership-smoke-vitest.json");
+const env = await smokeGateEnv(process.env);
 const result = spawnSync(
   "pnpm",
   ["exec", "vitest", "run", "--reporter=json", `--outputFile=${jsonOut}`, ...suitePaths],
-  { cwd: repoRoot, encoding: "utf8" },
+  { cwd: repoRoot, encoding: "utf8", env },
 );
 
 if (result.status !== 0) {
