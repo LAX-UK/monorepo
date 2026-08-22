@@ -7,7 +7,7 @@ import {
   saleroomSession,
   telephoneBidBooking,
 } from "@auction/db/schema";
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import type {
   AdminSaleReadinessSourceRow,
   IAdminSaleReadinessReader,
@@ -17,7 +17,7 @@ export class DrizzleAdminSaleReadinessReader implements IAdminSaleReadinessReade
   constructor(private readonly db: Database) {}
 
   async listUpcomingAndLiveSales(limit: number): Promise<AdminSaleReadinessSourceRow[]> {
-    const now = new Date();
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const sales = await this.db
       .select({
         id: sale.id,
@@ -31,7 +31,7 @@ export class DrizzleAdminSaleReadinessReader implements IAdminSaleReadinessReade
         and(
           saleNotDeleted(),
           inArray(sale.status, ["draft", "scheduled", "active"]),
-          or(isNull(sale.startTime), sql`${sale.startTime} >= ${now} - interval '7 days'`),
+          or(isNull(sale.startTime), gte(sale.startTime, sevenDaysAgo)),
         ),
       )
       .orderBy(sql`${sale.startTime} ASC NULLS LAST`)

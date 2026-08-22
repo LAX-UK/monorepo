@@ -102,7 +102,7 @@ jobs:
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-readonly
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-operations
       - name: Critical browser and curated visual gates
-        run: pnpm --filter @auction/web test:e2e:pr -- --no-deps
+        run: pnpm --filter @auction/web test:e2e:pr
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
