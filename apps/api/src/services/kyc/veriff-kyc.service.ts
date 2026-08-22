@@ -29,6 +29,7 @@ import { assertKycReturnUrlAllowed, normalizeKycReturnUrl } from "./kyc-return-u
 import {
   buildKycUserFeedback,
   mergeKycDecisionPayload,
+  readKycCallbackUrl,
   readKycSessionUrl,
   readVeriffReasonCode,
   shouldReuseKycSessionUrl,
@@ -96,9 +97,13 @@ export class VeriffKycService implements IKycService {
       throw new KycAlreadyApprovedError();
     }
 
+    const callbackUrl = normalizeKycReturnUrl(returnUrl, this.webOrigin);
+    assertKycReturnUrlAllowed(callbackUrl, this.webOrigin);
+
     const latest = await this.repo.findLatestByUserIdWithPayload(userId);
     if (
       latest &&
+      readKycCallbackUrl(latest.decisionPayload) === callbackUrl &&
       shouldReuseKycSessionUrl({
         latestSessionStatus: latest.verification.status,
         decisionPayload: latest.decisionPayload,
@@ -129,9 +134,6 @@ export class VeriffKycService implements IKycService {
       );
     }
 
-    const callbackUrl = normalizeKycReturnUrl(returnUrl, this.webOrigin);
-    assertKycReturnUrlAllowed(callbackUrl, this.webOrigin);
-
     const { sessionId, verificationUrl } = await this.veriffClient.createSession({
       userId,
       callbackUrl,
@@ -145,7 +147,7 @@ export class VeriffKycService implements IKycService {
     });
 
     await this.repo.update(verification.id, {
-      decisionPayload: { sessionUrl: verificationUrl },
+      decisionPayload: { sessionUrl: verificationUrl, callbackUrl },
     });
 
     return { sessionId, verificationUrl, verification };

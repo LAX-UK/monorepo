@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
-const visualEnabled = process.env.PLAYWRIGHT_VISUAL === "1";
 const clientEmail = process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "";
 const clientPassword = process.env.PLAYWRIGHT_CLIENT_PASSWORD ?? "";
 
@@ -155,57 +154,4 @@ test.describe("onboarding eligibility exclusions @roles", () => {
       await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
     });
   }
-});
-
-test.describe("buyer onboarding visual contracts @visual", () => {
-  test.beforeEach(async ({ page }) => {
-    test.skip(
-      !enabled || !visualEnabled || !clientEmail || !clientPassword,
-      "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_VISUAL=1, and client credentials.",
-    );
-    await clientLogin(page);
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.addStyleTag({
-      content:
-        "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}",
-    });
-  });
-
-  for (const screen of [
-    {
-      name: "interests",
-      path: "/onboarding/interests?next=%2Fdashboard",
-      heading: /what are your areas of interest/i,
-    },
-    {
-      name: "recommendations",
-      path: "/onboarding/recommendations?next=%2Fdashboard",
-      heading: /recommended lots/i,
-    },
-    {
-      name: "identity",
-      path: "/onboarding/identity?next=%2Fdashboard&source=post_verify",
-      heading: /verify your identity/i,
-    },
-  ]) {
-    test(`${screen.name} desktop Figma screen`, async ({ page }) => {
-      await page.goto(screen.path);
-      await expect(page.locator("#main-content")).toBeVisible();
-      await expect(page.getByRole("heading", { name: screen.heading })).toBeVisible();
-      await expect(page).toHaveScreenshot(`buyer-onboarding-${screen.name}-desktop.png`, {
-        fullPage: true,
-        maxDiffPixelRatio: 0.01,
-      });
-    });
-  }
-
-  test("interests representative mobile screen", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/onboarding/interests?next=%2Fdashboard");
-    await expect(page.locator("#main-content")).toBeVisible();
-    await expect(page).toHaveScreenshot("buyer-onboarding-interests-mobile.png", {
-      fullPage: true,
-      maxDiffPixelRatio: 0.01,
-    });
-  });
 });

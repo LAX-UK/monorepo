@@ -9,6 +9,8 @@ export type StandingBidEligibilityInput = {
   buyerLegalEntityId: string;
   ceiling: string;
   autoBidStepAmount: string | null;
+  placedVia: string | null;
+  telephoneBookingId: string | null;
 };
 
 export interface IStandingBidEligibilityValidator {
@@ -39,7 +41,10 @@ export class StandingBidEligibilityValidator implements IStandingBidEligibilityV
         amount: ceiling,
         maxAutoBidAmount: ceiling,
         ...(step != null && Number.isFinite(step) ? { autoBidStepAmount: step } : {}),
-        placedVia: "web",
+        placedVia: state.placedVia ?? "web",
+        ...(state.telephoneBookingId != null
+          ? { telephoneBookingId: state.telephoneBookingId }
+          : {}),
       });
       if (eligibility.isErr()) return eligibility;
       const entity = await this.legalEntityRepository.findById(state.buyerLegalEntityId);

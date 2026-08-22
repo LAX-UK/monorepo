@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
 import {
   buyerAgentAuthorisation,
+  legalEntity,
   legalEntityMember,
   lot,
   saleRegistration,
@@ -47,19 +48,27 @@ export class DrizzleBidLotRulesReader implements IBidLotRulesReader {
 export class DrizzleBidMembershipReader implements IBidMembershipReader {
   constructor(private readonly db: Database) {}
 
-  async findActiveMemberRole(userId: string, legalEntityId: string) {
+  async findBuyerEntityMembership(userId: string, legalEntityId: string) {
     const [row] = await this.db
-      .select({ role: legalEntityMember.role })
-      .from(legalEntityMember)
-      .where(
+      .select({
+        entityId: legalEntity.id,
+        role: legalEntityMember.role,
+      })
+      .from(legalEntity)
+      .leftJoin(
+        legalEntityMember,
         and(
-          eq(legalEntityMember.legalEntityId, legalEntityId),
+          eq(legalEntityMember.legalEntityId, legalEntity.id),
           eq(legalEntityMember.userId, userId),
           isNull(legalEntityMember.removedAt),
         ),
       )
+      .where(eq(legalEntity.id, legalEntityId))
       .limit(1);
-    return row?.role ?? null;
+    return {
+      entityExists: row != null,
+      memberRole: row?.role ?? null,
+    };
   }
 }
 
@@ -68,11 +77,23 @@ export class DrizzleOperatorPlacementReader implements IOperatorPlacementReader 
 
   async findTelephoneBookingPlacement(bookingId: string) {
     const [row] = await this.db
-      .select({ status: telephoneBidBooking.status, saleId: telephoneBidBooking.saleId })
+      .select({
+        status: telephoneBidBooking.status,
+        saleId: telephoneBidBooking.saleId,
+        userId: telephoneBidBooking.userId,
+        buyerLegalEntityId: telephoneBidBooking.buyerLegalEntityId,
+      })
       .from(telephoneBidBooking)
       .where(eq(telephoneBidBooking.id, bookingId))
       .limit(1);
-    return row?.saleId ? { saleId: row.saleId, status: row.status } : null;
+    return row?.saleId
+      ? {
+          saleId: row.saleId,
+          status: row.status,
+          userId: row.userId,
+          buyerLegalEntityId: row.buyerLegalEntityId,
+        }
+      : null;
   }
 
   async findTelephoneBookingCap(bookingId: string) {

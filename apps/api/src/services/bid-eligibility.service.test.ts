@@ -10,20 +10,24 @@ function createSequentialDb(steps: WhereStep[]): Database {
   const queue = [...steps];
   const db = {
     select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => {
-          const step = queue.shift();
-          if (!step) {
-            throw new Error("BidEligibilityService test: unexpected extra query");
-          }
-          if (step.kind === "limit") {
-            return {
-              limit: vi.fn(() => Promise.resolve(step.rows)),
-            };
-          }
-          return Promise.resolve(step.rows);
-        }),
-      })),
+      from: vi.fn(() => {
+        const chain = {
+          leftJoin: vi.fn(() => chain),
+          where: vi.fn(() => {
+            const step = queue.shift();
+            if (!step) {
+              throw new Error("BidEligibilityService test: unexpected extra query");
+            }
+            if (step.kind === "limit") {
+              return {
+                limit: vi.fn(() => Promise.resolve(step.rows)),
+              };
+            }
+            return Promise.resolve(step.rows);
+          }),
+        };
+        return chain;
+      }),
     })),
   };
   return db as unknown as Database;
@@ -179,7 +183,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
   it("returns membership_required when user is not a member", async () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
-      { kind: "limit", rows: [] },
+      { kind: "limit", rows: [{ role: null }] },
     ]);
     const svc = new BidEligibilityService(db);
     const r = await svc.assertCanPlaceBid({
@@ -191,6 +195,27 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     expect(r.isErr()).toBe(true);
     if (r.isErr()) {
       expect(r.error.code).toBe("membership_required");
+    }
+  });
+
+  it("returns 404 when the buyer legal entity does not exist", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ saleId }] },
+      { kind: "limit", rows: [] },
+    ]);
+    const svc = new BidEligibilityService(db);
+
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 1000,
+    });
+
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.status).toBe(404);
+      expect(r.error.message).toBe("Buyer legal entity not found");
     }
   });
 
@@ -486,7 +511,17 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
-      { kind: "limit", rows: [{ status: "confirmed", saleId }] },
+      {
+        kind: "limit",
+        rows: [
+          {
+            status: "confirmed",
+            saleId,
+            userId,
+            buyerLegalEntityId: buyerLeId,
+          },
+        ],
+      },
       { kind: "limit", rows: [{ reserveAltMax: "5000.00" }] },
     ]);
     const svc = new BidEligibilityService(db);
@@ -505,7 +540,17 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
-      { kind: "limit", rows: [{ status: "in_progress", saleId }] },
+      {
+        kind: "limit",
+        rows: [
+          {
+            status: "in_progress",
+            saleId,
+            userId,
+            buyerLegalEntityId: buyerLeId,
+          },
+        ],
+      },
       { kind: "limit", rows: [{ reserveAltMax: "1000.00" }] },
     ]);
     const svc = new BidEligibilityService(db);

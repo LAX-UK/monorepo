@@ -1,4 +1,7 @@
-import { BuyerRecommendationsViewTracker } from "@/components/onboarding/buyer-onboarding-analytics";
+import {
+  BuyerRecommendationsEmptyRedirect,
+  BuyerRecommendationsViewTracker,
+} from "@/components/onboarding/buyer-onboarding-analytics";
 import {
   BuyerOnboardingShell,
   onboardingActions,
@@ -56,7 +59,9 @@ export default async function BuyerRecommendationsPage({
       ),
     ).then((categoryRows) => categoryRows.flat()),
   );
-  if (rows.length === 0) redirect(identityHref);
+  if (rows.length === 0) {
+    return <BuyerRecommendationsEmptyRedirect source={source} href={identityHref} />;
+  }
   const lots = rows.map(toLotCardVM);
   const firstLot = lots[0];
   if (!firstLot) redirect(identityHref);

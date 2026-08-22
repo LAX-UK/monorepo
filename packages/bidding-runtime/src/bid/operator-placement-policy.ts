@@ -5,9 +5,19 @@ import { parseMoneyCap } from "./bid-cap.util.js";
 export class OperatorPlacementPolicy {
   constructor(private readonly reader: IOperatorPlacementReader) {}
 
-  async isActiveTelephoneBooking(bookingId: string, saleId: string): Promise<boolean> {
+  async isActiveTelephoneBooking(
+    bookingId: string,
+    saleId: string,
+    userId: string,
+    buyerLegalEntityId: string,
+  ): Promise<boolean> {
     const row = await this.reader.findTelephoneBookingPlacement(bookingId);
-    return row?.saleId === saleId && (row.status === "confirmed" || row.status === "in_progress");
+    return (
+      row?.saleId === saleId &&
+      row.userId === userId &&
+      row.buyerLegalEntityId === buyerLegalEntityId &&
+      (row.status === "confirmed" || row.status === "in_progress")
+    );
   }
 
   async resolveOperatorCap(input: {

@@ -12,7 +12,7 @@ import {
   markContextualKycReturnPending,
   trackContextualKycReturnIfPending,
 } from "@/lib/kyc/contextual-kyc-return";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 export function BuyerInterestsViewTracker({
@@ -45,6 +45,27 @@ export function BuyerRecommendationsViewTracker({
       source,
     });
   }, [empty, source]);
+  return null;
+}
+
+export function BuyerRecommendationsEmptyRedirect({
+  source,
+  href,
+}: {
+  source: BuyerOnboardingAnalyticsSource;
+  href: string;
+}) {
+  const router = useRouter();
+  const handled = useRef(false);
+  useEffect(() => {
+    if (handled.current) return;
+    handled.current = true;
+    trackBuyerPersonalization({
+      event: "buyer_recommendations_empty",
+      source,
+    });
+    router.replace(href);
+  }, [href, router, source]);
   return null;
 }
 

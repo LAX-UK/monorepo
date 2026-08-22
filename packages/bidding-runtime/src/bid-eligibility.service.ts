@@ -65,10 +65,14 @@ export class BidEligibilityService implements IBidEligibility {
     }
 
     const saleId = lotRow.saleId ?? input.saleId ?? null;
-    const memberRole = await this.membershipReader.findActiveMemberRole(
+    const membership = await this.membershipReader.findBuyerEntityMembership(
       input.placedByUserId,
       input.buyerLegalEntityId,
     );
+    if (!membership.entityExists) {
+      return err(new BidError("Buyer legal entity not found", 404));
+    }
+    const memberRole = membership.memberRole;
     if (!memberRole) {
       return err(new BidError("Not a member of this legal entity", 403, "membership_required"));
     }
@@ -77,7 +81,12 @@ export class BidEligibilityService implements IBidEligibility {
       (input.placedVia === "telephone" &&
         input.telephoneBookingId != null &&
         saleId != null &&
-        (await this.operatorPolicy.isActiveTelephoneBooking(input.telephoneBookingId, saleId))) ||
+        (await this.operatorPolicy.isActiveTelephoneBooking(
+          input.telephoneBookingId,
+          saleId,
+          input.placedByUserId,
+          input.buyerLegalEntityId,
+        ))) ||
       (input.placedVia === "saleroom" && saleId != null && input.paddleNumber != null);
 
     if (operatorBypass) {

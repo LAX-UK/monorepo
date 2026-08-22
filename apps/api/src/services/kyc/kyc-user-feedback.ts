@@ -119,12 +119,22 @@ export function readKycSessionUrl(decisionPayload: Record<string, unknown> | nul
   return typeof url === "string" && url.length > 0 ? url : null;
 }
 
+export function readKycCallbackUrl(decisionPayload: Record<string, unknown> | null): string | null {
+  const url = decisionPayload?.callbackUrl;
+  return typeof url === "string" && url.length > 0 ? url : null;
+}
+
 export function mergeKycDecisionPayload(
   existing: Record<string, unknown> | null | undefined,
   incoming: Record<string, unknown>,
 ): Record<string, unknown> {
   const sessionUrl = readKycSessionUrl(existing ?? null) ?? readKycSessionUrl(incoming);
-  return sessionUrl ? { ...incoming, sessionUrl } : incoming;
+  const callbackUrl = readKycCallbackUrl(existing ?? null) ?? readKycCallbackUrl(incoming);
+  return {
+    ...incoming,
+    ...(sessionUrl ? { sessionUrl } : {}),
+    ...(callbackUrl ? { callbackUrl } : {}),
+  };
 }
 
 export function buildKycUserFeedback(input: {

@@ -29,7 +29,12 @@ function buildTelephoneBidApp() {
     },
     telephoneBidBookingService: {
       countGlobalPending: vi.fn().mockResolvedValue(0),
-      assertBookingAllowsTelephoneBid: vi.fn().mockResolvedValue(ok(undefined)),
+      assertBookingAllowsTelephoneBid: vi.fn().mockResolvedValue(
+        ok({
+          userId: BUYER_ID,
+          buyerLegalEntityId: BUYER_ENTITY,
+        }),
+      ),
     },
     onsiteEventRsvpService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
     repoFactory: {
@@ -111,6 +116,28 @@ describe("POST /admin/saleroom/telephone-bids", () => {
     );
   });
 
+  it("rejects a booking that belongs to a different buyer", async () => {
+    const { app, placeBidWithIdempotency, placeBid } = buildTelephoneBidApp();
+    const res = await app.request("http://test/admin/saleroom/telephone-bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lotId: LOT_ID,
+        buyerUserId: "different-buyer",
+        buyerLegalEntityId: BUYER_ENTITY,
+        amount: 500,
+        telephoneBookingId: BOOKING_ID,
+      }),
+    });
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({
+      code: "telephone_booking_buyer_mismatch",
+    });
+    expect(placeBidWithIdempotency).not.toHaveBeenCalled();
+    expect(placeBid).not.toHaveBeenCalled();
+  });
+
   it("derives clerk idempotency key when telephone booking id is absent", async () => {
     const { app, placeBidWithIdempotency, placeBid } = buildTelephoneBidApp();
     const res = await app.request("http://test/admin/saleroom/telephone-bids", {
@@ -146,7 +173,12 @@ describe("POST /admin/saleroom/telephone-bids", () => {
       },
       telephoneBidBookingService: {
         countGlobalPending: vi.fn().mockResolvedValue(0),
-        assertBookingAllowsTelephoneBid: vi.fn().mockResolvedValue(ok(undefined)),
+        assertBookingAllowsTelephoneBid: vi.fn().mockResolvedValue(
+          ok({
+            userId: BUYER_ID,
+            buyerLegalEntityId: BUYER_ENTITY,
+          }),
+        ),
       },
       onsiteEventRsvpService: { listAdminEvents: vi.fn().mockResolvedValue([]) },
       repoFactory: {

@@ -5,11 +5,22 @@ import {
   type FullBuyerOnboardingSource,
   buyerInterestsCompletionHref,
 } from "@/lib/kyc/buyer-onboarding";
-import { redirect } from "next/navigation";
 
-export type BuyerInterestsActionState = { error: string | null };
+export type BuyerInterestsActionState = {
+  error: string | null;
+  redirectTo: string | null;
+  submission: {
+    skipped: boolean;
+    selectedCount: number;
+    source: FullBuyerOnboardingSource;
+  } | null;
+};
 
-export const INITIAL_BUYER_INTERESTS_ACTION_STATE: BuyerInterestsActionState = { error: null };
+export const INITIAL_BUYER_INTERESTS_ACTION_STATE: BuyerInterestsActionState = {
+  error: null,
+  redirectTo: null,
+  submission: null,
+};
 
 export async function completeBuyerInterests(
   _previousState: BuyerInterestsActionState,
@@ -30,7 +41,17 @@ export async function completeBuyerInterests(
   } catch {
     return {
       error: "We couldn’t save your interests. Check your connection and try again.",
+      redirectTo: null,
+      submission: null,
     };
   }
-  redirect(buyerInterestsCompletionHref(next, categoryIds.length > 0, source));
+  return {
+    error: null,
+    redirectTo: buyerInterestsCompletionHref(next, categoryIds.length > 0, source),
+    submission: {
+      skipped: formData.get("skip") === "1",
+      selectedCount: categoryIds.length,
+      source,
+    },
+  };
 }

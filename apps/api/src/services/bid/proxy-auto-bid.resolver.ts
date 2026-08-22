@@ -20,6 +20,8 @@ export type BidderCeilingState = {
   ceiling: string;
   autoBidStepAmount: string | null;
   maxCreatedAt: Date | null;
+  placedVia: string | null;
+  telephoneBookingId: string | null;
 };
 
 export type ProxyCancelNotification = {
@@ -82,7 +84,7 @@ export class ProxyAutoBidResolver {
       return initialBid;
     }
 
-    const proxyChannel = initialBid.placedVia ?? "web";
+    const proxyChannel = winner.placedVia ?? "web";
 
     return bids.create({
       lotId,
@@ -94,7 +96,7 @@ export class ProxyAutoBidResolver {
       maxAutoBidAmount: winner.ceiling,
       autoBidStepAmount: winnerStep,
       placedVia: proxyChannel,
-      telephoneBookingId: null,
+      telephoneBookingId: proxyChannel === "telephone" ? winner.telephoneBookingId : null,
     });
   }
 
@@ -192,6 +194,9 @@ export class ProxyAutoBidResolver {
         ? await this.standingBidValidator.validate(lotId, s)
         : null;
       if (eligibility?.isErr()) {
+        if (eligibility.error.status >= 500) {
+          throw eligibility.error;
+        }
         await this.cancelProxy(
           s,
           lotId,

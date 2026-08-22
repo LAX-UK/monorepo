@@ -41,16 +41,22 @@ export interface IBidLotRulesReader {
 }
 
 export interface IBidMembershipReader {
-  findActiveMemberRole(
+  findBuyerEntityMembership(
     userId: string,
     legalEntityId: string,
-  ): Promise<LegalEntityMemberRole | null>;
+  ): Promise<{
+    entityExists: boolean;
+    memberRole: LegalEntityMemberRole | null;
+  }>;
 }
 
 export interface IOperatorPlacementReader {
-  findTelephoneBookingPlacement(
-    bookingId: string,
-  ): Promise<{ saleId: string; status: string } | null>;
+  findTelephoneBookingPlacement(bookingId: string): Promise<{
+    saleId: string;
+    status: string;
+    userId: string;
+    buyerLegalEntityId: string;
+  } | null>;
   findTelephoneBookingCap(bookingId: string): Promise<{ reserveAltMax: string | null } | null>;
   findPaddleRegistration(
     saleId: string,

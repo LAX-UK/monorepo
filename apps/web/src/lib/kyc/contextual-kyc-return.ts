@@ -26,7 +26,7 @@ function normalizePath(path: string): string {
   if (!path.startsWith("/")) return path;
   const queryIndex = path.indexOf("?");
   if (queryIndex === -1) return path;
-  return path.slice(0, queryIndex) + path.slice(queryIndex);
+  return path.slice(0, queryIndex);
 }
 
 export function markContextualKycReturnPending(pending: ContextualKycReturnPending): void {

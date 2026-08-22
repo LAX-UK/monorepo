@@ -132,11 +132,11 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 ## 10. Onboarding rollout, monitoring, and rollback
 
 - [ ] Record the pre-launch registration → KYC session created → submitted → approved baseline
-- [ ] Enable the flag for internal/test accounts; verify no increase in session-start or webhook failures
+- [ ] Enable the environment-global flags in the test environment first; verify no increase in session-start or webhook failures
 - [ ] Confirm analytics contain only step/source/event metadata—no user IDs, provider URLs, tokens, document data, or other PII
 - [ ] Monitor onboarding views, skips, recommendation continues, contextual gate triggers/returns, Veriff cancel/reload, session creation, submission, approval, decision latency, and support reports
-- [ ] Expand to all eligible users only after the internal cohort passes the checks above
-- [ ] Configuration rollback: set `FULL_BUYER_ONBOARDING_ENABLED=false` first, then `KYC_ONBOARDING_ENABLED=false`, redeploy/restart web, then verify old post-verify and dashboard behavior
+- [ ] Enable the same environment-global values in production only after the test environment passes the checks above; these flags do not provide per-account cohorts
+- [ ] Configuration rollback: set `STRICT_BID_ELIGIBILITY_ENABLED=false` on API and web first, then `FULL_BUYER_ONBOARDING_ENABLED=false`, then `KYC_ONBOARDING_ENABLED=false`; redeploy/restart API and web and verify legacy bidding, post-verify, and dashboard behavior
 - [ ] Code rollback is required only if shared routing, KYC launcher behavior, threshold enforcement, or webhook processing regresses
 
 ## Sign-off

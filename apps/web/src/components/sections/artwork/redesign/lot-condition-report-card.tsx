@@ -186,7 +186,7 @@ function StateBody({
           </p>
           <Button asChild variant="outline" size="sm" className="min-h-11 w-full">
             <Link href={contextualIdentityOnboardingHref(state.loginNextPath, "condition_report")}>
-              Verify to continue bidding
+              Verify to request a condition report
             </Link>
           </Button>
         </>

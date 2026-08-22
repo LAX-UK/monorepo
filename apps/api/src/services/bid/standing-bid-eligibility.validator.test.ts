@@ -10,6 +10,8 @@ const state = {
   buyerLegalEntityId: "entity-1",
   ceiling: "500.00",
   autoBidStepAmount: "10.00",
+  placedVia: "web",
+  telephoneBookingId: null,
 };
 
 describe("StandingBidEligibilityValidator", () => {
@@ -56,5 +58,28 @@ describe("StandingBidEligibilityValidator", () => {
     const result = await validator.validate("lot-1", state);
 
     expect(result.isErr() && result.error.code).toBe("entity_not_authorised_to_bid");
+  });
+
+  it("preserves telephone booking provenance during revalidation", async () => {
+    const assertCanPlaceBid = vi.fn().mockResolvedValue(ok(undefined));
+    const validator = new StandingBidEligibilityValidator(
+      { assertCanPlaceBid } as IBidEligibility,
+      {
+        findById: vi.fn().mockResolvedValue({ status: "active" }),
+      } as unknown as ILegalEntityRepository,
+    );
+
+    await validator.validate("lot-1", {
+      ...state,
+      placedVia: "telephone",
+      telephoneBookingId: "booking-1",
+    });
+
+    expect(assertCanPlaceBid).toHaveBeenCalledWith(
+      expect.objectContaining({
+        placedVia: "telephone",
+        telephoneBookingId: "booking-1",
+      }),
+    );
   });
 });

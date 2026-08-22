@@ -220,6 +220,8 @@ export interface IBidRepository {
       ceiling: string;
       autoBidStepAmount: string | null;
       maxCreatedAt: Date | null;
+      placedVia: string | null;
+      telephoneBookingId: string | null;
     }>
   >;
   /** True when the bidder has at least one bid on the lot with a proxy ceiling set. */

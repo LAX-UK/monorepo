@@ -42,4 +42,19 @@ describe("contextual KYC return tracking", () => {
 
     expect(trackContextualKycGate).not.toHaveBeenCalled();
   });
+
+  it("matches a stored destination that includes query parameters", () => {
+    markContextualKycReturnPending({
+      source: "bid_gate",
+      nextPath: "/search?q=test",
+    });
+
+    trackContextualKycReturnIfPending("/search", true);
+
+    expect(trackContextualKycGate).toHaveBeenCalledWith({
+      event: "contextual_kyc_returned",
+      source: "bid_gate",
+    });
+    expect(sessionStorage.getItem("lax_contextual_kyc_return")).toBeNull();
+  });
 });

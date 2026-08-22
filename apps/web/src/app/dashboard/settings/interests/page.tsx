@@ -18,7 +18,7 @@ export default async function AuctionInterestsSettingsPage({
   searchParams: Promise<{ error?: string; saved?: string }>;
 }) {
   const sp = await searchParams;
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
+  const error = sp.error ?? null;
   const saved = sp.saved === "1";
 
   const user = await requireAuthenticatedUser({

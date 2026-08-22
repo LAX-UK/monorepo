@@ -18,7 +18,7 @@ export { X_LEGAL_ENTITY_ID_HEADER };
 
 type HeaderResolution =
   | { kind: "ok"; membership: ActiveMembership }
-  | { kind: "error"; status: 403; body: Record<string, unknown> };
+  | { kind: "error"; status: 403 | 404; body: Record<string, unknown> };
 
 /** Shared by strict header middleware and submission routes: resolve acting
  * membership from `X-Legal-Entity-Id` + optional admin impersonation cookie. */
@@ -35,6 +35,13 @@ export async function resolveLegalEntityContextFromHeader(
 ): Promise<HeaderResolution> {
   const membership = await repo.findActiveMembership(input.userId, input.legalEntityId);
   if (membership) return { kind: "ok", membership };
+  if (!(await repo.findById(input.legalEntityId))) {
+    return {
+      kind: "error",
+      status: 404,
+      body: { error: "buyer_legal_entity_not_found", code: "buyer_legal_entity_not_found" },
+    };
+  }
 
   const role = normalizeUserRoleOrClient(input.userRole);
   const staff = normalizeUserStaffRole(input.userStaffRole ?? undefined);

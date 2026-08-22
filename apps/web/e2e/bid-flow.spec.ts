@@ -41,9 +41,16 @@ async function loginAsBuyer(page: Page) {
 
 /** Default lot entry mode is auto-bid; manual form is behind this chooser. */
 async function selectManualBidMode(page: Page) {
-  const manual = page.getByRole("button", { name: /place one bid now/i }).first();
+  const manual = page.getByRole("button", { name: /place one bid now/i }).filter({ visible: true });
   if (await manual.isVisible().catch(() => false)) {
     await manual.click();
+  }
+}
+
+async function selectAutoBidMode(page: Page) {
+  const autoBid = page.getByRole("button", { name: /^auto-bid/i }).filter({ visible: true });
+  if (await autoBid.isVisible().catch(() => false)) {
+    await autoBid.click();
   }
 }
 
@@ -215,13 +222,16 @@ test.describe("strict bid eligibility @journey", () => {
       process.env.PLAYWRIGHT_STRICT_APPROVED_PASSWORD ?? "Password123!",
     );
     await gotoLiveLot(page);
-    await expect(page.getByLabel(/max amount/i).first()).toBeEnabled();
-    await page
-      .getByLabel(/max amount/i)
-      .first()
-      .fill("100000");
-    await expect(page.getByRole("button", { name: /save auto-bid/i }).first()).toBeEnabled();
+    await selectAutoBidMode(page);
+    const maxAmount = page.getByLabel(/max amount/i).filter({ visible: true });
+    await expect(maxAmount).toBeEnabled();
+    await maxAmount.fill("100000");
+    await expect(
+      page.getByRole("button", { name: /save auto-bid/i }).filter({ visible: true }),
+    ).toBeEnabled();
     await selectManualBidMode(page);
-    await expect(page.getByRole("button", { name: /review bid/i }).first()).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: /review bid/i }).filter({ visible: true }),
+    ).toBeEnabled();
   });
 });

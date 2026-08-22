@@ -2,6 +2,8 @@ import type { SessionUser } from "@/lib/data/contracts";
 import type { Lot } from "@auction/types";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { evaluateBidPolicies } from "../evaluate-bid-policies";
+import { defaultBidPolicies } from "./index";
 import { strictEligibilityPolicy } from "./strict-eligibility.policy";
 import type { BidPolicyContext } from "./types";
 
@@ -62,5 +64,19 @@ describe("strictEligibilityPolicy", () => {
 
   it("allows an email-verified, KYC-approved client", () => {
     expect(strictEligibilityPolicy.evaluate(context(approvedUser))).toEqual({ kind: "allow" });
+  });
+
+  it("shows suspension before identity remediation for combined blocked states", () => {
+    const decision = evaluateBidPolicies(
+      defaultBidPolicies,
+      context({
+        ...approvedUser,
+        suspended: true,
+        emailVerified: false,
+        kycStatus: "unverified",
+      }),
+    );
+
+    expect(decision).toMatchObject({ kind: "block", viewId: "suspended" });
   });
 });

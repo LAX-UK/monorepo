@@ -14,10 +14,10 @@ import type { BidPolicy } from "./types";
 export const defaultBidPolicies: readonly BidPolicy[] = [
   notLivePolicy,
   notSignedInPolicy,
+  suspendedPolicy,
   strictEligibilityPolicy,
   kycThresholdPolicy,
   saleRegistrationPolicy,
-  suspendedPolicy,
   sellerOwnLotPolicy,
   adminPolicy,
 ] as const;

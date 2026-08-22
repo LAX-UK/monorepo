@@ -21,8 +21,9 @@ function repo(
   ensurePersonalEntity?: ILegalEntityRepository["ensurePersonalEntity"],
 ) {
   const findActiveMembership = vi.fn().mockResolvedValue(membership);
+  const findById = vi.fn().mockResolvedValue({ id: ENTITY_ID });
   const stub: ILegalEntityRepository = {
-    findById: vi.fn(),
+    findById,
     findByIds: vi.fn().mockResolvedValue([]),
     listActiveMembershipsForUser: vi.fn(),
     findActiveMembership,
@@ -33,7 +34,7 @@ function repo(
     findPreferredBillToLegalEntityAddress: vi.fn().mockResolvedValue(null),
     ensurePersonalEntity: ensurePersonalEntity ?? vi.fn(),
   };
-  return { stub, findActiveMembership };
+  return { stub, findActiveMembership, findById };
 }
 
 function submissionsMiddleware(
@@ -119,6 +120,23 @@ describe("createRequireLegalEntityContext (required)", () => {
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("not_a_member_of_legal_entity");
     expect(findActiveMembership).toHaveBeenCalledWith(USER_ID, ENTITY_ID);
+  });
+
+  it("returns 404 when the requested legal entity does not exist", async () => {
+    const { stub, findById } = repo(null);
+    findById.mockResolvedValueOnce(null);
+    const app = appWithMiddleware(createRequireLegalEntityContext(stub), {
+      setUserId: USER_ID,
+    });
+
+    const res = await app.request("/", {
+      headers: { [X_LEGAL_ENTITY_ID_HEADER]: ENTITY_ID },
+    });
+
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toMatchObject({
+      code: "buyer_legal_entity_not_found",
+    });
   });
 
   it("attaches legalEntityContext on success", async () => {

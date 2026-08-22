@@ -17,7 +17,8 @@ import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { Check, Loader2 } from "lucide-react";
-import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 type Props = {
@@ -27,13 +28,7 @@ type Props = {
   initialCategoryIds: readonly string[];
 };
 
-function BuyerInterestActions({
-  source,
-  selectedCount,
-}: {
-  source: FullBuyerOnboardingSource;
-  selectedCount: number;
-}) {
+function BuyerInterestActions() {
   const { pending } = useFormStatus();
 
   return (
@@ -45,7 +40,6 @@ function BuyerInterestActions({
         variant="ghost"
         disabled={pending}
         className={onboardingTextButton}
-        onClick={() => trackBuyerInterestsSubmission({ skipped: true, selectedCount: 0, source })}
       >
         Skip personalization
       </Button>
@@ -54,7 +48,6 @@ function BuyerInterestActions({
         disabled={pending}
         aria-disabled={pending}
         className={`${onboardingPrimaryButton} w-full sm:w-auto`}
-        onClick={() => trackBuyerInterestsSubmission({ skipped: false, selectedCount, source })}
       >
         {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
         {pending ? "Saving…" : "Continue"}
@@ -67,6 +60,8 @@ function BuyerInterestActions({
 }
 
 export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCategoryIds }: Props) {
+  const router = useRouter();
+  const handledRedirect = useRef<string | null>(null);
   const [selected, setSelected] = useState(() => new Set(initialCategoryIds));
   const [actionState, formAction] = useActionState(
     completeBuyerInterests,
@@ -80,6 +75,19 @@ export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCate
       description: actionState.error,
     });
   }, [actionState.error]);
+
+  useEffect(() => {
+    if (
+      !actionState.redirectTo ||
+      !actionState.submission ||
+      handledRedirect.current === actionState.redirectTo
+    ) {
+      return;
+    }
+    handledRedirect.current = actionState.redirectTo;
+    trackBuyerInterestsSubmission(actionState.submission);
+    router.replace(actionState.redirectTo);
+  }, [actionState.redirectTo, actionState.submission, router]);
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-8 sm:gap-10">
@@ -150,7 +158,7 @@ export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCate
       <span className="sr-only" role="alert" aria-live="assertive">
         {actionState.error}
       </span>
-      <BuyerInterestActions source={source} selectedCount={selected.size} />
+      <BuyerInterestActions />
     </form>
   );
 }
