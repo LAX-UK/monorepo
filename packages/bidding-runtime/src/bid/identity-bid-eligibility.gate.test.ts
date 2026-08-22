@@ -1,7 +1,7 @@
-import type { IBidActorEligibilityReader } from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { BidError } from "../bid-error.js";
+import type { IBidActorEligibilityReader } from "../ports.js";
 import { BidIdentityEligibilityGate } from "./identity-bid-eligibility.gate.js";
 import type { IKycBidGate } from "./kyc-bid.gate.js";
 

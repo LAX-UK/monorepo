@@ -1,7 +1,7 @@
 import { evaluateSelfServiceActorBidEligibility } from "@auction/domain";
-import type { IBidActorEligibilityReader } from "@auction/persistence/interfaces";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../bid-error.js";
+import type { IBidActorEligibilityReader } from "../ports.js";
 import type { IKycBidGate } from "./kyc-bid.gate.js";
 
 export interface IBidIdentityEligibilityGate {

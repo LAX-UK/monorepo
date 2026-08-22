@@ -1,8 +1,4 @@
 export type {
-  BidActorEligibilityRow,
-  IBidActorEligibilityReader,
-} from "./bid-actor-eligibility.reader.js";
-export type {
   IBidLotRulesReader,
   IBidMembershipReader,
   IBuyerAgentAuthorisationReader,

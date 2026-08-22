@@ -24,6 +24,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@auction/bidding-runtime": "workspace:*",
     "@auction/db": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/types": "workspace:*",

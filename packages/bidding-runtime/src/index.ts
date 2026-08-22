@@ -1,8 +1,10 @@
 export { BidError } from "./bid-error.js";
 export { BidEligibilityService } from "./bid-eligibility.service.js";
 export type {
+  BidActorEligibilityRow,
   BidEligibilityCheckInput,
   IAmlHoldReader,
+  IBidActorEligibilityReader,
   IBidEligibility,
   IBidLotRulesReader,
   IBidMembershipReader,

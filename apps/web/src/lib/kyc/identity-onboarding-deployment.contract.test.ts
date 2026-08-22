@@ -35,6 +35,36 @@ describe("identity onboarding deployment contract", () => {
     }
   });
 
+  it("passes rollout controls through plan, apply, drift, and test lifecycle workflows", () => {
+    const workflowPaths = [
+      ".github/workflows/terraform-plan.yml",
+      ".github/workflows/terraform-drift-check.yml",
+      ".github/workflows/terraform-apply-prod.yml",
+      ".github/workflows/terraform-apply-test.yml",
+      ".github/workflows/terraform-test-up.yml",
+      ".github/workflows/terraform-test-down.yml",
+    ];
+    const terraformVariables = [
+      "TF_VAR_strict_bid_eligibility_enabled",
+      "TF_VAR_kyc_onboarding_enabled",
+      "TF_VAR_full_buyer_onboarding_enabled",
+    ];
+
+    for (const path of workflowPaths) {
+      const workflow = readRoot(path);
+      for (const variable of terraformVariables) {
+        expect(workflow, `${path} must set ${variable}`).toContain(`${variable}:`);
+      }
+    }
+
+    expect(readRoot(".github/workflows/terraform-apply-prod.yml")).toContain(
+      "vars.STRICT_BID_ELIGIBILITY_ENABLED || 'false'",
+    );
+    expect(readRoot(".github/workflows/terraform-apply-test.yml")).toContain(
+      "vars.STRICT_BID_ELIGIBILITY_ENABLED || 'true'",
+    );
+  });
+
   it("passes critical public configuration into production web image builds", () => {
     const compose = readRoot("docker-compose.prod.yml");
     const dockerfile = readRoot("apps/web/Dockerfile");

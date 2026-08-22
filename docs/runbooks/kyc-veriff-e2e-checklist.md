@@ -132,6 +132,7 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 ## 10. Onboarding rollout, monitoring, and rollback
 
 - [ ] Record the pre-launch registration → KYC session created → submitted → approved baseline
+- [ ] Set GitHub environment variables `KYC_ONBOARDING_ENABLED`, `FULL_BUYER_ONBOARDING_ENABLED`, and `STRICT_BID_ELIGIBILITY_ENABLED`; the Terraform plan/apply/drift workflows forward them to the ephemeral application layer
 - [ ] Enable the environment-global flags in the test environment first; verify no increase in session-start or webhook failures
 - [ ] Confirm analytics contain only step/source/event metadata—no user IDs, provider URLs, tokens, document data, or other PII
 - [ ] Monitor onboarding views, skips, recommendation continues, contextual gate triggers/returns, Veriff cancel/reload, session creation, submission, approval, decision latency, and support reports

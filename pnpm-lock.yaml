@@ -657,9 +657,6 @@ importers:
       '@auction/domain':
         specifier: workspace:*
         version: link:../domain
-      '@auction/persistence':
-        specifier: workspace:*
-        version: link:../persistence
       '@auction/types':
         specifier: workspace:*
         version: link:../types
@@ -874,6 +871,9 @@ importers:
 
   packages/persistence:
     dependencies:
+      '@auction/bidding-runtime':
+        specifier: workspace:*
+        version: link:../bidding-runtime
       '@auction/db':
         specifier: workspace:*
         version: link:../db

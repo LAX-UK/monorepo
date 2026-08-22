@@ -1,3 +1,4 @@
+import type { SelfServiceActorKycStatus } from "@auction/domain";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { BidError } from "./bid-error.js";
@@ -25,6 +26,15 @@ export interface IKycThresholdGate {
 
 export interface IAmlHoldReader {
   getHold(userId: string): Promise<{ status: string } | null>;
+}
+
+export type BidActorEligibilityRow = {
+  emailVerified: boolean;
+  kycStatus: SelfServiceActorKycStatus;
+};
+
+export interface IBidActorEligibilityReader {
+  findBidActorEligibility(userId: string): Promise<BidActorEligibilityRow | null>;
 }
 
 export type BidLotRulesRow = {
