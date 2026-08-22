@@ -70,18 +70,20 @@ export function ConfirmedRemoveButton({
           {children}
         </Button>
       ) : (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           disabled={isDisabled}
           aria-label={ariaLabel}
           onClick={() => setOpen(true)}
           className={cn(
-            "shrink-0 self-start rounded-md p-1 text-on-surface-variant/60 hover:bg-surface-container-low hover:text-error focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-40",
+            "shrink-0 self-start text-on-surface-variant/60 hover:text-error",
             className,
           )}
         >
           <Trash2Icon className="size-4" aria-hidden />
-        </button>
+        </Button>
       )}
       <ConfirmDialog
         open={open}

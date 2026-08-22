@@ -1,5 +1,6 @@
 import { withOAuthReturnParams } from "@/lib/auth/oauth-return-params";
-import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { resolveServerPostAuthDestination } from "@/lib/auth/post-auth-destination.server";
+import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { redirect } from "next/navigation";
 
@@ -26,7 +27,7 @@ export default async function SocialCallbackPage({
   }
 
   const requestedNext = typeof sp.next === "string" ? sp.next : null;
-  const dest = resolvePostAuthDestination({
+  const dest = resolveServerPostAuthDestination({
     user,
     requestedNext: isSafeNextPath(requestedNext ?? undefined) ? requestedNext : null,
     context: "sign-in",

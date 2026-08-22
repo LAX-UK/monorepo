@@ -54,13 +54,13 @@ export async function resendVerificationEmailFromPending(
   return sendVerificationEmailService({ email: input.email, callbackURL });
 }
 
-export type SendVerificationEmailFromBannerInput = {
+export type SendVerificationEmailForReturnPathInput = {
   email: string;
   next: string;
 };
 
-export async function sendVerificationEmailFromBanner(
-  input: SendVerificationEmailFromBannerInput,
+export async function sendVerificationEmailForReturnPath(
+  input: SendVerificationEmailForReturnPathInput,
 ): Promise<AuthSubmitResult> {
   let callbackURL: string;
   try {
@@ -70,3 +70,6 @@ export async function sendVerificationEmailFromBanner(
   }
   return sendVerificationEmailService({ email: input.email, callbackURL });
 }
+
+/** Backward-compatible dashboard entry point. */
+export const sendVerificationEmailFromBanner = sendVerificationEmailForReturnPath;

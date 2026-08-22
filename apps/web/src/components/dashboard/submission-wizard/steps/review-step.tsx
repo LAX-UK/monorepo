@@ -200,15 +200,17 @@ export function ReviewStep({
             {isSubmitting ? "Submitting…" : SUBMISSION_SUBMIT_LABEL}
           </Button>
         ) : null}
-        <button
+        <Button
           type="button"
-          className="font-body text-sm text-on-surface-variant underline-offset-4 hover:text-link hover:underline disabled:opacity-50"
+          variant="link"
+          size="link"
+          className="font-body text-sm text-on-surface-variant underline-offset-4 hover:text-link"
           disabled={isSubmitting}
           onClick={onFinishLater}
           data-testid="wizard-finish-later-review"
         >
           {isSubmitting ? "Saving…" : SUBMISSION_FINISH_LATER_LABEL}
-        </button>
+        </Button>
       </div>
     </div>
   );

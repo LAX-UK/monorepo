@@ -2,6 +2,7 @@
 
 import { ConditionReportRequestForm } from "@/components/sections/artwork/redesign/condition-report-request-form";
 import type { ConditionReportCardState } from "@/lib/condition-report/derive-condition-report-card-state";
+import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { ConditionReportRequestFormValues } from "@auction/validators";
@@ -184,10 +185,8 @@ function StateBody({
             {state.feedback ?? "Verify your identity to request a condition report for this lot."}
           </p>
           <Button asChild variant="outline" size="sm" className="min-h-11 w-full">
-            <Link
-              href={`/dashboard/verify-identity?next=${encodeURIComponent(state.loginNextPath)}`}
-            >
-              Verify identity
+            <Link href={contextualIdentityOnboardingHref(state.loginNextPath, "condition_report")}>
+              Verify to request a condition report
             </Link>
           </Button>
         </>

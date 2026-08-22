@@ -50,6 +50,6 @@ describe("useActivateSetPasswordController", () => {
       setupPassword,
     });
     renderHook(() => useActivateSetPasswordController());
-    expect(replace).toHaveBeenCalledWith("/dashboard");
+    expect(replace).toHaveBeenCalledWith("/auth/post-login?next=%2Fdashboard");
   });
 });

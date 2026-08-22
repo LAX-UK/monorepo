@@ -61,8 +61,11 @@ export function createBidRoutes(container: Container, authenticator: IAuthentica
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const kyc = container.kycService;
+  const strictBidEligibilityEnabled =
+    container.env?.STRICT_BID_ELIGIBILITY_ENABLED ??
+    (container.env?.APP_ENV != null && container.env.APP_ENV !== "production");
   const kycGate =
-    kyc?.isConfigured() === true
+    !strictBidEligibilityEnabled && kyc?.isConfigured() === true
       ? createRequireKyc(kyc)
       : createMiddleware(async (_c, next) => {
           await next();

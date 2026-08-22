@@ -1,0 +1,29 @@
+{
+  "name": "@auction/bidding-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "biome check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@auction/domain": "workspace:*",
+    "@auction/types": "workspace:*",
+    "@auction/validators": "workspace:*",
+    "neverthrow": "^8.1.1"
+  },
+  "devDependencies": {
+    "@auction/config-ts": "workspace:*",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7"
+  }
+}

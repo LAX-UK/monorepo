@@ -9,7 +9,8 @@ import {
   fetchSessionUserWithRetry,
 } from "@/lib/auth/fetch-session-user-with-retry.client";
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
-import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import { postLoginHandoffHref } from "@/lib/auth/post-login-handoff";
 import { type SignInFormValues, signInFormSchema } from "@/lib/auth/schemas";
 import { requestMagicLinkService } from "@/lib/auth/services/request-magic-link.service";
 import { signInService } from "@/lib/auth/services/sign-in.service";
@@ -18,7 +19,6 @@ import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
 import { notify } from "@/lib/ui/notify";
-import { normalizeUserRoleOrClient } from "@auction/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
@@ -194,18 +194,7 @@ export function useSignInController(nextHref: string, options: SignInControllerO
         notify.error(POST_AUTH_SESSION_LOAD_ERROR);
         return;
       }
-      router.push(
-        resolvePostAuthDestination({
-          user: {
-            ...me,
-            role: normalizeUserRoleOrClient(me.role),
-          },
-          requestedNext: nextHref,
-          context: "sign-in",
-          requireEmailVerification: false,
-          withWelcomeBack: true,
-        }),
-      );
+      router.push(postLoginHandoffHref(nextHref, { withWelcomeBack: true }));
       router.refresh();
       return;
     }

@@ -775,6 +775,19 @@ export function createAdminRoutes(container: Container, authenticator: IAuthenti
             asHttpStatus(e.status),
           );
         }
+        const booking = bookingCheck.value;
+        if (
+          booking.userId !== body.buyerUserId ||
+          booking.buyerLegalEntityId !== body.buyerLegalEntityId
+        ) {
+          return c.json(
+            {
+              error: "Telephone booking does not belong to the selected buyer",
+              code: "telephone_booking_buyer_mismatch",
+            },
+            403,
+          );
+        }
       }
       const placement = {
         placedVia: "telephone" as const,

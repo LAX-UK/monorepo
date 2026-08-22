@@ -13,6 +13,7 @@ import {
   isKycAwaitingDecision,
   kycInitialPhase,
 } from "@/components/kyc";
+import { KycPreparationCard } from "@/components/kyc/kyc-preparation-card";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import { normalizeKycReturnUrl } from "@/lib/kyc";
@@ -83,6 +84,7 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
         Complete identity verification for your user account, then submit your organisation for
         review. You must be verified before submission.
       </p>
+      {!kycApproved ? <KycPreparationCard compact /> : null}
       <KycStatusPanel summary={kycSummary} phase={phase} />
       {!kycApproved ? (
         <>

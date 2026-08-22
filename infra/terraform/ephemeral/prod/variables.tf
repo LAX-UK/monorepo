@@ -527,6 +527,24 @@ variable "next_public_marketing_attribution_enabled" {
   description = "Build-time web flag for consented UTM capture. Keep aligned with marketing_attribution_enabled."
 }
 
+variable "strict_bid_eligibility_enabled" {
+  type        = bool
+  default     = false
+  description = "Hard verified-email and approved-KYC gate for every self-service bid. Keep API and web aligned."
+}
+
+variable "kyc_onboarding_enabled" {
+  type        = bool
+  default     = false
+  description = "Server-side rollout switch for post-verify KYC onboarding and proactive dashboard prompts."
+}
+
+variable "full_buyer_onboarding_enabled" {
+  type        = bool
+  default     = false
+  description = "Independent rollout switch for the one-time interests and recommendations flow."
+}
+
 variable "meta_pixel_id" {
   type        = string
   default     = ""

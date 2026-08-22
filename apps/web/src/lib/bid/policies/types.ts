@@ -39,6 +39,8 @@ export type BidPolicyContext = {
   kycBidGate?: KycBidGateContext | null;
   /** When set, buyer_agent acting context must have approved sale registration. */
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
+  /** Server-resolved rollout for strict email + approved-identity eligibility. */
+  strictBidEligibilityEnabled?: boolean;
   /** When set, `not-live` policy uses lifecycle-specific block copy (aligned with `classifyLotLifecycle`). */
   biddingLifecycle?: { kind: LotLifecycleKind; isOnBlock?: boolean } | null;
   orgModuleEnabled?: boolean;

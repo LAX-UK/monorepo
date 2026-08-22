@@ -1,6 +1,7 @@
 "use client";
 
 import { PanelHeading } from "@/features/saleroom/components/clerk-console/console-panel";
+import { Button } from "@auction/ui/components/button";
 import { cn } from "@auction/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
@@ -37,9 +38,10 @@ export function CollapsibleConsoleSection({
 
   return (
     <div className={cn("rounded-lg border border-outline-variant/25", className)}>
-      <button
+      <Button
         type="button"
-        className="flex w-full items-center justify-between gap-3 p-4 text-left"
+        variant="ghost"
+        className="flex h-auto w-full items-center justify-between gap-3 p-4 text-left hover:bg-transparent"
         aria-expanded={open}
         onClick={toggle}
       >
@@ -51,7 +53,7 @@ export function CollapsibleConsoleSection({
           )}
           aria-hidden
         />
-      </button>
+      </Button>
       {open ? (
         <div className="border-t border-outline-variant/20 px-4 pb-4 pt-3">{children}</div>
       ) : null}

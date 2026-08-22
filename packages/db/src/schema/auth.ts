@@ -86,6 +86,14 @@ export const user = pgTable(
     amlHoldAt: timestamp("aml_hold_at", { mode: "date", withTimezone: true }),
     /** Persona captured at signup ('individual' | 'organisation'); drives post-verify routing. */
     signupPersona: text("signup_persona"),
+    /** First completion of buyer category-interest onboarding; null for new/incomplete users. */
+    categoryInterestsOnboardingCompletedAt: timestamp(
+      "category_interests_onboarding_completed_at",
+      {
+        mode: "date",
+        withTimezone: true,
+      },
+    ),
     dateOfBirth: date("date_of_birth"),
     /** first-time acting context tooltip dismissed */
     hasSeenActingContextTooltip: boolean("has_seen_acting_context_tooltip")

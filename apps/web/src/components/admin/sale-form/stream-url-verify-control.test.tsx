@@ -51,9 +51,9 @@ describe("StreamUrlVerifyControl", () => {
       expect(screen.getByText(/stream not found or not embeddable/i)).toBeInTheDocument();
     });
 
-    const gateError = gateRef.current?.assertCanSubmit(invalidUrl);
-    expect(typeof gateError).toBe("string");
-    expect(gateError).toMatch(/not found/i);
+    await waitFor(() => {
+      expect(gateRef.current?.assertCanSubmit(invalidUrl)).toMatch(/not found/i);
+    });
   });
 
   it("allows submit when URL unchanged from initial", () => {

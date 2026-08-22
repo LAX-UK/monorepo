@@ -8,6 +8,7 @@ import {
 } from "@/lib/sale-format-explainer";
 import { saleFormatIcon, saleFormatIconToneClass } from "@/lib/sale-format-icon";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { HelpCircle } from "lucide-react";
 import type * as React from "react";
@@ -97,13 +98,15 @@ export function SaleTypeExplainerPopover({ children, context, align = "center" }
   if (!hydrated) {
     return (
       children ?? (
-        <button
+        <Button
           type="button"
-          className="rounded-full text-on-surface-variant/75 outline-hidden transition-colors hover:text-on-surface focus-visible:ring-2 focus-visible:ring-primary"
+          variant="ghost"
+          size="icon"
+          className="rounded-full text-on-surface-variant/75 hover:text-on-surface"
           aria-label={ariaLabel}
         >
           <HelpCircle className="size-4" />
-        </button>
+        </Button>
       )
     );
   }
@@ -112,13 +115,15 @@ export function SaleTypeExplainerPopover({ children, context, align = "center" }
     <Popover>
       <PopoverTrigger asChild>
         {children ?? (
-          <button
+          <Button
             type="button"
-            className="rounded-full text-on-surface-variant/75 outline-hidden transition-colors hover:text-on-surface focus-visible:ring-2 focus-visible:ring-primary"
+            variant="ghost"
+            size="icon"
+            className="rounded-full text-on-surface-variant/75 hover:text-on-surface"
             aria-label={ariaLabel}
           >
             <HelpCircle className="size-4" />
-          </button>
+          </Button>
         )}
       </PopoverTrigger>
       <PopoverContent align={align} className="z-50 w-[min(360px,calc(100vw-2rem))] p-4 shadow-xl">

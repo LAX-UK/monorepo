@@ -22,6 +22,7 @@ import {
   ProxyAutoBidResolver,
   type ProxyCancelNotification,
 } from "./bid/proxy-auto-bid.resolver.js";
+import { StandingBidEligibilityValidator } from "./bid/standing-bid-eligibility.validator.js";
 import type { DomainEventPublisher } from "./domain-event.publisher.js";
 import type { IAntiShillingGuard } from "./interfaces/anti-shilling.js";
 import { isOperatorPlacement } from "./interfaces/auction-strategy.js";
@@ -110,6 +111,9 @@ export class BidService implements IBidPlacer {
       opts.antiShillingGuard ?? null,
       opts.notifications,
       opts.domainEventPublisher ?? null,
+      opts.bidEligibility && opts.legalEntityRepository
+        ? new StandingBidEligibilityValidator(opts.bidEligibility, opts.legalEntityRepository)
+        : null,
     );
 
     this.earlyCloseHandler = new EarlyCloseHandler(opts.lotLifecycleRecording ?? null);
@@ -139,21 +143,6 @@ export class BidService implements IBidPlacer {
           return err(new BidError("Lot is not accepting bids", 400));
         }
       }
-      if (this.legalEntityRepository) {
-        const ent = await this.legalEntityRepository.findById(buyerLegalEntityId);
-        if (!ent) {
-          return err(new BidError("Buyer legal entity not found", 404));
-        }
-        if (!buyerEntityCanBid(ent.status)) {
-          return err(
-            new BidError(
-              "Buyer legal entity is not authorised to bid",
-              403,
-              "entity_not_authorised_to_bid",
-            ),
-          );
-        }
-      }
       if (this.bidEligibility) {
         const elig = await this.bidEligibility.assertCanPlaceBid({
           placedByUserId,
@@ -173,6 +162,21 @@ export class BidService implements IBidPlacer {
         });
         if (elig.isErr()) {
           return err(elig.error);
+        }
+      }
+      if (this.legalEntityRepository) {
+        const ent = await this.legalEntityRepository.findById(buyerLegalEntityId);
+        if (!ent) {
+          return err(new BidError("Buyer legal entity not found", 404));
+        }
+        if (!buyerEntityCanBid(ent.status)) {
+          return err(
+            new BidError(
+              "Buyer legal entity is not authorised to bid",
+              403,
+              "entity_not_authorised_to_bid",
+            ),
+          );
         }
       }
 

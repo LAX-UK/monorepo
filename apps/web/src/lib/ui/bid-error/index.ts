@@ -17,6 +17,7 @@ import {
   notAMemberOfLegalEntityBidErrorMatcher,
   saleRegistrationRequiredBidErrorMatcher,
 } from "./matchers/eligibility-api.matcher";
+import { emailNotVerifiedBidErrorMatcher } from "./matchers/email-not-verified.matcher";
 import { endedBidErrorMatcher } from "./matchers/ended.matcher";
 import { kycRequiredBidErrorMatcher } from "./matchers/kyc-required.matcher";
 import { minBidBidErrorMatcher } from "./matchers/min-bid.matcher";
@@ -33,6 +34,7 @@ import type { BidErrorMatcher, BidErrorPresentation, MapBidErrorOptions } from "
 export const defaultBidErrorMatchers: readonly BidErrorMatcher[] = [
   sellerOwnLotBidErrorMatcher,
   adminBidErrorMatcher,
+  emailNotVerifiedBidErrorMatcher,
   kycRequiredBidErrorMatcher,
   amlBlockedBidErrorMatcher,
   suspendedBidErrorMatcher,

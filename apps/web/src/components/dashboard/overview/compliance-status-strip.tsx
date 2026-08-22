@@ -1,6 +1,7 @@
 import { type KycCompliancePillTone, kycComplianceIdentityPill } from "@/components/kyc/kyc-copy";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
+import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { cn } from "@auction/ui";
 import {
   AlertTriangle,
@@ -110,7 +111,9 @@ export function ComplianceStatusStrip({
         label: "Identity",
         value: identityPill.value,
         href:
-          kyc.status === "approved" ? "/dashboard/settings/profile" : "/dashboard/verify-identity",
+          kyc.status === "approved"
+            ? "/dashboard/settings/profile"
+            : dashboardIdentityOnboardingHref(),
         tone: identityPill.tone,
         ...(identityPill.hint !== undefined ? { hint: identityPill.hint } : {}),
       });

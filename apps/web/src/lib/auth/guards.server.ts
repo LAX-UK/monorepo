@@ -1,7 +1,8 @@
 import "server-only";
 
-import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { resolveServerPostAuthDestination } from "@/lib/auth/post-auth-destination.server";
 import { isRequireEmailVerificationServer } from "@/lib/auth/require-email-verification.server";
+import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import { isSellerSubmissionPath, sellLoginRedirect } from "@/lib/auth/seller-submission-path";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -93,7 +94,7 @@ export async function redirectIfVerifyPendingNotNeeded(): Promise<void> {
   }
   if (user.emailVerified === true) {
     redirect(
-      resolvePostAuthDestination({
+      resolveServerPostAuthDestination({
         user,
         requestedNext: null,
         context: "redirect-if-authed",
@@ -128,7 +129,7 @@ export async function redirectIfAuthenticated(opts: {
       return;
     }
     redirect(
-      resolvePostAuthDestination({
+      resolveServerPostAuthDestination({
         user,
         requestedNext: opts.next ?? null,
         context: "redirect-if-authed",
@@ -140,7 +141,7 @@ export async function redirectIfAuthenticated(opts: {
 
   if (opts.route === "register") {
     redirect(
-      resolvePostAuthDestination({
+      resolveServerPostAuthDestination({
         user,
         requestedNext: opts.next ?? null,
         context: "redirect-if-authed",
@@ -157,7 +158,7 @@ export async function redirectIfAuthenticated(opts: {
     const role = user.role as UserRole;
     if (canAccessStaffAdminShell(role)) {
       redirect(
-        resolvePostAuthDestination({
+        resolveServerPostAuthDestination({
           user,
           requestedNext: null,
           context: "redirect-if-authed",

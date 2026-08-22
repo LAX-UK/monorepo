@@ -140,6 +140,8 @@ describe("buildAttentionItems KYC", () => {
       },
       orgOnboarding: null,
     });
-    expect(items.some((i) => i.id === "kyc-required")).toBe(true);
+    const required = items.find((item) => item.id === "kyc-required");
+    expect(required).toBeDefined();
+    expect(required?.href).toBe("/onboarding/identity?next=%2Fdashboard&source=dashboard");
   });
 });

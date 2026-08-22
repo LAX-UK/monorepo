@@ -51,12 +51,13 @@ export function SaveSearchButton({ label, query, compact = false, className }: P
 
   if (compact) {
     return (
-      <button
+      <Button
         type="button"
+        variant="outline"
         disabled={saving}
         onClick={() => void save()}
         className={cn(
-          "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-outline-variant/40 px-4 font-label text-xs font-semibold uppercase tracking-wider text-on-surface-variant transition-colors hover:border-link/40 hover:text-link focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50",
+          "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border-outline-variant/40 px-4 font-label text-xs font-semibold uppercase tracking-wider text-on-surface-variant hover:border-link/40 hover:text-link",
           className,
         )}
       >
@@ -66,7 +67,7 @@ export function SaveSearchButton({ label, query, compact = false, className }: P
           <Bookmark className="size-4" aria-hidden />
         )}
         {saving ? "Saving…" : saved ? "Saved" : "Save search"}
-      </button>
+      </Button>
     );
   }
 

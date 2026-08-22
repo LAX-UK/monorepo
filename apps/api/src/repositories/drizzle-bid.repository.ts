@@ -189,6 +189,8 @@ export class DrizzleBidRepository implements IBidRepository {
       ceiling: string;
       autoBidStepAmount: string | null;
       maxCreatedAt: Date | null;
+      placedVia: string | null;
+      telephoneBookingId: string | null;
     }>
   > {
     const res = await this.db.execute(sql`
@@ -197,6 +199,8 @@ export class DrizzleBidRepository implements IBidRepository {
         buyer_legal_entity_id AS "buyerLegalEntityId",
         (greatest(amount::numeric, coalesce(max_auto_bid_amount::numeric, amount::numeric)))::text AS ceiling,
         auto_bid_step_amount::text AS "autoBidStepAmount",
+        placed_via AS "placedVia",
+        telephone_booking_id::text AS "telephoneBookingId",
         COALESCE(
           (
             SELECT MIN(b2.created_at)
@@ -226,6 +230,8 @@ export class DrizzleBidRepository implements IBidRepository {
         row.autoBidStepAmount == null || row.autoBidStepAmount === ""
           ? null
           : String(row.autoBidStepAmount),
+      placedVia: row.placedVia == null ? null : String(row.placedVia),
+      telephoneBookingId: row.telephoneBookingId == null ? null : String(row.telephoneBookingId),
       maxCreatedAt:
         row.maxCreatedAt == null
           ? null

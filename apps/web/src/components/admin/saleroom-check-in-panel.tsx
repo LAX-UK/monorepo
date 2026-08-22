@@ -286,12 +286,13 @@ export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
               )?.existingRegistration?.paddleNumber;
               return (
                 <li key={c.userId}>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     aria-pressed={selected}
-                    className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
+                    className={`h-auto w-full justify-start rounded-md border px-3 py-2 text-left whitespace-normal transition-colors ${
                       selected
-                        ? "border-primary bg-primary/5"
+                        ? "border-primary bg-primary/5 hover:bg-primary/5"
                         : "border-border-hairline hover:bg-surface-container-low/60"
                     }`}
                     onClick={() => setSelectedUserId(c.userId)}
@@ -302,7 +303,7 @@ export function SaleroomCheckInPanel({ saleId, saleCurrency = "GBP" }: Props) {
                       KYC: {c.kycStatus}
                       {existingPaddle != null ? <> · Already paddle #{existingPaddle}</> : null}
                     </p>
-                  </button>
+                  </Button>
                 </li>
               );
             })}

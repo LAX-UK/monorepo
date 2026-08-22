@@ -114,13 +114,16 @@ describe("useSignInController", () => {
       await result.current.onSubmit();
     });
 
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("/dashboard"));
+    expect(push).toHaveBeenCalledWith("/auth/post-login?next=%2Fdashboard&welcome=back");
     expect(result.current.bannerError).toBeNull();
   });
 
   it("advances to credentials step on valid email (email-first)", () => {
     const { result } = renderHook(() =>
-      useSignInController("/dashboard", { emailFirst: true, initialStep: "email" }),
+      useSignInController("/dashboard", {
+        emailFirst: true,
+        initialStep: "email",
+      }),
     );
 
     act(() => {
@@ -133,7 +136,10 @@ describe("useSignInController", () => {
 
   it("requestMagicLink calls service, sets linkSent, and threads safe next", async () => {
     const { result } = renderHook(() =>
-      useSignInController("/dashboard", { emailFirst: true, initialStep: "credentials" }),
+      useSignInController("/dashboard", {
+        emailFirst: true,
+        initialStep: "credentials",
+      }),
     );
 
     await act(async () => {
@@ -152,7 +158,10 @@ describe("useSignInController", () => {
 
   it("changeEmail returns to email step", () => {
     const { result } = renderHook(() =>
-      useSignInController("/dashboard", { emailFirst: true, initialStep: "credentials" }),
+      useSignInController("/dashboard", {
+        emailFirst: true,
+        initialStep: "credentials",
+      }),
     );
 
     act(() => {

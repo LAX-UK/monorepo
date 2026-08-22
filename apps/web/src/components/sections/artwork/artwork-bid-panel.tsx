@@ -18,6 +18,7 @@ import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-st
 import { LotPricingStatusHeader } from "@/components/sections/artwork/redesign/lot-pricing-status-header";
 import { ParticipationWarningBadge } from "@/components/ui/participation-warning-badge";
 import { useLotBidState } from "@/hooks/use-lot-bid-state";
+import { sendVerificationEmailForReturnPath } from "@/lib/auth/services/send-verification-email.service";
 import { lotBidPositionStickyLabel } from "@/lib/bid/derive-lot-bid-position";
 import { evaluateManualBidEligibility } from "@/lib/bid/evaluate-lot-bid-eligibility";
 import { type LotBidEntryMode, defaultLotBidEntryMode } from "@/lib/bid/lot-bid-entry-mode";
@@ -36,6 +37,7 @@ import { lotPath } from "@/lib/seo/url";
 import { type BidErrorPresentation, clientBidError, mapBidError } from "@/lib/ui/bid-error";
 import { BID_ERROR_CODES } from "@/lib/ui/bid-error/codes";
 import { shouldStayOnBidConfirmStep } from "@/lib/ui/bid-error/confirm-step";
+import { notify } from "@/lib/ui/notify";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -62,6 +64,7 @@ type Props = {
     | null;
   isOwnLot?: boolean;
   actingLegalEntityId?: string | null;
+  strictBidEligibilityEnabled?: boolean;
 };
 
 const FIGMA_PRIMARY =
@@ -86,6 +89,7 @@ export function ArtworkBidPanel({
   saleForLifecycle = null,
   isOwnLot = false,
   actingLegalEntityId = null,
+  strictBidEligibilityEnabled = false,
 }: Props) {
   const { bidWriter } = useLotPorts();
   const { refreshFromServer } = useLotBidHistory();
@@ -279,9 +283,17 @@ export function ArtworkBidPanel({
     (actionKey: NonNullable<BidErrorPresentation["actionKey"]>) => {
       if (actionKey === "switch-to-auto-bid") {
         switchEntryMode("auto", { userInitiated: true });
+      } else if (actionKey === "resend-verification-email" && sessionUser?.email) {
+        void sendVerificationEmailForReturnPath({
+          email: sessionUser.email,
+          next: loginNext,
+        }).then((result) => {
+          if (result.ok) notify.success("Verification email sent");
+          else notify.error(result.message);
+        });
       }
     },
-    [switchEntryMode],
+    [loginNext, sessionUser?.email, switchEntryMode],
   );
 
   useEffect(() => {
@@ -426,6 +438,7 @@ export function ArtworkBidPanel({
     if (!result.ok) {
       const mapped = mapBidError(result.error, {
         verifyReturnPath: loginNext,
+        lotId: auction.id,
         code: result.code ?? null,
         ...(saleRegistrationPath ? { saleRegistrationPath } : {}),
         kycFeedback: result.kycFeedback ?? kycSummary?.feedback ?? null,
@@ -552,6 +565,7 @@ export function ArtworkBidPanel({
       loginNextPath={loginNext}
       isOwnLot={isOwnLot}
       actingLegalEntityId={actingLegalEntityId}
+      strictBidEligibilityEnabled={strictBidEligibilityEnabled}
       kycBidGate={
         kycSummary?.requiresKyc
           ? { requiresKyc: true, feedback: kycSummary.feedback ?? null }
@@ -580,6 +594,8 @@ export function ArtworkBidPanel({
               className="mt-6"
               onAction={handleFeedbackAction}
             />
+
+            {decision.kind === "block" && !sellerBlocked ? decision.render() : null}
 
             {!englishOnlySurfaceLock && !sellerBlocked && autoBidEligible && supportsAutoBid ? (
               <div className="mt-6">
@@ -641,7 +657,9 @@ export function ArtworkBidPanel({
                   ) : null}
 
                   {decision.kind === "block" ? (
-                    decision.render()
+                    sellerBlocked ? (
+                      decision.render()
+                    ) : null
                   ) : step === 1 ? (
                     <BidForm
                       auctionType={auction.auctionType}
@@ -898,6 +916,8 @@ export function ArtworkBidPanel({
                 live={biddingLive}
                 decision={decision}
                 loginNextPath={loginNext}
+                lotId={auction.id}
+                userEmail={sessionUser?.email ?? null}
                 kycFeedback={kycSummary?.feedback ?? null}
                 {...(saleRegistrationPath ? { saleRegistrationPath } : {})}
                 step={step}

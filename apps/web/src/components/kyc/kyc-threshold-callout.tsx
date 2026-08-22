@@ -1,20 +1,26 @@
+"use client";
+
+import { ContextualKycGateTracker } from "@/components/onboarding/buyer-onboarding-analytics";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import Link from "next/link";
 import { KYC_BID_BLOCKED_DESCRIPTION, kycLinkActionLabel } from "./kyc-copy";
 
 type Props = {
-  /** Post-verification return path (e.g. lot page). Passed as verify-identity `?next=`. */
+  /** Post-verification return path (e.g. lot page). Passed as identity onboarding `?next=`. */
   returnPath?: string;
+  lotId?: string;
+  strict?: boolean;
   feedback?: Pick<KycUserFeedbackDto, "headline" | "detail" | "needsResubmit" | "action"> | null;
 };
 
-export function KycThresholdCallout({ returnPath, feedback }: Props) {
-  const verifyHref = returnPath
-    ? `/dashboard/verify-identity?next=${encodeURIComponent(returnPath)}`
-    : "/dashboard/verify-identity";
+export function KycThresholdCallout({ returnPath, lotId, strict = false, feedback }: Props) {
+  const verifyHref = contextualIdentityOnboardingHref(returnPath, "bid_gate", lotId);
 
   const headline = feedback?.headline ?? "Identity verification required";
-  const detail = feedback?.detail ?? KYC_BID_BLOCKED_DESCRIPTION;
+  const detail = strict
+    ? "Your identity must be approved before you can place bids."
+    : (feedback?.detail ?? KYC_BID_BLOCKED_DESCRIPTION);
   const ctaLabel = kycLinkActionLabel(feedback, "long");
 
   return (
@@ -26,6 +32,7 @@ export function KycThresholdCallout({ returnPath, feedback }: Props) {
       <p className="font-medium text-on-surface">{headline}</p>
       <p className="mt-2 text-pretty">{detail}</p>
       <p className="mt-3">
+        <ContextualKycGateTracker source="bid_gate" nextPath={returnPath ?? null} />
         <Link className="font-semibold text-link underline underline-offset-2" href={verifyHref}>
           {ctaLabel}
         </Link>

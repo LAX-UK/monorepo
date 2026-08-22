@@ -144,7 +144,7 @@ describe("ArtworkBidPanel", () => {
       summarySeed,
       initialAutoBidSettings: null,
     });
-    expect(screen.getByText(/your listing/i)).toBeInTheDocument();
+    expect(screen.getByText(/^your listing$/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
   });
 
@@ -158,6 +158,24 @@ describe("ArtworkBidPanel", () => {
     });
     selectManualBidMode();
     expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
+  });
+
+  it("shows the strict eligibility reason while auto-bid mode is selected", () => {
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: {
+        ...buyerSession,
+        emailVerified: false,
+        kycStatus: "unverified",
+      },
+      summarySeed,
+      initialAutoBidSettings: null,
+      strictBidEligibilityEnabled: true,
+    });
+
+    expect(screen.getByText("Email verification required")).toBeInTheDocument();
+    expect(screen.getByLabelText(/max amount/i)).toBeDisabled();
   });
 
   it("hides auto-bid panel when lot is scheduled", () => {

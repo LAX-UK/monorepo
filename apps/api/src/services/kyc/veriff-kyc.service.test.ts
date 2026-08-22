@@ -404,6 +404,7 @@ describe("VeriffKycService.createSession", () => {
         },
         decisionPayload: {
           sessionUrl: "https://magic.veriff.me/v/reuse",
+          callbackUrl: `${webOrigin}/dashboard/verify-identity`,
           verification: { status: "resubmission_requested", reasonCode: 201 },
         },
       }),
@@ -458,7 +459,10 @@ describe("VeriffKycService.createSession", () => {
           status: "created",
           providerSessionId: "session-created",
         },
-        decisionPayload: { sessionUrl: "https://magic.veriff.me/v/continue" },
+        decisionPayload: {
+          sessionUrl: "https://magic.veriff.me/v/continue",
+          callbackUrl: `${webOrigin}/dashboard/verify-identity`,
+        },
       }),
     });
     const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
@@ -466,6 +470,46 @@ describe("VeriffKycService.createSession", () => {
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/continue");
     expect(result.sessionId).toBe("session-created");
     expect(veriffClient.createSession).not.toHaveBeenCalled();
+  });
+
+  it("creates a new session when the requested contextual return changed", async () => {
+    const veriffClient = makeVeriffClient();
+    const created = { ...sampleVerification, providerSessionId: "new-session" };
+    const repo = makeRepo({
+      getUserKycState: vi.fn().mockResolvedValue({
+        kycStatus: "unverified",
+        kycVerifiedAt: null,
+      }),
+      findLatestByUserIdWithPayload: vi.fn().mockResolvedValue({
+        verification: {
+          ...sampleVerification,
+          status: "created",
+          providerSessionId: "session-settings",
+        },
+        decisionPayload: {
+          sessionUrl: "https://magic.veriff.me/v/settings",
+          callbackUrl: `${webOrigin}/dashboard/settings`,
+        },
+      }),
+      createWithCurrentSession: vi.fn().mockResolvedValue(created),
+      update: vi.fn().mockResolvedValue(created),
+    });
+    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
+
+    await svc.createSession("user-1", `${webOrigin}/lots/lot-1`);
+
+    expect(veriffClient.createSession).toHaveBeenCalledWith({
+      userId: "user-1",
+      callbackUrl: `${webOrigin}/lots/lot-1`,
+    });
+    expect(repo.update).toHaveBeenCalledWith(
+      created.id,
+      expect.objectContaining({
+        decisionPayload: expect.objectContaining({
+          callbackUrl: `${webOrigin}/lots/lot-1`,
+        }),
+      }),
+    );
   });
 });
 

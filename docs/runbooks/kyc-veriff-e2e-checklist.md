@@ -16,9 +16,24 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] `SOF_THRESHOLD_AMOUNT` / `SOF_THRESHOLD_CURRENCY` confirmed with MLRO/counsel (fixed GBP, no FX)
 - [ ] `SOF_APPROVAL_VALIDITY_DAYS` (default 365) confirmed with MLRO for SoF approval re-validation window
 - [ ] Obsolete Stripe Identity webhook removed from Stripe Dashboard (Connect webhooks unchanged)
+- [ ] `KYC_ONBOARDING_ENABLED` enables the `/onboarding/identity` experience and typed entry URLs; it does **not** force KYC on every login
+- [ ] `FULL_BUYER_ONBOARDING_ENABLED` enables the one-time interests → recommendations → optional KYC path for newly verified individuals
+  - Docker Compose: set both in the production environment file consumed by `docker-compose.prod.yml`
+  - Terraform: apply both flags as false initially; they are web-only runtime switches
+- [ ] `STRICT_BID_ELIGIBILITY_ENABLED` has the same explicit value on API and web
+  - Test defaults to `true`; production defaults to `false` for a dark launch
+  - Enable production only after migrations, Veriff credentials/webhooks, and the strict-on scenarios below pass; update API and web in one Terraform apply
 
 ## 1. Session creation and InContext flow
 
+- [ ] With `FULL_BUYER_ONBOARDING_ENABLED=true`, a newly verified individual completes interests → recommendations (or skips recommendations when no active lot exists) → optional KYC; abandoned interests resume on login until submitted
+- [ ] With `KYC_ONBOARDING_ENABLED=true`, a newly verified individual reaches `/onboarding/identity` after optional personalization; staff, consumed invitations, and organisation users retain their existing destinations
+- [ ] Normal login by an email-verified unapproved individual reaches the originally requested safe destination; KYC is not forced on every login
+- [ ] Restricted actions (bid, registration, telephone, and threshold-gated condition report) route to `/onboarding/identity` with the attempted action preserved in `next`
+- [ ] Approved, staff, organisation, suspended, and email-unverified accounts retain their existing post-login destinations
+- [ ] Why verify → Get ready → Verify preserves a safe `next` destination
+- [ ] Skip / Finish later returns to `next`; dashboard shows a proactive resume prompt to an unapproved individual
+- [ ] With `KYC_ONBOARDING_ENABLED=false`, post-verify, post-login, and dashboard behavior match the previous release while `/dashboard/verify-identity` and threshold enforcement remain available
 - [ ] Log in as a buyer with `kycStatus` unverified and exposure below threshold
 - [ ] Open `/dashboard/verify-identity` — status panel shows **Not verified**
 - [ ] Start verification — Veriff InContext opens (or redirect fallback)
@@ -50,6 +65,7 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 
 ## 4. Threshold gate (bidding)
 
+- [ ] With `STRICT_BID_ELIGIBILITY_ENABLED=false`, threshold behavior below is unchanged
 - [ ] User below threshold can bid without full approval (if exposure allows)
 - [ ] User at/above threshold sees verify CTA on lot bid panel (desktop callout + mobile sticky bar)
 - [ ] Mobile sticky bar shows compact KYC CTA when bid card is in view and user is threshold-blocked
@@ -57,10 +73,22 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] API bid rejection `kyc_required` shows verify link with feedback detail when available
 - [ ] After approval, threshold-blocked bids succeed
 
-## 5. Hard-approved gate (non-bid flows)
+### Strict self-service bid eligibility
+
+- [ ] With `STRICT_BID_ELIGIBILITY_ENABLED=true`, an unverified email sees **Email verification required** before KYC state
+- [ ] **Send verification email** reports success/failure and returns to the same lot
+- [ ] Email-verified users with non-approved KYC see identity-approval copy
+- [ ] Identity links preserve `next`, `source=bid_gate`, and lot id
+- [ ] Manual, auto, full/compact sticky, and video-compact surfaces expose no enabled bid action while blocked
+- [ ] Structured `email_not_verified` and `kyc_required` API errors show matching recovery controls
+- [ ] An email-verified, KYC-approved user can bid
+- [ ] Organisation `admin`, `finance`, `owner`, and `buyer_agent` members are blocked unless the acting user has verified email and approved personal KYC
+- [ ] `connect_pending` organisations remain bid-eligible when the actor is approved; unfinished Stripe Connect does not block buying
+
+## 5. Non-bid KYC gates
 
 - [ ] Saleroom registration blocked until `kycStatus === approved`; CTA shows Veriff feedback detail when pending/resubmit/rejected
-- [ ] Condition report request blocked until approved; CTA shows Veriff feedback detail when available
+- [ ] Condition report request remains threshold-gated when strict bidding is on; above-threshold unapproved users see the KYC CTA, while below-threshold behavior is unchanged
 - [ ] Org onboarding identity step: submit disabled until approved; `?kyc=complete` shows submitted phase
 
 ## 6. Edge cases
@@ -101,9 +129,20 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] An **approved** case re-triggers SoF once exposure grows by another full threshold or after `SOF_APPROVAL_VALIDITY_DAYS`
 - [ ] A user cannot triage/decide their **own** SoF case (403 `source_of_funds_triage_self_forbidden` / `source_of_funds_review_self_forbidden`); `decide` without triage → 409 `source_of_funds_triage_required`
 
+## 10. Onboarding rollout, monitoring, and rollback
+
+- [ ] Record the pre-launch registration → KYC session created → submitted → approved baseline
+- [ ] Set GitHub environment variables `KYC_ONBOARDING_ENABLED`, `FULL_BUYER_ONBOARDING_ENABLED`, and `STRICT_BID_ELIGIBILITY_ENABLED`; the Terraform plan/apply/drift workflows forward them to the ephemeral application layer
+- [ ] Enable the environment-global flags in the test environment first; verify no increase in session-start or webhook failures
+- [ ] Confirm analytics contain only step/source/event metadata—no user IDs, provider URLs, tokens, document data, or other PII
+- [ ] Monitor onboarding views, skips, recommendation continues, contextual gate triggers/returns, Veriff cancel/reload, session creation, submission, approval, decision latency, and support reports
+- [ ] Enable the same environment-global values in production only after the test environment passes the checks above; these flags do not provide per-account cohorts
+- [ ] Configuration rollback: set `STRICT_BID_ELIGIBILITY_ENABLED=false` on API and web first, then `FULL_BUYER_ONBOARDING_ENABLED=false`, then `KYC_ONBOARDING_ENABLED=false`; redeploy/restart API and web and verify legacy bidding, post-verify, and dashboard behavior
+- [ ] Code rollback is required only if shared routing, KYC launcher behavior, threshold enforcement, or webhook processing regresses
+
 ## Sign-off
 
-| Role | Name | Date | Pass |
-|------|------|------|------|
-| Engineering | | | |
-| Operations | | | |
+| Role        | Name | Date | Pass |
+| ----------- | ---- | ---- | ---- |
+| Engineering |      |      |      |
+| Operations  |      |      |      |

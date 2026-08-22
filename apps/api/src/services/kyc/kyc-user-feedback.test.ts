@@ -3,6 +3,7 @@ import {
   VERIFF_RESUBMISSION_LIMIT_REASON_CODE,
   buildKycUserFeedback,
   mergeKycDecisionPayload,
+  readKycCallbackUrl,
   readKycSessionUrl,
   readVeriffReasonCode,
   shouldReuseKycSessionUrl,
@@ -160,15 +161,19 @@ describe("shouldReuseKycSessionUrl", () => {
 });
 
 describe("mergeKycDecisionPayload", () => {
-  it("preserves sessionUrl across webhook updates", () => {
+  it("preserves session and callback URLs across webhook updates", () => {
     const merged = mergeKycDecisionPayload(
-      { sessionUrl: "https://magic.veriff.me/v/abc" },
+      {
+        sessionUrl: "https://magic.veriff.me/v/abc",
+        callbackUrl: "https://lax.bid/lots/lot-1",
+      },
       {
         status: "success",
         verification: { id: "abc", status: "resubmission_requested" },
       },
     );
     expect(readKycSessionUrl(merged)).toBe("https://magic.veriff.me/v/abc");
+    expect(readKycCallbackUrl(merged)).toBe("https://lax.bid/lots/lot-1");
     expect(merged.verification).toBeDefined();
   });
 });

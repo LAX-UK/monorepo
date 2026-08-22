@@ -35,8 +35,8 @@ vi.mock("@/lib/legal-entity/pending-invite-cookie.actions", () => ({
   rememberPendingEntityInviteAction: vi.fn(),
 }));
 
-describe("SignUpForm email_already_registered banner", () => {
-  it("shows sign in and reset password links when registration email is already registered", () => {
+describe("SignUpForm footer", () => {
+  it("shows the sign-in link", () => {
     vi.mocked(useSignUpController).mockReturnValue({
       form: {
         control: {},
@@ -45,9 +45,6 @@ describe("SignUpForm email_already_registered banner", () => {
       },
       onSubmit: vi.fn(),
       loading: false,
-      bannerError:
-        "This email is already registered. Sign in or reset your password to access your account.",
-      lastErrorCode: "email_already_registered",
       turnstileSiteKey: undefined,
       turnstileReady: true,
       onTurnstileToken: vi.fn(),
@@ -56,13 +53,6 @@ describe("SignUpForm email_already_registered banner", () => {
 
     render(<SignUpForm />);
 
-    expect(screen.getByRole("link", { name: /sign in to your account/i })).toHaveAttribute(
-      "href",
-      "/login",
-    );
-    expect(screen.getByRole("link", { name: /reset your password/i })).toHaveAttribute(
-      "href",
-      "/forgot-password",
-    );
+    expect(screen.getByRole("link", { name: /log in/i })).toHaveAttribute("href", "/login");
   });
 });

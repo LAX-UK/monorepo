@@ -11,6 +11,7 @@ import { kycStatusLabel } from "@/lib/admin/status-badge-variants";
 import { startAdminImpersonationAfterLookup } from "@/lib/legal-entity/acting-context.actions";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntity } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import { Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -180,14 +181,15 @@ export function UserDetailContextRail({ email, legalEntities = [], context }: Pr
           <ul className="space-y-1">
             {additionalEntities.map((entity) => (
               <li key={entity.id}>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   disabled={pending}
                   onClick={() => impersonate(entity.id)}
-                  className="w-full rounded-md px-2 py-1.5 text-left font-body text-sm text-on-surface hover:bg-surface-container-low disabled:opacity-50"
+                  className="h-auto w-full justify-start px-2 py-1.5 font-body text-sm text-on-surface"
                 >
                   {entity.displayName}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

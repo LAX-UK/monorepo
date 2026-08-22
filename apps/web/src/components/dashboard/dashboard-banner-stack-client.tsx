@@ -7,6 +7,7 @@ import {
 import { isEntityStatusBannerVisible } from "@/components/dashboard/entity-status-banner";
 import { shouldSuppressConnectPendingEntityBanner } from "@/lib/connect/should-suppress-connect-pending-entity-banner";
 import { isDashboardListRoute, isDashboardOrgDetailRoute } from "@/lib/dashboard/list-routes";
+import { shouldOfferIdentityOnboarding } from "@/lib/kyc/identity-onboarding";
 import { cn } from "@auction/ui";
 import {
   BottomSheet,
@@ -19,14 +20,28 @@ import { BellRing } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 
+export function resolveDashboardBannerSuppressions(
+  pathname: string,
+  kycOnboardingEnabled: boolean,
+): { suppressKyc: boolean; suppressEmail: boolean } {
+  return {
+    suppressKyc:
+      pathname.startsWith("/dashboard/verify-identity") ||
+      (pathname === "/dashboard" && !kycOnboardingEnabled),
+    suppressEmail: pathname === "/dashboard",
+  };
+}
+
 export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
   const pathname = usePathname();
   const compact = isDashboardListRoute(pathname);
   const suppressOrgStatus = isDashboardOrgDetailRoute(pathname);
   const [alertsOpen, setAlertsOpen] = useState(false);
 
-  const suppressKyc =
-    pathname === "/dashboard" || pathname.startsWith("/dashboard/verify-identity");
+  const { suppressKyc, suppressEmail } = resolveDashboardBannerSuppressions(
+    pathname,
+    props.kycOnboardingEnabled ?? false,
+  );
 
   const suppressConnectPending = shouldSuppressConnectPendingEntityBanner(pathname);
 
@@ -35,10 +50,10 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
       ...props,
       suppressOrgStatusBanner: suppressOrgStatus,
       suppressKycOnOverview: suppressKyc,
-      suppressEmailOnOverview: suppressKyc,
+      suppressEmailOnOverview: suppressEmail,
       suppressConnectPendingEntityBanner: suppressConnectPending,
     }),
-    [props, suppressOrgStatus, suppressKyc, suppressConnectPending],
+    [props, suppressOrgStatus, suppressKyc, suppressEmail, suppressConnectPending],
   );
 
   const alertCount = useMemo(() => countBannerCandidates(stackProps), [stackProps]);
@@ -89,7 +104,14 @@ export function DashboardBannerStackClient(props: DashboardBannerStackProps) {
 
 function countBannerCandidates(props: DashboardBannerStackProps): number {
   let count = 0;
-  if (props.kycSummary?.requiresKyc && !props.suppressKycOnOverview) count += 1;
+  const offerKyc =
+    props.kycSummary?.requiresKyc ||
+    shouldOfferIdentityOnboarding({
+      enabled: props.kycOnboardingEnabled ?? false,
+      summary: props.kycSummary,
+      signupPersona: props.user.signupPersona,
+    });
+  if (offerKyc && !props.suppressKycOnOverview) count += 1;
   if (props.orgModuleEnabled && props.orgOnboardingResume) count += 1;
   const showEntityStatus =
     props.orgModuleEnabled &&

@@ -58,12 +58,14 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
   });
   const optionalAuth = createOptionalAuth(authenticator);
   const kyc = container.kycService;
-  const kycGate =
-    kyc?.isConfigured() === true
-      ? createRequireKyc(kyc)
-      : createMiddleware<{ Variables: { userId?: string } }>(async (_c, next) => {
-          await next();
-        });
+  const strictBidEligibilityEnabled =
+    container.env?.STRICT_BID_ELIGIBILITY_ENABLED ??
+    (container.env?.APP_ENV != null && container.env.APP_ENV !== "production");
+  const noKycGate = createMiddleware<{ Variables: { userId?: string } }>(async (_c, next) => {
+    await next();
+  });
+  const kycGate = kyc?.isConfigured() === true ? createRequireKyc(kyc) : noKycGate;
+  const bidKycGate = strictBidEligibilityEnabled ? noKycGate : kycGate;
   const requireLegalEntity = container.requireSubmissionsLegalEntityContext;
   const r = new Hono<{
     Variables: {
@@ -396,7 +398,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     "/:id/absentee-bids",
     requireAuth,
     requireBuyerRole,
-    kycGate,
+    bidKycGate,
     zValidator("param", lotIdParamSchema),
     zValidator("json", scheduleAbsenteeBidBodySchema),
     async (c) => {
@@ -596,7 +598,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     requireAuth,
     biddingKillSwitch,
     requireBuyerRole,
-    kycGate,
+    bidKycGate,
     requireLegalEntity,
     bidUserRateLimit,
     zValidator("param", lotIdParamSchema),
@@ -631,7 +633,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     requireAuth,
     biddingKillSwitch,
     requireBuyerRole,
-    kycGate,
+    bidKycGate,
     bidUserRateLimit,
     zValidator("param", lotIdParamSchema),
     async (c) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { envSchema } from "./env.js";
+import { envSchema, resolveStrictBidEligibilityEnabled } from "./env.js";
 
 function productionEnvBase(overrides: Record<string, unknown> = {}) {
   return {
@@ -40,6 +40,29 @@ describe("envSchema WEB_ORIGINS", () => {
     } finally {
       process.env.CORS_ALLOWED_ORIGINS = prev ?? "";
     }
+  });
+});
+
+describe("strict bid eligibility rollout", () => {
+  it("defaults off in production and on elsewhere", () => {
+    expect(resolveStrictBidEligibilityEnabled({ APP_ENV: "production" })).toBe(false);
+    expect(resolveStrictBidEligibilityEnabled({ APP_ENV: "test" })).toBe(true);
+    expect(resolveStrictBidEligibilityEnabled({ APP_ENV: "development" })).toBe(true);
+  });
+
+  it("honours an explicit value", () => {
+    expect(
+      resolveStrictBidEligibilityEnabled({
+        APP_ENV: "production",
+        STRICT_BID_ELIGIBILITY_ENABLED: true,
+      }),
+    ).toBe(true);
+    expect(
+      resolveStrictBidEligibilityEnabled({
+        APP_ENV: "development",
+        STRICT_BID_ELIGIBILITY_ENABLED: false,
+      }),
+    ).toBe(false);
   });
 });
 

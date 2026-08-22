@@ -72,8 +72,10 @@ function DayMediaCard({
       className="flex gap-3 rounded-lg border border-border-hairline bg-surface-container-lowest p-3"
     >
       {/* Drag handle */}
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         {...attributes}
         {...listeners}
         className="flex shrink-0 cursor-grab items-center text-on-surface-variant/50 hover:text-on-surface-variant focus:outline-none active:cursor-grabbing"
@@ -81,7 +83,7 @@ function DayMediaCard({
         disabled={disabled}
       >
         <GripVerticalIcon className="size-4" aria-hidden />
-      </button>
+      </Button>
 
       {/* Thumbnail */}
       <div className="relative size-16 shrink-0 overflow-hidden rounded-md bg-surface-container-low">

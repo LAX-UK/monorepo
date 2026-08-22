@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { absenteeBid } from "@auction/db/schema";
+import { buyerEntityCanBid } from "@auction/domain";
 import type { Lot } from "@auction/types";
 import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
@@ -7,6 +8,7 @@ import type {
   AbsenteeBidServiceError,
   IAbsenteeBidService,
 } from "./interfaces/absentee-bid-service.js";
+import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 import type { ILegalEntityRepository } from "./interfaces/legal-entity-repository.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
@@ -32,6 +34,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     private readonly bidService: IBidPlacer,
     private readonly lotRepo: ILotRepository,
     private readonly legalEntityRepository: ILegalEntityRepository | null,
+    private readonly bidEligibility: IBidEligibility | null = null,
   ) {}
 
   async schedule(input: {
@@ -50,7 +53,35 @@ export class AbsenteeBidService implements IAbsenteeBidService {
         status: 400,
       });
     }
+    if (this.bidEligibility) {
+      const eligibility = await this.bidEligibility.assertCanPlaceBid({
+        placedByUserId: input.userId,
+        buyerLegalEntityId: input.buyerLegalEntityId,
+        lotId: input.lotId,
+        amount: input.maxAmount,
+        maxAutoBidAmount: input.maxAmount,
+        placedVia: "absentee",
+      });
+      if (eligibility.isErr()) {
+        return err({
+          message: eligibility.error.message,
+          status: eligibility.error.status,
+          ...(eligibility.error.code ? { code: eligibility.error.code } : {}),
+        });
+      }
+    }
     if (this.legalEntityRepository) {
+      const entity = await this.legalEntityRepository.findById(input.buyerLegalEntityId);
+      if (!entity) {
+        return err({ message: "Buyer legal entity not found", status: 404 });
+      }
+      if (!buyerEntityCanBid(entity.status)) {
+        return err({
+          message: "Buyer legal entity is not authorised to bid",
+          status: 403,
+          code: "entity_not_authorised_to_bid",
+        });
+      }
       const mem = await this.legalEntityRepository.findActiveMembership(
         input.userId,
         input.buyerLegalEntityId,

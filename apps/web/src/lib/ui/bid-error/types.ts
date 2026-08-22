@@ -1,6 +1,6 @@
 export type BidErrorSeverity = "error" | "info" | "warning";
 
-export type BidErrorActionKey = "switch-to-auto-bid";
+export type BidErrorActionKey = "switch-to-auto-bid" | "resend-verification-email";
 
 export type BidErrorPresentation = {
   title?: string;
@@ -15,6 +15,7 @@ export type BidErrorPresentation = {
 export type MapBidErrorOptions = {
   /** Safe same-origin path to return to after verify-identity (e.g. lot page). */
   verifyReturnPath?: string;
+  lotId?: string;
   /** API error code when present (preferred over message matching). */
   code?: string | null;
   /** Link to sale page for registration CTAs. */

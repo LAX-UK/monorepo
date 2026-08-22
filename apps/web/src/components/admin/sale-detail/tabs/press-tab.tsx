@@ -84,8 +84,10 @@ function PressItemRow({
       style={style}
       className="flex items-start gap-3 rounded-lg border border-border-hairline bg-surface-container-lowest p-3"
     >
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         {...attributes}
         {...listeners}
         className="mt-0.5 flex shrink-0 cursor-grab items-center text-on-surface-variant/50 hover:text-on-surface-variant focus:outline-none active:cursor-grabbing"
@@ -93,7 +95,7 @@ function PressItemRow({
         disabled={disabled}
       >
         <GripVerticalIcon className="size-4" aria-hidden />
-      </button>
+      </Button>
       <div className="min-w-0 flex-1">
         <p className="truncate font-body text-sm font-medium text-on-surface">{item.headline}</p>
         <div className="mt-0.5 flex flex-wrap items-center gap-2">

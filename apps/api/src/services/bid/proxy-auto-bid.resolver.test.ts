@@ -1,10 +1,13 @@
 import type { Database } from "@auction/db";
 import type { Bid, Lot } from "@auction/types";
+import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
+import { BidError } from "../../lib/errors.js";
 import type { IAntiShillingGuard } from "../interfaces/anti-shilling.js";
 import type { IBidRepository } from "../interfaces/repositories.js";
 import type { NotificationService } from "../notification.service.js";
 import { ProxyAutoBidResolver } from "./proxy-auto-bid.resolver.js";
+import type { IStandingBidEligibilityValidator } from "./standing-bid-eligibility.validator.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
 
@@ -138,6 +141,51 @@ describe("ProxyAutoBidResolver.resolve", () => {
     expect(result.amount).toBe("310.00");
   });
 
+  it("preserves the winning telephone standing bid provenance", async () => {
+    const create = vi.fn().mockImplementation(async (row) => ({ ...mkBid(), ...row }));
+    const bids = {
+      listBidderCeilingStates: vi.fn().mockResolvedValue([
+        {
+          bidderId: "telephone-bidder",
+          buyerLegalEntityId: "le-telephone",
+          ceiling: "500.00",
+          autoBidStepAmount: "10.00",
+          maxCreatedAt: new Date("2026-01-01T09:00:00Z"),
+          placedVia: "telephone",
+          telephoneBookingId: "booking-1",
+        },
+        {
+          bidderId: "web-bidder",
+          buyerLegalEntityId: "le-web",
+          ceiling: "300.00",
+          autoBidStepAmount: "10.00",
+          maxCreatedAt: new Date("2026-01-01T10:00:00Z"),
+          placedVia: "web",
+          telephoneBookingId: null,
+        },
+      ]),
+      create,
+    } as unknown as IBidRepository;
+    const resolver = new ProxyAutoBidResolver(null, {} as NotificationService, null);
+
+    await resolver.resolve(
+      bids,
+      "lot-1",
+      mkLot(),
+      mkBid({ amount: "120.00", placedVia: "web" }),
+      {} as Database,
+      [],
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        placedByUserId: "telephone-bidder",
+        placedVia: "telephone",
+        telephoneBookingId: "booking-1",
+      }),
+    );
+  });
+
   it("tie-breaks equal ceilings by earliest proxy registration", async () => {
     const earlier = new Date("2026-01-01T09:00:00Z");
     const later = new Date("2026-01-01T10:00:00Z");
@@ -205,5 +253,98 @@ describe("ProxyAutoBidResolver.resolve", () => {
     await resolver.flushPendingProxyCancels(pending);
     expect(clearProxyAutoBidForBidderOnLot).toHaveBeenCalledWith("lot-1", "shill");
     expect(notifyProxyCancelled).toHaveBeenCalledWith("lot-1", "shill", "anti_shilling_violation");
+  });
+
+  it("cancels an invalid standing ceiling without aborting eligible settlement", async () => {
+    const clearProxyAutoBidForBidderOnLot = vi.fn().mockResolvedValue(1);
+    const create = vi.fn().mockImplementation(async (row) => ({ ...mkBid(), ...row }));
+    const bids = {
+      listBidderCeilingStates: vi.fn().mockResolvedValue([
+        {
+          bidderId: "ineligible",
+          buyerLegalEntityId: "le-ineligible",
+          ceiling: "900.00",
+          autoBidStepAmount: "10.00",
+          maxCreatedAt: new Date("2026-01-01T09:00:00Z"),
+        },
+        {
+          bidderId: "eligible",
+          buyerLegalEntityId: "le-eligible",
+          ceiling: "300.00",
+          autoBidStepAmount: "10.00",
+          maxCreatedAt: new Date("2026-01-01T10:00:00Z"),
+        },
+      ]),
+      bidderHasProxyMaxOnLot: vi.fn().mockResolvedValue(true),
+      clearProxyAutoBidForBidderOnLot,
+      create,
+    } as unknown as IBidRepository;
+    const validator: IStandingBidEligibilityValidator = {
+      validate: vi.fn(async (_lotId, state) =>
+        state.bidderId === "ineligible"
+          ? err(new BidError("No longer eligible", 403, "membership_required"))
+          : ok(undefined),
+      ),
+    };
+    const resolver = new ProxyAutoBidResolver(null, {} as NotificationService, null, validator);
+    const pending: import("./proxy-auto-bid.resolver.js").ProxyCancelNotification[] = [];
+
+    await resolver.resolve(
+      bids,
+      "lot-1",
+      mkLot(),
+      mkBid({ amount: "120.00" }),
+      {} as Database,
+      pending,
+    );
+
+    expect(clearProxyAutoBidForBidderOnLot).toHaveBeenCalledWith("lot-1", "ineligible");
+    expect(pending).toContainEqual({
+      lotId: "lot-1",
+      bidderUserId: "ineligible",
+      reason: "membership_required",
+    });
+    expect(create).not.toHaveBeenCalledWith(
+      expect.objectContaining({ placedByUserId: "ineligible" }),
+    );
+  });
+
+  it("aborts transient revalidation failures without clearing proxy maxima", async () => {
+    const clearProxyAutoBidForBidderOnLot = vi.fn();
+    const bids = {
+      listBidderCeilingStates: vi.fn().mockResolvedValue([
+        {
+          bidderId: "temporarily-unavailable",
+          buyerLegalEntityId: "le-temporary",
+          ceiling: "500.00",
+          autoBidStepAmount: "10.00",
+          maxCreatedAt: new Date(),
+          placedVia: "web",
+          telephoneBookingId: null,
+        },
+      ]),
+      bidderHasProxyMaxOnLot: vi.fn().mockResolvedValue(true),
+      clearProxyAutoBidForBidderOnLot,
+      create: vi.fn(),
+    } as unknown as IBidRepository;
+    const validator: IStandingBidEligibilityValidator = {
+      validate: vi
+        .fn()
+        .mockResolvedValue(
+          err(
+            new BidError(
+              "Standing bid eligibility could not be revalidated",
+              503,
+              "standing_bid_revalidation_failed",
+            ),
+          ),
+        ),
+    };
+    const resolver = new ProxyAutoBidResolver(null, {} as NotificationService, null, validator);
+
+    await expect(
+      resolver.resolve(bids, "lot-1", mkLot(), mkBid({ amount: "120.00" }), {} as Database, []),
+    ).rejects.toMatchObject({ status: 503, code: "standing_bid_revalidation_failed" });
+    expect(clearProxyAutoBidForBidderOnLot).not.toHaveBeenCalled();
   });
 });

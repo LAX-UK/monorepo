@@ -15,7 +15,8 @@ import { LogoutButton } from "@/components/layout/logout-button";
 import { AUTH_FOOTER_LINK_ROW } from "@/lib/auth/auth-link-classes";
 import { buildAuthHref, parseAuthEmailParam } from "@/lib/auth/auth-route-links";
 import { useSignInController } from "@/lib/auth/hooks/use-sign-in-controller";
-import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import { postLoginHandoffHref } from "@/lib/auth/post-login-handoff";
 import { socialErrorMessage } from "@/lib/auth/social-error-message";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { sellRegisterHrefFromSubmissionNext } from "@/lib/marketing/sell-intake";
@@ -143,21 +144,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
             size="lg"
             className="font-label uppercase tracking-[var(--text-label-caps-tracking,0.22em)]"
           >
-            <Link
-              href={resolvePostAuthDestination({
-                user: {
-                  email: user.email,
-                  role: user.role,
-                  staffRole: user.staffRole ?? null,
-                  emailVerified: user.emailVerified ?? false,
-                  suspended: user.suspended ?? false,
-                },
-                requestedNext: next,
-                context: "redirect-if-authed",
-                requireEmailVerification: false,
-                withWelcomeBack: true,
-              })}
-            >
+            <Link href={postLoginHandoffHref(next, { withWelcomeBack: true })}>
               Continue to dashboard
             </Link>
           </Button>
@@ -168,18 +155,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
   }
 
   if (!switchAccount && user?.email && !pending) {
-    const dest = resolvePostAuthDestination({
-      user: {
-        email: user.email,
-        role: user.role,
-        emailVerified: user.emailVerified ?? false,
-        suspended: user.suspended ?? false,
-      },
-      requestedNext: next,
-      context: "redirect-if-authed",
-      requireEmailVerification: false,
-      withWelcomeBack: true,
-    });
+    const dest = postLoginHandoffHref(next, { withWelcomeBack: true });
     return (
       <div className="flex w-full flex-col gap-8">
         <output
@@ -359,13 +335,15 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
               Sign In
             </AuthSubmitButton>
           )}
-          <button
+          <Button
             type="button"
-            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            variant="link"
+            size="link"
+            className="font-footer-links text-sm"
             onClick={() => setSignInMode("phone")}
           >
             Sign in with phone number
-          </button>
+          </Button>
           {sellIntent ? (
             <p className="text-center font-footer-links text-sm text-on-surface-variant">
               New to LAX? Create an account to start your submission in about 3 minutes.
@@ -431,13 +409,15 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
       {step === "email" ? (
         <>
           <SignInEmailStep control={form.control} onContinue={goToCredentials} next={next} />
-          <button
+          <Button
             type="button"
-            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            variant="link"
+            size="link"
+            className="font-footer-links text-sm"
             onClick={() => setSignInMode("phone")}
           >
             Sign in with phone number
-          </button>
+          </Button>
           {!sellIntent ? (
             <AuthFooterLink
               prefix="Don't have an account?"
@@ -483,13 +463,15 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
             sellIntent={sellIntent}
             sellRegisterHref={sellRegisterHref}
           />
-          <button
+          <Button
             type="button"
-            className="font-footer-links text-sm text-link underline-offset-2 hover:underline"
+            variant="link"
+            size="link"
+            className="font-footer-links text-sm"
             onClick={() => setSignInMode("phone")}
           >
             Sign in with phone number
-          </button>
+          </Button>
           {!sellIntent ? (
             <AuthFooterLink
               prefix="Don't have an account?"

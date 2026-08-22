@@ -29,8 +29,8 @@ export function buildRequestWithAuthEdgeHeader(
  * - `?registered=1`       — just-completed sign-up landing
  * - `?reset=1`            — just-completed password reset landing
  *
- * Otherwise the stale Better Auth cookie would cause a /login → /dashboard?from=auth-edge
- * → /login?session_expired=1 loop until the user manually clears cookies.
+ * Eligible requests go through the server post-login decision so role, KYC, and
+ * stale-session handling use the same authoritative session data.
  */
 export function getAuthPublicCookieRedirectUrl(requestUrl: URL, cookieHeader: string): URL | null {
   const pathname = requestUrl.pathname;
@@ -45,12 +45,11 @@ export function getAuthPublicCookieRedirectUrl(requestUrl: URL, cookieHeader: st
   if (pathname === "/register" && sp.has("invite")) return null;
   if (!hasAuthSessionCookie(cookieHeader)) return null;
 
+  const dest = new URL("/auth/post-login", requestUrl);
   const next = sp.get("next");
-  const targetPath = next != null && isSafeNextPath(next) ? next : "/auth/social-callback";
-  const dest = new URL(targetPath, requestUrl);
-  if (targetPath !== "/auth/social-callback") {
-    dest.searchParams.set("from", "auth-edge");
-    dest.searchParams.set("welcome", "back");
+  if (next != null && isSafeNextPath(next)) {
+    dest.searchParams.set("next", next);
   }
+  dest.searchParams.set("welcome", "back");
   return dest;
 }

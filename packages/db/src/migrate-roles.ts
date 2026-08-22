@@ -87,6 +87,7 @@ export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
     "aml_hold_reason",
     "aml_hold_at",
     "signup_persona",
+    "category_interests_onboarding_completed_at",
     "has_seen_acting_context_tooltip",
     "pending_new_email",
     "email_change_old_ok",

@@ -8,6 +8,7 @@ import {
 } from "@/lib/admin/parse-invite-email-list";
 import { cn } from "@auction/ui";
 import { Badge } from "@auction/ui/components/badge";
+import { Button } from "@auction/ui/components/button";
 import { X } from "lucide-react";
 import { useCallback, useId, useRef, useState } from "react";
 
@@ -100,10 +101,12 @@ export function InviteEmailChipInput({
         {emails.map((email) => (
           <Badge key={email} variant="outline" className="gap-1 pr-1 font-body text-xs normal-case">
             {email}
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               disabled={disabled}
-              className="rounded-full p-0.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              className="size-auto rounded-full p-0.5 text-on-surface-variant hover:text-on-surface"
               aria-label={`Remove ${email}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -111,7 +114,7 @@ export function InviteEmailChipInput({
               }}
             >
               <X className="size-3" aria-hidden />
-            </button>
+            </Button>
           </Badge>
         ))}
         <input
