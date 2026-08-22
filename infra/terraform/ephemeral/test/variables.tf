@@ -464,6 +464,12 @@ variable "next_public_csp_report_uri" {
   description = "Optional CSP violation report endpoint (e.g. https://o123.ingest.sentry.io/api/456/security/?sentry_key=…)."
 }
 
+variable "strict_bid_eligibility_enabled" {
+  type        = bool
+  default     = true
+  description = "Hard verified-email and approved-KYC gate for every self-service bid. Keep API and web aligned."
+}
+
 variable "kyc_onboarding_enabled" {
   type        = bool
   default     = false

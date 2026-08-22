@@ -12,5 +12,5 @@ function parseEnabled(value: string | undefined): boolean | null {
 export function isStrictBidEligibilityEnabled(): boolean {
   const configured = parseEnabled(process.env.STRICT_BID_ELIGIBILITY_ENABLED);
   if (configured != null) return configured;
-  return process.env.NODE_ENV !== "production";
+  return process.env.APP_ENV !== "production";
 }

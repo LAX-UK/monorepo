@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { KycRequiredError, type KycStatusSummary } from "../services/interfaces/kyc-service.js";
 import { createLotRoutes } from "./lots.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -12,6 +13,11 @@ function lotRoutesApp(opts: {
     findForBuyerOnLot: ReturnType<typeof vi.fn>;
     createRequest: ReturnType<typeof vi.fn>;
   };
+  strictBidEligibilityEnabled?: boolean;
+  kycService?: {
+    isConfigured: () => boolean;
+    enforceThreshold: ReturnType<typeof vi.fn>;
+  };
 }) {
   const findForBuyerOnLot = opts.conditionReportService?.findForBuyerOnLot ?? vi.fn();
   const createRequest =
@@ -19,7 +25,10 @@ function lotRoutesApp(opts: {
     vi.fn().mockResolvedValue({ isErr: () => false, isOk: () => true, value: { id: "req-1" } });
 
   const container = {
-    env: {},
+    env: {
+      APP_ENV: "production",
+      STRICT_BID_ELIGIBILITY_ENABLED: opts.strictBidEligibilityEnabled ?? false,
+    },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     lotService: { getById: vi.fn(), bulkPublishOrCancel: vi.fn() },
     lotSoftDeleteService: {
@@ -29,7 +38,7 @@ function lotRoutesApp(opts: {
     },
     saleService: { getById: vi.fn() },
     mediaUrlResolver: {},
-    kycService: { isConfigured: () => false },
+    kycService: opts.kycService ?? { isConfigured: () => false },
     requireSubmissionsLegalEntityContext: vi.fn(),
     redis: {},
     lotLifecycleQueryService: { getSnapshotsForLots: vi.fn() },
@@ -81,6 +90,38 @@ describe("GET /lots/:id/condition-report-request", () => {
 });
 
 describe("POST /lots/:id/condition-report-requests", () => {
+  it("keeps the threshold KYC gate active when strict bid eligibility is enabled", async () => {
+    const createRequest = vi.fn();
+    const enforceThreshold = vi.fn().mockRejectedValue(
+      new KycRequiredError({
+        status: "unverified",
+        requiresKyc: true,
+      } as KycStatusSummary),
+    );
+    const { app } = lotRoutesApp({
+      session: { id: "u1", role: "client", staffRole: null },
+      strictBidEligibilityEnabled: true,
+      kycService: {
+        isConfigured: () => true,
+        enforceThreshold,
+      },
+      conditionReportService: {
+        findForBuyerOnLot: vi.fn(),
+        createRequest,
+      },
+    });
+
+    const res = await app.request(`http://t/lots/${lotId}/condition-report-requests`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestNote: "Please send the report" }),
+    });
+
+    expect(res.status).toBe(402);
+    expect(enforceThreshold).toHaveBeenCalledWith("u1");
+    expect(createRequest).not.toHaveBeenCalled();
+  });
+
   it("returns existing open request on duplicate submit (idempotent)", async () => {
     const { ok } = await import("neverthrow");
     const existing = {

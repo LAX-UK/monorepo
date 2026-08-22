@@ -11,10 +11,28 @@ async function login(
   password: string,
   next?: string,
 ) {
-  await page.goto(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/password/i).fill(password);
-  await page.getByRole("button", { name: /sign in/i }).click();
+  const consent = encodeURIComponent(
+    JSON.stringify({
+      v: 1,
+      ts: new Date().toISOString(),
+      necessary: true,
+      analytics: false,
+      marketing: false,
+    }),
+  );
+  await page.context().addCookies([
+    {
+      name: "lax_consent",
+      value: consent,
+      url: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+    },
+  ]);
+  const nextQuery = next ? `&next=${encodeURIComponent(next)}` : "";
+  await page.goto(`/login?email=${encodeURIComponent(email)}${nextQuery}`);
+  const continueButton = page.getByRole("button", { name: /^continue$/i });
+  if (await continueButton.isVisible().catch(() => false)) await continueButton.click();
+  await page.locator('input[name="password"]').fill(password);
+  await page.getByRole("button", { name: /^sign in$/i }).click();
   await page.waitForURL(/\/(dashboard|admin|onboarding\/)/);
 }
 
@@ -23,24 +41,17 @@ async function clientLogin(page: import("@playwright/test").Page) {
 }
 
 test.describe("identity onboarding login redirect @journey", () => {
-  test("redirects a verified unapproved client and preserves intent", async ({ page }) => {
+  test("preserves intent without forcing KYC on normal login", async ({ page }) => {
     const email = process.env.PLAYWRIGHT_KYC_LOGIN_EMAIL ?? "";
     const password = process.env.PLAYWRIGHT_KYC_LOGIN_PASSWORD ?? "";
     test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
     test.skip(
       !email || !password,
-      "Set PLAYWRIGHT_KYC_LOGIN_EMAIL/PASSWORD to a verified unapproved client.",
+      "Set PLAYWRIGHT_KYC_LOGIN_EMAIL/PASSWORD to a verified, migration-backfilled client.",
     );
 
-    await page.goto("/login?next=%2Fdashboard%2Fwatchlist");
-    await page.getByLabel(/email/i).fill(email);
-    await page.getByLabel(/password/i).fill(password);
-    await page.getByRole("button", { name: /sign in/i }).click();
-
-    await expect(page).toHaveURL(
-      /\/onboarding\/identity\?next=%2Fdashboard%2Fwatchlist(?:%3Fwelcome%3Dback)?&source=sign_in/,
-    );
-    await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
+    await login(page, email, password, "/dashboard/watchlist");
+    await expect(page).toHaveURL(/\/dashboard\/watchlist(?:\?welcome=back)?$/);
   });
 });
 
@@ -54,9 +65,9 @@ test.describe("identity onboarding @journey", () => {
   test("preserves intent through KYC and allows skip/resume", async ({ page }) => {
     await page.goto("/onboarding/identity?next=%2Fdashboard%2Fwatchlist&source=post_verify");
     await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
-    await expect(page.getByText(/photo id ready/i)).toBeVisible();
+    await expect(page.getByText(/photo id ready/i).first()).toBeVisible();
 
-    await page.getByRole("link", { name: /i'll do this later/i }).click();
+    await page.getByRole("link", { name: /verify later|i'll do this later/i }).click();
     await expect(page).toHaveURL(/\/dashboard\/watchlist/);
 
     await page.goto("/dashboard");
@@ -77,7 +88,7 @@ test.describe("identity onboarding @journey", () => {
 
   test("rejects an unsafe next destination", async ({ page }) => {
     await page.goto("/onboarding/identity?next=%2F%2Fevil.example&source=direct");
-    await page.getByRole("link", { name: /i'll do this later/i }).click();
+    await page.getByRole("link", { name: /verify later|i'll do this later/i }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
   });
 });
@@ -112,7 +123,7 @@ test.describe("full post-verification buyer onboarding @journey", () => {
     await page.getByRole("link", { name: "Continue" }).click();
 
     await expect(page.getByRole("heading", { name: /one step from bidding on/i })).toBeVisible();
-    await page.getByRole("link", { name: /i'll do this later/i }).click();
+    await page.getByRole("link", { name: /verify later|i'll do this later/i }).click();
     await expect(page).toHaveURL(/\/dashboard\/watchlist/);
   });
 

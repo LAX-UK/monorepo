@@ -595,6 +595,8 @@ export function ArtworkBidPanel({
               onAction={handleFeedbackAction}
             />
 
+            {decision.kind === "block" && !sellerBlocked ? decision.render() : null}
+
             {!englishOnlySurfaceLock && !sellerBlocked && autoBidEligible && supportsAutoBid ? (
               <div className="mt-6">
                 <LotBidModeChooser
@@ -655,7 +657,9 @@ export function ArtworkBidPanel({
                   ) : null}
 
                   {decision.kind === "block" ? (
-                    decision.render()
+                    sellerBlocked ? (
+                      decision.render()
+                    ) : null
                   ) : step === 1 ? (
                     <BidForm
                       auctionType={auction.auctionType}
