@@ -2,6 +2,7 @@ import { createDb } from "@auction/db";
 import { user, userInvitation } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { findPostgresError } from "../lib/pg-error.js";
 import { DrizzleUserInvitationRepository } from "./drizzle-invitation.repository.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -94,8 +95,9 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
   it("rejects a second pending platform invite for the same email (partial unique index)", async () => {
     await seedUsersAndInvite();
 
-    await expect(
-      db.insert(userInvitation).values({
+    const error = await db
+      .insert(userInvitation)
+      .values({
         // Uppercase to prove the index is case-insensitive (lower(email)).
         email: email.toUpperCase(),
         targetRole: "staff",
@@ -106,7 +108,12 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
         createdByUserId: inviterId,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }),
-    ).rejects.toMatchObject({ code: "23505" });
+      })
+      .then(
+        () => null,
+        (cause: unknown) => cause,
+      );
+
+    expect(findPostgresError(error)).toMatchObject({ code: "23505" });
   });
 });
