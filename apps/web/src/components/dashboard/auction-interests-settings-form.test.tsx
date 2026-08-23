@@ -59,6 +59,14 @@ describe("AuctionInterestsSettingsForm", () => {
     ]),
   );
 
+  const requireCategoryId = (slug: string): string => {
+    const id = completeCategoryIdBySlug[slug];
+    if (id === undefined) {
+      throw new Error(`Missing category id for slug: ${slug}`);
+    }
+    return id;
+  };
+
   beforeEach(() => {
     actionState.current = { error: null, redirectTo: null, savedCategoryIds: null };
     notifyError.mockReset();
@@ -104,8 +112,8 @@ describe("AuctionInterestsSettingsForm", () => {
   });
 
   it("reconciles selections when refreshed server props change", async () => {
-    const artId = completeCategoryIdBySlug.paintings;
-    const watchesId = completeCategoryIdBySlug["watches-clocks"];
+    const artId = requireCategoryId("paintings");
+    const watchesId = requireCategoryId("watches-clocks");
     const { rerender } = render(
       <AuctionInterestsSettingsForm
         categoryIdBySlug={completeCategoryIdBySlug}
@@ -141,8 +149,8 @@ describe("AuctionInterestsSettingsForm", () => {
 
   it("refreshes and reconciles every confirmed save", async () => {
     const initialCategoryIds: string[] = [];
-    const artId = completeCategoryIdBySlug.paintings;
-    const watchesId = completeCategoryIdBySlug["watches-clocks"];
+    const artId = requireCategoryId("paintings");
+    const watchesId = requireCategoryId("watches-clocks");
     const { rerender } = render(
       <AuctionInterestsSettingsForm
         categoryIdBySlug={completeCategoryIdBySlug}
