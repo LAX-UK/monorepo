@@ -4,6 +4,7 @@ import { replaceServerCategoryInterestPreferences } from "@/lib/data/http/catego
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/data/http/category-interests.server", () => ({
+  CategoryInterestPreferencesSaveError: class extends Error {},
   replaceServerCategoryInterestPreferences: vi.fn(),
 }));
 
@@ -18,6 +19,14 @@ describe("saveAuctionInterestPreferences", () => {
     ).resolves.toEqual({
       error: "We couldn’t save your auction interests. Check your connection and try again.",
       redirectTo: null,
+      diagnostic: {
+        stage: "unknown",
+        status: null,
+        apiCode: null,
+        errorName: "Error",
+        errorMessage: "offline",
+        selectedCount: 1,
+      },
     });
   });
 
@@ -35,6 +44,7 @@ describe("saveAuctionInterestPreferences", () => {
     ).resolves.toEqual({
       error: null,
       redirectTo: "/dashboard/settings/interests?saved=1",
+      diagnostic: null,
     });
   });
 });

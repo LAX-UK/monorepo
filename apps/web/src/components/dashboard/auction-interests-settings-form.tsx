@@ -54,6 +54,25 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
   }, [actionState.error]);
 
   useEffect(() => {
+    if (!actionState.diagnostic) return;
+    // #region agent log
+    fetch("http://127.0.0.1:7685/ingest/8d553a4b-6759-482a-a6f6-871e111fa1a5", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "547289" },
+      body: JSON.stringify({
+        sessionId: "547289",
+        runId: "pre-fix",
+        hypothesisId: "H1-H5",
+        location: "auction-interests-settings-form.tsx:diagnostic",
+        message: "Client received auction interest save failure",
+        data: actionState.diagnostic,
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, [actionState.diagnostic]);
+
+  useEffect(() => {
     if (!actionState.redirectTo || handledRedirect.current === actionState.redirectTo) return;
     handledRedirect.current = actionState.redirectTo;
     router.replace(actionState.redirectTo);
