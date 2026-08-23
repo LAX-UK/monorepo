@@ -10,7 +10,7 @@ import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 type Props = {
@@ -18,24 +18,51 @@ type Props = {
   initialCategoryIds: readonly string[];
 };
 
-function SaveInterestsButton({ catalogIncomplete }: { catalogIncomplete: boolean }) {
+const CATEGORY_ID_SEPARATOR = "\u001f";
+
+function categoryIdsKey(categoryIds: Iterable<string>): string {
+  return [...categoryIds].sort().join(CATEGORY_ID_SEPARATOR);
+}
+
+function categoryIdsFromKey(key: string): string[] {
+  return key.length === 0 ? [] : key.split(CATEGORY_ID_SEPARATOR);
+}
+
+function categorySetsEqual(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+  return left.size === right.size && [...left].every((categoryId) => right.has(categoryId));
+}
+
+function SaveInterestsButton({
+  catalogIncomplete,
+  hasChanges,
+}: {
+  catalogIncomplete: boolean;
+  hasChanges: boolean;
+}) {
   const { pending } = useFormStatus();
+  const disabled = pending || catalogIncomplete || !hasChanges;
   return (
-    <Button
-      type="submit"
-      disabled={pending || catalogIncomplete}
-      aria-disabled={pending || catalogIncomplete}
-    >
-      {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-      {pending ? "Saving…" : "Save interests"}
-    </Button>
+    <>
+      <Button
+        type="submit"
+        className="min-h-11 w-full sm:w-auto"
+        disabled={disabled}
+        aria-disabled={disabled}
+      >
+        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+        {pending ? "Saving…" : "Save interests"}
+      </Button>
+      <span className="sr-only" aria-live="polite">
+        {pending ? "Saving your auction interests" : ""}
+      </span>
+    </>
   );
 }
 
 export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategoryIds }: Props) {
-  const router = useRouter();
-  const handledRedirect = useRef<string | null>(null);
+  const { refresh, replace } = useRouter();
   const [selected, setSelected] = useState(() => new Set(initialCategoryIds));
+  const [committed, setCommitted] = useState(() => new Set(initialCategoryIds));
   const [actionState, formAction] = useActionState(
     saveAuctionInterestPreferences,
     INITIAL_AUCTION_INTERESTS_SETTINGS_ACTION_STATE,
@@ -44,6 +71,14 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
     (interest) => !categoryIdBySlug[interest.categorySlug],
   );
   const catalogIncomplete = missingInterests.length > 0;
+  const hasChanges = !categorySetsEqual(selected, committed);
+  const initialCategoryIdsKey = categoryIdsKey(initialCategoryIds);
+
+  useEffect(() => {
+    const refreshed = new Set(categoryIdsFromKey(initialCategoryIdsKey));
+    setSelected(refreshed);
+    setCommitted(new Set(refreshed));
+  }, [initialCategoryIdsKey]);
 
   useEffect(() => {
     if (!actionState.error) return;
@@ -54,10 +89,16 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
   }, [actionState.error]);
 
   useEffect(() => {
-    if (!actionState.redirectTo || handledRedirect.current === actionState.redirectTo) return;
-    handledRedirect.current = actionState.redirectTo;
-    router.replace(actionState.redirectTo);
-  }, [actionState.redirectTo, router]);
+    if (!actionState.redirectTo || !actionState.savedCategoryIds) return;
+    const saved = new Set(actionState.savedCategoryIds);
+    setSelected(saved);
+    setCommitted(new Set(saved));
+    notify.success("Auction interests saved", {
+      id: "auction-interests-settings-save-succeeded",
+    });
+    replace(actionState.redirectTo);
+    refresh();
+  }, [actionState.redirectTo, actionState.savedCategoryIds, refresh, replace]);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -78,6 +119,10 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
           </AlertDescription>
         </Alert>
       ) : null}
+      <p className="text-sm font-medium text-on-surface-variant" aria-live="polite">
+        {selected.size} of {BUYER_INTERESTS.length} categories selected
+        {hasChanges ? " · Unsaved changes" : ""}
+      </p>
       <fieldset className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <legend className="sr-only">Auction interests</legend>
         {BUYER_INTERESTS.map((interest, index) => {
@@ -164,7 +209,7 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
       <span className="sr-only" role="alert" aria-live="assertive">
         {actionState.error}
       </span>
-      <SaveInterestsButton catalogIncomplete={catalogIncomplete} />
+      <SaveInterestsButton catalogIncomplete={catalogIncomplete} hasChanges={hasChanges} />
     </form>
   );
 }

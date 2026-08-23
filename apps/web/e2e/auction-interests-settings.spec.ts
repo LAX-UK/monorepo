@@ -54,12 +54,11 @@ test.describe("auction interests settings @journey", () => {
       await art.click();
       await page.getByRole("button", { name: "Save interests" }).click();
       await expect(page.getByText("Your auction interests were updated.")).toBeVisible();
-
-      await page.reload();
       await expect(page.getByRole("checkbox", { name: "Art" })).toHaveAttribute(
         "aria-checked",
         String(!wasChecked),
       );
+      await expect(page.getByRole("button", { name: "Save interests" })).toBeDisabled();
     } finally {
       await page.goto("/dashboard/settings/interests");
       const restoredArt = page.getByRole("checkbox", { name: "Art" });

@@ -79,7 +79,7 @@ function isCategoryInterestsEligible(
     profile?.role === "client" &&
     !profile.suspended &&
     profile.emailVerified &&
-    profile.signupPersona === "individual"
+    profile.signupPersona !== "organisation"
   );
 }
 

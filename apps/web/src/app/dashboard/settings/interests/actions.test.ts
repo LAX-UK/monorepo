@@ -18,12 +18,14 @@ describe("saveAuctionInterestPreferences", () => {
     ).resolves.toEqual({
       error: "We couldn’t save your auction interests. Check your connection and try again.",
       redirectTo: null,
+      savedCategoryIds: null,
     });
   });
 
-  it("returns navigation data only after saving succeeds", async () => {
+  it("returns navigation data and the authoritative selection only after saving succeeds", async () => {
+    const savedCategoryIds = ["11111111-1111-4111-8111-111111111111"];
     vi.mocked(replaceServerCategoryInterestPreferences).mockResolvedValueOnce({
-      categoryIds: ["11111111-1111-4111-8111-111111111111"],
+      categoryIds: savedCategoryIds,
       onboardingCompleted: true,
       onboardingCompletedAt: new Date().toISOString(),
     });
@@ -35,6 +37,7 @@ describe("saveAuctionInterestPreferences", () => {
     ).resolves.toEqual({
       error: null,
       redirectTo: "/dashboard/settings/interests?saved=1",
+      savedCategoryIds,
     });
   });
 });

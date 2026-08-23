@@ -135,6 +135,25 @@ describe("PUT /users/me/category-interests", () => {
     });
   });
 
+  it("allows legacy clients with an unset signup persona", async () => {
+    const { app, repository } = createApp({
+      profile: {
+        role: "client",
+        suspended: false,
+        emailVerified: true,
+        signupPersona: null,
+      },
+    });
+    const response = await app.request("/users/me/category-interests", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ categoryIds: [] }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(repository.replaceAndComplete).toHaveBeenCalledWith("u1", []);
+  });
+
   it.each([
     { role: "staff", suspended: false, emailVerified: true, signupPersona: "individual" as const },
     {
@@ -169,6 +188,25 @@ describe("PUT /users/me/category-interests/preferences", () => {
     expect(response.status).toBe(200);
     expect(repository.replace).toHaveBeenCalledWith("u1", [categoryId]);
     expect(repository.replaceAndComplete).not.toHaveBeenCalled();
+  });
+
+  it("allows legacy clients with an unset signup persona", async () => {
+    const { app, repository } = createApp({
+      profile: {
+        role: "client",
+        suspended: false,
+        emailVerified: true,
+        signupPersona: null,
+      },
+    });
+    const response = await app.request("/users/me/category-interests/preferences", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ categoryIds: [categoryId] }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(repository.replace).toHaveBeenCalledWith("u1", [categoryId]);
   });
 
   it("applies the same account eligibility contract", async () => {
