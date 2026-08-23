@@ -11,16 +11,20 @@ export async function saveAuctionInterestPreferences(
     .getAll("categoryId")
     .map(String)
     .filter((id) => id.length > 0);
+  let savedCategoryIds: string[];
   try {
-    await replaceServerCategoryInterestPreferences(categoryIds);
+    const saved = await replaceServerCategoryInterestPreferences(categoryIds);
+    savedCategoryIds = saved.categoryIds;
   } catch {
     return {
       error: "We couldn’t save your auction interests. Check your connection and try again.",
       redirectTo: null,
+      savedCategoryIds: null,
     };
   }
   return {
     error: null,
     redirectTo: "/dashboard/settings/interests?saved=1",
+    savedCategoryIds,
   };
 }
