@@ -1,7 +1,6 @@
-import {
-  AdminCannotBuyNotice,
-  isAdminBuyerBlocked,
-} from "@/components/marketing/admin-cannot-buy-notice";
+import { isAdminBuyerBlocked } from "@/components/marketing/admin-cannot-buy-notice";
+import { ADMIN_CANNOT_BUY_DESCRIPTION, ADMIN_CANNOT_BUY_TITLE } from "@/lib/ui/admin-cannot-buy";
+import { blockBid } from "./block-decision";
 import type { BidPolicy, BidPolicyContext, BidPolicyDecision } from "./types";
 
 export const adminPolicy: BidPolicy = {
@@ -10,10 +9,11 @@ export const adminPolicy: BidPolicy = {
     if (!ctx.user || !isAdminBuyerBlocked(ctx.user)) {
       return { kind: "allow" };
     }
-    return {
-      kind: "block",
-      viewId: "staff-no-bid",
-      render: () => <AdminCannotBuyNotice />,
-    };
+    return blockBid("staff-no-bid", {
+      tone: "info",
+      title: ADMIN_CANNOT_BUY_TITLE,
+      detail: ADMIN_CANNOT_BUY_DESCRIPTION,
+      action: { kind: "link", href: "/admin", label: "Go to admin", shortLabel: "Admin" },
+    });
   },
 };

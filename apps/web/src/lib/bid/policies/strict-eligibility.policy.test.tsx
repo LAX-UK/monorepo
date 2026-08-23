@@ -42,7 +42,7 @@ describe("strictEligibilityPolicy", () => {
     );
     expect(decision).toMatchObject({ kind: "block", viewId: "email-verification-required" });
     if (decision.kind === "block") render(decision.render());
-    expect(screen.getByText("Email verification required")).toBeInTheDocument();
+    expect(screen.getByText("Verify your email to bid")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send verification email" })).toBeEnabled();
   });
 
@@ -61,6 +61,31 @@ describe("strictEligibilityPolicy", () => {
       );
     },
   );
+
+  it("renders processing KYC as status-only feedback", () => {
+    const decision = strictEligibilityPolicy.evaluate({
+      ...context({ ...approvedUser, kycStatus: "pending" }),
+      kycBidGate: {
+        requiresKyc: true,
+        feedback: {
+          headline: "Verification in review",
+          detail: "We are reviewing your submission.",
+          action: "wait",
+          reasonCode: null,
+          decisionStatus: null,
+          needsResubmit: false,
+        },
+      },
+    });
+
+    expect(decision).toMatchObject({
+      kind: "block",
+      presentation: { action: { kind: "status", label: "In review" } },
+    });
+    if (decision.kind === "block") render(decision.render());
+    expect(screen.getByText("In review")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
 
   it("allows an email-verified, KYC-approved client", () => {
     expect(strictEligibilityPolicy.evaluate(context(approvedUser))).toEqual({ kind: "allow" });

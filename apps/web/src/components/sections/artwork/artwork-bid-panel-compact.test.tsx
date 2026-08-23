@@ -13,6 +13,7 @@ import { ArtworkBidPanel } from "./artwork-bid-panel";
 // ─── Mocks (same pattern as artwork-bid-panel.test.tsx) ──────────────────────
 
 const placeBidMock = vi.fn();
+const { liveConnectionMock } = vi.hoisted(() => ({ liveConnectionMock: vi.fn() }));
 
 vi.mock("@/hooks/use-lot-realtime", () => ({
   useLotRealtime: vi.fn(),
@@ -50,12 +51,7 @@ vi.mock("@/lib/context/online-lot-lifecycle", () => ({
 }));
 
 vi.mock("@/lib/connection/use-live-connection", () => ({
-  useLiveConnection: () => ({
-    state: "live",
-    message: null,
-    biddingAllowed: true,
-    realtimeHealthy: true,
-  }),
+  useLiveConnection: () => liveConnectionMock(),
 }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -135,6 +131,12 @@ function renderCompact(props: Partial<ComponentProps<typeof ArtworkBidPanel>> = 
 describe("ArtworkBidPanel — videoCompact surface", () => {
   beforeEach(() => {
     placeBidMock.mockReset();
+    liveConnectionMock.mockReturnValue({
+      state: "live",
+      message: null,
+      biddingAllowed: true,
+      realtimeHealthy: true,
+    });
     Element.prototype.scrollIntoView = vi.fn();
   });
 
@@ -229,12 +231,36 @@ describe("ArtworkBidPanel — videoCompact surface", () => {
     renderCompact({ sessionUser: null });
 
     // Expand — on a blocked gate the expanded area renders decision.render()
-    fireEvent.click(screen.getByRole("button", { name: /^bid$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /view details/i }));
 
     // BidGate "not-signed-in" renders a login link/button
     // The exact text varies; check that no bid form is shown and no bid is placed
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /sign in to continue/i })).toBeInTheDocument();
+    expect(screen.getByText(/after signing in.*one-time bid.*auto-bid/i)).toBeInTheDocument();
     expect(placeBidMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the runtime connectivity blocker and hides compact bid controls", () => {
+    liveConnectionMock.mockReturnValue({
+      state: "offline",
+      message: "Reconnect before bidding.",
+      biddingAllowed: false,
+      realtimeHealthy: false,
+    });
+    renderCompact();
+
+    expect(screen.getByRole("button", { name: /view details/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^bid$/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /view details/i }));
+
+    expect(screen.getByText("Live bidding temporarily unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Reconnect before bidding.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/bid options will return when the connection is restored/i),
+    ).toBeInTheDocument();
   });
 
   it("id='lot-bid-entry' is NOT present in the DOM in compact surface (no duplicate id)", () => {

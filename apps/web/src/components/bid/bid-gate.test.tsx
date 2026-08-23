@@ -60,6 +60,11 @@ describe("BidGate", () => {
         evaluate: (_ctx: BidPolicyContext): BidPolicyDecision => ({
           kind: "block",
           viewId: "test-block",
+          presentation: {
+            tone: "neutral",
+            title: "Policy blocked",
+            detail: "Test blocker",
+          },
           render: () => <p>Policy blocked</p>,
         }),
       },

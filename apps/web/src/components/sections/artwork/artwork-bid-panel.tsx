@@ -24,6 +24,7 @@ import { evaluateManualBidEligibility } from "@/lib/bid/evaluate-lot-bid-eligibi
 import { type LotBidEntryMode, defaultLotBidEntryMode } from "@/lib/bid/lot-bid-entry-mode";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
+import { resolveRuntimeBidBlocker } from "@/lib/bid/resolve-runtime-bid-blocker";
 import { useLiveConnection } from "@/lib/connection/use-live-connection";
 import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
 import { useLotPorts } from "@/lib/context/lot-ports";
@@ -96,7 +97,12 @@ export function ArtworkBidPanel({
   const onlineLifecycle = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
   const connectivityScope = saleroomLive ? "hybrid" : "bidding";
-  const { biddingAllowed, realtimeHealthy } = useLiveConnection();
+  const {
+    state: connectionState,
+    message: connectionMessage,
+    biddingAllowed,
+    realtimeHealthy,
+  } = useLiveConnection();
   const isLotOnBlock = saleroomLive?.isLotOnBlock(auction.id) ?? false;
 
   const bidState = useLotBidState({
@@ -536,12 +542,7 @@ export function ArtworkBidPanel({
         ? `Auto-bid opens when the auctioneer starts the sale${countdownClock ? ` (${countdownClock} until sale start)` : ""}.`
         : `Auto-bid opens when this lot goes live${countdownClock ? ` in ${countdownClock}` : ""}.`;
 
-  const sellerBlocked = isOwnLot;
-
-  const gateBlocked = (d: { kind: "allow" } | { kind: "block" }) => d.kind === "block";
   const connectionBlocked = biddingLive && !biddingAllowed;
-  const bidControlsDisabled = (d: { kind: "allow" } | { kind: "block" }) =>
-    gateBlocked(d) || connectionBlocked;
   const bidCardInView = onlineLifecycle?.bidCardInView ?? true;
   const showPricingHeader = omitPricingHeader;
 
@@ -575,7 +576,14 @@ export function ArtworkBidPanel({
       biddingLifecycle={{ kind: lifecycle.kind, isOnBlock: isLotOnBlock }}
       orgModuleEnabled={orgModuleEnabled}
     >
-      {({ decision }) => {
+      {({ decision: policyDecision }) => {
+        const decision = resolveRuntimeBidBlocker({
+          policyDecision,
+          unsupportedAuctionMode: englishOnlySurfaceLock,
+          connectionBlocked,
+          connectionState,
+          connectionMessage,
+        });
         /**
          * Shared interactive region — the bid entry form / confirm step + auto-bid.
          * Rendered identically on both the full card and the compact bar (when expanded).
@@ -595,139 +603,131 @@ export function ArtworkBidPanel({
               onAction={handleFeedbackAction}
             />
 
-            {decision.kind === "block" && !sellerBlocked ? decision.render() : null}
-
-            {!englishOnlySurfaceLock && !sellerBlocked && autoBidEligible && supportsAutoBid ? (
-              <div className="mt-6">
-                <LotBidModeChooser
-                  mode={entryMode}
-                  onModeChange={(mode) => switchEntryMode(mode, { userInitiated: true })}
-                  disabled={bidControlsDisabled(decision)}
-                />
-              </div>
-            ) : null}
-
-            {!englishOnlySurfaceLock && !sellerBlocked && autoBidEligible ? (
-              <div
-                id={surface === "full" ? "lot-auto-bid-panel" : undefined}
-                className={cn("mt-4 scroll-mt-28", entryMode !== "auto" && "hidden")}
-                aria-hidden={entryMode !== "auto"}
-              >
-                <LotAutoBidPanel
-                  lot={auction}
-                  auctionType={auction.auctionType}
-                  currentPrice={currentPrice}
-                  minNextBid={minNumeric}
-                  isWinning={isWinning}
-                  disabled={bidControlsDisabled(decision)}
-                  loginNextPath={loginNext}
-                  initialSettings={activeAutoBid}
-                  approvedBidLimit={saleRegistrationBidGate?.approvedBidLimit ?? null}
-                  onDraftChange={handleAutoBidDraft}
-                  onSettingsSaved={onAutoBidSaved}
-                  onFeedbackError={setFeedbackError}
-                  kycFeedback={kycSummary?.feedback ?? null}
-                  biddingLive={biddingLive}
-                  biddingAllowed={biddingAllowed}
-                  realtimeHealthy={realtimeHealthy}
-                  refreshBeforeSave={async () => (await refreshFromServer()).ok}
-                />
-              </div>
-            ) : !englishOnlySurfaceLock && showAutoBidExplainer ? (
-              <p className="mt-6 rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
-                {autoBidExplainerText}
-              </p>
-            ) : null}
-
-            {!englishOnlySurfaceLock &&
-            (sellerBlocked
-              ? decision.kind === "block"
-              : autoBidEligible
-                ? entryMode === "manual"
-                : true) ? (
+            {decision.kind === "block" ? (
+              decision.render()
+            ) : (
               <>
-                <div
-                  id={surface === "full" ? "bid-interactive-anchor" : undefined}
-                  className={cn(autoBidEligible && !sellerBlocked ? "mt-4" : "mt-6")}
-                >
-                  {bidSuccess ? (
-                    <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
-                      Bid placed successfully.
-                    </output>
-                  ) : null}
+                {autoBidEligible && supportsAutoBid ? (
+                  <div className="mt-6">
+                    <LotBidModeChooser
+                      mode={entryMode}
+                      onModeChange={(mode) => switchEntryMode(mode, { userInitiated: true })}
+                    />
+                  </div>
+                ) : null}
 
-                  {decision.kind === "block" ? (
-                    sellerBlocked ? (
-                      decision.render()
-                    ) : null
-                  ) : step === 1 ? (
-                    <BidForm
+                {autoBidEligible ? (
+                  <div
+                    id={surface === "full" ? "lot-auto-bid-panel" : undefined}
+                    className={cn("mt-4 scroll-mt-28", entryMode !== "auto" && "hidden")}
+                    aria-hidden={entryMode !== "auto"}
+                  >
+                    <LotAutoBidPanel
+                      lot={auction}
                       auctionType={auction.auctionType}
-                      minNumeric={minNumeric}
-                      amount={amount}
-                      maxAuto={maxAuto}
-                      onAmountChange={setAmount}
-                      onMaxAutoChange={setMaxAuto}
-                      onReview={onReview}
-                      onUseMinimum={onUseMinimum}
-                      error={null}
-                      manualBidBlockedReason={manualBidBlockedReason}
-                      showMaxAutoField={false}
-                      reviewButtonClassName={FIGMA_PRIMARY}
-                      amountFieldVariant={useOnlineBidStepper ? "stepper" : "input"}
-                      stepNumeric={bidStepNumeric}
-                      step1ButtonLabel="Review bid"
-                      activeAutoBidNote={activeAutoBidNote}
-                      biddingDisabled={connectionBlocked || Boolean(manualBidBlockedReason)}
+                      currentPrice={currentPrice}
+                      minNextBid={minNumeric}
+                      isWinning={isWinning}
+                      disabled={false}
+                      loginNextPath={loginNext}
+                      initialSettings={activeAutoBid}
+                      approvedBidLimit={saleRegistrationBidGate?.approvedBidLimit ?? null}
+                      onDraftChange={handleAutoBidDraft}
+                      onSettingsSaved={onAutoBidSaved}
+                      onFeedbackError={setFeedbackError}
+                      kycFeedback={kycSummary?.feedback ?? null}
+                      biddingLive={biddingLive}
+                      biddingAllowed={biddingAllowed}
+                      realtimeHealthy={realtimeHealthy}
+                      refreshBeforeSave={async () => (await refreshFromServer()).ok}
                     />
-                  ) : (
-                    <BidConfirmation
-                      amount={amount}
-                      maxAuto={
-                        includeAutoBidOnManualBid && activeAutoBid?.maxAutoBidAmount
-                          ? activeAutoBid.maxAutoBidAmount
-                          : null
-                      }
-                      autoBidStep={
-                        includeAutoBidOnManualBid && activeAutoBid?.autoBidStepAmount
-                          ? activeAutoBid.autoBidStepAmount
-                          : null
-                      }
-                      error={null}
-                      submitting={submitting}
-                      biddingDisabled={connectionBlocked}
-                      onCancel={() => {
-                        clearConfirmAttempt();
-                        setStep(1);
-                      }}
-                      onConfirm={onConfirm}
-                    />
-                  )}
-                </div>
-
-                {!sellerBlocked ? (
-                  <p className="mt-6 text-xs leading-relaxed text-on-surface-variant">
-                    Minimum next bid{" "}
-                    <span className="font-medium text-on-surface">
-                      {formatMoney(minNumeric.toFixed(2))}
-                    </span>
-                    {biddingLive &&
-                    lifecycle.kind !== "liveSaleroom" &&
-                    lifecycle.kind !== "saleroomPaused" ? (
-                      <>
-                        {" "}
-                        · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer
-                        price plus buyer&apos;s premium; see{" "}
-                        <a href="/shipping" className="text-link underline">
-                          shipping
-                        </a>
-                        .
-                      </>
-                    ) : null}
+                  </div>
+                ) : showAutoBidExplainer ? (
+                  <p className="mt-6 rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
+                    {autoBidExplainerText}
                   </p>
                 ) : null}
+
+                {(autoBidEligible ? entryMode === "manual" : true) ? (
+                  <>
+                    <div
+                      id={surface === "full" ? "bid-interactive-anchor" : undefined}
+                      className={cn(autoBidEligible ? "mt-4" : "mt-6")}
+                    >
+                      {bidSuccess ? (
+                        <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
+                          Bid placed successfully.
+                        </output>
+                      ) : null}
+
+                      {step === 1 ? (
+                        <BidForm
+                          auctionType={auction.auctionType}
+                          minNumeric={minNumeric}
+                          amount={amount}
+                          maxAuto={maxAuto}
+                          onAmountChange={setAmount}
+                          onMaxAutoChange={setMaxAuto}
+                          onReview={onReview}
+                          onUseMinimum={onUseMinimum}
+                          error={null}
+                          manualBidBlockedReason={manualBidBlockedReason}
+                          showMaxAutoField={false}
+                          reviewButtonClassName={FIGMA_PRIMARY}
+                          amountFieldVariant={useOnlineBidStepper ? "stepper" : "input"}
+                          stepNumeric={bidStepNumeric}
+                          step1ButtonLabel="Review bid"
+                          activeAutoBidNote={activeAutoBidNote}
+                          biddingDisabled={connectionBlocked || Boolean(manualBidBlockedReason)}
+                        />
+                      ) : (
+                        <BidConfirmation
+                          amount={amount}
+                          maxAuto={
+                            includeAutoBidOnManualBid && activeAutoBid?.maxAutoBidAmount
+                              ? activeAutoBid.maxAutoBidAmount
+                              : null
+                          }
+                          autoBidStep={
+                            includeAutoBidOnManualBid && activeAutoBid?.autoBidStepAmount
+                              ? activeAutoBid.autoBidStepAmount
+                              : null
+                          }
+                          error={null}
+                          submitting={submitting}
+                          biddingDisabled={connectionBlocked}
+                          onCancel={() => {
+                            clearConfirmAttempt();
+                            setStep(1);
+                          }}
+                          onConfirm={onConfirm}
+                        />
+                      )}
+                    </div>
+
+                    <p className="mt-6 text-xs leading-relaxed text-on-surface-variant">
+                      Minimum next bid{" "}
+                      <span className="font-medium text-on-surface">
+                        {formatMoney(minNumeric.toFixed(2))}
+                      </span>
+                      {biddingLive &&
+                      lifecycle.kind !== "liveSaleroom" &&
+                      lifecycle.kind !== "saleroomPaused" ? (
+                        <>
+                          {" "}
+                          · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer
+                          price plus buyer&apos;s premium; see{" "}
+                          <a href="/shipping" className="text-link underline">
+                            shipping
+                          </a>
+                          .
+                        </>
+                      ) : null}
+                    </p>
+                  </>
+                ) : null}
               </>
-            ) : null}
+            )}
           </div>
         );
 
@@ -739,11 +739,13 @@ export function ArtworkBidPanel({
          */
         if (surface === "videoCompact") {
           const positionLabel = lotBidPositionStickyLabel(position, reserveContext);
-          const canBid = decision.kind !== "block" && !connectionBlocked && !englishOnlySurfaceLock;
+          const canBid = decision.kind !== "block";
+          const compactButtonLabel =
+            decision.kind === "block" ? "View details" : step === 2 ? "Confirm bid" : "Bid";
 
           return (
             <div className="min-w-0">
-              {biddingLive ? (
+              {biddingLive && !connectionBlocked ? (
                 <ConnectionStatusBannerContainer scope={connectivityScope} className="mb-3" />
               ) : null}
               <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
@@ -772,7 +774,6 @@ export function ArtworkBidPanel({
                     <Button
                       type="button"
                       aria-expanded={false}
-                      disabled={!canBid && decision.kind === "allow"}
                       onClick={() => {
                         if (decision.kind === "block") {
                           setCompactExpanded(true);
@@ -783,7 +784,7 @@ export function ArtworkBidPanel({
                       }}
                       className="shrink-0 rounded-sm bg-cta-bg px-5 py-2.5 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
                     >
-                      {step === 2 ? "Confirm bid" : "Bid"}
+                      {compactButtonLabel}
                     </Button>
                   ) : (
                     <Button
@@ -814,7 +815,7 @@ export function ArtworkBidPanel({
         /* ── Full surface (Bids View tab / no video stream) ────────────────── */
         return (
           <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>
-            {biddingLive ? (
+            {biddingLive && !connectionBlocked ? (
               <ConnectionStatusBannerContainer scope={connectivityScope} className="mb-4" />
             ) : null}
             <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
@@ -877,23 +878,20 @@ export function ArtworkBidPanel({
                     className="normal-case"
                   />
                 ) : null}
-                <LotBidPositionSummary
-                  position={position}
-                  loginNextPath={loginNext}
-                  {...(decision.kind !== "block"
-                    ? {
-                        onIncreaseBid: () => switchEntryMode("manual", { userInitiated: true }),
-                        ...(supportsAutoBid
-                          ? {
-                              onRaiseAutoBid: () =>
-                                switchEntryMode("auto", { userInitiated: true }),
-                            }
-                          : {}),
-                        supportsAutoBid,
-                      }
-                    : {})}
-                />
-                {saleRegistrationBidGate?.approvedBidLimit != null ? (
+                {decision.kind !== "block" ? (
+                  <LotBidPositionSummary
+                    position={position}
+                    loginNextPath={loginNext}
+                    onIncreaseBid={() => switchEntryMode("manual", { userInitiated: true })}
+                    {...(supportsAutoBid
+                      ? {
+                          onRaiseAutoBid: () => switchEntryMode("auto", { userInitiated: true }),
+                        }
+                      : {})}
+                    supportsAutoBid={supportsAutoBid}
+                  />
+                ) : null}
+                {decision.kind !== "block" && saleRegistrationBidGate?.approvedBidLimit != null ? (
                   <ApprovedBidLimitNotice
                     approvedBidLimit={saleRegistrationBidGate.approvedBidLimit}
                     currentPrice={currentPrice}
@@ -901,58 +899,46 @@ export function ArtworkBidPanel({
                 ) : null}
               </div>
 
-              {englishOnlySurfaceLock ? (
-                <p className="mt-6 rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
-                  Self-service bidding is only offered for English and buy-now lots while this
-                  catalogue mode is enabled. For this listing, please contact the saleroom team.
-                </p>
-              ) : null}
-
               {bidEntryRegion}
             </div>
 
-            {!englishOnlySurfaceLock ? (
-              <BidStickyMobileBar
-                live={biddingLive}
-                decision={decision}
-                loginNextPath={loginNext}
-                lotId={auction.id}
-                userEmail={sessionUser?.email ?? null}
-                kycFeedback={kycSummary?.feedback ?? null}
-                {...(saleRegistrationPath ? { saleRegistrationPath } : {})}
-                step={step}
-                currentPriceLabel={formatMoney(currentPrice)}
-                priceFlash={priceFlash}
-                onScrollToBid={() => switchEntryMode("manual", { userInitiated: true })}
-                remainingLabel={remainingLabel}
-                msRemaining={msRemaining}
-                timerState={timerState}
-                countdownClock={countdownClock}
-                lifecycleKind={lifecycle.kind}
-                isOnBlock={isLotOnBlock}
-                compact={bidCardInView}
-                position={position}
-                reserveContext={reserveContext}
-                hasActiveAutoBid={Boolean(activeAutoBid?.isActive)}
-                onFocusManualBid={() => switchEntryMode("manual", { userInitiated: true })}
-                onFocusAutoBid={() => switchEntryMode("auto", { userInitiated: true })}
-                isLeading={
-                  position.kind === "winning" ||
-                  position.kind === "winningByAuto" ||
-                  position.kind === "leadingBelowReserve"
-                }
-                upcomingSlot={
-                  <ArtworkWatchToggle
-                    lotId={auction.id}
-                    initialWatching={initialWatching}
-                    isAuthenticated={Boolean(sessionUser)}
-                    loginNextPath={loginNext}
-                    appearance="sticky-bar"
-                    marketingCta="notifyWhenOpens"
-                  />
-                }
-              />
-            ) : null}
+            <BidStickyMobileBar
+              live={biddingLive}
+              decision={decision}
+              loginNextPath={loginNext}
+              {...(saleRegistrationPath ? { saleRegistrationPath } : {})}
+              step={step}
+              currentPriceLabel={formatMoney(currentPrice)}
+              priceFlash={priceFlash}
+              onScrollToBid={() => switchEntryMode("manual", { userInitiated: true })}
+              remainingLabel={remainingLabel}
+              msRemaining={msRemaining}
+              timerState={timerState}
+              countdownClock={countdownClock}
+              lifecycleKind={lifecycle.kind}
+              isOnBlock={isLotOnBlock}
+              compact={bidCardInView}
+              position={position}
+              reserveContext={reserveContext}
+              hasActiveAutoBid={Boolean(activeAutoBid?.isActive)}
+              onFocusManualBid={() => switchEntryMode("manual", { userInitiated: true })}
+              onFocusAutoBid={() => switchEntryMode("auto", { userInitiated: true })}
+              isLeading={
+                position.kind === "winning" ||
+                position.kind === "winningByAuto" ||
+                position.kind === "leadingBelowReserve"
+              }
+              upcomingSlot={
+                <ArtworkWatchToggle
+                  lotId={auction.id}
+                  initialWatching={initialWatching}
+                  isAuthenticated={Boolean(sessionUser)}
+                  loginNextPath={loginNext}
+                  appearance="sticky-bar"
+                  marketingCta="notifyWhenOpens"
+                />
+              }
+            />
           </div>
         );
       }}

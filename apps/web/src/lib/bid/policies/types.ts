@@ -1,3 +1,4 @@
+import type { BidBlockerPresentation } from "@/lib/bid/bid-blocker-presentation";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
@@ -48,7 +49,12 @@ export type BidPolicyContext = {
 
 export type BidPolicyDecision =
   | { kind: "allow" }
-  | { kind: "block"; viewId: string; render: () => ReactNode };
+  | {
+      kind: "block";
+      viewId: string;
+      presentation: BidBlockerPresentation;
+      render: () => ReactNode;
+    };
 
 export interface BidPolicy {
   readonly id: string;
