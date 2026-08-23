@@ -136,9 +136,29 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] Enable the environment-global flags in the test environment first; verify no increase in session-start or webhook failures
 - [ ] Confirm analytics contain only step/source/event metadata—no user IDs, provider URLs, tokens, document data, or other PII
 - [ ] Monitor onboarding views, skips, recommendation continues, contextual gate triggers/returns, Veriff cancel/reload, session creation, submission, approval, decision latency, and support reports
+- [ ] Before migration `0131`, run the buyer-interest catalogue preflight below. Expect the eight rows to be active after deployment. If a required slug exists with `archived = true`, stop and resolve that catalogue-policy decision instead of reactivating it automatically.
+
+  ```sql
+  SELECT "id", "slug", "archived"
+  FROM "category"
+  WHERE "slug" IN (
+    'paintings',
+    'watches-clocks',
+    'jewellery',
+    'coins-medals',
+    'sculpture',
+    'antiques',
+    'memorabilia',
+    'mixed-media'
+  )
+  ORDER BY "slug";
+  ```
+
+- [ ] After migration `0131`, rerun the query and verify exactly eight rows, eight distinct IDs, and `archived = false` for every row before enabling full buyer onboarding.
 - [ ] Enable the same environment-global values in production only after the test environment passes the checks above; these flags do not provide per-account cohorts
 - [ ] Configuration rollback: set `STRICT_BID_ELIGIBILITY_ENABLED=false` on API and web first, then `FULL_BUYER_ONBOARDING_ENABLED=false`, then `KYC_ONBOARDING_ENABLED=false`; redeploy/restart API and web and verify legacy bidding, post-verify, and dashboard behavior
 - [ ] Code rollback is required only if shared routing, KYC launcher behavior, threshold enforcement, or webhook processing regresses
+- [ ] Migration `0131` rollback is intentionally non-destructive: leave shared category rows in place because interests, lots, sales, submissions, or artists may already reference them.
 
 ## Sign-off
 
