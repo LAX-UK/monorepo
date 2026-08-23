@@ -1,12 +1,7 @@
 "use server";
 
+import type { AuctionInterestsSettingsActionState } from "@/app/dashboard/settings/interests/action-state";
 import { replaceServerCategoryInterestPreferences } from "@/lib/data/http/category-interests.server";
-import { redirect } from "next/navigation";
-
-export type AuctionInterestsSettingsActionState = { error: string | null };
-
-export const INITIAL_AUCTION_INTERESTS_SETTINGS_ACTION_STATE: AuctionInterestsSettingsActionState =
-  { error: null };
 
 export async function saveAuctionInterestPreferences(
   _previousState: AuctionInterestsSettingsActionState,
@@ -21,7 +16,11 @@ export async function saveAuctionInterestPreferences(
   } catch {
     return {
       error: "We couldn’t save your auction interests. Check your connection and try again.",
+      redirectTo: null,
     };
   }
-  redirect("/dashboard/settings/interests?saved=1");
+  return {
+    error: null,
+    redirectTo: "/dashboard/settings/interests?saved=1",
+  };
 }

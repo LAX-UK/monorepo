@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  INITIAL_BUYER_INTERESTS_ACTION_STATE,
-  completeBuyerInterests,
-} from "@/app/(task)/onboarding/interests/actions";
+import { INITIAL_BUYER_INTERESTS_ACTION_STATE } from "@/app/(task)/onboarding/interests/action-state";
+import { completeBuyerInterests } from "@/app/(task)/onboarding/interests/actions";
 import { trackBuyerInterestsSubmission } from "@/components/onboarding/buyer-onboarding-analytics";
 import {
   onboardingActions,

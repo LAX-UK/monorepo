@@ -1,7 +1,5 @@
-import {
-  INITIAL_BUYER_INTERESTS_ACTION_STATE,
-  completeBuyerInterests,
-} from "@/app/(task)/onboarding/interests/actions";
+import { INITIAL_BUYER_INTERESTS_ACTION_STATE } from "@/app/(task)/onboarding/interests/action-state";
+import { completeBuyerInterests } from "@/app/(task)/onboarding/interests/actions";
 import { replaceServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import { describe, expect, it, vi } from "vitest";
 

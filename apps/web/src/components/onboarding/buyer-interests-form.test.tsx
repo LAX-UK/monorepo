@@ -4,11 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/app/(task)/onboarding/interests/actions", () => ({
   completeBuyerInterests: vi.fn(),
-  INITIAL_BUYER_INTERESTS_ACTION_STATE: {
-    error: null,
-    redirectTo: null,
-    submission: null,
-  },
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
