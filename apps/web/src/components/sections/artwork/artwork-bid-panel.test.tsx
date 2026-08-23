@@ -8,6 +8,7 @@ import { ArtworkBidPanel } from "./artwork-bid-panel";
 const placeBidMock = vi.fn();
 const setAutoBidMock = vi.fn();
 const clearAutoBidMock = vi.fn();
+const { liveConnectionMock } = vi.hoisted(() => ({ liveConnectionMock: vi.fn() }));
 
 vi.mock("@/hooks/use-lot-realtime", () => ({
   useLotRealtime: vi.fn(),
@@ -45,12 +46,7 @@ vi.mock("@/lib/context/online-lot-lifecycle", () => ({
 }));
 
 vi.mock("@/lib/connection/use-live-connection", () => ({
-  useLiveConnection: () => ({
-    state: "live",
-    message: null,
-    biddingAllowed: true,
-    realtimeHealthy: true,
-  }),
+  useLiveConnection: () => liveConnectionMock(),
 }));
 
 const lot = (sellerId: string): Lot => ({
@@ -127,6 +123,12 @@ describe("ArtworkBidPanel", () => {
     placeBidMock.mockReset();
     setAutoBidMock.mockReset();
     clearAutoBidMock.mockReset();
+    liveConnectionMock.mockReturnValue({
+      state: "live",
+      message: null,
+      biddingAllowed: true,
+      realtimeHealthy: true,
+    });
     Element.prototype.scrollIntoView = vi.fn();
   });
 
@@ -144,8 +146,11 @@ describe("ArtworkBidPanel", () => {
       summarySeed,
       initialAutoBidSettings: null,
     });
-    expect(screen.getByText(/^your listing$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/^your listing$/i).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/max amount/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/minimum next bid/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/after approval.*one-time bid/i)).not.toBeInTheDocument();
   });
 
   it("shows bid form for a buyer", () => {
@@ -157,6 +162,7 @@ describe("ArtworkBidPanel", () => {
       initialAutoBidSettings: null,
     });
     selectManualBidMode();
+    expect(screen.getByText("Your position")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /review bid/i })).toBeInTheDocument();
   });
 
@@ -174,8 +180,38 @@ describe("ArtworkBidPanel", () => {
       strictBidEligibilityEnabled: true,
     });
 
-    expect(screen.getByText("Email verification required")).toBeInTheDocument();
-    expect(screen.getByLabelText(/max amount/i)).toBeDisabled();
+    expect(screen.getAllByText("Verify your email to bid").length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText(/max amount/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/minimum next bid/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Your position")).not.toBeInTheDocument();
+  });
+
+  it("replaces bid controls with a recoverable connection blocker", () => {
+    liveConnectionMock.mockReturnValue({
+      state: "offline",
+      message: "You are offline. Reconnect before bidding.",
+      biddingAllowed: false,
+      realtimeHealthy: false,
+    });
+
+    renderArtworkBidPanel({
+      auction: lot("other-seller"),
+      initialHistory: [],
+      sessionUser: buyerSession,
+      summarySeed,
+      initialAutoBidSettings: null,
+    });
+
+    expect(screen.getAllByText("Live bidding temporarily unavailable").length).toBeGreaterThan(0);
+    expect(screen.getByText("You are offline. Reconnect before bidding.")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/max amount/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/minimum next bid/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Your position")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/bid options will return when the connection is restored/i),
+    ).toBeInTheDocument();
   });
 
   it("hides auto-bid panel when lot is scheduled", () => {
@@ -192,7 +228,9 @@ describe("ArtworkBidPanel", () => {
       initialAutoBidSettings: null,
     });
     expect(screen.queryByText(/save auto-bid/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/auto-bid opens when this lot goes live/i)).toBeInTheDocument();
+    expect(screen.getByText(/when bidding opens.*one-time bid.*auto-bid/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/minimum next bid/i)).not.toBeInTheDocument();
   });
 
   it("shows auto-bid panel when lot is active and live", () => {

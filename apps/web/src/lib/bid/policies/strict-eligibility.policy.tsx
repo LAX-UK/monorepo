@@ -1,5 +1,10 @@
-import { EmailVerificationBidCallout } from "@/components/bid/email-verification-bid-callout";
+import {
+  EmailVerificationBidCallout,
+  emailVerificationBidBlockerPresentation,
+} from "@/components/bid/email-verification-bid-callout";
 import { KycThresholdCallout } from "@/components/kyc";
+import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
+import { resolveKycBidBlockerPresentation } from "@/lib/kyc/kyc-bid-blocker-presentation";
 import type { BidPolicy } from "./types";
 
 export const strictEligibilityPolicy: BidPolicy = {
@@ -9,27 +14,33 @@ export const strictEligibilityPolicy: BidPolicy = {
       return { kind: "allow" };
     }
     if (ctx.user.emailVerified !== true) {
+      const email = ctx.user.email ?? "";
+      const presentation = emailVerificationBidBlockerPresentation(email, ctx.loginNextPath);
       return {
         kind: "block",
         viewId: "email-verification-required",
-        render: () => (
-          <EmailVerificationBidCallout
-            email={ctx.user?.email ?? ""}
-            returnPath={ctx.loginNextPath}
-          />
-        ),
+        presentation,
+        render: () => <EmailVerificationBidCallout email={email} returnPath={ctx.loginNextPath} />,
       };
     }
     if (ctx.user.kycStatus !== "approved") {
+      const feedback = ctx.kycBidGate?.feedback ?? null;
+      const presentation = resolveKycBidBlockerPresentation({
+        href: contextualIdentityOnboardingHref(ctx.loginNextPath, "bid_gate", ctx.lot.id),
+        strict: true,
+        feedback,
+      });
       return {
         kind: "block",
         viewId: "strict-kyc-required",
+        presentation,
         render: () => (
           <KycThresholdCallout
             returnPath={ctx.loginNextPath}
             lotId={ctx.lot.id}
-            feedback={ctx.kycBidGate?.feedback ?? null}
+            feedback={feedback}
             strict
+            presentation={presentation}
           />
         ),
       };

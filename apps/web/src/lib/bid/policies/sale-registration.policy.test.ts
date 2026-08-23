@@ -1,5 +1,5 @@
 import { saleRegistrationPolicy } from "@/lib/bid/policies/sale-registration.policy";
-import type { BidPolicyContext } from "@/lib/bid/policies/types";
+import type { BidPolicyContext, SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 
@@ -13,6 +13,19 @@ const baseCtx: BidPolicyContext = {
 };
 
 describe("saleRegistrationPolicy", () => {
+  const gate = (
+    registrationStatus: SaleRegistrationBidGateContext["registrationStatus"],
+  ): SaleRegistrationBidGateContext => ({
+    saleId: "sale-1",
+    requiresRegistration: true,
+    actingEntityId: "le-1",
+    registrationStatus,
+    approvedBidLimit: null,
+    buyerEntities: [{ id: "le-1", displayName: "Agency", memberRole: "buyer_agent" }],
+    myRegistrations: [],
+    kycApproved: true,
+  });
+
   it("allows when gate is absent", () => {
     expect(saleRegistrationPolicy.evaluate(baseCtx).kind).toBe("allow");
   });
@@ -50,5 +63,43 @@ describe("saleRegistrationPolicy", () => {
     });
     expect(d.kind).toBe("block");
     if (d.kind === "block") expect(d.viewId).toBe("sale-registration-pending");
+  });
+
+  it.each([
+    {
+      status: "required" as const,
+      viewId: "sale-registration-required",
+      action: "panel",
+      hasContent: true,
+    },
+    {
+      status: "pending" as const,
+      viewId: "sale-registration-pending",
+      action: "status",
+      hasContent: false,
+    },
+    {
+      status: "rejected" as const,
+      viewId: "sale-registration-rejected",
+      action: "panel",
+      hasContent: true,
+    },
+  ])("presents $status registration state", ({ status, viewId, action, hasContent }) => {
+    const d = saleRegistrationPolicy.evaluate({
+      ...baseCtx,
+      saleRegistrationBidGate: gate(status),
+    });
+
+    expect(d).toMatchObject({
+      kind: "block",
+      viewId,
+      presentation: {
+        action: { kind: action },
+      },
+    });
+    if (d.kind === "block") {
+      expect(d.presentation.preview).toMatch(/one-time bid.*auto-bid/i);
+      expect(Boolean(d.presentation.content)).toBe(hasContent);
+    }
   });
 });

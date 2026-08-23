@@ -1,10 +1,11 @@
 "use client";
 
+import { BidBlockerNotice } from "@/components/bid/bid-blocker-notice";
 import { ContextualKycGateTracker } from "@/components/onboarding/buyer-onboarding-analytics";
+import type { BidBlockerPresentation } from "@/lib/bid/bid-blocker-presentation";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
-import Link from "next/link";
-import { KYC_BID_BLOCKED_DESCRIPTION, kycLinkActionLabel } from "./kyc-copy";
+import { resolveKycBidBlockerPresentation } from "@/lib/kyc/kyc-bid-blocker-presentation";
 
 type Props = {
   /** Post-verification return path (e.g. lot page). Passed as identity onboarding `?next=`. */
@@ -12,31 +13,29 @@ type Props = {
   lotId?: string;
   strict?: boolean;
   feedback?: Pick<KycUserFeedbackDto, "headline" | "detail" | "needsResubmit" | "action"> | null;
+  presentation?: BidBlockerPresentation;
 };
 
-export function KycThresholdCallout({ returnPath, lotId, strict = false, feedback }: Props) {
+export function KycThresholdCallout({
+  returnPath,
+  lotId,
+  strict = false,
+  feedback,
+  presentation,
+}: Props) {
   const verifyHref = contextualIdentityOnboardingHref(returnPath, "bid_gate", lotId);
-
-  const headline = feedback?.headline ?? "Identity verification required";
-  const detail = strict
-    ? "Your identity must be approved before you can place bids."
-    : (feedback?.detail ?? KYC_BID_BLOCKED_DESCRIPTION);
-  const ctaLabel = kycLinkActionLabel(feedback, "long");
+  const resolved =
+    presentation ??
+    resolveKycBidBlockerPresentation({
+      href: verifyHref,
+      strict,
+      feedback,
+    });
 
   return (
-    <div
-      className="rounded-lg border border-outline-variant/30 bg-surface-container-low p-4 text-center text-sm text-on-surface-variant"
-      role="alert"
-      aria-live="polite"
-    >
-      <p className="font-medium text-on-surface">{headline}</p>
-      <p className="mt-2 text-pretty">{detail}</p>
-      <p className="mt-3">
-        <ContextualKycGateTracker source="bid_gate" nextPath={returnPath ?? null} />
-        <Link className="font-semibold text-link underline underline-offset-2" href={verifyHref}>
-          {ctaLabel}
-        </Link>
-      </p>
-    </div>
+    <>
+      <ContextualKycGateTracker source="bid_gate" nextPath={returnPath ?? null} />
+      <BidBlockerNotice presentation={resolved} />
+    </>
   );
 }

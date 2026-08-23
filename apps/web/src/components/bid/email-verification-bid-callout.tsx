@@ -1,6 +1,28 @@
 "use client";
 
-import { SendVerificationEmailButton } from "@/components/auth/send-verification-email-button";
+import { BidBlockerNotice } from "@/components/bid/bid-blocker-notice";
+import type { BidBlockerPresentation } from "@/lib/bid/bid-blocker-presentation";
+
+export function emailVerificationBidBlockerPresentation(
+  email: string,
+  returnPath: string,
+): BidBlockerPresentation {
+  return {
+    tone: "warning",
+    title: "Verify your email to bid",
+    detail: email
+      ? `We’ll send a secure verification link to ${email}. After verification, you’ll return to this lot.`
+      : "Verify your email address to continue. After verification, you’ll return to this lot.",
+    action: {
+      kind: "email",
+      email,
+      next: returnPath,
+      label: "Send verification email",
+      shortLabel: "Verify email",
+    },
+    preview: "After verification, you can place a one-time bid or set an auto-bid on this lot.",
+  };
+}
 
 export function EmailVerificationBidCallout({
   email,
@@ -10,16 +32,6 @@ export function EmailVerificationBidCallout({
   returnPath: string;
 }) {
   return (
-    <div
-      className="rounded-lg border border-outline-variant/30 bg-surface-container-low p-4 text-center text-sm text-on-surface-variant"
-      role="alert"
-      aria-live="polite"
-    >
-      <p className="font-medium text-on-surface">Email verification required</p>
-      <p className="mt-2 text-pretty">
-        Verify your email address before bidding. We will return you to this lot after verification.
-      </p>
-      <SendVerificationEmailButton email={email} next={returnPath} className="mt-3 min-h-11" />
-    </div>
+    <BidBlockerNotice presentation={emailVerificationBidBlockerPresentation(email, returnPath)} />
   );
 }

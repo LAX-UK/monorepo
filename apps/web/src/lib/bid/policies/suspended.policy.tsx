@@ -1,4 +1,4 @@
-import { SuspendedNotice } from "@/components/marketing/suspended-notice";
+import { blockBid } from "./block-decision";
 import type { BidPolicy, BidPolicyContext, BidPolicyDecision } from "./types";
 
 function isSuspended(user: NonNullable<BidPolicyContext["user"]>): boolean {
@@ -11,10 +11,16 @@ export const suspendedPolicy: BidPolicy = {
     if (!ctx.user || !isSuspended(ctx.user)) {
       return { kind: "allow" };
     }
-    return {
-      kind: "block",
-      viewId: "suspended",
-      render: () => <SuspendedNotice />,
-    };
+    return blockBid("suspended", {
+      tone: "danger",
+      title: "Account suspended",
+      detail: "Your account cannot place bids while it is suspended.",
+      action: {
+        kind: "link",
+        href: "/contact",
+        label: "Contact support",
+        shortLabel: "Support",
+      },
+    });
   },
 };

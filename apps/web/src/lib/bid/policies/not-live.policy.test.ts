@@ -58,6 +58,31 @@ describe("notLivePolicy", () => {
     if (d.kind === "block") expect(d.viewId).toBe("not-live:preLaunch");
   });
 
+  it.each([
+    { kind: "preLaunch" as const, recoverable: true },
+    { kind: "scheduled" as const, recoverable: true },
+    { kind: "saleroomPaused" as const, recoverable: true },
+    { kind: "endedSold" as const, recoverable: false },
+    { kind: "endedNoSale" as const, recoverable: false },
+    { kind: "cancelled" as const, recoverable: false },
+    { kind: "withdrawn" as const, recoverable: false },
+  ])("provides focused presentation for $kind", ({ kind, recoverable }) => {
+    const d = notLivePolicy.evaluate({
+      ...base(),
+      lotStatus: kind === "saleroomPaused" ? "active" : "ended",
+      biddingLifecycle: { kind },
+    });
+
+    expect(d).toMatchObject({
+      kind: "block",
+      viewId: `not-live:${kind}`,
+      presentation: { action: { kind: "status" } },
+    });
+    if (d.kind === "block") {
+      expect(Boolean(d.presentation.preview)).toBe(recoverable);
+    }
+  });
+
   it("allows live lifecycle when lot is active", () => {
     const d = notLivePolicy.evaluate({
       ...base(),

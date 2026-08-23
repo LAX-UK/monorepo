@@ -55,6 +55,11 @@ describe("evaluateBidPolicies", () => {
         evaluate: () => ({
           kind: "block",
           viewId: "x",
+          presentation: {
+            tone: "neutral",
+            title: "Blocked",
+            detail: "First policy blocked",
+          },
           render: () => null,
         }),
       },
