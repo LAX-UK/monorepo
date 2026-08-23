@@ -8,10 +8,9 @@ vi.mock("@/app/dashboard/settings/interests/actions", () => ({
 }));
 const { actionState, replace } = vi.hoisted(() => ({
   actionState: {
-    current: { error: null, redirectTo: null, diagnostic: null } as {
+    current: { error: null, redirectTo: null } as {
       error: string | null;
       redirectTo: string | null;
-      diagnostic: null;
     },
   },
   replace: vi.fn(),
@@ -51,7 +50,7 @@ describe("AuctionInterestsSettingsForm", () => {
   );
 
   beforeEach(() => {
-    actionState.current = { error: null, redirectTo: null, diagnostic: null };
+    actionState.current = { error: null, redirectTo: null };
     replace.mockReset();
   });
 
@@ -90,7 +89,6 @@ describe("AuctionInterestsSettingsForm", () => {
     actionState.current = {
       error: null,
       redirectTo: "/dashboard/settings/interests?saved=1",
-      diagnostic: null,
     };
 
     render(
