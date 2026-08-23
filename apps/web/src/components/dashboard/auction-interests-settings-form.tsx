@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  INITIAL_AUCTION_INTERESTS_SETTINGS_ACTION_STATE,
-  saveAuctionInterestPreferences,
-} from "@/app/dashboard/settings/interests/actions";
+import { INITIAL_AUCTION_INTERESTS_SETTINGS_ACTION_STATE } from "@/app/dashboard/settings/interests/action-state";
+import { saveAuctionInterestPreferences } from "@/app/dashboard/settings/interests/actions";
 import { MediaImage } from "@/components/ui/media-image";
 import { BUYER_INTERESTS } from "@/lib/onboarding/buyer-interest-manifest";
 import { notify } from "@/lib/ui/notify";
@@ -11,7 +9,8 @@ import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/aler
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { Check, Loader2 } from "lucide-react";
-import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 type Props = {
@@ -34,6 +33,8 @@ function SaveInterestsButton({ catalogIncomplete }: { catalogIncomplete: boolean
 }
 
 export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategoryIds }: Props) {
+  const router = useRouter();
+  const handledRedirect = useRef<string | null>(null);
   const [selected, setSelected] = useState(() => new Set(initialCategoryIds));
   const [actionState, formAction] = useActionState(
     saveAuctionInterestPreferences,
@@ -51,6 +52,12 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
       description: actionState.error,
     });
   }, [actionState.error]);
+
+  useEffect(() => {
+    if (!actionState.redirectTo || handledRedirect.current === actionState.redirectTo) return;
+    handledRedirect.current = actionState.redirectTo;
+    router.replace(actionState.redirectTo);
+  }, [actionState.redirectTo, router]);
 
   return (
     <form action={formAction} className="space-y-6">
