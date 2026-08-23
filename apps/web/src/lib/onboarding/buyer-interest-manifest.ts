@@ -1,50 +1,52 @@
+import { BUYER_INTEREST_CATEGORY_SEEDS } from "@auction/validators";
+
 export const BUYER_INTERESTS = [
   {
     key: "art",
     label: "Art",
-    categorySlug: "paintings",
+    categorySlug: BUYER_INTEREST_CATEGORY_SEEDS.art.slug,
     image: "/images/onboarding/interests/art.png",
   },
   {
     key: "watches",
     label: "Watches",
-    categorySlug: "watches-clocks",
+    categorySlug: BUYER_INTEREST_CATEGORY_SEEDS.watches.slug,
     image: "/images/onboarding/interests/watches.png",
   },
   {
     key: "jewellery",
     label: "Jewellery",
-    categorySlug: "jewellery",
+    categorySlug: BUYER_INTEREST_CATEGORY_SEEDS.jewellery.slug,
     image: "/images/onboarding/interests/jewellery.png",
   },
   {
     key: "coins",
     label: "Coins & Medals",
-    categorySlug: "coins-medals",
+    categorySlug: BUYER_INTEREST_CATEGORY_SEEDS.coins.slug,
     image: "/images/onboarding/interests/coins.png",
   },
   {
     key: "sculpture",
     label: "Sculpture",
-    categorySlug: "sculpture",
+    categorySlug: BUYER_INTEREST_CATEGORY_SEEDS.sculpture.slug,
     image: "/images/onboarding/interests/sculpture.png",
   },
   {
     key: "antiques",
     label: "Antiques",
-    categorySlug: "antiques",
+    categorySlug: BUYER_INTEREST_CATEGORY_SEEDS.antiques.slug,
     image: "/images/onboarding/interests/antiques.png",
   },
   {
     key: "memorabilia",
     label: "Memorabilia",
-    categorySlug: "memorabilia",
+    categorySlug: BUYER_INTEREST_CATEGORY_SEEDS.memorabilia.slug,
     image: "/images/onboarding/interests/memorabilia.png",
   },
   {
     key: "something-else",
     label: "Something else",
-    categorySlug: "mixed-media",
+    categorySlug: BUYER_INTEREST_CATEGORY_SEEDS["something-else"].slug,
     image: "/images/onboarding/interests/something-else.png",
     excludeFromRecommendations: true,
   },
