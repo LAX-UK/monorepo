@@ -380,6 +380,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     externalAccount,
     uploadObject,
     userAddress,
+    userCategoryInterest,
     webhookEvent,
     xeroConnection,
     xeroWebhookEvent,
@@ -427,6 +428,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(legalEntityMember);
   await db.delete(legalEntity);
   await db.delete(uploadObject);
+  await db.delete(userCategoryInterest);
   await db.delete(category);
   await db.delete(session);
   await db.delete(account);

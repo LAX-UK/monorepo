@@ -50,7 +50,6 @@ export async function DashboardComplianceStrip({
       user={user}
       kyc={kyc}
       addressesCount={addressesCount}
-      hideIdentityPill={kyc?.requiresKyc === true}
       payoutSetup={payoutSetup}
       {...(className ? { className } : {})}
     />

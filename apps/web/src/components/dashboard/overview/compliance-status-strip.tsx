@@ -8,10 +8,8 @@ import {
   CheckCircle2,
   Hourglass,
   type LucideIcon,
-  MailCheck,
   MapPin,
   ShieldAlert,
-  ShieldCheck,
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
@@ -49,84 +47,62 @@ const TONE_DOT: Record<PillTone, string> = {
 };
 
 type ComplianceStatusStripProps = {
-  user: Pick<SessionUser, "emailVerified" | "emailStatus" | "kycStatus" | "twoFactorEnabled">;
+  user: Pick<SessionUser, "emailVerified" | "emailStatus" | "twoFactorEnabled">;
   kyc: KycStatusSummaryDto | null;
   /** Number of saved addresses; 0 means none on file. */
   addressesCount: number;
   className?: string;
-  /** When true, omit the identity pill (e.g. KYC blocking banner already covers it). */
-  hideIdentityPill?: boolean;
   /** When true, omit the address pill (e.g. addresses slice failed to load). */
   hideAddressPill?: boolean;
   /** Seller workspace: payout setup readiness pill. */
   payoutSetup?: PayoutSetupPill | null;
 };
 
-/** Persistent identity & readiness strip for the dashboard.
+/** Action-only identity and readiness strip for the dashboard.
  *
- * Replaces the rotating two-banner stack as the *primary* signal of account
- * health — banners stay for time-sensitive alerts (KYC required, email
- * complained, etc.), but the strip is always visible.
+ * Banners retain detailed, time-sensitive messaging while this strip provides
+ * direct links only for checks that still need attention.
  */
 export function ComplianceStatusStrip({
   user,
   kyc,
   addressesCount,
   className,
-  hideIdentityPill = false,
   hideAddressPill = false,
   payoutSetup = null,
 }: ComplianceStatusStripProps) {
   const pills: StatusPill[] = [];
 
-  if (payoutSetup) {
+  if (payoutSetup && !payoutSetup.ready) {
     pills.push({
       id: "payout-setup",
       icon: WalletCards,
       label: "Payouts",
-      value: payoutSetup.ready ? "Ready" : "Setup needed",
+      value: "Setup needed",
       href: payoutSetup.href,
-      tone: payoutSetup.ready ? "ok" : "warn",
-      hint: payoutSetup.ready
-        ? "Payout account is ready for settlement"
-        : "Complete payout setup to receive transfers",
+      tone: "warn",
+      hint: "Complete payout setup to receive transfers",
     });
   }
 
   // Identity verification
-  if (!hideIdentityPill) {
-    if (kyc) {
-      const identityPill = kycComplianceIdentityPill(kyc);
-      const IdentityIcon =
-        kyc.status === "approved"
-          ? ShieldCheck
-          : kyc.feedback?.needsResubmit || kyc.status === "rejected"
-            ? ShieldAlert
-            : identityPill.value === "In review"
-              ? Hourglass
-              : ShieldAlert;
-      pills.push({
-        id: "kyc",
-        icon: IdentityIcon,
-        label: "Identity",
-        value: identityPill.value,
-        href:
-          kyc.status === "approved"
-            ? "/dashboard/settings/profile"
-            : dashboardIdentityOnboardingHref(),
-        tone: identityPill.tone,
-        ...(identityPill.hint !== undefined ? { hint: identityPill.hint } : {}),
-      });
-    } else if (user.kycStatus === "approved") {
-      pills.push({
-        id: "kyc",
-        icon: ShieldCheck,
-        label: "Identity",
-        value: "Verified",
-        href: "/dashboard/settings/profile",
-        tone: "ok",
-      });
-    }
+  if (kyc && kyc.status !== "approved") {
+    const identityPill = kycComplianceIdentityPill(kyc);
+    const IdentityIcon =
+      kyc.feedback?.needsResubmit || kyc.status === "rejected"
+        ? ShieldAlert
+        : identityPill.value === "In review"
+          ? Hourglass
+          : ShieldAlert;
+    pills.push({
+      id: "kyc",
+      icon: IdentityIcon,
+      label: "Identity",
+      value: identityPill.value,
+      href: dashboardIdentityOnboardingHref(),
+      tone: identityPill.tone,
+      ...(identityPill.hint !== undefined ? { hint: identityPill.hint } : {}),
+    });
   }
 
   // Email verification / deliverability
@@ -157,41 +133,34 @@ export function ComplianceStatusStrip({
       href: "/dashboard/settings/account",
       tone: "danger",
     });
-  } else if (user.emailVerified === true) {
-    pills.push({
-      id: "email",
-      icon: MailCheck,
-      label: "Email",
-      value: "Verified",
-      href: "/dashboard/settings/account",
-      tone: "ok",
-    });
   }
 
   // Shipping address availability
-  if (!hideAddressPill) {
+  if (!hideAddressPill && addressesCount === 0) {
     pills.push({
       id: "address",
       icon: MapPin,
       label: "Address",
-      value: addressesCount > 0 ? `${addressesCount} on file` : "Add address",
+      value: "Add address",
       href: "/dashboard/settings/addresses",
-      tone: addressesCount > 0 ? "ok" : "warn",
+      tone: "warn",
     });
   }
 
   const twoFaOn = user.twoFactorEnabled === true;
-  pills.push({
-    id: "2fa",
-    icon: CheckCircle2,
-    label: "2FA",
-    value: twoFaOn ? "On" : "Off",
-    href: "/dashboard/settings/security/two-factor",
-    tone: twoFaOn ? "ok" : "warn",
-    hint: twoFaOn
-      ? "Authenticator sign-in is enabled"
-      : "Add an authenticator for stronger protection",
-  });
+  if (!twoFaOn) {
+    pills.push({
+      id: "2fa",
+      icon: CheckCircle2,
+      label: "2FA",
+      value: "Off",
+      href: "/dashboard/settings/security/two-factor",
+      tone: "warn",
+      hint: "Add an authenticator for stronger protection",
+    });
+  }
+
+  if (pills.length === 0) return null;
 
   return (
     <nav

@@ -55,7 +55,6 @@ export function DashboardOverviewView({
                 user={user}
                 kyc={kyc}
                 addressesCount={resolvedAddressesCount}
-                hideIdentityPill={kyc?.requiresKyc === true}
                 hideAddressPill={addressesCount === null}
               />
             ) : null,

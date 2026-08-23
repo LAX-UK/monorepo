@@ -18,7 +18,6 @@ export default async function SellerDashboardLayout({ children }: { children: Re
           user={user}
           kyc={chrome.kyc}
           addressesCount={chrome.addressesCount}
-          hideIdentityPill={chrome.kyc?.requiresKyc === true}
           payoutSetup={chrome.payoutSetup}
         />
       ) : null}
