@@ -1,5 +1,6 @@
 "use client";
 
+import type { MarketingPromptTrigger, MarketingPromptVariant } from "@/lib/marketing/prompts/types";
 import type { MarketingEventName } from "@auction/types";
 import { readConsentFromDocument } from "./consent-headers";
 import { isAnalyticsEnabled } from "./is-enabled";
@@ -345,6 +346,26 @@ export function trackContextualKycGate(input: {
   >;
 }): string | null {
   return trackBuyerPersonalization(input);
+}
+
+export type MarketingPromptAnalyticsAction = "impression" | "dismissal" | "cta";
+
+export function trackMarketingPrompt(input: {
+  action: MarketingPromptAnalyticsAction;
+  variant: MarketingPromptVariant;
+  trigger: MarketingPromptTrigger;
+  path: string;
+}): string | null {
+  if (!guardAnalytics()) return null;
+  const eventId = newEventId();
+  pushDataLayer({
+    event: `marketing_prompt_${input.action}`,
+    event_id: eventId,
+    prompt_variant: input.variant,
+    prompt_trigger: input.trigger,
+    page_path: input.path,
+  });
+  return eventId;
 }
 
 export type { MarketingEventName };
