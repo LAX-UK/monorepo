@@ -10,7 +10,7 @@ export const MARKETING_PROMPT_DISMISSAL_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 export const MARKETING_PROMPT_CTA_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 export const MARKETING_PROMPT_SESSION_KEY = "lax_marketing_prompt_session_v1";
-const SUPPRESSION_KEY_PREFIX = "lax_marketing_prompt_suppression_v1";
+const SUPPRESSION_STORAGE_PREFIX = "lax_marketing_prompt_suppression_v1";
 
 export const EMPTY_MARKETING_PROMPT_SESSION: MarketingPromptSession = {
   activeDwellMs: 0,
@@ -23,7 +23,7 @@ export const EMPTY_MARKETING_PROMPT_SESSION: MarketingPromptSession = {
 type StorageLike = Pick<Storage, "getItem" | "removeItem" | "setItem">;
 
 export function marketingPromptSuppressionKey(variant: MarketingPromptVariant): string {
-  return `${SUPPRESSION_KEY_PREFIX}:${variant}`;
+  return `${SUPPRESSION_STORAGE_PREFIX}:${variant}`;
 }
 
 function isVariant(value: unknown): value is MarketingPromptVariant {
