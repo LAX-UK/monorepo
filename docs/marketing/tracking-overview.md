@@ -129,6 +129,30 @@ These fire from the visitor's browser when the visitor does something on the sit
 
 Each event also carries a unique `event_id` (UUID). This is critical — it lets us **deduplicate** the browser event against the matching server event so Meta doesn't count a single purchase twice.
 
+#### Contextual marketing prompts
+
+The marketing shell can show one contextual prompt per browser tab session when
+`MARKETING_PROMPTS_ENABLED` is enabled:
+
+- `selling` requires an explicit sell-content visit or a sell/consignment/valuation
+  query or campaign signal. It is considered after 15 seconds of active,
+  visible-tab dwell and only on a later eligible marketing-page navigation.
+- `signup` applies only to resolved signed-out visitors. It requires 45 seconds
+  of active, visible-tab dwell and three eligible marketing page views.
+- Lot, sale-detail/bidding, sell, contact, authentication, onboarding,
+  dashboard, and submission routes never host a prompt. The marketing route
+  allowlist currently covers the home, buy, search, archive, sales index,
+  artist index, and artist discovery/detail pages.
+- A dismissal suppresses that variant for 14 days. Selecting its CTA suppresses
+  it for 90 days. One shown variant caps the entire tab session.
+
+With Analytics consent, the browser emits `marketing_prompt_impression`,
+`marketing_prompt_dismissal`, and `marketing_prompt_cta`. Each carries
+`prompt_variant` (`selling` or `signup`), `prompt_trigger` (`sell-content`,
+`sell-query`, or `engaged-browsing`), and `page_path`. These events contain no
+user identifiers or free-form input. Selling CTA selection also retains the
+existing `sell_cta_click` event with source `contextual_marketing_prompt`.
+
 ### Layer B — Server-side conversion events (Meta CAPI + GA4 via sGTM)
 
 These fire from our backend, regardless of the browser. They are essential for events that happen **after the visitor closes the browser** or where ad blockers would otherwise hide them from the Meta Pixel.

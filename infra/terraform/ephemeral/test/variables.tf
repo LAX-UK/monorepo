@@ -481,3 +481,9 @@ variable "full_buyer_onboarding_enabled" {
   default     = false
   description = "Independent rollout switch for the one-time interests and recommendations flow."
 }
+
+variable "marketing_prompts_enabled" {
+  type        = bool
+  default     = false
+  description = "Server-side rollout switch for contextual selling and guest-signup prompts."
+}
