@@ -52,6 +52,10 @@ jobs:
       TF_VAR_next_public_gtm_id: ${{ vars.NEXT_PUBLIC_GTM_ID }}
       TF_VAR_marketing_attribution_enabled: ${{ vars.MARKETING_ATTRIBUTION_ENABLED || 'false' }}
       TF_VAR_next_public_marketing_attribution_enabled: ${{ vars.NEXT_PUBLIC_MARKETING_ATTRIBUTION_ENABLED || 'false' }}
+      TF_VAR_strict_bid_eligibility_enabled: ${{ vars.STRICT_BID_ELIGIBILITY_ENABLED || (matrix.env == 'test' && 'true' || 'false') }}
+      TF_VAR_kyc_onboarding_enabled: ${{ vars.KYC_ONBOARDING_ENABLED || 'false' }}
+      TF_VAR_full_buyer_onboarding_enabled: ${{ vars.FULL_BUYER_ONBOARDING_ENABLED || 'false' }}
+      TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
       TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
       # --- Prebuilt-image deploys (DOCR). Match the apply workflows so PR plans are accurate. ---
       TF_VAR_app_deploy_source: ${{ (matrix.env == 'prod' && (vars.APP_DEPLOY_SOURCE_PROD || 'github')) || (vars.APP_DEPLOY_SOURCE_TEST || 'github') }}

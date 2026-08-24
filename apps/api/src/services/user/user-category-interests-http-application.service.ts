@@ -1,3 +1,4 @@
+import { isBuyerInterestPersonaEligible } from "@auction/domain";
 import type { ICategoryInterestsRepository } from "@auction/persistence/interfaces";
 import type { IUserCategoryInterestsHttpApplicationService } from "../interfaces/user-routes/user-category-interests-http.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
@@ -84,7 +85,7 @@ export class UserCategoryInterestsHttpApplicationService
       profile.role !== "client" ||
       profile.suspended ||
       !profile.emailVerified ||
-      profile.signupPersona !== "individual"
+      !isBuyerInterestPersonaEligible(profile.signupPersona)
     ) {
       return {
         status: 403,

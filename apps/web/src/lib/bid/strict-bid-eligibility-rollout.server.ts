@@ -1,19 +1,12 @@
 import "server-only";
 
-function parseEnabled(value: string | undefined): boolean | null {
-  if (value == null || value.trim() === "") return null;
-  const normalized = value.trim().toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalized)) return true;
-  if (["0", "false", "no", "off"].includes(normalized)) return false;
-  return null;
-}
+import { resolveRolloutFlag } from "@/lib/rollout/resolve-rollout-flag.server";
 
 /**
- * Mirrors the API rollout: an explicit flag wins; otherwise strict eligibility
- * is dark in production and enabled in non-production environments.
+ * Mirrors `resolveStrictBidEligibilityEnabled` in apps/api: an explicit flag
+ * wins; otherwise the default follows APP_ENV so the web gate cannot drift
+ * from the API gate. Do not switch this fallback to NODE_ENV.
  */
 export function isStrictBidEligibilityEnabled(): boolean {
-  const configured = parseEnabled(process.env.STRICT_BID_ELIGIBILITY_ENABLED);
-  if (configured != null) return configured;
-  return process.env.NODE_ENV !== "production";
+  return resolveRolloutFlag("STRICT_BID_ELIGIBILITY_ENABLED", process.env.APP_ENV !== "production");
 }

@@ -137,6 +137,19 @@ describe("shouldReuseKycSessionUrl", () => {
     ).toBe(false);
   });
 
+  it("does not reuse a session created for a different callback URL", () => {
+    expect(
+      shouldReuseKycSessionUrl({
+        latestSessionStatus: "created",
+        expectedCallbackUrl: "https://lax.bid/onboarding/identity",
+        decisionPayload: {
+          sessionUrl: "https://magic.veriff.me/v/abc",
+          callbackUrl: "https://lax.bid/dashboard/verify-identity",
+        },
+      }),
+    ).toBe(false);
+  });
+
   it("skips reuse when resubmission limit reason code is 539", () => {
     expect(
       shouldReuseKycSessionUrl({

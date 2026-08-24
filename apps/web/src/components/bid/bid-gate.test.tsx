@@ -60,7 +60,11 @@ describe("BidGate", () => {
         evaluate: (_ctx: BidPolicyContext): BidPolicyDecision => ({
           kind: "block",
           viewId: "test-block",
-          render: () => <p>Policy blocked</p>,
+          presentation: {
+            tone: "warning",
+            title: "Policy blocked",
+            detail: "Blocked by test policy",
+          },
         }),
       },
     ];
@@ -72,7 +76,9 @@ describe("BidGate", () => {
         loginNextPath="/x"
         policies={policies}
       >
-        {({ decision }) => (decision.kind === "block" ? decision.render() : <span>child</span>)}
+        {({ decision }) =>
+          decision.kind === "block" ? <p>{decision.presentation.title}</p> : <span>child</span>
+        }
       </BidGate>,
     );
     expect(screen.getByText("Policy blocked")).toBeInTheDocument();

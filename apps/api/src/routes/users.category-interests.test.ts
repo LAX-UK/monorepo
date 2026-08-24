@@ -160,6 +160,25 @@ describe("PUT /users/me/category-interests", () => {
 });
 
 describe("PUT /users/me/category-interests/preferences", () => {
+  it("allows a legacy buyer with a null signup persona to save preferences", async () => {
+    const { app, repository } = createApp({
+      profile: {
+        role: "client",
+        suspended: false,
+        emailVerified: true,
+        signupPersona: null,
+      },
+    });
+    const response = await app.request("/users/me/category-interests/preferences", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ categoryIds: [categoryId] }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(repository.replace).toHaveBeenCalledWith("u1", [categoryId]);
+  });
+
   it("replaces interests without completing onboarding", async () => {
     const { app, repository } = createApp();
     const response = await app.request("/users/me/category-interests/preferences", {

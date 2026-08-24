@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/app/(task)/onboarding/interests/actions", () => ({
   completeBuyerInterests: vi.fn(),
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }),
+}));
 vi.mock("next/image", () => ({
   default: ({
     fill: _fill,

@@ -7,21 +7,21 @@ describe("isStrictBidEligibilityEnabled", () => {
   });
 
   it("uses the explicit rollout value", () => {
-    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("APP_ENV", "production");
     vi.stubEnv("STRICT_BID_ELIGIBILITY_ENABLED", "true");
     expect(isStrictBidEligibilityEnabled()).toBe(true);
 
-    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("APP_ENV", "test");
     vi.stubEnv("STRICT_BID_ELIGIBILITY_ENABLED", "off");
     expect(isStrictBidEligibilityEnabled()).toBe(false);
   });
 
-  it("defaults off in production and on outside production", () => {
+  it("defaults off in production and on outside production using APP_ENV", () => {
     vi.stubEnv("STRICT_BID_ELIGIBILITY_ENABLED", "");
-    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("APP_ENV", "production");
     expect(isStrictBidEligibilityEnabled()).toBe(false);
 
-    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("APP_ENV", "test");
     expect(isStrictBidEligibilityEnabled()).toBe(true);
   });
 });

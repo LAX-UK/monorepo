@@ -126,8 +126,13 @@ These fire from the visitor's browser when the visitor does something on the sit
 | `add_to_wishlist` | Visitor adds a lot to their watchlist | Analytics + Marketing | lot id |
 | `begin_checkout` | Visitor opens the checkout flow on a won lot | Analytics + Marketing | lot id, value, currency |
 | `purchase` | Visitor reaches the post-payment confirmation page | Analytics + Marketing | transaction id, lot id, value, currency |
+| `marketing_prompt_impression` | Contextual selling or signup prompt is shown | Analytics | variant (`selling` / `signup`), trigger (`sell-content` / `sell-query` / `engaged-browsing`), path |
+| `marketing_prompt_dismissal` | Visitor dismisses the prompt (close, Escape, or backdrop) | Analytics | same as impression |
+| `marketing_prompt_cta` | Visitor follows the prompt CTA | Analytics | same as impression; selling CTAs also fire `sell_cta_click` with source `contextual_marketing_prompt` |
 
 Each event also carries a unique `event_id` (UUID). This is critical — it lets us **deduplicate** the browser event against the matching server event so Meta doesn't count a single purchase twice.
+
+Contextual marketing prompts (`selling` and `signup`) are delayed until the visitor has shown intent or engaged browsing: selling after 15 seconds of active dwell and 1 eligible page; signup after 45 seconds and 3 eligible pages, guests only. One prompt is shown per session. Dismissals suppress that variant for 14 days; following the CTA suppresses it for 90 days. The flag `MARKETING_PROMPTS_ENABLED` defaults off in production.
 
 ### Layer B — Server-side conversion events (Meta CAPI + GA4 via sGTM)
 

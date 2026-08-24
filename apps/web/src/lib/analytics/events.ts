@@ -334,6 +334,26 @@ export function trackBuyerPersonalization(input: {
   return eventId;
 }
 
+export type MarketingPromptAnalyticsAction = "impression" | "dismissal" | "cta";
+
+export function trackMarketingPrompt(input: {
+  action: MarketingPromptAnalyticsAction;
+  variant: "selling" | "signup";
+  trigger: "sell-content" | "sell-query" | "engaged-browsing";
+  path: string;
+}): string | null {
+  if (!guardAnalytics()) return null;
+  const eventId = newEventId();
+  pushDataLayer({
+    event: `marketing_prompt_${input.action}`,
+    event_id: eventId,
+    prompt_variant: input.variant,
+    prompt_trigger: input.trigger,
+    page_path: input.path,
+  });
+  return eventId;
+}
+
 export function trackContextualKycGate(input: {
   event: Extract<
     BuyerPersonalizationEvent,

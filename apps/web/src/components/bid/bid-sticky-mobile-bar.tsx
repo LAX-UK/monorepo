@@ -1,10 +1,10 @@
 "use client";
 
 import { SendVerificationEmailButton } from "@/components/auth/send-verification-email-button";
-import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import type { LotTimerState } from "@/components/lot-timer";
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
 import { markContextualKycGateNavigation } from "@/components/onboarding/buyer-onboarding-analytics";
+import type { BidBlockerAction } from "@/lib/bid/bid-blocker-presentation";
 import {
   type LotBidPosition,
   lotBidPositionAutoStickyLabel,
@@ -12,10 +12,13 @@ import {
   lotBidPositionStickyLabel,
 } from "@/lib/bid/derive-lot-bid-position";
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
+import {
+  bidBlockerStickyAction,
+  bidBlockerStickyLabel,
+} from "@/lib/bid/presenters/bid-blocker-sticky-action";
 import { useMarketingBidBarChromeRegistration } from "@/lib/context/marketing-bid-bar-chrome";
 import { countdownTier } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
-import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
 import { liveUrgencyTextClass } from "@/lib/presenters/status-presentation";
@@ -30,6 +33,15 @@ import {
   shouldShowBidStickyMobileBar,
 } from "./bid-sticky-mobile-bar.logic";
 
+const CTA_CLASS =
+  "shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm";
+const CTA_CLASS_LG =
+  "shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm";
+const OUTLINE_CLASS =
+  "shrink-0 border border-primary/40 px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary";
+const STATUS_CLASS =
+  "shrink-0 px-2 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant";
+
 type Props = {
   live: boolean;
   decision: BidPolicyDecision;
@@ -42,70 +54,82 @@ type Props = {
   currentPriceLabel: string;
   priceFlash: boolean;
   onScrollToBid: () => void;
-  /** Same label as the lot info stack “Closing” row. */
   remainingLabel: string;
-  /** ms until close (for urgency color on the timer line). */
   msRemaining: number;
-  /** Computed timer state — drives the live / opens-in / closed variants. */
   timerState: LotTimerState;
-  /** Pre-formatted clock for the countdown (HH:MM:SS or `Nd HH:MM:SS`). */
   countdownClock: string;
-  /** Lot lifecycle kind — saleroom states bypass catalogue countdown. */
   lifecycleKind?: LotLifecycleKind;
-  /** Whether this lot is the clerk's on-block lot (hybrid saleroom). */
   isOnBlock?: boolean;
-  /** When true, slim bar (countdown only) when bid card is in view. */
   compact?: boolean;
-  /** Unified bidder position — drives outbid CTA and auto badge. */
   position?: LotBidPosition | null;
   reserveContext?: LotReserveContext;
   hasActiveAutoBid?: boolean;
   onFocusManualBid?: () => void;
   onFocusAutoBid?: () => void;
-  /** When true, sticky primary action routes to auto-bid instead of manual review. */
   isLeading?: boolean;
-  /** Auth-aware CTA for opens-soon state (e.g. watch / notify toggle). */
   upcomingSlot?: ReactNode;
 };
 
-function saleRegistrationStickyAction(
-  viewId: string,
-  saleRegistrationPath: string | null,
-  onScrollToBid: () => void,
-): ReactNode {
-  const ctaClass =
-    "shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm";
-  const outlineClass =
-    "shrink-0 border border-primary/40 px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary";
+function StickyBlockerAction({
+  action,
+  compact,
+  loginNextPath,
+  saleRegistrationPath,
+  onScrollToBid,
+}: {
+  action: BidBlockerAction;
+  compact: boolean;
+  loginNextPath: string;
+  saleRegistrationPath: string | null;
+  onScrollToBid: () => void;
+}): ReactNode {
+  const label = bidBlockerStickyLabel(action);
+  const ctaClass = compact ? CTA_CLASS : CTA_CLASS_LG;
 
-  switch (viewId) {
-    case "sale-registration-required":
-      if (saleRegistrationPath) {
+  switch (action.kind) {
+    case "link":
+      return (
+        <Link
+          href={action.href}
+          onClick={() => {
+            if (action.href.includes("source=bid_gate")) {
+              markContextualKycGateNavigation("bid_gate", loginNextPath);
+            }
+          }}
+          className={
+            action.href === "/admin"
+              ? "shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-link/40 hover:text-link"
+              : ctaClass
+          }
+        >
+          {label}
+        </Link>
+      );
+    case "email":
+      return (
+        <SendVerificationEmailButton
+          email={action.email}
+          next={action.next}
+          label={label}
+          variant="default"
+          className={`h-auto ${ctaClass}`}
+        />
+      );
+    case "status":
+      return <span className={STATUS_CLASS}>{label}</span>;
+    case "panel":
+      if (saleRegistrationPath && label === "Register") {
         return (
           <Link href={saleRegistrationPath} className={ctaClass}>
-            Register
+            {label}
           </Link>
         );
       }
       return (
-        <Button type="button" onClick={onScrollToBid} className={`h-auto ${ctaClass}`}>
-          Register
+        <Button type="button" onClick={onScrollToBid} className={`h-auto ${OUTLINE_CLASS}`}>
+          {label}
         </Button>
       );
-    case "sale-registration-pending":
-      return (
-        <Button type="button" onClick={onScrollToBid} className={`h-auto ${outlineClass}`}>
-          View status
-        </Button>
-      );
-    case "sale-registration-rejected":
-      return (
-        <Button type="button" onClick={onScrollToBid} className={`h-auto ${outlineClass}`}>
-          View registration
-        </Button>
-      );
-    default:
-      return null;
   }
 }
 
@@ -113,9 +137,6 @@ export function BidStickyMobileBar({
   live,
   decision,
   loginNextPath,
-  lotId,
-  userEmail = null,
-  kycFeedback = null,
   saleRegistrationPath = null,
   step,
   currentPriceLabel,
@@ -142,6 +163,8 @@ export function BidStickyMobileBar({
   const saleroomMode = isSaleroomLifecycle(lifecycleKind);
   const showBidCta = canShowBidCta(decision);
   const showBar = shouldShowBidStickyMobileBar({ live, lifecycleKind, timerState });
+  const blockerAction =
+    decision.kind === "block" ? bidBlockerStickyAction(decision.presentation) : null;
 
   useMarketingBidBarChromeRegistration(showBar);
 
@@ -167,20 +190,17 @@ export function BidStickyMobileBar({
       ? liveUrgencyTextClass("soon")
       : "text-on-surface-variant";
 
+  const blockerControl = blockerAction ? (
+    <StickyBlockerAction
+      action={blockerAction}
+      compact={compact}
+      loginNextPath={loginNextPath}
+      saleRegistrationPath={saleRegistrationPath}
+      onScrollToBid={onScrollToBid}
+    />
+  ) : null;
+
   if (compact) {
-    const kycBlocked =
-      decision.kind === "block" &&
-      (decision.viewId === "kyc-threshold" || decision.viewId === "strict-kyc-required");
-    const emailBlocked =
-      decision.kind === "block" && decision.viewId === "email-verification-required";
-    const regBlocked =
-      decision.kind === "block" &&
-      (decision.viewId === "sale-registration-required" ||
-        decision.viewId === "sale-registration-pending" ||
-        decision.viewId === "sale-registration-rejected");
-    const regAction = regBlocked
-      ? saleRegistrationStickyAction(decision.viewId, saleRegistrationPath, onScrollToBid)
-      : null;
     return (
       <MarketingStickyBidBar>
         <p
@@ -191,34 +211,17 @@ export function BidStickyMobileBar({
         >
           {statusLine}
         </p>
-        {emailBlocked && userEmail ? (
-          <SendVerificationEmailButton
-            email={userEmail}
-            next={loginNextPath}
-            label="Verify email"
-            variant="default"
-            className="h-auto shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
-          />
-        ) : kycBlocked ? (
-          <Link
-            href={contextualIdentityOnboardingHref(loginNextPath, "bid_gate", lotId)}
-            onClick={() => markContextualKycGateNavigation("bid_gate", loginNextPath)}
-            className="shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
-          >
-            {kycLinkActionLabel(kycFeedback, "short")}
-          </Link>
-        ) : null}
-        {!emailBlocked && !kycBlocked && regAction}
-        {!emailBlocked && !kycBlocked && !regAction && showBidCta && outbid ? (
+        {blockerControl}
+        {!blockerAction && showBidCta && outbid ? (
           <Button
             type="button"
             onClick={hasActiveAutoBid && onFocusAutoBid ? onFocusAutoBid : onFocusManualBid}
-            className="shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
+            className={`h-auto ${CTA_CLASS}`}
           >
             {hasActiveAutoBid ? "Raise max" : "Increase bid"}
           </Button>
         ) : null}
-        {!emailBlocked && !kycBlocked && !regAction && (autoBidLabel || positionLabel) ? (
+        {!blockerAction && (autoBidLabel || positionLabel) ? (
           <span className="shrink-0 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1.5 font-label text-[0.65rem] font-bold uppercase tracking-wider text-primary">
             {autoBidLabel ?? positionLabel}
           </span>
@@ -227,113 +230,44 @@ export function BidStickyMobileBar({
     );
   }
 
-  const next = encodeURIComponent(loginNextPath);
-
-  let right: ReactNode;
-  if (decision.kind === "block") {
-    switch (decision.viewId) {
-      case "not-signed-in":
+  let right: ReactNode = blockerControl;
+  if (!blockerAction) {
+    if (step === 1) {
+      if (isLeading && onFocusAutoBid) {
         right = (
-          <Link
-            href={`/login?next=${next}`}
-            className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
+          <Button type="button" onClick={onFocusAutoBid} className={`h-auto ${CTA_CLASS_LG}`}>
+            Raise auto-bid max
+          </Button>
+        );
+      } else if (outbid && (onFocusAutoBid || onFocusManualBid)) {
+        right = (
+          <Button
+            type="button"
+            onClick={hasActiveAutoBid && onFocusAutoBid ? onFocusAutoBid : onFocusManualBid}
+            className={`h-auto ${CTA_CLASS_LG}`}
           >
-            Sign in
-          </Link>
+            {hasActiveAutoBid ? "Raise auto-bid max" : "Increase bid"}
+          </Button>
         );
-        break;
-      case "staff-no-bid":
+      } else {
         right = (
-          <Link
-            href="/admin"
-            className="shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant transition-colors hover:border-link/40 hover:text-link"
-          >
-            Staff
-          </Link>
+          <Button type="button" onClick={onScrollToBid} className={`h-auto ${CTA_CLASS_LG}`}>
+            Review bid
+          </Button>
         );
-        break;
-      case "seller-own-lot":
-      case "suspended":
-        right = (
-          <span className="shrink-0 px-2 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            {decision.viewId === "seller-own-lot" ? "Your listing" : "Suspended"}
-          </span>
-        );
-        break;
-      case "kyc-threshold":
-      case "strict-kyc-required":
-        right = (
-          <Link
-            href={contextualIdentityOnboardingHref(loginNextPath, "bid_gate", lotId)}
-            onClick={() => markContextualKycGateNavigation("bid_gate", loginNextPath)}
-            className="shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
-          >
-            {kycLinkActionLabel(kycFeedback, "short")}
-          </Link>
-        );
-        break;
-      case "email-verification-required":
-        right = userEmail ? (
-          <SendVerificationEmailButton
-            email={userEmail}
-            next={loginNextPath}
-            label="Verify email"
-            variant="default"
-            className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm"
-          />
-        ) : null;
-        break;
-      case "sale-registration-required":
-      case "sale-registration-pending":
-      case "sale-registration-rejected":
-        right = saleRegistrationStickyAction(decision.viewId, saleRegistrationPath, onScrollToBid);
-        break;
-      default:
-        right = null;
-    }
-  } else if (step === 1) {
-    if (isLeading && onFocusAutoBid) {
-      right = (
-        <Button
-          type="button"
-          onClick={onFocusAutoBid}
-          className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
-        >
-          Raise auto-bid max
-        </Button>
-      );
-    } else if (outbid && (onFocusAutoBid || onFocusManualBid)) {
-      right = (
-        <Button
-          type="button"
-          onClick={hasActiveAutoBid && onFocusAutoBid ? onFocusAutoBid : onFocusManualBid}
-          className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
-        >
-          {hasActiveAutoBid ? "Raise auto-bid max" : "Increase bid"}
-        </Button>
-      );
+      }
     } else {
       right = (
         <Button
           type="button"
+          variant="outline"
           onClick={onScrollToBid}
-          className="h-auto shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on shadow-sm hover:bg-cta-bg/90"
+          className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-transparent hover:text-link"
         >
-          Review bid
+          Confirm bid
         </Button>
       );
     }
-  } else {
-    right = (
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onScrollToBid}
-        className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-primary hover:bg-transparent hover:text-link"
-      >
-        Confirm bid
-      </Button>
-    );
   }
 
   return (
@@ -366,7 +300,6 @@ export function BidStickyMobileBar({
   );
 }
 
-/** Pre-sale variant — countdown plus auth-aware notify/watch CTA when provided. */
 function UpcomingBar({
   countdownClock,
   upcomingSlot,

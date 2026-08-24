@@ -1,0 +1,4 @@
+-- Intentionally non-destructive.
+-- Buyer-interest categories are shared catalog data and may be referenced by
+-- user preferences, lots, sales, submissions, or artists immediately after
+-- deployment. Rolling back application code safely leaves these rows in place.

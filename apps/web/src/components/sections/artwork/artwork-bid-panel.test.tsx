@@ -207,7 +207,7 @@ describe("ArtworkBidPanel", () => {
       strictBidEligibilityEnabled: true,
     });
 
-    expect(screen.getAllByText("Email verification required").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Verify your email to bid").length).toBeGreaterThan(0);
     expect(
       screen.getAllByRole("button", { name: /send verification email|verify email/i }).length,
     ).toBeGreaterThan(0);

@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/app/dashboard/settings/interests/actions", () => ({
   saveAuctionInterestPreferences: vi.fn(),
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }),
+}));
 vi.mock("next/image", () => ({
   default: ({
     fill: _fill,
@@ -21,11 +24,25 @@ vi.mock("next/image", () => ({
   ),
 }));
 
+function requireCategoryId(value: string | undefined): string {
+  if (!value) throw new Error("expected a category id");
+  return value;
+}
+
 describe("AuctionInterestsSettingsForm", () => {
   it("updates selections without onboarding skip copy", () => {
     render(
       <AuctionInterestsSettingsForm
-        categoryIdBySlug={{ paintings: "category-art" }}
+        categoryIdBySlug={{
+          paintings: "category-art",
+          "watches-clocks": "category-watches",
+          jewellery: "category-jewellery",
+          "coins-medals": "category-coins",
+          sculpture: "category-sculpture",
+          antiques: "category-antiques",
+          memorabilia: "category-memorabilia",
+          "mixed-media": "category-mixed",
+        }}
         initialCategoryIds={[]}
       />,
     );
@@ -33,6 +50,19 @@ describe("AuctionInterestsSettingsForm", () => {
     expect(screen.queryByRole("button", { name: /skip personalization/i })).not.toBeInTheDocument();
     expect(screen.getByText(/changes here do not repeat onboarding/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: "Art" }));
-    expect(screen.getByRole("button", { name: "Save interests" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Save interests" })).toBeEnabled();
+  });
+
+  it("disables save and surfaces unavailable tiles when the catalog is incomplete", () => {
+    render(
+      <AuctionInterestsSettingsForm
+        categoryIdBySlug={{ paintings: requireCategoryId("category-art") }}
+        initialCategoryIds={[]}
+      />,
+    );
+
+    expect(screen.getByText(/temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Save interests" })).toBeDisabled();
   });
 });

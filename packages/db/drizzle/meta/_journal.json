@@ -967,6 +967,13 @@
       "when": 1788000014000,
       "tag": "0138_buyer_interest_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1788000015000,
+      "tag": "0139_complete_buyer_interest_categories",
+      "breakpoints": true
     }
   ]
 }

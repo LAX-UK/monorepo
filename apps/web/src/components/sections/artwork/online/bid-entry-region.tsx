@@ -1,5 +1,6 @@
 "use client";
 
+import { BidBlockerNotice } from "@/components/bid/bid-blocker-notice";
 import { LotBidFeedbackBanner } from "@/components/bid/lot-bid-feedback-banner";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
 import { BidForm } from "@/components/sections/artwork/bid-form";
@@ -141,7 +142,7 @@ export function BidEntryRegion() {
             ) : null}
 
             {decision.kind === "block" ? (
-              decision.render()
+              <BidBlockerNotice presentation={decision.presentation} />
             ) : step === 1 ? (
               <BidForm
                 auctionType={auction.auctionType}

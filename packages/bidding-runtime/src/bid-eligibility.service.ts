@@ -87,7 +87,12 @@ export class BidEligibilityService implements IBidEligibility {
       (placedVia === "telephone" &&
         telephoneBookingId != null &&
         saleId != null &&
-        (await this.operatorPolicy.isActiveTelephoneBooking(telephoneBookingId, saleId))) ||
+        (await this.operatorPolicy.isActiveTelephoneBooking(
+          telephoneBookingId,
+          saleId,
+          placedByUserId,
+          buyerLegalEntityId,
+        ))) ||
       (placedVia === "saleroom" && saleId != null && paddleNumber != null);
 
     if (operatorBypass) {

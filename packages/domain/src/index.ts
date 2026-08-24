@@ -15,6 +15,11 @@ export {
   type SelfServiceActorKycStatus,
 } from "./self-service-actor-bid-eligibility.js";
 export {
+  isBuyerInterestPersonaEligible,
+  reconcileBuyerInterestSelection,
+  type BuyerInterestSignupPersona,
+} from "./buyer-interest-eligibility.js";
+export {
   bidAmountBelowMinimum,
   effectiveBidderStepMoney,
   lotDefaultAutoBidStepMin,

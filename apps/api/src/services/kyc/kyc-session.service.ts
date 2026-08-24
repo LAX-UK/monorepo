@@ -36,12 +36,16 @@ export class KycSessionService implements IKycSessionService {
       throw new KycAlreadyApprovedError();
     }
 
+    const callbackUrl = normalizeKycReturnUrl(returnUrl, this.webOrigin);
+    assertKycReturnUrlAllowed(callbackUrl, this.webOrigin);
+
     const latest = await this.sessionRepo.findLatestByUserIdWithPayload(userId);
     if (
       latest &&
       shouldReuseKycSessionUrl({
         latestSessionStatus: latest.verification.status,
         decisionPayload: latest.decisionPayload,
+        expectedCallbackUrl: callbackUrl,
       })
     ) {
       const sessionUrl = readKycSessionUrl(latest.decisionPayload);
@@ -57,6 +61,7 @@ export class KycSessionService implements IKycSessionService {
       !shouldReuseKycSessionUrl({
         latestSessionStatus: latest.verification.status,
         decisionPayload: latest.decisionPayload,
+        expectedCallbackUrl: callbackUrl,
       })
     ) {
       console.warn(
@@ -68,9 +73,6 @@ export class KycSessionService implements IKycSessionService {
         }),
       );
     }
-
-    const callbackUrl = normalizeKycReturnUrl(returnUrl, this.webOrigin);
-    assertKycReturnUrlAllowed(callbackUrl, this.webOrigin);
 
     const { sessionId, verificationUrl } = await this.veriffClient.createSession({
       userId,
@@ -85,7 +87,7 @@ export class KycSessionService implements IKycSessionService {
     });
 
     await this.sessionRepo.update(verification.id, {
-      decisionPayload: { sessionUrl: verificationUrl },
+      decisionPayload: { sessionUrl: verificationUrl, callbackUrl },
     });
 
     return { sessionId, verificationUrl, verification };

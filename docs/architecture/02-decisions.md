@@ -203,4 +203,24 @@ all bid channels, error contracts remain stable, organisation authority stays
 separate from seller payouts, and the kill/rollout switch limits operational
 risk.
 
-**Status.** *Implemented.* Domain policy in [packages/domain/src/self-service-actor-bid-eligibility.ts](../../packages/domain/src/self-service-actor-bid-eligibility.ts), identity gate in [packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts](../../packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts), persistence in [packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts](../../packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts), UI policy in [apps/web/src/lib/bid/policies/strict-eligibility.policy.tsx](../../apps/web/src/lib/bid/policies/strict-eligibility.policy.tsx).
+**Status.** *Implemented.* Domain policy in [packages/domain/src/self-service-actor-bid-eligibility.ts](../../packages/domain/src/self-service-actor-bid-eligibility.ts), identity gate in [packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts](../../packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts), persistence in [packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts](../../packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts), UI policy in [apps/web/src/lib/bid/policies/strict-eligibility.policy.ts](../../apps/web/src/lib/bid/policies/strict-eligibility.policy.ts).
+
+## D15. Bid policy decisions carry presentation, not a render closure
+
+**Chosen.** `BidPolicyDecision` block variants are `{ kind: "block"; viewId; presentation }`. Consumers render `BidBlockerNotice`. Unsupported catalogue modes and live connection loss are ordinary policies in `defaultBidPolicies`, not a second `resolveRuntimeBidBlocker` wrapper. `IBidActorEligibilityReader` stays in `@auction/persistence` because `bidding-runtime` already depends on that package; moving the port would create a cycle.
+
+**Alternatives considered.** Release’s dual `presentation` + `render` closure was rejected because it forces every policy to be `.tsx` and keeps two representations of one fact. A runtime wrapper on top of the policy array was rejected because adding a blocker then means choosing which pipeline to extend.
+
+**Why this wins.** Policies stay data-only except sale-registration `content`. Precedence stays in one ordered array. Hard blockers omit `preview` and hide the inert form and position summary.
+
+**Status.** *Implemented.* Types in [apps/web/src/lib/bid/bid-blocker-presentation.ts](../../apps/web/src/lib/bid/bid-blocker-presentation.ts), factory in [apps/web/src/lib/bid/policies/block-decision.ts](../../apps/web/src/lib/bid/policies/block-decision.ts), order in [apps/web/src/lib/bid/policies/index.ts](../../apps/web/src/lib/bid/policies/index.ts).
+
+## D16. Marketing prompts use a prioritised rule table and a shared flag parser
+
+**Chosen.** Route allowlisting, selling-intent detection, and prompt decisioning are separate modules. `resolveMarketingPrompt` walks `PROMPT_RULES` (selling, then signup) after universal blockers. Rollout flags share `parseBooleanFlag` / `resolveRolloutFlag`. Prompt suppression keys use `SUPPRESSION_STORAGE_PREFIX` so Gitleaks does not treat them as secrets.
+
+**Alternatives considered.** Release’s if-chain in one `policy.ts` was rejected because a third variant would edit the same function. Copying `parseEnabled` into each rollout module was rejected as a four-way change point.
+
+**Why this wins.** Adding a variant is appending a rule. Flag parsing has one test surface. Strict bid eligibility still falls back on `APP_ENV`, matching the API.
+
+**Status.** *Implemented.* Rules in [apps/web/src/lib/marketing/prompts/policy.ts](../../apps/web/src/lib/marketing/prompts/policy.ts), parser in [apps/web/src/lib/rollout/parse-boolean-flag.ts](../../apps/web/src/lib/rollout/parse-boolean-flag.ts).

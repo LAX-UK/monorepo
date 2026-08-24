@@ -1,4 +1,4 @@
-import { SellerOwnLotNotice } from "@/components/marketing/seller-own-lot-notice";
+import { blockBid } from "./block-decision";
 import type { BidPolicy, BidPolicyContext, BidPolicyDecision } from "./types";
 
 export const sellerOwnLotPolicy: BidPolicy = {
@@ -10,10 +10,11 @@ export const sellerOwnLotPolicy: BidPolicy = {
     if (!ctx.isOwnLot && !legacySellerMatch) {
       return { kind: "allow" };
     }
-    return {
-      kind: "block",
-      viewId: "seller-own-lot",
-      render: () => <SellerOwnLotNotice />,
-    };
+    return blockBid("seller-own-lot", {
+      tone: "warning",
+      title: "This is your listing",
+      detail: "You can’t bid on a lot you’re selling. Watch bids arrive in the history below.",
+      action: { kind: "status", label: "Your listing" },
+    });
   },
 };

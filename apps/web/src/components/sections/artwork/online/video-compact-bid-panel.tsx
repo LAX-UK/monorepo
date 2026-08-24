@@ -1,5 +1,6 @@
 "use client";
 
+import { BidBlockerNotice } from "@/components/bid/bid-blocker-notice";
 import { ConnectionStatusBannerContainer } from "@/components/realtime/connection-status-banner-container";
 import { BidEntryRegion } from "@/components/sections/artwork/online/bid-entry-region";
 import { useBidPanelContext } from "@/components/sections/artwork/online/bid-panel-context";
@@ -82,7 +83,9 @@ export function VideoCompactBidPanel() {
         </div>
 
         {decision.kind === "block" ? (
-          <div className="mt-4 border-t border-outline-variant/20 pt-4">{decision.render()}</div>
+          <div className="mt-4 border-t border-outline-variant/20 pt-4">
+            <BidBlockerNotice presentation={decision.presentation} />
+          </div>
         ) : compactExpanded ? (
           <div className="mt-4 border-t border-outline-variant/20 pt-4">
             <BidEntryRegion />

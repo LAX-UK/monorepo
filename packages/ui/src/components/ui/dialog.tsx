@@ -27,12 +27,14 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     /** Optional class names for the overlay (e.g. animated scrim). */
     overlayClassName?: string;
+    /** Optional props merged onto the overlay (e.g. backdrop click handlers). */
+    overlayProps?: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>;
     /** Optional class names for the default close button. */
     closeClassName?: string;
   }
->(({ className, overlayClassName, closeClassName, children, ...props }, ref) => (
+>(({ className, overlayClassName, overlayProps, closeClassName, children, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay className={overlayClassName} />
+    <DialogOverlay className={overlayClassName} {...overlayProps} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

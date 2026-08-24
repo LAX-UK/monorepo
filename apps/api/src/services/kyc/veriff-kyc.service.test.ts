@@ -405,6 +405,7 @@ describe("VeriffKycService.createSession", () => {
         },
         decisionPayload: {
           sessionUrl: "https://magic.veriff.me/v/reuse",
+          callbackUrl: `${webOrigin}/dashboard/verify-identity`,
           verification: { status: "resubmission_requested", reasonCode: 201 },
         },
       }),
@@ -459,7 +460,10 @@ describe("VeriffKycService.createSession", () => {
           status: "created",
           providerSessionId: "session-created",
         },
-        decisionPayload: { sessionUrl: "https://magic.veriff.me/v/continue" },
+        decisionPayload: {
+          sessionUrl: "https://magic.veriff.me/v/continue",
+          callbackUrl: `${webOrigin}/dashboard/verify-identity`,
+        },
       }),
     });
     const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);

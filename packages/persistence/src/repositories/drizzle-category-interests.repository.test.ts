@@ -71,6 +71,41 @@ describe("DrizzleCategoryInterestsRepository", () => {
       },
     });
     expect(tx.update).not.toHaveBeenCalled();
+    expect(tx.delete).toHaveBeenCalled();
+    expect(insert).toHaveBeenCalled();
+  });
+
+  it("replaces only the user's interest rows and never mutates the category catalog", async () => {
+    const completedAt = new Date("2026-08-20T12:00:00.000Z");
+    const categoryWhere = vi.fn().mockResolvedValue([{ id: firstCategoryId }]);
+    const categoryFrom = vi.fn().mockReturnValue({ where: categoryWhere });
+    const deleteWhere = vi.fn().mockResolvedValue(undefined);
+    const deleteFrom = vi.fn().mockReturnValue({ where: deleteWhere });
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    const insert = vi.fn().mockReturnValue({ values: insertValues });
+    const userWhere = vi.fn().mockResolvedValue([{ onboardingCompletedAt: completedAt }]);
+    const userFrom = vi.fn().mockReturnValue({ where: userWhere });
+    const tx = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce({ from: userFrom })
+        .mockReturnValueOnce({ from: categoryFrom }),
+      delete: deleteFrom,
+      insert,
+      update: vi.fn(),
+    };
+    const transaction = vi.fn(async (work: (transaction: typeof tx) => unknown) => work(tx));
+    const repository = new DrizzleCategoryInterestsRepository({ transaction } as never);
+
+    await expect(repository.replace("u1", [firstCategoryId])).resolves.toMatchObject({
+      ok: true,
+      state: { categoryIds: [firstCategoryId] },
+    });
+    expect(deleteFrom).toHaveBeenCalledWith(userCategoryInterest);
+    expect(insertValues).toHaveBeenCalledWith([
+      { userId: "u1", categoryId: firstCategoryId, sortOrder: 0 },
+    ]);
+    expect(tx.update).not.toHaveBeenCalled();
   });
 
   it("atomically replaces interests and records only the first completion", async () => {

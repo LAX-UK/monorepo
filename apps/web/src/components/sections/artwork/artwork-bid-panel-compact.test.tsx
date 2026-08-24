@@ -235,7 +235,7 @@ describe("ArtworkBidPanel — videoCompact surface", () => {
   it("shows the block message instead of form when decision blocks bidding", () => {
     renderCompact({ sessionUser: null });
 
-    expect(screen.getByText(/sign in to place a bid/i)).toBeInTheDocument();
+    expect(screen.getByText(/sign in to bid/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^bid$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();
     expect(placeBidMock).not.toHaveBeenCalled();
@@ -247,7 +247,7 @@ describe("ArtworkBidPanel — videoCompact surface", () => {
       sessionUser: { ...buyerSession, emailVerified: false, kycStatus: "unverified" },
     });
 
-    expect(screen.getByText("Email verification required")).toBeInTheDocument();
+    expect(screen.getByText("Verify your email to bid")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send verification email" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^bid$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /review bid/i })).not.toBeInTheDocument();

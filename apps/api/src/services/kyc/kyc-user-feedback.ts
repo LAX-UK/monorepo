@@ -99,12 +99,24 @@ export function readVeriffReasonCode(
   return readVeriffDecision(decisionPayload).reasonCode ?? null;
 }
 
+export function readKycCallbackUrl(decisionPayload: Record<string, unknown> | null): string | null {
+  const url = decisionPayload?.callbackUrl;
+  return typeof url === "string" && url.length > 0 ? url : null;
+}
+
 export function shouldReuseKycSessionUrl(input: {
   latestSessionStatus: KycVerification["status"] | null;
   decisionPayload: Record<string, unknown> | null;
+  expectedCallbackUrl?: string;
 }): boolean {
   const sessionUrl = readKycSessionUrl(input.decisionPayload);
   if (!sessionUrl) return false;
+  if (
+    input.expectedCallbackUrl &&
+    readKycCallbackUrl(input.decisionPayload) !== input.expectedCallbackUrl
+  ) {
+    return false;
+  }
 
   if (input.latestSessionStatus === "created") return true;
 

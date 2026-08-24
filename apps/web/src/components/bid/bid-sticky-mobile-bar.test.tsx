@@ -1,3 +1,6 @@
+import { emailVerificationBidBlockerPresentation } from "@/lib/bid/presenters/email-verification-blocker.presenter";
+import { resolveKycBidBlockerPresentation } from "@/lib/bid/presenters/kyc-blocker.presenter";
+import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { BidStickyMobileBar } from "./bid-sticky-mobile-bar";
@@ -26,7 +29,10 @@ describe("BidStickyMobileBar strict eligibility", () => {
         decision={{
           kind: "block",
           viewId: "email-verification-required",
-          render: () => null,
+          presentation: emailVerificationBidBlockerPresentation(
+            "buyer@example.com",
+            "/lot/example/lot-1",
+          ),
         }}
       />,
     );
@@ -38,18 +44,20 @@ describe("BidStickyMobileBar strict eligibility", () => {
   });
 
   it.each([false, true])("links strict KYC to the contextual lot flow (compact=%s)", (compact) => {
+    const href = contextualIdentityOnboardingHref("/lot/example/lot-1", "bid_gate", "lot-1");
     render(
       <BidStickyMobileBar
         {...baseProps}
         compact={compact}
-        decision={{ kind: "block", viewId: "strict-kyc-required", render: () => null }}
+        decision={{
+          kind: "block",
+          viewId: "strict-kyc-required",
+          presentation: resolveKycBidBlockerPresentation({ href, strict: true }),
+        }}
       />,
     );
 
-    expect(screen.getByRole("link")).toHaveAttribute(
-      "href",
-      "/onboarding/identity?next=%2Flot%2Fexample%2Flot-1&source=bid_gate&lot=lot-1",
-    );
+    expect(screen.getByRole("link")).toHaveAttribute("href", href);
     expect(
       screen.queryByRole("button", { name: /review bid|confirm bid|increase bid/i }),
     ).toBeNull();

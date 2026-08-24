@@ -515,7 +515,10 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
-      { kind: "limit", rows: [{ status: "confirmed", saleId }] },
+      {
+        kind: "limit",
+        rows: [{ status: "confirmed", saleId, userId, buyerLegalEntityId: buyerLeId }],
+      },
       { kind: "limit", rows: [{ reserveAltMax: "5000.00" }] },
     ]);
     const svc = createBidEligibilityForTest(db, { strictBidEligibilityEnabled: true });
@@ -534,7 +537,10 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
-      { kind: "limit", rows: [{ status: "confirmed", saleId }] },
+      {
+        kind: "limit",
+        rows: [{ status: "confirmed", saleId, userId, buyerLegalEntityId: buyerLeId }],
+      },
       { kind: "limit", rows: [{ reserveAltMax: "5000.00" }] },
     ]);
     const kycService: IKycService = {
@@ -581,7 +587,10 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
-      { kind: "limit", rows: [{ status: "in_progress", saleId }] },
+      {
+        kind: "limit",
+        rows: [{ status: "in_progress", saleId, userId, buyerLegalEntityId: buyerLeId }],
+      },
       { kind: "limit", rows: [{ reserveAltMax: "1000.00" }] },
     ]);
     const svc = createBidEligibilityForTest(db);

@@ -15,6 +15,7 @@ import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { Check, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -26,10 +27,8 @@ type Props = {
 };
 
 function BuyerInterestActions({
-  source,
   selectedCount,
 }: {
-  source: FullBuyerOnboardingSource;
   selectedCount: number;
 }) {
   const { pending } = useFormStatus();
@@ -43,7 +42,6 @@ function BuyerInterestActions({
         variant="ghost"
         disabled={pending}
         className={onboardingTextButton}
-        onClick={() => trackBuyerInterestsSubmission({ skipped: true, selectedCount: 0, source })}
       >
         Skip personalization
       </Button>
@@ -52,19 +50,20 @@ function BuyerInterestActions({
         disabled={pending}
         aria-disabled={pending}
         className={`${onboardingPrimaryButton} w-full sm:w-auto`}
-        onClick={() => trackBuyerInterestsSubmission({ skipped: false, selectedCount, source })}
       >
         {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
         {pending ? "Saving…" : "Continue"}
       </Button>
       <span className="sr-only" aria-live="polite">
         {pending ? "Saving your interests" : ""}
+        {selectedCount > 0 ? `${selectedCount} selected` : ""}
       </span>
     </div>
   );
 }
 
 export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCategoryIds }: Props) {
+  const { replace } = useRouter();
   const [selected, setSelected] = useState(() => new Set(initialCategoryIds));
   const [actionState, formAction] = useActionState(
     completeBuyerInterests,
@@ -78,6 +77,12 @@ export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCate
       description: actionState.error,
     });
   }, [actionState.error]);
+
+  useEffect(() => {
+    if (!actionState.redirectTo || !actionState.submission) return;
+    trackBuyerInterestsSubmission(actionState.submission);
+    replace(actionState.redirectTo);
+  }, [actionState.redirectTo, actionState.submission, replace]);
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-8 sm:gap-10">
@@ -148,7 +153,7 @@ export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCate
       <span className="sr-only" role="alert" aria-live="assertive">
         {actionState.error}
       </span>
-      <BuyerInterestActions source={source} selectedCount={selected.size} />
+      <BuyerInterestActions selectedCount={selected.size} />
     </form>
   );
 }

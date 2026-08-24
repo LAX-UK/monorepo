@@ -75,7 +75,12 @@ export function ArtworkBidPanel({
   const onlineLifecycle = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
   const connectivityScope = saleroomLive ? "hybrid" : "bidding";
-  const { biddingAllowed, realtimeHealthy } = useLiveConnection();
+  const {
+    biddingAllowed,
+    realtimeHealthy,
+    state: connectionState,
+    message: connectionMessage,
+  } = useLiveConnection();
   const isLotOnBlock = saleroomLive?.isLotOnBlock(auction.id) ?? false;
 
   const bidState = useLotBidState({
@@ -190,6 +195,10 @@ export function ArtworkBidPanel({
       strictBidEligibilityEnabled={strictBidEligibilityEnabled}
       biddingLifecycle={{ kind: lifecycle.kind, isOnBlock: isLotOnBlock }}
       orgModuleEnabled={orgModuleEnabled}
+      unsupportedAuctionMode={panel.englishOnlySurfaceLock}
+      connectionBlocked={panel.connectionBlocked}
+      connectionState={connectionState}
+      connectionMessage={connectionMessage}
     >
       {({ decision }) => {
         const sticky: BidPanelStickyVM = {

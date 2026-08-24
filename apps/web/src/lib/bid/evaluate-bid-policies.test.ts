@@ -53,9 +53,13 @@ describe("evaluateBidPolicies", () => {
       {
         id: "first",
         evaluate: () => ({
-          kind: "block",
+          kind: "block" as const,
           viewId: "x",
-          render: () => null,
+          presentation: {
+            tone: "neutral" as const,
+            title: "Blocked",
+            detail: "Blocked",
+          },
         }),
       },
       { id: "second", evaluate: secondEvaluate },
