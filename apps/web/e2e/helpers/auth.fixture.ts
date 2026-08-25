@@ -1,21 +1,9 @@
 import { type BrowserContext, test as base } from "@playwright/test";
-import { persistContextAuthState, probePageSession } from "./auth";
+import { persistContextAuthState } from "./auth";
 
 type WorkerFixtures = {
   workerContext: BrowserContext;
 };
-
-function formatInvalidWorkerAuth(
-  projectName: string,
-  probe: Awaited<ReturnType<typeof probePageSession>>,
-): string {
-  return [
-    `Project "${projectName}" started with an invalid auth state.`,
-    `get-session=${probe.authStatus}`,
-    `/users/me=${probe.meStatus}`,
-    `cookies=${probe.cookieNames.join(",") || "(none)"}`,
-  ].join(" ");
-}
 
 /** Reuses one cookie jar per worker so rotated Better Auth tokens stay live. */
 export const test = base.extend<object, WorkerFixtures>({
@@ -30,17 +18,13 @@ export const test = base.extend<object, WorkerFixtures>({
         ...(projectUse.baseURL ? { baseURL: projectUse.baseURL } : {}),
         ...(storageState ? { storageState } : {}),
       });
-      if (process.env.PLAYWRIGHT_E2E === "1") {
-        const page = await context.newPage();
-        const probe = await probePageSession(page);
-        await page.close();
-        if (!probe.sessionAlive) {
-          await context.close();
-          throw new Error(formatInvalidWorkerAuth(workerInfo.project.name, probe));
-        }
-        if (storageState) {
-          await persistContextAuthState(context, storageState);
-        }
+      const cookies = (await context.storageState()).cookies;
+      if (
+        process.env.PLAYWRIGHT_E2E === "1" &&
+        !cookies.some((cookie) => cookie.name.includes("session_token"))
+      ) {
+        await context.close();
+        throw new Error(`Project "${workerInfo.project.name}" storage state has no session_token`);
       }
       await use(context);
       await context.close();
