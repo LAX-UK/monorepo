@@ -20,7 +20,16 @@ async function prepareCase(
   const response = await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
   expect(response?.ok()).toBeTruthy();
   if (/\/login(?:\?|$)/.test(page.url())) {
-    await staffLogin(page);
+    const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
+    if (await continueLink.isVisible().catch(() => false)) {
+      await continueLink.click();
+      await page.waitForURL(/\/(admin|dashboard)/, {
+        timeout: 60_000,
+        waitUntil: "domcontentloaded",
+      });
+    } else {
+      await staffLogin(page);
+    }
     await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
   }
   await assertAdminRouteReady(page);

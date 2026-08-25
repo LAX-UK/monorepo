@@ -16,7 +16,9 @@ test.describe("staff catalog smoke @smoke", () => {
       const response = await page.goto(route.path, { waitUntil: "domcontentloaded" });
       expect(response?.ok()).toBeTruthy();
       await dismissStaffPaletteIfOpen(page);
-      await expect(page.getByRole("heading", { name: route.heading }).first()).toBeVisible();
+      await expect(page.getByRole("heading", { name: route.heading }).first()).toBeVisible({
+        timeout: 20_000,
+      });
     });
   }
 

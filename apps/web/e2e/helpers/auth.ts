@@ -113,6 +113,21 @@ async function readLoginBannerErrors(page: Page): Promise<string> {
   return bannerError.filter(Boolean).join(" · ");
 }
 
+async function resumeIfAlreadySignedIn(page: Page, destination: RegExp): Promise<boolean> {
+  const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
+  const signedIn = page.locator("output").filter({ hasText: /signed in/i });
+  if ((await signedIn.count()) === 0 && !(await continueLink.isVisible().catch(() => false))) {
+    return false;
+  }
+  if (!(await continueLink.isVisible().catch(() => false))) return false;
+  await continueLink.click();
+  await page.waitForURL(destination, {
+    timeout: 60_000,
+    waitUntil: "domcontentloaded",
+  });
+  return true;
+}
+
 async function login(
   page: Page,
   credentials: Credentials,
@@ -122,6 +137,15 @@ async function login(
   const loginUrl = `/login?email=${encodeURIComponent(credentials.email)}`;
   await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
   await dismissCookieConsentIfVisible(page);
+  await Promise.race([
+    page
+      .locator("output")
+      .filter({ hasText: /signed in/i })
+      .waitFor({ state: "visible", timeout: 8_000 }),
+    page.locator('input[name="password"]').first().waitFor({ state: "visible", timeout: 8_000 }),
+    page.getByRole("button", { name: /^continue$/i }).waitFor({ state: "visible", timeout: 8_000 }),
+  ]).catch(() => {});
+  if (await resumeIfAlreadySignedIn(page, destination)) return;
 
   const serverError = page.getByText(/internal server error/i);
   if (await serverError.isVisible().catch(() => false)) {
@@ -190,6 +214,7 @@ async function login(
         .evaluate((form) => (form as HTMLFormElement).requestSubmit());
     })(),
   ]).catch(async (error) => {
+    if (await resumeIfAlreadySignedIn(page, destination)) return;
     const detail = await readLoginBannerErrors(page);
     throw new Error(
       detail
