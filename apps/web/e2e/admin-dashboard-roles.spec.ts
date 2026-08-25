@@ -32,8 +32,10 @@ test.describe("admin dashboard finance @roles", () => {
 
   test("finance ops sees payments primary action without saleroom radar", async ({ page }) => {
     await openAdminHome(page);
-    await expect(page.getByRole("link", { name: /review payments/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /work inbox/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/finance(?:\?|$)/);
+    await expect(page.getByRole("heading", { name: /^finance$/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^payments$/i }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /work inbox/i })).toHaveCount(0);
     await expect(page.getByText(/onsite radar/i)).toHaveCount(0);
     await expectNoSeriousAxeViolationsInMain(page);
   });

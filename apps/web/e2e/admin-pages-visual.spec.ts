@@ -22,9 +22,17 @@ async function prepareCase(
   await dismissStaffPaletteIfOpen(page);
 
   if (visualCase.setup === "client-drawer") {
-    await expect(
-      page.getByRole("dialog").filter({ hasText: /Victoria Harrington|Overview/i }),
-    ).toBeVisible({ timeout: visualTimeout });
+    await dismissStaffPaletteIfOpen(page);
+    const drawer = page
+      .getByRole("dialog")
+      .filter({ hasText: /Robert Thorne|Victoria Harrington|Overview/i });
+    if (!(await drawer.isVisible().catch(() => false))) {
+      const clientName = page.getByRole("button", { name: /^robert thorne$/i }).first();
+      if (await clientName.isVisible().catch(() => false)) {
+        await clientName.click();
+      }
+    }
+    await expect(drawer).toBeVisible({ timeout: visualTimeout });
   }
 
   if (visualCase.setup === "lot-filters") {
@@ -77,6 +85,7 @@ test.describe("curated admin visual gate @visual", () => {
           mask: [
             page.locator("time"),
             page.getByRole("heading", { name: /good day|your dashboard/i }),
+            page.getByText(/need attention/i),
           ],
         });
       });

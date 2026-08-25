@@ -1,12 +1,29 @@
-import { expect, test } from "@playwright/test";
-import { e2eEnabled, e2eSkipReason } from "./helpers/auth";
+import { expect, test, type Page } from "@playwright/test";
+import {
+  catalogueManagerLogin,
+  dismissStaffPaletteIfOpen,
+  e2eEnabled,
+  e2eSkipReason,
+} from "./helpers/auth";
+
+async function openCatalogueLotsDraft(page: Page): Promise<void> {
+  await page.goto("/admin/lots?status=draft", { waitUntil: "domcontentloaded" });
+  if (/\/login(?:\?|$)/.test(page.url())) {
+    await catalogueManagerLogin(page);
+    await page.goto("/admin/lots?status=draft", { waitUntil: "domcontentloaded" });
+  }
+  await dismissStaffPaletteIfOpen(page);
+  await expect(page.getByRole("heading", { name: /^lots$/i }).first()).toBeVisible({
+    timeout: 20_000,
+  });
+}
 
 test.describe("catalogue manager catalog access @roles", () => {
+  test.describe.configure({ mode: "serial" });
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("can open lots list and draft lot detail publish control", async ({ page }) => {
-    await page.goto("/admin/lots?status=draft");
-    await expect(page.getByRole("heading", { name: /^lots$/i })).toBeVisible();
+    await openCatalogueLotsDraft(page);
 
     const firstLot = page.locator("table tbody tr").first().getByRole("link").first();
     if (!(await firstLot.isVisible({ timeout: 5_000 }).catch(() => false))) {
@@ -18,8 +35,7 @@ test.describe("catalogue manager catalog access @roles", () => {
   });
 
   test("bulk cancel is hidden on lots list", async ({ page }) => {
-    await page.goto("/admin/lots?status=draft");
-    await expect(page.getByRole("heading", { name: /^lots$/i })).toBeVisible();
+    await openCatalogueLotsDraft(page);
 
     const firstRowCheckbox = page.locator("table tbody tr").first().getByRole("checkbox");
     if (!(await firstRowCheckbox.isVisible({ timeout: 5_000 }).catch(() => false))) {
@@ -31,7 +47,7 @@ test.describe("catalogue manager catalog access @roles", () => {
   });
 
   test("detail cancel auction is hidden", async ({ page }) => {
-    await page.goto("/admin/lots?status=draft");
+    await openCatalogueLotsDraft(page);
     const firstLot = page.locator("table tbody tr").first().getByRole("link").first();
     if (!(await firstLot.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No draft lots in seed data");
@@ -42,7 +58,8 @@ test.describe("catalogue manager catalog access @roles", () => {
   });
 
   test("sale lots hide return to inventory", async ({ page }) => {
-    await page.goto("/admin/sales");
+    await page.goto("/admin/sales", { waitUntil: "domcontentloaded" });
+    await dismissStaffPaletteIfOpen(page);
     const cancelledRow = page
       .locator("table tbody tr")
       .filter({ hasText: /cancelled/i })
@@ -57,8 +74,11 @@ test.describe("catalogue manager catalog access @roles", () => {
   });
 
   test("sale detail hides auction-manager actions", async ({ page }) => {
-    await page.goto("/admin/sales");
-    await expect(page.getByRole("heading", { name: /sales/i })).toBeVisible();
+    await page.goto("/admin/sales", { waitUntil: "domcontentloaded" });
+    await dismissStaffPaletteIfOpen(page);
+    await expect(page.getByRole("heading", { name: /^sales$/i }).first()).toBeVisible({
+      timeout: 20_000,
+    });
 
     const firstRowCheckbox = page.locator("table tbody tr").first().getByRole("checkbox");
     if (!(await firstRowCheckbox.isVisible({ timeout: 5_000 }).catch(() => false))) {
@@ -75,7 +95,7 @@ test.describe("catalogue manager catalog access @roles", () => {
   });
 
   test("shows sale-assigned bulk publish preflight hint", async ({ page }) => {
-    await page.goto("/admin/lots?status=draft");
+    await openCatalogueLotsDraft(page);
     const firstRowCheckbox = page.locator("table tbody tr").first().getByRole("checkbox");
     if (!(await firstRowCheckbox.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No lots in seed data");

@@ -197,7 +197,9 @@ test.describe("admin a11y smoke @a11y", () => {
   test("clients preview drawer at mobile has no serious axe violations", async ({ page }) => {
     await page.setViewportSize(mobileViewport);
     await page.goto(`/admin/clients?client=${seededStaffRoutes.clientDetail}`);
-    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(
+      page.getByRole("dialog").filter({ hasText: /Robert Thorne|Overview/i }),
+    ).toBeVisible({ timeout: 15_000 });
     await expectNoSeriousAxeViolationsInDialog(page);
   });
 

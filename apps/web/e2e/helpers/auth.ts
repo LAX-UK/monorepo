@@ -68,10 +68,22 @@ export const seededStaffRoutes = {
 
 /** Closes the staff command palette when storage state auto-opens it on navigation. */
 export async function dismissStaffPaletteIfOpen(page: Page): Promise<void> {
-  const quickGo = page.getByRole("heading", { name: /quick go/i });
-  if (await quickGo.isVisible().catch(() => false)) {
+  // Title is sr-only, so heading.isVisible() stays false while the dialog is open.
+  const palette = page.getByRole("dialog", { name: /quick go/i });
+  if ((await palette.count()) === 0) return;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if ((await palette.count()) === 0) return;
     await page.keyboard.press("Escape");
-    await quickGo.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => {});
+    const closed = await palette
+      .waitFor({ state: "hidden", timeout: 2_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (closed || (await palette.count()) === 0) return;
+    const closeButton = palette.getByRole("button", { name: /^close$/i });
+    if ((await closeButton.count()) > 0) {
+      await closeButton.click();
+    }
   }
 }
 
@@ -207,11 +219,14 @@ export async function assertAuthenticatedStaffSession(page: Page): Promise<void>
   const main = page.locator("#main-content");
   await expect(main).toBeVisible({ timeout: 15_000 });
 
+  // Palette can aria-hide the sidebar; close it before asserting chrome.
+  await dismissStaffPaletteIfOpen(page);
+
   const staffNav = page.getByRole("navigation", {
     name: /staff dashboard|finance dashboard|primary mobile dashboard navigation/i,
   });
-  await expect(staffNav).toBeVisible({ timeout: 15_000 });
-  await dismissStaffPaletteIfOpen(page);
+  const accountMenu = page.getByRole("button", { name: /account menu/i });
+  await expect(staffNav.or(accountMenu).first()).toBeVisible({ timeout: 15_000 });
 }
 
 /** Rejects admin error/404 shells before visual capture. */

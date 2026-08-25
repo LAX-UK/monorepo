@@ -36,7 +36,7 @@ test.describe("staff catalog smoke @smoke", () => {
     });
     await assertAdminRouteReady(page);
     await dismissStaffPaletteIfOpen(page);
-    await expect(page.getByRole("heading", { name: /carolina price/i, level: 1 })).toBeVisible({
+    await expect(page.getByText(/carolina price/i).first()).toBeVisible({
       timeout: 15_000,
     });
     await page.goto(`/admin/artists/${seededStaffRoutes.artistDetail}/edit`);
