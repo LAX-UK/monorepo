@@ -119,7 +119,7 @@ export default defineConfig({
   fullyParallel: !process.env.CI,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  ...(process.env.CI ? { workers: 2 } : {}),
   expect: {
     toHaveScreenshot: { maxDiffPixelRatio: 0.01, threshold: 0.2 },
   },
