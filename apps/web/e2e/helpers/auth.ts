@@ -68,22 +68,29 @@ export const seededStaffRoutes = {
 
 /** Closes the staff command palette when storage state auto-opens it on navigation. */
 export async function dismissStaffPaletteIfOpen(page: Page): Promise<void> {
+  if (page.isClosed()) return;
   // Title is sr-only, so heading.isVisible() stays false while the dialog is open.
   const palette = page.getByRole("dialog", { name: /quick go/i });
-  if ((await palette.count()) === 0) return;
-
-  for (let attempt = 0; attempt < 3; attempt++) {
+  try {
     if ((await palette.count()) === 0) return;
-    await page.keyboard.press("Escape");
-    const closed = await palette
-      .waitFor({ state: "hidden", timeout: 2_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (closed || (await palette.count()) === 0) return;
-    const closeButton = palette.getByRole("button", { name: /^close$/i });
-    if ((await closeButton.count()) > 0) {
-      await closeButton.click();
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (page.isClosed() || (await palette.count()) === 0) return;
+      await page.keyboard.press("Escape");
+      const closed = await palette
+        .waitFor({ state: "hidden", timeout: 2_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (closed || (await palette.count()) === 0) return;
+      const closeButton = palette.getByRole("button", { name: /^close$/i });
+      if ((await closeButton.count()) > 0) {
+        await closeButton.click();
+      }
     }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/execution context was destroyed|target closed/i.test(message)) return;
+    throw error;
   }
 }
 
@@ -408,6 +415,7 @@ export async function catalogueManagerLogin(page: Page): Promise<void> {
 export async function financeLogin(page: Page): Promise<void> {
   await login(page, financeCredentials);
   await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await page.waitForURL(/\/admin(?:\/finance)?(?:\?|$)/);
   await assertAuthenticatedStaffSession(page);
 }
 
