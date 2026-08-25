@@ -109,8 +109,13 @@ If a spec lands on `/login` after mint succeeded, `gotoAdminPath` reports those
 same statuses. Retry only happens when the cookie is still valid and SSR missed
 once. Do not add password or Continue recovery to tests.
 
-Minting must go through a Playwright browser context. Writing `Set-Cookie`
-headers straight to `storageState` JSON does not attach `session_token` on
-`localhost` (the browser then has only `lax_theme`). After minting, flush
+Minting must go through the browser login journey. After minting, flush
 `rl:auth*` so live `get-session` probes do not exhaust the 30/minute general
 auth bucket before the first spec.
+
+Staff and catalogue PR specs use a worker-scoped browser context so later
+tests reuse the live cookie jar instead of reloading a token Better Auth
+already rotated. The fixture fails immediately when the opening
+`get-session` probe is not authenticated. Do not share that fixture across
+describes that switch `storageState` (dashboard role matrix); those specs
+persist a still-valid cookie jar back to the role file after each test.

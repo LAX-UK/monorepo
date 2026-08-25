@@ -1,4 +1,4 @@
-import { type Locator, type Page, expect, test } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { type VisualCapture, adminVisualCases, visualVariants } from "./admin-visual-cases";
 import {
   assertAdminRouteReady,
@@ -8,6 +8,7 @@ import {
   hasStaffCredentials,
   stabilizeVisualPage,
 } from "./helpers/auth";
+import { expect, test } from "./helpers/auth.fixture";
 
 const visualEnabled = process.env.PLAYWRIGHT_VISUAL === "1";
 const canRunVisual = e2eEnabled && visualEnabled && hasStaffCredentials();

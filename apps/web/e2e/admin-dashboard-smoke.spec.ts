@@ -1,4 +1,3 @@
-import { expect, test } from "@playwright/test";
 import {
   dismissStaffPaletteIfOpen,
   e2eEnabled,
@@ -6,6 +5,7 @@ import {
   expectNoSeriousAxeViolationsInMain,
   gotoAdminPath,
 } from "./helpers/auth";
+import { expect, test } from "./helpers/auth.fixture";
 
 test.describe("admin dashboard home @smoke", () => {
   test.skip(!e2eEnabled, e2eSkipReason);

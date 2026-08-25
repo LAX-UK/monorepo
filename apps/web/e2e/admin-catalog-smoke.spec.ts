@@ -1,4 +1,3 @@
-import { expect, test } from "@playwright/test";
 import {
   assertAdminRouteReady,
   dismissStaffPaletteIfOpen,
@@ -7,6 +6,7 @@ import {
   gotoAdminPath,
   seededStaffRoutes,
 } from "./helpers/auth";
+import { expect, test } from "./helpers/auth.fixture";
 import { staffCatalogListRoutes } from "./helpers/staff-routes";
 
 test.describe("staff catalog smoke @smoke", () => {

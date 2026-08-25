@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { type Page, type Response, expect } from "@playwright/test";
+import { type BrowserContext, type Page, type Response, expect } from "@playwright/test";
 
 export const e2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
 export const e2eSkipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web with seeded credentials.";
@@ -118,7 +118,7 @@ export async function probePageSession(page: Page): Promise<SessionProbe> {
     process.env.API_PUBLIC_URL ?? process.env.NEXT_PUBLIC_API_URL,
     "http://localhost:3001",
   );
-  const cookies = await page.context().cookies();
+  const stored = await page.context().storageState();
   const [authRes, meRes] = await Promise.all([
     page.request.get(`${authUrl}/api/auth/get-session`),
     page.request.get(`${apiUrl}/users/me`),
@@ -137,8 +137,19 @@ export async function probePageSession(page: Page): Promise<SessionProbe> {
     authStatus: authRes.status(),
     meStatus: meRes.status(),
     email: authBody?.user?.email ?? meBody?.data?.email ?? meBody?.email ?? null,
-    cookieNames: cookies.map((cookie) => cookie.name),
+    cookieNames: stored.cookies.map((cookie) => cookie.name),
   };
+}
+
+/** Writes the live cookie jar back only when a session token is still present. */
+export async function persistContextAuthState(
+  context: BrowserContext,
+  storageState: unknown,
+): Promise<void> {
+  if (typeof storageState !== "string") return;
+  const state = await context.storageState();
+  if (!state.cookies.some((cookie) => cookie.name.includes("session_token"))) return;
+  await context.storageState({ path: storageState });
 }
 
 function formatPageSessionFailure(path: string, probe: SessionProbe, url: string): string {
@@ -161,13 +172,6 @@ function isLoginUrl(url: string): boolean {
 export async function gotoAdminPath(page: Page, path: string): Promise<Response | null> {
   let response = await page.goto(path, { waitUntil: "domcontentloaded" });
   if (!isLoginUrl(page.url())) return response;
-
-  const cookies = await page.context().cookies();
-  if (!cookies.some((cookie) => /session_token/.test(cookie.name))) {
-    throw new Error(
-      `Expected authenticated staff session for ${path} but the browser has no session_token (url=${page.url()}, cookies=${cookies.map((cookie) => cookie.name).join(",") || "(none)"}).`,
-    );
-  }
 
   const probe = await probePageSession(page);
   if (probe.sessionAlive) {

@@ -1,4 +1,3 @@
-import { expect, test } from "@playwright/test";
 import {
   dismissStaffPaletteIfOpen,
   e2eEnabled,
@@ -7,6 +6,7 @@ import {
   gotoAdminPath,
 } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
+import { expect, persistAuthTest as test } from "./helpers/auth.fixture";
 
 async function openAdminHome(page: import("@playwright/test").Page): Promise<void> {
   await gotoAdminPath(page, "/admin");
