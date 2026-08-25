@@ -123,6 +123,7 @@ jobs:
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-buyer
           flush_rl
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-catalogue
+          flush_rl
       - name: Critical browser and curated visual gates
         run: pnpm --filter @auction/web test:e2e:pr
       - name: Upload Playwright report

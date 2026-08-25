@@ -95,14 +95,18 @@ async function dismissCookieConsentIfVisible(page: Page): Promise<void> {
   }
 }
 
-/** Navigate to a staff path, resuming the stored session when the edge sends login. */
+/** Navigate to a staff path, clicking Continue when the login page already has a session. */
 export async function gotoAdminPath(page: Page, path: string): Promise<Response | null> {
   const response = await page.goto(path, { waitUntil: "domcontentloaded" });
-  if (/\/login(?:\?|$)/.test(page.url())) {
-    await staffLogin(page);
-    return page.goto(path, { waitUntil: "domcontentloaded" });
-  }
-  return response;
+  if (!/\/login(?:\?|$)/.test(page.url())) return response;
+  const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
+  if (!(await continueLink.isVisible().catch(() => false))) return response;
+  await continueLink.click({ timeout: 5_000 });
+  await page.waitForURL(/\/(admin|dashboard)/, {
+    timeout: 15_000,
+    waitUntil: "domcontentloaded",
+  });
+  return page.goto(path, { waitUntil: "domcontentloaded" });
 }
 
 /** Dev servers often never reach `load`; prefer domcontentloaded for staff navigation. */

@@ -6,7 +6,6 @@ import {
   e2eEnabled,
   hasStaffCredentials,
   stabilizeVisualPage,
-  staffLogin,
 } from "./helpers/auth";
 
 const visualEnabled = process.env.PLAYWRIGHT_VISUAL === "1";
@@ -21,22 +20,14 @@ async function prepareCase(
   expect(response?.ok()).toBeTruthy();
   if (/\/login(?:\?|$)/.test(page.url())) {
     const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
-    const resumed =
-      (await continueLink.isVisible().catch(() => false)) &&
-      (await continueLink
-        .click()
-        .then(async () => {
-          await page.waitForURL(/\/(admin|dashboard)/, {
-            timeout: 15_000,
-            waitUntil: "domcontentloaded",
-          });
-          return true;
-        })
-        .catch(() => false));
-    if (!resumed) {
-      await staffLogin(page);
+    if (await continueLink.isVisible().catch(() => false)) {
+      await continueLink.click({ timeout: 5_000 });
+      await page.waitForURL(/\/(admin|dashboard)/, {
+        timeout: 15_000,
+        waitUntil: "domcontentloaded",
+      });
+      await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
     }
-    await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
   }
   await assertAdminRouteReady(page);
   await dismissStaffPaletteIfOpen(page);

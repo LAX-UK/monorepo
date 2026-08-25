@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import {
-  catalogueManagerLogin,
   dismissStaffPaletteIfOpen,
   e2eEnabled,
   e2eSkipReason,
@@ -13,8 +12,17 @@ test.describe("catalogue manager dashboard @roles", () => {
   test("shows the catalogue work inbox and submissions action", async ({ page }) => {
     await page.goto("/admin", { waitUntil: "domcontentloaded" });
     if (/\/login(?:\?|$)/.test(page.url())) {
-      await catalogueManagerLogin(page);
-      await page.goto("/admin", { waitUntil: "domcontentloaded" });
+      const continueLink = page
+        .getByRole("link", { name: /^continue(?: to dashboard)?$/i })
+        .first();
+      if (await continueLink.isVisible().catch(() => false)) {
+        await continueLink.click({ timeout: 5_000 });
+        await page.waitForURL(/\/(admin|dashboard)/, {
+          timeout: 15_000,
+          waitUntil: "domcontentloaded",
+        });
+        await page.goto("/admin", { waitUntil: "domcontentloaded" });
+      }
     }
     await dismissStaffPaletteIfOpen(page);
     await expect(page.getByRole("heading", { name: /good day/i })).toBeVisible({
