@@ -59,28 +59,6 @@ function captureTarget(page: Page, capture: VisualCapture): Page | Locator {
   return page;
 }
 
-function visualMasks(page: Page, slug: string): Locator[] {
-  const masks = [
-    page.locator("time"),
-    page.getByRole("heading", { name: /good day|your dashboard/i }),
-    page.getByText(/\d+[smhd] ago|just now/i),
-  ];
-  if (slug === "admin-home") {
-    masks.push(page.getByText(/need attention/i));
-  }
-  if (slug === "admin-clients-drawer") {
-    masks.push(
-      page.getByRole("region", { name: "Client summary" }),
-      page.getByRole("table"),
-      page.getByText(/showing \d+ of \d+ matching accounts/i),
-    );
-  }
-  if (slug === "admin-lots") {
-    masks.push(page.getByRole("region", { name: "Lots summary" }));
-  }
-  return masks;
-}
-
 test.describe("curated admin visual gate @visual", () => {
   test.describe.configure({ mode: "serial" });
   test.setTimeout(90_000);
@@ -107,7 +85,11 @@ test.describe("curated admin visual gate @visual", () => {
         await expect(target).toHaveScreenshot(`${visualCase.slug}-${variantId}.png`, {
           ...(visualCase.capture === "page" ? { fullPage: true } : {}),
           maxDiffPixelRatio: 0.01,
-          mask: visualMasks(page, visualCase.slug),
+          mask: [
+            page.locator("time"),
+            page.getByRole("heading", { name: /good day|your dashboard/i }),
+            ...(visualCase.slug === "admin-home" ? [page.getByText(/need attention/i)] : []),
+          ],
         });
       });
     }
