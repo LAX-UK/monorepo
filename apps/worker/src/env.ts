@@ -1,3 +1,4 @@
+import { resolveStrictBidEligibilityRollout } from "@auction/domain";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -193,7 +194,9 @@ export function loadWorkerEnv(): WorkerEnv {
   }
   return {
     ...parsed.data,
-    STRICT_BID_ELIGIBILITY_ENABLED:
-      parsed.data.STRICT_BID_ELIGIBILITY_ENABLED ?? parsed.data.APP_ENV !== "production",
+    STRICT_BID_ELIGIBILITY_ENABLED: resolveStrictBidEligibilityRollout({
+      appEnv: parsed.data.APP_ENV,
+      enabled: parsed.data.STRICT_BID_ELIGIBILITY_ENABLED,
+    }),
   };
 }

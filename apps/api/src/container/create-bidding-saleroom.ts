@@ -1,7 +1,7 @@
 import { SaleroomOnBlockPolicy, createBidPlacer } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import { DrizzleSaleroomSessionRepository } from "@auction/persistence/repositories";
-import type { Env } from "../env.js";
+import { type Env, resolveStrictBidEligibilityEnabled } from "../env.js";
 import { RedisIdempotencyStore } from "../infrastructure/redis-idempotency.store.js";
 import { RedisSaleroomRealtimePublisher } from "../infrastructure/redis-saleroom-realtime.publisher.js";
 import { DisplayTokenIssuer } from "../lib/display-token.js";
@@ -117,8 +117,7 @@ function composeRegistrationAndBidding(
     saleRepo,
     repos.saleRegistrationRepository,
   );
-  const strictBidEligibilityEnabled =
-    env.STRICT_BID_ELIGIBILITY_ENABLED ?? env.APP_ENV !== "production";
+  const strictBidEligibilityEnabled = resolveStrictBidEligibilityEnabled(env);
   const identityEligibilityGate = createBidIdentityEligibilityGate(
     db,
     kycService,

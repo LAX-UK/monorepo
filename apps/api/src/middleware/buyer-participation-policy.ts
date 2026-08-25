@@ -1,3 +1,4 @@
+import { resolveStrictBidEligibilityRollout } from "@auction/domain";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -99,9 +100,10 @@ export function createBuyerParticipationMiddleware(
   const requireAuth = createRequireAuth(input.authenticator, {
     isSuspended: (id) => input.userSuspensionChecker.isSuspended(id),
   });
-  const strictBidEligibilityEnabled =
-    input.env?.STRICT_BID_ELIGIBILITY_ENABLED ??
-    (input.env?.APP_ENV != null && input.env.APP_ENV !== "production");
+  const strictBidEligibilityEnabled = resolveStrictBidEligibilityRollout({
+    appEnv: input.env?.APP_ENV,
+    enabled: input.env?.STRICT_BID_ELIGIBILITY_ENABLED,
+  });
   const kycGate = createOptionalKycGate(input.kycService, strictBidEligibilityEnabled);
   const biddingKillSwitch = createBiddingKillSwitchMiddleware(input.env);
   const bidUserRateLimit = createBidUserRateLimitMiddleware(input.redis);

@@ -1,53 +1,51 @@
+import { existsSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { roleAuthState } from "./helpers/auth-state";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const visualEnabled = process.env.PLAYWRIGHT_VISUAL === "1";
-const clientEmail = process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "";
-const clientPassword = process.env.PLAYWRIGHT_CLIENT_PASSWORD ?? "";
+const onboardingVisual = process.env.PLAYWRIGHT_ONBOARDING_VISUAL === "1";
+const fullBuyerOnboarding = process.env.FULL_BUYER_ONBOARDING_ENABLED === "true";
 
-async function login(
-  page: import("@playwright/test").Page,
-  email: string,
-  password: string,
-  next?: string,
-) {
-  await page.goto(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
-  await page.getByRole("button", { name: /^sign in$/i }).click();
-  await page.waitForURL(/\/(dashboard|admin|onboarding\/)/);
-}
-
-async function clientLogin(page: import("@playwright/test").Page) {
-  await login(page, clientEmail, clientPassword);
+function skipUnlessPrepared(statePath: string, setupName: string): void {
+  test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
+  test.skip(!existsSync(statePath), `Mint ${setupName} via prepare-e2e-auth-states.mjs`);
 }
 
 test.describe("identity onboarding login redirect @journey", () => {
-  test("redirects a verified unapproved client and preserves intent", async ({ page }) => {
-    const email = process.env.PLAYWRIGHT_KYC_LOGIN_EMAIL ?? "";
-    const password = process.env.PLAYWRIGHT_KYC_LOGIN_PASSWORD ?? "";
-    test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
-    test.skip(
-      !email || !password,
-      "Set PLAYWRIGHT_KYC_LOGIN_EMAIL/PASSWORD to a verified unapproved client.",
-    );
+  test.use({ storageState: roleAuthState.client });
 
-    await login(page, email, password, "/dashboard/watchlist");
+  test("does not force a completed buyer through KYC on sign-in", async ({ page }) => {
+    skipUnlessPrepared(roleAuthState.client, "setup-client");
 
-    await expect(page).toHaveURL(
-      /\/onboarding\/identity\?next=%2Fdashboard%2Fwatchlist(?:%3Fwelcome%3Dback)?&source=sign_in/,
-    );
-    await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
+    await page.goto("/auth/post-login?next=/dashboard/watchlist");
+
+    await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
+    await expect(page).toHaveURL(/\/dashboard\/watchlist/);
+  });
+});
+
+test.describe("incomplete buyer login resume @journey", () => {
+  test.use({ storageState: roleAuthState.incomplete });
+
+  test("resumes interests when full buyer onboarding is enabled", async ({ page }) => {
+    skipUnlessPrepared(roleAuthState.incomplete, "setup-incomplete");
+    test.skip(!fullBuyerOnboarding, "Requires FULL_BUYER_ONBOARDING_ENABLED=true.");
+
+    await page.goto("/auth/post-login?next=/dashboard/watchlist");
+
+    await expect(page).toHaveURL(/\/onboarding\/interests\?.*source=sign_in_resume/);
+    await expect(
+      page.getByRole("heading", { name: /what are your areas of interest/i }),
+    ).toBeVisible();
   });
 });
 
 test.describe("identity onboarding @journey", () => {
-  test.beforeEach(async ({ page }) => {
-    test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
-    test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD.");
-    await clientLogin(page);
+  test.use({ storageState: roleAuthState.unapproved });
+
+  test.beforeEach(() => {
+    skipUnlessPrepared(roleAuthState.unapproved, "setup-unapproved");
   });
 
   test("preserves intent through KYC and allows skip/resume", async ({ page }) => {
@@ -55,7 +53,7 @@ test.describe("identity onboarding @journey", () => {
     await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
     await expect(page.getByText(/photo id ready/i).first()).toBeVisible();
 
-    await page.getByRole("link", { name: /i'll do this later/i }).click();
+    await page.getByRole("link", { name: /verify later|finish later/i }).click();
     await expect(page).toHaveURL(/\/dashboard\/watchlist/);
 
     await page.goto("/dashboard");
@@ -76,7 +74,7 @@ test.describe("identity onboarding @journey", () => {
 
   test("rejects an unsafe next destination", async ({ page }) => {
     await page.goto("/onboarding/identity?next=%2F%2Fevil.example&source=direct");
-    await page.getByRole("link", { name: /i'll do this later/i }).click();
+    await page.getByRole("link", { name: /verify later|finish later/i }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
   });
 });
@@ -108,21 +106,20 @@ test.describe("full post-verification buyer onboarding @journey", () => {
     await expect(watchButton).toHaveAttribute("aria-pressed", "true");
     await page.getByRole("link", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: /one step from bidding on/i })).toBeVisible();
-    await page.getByRole("link", { name: /i'll do this later/i }).click();
+    await page.getByRole("link", { name: /verify later|finish later/i }).click();
     await expect(page).toHaveURL(/\/dashboard\/watchlist/);
   });
 
-  test("skips recommendations when selected categories have zero active lots", async ({ page }) => {
-    const email = process.env.PLAYWRIGHT_ZERO_LOT_EMAIL ?? "";
-    const password = process.env.PLAYWRIGHT_ZERO_LOT_PASSWORD ?? "";
-    test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
-    test.skip(
-      !email || !password,
-      "Set PLAYWRIGHT_ZERO_LOT_EMAIL/PASSWORD to a user whose selected categories have no active lots.",
-    );
-    await login(page, email, password);
-    await page.goto("/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist");
-    await expect(page).toHaveURL(/\/onboarding\/identity\?.*next=%2Fdashboard%2Fwatchlist/);
+  test.describe("empty recommendations @journey", () => {
+    test.use({ storageState: roleAuthState.zeroLot });
+
+    test("skips recommendations when selected categories have zero active lots", async ({
+      page,
+    }) => {
+      skipUnlessPrepared(roleAuthState.zeroLot, "setup-zero-lot");
+      await page.goto("/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist");
+      await expect(page).toHaveURL(/\/onboarding\/identity\?.*next=%2Fdashboard%2Fwatchlist/);
+    });
   });
 });
 
@@ -132,28 +129,37 @@ test.describe("onboarding eligibility exclusions @roles", () => {
 
     test("staff login never enters buyer interests or KYC onboarding", async ({ page }) => {
       test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
-      await page.goto("/dashboard/watchlist", { waitUntil: "domcontentloaded" });
+      await page.goto("/auth/post-login?next=/dashboard/watchlist", {
+        waitUntil: "domcontentloaded",
+      });
       await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
     });
   });
 
-  test("organisation login never enters buyer interests or KYC onboarding", async ({ page }) => {
-    const email = process.env.PLAYWRIGHT_ORG_EMAIL ?? "";
-    const password = process.env.PLAYWRIGHT_ORG_PASSWORD ?? "";
-    test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
-    test.skip(!email || !password, "Set PLAYWRIGHT_ORG_EMAIL/PASSWORD.");
-    await login(page, email, password, "/dashboard/watchlist");
-    await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
+  test.describe("organisation @roles", () => {
+    test.use({ storageState: roleAuthState.buyer });
+
+    test("organisation login never enters buyer interests or KYC onboarding", async ({ page }) => {
+      test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
+      test.skip(
+        !existsSync(roleAuthState.buyer),
+        "Mint setup-buyer via prepare-e2e-auth-states.mjs",
+      );
+      await page.goto("/auth/post-login?next=/dashboard/watchlist");
+      await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
+    });
   });
 });
 
 test.describe("buyer onboarding visual contracts @visual", () => {
+  test.use({ storageState: roleAuthState.unapproved });
+
   test.beforeEach(async ({ page }) => {
     test.skip(
-      !enabled || !visualEnabled || !clientEmail || !clientPassword,
-      "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_VISUAL=1, and client credentials.",
+      !enabled || !visualEnabled || !onboardingVisual,
+      "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_VISUAL=1, and PLAYWRIGHT_ONBOARDING_VISUAL=1 after inspecting baselines.",
     );
-    await clientLogin(page);
+    skipUnlessPrepared(roleAuthState.unapproved, "setup-unapproved");
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.addStyleTag({
       content:
@@ -164,21 +170,28 @@ test.describe("buyer onboarding visual contracts @visual", () => {
   for (const screen of [
     {
       name: "interests",
-      path: "/onboarding/interests?next=%2Fdashboard",
+      path: "/onboarding/interests?next=%2Fdashboard&source=post_verify",
       heading: /what are your areas of interest/i,
+      requiresFullBuyer: true,
     },
     {
       name: "recommendations",
-      path: "/onboarding/recommendations?next=%2Fdashboard",
+      path: "/onboarding/recommendations?next=%2Fdashboard&source=post_verify",
       heading: /recommended lots/i,
+      requiresFullBuyer: true,
     },
     {
       name: "identity",
       path: "/onboarding/identity?next=%2Fdashboard&source=post_verify",
       heading: /verify your identity/i,
+      requiresFullBuyer: false,
     },
   ]) {
     test(`${screen.name} desktop Figma screen`, async ({ page }) => {
+      test.skip(
+        screen.requiresFullBuyer && !fullBuyerOnboarding,
+        "Requires FULL_BUYER_ONBOARDING_ENABLED=true.",
+      );
       await page.goto(screen.path);
       await expect(page.locator("#main-content")).toBeVisible();
       await expect(page.getByRole("heading", { name: screen.heading })).toBeVisible();
@@ -190,8 +203,9 @@ test.describe("buyer onboarding visual contracts @visual", () => {
   }
 
   test("interests representative mobile screen", async ({ page }) => {
+    test.skip(!fullBuyerOnboarding, "Requires FULL_BUYER_ONBOARDING_ENABLED=true.");
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/onboarding/interests?next=%2Fdashboard");
+    await page.goto("/onboarding/interests?next=%2Fdashboard&source=post_verify");
     await expect(page.locator("#main-content")).toBeVisible();
     await expect(page).toHaveScreenshot("buyer-onboarding-interests-mobile.png", {
       fullPage: true,

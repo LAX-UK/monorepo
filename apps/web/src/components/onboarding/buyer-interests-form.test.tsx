@@ -37,6 +37,7 @@ describe("BuyerInterestsForm", () => {
     expect(screen.getByRole("group", { name: /choose your areas of interest/i })).toBeVisible();
     const art = screen.getByRole("checkbox", { name: "Art" });
     const watches = screen.getByRole("checkbox", { name: "Watches" });
+    expect(art.closest("label")).toHaveClass("border-primary", "bg-surface-container-lowest");
     expect(art).toBeChecked();
     expect(watches).not.toBeChecked();
     fireEvent.click(watches);

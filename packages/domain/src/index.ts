@@ -15,6 +15,10 @@ export {
   type SelfServiceActorKycStatus,
 } from "./self-service-actor-bid-eligibility.js";
 export {
+  resolveStrictBidEligibilityRollout,
+  type StrictBidEligibilityRolloutInput,
+} from "./strict-bid-eligibility-rollout.js";
+export {
   isBuyerInterestPersonaEligible,
   reconcileBuyerInterestSelection,
   type BuyerInterestSignupPersona,

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveIdentityOnboardingPresentation } from "./identity-onboarding-presentation";
+import {
+  resolveIdentityOnboardingPresentation,
+  resolveIdentitySkipLabel,
+} from "./identity-onboarding-presentation";
 
 const summary = {
   status: "unverified",
@@ -13,6 +16,12 @@ const summary = {
 };
 
 describe("resolveIdentityOnboardingPresentation", () => {
+  it("uses Verify later for skippable sources and hides skip on hard gates", () => {
+    expect(resolveIdentitySkipLabel("sign_in")).toBe("Verify later");
+    expect(resolveIdentitySkipLabel("post_verify")).toBe("Verify later");
+    expect(resolveIdentitySkipLabel("bid_gate")).toBeNull();
+  });
+
   it("uses contextual hard-gate copy for restricted actions", () => {
     expect(
       resolveIdentityOnboardingPresentation(summary as never, "bid_gate", false),

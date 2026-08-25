@@ -2,7 +2,7 @@
 
 import { BuyerOnboardingRouteError } from "@/components/onboarding/buyer-onboarding-route-error";
 
-export default function IdentityOnboardingError({
+export default function RecommendationsOnboardingError({
   reset,
 }: {
   error: Error & { digest?: string };
@@ -10,8 +10,8 @@ export default function IdentityOnboardingError({
 }) {
   return (
     <BuyerOnboardingRouteError
-      title="Verification setup is temporarily unavailable"
-      detail="Your progress is safe. Try loading this step again, or return to your dashboard."
+      title="Recommendations are temporarily unavailable"
+      detail="Your interests are saved. Try loading this step again, or continue to identity verification later from your dashboard."
       reset={reset}
     />
   );

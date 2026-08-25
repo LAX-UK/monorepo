@@ -43,6 +43,26 @@ const buyerCredentials: Credentials = {
   password: process.env.PLAYWRIGHT_BUYER_PASSWORD ?? "Password123!",
 };
 
+const clientCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "e2e-complete@lax.bid",
+  password: process.env.PLAYWRIGHT_CLIENT_PASSWORD ?? "Password123!",
+};
+
+const unapprovedCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_UNAPPROVED_EMAIL ?? "e2e-unapproved@lax.bid",
+  password: process.env.PLAYWRIGHT_UNAPPROVED_PASSWORD ?? "Password123!",
+};
+
+const incompleteCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_INCOMPLETE_EMAIL ?? "e2e-incomplete@lax.bid",
+  password: process.env.PLAYWRIGHT_INCOMPLETE_PASSWORD ?? "Password123!",
+};
+
+const zeroLotCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_ZERO_LOT_EMAIL ?? "e2e-zero-lot@lax.bid",
+  password: process.env.PLAYWRIGHT_ZERO_LOT_PASSWORD ?? "Password123!",
+};
+
 /** Seeded hybrid saleroom ids — see packages/db dev seed (S.hybridA, L.hybridA1). */
 export const seededHybridSaleId =
   process.env.PLAYWRIGHT_HYBRID_SALE_ID ?? "e1000003-0000-4000-8000-000000000003";
@@ -372,6 +392,22 @@ export function hasBuyerCredentials(): boolean {
   return Boolean(buyerCredentials.email && buyerCredentials.password);
 }
 
+export function hasClientCredentials(): boolean {
+  return Boolean(clientCredentials.email && clientCredentials.password);
+}
+
+export function hasUnapprovedCredentials(): boolean {
+  return Boolean(unapprovedCredentials.email && unapprovedCredentials.password);
+}
+
+export function hasIncompleteCredentials(): boolean {
+  return Boolean(incompleteCredentials.email && incompleteCredentials.password);
+}
+
+export function hasZeroLotCredentials(): boolean {
+  return Boolean(zeroLotCredentials.email && zeroLotCredentials.password);
+}
+
 export function hasFinanceCredentials(): boolean {
   return Boolean(financeCredentials.email && financeCredentials.password);
 }
@@ -433,10 +469,34 @@ export async function operationsLogin(page: Page): Promise<void> {
 
 export async function buyerLogin(page: Page): Promise<void> {
   await login(page, buyerCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Buyer");
+}
+
+export async function clientLogin(page: Page): Promise<void> {
+  await login(page, clientCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Client");
+}
+
+export async function unapprovedLogin(page: Page): Promise<void> {
+  await login(page, unapprovedCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Unapproved buyer");
+}
+
+export async function incompleteLogin(page: Page): Promise<void> {
+  await login(page, incompleteCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Incomplete buyer");
+}
+
+export async function zeroLotLogin(page: Page): Promise<void> {
+  await login(page, zeroLotCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Zero-lot buyer");
+}
+
+async function assertNotStaffShell(page: Page, label: string): Promise<void> {
   const onAdminStaff = page.getByRole("navigation", { name: /staff dashboard/i });
   if (await onAdminStaff.isVisible().catch(() => false)) {
     throw new Error(
-      "Buyer login landed on staff admin shell — check credentials and storage state.",
+      `${label} login landed on staff admin shell — check credentials and storage state.`,
     );
   }
 }

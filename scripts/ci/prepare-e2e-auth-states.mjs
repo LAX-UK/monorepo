@@ -20,6 +20,10 @@ const setupProjects = [
   "setup-readonly",
   "setup-operations",
   "setup-buyer",
+  "setup-client",
+  "setup-unapproved",
+  "setup-incomplete",
+  "setup-zero-lot",
   ...(process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL &&
   process.env.PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD
     ? ["setup-catalogue"]
@@ -34,6 +38,10 @@ const expectedFiles = [
   ["readonlyStaff", path.join(authDir, "readonly-staff.json")],
   ["operations", path.join(authDir, "operations.json")],
   ["buyer", path.join(authDir, "buyer.json")],
+  ["client", path.join(authDir, "client.json")],
+  ["unapproved", path.join(authDir, "unapproved.json")],
+  ["incomplete", path.join(authDir, "incomplete.json")],
+  ["zeroLot", path.join(authDir, "zero-lot.json")],
   ...(process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL
     ? [["catalogueManager", path.join(authDir, "catalogue-manager.json")]]
     : []),

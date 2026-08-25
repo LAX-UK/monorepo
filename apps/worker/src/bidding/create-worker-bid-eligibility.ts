@@ -13,6 +13,7 @@ import {
   isKycBidEnforcementEnabled,
 } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
+import { resolveStrictBidEligibilityRollout } from "@auction/domain";
 import type { IAmlHoldStore } from "@auction/persistence/interfaces";
 import {
   DrizzleAmlHoldStore,
@@ -78,8 +79,10 @@ export function createWorkerBidIdentityEligibilityGate(
       ? new WorkerKycThresholdGate(new DrizzleKycRepository(db), env.KYC_THRESHOLD_AMOUNT)
       : null);
   const thresholdGate = thresholdService ? new KycBidGate(thresholdService) : new NoOpKycBidGate();
-  const enabled =
-    env.STRICT_BID_ELIGIBILITY_ENABLED ?? (env.APP_ENV ?? "development") !== "production";
+  const enabled = resolveStrictBidEligibilityRollout({
+    appEnv: env.APP_ENV,
+    enabled: env.STRICT_BID_ELIGIBILITY_ENABLED,
+  });
   return new BidIdentityEligibilityGate(
     new DrizzleBidActorEligibilityReader(db),
     thresholdGate,

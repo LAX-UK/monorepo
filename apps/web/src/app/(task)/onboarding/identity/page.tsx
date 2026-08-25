@@ -34,7 +34,7 @@ export default async function IdentityOnboardingWhyPage({
         <span className="flex flex-col items-center gap-3">
           <span>{presentation.title}</span>
           {featuredLot ? (
-            <span className="flex h-[52px] items-center gap-2 rounded-full bg-[#1f1f1f] py-1.5 pl-2 pr-4 text-xs normal-case leading-[18px] tracking-normal text-white dark:bg-[#e8e8e8] dark:text-[#1f1f1f]">
+            <span className="flex h-[52px] items-center gap-2 rounded-full bg-inverse-surface py-1.5 pl-2 pr-4 text-xs normal-case leading-[18px] tracking-normal text-inverse-on-surface">
               <MediaImage
                 src={featuredLot.images[0]}
                 alt=""
@@ -61,7 +61,7 @@ export default async function IdentityOnboardingWhyPage({
       <IdentityOnboardingViewTracker source={source} step="why" />
       <div className="flex w-full flex-col items-center gap-3 text-center">
         <p className="text-lg font-medium leading-[26px]">{presentation.message}</p>
-        <p className="flex items-center gap-1 text-base leading-6 text-[#4b4b4b] dark:text-[#b8b8b8]">
+        <p className="flex items-center gap-1 text-base leading-6 text-on-surface-variant">
           <Image
             src="/images/onboarding/identity/clock.svg"
             alt=""

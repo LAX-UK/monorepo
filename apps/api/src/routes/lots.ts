@@ -27,9 +27,7 @@ export function createLotRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const optionalAuth = createOptionalAuth(authenticator);
-  const strictBidEligibilityEnabled =
-    container.env?.STRICT_BID_ELIGIBILITY_ENABLED ??
-    (container.env?.APP_ENV != null && container.env.APP_ENV !== "production");
+  const strictBidEligibilityEnabled = container.env?.STRICT_BID_ELIGIBILITY_ENABLED === true;
   const kycGate = createOptionalKycGate(container.kycService);
   const bidKycGate = createOptionalKycGate(container.kycService, strictBidEligibilityEnabled);
   const requireLegalEntity = container.requireSubmissionsLegalEntityContext;

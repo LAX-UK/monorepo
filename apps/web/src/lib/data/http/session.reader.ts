@@ -1,5 +1,6 @@
 import "server-only";
 
+import { SessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import type { SessionUser } from "@/lib/data/contracts";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { getServerHc } from "@/lib/data/http/hc-server";
@@ -55,8 +56,6 @@ export const getServerSessionUser = cache(
     }
     // Transient failure persisted. Returning null would look like a 401 and
     // send a still-valid session to /login (which then strips cookies).
-    throw new Error(
-      `[auth] session lookup failed after retries (transient, not 401) status=${lastStatus ?? "network"}`,
-    );
+    throw new SessionLookupTransientError(lastStatus);
   },
 );

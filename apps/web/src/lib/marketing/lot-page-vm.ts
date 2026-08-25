@@ -5,6 +5,7 @@ import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-
 import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
 import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
 import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
+import { resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
@@ -48,10 +49,12 @@ function deriveLeadingBidderId(bids: LotPageShellData["initialBids"]): string | 
 }
 
 export type LotPageViewModel = {
+  serverNow: number;
   auction: LotPageShellData["auction"];
   session: LotPageShellData["session"];
   saleBundle: LotPageShellData["saleBundle"];
   kycSummary: LotPageShellData["kycSummary"];
+  kycUnavailable: boolean;
   initialAutoBidSettings: LotPageShellData["initialAutoBidSettings"];
   watcherCount: LotPageShellData["watcherCount"];
   actingCtx: LotPageSecondaryData["actingCtx"];
@@ -134,6 +137,7 @@ export function buildLotPageViewModel(input: {
     watchlist,
     saleBundle,
     kycSummary,
+    kycUnavailable,
     lotDocuments,
     initialAutoBidSettings,
     watcherCount,
@@ -241,7 +245,9 @@ export function buildLotPageViewModel(input: {
   const conditionReportCtaShow =
     !isOnsiteSale && (auction.status === "scheduled" || auction.status === "active");
   const kycApprovedForCr = session?.kycStatus === "approved";
-  const kycFeedbackForCr = kycApprovedForCr ? null : (kycSummary?.feedback ?? null);
+  const kycFeedbackForCr = kycApprovedForCr
+    ? null
+    : resolveKycSurfaceFeedback({ summary: kycSummary, unavailable: kycUnavailable });
 
   const mdCr = auction.marketingDetails?.conditionReport;
   const publishedConditionReport =
@@ -344,7 +350,9 @@ export function buildLotPageViewModel(input: {
       bidLimit: r.bidLimit,
     })),
     kycApproved: kycApprovedForBid,
-    kycFeedback: kycApprovedForBid ? null : (kycSummary?.feedback ?? null),
+    kycFeedback: kycApprovedForBid
+      ? null
+      : resolveKycSurfaceFeedback({ summary: kycSummary, unavailable: kycUnavailable }),
   });
 
   const isOwnLot = computeIsOwnLot(auction, session, actingCtx.acting);
@@ -377,10 +385,12 @@ export function buildLotPageViewModel(input: {
       ];
 
   return {
+    serverNow,
     auction,
     session,
     saleBundle,
     kycSummary,
+    kycUnavailable,
     initialAutoBidSettings,
     watcherCount,
     actingCtx,

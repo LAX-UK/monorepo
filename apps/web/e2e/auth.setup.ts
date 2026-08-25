@@ -5,17 +5,25 @@ import { test as setup } from "@playwright/test";
 import {
   buyerLogin,
   catalogueManagerLogin,
+  clientLogin,
   e2eEnabled,
   financeLogin,
   hasBuyerCredentials,
   hasCatalogueManagerCredentials,
+  hasClientCredentials,
   hasFinanceCredentials,
+  hasIncompleteCredentials,
   hasOperationsCredentials,
   hasReadonlyCredentials,
   hasStaffCredentials,
+  hasUnapprovedCredentials,
+  hasZeroLotCredentials,
+  incompleteLogin,
   operationsLogin,
   readonlyStaffLogin,
   staffLogin,
+  unapprovedLogin,
+  zeroLotLogin,
 } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 
@@ -62,6 +70,39 @@ setup("authenticate buyer @setup-buyer", async ({ page }) => {
   setup.skip(!e2eEnabled || !hasBuyerCredentials(), "Seeded buyer credentials are required.");
   await buyerLogin(page);
   await page.context().storageState({ path: roleAuthState.buyer });
+});
+
+setup("authenticate complete client @setup-client", async ({ page }) => {
+  setup.skip(
+    !e2eEnabled || !hasClientCredentials(),
+    "Seeded complete-client credentials are required.",
+  );
+  await clientLogin(page);
+  await page.context().storageState({ path: roleAuthState.client });
+});
+
+setup("authenticate unapproved buyer @setup-unapproved", async ({ page }) => {
+  setup.skip(
+    !e2eEnabled || !hasUnapprovedCredentials(),
+    "Seeded unapproved-buyer credentials are required.",
+  );
+  await unapprovedLogin(page);
+  await page.context().storageState({ path: roleAuthState.unapproved });
+});
+
+setup("authenticate incomplete buyer @setup-incomplete", async ({ page }) => {
+  setup.skip(
+    !e2eEnabled || !hasIncompleteCredentials(),
+    "Seeded incomplete-buyer credentials are required.",
+  );
+  await incompleteLogin(page);
+  await page.context().storageState({ path: roleAuthState.incomplete });
+});
+
+setup("authenticate zero-lot buyer @setup-zero-lot", async ({ page }) => {
+  setup.skip(!e2eEnabled || !hasZeroLotCredentials(), "Seeded zero-lot credentials are required.");
+  await zeroLotLogin(page);
+  await page.context().storageState({ path: roleAuthState.zeroLot });
 });
 
 setup("authenticate finance @setup-finance", async ({ page }) => {

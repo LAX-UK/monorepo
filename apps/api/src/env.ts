@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { resolveStrictBidEligibilityRollout } from "@auction/domain";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -600,7 +601,10 @@ export function resolveStrictBidEligibilityEnabled(input: {
   APP_ENV: Env["APP_ENV"];
   STRICT_BID_ELIGIBILITY_ENABLED?: boolean | undefined;
 }): boolean {
-  return input.STRICT_BID_ELIGIBILITY_ENABLED ?? input.APP_ENV !== "production";
+  return resolveStrictBidEligibilityRollout({
+    appEnv: input.APP_ENV,
+    enabled: input.STRICT_BID_ELIGIBILITY_ENABLED,
+  });
 }
 
 export function loadEnv(): Env {

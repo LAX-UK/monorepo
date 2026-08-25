@@ -7,14 +7,20 @@ on:
       - "apps/web/**"
       - "apps/api/src/**"
       - "apps/auth/**"
+      - "apps/worker/src/**"
       - "packages/auth/**"
+      - "packages/domain/**"
+      - "packages/persistence/**"
+      - "packages/bidding-runtime/**"
       - "packages/db/src/migrate-roles.ts"
       - "packages/db/src/auth-*.contract.test.ts"
+      - "packages/db/src/migrations/**"
       - "packages/db/src/seed/**"
       - "packages/ui/**"
       - ".github/workflows/e2e-pr.yml"
       - "scripts/ci/e2e-session-state.mjs"
       - "scripts/ci/e2e-session-state.test.mjs"
+      - "scripts/ci/flush-auth-rate-limits.mjs"
       - "scripts/ci/prepare-e2e-auth-states.mjs"
       - "scripts/ci/run-pr-browser-gates.mjs"
       - "pnpm-lock.yaml"
@@ -76,6 +82,16 @@ jobs:
       PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD: Password123!
       PLAYWRIGHT_BUYER_EMAIL: estate-owner@lax.bid
       PLAYWRIGHT_BUYER_PASSWORD: Password123!
+      PLAYWRIGHT_CLIENT_EMAIL: e2e-complete@lax.bid
+      PLAYWRIGHT_CLIENT_PASSWORD: Password123!
+      PLAYWRIGHT_UNAPPROVED_EMAIL: e2e-unapproved@lax.bid
+      PLAYWRIGHT_UNAPPROVED_PASSWORD: Password123!
+      PLAYWRIGHT_INCOMPLETE_EMAIL: e2e-incomplete@lax.bid
+      PLAYWRIGHT_INCOMPLETE_PASSWORD: Password123!
+      PLAYWRIGHT_ZERO_LOT_EMAIL: e2e-zero-lot@lax.bid
+      PLAYWRIGHT_ZERO_LOT_PASSWORD: Password123!
+      PLAYWRIGHT_ORG_EMAIL: estate-owner@lax.bid
+      PLAYWRIGHT_ORG_PASSWORD: Password123!
       PLAYWRIGHT_FINANCE_EMAIL: accountant@lax.bid
       PLAYWRIGHT_FINANCE_PASSWORD: Password123!
       PLAYWRIGHT_READONLY_EMAIL: staff-readonly@lax.bid

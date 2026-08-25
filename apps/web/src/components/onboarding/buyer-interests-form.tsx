@@ -111,10 +111,10 @@ export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCate
             <label
               key={interest.key}
               htmlFor={controlId}
-              className={`group relative flex h-[190px] cursor-pointer flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-[border-color,box-shadow,transform] duration-200 motion-reduce:transition-none sm:h-[clamp(170px,23vh,239px)] ${
+              className={`group relative flex h-[190px] cursor-pointer flex-col overflow-hidden rounded-xl border bg-surface-container-lowest shadow-sm transition-[border-color,box-shadow,transform] duration-200 motion-reduce:transition-none sm:h-[clamp(170px,23vh,239px)] ${
                 checked
-                  ? "border-[#081f5b] shadow-md ring-2 ring-[#081f5b] ring-offset-2"
-                  : "border-[#e1e1e1] hover:-translate-y-0.5 hover:border-[#9aa7c7] hover:shadow-md"
+                  ? "border-primary shadow-md ring-2 ring-primary ring-offset-2 ring-offset-surface"
+                  : "border-shell-stroke hover:-translate-y-0.5 hover:border-outline hover:shadow-md"
               }`}
             >
               <Checkbox
@@ -149,7 +149,7 @@ export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCate
                 aria-hidden
                 className={`absolute right-2.5 top-2.5 flex size-6 items-center justify-center border transition-colors ${
                   checked
-                    ? "border-[#081f5b] bg-[#081f5b] text-white shadow-sm"
+                    ? "border-primary bg-primary text-on-primary shadow-sm"
                     : "border-white bg-black/10 shadow-sm backdrop-blur-[2px]"
                 }`}
               >
