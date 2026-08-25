@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 /**
  * Creates independent Playwright storage-state files for each PR-gate role.
- * Staff consumers get separate sessions so parallel workers cannot rotate
- * or invalidate one shared cookie.
+ * Sign-in goes through a Playwright browser context so Chromium stores the
+ * cookies (API-only Set-Cookie writes are not attached on localhost).
  */
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { mintRoleAuthState, writeProbeReport } from "./e2e-session-state.mjs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  cookieHeaderFromStorageState,
+  e2eAuthEndpoints,
+  formatProbeFailure,
+  probeSession,
+  writeProbeReport,
+} from "./e2e-session-state.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const authDir = path.join(root, "apps/web/e2e/.auth");
@@ -73,35 +80,72 @@ function flushRateLimits() {
   }
 }
 
-const probes = [];
-for (const target of roles) {
-  if (!target.email || !target.password) {
-    console.log(`skip ${target.role}: credentials not set`);
-    continue;
+async function loadChromium() {
+  try {
+    return (await import("@playwright/test")).chromium;
+  } catch {
+    const fallback = path.join(root, "apps/web/node_modules/@playwright/test/index.js");
+    return (await import(pathToFileURL(fallback).href)).chromium;
   }
-  flushRateLimits();
-  const probe = await mintRoleAuthState(target);
-  probes.push({
-    role: target.role,
-    authenticated: probe.authenticated,
-    authStatus: probe.authStatus,
-    meStatus: probe.meStatus,
-    email: probe.email,
-    cookieNames: probe.cookieNames,
-    cookieDomain: probe.cookieDomain,
-    cookieCount: probe.cookieCount,
-  });
-  console.log(
-    `minted ${target.role} session get-session=${probe.authStatus} /users/me=${probe.meStatus}`,
-  );
 }
 
+function hasSessionToken(state) {
+  return (state.cookies ?? []).some((cookie) => /session_token/.test(cookie.name));
+}
+
+const { webOrigin, authUrl } = e2eAuthEndpoints();
+const chromium = await loadChromium();
+const browser = await chromium.launch();
+const probes = [];
+
+try {
+  for (const target of roles) {
+    if (!target.email || !target.password) {
+      console.log(`skip ${target.role}: credentials not set`);
+      continue;
+    }
+    flushRateLimits();
+    const context = await browser.newContext();
+    const login = await context.request.post(`${authUrl}/api/auth/sign-in/email`, {
+      headers: { "content-type": "application/json", origin: webOrigin },
+      data: { email: target.email, password: target.password },
+    });
+    if (!login.ok()) {
+      const detail = await login.text();
+      await context.close();
+      throw new Error(
+        `sign-in for ${target.role} failed: ${login.status()} ${detail.slice(0, 200)}`.trim(),
+      );
+    }
+    await context.storageState({ path: target.outPath });
+    await context.close();
+    const state = JSON.parse(readFileSync(target.outPath, "utf8"));
+    if (!hasSessionToken(state)) {
+      throw new Error(`sign-in for ${target.role} did not persist a session_token cookie`);
+    }
+    const probe = await probeSession({ cookie: cookieHeaderFromStorageState(state) });
+    if (!probe.authenticated) {
+      throw new Error(formatProbeFailure(target.role, target.outPath, probe));
+    }
+    probes.push({
+      role: target.role,
+      authenticated: probe.authenticated,
+      authStatus: probe.authStatus,
+      meStatus: probe.meStatus,
+      email: probe.email,
+      cookieNames: probe.cookieNames,
+      cookieDomain: state.cookies[0]?.domain ?? null,
+      cookieCount: state.cookies.length,
+    });
+    console.log(
+      `minted ${target.role} session get-session=${probe.authStatus} /users/me=${probe.meStatus}`,
+    );
+  }
+} finally {
+  await browser.close();
+}
+
+flushRateLimits();
 const reportPath = path.join(authDir, "session-probe.json");
-writeProbeReport(
-  {
-    generatedAt: new Date().toISOString(),
-    probes,
-  },
-  reportPath,
-);
+writeProbeReport({ generatedAt: new Date().toISOString(), probes }, reportPath);
 console.log(`wrote ${reportPath}`);

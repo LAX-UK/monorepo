@@ -162,6 +162,13 @@ export async function gotoAdminPath(page: Page, path: string): Promise<Response 
   let response = await page.goto(path, { waitUntil: "domcontentloaded" });
   if (!isLoginUrl(page.url())) return response;
 
+  const cookies = await page.context().cookies();
+  if (!cookies.some((cookie) => /session_token/.test(cookie.name))) {
+    throw new Error(
+      `Expected authenticated staff session for ${path} but the browser has no session_token (url=${page.url()}, cookies=${cookies.map((cookie) => cookie.name).join(",") || "(none)"}).`,
+    );
+  }
+
   const probe = await probePageSession(page);
   if (probe.sessionAlive) {
     response = await page.goto(path, { waitUntil: "domcontentloaded" });

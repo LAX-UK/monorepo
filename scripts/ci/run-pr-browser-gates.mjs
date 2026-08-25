@@ -28,7 +28,7 @@ if (!args.values["skip-static"]) {
 }
 
 if (!args.values["skip-prepare"]) {
-  run("node scripts/ci/prepare-e2e-auth-states.mjs");
+  run("pnpm --filter @auction/web exec node ../../scripts/ci/prepare-e2e-auth-states.mjs");
 }
 
 run("pnpm --filter @auction/web test:e2e:pr", {

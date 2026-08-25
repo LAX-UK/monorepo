@@ -108,3 +108,9 @@ cookie domain (`localhost`, not `127.0.0.1`), and API/auth logs.
 If a spec lands on `/login` after mint succeeded, `gotoAdminPath` reports those
 same statuses. Retry only happens when the cookie is still valid and SSR missed
 once. Do not add password or Continue recovery to tests.
+
+Minting must go through a Playwright browser context. Writing `Set-Cookie`
+headers straight to `storageState` JSON does not attach `session_token` on
+`localhost` (the browser then has only `lax_theme`). After minting, flush
+`rl:auth*` so live `get-session` probes do not exhaust the 30/minute general
+auth bucket before the first spec.
