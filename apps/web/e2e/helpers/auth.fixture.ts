@@ -17,12 +17,7 @@ function formatInvalidWorkerAuth(
   ].join(" ");
 }
 
-/**
- * One browser context per worker, seeded from the project storage state.
- * Sharing the live cookie jar prevents later tests from reloading a token
- * that Better Auth already rotated. Do not use this in specs that switch
- * `storageState` per describe.
- */
+/** Reuses one cookie jar per worker so rotated Better Auth tokens stay live. */
 export const test = base.extend<object, WorkerFixtures>({
   workerContext: [
     async ({ browser }, use, workerInfo) => {
@@ -52,30 +47,13 @@ export const test = base.extend<object, WorkerFixtures>({
     },
     { scope: "worker" },
   ],
-  context: async ({ workerContext, storageState }, use, testInfo) => {
-    const recordTrace = Boolean(process.env.CI);
-    if (recordTrace) {
-      await workerContext.tracing.start({ screenshots: true, snapshots: true });
-    }
-    try {
-      await use(workerContext);
-    } finally {
-      if (recordTrace) {
-        const tracePath = testInfo.outputPath("trace.zip");
-        await workerContext.tracing.stop({ path: tracePath });
-        if (testInfo.status !== testInfo.expectedStatus) {
-          await testInfo.attach("trace", { path: tracePath, contentType: "application/zip" });
-        }
-      }
-      await persistContextAuthState(workerContext, storageState);
-    }
+  context: async ({ workerContext, storageState }, use) => {
+    await use(workerContext);
+    await persistContextAuthState(workerContext, storageState);
   },
 });
 
-/**
- * Default Playwright context plus write-back of a still-valid session.
- * Use when a file switches `storageState` between describes.
- */
+/** Per-test context that writes a still-valid session back after each describe. */
 export const persistAuthTest = base.extend({
   page: async ({ page, storageState }, use) => {
     await use(page);

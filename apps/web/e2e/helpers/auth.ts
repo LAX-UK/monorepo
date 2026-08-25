@@ -399,7 +399,7 @@ export async function ensureAuthenticatedStaffSession(page: Page): Promise<void>
 
 export async function catalogueManagerLogin(page: Page): Promise<void> {
   await login(page, catalogueCredentials);
-  await page.goto("/admin/lots", { waitUntil: "domcontentloaded" });
+  await gotoAdminPath(page, "/admin/lots");
   await expect(page.getByRole("heading", { name: /^lots$/i }).first()).toBeVisible({
     timeout: 20_000,
   });
