@@ -16,15 +16,19 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
     const rows = await this.db
       .select({
         categoryId: userCategoryInterest.categoryId,
+        archived: category.archived,
         onboardingCompletedAt: user.categoryInterestsOnboardingCompletedAt,
       })
       .from(user)
       .leftJoin(userCategoryInterest, eq(userCategoryInterest.userId, user.id))
+      .leftJoin(category, eq(category.id, userCategoryInterest.categoryId))
       .where(eq(user.id, userId))
       .orderBy(asc(userCategoryInterest.sortOrder));
 
     return {
-      categoryIds: rows.flatMap((row) => (row.categoryId === null ? [] : [row.categoryId])),
+      categoryIds: rows.flatMap((row) =>
+        row.categoryId != null && row.archived !== true ? [row.categoryId] : [],
+      ),
       onboardingCompletedAt: rows[0]?.onboardingCompletedAt ?? null,
     };
   }

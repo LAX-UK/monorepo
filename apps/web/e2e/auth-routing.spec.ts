@@ -13,11 +13,12 @@ test.describe("marketing auth routing @smoke", () => {
 
   test("unsafe next param is not preserved after edge redirect to dashboard", async ({ page }) => {
     test.skip(!enabled, skipReason);
+    const base = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000");
     await page.context().addCookies([
       {
         name: "better-auth.session_token",
         value: "test-stale-or-valid",
-        domain: "127.0.0.1",
+        domain: base.hostname,
         path: "/",
       },
     ]);

@@ -5,6 +5,7 @@ import { saveAuctionInterestPreferences } from "@/app/dashboard/settings/interes
 import { MediaImage } from "@/components/ui/media-image";
 import { BUYER_INTERESTS } from "@/lib/onboarding/buyer-interest-manifest";
 import { notify } from "@/lib/ui/notify";
+import { reconcileBuyerInterestSelection } from "@auction/domain";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
@@ -30,6 +31,16 @@ function categoryIdsFromKey(key: string): string[] {
 
 function categorySetsEqual(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
   return left.size === right.size && [...left].every((categoryId) => right.has(categoryId));
+}
+
+function liveSelectedIds(
+  selectedIds: readonly string[],
+  categoryIdBySlug: Readonly<Record<string, string>>,
+): string[] {
+  return reconcileBuyerInterestSelection({
+    selectedIds,
+    availableCatalogIds: Object.values(categoryIdBySlug),
+  }).selectedAvailableIds;
 }
 
 function SaveInterestsButton({
@@ -61,8 +72,12 @@ function SaveInterestsButton({
 
 export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategoryIds }: Props) {
   const { refresh, replace } = useRouter();
-  const [selected, setSelected] = useState(() => new Set(initialCategoryIds));
-  const [committed, setCommitted] = useState(() => new Set(initialCategoryIds));
+  const [selected, setSelected] = useState(
+    () => new Set(liveSelectedIds(initialCategoryIds, categoryIdBySlug)),
+  );
+  const [committed, setCommitted] = useState(
+    () => new Set(liveSelectedIds(initialCategoryIds, categoryIdBySlug)),
+  );
   const [actionState, formAction] = useActionState(
     saveAuctionInterestPreferences,
     INITIAL_AUCTION_INTERESTS_SETTINGS_ACTION_STATE,
@@ -75,10 +90,12 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
   const initialCategoryIdsKey = categoryIdsKey(initialCategoryIds);
 
   useEffect(() => {
-    const refreshed = new Set(categoryIdsFromKey(initialCategoryIdsKey));
+    const refreshed = new Set(
+      liveSelectedIds(categoryIdsFromKey(initialCategoryIdsKey), categoryIdBySlug),
+    );
     setSelected(refreshed);
     setCommitted(new Set(refreshed));
-  }, [initialCategoryIdsKey]);
+  }, [categoryIdBySlug, initialCategoryIdsKey]);
 
   useEffect(() => {
     if (!actionState.error) return;

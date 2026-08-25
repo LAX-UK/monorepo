@@ -4,7 +4,7 @@ Main is the future source of truth. Release-only work is re-expressed in main’
 
 | Feature | Release commit | Main equivalent | Method | Deliberate difference |
 |---|---|---|---|---|
-| Shared rollout flag parser | Duplicated `parseEnabled` in four `rollout.server.ts` files | `apps/web/src/lib/rollout/parse-boolean-flag.ts` + `resolve-rollout-flag.server.ts` | Re-designed | One parser; strict bid still falls back on `APP_ENV`, the other flags on `NODE_ENV` |
+| Shared rollout flag parser | Duplicated `parseEnabled` in four `rollout.server.ts` files | `packages/validators` `parseBooleanFlag` / `parseOptionalBooleanFlag`; web re-exports via `apps/web/src/lib/rollout/parse-boolean-flag.ts` + `resolve-rollout-flag.server.ts`; API/worker env schemas reuse the same parser | Re-designed | One parser across web, API, and worker; strict bid still falls back on `APP_ENV`, the other web flags on `NODE_ENV` |
 | Buyer KYC / identity onboarding / strict eligibility | Multiple release commits | `feat/kyc-onboarding-main` | Re-implemented | Domain + persistence + bidding-runtime ports; `IBidActorEligibilityReader` stays in persistence to avoid a `bidding-runtime` ↔ persistence cycle |
 | Buyer interest catalog + save/reconcile | `b557a286`, `99d20e3d`, `96a20f18`, `55e1d7f7`, `0af613c6` | Migration `0139`, `packages/domain` `reconcileBuyerInterestSelection`, repository adapter tests | Re-implemented | Catalog completion is additive `0139`; 0138 no longer mutates existing rows |
 | KYC rollout hardening | `1c0f97d2`, `6a6cc332`, `c89b8fca` | Telephone booking bound to sale/user/entity; KYC session reuse keyed on `callbackUrl` | Re-implemented | Presentation stays in web presenters; fail-closed gates stay in bidding-runtime |

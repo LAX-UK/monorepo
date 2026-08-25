@@ -99,4 +99,13 @@ describe("strict bid eligibility rollout", () => {
       }),
     ).toBe(false);
   });
+
+  it.each(["1", "true", "yes", "on"])("parses %j as enabled at the HTTP env boundary", (value) => {
+    const parsed = envSchema.safeParse(
+      productionEnvBase({ STRICT_BID_ELIGIBILITY_ENABLED: value }),
+    );
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.STRICT_BID_ELIGIBILITY_ENABLED).toBe(true);
+  });
 });

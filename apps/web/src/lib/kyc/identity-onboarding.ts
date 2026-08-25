@@ -1,6 +1,5 @@
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
-import { type UserRole, canAccessStaffAdminShell } from "@auction/types";
 
 export const IDENTITY_ONBOARDING_PATH = "/onboarding/identity";
 export const DEFAULT_IDENTITY_ONBOARDING_DESTINATION = "/dashboard";
@@ -99,30 +98,6 @@ export function resolveIdentityOnboardingSource(
     source === "condition_report"
     ? source
     : "direct";
-}
-
-export function shouldRedirectToIdentityOnboardingAfterAuth(input: {
-  enabled: boolean;
-  destination: string;
-  user: {
-    emailVerified?: boolean;
-    role: UserRole;
-    suspended?: boolean;
-    kycStatus?: "unverified" | "pending" | "approved" | "rejected";
-    signupPersona?: "individual" | "organisation" | null;
-  };
-}): boolean {
-  return (
-    input.enabled &&
-    input.user.suspended !== true &&
-    input.user.emailVerified === true &&
-    !canAccessStaffAdminShell(input.user.role) &&
-    input.user.signupPersona !== "organisation" &&
-    input.user.kycStatus !== "approved" &&
-    input.destination !== IDENTITY_ONBOARDING_PATH &&
-    !input.destination.startsWith(`${IDENTITY_ONBOARDING_PATH}/`) &&
-    !input.destination.startsWith(`${IDENTITY_ONBOARDING_PATH}?`)
-  );
 }
 
 export function shouldOfferIdentityOnboarding(input: {

@@ -10,21 +10,20 @@ import { suspendedPolicy } from "./suspended.policy";
 import type { BidPolicy } from "./types";
 import { unsupportedModePolicy } from "./unsupported-mode.policy";
 
-/** First matching block wins. `notLive` precedes `notSignedIn` so ended lots show
- * “not accepting bids” instead of a misleading sign-in CTA. Runtime catalogue and
- * connection blocks are ordinary policies so precedence stays in this array:
- * eligibility beats connection (connection is last), unsupported mode follows not-live.
+/** First matching block wins.
+ * Terminal/platform restrictions, then sign-in and durable account restrictions,
+ * then recoverable eligibility/registration, then connection.
  */
 export const defaultBidPolicies: readonly BidPolicy[] = [
   notLivePolicy,
   unsupportedModePolicy,
   notSignedInPolicy,
-  strictEligibilityPolicy,
-  kycThresholdPolicy,
-  saleRegistrationPolicy,
   suspendedPolicy,
   sellerOwnLotPolicy,
   adminPolicy,
+  strictEligibilityPolicy,
+  kycThresholdPolicy,
+  saleRegistrationPolicy,
   connectionPolicy,
 ] as const;
 

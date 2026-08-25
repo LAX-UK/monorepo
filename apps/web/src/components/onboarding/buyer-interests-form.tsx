@@ -12,6 +12,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import type { FullBuyerOnboardingSource } from "@/lib/kyc/buyer-onboarding";
 import { BUYER_INTERESTS } from "@/lib/onboarding/buyer-interest-manifest";
 import { notify } from "@/lib/ui/notify";
+import { reconcileBuyerInterestSelection } from "@auction/domain";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { Check, Loader2 } from "lucide-react";
@@ -64,7 +65,15 @@ function BuyerInterestActions({
 
 export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCategoryIds }: Props) {
   const { replace } = useRouter();
-  const [selected, setSelected] = useState(() => new Set(initialCategoryIds));
+  const [selected, setSelected] = useState(
+    () =>
+      new Set(
+        reconcileBuyerInterestSelection({
+          selectedIds: initialCategoryIds,
+          availableCatalogIds: Object.values(categoryIdBySlug),
+        }).selectedAvailableIds,
+      ),
+  );
   const [actionState, formAction] = useActionState(
     completeBuyerInterests,
     INITIAL_BUYER_INTERESTS_ACTION_STATE,

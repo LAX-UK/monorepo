@@ -187,8 +187,8 @@ export function ArtworkBidPanel({
       isOwnLot={isOwnLot}
       actingLegalEntityId={actingLegalEntityId}
       kycBidGate={
-        kycSummary?.requiresKyc
-          ? { requiresKyc: true, feedback: kycSummary.feedback ?? null }
+        kycSummary
+          ? { requiresKyc: Boolean(kycSummary.requiresKyc), feedback: kycSummary.feedback ?? null }
           : null
       }
       saleRegistrationBidGate={saleRegistrationBidGate}

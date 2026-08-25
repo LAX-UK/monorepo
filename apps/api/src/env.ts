@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
 /** Docker Compose uses `VAR=` for unset substitutions, which is `""`, not missing. */
@@ -233,10 +234,7 @@ const envSchema = z
     /** ISO currency code for KYC threshold comparisons (e.g. GBP). */
     KYC_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
     /** Hard self-service bid gate; defaults off in production and on elsewhere. */
-    STRICT_BID_ELIGIBILITY_ENABLED: z.preprocess((val) => {
-      if (val === undefined || val === "") return undefined;
-      return val === "true" || val === true;
-    }, z.boolean().optional()),
+    STRICT_BID_ELIGIBILITY_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().optional()),
     /**
      * Source-of-Funds threshold (GBP major units). At/above this settlement value
      * (or when AML risk indicators are present) SoF evidence must be collected and

@@ -72,6 +72,19 @@ describe("BuyerInterestsForm", () => {
     expect(hiddenInputs[0]).toHaveValue("category-watches");
   });
 
+  it("does not treat an archived category id as a selected live interest", () => {
+    const { container } = render(
+      <BuyerInterestsForm
+        next="/dashboard"
+        source="post_verify"
+        categoryIdBySlug={{ paintings: "category-art" }}
+        initialCategoryIds={["archived-category"]}
+      />,
+    );
+    expect(screen.getByRole("checkbox", { name: "Art" })).not.toBeChecked();
+    expect(container.querySelectorAll('input[type="hidden"][name="categoryId"]')).toHaveLength(0);
+  });
+
   it("omits manifest choices that have no live category mapping", () => {
     render(
       <BuyerInterestsForm

@@ -53,7 +53,7 @@ describe("saleRegistrationPolicy", () => {
     expect(d.viewId).toBe("sale-registration-pending");
     expect(d.presentation.tone).toBe("info");
     expect(d.presentation.title).toBe("Registration pending");
-    expect(d.presentation.action).toMatchObject({ kind: "status", label: "Awaiting approval" });
+    expect(d.presentation.action).toMatchObject({ kind: "panel", label: "View status" });
   });
 
   it("blocks missing registration with a panel action", () => {

@@ -135,8 +135,14 @@ export function mergeKycDecisionPayload(
   existing: Record<string, unknown> | null | undefined,
   incoming: Record<string, unknown>,
 ): Record<string, unknown> {
-  const sessionUrl = readKycSessionUrl(existing ?? null) ?? readKycSessionUrl(incoming);
-  return sessionUrl ? { ...incoming, sessionUrl } : incoming;
+  const existingPayload = existing ?? null;
+  const sessionUrl = readKycSessionUrl(existingPayload) ?? readKycSessionUrl(incoming);
+  const callbackUrl = readKycCallbackUrl(existingPayload) ?? readKycCallbackUrl(incoming);
+  return {
+    ...incoming,
+    ...(sessionUrl ? { sessionUrl } : {}),
+    ...(callbackUrl ? { callbackUrl } : {}),
+  };
 }
 
 export function buildKycUserFeedback(input: {

@@ -6,6 +6,7 @@ import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { KycAlreadyApprovedError, VeriffWebhookPayloadError } from "../interfaces/kyc-service.js";
 import { KycDecisionProcessor } from "./kyc-decision-processor.js";
+import { mergeKycDecisionPayload } from "./kyc-user-feedback.js";
 import { VeriffKycService } from "./veriff-kyc.service.js";
 import { mapVeriffDecisionToApplyInput } from "./veriff-status-mapper.js";
 
@@ -470,6 +471,35 @@ describe("VeriffKycService.createSession", () => {
     const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/continue");
     expect(result.sessionId).toBe("session-created");
+    expect(veriffClient.createSession).not.toHaveBeenCalled();
+  });
+
+  it("reuses the session after a webhook merge when the callback still matches", async () => {
+    const veriffClient = makeVeriffClient();
+    const mergedPayload = mergeKycDecisionPayload(
+      {
+        sessionUrl: "https://magic.veriff.me/v/reuse",
+        callbackUrl: `${webOrigin}/dashboard/verify-identity`,
+      },
+      {
+        verification: { status: "resubmission_requested", reasonCode: 201 },
+      },
+    );
+    const repo = makeRepo({
+      getUserKycState: vi.fn().mockResolvedValue({ kycStatus: "pending", kycVerifiedAt: null }),
+      findLatestByUserIdWithPayload: vi.fn().mockResolvedValue({
+        verification: {
+          ...sampleVerification,
+          status: "requires_input",
+          providerSessionId: "session-reuse",
+        },
+        decisionPayload: mergedPayload,
+      }),
+    });
+    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
+    const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
+    expect(result.verificationUrl).toBe("https://magic.veriff.me/v/reuse");
+    expect(result.sessionId).toBe("session-reuse");
     expect(veriffClient.createSession).not.toHaveBeenCalled();
   });
 });

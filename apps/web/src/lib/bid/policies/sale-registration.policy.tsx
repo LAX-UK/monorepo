@@ -25,7 +25,7 @@ export const saleRegistrationPolicy: BidPolicy = {
         title: "Registration pending",
         detail:
           "Your registration for this sale is awaiting approval. You can bid once our team approves your paddle.",
-        action: { kind: "status", label: "Awaiting approval", shortLabel: "Pending" },
+        action: { kind: "panel", label: "View status", shortLabel: "View status" },
         preview: REGISTRATION_PREVIEW,
       });
     }

@@ -65,7 +65,6 @@ describe("resolvePostAuthDestination", () => {
         },
         requestedNext: "/dashboard/bids",
         context: "sign-in",
-        identityOnboardingEnabled: true,
         fullBuyerOnboardingEnabled: true,
         withWelcomeBack: true,
       }),
@@ -82,7 +81,6 @@ describe("resolvePostAuthDestination", () => {
         },
         requestedNext: "/dashboard/bids",
         context: "sign-in",
-        identityOnboardingEnabled: true,
         fullBuyerOnboardingEnabled: true,
         withWelcomeBack: true,
       }),
@@ -100,7 +98,6 @@ describe("resolvePostAuthDestination", () => {
         requestedNext:
           "/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist&source=post_verify",
         context: "sign-in",
-        identityOnboardingEnabled: true,
         fullBuyerOnboardingEnabled: true,
       }),
     ).toBe("/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist&source=post_verify");
@@ -117,7 +114,6 @@ describe("resolvePostAuthDestination", () => {
             categoryInterestsOnboardingCompletedAt: new Date(),
           },
           context: "redirect-if-authed",
-          identityOnboardingEnabled: true,
           fullBuyerOnboardingEnabled: true,
         }),
       ).toBe("/dashboard");
@@ -138,7 +134,6 @@ describe("resolvePostAuthDestination", () => {
         resolvePostAuthDestination({
           user,
           context: "sign-in",
-          identityOnboardingEnabled: true,
         }),
       ).toBe("/dashboard");
     }
@@ -147,7 +142,6 @@ describe("resolvePostAuthDestination", () => {
       resolvePostAuthDestination({
         user: { ...clientUser, kycStatus: "unverified" },
         context: "sign-in",
-        identityOnboardingEnabled: false,
       }),
     ).toBe("/dashboard");
   });
@@ -158,7 +152,6 @@ describe("resolvePostAuthDestination", () => {
         user: { ...clientUser, kycStatus: "unverified" },
         requestedNext: "/onboarding/identity/prepare?next=%2Fdashboard",
         context: "sign-in",
-        identityOnboardingEnabled: true,
       }),
     ).toBe("/onboarding/identity/prepare?next=%2Fdashboard");
   });

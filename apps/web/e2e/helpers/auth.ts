@@ -211,6 +211,7 @@ export async function assertAuthenticatedStaffSession(page: Page): Promise<void>
     name: /staff dashboard|finance dashboard|primary mobile dashboard navigation/i,
   });
   await expect(staffNav).toBeVisible({ timeout: 15_000 });
+  await dismissStaffPaletteIfOpen(page);
 }
 
 /** Rejects admin error/404 shells before visual capture. */

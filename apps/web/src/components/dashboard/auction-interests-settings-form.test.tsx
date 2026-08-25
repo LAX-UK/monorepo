@@ -53,6 +53,27 @@ describe("AuctionInterestsSettingsForm", () => {
     expect(screen.getByRole("button", { name: "Save interests" })).toBeEnabled();
   });
 
+  it("does not treat an archived category id as a selected live interest", () => {
+    const { container } = render(
+      <AuctionInterestsSettingsForm
+        categoryIdBySlug={{
+          paintings: "category-art",
+          "watches-clocks": "category-watches",
+          jewellery: "category-jewellery",
+          "coins-medals": "category-coins",
+          sculpture: "category-sculpture",
+          antiques: "category-antiques",
+          memorabilia: "category-memorabilia",
+          "mixed-media": "category-mixed",
+        }}
+        initialCategoryIds={["archived-category"]}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: "Art" })).not.toBeChecked();
+    expect(container.querySelectorAll('input[type="hidden"][name="categoryId"]')).toHaveLength(0);
+  });
+
   it("disables save and surfaces unavailable tiles when the catalog is incomplete", () => {
     render(
       <AuctionInterestsSettingsForm

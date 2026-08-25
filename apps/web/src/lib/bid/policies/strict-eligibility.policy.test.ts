@@ -71,4 +71,28 @@ describe("strictEligibilityPolicy", () => {
       ),
     ).toEqual({ kind: "allow" });
   });
+
+  it("uses KYC feedback even when the exposure threshold is not met", () => {
+    const decision = strictEligibilityPolicy.evaluate(
+      policyContext({
+        user: { ...approvedUser, kycStatus: "pending" },
+        strictBidEligibilityEnabled: true,
+        kycBidGate: {
+          requiresKyc: false,
+          feedback: {
+            headline: "In review",
+            detail: "We are processing your verification.",
+            action: "wait",
+            reasonCode: null,
+            decisionStatus: "review",
+            needsResubmit: false,
+          },
+        },
+      }),
+    );
+    expect(decision).toMatchObject({ kind: "block", viewId: "strict-kyc-required" });
+    if (decision.kind !== "block") return;
+    expect(decision.presentation.title).toBe("In review");
+    expect(decision.presentation.action).toMatchObject({ kind: "status", label: "In review" });
+  });
 });

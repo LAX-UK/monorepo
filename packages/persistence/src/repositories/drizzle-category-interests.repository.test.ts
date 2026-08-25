@@ -9,12 +9,13 @@ describe("DrizzleCategoryInterestsRepository", () => {
   it("reads category IDs in stored order with the completion marker", async () => {
     const completedAt = new Date("2026-08-20T12:00:00.000Z");
     const orderBy = vi.fn().mockResolvedValue([
-      { categoryId: secondCategoryId, onboardingCompletedAt: completedAt },
-      { categoryId: firstCategoryId, onboardingCompletedAt: completedAt },
+      { categoryId: secondCategoryId, archived: false, onboardingCompletedAt: completedAt },
+      { categoryId: firstCategoryId, archived: false, onboardingCompletedAt: completedAt },
     ]);
     const where = vi.fn().mockReturnValue({ orderBy });
-    const leftJoin = vi.fn().mockReturnValue({ where });
-    const from = vi.fn().mockReturnValue({ leftJoin });
+    const query = { leftJoin: vi.fn(), where };
+    query.leftJoin.mockReturnValue(query);
+    const from = vi.fn().mockReturnValue(query);
     const select = vi.fn().mockReturnValue({ from });
     const repository = new DrizzleCategoryInterestsRepository({ select } as never);
 
@@ -27,8 +28,9 @@ describe("DrizzleCategoryInterestsRepository", () => {
   it("returns a stable incomplete state when the user has no joined row", async () => {
     const orderBy = vi.fn().mockResolvedValue([]);
     const where = vi.fn().mockReturnValue({ orderBy });
-    const leftJoin = vi.fn().mockReturnValue({ where });
-    const from = vi.fn().mockReturnValue({ leftJoin });
+    const query = { leftJoin: vi.fn(), where };
+    query.leftJoin.mockReturnValue(query);
+    const from = vi.fn().mockReturnValue(query);
     const repository = new DrizzleCategoryInterestsRepository({
       select: vi.fn().mockReturnValue({ from }),
     } as never);
@@ -36,6 +38,25 @@ describe("DrizzleCategoryInterestsRepository", () => {
     await expect(repository.getForUser("missing")).resolves.toEqual({
       categoryIds: [],
       onboardingCompletedAt: null,
+    });
+  });
+
+  it("omits archived categories from the active selection", async () => {
+    const completedAt = new Date("2026-08-20T12:00:00.000Z");
+    const orderBy = vi.fn().mockResolvedValue([
+      { categoryId: firstCategoryId, archived: false, onboardingCompletedAt: completedAt },
+      { categoryId: secondCategoryId, archived: true, onboardingCompletedAt: completedAt },
+    ]);
+    const where = vi.fn().mockReturnValue({ orderBy });
+    const query = { leftJoin: vi.fn(), where };
+    query.leftJoin.mockReturnValue(query);
+    const repository = new DrizzleCategoryInterestsRepository({
+      select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue(query) }),
+    } as never);
+
+    await expect(repository.getForUser("u1")).resolves.toEqual({
+      categoryIds: [firstCategoryId],
+      onboardingCompletedAt: completedAt,
     });
   });
 

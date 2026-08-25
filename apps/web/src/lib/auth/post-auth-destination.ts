@@ -29,8 +29,6 @@ export type ResolvePostAuthDestinationInput = {
   context: PostAuthContext;
   /** When true, unverified users are sent to verify-pending for sign-up / redirect-if-authed contexts. */
   requireEmailVerification?: boolean;
-  /** Server-resolved rollout flag for proactive identity onboarding. */
-  identityOnboardingEnabled?: boolean;
   /** Server-resolved rollout flag for the one-time interests onboarding flow. */
   fullBuyerOnboardingEnabled?: boolean;
   /** Append `welcome=back` to the destination query string. */
@@ -53,7 +51,6 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
     requestedNext,
     context,
     requireEmailVerification = false,
-    identityOnboardingEnabled: _identityOnboardingEnabled = false,
     fullBuyerOnboardingEnabled = false,
     withWelcomeBack = false,
   } = input;

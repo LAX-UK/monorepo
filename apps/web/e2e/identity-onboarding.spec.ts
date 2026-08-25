@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { roleAuthState } from "./helpers/auth-state";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const visualEnabled = process.env.PLAYWRIGHT_VISUAL === "1";
@@ -126,17 +127,24 @@ test.describe("full post-verification buyer onboarding @journey", () => {
 });
 
 test.describe("onboarding eligibility exclusions @roles", () => {
-  for (const role of ["staff", "organisation"] as const) {
-    test(`${role} login never enters buyer interests or KYC onboarding`, async ({ page }) => {
-      const prefix = role === "staff" ? "PLAYWRIGHT_STAFF" : "PLAYWRIGHT_ORG";
-      const email = process.env[`${prefix}_EMAIL`] ?? "";
-      const password = process.env[`${prefix}_PASSWORD`] ?? "";
+  test.describe("staff @roles", () => {
+    test.use({ storageState: roleAuthState.staff });
+
+    test("staff login never enters buyer interests or KYC onboarding", async ({ page }) => {
       test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
-      test.skip(!email || !password, `Set ${prefix}_EMAIL/PASSWORD.`);
-      await login(page, email, password, "/dashboard/watchlist");
+      await page.goto("/dashboard/watchlist", { waitUntil: "domcontentloaded" });
       await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
     });
-  }
+  });
+
+  test("organisation login never enters buyer interests or KYC onboarding", async ({ page }) => {
+    const email = process.env.PLAYWRIGHT_ORG_EMAIL ?? "";
+    const password = process.env.PLAYWRIGHT_ORG_PASSWORD ?? "";
+    test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
+    test.skip(!email || !password, "Set PLAYWRIGHT_ORG_EMAIL/PASSWORD.");
+    await login(page, email, password, "/dashboard/watchlist");
+    await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
+  });
 });
 
 test.describe("buyer onboarding visual contracts @visual", () => {

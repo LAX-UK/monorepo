@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { e2eEnabled, e2eSkipReason, seededStaffRoutes } from "./helpers/auth";
+import {
+  assertAdminRouteReady,
+  dismissStaffPaletteIfOpen,
+  e2eEnabled,
+  e2eSkipReason,
+  seededStaffRoutes,
+} from "./helpers/auth";
 import { staffCatalogListRoutes } from "./helpers/staff-routes";
 
 test.describe("staff catalog smoke @smoke", () => {
@@ -9,20 +15,30 @@ test.describe("staff catalog smoke @smoke", () => {
     test(`${route.path} loads`, async ({ page }) => {
       const response = await page.goto(route.path, { waitUntil: "domcontentloaded" });
       expect(response?.ok()).toBeTruthy();
+      await dismissStaffPaletteIfOpen(page);
       await expect(page.getByRole("heading", { name: route.heading }).first()).toBeVisible();
     });
   }
 
   test("category detail and edit load", async ({ page }) => {
-    await page.goto(`/admin/categories/${seededStaffRoutes.categoryDetail}`);
+    await page.goto(`/admin/categories/${seededStaffRoutes.categoryDetail}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await dismissStaffPaletteIfOpen(page);
     await expect(page.getByRole("heading", { name: /paintings/i, level: 1 })).toBeVisible();
     await page.goto(`/admin/categories/${seededStaffRoutes.categoryDetail}/edit`);
     await expect(page.getByRole("heading", { name: /edit category/i })).toBeVisible();
   });
 
   test("artist detail and edit load", async ({ page }) => {
-    await page.goto(`/admin/artists/${seededStaffRoutes.artistDetail}`);
-    await expect(page.getByRole("heading", { name: /carolina price/i, level: 1 })).toBeVisible();
+    await page.goto(`/admin/artists/${seededStaffRoutes.artistDetail}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await assertAdminRouteReady(page);
+    await dismissStaffPaletteIfOpen(page);
+    await expect(page.getByRole("heading", { name: /carolina price/i, level: 1 })).toBeVisible({
+      timeout: 15_000,
+    });
     await page.goto(`/admin/artists/${seededStaffRoutes.artistDetail}/edit`);
     await expect(page.getByRole("heading", { name: /edit carolina price/i })).toBeVisible();
   });

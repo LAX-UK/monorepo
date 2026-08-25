@@ -1,3 +1,4 @@
+import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
 function emptyToUndefined(val: unknown): unknown {
@@ -83,10 +84,7 @@ const envSchema = z
     VERIFF_SHARED_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     KYC_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(1000),
     KYC_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
-    STRICT_BID_ELIGIBILITY_ENABLED: z.preprocess((val) => {
-      if (val === undefined || val === "") return undefined;
-      return val === "true" || val === true;
-    }, z.boolean().optional()),
+    STRICT_BID_ELIGIBILITY_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().optional()),
     XERO_API_WRITES_DISABLED: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

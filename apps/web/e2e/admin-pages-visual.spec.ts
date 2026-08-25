@@ -74,7 +74,10 @@ test.describe("curated admin visual gate @visual", () => {
         await expect(target).toHaveScreenshot(`${visualCase.slug}-${variantId}.png`, {
           ...(visualCase.capture === "page" ? { fullPage: true } : {}),
           maxDiffPixelRatio: 0.01,
-          mask: [page.locator("time")],
+          mask: [
+            page.locator("time"),
+            page.getByRole("heading", { name: /good day|your dashboard/i }),
+          ],
         });
       });
     }

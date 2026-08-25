@@ -607,4 +607,46 @@ describe("BidEligibilityService auto-bid", () => {
       expect(r.error.code).toBe("authorized_max_exceeded");
     }
   });
+
+  it("enforces the saleroom paddle cap", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ saleId }] },
+      { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "limit", rows: [{ bidLimit: "1000.00", status: "approved" }] },
+    ]);
+    const svc = createBidEligibilityForTest(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 1500,
+      placedVia: "saleroom",
+      paddleNumber: 205,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.code).toBe("bid_limit_exceeded");
+    }
+  });
+
+  it("rejects a saleroom paddle that is not registered", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ saleId }] },
+      { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "limit", rows: [{ bidLimit: "5000.00", status: "pending" }] },
+    ]);
+    const svc = createBidEligibilityForTest(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 500,
+      placedVia: "saleroom",
+      paddleNumber: 205,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect(r.error.code).toBe("paddle_not_registered");
+    }
+  });
 });

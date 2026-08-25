@@ -1,8 +1,8 @@
 import { emailVerificationBidBlockerPresentation } from "@/lib/bid/presenters/email-verification-blocker.presenter";
 import { resolveKycBidBlockerPresentation } from "@/lib/bid/presenters/kyc-blocker.presenter";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { BidStickyMobileBar } from "./bid-sticky-mobile-bar";
 
 const baseProps = {
@@ -61,5 +61,32 @@ describe("BidStickyMobileBar strict eligibility", () => {
     expect(
       screen.queryByRole("button", { name: /review bid|confirm bid|increase bid/i }),
     ).toBeNull();
+  });
+});
+
+describe("BidStickyMobileBar sale registration", () => {
+  it("scrolls to the pending registration notice from the compact bar", () => {
+    const onScrollToBid = vi.fn();
+    render(
+      <BidStickyMobileBar
+        {...baseProps}
+        compact
+        onScrollToBid={onScrollToBid}
+        decision={{
+          kind: "block",
+          viewId: "sale-registration-pending",
+          presentation: {
+            tone: "info",
+            title: "Registration pending",
+            detail: "Awaiting approval.",
+            action: { kind: "panel", label: "View status", shortLabel: "View status" },
+            preview: "After approval, you can bid.",
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "View status" }));
+    expect(onScrollToBid).toHaveBeenCalled();
   });
 });

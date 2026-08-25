@@ -33,6 +33,9 @@ describe("identity onboarding deployment contract", () => {
       "STRICT_BID_ELIGIBILITY_ENABLED: ${STRICT_BID_ELIGIBILITY_ENABLED:-false}",
     );
     expect(readRoot("docker-compose.prod.yml")).toContain("APP_ENV: production");
+    expect(readRoot("apps/worker/src/env.ts")).toContain("STRICT_BID_ELIGIBILITY_ENABLED");
+    expect(readRoot("apps/api/src/env.ts")).toContain("parseOptionalBooleanFlag");
+    expect(readRoot("apps/worker/src/env.ts")).toContain("parseOptionalBooleanFlag");
   });
 
   it("passes all three rollout flags through every Terraform workflow", () => {

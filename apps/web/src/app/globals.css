@@ -106,6 +106,7 @@
 
   /* Semantic trend / status (oklch — perceptually even in light + dark) */
   --color-warning: oklch(0.72 0.14 55);
+  --color-warning-on-surface: oklch(0.52 0.15 52);
   --color-on-warning: oklch(0.22 0.04 55);
   --color-warning-container: oklch(0.94 0.06 85);
   --color-danger: oklch(0.55 0.2 25);

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  dismissStaffPaletteIfOpen,
   e2eEnabled,
   e2eSkipReason,
   expectNoSeriousAxeViolationsInMain,
@@ -11,8 +12,9 @@ test.describe("admin dashboard home @smoke", () => {
 
   test("opens work inbox from home dashboard", async ({ page }) => {
     await staffLogin(page);
-    await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: /your dashboard/i })).toBeVisible();
+    await page.goto("/admin", { waitUntil: "domcontentloaded" });
+    await dismissStaffPaletteIfOpen(page);
+    await expect(page.getByRole("heading", { name: /good day/i })).toBeVisible();
     const inboxHeading = page.getByRole("heading", { name: /work inbox/i });
     await expect(inboxHeading).toBeVisible();
     const firstInboxLink = page

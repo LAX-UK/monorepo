@@ -6,7 +6,6 @@ import {
   resolveIdentityOnboardingNext,
   resolveIdentityOnboardingSource,
   shouldOfferIdentityOnboarding,
-  shouldRedirectToIdentityOnboardingAfterAuth,
 } from "@/lib/kyc/identity-onboarding";
 import { describe, expect, it } from "vitest";
 
@@ -48,39 +47,6 @@ describe("identity onboarding policy", () => {
     expect(resolveIdentityOnboardingSource("sign_in")).toBe("sign_in");
     expect(resolveIdentityOnboardingSource("dashboard")).toBe("dashboard");
     expect(resolveIdentityOnboardingSource("unknown")).toBe("direct");
-  });
-
-  it("redirects only verified unapproved individual clients after authentication", () => {
-    const eligible = {
-      enabled: true,
-      destination: "/dashboard",
-      user: {
-        role: "client" as const,
-        emailVerified: true,
-        kycStatus: "unverified" as const,
-        signupPersona: "individual" as const,
-      },
-    };
-
-    expect(shouldRedirectToIdentityOnboardingAfterAuth(eligible)).toBe(true);
-    expect(
-      shouldRedirectToIdentityOnboardingAfterAuth({
-        ...eligible,
-        user: { ...eligible.user, role: "staff" },
-      }),
-    ).toBe(false);
-    expect(
-      shouldRedirectToIdentityOnboardingAfterAuth({
-        ...eligible,
-        user: { ...eligible.user, signupPersona: "organisation" },
-      }),
-    ).toBe(false);
-    expect(
-      shouldRedirectToIdentityOnboardingAfterAuth({
-        ...eligible,
-        destination: "/onboarding/identity/verify",
-      }),
-    ).toBe(false);
   });
 
   it("offers proactive onboarding only to enabled unapproved individuals", () => {

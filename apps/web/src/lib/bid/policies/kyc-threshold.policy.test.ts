@@ -7,6 +7,26 @@ describe("kycThresholdPolicy", () => {
     expect(kycThresholdPolicy.evaluate(policyContext()).kind).toBe("allow");
   });
 
+  it("does not treat feedback-only summaries as a threshold block", () => {
+    expect(
+      kycThresholdPolicy.evaluate(
+        policyContext({
+          kycBidGate: {
+            requiresKyc: false,
+            feedback: {
+              headline: "In review",
+              detail: null,
+              action: "wait",
+              reasonCode: null,
+              decisionStatus: "review",
+              needsResubmit: false,
+            },
+          },
+        }),
+      ).kind,
+    ).toBe("allow");
+  });
+
   it("blocks with a verification link when the threshold is met", () => {
     const decision = kycThresholdPolicy.evaluate(
       policyContext({
