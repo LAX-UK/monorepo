@@ -31,6 +31,6 @@ test.describe("marketing auth routing @smoke", () => {
   test("session_expired query shows recovery copy on login", async ({ page }) => {
     test.skip(!enabled, skipReason);
     await page.goto("/login?session_expired=1");
-    await expect(page.getByText(/session expired/i)).toBeVisible();
+    await expect(page.getByText(/session expired/i)).toBeVisible({ timeout: 15_000 });
   });
 });

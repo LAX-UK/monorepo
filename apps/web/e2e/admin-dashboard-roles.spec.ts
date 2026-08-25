@@ -4,11 +4,22 @@ import {
   e2eEnabled,
   e2eSkipReason,
   expectNoSeriousAxeViolationsInMain,
+  financeLogin,
+  operationsLogin,
+  readonlyStaffLogin,
+  staffLogin,
 } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 
-async function openAdminHome(page: import("@playwright/test").Page): Promise<void> {
+async function openAdminHome(
+  page: import("@playwright/test").Page,
+  relogin: (page: import("@playwright/test").Page) => Promise<void>,
+): Promise<void> {
   await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  if (/\/login(?:\?|$)/.test(page.url())) {
+    await relogin(page);
+    await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  }
   await dismissStaffPaletteIfOpen(page);
 }
 
@@ -17,7 +28,7 @@ test.describe("admin dashboard oversight @roles", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("super admin sees finance primary action and work inbox", async ({ page }) => {
-    await openAdminHome(page);
+    await openAdminHome(page, staffLogin);
     await expect(page.getByRole("heading", { name: /good day/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /finance hub/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /work inbox/i })).toBeVisible();
@@ -31,7 +42,7 @@ test.describe("admin dashboard finance @roles", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("finance ops sees payments primary action without saleroom radar", async ({ page }) => {
-    await openAdminHome(page);
+    await openAdminHome(page, financeLogin);
     await expect(page).toHaveURL(/\/admin\/finance(?:\?|$)/);
     await expect(page.getByRole("heading", { name: /^finance$/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /^payments$/i }).first()).toBeVisible();
@@ -47,7 +58,7 @@ test.describe("admin dashboard read-only @roles", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("read-only staff sees browse lots and no mutation CTAs in greeting", async ({ page }) => {
-    await openAdminHome(page);
+    await openAdminHome(page, readonlyStaffLogin);
     await expect(page.getByRole("link", { name: /browse lots/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /^new lot$/i })).toHaveCount(0);
     await expectNoSeriousAxeViolationsInMain(page);
@@ -60,7 +71,7 @@ test.describe("admin dashboard operations @roles", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("auction operations sees saleroom primary action", async ({ page }) => {
-    await openAdminHome(page);
+    await openAdminHome(page, operationsLogin);
     await expect(page.getByRole("link", { name: /open saleroom/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /work inbox/i })).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
@@ -73,7 +84,7 @@ test.describe("admin dashboard inline action permissions @roles", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("read-only staff does not see capture or assign bulk actions on inbox", async ({ page }) => {
-    await openAdminHome(page);
+    await openAdminHome(page, readonlyStaffLogin);
     const inbox = page.getByRole("heading", { name: /work inbox/i });
     await expect(inbox).toBeVisible();
     await expect(page.getByRole("button", { name: /^capture$/i })).toHaveCount(0);

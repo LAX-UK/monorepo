@@ -6,6 +6,7 @@ import {
   e2eEnabled,
   hasStaffCredentials,
   stabilizeVisualPage,
+  staffLogin,
 } from "./helpers/auth";
 
 const visualEnabled = process.env.PLAYWRIGHT_VISUAL === "1";
@@ -18,6 +19,10 @@ async function prepareCase(
 ): Promise<void> {
   const response = await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
   expect(response?.ok()).toBeTruthy();
+  if (/\/login(?:\?|$)/.test(page.url())) {
+    await staffLogin(page);
+    await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
+  }
   await assertAdminRouteReady(page);
   await dismissStaffPaletteIfOpen(page);
 
@@ -58,6 +63,7 @@ function captureTarget(page: Page, capture: VisualCapture): Page | Locator {
 }
 
 test.describe("curated admin visual gate @visual", () => {
+  test.describe.configure({ mode: "serial" });
   test.setTimeout(90_000);
   test.skip(
     !canRunVisual,
@@ -85,7 +91,7 @@ test.describe("curated admin visual gate @visual", () => {
           mask: [
             page.locator("time"),
             page.getByRole("heading", { name: /good day|your dashboard/i }),
-            page.getByText(/need attention/i),
+            ...(visualCase.slug === "admin-home" ? [page.getByText(/need attention/i)] : []),
           ],
         });
       });

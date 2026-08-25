@@ -70,12 +70,14 @@ const roleProjects = [
     testMatch: [/admin-.*\.spec\.ts/, /saleroom-clerk\.spec\.ts/],
     testIgnore: /admin-dashboard-roles\.spec\.ts/,
     dependencies: ["setup-staff"],
+    workers: 1,
     use: { ...chromium, storageState: roleAuthState.staff },
   },
   {
     name: "dashboard-roles-chromium",
     testMatch: /admin-dashboard-roles\.spec\.ts/,
     dependencies: ["setup-staff", "setup-finance", "setup-readonly", "setup-operations"],
+    workers: 1,
     use: chromium,
   },
   {
@@ -90,6 +92,7 @@ const roleProjects = [
           name: "catalogue-chromium",
           testMatch: /catalogue-manager-.*\.spec\.ts/,
           dependencies: ["setup-catalogue"],
+          workers: 1,
           use: { ...chromium, storageState: roleAuthState.catalogueManager },
         },
       ]
@@ -113,9 +116,10 @@ export default defineConfig({
     ? [["blob", { outputDir: "blob-report" }]]
     : [["list"], ["html", { open: "never" }]],
   snapshotPathTemplate: "{testDir}/__snapshots__/{testFilePath}/{arg}{ext}",
-  fullyParallel: true,
+  fullyParallel: !process.env.CI,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  workers: process.env.CI ? 2 : undefined,
   expect: {
     toHaveScreenshot: { maxDiffPixelRatio: 0.01, threshold: 0.2 },
   },
