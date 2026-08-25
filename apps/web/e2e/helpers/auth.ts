@@ -130,7 +130,8 @@ async function login(
     );
   }
 
-  const continueAuthed = page.getByRole("link", { name: /^continue/i });
+  const continueAuthed = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i });
+  const alreadySignedIn = page.getByText(/already signed in/i);
   const continueToCredentials = page.getByRole("button", { name: /^continue$/i });
   const password = page
     .locator('input[name="password"], input[autocomplete="current-password"]')
@@ -139,6 +140,7 @@ async function login(
 
   await Promise.race([
     continueAuthed.waitFor({ state: "visible", timeout: 20_000 }),
+    alreadySignedIn.waitFor({ state: "visible", timeout: 20_000 }),
     continueToCredentials.waitFor({ state: "visible", timeout: 20_000 }),
     password.waitFor({ state: "visible", timeout: 20_000 }),
     rateLimited.waitFor({ state: "visible", timeout: 20_000 }),
@@ -152,8 +154,11 @@ async function login(
     );
   }
 
-  if (await continueAuthed.isVisible().catch(() => false)) {
-    await continueAuthed.click();
+  if (
+    (await continueAuthed.isVisible().catch(() => false)) ||
+    (await alreadySignedIn.isVisible().catch(() => false))
+  ) {
+    await continueAuthed.first().click();
     await page.waitForURL(destination, {
       timeout: 60_000,
       waitUntil: "domcontentloaded",

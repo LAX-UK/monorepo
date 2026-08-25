@@ -17,6 +17,7 @@ test.describe("admin dashboard home @smoke", () => {
     await expect(page.getByRole("heading", { name: /good day/i })).toBeVisible();
     const inboxHeading = page.getByRole("heading", { name: /work inbox/i });
     await expect(inboxHeading).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
     const firstInboxLink = page
       .getByRole("table", { name: /work inbox/i })
       .getByRole("link")
@@ -25,6 +26,5 @@ test.describe("admin dashboard home @smoke", () => {
       await firstInboxLink.click();
       await expect(page).not.toHaveURL(/\/admin$/);
     }
-    await expectNoSeriousAxeViolationsInMain(page);
   });
 });
