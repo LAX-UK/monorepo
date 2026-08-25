@@ -1,4 +1,12 @@
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test as setup } from "@playwright/test";
+import {
+  formatProbeFailure,
+  mintRoleAuthState,
+  probeStorageStateFile,
+} from "../../../scripts/ci/e2e-session-state.mjs";
 import {
   buyerLogin,
   catalogueManagerLogin,
@@ -16,6 +24,18 @@ import {
 } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+
+function flushAuthRateLimits(): void {
+  const result = spawnSync("node", [path.join(repoRoot, "scripts/ci/flush-auth-rate-limits.mjs")], {
+    stdio: "inherit",
+    env: process.env,
+  });
+  if (result.status !== 0) {
+    throw new Error("failed to flush auth rate-limit keys while minting staff sessions");
+  }
+}
+
 setup.describe.configure({ mode: "serial" });
 setup.setTimeout(90_000);
 
@@ -23,6 +43,26 @@ setup("authenticate staff @setup-staff", async ({ page }) => {
   setup.skip(!e2eEnabled || !hasStaffCredentials(), "Seeded staff credentials are required.");
   await staffLogin(page);
   await page.context().storageState({ path: roleAuthState.staff });
+  const staffProbe = await probeStorageStateFile(roleAuthState.staff);
+  if (!staffProbe.authenticated) {
+    throw new Error(formatProbeFailure("staff", roleAuthState.staff, staffProbe));
+  }
+  const email = process.env.PLAYWRIGHT_STAFF_EMAIL ?? "admin@lax.bid";
+  const password = process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "Password123!";
+  flushAuthRateLimits();
+  await mintRoleAuthState({
+    role: "staffRoles",
+    email,
+    password,
+    outPath: roleAuthState.staffRoles,
+  });
+  flushAuthRateLimits();
+  await mintRoleAuthState({
+    role: "staffPublic",
+    email,
+    password,
+    outPath: roleAuthState.staffPublic,
+  });
 });
 
 setup("authenticate catalogue manager @setup-catalogue", async ({ page }) => {

@@ -13,6 +13,10 @@ on:
       - "packages/db/src/seed/**"
       - "packages/ui/**"
       - ".github/workflows/e2e-pr.yml"
+      - "scripts/ci/e2e-session-state.mjs"
+      - "scripts/ci/e2e-session-state.test.mjs"
+      - "scripts/ci/prepare-e2e-auth-states.mjs"
+      - "scripts/ci/run-pr-browser-gates.mjs"
       - "pnpm-lock.yaml"
 
 concurrency:
@@ -86,6 +90,10 @@ jobs:
           node-version: "22"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
+      - name: Fast static checks
+        run: |
+          pnpm exec biome check .
+          node --test scripts/ci/e2e-session-state.test.mjs
       - name: Install pinned Chromium
         run: pnpm --filter @auction/web exec playwright install chromium --with-deps
       - name: Migrate and seed
@@ -96,9 +104,10 @@ jobs:
         run: pnpm turbo run build --filter=@auction/api --filter=@auction/auth-app --filter=@auction/web
       - name: Start stack
         run: |
-          PORT=3001 pnpm --filter @auction/api start &
-          PORT=3003 pnpm --filter @auction/auth-app start &
-          PORT=3000 pnpm --filter @auction/web start &
+          mkdir -p /tmp/e2e-logs
+          PORT=3001 pnpm --filter @auction/api start > /tmp/e2e-logs/api.log 2>&1 &
+          PORT=3003 pnpm --filter @auction/auth-app start > /tmp/e2e-logs/auth.log 2>&1 &
+          PORT=3000 pnpm --filter @auction/web start > /tmp/e2e-logs/web.log 2>&1 &
           npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live --timeout 120000
       - name: Verify dual-host OIDC and auth response parity
         env:
@@ -107,29 +116,25 @@ jobs:
           AUTH_PARITY_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
         run: |
           node scripts/ci/verify-auth-dual-host.mjs
-      - name: Prepare auth sessions
-        working-directory: apps/web
-        run: |
-          flush_rl() { node ../../scripts/ci/flush-auth-rate-limits.mjs; }
-          flush_rl
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff
-          flush_rl
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-finance
-          flush_rl
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-readonly
-          flush_rl
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-operations
-          flush_rl
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-buyer
-          flush_rl
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-catalogue
-          flush_rl
-      - name: Critical browser and curated visual gates
-        run: pnpm --filter @auction/web test:e2e:pr
+      - name: Prepare auth sessions and run PR browser gates
+        run: node scripts/ci/run-pr-browser-gates.mjs --skip-static
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: web-pr-playwright-report
-          path: apps/web/blob-report
+          path: |
+            apps/web/blob-report
+            apps/web/test-results
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload session probe and process logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-pr-session-diagnostics
+          path: |
+            apps/web/e2e/.auth/session-probe.json
+            /tmp/e2e-logs
+          if-no-files-found: warn
           retention-days: 7

@@ -69,7 +69,7 @@ Run with Node.js 22, seeded stack on `:3000` (web) and `:3001` (API), and
 |------|---------|-------|-----|
 | Portfolio guard | `pnpm lint:e2e-portfolio` | all PRs | `ci.yml` static-checks |
 | Tag taxonomy guard | `pnpm lint:e2e-tags` | all PRs | `ci.yml` static-checks |
-| PR smoke + curated visuals | `pnpm --filter @auction/web test:e2e:pr` | UI cross-stack changes | `e2e-pr.yml` |
+| PR smoke + curated visuals | `pnpm ci:e2e-pr` | UI cross-stack changes | `e2e-pr.yml` |
 | Staff catalog smoke | `pnpm --filter @auction/web test:e2e:smoke` | navigation regressions | PR subset |
 | Role contracts | `pnpm --filter @auction/web test:e2e:roles` | authorization | manual / stabilization |
 | Curated admin visuals | `pnpm --filter @auction/web test:e2e:visual` | layout/theme | PR subset |

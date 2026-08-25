@@ -1,5 +1,10 @@
 import { type Page, expect, test } from "@playwright/test";
-import { dismissStaffPaletteIfOpen, e2eEnabled, e2eSkipReason, gotoAdminPath } from "./helpers/auth";
+import {
+  dismissStaffPaletteIfOpen,
+  e2eEnabled,
+  e2eSkipReason,
+  gotoAdminPath,
+} from "./helpers/auth";
 
 async function openCatalogueLotsDraft(page: Page): Promise<void> {
   await gotoAdminPath(page, "/admin/lots?status=draft");

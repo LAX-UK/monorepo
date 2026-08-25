@@ -128,7 +128,7 @@ test.describe("full post-verification buyer onboarding @journey", () => {
 
 test.describe("onboarding eligibility exclusions @roles", () => {
   test.describe("staff @roles", () => {
-    test.use({ storageState: roleAuthState.staff });
+    test.use({ storageState: roleAuthState.staffPublic });
 
     test("staff login never enters buyer interests or KYC onboarding", async ({ page }) => {
       test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");

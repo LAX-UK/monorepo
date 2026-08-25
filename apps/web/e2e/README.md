@@ -28,8 +28,16 @@ PLAYWRIGHT_BUYER_PASSWORD=Password123!
 3. Ensure API is running on `http://localhost:3001` with `WEB_ORIGINS` including `http://localhost:3000`.
 4. Start with a clean test Redis instance. Tests do not bypass auth rate limits.
 
-Playwright setup projects authenticate staff, catalogue-manager, and buyer once,
-validate each role, and store ignored state under `e2e/.auth/`.
+PR gates mint **independent** Better Auth sessions per role (and a separate
+staff session for staff, dashboard-roles, and public identity specs) via
+`node scripts/ci/prepare-e2e-auth-states.mjs`. Each file is probed against
+`/api/auth/get-session` and `/users/me` before tests run. Never commit
+`e2e/.auth/*.json`.
+
+Do not password-login inside ordinary specs. If a stored cookie is invalid,
+the helper fails with those endpoint statuses instead of clicking Continue
+or submitting the login form (that path burns `signInMax` and hides the
+real session fault).
 
 ## Test tiers
 
@@ -37,6 +45,10 @@ Specs declare intent with tags in describe titles: `@smoke`, `@journey`, `@a11y`
 `@roles`, `@visual`. Commands select by tag — do not hardcode file lists.
 
 ```bash
+# CI-parity PR gate (format, session mint, @smoke|@visual|@roles)
+# Requires the seeded stack on :3000 / :3001 / :3003 and a clean test Redis.
+pnpm ci:e2e-pr
+
 # Fast PR browser signal
 pnpm --filter @auction/web test:e2e:smoke
 
@@ -85,3 +97,14 @@ UPDATE_MARKETING_VISUALS=1 pnpm ci:visual-baseline
 
 Never update snapshots merely to make a failed test green. Confirm the target
 route, role, loading state, and visual change first.
+
+## Session probe failures
+
+`apps/web/e2e/.auth/session-probe.json` is written during mint and uploaded by
+GitHub as `web-pr-session-diagnostics`. A row with `authenticated: false` means
+the cookie never became a valid session — check `get-session` vs `/users/me`,
+cookie domain (`localhost`, not `127.0.0.1`), and API/auth logs.
+
+If a spec lands on `/login` after mint succeeded, `gotoAdminPath` reports those
+same statuses. Retry only happens when the cookie is still valid and SSR missed
+once. Do not add password or Continue recovery to tests.

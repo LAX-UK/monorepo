@@ -14,7 +14,7 @@ async function openAdminHome(page: import("@playwright/test").Page): Promise<voi
 }
 
 test.describe("admin dashboard oversight @roles", () => {
-  test.use({ storageState: roleAuthState.staff });
+  test.use({ storageState: roleAuthState.staffRoles });
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("super admin sees finance primary action and work inbox", async ({ page }) => {

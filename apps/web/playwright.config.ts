@@ -120,12 +120,14 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   ...(process.env.CI ? { workers: 2 } : {}),
+  ...(e2eEnabled ? { globalSetup: "./e2e/global-setup.ts" } : {}),
   expect: {
     toHaveScreenshot: { maxDiffPixelRatio: 0.01, threshold: 0.2 },
   },
   use: {
     baseURL,
-    trace: "on-first-retry",
+    trace: process.env.CI ? "retain-on-failure" : "on-first-retry",
+    screenshot: process.env.CI ? "only-on-failure" : "off",
   },
   projects: e2eEnabled ? roleProjects : [{ name: "chromium", use: chromium }],
 });
