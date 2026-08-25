@@ -277,7 +277,9 @@ export async function ensureAuthenticatedStaffSession(page: Page): Promise<void>
 export async function catalogueManagerLogin(page: Page): Promise<void> {
   await login(page, catalogueCredentials);
   await page.goto("/admin/lots", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: /^lots$/i }).first()).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 export async function financeLogin(page: Page): Promise<void> {

@@ -6,7 +6,7 @@ test.describe("catalogue manager catalog access @roles", () => {
 
   test("can open lots list and draft lot detail publish control", async ({ page }) => {
     await page.goto("/admin/lots?status=draft");
-    await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^lots$/i })).toBeVisible();
 
     const firstLot = page.locator("table tbody tr").first().getByRole("link").first();
     if (!(await firstLot.isVisible({ timeout: 5_000 }).catch(() => false))) {
@@ -19,7 +19,7 @@ test.describe("catalogue manager catalog access @roles", () => {
 
   test("bulk cancel is hidden on lots list", async ({ page }) => {
     await page.goto("/admin/lots?status=draft");
-    await expect(page.getByRole("heading", { name: /lots/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^lots$/i })).toBeVisible();
 
     const firstRowCheckbox = page.locator("table tbody tr").first().getByRole("checkbox");
     if (!(await firstRowCheckbox.isVisible({ timeout: 5_000 }).catch(() => false))) {
