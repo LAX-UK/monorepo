@@ -110,11 +110,18 @@ jobs:
       - name: Prepare auth sessions
         working-directory: apps/web
         run: |
+          flush_rl() { node ../../scripts/ci/flush-auth-rate-limits.mjs; }
+          flush_rl
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff
+          flush_rl
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-finance
+          flush_rl
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-readonly
+          flush_rl
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-operations
+          flush_rl
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-buyer
+          flush_rl
           pnpm exec playwright test e2e/auth.setup.ts --project=setup-catalogue
       - name: Critical browser and curated visual gates
         run: pnpm --filter @auction/web test:e2e:pr

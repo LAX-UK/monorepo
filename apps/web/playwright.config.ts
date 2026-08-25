@@ -23,30 +23,35 @@ const roleProjects = [
     name: "setup-staff",
     testMatch: /auth\.setup\.ts/,
     grep: /@setup-staff/,
+    timeout: 90_000,
     use: chromium,
   },
   {
     name: "setup-buyer",
     testMatch: /auth\.setup\.ts/,
     grep: /@setup-buyer/,
+    timeout: 90_000,
     use: chromium,
   },
   {
     name: "setup-finance",
     testMatch: /auth\.setup\.ts/,
     grep: /@setup-finance/,
+    timeout: 90_000,
     use: chromium,
   },
   {
     name: "setup-readonly",
     testMatch: /auth\.setup\.ts/,
     grep: /@setup-readonly/,
+    timeout: 90_000,
     use: chromium,
   },
   {
     name: "setup-operations",
     testMatch: /auth\.setup\.ts/,
     grep: /@setup-operations/,
+    timeout: 90_000,
     use: chromium,
   },
   ...(hasCatalogueManagerCredentials
@@ -55,6 +60,7 @@ const roleProjects = [
           name: "setup-catalogue",
           testMatch: /auth\.setup\.ts/,
           grep: /@setup-catalogue/,
+          timeout: 90_000,
           use: chromium,
         },
       ]

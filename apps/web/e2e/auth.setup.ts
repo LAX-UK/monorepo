@@ -17,6 +17,7 @@ import {
 import { roleAuthState } from "./helpers/auth-state";
 
 setup.describe.configure({ mode: "serial" });
+setup.setTimeout(90_000);
 
 setup("authenticate staff @setup-staff", async ({ page }) => {
   setup.skip(!e2eEnabled || !hasStaffCredentials(), "Seeded staff credentials are required.");

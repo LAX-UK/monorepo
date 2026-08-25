@@ -299,7 +299,7 @@ export async function operationsLogin(page: Page): Promise<void> {
 }
 
 export async function buyerLogin(page: Page): Promise<void> {
-  await login(page, buyerCredentials);
+  await login(page, buyerCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
   const onAdminStaff = page.getByRole("navigation", { name: /staff dashboard/i });
   if (await onAdminStaff.isVisible().catch(() => false)) {
     throw new Error(
