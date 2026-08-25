@@ -66,13 +66,13 @@ jobs:
       PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD: Password123!
       PLAYWRIGHT_BUYER_EMAIL: estate-owner@lax.bid
       PLAYWRIGHT_BUYER_PASSWORD: Password123!
-      PLAYWRIGHT_CLIENT_EMAIL: e2e-complete@lax.bid
+      PLAYWRIGHT_CLIENT_EMAIL: user1@lax.bid
       PLAYWRIGHT_CLIENT_PASSWORD: Password123!
-      PLAYWRIGHT_UNAPPROVED_EMAIL: e2e-unapproved@lax.bid
+      PLAYWRIGHT_UNAPPROVED_EMAIL: gallery-finance@lax.bid
       PLAYWRIGHT_UNAPPROVED_PASSWORD: Password123!
-      PLAYWRIGHT_INCOMPLETE_EMAIL: e2e-incomplete@lax.bid
+      PLAYWRIGHT_INCOMPLETE_EMAIL: viewer@lax.bid
       PLAYWRIGHT_INCOMPLETE_PASSWORD: Password123!
-      PLAYWRIGHT_ZERO_LOT_EMAIL: e2e-zero-lot@lax.bid
+      PLAYWRIGHT_ZERO_LOT_EMAIL: apple-test@lax.bid
       PLAYWRIGHT_ZERO_LOT_PASSWORD: Password123!
       PLAYWRIGHT_ORG_EMAIL: estate-owner@lax.bid
       PLAYWRIGHT_ORG_PASSWORD: Password123!

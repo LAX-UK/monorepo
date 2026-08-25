@@ -44,22 +44,22 @@ const buyerCredentials: Credentials = {
 };
 
 const clientCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "e2e-complete@lax.bid",
+  email: process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "user1@lax.bid",
   password: process.env.PLAYWRIGHT_CLIENT_PASSWORD ?? "Password123!",
 };
 
 const unapprovedCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_UNAPPROVED_EMAIL ?? "e2e-unapproved@lax.bid",
+  email: process.env.PLAYWRIGHT_UNAPPROVED_EMAIL ?? "gallery-finance@lax.bid",
   password: process.env.PLAYWRIGHT_UNAPPROVED_PASSWORD ?? "Password123!",
 };
 
 const incompleteCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_INCOMPLETE_EMAIL ?? "e2e-incomplete@lax.bid",
+  email: process.env.PLAYWRIGHT_INCOMPLETE_EMAIL ?? "viewer@lax.bid",
   password: process.env.PLAYWRIGHT_INCOMPLETE_PASSWORD ?? "Password123!",
 };
 
 const zeroLotCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_ZERO_LOT_EMAIL ?? "e2e-zero-lot@lax.bid",
+  email: process.env.PLAYWRIGHT_ZERO_LOT_EMAIL ?? "apple-test@lax.bid",
   password: process.env.PLAYWRIGHT_ZERO_LOT_PASSWORD ?? "Password123!",
 };
 

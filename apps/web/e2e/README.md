@@ -16,20 +16,20 @@ PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL=staff-catalogue@lax.bid
 PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD=Password123!
 PLAYWRIGHT_BUYER_EMAIL=estate-owner@lax.bid
 PLAYWRIGHT_BUYER_PASSWORD=Password123!
-PLAYWRIGHT_CLIENT_EMAIL=e2e-complete@lax.bid
+PLAYWRIGHT_CLIENT_EMAIL=user1@lax.bid
 PLAYWRIGHT_CLIENT_PASSWORD=Password123!
-PLAYWRIGHT_UNAPPROVED_EMAIL=e2e-unapproved@lax.bid
+PLAYWRIGHT_UNAPPROVED_EMAIL=gallery-finance@lax.bid
 PLAYWRIGHT_UNAPPROVED_PASSWORD=Password123!
-PLAYWRIGHT_INCOMPLETE_EMAIL=e2e-incomplete@lax.bid
+PLAYWRIGHT_INCOMPLETE_EMAIL=viewer@lax.bid
 PLAYWRIGHT_INCOMPLETE_PASSWORD=Password123!
-PLAYWRIGHT_ZERO_LOT_EMAIL=e2e-zero-lot@lax.bid
+PLAYWRIGHT_ZERO_LOT_EMAIL=apple-test@lax.bid
 PLAYWRIGHT_ZERO_LOT_PASSWORD=Password123!
 ```
 
-Purpose-specific buyers are inserted after the demo seed so migration 0137
-cannot mark them complete. `estate-owner@lax.bid` stays the organisation
-buyer; `admin@lax.bid` stays staff. Visual onboarding baselines stay opt-in
-via `PLAYWRIGHT_ONBOARDING_VISUAL=1` until Linux diffs are inspected.
+Rollout flags are applied to existing demo buyers after seed so the admin
+clients directory stays at 17 rows. `estate-owner@lax.bid` stays the
+organisation buyer; `admin@lax.bid` stays staff. Visual onboarding baselines
+stay opt-in via `PLAYWRIGHT_ONBOARDING_VISUAL=1` until Linux diffs are inspected.
 
 ## Setup
 
