@@ -1,73 +1,42 @@
 #!/usr/bin/env node
 /**
- * Creates independent Playwright storage-state files for each PR-gate role.
- * Sign-in goes through a Playwright browser context so Chromium stores the
- * cookies (API-only Set-Cookie writes are not attached on localhost).
+ * Creates independent Playwright storage-state files via the browser login
+ * journey. Chromium must store the cookies; API-only Set-Cookie JSON is not
+ * attached on localhost (tests then see only `lax_theme`).
  */
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import {
-  cookieHeaderFromStorageState,
-  e2eAuthEndpoints,
-  formatProbeFailure,
-  probeSession,
-  writeProbeReport,
-} from "./e2e-session-state.mjs";
+import { fileURLToPath } from "node:url";
+import { probeStorageStateFile, writeProbeReport } from "./e2e-session-state.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const authDir = path.join(root, "apps/web/e2e/.auth");
+const webDir = path.join(root, "apps/web");
+const authDir = path.join(webDir, "e2e/.auth");
 
-const roles = [
-  {
-    role: "staff",
-    email: process.env.PLAYWRIGHT_STAFF_EMAIL ?? "admin@lax.bid",
-    password: process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "Password123!",
-    outPath: path.join(authDir, "staff.json"),
-  },
-  {
-    role: "staffRoles",
-    email: process.env.PLAYWRIGHT_STAFF_EMAIL ?? "admin@lax.bid",
-    password: process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "Password123!",
-    outPath: path.join(authDir, "staff-roles.json"),
-  },
-  {
-    role: "staffPublic",
-    email: process.env.PLAYWRIGHT_STAFF_EMAIL ?? "admin@lax.bid",
-    password: process.env.PLAYWRIGHT_STAFF_PASSWORD ?? "Password123!",
-    outPath: path.join(authDir, "staff-public.json"),
-  },
-  {
-    role: "finance",
-    email: process.env.PLAYWRIGHT_FINANCE_EMAIL ?? "accountant@lax.bid",
-    password: process.env.PLAYWRIGHT_FINANCE_PASSWORD ?? "Password123!",
-    outPath: path.join(authDir, "finance.json"),
-  },
-  {
-    role: "readonlyStaff",
-    email: process.env.PLAYWRIGHT_READONLY_EMAIL ?? "staff-readonly@lax.bid",
-    password: process.env.PLAYWRIGHT_READONLY_PASSWORD ?? "Password123!",
-    outPath: path.join(authDir, "readonly-staff.json"),
-  },
-  {
-    role: "operations",
-    email: process.env.PLAYWRIGHT_OPERATIONS_EMAIL ?? "staff-operations@lax.bid",
-    password: process.env.PLAYWRIGHT_OPERATIONS_PASSWORD ?? "Password123!",
-    outPath: path.join(authDir, "operations.json"),
-  },
-  {
-    role: "buyer",
-    email: process.env.PLAYWRIGHT_BUYER_EMAIL ?? "estate-owner@lax.bid",
-    password: process.env.PLAYWRIGHT_BUYER_PASSWORD ?? "Password123!",
-    outPath: path.join(authDir, "buyer.json"),
-  },
-  {
-    role: "catalogueManager",
-    email: process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL ?? "",
-    password: process.env.PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD ?? "",
-    outPath: path.join(authDir, "catalogue-manager.json"),
-  },
+const setupProjects = [
+  "setup-staff",
+  "setup-finance",
+  "setup-readonly",
+  "setup-operations",
+  "setup-buyer",
+  ...(process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL &&
+  process.env.PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD
+    ? ["setup-catalogue"]
+    : []),
+];
+
+const expectedFiles = [
+  ["staff", path.join(authDir, "staff.json")],
+  ["staffRoles", path.join(authDir, "staff-roles.json")],
+  ["staffPublic", path.join(authDir, "staff-public.json")],
+  ["finance", path.join(authDir, "finance.json")],
+  ["readonlyStaff", path.join(authDir, "readonly-staff.json")],
+  ["operations", path.join(authDir, "operations.json")],
+  ["buyer", path.join(authDir, "buyer.json")],
+  ...(process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL
+    ? [["catalogueManager", path.join(authDir, "catalogue-manager.json")]]
+    : []),
 ];
 
 function flushRateLimits() {
@@ -76,73 +45,77 @@ function flushRateLimits() {
     env: process.env,
   });
   if (result.status !== 0) {
-    throw new Error("failed to flush auth rate-limit keys before minting a session");
+    throw new Error("failed to flush auth rate-limit keys");
   }
 }
 
-async function loadChromium() {
-  try {
-    return (await import("@playwright/test")).chromium;
-  } catch {
-    const fallback = path.join(root, "apps/web/node_modules/@playwright/test/index.js");
-    return (await import(pathToFileURL(fallback).href)).chromium;
+function forceHttpCookies(filePath) {
+  const state = JSON.parse(readFileSync(filePath, "utf8"));
+  for (const cookie of state.cookies ?? []) {
+    cookie.secure = false;
+    if (!cookie.path) cookie.path = "/";
+    if (typeof cookie.domain === "string") cookie.domain = cookie.domain.replace(/^\./, "");
+  }
+  writeFileSync(filePath, `${JSON.stringify(state, null, 2)}\n`);
+}
+
+function cookieMeta(filePath) {
+  const state = JSON.parse(readFileSync(filePath, "utf8"));
+  return (state.cookies ?? []).map((cookie) => ({
+    name: cookie.name,
+    domain: cookie.domain ?? null,
+    path: cookie.path ?? null,
+    secure: Boolean(cookie.secure),
+    httpOnly: Boolean(cookie.httpOnly),
+    sameSite: cookie.sameSite ?? null,
+    expires: cookie.expires ?? null,
+  }));
+}
+
+for (const project of setupProjects) {
+  flushRateLimits();
+  const result = spawnSync(
+    "pnpm",
+    ["exec", "playwright", "test", "e2e/auth.setup.ts", `--project=${project}`],
+    {
+      cwd: webDir,
+      stdio: "inherit",
+      env: { ...process.env, PLAYWRIGHT_E2E: "1" },
+    },
+  );
+  if (result.status !== 0) {
+    throw new Error(`Playwright ${project} failed`);
   }
 }
 
-function hasSessionToken(state) {
-  return (state.cookies ?? []).some((cookie) => /session_token/.test(cookie.name));
-}
-
-const { webOrigin, authUrl } = e2eAuthEndpoints();
-const chromium = await loadChromium();
-const browser = await chromium.launch();
+flushRateLimits();
 const probes = [];
-
-try {
-  for (const target of roles) {
-    if (!target.email || !target.password) {
-      console.log(`skip ${target.role}: credentials not set`);
-      continue;
-    }
-    flushRateLimits();
-    const context = await browser.newContext();
-    const login = await context.request.post(`${authUrl}/api/auth/sign-in/email`, {
-      headers: { "content-type": "application/json", origin: webOrigin },
-      data: { email: target.email, password: target.password },
-    });
-    if (!login.ok()) {
-      const detail = await login.text();
-      await context.close();
-      throw new Error(
-        `sign-in for ${target.role} failed: ${login.status()} ${detail.slice(0, 200)}`.trim(),
-      );
-    }
-    await context.storageState({ path: target.outPath });
-    await context.close();
-    const state = JSON.parse(readFileSync(target.outPath, "utf8"));
-    if (!hasSessionToken(state)) {
-      throw new Error(`sign-in for ${target.role} did not persist a session_token cookie`);
-    }
-    const probe = await probeSession({ cookie: cookieHeaderFromStorageState(state) });
-    if (!probe.authenticated) {
-      throw new Error(formatProbeFailure(target.role, target.outPath, probe));
-    }
-    probes.push({
-      role: target.role,
-      authenticated: probe.authenticated,
-      authStatus: probe.authStatus,
-      meStatus: probe.meStatus,
-      email: probe.email,
-      cookieNames: probe.cookieNames,
-      cookieDomain: state.cookies[0]?.domain ?? null,
-      cookieCount: state.cookies.length,
-    });
-    console.log(
-      `minted ${target.role} session get-session=${probe.authStatus} /users/me=${probe.meStatus}`,
+for (const [role, filePath] of expectedFiles) {
+  if (!existsSync(filePath)) {
+    throw new Error(`expected auth state ${role} was not written to ${filePath}`);
+  }
+  forceHttpCookies(filePath);
+  const meta = cookieMeta(filePath);
+  if (!meta.some((cookie) => /session_token/.test(cookie.name))) {
+    throw new Error(`${role} storage state has no session_token (${filePath})`);
+  }
+  const probe = await probeStorageStateFile(filePath);
+  if (!probe.authenticated) {
+    throw new Error(
+      `${role} cookie did not authenticate get-session=${probe.authStatus} /users/me=${probe.meStatus}`,
     );
   }
-} finally {
-  await browser.close();
+  probes.push({
+    role,
+    authenticated: probe.authenticated,
+    authStatus: probe.authStatus,
+    meStatus: probe.meStatus,
+    email: probe.email,
+    cookies: meta,
+  });
+  console.log(
+    `verified ${role} session get-session=${probe.authStatus} /users/me=${probe.meStatus}`,
+  );
 }
 
 flushRateLimits();
