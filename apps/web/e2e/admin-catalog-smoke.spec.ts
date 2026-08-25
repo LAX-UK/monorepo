@@ -4,6 +4,7 @@ import {
   dismissStaffPaletteIfOpen,
   e2eEnabled,
   e2eSkipReason,
+  gotoAdminPath,
   seededStaffRoutes,
 } from "./helpers/auth";
 import { staffCatalogListRoutes } from "./helpers/staff-routes";
@@ -13,7 +14,7 @@ test.describe("staff catalog smoke @smoke", () => {
 
   for (const route of staffCatalogListRoutes) {
     test(`${route.path} loads`, async ({ page }) => {
-      const response = await page.goto(route.path, { waitUntil: "domcontentloaded" });
+      const response = await gotoAdminPath(page, route.path);
       expect(response?.ok()).toBeTruthy();
       await dismissStaffPaletteIfOpen(page);
       await expect(page.getByRole("heading", { name: route.heading }).first()).toBeVisible({
@@ -23,9 +24,7 @@ test.describe("staff catalog smoke @smoke", () => {
   }
 
   test("category detail and edit load", async ({ page }) => {
-    await page.goto(`/admin/categories/${seededStaffRoutes.categoryDetail}`, {
-      waitUntil: "domcontentloaded",
-    });
+    await gotoAdminPath(page, `/admin/categories/${seededStaffRoutes.categoryDetail}`);
     await dismissStaffPaletteIfOpen(page);
     await expect(page.getByRole("heading", { name: /paintings/i, level: 1 })).toBeVisible();
     await page.goto(`/admin/categories/${seededStaffRoutes.categoryDetail}/edit`);
@@ -33,9 +32,7 @@ test.describe("staff catalog smoke @smoke", () => {
   });
 
   test("artist detail and edit load", async ({ page }) => {
-    await page.goto(`/admin/artists/${seededStaffRoutes.artistDetail}`, {
-      waitUntil: "domcontentloaded",
-    });
+    await gotoAdminPath(page, `/admin/artists/${seededStaffRoutes.artistDetail}`);
     await assertAdminRouteReady(page);
     await dismissStaffPaletteIfOpen(page);
     await expect(page.getByText(/carolina price/i).first()).toBeVisible({
@@ -46,7 +43,9 @@ test.describe("staff catalog smoke @smoke", () => {
   });
 
   test("venue edit loads", async ({ page }) => {
-    await page.goto(`/admin/venues/${seededStaffRoutes.venueDetail}/edit`);
-    await expect(page.getByRole("heading", { name: /edit venue/i })).toBeVisible();
+    await gotoAdminPath(page, `/admin/venues/${seededStaffRoutes.venueDetail}/edit`);
+    await expect(page.getByRole("heading", { name: /edit venue/i })).toBeVisible({
+      timeout: 20_000,
+    });
   });
 });

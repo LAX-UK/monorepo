@@ -21,13 +21,19 @@ async function prepareCase(
   expect(response?.ok()).toBeTruthy();
   if (/\/login(?:\?|$)/.test(page.url())) {
     const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
-    if (await continueLink.isVisible().catch(() => false)) {
-      await continueLink.click();
-      await page.waitForURL(/\/(admin|dashboard)/, {
-        timeout: 60_000,
-        waitUntil: "domcontentloaded",
-      });
-    } else {
+    const resumed =
+      (await continueLink.isVisible().catch(() => false)) &&
+      (await continueLink
+        .click()
+        .then(async () => {
+          await page.waitForURL(/\/(admin|dashboard)/, {
+            timeout: 15_000,
+            waitUntil: "domcontentloaded",
+          });
+          return true;
+        })
+        .catch(() => false));
+    if (!resumed) {
       await staffLogin(page);
     }
     await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
