@@ -58,6 +58,7 @@ jobs:
       ALLOW_HTTP_COOKIES: "true"
       REQUIRE_EMAIL_VERIFICATION: "false"
       APP_ENV: test
+      CRON_INTERNAL_SECRET: ci-cron-internal-secret-at-least-32-chars
       STRICT_BID_ELIGIBILITY_ENABLED: "false"
       KYC_ONBOARDING_ENABLED: "false"
       FULL_BUYER_ONBOARDING_ENABLED: "false"
