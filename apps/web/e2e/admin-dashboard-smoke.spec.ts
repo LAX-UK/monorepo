@@ -4,15 +4,14 @@ import {
   e2eEnabled,
   e2eSkipReason,
   expectNoSeriousAxeViolationsInMain,
-  staffLogin,
+  gotoAdminPath,
 } from "./helpers/auth";
 
 test.describe("admin dashboard home @smoke", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("opens work inbox from home dashboard", async ({ page }) => {
-    await staffLogin(page);
-    await page.goto("/admin", { waitUntil: "domcontentloaded" });
+    await gotoAdminPath(page, "/admin");
     await dismissStaffPaletteIfOpen(page);
     await expect(page.getByRole("heading", { name: /good day/i })).toBeVisible();
     const inboxHeading = page.getByRole("heading", { name: /work inbox/i });

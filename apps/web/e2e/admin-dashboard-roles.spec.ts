@@ -4,21 +4,12 @@ import {
   e2eEnabled,
   e2eSkipReason,
   expectNoSeriousAxeViolationsInMain,
+  gotoAdminPath,
 } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 
 async function openAdminHome(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/admin", { waitUntil: "domcontentloaded" });
-  if (/\/login(?:\?|$)/.test(page.url())) {
-    const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
-    if (await continueLink.isVisible().catch(() => false)) {
-      await continueLink.click({ timeout: 5_000 });
-      await page.waitForURL(/\/(admin|dashboard|finance)/, {
-        timeout: 15_000,
-        waitUntil: "domcontentloaded",
-      });
-    }
-  }
+  await gotoAdminPath(page, "/admin");
   await dismissStaffPaletteIfOpen(page);
 }
 

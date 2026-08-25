@@ -95,18 +95,63 @@ async function dismissCookieConsentIfVisible(page: Page): Promise<void> {
   }
 }
 
-/** Navigate to a staff path, clicking Continue when the login page already has a session. */
-export async function gotoAdminPath(page: Page, path: string): Promise<Response | null> {
-  const response = await page.goto(path, { waitUntil: "domcontentloaded" });
-  if (!/\/login(?:\?|$)/.test(page.url())) return response;
-  const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
-  if (!(await continueLink.isVisible().catch(() => false))) return response;
+const continueSessionLink = (page: Page) =>
+  page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
+
+/**
+ * Admin layouts resolve the session via SSR `/users/me`. A transient 401/blip
+ * redirects to `/login?next=/admin` even when the browser still has a valid
+ * Better Auth cookie. The login page then hydrates `useAppSession` and shows
+ * Continue. Wait for that client panel — do not treat the first login paint
+ * as a dead session, and do not password-login (rate-limit storm).
+ */
+async function clickContinueAndLeaveLogin(page: Page): Promise<boolean> {
+  const continueLink = continueSessionLink(page);
+  if (!(await continueLink.isVisible().catch(() => false))) {
+    const signedIn = page.locator("output").filter({ hasText: /signed in/i });
+    if (!(await signedIn.isVisible().catch(() => false))) return false;
+    await continueLink.waitFor({ state: "visible", timeout: 5_000 });
+  }
+
   await continueLink.click({ timeout: 5_000 });
-  await page.waitForURL(/\/(admin|dashboard)/, {
+  await page.waitForURL(/\/(admin|dashboard|auth\/post-login)/, {
     timeout: 15_000,
     waitUntil: "domcontentloaded",
   });
-  return page.goto(path, { waitUntil: "domcontentloaded" });
+  if (/\/auth\/post-login/.test(page.url())) {
+    await page.waitForURL(/\/(admin|dashboard)/, {
+      timeout: 15_000,
+      waitUntil: "domcontentloaded",
+    });
+  }
+  return true;
+}
+
+async function resumeStoredSessionFromLoginPage(page: Page): Promise<boolean> {
+  if (!/\/login(?:\?|$)/.test(page.url())) return false;
+
+  const continueLink = continueSessionLink(page);
+  const signedIn = page.locator("output").filter({ hasText: /signed in/i });
+
+  // Email/password fields render while useAppSession is pending — do not treat
+  // them as proof the stored cookie is dead.
+  await Promise.race([
+    continueLink.waitFor({ state: "visible", timeout: 12_000 }),
+    signedIn.waitFor({ state: "visible", timeout: 12_000 }),
+  ]).catch(() => {});
+
+  return clickContinueAndLeaveLogin(page);
+}
+
+/** Navigate to a staff path, resuming a stored session when SSR bounced to login. */
+export async function gotoAdminPath(page: Page, path: string): Promise<Response | null> {
+  let response = await page.goto(path, { waitUntil: "domcontentloaded" });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (!/\/login(?:\?|$)/.test(page.url())) return response;
+    if (!(await resumeStoredSessionFromLoginPage(page))) return response;
+    response = await page.goto(path, { waitUntil: "domcontentloaded" });
+  }
+  return response;
 }
 
 /** Dev servers often never reach `load`; prefer domcontentloaded for staff navigation. */
@@ -128,13 +173,8 @@ async function readLoginBannerErrors(page: Page): Promise<string> {
 }
 
 async function resumeIfAlreadySignedIn(page: Page, destination: RegExp): Promise<boolean> {
-  const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
-  const signedIn = page.locator("output").filter({ hasText: /signed in/i });
-  if ((await signedIn.count()) === 0 && !(await continueLink.isVisible().catch(() => false))) {
-    return false;
-  }
-  if (!(await continueLink.isVisible().catch(() => false))) return false;
-  await continueLink.click();
+  if (!(await clickContinueAndLeaveLogin(page))) return false;
+  if (destination.test(page.url())) return true;
   await page.waitForURL(destination, {
     timeout: 60_000,
     waitUntil: "domcontentloaded",
@@ -315,16 +355,13 @@ export async function staffLogin(page: Page): Promise<void> {
   await assertAuthenticatedStaffSession(page);
 }
 
-/** Re-authenticates when a long visual run loses cookies mid-suite. */
+/** Resume a stored staff session without password login (avoids sign-in rate limits). */
 export async function ensureAuthenticatedStaffSession(page: Page): Promise<void> {
-  const onLogin = /\/login(?:\?|$)/.test(page.url());
-  const loginPassword = page.locator('input[name="password"]').first();
-  if (!(onLogin || (await loginPassword.isVisible().catch(() => false)))) {
+  if (!/\/login(?:\?|$)/.test(page.url())) {
     await assertAuthenticatedStaffSession(page);
     return;
   }
-
-  await staffLogin(page);
+  await resumeStoredSessionFromLoginPage(page);
   await assertAuthenticatedStaffSession(page);
 }
 

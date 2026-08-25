@@ -1,17 +1,8 @@
 import { type Page, expect, test } from "@playwright/test";
-import {
-  catalogueManagerLogin,
-  dismissStaffPaletteIfOpen,
-  e2eEnabled,
-  e2eSkipReason,
-} from "./helpers/auth";
+import { dismissStaffPaletteIfOpen, e2eEnabled, e2eSkipReason, gotoAdminPath } from "./helpers/auth";
 
 async function openCatalogueLotsDraft(page: Page): Promise<void> {
-  await page.goto("/admin/lots?status=draft", { waitUntil: "domcontentloaded" });
-  if (/\/login(?:\?|$)/.test(page.url())) {
-    await catalogueManagerLogin(page);
-    await page.goto("/admin/lots?status=draft", { waitUntil: "domcontentloaded" });
-  }
+  await gotoAdminPath(page, "/admin/lots?status=draft");
   await dismissStaffPaletteIfOpen(page);
   await expect(page.getByRole("heading", { name: /^lots$/i }).first()).toBeVisible({
     timeout: 20_000,
@@ -58,7 +49,7 @@ test.describe("catalogue manager catalog access @roles", () => {
   });
 
   test("sale lots hide return to inventory", async ({ page }) => {
-    await page.goto("/admin/sales", { waitUntil: "domcontentloaded" });
+    await gotoAdminPath(page, "/admin/sales");
     await dismissStaffPaletteIfOpen(page);
     const cancelledRow = page
       .locator("table tbody tr")
@@ -74,7 +65,7 @@ test.describe("catalogue manager catalog access @roles", () => {
   });
 
   test("sale detail hides auction-manager actions", async ({ page }) => {
-    await page.goto("/admin/sales", { waitUntil: "domcontentloaded" });
+    await gotoAdminPath(page, "/admin/sales");
     await dismissStaffPaletteIfOpen(page);
     await expect(page.getByRole("heading", { name: /^sales$/i }).first()).toBeVisible({
       timeout: 20_000,

@@ -4,6 +4,7 @@ import {
   assertAdminRouteReady,
   dismissStaffPaletteIfOpen,
   e2eEnabled,
+  gotoAdminPath,
   hasStaffCredentials,
   stabilizeVisualPage,
 } from "./helpers/auth";
@@ -16,19 +17,8 @@ async function prepareCase(
   page: Page,
   visualCase: (typeof adminVisualCases)[number],
 ): Promise<void> {
-  const response = await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
+  const response = await gotoAdminPath(page, visualCase.path);
   expect(response?.ok()).toBeTruthy();
-  if (/\/login(?:\?|$)/.test(page.url())) {
-    const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
-    if (await continueLink.isVisible().catch(() => false)) {
-      await continueLink.click({ timeout: 5_000 });
-      await page.waitForURL(/\/(admin|dashboard)/, {
-        timeout: 15_000,
-        waitUntil: "domcontentloaded",
-      });
-      await page.goto(visualCase.path, { waitUntil: "domcontentloaded" });
-    }
-  }
   await assertAdminRouteReady(page);
   await dismissStaffPaletteIfOpen(page);
 
