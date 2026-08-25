@@ -57,8 +57,9 @@ jobs:
       NEXT_PUBLIC_AUTH_URL: http://localhost:3003
       ALLOW_HTTP_COOKIES: "true"
       REQUIRE_EMAIL_VERIFICATION: "false"
-      APP_ENV: test
-      CRON_INTERNAL_SECRET: ci-cron-internal-secret-at-least-32-chars
+      # development: API boot does not require CRON_INTERNAL_SECRET (gitleaks flags dummy secrets).
+      # Rollout flags below are explicit so APP_ENV fallback is unused in this gate.
+      APP_ENV: development
       STRICT_BID_ELIGIBILITY_ENABLED: "false"
       KYC_ONBOARDING_ENABLED: "false"
       FULL_BUYER_ONBOARDING_ENABLED: "false"
