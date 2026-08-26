@@ -28,8 +28,8 @@ export function CategoryDestructivePanel({ category }: Props) {
       <section className="space-y-2 rounded-md border border-outline-variant/40 p-4">
         <h2 className="font-heading text-sm">Lifecycle</h2>
         <p className="text-sm text-on-surface-variant">
-          This category is archived and still referenced across the catalogue. It cannot be deleted
-          until all assignments are removed.
+          This category is archived and still referenced by catalogue assignments or buyer
+          interests. It cannot be deleted until all references are removed.
         </p>
       </section>
     );
@@ -66,7 +66,8 @@ export function CategoryDestructivePanel({ category }: Props) {
 
       {!canDelete && canArchive ? (
         <p className="text-sm text-on-surface-variant">
-          Delete is unavailable while lots, sales, or submissions still reference this category.
+          Delete is unavailable while lots, sales, submissions, or buyer interests still reference
+          this category.
         </p>
       ) : null}
 

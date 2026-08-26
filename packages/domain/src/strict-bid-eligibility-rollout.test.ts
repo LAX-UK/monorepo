@@ -11,6 +11,11 @@ describe("resolveStrictBidEligibilityRollout", () => {
     expect(resolveStrictBidEligibilityRollout({ appEnv: "test" })).toBe(true);
   });
 
+  it("defaults omitted appEnv to production (strict off) unless explicitly enabled", () => {
+    expect(resolveStrictBidEligibilityRollout({})).toBe(false);
+    expect(resolveStrictBidEligibilityRollout({ enabled: true })).toBe(true);
+  });
+
   it("honours an explicit deployment value", () => {
     expect(resolveStrictBidEligibilityRollout({ appEnv: "production", enabled: true })).toBe(true);
     expect(resolveStrictBidEligibilityRollout({ appEnv: "test", enabled: false })).toBe(false);

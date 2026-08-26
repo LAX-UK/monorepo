@@ -1,3 +1,4 @@
+import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
@@ -22,6 +23,7 @@ export class ConditionReportService implements IConditionReportService {
     notificationDispatcher: NotificationDispatcher | null,
     notificationFactory: NotificationFactory,
     requestRepo: IConditionReportRequestRepository,
+    identityEligibilityGate: IBidIdentityEligibilityGate | null = null,
   ) {
     const ctx = createConditionReportContext({
       transactionRunner,
@@ -31,6 +33,7 @@ export class ConditionReportService implements IConditionReportService {
       domainEventSink,
       notificationDispatcher,
       notificationFactory,
+      identityEligibilityGate,
     });
     this.buyer = new ConditionReportBuyerService(ctx);
     this.admin = new ConditionReportAdminService(ctx);

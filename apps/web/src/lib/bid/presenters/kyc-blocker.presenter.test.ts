@@ -37,7 +37,11 @@ describe("resolveKycBidBlockerPresentation", () => {
       feedback: { action: "retry", needsResubmit: false },
     });
     expect(presentation.tone).toBe("danger");
-    expect(presentation.action).toMatchObject({ kind: "link", label: "Try verification again" });
+    expect(presentation.action).toMatchObject({
+      kind: "link",
+      label: "Try verification again",
+      shortLabel: "Retry",
+    });
   });
 
   it("maps none feedback to an unavailable status", () => {

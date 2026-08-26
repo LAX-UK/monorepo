@@ -32,6 +32,18 @@ describe("resolvePostVerifyDestination", () => {
     ).toBe("/dashboard");
   });
 
+  it("does not send an already-approved buyer through identity onboarding", () => {
+    expect(
+      resolvePostVerifyDestination({
+        requestedNext: "/dashboard/watchlist",
+        sessionPersona: "individual",
+        identityOnboardingEnabled: true,
+        categoryInterestsOnboardingCompletedAt: "2026-08-20T00:00:00.000Z",
+        kycStatus: "approved",
+      }),
+    ).toEqual({ href: "/dashboard/watchlist", label: "Continue" });
+  });
+
   it("routes an individual through onboarding while preserving safe intent", () => {
     expect(
       resolvePostVerifyDestination({

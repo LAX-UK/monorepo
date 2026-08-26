@@ -1,12 +1,19 @@
 import { vi } from "vitest";
 import type { UserRouteServices } from "../services/interfaces/user-routes/index.js";
 
+const EMPTY_CATEGORY_INTERESTS = {
+  status: 200,
+  body: {
+    data: { categoryIds: [], onboardingCompleted: false, onboardingCompletedAt: null },
+  },
+} as const;
+
 export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): UserRouteServices {
   return {
     categoryInterestsHttp: {
-      getForUser: vi.fn(),
-      replacePreferences: vi.fn(),
-      replaceAndComplete: vi.fn(),
+      getForUser: vi.fn().mockResolvedValue(EMPTY_CATEGORY_INTERESTS),
+      replacePreferences: vi.fn().mockResolvedValue(EMPTY_CATEGORY_INTERESTS),
+      replaceAndComplete: vi.fn().mockResolvedValue(EMPTY_CATEGORY_INTERESTS),
     },
     publicHttp: {
       register: vi.fn(),

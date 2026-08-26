@@ -48,6 +48,7 @@ import { SaleStatusTransitionService } from "../services/sale-status-transition.
 import { SaleService } from "../services/sale.service.js";
 import { SalePublishService } from "../services/sale/sale-publish.service.js";
 import { VenueService } from "../services/venue.service.js";
+import { createBidIdentityEligibilityGate } from "./create-bid-eligibility.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -142,8 +143,13 @@ export function createLotCatalogServices(
     artistRegistryService,
   } = platform;
   const { lotLifecycleService } = lotLifecycle;
-  const { mediaUrlResolver, catalogueMediaUrlResolver, mediaAssetEnricher, imageCleanupService } =
-    complianceMedia;
+  const {
+    mediaUrlResolver,
+    catalogueMediaUrlResolver,
+    mediaAssetEnricher,
+    imageCleanupService,
+    kycService,
+  } = complianceMedia;
   const { qrCodeService } = adminReaders;
   const { telephoneBidBookingService } = saleRegistration;
 
@@ -201,6 +207,9 @@ export function createLotCatalogServices(
     notificationDispatcher,
     notificationFactory,
     repos.conditionReportRequestRepository,
+    // Condition reports are an unconditional hard gate, independent of the
+    // self-service bidding rollout flag.
+    createBidIdentityEligibilityGate(db, kycService, true),
   );
 
   const saleFollowService = new SaleFollowService(saleFollowRepo, saleRepo);

@@ -47,6 +47,14 @@ function createSut(categories: Category[]) {
     usageTotals: { lots: 0, sales: 0, submissions: 0 },
     mostUsedCategory: null,
   });
+  const usageFor = vi.fn().mockResolvedValue({
+    lots: 0,
+    sales: 0,
+    submissions: 0,
+    interests: 0,
+    total: 0,
+  });
+  const remove = vi.fn().mockResolvedValue(true);
   const repo = {
     findAll,
     findById,
@@ -55,6 +63,8 @@ function createSut(categories: Category[]) {
     update,
     findPageForAdmin,
     summarizeForAdmin,
+    usageFor,
+    delete: remove,
   } as unknown as ICategoryRepository;
   const service = new CategoryService(repo);
   return {
@@ -66,6 +76,8 @@ function createSut(categories: Category[]) {
     update,
     findPageForAdmin,
     summarizeForAdmin,
+    usageFor,
+    remove,
   };
 }
 
@@ -170,6 +182,33 @@ describe("CategoryService.create", () => {
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Contemporary Art", slug: "contemporary-art" }),
     );
+  });
+});
+
+describe("CategoryService.delete", () => {
+  it("blocks delete when buyer interests still reference the category", async () => {
+    const rows = [category({ id: childId, name: "Paintings", slug: "paintings" })];
+    const { service, usageFor, remove } = createSut(rows);
+    usageFor.mockResolvedValue({
+      lots: 0,
+      sales: 0,
+      submissions: 0,
+      interests: 3,
+      total: 3,
+    });
+
+    await expect(service.delete(childId)).rejects.toBeInstanceOf(CategoryError);
+    await expect(service.delete(childId)).rejects.toThrow(/buyer interests/i);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("maps a concurrent foreign-key reference to the category-in-use error", async () => {
+    const rows = [category({ id: childId, name: "Paintings", slug: "paintings" })];
+    const { service, remove } = createSut(rows);
+    const foreignKeyError = Object.assign(new Error("foreign key violation"), { code: "23503" });
+    remove.mockRejectedValue(new Error("query failed", { cause: foreignKeyError }));
+
+    await expect(service.delete(childId)).rejects.toThrow(/buyer interests/i);
   });
 });
 

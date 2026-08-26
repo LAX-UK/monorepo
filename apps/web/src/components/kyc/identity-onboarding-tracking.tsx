@@ -1,13 +1,15 @@
 "use client";
 
 import { type KycOnboardingEvent, trackKycOnboarding } from "@/lib/analytics/events";
+import { trackOnce } from "@/lib/analytics/track-once";
 import type {
   IdentityOnboardingSource,
   IdentityOnboardingStep,
 } from "@/lib/kyc/identity-onboarding";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 export function IdentityOnboardingViewTracker({
   step,
@@ -16,13 +18,12 @@ export function IdentityOnboardingViewTracker({
   step: IdentityOnboardingStep;
   source?: IdentityOnboardingSource;
 }) {
-  const tracked = useRef(false);
-
+  const pathname = usePathname();
   useEffect(() => {
-    if (tracked.current) return;
-    tracked.current = true;
-    trackKycOnboarding({ event: "kyc_onboarding_view", step, source });
-  }, [source, step]);
+    trackOnce(`buyer-onboarding:identity:${step}:${source}:${pathname}`, () => {
+      trackKycOnboarding({ event: "kyc_onboarding_view", step, source });
+    });
+  }, [pathname, source, step]);
 
   return null;
 }

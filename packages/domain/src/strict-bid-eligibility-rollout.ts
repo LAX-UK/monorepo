@@ -13,5 +13,5 @@ export function resolveStrictBidEligibilityRollout({
   appEnv,
   enabled,
 }: StrictBidEligibilityRolloutInput): boolean {
-  return enabled ?? appEnv !== "production";
+  return enabled ?? (appEnv ?? "production") !== "production";
 }

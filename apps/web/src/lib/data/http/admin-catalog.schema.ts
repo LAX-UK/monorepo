@@ -22,6 +22,7 @@ const adminCategorySchema = z
     const lots = Number(usageRaw.lots ?? 0);
     const sales = Number(usageRaw.sales ?? 0);
     const submissions = Number(usageRaw.submissions ?? 0);
+    const interests = Number(usageRaw.interests ?? 0);
     return {
       id: String(row.id ?? ""),
       name: String(row.name ?? ""),
@@ -37,7 +38,8 @@ const adminCategorySchema = z
         lots,
         sales,
         submissions,
-        total: Number(usageRaw.total ?? lots + sales + submissions),
+        interests,
+        total: Number(usageRaw.total ?? lots + sales + submissions + interests),
       },
     };
   });

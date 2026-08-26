@@ -65,17 +65,22 @@ export class AbsenteeBidService implements IAbsenteeBidService {
         status: 400,
       });
     }
-    if (this.identityEligibilityGate) {
-      const identityResult = await this.identityEligibilityGate.assertSelfServiceEligible(
-        input.userId,
-      );
-      if (identityResult.isErr()) {
-        return err({
-          message: identityResult.error.message,
-          status: identityResult.error.status,
-          ...(identityResult.error.code ? { code: identityResult.error.code } : {}),
-        });
-      }
+    if (!this.identityEligibilityGate) {
+      return err({
+        message: "Identity eligibility gate is not configured",
+        status: 503,
+        code: "identity_gate_unconfigured",
+      });
+    }
+    const identityResult = await this.identityEligibilityGate.assertSelfServiceEligible(
+      input.userId,
+    );
+    if (identityResult.isErr()) {
+      return err({
+        message: identityResult.error.message,
+        status: identityResult.error.status,
+        ...(identityResult.error.code ? { code: identityResult.error.code } : {}),
+      });
     }
     if (this.legalEntityRepository) {
       const entity = await this.legalEntityRepository.findById(input.buyerLegalEntityId);

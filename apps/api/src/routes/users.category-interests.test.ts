@@ -91,6 +91,23 @@ describe("GET /users/me/category-interests", () => {
     const { app } = createApp({ sessionUser: null });
     expect((await app.request("/users/me/category-interests")).status).toBe(401);
   });
+
+  it.each([
+    { role: "staff", suspended: false, emailVerified: true, signupPersona: "individual" as const },
+    {
+      role: "client",
+      suspended: false,
+      emailVerified: true,
+      signupPersona: "organisation" as const,
+    },
+  ])("rejects an ineligible account before reading interests", async (profile) => {
+    const { app, repository } = createApp({ profile });
+    const response = await app.request("/users/me/category-interests");
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "category_interests_not_eligible" });
+    expect(repository.getForUser).not.toHaveBeenCalled();
+  });
 });
 
 describe("PUT /users/me/category-interests", () => {

@@ -23,7 +23,11 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
       .leftJoin(userCategoryInterest, eq(userCategoryInterest.userId, user.id))
       .leftJoin(category, eq(category.id, userCategoryInterest.categoryId))
       .where(eq(user.id, userId))
-      .orderBy(asc(userCategoryInterest.sortOrder));
+      .orderBy(asc(userCategoryInterest.sortOrder), asc(userCategoryInterest.categoryId));
+
+    if (rows.length === 0) {
+      throw new Error("category interests user not found");
+    }
 
     return {
       categoryIds: rows.flatMap((row) =>
@@ -41,7 +45,9 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
       const [completionRow] = await tx
         .select({ onboardingCompletedAt: user.categoryInterestsOnboardingCompletedAt })
         .from(user)
-        .where(eq(user.id, userId));
+        .where(eq(user.id, userId))
+        .for("key share");
+      if (!completionRow) throw new Error("category interests user not found");
       const replaced = await this.replaceCategoryRows(tx, userId, categoryIds);
       if (!replaced.ok) return replaced;
       return {
@@ -59,6 +65,13 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
     categoryIds: readonly string[],
   ): Promise<ReplaceCategoryInterestsResult> {
     return this.db.transaction(async (tx) => {
+      const [lockedUser] = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.id, userId))
+        .for("key share");
+      if (!lockedUser) throw new Error("category interests user not found");
+
       const replaced = await this.replaceCategoryRows(tx, userId, categoryIds);
       if (!replaced.ok) return replaced;
 
@@ -90,25 +103,26 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
     userId: string,
     categoryIds: readonly string[],
   ): Promise<{ ok: true; categoryIds: string[] } | { ok: false; invalidCategoryIds: string[] }> {
+    const uniqueIds = [...new Set(categoryIds)];
     const existingCategoryIds =
-      categoryIds.length === 0
+      uniqueIds.length === 0
         ? []
         : (
             await tx
               .select({ id: category.id })
               .from(category)
-              .where(and(inArray(category.id, [...categoryIds]), eq(category.archived, false)))
+              .where(and(inArray(category.id, uniqueIds), eq(category.archived, false)))
           ).map((row) => row.id);
     const existing = new Set(existingCategoryIds);
-    const invalidCategoryIds = categoryIds.filter((id) => !existing.has(id));
+    const invalidCategoryIds = uniqueIds.filter((id) => !existing.has(id));
     if (invalidCategoryIds.length > 0) {
       return { ok: false as const, invalidCategoryIds };
     }
 
     await tx.delete(userCategoryInterest).where(eq(userCategoryInterest.userId, userId));
-    if (categoryIds.length > 0) {
+    if (uniqueIds.length > 0) {
       await tx.insert(userCategoryInterest).values(
-        categoryIds.map((categoryId, sortOrder) => ({
+        uniqueIds.map((categoryId, sortOrder) => ({
           userId,
           categoryId,
           sortOrder,
@@ -116,6 +130,6 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
       );
     }
 
-    return { ok: true as const, categoryIds: [...categoryIds] };
+    return { ok: true as const, categoryIds: uniqueIds };
   }
 }

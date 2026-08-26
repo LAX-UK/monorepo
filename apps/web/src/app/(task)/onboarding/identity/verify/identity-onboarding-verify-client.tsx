@@ -6,9 +6,9 @@ import {
   KycStatusPanel,
   type KycUiPhase,
   KycVerificationLauncher,
-  isKycAwaitingDecision,
   isKycSessionContinuable,
   kycInitialPhase,
+  resolveIdentityVerifyClientPhase,
 } from "@/components/kyc";
 import { TrackedIdentityOnboardingLink } from "@/components/kyc/identity-onboarding-tracking";
 import { trackKycOnboarding } from "@/lib/analytics/events";
@@ -18,6 +18,7 @@ import {
   type IdentityOnboardingSource,
   identityOnboardingHref,
 } from "@/lib/kyc/identity-onboarding";
+import { resolveIdentityVerifySkipLabel } from "@/lib/kyc/identity-onboarding-presentation";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -37,6 +38,7 @@ export function IdentityOnboardingVerifyClient({ summary, next, source }: Props)
   const submittedStorageKey = summary?.latestSessionId
     ? `@kyc-onboarding-submitted:${summary.latestSessionId}`
     : null;
+  const skipLabel = resolveIdentityVerifySkipLabel(source);
   const returnUrl = normalizeKycReturnUrl(
     `${identityOnboardingHref("verify", next, source)}&kyc=complete`,
   );
@@ -84,18 +86,16 @@ export function IdentityOnboardingVerifyClient({ summary, next, source }: Props)
   );
 
   useEffect(() => {
-    if (searchParams.get("kyc") === "complete") {
-      if (summary?.feedback?.needsResubmit) {
-        setPhase("needs_resubmit");
-        return;
-      }
-      if (isKycAwaitingDecision(summary)) {
-        setPhase("submitted");
-        trackPhase("submitted");
-        return;
-      }
-    }
-    setPhase(kycInitialPhase(summary));
+    const returnedFromProvider = searchParams.get("kyc") === "complete";
+    setPhase((current) => {
+      const next = resolveIdentityVerifyClientPhase({
+        summary,
+        returnedFromProvider,
+        currentPhase: current,
+      });
+      if (next === "submitted") trackPhase("submitted");
+      return next;
+    });
   }, [searchParams, summary, trackPhase]);
 
   return (
@@ -123,16 +123,18 @@ export function IdentityOnboardingVerifyClient({ summary, next, source }: Props)
         <Button asChild variant="ghost">
           <Link href={identityOnboardingHref("why", next, source)}>Back</Link>
         </Button>
-        <Button asChild variant="ghost">
-          <TrackedIdentityOnboardingLink
-            href={next}
-            event="kyc_onboarding_skip"
-            step="verify"
-            source={source}
-          >
-            Finish later
-          </TrackedIdentityOnboardingLink>
-        </Button>
+        {skipLabel ? (
+          <Button asChild variant="ghost">
+            <TrackedIdentityOnboardingLink
+              href={next}
+              event="kyc_onboarding_skip"
+              step="verify"
+              source={source}
+            >
+              {skipLabel}
+            </TrackedIdentityOnboardingLink>
+          </Button>
+        ) : null}
       </div>
     </>
   );

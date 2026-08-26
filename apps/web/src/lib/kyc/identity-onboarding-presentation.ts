@@ -1,5 +1,6 @@
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import type { IdentityOnboardingSource } from "@/lib/kyc/identity-onboarding";
+import { kycOnboardingStartLabel } from "@/lib/kyc/kyc-link-action-copy";
 
 type IdentityOnboardingPresentation = {
   title: string;
@@ -24,21 +25,28 @@ export function resolveIdentitySkipLabel(source: IdentityOnboardingSource): stri
   return isContextualHardGate(source) ? null : "Verify later";
 }
 
+export function resolveIdentityVerifySkipLabel(source: IdentityOnboardingSource): string | null {
+  return isContextualHardGate(source) ? null : "Finish later";
+}
+
+export function resolveIdentityVerifyDescription(source: IdentityOnboardingSource): string {
+  if (isContextualHardGate(source)) {
+    return "Complete the secure Veriff document and selfie checks to continue.";
+  }
+  return "Complete the secure Veriff document and selfie checks. You can finish later and resume without losing your place.";
+}
+
 export function resolveIdentityStartButtonLabel(
   source: IdentityOnboardingSource,
   summary: KycStatusSummaryDto | null,
 ): string {
-  if (summary?.feedback.action === "wait" || summary?.status === "pending") {
-    return "View verification status";
-  }
-  if (summary?.feedback.needsResubmit || summary?.feedback.action === "continue") {
-    return "Continue verification";
-  }
-  if (summary?.feedback.action === "retry" || summary?.status === "rejected") {
-    return "Try again";
-  }
-  if (isContextualHardGate(source)) return "Verify to continue bidding";
-  return "Verify now";
+  const feedback =
+    summary?.status === "pending"
+      ? { ...summary.feedback, action: "wait" as const, needsResubmit: false }
+      : summary?.status === "rejected"
+        ? { ...summary.feedback, action: "retry" as const }
+        : summary?.feedback;
+  return kycOnboardingStartLabel(feedback, isContextualHardGate(source));
 }
 
 export function resolveIdentityOnboardingPresentation(

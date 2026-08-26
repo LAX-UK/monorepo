@@ -3,6 +3,7 @@
 import { BuyerOnboardingRouteError } from "@/components/onboarding/buyer-onboarding-route-error";
 
 export default function InterestsOnboardingError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -13,6 +14,7 @@ export default function InterestsOnboardingError({
       title="Interests setup is temporarily unavailable"
       detail="Your progress is safe. Try loading this step again, or return to your dashboard."
       reset={reset}
+      error={error}
     />
   );
 }

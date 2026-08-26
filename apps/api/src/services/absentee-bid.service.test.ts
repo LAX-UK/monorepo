@@ -14,6 +14,13 @@ import type { IBidPlacer } from "./interfaces/place-bid.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
 
+function okIdentityGate(): IBidIdentityEligibilityGate {
+  return {
+    assertSelfServiceEligible: vi.fn().mockResolvedValue(ok(undefined)),
+    assertValidatedOperatorEligible: vi.fn().mockResolvedValue(ok(undefined)),
+  };
+}
+
 function mkLot(overrides: Partial<Lot> = {}): Lot {
   const now = new Date();
   return {
@@ -120,6 +127,8 @@ describe("AbsenteeBidService", () => {
         findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
       } as unknown as ILotRepository,
       legalEntities,
+      null,
+      okIdentityGate(),
     );
 
     const result = await svc.schedule({
@@ -147,6 +156,8 @@ describe("AbsenteeBidService", () => {
         findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
       } as unknown as ILotRepository,
       legalEntities,
+      null,
+      okIdentityGate(),
     );
 
     const result = await svc.schedule({
@@ -176,6 +187,8 @@ describe("AbsenteeBidService", () => {
       {} as IBidPlacer,
       lotRepo,
       null,
+      null,
+      okIdentityGate(),
     );
     const result = await svc.schedule({
       userId: "u1",
@@ -188,6 +201,31 @@ describe("AbsenteeBidService", () => {
       expect(result.error.status).toBe(409);
       expect(result.error.code).toBe("absentee_duplicate");
     }
+  });
+
+  it("fails closed when the identity eligibility gate is not configured", async () => {
+    const insertScheduled = vi.fn();
+    const svc = new AbsenteeBidService(
+      { insertScheduled } as unknown as IAbsenteeBidRepository,
+      {} as IBidPlacer,
+      {
+        findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
+      } as unknown as ILotRepository,
+      null,
+    );
+
+    const result = await svc.schedule({
+      userId: "u1",
+      lotId: "lot-1",
+      buyerLegalEntityId: "le-1",
+      maxAmount: 500,
+    });
+
+    expect(result.isErr() && [result.error.status, result.error.code]).toEqual([
+      503,
+      "identity_gate_unconfigured",
+    ]);
+    expect(insertScheduled).not.toHaveBeenCalled();
   });
 
   it("marks absentee lost when opening bid exceeds max", async () => {

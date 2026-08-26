@@ -70,11 +70,14 @@ export async function seedE2eRolloutIdentities(): Promise<void> {
     })
     .where(eq(schema.user.id, E2E_ROLLOUT_IDS.zeroLot));
 
-  await db.insert(schema.userCategoryInterest).values({
-    userId: E2E_ROLLOUT_IDS.unapproved,
-    categoryId: LEGACY_PAINTINGS_CATEGORY_ID,
-    sortOrder: 0,
-  });
+  await db
+    .insert(schema.userCategoryInterest)
+    .values({
+      userId: E2E_ROLLOUT_IDS.unapproved,
+      categoryId: LEGACY_PAINTINGS_CATEGORY_ID,
+      sortOrder: 0,
+    })
+    .onConflictDoNothing();
 
   console.log("  E2E rollout identities (existing users):");
   console.log(`    ${E2E_ROLLOUT_EMAILS.complete}        interests done, KYC approved`);

@@ -25,7 +25,25 @@ describe("DrizzleCategoryInterestsRepository", () => {
     });
   });
 
-  it("returns a stable incomplete state when the user has no joined row", async () => {
+  it("returns a stable incomplete state when the user row exists without interests", async () => {
+    const orderBy = vi
+      .fn()
+      .mockResolvedValue([{ categoryId: null, archived: null, onboardingCompletedAt: null }]);
+    const where = vi.fn().mockReturnValue({ orderBy });
+    const query = { leftJoin: vi.fn(), where };
+    query.leftJoin.mockReturnValue(query);
+    const from = vi.fn().mockReturnValue(query);
+    const repository = new DrizzleCategoryInterestsRepository({
+      select: vi.fn().mockReturnValue({ from }),
+    } as never);
+
+    await expect(repository.getForUser("u1")).resolves.toEqual({
+      categoryIds: [],
+      onboardingCompletedAt: null,
+    });
+  });
+
+  it("throws when the user row is missing", async () => {
     const orderBy = vi.fn().mockResolvedValue([]);
     const where = vi.fn().mockReturnValue({ orderBy });
     const query = { leftJoin: vi.fn(), where };
@@ -35,10 +53,9 @@ describe("DrizzleCategoryInterestsRepository", () => {
       select: vi.fn().mockReturnValue({ from }),
     } as never);
 
-    await expect(repository.getForUser("missing")).resolves.toEqual({
-      categoryIds: [],
-      onboardingCompletedAt: null,
-    });
+    await expect(repository.getForUser("missing")).rejects.toThrow(
+      "category interests user not found",
+    );
   });
 
   it("omits archived categories from the active selection", async () => {
@@ -70,7 +87,8 @@ describe("DrizzleCategoryInterestsRepository", () => {
     const deleteFrom = vi.fn().mockReturnValue({ where: deleteWhere });
     const insertValues = vi.fn().mockResolvedValue(undefined);
     const insert = vi.fn().mockReturnValue({ values: insertValues });
-    const userWhere = vi.fn().mockResolvedValue([{ onboardingCompletedAt: completedAt }]);
+    const lockFor = vi.fn().mockResolvedValue([{ onboardingCompletedAt: completedAt }]);
+    const userWhere = vi.fn().mockReturnValue({ for: lockFor });
     const userFrom = vi.fn().mockReturnValue({ where: userWhere });
     const tx = {
       select: vi
@@ -104,7 +122,8 @@ describe("DrizzleCategoryInterestsRepository", () => {
     const deleteFrom = vi.fn().mockReturnValue({ where: deleteWhere });
     const insertValues = vi.fn().mockResolvedValue(undefined);
     const insert = vi.fn().mockReturnValue({ values: insertValues });
-    const userWhere = vi.fn().mockResolvedValue([{ onboardingCompletedAt: completedAt }]);
+    const lockFor = vi.fn().mockResolvedValue([{ onboardingCompletedAt: completedAt }]);
+    const userWhere = vi.fn().mockReturnValue({ for: lockFor });
     const userFrom = vi.fn().mockReturnValue({ where: userWhere });
     const tx = {
       select: vi
@@ -131,11 +150,17 @@ describe("DrizzleCategoryInterestsRepository", () => {
 
   it("atomically replaces interests and records only the first completion", async () => {
     const completedAt = new Date("2026-08-20T12:00:00.000Z");
+    const lockFor = vi.fn().mockResolvedValue([{ id: "u1" }]);
+    const userWhere = vi.fn().mockReturnValue({ for: lockFor });
+    const userFrom = vi.fn().mockReturnValue({ where: userWhere });
     const categoryWhere = vi
       .fn()
       .mockResolvedValue([{ id: firstCategoryId }, { id: secondCategoryId }]);
     const categoryFrom = vi.fn().mockReturnValue({ where: categoryWhere });
-    const select = vi.fn().mockReturnValue({ from: categoryFrom });
+    const select = vi
+      .fn()
+      .mockReturnValueOnce({ from: userFrom })
+      .mockReturnValueOnce({ from: categoryFrom });
     const deleteWhere = vi.fn().mockResolvedValue(undefined);
     const deleteFrom = vi.fn().mockReturnValue({ where: deleteWhere });
     const insertValues = vi.fn().mockResolvedValue(undefined);
@@ -162,12 +187,92 @@ describe("DrizzleCategoryInterestsRepository", () => {
       { userId: "u1", categoryId: firstCategoryId, sortOrder: 0 },
       { userId: "u1", categoryId: secondCategoryId, sortOrder: 1 },
     ]);
+    expect(lockFor).toHaveBeenCalledWith("key share");
+  });
+
+  it("rejects replace-and-complete before insert when the user is missing", async () => {
+    const lockFor = vi.fn().mockResolvedValue([]);
+    const userWhere = vi.fn().mockReturnValue({ for: lockFor });
+    const userFrom = vi.fn().mockReturnValue({ where: userWhere });
+    const tx = {
+      select: vi.fn().mockReturnValue({ from: userFrom }),
+      delete: vi.fn(),
+      insert: vi.fn(),
+      update: vi.fn(),
+    };
+    const transaction = vi.fn(async (work: (transaction: typeof tx) => unknown) => work(tx));
+    const repository = new DrizzleCategoryInterestsRepository({ transaction } as never);
+
+    await expect(repository.replaceAndComplete("missing", [firstCategoryId])).rejects.toThrow(
+      "category interests user not found",
+    );
+    expect(tx.insert).not.toHaveBeenCalled();
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it("throws from replace when the user is missing", async () => {
+    const lockFor = vi.fn().mockResolvedValue([]);
+    const userWhere = vi.fn().mockReturnValue({ for: lockFor });
+    const userFrom = vi.fn().mockReturnValue({ where: userWhere });
+    const tx = {
+      select: vi.fn().mockReturnValue({ from: userFrom }),
+      delete: vi.fn(),
+      insert: vi.fn(),
+      update: vi.fn(),
+    };
+    const transaction = vi.fn(async (work: (transaction: typeof tx) => unknown) => work(tx));
+    const repository = new DrizzleCategoryInterestsRepository({ transaction } as never);
+
+    await expect(repository.replace("missing", [firstCategoryId])).rejects.toThrow(
+      "category interests user not found",
+    );
+    expect(tx.delete).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates category IDs before insert", async () => {
+    const completedAt = new Date("2026-08-20T12:00:00.000Z");
+    const categoryWhere = vi.fn().mockResolvedValue([{ id: firstCategoryId }]);
+    const categoryFrom = vi.fn().mockReturnValue({ where: categoryWhere });
+    const deleteWhere = vi.fn().mockResolvedValue(undefined);
+    const deleteFrom = vi.fn().mockReturnValue({ where: deleteWhere });
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    const insert = vi.fn().mockReturnValue({ values: insertValues });
+    const lockFor = vi.fn().mockResolvedValue([{ onboardingCompletedAt: completedAt }]);
+    const userWhere = vi.fn().mockReturnValue({ for: lockFor });
+    const userFrom = vi.fn().mockReturnValue({ where: userWhere });
+    const tx = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce({ from: userFrom })
+        .mockReturnValueOnce({ from: categoryFrom }),
+      delete: deleteFrom,
+      insert,
+      update: vi.fn(),
+    };
+    const transaction = vi.fn(async (work: (transaction: typeof tx) => unknown) => work(tx));
+    const repository = new DrizzleCategoryInterestsRepository({ transaction } as never);
+
+    await expect(
+      repository.replace("u1", [firstCategoryId, firstCategoryId]),
+    ).resolves.toMatchObject({
+      ok: true,
+      state: { categoryIds: [firstCategoryId] },
+    });
+    expect(insertValues).toHaveBeenCalledWith([
+      { userId: "u1", categoryId: firstCategoryId, sortOrder: 0 },
+    ]);
   });
 
   it("does not mutate interests when a category is unknown", async () => {
+    const lockFor = vi.fn().mockResolvedValue([{ id: "u1" }]);
+    const userWhere = vi.fn().mockReturnValue({ for: lockFor });
+    const userFrom = vi.fn().mockReturnValue({ where: userWhere });
     const categoryWhere = vi.fn().mockResolvedValue([{ id: firstCategoryId }]);
     const categoryFrom = vi.fn().mockReturnValue({ where: categoryWhere });
-    const select = vi.fn().mockReturnValue({ from: categoryFrom });
+    const select = vi
+      .fn()
+      .mockReturnValueOnce({ from: userFrom })
+      .mockReturnValueOnce({ from: categoryFrom });
     const tx = { select, delete: vi.fn(), insert: vi.fn(), update: vi.fn() };
     const transaction = vi.fn(async (work: (transaction: typeof tx) => unknown) => work(tx));
     const repository = new DrizzleCategoryInterestsRepository({ transaction } as never);

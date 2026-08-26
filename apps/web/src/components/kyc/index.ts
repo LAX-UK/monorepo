@@ -12,6 +12,7 @@ export {
   isKycSessionContinuable,
   kycComplianceIdentityPill,
   kycInitialPhase,
+  resolveIdentityVerifyClientPhase,
   kycLinkActionLabel,
   kycStatusLabel,
 } from "./kyc-copy";

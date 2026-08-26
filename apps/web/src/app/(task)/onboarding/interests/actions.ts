@@ -1,11 +1,15 @@
 "use server";
 
+import type { BuyerInterestsActionState } from "@/app/(task)/onboarding/interests/action-state";
 import { replaceServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import {
   type FullBuyerOnboardingSource,
   buyerInterestsCompletionHref,
 } from "@/lib/kyc/buyer-onboarding";
-import type { BuyerInterestsActionState } from "./action-state";
+import {
+  describeCategoryInterestsSaveError,
+  parseCategoryInterestIds,
+} from "@/lib/onboarding/category-interests-action-error";
 
 export async function completeBuyerInterests(
   _previousState: BuyerInterestsActionState,
@@ -15,17 +19,19 @@ export async function completeBuyerInterests(
   const source: FullBuyerOnboardingSource =
     formData.get("source") === "sign_in_resume" ? "sign_in_resume" : "post_verify";
   const skipped = formData.get("skip") === "1";
-  const categoryIds = skipped
-    ? []
-    : formData
-        .getAll("categoryId")
-        .map(String)
-        .filter((id) => id.length > 0);
+  const parsed = parseCategoryInterestIds(formData);
+  if ("error" in parsed) {
+    return { error: parsed.error, redirectTo: null, submission: null };
+  }
+  const categoryIds = skipped ? [] : parsed;
   try {
     await replaceServerCategoryInterests(categoryIds);
-  } catch {
+  } catch (error) {
     return {
-      error: "We couldn’t save your interests. Check your connection and try again.",
+      error: describeCategoryInterestsSaveError(
+        error,
+        "We couldn’t save your interests. Check your connection and try again.",
+      ),
       redirectTo: null,
       submission: null,
     };

@@ -18,6 +18,24 @@ export class ConditionReportBuyerService implements IConditionReportBuyerService
     requestingLegalEntityId?: string | undefined;
     requestNote?: string | undefined;
   }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>> {
+    if (!this.ctx.identityEligibilityGate) {
+      return err({
+        message: "Identity eligibility is not configured",
+        status: 503,
+        code: "identity_gate_unconfigured",
+      });
+    }
+    const eligibility = await this.ctx.identityEligibilityGate.assertSelfServiceEligible(
+      input.userId,
+    );
+    if (eligibility.isErr()) {
+      return err({
+        message: eligibility.error.message,
+        status: eligibility.error.status,
+        ...(eligibility.error.code ? { code: eligibility.error.code } : {}),
+      });
+    }
+
     const lotRow = await this.ctx.lotRepo.findById(input.lotId);
     if (!lotRow) {
       return err({ message: "Lot not found", status: 404 });

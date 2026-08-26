@@ -13,7 +13,6 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
   const {
     container,
     requireAuth,
-    kycGate,
     bidKycGate,
     biddingKillSwitch,
     bidUserRateLimit,
@@ -67,7 +66,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     "/:id/condition-report-requests",
     requireAuth,
     requireBuyerRole,
-    kycGate,
+    bidKycGate,
     requireLegalEntity,
     zValidator("param", lotIdParamSchema),
     zValidator("json", createConditionReportRequestBodySchema),

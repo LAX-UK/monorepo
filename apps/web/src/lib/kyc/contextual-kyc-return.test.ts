@@ -31,6 +31,20 @@ describe("contextual KYC return tracking", () => {
     expect(sessionStorage.getItem("lax_contextual_kyc_return")).toBeNull();
   });
 
+  it("matches equivalent query-bearing destinations after normalization", () => {
+    markContextualKycReturnPending({
+      source: "condition_report",
+      nextPath: "/lot/foo/1/?source=gate&tab=condition",
+    });
+
+    trackContextualKycReturnIfPending("/lot/foo/1?tab=condition&source=gate", true);
+
+    expect(trackContextualKycGate).toHaveBeenCalledWith({
+      event: "contextual_kyc_returned",
+      source: "condition_report",
+    });
+  });
+
   it("does not emit before KYC is approved or when the path does not match", () => {
     markContextualKycReturnPending({
       source: "registration",

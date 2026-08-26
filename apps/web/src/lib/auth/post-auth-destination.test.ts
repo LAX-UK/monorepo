@@ -29,6 +29,8 @@ describe("isSafeNextPath", () => {
     expect(isSafeNextPath("relative")).toBe(false);
     expect(isSafeNextPath(null)).toBe(false);
     expect(isSafeNextPath("/%2F%2Fevil.com")).toBe(false);
+    expect(isSafeNextPath("/%252f%252fevil.com")).toBe(false);
+    expect(isSafeNextPath("/%2525252f%2525252fevil.com")).toBe(false);
     expect(isSafeNextPath("/%5Cevil")).toBe(false);
   });
 

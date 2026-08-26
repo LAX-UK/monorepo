@@ -24,9 +24,13 @@ export function isContextualReturnSource(
 
 function normalizePath(path: string): string {
   if (!path.startsWith("/")) return path;
-  const queryIndex = path.indexOf("?");
-  if (queryIndex === -1) return path;
-  return path.slice(0, queryIndex) + path.slice(queryIndex);
+  const [pathname = path, query = ""] = path.split("?");
+  const trimmed = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  if (!query) return trimmed;
+  const params = new URLSearchParams(query);
+  params.sort();
+  const normalizedQuery = params.toString();
+  return normalizedQuery ? `${trimmed}?${normalizedQuery}` : trimmed;
 }
 
 export function markContextualKycReturnPending(pending: ContextualKycReturnPending): void {

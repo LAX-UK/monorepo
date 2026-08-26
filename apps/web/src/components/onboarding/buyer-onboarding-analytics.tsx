@@ -1,31 +1,32 @@
 "use client";
 
+import { IdentityOnboardingViewTracker } from "@/components/kyc/identity-onboarding-tracking";
 import {
   type BuyerOnboardingAnalyticsSource,
   type BuyerPersonalizationEvent,
   trackBuyerPersonalization,
   trackContextualKycGate,
-  trackKycOnboarding,
 } from "@/lib/analytics/events";
+import { trackOnce } from "@/lib/analytics/track-once";
 import {
   isContextualReturnSource,
   markContextualKycReturnPending,
   trackContextualKycReturnIfPending,
 } from "@/lib/kyc/contextual-kyc-return";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 export function BuyerInterestsViewTracker({
   source,
 }: {
   source: BuyerOnboardingAnalyticsSource;
 }) {
-  const tracked = useRef(false);
+  const pathname = usePathname();
   useEffect(() => {
-    if (tracked.current) return;
-    tracked.current = true;
-    trackBuyerPersonalization({ event: "buyer_interests_viewed", source });
-  }, [source]);
+    trackOnce(`buyer-onboarding:interests:${source}:${pathname}`, () => {
+      trackBuyerPersonalization({ event: "buyer_interests_viewed", source });
+    });
+  }, [pathname, source]);
   return null;
 }
 
@@ -36,15 +37,13 @@ export function BuyerRecommendationsViewTracker({
   source: BuyerOnboardingAnalyticsSource;
   empty?: boolean;
 }) {
-  const tracked = useRef(false);
+  const pathname = usePathname();
   useEffect(() => {
-    if (tracked.current) return;
-    tracked.current = true;
-    trackBuyerPersonalization({
-      event: empty ? "buyer_recommendations_empty" : "buyer_recommendations_viewed",
-      source,
+    const event = empty ? "buyer_recommendations_empty" : "buyer_recommendations_viewed";
+    trackOnce(`buyer-onboarding:recommendations:${event}:${source}:${pathname}`, () => {
+      trackBuyerPersonalization({ event, source });
     });
-  }, [empty, source]);
+  }, [empty, pathname, source]);
   return null;
 }
 
@@ -64,21 +63,7 @@ export function trackRecommendationsContinue(source: BuyerOnboardingAnalyticsSou
   trackBuyerPersonalization({ event: "buyer_recommendations_continued", source });
 }
 
-export function IdentityOnboardingViewTracker({
-  source,
-  step,
-}: {
-  source: BuyerOnboardingAnalyticsSource;
-  step: "why" | "verify";
-}) {
-  const tracked = useRef(false);
-  useEffect(() => {
-    if (tracked.current) return;
-    tracked.current = true;
-    trackKycOnboarding({ event: "kyc_onboarding_view", step, source });
-  }, [source, step]);
-  return null;
-}
+export { IdentityOnboardingViewTracker };
 
 export function ContextualKycGateTracker({
   source,
@@ -95,22 +80,22 @@ export function ContextualKycGateTracker({
     "contextual_kyc_gate_triggered" | "contextual_kyc_returned"
   >;
 }) {
-  const tracked = useRef(false);
+  const pathname = usePathname();
   useEffect(() => {
-    if (tracked.current) return;
-    tracked.current = true;
-    trackContextualKycGate({ event, source });
+    trackOnce(`buyer-onboarding:contextual:${event}:${source}:${pathname}`, () => {
+      trackContextualKycGate({ event, source });
+    });
     if (nextPath) {
       markContextualKycReturnPending({ source, nextPath });
     }
-  }, [event, nextPath, source]);
+  }, [event, nextPath, pathname, source]);
   return null;
 }
 
 export function ContextualKycReturnTracker({ kycApproved }: { kycApproved: boolean }) {
   const pathname = usePathname();
   useEffect(() => {
-    trackContextualKycReturnIfPending(pathname, kycApproved);
+    trackContextualKycReturnIfPending(`${pathname}${window.location.search}`, kycApproved);
   }, [kycApproved, pathname]);
   return null;
 }

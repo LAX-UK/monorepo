@@ -5,6 +5,7 @@ import {
   resolveIdentityOnboardingNext,
   resolveIdentityOnboardingSource,
 } from "@/lib/kyc/identity-onboarding";
+import { resolveIdentityVerifyDescription } from "@/lib/kyc/identity-onboarding-presentation";
 import { redirect } from "next/navigation";
 
 export default async function IdentityOnboardingVerifyPage({
@@ -24,7 +25,7 @@ export default async function IdentityOnboardingVerifyPage({
       step="verify"
       source={source}
       title="One step from verified"
-      description="Complete the secure Veriff document and selfie checks. You can finish later and resume without losing your place."
+      description={resolveIdentityVerifyDescription(source)}
     >
       <IdentityOnboardingVerifyClient summary={summary} next={next} source={source} />
     </IdentityOnboardingShell>

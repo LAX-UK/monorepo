@@ -29,6 +29,26 @@ vi.mock("@/components/kyc", () => ({
   isKycSessionContinuable: () => false,
   kycInitialPhase: (summary: { status?: string } | null) =>
     summary?.status === "pending" ? "processing" : "idle",
+  resolveIdentityVerifyClientPhase: ({
+    summary,
+    returnedFromProvider,
+    currentPhase,
+  }: {
+    summary: {
+      latestSessionStatus?: string;
+      status?: string;
+      feedback?: { needsResubmit?: boolean };
+    } | null;
+    returnedFromProvider: boolean;
+    currentPhase: string;
+  }) => {
+    if (summary?.feedback?.needsResubmit) return "needs_resubmit";
+    if (returnedFromProvider && summary?.latestSessionStatus === "processing") return "submitted";
+    if (currentPhase === "submitted" || currentPhase === "in_flow") {
+      return returnedFromProvider ? "submitted" : currentPhase;
+    }
+    return summary?.status === "pending" ? "processing" : "idle";
+  },
 }));
 
 describe("IdentityOnboardingVerifyClient", () => {
@@ -80,6 +100,27 @@ describe("IdentityOnboardingVerifyClient", () => {
       expect(screen.getByText("submitted")).toBeInTheDocument();
     });
     expect(mocks.trackKycOnboarding).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["bid_gate", "registration", "telephone", "condition_report"] as const)(
+    "hides Finish later on hard-gate source %s",
+    (source) => {
+      render(<IdentityOnboardingVerifyClient summary={null} next="/lot/demo/1" source={source} />);
+
+      expect(screen.getByRole("link", { name: /back/i })).toBeVisible();
+      expect(
+        screen.queryByRole("link", { name: /finish later|verify later/i }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("keeps Finish later on skippable verify sources", () => {
+    render(<IdentityOnboardingVerifyClient summary={null} next="/dashboard" source="direct" />);
+
+    expect(screen.getByRole("link", { name: /finish later/i })).toHaveAttribute(
+      "href",
+      "/dashboard",
+    );
   });
 
   it("does not report submission without a provider return marker", () => {

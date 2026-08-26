@@ -1,16 +1,10 @@
 import { isBuyerInterestPersonaEligible } from "@auction/domain";
-import type { ICategoryInterestsRepository } from "@auction/persistence/interfaces";
+import type {
+  ICategoryInterestsEligibilityReader,
+  ICategoryInterestsRepository,
+} from "@auction/persistence/interfaces";
 import type { IUserCategoryInterestsHttpApplicationService } from "../interfaces/user-routes/user-category-interests-http.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
-
-type CategoryInterestsEligibilityReader = {
-  getProfile(userId: string): Promise<{
-    role: string;
-    suspended: boolean;
-    emailVerified: boolean;
-    signupPersona: "individual" | "organisation" | null;
-  } | null>;
-};
 
 function presentCategoryInterests(state: {
   categoryIds: string[];
@@ -28,10 +22,13 @@ export class UserCategoryInterestsHttpApplicationService
 {
   constructor(
     private readonly repository: ICategoryInterestsRepository,
-    private readonly eligibilityReader: CategoryInterestsEligibilityReader,
+    private readonly eligibilityReader: ICategoryInterestsEligibilityReader,
   ) {}
 
   async getForUser(input: { userId: string }): Promise<UserHttpJson> {
+    const eligibility = await this.assertEligible(input.userId);
+    if (eligibility) return eligibility;
+
     const state = await this.repository.getForUser(input.userId);
     return { status: 200, body: { data: presentCategoryInterests(state) } };
   }

@@ -91,7 +91,7 @@ describe("StandingBidEligibilityValidator", () => {
     });
   });
 
-  it("converts read failures into a cancellable result", async () => {
+  it("converts read failures into a transient 503 that must not cancel", async () => {
     const validator = new StandingBidEligibilityValidator(
       { assertCanPlaceBid: vi.fn().mockResolvedValue(ok(undefined)) },
       {

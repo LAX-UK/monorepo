@@ -1,5 +1,6 @@
 "use client";
 
+import { useReportRouteError } from "@/lib/observability/use-report-route-error";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -7,13 +8,16 @@ type BuyerOnboardingRouteErrorProps = {
   title: string;
   detail: string;
   reset: () => void;
+  error?: Error & { digest?: string };
 };
 
 export function BuyerOnboardingRouteError({
   title,
   detail,
   reset,
+  error,
 }: BuyerOnboardingRouteErrorProps) {
+  useReportRouteError(error);
   return (
     <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
       <h1 className="font-headline text-2xl font-semibold text-on-surface">{title}</h1>

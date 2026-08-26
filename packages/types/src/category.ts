@@ -19,8 +19,20 @@ export type CategoryUsage = {
   lots: number;
   sales: number;
   submissions: number;
+  interests: number;
   total: number;
 };
+
+export function emptyCategoryUsage(): CategoryUsage {
+  return { lots: 0, sales: 0, submissions: 0, interests: 0, total: 0 };
+}
+
+export function withCategoryUsageTotal(usage: Omit<CategoryUsage, "total">): CategoryUsage {
+  return {
+    ...usage,
+    total: usage.lots + usage.sales + usage.submissions + usage.interests,
+  };
+}
 
 export type AdminCategory = Category & {
   usage: CategoryUsage;

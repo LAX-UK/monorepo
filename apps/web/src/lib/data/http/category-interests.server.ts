@@ -1,5 +1,6 @@
 import "server-only";
 
+import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 
 export type CategoryInterestState = {
@@ -10,7 +11,7 @@ export type CategoryInterestState = {
 
 export async function getServerCategoryInterests(): Promise<CategoryInterestState> {
   const response = await authedServerFetch("/users/me/category-interests");
-  if (!response.ok) throw new Error(`Failed to read category interests: ${response.status}`);
+  await throwIfNotOk(response, "settings");
   const body = (await response.json()) as { data: CategoryInterestState };
   return body.data;
 }
@@ -23,7 +24,7 @@ export async function replaceServerCategoryInterests(
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ categoryIds }),
   });
-  if (!response.ok) throw new Error(`Failed to save category interests: ${response.status}`);
+  await throwIfNotOk(response, "settings");
   const body = (await response.json()) as { data: CategoryInterestState };
   return body.data;
 }
@@ -36,9 +37,7 @@ export async function replaceServerCategoryInterestPreferences(
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ categoryIds }),
   });
-  if (!response.ok) {
-    throw new Error(`Failed to save auction interest preferences: ${response.status}`);
-  }
+  await throwIfNotOk(response, "settings");
   const body = (await response.json()) as { data: CategoryInterestState };
   return body.data;
 }

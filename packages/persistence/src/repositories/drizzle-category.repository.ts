@@ -1,12 +1,20 @@
 import type { Database } from "@auction/db";
-import { category, lotCategories, saleCategories, submissionCategories } from "@auction/db/schema";
-import type {
-  AdminCategoriesListSummary,
-  AdminCategoriesMostUsed,
-  AdminCategory,
-  AdminCategoryListResult,
-  Category,
-  CategoryUsage,
+import {
+  category,
+  lotCategories,
+  saleCategories,
+  submissionCategories,
+  userCategoryInterest,
+} from "@auction/db/schema";
+import {
+  type AdminCategoriesListSummary,
+  type AdminCategoriesMostUsed,
+  type AdminCategory,
+  type AdminCategoryListResult,
+  type Category,
+  type CategoryUsage,
+  emptyCategoryUsage,
+  withCategoryUsageTotal,
 } from "@auction/types";
 import { and, asc, count, eq, ilike, inArray, or } from "drizzle-orm";
 import type {
@@ -45,7 +53,7 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
   async findAllForAdmin(options: { includeArchived?: boolean } = {}): Promise<AdminCategory[]> {
     const rows = await this.findAll(options);
     const usageById = await this.usageForMany(rows.map((row) => row.id));
-    return rows.map((row) => ({ ...row, usage: usageById.get(row.id) ?? emptyUsage() }));
+    return rows.map((row) => ({ ...row, usage: usageById.get(row.id) ?? emptyCategoryUsage() }));
   }
 
   async findPageForAdmin(options: {
@@ -80,7 +88,7 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
     return {
       rows: categories.map((row) => ({
         ...row,
-        usage: usageById.get(row.id) ?? emptyUsage(),
+        usage: usageById.get(row.id) ?? emptyCategoryUsage(),
       })),
       total: totalRows[0]?.value ?? 0,
     };
@@ -124,8 +132,11 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
     let mostUsedCategory: AdminCategoriesMostUsed | null = null;
 
     for (const row of categoriesInLens) {
-      const usage = usageById.get(row.id) ?? emptyUsage();
-      if (usage.total === 0) continue;
+      const usage = usageById.get(row.id) ?? emptyCategoryUsage();
+      // Admin assignment KPIs intentionally cover catalogue assignments only;
+      // buyer interests participate in delete safety, not catalogue popularity.
+      const assignmentTotal = usage.lots + usage.sales + usage.submissions;
+      if (assignmentTotal === 0) continue;
 
       const candidate: AdminCategoriesMostUsed = {
         id: row.id,
@@ -135,14 +146,14 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
           lots: usage.lots,
           sales: usage.sales,
           submissions: usage.submissions,
-          total: usage.total,
+          total: assignmentTotal,
         },
       };
 
       if (
         !mostUsedCategory ||
-        usage.total > mostUsedCategory.usage.total ||
-        (usage.total === mostUsedCategory.usage.total &&
+        assignmentTotal > mostUsedCategory.usage.total ||
+        (assignmentTotal === mostUsedCategory.usage.total &&
           row.name.localeCompare(mostUsedCategory.name) < 0)
       ) {
         mostUsedCategory = candidate;
@@ -223,17 +234,17 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
 
   async usageFor(id: string): Promise<CategoryUsage> {
     const map = await this.usageForMany([id]);
-    return map.get(id) ?? emptyUsage();
+    return map.get(id) ?? emptyCategoryUsage();
   }
 
   async usageForMany(ids: string[]): Promise<Map<string, CategoryUsage>> {
     const result = new Map<string, CategoryUsage>();
     if (ids.length === 0) return result;
     for (const id of ids) {
-      result.set(id, emptyUsage());
+      result.set(id, emptyCategoryUsage());
     }
 
-    const [lotRows, saleRows, submissionRows] = await Promise.all([
+    const [lotRows, saleRows, submissionRows, interestRows] = await Promise.all([
       this.db
         .select({ categoryId: lotCategories.categoryId, value: count() })
         .from(lotCategories)
@@ -249,31 +260,34 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
         .from(submissionCategories)
         .where(inArray(submissionCategories.categoryId, ids))
         .groupBy(submissionCategories.categoryId),
+      this.db
+        .select({ categoryId: userCategoryInterest.categoryId, value: count() })
+        .from(userCategoryInterest)
+        .where(inArray(userCategoryInterest.categoryId, ids))
+        .groupBy(userCategoryInterest.categoryId),
     ]);
 
     for (const row of lotRows) {
-      const current = result.get(row.categoryId) ?? emptyUsage();
+      const current = result.get(row.categoryId) ?? emptyCategoryUsage();
       current.lots = row.value;
-      current.total = current.lots + current.sales + current.submissions;
-      result.set(row.categoryId, current);
+      result.set(row.categoryId, withCategoryUsageTotal(current));
     }
     for (const row of saleRows) {
-      const current = result.get(row.categoryId) ?? emptyUsage();
+      const current = result.get(row.categoryId) ?? emptyCategoryUsage();
       current.sales = row.value;
-      current.total = current.lots + current.sales + current.submissions;
-      result.set(row.categoryId, current);
+      result.set(row.categoryId, withCategoryUsageTotal(current));
     }
     for (const row of submissionRows) {
-      const current = result.get(row.categoryId) ?? emptyUsage();
+      const current = result.get(row.categoryId) ?? emptyCategoryUsage();
       current.submissions = row.value;
-      current.total = current.lots + current.sales + current.submissions;
-      result.set(row.categoryId, current);
+      result.set(row.categoryId, withCategoryUsageTotal(current));
+    }
+    for (const row of interestRows) {
+      const current = result.get(row.categoryId) ?? emptyCategoryUsage();
+      current.interests = row.value;
+      result.set(row.categoryId, withCategoryUsageTotal(current));
     }
 
     return result;
   }
-}
-
-function emptyUsage(): CategoryUsage {
-  return { lots: 0, sales: 0, submissions: 0, total: 0 };
 }

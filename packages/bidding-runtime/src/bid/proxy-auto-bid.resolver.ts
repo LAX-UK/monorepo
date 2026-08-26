@@ -3,9 +3,14 @@ import type { IAntiShillingGuard, IBidRepository } from "@auction/persistence/in
 import type { Bid, Lot } from "@auction/types";
 import { parseMoneyToMinorUnits } from "@auction/validators";
 import { Counter } from "prom-client";
+import type { BidError } from "../bid-error.js";
 import { effectiveBidderStepMoney, moneyStringGtCurrent, settleProxyPrice } from "../bid-money.js";
 import type { IDomainEventSink, INotificationSender } from "../ports.js";
 import type { IStandingBidEligibilityValidator } from "./standing-bid-eligibility.validator.js";
+
+function isTransientStandingRevalidation(error: BidError): boolean {
+  return error.code === "standing_bid_revalidation_failed" || error.status === 503;
+}
 
 const proxyCancelNotifyFailedTotal = new Counter({
   name: "proxy_cancel_notify_failed_total",
@@ -103,35 +108,8 @@ export class ProxyAutoBidResolver {
     tx: Database,
     pendingProxyCancels: ProxyCancelNotification[],
   ): Promise<void> {
-    if (!this.antiShillingGuard) return;
     const states = await bids.listBidderCeilingStates(lotId);
-    for (const s of states) {
-      if (!(await bids.bidderHasProxyMaxOnLot(lotId, s.bidderId))) continue;
-      if (
-        await this.antiShillingGuard.violatesAntiShilling({
-          bidderUserId: s.bidderId,
-          buyerLegalEntityId: s.buyerLegalEntityId,
-          lot: lotRow,
-        })
-      ) {
-        await bids.clearProxyAutoBidForBidderOnLot(lotId, s.bidderId);
-        this.queueProxyCancelled(lotId, s.bidderId, "anti_shilling_violation", pendingProxyCancels);
-        if (this.domainEventSink) {
-          await this.domainEventSink.withTx(tx).publish({
-            aggregateType: "lot",
-            aggregateId: lotId,
-            eventType: "bid.proxy_cancelled",
-            payload: {
-              lotId,
-              bidderUserId: s.bidderId,
-              buyerLegalEntityId: s.buyerLegalEntityId,
-              reason: "anti_shilling_violation",
-            },
-            actorUserId: null,
-          });
-        }
-      }
-    }
+    await this.filterIneligibleStates(states, lotId, lotRow, bids, tx, pendingProxyCancels);
   }
 
   async flushPendingProxyCancels(pending: ProxyCancelNotification[]): Promise<void> {
@@ -190,6 +168,9 @@ export class ProxyAutoBidResolver {
         ? await this.standingBidValidator.validate(lotId, s)
         : null;
       if (eligibilityResult?.isErr()) {
+        if (isTransientStandingRevalidation(eligibilityResult.error)) {
+          throw eligibilityResult.error;
+        }
         await this.cancelProxy(
           s,
           lotId,

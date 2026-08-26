@@ -49,6 +49,37 @@ class MemoryRedis {
     return Math.max(1, e - Date.now());
   }
 
+  async script(command: string, _lua?: string): Promise<string> {
+    if (String(command).toUpperCase() === "LOAD") return "memory-sha";
+    throw new Error(`unsupported script ${command}`);
+  }
+
+  async evalsha(
+    _sha: string,
+    numKeys: number,
+    key: string,
+    limit: string,
+    windowSec: string,
+  ): Promise<[number, number]> {
+    if (numKeys !== 1) throw new Error("expected 1 key");
+    const current = await this.incr(key);
+    let ttl = this.ttlSeconds(key);
+    if (current === 1 || ttl < 0) {
+      await this.expire(key, Number(windowSec));
+      ttl = Number(windowSec);
+    }
+    if (current > Number(limit)) {
+      return [0, this.ttlSeconds(key)];
+    }
+    return [1, Number(limit) - current];
+  }
+
+  private ttlSeconds(key: string): number {
+    const e = this.exp.get(key);
+    if (!e) return -1;
+    return Math.max(-1, Math.ceil((e - Date.now()) / 1000));
+  }
+
   async get(key: string): Promise<string | null> {
     return this.values.get(key) ?? null;
   }

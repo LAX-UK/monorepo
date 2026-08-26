@@ -1,6 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import type { IAttributionStore } from "@auction/marketing-events";
 import type {
+  ICategoryInterestsEligibilityReader,
   ICategoryInterestsRepository,
   INotificationPreferenceRepository,
 } from "@auction/persistence/interfaces";
@@ -69,10 +70,12 @@ export type CreateUserRouteServicesInput = {
 };
 
 export function createUserRouteServices(input: CreateUserRouteServicesInput): UserRouteServices {
+  const categoryInterestsEligibilityReader: ICategoryInterestsEligibilityReader =
+    input.profileService;
   return {
     categoryInterestsHttp: new UserCategoryInterestsHttpApplicationService(
       input.categoryInterestsRepository,
-      input.profileService,
+      categoryInterestsEligibilityReader,
     ),
     publicHttp: new UserPublicHttpApplicationService({
       env: input.env,

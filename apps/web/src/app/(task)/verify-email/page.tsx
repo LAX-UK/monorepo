@@ -72,6 +72,7 @@ export default async function VerifyEmailPage({
                   sessionUser.categoryInterestsOnboardingCompletedAt,
               }
             : {}),
+          ...(sessionUser?.kycStatus !== undefined ? { kycStatus: sessionUser.kycStatus } : {}),
         });
 
   if (error) {

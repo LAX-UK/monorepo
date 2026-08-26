@@ -1,5 +1,6 @@
 import type { BidBlockerPresentation } from "@/lib/bid/bid-blocker-presentation";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import { KYC_ACTION_COPY, resolveKycActionCopyKey } from "@/lib/kyc/kyc-link-action-copy";
 
 const BIDDING_PREVIEW =
   "After approval, you can place a one-time bid or set an auto-bid on this lot.";
@@ -29,7 +30,11 @@ export function resolveKycBidBlockerPresentation({
       detail:
         feedback.detail ??
         "Your verification is being reviewed. You can bid as soon as it is approved.",
-      action: { kind: "status", label: "In review", shortLabel: "In review" },
+      action: {
+        kind: "status",
+        label: KYC_ACTION_COPY.wait.bid,
+        shortLabel: KYC_ACTION_COPY.wait.short,
+      },
       preview: BIDDING_PREVIEW,
     };
   }
@@ -44,8 +49,8 @@ export function resolveKycBidBlockerPresentation({
       action: {
         kind: "link",
         href,
-        label: "Continue verification",
-        shortLabel: "Continue",
+        label: KYC_ACTION_COPY.continue.bid,
+        shortLabel: KYC_ACTION_COPY.continue.short,
       },
       preview: BIDDING_PREVIEW,
     };
@@ -56,7 +61,12 @@ export function resolveKycBidBlockerPresentation({
       tone: "danger",
       title: feedback.headline || "Identity verification was not approved",
       detail: feedback.detail ?? "Review the verification guidance and submit your details again.",
-      action: { kind: "link", href, label: "Try verification again", shortLabel: "Try again" },
+      action: {
+        kind: "link",
+        href,
+        label: KYC_ACTION_COPY.retry.bid,
+        shortLabel: KYC_ACTION_COPY.retry.short,
+      },
       preview: BIDDING_PREVIEW,
     };
   }
@@ -70,8 +80,8 @@ export function resolveKycBidBlockerPresentation({
         "There is no verification action available right now. Contact support if this persists.",
       action: {
         kind: "status",
-        label: "Action unavailable",
-        shortLabel: "Unavailable",
+        label: KYC_ACTION_COPY.none.bid,
+        shortLabel: KYC_ACTION_COPY.none.short,
       },
       preview: BIDDING_PREVIEW,
     };
@@ -88,8 +98,8 @@ export function resolveKycBidBlockerPresentation({
     action: {
       kind: "link",
       href,
-      label: "Start identity verification",
-      shortLabel: "Verify",
+      label: KYC_ACTION_COPY[resolveKycActionCopyKey(feedback)].bid,
+      shortLabel: KYC_ACTION_COPY.start.short,
     },
     preview: BIDDING_PREVIEW,
   };

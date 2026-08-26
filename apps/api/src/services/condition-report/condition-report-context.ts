@@ -1,3 +1,4 @@
+import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
@@ -13,6 +14,7 @@ export type ConditionReportContext = {
   domainEventSink: IDomainEventSink | null;
   notificationDispatcher: NotificationDispatcher | null;
   notificationFactory: NotificationFactory;
+  identityEligibilityGate: IBidIdentityEligibilityGate | null;
 };
 
 export function createConditionReportContext(input: {
@@ -23,6 +25,7 @@ export function createConditionReportContext(input: {
   domainEventSink: IDomainEventSink | null;
   notificationDispatcher: NotificationDispatcher | null;
   notificationFactory: NotificationFactory;
+  identityEligibilityGate?: IBidIdentityEligibilityGate | null;
 }): ConditionReportContext {
-  return { ...input };
+  return { ...input, identityEligibilityGate: input.identityEligibilityGate ?? null };
 }

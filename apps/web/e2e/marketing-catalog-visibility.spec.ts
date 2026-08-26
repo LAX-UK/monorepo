@@ -53,7 +53,8 @@ test.describe("marketing catalog visibility @smoke", () => {
     test.skip(!enabled, skipReason);
     const res = await page.goto("/search");
     expect(res?.ok()).toBeTruthy();
-    await expect(page.locator("#main-content")).toBeVisible();
+    await expect(page.getByRole("main", { name: "Loading search" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /search lots/i })).toBeVisible();
   });
 
   test("search default lot payloads exclude draft status", async ({ page }) => {

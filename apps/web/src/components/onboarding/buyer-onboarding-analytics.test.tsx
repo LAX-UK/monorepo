@@ -8,6 +8,7 @@ import {
 
 const trackBuyerPersonalization = vi.fn();
 const trackKycOnboarding = vi.fn();
+let pathname = "/onboarding/interests";
 
 vi.mock("@/lib/analytics/events", () => ({
   trackBuyerPersonalization: (...args: unknown[]) => trackBuyerPersonalization(...args),
@@ -15,10 +16,16 @@ vi.mock("@/lib/analytics/events", () => ({
   trackContextualKycGate: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => pathname,
+}));
+
 describe("buyer onboarding view trackers", () => {
   beforeEach(() => {
     trackBuyerPersonalization.mockReset();
     trackKycOnboarding.mockReset();
+    sessionStorage.clear();
+    pathname = "/onboarding/interests";
   });
 
   it("fires interests viewed once per mount", () => {
@@ -29,6 +36,13 @@ describe("buyer onboarding view trackers", () => {
       event: "buyer_interests_viewed",
       source: "post_verify",
     });
+  });
+
+  it("tracks the same event again after navigation to a different path", () => {
+    const { rerender } = render(<BuyerInterestsViewTracker source="post_verify" />);
+    pathname = "/dashboard/settings/interests";
+    rerender(<BuyerInterestsViewTracker source="post_verify" />);
+    expect(trackBuyerPersonalization).toHaveBeenCalledTimes(2);
   });
 
   it("fires the empty recommendations event when the page has no lots", () => {

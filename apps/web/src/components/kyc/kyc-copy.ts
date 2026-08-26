@@ -162,6 +162,34 @@ export function isKycAwaitingDecision(summary: KycStatusSummaryDto | null): bool
   );
 }
 
+const OPTIMISTIC_VERIFY_PHASES = new Set<KycUiPhase>(["in_flow", "submitted"]);
+const SETTLED_VERIFY_PHASES = new Set<KycUiPhase>([
+  "approved",
+  "rejected",
+  "needs_resubmit",
+  "processing",
+]);
+
+/** Keep post-Veriff submitted/in-flow UX until the summary catches up. */
+export function resolveIdentityVerifyClientPhase(input: {
+  summary: KycStatusSummaryDto | null;
+  returnedFromProvider: boolean;
+  currentPhase: KycUiPhase;
+}): KycUiPhase {
+  if (input.summary?.feedback?.needsResubmit) return "needs_resubmit";
+  if (input.returnedFromProvider && isKycAwaitingDecision(input.summary)) return "submitted";
+
+  const serverPhase = kycInitialPhase(input.summary);
+  if (SETTLED_VERIFY_PHASES.has(serverPhase)) return serverPhase;
+
+  if (OPTIMISTIC_VERIFY_PHASES.has(input.currentPhase)) {
+    if (input.returnedFromProvider) return "submitted";
+    return input.currentPhase;
+  }
+
+  return serverPhase;
+}
+
 /** Dashboard compliance strip Identity pill label, tone, and optional hint. */
 export function kycComplianceIdentityPill(
   summary: KycStatusSummaryDto | null,

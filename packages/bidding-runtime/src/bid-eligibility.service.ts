@@ -1,7 +1,7 @@
 import type { IBidLotRulesReader, IBidMembershipReader } from "@auction/persistence/interfaces";
-import { type AutoBidLotRules, validateAutoBidStepAmount } from "@auction/validators";
-import { type Result, err, ok } from "neverthrow";
-import { BidError } from "./bid-error.js";
+import { type Result, ok } from "neverthrow";
+import { createBidEligibilityContext, createBidEligibilityRules } from "./bid-eligibility.rules.js";
+import type { BidError } from "./bid-error.js";
 import type { IAmlBidGate } from "./bid/aml-bid.gate.js";
 import type { BuyerAgentBidGate } from "./bid/buyer-agent-bid.gate.js";
 import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
@@ -10,135 +10,34 @@ import type { SaleRegistrationBidGate } from "./bid/sale-registration-bid.gate.j
 import type { BidEligibilityCheckInput, IBidEligibility } from "./ports.js";
 
 export class BidEligibilityService implements IBidEligibility {
+  private readonly rules;
+
   constructor(
-    private readonly identityEligibilityGate: IBidIdentityEligibilityGate,
-    private readonly amlGate: IAmlBidGate,
-    private readonly lotRulesReader: IBidLotRulesReader,
-    private readonly membershipReader: IBidMembershipReader,
-    private readonly operatorPolicy: OperatorPlacementPolicy,
-    private readonly saleRegistrationGate: SaleRegistrationBidGate,
-    private readonly buyerAgentGate: BuyerAgentBidGate,
-  ) {}
+    identityEligibilityGate: IBidIdentityEligibilityGate,
+    amlGate: IAmlBidGate,
+    lotRulesReader: IBidLotRulesReader,
+    membershipReader: IBidMembershipReader,
+    operatorPolicy: OperatorPlacementPolicy,
+    saleRegistrationGate: SaleRegistrationBidGate,
+    buyerAgentGate: BuyerAgentBidGate,
+  ) {
+    this.rules = createBidEligibilityRules({
+      identityEligibilityGate,
+      amlGate,
+      lotRulesReader,
+      membershipReader,
+      operatorPolicy,
+      saleRegistrationGate,
+      buyerAgentGate,
+    });
+  }
 
   async assertCanPlaceBid(input: BidEligibilityCheckInput): Promise<Result<void, BidError>> {
-    const {
-      placedByUserId,
-      buyerLegalEntityId,
-      lotId,
-      amount,
-      maxAutoBidAmount,
-      autoBidStepAmount,
-      placedVia,
-      telephoneBookingId,
-      saleId: inputSaleId,
-      paddleNumber,
-    } = input;
-    const effectiveAmount =
-      maxAutoBidAmount != null && Number.isFinite(maxAutoBidAmount)
-        ? Math.max(amount, maxAutoBidAmount)
-        : amount;
-    const validatedOperatorChannel = placedVia === "telephone" || placedVia === "saleroom";
-
-    if (!validatedOperatorChannel) {
-      const identityResult =
-        await this.identityEligibilityGate.assertSelfServiceEligible(placedByUserId);
-      if (identityResult.isErr()) return identityResult;
+    const ctx = createBidEligibilityContext(input);
+    for (const rule of this.rules) {
+      const result = await rule.apply(ctx);
+      if (result.isErr()) return result;
     }
-
-    const amlResult = await this.amlGate.assertCanBid(placedByUserId);
-    if (amlResult.isErr()) return amlResult;
-
-    const lotRow = await this.lotRulesReader.findLotBidRules(lotId);
-    if (!lotRow) {
-      return err(new BidError("Lot not found", 404));
-    }
-
-    const autoRules: AutoBidLotRules = {
-      autoBidEnabled: lotRow.autoBidEnabled ?? true,
-      minBidIncrement: lotRow.minBidIncrement,
-      autoBidStepMin: lotRow.autoBidStepMin,
-      autoBidStepMax: lotRow.autoBidStepMax,
-      autoBidStepPresets: lotRow.autoBidStepPresets,
-    };
-
-    if (maxAutoBidAmount != null || autoBidStepAmount != null) {
-      if (autoRules.autoBidEnabled === false) {
-        return err(new BidError("Auto-bid is not enabled for this lot", 403, "auto_bid_disabled"));
-      }
-      if (autoBidStepAmount != null) {
-        const stepErr = validateAutoBidStepAmount(autoRules, autoBidStepAmount);
-        if (stepErr) {
-          return err(new BidError(stepErr, 400, "auto_bid_step_invalid"));
-        }
-      }
-    }
-
-    const saleId = lotRow.saleId ?? inputSaleId ?? null;
-
-    const memberRole = await this.membershipReader.findActiveMemberRole(
-      placedByUserId,
-      buyerLegalEntityId,
-    );
-    if (!memberRole) {
-      return err(new BidError("Not a member of this legal entity", 403, "membership_required"));
-    }
-
-    const operatorBypass =
-      (placedVia === "telephone" &&
-        telephoneBookingId != null &&
-        saleId != null &&
-        (await this.operatorPolicy.isActiveTelephoneBooking(
-          telephoneBookingId,
-          saleId,
-          placedByUserId,
-          buyerLegalEntityId,
-        ))) ||
-      (placedVia === "saleroom" && saleId != null && paddleNumber != null);
-
-    if (operatorBypass) {
-      try {
-        const cap = await this.operatorPolicy.resolveOperatorCap({
-          placedVia: placedVia ?? null,
-          telephoneBookingId: telephoneBookingId ?? null,
-          saleId,
-          paddleNumber: paddleNumber ?? null,
-        });
-        this.operatorPolicy.assertCapNotExceeded(cap, effectiveAmount, placedVia ?? null);
-      } catch (e) {
-        if (e instanceof BidError) return err(e);
-        throw e;
-      }
-    }
-
-    if (validatedOperatorChannel) {
-      const identityResult = operatorBypass
-        ? await this.identityEligibilityGate.assertValidatedOperatorEligible(placedByUserId)
-        : await this.identityEligibilityGate.assertSelfServiceEligible(placedByUserId);
-      if (identityResult.isErr()) return identityResult;
-    }
-
-    if (saleId) {
-      const regResult = await this.saleRegistrationGate.assertCanBid({
-        saleId,
-        placedByUserId,
-        buyerLegalEntityId,
-        memberRole,
-        effectiveAmount,
-        operatorBypass,
-      });
-      if (regResult.isErr()) return regResult;
-    }
-
-    const agentResult = await this.buyerAgentGate.assertCanBid({
-      saleId,
-      placedByUserId,
-      buyerLegalEntityId,
-      memberRole,
-      effectiveAmount,
-      operatorBypass,
-    });
-    if (agentResult.isErr()) return agentResult;
-
     return ok(undefined);
   }
 }

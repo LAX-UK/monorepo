@@ -309,7 +309,9 @@ export type {
 } from "./profile.repository.js";
 
 export type {
+  CategoryInterestsEligibilityProfile,
   CategoryInterestsState,
+  ICategoryInterestsEligibilityReader,
   ICategoryInterestsRepository,
   ReplaceCategoryInterestsResult,
 } from "./category-interests.repository.js";

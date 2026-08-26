@@ -56,7 +56,21 @@ export default async function BuyerRecommendationsPage({
       ),
     ).then((categoryRows) => categoryRows.flat()),
   );
-  if (rows.length === 0) redirect(identityHref);
+  if (rows.length === 0) {
+    return (
+      <BuyerOnboardingShell
+        title="Recommended lots"
+        description="We don’t have live lots in your selected categories yet. Continue to identity verification whenever you are ready."
+        progress={2}
+        backHref={`/onboarding/interests?${new URLSearchParams({ next, source }).toString()}`}
+      >
+        <BuyerRecommendationsViewTracker source={source} empty />
+        <div className={onboardingActions}>
+          <RecommendationsContinueLink href={identityHref} source={source} />
+        </div>
+      </BuyerOnboardingShell>
+    );
+  }
   const lots = rows.map(toLotCardVM);
   const firstLot = lots[0];
   if (!firstLot) redirect(identityHref);

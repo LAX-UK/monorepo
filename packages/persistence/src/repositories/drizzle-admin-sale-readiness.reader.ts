@@ -17,7 +17,6 @@ export class DrizzleAdminSaleReadinessReader implements IAdminSaleReadinessReade
   constructor(private readonly db: Database) {}
 
   async listUpcomingAndLiveSales(limit: number): Promise<AdminSaleReadinessSourceRow[]> {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const sales = await this.db
       .select({
         id: sale.id,
@@ -31,7 +30,7 @@ export class DrizzleAdminSaleReadinessReader implements IAdminSaleReadinessReade
         and(
           saleNotDeleted(),
           inArray(sale.status, ["draft", "scheduled", "active"]),
-          or(isNull(sale.startTime), gte(sale.startTime, sevenDaysAgo)),
+          or(isNull(sale.startTime), gte(sale.startTime, sql`now() - interval '7 days'`)),
         ),
       )
       .orderBy(sql`${sale.startTime} ASC NULLS LAST`)

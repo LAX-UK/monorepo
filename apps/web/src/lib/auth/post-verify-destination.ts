@@ -18,6 +18,8 @@ export type PostVerifyDestinationInput = {
   /** Independent rollout for the one-time interests → recommendations → KYC flow. */
   fullBuyerOnboardingEnabled?: boolean;
   categoryInterestsOnboardingCompletedAt?: string | Date | null;
+  /** Session KYC status — approved buyers skip the identity onboarding CTA. */
+  kycStatus?: "unverified" | "pending" | "approved" | "rejected" | null;
 };
 
 export type PostVerifyDestination = {
@@ -70,7 +72,11 @@ export function resolvePostVerifyDestination(
     };
   }
 
-  if (input.identityOnboardingEnabled === true && persona !== "organisation") {
+  if (
+    input.identityOnboardingEnabled === true &&
+    persona !== "organisation" &&
+    input.kycStatus !== "approved"
+  ) {
     return {
       href: identityOnboardingHref("why", eventualDestination, "post_verify"),
       label: "Set up identity verification",

@@ -12,8 +12,12 @@ import type {
 import { slugifyRecordKey } from "@auction/types";
 import { normalizeCategoryHierarchy, validateCategoryParent } from "@auction/validators";
 import { CategoryError } from "../lib/errors.js";
+import { findPostgresError } from "../lib/pg-error.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ICategoryService } from "./interfaces/category-service.js";
+
+const CATEGORY_IN_USE_MESSAGE =
+  "Archive categories that are already used by lots, sales, submissions, or buyer interests";
 
 type CategoryMutationContext = {
   actorUserId?: string | null;
@@ -45,7 +49,7 @@ export class CategoryService implements ICategoryService {
       const source = categories.find((row) => row.id === category.id);
       return {
         ...category,
-        usage: source?.usage ?? { lots: 0, sales: 0, submissions: 0, total: 0 },
+        usage: source?.usage ?? { lots: 0, sales: 0, submissions: 0, interests: 0, total: 0 },
       };
     });
   }
@@ -123,12 +127,20 @@ export class CategoryService implements ICategoryService {
   async delete(id: string, ctx: CategoryMutationContext = {}): Promise<void> {
     const usage = await this.categories.usageFor(id);
     if (usage.total > 0) {
-      throw new CategoryError(
-        "Archive categories that are already used by lots, sales, or submissions",
-      );
+      throw new CategoryError(CATEGORY_IN_USE_MESSAGE);
     }
     const existing = await this.categories.findById(id);
-    const deleted = await this.categories.delete(id);
+    let deleted: boolean;
+    try {
+      deleted = await this.categories.delete(id);
+    } catch (error) {
+      // A reference can be inserted after the usage check. Translate the
+      // database constraint instead of leaking an opaque 500.
+      if (findPostgresError(error)?.code === "23503") {
+        throw new CategoryError(CATEGORY_IN_USE_MESSAGE);
+      }
+      throw error;
+    }
     if (!deleted) throw new CategoryError("Category not found");
     await this.publishEvent({
       aggregateId: id,

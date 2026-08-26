@@ -22,9 +22,13 @@ export function isSafeNextPath(next: string | null | undefined): boolean {
     if (pathOnly === prefix.replace(/\/$/, "") || pathOnly.startsWith(prefix)) return false;
   }
   try {
-    const decoded = decodeURIComponent(pathOnly);
-    if (decoded.includes("//")) return false;
-    if (decoded.includes("\\")) return false;
+    let decoded = pathOnly;
+    while (true) {
+      const nextDecoded = decodeURIComponent(decoded);
+      if (nextDecoded.includes("//") || nextDecoded.includes("\\")) return false;
+      if (nextDecoded === decoded) break;
+      decoded = nextDecoded;
+    }
   } catch {
     return false;
   }
