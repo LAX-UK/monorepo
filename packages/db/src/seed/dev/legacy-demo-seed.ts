@@ -14,6 +14,7 @@ import pg from "pg";
 import * as schema from "../../schema/index.js";
 import { buildPgConnectionConfig } from "../../ssl.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
+import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 
 const { Pool } = pg;
 
@@ -483,10 +484,10 @@ export async function runLegacyDemoSeed() {
 
   const pool = new Pool(buildPgConnectionConfig(url));
   const db = drizzle(pool, { schema });
-  const now = Date.now();
+  const now = DEMO_SEED_NOW.getTime();
   const day = 86_400_000;
   const hour = 3_600_000;
-  const stamp = new Date();
+  const stamp = DEMO_SEED_NOW;
 
   const {
     adminReviewTask,

@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "../../schema/index.js";
 import { buildPgConnectionConfig } from "../../ssl.js";
+import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 
 const { Pool } = pg;
 
@@ -33,7 +34,7 @@ export async function seedE2eRolloutIdentities(): Promise<void> {
 
   const pool = new Pool(buildPgConnectionConfig(url));
   const db = drizzle(pool, { schema });
-  const stamp = new Date();
+  const stamp = DEMO_SEED_NOW;
   const completedAt = new Date("2026-01-15T12:00:00.000Z");
 
   await db

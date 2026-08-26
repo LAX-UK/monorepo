@@ -9,6 +9,7 @@ import {
   stabilizeVisualPage,
 } from "./helpers/auth";
 import { expect, test } from "./helpers/auth.fixture";
+import { DEMO_VISUAL_NOW } from "./helpers/demo-seed-clock";
 
 const visualEnabled = process.env.PLAYWRIGHT_VISUAL === "1";
 const canRunVisual = e2eEnabled && visualEnabled && hasStaffCredentials();
@@ -76,6 +77,8 @@ test.describe("curated admin visual gate @visual", () => {
           colorScheme: variant.colorScheme,
           reducedMotion: "reduce",
         });
+
+        await page.clock.install({ time: DEMO_VISUAL_NOW });
 
         await prepareCase(page, visualCase);
         await stabilizeVisualPage(page);
