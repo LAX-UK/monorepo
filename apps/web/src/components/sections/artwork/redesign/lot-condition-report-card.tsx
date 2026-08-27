@@ -1,24 +1,12 @@
 "use client";
 
-import { ConditionReportRequestForm } from "@/components/sections/artwork/redesign/condition-report-request-form";
+import { LotConditionReportStatePanel } from "@/components/sections/artwork/redesign/lot-condition-report-state-panel";
 import type { ConditionReportCardState } from "@/lib/condition-report/derive-condition-report-card-state";
-import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { ConditionReportRequestFormValues } from "@auction/validators";
 import { ChevronDown, FileSearch, X } from "lucide-react";
-import Link from "next/link";
 import { type ReactNode, useId, useState } from "react";
-
-type Props = {
-  state: ConditionReportCardState;
-  onSubmitRequest: (values: ConditionReportRequestFormValues) => Promise<boolean>;
-  submitting: boolean;
-  apiErrorMessage: string | null;
-  onHide: () => void;
-  onRestore: () => void;
-  isDismissed: boolean;
-};
 
 function CardShell({
   tone,
@@ -56,37 +44,40 @@ export function LotConditionReportRestoreLink({ onRestore }: { onRestore: () => 
   );
 }
 
+function headerSummary(state: ConditionReportCardState): string {
+  switch (state.kind) {
+    case "published":
+      return "Condition report available";
+    case "notSignedIn":
+      return "Sign in to request a report";
+    case "emailVerificationRequired":
+      return "Verify email to request";
+    case "kycRequired":
+      return "Verify identity to request";
+    default:
+      return "Request a specialist condition report";
+  }
+}
+
 export function LotConditionReportCard({
   state,
   onSubmitRequest,
-  submitting,
-  apiErrorMessage,
   onHide,
   onRestore,
   isDismissed,
-}: Props) {
+}: {
+  state: ConditionReportCardState;
+  onSubmitRequest: (values: ConditionReportRequestFormValues) => Promise<boolean>;
+  onHide: () => void;
+  onRestore: () => void;
+  isDismissed: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const panelId = useId();
 
   if (isDismissed) {
     return <LotConditionReportRestoreLink onRestore={onRestore} />;
   }
-
-  const showForm =
-    state.kind === "canRequest" || state.kind === "submitting" || state.kind === "submitError";
-
-  const headerSummary = (() => {
-    switch (state.kind) {
-      case "published":
-        return "Condition report available";
-      case "notSignedIn":
-        return "Sign in to request a report";
-      case "kycRequired":
-        return "Verify identity to request";
-      default:
-        return "Request a specialist condition report";
-    }
-  })();
 
   const shellTone = state.kind === "published" ? "primary" : "neutral";
 
@@ -102,7 +93,7 @@ export function LotConditionReportCard({
           aria-controls={panelId}
           onClick={() => setExpanded((e) => !e)}
         >
-          <span className="min-w-0 flex-1">{headerSummary}</span>
+          <span className="min-w-0 flex-1">{headerSummary(state)}</span>
           <ChevronDown
             className={cn(
               "size-4 shrink-0 text-on-surface-variant transition-transform",
@@ -125,83 +116,13 @@ export function LotConditionReportCard({
 
       {expanded ? (
         <div id={panelId} className="space-y-3 border-t border-outline-variant/30 px-4 pb-4 pt-3">
-          <StateBody
+          <LotConditionReportStatePanel
             state={state}
             onSubmitRequest={onSubmitRequest}
-            submitting={submitting}
-            apiErrorMessage={apiErrorMessage}
-            showForm={showForm}
+            apiErrorMessage={state.kind === "submitError" ? state.message : null}
           />
         </div>
       ) : null}
     </CardShell>
   );
-}
-
-function StateBody({
-  state,
-  onSubmitRequest,
-  submitting,
-  apiErrorMessage,
-  showForm,
-}: {
-  state: ConditionReportCardState;
-  onSubmitRequest: (values: ConditionReportRequestFormValues) => Promise<boolean>;
-  submitting: boolean;
-  apiErrorMessage: string | null;
-  showForm: boolean;
-}) {
-  switch (state.kind) {
-    case "published":
-      return (
-        <>
-          {state.summary ? <p className="text-on-surface-variant">{state.summary}</p> : null}
-          <Button asChild size="sm" className="min-h-11 w-full">
-            <a href={state.downloadUrl} target="_blank" rel="noreferrer">
-              View condition report (PDF)
-            </a>
-          </Button>
-        </>
-      );
-
-    case "notSignedIn":
-      return (
-        <>
-          <p className="text-on-surface-variant">
-            Request a formal condition report prepared by our specialists before you bid.
-          </p>
-          <Button asChild variant="outline" size="sm" className="min-h-11 w-full">
-            <Link href={`/login?next=${encodeURIComponent(state.loginNextPath)}`}>
-              Sign in to request
-            </Link>
-          </Button>
-        </>
-      );
-
-    case "kycRequired":
-      return (
-        <>
-          <p className="text-on-surface-variant">
-            {state.feedback ?? "Verify your identity to request a condition report for this lot."}
-          </p>
-          <Button asChild variant="outline" size="sm" className="min-h-11 w-full">
-            <Link href={contextualIdentityOnboardingHref(state.loginNextPath, "condition_report")}>
-              Verify to continue bidding
-            </Link>
-          </Button>
-        </>
-      );
-
-    case "submitError":
-    case "canRequest":
-    case "submitting":
-      if (!showForm) return null;
-      return (
-        <ConditionReportRequestForm
-          onSubmitRequest={onSubmitRequest}
-          submitting={submitting || state.kind === "submitting"}
-          apiErrorMessage={apiErrorMessage}
-        />
-      );
-  }
 }

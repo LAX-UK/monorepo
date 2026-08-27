@@ -1,12 +1,14 @@
-import { BidError, type IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
+import {
+  type ISelfServiceIdentityEligibilityGate,
+  SelfServiceIdentityEligibilityError,
+} from "@auction/bidding-runtime";
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";
-import { NotificationFactory } from "../notification.factory.js";
+import { createConditionReportBuyerContext } from "./condition-report-buyer-context.js";
 import { ConditionReportBuyerService } from "./condition-report-buyer.service.js";
-import { createConditionReportContext } from "./condition-report-context.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const userId = "user-buyer-1";
@@ -38,23 +40,21 @@ function buyerServiceWithRows(rows: ConditionReportRequestRow[]) {
     listByLotAndUser: vi.fn(async () => rows),
   } as unknown as IConditionReportRequestRepository;
 
-  const ctx = createConditionReportContext({
-    transactionRunner: {
-      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
-    } as never,
+  const ctx = createConditionReportBuyerContext({
     requestRepo,
     lotRepo: { findById: vi.fn() } as unknown as ILotRepository,
     legalEntityRepository: null,
     domainEventSink: null,
-    notificationDispatcher: null,
-    notificationFactory: new NotificationFactory(),
+    identityEligibilityGate: {
+      assertSelfServiceEligible: vi.fn(async () => ok(undefined)),
+    },
   });
 
   return new ConditionReportBuyerService(ctx);
 }
 
 function buyerServiceForCreate(opts: {
-  identityEligibilityGate: IBidIdentityEligibilityGate | null;
+  identityEligibilityGate: ISelfServiceIdentityEligibilityGate;
   lotStatus?: string;
 }) {
   const requestRepo = {
@@ -63,18 +63,13 @@ function buyerServiceForCreate(opts: {
     insert: vi.fn(async () => makeRequestRow()),
   } as unknown as IConditionReportRequestRepository;
 
-  const ctx = createConditionReportContext({
-    transactionRunner: {
-      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
-    } as never,
+  const ctx = createConditionReportBuyerContext({
     requestRepo,
     lotRepo: {
       findById: vi.fn(async () => ({ id: lotId, status: opts.lotStatus ?? "active" })),
     } as unknown as ILotRepository,
     legalEntityRepository: null,
     domainEventSink: null,
-    notificationDispatcher: null,
-    notificationFactory: new NotificationFactory(),
     identityEligibilityGate: opts.identityEligibilityGate,
   });
 
@@ -111,22 +106,17 @@ describe("ConditionReportBuyerService.findForBuyerOnLot", () => {
 });
 
 describe("ConditionReportBuyerService.createRequest identity gate", () => {
-  it("fails closed when the identity gate is not configured", async () => {
-    const { svc, requestRepo } = buyerServiceForCreate({ identityEligibilityGate: null });
-    const result = await svc.createRequest({ userId, lotId });
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error).toMatchObject({ status: 503, code: "identity_gate_unconfigured" });
-    }
-    expect(requestRepo.insert).not.toHaveBeenCalled();
-  });
-
   it("rejects unverified email before insert", async () => {
-    const identityEligibilityGate: IBidIdentityEligibilityGate = {
+    const identityEligibilityGate: ISelfServiceIdentityEligibilityGate = {
       assertSelfServiceEligible: vi.fn(async () =>
-        err(new BidError("Verify your email before bidding", 403, "email_not_verified")),
+        err(
+          new SelfServiceIdentityEligibilityError(
+            "Verify your email before bidding",
+            403,
+            "email_not_verified",
+          ),
+        ),
       ),
-      assertValidatedOperatorEligible: vi.fn(),
     };
     const { svc, requestRepo } = buyerServiceForCreate({ identityEligibilityGate });
     const result = await svc.createRequest({ userId, lotId });
@@ -138,11 +128,16 @@ describe("ConditionReportBuyerService.createRequest identity gate", () => {
   });
 
   it("rejects unapproved KYC before insert", async () => {
-    const identityEligibilityGate: IBidIdentityEligibilityGate = {
+    const identityEligibilityGate: ISelfServiceIdentityEligibilityGate = {
       assertSelfServiceEligible: vi.fn(async () =>
-        err(new BidError("Complete identity verification before bidding", 402, "kyc_required")),
+        err(
+          new SelfServiceIdentityEligibilityError(
+            "Complete identity verification before bidding",
+            402,
+            "kyc_required",
+          ),
+        ),
       ),
-      assertValidatedOperatorEligible: vi.fn(),
     };
     const { svc, requestRepo } = buyerServiceForCreate({ identityEligibilityGate });
     const result = await svc.createRequest({ userId, lotId });
@@ -154,9 +149,8 @@ describe("ConditionReportBuyerService.createRequest identity gate", () => {
   });
 
   it("creates the request when identity is eligible", async () => {
-    const identityEligibilityGate: IBidIdentityEligibilityGate = {
+    const identityEligibilityGate: ISelfServiceIdentityEligibilityGate = {
       assertSelfServiceEligible: vi.fn(async () => ok(undefined)),
-      assertValidatedOperatorEligible: vi.fn(),
     };
     const { svc, requestRepo } = buyerServiceForCreate({ identityEligibilityGate });
     const result = await svc.createRequest({ userId, lotId });

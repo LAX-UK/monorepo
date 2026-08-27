@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { evaluateSelfServiceActorBidEligibility } from "./self-service-actor-bid-eligibility.js";
+import { evaluateSelfServiceActorIdentityEligibility } from "./self-service-actor-identity-eligibility.js";
 
-describe("evaluateSelfServiceActorBidEligibility", () => {
+describe("evaluateSelfServiceActorIdentityEligibility", () => {
   it("requires a verified email before considering KYC", () => {
     expect(
-      evaluateSelfServiceActorBidEligibility({
+      evaluateSelfServiceActorIdentityEligibility({
         emailVerified: false,
         kycStatus: "approved",
       }),
@@ -15,7 +15,7 @@ describe("evaluateSelfServiceActorBidEligibility", () => {
     "requires approved KYC when status is %s",
     (kycStatus) => {
       expect(
-        evaluateSelfServiceActorBidEligibility({
+        evaluateSelfServiceActorIdentityEligibility({
           emailVerified: true,
           kycStatus,
         }),
@@ -25,7 +25,7 @@ describe("evaluateSelfServiceActorBidEligibility", () => {
 
   it("allows a verified actor with approved KYC", () => {
     expect(
-      evaluateSelfServiceActorBidEligibility({
+      evaluateSelfServiceActorIdentityEligibility({
         emailVerified: true,
         kycStatus: "approved",
       }),

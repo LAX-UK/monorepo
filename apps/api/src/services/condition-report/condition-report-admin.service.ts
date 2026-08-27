@@ -7,13 +7,13 @@ import type {
   FulfillConditionReportInput,
   IConditionReportAdminService,
 } from "../interfaces/condition-report.js";
-import type { ConditionReportContext } from "./condition-report-context.js";
+import type { ConditionReportAdminContext } from "./condition-report-admin-context.js";
 import { ConditionReportFulfilmentService } from "./condition-report-fulfilment.service.js";
 
 export class ConditionReportAdminService implements IConditionReportAdminService {
   private readonly fulfilment: ConditionReportFulfilmentService;
 
-  constructor(private readonly ctx: ConditionReportContext) {
+  constructor(private readonly ctx: ConditionReportAdminContext) {
     this.fulfilment = new ConditionReportFulfilmentService(ctx);
   }
 

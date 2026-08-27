@@ -84,11 +84,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     isOnsiteSale,
     isHybridSale,
     lotStreamCtx,
-    conditionReportCtaShow,
-    kycApprovedForCr,
-    kycFeedbackForCr,
-    publishedConditionReport,
-    buyerConditionReportRequest,
+    conditionReport,
     saleroomLotRefs,
     queueVMs,
     artistNameByLotId,
@@ -102,7 +98,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     saleRegistrationBidGate,
     isOwnLot,
     actingLegalEntityId,
-    viewer,
     saleLots,
     breadcrumbItems,
     viewItemCurrency,
@@ -261,19 +256,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                             followSlot={followSlot}
                             bidPanel={onlineBidPanel}
                             bidPanelTop={
-                              <ArtworkConditionReportCta
-                                lotId={auction.id}
-                                loginNextPath={lotPath(auction)}
-                                isAuthenticated={Boolean(session)}
-                                canParticipate={viewer.canParticipateAsBuyer}
-                                show={conditionReportCtaShow}
-                                lotEligible={conditionReportCtaShow}
-                                kycApproved={kycApprovedForCr}
-                                kycFeedback={kycFeedbackForCr}
-                                publishedConditionReport={publishedConditionReport}
-                                buyerRequest={buyerConditionReportRequest}
-                                userId={session?.id ?? null}
-                              />
+                              <ArtworkConditionReportCta model={conditionReport.session} />
                             }
                             hasVideoStream={Boolean(lotStreamCtx?.showOnLotPage)}
                             streamUrl={saleBundle?.sale?.streamUrl ?? null}

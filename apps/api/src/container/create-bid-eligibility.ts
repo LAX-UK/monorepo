@@ -3,13 +3,15 @@ import {
   BidEligibilityService,
   BidIdentityEligibilityGate,
   BuyerAgentBidGate,
+  type IBidIdentityEligibilityGate,
+  type ISelfServiceIdentityEligibilityGate,
   KycBidGate,
   NoOpAmlBidGate,
   NoOpKycBidGate,
   OperatorPlacementPolicy,
   SaleRegistrationBidGate,
+  SelfServiceIdentityEligibilityGate,
 } from "@auction/bidding-runtime";
-import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import {
   DrizzleBidActorEligibilityReader,
@@ -41,6 +43,12 @@ export function createBidEligibility(input: CreateBidEligibilityInput): IBidElig
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
     new BuyerAgentBidGate(new DrizzleBuyerAgentAuthorisationReader(db)),
   );
+}
+
+export function createSelfServiceIdentityEligibilityGate(
+  db: Database,
+): ISelfServiceIdentityEligibilityGate {
+  return new SelfServiceIdentityEligibilityGate(new DrizzleBidActorEligibilityReader(db));
 }
 
 export function createBidIdentityEligibilityGate(

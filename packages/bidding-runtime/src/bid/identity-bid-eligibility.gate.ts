@@ -1,36 +1,44 @@
-import { evaluateSelfServiceActorBidEligibility } from "@auction/domain";
 import type { IBidActorEligibilityReader } from "@auction/persistence/interfaces";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../bid-error.js";
 import type { IKycBidGate } from "./kyc-bid.gate.js";
+import type { SelfServiceIdentityEligibilityError } from "./self-service-identity-eligibility.error.js";
+import { SelfServiceIdentityEligibilityGate } from "./self-service-identity-eligibility.gate.js";
+
+export type { ISelfServiceIdentityEligibilityGate } from "./self-service-identity-eligibility.gate.js";
+export { SelfServiceIdentityEligibilityGate } from "./self-service-identity-eligibility.gate.js";
+export { SelfServiceIdentityEligibilityError } from "./self-service-identity-eligibility.error.js";
 
 export interface IBidIdentityEligibilityGate {
   assertSelfServiceEligible(userId: string): Promise<Result<void, BidError>>;
   assertValidatedOperatorEligible(userId: string): Promise<Result<void, BidError>>;
 }
 
+function toBidError(error: SelfServiceIdentityEligibilityError): BidError {
+  return new BidError(error.message, error.status, error.code);
+}
+
 export class BidIdentityEligibilityGate implements IBidIdentityEligibilityGate {
+  private readonly strictGate: SelfServiceIdentityEligibilityGate;
+
   constructor(
-    private readonly actorReader: IBidActorEligibilityReader,
+    actorReader: IBidActorEligibilityReader,
     private readonly thresholdKycGate: IKycBidGate,
     private readonly strictEnabled: boolean,
-  ) {}
+  ) {
+    this.strictGate = new SelfServiceIdentityEligibilityGate(actorReader);
+  }
 
   async assertSelfServiceEligible(userId: string): Promise<Result<void, BidError>> {
     if (!this.strictEnabled) {
       return this.thresholdKycGate.assertCanBid(userId);
     }
 
-    const actor = await this.actorReader.findBidActorEligibility(userId);
-    const outcome = actor
-      ? evaluateSelfServiceActorBidEligibility(actor)
-      : { kind: "ineligible" as const, code: "kyc_required" as const };
-
-    if (outcome.kind === "eligible") return ok(undefined);
-    if (outcome.code === "email_not_verified") {
-      return err(new BidError("Verify your email before bidding", 403, outcome.code));
+    const result = await this.strictGate.assertSelfServiceEligible(userId);
+    if (result.isErr()) {
+      return err(toBidError(result.error));
     }
-    return err(new BidError("Complete identity verification before bidding", 402, outcome.code));
+    return ok(undefined);
   }
 
   assertValidatedOperatorEligible(userId: string): Promise<Result<void, BidError>> {

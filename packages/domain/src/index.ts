@@ -8,12 +8,12 @@ export {
 } from "./sale-status-policy.js";
 export { buyerEntityCanBid } from "./buyer-entity-bid-eligibility.js";
 export {
-  evaluateSelfServiceActorBidEligibility,
-  type SelfServiceActorBidEligibility,
-  type SelfServiceActorBidEligibilityInput,
-  type SelfServiceActorBidIneligibilityCode,
+  evaluateSelfServiceActorIdentityEligibility,
+  type SelfServiceActorIdentityEligibility,
+  type SelfServiceActorIdentityEligibilityInput,
+  type SelfServiceActorIdentityIneligibilityCode,
   type SelfServiceActorKycStatus,
-} from "./self-service-actor-bid-eligibility.js";
+} from "./self-service-actor-identity-eligibility.js";
 export {
   resolveStrictBidEligibilityRollout,
   type StrictBidEligibilityRolloutInput,

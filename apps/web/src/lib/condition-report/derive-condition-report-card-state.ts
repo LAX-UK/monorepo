@@ -2,10 +2,15 @@ import type {
   ConditionReportRequestSnapshot,
   PublishedConditionReport,
 } from "@/lib/condition-report/condition-report-types";
+import {
+  type SelfServiceActorKycStatus,
+  evaluateSelfServiceActorIdentityEligibility,
+} from "@auction/domain";
 
 export type ConditionReportCardState =
   | { kind: "published"; summary: string | null; downloadUrl: string }
   | { kind: "notSignedIn"; loginNextPath: string }
+  | { kind: "emailVerificationRequired"; loginNextPath: string; email: string | null }
   | { kind: "kycRequired"; loginNextPath: string; feedback: string | null }
   | { kind: "canRequest" }
   | { kind: "submitting" }
@@ -13,12 +18,12 @@ export type ConditionReportCardState =
 
 export type DeriveConditionReportCardInput = {
   show: boolean;
-  lotEligible: boolean;
   isAuthenticated: boolean;
-  kycApproved: boolean;
+  emailVerified: boolean;
+  userEmail: string | null;
+  kycStatus: SelfServiceActorKycStatus;
   kycFeedback: string | null;
   loginNextPath: string;
-  dashboardHref: string;
   published: PublishedConditionReport | null;
   buyerRequest: ConditionReportRequestSnapshot | null;
   uiPhase: "idle" | "submitting" | "submitError";
@@ -53,7 +58,18 @@ export function deriveConditionReportCardState(
     return { kind: "notSignedIn", loginNextPath: input.loginNextPath };
   }
 
-  if (!input.kycApproved) {
+  const eligibility = evaluateSelfServiceActorIdentityEligibility({
+    emailVerified: input.emailVerified,
+    kycStatus: input.kycStatus,
+  });
+  if (eligibility.kind === "ineligible") {
+    if (eligibility.code === "email_not_verified") {
+      return {
+        kind: "emailVerificationRequired",
+        loginNextPath: input.loginNextPath,
+        email: input.userEmail,
+      };
+    }
     return {
       kind: "kycRequired",
       loginNextPath: input.loginNextPath,
@@ -70,10 +86,6 @@ export function deriveConditionReportCardState(
   }
   if (input.uiPhase === "submitError" && input.submitErrorMessage) {
     return { kind: "submitError", message: input.submitErrorMessage };
-  }
-
-  if (!input.lotEligible) {
-    return null;
   }
 
   return { kind: "canRequest" };

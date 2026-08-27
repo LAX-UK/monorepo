@@ -1,7 +1,7 @@
 import { emailVerificationBidBlockerPresentation } from "@/lib/bid/presenters/email-verification-blocker.presenter";
 import { resolveKycBidBlockerPresentation } from "@/lib/bid/presenters/kyc-blocker.presenter";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
-import { evaluateSelfServiceActorBidEligibility } from "@auction/domain";
+import { evaluateSelfServiceActorIdentityEligibility } from "@auction/domain";
 import { blockBid } from "./block-decision";
 import type { BidPolicy, BidPolicyContext, BidPolicyDecision } from "./types";
 
@@ -12,7 +12,7 @@ export const strictEligibilityPolicy: BidPolicy = {
       return { kind: "allow" };
     }
     const user = ctx.user;
-    const outcome = evaluateSelfServiceActorBidEligibility({
+    const outcome = evaluateSelfServiceActorIdentityEligibility({
       emailVerified: user.emailVerified === true,
       kycStatus: user.kycStatus ?? "unverified",
     });

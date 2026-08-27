@@ -6,11 +6,11 @@ import type {
   ConditionReportServiceError,
   IConditionReportBuyerService,
 } from "../interfaces/condition-report.js";
-import type { ConditionReportContext } from "./condition-report-context.js";
+import type { ConditionReportBuyerContext } from "./condition-report-buyer-context.js";
 import { OPEN_LOT_STATUSES, OPEN_REQUEST_STATUSES } from "./condition-report-request.mapper.js";
 
 export class ConditionReportBuyerService implements IConditionReportBuyerService {
-  constructor(private readonly ctx: ConditionReportContext) {}
+  constructor(private readonly ctx: ConditionReportBuyerContext) {}
 
   async createRequest(input: {
     userId: string;
@@ -18,13 +18,6 @@ export class ConditionReportBuyerService implements IConditionReportBuyerService
     requestingLegalEntityId?: string | undefined;
     requestNote?: string | undefined;
   }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>> {
-    if (!this.ctx.identityEligibilityGate) {
-      return err({
-        message: "Identity eligibility is not configured",
-        status: 503,
-        code: "identity_gate_unconfigured",
-      });
-    }
     const eligibility = await this.ctx.identityEligibilityGate.assertSelfServiceEligible(
       input.userId,
     );

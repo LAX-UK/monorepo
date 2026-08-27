@@ -43,6 +43,9 @@ export { BuyerAgentBidGate } from "./bid/buyer-agent-bid.gate.js";
 export {
   BidIdentityEligibilityGate,
   type IBidIdentityEligibilityGate,
+  SelfServiceIdentityEligibilityGate,
+  SelfServiceIdentityEligibilityError,
+  type ISelfServiceIdentityEligibilityGate,
 } from "./bid/identity-bid-eligibility.gate.js";
 export { KycBidGate, NoOpKycBidGate, type IKycBidGate } from "./bid/kyc-bid.gate.js";
 export { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";

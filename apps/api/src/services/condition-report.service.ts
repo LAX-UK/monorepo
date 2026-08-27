@@ -1,11 +1,12 @@
-import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
+import type { ISelfServiceIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
+import { createConditionReportAdminContext } from "./condition-report/condition-report-admin-context.js";
 import { ConditionReportAdminService } from "./condition-report/condition-report-admin.service.js";
+import { createConditionReportBuyerContext } from "./condition-report/condition-report-buyer-context.js";
 import { ConditionReportBuyerService } from "./condition-report/condition-report-buyer.service.js";
-import { createConditionReportContext } from "./condition-report/condition-report-context.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IConditionReportService } from "./interfaces/condition-report.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
@@ -23,9 +24,16 @@ export class ConditionReportService implements IConditionReportService {
     notificationDispatcher: NotificationDispatcher | null,
     notificationFactory: NotificationFactory,
     requestRepo: IConditionReportRequestRepository,
-    identityEligibilityGate: IBidIdentityEligibilityGate | null = null,
+    identityEligibilityGate: ISelfServiceIdentityEligibilityGate,
   ) {
-    const ctx = createConditionReportContext({
+    const buyerCtx = createConditionReportBuyerContext({
+      requestRepo,
+      lotRepo,
+      legalEntityRepository,
+      domainEventSink,
+      identityEligibilityGate,
+    });
+    const adminCtx = createConditionReportAdminContext({
       transactionRunner,
       requestRepo,
       lotRepo,
@@ -33,10 +41,9 @@ export class ConditionReportService implements IConditionReportService {
       domainEventSink,
       notificationDispatcher,
       notificationFactory,
-      identityEligibilityGate,
     });
-    this.buyer = new ConditionReportBuyerService(ctx);
-    this.admin = new ConditionReportAdminService(ctx);
+    this.buyer = new ConditionReportBuyerService(buyerCtx);
+    this.admin = new ConditionReportAdminService(adminCtx);
   }
 
   createRequest(...args: Parameters<ConditionReportBuyerService["createRequest"]>) {

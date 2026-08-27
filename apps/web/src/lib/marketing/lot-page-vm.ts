@@ -6,7 +6,8 @@ import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
 import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
 import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
 import { resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
-import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import { buildLotConditionReportViewModel } from "@/lib/condition-report/build-lot-condition-report-vm";
+import type { LotConditionReportViewModel } from "@/lib/condition-report/lot-condition-report-session-input";
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import {
@@ -80,11 +81,7 @@ export type LotPageViewModel = {
   isOnsiteSale: boolean;
   isHybridSale: boolean;
   lotStreamCtx: ReturnType<typeof resolveSaleStreamContext> | null;
-  conditionReportCtaShow: boolean;
-  kycApprovedForCr: boolean;
-  kycFeedbackForCr: KycUserFeedbackDto | null;
-  publishedConditionReport: { summary?: string; downloadUrl?: string } | null;
-  buyerConditionReportRequest: LotPageSecondaryData["buyerConditionReportRequest"];
+  conditionReport: LotConditionReportViewModel;
   saleroomLotRefs: Array<{
     id: string;
     lotNumber: number | null;
@@ -242,13 +239,6 @@ export function buildLotPageViewModel(input: {
       })
     : null;
 
-  const conditionReportCtaShow =
-    !isOnsiteSale && (auction.status === "scheduled" || auction.status === "active");
-  const kycApprovedForCr = session?.kycStatus === "approved";
-  const kycFeedbackForCr = kycApprovedForCr
-    ? null
-    : resolveKycSurfaceFeedback({ summary: kycSummary, unavailable: kycUnavailable });
-
   const mdCr = auction.marketingDetails?.conditionReport;
   const publishedConditionReport =
     mdCr?.downloadUrl || mdCr?.summary
@@ -338,6 +328,22 @@ export function buildLotPageViewModel(input: {
 
   const kycApprovedForBid = session?.kycStatus === "approved";
   const viewer = resolveViewerParticipation(session);
+  const kycFeedbackForBid = kycApprovedForBid
+    ? null
+    : resolveKycSurfaceFeedback({ summary: kycSummary, unavailable: kycUnavailable });
+  const conditionReport = buildLotConditionReportViewModel({
+    auction,
+    session,
+    saleDeliveryMode: saleBundle?.sale?.deliveryMode,
+    auctionStatus: auction.status,
+    kycSummary,
+    kycUnavailable,
+    kycFeedbackDto: kycFeedbackForBid,
+    loginNextPath: lotPath(auction),
+    canParticipate: viewer.canParticipateAsBuyer,
+    publishedConditionReport,
+    buyerConditionReportRequest,
+  });
   const saleRegistrationBidGate = buildSaleRegistrationBidGate({
     saleId: auction.saleId,
     saleDeliveryMode: saleBundle?.sale?.deliveryMode,
@@ -350,9 +356,7 @@ export function buildLotPageViewModel(input: {
       bidLimit: r.bidLimit,
     })),
     kycApproved: kycApprovedForBid,
-    kycFeedback: kycApprovedForBid
-      ? null
-      : resolveKycSurfaceFeedback({ summary: kycSummary, unavailable: kycUnavailable }),
+    kycFeedback: kycFeedbackForBid,
   });
 
   const isOwnLot = computeIsOwnLot(auction, session, actingCtx.acting);
@@ -416,11 +420,7 @@ export function buildLotPageViewModel(input: {
     isOnsiteSale,
     isHybridSale,
     lotStreamCtx,
-    conditionReportCtaShow,
-    kycApprovedForCr,
-    kycFeedbackForCr,
-    publishedConditionReport,
-    buyerConditionReportRequest,
+    conditionReport,
     saleroomLotRefs,
     queueVMs,
     artistNameByLotId,

@@ -203,7 +203,7 @@ all bid channels, error contracts remain stable, organisation authority stays
 separate from seller payouts, and the kill/rollout switch limits operational
 risk.
 
-**Status.** *Implemented.* Domain policy in [packages/domain/src/self-service-actor-bid-eligibility.ts](../../packages/domain/src/self-service-actor-bid-eligibility.ts), identity gate in [packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts](../../packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts), persistence in [packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts](../../packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts), UI policy in [apps/web/src/lib/bid/policies/strict-eligibility.policy.ts](../../apps/web/src/lib/bid/policies/strict-eligibility.policy.ts).
+**Status.** *Implemented.* Domain policy in [packages/domain/src/self-service-actor-identity-eligibility.ts](../../packages/domain/src/self-service-actor-identity-eligibility.ts) (shared by bidding and condition-report flows), strict bid gate in [packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts](../../packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts), always-strict condition-report gate via [packages/bidding-runtime/src/bid/self-service-identity-eligibility.gate.ts](../../packages/bidding-runtime/src/bid/self-service-identity-eligibility.gate.ts), persistence in [packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts](../../packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts), UI policy in [apps/web/src/lib/bid/policies/strict-eligibility.policy.ts](../../apps/web/src/lib/bid/policies/strict-eligibility.policy.ts).
 
 ## D15. Bid policy decisions carry presentation, not a render closure
 
