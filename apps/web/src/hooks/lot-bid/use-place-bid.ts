@@ -5,11 +5,13 @@ import { useBidEntryState } from "@/hooks/lot-bid/use-bid-entry-state";
 import { useBidReview } from "@/hooks/lot-bid/use-bid-review";
 import { useIdempotencyKey } from "@/hooks/lot-bid/use-idempotency-key";
 import type { UsePlaceBidParams } from "@/hooks/lot-bid/use-place-bid.types";
+import { sendVerificationEmailForReturnPath } from "@/lib/auth/services/send-verification-email.service";
 import { deriveBidPanelFlags } from "@/lib/bid/derive-bid-panel-flags";
 import { evaluateManualBidEligibility } from "@/lib/bid/evaluate-lot-bid-eligibility";
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { lotPath } from "@/lib/seo/url";
 import type { BidErrorPresentation } from "@/lib/ui/bid-error";
+import { notify } from "@/lib/ui/notify";
 import { useCallback, useMemo, useState } from "react";
 
 export type { UsePlaceBidParams } from "@/hooks/lot-bid/use-place-bid.types";
@@ -151,9 +153,21 @@ export function usePlaceBid(params: UsePlaceBidParams) {
     (actionKey: NonNullable<BidErrorPresentation["actionKey"]>) => {
       if (actionKey === "switch-to-auto-bid") {
         switchEntryMode("auto", { userInitiated: true });
+        return;
+      }
+      if (actionKey === "resend-verification-email" && sessionUser) {
+        void sendVerificationEmailForReturnPath({ email: sessionUser.email, next: loginNext }).then(
+          (result) => {
+            if (!result.ok) {
+              notify.error(result.message);
+              return;
+            }
+            notify.success("Verification email sent");
+          },
+        );
       }
     },
-    [switchEntryMode],
+    [loginNext, sessionUser, switchEntryMode],
   );
 
   const { onReview } = useBidReview({

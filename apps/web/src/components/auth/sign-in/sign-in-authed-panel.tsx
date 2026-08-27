@@ -1,7 +1,7 @@
 "use client";
 
 import { LogoutButton } from "@/components/layout/logout-button";
-import { resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { postLoginHandoffHref } from "@/lib/auth/post-login-handoff";
 import type { SessionUser } from "@/lib/data/contracts";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -19,19 +19,7 @@ export function SignInAuthedPanel({
   switchAccount = false,
   safeNext,
 }: SignInAuthedPanelProps) {
-  const dest = resolvePostAuthDestination({
-    user: {
-      email: user.email,
-      role: user.role,
-      staffRole: user.staffRole ?? null,
-      emailVerified: user.emailVerified ?? false,
-      suspended: user.suspended ?? false,
-    },
-    requestedNext: next,
-    context: "redirect-if-authed",
-    requireEmailVerification: false,
-    withWelcomeBack: true,
-  });
+  const dest = postLoginHandoffHref(next, { withWelcomeBack: true });
 
   return (
     <div className="flex w-full flex-col gap-8">

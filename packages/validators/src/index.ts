@@ -20,6 +20,8 @@ export * from "./auto-bid.js";
 export * from "./buyer-premium.js";
 export * from "./lot-checkout-pricing.js";
 export * from "./category.js";
+export * from "./category-interests.js";
+export * from "./boolean-flag.js";
 export * from "./notification.js";
 export * from "./payment.js";
 export * from "./password-policy.js";

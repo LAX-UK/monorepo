@@ -48,6 +48,7 @@ describe("ConditionReportService facade", () => {
       null,
       new NotificationFactory(),
       requestRepo,
+      { assertSelfServiceEligible: vi.fn() },
     );
 
     const row = await svc.findForBuyerOnLot({ userId, lotId });

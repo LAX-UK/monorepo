@@ -41,6 +41,11 @@ describe("notLivePolicy", () => {
   it("blocks when lotStatus is not active", () => {
     const d = notLivePolicy.evaluate(base());
     expect(d.kind).toBe("block");
+    if (d.kind !== "block") return;
+    expect(d.viewId).toBe("not-live");
+    expect(d.presentation.tone).toBe("neutral");
+    expect(d.presentation.title).toBe("Bidding unavailable");
+    expect(d.presentation.action).toMatchObject({ kind: "status", label: "Unavailable" });
   });
 
   it("allows when lotStatus is active", () => {
@@ -55,7 +60,12 @@ describe("notLivePolicy", () => {
       biddingLifecycle: { kind: "preLaunch" },
     });
     expect(d.kind).toBe("block");
-    if (d.kind === "block") expect(d.viewId).toBe("not-live:preLaunch");
+    if (d.kind !== "block") return;
+    expect(d.viewId).toBe("not-live:preLaunch");
+    expect(d.presentation.tone).toBe("neutral");
+    expect(d.presentation.title).toBe("Catalogue preview");
+    expect(d.presentation.action).toMatchObject({ kind: "status" });
+    expect(d.presentation.preview).toBeDefined();
   });
 
   it("allows live lifecycle when lot is active", () => {
@@ -74,7 +84,11 @@ describe("notLivePolicy", () => {
       biddingLifecycle: { kind: "liveSaleroom", isOnBlock: false },
     });
     expect(d.kind).toBe("block");
-    if (d.kind === "block") expect(d.viewId).toBe("not-live:off-block");
+    if (d.kind !== "block") return;
+    expect(d.viewId).toBe("not-live:off-block");
+    expect(d.presentation.tone).toBe("neutral");
+    expect(d.presentation.title).toBe("Waiting for this lot");
+    expect(d.presentation.action).toMatchObject({ kind: "status", label: "Not on block" });
   });
 
   it("allows liveSaleroom when lot is on block", () => {
@@ -93,6 +107,10 @@ describe("notLivePolicy", () => {
       biddingLifecycle: { kind: "saleroomPaused" },
     });
     expect(d.kind).toBe("block");
-    if (d.kind === "block") expect(d.viewId).toBe("not-live:saleroomPaused");
+    if (d.kind !== "block") return;
+    expect(d.viewId).toBe("not-live:saleroomPaused");
+    expect(d.presentation.tone).toBe("warning");
+    expect(d.presentation.title).toBe("Auction paused");
+    expect(d.presentation.action).toMatchObject({ kind: "status", label: "Paused" });
   });
 });

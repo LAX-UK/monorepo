@@ -14,14 +14,19 @@ export function normalizeKycReturnUrl(returnUrl: string, webOrigin: string | und
   }
 }
 
-export function assertHttpsReturnUrl(returnUrl: string): void {
+export function assertKycReturnUrlAllowed(returnUrl: string, webOrigin: string | undefined): void {
   let parsed: URL;
+  let trusted: URL;
   try {
     parsed = new URL(returnUrl);
+    trusted = new URL(webOrigin ?? "");
   } catch {
     throw new Error("kyc_return_url_invalid");
   }
   if (parsed.protocol !== "https:") {
     throw new Error("kyc_return_url_must_be_https");
+  }
+  if (parsed.origin !== trusted.origin) {
+    throw new Error("kyc_return_url_origin_not_allowed");
   }
 }

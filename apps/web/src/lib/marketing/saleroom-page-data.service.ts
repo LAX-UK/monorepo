@@ -12,6 +12,7 @@ import {
 } from "@/lib/data/http/sales.server";
 import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
+import { isKycStatusUnavailableError } from "@/lib/kyc/kyc-status-unavailable-error";
 import type { SaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort";
 import type { SaleroomCatalogStatusFilter } from "@/lib/marketing/saleroom-page.query";
 import type { Category, Lot, Sale } from "@auction/types";
@@ -45,6 +46,7 @@ export type SaleroomSecondaryData = {
   follow: { isFollowing: boolean };
   relatedSales: Awaited<ReturnType<typeof getServerRelatedSales>>;
   kycSummary: Awaited<ReturnType<typeof getServerKycStatusSummary>> | null;
+  kycUnavailable: boolean;
   watchedLotIds: ReadonlySet<string>;
   telephoneBooking: Awaited<ReturnType<typeof getServerTelephoneBookingForSale>> | null;
 };
@@ -116,19 +118,35 @@ export class SaleroomPageDataService {
     session: SessionUser | null,
   ): Promise<SaleroomSecondaryData> {
     const categoryId = sale.categoryId ?? null;
-    const [follow, relatedSales, kycSummary, watchedLotIds, telephoneBooking] = await Promise.all([
+    const [follow, relatedSales, kycLookup, watchedLotIds, telephoneBooking] = await Promise.all([
       session
         ? getServerSaleFollowState(saleId).catch(() => ({ isFollowing: false }))
         : Promise.resolve({ isFollowing: false }),
       getServerRelatedSales({ id: saleId, categoryId, limit: 4 }).catch(() => []),
-      session ? getServerKycStatusSummary().catch(() => null) : Promise.resolve(null),
+      session
+        ? getServerKycStatusSummary()
+            .then((summary) => ({ summary, unavailable: false }))
+            .catch((error) => {
+              if (isKycStatusUnavailableError(error)) {
+                return { summary: null, unavailable: true };
+              }
+              throw error;
+            })
+        : Promise.resolve({ summary: null, unavailable: false }),
       session ? getServerWatchedLotIdSet() : Promise.resolve(new Set<string>()),
       session && isSaleroomDeliveryMode(sale.deliveryMode)
         ? getServerTelephoneBookingForSale(saleId).catch(() => null)
         : Promise.resolve(null),
     ]);
 
-    return { follow, relatedSales, kycSummary, watchedLotIds, telephoneBooking };
+    return {
+      follow,
+      relatedSales,
+      kycSummary: kycLookup.summary,
+      kycUnavailable: kycLookup.unavailable,
+      watchedLotIds,
+      telephoneBooking,
+    };
   }
 
   filterCatalogLots(

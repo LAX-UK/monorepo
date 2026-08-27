@@ -1,9 +1,12 @@
 import type { Database } from "@auction/db";
 import type { IAntiShillingGuard, IBidRepository } from "@auction/persistence/interfaces";
 import type { Bid, Lot } from "@auction/types";
+import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
+import { BidError } from "../bid-error.js";
 import type { INotificationSender } from "../ports.js";
 import { ProxyAutoBidResolver } from "./proxy-auto-bid.resolver.js";
+import type { IStandingBidEligibilityValidator } from "./standing-bid-eligibility.validator.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
 
@@ -205,4 +208,159 @@ describe("ProxyAutoBidResolver.resolve", () => {
     expect(clearProxyAutoBidForBidderOnLot).toHaveBeenCalledWith("lot-1", "shill");
     expect(notifyProxyCancelled).toHaveBeenCalledWith("lot-1", "shill", "anti_shilling_violation");
   });
+
+  it("cancels standing proxies that lost email or KYC eligibility when revalidation runs", async () => {
+    const clearProxyAutoBidForBidderOnLot = vi.fn().mockResolvedValue(1);
+    const bids = {
+      listBidderCeilingStates: vi.fn().mockResolvedValue([
+        {
+          bidderId: "lost-kyc",
+          buyerLegalEntityId: "le-1",
+          ceiling: "400.00",
+          autoBidStepAmount: "10.00",
+          maxCreatedAt: new Date(),
+        },
+      ]),
+      bidderHasProxyMaxOnLot: vi.fn().mockResolvedValue(true),
+      clearProxyAutoBidForBidderOnLot,
+    } as unknown as IBidRepository;
+    const standingBidValidator: IStandingBidEligibilityValidator = {
+      validate: vi
+        .fn()
+        .mockResolvedValue(
+          err(new BidError("Identity verification required", 403, "kyc_required")),
+        ),
+    };
+    const resolver = new ProxyAutoBidResolver(
+      null,
+      {} as INotificationSender,
+      null,
+      standingBidValidator,
+    );
+    const pending: import("./proxy-auto-bid.resolver.js").ProxyCancelNotification[] = [];
+
+    await resolver.cancelViolatingProxyBids("lot-1", mkLot(), bids, {} as Database, pending);
+
+    expect(clearProxyAutoBidForBidderOnLot).toHaveBeenCalledWith("lot-1", "lost-kyc");
+    expect(pending).toContainEqual({
+      lotId: "lot-1",
+      bidderUserId: "lost-kyc",
+      reason: "kyc_required",
+    });
+  });
+
+  it("aborts without cancelling standing proxies when eligibility revalidation is transient", async () => {
+    const clearProxyAutoBidForBidderOnLot = vi.fn().mockResolvedValue(1);
+    const bids = {
+      listBidderCeilingStates: vi.fn().mockResolvedValue([
+        {
+          bidderId: "still-eligible",
+          buyerLegalEntityId: "le-1",
+          ceiling: "400.00",
+          autoBidStepAmount: "10.00",
+          maxCreatedAt: new Date(),
+        },
+      ]),
+      bidderHasProxyMaxOnLot: vi.fn().mockResolvedValue(true),
+      clearProxyAutoBidForBidderOnLot,
+    } as unknown as IBidRepository;
+    const standingBidValidator: IStandingBidEligibilityValidator = {
+      validate: vi
+        .fn()
+        .mockResolvedValue(
+          err(
+            new BidError(
+              "Standing bid eligibility could not be revalidated",
+              503,
+              "standing_bid_revalidation_failed",
+            ),
+          ),
+        ),
+    };
+    const resolver = new ProxyAutoBidResolver(
+      null,
+      {} as INotificationSender,
+      null,
+      standingBidValidator,
+    );
+    const pending: import("./proxy-auto-bid.resolver.js").ProxyCancelNotification[] = [];
+
+    await expect(
+      resolver.cancelViolatingProxyBids("lot-1", mkLot(), bids, {} as Database, pending),
+    ).rejects.toMatchObject({
+      code: "standing_bid_revalidation_failed",
+      status: 503,
+    });
+    expect(clearProxyAutoBidForBidderOnLot).not.toHaveBeenCalled();
+    expect(pending).toEqual([]);
+  });
+
+  it.each([
+    "entity_not_authorised_to_bid",
+    "membership_required",
+    "buyer_agent_authorisation_required",
+  ])(
+    "cancels a standing ceiling with %s without aborting proxy settlement",
+    async (failureCode) => {
+      const clearProxyAutoBidForBidderOnLot = vi.fn().mockResolvedValue(1);
+      const create = vi.fn().mockImplementation(async (row) => ({
+        ...mkBid({ id: "eligible-settle", amount: row.amount }),
+        ...row,
+      }));
+      const bids = {
+        listBidderCeilingStates: vi.fn().mockResolvedValue([
+          {
+            bidderId: "ineligible",
+            buyerLegalEntityId: "le-ineligible",
+            ceiling: "900.00",
+            autoBidStepAmount: "10.00",
+            maxCreatedAt: new Date("2026-01-01T09:00:00Z"),
+          },
+          {
+            bidderId: "eligible",
+            buyerLegalEntityId: "le-eligible",
+            ceiling: "300.00",
+            autoBidStepAmount: "10.00",
+            maxCreatedAt: new Date("2026-01-01T10:00:00Z"),
+          },
+        ]),
+        bidderHasProxyMaxOnLot: vi.fn().mockResolvedValue(true),
+        clearProxyAutoBidForBidderOnLot,
+        create,
+      } as unknown as IBidRepository;
+      const standingBidValidator: IStandingBidEligibilityValidator = {
+        validate: vi.fn(async (_lotId, state) =>
+          state.bidderId === "ineligible"
+            ? err(new BidError("Standing bid no longer eligible", 403, failureCode))
+            : ok(undefined),
+        ),
+      };
+      const resolver = new ProxyAutoBidResolver(
+        null,
+        {} as INotificationSender,
+        null,
+        standingBidValidator,
+      );
+      const pending: import("./proxy-auto-bid.resolver.js").ProxyCancelNotification[] = [];
+
+      await resolver.resolve(
+        bids,
+        "lot-1",
+        mkLot(),
+        mkBid({ amount: "120.00" }),
+        {} as Database,
+        pending,
+      );
+
+      expect(clearProxyAutoBidForBidderOnLot).toHaveBeenCalledWith("lot-1", "ineligible");
+      expect(pending).toContainEqual({
+        lotId: "lot-1",
+        bidderUserId: "ineligible",
+        reason: failureCode,
+      });
+      expect(create).not.toHaveBeenCalledWith(
+        expect.objectContaining({ placedByUserId: "ineligible" }),
+      );
+    },
+  );
 });

@@ -1,12 +1,21 @@
 "use client";
 
+import type { ConditionReportRequestPort } from "@/lib/condition-report/condition-report-request.port";
 import type { ConditionReportRequestSnapshot } from "@/lib/condition-report/condition-report-types";
 import { submitConditionReportRequest } from "@/lib/data/http/condition-report.client";
 import { notify } from "@/lib/ui/notify";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
-export function useConditionReportRequest(lotId: string) {
+const defaultPort: ConditionReportRequestPort = {
+  getForLot: async () => null,
+  submit: submitConditionReportRequest,
+};
+
+export function useConditionReportRequest(
+  lotId: string,
+  port: ConditionReportRequestPort = defaultPort,
+) {
   const router = useRouter();
   const [uiPhase, setUiPhase] = useState<"idle" | "submitting" | "submitError">("idle");
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
@@ -15,7 +24,7 @@ export function useConditionReportRequest(lotId: string) {
     async (requestNote: string): Promise<ConditionReportRequestSnapshot | null> => {
       setUiPhase("submitting");
       setSubmitErrorMessage(null);
-      const result = await submitConditionReportRequest(lotId, requestNote);
+      const result = await port.submit(lotId, requestNote);
       if (!result.ok) {
         setSubmitErrorMessage(result.message);
         setUiPhase("submitError");
@@ -29,18 +38,12 @@ export function useConditionReportRequest(lotId: string) {
       router.refresh();
       return result.row;
     },
-    [lotId, router],
+    [lotId, port, router],
   );
-
-  const clearError = useCallback(() => {
-    setSubmitErrorMessage(null);
-    setUiPhase("idle");
-  }, []);
 
   return {
     uiPhase,
     submitErrorMessage,
     submit,
-    clearError,
   };
 }

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { SessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import type { SessionUser } from "@/lib/data/contracts";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { getServerHc } from "@/lib/data/http/hc-server";
@@ -38,10 +39,9 @@ async function fetchSessionUserOnce(): Promise<AttemptResult> {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Resolves the current session user for SSR. Returns `null` ONLY for a genuine `401`
- * (no session). Transient API failures (5xx / network / timeout) are retried with a short
- * backoff before giving up, so a brief blip — typically a rolling deploy restart — does not
- * masquerade as a logout and bounce a valid user to `/login`.
+ * Resolves the current session user for SSR. Returns `null` only for `401`.
+ * Transient failures (429 / 5xx / network) retry, then throw so callers do
+ * not treat a blip as logout.
  */
 export const getServerSessionUser = cache(
   async function getServerSessionUser(): Promise<SessionUser | null> {
@@ -54,11 +54,8 @@ export const getServerSessionUser = cache(
       const nextDelay = TRANSIENT_RETRY_DELAYS_MS[attempt];
       if (nextDelay !== undefined) await delay(nextDelay);
     }
-    // Transient failure persisted across retries (not a 401). Log so 401-vs-5xx is observable,
-    // then fall back to the unauthenticated contract callers already expect.
-    console.error("[auth] session lookup failed after retries (transient, not 401)", {
-      status: lastStatus,
-    });
-    return null;
+    // Transient failure persisted. Returning null would look like a 401 and
+    // send a still-valid session to /login (which then strips cookies).
+    throw new SessionLookupTransientError(lastStatus);
   },
 );

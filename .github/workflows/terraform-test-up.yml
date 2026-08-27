@@ -62,6 +62,10 @@ jobs:
       TF_VAR_verify_origin: "true"
       TF_VAR_csp_enforce: "0"
       TF_VAR_next_public_csp_report_uri: ${{ secrets.NEXT_PUBLIC_CSP_REPORT_URI }}
+      TF_VAR_strict_bid_eligibility_enabled: ${{ vars.STRICT_BID_ELIGIBILITY_ENABLED || 'true' }}
+      TF_VAR_kyc_onboarding_enabled: ${{ vars.KYC_ONBOARDING_ENABLED || 'false' }}
+      TF_VAR_full_buyer_onboarding_enabled: ${{ vars.FULL_BUYER_ONBOARDING_ENABLED || 'false' }}
+      TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
       DATABASE_URL_OWNER: ${{ secrets.DATABASE_URL_OWNER }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
       SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}

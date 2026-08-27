@@ -953,6 +953,27 @@
       "when": 1788000012000,
       "tag": "0136_sale_hero_presentation",
       "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1788000013000,
+      "tag": "0137_user_category_interests",
+      "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1788000014000,
+      "tag": "0138_buyer_interest_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1788000015000,
+      "tag": "0139_complete_buyer_interest_categories",
+      "breakpoints": true
     }
   ]
 }

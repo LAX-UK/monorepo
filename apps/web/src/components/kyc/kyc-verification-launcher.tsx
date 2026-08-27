@@ -2,6 +2,7 @@
 
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { mapKycSessionStartError } from "@/lib/kyc/kyc-session-errors";
+import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { MESSAGES, createVeriffFrame } from "@veriff/incontext-sdk";
 import { useRouter } from "next/navigation";
@@ -31,6 +32,7 @@ type Props = {
   variant?: "default" | "outline" | "secondary";
   disabled?: boolean;
   className?: string;
+  buttonClassName?: string;
 };
 
 export function KycVerificationLauncher({
@@ -43,10 +45,10 @@ export function KycVerificationLauncher({
   variant = "default",
   disabled = false,
   className,
+  buttonClassName,
 }: Props) {
   const router = useRouter();
   const [clientPhase, setClientPhase] = useState<KycUiPhase>(() => kycInitialPhase(kycSummary));
-  const [error, setError] = useState<string | null>(null);
   const reopenAttempted = useRef(false);
 
   const phase = effectiveKycPhase(kycSummary, clientPhase);
@@ -77,13 +79,20 @@ export function KycVerificationLauncher({
           if (msg === MESSAGES.FINISHED || msg === MESSAGES.SUBMITTED) {
             sessionStorage.removeItem(VERIFF_SESSION_STORAGE_KEY);
             setPhaseAndNotify("submitted");
+            notify.success("Verification submitted", {
+              id: "kyc-verification-submitted",
+              description: "We’ll update your account when the review is complete.",
+            });
             onComplete?.();
             router.refresh();
           }
           if (msg === MESSAGES.CANCELED) {
             sessionStorage.removeItem(VERIFF_SESSION_STORAGE_KEY);
             setPhaseAndNotify(kycInitialPhase(kycSummary));
-            setError(KYC_FLOW_CANCELED_MESSAGE);
+            notify.warning("Verification paused", {
+              id: "kyc-verification-canceled",
+              description: KYC_FLOW_CANCELED_MESSAGE,
+            });
             router.refresh();
           }
         },
@@ -97,19 +106,29 @@ export function KycVerificationLauncher({
   );
 
   const onStart = useCallback(async () => {
-    setError(null);
     setPhaseAndNotify("starting");
-    const result = await onStartSession(returnUrl);
-    if (!result.ok) {
-      setPhaseAndNotify(kycInitialPhase(kycSummary));
-      setError(mapKycSessionStartError(result.error, 400));
-      return;
-    }
-
     try {
-      openVeriffFrame(result.url);
-    } catch {
-      window.location.assign(result.url);
+      const result = await onStartSession(returnUrl);
+      if (!result.ok) {
+        setPhaseAndNotify(kycInitialPhase(kycSummary));
+        notify.error("Couldn’t start verification", {
+          id: "kyc-verification-start-failed",
+          description: mapKycSessionStartError(result.error, 0),
+        });
+        return;
+      }
+
+      try {
+        openVeriffFrame(result.url);
+      } catch {
+        window.location.assign(result.url);
+      }
+    } catch (error) {
+      setPhaseAndNotify(kycInitialPhase(kycSummary));
+      notify.error("Couldn’t start verification", {
+        id: "kyc-verification-start-failed",
+        description: mapKycSessionStartError(error, 500),
+      });
     }
   }, [kycSummary, onStartSession, openVeriffFrame, returnUrl, setPhaseAndNotify]);
 
@@ -134,14 +153,10 @@ export function KycVerificationLauncher({
 
   return (
     <div className={className}>
-      {error ? (
-        <p className="mb-3 text-sm text-error" role="alert">
-          {error}
-        </p>
-      ) : null}
       <Button
         type="button"
         variant={variant}
+        className={buttonClassName}
         disabled={disabled || busy || !canStart}
         onClick={() => void onStart()}
       >

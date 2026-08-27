@@ -48,6 +48,7 @@ import { SaleStatusTransitionService } from "../services/sale-status-transition.
 import { SaleService } from "../services/sale.service.js";
 import { SalePublishService } from "../services/sale/sale-publish.service.js";
 import { VenueService } from "../services/venue.service.js";
+import { createSelfServiceIdentityEligibilityGate } from "./create-bid-eligibility.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -201,6 +202,9 @@ export function createLotCatalogServices(
     notificationDispatcher,
     notificationFactory,
     repos.conditionReportRequestRepository,
+    // Condition reports are an unconditional hard gate, independent of the
+    // self-service bidding rollout flag.
+    createSelfServiceIdentityEligibilityGate(db),
   );
 
   const saleFollowService = new SaleFollowService(saleFollowRepo, saleRepo);

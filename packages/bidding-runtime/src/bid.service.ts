@@ -32,6 +32,7 @@ import {
 } from "./bid/proxy-auto-bid.resolver.js";
 import { SaleroomBidGate } from "./bid/saleroom-bid.gate.js";
 import type { SaleroomOnBlockPolicy } from "./bid/saleroom-on-block.policy.js";
+import { StandingBidEligibilityValidator } from "./bid/standing-bid-eligibility.validator.js";
 import { isPgUniqueViolation } from "./pg-unique-violation.js";
 import type {
   IAdminMetricsService,
@@ -130,6 +131,9 @@ export class BidService implements IBidPlacerWithIdempotency {
       opts.antiShillingGuard ?? null,
       opts.notifications,
       opts.domainEventSink ?? null,
+      opts.bidEligibility && opts.legalEntityRepository
+        ? new StandingBidEligibilityValidator(opts.bidEligibility, opts.legalEntityRepository)
+        : null,
     );
 
     this.earlyCloseHandler = new EarlyCloseHandler(opts.lotLifecycleRecording ?? null);

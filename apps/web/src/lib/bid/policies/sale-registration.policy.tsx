@@ -1,5 +1,9 @@
 import { SaleroomRegisterToBid } from "@/components/sections/saleroom/saleroom-register-to-bid";
-import type { BidPolicy, BidPolicyContext, BidPolicyDecision } from "@/lib/bid/policies/types";
+import { blockBid } from "./block-decision";
+import type { BidPolicy, BidPolicyContext, BidPolicyDecision } from "./types";
+
+const REGISTRATION_PREVIEW =
+  "After approval, you can place a one-time bid or set an auto-bid for this sale.";
 
 export const saleRegistrationPolicy: BidPolicy = {
   id: "sale-registration",
@@ -16,67 +20,27 @@ export const saleRegistrationPolicy: BidPolicy = {
     }
 
     if (registrationStatus === "pending") {
-      return {
-        kind: "block",
-        viewId: "sale-registration-pending",
-        render: () => (
-          <div className="rounded-lg bg-surface-container-high/80 p-6 ring-1 ring-outline-variant/10">
-            <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              Registration pending
-            </p>
-            <p className="mt-2 font-body text-sm text-on-surface-variant">
-              Your registration to bid on this sale is awaiting approval. You can place bids once
-              our team approves your paddle.
-            </p>
-          </div>
-        ),
-      };
+      return blockBid("sale-registration-pending", {
+        tone: "info",
+        title: "Registration pending",
+        detail:
+          "Your registration for this sale is awaiting approval. You can bid once our team approves your paddle.",
+        action: { kind: "panel", label: "View status", shortLabel: "View status" },
+        preview: REGISTRATION_PREVIEW,
+      });
     }
 
     if (registrationStatus === "rejected") {
-      return {
-        kind: "block",
-        viewId: "sale-registration-rejected",
-        render: () => (
-          <div className="space-y-4">
-            <div className="rounded-lg bg-surface-container-high/80 p-6 ring-1 ring-outline-variant/10">
-              <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                Registration not approved
-              </p>
-              <p className="mt-2 font-body text-sm text-on-surface-variant">
-                Your registration for this sale was not approved. Contact the saleroom or submit an
-                updated registration below.
-              </p>
-            </div>
-            <SaleroomRegisterToBid
-              saleId={gate.saleId}
-              loginNextPath={ctx.loginNextPath}
-              isAuthenticated
-              show
-              buyerEntities={gate.buyerEntities}
-              myRegistrations={gate.myRegistrations}
-              kycApproved={gate.kycApproved}
-              kycFeedback={gate.kycFeedback ?? null}
-              orgModuleEnabled={ctx.orgModuleEnabled !== false}
-            />
-          </div>
-        ),
-      };
-    }
-
-    return {
-      kind: "block",
-      viewId: "sale-registration-required",
-      render: () => (
-        <div className="space-y-4">
-          <div className="rounded-lg bg-surface-container-high/80 p-6 ring-1 ring-outline-variant/10">
-            <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              Register to bid
-            </p>
-            <p className="mt-2 font-body text-sm text-on-surface-variant">
-              Buyer agents must register and be approved for this sale before placing bids.
-            </p>
-          </div>
+      return blockBid("sale-registration-rejected", {
+        tone: "danger",
+        title: "Registration not approved",
+        detail: "Contact the saleroom or update your registration details before trying again.",
+        action: {
+          kind: "panel",
+          label: "Update registration",
+          shortLabel: "Update",
+        },
+        content: (
           <SaleroomRegisterToBid
             saleId={gate.saleId}
             loginNextPath={ctx.loginNextPath}
@@ -88,8 +52,30 @@ export const saleRegistrationPolicy: BidPolicy = {
             kycFeedback={gate.kycFeedback ?? null}
             orgModuleEnabled={ctx.orgModuleEnabled !== false}
           />
-        </div>
+        ),
+        preview: REGISTRATION_PREVIEW,
+      });
+    }
+
+    return blockBid("sale-registration-required", {
+      tone: "warning",
+      title: "Register to bid",
+      detail: "Buyer agents must register and be approved for this sale before placing bids.",
+      action: { kind: "panel", label: "Complete registration", shortLabel: "Register" },
+      content: (
+        <SaleroomRegisterToBid
+          saleId={gate.saleId}
+          loginNextPath={ctx.loginNextPath}
+          isAuthenticated
+          show
+          buyerEntities={gate.buyerEntities}
+          myRegistrations={gate.myRegistrations}
+          kycApproved={gate.kycApproved}
+          kycFeedback={gate.kycFeedback ?? null}
+          orgModuleEnabled={ctx.orgModuleEnabled !== false}
+        />
       ),
-    };
+      preview: REGISTRATION_PREVIEW,
+    });
   },
 };

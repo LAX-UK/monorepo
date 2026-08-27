@@ -78,6 +78,7 @@ html.dark {
   --color-link: color-mix(in srgb, var(--color-brand-midnight) 60%, white);
 
   --color-warning: oklch(0.78 0.12 85);
+  --color-warning-on-surface: oklch(0.82 0.12 85);
   --color-on-warning: oklch(0.18 0.03 85);
   --color-warning-container: oklch(0.28 0.06 85);
   --color-danger: oklch(0.72 0.14 25);

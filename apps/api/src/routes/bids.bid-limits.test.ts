@@ -49,6 +49,37 @@ class MemoryRedis {
     return Math.max(1, e - Date.now());
   }
 
+  async script(command: string, _lua?: string): Promise<string> {
+    if (String(command).toUpperCase() === "LOAD") return "memory-sha";
+    throw new Error(`unsupported script ${command}`);
+  }
+
+  async evalsha(
+    _sha: string,
+    numKeys: number,
+    key: string,
+    limit: string,
+    windowSec: string,
+  ): Promise<[number, number]> {
+    if (numKeys !== 1) throw new Error("expected 1 key");
+    const current = await this.incr(key);
+    let ttl = this.ttlSeconds(key);
+    if (current === 1 || ttl < 0) {
+      await this.expire(key, Number(windowSec));
+      ttl = Number(windowSec);
+    }
+    if (current > Number(limit)) {
+      return [0, this.ttlSeconds(key)];
+    }
+    return [1, Number(limit) - current];
+  }
+
+  private ttlSeconds(key: string): number {
+    const e = this.exp.get(key);
+    if (!e) return -1;
+    return Math.max(-1, Math.ceil((e - Date.now()) / 1000));
+  }
+
   async get(key: string): Promise<string | null> {
     return this.values.get(key) ?? null;
   }
@@ -214,6 +245,38 @@ describe("POST /bids middleware gates", () => {
     const json = (await res.json()) as { error?: string };
     expect(json.error).toBe("kyc_required");
     expect(placeBid).not.toHaveBeenCalled();
+  });
+
+  it("defers to the runtime eligibility result when strict eligibility is enabled", async () => {
+    const enforceThreshold = vi.fn();
+    const { app } = mount({
+      env: {
+        APP_ENV: "test",
+        STRICT_BID_ELIGIBILITY_ENABLED: true,
+      } as Container["env"],
+      kycService: {
+        isConfigured: () => true,
+        enforceThreshold,
+      } as unknown as Container["kycService"],
+      placeBid: vi.fn().mockResolvedValue({
+        kind: "err",
+        error: {
+          message: "Verify your email before bidding",
+          status: 403,
+          code: "email_not_verified",
+        },
+      }),
+    });
+
+    const res = await app.request("/bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: bidBody(),
+    });
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "email_not_verified" });
+    expect(enforceThreshold).not.toHaveBeenCalled();
   });
 
   it("returns eligibility error code from bid service", async () => {

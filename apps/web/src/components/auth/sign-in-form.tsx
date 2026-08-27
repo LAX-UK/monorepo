@@ -36,7 +36,7 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
   const [signInMode, setSignInMode] = useState<"email" | "phone">("email");
   const sellIntent = searchParams.get("intent") === "sell";
   const prefillEmail = parseAuthEmailParam(searchParams.get("email"));
-  const flash = readSignInFlashMessages(searchParams);
+  const [flash] = useState(() => readSignInFlashMessages(searchParams));
   useSignInQueryCleanup();
 
   const {

@@ -52,7 +52,7 @@ const baseCategory = {
   heroImageKey: null,
   createdAt: new Date("2024-01-01T00:00:00.000Z"),
   updatedAt: new Date("2024-01-01T00:00:00.000Z"),
-  usage: { lots: 3, sales: 1, submissions: 2, total: 6 },
+  usage: { lots: 3, sales: 1, submissions: 2, interests: 0, total: 6 },
 };
 
 describe("CategoryDetailShell", () => {

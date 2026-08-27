@@ -47,7 +47,7 @@ export function CategoryBasicsStep({ form, mode, categoryId, slug, categories }:
       flattenCategoryTaxonomyRows(
         eligibleParents.map((c) => ({
           ...c,
-          usage: { lots: 0, sales: 0, submissions: 0, total: 0 },
+          usage: { lots: 0, sales: 0, submissions: 0, interests: 0, total: 0 },
         })),
       ),
     [eligibleParents],

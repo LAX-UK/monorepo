@@ -3,11 +3,12 @@ import type { IRateLimitStore, RateLimitResult } from "../services/interfaces/ra
 
 const FIXED_WINDOW_LUA = `
 local current = redis.call('INCR', KEYS[1])
-if current == 1 then
+local ttl = redis.call('TTL', KEYS[1])
+if current == 1 or ttl < 0 then
   redis.call('EXPIRE', KEYS[1], ARGV[2])
 end
 if current > tonumber(ARGV[1]) then
-  local ttl = redis.call('TTL', KEYS[1])
+  ttl = redis.call('TTL', KEYS[1])
   return {0, ttl}
 end
 return {1, tonumber(ARGV[1]) - current}

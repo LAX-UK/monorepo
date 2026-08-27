@@ -82,6 +82,7 @@ const secondary: SaleroomSecondaryData = {
   follow: { isFollowing: false },
   relatedSales: [],
   kycSummary: null,
+  kycUnavailable: false,
   watchedLotIds: new Set<string>(),
   telephoneBooking: null,
 };

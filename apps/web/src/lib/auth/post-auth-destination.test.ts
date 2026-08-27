@@ -7,6 +7,8 @@ const clientUser = {
   staffRole: null,
   email: "a@b.com",
   emailVerified: true,
+  kycStatus: "approved" as const,
+  signupPersona: "individual" as const,
   suspended: false as const,
 };
 
@@ -27,6 +29,8 @@ describe("isSafeNextPath", () => {
     expect(isSafeNextPath("relative")).toBe(false);
     expect(isSafeNextPath(null)).toBe(false);
     expect(isSafeNextPath("/%2F%2Fevil.com")).toBe(false);
+    expect(isSafeNextPath("/%252f%252fevil.com")).toBe(false);
+    expect(isSafeNextPath("/%2525252f%2525252fevil.com")).toBe(false);
     expect(isSafeNextPath("/%5Cevil")).toBe(false);
   });
 
@@ -53,6 +57,107 @@ describe("staffRoleDefaultDestination", () => {
 });
 
 describe("resolvePostAuthDestination", () => {
+  it("sends unapproved clients to their requested destination on login", () => {
+    expect(
+      resolvePostAuthDestination({
+        user: {
+          ...clientUser,
+          kycStatus: "unverified",
+          categoryInterestsOnboardingCompletedAt: new Date(),
+        },
+        requestedNext: "/dashboard/bids",
+        context: "sign-in",
+        fullBuyerOnboardingEnabled: true,
+        withWelcomeBack: true,
+      }),
+    ).toBe("/dashboard/bids?welcome=back");
+  });
+
+  it("starts the full interests flow on login when onboarding is still incomplete", () => {
+    expect(
+      resolvePostAuthDestination({
+        user: {
+          ...clientUser,
+          kycStatus: "unverified",
+          categoryInterestsOnboardingCompletedAt: null,
+        },
+        requestedNext: "/dashboard/bids",
+        context: "sign-in",
+        fullBuyerOnboardingEnabled: true,
+        withWelcomeBack: true,
+      }),
+    ).toBe("/onboarding/interests?next=%2Fdashboard%2Fbids%3Fwelcome%3Dback&source=sign_in_resume");
+  });
+
+  it("preserves in-progress full onboarding destinations on login", () => {
+    expect(
+      resolvePostAuthDestination({
+        user: {
+          ...clientUser,
+          kycStatus: "unverified",
+          categoryInterestsOnboardingCompletedAt: new Date(),
+        },
+        requestedNext:
+          "/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist&source=post_verify",
+        context: "sign-in",
+        fullBuyerOnboardingEnabled: true,
+      }),
+    ).toBe("/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist&source=post_verify");
+  });
+
+  it.each(["pending", "rejected"] as const)(
+    "does not force identity onboarding for %s clients on redirect-if-authed",
+    (kycStatus) => {
+      expect(
+        resolvePostAuthDestination({
+          user: {
+            ...clientUser,
+            kycStatus,
+            categoryInterestsOnboardingCompletedAt: new Date(),
+          },
+          context: "redirect-if-authed",
+          fullBuyerOnboardingEnabled: true,
+        }),
+      ).toBe("/dashboard");
+    },
+  );
+
+  it("does not redirect ineligible clients or when rollout is disabled", () => {
+    for (const user of [
+      clientUser,
+      { ...clientUser, kycStatus: "unverified" as const, emailVerified: false },
+      {
+        ...clientUser,
+        kycStatus: "unverified" as const,
+        signupPersona: "organisation" as const,
+      },
+    ]) {
+      expect(
+        resolvePostAuthDestination({
+          user,
+          context: "sign-in",
+        }),
+      ).toBe("/dashboard");
+    }
+
+    expect(
+      resolvePostAuthDestination({
+        user: { ...clientUser, kycStatus: "unverified" },
+        context: "sign-in",
+      }),
+    ).toBe("/dashboard");
+  });
+
+  it("does not wrap an existing identity onboarding destination", () => {
+    expect(
+      resolvePostAuthDestination({
+        user: { ...clientUser, kycStatus: "unverified" },
+        requestedNext: "/onboarding/identity/prepare?next=%2Fdashboard",
+        context: "sign-in",
+      }),
+    ).toBe("/onboarding/identity/prepare?next=%2Fdashboard");
+  });
+
   it("sends suspended users to account-suspended", () => {
     expect(
       resolvePostAuthDestination({

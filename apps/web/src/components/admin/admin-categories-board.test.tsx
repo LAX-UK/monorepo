@@ -61,7 +61,7 @@ const baseCategory = {
   heroImageKey: null,
   createdAt: new Date("2024-01-01T00:00:00.000Z"),
   updatedAt: new Date("2024-01-01T00:00:00.000Z"),
-  usage: { lots: 1, sales: 0, submissions: 0, total: 1 },
+  usage: { lots: 1, sales: 0, submissions: 0, interests: 0, total: 1 },
 };
 
 describe("AdminCategoriesBoard", () => {
@@ -76,7 +76,7 @@ describe("AdminCategoriesBoard", () => {
             name: "Oil",
             slug: "oil",
             parentId: "c1",
-            usage: { lots: 2, sales: 1, submissions: 0, total: 3 },
+            usage: { lots: 2, sales: 1, submissions: 0, interests: 0, total: 3 },
           },
         ]}
       />,
@@ -99,7 +99,7 @@ describe("AdminCategoriesBoard", () => {
       ...baseCategory,
       id: "c2",
       slug: "sculpture",
-      usage: { lots: 0, sales: 0, submissions: 0, total: 0 },
+      usage: { lots: 0, sales: 0, submissions: 0, interests: 0, total: 0 },
     };
     render(<AdminCategoriesBoard categories={[unused]} />);
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
@@ -115,7 +115,7 @@ describe("AdminCategoriesBoard", () => {
       name: "Sculpture",
       slug: "sculpture",
       archived: true,
-      usage: { lots: 0, sales: 0, submissions: 0, total: 0 },
+      usage: { lots: 0, sales: 0, submissions: 0, interests: 0, total: 0 },
     };
     render(<AdminCategoriesBoard categories={[baseCategory, unused]} />);
 

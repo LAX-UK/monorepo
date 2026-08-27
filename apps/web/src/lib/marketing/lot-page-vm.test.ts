@@ -77,6 +77,7 @@ const shell: LotPageShellData = {
   watchlist: [],
   saleBundle: { sale: baseSale, lots: [baseLot] },
   kycSummary: null,
+  kycUnavailable: false,
   lotDocuments: [],
   initialAutoBidSettings: null,
   watcherCount: 0,

@@ -14,6 +14,7 @@ import { VideoCompactBidPanel } from "@/components/sections/artwork/online/video
 import { usePlaceBid } from "@/hooks/lot-bid/use-place-bid";
 import { useLotBidState } from "@/hooks/use-lot-bid-state";
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
+import { resolveKycBidGate, resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
 import { useLiveConnection } from "@/lib/connection/use-live-connection";
 import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
 import { useLotPorts } from "@/lib/context/lot-ports";
@@ -38,6 +39,7 @@ type Props = {
   loginNextPath?: string;
   omitPricingHeader?: boolean;
   kycSummary?: KycStatusSummaryDto | null;
+  kycUnavailable?: boolean;
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
   saleRegistrationPath?: string | null;
   orgModuleEnabled?: boolean;
@@ -46,6 +48,7 @@ type Props = {
     | null;
   isOwnLot?: boolean;
   actingLegalEntityId?: string | null;
+  strictBidEligibilityEnabled?: boolean;
 };
 
 export function ArtworkBidPanel({
@@ -61,19 +64,26 @@ export function ArtworkBidPanel({
   loginNextPath,
   omitPricingHeader = false,
   kycSummary = null,
+  kycUnavailable = false,
   saleRegistrationBidGate = null,
   saleRegistrationPath = null,
   orgModuleEnabled = true,
   saleForLifecycle = null,
   isOwnLot = false,
   actingLegalEntityId = null,
+  strictBidEligibilityEnabled = false,
 }: Props) {
   const { bidWriter } = useLotPorts();
   const { refreshFromServer } = useLotBidHistory();
   const onlineLifecycle = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
   const connectivityScope = saleroomLive ? "hybrid" : "bidding";
-  const { biddingAllowed, realtimeHealthy } = useLiveConnection();
+  const {
+    biddingAllowed,
+    realtimeHealthy,
+    state: connectionState,
+    message: connectionMessage,
+  } = useLiveConnection();
   const isLotOnBlock = saleroomLive?.isLotOnBlock(auction.id) ?? false;
 
   const bidState = useLotBidState({
@@ -150,6 +160,11 @@ export function ArtworkBidPanel({
   });
 
   const { step, loginNext, switchEntryMode, connectionBlocked } = panel;
+  const kycBidGate = resolveKycBidGate({ summary: kycSummary, unavailable: kycUnavailable });
+  const kycFeedback = resolveKycSurfaceFeedback({
+    summary: kycSummary,
+    unavailable: kycUnavailable,
+  });
 
   useEffect(() => {
     const el = document.getElementById("lot-bid-entry");
@@ -179,20 +194,23 @@ export function ArtworkBidPanel({
       loginNextPath={loginNext}
       isOwnLot={isOwnLot}
       actingLegalEntityId={actingLegalEntityId}
-      kycBidGate={
-        kycSummary?.requiresKyc
-          ? { requiresKyc: true, feedback: kycSummary.feedback ?? null }
-          : null
-      }
+      kycBidGate={kycBidGate}
       saleRegistrationBidGate={saleRegistrationBidGate}
+      strictBidEligibilityEnabled={strictBidEligibilityEnabled}
       biddingLifecycle={{ kind: lifecycle.kind, isOnBlock: isLotOnBlock }}
       orgModuleEnabled={orgModuleEnabled}
+      unsupportedAuctionMode={panel.englishOnlySurfaceLock}
+      connectionBlocked={panel.connectionBlocked}
+      connectionState={connectionState}
+      connectionMessage={connectionMessage}
     >
       {({ decision }) => {
         const sticky: BidPanelStickyVM = {
           live: biddingLive,
           loginNextPath: loginNext,
-          kycFeedback: kycSummary?.feedback ?? null,
+          lotId: auction.id,
+          userEmail: sessionUser?.email ?? null,
+          kycFeedback,
           ...(saleRegistrationPath ? { saleRegistrationPath } : {}),
           step,
           currentPriceLabel: formatMoney(currentPrice),

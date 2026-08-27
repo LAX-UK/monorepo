@@ -5,6 +5,7 @@ import {
   type EmptyStateIllustrationKey,
 } from "@/components/illustrations/empty-state-illustrations";
 import { DisplayHeading } from "@/components/ui/typography";
+import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import { useReportRouteError } from "@/lib/observability/use-report-route-error";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -33,8 +34,13 @@ export function AppRouteError({
 }: AppRouteErrorProps) {
   useReportRouteError(error);
 
-  const message =
+  const sessionUnavailable = isSessionLookupTransientError(error);
+  const resolvedTitle = sessionUnavailable ? "We couldn’t confirm your session" : title;
+  const fallbackDetail =
     process.env.NODE_ENV === "development" ? error.message : "Please try again in a moment.";
+  const message = sessionUnavailable
+    ? "Your sign-in is still saved. Try again in a moment."
+    : fallbackDetail;
 
   return (
     <section
@@ -46,7 +52,7 @@ export function AppRouteError({
     >
       <EmptyStateIllustration name={illustration} className="mb-6 h-20 w-32" />
       <DisplayHeading as="h1" className="mb-4 text-3xl">
-        {title}
+        {resolvedTitle}
       </DisplayHeading>
       <p className="mb-8 font-body text-sm text-on-surface-variant">{message}</p>
       <div className="flex flex-wrap justify-center gap-3">

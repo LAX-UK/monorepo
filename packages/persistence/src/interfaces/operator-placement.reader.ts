@@ -1,6 +1,8 @@
 export type TelephoneBookingPlacementRow = {
   saleId: string;
   status: string;
+  userId: string;
+  buyerLegalEntityId: string;
 };
 
 export type TelephoneBookingCapRow = {

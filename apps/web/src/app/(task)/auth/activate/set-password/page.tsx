@@ -2,7 +2,8 @@ import { MagicLinkLoginSync } from "@/components/analytics/magic-link-login-sync
 import { ActivateSetPasswordForm } from "@/components/auth/activate-set-password-form";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { AuthRouteLoading } from "@/components/auth/auth-route-loading";
-import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import { resolveServerPostAuthDestination } from "@/lib/auth/post-auth-destination.server";
+import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import { getServerHasPassword } from "@/lib/data/http/password-status.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
@@ -32,7 +33,7 @@ export default async function ActivateSetPasswordPage({
     const requestedNext = sp.next;
     const safeNext = isSafeNextPath(requestedNext) ? requestedNext : undefined;
     redirect(
-      resolvePostAuthDestination({
+      resolveServerPostAuthDestination({
         user,
         ...(safeNext ? { requestedNext: safeNext } : {}),
         context: "sign-in",

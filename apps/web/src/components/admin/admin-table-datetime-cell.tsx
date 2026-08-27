@@ -59,7 +59,7 @@ export function AdminTableDateTimeCell({
 
   const primaryClass =
     presentation.urgency === "soon"
-      ? "text-warning"
+      ? "text-warning-on-surface"
       : presentation.urgency === "past"
         ? "text-on-surface-variant"
         : "text-on-surface";

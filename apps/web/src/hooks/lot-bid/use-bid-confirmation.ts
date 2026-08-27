@@ -138,6 +138,7 @@ export function useBidConfirmation({
       const mapped = mapBidResultError({
         error: result.error,
         verifyReturnPath: loginNext,
+        lotId: auction.id,
         code: result.code ?? null,
         ...(saleRegistrationPath ? { saleRegistrationPath } : {}),
         kycFeedback: result.kycFeedback ?? kycSummary?.feedback ?? null,

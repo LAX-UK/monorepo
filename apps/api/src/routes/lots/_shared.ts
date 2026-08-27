@@ -18,6 +18,7 @@ type LotRouteMiddleware = {
   requireAuth: ReturnType<typeof createRequireAuth>;
   optionalAuth: ReturnType<typeof createOptionalAuth>;
   kycGate: ReturnType<typeof createRequireKyc>;
+  bidKycGate: ReturnType<typeof createRequireKyc>;
   biddingKillSwitch: MiddlewareHandler;
   bidUserRateLimit: MiddlewareHandler;
   requireLegalEntity: MiddlewareHandler;

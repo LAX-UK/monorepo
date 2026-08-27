@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import {
   isPublicCatalogSale,
   viewerCanSeeNonPublicCatalog,
@@ -50,7 +51,10 @@ export async function loadSaleroomDetailPage(input: {
       loadAll: query.isCatalogLoadAll,
       pageSize: SALEROOM_CATALOG_PAGE_SIZE,
     }),
-    getServerSessionUser(),
+    getServerSessionUser().catch((error) => {
+      if (isSessionLookupTransientError(error)) return null;
+      throw error;
+    }),
   ]);
   if (!loaded) notFound();
   const { shell, lotsPage, categoryLabel, categoryLabels } = loaded;

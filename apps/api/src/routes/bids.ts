@@ -22,7 +22,8 @@ export function createBidRoutes(container: ContainerBidRoutesSlice, authenticato
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const kycGate = createOptionalKycGate(container.kycService);
+  const strictBidEligibilityEnabled = container.env?.STRICT_BID_ELIGIBILITY_ENABLED === true;
+  const kycGate = createOptionalKycGate(container.kycService, strictBidEligibilityEnabled);
   const biddingKillSwitch = createBiddingKillSwitchMiddleware(container.env);
   const bidUserRateLimit = createBidUserRateLimitMiddleware(container.redis);
   const requireLegalEntity = container.requireSubmissionsLegalEntityContext;

@@ -23,8 +23,6 @@ const onSubmitRequest = vi.fn().mockResolvedValue(true);
 
 const baseProps = {
   onSubmitRequest,
-  submitting: false,
-  apiErrorMessage: null,
   onHide: vi.fn(),
   onRestore: vi.fn(),
   isDismissed: false,
@@ -38,12 +36,12 @@ describe("LotConditionReportCard", () => {
   it("renders published download link when expanded", () => {
     const state = deriveConditionReportCardState({
       show: true,
-      lotEligible: true,
       isAuthenticated: true,
-      kycApproved: true,
+      emailVerified: true,
+      userEmail: "buyer@example.com",
+      kycStatus: "approved",
       kycFeedback: null,
       loginNextPath: "/lot/x",
-      dashboardHref: "/dashboard/condition-reports",
       published: { downloadUrl: "https://cdn.example.com/report.pdf", summary: "Good" },
       buyerRequest: null,
       uiPhase: "idle",
@@ -79,12 +77,12 @@ describe("derive hides card after request", () => {
     expect(
       deriveConditionReportCardState({
         show: true,
-        lotEligible: true,
         isAuthenticated: true,
-        kycApproved: true,
+        emailVerified: true,
+        userEmail: "buyer@example.com",
+        kycStatus: "approved",
         kycFeedback: null,
         loginNextPath: "/lot/x",
-        dashboardHref: "/dashboard/condition-reports",
         published: null,
         buyerRequest: {
           id: "req-1",

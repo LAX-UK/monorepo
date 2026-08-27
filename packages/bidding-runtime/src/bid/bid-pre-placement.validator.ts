@@ -31,22 +31,6 @@ export class BidPrePlacementValidator {
       }
     }
 
-    if (this.legalEntityRepository) {
-      const ent = await this.legalEntityRepository.findById(buyerLegalEntityId);
-      if (!ent) {
-        return err(new BidError("Buyer legal entity not found", 404));
-      }
-      if (!buyerEntityCanBid(ent.status)) {
-        return err(
-          new BidError(
-            "Buyer legal entity is not authorised to bid",
-            403,
-            "entity_not_authorised_to_bid",
-          ),
-        );
-      }
-    }
-
     if (this.bidEligibility) {
       const elig = await this.bidEligibility.assertCanPlaceBid({
         placedByUserId,
@@ -64,6 +48,22 @@ export class BidPrePlacementValidator {
       });
       if (elig.isErr()) {
         return err(elig.error);
+      }
+    }
+
+    if (this.legalEntityRepository) {
+      const ent = await this.legalEntityRepository.findById(buyerLegalEntityId);
+      if (!ent) {
+        return err(new BidError("Buyer legal entity not found", 404));
+      }
+      if (!buyerEntityCanBid(ent.status)) {
+        return err(
+          new BidError(
+            "Buyer legal entity is not authorised to bid",
+            403,
+            "entity_not_authorised_to_bid",
+          ),
+        );
       }
     }
 

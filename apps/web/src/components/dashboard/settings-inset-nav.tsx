@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  IDENTITY_ONBOARDING_PATH,
+  dashboardIdentityOnboardingHref,
+} from "@/lib/kyc/identity-onboarding";
 import { cn } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
 import { InsetGroup } from "@auction/ui/components/inset-group";
@@ -29,9 +33,12 @@ const identity: NavItem[] = [
       pathname.startsWith("/dashboard/settings/account/"),
   },
   {
-    href: "/dashboard/verify-identity",
+    href: dashboardIdentityOnboardingHref(),
     label: "Identity verification",
-    match: (pathname) => pathname.startsWith("/dashboard/verify-identity"),
+    match: (pathname) =>
+      pathname === IDENTITY_ONBOARDING_PATH ||
+      pathname.startsWith(`${IDENTITY_ONBOARDING_PATH}/`) ||
+      pathname.startsWith("/dashboard/verify-identity"),
   },
   {
     href: "/dashboard/settings/addresses",
@@ -62,6 +69,11 @@ const security: NavItem[] = [
 ];
 
 const preferences: NavItem[] = [
+  {
+    href: "/dashboard/settings/interests",
+    label: "Auction interests",
+    match: (pathname) => pathname.startsWith("/dashboard/settings/interests"),
+  },
   {
     href: "/dashboard/settings/notifications",
     label: "Notifications",

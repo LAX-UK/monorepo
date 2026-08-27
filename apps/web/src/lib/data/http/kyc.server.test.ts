@@ -73,7 +73,7 @@ describe("postServerKycSession", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(typeof result.error).toBe("string");
-      expect(result.error).toContain("Could not start verification");
+      expect(result.error).toContain("We couldn’t start identity verification");
     }
   });
 });

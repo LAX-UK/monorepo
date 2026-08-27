@@ -8,6 +8,22 @@ export {
 } from "./sale-status-policy.js";
 export { buyerEntityCanBid } from "./buyer-entity-bid-eligibility.js";
 export {
+  evaluateSelfServiceActorIdentityEligibility,
+  type SelfServiceActorIdentityEligibility,
+  type SelfServiceActorIdentityEligibilityInput,
+  type SelfServiceActorIdentityIneligibilityCode,
+  type SelfServiceActorKycStatus,
+} from "./self-service-actor-identity-eligibility.js";
+export {
+  resolveStrictBidEligibilityRollout,
+  type StrictBidEligibilityRolloutInput,
+} from "./strict-bid-eligibility-rollout.js";
+export {
+  isBuyerInterestPersonaEligible,
+  reconcileBuyerInterestSelection,
+  type BuyerInterestSignupPersona,
+} from "./buyer-interest-eligibility.js";
+export {
   bidAmountBelowMinimum,
   effectiveBidderStepMoney,
   lotDefaultAutoBidStepMin,

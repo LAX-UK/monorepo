@@ -10,6 +10,7 @@ import { LotBidPositionSummary } from "@/components/sections/artwork/redesign/lo
 import { LotInfoStack } from "@/components/sections/artwork/redesign/lot-info-stack";
 import { LotPricingStatusHeader } from "@/components/sections/artwork/redesign/lot-pricing-status-header";
 import { ParticipationWarningBadge } from "@/components/ui/participation-warning-badge";
+import { isHardBidBlocker } from "@/lib/bid/bid-blocker-presentation";
 import { cn } from "@auction/ui";
 
 export function FullBidCard() {
@@ -105,21 +106,23 @@ export function FullBidCard() {
               className="normal-case"
             />
           ) : null}
-          <LotBidPositionSummary
-            position={position}
-            loginNextPath={loginNext}
-            {...(decision.kind !== "block"
-              ? {
-                  onIncreaseBid: () => switchEntryMode("manual", { userInitiated: true }),
-                  ...(supportsAutoBid
-                    ? {
-                        onRaiseAutoBid: () => switchEntryMode("auto", { userInitiated: true }),
-                      }
-                    : {}),
-                  supportsAutoBid,
-                }
-              : {})}
-          />
+          {decision.kind === "block" && isHardBidBlocker(decision.presentation) ? null : (
+            <LotBidPositionSummary
+              position={position}
+              loginNextPath={loginNext}
+              {...(decision.kind !== "block"
+                ? {
+                    onIncreaseBid: () => switchEntryMode("manual", { userInitiated: true }),
+                    ...(supportsAutoBid
+                      ? {
+                          onRaiseAutoBid: () => switchEntryMode("auto", { userInitiated: true }),
+                        }
+                      : {}),
+                    supportsAutoBid,
+                  }
+                : {})}
+            />
+          )}
           {saleRegistrationBidGate?.approvedBidLimit != null ? (
             <ApprovedBidLimitNotice
               approvedBidLimit={saleRegistrationBidGate.approvedBidLimit}
@@ -127,13 +130,6 @@ export function FullBidCard() {
             />
           ) : null}
         </div>
-
-        {englishOnlySurfaceLock ? (
-          <p className="mt-6 rounded-md border border-outline-variant/40 bg-surface-container-low px-4 py-3 font-body text-sm text-on-surface-variant">
-            Self-service bidding is only offered for English and buy-now lots while this catalogue
-            mode is enabled. For this listing, please contact the saleroom team.
-          </p>
-        ) : null}
 
         <BidEntryRegion />
       </div>

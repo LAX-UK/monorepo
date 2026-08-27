@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "PLAYWRIGHT_E2E=1 playwright test --grep @smoke",
-    "test:e2e:pr": "PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test --grep \"@smoke|@visual|@roles\"",
+    "test:e2e:pr": "PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test --grep \"@smoke|@visual|@roles\" --no-deps",
     "test:e2e:roles": "PLAYWRIGHT_E2E=1 playwright test --grep @roles",
     "test:e2e:stabilization": "PLAYWRIGHT_E2E=1 playwright test --grep \"@smoke|@journey|@a11y|@roles\"",
     "test:e2e:visual": "PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test --grep @visual",

@@ -28,4 +28,23 @@ describe("OperatorPlacementPolicy", () => {
   it("rejects bids above cap", () => {
     expect(() => policy.assertCapNotExceeded(5000, 5001)).toThrow();
   });
+
+  it("binds telephone bypass to the booking owner and acting entity", async () => {
+    vi.mocked(reader.findTelephoneBookingPlacement).mockResolvedValue({
+      saleId: "sale-1",
+      status: "confirmed",
+      userId: "user-1",
+      buyerLegalEntityId: "entity-1",
+    });
+
+    await expect(
+      policy.isActiveTelephoneBooking("booking-1", "sale-1", "user-1", "entity-1"),
+    ).resolves.toBe(true);
+    await expect(
+      policy.isActiveTelephoneBooking("booking-1", "sale-1", "other-user", "entity-1"),
+    ).resolves.toBe(false);
+    await expect(
+      policy.isActiveTelephoneBooking("booking-1", "sale-1", "user-1", "other-entity"),
+    ).resolves.toBe(false);
+  });
 });

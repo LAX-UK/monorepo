@@ -2,6 +2,7 @@ import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 
 const AUTH_EDGE_CALLBACK_PATH = "/auth/social-callback";
+const AUTH_EDGE_HANDOFF_PATH = "/auth/post-login";
 
 /** Query flags that must keep the user on /login or /register (recovery / explicit intent). */
 const LOGIN_EDGE_BYPASS: ReadonlyArray<[param: string, value: string]> = [
@@ -71,22 +72,16 @@ export function buildStaleSessionRecoveryLoginUrl(fromUrl: URL): URL {
 }
 
 /**
- * Resolve the edge fast-path target for /login or /register when a session cookie exists.
- * Public marketing `next` values route through {@link AUTH_EDGE_CALLBACK_PATH} so SSR can
- * validate the session instead of stranding the user on an unguarded page.
+ * Route cookie-based auth fast paths through the server post-login decision so
+ * role, KYC, and stale-session handling use authoritative session data.
  */
 export function resolveAuthEdgeRedirectTarget(requestUrl: URL): URL {
   const next = requestUrl.searchParams.get("next");
   const safeNext = next != null && isSafeNextPath(next) ? next : null;
-  const directTarget =
-    safeNext != null && isProtectedPostAuthPath(safeNext) ? safeNext : AUTH_EDGE_CALLBACK_PATH;
-  const dest = new URL(directTarget, requestUrl);
-  if (directTarget === AUTH_EDGE_CALLBACK_PATH && safeNext != null) {
+  const dest = new URL(AUTH_EDGE_HANDOFF_PATH, requestUrl);
+  if (safeNext != null) {
     dest.searchParams.set("next", safeNext);
   }
-  if (directTarget !== AUTH_EDGE_CALLBACK_PATH) {
-    dest.searchParams.set("from", "auth-edge");
-    dest.searchParams.set("welcome", "back");
-  }
+  dest.searchParams.set("welcome", "back");
   return dest;
 }

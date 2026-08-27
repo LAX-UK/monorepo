@@ -1,7 +1,7 @@
 import { SaleroomOnBlockPolicy, createBidPlacer } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import { DrizzleSaleroomSessionRepository } from "@auction/persistence/repositories";
-import type { Env } from "../env.js";
+import { type Env, resolveStrictBidEligibilityEnabled } from "../env.js";
 import { RedisIdempotencyStore } from "../infrastructure/redis-idempotency.store.js";
 import { RedisSaleroomRealtimePublisher } from "../infrastructure/redis-saleroom-realtime.publisher.js";
 import { DisplayTokenIssuer } from "../lib/display-token.js";
@@ -19,7 +19,10 @@ import type { IDisplaySnapshotReader } from "../services/interfaces/display-snap
 import type { SaleroomServicePort } from "../services/interfaces/saleroom-service.js";
 import { SaleRegistrationService } from "../services/sale-registration.service.js";
 import { SaleroomService } from "../services/saleroom.service.js";
-import { createBidEligibility } from "./create-bid-eligibility.js";
+import {
+  createBidEligibility,
+  createBidIdentityEligibilityGate,
+} from "./create-bid-eligibility.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -114,7 +117,22 @@ function composeRegistrationAndBidding(
     saleRepo,
     repos.saleRegistrationRepository,
   );
-  const bidEligibilityService = createBidEligibility({ db, kycService, amlHoldStore });
+  const strictBidEligibilityEnabled = resolveStrictBidEligibilityEnabled(env);
+  const identityEligibilityGate = createBidIdentityEligibilityGate(
+    db,
+    kycService,
+    strictBidEligibilityEnabled,
+  );
+  if (strictBidEligibilityEnabled && !kycService.isConfigured()) {
+    console.warn(
+      "[BidEligibility] STRICT_BID_ELIGIBILITY_ENABLED is active while Veriff is unconfigured; bidding remains fail-closed until users are approved in the database",
+    );
+  }
+  const bidEligibilityService = createBidEligibility({
+    db,
+    amlHoldStore,
+    identityEligibilityGate,
+  });
 
   const bidIdempotencyStore = new RedisIdempotencyStore(redis);
   const saleroomOnBlockPolicy = new SaleroomOnBlockPolicy(repos.saleroomOnBlockReader);
@@ -150,6 +168,7 @@ function composeRegistrationAndBidding(
     lotRepo,
     legalEntityRepository,
     repoFactory.root.bid,
+    identityEligibilityGate,
   );
   const adminSaleOperationsSnapshotService = new AdminSaleOperationsSnapshotService(
     repos.adminSaleOperationsSnapshotReader,

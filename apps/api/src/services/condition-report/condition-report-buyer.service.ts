@@ -6,11 +6,11 @@ import type {
   ConditionReportServiceError,
   IConditionReportBuyerService,
 } from "../interfaces/condition-report.js";
-import type { ConditionReportContext } from "./condition-report-context.js";
+import type { ConditionReportBuyerContext } from "./condition-report-buyer-context.js";
 import { OPEN_LOT_STATUSES, OPEN_REQUEST_STATUSES } from "./condition-report-request.mapper.js";
 
 export class ConditionReportBuyerService implements IConditionReportBuyerService {
-  constructor(private readonly ctx: ConditionReportContext) {}
+  constructor(private readonly ctx: ConditionReportBuyerContext) {}
 
   async createRequest(input: {
     userId: string;
@@ -18,6 +18,17 @@ export class ConditionReportBuyerService implements IConditionReportBuyerService
     requestingLegalEntityId?: string | undefined;
     requestNote?: string | undefined;
   }): Promise<Result<ConditionReportRequestRow, ConditionReportServiceError>> {
+    const eligibility = await this.ctx.identityEligibilityGate.assertSelfServiceEligible(
+      input.userId,
+    );
+    if (eligibility.isErr()) {
+      return err({
+        message: eligibility.error.message,
+        status: eligibility.error.status,
+        ...(eligibility.error.code ? { code: eligibility.error.code } : {}),
+      });
+    }
+
     const lotRow = await this.ctx.lotRepo.findById(input.lotId);
     if (!lotRow) {
       return err({ message: "Lot not found", status: 404 });

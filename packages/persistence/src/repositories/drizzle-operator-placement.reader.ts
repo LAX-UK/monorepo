@@ -8,12 +8,22 @@ export class DrizzleOperatorPlacementReader implements IOperatorPlacementReader 
 
   async findTelephoneBookingPlacement(bookingId: string) {
     const [row] = await this.db
-      .select({ status: telephoneBidBooking.status, saleId: telephoneBidBooking.saleId })
+      .select({
+        status: telephoneBidBooking.status,
+        saleId: telephoneBidBooking.saleId,
+        userId: telephoneBidBooking.userId,
+        buyerLegalEntityId: telephoneBidBooking.buyerLegalEntityId,
+      })
       .from(telephoneBidBooking)
       .where(eq(telephoneBidBooking.id, bookingId))
       .limit(1);
     if (!row?.saleId) return null;
-    return { saleId: row.saleId, status: row.status };
+    return {
+      saleId: row.saleId,
+      status: row.status,
+      userId: row.userId,
+      buyerLegalEntityId: row.buyerLegalEntityId,
+    };
   }
 
   async findTelephoneBookingCap(bookingId: string) {

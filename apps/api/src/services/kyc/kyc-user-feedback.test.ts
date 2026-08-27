@@ -3,6 +3,7 @@ import {
   VERIFF_RESUBMISSION_LIMIT_REASON_CODE,
   buildKycUserFeedback,
   mergeKycDecisionPayload,
+  readKycCallbackUrl,
   readKycSessionUrl,
   readVeriffReasonCode,
   shouldReuseKycSessionUrl,
@@ -137,6 +138,19 @@ describe("shouldReuseKycSessionUrl", () => {
     ).toBe(false);
   });
 
+  it("does not reuse a session created for a different callback URL", () => {
+    expect(
+      shouldReuseKycSessionUrl({
+        latestSessionStatus: "created",
+        expectedCallbackUrl: "https://lax.bid/onboarding/identity",
+        decisionPayload: {
+          sessionUrl: "https://magic.veriff.me/v/abc",
+          callbackUrl: "https://lax.bid/dashboard/verify-identity",
+        },
+      }),
+    ).toBe(false);
+  });
+
   it("skips reuse when resubmission limit reason code is 539", () => {
     expect(
       shouldReuseKycSessionUrl({
@@ -160,15 +174,19 @@ describe("shouldReuseKycSessionUrl", () => {
 });
 
 describe("mergeKycDecisionPayload", () => {
-  it("preserves sessionUrl across webhook updates", () => {
+  it("preserves sessionUrl and callbackUrl across webhook updates", () => {
     const merged = mergeKycDecisionPayload(
-      { sessionUrl: "https://magic.veriff.me/v/abc" },
+      {
+        sessionUrl: "https://magic.veriff.me/v/abc",
+        callbackUrl: "https://test.lax.bid/dashboard/verify-identity",
+      },
       {
         status: "success",
         verification: { id: "abc", status: "resubmission_requested" },
       },
     );
     expect(readKycSessionUrl(merged)).toBe("https://magic.veriff.me/v/abc");
+    expect(readKycCallbackUrl(merged)).toBe("https://test.lax.bid/dashboard/verify-identity");
     expect(merged.verification).toBeDefined();
   });
 });

@@ -3,8 +3,14 @@ import type { IAntiShillingGuard, IBidRepository } from "@auction/persistence/in
 import type { Bid, Lot } from "@auction/types";
 import { parseMoneyToMinorUnits } from "@auction/validators";
 import { Counter } from "prom-client";
+import type { BidError } from "../bid-error.js";
 import { effectiveBidderStepMoney, moneyStringGtCurrent, settleProxyPrice } from "../bid-money.js";
 import type { IDomainEventSink, INotificationSender } from "../ports.js";
+import type { IStandingBidEligibilityValidator } from "./standing-bid-eligibility.validator.js";
+
+function isTransientStandingRevalidation(error: BidError): boolean {
+  return error.code === "standing_bid_revalidation_failed" || error.status === 503;
+}
 
 const proxyCancelNotifyFailedTotal = new Counter({
   name: "proxy_cancel_notify_failed_total",
@@ -30,6 +36,7 @@ export class ProxyAutoBidResolver {
     private readonly antiShillingGuard: IAntiShillingGuard | null,
     private readonly notifications: INotificationSender,
     private readonly domainEventSink: IDomainEventSink | null,
+    private readonly standingBidValidator: IStandingBidEligibilityValidator | null = null,
   ) {}
 
   async resolve(
@@ -44,7 +51,7 @@ export class ProxyAutoBidResolver {
     if (!initialBidderId) return initialBid;
 
     let states = await bids.listBidderCeilingStates(lotId);
-    states = await this.filterShillViolations(states, lotId, lot, bids, tx, pendingProxyCancels);
+    states = await this.filterIneligibleStates(states, lotId, lot, bids, tx, pendingProxyCancels);
     if (states.length === 0) return initialBid;
 
     const sorted = [...states].sort((a, b) => {
@@ -101,35 +108,8 @@ export class ProxyAutoBidResolver {
     tx: Database,
     pendingProxyCancels: ProxyCancelNotification[],
   ): Promise<void> {
-    if (!this.antiShillingGuard) return;
     const states = await bids.listBidderCeilingStates(lotId);
-    for (const s of states) {
-      if (!(await bids.bidderHasProxyMaxOnLot(lotId, s.bidderId))) continue;
-      if (
-        await this.antiShillingGuard.violatesAntiShilling({
-          bidderUserId: s.bidderId,
-          buyerLegalEntityId: s.buyerLegalEntityId,
-          lot: lotRow,
-        })
-      ) {
-        await bids.clearProxyAutoBidForBidderOnLot(lotId, s.bidderId);
-        this.queueProxyCancelled(lotId, s.bidderId, "anti_shilling_violation", pendingProxyCancels);
-        if (this.domainEventSink) {
-          await this.domainEventSink.withTx(tx).publish({
-            aggregateType: "lot",
-            aggregateId: lotId,
-            eventType: "bid.proxy_cancelled",
-            payload: {
-              lotId,
-              bidderUserId: s.bidderId,
-              buyerLegalEntityId: s.buyerLegalEntityId,
-              reason: "anti_shilling_violation",
-            },
-            actorUserId: null,
-          });
-        }
-      }
-    }
+    await this.filterIneligibleStates(states, lotId, lotRow, bids, tx, pendingProxyCancels);
   }
 
   async flushPendingProxyCancels(pending: ProxyCancelNotification[]): Promise<void> {
@@ -147,7 +127,34 @@ export class ProxyAutoBidResolver {
     pending.push({ lotId, bidderUserId, reason });
   }
 
-  private async filterShillViolations(
+  private async cancelProxy(
+    state: BidderCeilingState,
+    lotId: string,
+    reason: string,
+    bids: IBidRepository,
+    tx: Database,
+    pendingProxyCancels: ProxyCancelNotification[],
+  ): Promise<void> {
+    if (!(await bids.bidderHasProxyMaxOnLot(lotId, state.bidderId))) return;
+    await bids.clearProxyAutoBidForBidderOnLot(lotId, state.bidderId);
+    this.queueProxyCancelled(lotId, state.bidderId, reason, pendingProxyCancels);
+    if (this.domainEventSink) {
+      await this.domainEventSink.withTx(tx).publish({
+        aggregateType: "lot",
+        aggregateId: lotId,
+        eventType: "bid.proxy_cancelled",
+        payload: {
+          lotId,
+          bidderUserId: state.bidderId,
+          buyerLegalEntityId: state.buyerLegalEntityId,
+          reason,
+        },
+        actorUserId: null,
+      });
+    }
+  }
+
+  private async filterIneligibleStates(
     states: BidderCeilingState[],
     lotId: string,
     lot: Lot,
@@ -155,38 +162,34 @@ export class ProxyAutoBidResolver {
     tx: Database,
     pendingProxyCancels: ProxyCancelNotification[],
   ): Promise<BidderCeilingState[]> {
-    if (!this.antiShillingGuard) return states;
     const kept: BidderCeilingState[] = [];
     for (const s of states) {
-      const shill = await this.antiShillingGuard.violatesAntiShilling({
-        bidderUserId: s.bidderId,
-        buyerLegalEntityId: s.buyerLegalEntityId,
-        lot,
-      });
-      if (shill) {
-        if (await bids.bidderHasProxyMaxOnLot(lotId, s.bidderId)) {
-          await bids.clearProxyAutoBidForBidderOnLot(lotId, s.bidderId);
-          this.queueProxyCancelled(
-            lotId,
-            s.bidderId,
-            "anti_shilling_violation",
-            pendingProxyCancels,
-          );
-          if (this.domainEventSink) {
-            await this.domainEventSink.withTx(tx).publish({
-              aggregateType: "lot",
-              aggregateId: lotId,
-              eventType: "bid.proxy_cancelled",
-              payload: {
-                lotId,
-                bidderUserId: s.bidderId,
-                buyerLegalEntityId: s.buyerLegalEntityId,
-                reason: "anti_shilling_violation",
-              },
-              actorUserId: null,
-            });
-          }
+      const eligibilityResult = this.standingBidValidator
+        ? await this.standingBidValidator.validate(lotId, s)
+        : null;
+      if (eligibilityResult?.isErr()) {
+        if (isTransientStandingRevalidation(eligibilityResult.error)) {
+          throw eligibilityResult.error;
         }
+        await this.cancelProxy(
+          s,
+          lotId,
+          eligibilityResult.error.code ?? "standing_bid_ineligible",
+          bids,
+          tx,
+          pendingProxyCancels,
+        );
+        continue;
+      }
+      const shill = this.antiShillingGuard
+        ? await this.antiShillingGuard.violatesAntiShilling({
+            bidderUserId: s.bidderId,
+            buyerLegalEntityId: s.buyerLegalEntityId,
+            lot,
+          })
+        : false;
+      if (shill) {
+        await this.cancelProxy(s, lotId, "anti_shilling_violation", bids, tx, pendingProxyCancels);
         continue;
       }
       kept.push(s);

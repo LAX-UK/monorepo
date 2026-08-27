@@ -1,6 +1,8 @@
 "use client";
 
+import { markContextualKycGateNavigation } from "@/components/onboarding/buyer-onboarding-analytics";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { kycLinkActionLabel } from "@/lib/kyc/kyc-link-action-copy";
 import {
   type TelephoneBookingSnapshot,
@@ -46,7 +48,7 @@ export function TelephoneParticipationGate({
   children,
 }: Props) {
   const loginHref = `/login?next=${encodeURIComponent(loginNextPath)}`;
-  const kycHref = `/dashboard/verify-identity?next=${encodeURIComponent(loginNextPath)}`;
+  const kycHref = contextualIdentityOnboardingHref(loginNextPath, "telephone");
   const profileHref = `/dashboard/settings/profile?next=${encodeURIComponent(loginNextPath)}`;
 
   if (!isAuthenticated) {
@@ -71,7 +73,10 @@ export function TelephoneParticipationGate({
           <p className="font-body text-xs text-on-surface-variant">{kycFeedback.detail}</p>
         ) : null}
         <Button size="sm" variant="outline" className="w-full gap-1.5" asChild>
-          <Link href={kycHref}>
+          <Link
+            href={kycHref}
+            onClick={() => markContextualKycGateNavigation("telephone", loginNextPath)}
+          >
             {kycFeedback ? kycLinkActionLabel(kycFeedback, "long") : "Verify identity"}{" "}
             <ArrowRight className="size-3" />
           </Link>

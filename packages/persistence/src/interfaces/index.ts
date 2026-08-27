@@ -92,6 +92,11 @@ export type { BidLotRulesRow, IBidLotRulesReader } from "./bid-lot-rules.reader.
 export type { IBidMembershipReader } from "./bid-membership.reader.js";
 
 export type {
+  BidActorEligibilityRow,
+  IBidActorEligibilityReader,
+} from "./bid-actor-eligibility.reader.js";
+
+export type {
   BuyerAgentAuthorisationRow,
   IBuyerAgentAuthorisationReader,
 } from "./buyer-agent-authorisation.reader.js";
@@ -302,6 +307,14 @@ export type {
   UpdateAddressInput,
   UserAddressRow,
 } from "./profile.repository.js";
+
+export type {
+  CategoryInterestsEligibilityProfile,
+  CategoryInterestsState,
+  ICategoryInterestsEligibilityReader,
+  ICategoryInterestsRepository,
+  ReplaceCategoryInterestsResult,
+} from "./category-interests.repository.js";
 
 export type { IUserRepository, UserProfileRow } from "./user.repository.js";
 

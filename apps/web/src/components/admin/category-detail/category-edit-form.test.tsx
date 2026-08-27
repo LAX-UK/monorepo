@@ -22,7 +22,7 @@ const category: AdminCategory = {
   archived: false,
   description: null,
   heroImageKey: null,
-  usage: { lots: 2, sales: 1, submissions: 0, total: 3 },
+  usage: { lots: 2, sales: 1, submissions: 0, interests: 0, total: 3 },
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
 };

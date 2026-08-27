@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { ContextualKycReturnTracker } from "@/components/onboarding/buyer-onboarding-analytics";
 import { ViewerCapabilitiesProvider } from "@/lib/auth/capabilities";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -87,6 +88,7 @@ export function ClientShell({
       clientWorkspaceMode={effectiveWorkspaceMode}
       acting={acting}
     >
+      <ContextualKycReturnTracker kycApproved={user.kycStatus === "approved"} />
       <AppShell user={user} config={config} cookieDensity={cookieDensity ?? null}>
         {children}
       </AppShell>

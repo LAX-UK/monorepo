@@ -159,6 +159,14 @@ paths:
   /bids:
     post:
       summary: Place bid on a lot (auth); supports Idempotency-Key header with 24h Redis dedupe
+      description: |
+        Places a self-service bid for the active buyer legal entity. When
+        STRICT_BID_ELIGIBILITY_ENABLED is active, the acting user must have a
+        verified email and approved personal KYC. Failures use the stable
+        `email_not_verified` (403) and `kyc_required` (402) codes. Organisation
+        bids additionally retain entity-status, membership, sale-registration,
+        and buyer-agent-authorisation checks; Stripe Connect payout readiness
+        is not a buyer eligibility requirement.
 
   /payments:
     get:
@@ -217,6 +225,16 @@ paths:
     get:
       summary: List watched lots with sort, status, and multi-category filters (auth)
       description: Supports `sort=addedDesc|endingSoon|priceAsc|priceDesc`, `status=active|scheduled|ended`, and comma-separated `categoryIds`.
+  /users/me/category-interests:
+    get:
+      summary: Get the current user's ordered category interests and onboarding completion (auth)
+    put:
+      summary: Replace the current user's category interests and complete interests onboarding (auth)
+      description: Accepts zero to 20 unique category UUIDs. An empty selection completes the one-time step without storing interests.
+  /users/me/category-interests/preferences:
+    put:
+      summary: Replace auction interest preferences without changing onboarding completion (auth)
+      description: Accepts zero to 20 unique category UUIDs for settings edits. Does not modify the one-time onboarding completion marker.
   /categories:
     get:
       summary: List categories

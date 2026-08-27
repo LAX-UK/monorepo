@@ -27,7 +27,10 @@ import type { Redis } from "ioredis";
 import type { WorkerEnv } from "../env.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import { WorkerLotLifecycleEventRecorder } from "../lifecycle/worker-lifecycle-event-recorder.js";
-import { createWorkerBidEligibility } from "./create-worker-bid-eligibility.js";
+import {
+  createWorkerBidEligibility,
+  createWorkerBidIdentityEligibilityGate,
+} from "./create-worker-bid-eligibility.js";
 import { WorkerBidLotLifecycleRecording } from "./worker-bid-lot-lifecycle-recording.js";
 import {
   WorkerRedisBidNotificationSender,
@@ -75,7 +78,8 @@ export function createWorkerBiddingComposition(
     new DrizzleLegalEntityMembershipReader(db),
   );
 
-  const bidEligibility = createWorkerBidEligibility({ db, env });
+  const identityEligibilityGate = createWorkerBidIdentityEligibilityGate(db, env);
+  const bidEligibility = createWorkerBidEligibility({ db, env, identityEligibilityGate });
   const lotLifecycleJournal = new WorkerLotLifecycleEventRecorder(
     domainEventSink,
     new DrizzleLotLifecycleSnapshotRepository(db),
@@ -110,6 +114,7 @@ export function createWorkerBiddingComposition(
     repoFactory.root.lot,
     legalEntities,
     repoFactory.root.bid,
+    identityEligibilityGate,
   );
 
   return {

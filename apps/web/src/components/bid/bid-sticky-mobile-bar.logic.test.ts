@@ -27,9 +27,13 @@ describe("bid-sticky-mobile-bar.logic", () => {
 
   it("blocks bid CTAs when policy blocks", () => {
     expect(canShowBidCta({ kind: "allow" })).toBe(true);
-    expect(canShowBidCta({ kind: "block", viewId: "not-live:off-block", render: () => null })).toBe(
-      false,
-    );
+    expect(
+      canShowBidCta({
+        kind: "block",
+        viewId: "not-live:off-block",
+        presentation: { tone: "neutral", title: "Waiting", detail: "Not on block" },
+      }),
+    ).toBe(false);
   });
 
   describe("shouldShowBidStickyMobileBar", () => {

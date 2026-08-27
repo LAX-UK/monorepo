@@ -6,9 +6,17 @@ const authDir = path.join(e2eDir, ".auth");
 
 export const roleAuthState = {
   staff: path.join(authDir, "staff.json"),
+  staffRoles: path.join(authDir, "staff-roles.json"),
+  staffPublic: path.join(authDir, "staff-public.json"),
   catalogueManager: path.join(authDir, "catalogue-manager.json"),
   buyer: path.join(authDir, "buyer.json"),
+  client: path.join(authDir, "client.json"),
+  unapproved: path.join(authDir, "unapproved.json"),
+  incomplete: path.join(authDir, "incomplete.json"),
+  zeroLot: path.join(authDir, "zero-lot.json"),
   finance: path.join(authDir, "finance.json"),
   readonlyStaff: path.join(authDir, "readonly-staff.json"),
   operations: path.join(authDir, "operations.json"),
 } as const;
+
+export const sessionProbeReportPath = path.join(authDir, "session-probe.json");

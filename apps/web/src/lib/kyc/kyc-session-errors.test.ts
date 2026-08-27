@@ -11,10 +11,12 @@ describe("mapKycSessionStartError", () => {
     const zodLike = { name: "ZodError", issues: [{ message: "Invalid url" }] };
     const message = mapKycSessionStartError(zodLike, 400);
     expect(typeof message).toBe("string");
-    expect(message).toContain("Could not start verification");
+    expect(message).toContain("We couldn’t start identity verification");
   });
 
   it("maps API string validation messages on 400 to friendly KYC copy", () => {
-    expect(mapKycSessionStartError("Invalid url", 400)).toContain("Could not start verification");
+    expect(mapKycSessionStartError("Invalid url", 400)).toContain(
+      "We couldn’t start identity verification",
+    );
   });
 });

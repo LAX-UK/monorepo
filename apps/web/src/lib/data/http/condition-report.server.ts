@@ -2,37 +2,9 @@ import "server-only";
 
 import type { ConditionReportRequestSnapshot } from "@/lib/condition-report/condition-report-types";
 import type { BuyerConditionReportRequestRowDto } from "@/lib/condition-report/map-buyer-condition-report-requests.vm";
+import { parseConditionReportRequestRow } from "@/lib/condition-report/parse-condition-report-request-row";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { cache } from "react";
-
-function parseRequestRow(raw: unknown): ConditionReportRequestSnapshot | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const status = o.status;
-  if (
-    status !== "pending" &&
-    status !== "in_progress" &&
-    status !== "fulfilled" &&
-    status !== "declined"
-  ) {
-    return null;
-  }
-  if (typeof o.id !== "string" || typeof o.lotId !== "string") return null;
-  const createdAt =
-    typeof o.createdAt === "string"
-      ? o.createdAt
-      : o.createdAt instanceof Date
-        ? o.createdAt.toISOString()
-        : new Date().toISOString();
-  return {
-    id: o.id,
-    lotId: o.lotId,
-    status: status as ConditionReportRequestSnapshot["status"],
-    requestNote: typeof o.requestNote === "string" ? o.requestNote : null,
-    responseNote: typeof o.responseNote === "string" ? o.responseNote : null,
-    createdAt,
-  };
-}
 
 export const getServerConditionReportForLot = cache(
   async (lotId: string): Promise<ConditionReportRequestSnapshot | null> => {
@@ -43,7 +15,7 @@ export const getServerConditionReportForLot = cache(
     if (res.status === 401 || res.status === 403 || res.status === 404) return null;
     if (!res.ok) return null;
     const body = (await res.json()) as { data?: unknown };
-    return parseRequestRow(body.data ?? null);
+    return parseConditionReportRequestRow(body.data ?? null);
   },
 );
 
@@ -63,7 +35,7 @@ export async function getServerMyConditionReportRequests(
   };
   const items = (body.data?.items ?? [])
     .map((raw) => {
-      const base = parseRequestRow(raw);
+      const base = parseConditionReportRequestRow(raw);
       if (!base) return null;
       const o = raw as Record<string, unknown>;
       return {

@@ -10,6 +10,7 @@ import {
   kycInitialPhase,
   kycLinkActionLabel,
   kycVerifyButtonLabel,
+  resolveIdentityVerifyClientPhase,
 } from "./kyc-copy";
 
 function summary(overrides: Partial<KycStatusSummaryDto> = {}): KycStatusSummaryDto {
@@ -128,7 +129,15 @@ describe("kycLinkActionLabel", () => {
       "Continue",
     );
     expect(kycLinkActionLabel({ action: "retry" } as never, "long")).toBe("Try again");
-    expect(kycLinkActionLabel({ action: "wait" } as never, "short")).toBe("In review");
+    expect(kycLinkActionLabel({ action: "wait" } as never, "long")).toBe("Verification in review");
+    expect(kycLinkActionLabel({ action: "wait", needsResubmit: true } as never, "long")).toBe(
+      "Continue verification",
+    );
+  });
+
+  it("uses start copy when no feedback action is present", () => {
+    expect(kycLinkActionLabel(null, "long")).toBe("Verify to continue bidding");
+    expect(kycLinkActionLabel({ action: "start" } as never, "short")).toBe("Verify");
   });
 });
 
@@ -233,6 +242,55 @@ describe("isKycAwaitingDecision", () => {
     expect(
       isKycAwaitingDecision(summary({ status: "pending", latestSessionStatus: "created" })),
     ).toBe(false);
+  });
+});
+
+describe("resolveIdentityVerifyClientPhase", () => {
+  it("keeps submitted after provider return while the summary still looks idle", () => {
+    expect(
+      resolveIdentityVerifyClientPhase({
+        summary: summary({ status: "unverified", latestSessionStatus: "created" }),
+        returnedFromProvider: true,
+        currentPhase: "submitted",
+      }),
+    ).toBe("submitted");
+  });
+
+  it("does not drop in_flow back to idle on a stale summary refresh", () => {
+    expect(
+      resolveIdentityVerifyClientPhase({
+        summary: summary({ status: "unverified", latestSessionStatus: null }),
+        returnedFromProvider: false,
+        currentPhase: "in_flow",
+      }),
+    ).toBe("in_flow");
+  });
+
+  it("follows a settled server status", () => {
+    expect(
+      resolveIdentityVerifyClientPhase({
+        summary: summary({ status: "pending", latestSessionStatus: "processing" }),
+        returnedFromProvider: true,
+        currentPhase: "idle",
+      }),
+    ).toBe("submitted");
+    expect(
+      resolveIdentityVerifyClientPhase({
+        summary: summary({
+          status: "rejected",
+          feedback: {
+            headline: "Try again",
+            detail: null,
+            action: "retry",
+            reasonCode: null,
+            decisionStatus: null,
+            needsResubmit: true,
+          },
+        }),
+        returnedFromProvider: true,
+        currentPhase: "submitted",
+      }),
+    ).toBe("needs_resubmit");
   });
 });
 
