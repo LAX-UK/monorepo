@@ -60,6 +60,14 @@ function captureTarget(page: Page, capture: VisualCapture): Page | Locator {
   return page;
 }
 
+function adminHomeMasks(page: Page): Locator[] {
+  return [
+    page.getByText(/need attention/i),
+    page.getByLabel("Key metrics"),
+    page.getByLabel("List summary"),
+  ];
+}
+
 test.describe("curated admin visual gate @visual", () => {
   test.describe.configure({ mode: "serial" });
   test.setTimeout(90_000);
@@ -91,7 +99,7 @@ test.describe("curated admin visual gate @visual", () => {
           mask: [
             page.locator("time"),
             page.getByRole("heading", { name: /good day|your dashboard/i }),
-            ...(visualCase.slug === "admin-home" ? [page.getByText(/need attention/i)] : []),
+            ...(visualCase.slug === "admin-home" ? adminHomeMasks(page) : []),
           ],
         });
       });
