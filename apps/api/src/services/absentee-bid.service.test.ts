@@ -1,14 +1,25 @@
+import { BidError, type IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
-import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
-import type { ILotRepository } from "@auction/persistence/interfaces";
+import type {
+  IAbsenteeBidRepository,
+  ILegalEntityRepository,
+  ILotRepository,
+} from "@auction/persistence/interfaces";
 import { DrizzleAbsenteeBidRepository } from "@auction/persistence/repositories";
 import type { Lot } from "@auction/types";
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { AbsenteeBidService } from "./absentee-bid.service.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
 
 const CAT = "c1000001-0000-4000-8000-000000000001";
+
+function okIdentityGate(): IBidIdentityEligibilityGate {
+  return {
+    assertSelfServiceEligible: vi.fn().mockResolvedValue(ok(undefined)),
+    assertValidatedOperatorEligible: vi.fn().mockResolvedValue(ok(undefined)),
+  };
+}
 
 function mkLot(overrides: Partial<Lot> = {}): Lot {
   const now = new Date();
@@ -68,6 +79,98 @@ describe("AbsenteeBidService", () => {
     if (result.isErr()) expect(result.error.status).toBe(400);
   });
 
+  it("rejects an ineligible actor before inserting an absentee bid", async () => {
+    const insertScheduled = vi.fn();
+    const identityEligibilityGate: IBidIdentityEligibilityGate = {
+      assertSelfServiceEligible: vi
+        .fn()
+        .mockResolvedValue(
+          err(new BidError("Verify your email before bidding", 403, "email_not_verified")),
+        ),
+      assertValidatedOperatorEligible: vi.fn(),
+    };
+    const svc = new AbsenteeBidService(
+      { insertScheduled } as unknown as IAbsenteeBidRepository,
+      {} as IBidPlacer,
+      {
+        findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
+      } as unknown as ILotRepository,
+      null,
+      null,
+      identityEligibilityGate,
+    );
+
+    const result = await svc.schedule({
+      userId: "u1",
+      lotId: "lot-1",
+      buyerLegalEntityId: "le-1",
+      maxAmount: 500,
+    });
+
+    expect(result.isErr() && [result.error.status, result.error.code]).toEqual([
+      403,
+      "email_not_verified",
+    ]);
+    expect(insertScheduled).not.toHaveBeenCalled();
+  });
+
+  it("rejects a rejected buyer entity before inserting an absentee bid", async () => {
+    const insertScheduled = vi.fn();
+    const legalEntities = {
+      findById: vi.fn().mockResolvedValue({ status: "rejected" }),
+      findActiveMembership: vi.fn(),
+    } as unknown as ILegalEntityRepository;
+    const svc = new AbsenteeBidService(
+      { insertScheduled } as unknown as IAbsenteeBidRepository,
+      {} as IBidPlacer,
+      {
+        findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
+      } as unknown as ILotRepository,
+      legalEntities,
+      null,
+      okIdentityGate(),
+    );
+
+    const result = await svc.schedule({
+      userId: "u1",
+      lotId: "lot-1",
+      buyerLegalEntityId: "le-1",
+      maxAmount: 500,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("entity_not_authorised_to_bid");
+    expect(legalEntities.findActiveMembership).not.toHaveBeenCalled();
+    expect(insertScheduled).not.toHaveBeenCalled();
+  });
+
+  it("rejects removed organisation membership before inserting an absentee bid", async () => {
+    const insertScheduled = vi.fn();
+    const legalEntities = {
+      findById: vi.fn().mockResolvedValue({ status: "approved" }),
+      findActiveMembership: vi.fn().mockResolvedValue(null),
+    } as unknown as ILegalEntityRepository;
+    const svc = new AbsenteeBidService(
+      { insertScheduled } as unknown as IAbsenteeBidRepository,
+      {} as IBidPlacer,
+      {
+        findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
+      } as unknown as ILotRepository,
+      legalEntities,
+      null,
+      okIdentityGate(),
+    );
+
+    const result = await svc.schedule({
+      userId: "u1",
+      lotId: "lot-1",
+      buyerLegalEntityId: "le-1",
+      maxAmount: 500,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("membership_required");
+    expect(insertScheduled).not.toHaveBeenCalled();
+  });
+
   it("returns 409 on duplicate scheduled absentee bid", async () => {
     const lotRepo: ILotRepository = {
       findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
@@ -84,6 +187,8 @@ describe("AbsenteeBidService", () => {
       {} as IBidPlacer,
       lotRepo,
       null,
+      null,
+      okIdentityGate(),
     );
     const result = await svc.schedule({
       userId: "u1",
@@ -96,6 +201,31 @@ describe("AbsenteeBidService", () => {
       expect(result.error.status).toBe(409);
       expect(result.error.code).toBe("absentee_duplicate");
     }
+  });
+
+  it("fails closed when the identity eligibility gate is not configured", async () => {
+    const insertScheduled = vi.fn();
+    const svc = new AbsenteeBidService(
+      { insertScheduled } as unknown as IAbsenteeBidRepository,
+      {} as IBidPlacer,
+      {
+        findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
+      } as unknown as ILotRepository,
+      null,
+    );
+
+    const result = await svc.schedule({
+      userId: "u1",
+      lotId: "lot-1",
+      buyerLegalEntityId: "le-1",
+      maxAmount: 500,
+    });
+
+    expect(result.isErr() && [result.error.status, result.error.code]).toEqual([
+      503,
+      "identity_gate_unconfigured",
+    ]);
+    expect(insertScheduled).not.toHaveBeenCalled();
   });
 
   it("marks absentee lost when opening bid exceeds max", async () => {

@@ -8,11 +8,15 @@ on:
       - "apps/api/src/**"
       - "apps/auth/**"
       - "apps/ws/**"
+      - "apps/worker/src/**"
       - "apps/worker/src/projectors/*identity*"
       - "apps/worker/src/projectors/bid-profile-provisioning*"
       - "apps/worker/src/services/shop-identity-projection*"
       - "apps/shop-identity/**"
       - "packages/auth/**"
+      - "packages/domain/**"
+      - "packages/persistence/**"
+      - "packages/bidding-runtime/**"
       - "packages/identity-contracts/**"
       - "packages/db/drizzle/0137*"
       - "packages/db/drizzle/0138*"
@@ -21,17 +25,27 @@ on:
       - "packages/db/drizzle/0141*"
       - "packages/db/drizzle/0142*"
       - "packages/db/drizzle/0147*"
+      - "packages/db/drizzle/0159*"
+      - "packages/db/drizzle/0160*"
+      - "packages/db/drizzle/0161*"
       - "packages/types/src/domain-event-catalog/**"
       - "packages/db/src/migrate-roles.ts"
       - "packages/db/src/auth-*.contract.test.ts"
       - "packages/db/src/shop-*.contract.test.ts"
+      - "packages/db/src/migrations/**"
       - "packages/db/src/scripts/configure-oidc-clients.ts"
       - "scripts/ci/verify-identity-boundary.mjs"
       - "scripts/ci/verify-shop-oidc-roundtrip.mjs"
       - "scripts/ci/verify-refresh-reuse.mjs"
+      - "scripts/ci/verify-auth-dual-host.mjs"
       - "packages/db/src/seed/**"
       - "packages/ui/**"
       - ".github/workflows/e2e-pr.yml"
+      - "scripts/ci/e2e-session-state.mjs"
+      - "scripts/ci/e2e-session-state.test.mjs"
+      - "scripts/ci/flush-auth-rate-limits.mjs"
+      - "scripts/ci/prepare-e2e-auth-states.mjs"
+      - "scripts/ci/run-pr-browser-gates.mjs"
       - "pnpm-lock.yaml"
 
 concurrency:
@@ -94,6 +108,14 @@ jobs:
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
       ALLOW_HTTP_COOKIES: "true"
       REQUIRE_EMAIL_VERIFICATION: "false"
+      # development: API boot does not require CRON_INTERNAL_SECRET (gitleaks flags dummy secrets).
+      # Rollout flags below are explicit so APP_ENV fallback is unused in this gate.
+      APP_ENV: development
+      STRICT_BID_ELIGIBILITY_ENABLED: "false"
+      KYC_ONBOARDING_ENABLED: "false"
+      FULL_BUYER_ONBOARDING_ENABLED: "false"
+      MARKETING_PROMPTS_ENABLED: "false"
+      ADMIN_KPI_TREND_ANCHOR: "2026-08-25T12:00:00.000Z"
       PLAYWRIGHT_E2E: "1"
       PLAYWRIGHT_BASE_URL: http://localhost:3000
       PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
@@ -102,6 +124,22 @@ jobs:
       PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD: Password123!
       PLAYWRIGHT_BUYER_EMAIL: estate-owner@lax.bid
       PLAYWRIGHT_BUYER_PASSWORD: Password123!
+      PLAYWRIGHT_CLIENT_EMAIL: user1@lax.bid
+      PLAYWRIGHT_CLIENT_PASSWORD: Password123!
+      PLAYWRIGHT_UNAPPROVED_EMAIL: gallery-finance@lax.bid
+      PLAYWRIGHT_UNAPPROVED_PASSWORD: Password123!
+      PLAYWRIGHT_INCOMPLETE_EMAIL: viewer@lax.bid
+      PLAYWRIGHT_INCOMPLETE_PASSWORD: Password123!
+      PLAYWRIGHT_ZERO_LOT_EMAIL: apple-test@lax.bid
+      PLAYWRIGHT_ZERO_LOT_PASSWORD: Password123!
+      PLAYWRIGHT_ORG_EMAIL: estate-owner@lax.bid
+      PLAYWRIGHT_ORG_PASSWORD: Password123!
+      PLAYWRIGHT_FINANCE_EMAIL: accountant@lax.bid
+      PLAYWRIGHT_FINANCE_PASSWORD: Password123!
+      PLAYWRIGHT_READONLY_EMAIL: staff-readonly@lax.bid
+      PLAYWRIGHT_READONLY_PASSWORD: Password123!
+      PLAYWRIGHT_OPERATIONS_EMAIL: staff-operations@lax.bid
+      PLAYWRIGHT_OPERATIONS_PASSWORD: Password123!
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -110,6 +148,10 @@ jobs:
           node-version: "22"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
+      - name: Fast static checks
+        run: |
+          pnpm exec biome check .
+          node --test scripts/ci/e2e-session-state.test.mjs
       - name: Install pinned Chromium
         run: pnpm --filter @auction/web exec playwright install chromium --with-deps
       - name: Migrate and seed
@@ -127,10 +169,11 @@ jobs:
         run: pnpm --filter @auction/api... build && pnpm --filter @auction/auth-app... build && pnpm --filter @auction/shop-identity... build && pnpm --filter @auction/web... build
       - name: Start stack
         run: |
-          PORT=3001 pnpm --filter @auction/api start &
-          PORT=3003 pnpm --filter @auction/auth-app start &
-          PORT=3010 pnpm --filter @auction/shop-identity start &
-          PORT=3000 pnpm --filter @auction/web start &
+          mkdir -p /tmp/e2e-logs
+          PORT=3001 pnpm --filter @auction/api start > /tmp/e2e-logs/api.log 2>&1 &
+          PORT=3003 pnpm --filter @auction/auth-app start > /tmp/e2e-logs/auth.log 2>&1 &
+          PORT=3010 pnpm --filter @auction/shop-identity start > /tmp/e2e-logs/shop-identity.log 2>&1 &
+          PORT=3000 pnpm --filter @auction/web start > /tmp/e2e-logs/web.log 2>&1 &
           npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live http://localhost:3010/health/ready --timeout 120000
       - name: Verify canonical identity boundary
         env:
@@ -153,21 +196,31 @@ jobs:
           REFRESH_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
           REFRESH_TEST_CLIENT_SECRET: ${{ env.OIDC_CLIENT_SECRET }}
         run: node scripts/ci/verify-refresh-reuse.mjs
-      - name: Prepare staff session
-        working-directory: apps/web
-        run: |
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-finance
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-readonly
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-operations
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-buyer
-          pnpm exec playwright test e2e/auth.setup.ts --project=setup-catalogue
-      - name: Critical browser and curated visual gates
-        run: pnpm --filter @auction/web test:e2e:pr --no-deps
+      - name: Verify dual-host OIDC and auth response parity
+        env:
+          AUTH_PUBLIC_URL: http://localhost:3003
+          AUTH_PARITY_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
+          AUTH_PARITY_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
+        run: node scripts/ci/verify-auth-dual-host.mjs
+      - name: Prepare auth sessions and run PR browser gates
+        run: node scripts/ci/run-pr-browser-gates.mjs --skip-static
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: web-pr-playwright-report
-          path: apps/web/blob-report
+          path: |
+            apps/web/blob-report
+            apps/web/test-results
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload session probe and process logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-pr-session-diagnostics
+          path: |
+            apps/web/e2e/.auth/session-probe.json
+            /tmp/e2e-logs
+          if-no-files-found: warn
           retention-days: 7

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   formatSettlementsContactLine,
   settlementsEmail,
@@ -7,6 +7,15 @@ import {
 } from "./settlements-contact";
 
 describe("settlements-contact", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_SETTLEMENTS_EMAIL", "");
+    vi.stubEnv("NEXT_PUBLIC_SETTLEMENTS_PHONE", "");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("avoids fake placeholder email when env is unset", () => {
     expect(settlementsEmailDisplay()).not.toContain("example.com");
   });
@@ -22,5 +31,12 @@ describe("settlements-contact", () => {
 
   it("returns null email when env is unset", () => {
     expect(settlementsEmail()).toBeNull();
+  });
+
+  it("uses configured settlements contact details", () => {
+    vi.stubEnv("NEXT_PUBLIC_SETTLEMENTS_EMAIL", "settlements@lax.test");
+    vi.stubEnv("NEXT_PUBLIC_SETTLEMENTS_PHONE", "+44 20 7946 0958");
+
+    expect(formatSettlementsContactLine()).toBe("settlements@lax.test · +44 20 7946 0958");
   });
 });

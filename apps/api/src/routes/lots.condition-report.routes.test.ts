@@ -166,4 +166,52 @@ describe("POST /lots/:id/condition-report-requests", () => {
     const body = (await res.json()) as { error?: string; code?: string };
     expect(body.code).toBe("condition_report_already_requested");
   });
+
+  it("returns 403 when the buyer has not verified email", async () => {
+    const { err } = await import("neverthrow");
+    const { app, createRequest } = lotRoutesApp({
+      session: { id: "u1", role: "client", staffRole: null },
+    });
+    createRequest.mockResolvedValue(
+      err({
+        message: "Verify your email before bidding",
+        status: 403,
+        code: "email_not_verified",
+      }),
+    );
+
+    const res = await app.request(`http://t/lots/${lotId}/condition-report-requests`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("email_not_verified");
+  });
+
+  it("returns 402 when the buyer has not completed KYC", async () => {
+    const { err } = await import("neverthrow");
+    const { app, createRequest } = lotRoutesApp({
+      session: { id: "u1", role: "client", staffRole: null },
+    });
+    createRequest.mockResolvedValue(
+      err({
+        message: "Complete identity verification before bidding",
+        status: 402,
+        code: "kyc_required",
+      }),
+    );
+
+    const res = await app.request(`http://t/lots/${lotId}/condition-report-requests`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    expect(res.status).toBe(402);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("kyc_required");
+  });
 });

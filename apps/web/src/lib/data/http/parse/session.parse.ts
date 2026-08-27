@@ -104,6 +104,15 @@ export function parseSessionUser(raw: unknown): SessionUser {
   } else if (signupPersona === null) {
     out.signupPersona = null;
   }
+  const categoryInterestsOnboardingCompletedAt = hasOwn(
+    row,
+    "categoryInterestsOnboardingCompletedAt",
+  )
+    ? optionalNullableDate(row.categoryInterestsOnboardingCompletedAt)
+    : undefined;
+  if (categoryInterestsOnboardingCompletedAt !== undefined) {
+    out.categoryInterestsOnboardingCompletedAt = categoryInterestsOnboardingCompletedAt;
+  }
   const deletionRequestedAt = hasOwn(row, "deletionRequestedAt")
     ? optionalNullableDate(row.deletionRequestedAt)
     : undefined;

@@ -1,3 +1,4 @@
+import { seedE2eRolloutIdentities } from "../dev/e2e-rollout-identities.js";
 import { runLegacyDemoSeed } from "../dev/legacy-demo-seed.js";
 
 export async function runDevSeed(): Promise<void> {
@@ -5,4 +6,5 @@ export async function runDevSeed(): Promise<void> {
     throw new Error("Refusing to run the destructive dev seed when NODE_ENV=production.");
   }
   await runLegacyDemoSeed();
+  await seedE2eRolloutIdentities();
 }

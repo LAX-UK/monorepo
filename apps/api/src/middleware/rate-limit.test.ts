@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createRateLimitMiddleware } from "./rate-limit.js";
 
 describe("general API rate limit", () => {
-  it("gives the authenticated session read path enough headroom for SSR", async () => {
+  it("skips rate limiting for authenticated session reads", async () => {
     const increment = vi.fn(async () => ({ allowed: true, remaining: 599 }));
     const app = new Hono();
     app.use("*", createRateLimitMiddleware({ increment }));
@@ -14,7 +14,7 @@ describe("general API rate limit", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(increment).toHaveBeenCalledWith("rl:203.0.113.10:/users/me", 600, 60);
+    expect(increment).not.toHaveBeenCalled();
   });
 
   it("keeps the default limit for other routes", async () => {

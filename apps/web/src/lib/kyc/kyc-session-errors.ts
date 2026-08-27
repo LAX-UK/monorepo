@@ -4,15 +4,15 @@ const KYC_KNOWN_ERRORS: Record<string, string> = {
   kyc_not_configured: "Identity verification is temporarily unavailable. Please try again later.",
   kyc_already_approved: "Your identity is already verified.",
   kyc_return_url_must_be_https:
-    "Could not start verification from this page. Open verify identity from the dashboard and try again.",
+    "Identity verification needs a secure HTTPS connection. Please use the secure site and try again.",
   kyc_return_url_invalid:
-    "Could not start verification from this page. Open verify identity from the dashboard and try again.",
+    "The verification return link is invalid. Refresh the page and try again.",
 };
 
 function kycStatusFallback(status: number): string | null {
   switch (status) {
     case 400:
-      return "Could not start verification from this page. Open verify identity from the dashboard and try again.";
+      return "We couldn’t start identity verification. Refresh the page and try again.";
     case 503:
       return "Identity verification is temporarily unavailable. Please try again later.";
     case 409:

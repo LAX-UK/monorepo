@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 
 const base = {
   show: true,
-  lotEligible: true,
   isAuthenticated: true,
-  kycApproved: true,
+  emailVerified: true,
+  userEmail: "buyer@example.com",
+  kycStatus: "approved" as const,
   kycFeedback: null,
   loginNextPath: "/lot/x",
-  dashboardHref: "/dashboard/condition-reports",
   published: null,
   buyerRequest: null,
   uiPhase: "idle" as const,
@@ -65,6 +65,42 @@ describe("deriveConditionReportCardState", () => {
   it("returns canRequest when eligible and no request", () => {
     const state = deriveConditionReportCardState({ ...base });
     expect(state?.kind).toBe("canRequest");
+  });
+
+  it("returns emailVerificationRequired when KYC is approved but email is unverified", () => {
+    const state = deriveConditionReportCardState({
+      ...base,
+      emailVerified: false,
+      kycStatus: "approved",
+      userEmail: "buyer@example.com",
+    });
+    expect(state).toEqual({
+      kind: "emailVerificationRequired",
+      loginNextPath: "/lot/x",
+      email: "buyer@example.com",
+    });
+  });
+
+  it("returns kycRequired when email is verified but KYC is pending", () => {
+    const state = deriveConditionReportCardState({
+      ...base,
+      emailVerified: true,
+      kycStatus: "pending",
+      kycFeedback: "Complete identity verification",
+    });
+    expect(state).toEqual({
+      kind: "kycRequired",
+      loginNextPath: "/lot/x",
+      feedback: "Complete identity verification",
+    });
+  });
+
+  it("returns notSignedIn for unauthenticated viewers", () => {
+    const state = deriveConditionReportCardState({
+      ...base,
+      isAuthenticated: false,
+    });
+    expect(state?.kind).toBe("notSignedIn");
   });
 
   it("returns null when show is false", () => {

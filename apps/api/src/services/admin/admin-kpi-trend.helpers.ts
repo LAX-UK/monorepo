@@ -1,12 +1,19 @@
 import type { AdminKpiPeriodDays, AdminKpiTrendBundle } from "../interfaces/admin-kpi-trend.js";
 
+function trendAnchorDate(): Date {
+  const raw = process.env.ADMIN_KPI_TREND_ANCHOR?.trim();
+  if (!raw) return new Date();
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
 export function utcDayStart(d: Date): Date {
   const x = new Date(d);
   x.setUTCHours(0, 0, 0, 0);
   return x;
 }
 
-export function buildDayKeys(periodDays: number, anchor = new Date()): string[] {
+export function buildDayKeys(periodDays: number, anchor = trendAnchorDate()): string[] {
   const end = utcDayStart(anchor);
   const keys: string[] = [];
   for (let i = periodDays - 1; i >= 0; i -= 1) {
@@ -19,7 +26,7 @@ export function buildDayKeys(periodDays: number, anchor = new Date()): string[] 
 
 export function buildTrendWindows(
   periodDays: AdminKpiPeriodDays,
-  anchor = new Date(),
+  anchor = trendAnchorDate(),
 ): {
   currentKeys: string[];
   priorKeys: string[];

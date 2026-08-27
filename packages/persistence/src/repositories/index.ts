@@ -15,6 +15,7 @@ export { DrizzleAccountDeletionEligibilityReader } from "./drizzle-account-delet
 export { DrizzleAbsenteeBidRepository } from "./drizzle-absentee-bid.repository.js";
 export { DrizzleBidLotRulesReader } from "./drizzle-bid-lot-rules.reader.js";
 export { DrizzleBidMembershipReader } from "./drizzle-bid-membership.reader.js";
+export { DrizzleBidActorEligibilityReader } from "./drizzle-bid-actor-eligibility.reader.js";
 export { DrizzleBuyerAgentAuthorisationReader } from "./drizzle-buyer-agent-authorisation.reader.js";
 export { DrizzleGuestPaddleReader } from "./drizzle-guest-paddle.reader.js";
 export { DrizzlePaddleRepository, isPaddleUniqueViolation } from "./drizzle-paddle.repository.js";
@@ -61,6 +62,7 @@ export { DrizzleSourceOfFundsSettlementReader } from "./drizzle-source-of-funds-
 export { DrizzleLegalEntityDocumentAdminRepository } from "./drizzle-legal-entity-document-admin.repository.js";
 export { DrizzleLegalEntityLifecycleAdminRepository } from "./drizzle-legal-entity-lifecycle-admin.repository.js";
 export { DrizzleProfileRepository } from "./drizzle-profile.repository.js";
+export { DrizzleCategoryInterestsRepository } from "./drizzle-category-interests.repository.js";
 export { DrizzleAddressRepository } from "./drizzle-address.repository.js";
 export { DrizzleUserRepository } from "./drizzle-user.repository.js";
 export { DrizzleUserSuspensionChecker } from "./drizzle-user-suspension.checker.js";

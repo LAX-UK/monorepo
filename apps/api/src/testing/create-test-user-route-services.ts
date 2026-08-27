@@ -10,6 +10,11 @@ export function createTestUserRouteServicesInput(
 ): CreateUserRouteServicesInput {
   return {
     env: { WEB_ORIGIN: "https://test.lax.bid", DISABLE_NEW_USER_REGISTRATION: false },
+    categoryInterestsRepository: {
+      getForUser: vi.fn(),
+      replace: vi.fn(),
+      replaceAndComplete: vi.fn(),
+    } as never,
     registrationService: { register: vi.fn() } as never,
     marketingEventService: { emit: vi.fn(), enqueue: vi.fn() } as never,
     attributionStore: { get: vi.fn(), put: vi.fn(), delete: vi.fn() } as never,

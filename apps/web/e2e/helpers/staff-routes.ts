@@ -7,7 +7,7 @@ export type StaffCatalogListRoute = {
 
 /** Core catalog list pages used by smoke and rollout accessibility gates. */
 export const staffCatalogListRoutes = [
-  { path: "/admin/lots", heading: /lots/i },
+  { path: "/admin/lots", heading: /^lots$/i },
   { path: "/admin/sales", heading: /sales/i },
   { path: "/admin/categories", heading: /categories/i },
   { path: "/admin/artists", heading: /artists/i },

@@ -241,7 +241,7 @@ export function WorkInboxWidget({
             {urgentCount > 0 ? (
               <>
                 {" "}
-                · <span className="text-warning">{urgentCount} need attention</span>
+                · <span className="text-warning-on-surface">{urgentCount} need attention</span>
               </>
             ) : null}
           </p>

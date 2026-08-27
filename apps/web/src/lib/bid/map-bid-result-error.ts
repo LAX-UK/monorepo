@@ -4,6 +4,7 @@ import type { BidErrorPresentation, MapBidErrorOptions } from "@/lib/ui/bid-erro
 export type MapBidResultErrorInput = {
   error: string;
   verifyReturnPath: string;
+  lotId?: string;
   code?: string | null;
   saleRegistrationPath?: string | null;
   kycFeedback?: MapBidErrorOptions["kycFeedback"];
@@ -12,6 +13,7 @@ export type MapBidResultErrorInput = {
 export function mapBidResultError(input: MapBidResultErrorInput): BidErrorPresentation {
   return mapBidError(input.error, {
     verifyReturnPath: input.verifyReturnPath,
+    ...(input.lotId ? { lotId: input.lotId } : {}),
     code: input.code ?? null,
     ...(input.saleRegistrationPath ? { saleRegistrationPath: input.saleRegistrationPath } : {}),
     kycFeedback: input.kycFeedback ?? null,

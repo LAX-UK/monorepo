@@ -11,14 +11,14 @@ import type {
 } from "../interfaces/condition-report.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import type { NotificationFactory } from "../notification.factory.js";
-import type { ConditionReportContext } from "./condition-report-context.js";
+import type { ConditionReportAdminContext } from "./condition-report-admin-context.js";
 
 type ConditionReportNotificationPayload =
   | ReturnType<NotificationFactory["createConditionReportReady"]>
   | ReturnType<NotificationFactory["createConditionReportDeclined"]>;
 
 export class ConditionReportFulfilmentService implements IConditionReportFulfilmentService {
-  constructor(private readonly ctx: ConditionReportContext) {}
+  constructor(private readonly ctx: ConditionReportAdminContext) {}
 
   private async notifyBuyerBestEffort(
     userId: string,

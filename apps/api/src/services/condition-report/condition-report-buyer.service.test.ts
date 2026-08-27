@@ -1,10 +1,14 @@
+import {
+  type ISelfServiceIdentityEligibilityGate,
+  SelfServiceIdentityEligibilityError,
+} from "@auction/bidding-runtime";
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
+import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";
-import { NotificationFactory } from "../notification.factory.js";
+import { createConditionReportBuyerContext } from "./condition-report-buyer-context.js";
 import { ConditionReportBuyerService } from "./condition-report-buyer.service.js";
-import { createConditionReportContext } from "./condition-report-context.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const userId = "user-buyer-1";
@@ -36,19 +40,40 @@ function buyerServiceWithRows(rows: ConditionReportRequestRow[]) {
     listByLotAndUser: vi.fn(async () => rows),
   } as unknown as IConditionReportRequestRepository;
 
-  const ctx = createConditionReportContext({
-    transactionRunner: {
-      runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
-    } as never,
+  const ctx = createConditionReportBuyerContext({
     requestRepo,
     lotRepo: { findById: vi.fn() } as unknown as ILotRepository,
     legalEntityRepository: null,
     domainEventSink: null,
-    notificationDispatcher: null,
-    notificationFactory: new NotificationFactory(),
+    identityEligibilityGate: {
+      assertSelfServiceEligible: vi.fn(async () => ok(undefined)),
+    },
   });
 
   return new ConditionReportBuyerService(ctx);
+}
+
+function buyerServiceForCreate(opts: {
+  identityEligibilityGate: ISelfServiceIdentityEligibilityGate;
+  lotStatus?: string;
+}) {
+  const requestRepo = {
+    findOpenByLotAndUser: vi.fn(async () => null),
+    findAnyByLotAndUser: vi.fn(async () => null),
+    insert: vi.fn(async () => makeRequestRow()),
+  } as unknown as IConditionReportRequestRepository;
+
+  const ctx = createConditionReportBuyerContext({
+    requestRepo,
+    lotRepo: {
+      findById: vi.fn(async () => ({ id: lotId, status: opts.lotStatus ?? "active" })),
+    } as unknown as ILotRepository,
+    legalEntityRepository: null,
+    domainEventSink: null,
+    identityEligibilityGate: opts.identityEligibilityGate,
+  });
+
+  return { svc: new ConditionReportBuyerService(ctx), requestRepo };
 }
 
 describe("ConditionReportBuyerService.findForBuyerOnLot", () => {
@@ -77,5 +102,59 @@ describe("ConditionReportBuyerService.findForBuyerOnLot", () => {
     ]);
     const row = await svc.findForBuyerOnLot({ userId, lotId });
     expect(row?.id).toBe("declined-new");
+  });
+});
+
+describe("ConditionReportBuyerService.createRequest identity gate", () => {
+  it("rejects unverified email before insert", async () => {
+    const identityEligibilityGate: ISelfServiceIdentityEligibilityGate = {
+      assertSelfServiceEligible: vi.fn(async () =>
+        err(
+          new SelfServiceIdentityEligibilityError(
+            "Verify your email before bidding",
+            403,
+            "email_not_verified",
+          ),
+        ),
+      ),
+    };
+    const { svc, requestRepo } = buyerServiceForCreate({ identityEligibilityGate });
+    const result = await svc.createRequest({ userId, lotId });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toMatchObject({ status: 403, code: "email_not_verified" });
+    }
+    expect(requestRepo.insert).not.toHaveBeenCalled();
+  });
+
+  it("rejects unapproved KYC before insert", async () => {
+    const identityEligibilityGate: ISelfServiceIdentityEligibilityGate = {
+      assertSelfServiceEligible: vi.fn(async () =>
+        err(
+          new SelfServiceIdentityEligibilityError(
+            "Complete identity verification before bidding",
+            402,
+            "kyc_required",
+          ),
+        ),
+      ),
+    };
+    const { svc, requestRepo } = buyerServiceForCreate({ identityEligibilityGate });
+    const result = await svc.createRequest({ userId, lotId });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toMatchObject({ status: 402, code: "kyc_required" });
+    }
+    expect(requestRepo.insert).not.toHaveBeenCalled();
+  });
+
+  it("creates the request when identity is eligible", async () => {
+    const identityEligibilityGate: ISelfServiceIdentityEligibilityGate = {
+      assertSelfServiceEligible: vi.fn(async () => ok(undefined)),
+    };
+    const { svc, requestRepo } = buyerServiceForCreate({ identityEligibilityGate });
+    const result = await svc.createRequest({ userId, lotId });
+    expect(result.isOk()).toBe(true);
+    expect(requestRepo.insert).toHaveBeenCalledOnce();
   });
 });

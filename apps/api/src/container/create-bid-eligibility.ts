@@ -1,15 +1,20 @@
 import {
   AmlBidGate,
   BidEligibilityService,
+  BidIdentityEligibilityGate,
   BuyerAgentBidGate,
+  type IBidIdentityEligibilityGate,
+  type ISelfServiceIdentityEligibilityGate,
   KycBidGate,
   NoOpAmlBidGate,
   NoOpKycBidGate,
   OperatorPlacementPolicy,
   SaleRegistrationBidGate,
+  SelfServiceIdentityEligibilityGate,
 } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import {
+  DrizzleBidActorEligibilityReader,
   DrizzleBidLotRulesReader,
   DrizzleBidMembershipReader,
   DrizzleBuyerAgentAuthorisationReader,
@@ -22,15 +27,15 @@ import type { IKycService } from "../services/interfaces/kyc-service.js";
 
 export type CreateBidEligibilityInput = {
   db: Database;
-  kycService: IKycService;
   amlHoldStore: IAmlHoldStore;
+  identityEligibilityGate: IBidIdentityEligibilityGate;
 };
 
 export function createBidEligibility(input: CreateBidEligibilityInput): IBidEligibility {
-  const { db, kycService, amlHoldStore } = input;
+  const { db, amlHoldStore, identityEligibilityGate } = input;
   const operatorReader = new DrizzleOperatorPlacementReader(db);
   return new BidEligibilityService(
-    kycService.isConfigured() ? new KycBidGate(kycService) : new NoOpKycBidGate(),
+    identityEligibilityGate,
     new AmlBidGate(amlHoldStore),
     new DrizzleBidLotRulesReader(db),
     new DrizzleBidMembershipReader(db),
@@ -40,14 +45,43 @@ export function createBidEligibility(input: CreateBidEligibilityInput): IBidElig
   );
 }
 
+export function createSelfServiceIdentityEligibilityGate(
+  db: Database,
+): ISelfServiceIdentityEligibilityGate {
+  return new SelfServiceIdentityEligibilityGate(new DrizzleBidActorEligibilityReader(db));
+}
+
+export function createBidIdentityEligibilityGate(
+  db: Database,
+  kycService: IKycService | null,
+  enabled: boolean,
+): IBidIdentityEligibilityGate {
+  const thresholdGate =
+    kycService?.isConfigured() === true ? new KycBidGate(kycService) : new NoOpKycBidGate();
+  return new BidIdentityEligibilityGate(
+    new DrizzleBidActorEligibilityReader(db),
+    thresholdGate,
+    enabled,
+  );
+}
+
 /** Test-only wiring when KYC/AML ports are absent. */
 export function createBidEligibilityForTest(
   db: Database,
-  opts?: { kycService?: IKycService | null; amlHoldStore?: IAmlHoldStore | null },
+  opts?: {
+    kycService?: IKycService | null;
+    amlHoldStore?: IAmlHoldStore | null;
+    strictBidEligibilityEnabled?: boolean;
+  },
 ): BidEligibilityService {
   const operatorReader = new DrizzleOperatorPlacementReader(db);
+  const identityEligibilityGate = createBidIdentityEligibilityGate(
+    db,
+    opts?.kycService ?? null,
+    opts?.strictBidEligibilityEnabled ?? false,
+  );
   return new BidEligibilityService(
-    opts?.kycService?.isConfigured() ? new KycBidGate(opts.kycService) : new NoOpKycBidGate(),
+    identityEligibilityGate,
     opts?.amlHoldStore ? new AmlBidGate(opts.amlHoldStore) : new NoOpAmlBidGate(),
     new DrizzleBidLotRulesReader(db),
     new DrizzleBidMembershipReader(db),

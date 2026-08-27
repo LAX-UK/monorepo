@@ -1,8 +1,9 @@
+import type { BidBlockerPresentation } from "@/lib/bid/bid-blocker-presentation";
+import type { LiveConnectionState } from "@/lib/connection/merge-connection-status";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import type { LegalEntityMemberRole, Lot, PublicLotView } from "@auction/types";
-import type { ReactNode } from "react";
 
 export type KycBidGateContext = {
   requiresKyc: boolean;
@@ -39,14 +40,22 @@ export type BidPolicyContext = {
   kycBidGate?: KycBidGateContext | null;
   /** When set, buyer_agent acting context must have approved sale registration. */
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
+  /** Server-resolved rollout for strict email + identity eligibility. */
+  strictBidEligibilityEnabled?: boolean;
   /** When set, `not-live` policy uses lifecycle-specific block copy (aligned with `classifyLotLifecycle`). */
   biddingLifecycle?: { kind: LotLifecycleKind; isOnBlock?: boolean } | null;
   orgModuleEnabled?: boolean;
+  /** Catalogue lock: self-service bidding is English / buy-now only. */
+  unsupportedAuctionMode?: boolean;
+  /** Live lot with no submit-capable connection. */
+  connectionBlocked?: boolean;
+  connectionState?: LiveConnectionState;
+  connectionMessage?: string | null;
 };
 
 export type BidPolicyDecision =
   | { kind: "allow" }
-  | { kind: "block"; viewId: string; render: () => ReactNode };
+  | { kind: "block"; viewId: string; presentation: BidBlockerPresentation };
 
 export interface BidPolicy {
   readonly id: string;

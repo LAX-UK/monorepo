@@ -11,6 +11,8 @@ export function BidPanelStickyMobileBar() {
       live={sticky.live}
       decision={sticky.decision}
       loginNextPath={sticky.loginNextPath}
+      lotId={sticky.lotId}
+      userEmail={sticky.userEmail}
       kycFeedback={sticky.kycFeedback}
       {...(sticky.saleRegistrationPath
         ? { saleRegistrationPath: sticky.saleRegistrationPath }

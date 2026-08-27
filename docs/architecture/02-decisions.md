@@ -341,3 +341,68 @@ explicit.
 
 **Status.** *Implemented.* Discovery contracts in `packages/auth/src/contracts.ts`
 and `packages/identity-contracts/src/discovery.ts` advertise public subjects.
+
+## D19. Buyer onboarding UX: policy, narrow persistence commands, contextual KYC entry
+
+**Chosen.** Post-auth routing resolves safe destinations only. Full interests onboarding runs once for newly verified individuals (`categoryInterestsOnboardingCompletedAt === null`). Settings edits use a separate `replace` repository command and `PUT /users/me/category-interests/preferences`; onboarding completion keeps the existing atomic `replaceAndComplete` command. User-facing KYC entry links target `/onboarding/identity` with typed `source` and safe `next`; when `KYC_ONBOARDING_ENABLED=false`, the identity layout redirects to the legacy `/dashboard/verify-identity` page. Restricted actions remain server-enforced (`402 kyc_required`); client links are anticipatory UX only.
+
+**Alternatives considered.** Forcing KYC on every login was rejected (poor UX, repeated interruption). A `complete=true` flag on the existing PUT endpoint was rejected (ambiguous contract during mixed-version deploys).
+
+**Why this wins.** Clear separation between one-time onboarding completion and editable preferences; pure policy modules; additive API compatibility; contextual return intent preserved for bid, registration, telephone, and condition-report gates.
+
+**Status.** *Implemented.* Policy in [apps/web/src/lib/kyc/](../../apps/web/src/lib/kyc/), persistence in [packages/persistence/src/interfaces/category-interests.repository.ts](../../packages/persistence/src/interfaces/category-interests.repository.ts), HTTP in [apps/api/src/routes/users/category-interests.routes.ts](../../apps/api/src/routes/users/category-interests.routes.ts).
+
+## D20. Strict self-service bid identity eligibility
+
+**Chosen.** When `STRICT_BID_ELIGIBILITY_ENABLED=true`, every self-service web,
+auto, proxy, or absentee bid requires the acting user's email to be verified and
+personal KYC status to be `approved`. The bidding runtime is authoritative and
+returns `403 email_not_verified` before `402 kyc_required`. UI policies mirror
+the rule but are not trusted for enforcement. Validated telephone and saleroom
+operator placements retain threshold KYC behavior.
+
+Organisation bidding evaluates independent dimensions: acting-user identity,
+buyer-entity status, active membership, and—when acting as `buyer_agent`—sale
+registration and buyer-agent authorisation. The existing buyer entity allowlist
+(`connect_pending`, `approved`, `restricted`) remains the SSOT. Stripe Connect
+readiness is seller publishing and payout policy and never gates buying.
+
+Standing proxy ceilings are revalidated before settlement and invalid ceilings
+are cancelled without aborting another bidder's transaction. Absentee requests
+are checked before scheduling and again at replay. The rollout flag defaults
+off in production and may be disabled without a code rollback; when enabled,
+missing Veriff configuration remains fail-closed against persisted user status
+and emits an operational warning.
+
+**Alternatives considered.** Frontend-only blocking was rejected because direct
+API and internal replay paths bypass it. Reusing seller Connect readiness was
+rejected because payout setup is unrelated to buyer authority. Throwing when an
+invalid proxy ceiling is encountered was rejected because it could roll back an
+eligible bidder's live transaction.
+
+**Why this wins.** One pure identity rule and narrow read port are reused across
+all bid channels, error contracts remain stable, organisation authority stays
+separate from seller payouts, and the kill/rollout switch limits operational
+risk.
+
+**Status.** *Implemented.* Domain policy in [packages/domain/src/self-service-actor-identity-eligibility.ts](../../packages/domain/src/self-service-actor-identity-eligibility.ts) (shared by bidding and condition-report flows), strict bid gate in [packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts](../../packages/bidding-runtime/src/bid/identity-bid-eligibility.gate.ts), always-strict condition-report gate via [packages/bidding-runtime/src/bid/self-service-identity-eligibility.gate.ts](../../packages/bidding-runtime/src/bid/self-service-identity-eligibility.gate.ts), persistence in [packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts](../../packages/persistence/src/interfaces/bid-actor-eligibility.reader.ts), UI policy in [apps/web/src/lib/bid/policies/strict-eligibility.policy.ts](../../apps/web/src/lib/bid/policies/strict-eligibility.policy.ts).
+
+## D21. Bid policy decisions carry presentation, not a render closure
+
+**Chosen.** `BidPolicyDecision` block variants are `{ kind: "block"; viewId; presentation }`. Consumers render `BidBlockerNotice`. Unsupported catalogue modes and live connection loss are ordinary policies in `defaultBidPolicies`, not a second `resolveRuntimeBidBlocker` wrapper. `IBidActorEligibilityReader` stays in `@auction/persistence` because `bidding-runtime` already depends on that package; moving the port would create a cycle.
+
+**Alternatives considered.** Release’s dual `presentation` + `render` closure was rejected because it forces every policy to be `.tsx` and keeps two representations of one fact. A runtime wrapper on top of the policy array was rejected because adding a blocker then means choosing which pipeline to extend.
+
+**Why this wins.** Policies stay data-only except sale-registration `content`. Precedence stays in one ordered array. Hard blockers omit `preview` and hide the inert form and position summary.
+
+**Status.** *Implemented.* Types in [apps/web/src/lib/bid/bid-blocker-presentation.ts](../../apps/web/src/lib/bid/bid-blocker-presentation.ts), factory in [apps/web/src/lib/bid/policies/block-decision.ts](../../apps/web/src/lib/bid/policies/block-decision.ts), order in [apps/web/src/lib/bid/policies/index.ts](../../apps/web/src/lib/bid/policies/index.ts).
+
+## D22. Marketing prompts use a prioritised rule table and a shared flag parser
+
+**Chosen.** Route allowlisting, selling-intent detection, and prompt decisioning are separate modules. `resolveMarketingPrompt` walks `PROMPT_RULES` (selling, then signup) after universal blockers. Rollout flags share `parseBooleanFlag` / `resolveRolloutFlag`. Prompt suppression keys use `SUPPRESSION_STORAGE_PREFIX` so Gitleaks does not treat them as secrets.
+
+**Alternatives considered.** Release’s if-chain in one `policy.ts` was rejected because a third variant would edit the same function. Copying `parseEnabled` into each rollout module was rejected as a four-way change point.
+
+**Why this wins.** Adding a variant is appending a rule. Flag parsing has one test surface. Strict bid eligibility still falls back on `APP_ENV`, matching the API.
+
+**Status.** *Implemented.* Rules in [apps/web/src/lib/marketing/prompts/policy.ts](../../apps/web/src/lib/marketing/prompts/policy.ts), parser in [apps/web/src/lib/rollout/parse-boolean-flag.ts](../../apps/web/src/lib/rollout/parse-boolean-flag.ts).

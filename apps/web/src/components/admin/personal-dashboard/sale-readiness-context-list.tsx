@@ -26,7 +26,7 @@ export function SaleReadinessContextList({ saleReadiness, activeLotIds }: Props)
         <div className="flex items-baseline justify-between gap-3">
           <p className="font-body text-sm font-medium text-on-surface">Saleroom pulse</p>
           {pulseData.activeSaleroomSessions > 0 ? (
-            <span className="font-body text-xs text-danger">Live</span>
+            <span className="font-body text-xs text-error">Live</span>
           ) : null}
         </div>
         <AdminLiveBidActivity
@@ -70,7 +70,7 @@ export function SaleReadinessContextList({ saleReadiness, activeLotIds }: Props)
                   ) : null}
                 </div>
                 {row.blockers.length > 0 ? (
-                  <p className="mt-2 font-body text-xs text-warning">
+                  <p className="mt-2 font-body text-xs text-warning-on-surface">
                     {row.blockers.length} blocker{row.blockers.length === 1 ? "" : "s"} ·{" "}
                     {row.blockers
                       .slice(0, 2)

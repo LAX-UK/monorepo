@@ -11,13 +11,14 @@ concurrency:
 
 jobs:
   stabilization:
-    name: stabilization shard ${{ matrix.shard }}
+    name: ${{ matrix.mode }} shard ${{ matrix.shard }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2]
+        mode: [flags-off, rollout]
     services:
       postgres:
         image: postgres:16
@@ -41,8 +42,23 @@ jobs:
           --health-timeout=5s
           --health-retries=5
     env:
+      CI: "true"
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       REDIS_URL: redis://127.0.0.1:6379
+      BETTER_AUTH_SECRET: ci-auth-secret-at-least-sixteen-characters
+      API_PUBLIC_URL: http://localhost:3001
+      OIDC_ISSUER_URL: http://localhost:3003
+      WEB_ORIGIN: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_AUTH_URL: http://localhost:3003
+      ALLOW_HTTP_COOKIES: "true"
+      REQUIRE_EMAIL_VERIFICATION: "false"
+      APP_ENV: development
+      STRICT_BID_ELIGIBILITY_ENABLED: ${{ matrix.mode == 'rollout' && 'true' || 'false' }}
+      KYC_ONBOARDING_ENABLED: ${{ matrix.mode == 'rollout' && 'true' || 'false' }}
+      FULL_BUYER_ONBOARDING_ENABLED: ${{ matrix.mode == 'rollout' && 'true' || 'false' }}
+      MARKETING_PROMPTS_ENABLED: "false"
+      ADMIN_KPI_TREND_ANCHOR: "2026-08-25T12:00:00.000Z"
       PLAYWRIGHT_E2E: "1"
       PLAYWRIGHT_BASE_URL: http://localhost:3000
       PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
@@ -51,50 +67,73 @@ jobs:
       PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD: Password123!
       PLAYWRIGHT_BUYER_EMAIL: estate-owner@lax.bid
       PLAYWRIGHT_BUYER_PASSWORD: Password123!
-      CI: "true"
+      PLAYWRIGHT_CLIENT_EMAIL: user1@lax.bid
+      PLAYWRIGHT_CLIENT_PASSWORD: Password123!
+      PLAYWRIGHT_UNAPPROVED_EMAIL: gallery-finance@lax.bid
+      PLAYWRIGHT_UNAPPROVED_PASSWORD: Password123!
+      PLAYWRIGHT_INCOMPLETE_EMAIL: viewer@lax.bid
+      PLAYWRIGHT_INCOMPLETE_PASSWORD: Password123!
+      PLAYWRIGHT_ZERO_LOT_EMAIL: apple-test@lax.bid
+      PLAYWRIGHT_ZERO_LOT_PASSWORD: Password123!
+      PLAYWRIGHT_ORG_EMAIL: estate-owner@lax.bid
+      PLAYWRIGHT_ORG_PASSWORD: Password123!
+      PLAYWRIGHT_FINANCE_EMAIL: accountant@lax.bid
+      PLAYWRIGHT_FINANCE_PASSWORD: Password123!
+      PLAYWRIGHT_READONLY_EMAIL: staff-readonly@lax.bid
+      PLAYWRIGHT_READONLY_PASSWORD: Password123!
+      PLAYWRIGHT_OPERATIONS_EMAIL: staff-operations@lax.bid
+      PLAYWRIGHT_OPERATIONS_PASSWORD: Password123!
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
+      - run: pnpm install --frozen-lockfile
       - name: Install pinned Chromium
         run: pnpm --filter @auction/web exec playwright install chromium --with-deps
-
-      - name: Migrate and seed dev data
+      - name: Migrate and seed
         run: |
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
-
-      - name: Build web and API
-        run: pnpm --filter @auction/api build && pnpm --filter @auction/web build
-
-      - name: Start API and web
+      - name: Build web, API, and auth issuer
+        run: pnpm turbo run build --filter=@auction/api --filter=@auction/auth-app --filter=@auction/web
+      - name: Start stack
         run: |
-          pnpm --filter @auction/api start &
-          pnpm --filter @auction/web start &
-          npx --yes wait-on http://localhost:3000 --timeout 120000
-
-      - name: Prepare role storage states
-        working-directory: apps/web
-        run: pnpm exec playwright test e2e/auth.setup.ts --project=setup-staff --project=setup-catalogue --project=setup-buyer
-
+          mkdir -p /tmp/e2e-logs
+          PORT=3001 pnpm --filter @auction/api start > /tmp/e2e-logs/api.log 2>&1 &
+          PORT=3003 pnpm --filter @auction/auth-app start > /tmp/e2e-logs/auth.log 2>&1 &
+          PORT=3000 pnpm --filter @auction/web start > /tmp/e2e-logs/web.log 2>&1 &
+          npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live --timeout 120000
+      - name: Verify dual-host OIDC and auth response parity
+        env:
+          AUTH_PUBLIC_URL: http://localhost:3003
+          AUTH_PARITY_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
+          AUTH_PARITY_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
+        run: node scripts/ci/verify-auth-dual-host.mjs
+      - name: Prepare auth sessions
+        run: pnpm --filter @auction/web exec node ../../scripts/ci/prepare-e2e-auth-states.mjs
       - name: Playwright stabilization suite
         run: pnpm --filter @auction/web test:e2e:stabilization -- --no-deps --shard=${{ matrix.shard }}/2
-
+        env:
+          PLAYWRIGHT_AUTH_PREPARED: "1"
       - name: Upload blob report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-blob-${{ matrix.shard }}
+          name: e2e-blob-${{ matrix.mode }}-${{ matrix.shard }}
           path: apps/web/blob-report
+          retention-days: 7
+      - name: Upload session probe and process logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-session-${{ matrix.mode }}-${{ matrix.shard }}
+          path: |
+            apps/web/e2e/.auth/session-probe.json
+            /tmp/e2e-logs
+          if-no-files-found: warn
           retention-days: 7
 
   report:

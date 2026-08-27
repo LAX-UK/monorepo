@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { PublicUser, SessionUser } from "@/lib/data/contracts";
 import { fetchRegistryArtistById } from "@/lib/data/http/artist.server";
@@ -18,6 +19,7 @@ import { getServerSaleMyRegistrations, getServerSaleWithLots } from "@/lib/data/
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
+import { isKycStatusUnavailableError } from "@/lib/kyc/kyc-status-unavailable-error";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
@@ -42,6 +44,7 @@ export type LotPageShellData = {
   >;
   saleBundle: Awaited<ReturnType<typeof getServerSaleWithLots>> | null;
   kycSummary: Awaited<ReturnType<typeof getServerKycStatusSummary>> | null;
+  kycUnavailable: boolean;
   lotDocuments: Awaited<ReturnType<typeof getServerLotDocuments>>;
   initialAutoBidSettings: Awaited<ReturnType<typeof getServerAutoBid>> | null;
   watcherCount: number;
@@ -66,7 +69,7 @@ export class LotPageDataService {
     const reader = await getServerLotReader();
     const [auction, session, publicReader] = await Promise.all([
       getServerLotById(lotId),
-      getServerSessionUser(),
+      loadPublicPageSession(),
       getServerPublicUserReader(),
     ]);
     if (!auction) return null;
@@ -77,9 +80,9 @@ export class LotPageDataService {
           .catch(() => [])
       : Promise.resolve([]);
 
-    const kycSummaryPromise = session
-      ? getServerKycStatusSummary().catch(() => null)
-      : Promise.resolve(null);
+    const kycLookupPromise = session
+      ? loadKycSummary()
+      : Promise.resolve({ summary: null, unavailable: false });
 
     const initialAutoBidPromise = session
       ? getServerAutoBid(lotId).catch(() => null)
@@ -93,7 +96,7 @@ export class LotPageDataService {
       relatedRaw,
       watchlist,
       saleBundle,
-      kycSummary,
+      kycLookup,
       lotDocuments,
       initialAutoBidSettings,
       watcherCount,
@@ -117,7 +120,7 @@ export class LotPageDataService {
       auction.saleId
         ? getServerSaleWithLots(auction.saleId).catch(() => null)
         : Promise.resolve(null),
-      kycSummaryPromise,
+      kycLookupPromise,
       getServerLotDocuments(lotId).catch(() => []),
       initialAutoBidPromise,
       getServerLotWatchCount(lotId).catch(() => 0),
@@ -132,7 +135,8 @@ export class LotPageDataService {
       relatedRaw,
       watchlist,
       saleBundle,
-      kycSummary,
+      kycSummary: kycLookup.summary,
+      kycUnavailable: kycLookup.unavailable,
       lotDocuments,
       initialAutoBidSettings,
       watcherCount,
@@ -179,5 +183,26 @@ export class LotPageDataService {
       initialSaleroomStatus,
       orgModuleEnabled,
     };
+  }
+}
+
+async function loadPublicPageSession(): Promise<SessionUser | null> {
+  try {
+    return await getServerSessionUser();
+  } catch (error) {
+    if (isSessionLookupTransientError(error)) return null;
+    throw error;
+  }
+}
+
+async function loadKycSummary(): Promise<{
+  summary: Awaited<ReturnType<typeof getServerKycStatusSummary>>;
+  unavailable: boolean;
+}> {
+  try {
+    return { summary: await getServerKycStatusSummary(), unavailable: false };
+  } catch (error) {
+    if (isKycStatusUnavailableError(error)) return { summary: null, unavailable: true };
+    throw error;
   }
 }

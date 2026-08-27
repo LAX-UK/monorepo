@@ -31,7 +31,11 @@ export class KycHttpApplicationService implements IKycHttpApplicationService {
         return { status: 409, body: { error: err.code } };
       }
       const message = err instanceof Error ? err.message : "";
-      if (message === "kyc_return_url_must_be_https" || message === "kyc_return_url_invalid") {
+      if (
+        message === "kyc_return_url_must_be_https" ||
+        message === "kyc_return_url_invalid" ||
+        message === "kyc_return_url_origin_not_allowed"
+      ) {
         return { status: 400, body: { error: message } };
       }
       throw err;

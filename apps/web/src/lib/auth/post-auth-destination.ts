@@ -1,5 +1,10 @@
+import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import { isSellerSubmissionPath } from "@/lib/auth/seller-submission-path";
 import type { SessionUser } from "@/lib/data/contracts";
+import {
+  fullBuyerOnboardingHref,
+  shouldStartFullBuyerOnboardingAfterLogin,
+} from "@/lib/kyc/buyer-onboarding";
 import {
   type UserRole,
   canAccessStaffAdminShell,
@@ -9,47 +14,28 @@ import {
 export type PostAuthContext = "sign-in" | "sign-up" | "redirect-if-authed" | "verify-email-success";
 
 export type ResolvePostAuthDestinationInput = {
-  user: Pick<SessionUser, "role" | "staffRole" | "suspended" | "emailVerified" | "email">;
+  user: Pick<
+    SessionUser,
+    | "role"
+    | "staffRole"
+    | "suspended"
+    | "emailVerified"
+    | "email"
+    | "kycStatus"
+    | "signupPersona"
+    | "categoryInterestsOnboardingCompletedAt"
+  >;
   requestedNext?: string | null | undefined;
   context: PostAuthContext;
   /** When true, unverified users are sent to verify-pending for sign-up / redirect-if-authed contexts. */
   requireEmailVerification?: boolean;
+  /** Server-resolved rollout flag for the one-time interests onboarding flow. */
+  fullBuyerOnboardingEnabled?: boolean;
   /** Append `welcome=back` to the destination query string. */
   withWelcomeBack?: boolean;
 };
 
-/** Same-origin relative paths only. Blocks open redirects (`//evil`, `https:`, `\`, `/api`, etc.).
- * Rejects URL-encoded variants (e.g. `/%2F%2Fevil.com` → `///evil.com`).
- */
-export function isSafeNextPath(next: string | null | undefined): boolean {
-  if (next == null || next === "") return false;
-  if (!next.startsWith("/")) return false;
-  if (next.startsWith("//")) return false;
-  if (next.includes("\\")) return false;
-  const pathOnly = next.split("?")[0] ?? next;
-  if (!pathOnly.startsWith("/")) return false;
-  if (pathOnly.startsWith("/api")) return false;
-  if (pathOnly.startsWith("/admin/api")) return false;
-  const blockedPrefixes = [
-    "/login",
-    "/register",
-    "/account-suspended",
-    "/forgot-password",
-    "/reset-password",
-    "/auth/",
-  ];
-  for (const prefix of blockedPrefixes) {
-    if (pathOnly === prefix.replace(/\/$/, "") || pathOnly.startsWith(prefix)) return false;
-  }
-  try {
-    const decoded = decodeURIComponent(pathOnly);
-    if (decoded.includes("//")) return false;
-    if (decoded.includes("\\")) return false;
-  } catch {
-    return false;
-  }
-  return true;
-}
+export { isSafeNextPath } from "@/lib/auth/safe-next-path";
 
 function appendWelcomeBack(path: string, withWelcomeBack: boolean): string {
   if (!withWelcomeBack) return path;
@@ -65,6 +51,7 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
     requestedNext,
     context,
     requireEmailVerification = false,
+    fullBuyerOnboardingEnabled = false,
     withWelcomeBack = false,
   } = input;
 
@@ -96,15 +83,21 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
   const requestedIsSellerSubmission =
     requestedNext != null && isSellerSubmissionPath(requestedNext);
 
-  if (
+  const eventualDestination =
     isSafeNextPath(requestedNext ?? undefined) &&
     !(isStaff && requestedIsClientHome && !requestedIsSellerSubmission)
+      ? (requestedNext as string)
+      : staffRoleDefaultDestination(role, user.staffRole ?? null);
+  const destination = appendWelcomeBack(eventualDestination, withWelcomeBack);
+
+  if (
+    shouldStartFullBuyerOnboardingAfterLogin({
+      enabled: fullBuyerOnboardingEnabled,
+      user,
+    })
   ) {
-    return appendWelcomeBack(requestedNext as string, withWelcomeBack);
+    return fullBuyerOnboardingHref(destination, "sign_in_resume");
   }
 
-  return appendWelcomeBack(
-    staffRoleDefaultDestination(role, user.staffRole ?? null),
-    withWelcomeBack,
-  );
+  return destination;
 }

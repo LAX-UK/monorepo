@@ -14,6 +14,7 @@ import pg from "pg";
 import * as schema from "../../schema/index.js";
 import { buildPgConnectionConfig } from "../../ssl.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
+import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 
 const { Pool } = pg;
 
@@ -189,6 +190,9 @@ const CAT = {
   books: "c1000013-0000-4000-8000-000000000013",
   coins: "c1000014-0000-4000-8000-000000000014",
   design: "c1000016-0000-4000-8000-000000000016",
+  jewellery: "c1000017-0000-4000-8000-000000000017",
+  antiques: "c1000018-0000-4000-8000-000000000018",
+  memorabilia: "c1000019-0000-4000-8000-000000000019",
 } as const;
 
 const S = {
@@ -409,6 +413,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
     externalAccount,
     uploadObject,
     userAddress,
+    userCategoryInterest,
     webhookEvent,
     xeroConnection,
     xeroWebhookEvent,
@@ -460,6 +465,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(legalEntityMember);
   await db.delete(legalEntity);
   await db.delete(uploadObject);
+  await db.delete(userCategoryInterest);
   await db.delete(category);
   await db.delete(session);
   await db.delete(account);
@@ -478,10 +484,10 @@ export async function runLegacyDemoSeed() {
 
   const pool = new Pool(buildPgConnectionConfig(url));
   const db = drizzle(pool, { schema });
-  const now = Date.now();
+  const now = DEMO_SEED_NOW.getTime();
   const day = 86_400_000;
   const hour = 3_600_000;
-  const stamp = new Date();
+  const stamp = DEMO_SEED_NOW;
 
   const {
     adminReviewTask,
@@ -2756,6 +2762,9 @@ export async function runLegacyDemoSeed() {
       slug: "design-decorative-arts",
       parentId: null,
     },
+    { id: CAT.jewellery, name: "Jewellery", slug: "jewellery", parentId: null },
+    { id: CAT.antiques, name: "Antiques", slug: "antiques", parentId: null },
+    { id: CAT.memorabilia, name: "Memorabilia", slug: "memorabilia", parentId: null },
   ]);
 
   // ── Artist profiles ────────────────────────────────────────────────────────

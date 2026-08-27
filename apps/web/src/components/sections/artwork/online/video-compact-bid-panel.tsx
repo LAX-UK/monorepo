@@ -1,5 +1,6 @@
 "use client";
 
+import { BidBlockerNotice } from "@/components/bid/bid-blocker-notice";
 import { ConnectionStatusBannerContainer } from "@/components/realtime/connection-status-banner-container";
 import { BidEntryRegion } from "@/components/sections/artwork/online/bid-entry-region";
 import { useBidPanelContext } from "@/components/sections/artwork/online/bid-panel-context";
@@ -53,15 +54,13 @@ export function VideoCompactBidPanel() {
             </p>
           </div>
 
-          {!compactExpanded ? (
+          {decision.kind !== "block" && !compactExpanded ? (
             <Button
               type="button"
               aria-expanded={false}
-              disabled={!canBid && decision.kind === "allow"}
+              disabled={!canBid}
               onClick={() => {
-                if (decision.kind === "block") {
-                  setCompactExpanded(true);
-                } else if (canBid) {
+                if (canBid) {
                   switchEntryMode("manual", { userInitiated: true });
                   setCompactExpanded(true);
                 }
@@ -70,7 +69,7 @@ export function VideoCompactBidPanel() {
             >
               {step === 2 ? "Confirm bid" : "Bid"}
             </Button>
-          ) : (
+          ) : decision.kind !== "block" ? (
             <Button
               type="button"
               aria-expanded={true}
@@ -80,10 +79,14 @@ export function VideoCompactBidPanel() {
             >
               Close
             </Button>
-          )}
+          ) : null}
         </div>
 
-        {compactExpanded ? (
+        {decision.kind === "block" ? (
+          <div className="mt-4 border-t border-outline-variant/20 pt-4">
+            <BidBlockerNotice presentation={decision.presentation} />
+          </div>
+        ) : compactExpanded ? (
           <div className="mt-4 border-t border-outline-variant/20 pt-4">
             <BidEntryRegion />
           </div>

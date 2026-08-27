@@ -61,10 +61,15 @@ describe("getServerSessionUser", () => {
     expect(meGet).toHaveBeenCalledTimes(2);
   });
 
-  it("falls back to null after exhausting retries on persistent 5xx", async () => {
+  it("throws after exhausting retries on persistent 5xx instead of logging out", async () => {
     meGet.mockResolvedValue(serverErrorResponse(502));
-    await expect(getServerSessionUser()).resolves.toBeNull();
-    // initial attempt + 2 retries
+    await expect(getServerSessionUser()).rejects.toThrow(/transient, not 401/);
+    expect(meGet).toHaveBeenCalledTimes(3);
+  });
+
+  it("throws after exhausting retries on 429 instead of logging out", async () => {
+    meGet.mockResolvedValue(serverErrorResponse(429));
+    await expect(getServerSessionUser()).rejects.toThrow(/status=429/);
     expect(meGet).toHaveBeenCalledTimes(3);
   });
 });

@@ -159,6 +159,33 @@ describe("HTTP row schemas (zTransformParse)", () => {
     expect(user.deletionRequestedAt).toBeInstanceOf(Date);
   });
 
+  it("preserves category-interest completion marker states", () => {
+    const base = {
+      id: "u1",
+      email: "a@example.com",
+      name: "Ada",
+      role: "client",
+    };
+    const completed = readDataEnvelope(
+      {
+        data: {
+          ...base,
+          categoryInterestsOnboardingCompletedAt: "2026-08-20T00:00:00.000Z",
+        },
+      },
+      sessionUserSchema,
+    );
+    const incomplete = readDataEnvelope(
+      { data: { ...base, categoryInterestsOnboardingCompletedAt: null } },
+      sessionUserSchema,
+    );
+    const unavailable = readDataEnvelope({ data: base }, sessionUserSchema);
+
+    expect(completed.categoryInterestsOnboardingCompletedAt).toBeInstanceOf(Date);
+    expect(incomplete.categoryInterestsOnboardingCompletedAt).toBeNull();
+    expect(unavailable).not.toHaveProperty("categoryInterestsOnboardingCompletedAt");
+  });
+
   it("parses kyc status summary via schema transform", () => {
     const summary = readDataEnvelope(
       {

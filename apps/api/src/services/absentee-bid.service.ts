@@ -1,4 +1,5 @@
 import { AbsenteeBidService as RuntimeAbsenteeBidService } from "@auction/bidding-runtime";
+import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IBidRepository } from "@auction/persistence/interfaces";
@@ -32,6 +33,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     lotRepo: ILotRepository,
     legalEntityRepository: ILegalEntityRepository | null,
     bidRepo: IBidRepository | null = null,
+    identityEligibilityGate: IBidIdentityEligibilityGate | null = null,
   ) {
     this.inner = new RuntimeAbsenteeBidService(
       absenteeBidRepo,
@@ -39,6 +41,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
       lotRepo,
       legalEntityRepository,
       bidRepo,
+      identityEligibilityGate,
     );
   }
 

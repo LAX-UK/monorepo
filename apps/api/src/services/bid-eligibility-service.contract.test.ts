@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defineCompileTimeContract } from "../testing/compile-time-contract.js";
-import type { BidEligibilityService } from "./bid-eligibility.service.js";
+import { BidEligibilityService } from "./bid-eligibility.service.js";
 import type { IBidEligibility } from "./interfaces/bid-eligibility.js";
 
 type AssertAssignable<T extends U, U> = T;
@@ -16,5 +16,9 @@ defineCompileTimeContract<_FacadeContract>();
 describe("BidEligibilityService facade contract", () => {
   it("compile-time LSP types are exported for CI typecheck", () => {
     expect(true).toBe(true);
+  });
+
+  it("keeps the seven-collaborator constructor boundary", () => {
+    expect(BidEligibilityService.length).toBe(7);
   });
 });

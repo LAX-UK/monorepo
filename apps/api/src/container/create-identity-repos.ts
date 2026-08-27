@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type {
   IAccountDeletionEligibilityReader,
   IAddressRepository,
+  ICategoryInterestsRepository,
   IEntityInvitationRepository,
   IImpersonationDomainEventReader,
   IImpersonationSessionRepository,
@@ -27,6 +28,7 @@ import type {
 import {
   DrizzleAccountDeletionEligibilityReader,
   DrizzleAddressRepository,
+  DrizzleCategoryInterestsRepository,
   DrizzleEntityInvitationRepository,
   DrizzleImpersonationDomainEventReader,
   DrizzleImpersonationSessionRepository,
@@ -54,6 +56,7 @@ export type IdentityRepositories = {
   userRepo: IUserRepository;
   profileRepo: IProfileRepository;
   addressRepo: IAddressRepository;
+  categoryInterestsRepository: ICategoryInterestsRepository;
   legalEntityRepository: ILegalEntityRepository;
   legalEntityOnboardingRepository: ILegalEntityOnboardingRepository;
   legalEntityConnectRepository: ILegalEntityConnectRepository;
@@ -79,6 +82,7 @@ export function createIdentityRepositories(db: Database): IdentityRepositories {
   const userRepo = new DrizzleUserRepository(db);
   const profileRepo = new DrizzleProfileRepository(db);
   const addressRepo = new DrizzleAddressRepository(db);
+  const categoryInterestsRepository = new DrizzleCategoryInterestsRepository(db);
   const legalEntityRepository = createDrizzleLegalEntityRepository(db);
   const legalEntityOnboardingRepository = new DrizzleLegalEntityOnboardingRepository(db);
   const legalEntityConnectRepository = new DrizzleLegalEntityConnectRepository(db);
@@ -106,6 +110,7 @@ export function createIdentityRepositories(db: Database): IdentityRepositories {
     userRepo,
     profileRepo,
     addressRepo,
+    categoryInterestsRepository,
     legalEntityRepository,
     legalEntityOnboardingRepository,
     legalEntityConnectRepository,

@@ -49,6 +49,32 @@ describe("saleRegistrationPolicy", () => {
       },
     });
     expect(d.kind).toBe("block");
-    if (d.kind === "block") expect(d.viewId).toBe("sale-registration-pending");
+    if (d.kind !== "block") return;
+    expect(d.viewId).toBe("sale-registration-pending");
+    expect(d.presentation.tone).toBe("info");
+    expect(d.presentation.title).toBe("Registration pending");
+    expect(d.presentation.action).toMatchObject({ kind: "panel", label: "View status" });
+  });
+
+  it("blocks missing registration with a panel action", () => {
+    const d = saleRegistrationPolicy.evaluate({
+      ...baseCtx,
+      saleRegistrationBidGate: {
+        saleId: "sale-1",
+        requiresRegistration: true,
+        actingEntityId: "le-1",
+        registrationStatus: null,
+        approvedBidLimit: null,
+        buyerEntities: [{ id: "le-1", displayName: "Agency", memberRole: "buyer_agent" }],
+        myRegistrations: [],
+        kycApproved: true,
+      },
+    });
+    expect(d.kind).toBe("block");
+    if (d.kind !== "block") return;
+    expect(d.viewId).toBe("sale-registration-required");
+    expect(d.presentation.tone).toBe("warning");
+    expect(d.presentation.title).toBe("Register to bid");
+    expect(d.presentation.action).toMatchObject({ kind: "panel", label: "Complete registration" });
   });
 });

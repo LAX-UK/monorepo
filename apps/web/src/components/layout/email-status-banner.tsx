@@ -1,9 +1,8 @@
 "use client";
 
+import { SendVerificationEmailButton } from "@/components/auth/send-verification-email-button";
 import { AUTH_INLINE_LINK } from "@/lib/auth/auth-link-classes";
-import { sendVerificationEmailFromBanner } from "@/lib/auth/services/send-verification-email.service";
 import type { SessionUser } from "@/lib/data/contracts";
-import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { X } from "lucide-react";
 import Link from "next/link";
@@ -47,29 +46,18 @@ export function EmailStatusBanner({ user }: { user: SessionUser }) {
       <BannerShell dismissKey={dismissKey} onDismiss={() => setDismissed(true)} tone="info">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p>Verify your email to keep account recovery and bidding alerts working.</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
+          <SendVerificationEmailButton
+            email={user.email}
+            next={
+              pathname?.startsWith("/") &&
+              !pathname.startsWith("//") &&
+              (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
+                ? pathname
+                : "/dashboard"
+            }
+            label="Send a new link"
             className="min-h-11 shrink-0"
-            onClick={() => {
-              const next =
-                pathname?.startsWith("/") &&
-                !pathname.startsWith("//") &&
-                (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
-                  ? pathname
-                  : "/dashboard";
-              void sendVerificationEmailFromBanner({ email: user.email, next }).then((result) => {
-                if (!result.ok) {
-                  notify.error(result.message);
-                  return;
-                }
-                notify.success("Verification email sent");
-              });
-            }}
-          >
-            Send a new link
-          </Button>
+          />
         </div>
       </BannerShell>
     );

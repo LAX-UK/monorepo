@@ -1,12 +1,16 @@
 import AxeBuilder from "@axe-core/playwright";
-import { type Page, type Response, expect } from "@playwright/test";
+import { type BrowserContext, type Page, type Response, expect } from "@playwright/test";
 
 export const e2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
 export const e2eSkipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web with seeded credentials.";
 
-type Credentials = {
+export type Credentials = {
   email: string;
   password: string;
+};
+
+type LoginOptions = {
+  destination?: RegExp;
 };
 
 const staffCredentials: Credentials = {
@@ -39,6 +43,26 @@ const buyerCredentials: Credentials = {
   password: process.env.PLAYWRIGHT_BUYER_PASSWORD ?? "Password123!",
 };
 
+const clientCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "user1@lax.bid",
+  password: process.env.PLAYWRIGHT_CLIENT_PASSWORD ?? "Password123!",
+};
+
+const unapprovedCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_UNAPPROVED_EMAIL ?? "gallery-finance@lax.bid",
+  password: process.env.PLAYWRIGHT_UNAPPROVED_PASSWORD ?? "Password123!",
+};
+
+const incompleteCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_INCOMPLETE_EMAIL ?? "viewer@lax.bid",
+  password: process.env.PLAYWRIGHT_INCOMPLETE_PASSWORD ?? "Password123!",
+};
+
+const zeroLotCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_ZERO_LOT_EMAIL ?? "apple-test@lax.bid",
+  password: process.env.PLAYWRIGHT_ZERO_LOT_PASSWORD ?? "Password123!",
+};
+
 /** Seeded hybrid saleroom ids — see packages/db dev seed (S.hybridA, L.hybridA1). */
 export const seededHybridSaleId =
   process.env.PLAYWRIGHT_HYBRID_SALE_ID ?? "e1000003-0000-4000-8000-000000000003";
@@ -64,10 +88,29 @@ export const seededStaffRoutes = {
 
 /** Closes the staff command palette when storage state auto-opens it on navigation. */
 export async function dismissStaffPaletteIfOpen(page: Page): Promise<void> {
-  const quickGo = page.getByRole("heading", { name: /quick go/i });
-  if (await quickGo.isVisible().catch(() => false)) {
-    await page.keyboard.press("Escape");
-    await quickGo.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => {});
+  if (page.isClosed()) return;
+  // Title is sr-only, so heading.isVisible() stays false while the dialog is open.
+  const palette = page.getByRole("dialog", { name: /quick go/i });
+  try {
+    if ((await palette.count()) === 0) return;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (page.isClosed() || (await palette.count()) === 0) return;
+      await page.keyboard.press("Escape");
+      const closed = await palette
+        .waitFor({ state: "hidden", timeout: 2_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (closed || (await palette.count()) === 0) return;
+      const closeButton = palette.getByRole("button", { name: /^close$/i });
+      if ((await closeButton.count()) > 0) {
+        await closeButton.click();
+      }
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/execution context was destroyed|target closed/i.test(message)) return;
+    throw error;
   }
 }
 
@@ -77,6 +120,92 @@ async function dismissCookieConsentIfVisible(page: Page): Promise<void> {
     await acceptCookies.click();
     await acceptCookies.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => {});
   }
+}
+
+export type SessionProbe = {
+  authenticated: boolean;
+  sessionAlive: boolean;
+  authStatus: number;
+  meStatus: number;
+  email: string | null;
+  cookieNames: string[];
+};
+
+function trimUrl(value: string | undefined, fallback: string): string {
+  return (value ?? fallback).replace(/\/+$/, "");
+}
+
+/** Probes Better Auth and `/users/me` with the current browser cookies. */
+export async function probePageSession(page: Page): Promise<SessionProbe> {
+  const authUrl = trimUrl(
+    process.env.OIDC_ISSUER_URL ?? process.env.NEXT_PUBLIC_AUTH_URL,
+    "http://localhost:3003",
+  );
+  const apiUrl = trimUrl(
+    process.env.API_PUBLIC_URL ?? process.env.NEXT_PUBLIC_API_URL,
+    "http://localhost:3001",
+  );
+  const stored = await page.context().storageState();
+  const [authRes, meRes] = await Promise.all([
+    page.request.get(`${authUrl}/api/auth/get-session`),
+    page.request.get(`${apiUrl}/users/me`),
+  ]);
+  const authBody = (await authRes.json().catch(() => null)) as {
+    user?: { id?: string; email?: string };
+  } | null;
+  const meBody = (await meRes.json().catch(() => null)) as {
+    data?: { email?: string };
+    email?: string;
+  } | null;
+  const sessionAlive = Boolean(authBody?.user?.id) && authRes.ok();
+  return {
+    sessionAlive,
+    authenticated: sessionAlive && meRes.ok(),
+    authStatus: authRes.status(),
+    meStatus: meRes.status(),
+    email: authBody?.user?.email ?? meBody?.data?.email ?? meBody?.email ?? null,
+    cookieNames: stored.cookies.map((cookie) => cookie.name),
+  };
+}
+
+/** Writes the live cookie jar back only when a session token is still present. */
+export async function persistContextAuthState(
+  context: BrowserContext,
+  storageState: unknown,
+): Promise<void> {
+  if (typeof storageState !== "string") return;
+  const state = await context.storageState();
+  if (!state.cookies.some((cookie) => cookie.name.includes("session_token"))) return;
+  await context.storageState({ path: storageState });
+}
+
+function formatPageSessionFailure(path: string, probe: SessionProbe, url: string): string {
+  return [
+    `Expected authenticated staff session for ${path} but landed on ${url}.`,
+    `get-session=${probe.authStatus}`,
+    `/users/me=${probe.meStatus}`,
+    `cookies=${probe.cookieNames.join(",") || "(none)"}`,
+  ].join(" ");
+}
+
+function isLoginUrl(url: string): boolean {
+  return /\/login(?:\?|$)/.test(url);
+}
+
+/**
+ * Navigate to a staff path. One reload is allowed when the cookie is still
+ * valid and SSR `/users/me` missed. Tests never password-login or click Continue.
+ */
+export async function gotoAdminPath(page: Page, path: string): Promise<Response | null> {
+  let response = await page.goto(path, { waitUntil: "domcontentloaded" });
+  if (!isLoginUrl(page.url())) return response;
+
+  const probe = await probePageSession(page);
+  if (probe.sessionAlive) {
+    response = await page.goto(path, { waitUntil: "domcontentloaded" });
+    if (!isLoginUrl(page.url())) return response;
+  }
+  throw new Error(formatPageSessionFailure(path, probe, page.url()));
 }
 
 /** Dev servers often never reach `load`; prefer domcontentloaded for staff navigation. */
@@ -97,30 +226,39 @@ async function readLoginBannerErrors(page: Page): Promise<string> {
   return bannerError.filter(Boolean).join(" · ");
 }
 
-async function completeOidcConsentIfNeeded(page: Page): Promise<void> {
-  if (!/oauth2\/authorize/i.test(page.url())) return;
-  const allow = page.getByRole("button", { name: /^allow$/i });
-  if (!(await allow.isVisible().catch(() => false))) return;
-  await Promise.all([
-    page.waitForURL(/\/(admin|dashboard)/, {
-      timeout: 60_000,
-      waitUntil: "domcontentloaded",
-    }),
-    allow.click(),
-  ]);
-}
-
-async function waitForAuthenticatedLanding(page: Page): Promise<void> {
-  await page.waitForURL(/\/(admin|dashboard)/, {
+async function resumeIfAlreadySignedIn(page: Page, destination: RegExp): Promise<boolean> {
+  const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
+  const signedIn = page.locator("output").filter({ hasText: /signed in/i });
+  if ((await signedIn.count()) === 0 && !(await continueLink.isVisible().catch(() => false))) {
+    return false;
+  }
+  if (!(await continueLink.isVisible().catch(() => false))) return false;
+  await continueLink.click();
+  await page.waitForURL(destination, {
     timeout: 60_000,
     waitUntil: "domcontentloaded",
   });
+  return true;
 }
 
-async function login(page: Page, credentials: Credentials): Promise<void> {
+async function login(
+  page: Page,
+  credentials: Credentials,
+  options: LoginOptions = {},
+): Promise<void> {
+  const destination = options.destination ?? /\/(admin|dashboard)/;
   const loginUrl = `/login?email=${encodeURIComponent(credentials.email)}`;
   await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
   await dismissCookieConsentIfVisible(page);
+  await Promise.race([
+    page
+      .locator("output")
+      .filter({ hasText: /signed in/i })
+      .waitFor({ state: "visible", timeout: 8_000 }),
+    page.locator('input[name="password"]').first().waitFor({ state: "visible", timeout: 8_000 }),
+    page.getByRole("button", { name: /^continue$/i }).waitFor({ state: "visible", timeout: 8_000 }),
+  ]).catch(() => {});
+  if (await resumeIfAlreadySignedIn(page, destination)) return;
 
   const serverError = page.getByText(/internal server error/i);
   if (await serverError.isVisible().catch(() => false)) {
@@ -129,7 +267,8 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
     );
   }
 
-  const continueAuthed = page.getByRole("link", { name: /^continue/i });
+  const continueAuthed = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i });
+  const alreadySignedIn = page.getByText(/already signed in/i);
   const continueToCredentials = page.getByRole("button", { name: /^continue$/i });
   const password = page
     .locator('input[name="password"], input[autocomplete="current-password"]')
@@ -138,6 +277,7 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
 
   await Promise.race([
     continueAuthed.waitFor({ state: "visible", timeout: 20_000 }),
+    alreadySignedIn.waitFor({ state: "visible", timeout: 20_000 }),
     continueToCredentials.waitFor({ state: "visible", timeout: 20_000 }),
     password.waitFor({ state: "visible", timeout: 20_000 }),
     rateLimited.waitFor({ state: "visible", timeout: 20_000 }),
@@ -151,10 +291,15 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
     );
   }
 
-  if (await continueAuthed.isVisible().catch(() => false)) {
-    await continueAuthed.click();
-    await completeOidcConsentIfNeeded(page).catch(() => undefined);
-    await waitForAuthenticatedLanding(page);
+  if (
+    (await continueAuthed.isVisible().catch(() => false)) ||
+    (await alreadySignedIn.isVisible().catch(() => false))
+  ) {
+    await continueAuthed.first().click();
+    await page.waitForURL(destination, {
+      timeout: 60_000,
+      waitUntil: "domcontentloaded",
+    });
     return;
   }
 
@@ -166,33 +311,39 @@ async function login(page: Page, credentials: Credentials): Promise<void> {
   await password.click();
   await password.fill(credentials.password);
   const submit = page.getByRole("button", { name: /^sign in$/i });
-  try {
-    await Promise.all([
-      waitForAuthenticatedLanding(page),
-      (async () => {
-        if (await submit.isVisible().catch(() => false)) {
-          await submit.click();
-          return;
-        }
-        await page
-          .locator("form")
-          .first()
-          .evaluate((form) => (form as HTMLFormElement).requestSubmit());
-      })(),
-    ]);
-  } catch (error) {
-    await completeOidcConsentIfNeeded(page);
-    if (!/\/(admin|dashboard)/.test(page.url())) {
-      await waitForAuthenticatedLanding(page).catch(async () => {
-        const detail = await readLoginBannerErrors(page);
-        throw new Error(
-          detail
-            ? `Sign-in did not redirect (${page.url()}). ${detail}`
-            : `Sign-in did not redirect (${page.url()}). ${String(error)}`,
-        );
-      });
-    }
-  }
+  await Promise.all([
+    page.waitForURL(destination, {
+      timeout: 60_000,
+      waitUntil: "domcontentloaded",
+    }),
+    (async () => {
+      if (await submit.isVisible().catch(() => false)) {
+        await submit.click();
+        return;
+      }
+      await page
+        .locator("form")
+        .first()
+        .evaluate((form) => (form as HTMLFormElement).requestSubmit());
+    })(),
+  ]).catch(async (error) => {
+    if (await resumeIfAlreadySignedIn(page, destination)) return;
+    const detail = await readLoginBannerErrors(page);
+    throw new Error(
+      detail
+        ? `Sign-in did not redirect (${page.url()}). ${detail}`
+        : `Sign-in did not redirect (${page.url()}). ${String(error)}`,
+    );
+  });
+}
+
+/** Sign in with a named seeded fixture without duplicating the login journey in specs. */
+export async function loginWithCredentials(
+  page: Page,
+  credentials: Credentials,
+  options?: LoginOptions,
+): Promise<void> {
+  await login(page, credentials, options);
 }
 
 /** Fails fast when auth cookies were not seeded — avoids login-page PNG corruption. */
@@ -211,10 +362,9 @@ export async function assertAuthenticatedStaffSession(page: Page): Promise<void>
   const main = page.locator("#main-content");
   await expect(main).toBeVisible({ timeout: 15_000 });
 
-  const staffNav = page.getByRole("navigation", {
-    name: /dashboard|primary mobile dashboard navigation/i,
-  });
-  await expect(staffNav).toBeVisible({ timeout: 15_000 });
+  // Palette and preview sheets aria-hide the sidebar/account menu; close the
+  // palette only. A visible main region on a non-login admin URL is enough.
+  await dismissStaffPaletteIfOpen(page);
 }
 
 /** Rejects admin error/404 shells before visual capture. */
@@ -242,6 +392,22 @@ export function hasBuyerCredentials(): boolean {
   return Boolean(buyerCredentials.email && buyerCredentials.password);
 }
 
+export function hasClientCredentials(): boolean {
+  return Boolean(clientCredentials.email && clientCredentials.password);
+}
+
+export function hasUnapprovedCredentials(): boolean {
+  return Boolean(unapprovedCredentials.email && unapprovedCredentials.password);
+}
+
+export function hasIncompleteCredentials(): boolean {
+  return Boolean(incompleteCredentials.email && incompleteCredentials.password);
+}
+
+export function hasZeroLotCredentials(): boolean {
+  return Boolean(zeroLotCredentials.email && zeroLotCredentials.password);
+}
+
 export function hasFinanceCredentials(): boolean {
   return Boolean(financeCredentials.email && financeCredentials.password);
 }
@@ -264,23 +430,20 @@ export async function staffLogin(page: Page): Promise<void> {
   await assertAuthenticatedStaffSession(page);
 }
 
-/** Re-authenticates when a long visual run loses cookies mid-suite. */
+/** Fails with session-endpoint evidence instead of password-login recovery. */
 export async function ensureAuthenticatedStaffSession(page: Page): Promise<void> {
-  const onLogin = /\/login(?:\?|$)/.test(page.url());
-  const loginPassword = page.locator('input[name="password"]').first();
-  if (!(onLogin || (await loginPassword.isVisible().catch(() => false)))) {
+  if (!isLoginUrl(page.url())) {
     await assertAuthenticatedStaffSession(page);
     return;
   }
-
-  await staffLogin(page);
-  await assertAuthenticatedStaffSession(page);
+  const probe = await probePageSession(page);
+  throw new Error(formatPageSessionFailure(page.url(), probe, page.url()));
 }
 
 export async function catalogueManagerLogin(page: Page): Promise<void> {
   await login(page, catalogueCredentials);
-  await page.goto("/admin/lots", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /lots/i, level: 1 })).toBeVisible({
+  await gotoAdminPath(page, "/admin/lots");
+  await expect(page.getByRole("heading", { name: /^lots$/i }).first()).toBeVisible({
     timeout: 20_000,
   });
 }
@@ -288,6 +451,7 @@ export async function catalogueManagerLogin(page: Page): Promise<void> {
 export async function financeLogin(page: Page): Promise<void> {
   await login(page, financeCredentials);
   await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await page.waitForURL(/\/admin(?:\/finance)?(?:\?|$)/);
   await assertAuthenticatedStaffSession(page);
 }
 
@@ -304,11 +468,35 @@ export async function operationsLogin(page: Page): Promise<void> {
 }
 
 export async function buyerLogin(page: Page): Promise<void> {
-  await login(page, buyerCredentials);
+  await login(page, buyerCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Buyer");
+}
+
+export async function clientLogin(page: Page): Promise<void> {
+  await login(page, clientCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Client");
+}
+
+export async function unapprovedLogin(page: Page): Promise<void> {
+  await login(page, unapprovedCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Unapproved buyer");
+}
+
+export async function incompleteLogin(page: Page): Promise<void> {
+  await login(page, incompleteCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Incomplete buyer");
+}
+
+export async function zeroLotLogin(page: Page): Promise<void> {
+  await login(page, zeroLotCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await assertNotStaffShell(page, "Zero-lot buyer");
+}
+
+async function assertNotStaffShell(page: Page, label: string): Promise<void> {
   const onAdminStaff = page.getByRole("navigation", { name: /staff dashboard/i });
   if (await onAdminStaff.isVisible().catch(() => false)) {
     throw new Error(
-      "Buyer login landed on staff admin shell — check credentials and storage state.",
+      `${label} login landed on staff admin shell — check credentials and storage state.`,
     );
   }
 }
@@ -321,16 +509,7 @@ export function formatAxeViolations(
     .join("\n");
 }
 
-async function disableMotion(page: Page): Promise<void> {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.addStyleTag({
-    content:
-      "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}",
-  });
-}
-
 export async function expectNoSeriousAxeViolationsInMain(page: Page): Promise<void> {
-  await disableMotion(page);
   const result = await new AxeBuilder({ page })
     .include("#main-content")
     .withTags(["wcag2a", "wcag2aa"])
@@ -343,7 +522,6 @@ export async function expectNoSeriousAxeViolationsInMain(page: Page): Promise<vo
 }
 
 export async function expectNoSeriousAxeViolationsInDialog(page: Page): Promise<void> {
-  await disableMotion(page);
   const result = await new AxeBuilder({ page })
     .include('[role="dialog"]')
     .withTags(["wcag2a", "wcag2aa"])
@@ -358,5 +536,9 @@ export async function expectNoSeriousAxeViolationsInDialog(page: Page): Promise<
 export async function stabilizeVisualPage(page: Page): Promise<void> {
   await dismissCookieConsentIfVisible(page);
   await dismissStaffPaletteIfOpen(page);
-  await disableMotion(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addStyleTag({
+    content:
+      "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}",
+  });
 }

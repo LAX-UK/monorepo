@@ -1,3 +1,4 @@
+import { resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import type {
@@ -244,7 +245,12 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
   }));
 
   const kycApproved = session?.kycStatus === "approved";
-  const kycFeedback = kycApproved ? null : (secondary.kycSummary?.feedback ?? null);
+  const kycFeedback = kycApproved
+    ? null
+    : resolveKycSurfaceFeedback({
+        summary: secondary.kycSummary,
+        unavailable: secondary.kycUnavailable,
+      });
 
   const hasCatalogNarrowing = query.statusFilter != null || query.catalogSearch !== "";
   const catalogSearchFilterCapped =

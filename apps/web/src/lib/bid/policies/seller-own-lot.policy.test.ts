@@ -41,7 +41,11 @@ describe("sellerOwnLotPolicy", () => {
   it("blocks when user id matches lot.sellerId", () => {
     const d = sellerOwnLotPolicy.evaluate(baseCtx());
     expect(d.kind).toBe("block");
-    if (d.kind === "block") expect(d.viewId).toBe("seller-own-lot");
+    if (d.kind !== "block") return;
+    expect(d.viewId).toBe("seller-own-lot");
+    expect(d.presentation.tone).toBe("warning");
+    expect(d.presentation.title).toBe("This is your listing");
+    expect(d.presentation.action).toMatchObject({ kind: "status", label: "Your listing" });
   });
 
   it("blocks when isOwnLot is true via seller legal entity", () => {

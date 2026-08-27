@@ -3,42 +3,14 @@ import type {
   ConditionReportRequestStatus,
 } from "@/lib/condition-report/condition-report-types";
 import type { BuyerConditionReportRequestRowDto } from "@/lib/condition-report/map-buyer-condition-report-requests.vm";
+import { parseConditionReportRequestRow } from "@/lib/condition-report/parse-condition-report-request-row";
 
 function apiBase(): string {
   return "/api/bff";
 }
 
-function parseRequestRow(raw: unknown): ConditionReportRequestSnapshot | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const status = o.status;
-  if (
-    status !== "pending" &&
-    status !== "in_progress" &&
-    status !== "fulfilled" &&
-    status !== "declined"
-  ) {
-    return null;
-  }
-  if (typeof o.id !== "string" || typeof o.lotId !== "string") return null;
-  const createdAt =
-    o.createdAt instanceof Date
-      ? o.createdAt.toISOString()
-      : typeof o.createdAt === "string"
-        ? o.createdAt
-        : new Date().toISOString();
-  return {
-    id: o.id,
-    lotId: o.lotId,
-    status: status as ConditionReportRequestStatus,
-    requestNote: typeof o.requestNote === "string" ? o.requestNote : null,
-    responseNote: typeof o.responseNote === "string" ? o.responseNote : null,
-    createdAt,
-  };
-}
-
 function parseListRow(raw: unknown): BuyerConditionReportRequestRowDto | null {
-  const base = parseRequestRow(raw);
+  const base = parseConditionReportRequestRow(raw);
   if (!base) return null;
   const o = raw as Record<string, unknown>;
   const lotTitle = typeof o.lotTitle === "string" ? o.lotTitle : "Lot";
@@ -69,7 +41,7 @@ export async function fetchMyConditionReportForLot(
   if (res.status === 401 || res.status === 403) return null;
   if (!res.ok) return null;
   const body = (await res.json()) as { data?: unknown };
-  return parseRequestRow(body.data ?? null);
+  return parseConditionReportRequestRow(body.data ?? null);
 }
 
 export async function submitConditionReportRequest(
@@ -97,7 +69,7 @@ export async function submitConditionReportRequest(
         : (body.error ?? "Request failed");
     return { ok: false, message };
   }
-  const row = parseRequestRow(body.data);
+  const row = parseConditionReportRequestRow(body.data);
   if (!row) {
     return { ok: false, message: "Unexpected response from server" };
   }
@@ -127,3 +99,5 @@ export async function fetchMyConditionReportRequests(opts?: {
     .filter((r): r is BuyerConditionReportRequestRowDto => r != null);
   return { items, total: Number(body.data?.total ?? items.length) };
 }
+
+export type { ConditionReportRequestStatus };

@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";
 import { NotificationFactory } from "../notification.factory.js";
+import { createConditionReportAdminContext } from "./condition-report-admin-context.js";
 import { ConditionReportAdminService } from "./condition-report-admin.service.js";
-import { createConditionReportContext } from "./condition-report-context.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const userId = "user-buyer-1";
@@ -43,7 +43,7 @@ function adminServiceForMarkInProgress(
     updateById: vi.fn(async () => updated),
   } as unknown as IConditionReportRequestRepository;
 
-  const ctx = createConditionReportContext({
+  const ctx = createConditionReportAdminContext({
     transactionRunner: {
       runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
     } as never,
@@ -105,7 +105,7 @@ describe("ConditionReportAdminService.listForAdmin", () => {
       ],
       total: 1,
     }));
-    const ctx = createConditionReportContext({
+    const ctx = createConditionReportAdminContext({
       transactionRunner: {
         runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
       } as never,

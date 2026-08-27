@@ -41,31 +41,31 @@ describe("shouldBypassAuthEdgeRedirect", () => {
 });
 
 describe("resolveAuthEdgeRedirectTarget", () => {
-  it("tags protected next paths for SSR recovery", () => {
+  it("routes protected next paths through the server decision", () => {
     const dest = resolveAuthEdgeRedirectTarget(
       new URL("http://localhost:3000/login?next=/dashboard/bids"),
     );
-    expect(dest.pathname).toBe("/dashboard/bids");
-    expect(dest.searchParams.get("from")).toBe("auth-edge");
+    expect(dest.pathname).toBe("/auth/post-login");
+    expect(dest.searchParams.get("next")).toBe("/dashboard/bids");
     expect(dest.searchParams.get("welcome")).toBe("back");
   });
 
-  it("routes public next through social-callback", () => {
+  it("routes public next through the server decision", () => {
     for (const next of ["/", "/lot/foo/1", "/sales/bar"]) {
       const dest = resolveAuthEdgeRedirectTarget(
         new URL(`http://localhost:3000/login?next=${encodeURIComponent(next)}`),
       );
-      expect(dest.pathname).toBe("/auth/social-callback");
+      expect(dest.pathname).toBe("/auth/post-login");
       expect(dest.searchParams.get("next")).toBe(next);
-      expect(dest.searchParams.get("from")).toBeNull();
+      expect(dest.searchParams.get("welcome")).toBe("back");
     }
   });
 
-  it("falls back to social-callback for unsafe next", () => {
+  it("drops unsafe next before the server decision", () => {
     const dest = resolveAuthEdgeRedirectTarget(
       new URL("http://localhost:3000/login?next=//evil.com"),
     );
-    expect(dest.pathname).toBe("/auth/social-callback");
+    expect(dest.pathname).toBe("/auth/post-login");
     expect(dest.searchParams.get("next")).toBeNull();
   });
 });

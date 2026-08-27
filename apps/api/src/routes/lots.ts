@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { ContainerLotRouteDepsSlice } from "../container.js";
+import { createOptionalKycGate } from "../middleware/buyer-participation-policy.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
-import { createRequireKyc } from "../middleware/require-kyc.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createBidUserRateLimitMiddleware } from "./bids.js";
 import type { LotRouteDeps } from "./lots/_shared.js";
@@ -27,13 +27,9 @@ export function createLotRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const optionalAuth = createOptionalAuth(authenticator);
-  const kyc = container.kycService;
-  const kycGate =
-    kyc?.isConfigured() === true
-      ? createRequireKyc(kyc)
-      : createMiddleware<{ Variables: { userId?: string } }>(async (_c, next) => {
-          await next();
-        });
+  const strictBidEligibilityEnabled = container.env?.STRICT_BID_ELIGIBILITY_ENABLED === true;
+  const kycGate = createOptionalKycGate(container.kycService);
+  const bidKycGate = createOptionalKycGate(container.kycService, strictBidEligibilityEnabled);
   const requireLegalEntity = container.requireSubmissionsLegalEntityContext;
   const r = new Hono<{
     Variables: {
@@ -49,6 +45,7 @@ export function createLotRoutes(
     requireAuth,
     optionalAuth,
     kycGate,
+    bidKycGate,
     biddingKillSwitch,
     bidUserRateLimit,
     requireLegalEntity,

@@ -5,6 +5,11 @@ import { RHFPasswordField } from "@/components/auth/primitives/password-field";
 import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { PhoneNumberField } from "@/components/forms/phone-number-field";
+import {
+  POST_AUTH_SESSION_LOAD_ERROR,
+  fetchSessionUserWithRetry,
+} from "@/lib/auth/fetch-session-user-with-retry.client";
+import { postLoginHandoffHref } from "@/lib/auth/post-login-handoff";
 import { signInWithPhoneService } from "@/lib/auth/services/phone-verification.service";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { notify } from "@/lib/ui/notify";
@@ -81,7 +86,13 @@ export function SignInPhoneForm({
         return;
       }
       await refetchSession();
-      router.push(nextHref);
+      const me = await fetchSessionUserWithRetry();
+      if (!me) {
+        setBannerError(POST_AUTH_SESSION_LOAD_ERROR);
+        notify.error(POST_AUTH_SESSION_LOAD_ERROR);
+        return;
+      }
+      router.push(postLoginHandoffHref(nextHref, { withWelcomeBack: true }));
       router.refresh();
     });
   });

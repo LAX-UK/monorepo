@@ -30,12 +30,12 @@ export const adminVisualCases: readonly AdminVisualCase[] = [
     slug: "admin-home",
     heading: /good day/i,
     variants: ["desktop-light", "desktop-dark", "mobile-light", "mobile-dark"],
-    capture: "page",
+    capture: "main",
   },
   {
     path: "/admin/lots",
     slug: "admin-lots",
-    heading: /lots/i,
+    heading: /^lots$/i,
     variants: ["desktop-light", "mobile-dark"],
     capture: "page",
   },
@@ -49,7 +49,7 @@ export const adminVisualCases: readonly AdminVisualCase[] = [
     path: `/admin/clients?client=${seededStaffRoutes.clientDetail}`,
     slug: "admin-clients-drawer",
     variants: ["desktop-light", "mobile-dark"],
-    capture: "dialog",
+    capture: "page",
     setup: "client-drawer",
   },
   {

@@ -13,7 +13,7 @@ const category: AdminCategory = {
   heroImageKey: null,
   createdAt: new Date("2024-01-01"),
   updatedAt: new Date("2024-06-01"),
-  usage: { lots: 12, sales: 3, submissions: 5, total: 20 },
+  usage: { lots: 12, sales: 3, submissions: 5, interests: 0, total: 20 },
 };
 
 describe("buildCategoryOverviewViewModel", () => {

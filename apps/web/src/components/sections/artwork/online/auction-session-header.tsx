@@ -43,7 +43,7 @@ export function AuctionSessionHeader({ vm, rightSlot, stateSlot, className }: Pr
                   </span>
                   {vm.userVerified ? (
                     <span className="font-body text-[13px] font-medium text-success">
-                      Verified user
+                      Email verified
                     </span>
                   ) : null}
                 </div>

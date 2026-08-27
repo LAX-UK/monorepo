@@ -1,5 +1,6 @@
 "use client";
 
+import { BidBlockerNotice } from "@/components/bid/bid-blocker-notice";
 import { LotBidFeedbackBanner } from "@/components/bid/lot-bid-feedback-banner";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
 import { BidForm } from "@/components/sections/artwork/bid-form";
@@ -80,7 +81,11 @@ export function BidEntryRegion() {
         onAction={handleFeedbackAction}
       />
 
-      {!englishOnlySurfaceLock && !sellerBlocked && autoBidEligible && supportsAutoBid ? (
+      {decision.kind !== "block" &&
+      !englishOnlySurfaceLock &&
+      !sellerBlocked &&
+      autoBidEligible &&
+      supportsAutoBid ? (
         <div className="mt-6">
           <LotBidModeChooser
             mode={entryMode}
@@ -90,7 +95,7 @@ export function BidEntryRegion() {
         </div>
       ) : null}
 
-      {!englishOnlySurfaceLock && !sellerBlocked && autoBidEligible ? (
+      {decision.kind !== "block" && !englishOnlySurfaceLock && !sellerBlocked && autoBidEligible ? (
         <div
           id={surface === "full" ? "lot-auto-bid-panel" : undefined}
           className={cn("mt-4 scroll-mt-28", entryMode !== "auto" && "hidden")}
@@ -123,11 +128,8 @@ export function BidEntryRegion() {
       ) : null}
 
       {!englishOnlySurfaceLock &&
-      (sellerBlocked
-        ? decision.kind === "block"
-        : autoBidEligible
-          ? entryMode === "manual"
-          : true) ? (
+      (decision.kind === "block" ||
+        (sellerBlocked ? false : autoBidEligible ? entryMode === "manual" : true)) ? (
         <>
           <div
             id={surface === "full" ? "bid-interactive-anchor" : undefined}
@@ -140,7 +142,7 @@ export function BidEntryRegion() {
             ) : null}
 
             {decision.kind === "block" ? (
-              decision.render()
+              <BidBlockerNotice presentation={decision.presentation} />
             ) : step === 1 ? (
               <BidForm
                 auctionType={auction.auctionType}

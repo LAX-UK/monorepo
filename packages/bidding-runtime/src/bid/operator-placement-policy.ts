@@ -29,10 +29,19 @@ export class OperatorPlacementPolicy {
     return { saleRegistration: false, buyerAgentAuth: false };
   }
 
-  async isActiveTelephoneBooking(bookingId: string, saleId: string): Promise<boolean> {
+  async isActiveTelephoneBooking(
+    bookingId: string,
+    saleId: string,
+    userId: string,
+    buyerLegalEntityId: string,
+  ): Promise<boolean> {
     const row = await this.reader.findTelephoneBookingPlacement(bookingId);
-    if (!row || row.saleId !== saleId) return false;
-    return row.status === "confirmed" || row.status === "in_progress";
+    return (
+      row?.saleId === saleId &&
+      row.userId === userId &&
+      row.buyerLegalEntityId === buyerLegalEntityId &&
+      (row.status === "confirmed" || row.status === "in_progress")
+    );
   }
 
   async resolveOperatorCap(input: OperatorCapInput): Promise<number | null> {

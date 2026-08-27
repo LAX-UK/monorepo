@@ -23,7 +23,7 @@ const baseCategory = {
   heroImageKey: null,
   createdAt: stamp,
   updatedAt: stamp,
-  usage: { lots: 1, sales: 2, submissions: 3, total: 6 },
+  usage: { lots: 1, sales: 2, submissions: 3, interests: 0, total: 6 },
 };
 
 describe("CategoriesMobileList", () => {

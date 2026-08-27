@@ -92,6 +92,8 @@ export class UserProfileHttpApplicationService implements IUserProfileHttpApplic
           hasSeenActingContextTooltip: row.hasSeenActingContextTooltip,
           kycStatus: row.kycStatus,
           signupPersona: row.signupPersona,
+          categoryInterestsOnboardingCompletedAt:
+            row.categoryInterestsOnboardingCompletedAt ?? null,
           deletionRequestedAt: row.deletionRequestedAt,
           twoFactorEnabled: row.twoFactorEnabled,
           securityStatusAvailable: row.securityStatusAvailable,

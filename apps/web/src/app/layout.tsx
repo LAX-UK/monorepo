@@ -21,7 +21,9 @@ import { readConsentFromCookies } from "@/lib/analytics/consent/server";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
 import { AuthSessionProvider } from "@/lib/auth/auth-session-provider";
 import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
+import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import { SITE_SHORT_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "@/lib/brand";
+import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveSessionThemeSyncProp } from "@/lib/preferences/resolve-root-theme.server";
 import { isSsrDarkClass } from "@/lib/preferences/ssr-theme-dark";
@@ -82,6 +84,15 @@ export const viewport: Viewport = {
   ],
 };
 
+async function loadRootSessionUser(): Promise<SessionUser | null> {
+  try {
+    return await getServerSessionUser();
+  } catch (error) {
+    if (isSessionLookupTransientError(error)) return null;
+    throw error;
+  }
+}
+
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const hdrs = await headers();
   const nonce = hdrs.get("x-nonce") ?? "";
@@ -92,7 +103,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const cookieHeader = hdrs.get("cookie") ?? "";
   const existingTheme = parseThemeCookie(cookieStore.get(THEME_COOKIE_NAME)?.value);
   const authCookiePresent = hasAuthSessionCookie(cookieHeader);
-  const user = authCookiePresent ? await getServerSessionUser() : null;
+  const user = authCookiePresent ? await loadRootSessionUser() : null;
   const profileTheme = user?.uiPreferences?.theme ?? DEFAULT_THEME_PREFERENCE;
   const themePref =
     existingTheme ?? (await resolveEffectiveThemePreference(user ? profileTheme : undefined));

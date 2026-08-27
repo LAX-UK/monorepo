@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import type { ConditionReportRequestRow } from "../interfaces/condition-report.js";
 import { NotificationFactory } from "../notification.factory.js";
-import { createConditionReportContext } from "./condition-report-context.js";
+import { createConditionReportAdminContext } from "./condition-report-admin-context.js";
 import { ConditionReportFulfilmentService } from "./condition-report-fulfilment.service.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -49,7 +49,7 @@ describe("ConditionReportFulfilmentService notifications on decline", () => {
       findById: vi.fn().mockResolvedValue(lotRow),
     } as unknown as ILotRepository;
 
-    const ctx = createConditionReportContext({
+    const ctx = createConditionReportAdminContext({
       transactionRunner: transactionRunnerFromDb(db),
       requestRepo,
       lotRepo,
