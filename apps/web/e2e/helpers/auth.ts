@@ -255,7 +255,10 @@ async function waitForLoginDestination(page: Page, destination: RegExp): Promise
 
   if (
     isOidcConsentUrl(page.url()) ||
-    (await page.locator("#oidc-consent").isVisible().catch(() => false))
+    (await page
+      .locator("#oidc-consent")
+      .isVisible()
+      .catch(() => false))
   ) {
     await submitOidcConsent(page, destination);
     return;
