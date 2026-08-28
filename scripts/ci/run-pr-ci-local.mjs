@@ -144,6 +144,7 @@ run("API route DIP coverage", "node", ["apps/api/scripts/check-route-dip-coverag
 run("Turbo typecheck (affected)", "pnpm", ["turbo", "run", "typecheck", "--affected"]);
 
 run("Ensure CI database", "node", ["scripts/ci/ensure-ci-database.mjs"]);
+run("DB package deps build", "pnpm", ["--filter", "@auction/db...", "build"]);
 run("DB migrate", "pnpm", ["--filter", "@auction/db", "db:migrate"]);
 run("Executable migration pairs", "node", ["scripts/ci/verify-migration-pairs.mjs"]);
 

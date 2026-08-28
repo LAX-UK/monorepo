@@ -162,6 +162,9 @@ jobs:
           restore-keys: |
             turbo-${{ github.job }}-${{ runner.os }}-
 
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
+
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
       - name: Verify executable migration rollback pairs
@@ -219,11 +222,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Migrate test database
-        run: pnpm --filter @auction/db db:migrate
-
       - name: Build db package dependencies
         run: pnpm --filter @auction/db... build
+
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
 
       - name: Seed worker role contract probes
         run: pnpm --filter @auction/db exec tsx scripts/seed-worker-role-contract-probes.ts
@@ -270,10 +273,12 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Migrate test database
-        run: pnpm --filter @auction/db db:migrate
       - name: Build db package dependencies
         run: pnpm --filter @auction/db... build
+
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+
       - name: Apply application role grants
         run: pnpm --filter @auction/db db:roles
       - name: Auth app role and schema contracts
@@ -364,6 +369,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
 
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
