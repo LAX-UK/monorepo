@@ -217,10 +217,59 @@ export async function gotoStaffPage(
   return page.goto(path, { waitUntil: options?.waitUntil ?? "domcontentloaded" });
 }
 
+function isOidcConsentUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname === "/api/auth/oauth2/authorize";
+  } catch {
+    return /\/api\/auth\/oauth2\/authorize(?:\?|$)/.test(url);
+  }
+}
+
+async function submitOidcConsent(page: Page, destination: RegExp): Promise<void> {
+  const allow = page.getByRole("button", { name: /^allow$/i });
+  await allow.waitFor({ state: "visible", timeout: 30_000 });
+  await Promise.all([
+    page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" }),
+    allow.click(),
+  ]).catch(async (error) => {
+    const visibleError = page.locator('#error[role="alert"]:not([hidden])');
+    if (await visibleError.isVisible().catch(() => false)) {
+      const text = (await visibleError.textContent())?.trim();
+      throw new Error(`OIDC consent failed (${page.url()}). ${text ?? "unknown error"}`);
+    }
+    throw error;
+  });
+}
+
+async function waitForLoginDestination(page: Page, destination: RegExp): Promise<void> {
+  try {
+    await page.waitForURL(
+      (url) => destination.test(url.toString()) || isOidcConsentUrl(url.toString()),
+      { timeout: 60_000, waitUntil: "domcontentloaded" },
+    );
+  } catch (error) {
+    if (await resumeIfAlreadySignedIn(page, destination)) return;
+    throw error;
+  }
+
+  if (
+    isOidcConsentUrl(page.url()) ||
+    (await page.locator("#oidc-consent").isVisible().catch(() => false))
+  ) {
+    await submitOidcConsent(page, destination);
+    return;
+  }
+
+  if (!destination.test(page.url())) {
+    throw new Error(`Sign-in did not redirect (${page.url()}). Expected ${destination}.`);
+  }
+}
+
 async function readLoginBannerErrors(page: Page): Promise<string> {
   if (page.isClosed()) return "";
   const bannerError = await page
-    .locator('[role="alert"], output[aria-live="polite"]')
+    .locator('[role="alert"]:visible, output[aria-live="polite"]:visible')
     .allTextContents()
     .catch(() => [] as string[]);
   return bannerError.filter(Boolean).join(" · ");
@@ -234,10 +283,7 @@ async function resumeIfAlreadySignedIn(page: Page, destination: RegExp): Promise
   }
   if (!(await continueLink.isVisible().catch(() => false))) return false;
   await continueLink.click();
-  await page.waitForURL(destination, {
-    timeout: 60_000,
-    waitUntil: "domcontentloaded",
-  });
+  await waitForLoginDestination(page, destination);
   return true;
 }
 
@@ -296,10 +342,7 @@ async function login(
     (await alreadySignedIn.isVisible().catch(() => false))
   ) {
     await continueAuthed.first().click();
-    await page.waitForURL(destination, {
-      timeout: 60_000,
-      waitUntil: "domcontentloaded",
-    });
+    await waitForLoginDestination(page, destination);
     return;
   }
 
@@ -311,22 +354,17 @@ async function login(
   await password.click();
   await password.fill(credentials.password);
   const submit = page.getByRole("button", { name: /^sign in$/i });
-  await Promise.all([
-    page.waitForURL(destination, {
-      timeout: 60_000,
-      waitUntil: "domcontentloaded",
-    }),
-    (async () => {
-      if (await submit.isVisible().catch(() => false)) {
-        await submit.click();
-        return;
-      }
+  try {
+    if (await submit.isVisible().catch(() => false)) {
+      await submit.click();
+    } else {
       await page
         .locator("form")
         .first()
         .evaluate((form) => (form as HTMLFormElement).requestSubmit());
-    })(),
-  ]).catch(async (error) => {
+    }
+    await waitForLoginDestination(page, destination);
+  } catch (error) {
     if (await resumeIfAlreadySignedIn(page, destination)) return;
     const detail = await readLoginBannerErrors(page);
     throw new Error(
@@ -334,7 +372,7 @@ async function login(
         ? `Sign-in did not redirect (${page.url()}). ${detail}`
         : `Sign-in did not redirect (${page.url()}). ${String(error)}`,
     );
-  });
+  }
 }
 
 /** Sign in with a named seeded fixture without duplicating the login journey in specs. */
