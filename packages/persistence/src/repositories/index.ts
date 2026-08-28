@@ -62,6 +62,7 @@ export { DrizzleSourceOfFundsSettlementReader } from "./drizzle-source-of-funds-
 export { DrizzleLegalEntityDocumentAdminRepository } from "./drizzle-legal-entity-document-admin.repository.js";
 export { DrizzleLegalEntityLifecycleAdminRepository } from "./drizzle-legal-entity-lifecycle-admin.repository.js";
 export { DrizzleProfileRepository } from "./drizzle-profile.repository.js";
+export { DrizzleCategoryInterestsEligibilityReader } from "./drizzle-category-interests-eligibility.reader.js";
 export { DrizzleCategoryInterestsRepository } from "./drizzle-category-interests.repository.js";
 export { DrizzleAddressRepository } from "./drizzle-address.repository.js";
 export { DrizzleUserRepository } from "./drizzle-user.repository.js";

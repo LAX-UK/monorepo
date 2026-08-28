@@ -401,6 +401,7 @@ export function createContainer(env: Env): Container {
     }),
     userRoutes: createUserRouteServices({
       env,
+      categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
       registrationService: userMisc.registrationService,
       marketingEventService: complianceMedia.marketingEventService,

@@ -337,7 +337,7 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_READ_TABLES]).toContain("identity_lifecycle_outbox");
   });
 
-  it("models the post-0157 Identity directory cutover", () => {
+  it("models the post-0160 Identity directory cutover", () => {
     expect([...API_READ_TABLES]).toContain("bid_identity_directory");
     expect([...WORKER_PRODUCT_PROFILE_TABLES]).toContain("bid_identity_directory");
     expect([...WORKER_READ_TABLES]).not.toContain("user");

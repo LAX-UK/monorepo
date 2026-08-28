@@ -10,7 +10,7 @@ job; no long-running app process holds DDL grants.
 
 > **Implementation status (last reviewed 2026-08-20)**
 >
-> - **Implemented:** every table in the ERD below exists at [packages/db/src/schema/](../../packages/db/src/schema/), including `domain_events.actor_user_id`, `domain_events.correlation_id` (DB default `gen_random_uuid()`), and `domain_events.schema_version` (DB default 1). Email-pipeline tables (`email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`) plus `user.email_status` / `user.email_status_changed_at` and the `notification_preference.*Email` / `*Whatsapp` columns ship in migration `0021_email_integration_schema.sql`. Role grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) enforce the role split: `api_app` owns synchronous email enqueue and product-subject usage reads, and `worker_app` has SELECT/UPDATE on `email_outbox` and `newsletter_signup_log`; migrations `0154` and `0155` remove all direct email-pipeline and product-table access from `auth_app`.
+> - **Implemented:** every table in the ERD below exists at [packages/db/src/schema/](../../packages/db/src/schema/), including `domain_events.actor_user_id`, `domain_events.correlation_id` (DB default `gen_random_uuid()`), and `domain_events.schema_version` (DB default 1). Email-pipeline tables (`email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`) plus the Bid-owned deliverability fields on `bid_user_profile` and the `notification_preference.*Email` / `*Whatsapp` columns ship from the email and Identity-boundary migrations. Role grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) enforce the role split: `api_app` owns synchronous email enqueue and product-subject usage reads, and `worker_app` has INSERT/SELECT/UPDATE on `email_outbox` plus SELECT/UPDATE on `newsletter_signup_log`; migrations `0157` and `0158` remove all direct email-pipeline and product-table access from `auth_app`.
 > - **Recent additions since the original schema landing:** multi-category for lots/sales/submissions (`lot_categories`, `sale_categories`, `submission_categories` join tables in migration `0022`), category admin metadata (`category.archived`, `sort_order`, etc. in migration `0024`), structured `user_address` (migration `0025`), `artist_profile` (migration `0026`; admin-curated catalogue registry with `kind`/`status` lifecycle), and the submission-expansion fields (`item_submissions` extended in migration `0023`).
 > - **Artist consolidation (migration `0046`)**: `lot.artist_id` (uuid → `artist_profile.id`) is the canonical link between a lot and its catalogue artist (legacy `marketing_details.sellerArtistId` was backfilled then cleared). `artist_watchlist.artist_id` was repointed from `user.id` to `artist_profile.id` in the same migration. Artist creation is admin-only via `POST /artists` (capability `artist.review`); clients never produce pending artist rows.
 > - **Scaffolded:** `external_accounts` exists with `(provider, external_id)` unique and `(email, provider)` index, but no service writes to it yet outside the seed script. Generic `webhook_event` persistence and worker processing remain available for providers that require asynchronous ingest.
@@ -289,13 +289,14 @@ sessions, or JWKS tables.
 
 | Table | Owner role | Purpose |
 |-------|------------|---------|
-| `bid_user_profile` | `api_app` (writes), `worker_app` (provisioning) | Bid roles, staff roles, KYC/AML summary, persona, paddle preference, Bid suspension, deliverability mirror |
+| `bid_user_profile` | `api_app` (writes), `worker_app` (provisioning) | Bid roles, staff roles, KYC/AML summary, persona, buyer-interest onboarding completion, paddle preference, Bid suspension, deliverability mirror |
+| `user_category_interest` | `api_app` | Ordered Bid-local buyer preferences keyed to `bid_user_profile.user_id` |
 | `bid_identity_directory` | Identity-owned facts; `worker_app` projects, product roles read | Minimal PII directory (`email`, `name`, `image`, `phone`) plus verification/deletion lifecycle needed by notifications, marketing sync, and media cleanup |
 | `shop_user_profile` | `shop_app` (writes), `worker_app` (projection) | Shop-local name/email mirror plus disable and subject-merge markers |
 
 `apps/auth` does not query either product profile table. Its orphan-signup
 compensation calls the machine-authenticated product API, where `api_app` checks
-`bid_user_profile` and `external_accounts` in one query. Migration `0155`
+`bid_user_profile` and `external_accounts` in one query. Migration `0158`
 removes the former `auth_app` grants on both product-owned tables.
 
 `bid_identity_directory` has no foreign key to Identity `user`; `subject_id` is an
@@ -306,8 +307,8 @@ update the directory and its aliases, and `user.identity_deleted` hard-deletes t
 subject and aliases containing its PII. `api_app` has SELECT only; `worker_app` is
 granted DML solely because it hosts the projector. The
 `verify-identity-directory-drift.mjs` reconciliation must be clean before direct
-worker reads of `user` are revoked by migration `0157` and before API reads are
-revoked by migration `0158`. API repositories join the directory for product-safe
+worker reads of `user` are revoked by migration `0160` and before API reads are
+revoked by migration `0161`. API repositories join the directory for product-safe
 Identity facts. MFA, phone-verification, pending email-change, and authoritative
 verified-email ownership remain live machine-authenticated Identity reads.
 
@@ -321,8 +322,10 @@ freshness timestamp used by reconciliation; it is not a user activity time.
 `last_event_id` is the monotonic projector ordering/idempotency checkpoint.
 The worker projector is the only runtime writer of this table.
 
-Migration `0150` removed the former `0140` compatibility triggers and Bid-owned
-legacy columns from `user`. The remaining product reads and foreign keys are tracked
+Migration `0153` removed the former `0143` compatibility triggers and Bid-owned
+legacy columns from `user`, moved the buyer-interest completion marker to
+`bid_user_profile`, and repointed buyer-interest ownership to that product profile.
+The remaining product reads and foreign keys are tracked
 by the split exit criteria in [09-lax-identity-boundary.md](./09-lax-identity-boundary.md).
 
 ### Application tables — owned by apps/api, role api_app
@@ -374,8 +377,9 @@ tables; `auth_app` has no privilege on `email_outbox` or `email_suppression`.
 Identity-supplied recipients use the existing 30-day snapshot retention so the
 worker never needs a later Identity `user` lookup. `apps/worker` updates
 `email_outbox` and `newsletter_signup_log`; `worker_app` has `SELECT, UPDATE` on
-both via `WORKER_LOCK_READ_TABLES` (the worker is denied `INSERT`/`DELETE` so it
-cannot inflate the audit trail or collapse it).
+`newsletter_signup_log`. It has `INSERT, SELECT, UPDATE` on `email_outbox`
+because worker-owned projectors also enqueue notifications; `DELETE` remains
+denied so it cannot collapse the audit trail.
 
 ## Critical invariants
 
@@ -409,23 +413,24 @@ Every foreign key column has an index. The query patterns that matter beyond the
 
 Schema changes go through Drizzle migrations. The generated SQL files live at [packages/db/drizzle/](../../packages/db/drizzle/) (with the metadata journal at [packages/db/drizzle/meta/](../../packages/db/drizzle/meta/)); the schema sources that produce them live at [packages/db/src/schema/](../../packages/db/src/schema/). The production runner is [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts), invoked by `pnpm db:migrate:prod`. It uses the privileged owner connection URI held in `DATABASE_URL_OWNER`, which is set on the migration job and never loaded by application processes — the long-running app processes use `DATABASE_URL_API`, `DATABASE_URL_AUTH`, or `DATABASE_URL_WORKER` per role.
 
-Identity hardening applies `0143_oauth_consent_client_user_unique.sql`,
-`0144_oidc_rp_sessions.sql`, `0145_oidc_logout_and_shop_sessions.sql`, then
-`0146_ssf_signal_transport.sql`. Roll back only in reverse order with
-`0146_rollback.sql`, `0145_rollback.sql`, `0144_rollback.sql`, then
-`0143_rollback.sql`. Shop uses `DATABASE_URL_SHOP`; no product may use a direct
+Identity hardening applies `0146_oauth_consent_client_user_unique.sql`,
+`0147_oidc_rp_sessions.sql`, `0148_oidc_logout_and_shop_sessions.sql`, then
+`0149_ssf_signal_transport.sql`. Roll back only in reverse order with
+`0149_rollback.sql`, `0148_rollback.sql`, `0147_rollback.sql`, then
+`0146_rollback.sql`. Shop uses `DATABASE_URL_SHOP`; no product may use a direct
 Identity connection.
 
 Adding a new column with a default value is safe online. Adding a `NOT NULL` column without a default requires a multi-step migration: add nullable, backfill, then add the constraint in a separate migration. Renaming a column requires the same multi-step pattern (add new, dual-write from app, backfill old to new, switch reads, drop old) — Drizzle's automatic migration generation will not produce this safely.
 
 Role grants are applied by [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (script: `pnpm db:roles`, also called automatically at the end of `pnpm db:migrate:prod`). The script is idempotent. **When you add a new table, also add it to the appropriate `*_FULL_TABLES` / `*_DENY_TABLES` / `*_SELECT_TABLES` constant in `migrate-roles.ts`** — without that, the apps will fail at runtime trying to read tables they don't have permission for.
 
-`api_app` access to Identity `user` is the exception: it is migration-controlled,
-not a static role list entry. Role reconciliation captures and restores an
-existing pre-`0158` `SELECT` grant across its global revoke, but never recreates
-the grant after `0158`. Deploy and soak directory-backed API code, apply `0158`,
-then run role reconciliation. Rolling application code back across this boundary
-requires applying `0158_rollback.sql` first; re-running roles alone cannot restore
+`worker_app` and `api_app` access to Identity `user` is migration-controlled,
+not a static role-list grant. Role reconciliation captures and restores each
+existing pre-`0160`/pre-`0161` `SELECT` grant across its global reset, but never
+recreates a grant after the corresponding revocation. Deploy and soak each
+directory-backed reader stage before applying its cutover migration. Rolling
+application code back across either boundary requires the matching
+`0160_rollback.sql` or `0161_rollback.sql`; re-running roles alone cannot restore
 the source-table grant.
 
 ## Where to look in the code

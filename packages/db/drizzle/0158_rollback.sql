@@ -1,9 +1,9 @@
--- Restore the staged source-table read if API code must roll back before the
--- identity directory cutover is complete.
+-- Restore the pre-0158 direct product usage probe grants for an auth code rollback.
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_app') THEN
-    GRANT SELECT ON TABLE public."user" TO api_app;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'auth_app') THEN
+    GRANT SELECT ON TABLE public.bid_user_profile TO auth_app;
+    GRANT SELECT, UPDATE ON TABLE public.external_accounts TO auth_app;
   END IF;
 END;
 $$;

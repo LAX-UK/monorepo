@@ -54,7 +54,15 @@ export class DrizzleSsfStreamRepository implements SsfStreamRepository {
           eventsRequested: input.events,
           eventsDelivered: input.events,
           ...(input.enabled
-            ? { status: "enabled" as const, lastMappedEventId: input.checkpoint }
+            ? {
+                status: "enabled" as const,
+                lastMappedEventId: sql`
+                  case
+                    when ${ssfStream.status} = 'disabled' then ${input.checkpoint}
+                    else ${ssfStream.lastMappedEventId}
+                  end
+                `,
+              }
             : {}),
           updatedAt: input.now,
         },

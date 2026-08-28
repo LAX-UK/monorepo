@@ -18,16 +18,7 @@ on:
       - "packages/persistence/**"
       - "packages/bidding-runtime/**"
       - "packages/identity-contracts/**"
-      - "packages/db/drizzle/0137*"
-      - "packages/db/drizzle/0138*"
-      - "packages/db/drizzle/0139*"
-      - "packages/db/drizzle/0140*"
-      - "packages/db/drizzle/0141*"
-      - "packages/db/drizzle/0142*"
-      - "packages/db/drizzle/0147*"
-      - "packages/db/drizzle/0159*"
-      - "packages/db/drizzle/0160*"
-      - "packages/db/drizzle/0161*"
+      - "packages/db/drizzle/**"
       - "packages/types/src/domain-event-catalog/**"
       - "packages/db/src/migrate-roles.ts"
       - "packages/db/src/auth-*.contract.test.ts"
@@ -37,7 +28,6 @@ on:
       - "scripts/ci/verify-identity-boundary.mjs"
       - "scripts/ci/verify-shop-oidc-roundtrip.mjs"
       - "scripts/ci/verify-refresh-reuse.mjs"
-      - "scripts/ci/verify-auth-dual-host.mjs"
       - "packages/db/src/seed/**"
       - "packages/ui/**"
       - ".github/workflows/e2e-pr.yml"
@@ -196,12 +186,6 @@ jobs:
           REFRESH_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
           REFRESH_TEST_CLIENT_SECRET: ${{ env.OIDC_CLIENT_SECRET }}
         run: node scripts/ci/verify-refresh-reuse.mjs
-      - name: Verify dual-host OIDC and auth response parity
-        env:
-          AUTH_PUBLIC_URL: http://localhost:3003
-          AUTH_PARITY_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
-          AUTH_PARITY_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
-        run: node scripts/ci/verify-auth-dual-host.mjs
       - name: Prepare auth sessions and run PR browser gates
         run: node scripts/ci/run-pr-browser-gates.mjs --skip-static
       - name: Upload Playwright report

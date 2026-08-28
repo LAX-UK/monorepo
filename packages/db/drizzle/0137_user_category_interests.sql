@@ -1,12 +1,10 @@
-ALTER TABLE "bid_user_profile"
+ALTER TABLE "user"
   ADD COLUMN IF NOT EXISTS "category_interests_onboarding_completed_at" timestamptz;
 
-UPDATE "bid_user_profile" AS profile
+UPDATE "user"
 SET "category_interests_onboarding_completed_at" = now()
-FROM "user" AS identity_user
-WHERE profile.user_id = identity_user.id
-  AND profile.category_interests_onboarding_completed_at IS NULL
-  AND identity_user.created_at < transaction_timestamp();
+WHERE "category_interests_onboarding_completed_at" IS NULL
+  AND "created_at" < transaction_timestamp();
 
 CREATE TABLE IF NOT EXISTS "user_category_interest" (
   "user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,

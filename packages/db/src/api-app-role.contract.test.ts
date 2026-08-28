@@ -58,6 +58,30 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
     });
   });
 
+  it("has CRUD privileges on Bid-owned user category interests", async () => {
+    await withApiClient(async (client) => {
+      const privileges = await client.query<{
+        canSelect: boolean;
+        canInsert: boolean;
+        canUpdate: boolean;
+        canDelete: boolean;
+      }>(
+        `select
+           has_table_privilege(current_user, 'public.user_category_interest', 'SELECT') as "canSelect",
+           has_table_privilege(current_user, 'public.user_category_interest', 'INSERT') as "canInsert",
+           has_table_privilege(current_user, 'public.user_category_interest', 'UPDATE') as "canUpdate",
+           has_table_privilege(current_user, 'public.user_category_interest', 'DELETE') as "canDelete"`,
+      );
+
+      expect(privileges.rows[0]).toEqual({
+        canSelect: true,
+        canInsert: true,
+        canUpdate: true,
+        canDelete: true,
+      });
+    });
+  });
+
   it("has no DML privileges on the API deny-list", async () => {
     await withApiClient(async (client) => {
       for (const table of API_DENY_TABLES) {
@@ -72,7 +96,7 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
     });
   });
 
-  it("cannot access migration-controlled Identity user after 0158", async () => {
+  it("cannot access migration-controlled Identity user after 0161", async () => {
     await withApiClient(async (client) => {
       for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
         const result = await client.query<{ allowed: boolean }>(
@@ -149,10 +173,10 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
 });
 
 describe("api_app role contract (static identity directory gate)", () => {
-  it("keeps the directory static and leaves user migration-controlled", () => {
+  it("keeps the directory read-only and denies direct user access by default", () => {
     expect(API_READ_TABLES).toContain("bid_identity_directory");
     expect(API_READ_TABLES).not.toContain("user");
-    expect(API_DENY_TABLES).not.toContain("user");
+    expect(API_DENY_TABLES).toContain("user");
     expect(API_PRODUCT_PROFILE_TABLES).not.toContain("bid_identity_directory");
   });
 });

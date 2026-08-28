@@ -55,13 +55,9 @@ describe("Better Auth schema and auth_app grant drift", () => {
     ]);
   });
 
-  it("statically denies api_app auth tables except migration-controlled user", () => {
+  it("statically denies api_app auth tables after the user-read cutover", () => {
     const denied = new Set<string>(API_DENY_TABLES);
     for (const table of AUTH_FULL_TABLES) {
-      if (table === "user") {
-        expect(denied.has(table), table).toBe(false);
-        continue;
-      }
       expect(denied.has(table), table).toBe(true);
     }
   });

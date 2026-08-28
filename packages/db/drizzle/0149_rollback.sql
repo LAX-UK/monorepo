@@ -1,3 +1,7 @@
-ALTER TABLE "ssf_delivery"
-  ADD CONSTRAINT "ssf_delivery_source_event_id_fkey"
-  FOREIGN KEY ("source_event_id") REFERENCES "domain_events"("id") ON DELETE RESTRICT;
+DROP TABLE IF EXISTS "shop_ssf_replay";
+--> statement-breakpoint
+DROP TABLE IF EXISTS "bid_ssf_replay";
+--> statement-breakpoint
+DROP TABLE IF EXISTS "ssf_delivery";
+--> statement-breakpoint
+DROP TABLE IF EXISTS "ssf_stream";

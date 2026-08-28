@@ -1,4 +1,4 @@
--- Repair the Identity-owned GDPR scrub after migration 0150 removed the
+-- Repair the Identity-owned GDPR scrub after migration 0153 removed the
 -- Bid-owned first_name, last_name, and mobile columns from public.user.
 CREATE OR REPLACE FUNCTION public.user_pii_purge(p_user_id text)
 RETURNS void

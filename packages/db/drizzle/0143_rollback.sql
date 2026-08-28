@@ -1,8 +1,6 @@
-DROP INDEX IF EXISTS "oauth_consent_client_user_uidx";
---> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "domain_events_user_linked_external_uid"
-  ON "domain_events" ("aggregate_type", "aggregate_id")
-  WHERE "event_type" = 'user.linked_external';
-
--- Duplicate oauth_consent row identities merged by the forward migration cannot
--- be reconstructed. Their complete grant union remains on the survivor.
+DROP TRIGGER IF EXISTS legacy_auth_mobile_bid_profile_sync ON public."user";
+DROP FUNCTION IF EXISTS public.sync_legacy_auth_mobile_to_bid_profile();
+DROP TRIGGER IF EXISTS bid_profile_legacy_user_sync ON public."bid_user_profile";
+DROP FUNCTION IF EXISTS public.sync_bid_profile_legacy_user();
+DROP INDEX IF EXISTS public."bid_user_profile_kyc_status_idx";
+DROP INDEX IF EXISTS public."bid_user_profile_role_active_idx";

@@ -5,13 +5,16 @@ import { describe, expect, it } from "vitest";
 const drizzle = resolve(import.meta.dirname, "../drizzle");
 
 describe("migration 0157 contract", () => {
-  it("revokes and can restore the staged worker user-table read", async () => {
+  it("removes and can restore the auth email pipeline grants", async () => {
     const [forward, rollback] = await Promise.all([
-      readFile(resolve(drizzle, "0157_revoke_worker_user_reads.sql"), "utf8"),
+      readFile(resolve(drizzle, "0157_revoke_auth_email_pipeline.sql"), "utf8"),
       readFile(resolve(drizzle, "0157_rollback.sql"), "utf8"),
     ]);
 
-    expect(forward).toContain('REVOKE SELECT ON TABLE public."user" FROM worker_app');
-    expect(rollback).toContain('GRANT SELECT ON TABLE public."user" TO worker_app');
+    for (const table of ["email_outbox", "email_suppression"]) {
+      expect(forward).toContain(`REVOKE ALL PRIVILEGES ON TABLE public.${table} FROM auth_app`);
+    }
+    expect(rollback).toContain("GRANT INSERT, SELECT ON TABLE public.email_outbox TO auth_app");
+    expect(rollback).toContain("GRANT SELECT ON TABLE public.email_suppression TO auth_app");
   });
 });

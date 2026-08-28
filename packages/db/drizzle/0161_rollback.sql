@@ -1,4 +1,9 @@
--- Intentionally non-destructive.
--- Buyer-interest categories are shared catalog data and may be referenced by
--- user preferences, lots, sales, submissions, or artists immediately after
--- deployment. Rolling back application code safely leaves these rows in place.
+-- Restore the staged source-table read if API code must roll back before the
+-- identity directory cutover is complete.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_app') THEN
+    GRANT SELECT ON TABLE public."user" TO api_app;
+  END IF;
+END;
+$$;

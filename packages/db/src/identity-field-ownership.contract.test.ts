@@ -24,6 +24,7 @@ const BID_PROFILE_FIELDS = [
   "amlHoldReason",
   "amlHoldAt",
   "signupPersona",
+  "categoryInterestsOnboardingCompletedAt",
   "dateOfBirth",
   "hasSeenActingContextTooltip",
 ] as const satisfies readonly (keyof typeof bidUserProfile.$inferSelect)[];

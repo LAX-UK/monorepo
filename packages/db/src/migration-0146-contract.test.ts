@@ -1,31 +1,37 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const drizzle = resolve(import.meta.dirname, "../drizzle");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const forward = readFileSync(
+  join(__dirname, "../drizzle/0146_oauth_consent_client_user_unique.sql"),
+  "utf8",
+);
+const rollback = readFileSync(join(__dirname, "../drizzle/0146_rollback.sql"), "utf8");
 
-describe("migration 0146 contract", () => {
-  it("adds Identity-owned SSF transport and receiver replay ledgers with rollback", async () => {
-    const [forward, rollback] = await Promise.all([
-      readFile(resolve(drizzle, "0146_ssf_signal_transport.sql"), "utf8"),
-      readFile(resolve(drizzle, "0146_rollback.sql"), "utf8"),
-    ]);
-    expect(forward).toContain('CREATE TABLE IF NOT EXISTS "ssf_stream"');
-    expect(forward).toContain('CREATE TABLE IF NOT EXISTS "ssf_delivery"');
-    expect(forward).toContain('"source_event_id" bigint REFERENCES "domain_events"');
-    expect(forward).toContain('CREATE UNIQUE INDEX IF NOT EXISTS "ssf_delivery_stream_source_uid"');
-    expect(forward).toContain('"last_mapped_event_id" bigint NOT NULL DEFAULT 0');
-    expect(forward).toContain('CREATE TABLE IF NOT EXISTS "bid_ssf_replay"');
-    expect(forward).toContain('CREATE TABLE IF NOT EXISTS "shop_ssf_replay"');
-    expect(forward).not.toMatch(/CREATE (?:UNIQUE )?INDEX "/);
-    expect(rollback).toContain('DROP TABLE IF EXISTS "shop_ssf_replay"');
-    expect(rollback).toContain('DROP TABLE IF EXISTS "bid_ssf_replay"');
-    expect(rollback).toContain('DROP TABLE IF EXISTS "ssf_delivery"');
-    expect(rollback).toContain('DROP TABLE IF EXISTS "ssf_stream"');
-    expect(rollback.indexOf('"shop_ssf_replay"')).toBeLessThan(
-      rollback.indexOf('"bid_ssf_replay"'),
+describe("migration 0146 oauth consent uniqueness contract", () => {
+  it("locks writes and merges every duplicate grant before creating the index", () => {
+    expect(forward).toContain('LOCK TABLE "oauth_consent" IN SHARE ROW EXCLUSIVE MODE');
+    expect(forward).toContain('PARTITION BY "client_id", "user_id"');
+    expect(forward).toContain('ORDER BY "updated_at" DESC, "created_at" DESC, "id" ASC');
+    expect(forward).toContain("jsonb_agg(DISTINCT scope ORDER BY scope)");
+    expect(forward).toContain('ranked."consent_given" AS merged_consent_given');
+    expect(forward).not.toContain('bool_or(consent."consent_given")');
+    expect(forward).toContain("RAISE NOTICE 'migration 0146: merging % oauth_consent");
+
+    const mergePosition = forward.indexOf('UPDATE "oauth_consent"');
+    const cleanupPosition = forward.indexOf('DELETE FROM "oauth_consent"');
+    const indexPosition = forward.indexOf(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "oauth_consent_client_user_uidx"',
     );
-    expect(rollback.indexOf('"bid_ssf_replay"')).toBeLessThan(rollback.indexOf('"ssf_delivery"'));
-    expect(rollback.indexOf('"ssf_delivery"')).toBeLessThan(rollback.indexOf('"ssf_stream"'));
+    expect(mergePosition).toBeGreaterThanOrEqual(0);
+    expect(cleanupPosition).toBeGreaterThan(mergePosition);
+    expect(cleanupPosition).toBeGreaterThanOrEqual(0);
+    expect(indexPosition).toBeGreaterThan(cleanupPosition);
+  });
+
+  it("drops the uniqueness guard on rollback", () => {
+    expect(rollback).toContain('DROP INDEX IF EXISTS "oauth_consent_client_user_uidx"');
   });
 });

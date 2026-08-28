@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
  */
 import { createDb } from "../src/index.js";
 import { user } from "../src/schema/auth.js";
+import { bidIdentityDirectory } from "../src/schema/bid-identity-directory.js";
 import { bid } from "../src/schema/bids.js";
 import { legalEntity } from "../src/schema/legal-entities.js";
 import { lot } from "../src/schema/lots.js";
@@ -34,6 +35,23 @@ async function main() {
       role: "client",
       createdAt: new Date(),
       updatedAt: new Date(),
+    });
+  }
+
+  const existingDirectory = await db
+    .select({ subjectId: bidIdentityDirectory.subjectId })
+    .from(bidIdentityDirectory)
+    .where(eq(bidIdentityDirectory.subjectId, PROBE_USER_ID));
+  if (existingDirectory.length === 0) {
+    const now = new Date();
+    await db.insert(bidIdentityDirectory).values({
+      subjectId: PROBE_USER_ID,
+      email: "worker-role-contract-probe@lax.bid.local",
+      name: "Worker Role Probe",
+      emailVerified: true,
+      identityCreatedAt: now,
+      replicatedAt: now,
+      lastEventId: 0,
     });
   }
 

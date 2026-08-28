@@ -1,6 +1,6 @@
 import { IDENTITY_EVENT_TYPES, SSF_EVENT_TYPES } from "@auction/identity-contracts";
 import { describe, expect, it, vi } from "vitest";
-import { SsfDeliveryWorker } from "./ssf-delivery.worker.js";
+import { SsfDeliveryWorker, createOrderedSsfJti } from "./ssf-delivery.worker.js";
 import { SsfEventMapper } from "./ssf-event.mapper.js";
 import type {
   SsfDeliveryRepository,
@@ -50,12 +50,13 @@ describe("SSF delivery worker", () => {
       finalize: vi.fn(),
     } satisfies SsfDeliveryRepository;
     const checkpoints = vi.fn();
+    const sign = vi.fn().mockResolvedValue({ token: "set.jwt", signingKid: "kid-1" });
     const worker = new SsfDeliveryWorker(
       streamRepository([stream("one"), stream("two")], checkpoints),
       sourceEvents,
       deliveries,
       new SsfEventMapper(),
-      { sign: vi.fn().mockResolvedValue({ token: "set.jwt", signingKid: "kid-1" }) },
+      { sign },
       { dispatch: vi.fn() },
       "https://issuer.test",
       () => new Date("2026-08-13T06:00:00Z"),
@@ -64,6 +65,16 @@ describe("SSF delivery worker", () => {
     await expect(worker.enqueueFromDomainEvents()).resolves.toBe(2);
     expect(enqueue).toHaveBeenCalledTimes(2);
     expect(checkpoints).toHaveBeenCalledTimes(2);
+    for (const [input] of sign.mock.calls) {
+      expect(input.jti).toMatch(/^lax-identity-outbox-v1\.[A-Za-z0-9_-]+\.7\.[0-9a-f-]+$/);
+    }
+  });
+
+  it("rejects invalid source event ordering identifiers", () => {
+    expect(() => createOrderedSsfJti("subject-1", 0)).toThrow("invalid_ssf_source_event_id");
+    expect(() => createOrderedSsfJti("subject-1", Number.MAX_SAFE_INTEGER + 1)).toThrow(
+      "invalid_ssf_source_event_id",
+    );
   });
 
   it("claims, dispatches, and finalizes terminal retry exhaustion", async () => {

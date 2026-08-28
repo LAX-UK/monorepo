@@ -126,7 +126,13 @@ reference for the future customer-facing Shop implementation. Health checks are
 
 The HTTP backend for the auction. It owns bid placement, lot retrieval, payment intent creation, user profile, and the inbound webhook surface. The intent is that it owns no background work — but **today it also runs the lot lifecycle BullMQ worker in-process** ([apps/api/src/index.ts](../../apps/api/src/index.ts), [apps/api/src/jobs/lot-job-scheduler.ts](../../apps/api/src/jobs/lot-job-scheduler.ts)). Migrating `LotJobScheduler` into `apps/worker` is **(Phase 2)**.
 
-It uses the `api_app` Postgres role, which has full access to most public tables, read-only access to `user`, and no access at all to `jwks_key`, `session.token`, `account`, the `oauth_*` tables, or `verification` (see [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) — the `API_DENY_TABLES` array). It validates Bearer tokens locally via `jose`'s `createRemoteJWKSet` against the JWKS endpoint, with library-default cache (`cacheMaxAge: 600000`) and cooldown (`cooldownDuration: 30000`).
+It uses the `api_app` Postgres role, which has full access to most product tables,
+read-only access to `bid_identity_directory`, and, after migration `0161`, no
+access to Identity `user`, `jwks_key`, sessions, accounts, OAuth tables, or
+verification (see [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts)).
+It validates Bearer tokens locally via `jose`'s `createRemoteJWKSet` against the
+JWKS endpoint, with library-default cache (`cacheMaxAge: 600000`) and cooldown
+(`cooldownDuration: 30000`).
 
 `JwtAuthenticator` accepts Bearer tokens with issuer
 `https://auth.lax.bid` and audience `lax-bid-api`;
@@ -165,7 +171,7 @@ Health checks: `GET /health/live` and `GET /health/ready`. Readiness checks Redi
 
 ### migrate (pre-deploy Job)
 
-A one-shot DigitalOcean Job that runs before each production deploy. It executes `pnpm db:migrate:prod` using the privileged owner connection URI held in `DATABASE_URL_OWNER` (the `auction_owner` Postgres user), which is never available to any long-running process. This is the only place that DDL grants are exercised per F2. The runner is [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts) and applies migrations followed by [migrate-roles.ts](../../packages/db/src/migrate-roles.ts) so the `auth_app`/`api_app`/`worker_app` grants stay current.
+A one-shot DigitalOcean Job that runs before each production deploy. It executes `pnpm db:migrate:prod` using the privileged owner connection URI held in `DATABASE_URL_OWNER` (the `auction_owner` Postgres user), which is never available to any long-running process. This is the only place that DDL grants are exercised per F2. The runner is [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts) and applies migrations through the production ceiling (default `0159`; explicit `PRODUCTION_MIGRATION_THROUGH=0160` then `0161`) followed by [migrate-roles.ts](../../packages/db/src/migrate-roles.ts) so the `auth_app`/`api_app`/`worker_app` grants stay current.
 
 `apps/api`'s container entrypoint **does not run migrations** — only the dedicated job does. If migrations fail, the deploy aborts before any new container starts. App Platform's pre-deploy Job semantics handle this — the live deployment continues serving traffic while we figure out why the migration failed.
 
@@ -236,9 +242,41 @@ The "what we do" column is deliberately specific. Each trigger has a known respo
 
 ## Identity migrations and required environment
 
-Apply `0143`, `0144`, `0145`, and `0146` in order. Roll back only with
-`0146_rollback.sql`, `0145_rollback.sql`, `0144_rollback.sql`, and
-`0143_rollback.sql`. The host-only cookie cutover logs users out once.
+The released production lineage is buyer-interest migrations `0137`–`0139`,
+followed by Identity migrations `0140`–`0161`. The main upgrade test exercises
+that exact sequence. `0146`–`0149` form the OAuth/logout/SSF schema sub-sequence
+and roll back only in reverse (`0149` through `0146`). The `0159` directory must
+be reconciled and soaked before `0160` and `0161` remove worker/API reads from
+Identity `user`; those grant cutovers also roll back in reverse with their code.
+
+A normal production migrate (`pnpm db:migrate:prod`) applies through `0159`
+only. It does not apply `0160` or `0161` unless an operator sets
+`PRODUCTION_MIGRATION_THROUGH` to the next staged value after soak. Local and
+CI `pnpm db:migrate` still apply every pending migration.
+
+```sh
+# Default production migrate: through 0159 (directory). Leaves 0160/0161 pending.
+pnpm db:migrate:prod
+
+# After directory reconciliation soak is clean — worker user-read revoke only.
+PRODUCTION_MIGRATION_THROUGH=0160 pnpm db:migrate:prod
+
+# After 0160 is applied and API/export directory readers have soaked.
+PRODUCTION_MIGRATION_THROUGH=0161 pnpm db:migrate:prod
+```
+
+On App Platform, set `PRODUCTION_MIGRATION_THROUGH` on the migrate Job, then
+run the normal deploy so `pnpm db:migrate:prod` picks it up. The runner
+fail-closes on unknown values and refuses to skip a stage (0161 requires 0160
+already applied). After a grant rollback, lower or clear that variable before
+the next production migrate or the Job will re-apply the revoked grant.
+
+Do not promote a database that ran the superseded feature-branch ordering where
+Identity occupied `0137` onward. Those timestamps collide with the released
+main migrations, so the state requires manual inventory and reconciliation
+rather than automatic renumbering. The production runner rejects a mismatched or
+gapped applied-history hash before applying later migrations. The host-only
+cookie cutover logs users out once.
 
 Production Identity requires `DATABASE_URL_AUTH`, `BETTER_AUTH_SECRET`,
 `OIDC_ISSUER_URL`, `WEB_ORIGIN`, `AUTH_DEK_KEY`,

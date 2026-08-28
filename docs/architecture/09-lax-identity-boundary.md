@@ -173,7 +173,7 @@ signing `kid`, and the exact receiver audience.
 All Identity lifecycle changes are written transactionally to
 `identity_lifecycle_outbox`. SSF maps signals directly from that outbox, while
 the worker relays the same rows to `domain_events` for product projectors.
-Migration `0152_ssf_reset_outbox_checkpoint` must run before deploying an Auth
+Migration `0155_ssf_reset_outbox_checkpoint` must run before deploying an Auth
 build that publishes the final credential, session, and deletion events through
 the outbox; it moves existing stream checkpoints to the outbox id space without
 replaying historical signals.
@@ -208,7 +208,7 @@ rows only after the receiver is fixed.
 The current single cluster with role isolation is transitional. A product may
 move to its own database only after all of these are true:
 
-1. Migration `0140` compatibility triggers are removed.
+1. Migration `0143` compatibility triggers are removed.
 2. Bid-owned legacy columns are removed from `user`, with no dual reads or
    writes and reconciliation clean through the agreed soak.
 3. Bid foreign keys to Identity `user` are replaced by unconstrained immutable
@@ -226,7 +226,7 @@ fail-closed request; `apps/auth` has no product database package, query, or gran
 This completes the Identity side of criterion 5. Product-side reads and joins of
 Identity tables remain open until product-local projections replace them.
 
-The first product-side cut is the worker Identity directory. Migration `0156`
+The first product-side cut is the worker Identity directory. Migration `0159`
 creates and backfills `bid_identity_directory`, a minimal non-authoritative PII
 read model with an unconstrained immutable `subject_id`. A dedicated worker
 projector consumes registration, profile, email-verification, deletion-request,
@@ -242,22 +242,22 @@ must `LEFT JOIN` the directory: a hard-deleted Identity subject intentionally ha
 no directory row, while durable bids, payments, and audit records remain.
 
 After the directory reconciliation reports no missing, orphaned, mismatched, or
-pending rows through the agreed soak, migration `0157` revokes `worker_app`
+pending rows through the agreed soak, migration `0160` revokes `worker_app`
 SELECT on `user`. API and shared persistence readers use the same directory for
 contact, display, verification, deletion-request, and merge facts. Authoritative
 MFA, phone-verification, pending email-change, and verified-email ownership reads
 use the machine-authenticated Identity HTTP boundary instead of widening the
 projection. Admin directory filtering is product-local; Identity-only 2FA and
 activity filters are intentionally absent, while selected-user security detail is
-loaded live. After the same reconciliation soak, migration `0158` revokes
+loaded live. After the same reconciliation soak, migration `0161` revokes
 `api_app` SELECT on `user`.
 
-Code and static exit gates for migrations `0156`–`0158` are implemented. Target
+Code and static exit gates for migrations `0159`–`0161` are implemented. Target
 environment reconciliation, soak, migration application, and live role probes
 remain operational promotion evidence; they are not implied by a green source
-check. `migrate-roles` preserves an already-present pre-`0158` API read during
-the soak, but treats `user` as migration-controlled and cannot regrant it after
-`0158`.
+check. `migrate-roles` preserves already-present worker/API `user` reads during
+their pre-`0160`/pre-`0161` soak stages, but treats both grants as
+migration-controlled and cannot recreate either after its revocation migration.
 
 The directory does not contain credentials, MFA state, pending email-change state,
 or any other security decision input; those remain authoritative Identity facts
@@ -265,9 +265,9 @@ and require a live Identity boundary when needed.
 
 Identity maintenance is also issuer-owned: `apps/auth` performs bounded
 verification cleanup and the 30-day deletion/PII scrub. No product process
-writes an Identity table. Migration `0153_repair_user_pii_purge` keeps the
+writes an Identity table. Migration `0156_repair_user_pii_purge` keeps the
 deletion function aligned with the Identity-only `user` schema contracted by
-`0150`.
+`0153`.
 
 Identity email delivery depends only on the `EmailSender` port. The issuer posts
 email intents to the machine-authenticated Bid internal API, which snapshots the
@@ -281,19 +281,30 @@ physical database separation.
 
 ## Deployment gates
 
-Apply migrations `0143`, `0144`, `0145`, then `0146`. Rollback only in reverse:
-`0146_rollback.sql`, `0145_rollback.sql`, `0144_rollback.sql`,
-`0143_rollback.sql`. Do not enable SSF until each receiver passes verification.
+The canonical production lineage keeps the buyer-interest migrations released
+on main at `0137`–`0139` and runs Identity at `0140`–`0161`. An environment that
+ran the superseded feature-branch ordering (Identity at `0137` onward) has
+timestamp/hash collisions with released main and must stop for manual
+reconciliation. The migration runner rejects that divergent history; it does not
+attempt to infer or rewrite it.
+
+Apply migrations `0146`, `0147`, `0148`, then `0149`. Rollback only in reverse:
+`0149_rollback.sql`, `0148_rollback.sql`, `0147_rollback.sql`,
+`0146_rollback.sql`. Do not enable SSF until each receiver passes verification.
 Do not claim production readiness until migrations, role contracts, target-host
 OIDC/BFF E2E, logout delivery, SSF verification/delivery, and reconciliation
 gates have run.
 
-For the Bid directory cutover, apply `0156`, deploy the projector and
-directory-backed readers, reconcile and soak, apply `0157`, deploy/soak all API
-and export readers, apply `0158`, and only then run the normal role
-reconciliation. Rollback is coupled in reverse: restore the `0158` grant before
-rolling API code back, and restore `0157` before rolling worker readers back.
-Never use a role-script rerun as a migration rollback.
+For the Bid directory cutover, apply `0159` with a default
+`pnpm db:migrate:prod`, deploy the projector and directory-backed readers,
+reconcile and soak, apply `0160` with `PRODUCTION_MIGRATION_THROUGH=0160`,
+deploy/soak all API and export readers, then apply `0161` with
+`PRODUCTION_MIGRATION_THROUGH=0161`. A normal production migrate does not
+apply `0160` or `0161`. Run normal role reconciliation at each release; it
+preserves only a still-present migration-controlled soak grant.
+Rollback is coupled in reverse: restore the `0161` grant before rolling API code
+back, and restore `0160` before rolling worker readers back. Never use a
+role-script rerun as a migration rollback.
 
 See [new-platform onboarding](../runbooks/onboard-lax-platform.md),
 [SSF operations](../runbooks/ssf-stream-operations.md),

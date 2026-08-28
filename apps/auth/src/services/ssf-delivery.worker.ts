@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import { IDENTITY_EVENT_TYPES, SSF_EVENT_TYPES } from "@auction/identity-contracts";
 import type { SsfEventMapper } from "./ssf-event.mapper.js";
 import type {
@@ -10,6 +11,20 @@ import type {
   SsfStreamRepository,
   SsfUnsignedSignal,
 } from "./ssf.ports.js";
+
+const ORDERED_SSF_JTI_VERSION = "lax-identity-outbox-v1";
+
+function ssfSubjectKey(subjectId: string): string {
+  return createHash("sha256").update(subjectId).digest("base64url");
+}
+
+/** Carries the durable Identity outbox order in the signed, replay-protected JTI. */
+export function createOrderedSsfJti(subjectId: string, sourceEventId: number): string {
+  if (!Number.isSafeInteger(sourceEventId) || sourceEventId < 1) {
+    throw new Error("invalid_ssf_source_event_id");
+  }
+  return `${ORDERED_SSF_JTI_VERSION}.${ssfSubjectKey(subjectId)}.${sourceEventId}.${randomUUID()}`;
+}
 
 export function ssfStaleClaimBefore(now: Date, timeoutMs: number): Date {
   return new Date(now.getTime() - timeoutMs * 2);
@@ -126,7 +141,7 @@ export class SsfDeliveryWorker {
     signal: SsfUnsignedSignal,
   ): Promise<boolean> {
     const now = this.now();
-    const jti = crypto.randomUUID();
+    const jti = createOrderedSsfJti(signal.subjectId, source.id);
     const signed = await this.signer.sign({
       issuer: this.issuer,
       audience: stream.audience,
@@ -138,7 +153,7 @@ export class SsfDeliveryWorker {
       issuedAt: Math.floor(now.getTime() / 1_000),
     });
     const inserted = await this.deliveries.enqueue({
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       streamId: stream.id,
       sourceEventId: source.id,
       eventType: signal.eventType,

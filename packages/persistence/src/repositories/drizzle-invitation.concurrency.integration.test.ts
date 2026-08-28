@@ -1,5 +1,5 @@
 import { createDb } from "@auction/db";
-import { bidUserProfile, user, userInvitation } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile, user, userInvitation } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { DrizzleUserInvitationRepository } from "./drizzle-invitation.repository.js";
@@ -23,6 +23,9 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
     await db
       .delete(bidUserProfile)
       .where(sql`${bidUserProfile.userId} IN (${redeemer1Id}, ${redeemer2Id})`);
+    await db
+      .delete(bidIdentityDirectory)
+      .where(sql`${bidIdentityDirectory.subjectId} IN (${redeemer1Id}, ${redeemer2Id})`);
     await db.delete(user).where(sql`${user.id} IN (${inviterId}, ${redeemer1Id}, ${redeemer2Id})`);
   });
 
@@ -32,6 +35,9 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
     await db
       .delete(bidUserProfile)
       .where(sql`${bidUserProfile.userId} IN (${redeemer1Id}, ${redeemer2Id})`);
+    await db
+      .delete(bidIdentityDirectory)
+      .where(sql`${bidIdentityDirectory.subjectId} IN (${redeemer1Id}, ${redeemer2Id})`);
     await db.delete(user).where(sql`${user.id} IN (${inviterId}, ${redeemer1Id}, ${redeemer2Id})`);
     await db.insert(user).values([
       {
@@ -57,6 +63,24 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
         emailVerified: true,
         createdAt: t,
         updatedAt: t,
+      },
+    ]);
+    await db.insert(bidIdentityDirectory).values([
+      {
+        subjectId: redeemer1Id,
+        email: `${redeemer1Id}@t.test`,
+        name: "R1",
+        emailVerified: true,
+        identityCreatedAt: t,
+        replicatedAt: t,
+      },
+      {
+        subjectId: redeemer2Id,
+        email: `${redeemer2Id}@t.test`,
+        name: "R2",
+        emailVerified: true,
+        identityCreatedAt: t,
+        replicatedAt: t,
       },
     ]);
     await db.insert(userInvitation).values({

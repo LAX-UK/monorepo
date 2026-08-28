@@ -1,2 +1,3 @@
--- Repair migration only: 0136 owns this column and enum, so rollback is intentionally non-destructive.
-SELECT 1;
+ALTER TABLE "shop_user_profile"
+  DROP COLUMN IF EXISTS "merged_into_subject_id",
+  DROP COLUMN IF EXISTS "disabled_at";

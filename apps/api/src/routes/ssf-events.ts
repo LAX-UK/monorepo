@@ -9,6 +9,7 @@ import {
   verifyAndConsumeSet,
 } from "@auction/identity-contracts";
 import { Hono } from "hono";
+import { StaleSsfSignalError } from "../services/interfaces/ssf-signal.js";
 
 const BID_SSF_AUDIENCE = "lax-bid-api";
 
@@ -48,6 +49,7 @@ export function createBidSsfEventsRoute(input: {
       }
       return c.body(null, 202);
     } catch (error) {
+      if (error instanceof StaleSsfSignalError) return c.body(null, 202);
       const code = error instanceof SsfVerificationError ? error.code : "invalid_set";
       return c.json({ error: code }, 400);
     }

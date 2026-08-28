@@ -7,11 +7,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const EXIT_CRITERIA_MIGRATIONS = [
-  "0150_contract_user_identity_only",
-  "0151_subject_id_expand",
-  "0156_bid_identity_directory",
-  "0157_revoke_worker_user_reads",
-  "0158_revoke_api_user_reads",
+  "0153_contract_user_identity_only",
+  "0154_subject_id_expand",
+  "0159_bid_identity_directory",
+  "0160_revoke_worker_user_reads",
+  "0161_revoke_api_user_reads",
 ];
 
 const BID_OWNED_USER_COLUMNS = [
@@ -34,6 +34,7 @@ const BID_OWNED_USER_COLUMNS = [
   "amlHoldReason",
   "amlHoldAt",
   "signupPersona",
+  "categoryInterestsOnboardingCompletedAt",
   "dateOfBirth",
   "hasSeenActingContextTooltip",
 ];
@@ -54,16 +55,22 @@ function verifyMigrationRegistry() {
 }
 
 function verifyPhase5ContractUser() {
-  const migration = read("packages/db/drizzle/0150_contract_user_identity_only.sql");
+  const migration = read("packages/db/drizzle/0153_contract_user_identity_only.sql");
   if (/CREATE TRIGGER bid_profile_legacy_user_sync/i.test(migration)) {
-    throw new Error("0150 must drop 0140 compatibility triggers, not recreate them");
+    throw new Error("0153 must drop 0143 compatibility triggers, not recreate them");
   }
   if (!/DROP FUNCTION IF EXISTS public\.sync_bid_profile_legacy_user/i.test(migration)) {
-    throw new Error("0150 must drop sync_bid_profile_legacy_user");
+    throw new Error("0153 must drop sync_bid_profile_legacy_user");
   }
-  for (const column of ["first_name", "role", "kyc_status", "mobile"]) {
+  for (const column of [
+    "first_name",
+    "role",
+    "kyc_status",
+    "mobile",
+    "category_interests_onboarding_completed_at",
+  ]) {
     if (!new RegExp(`DROP COLUMN IF EXISTS "${column}"`, "i").test(migration)) {
-      throw new Error(`0150 must drop user.${column}`);
+      throw new Error(`0153 must drop user.${column}`);
     }
   }
 
@@ -81,12 +88,12 @@ function verifyPhase5ContractUser() {
 }
 
 function verifyPhase6SubjectExpand() {
-  const migration = read("packages/db/drizzle/0151_subject_id_expand.sql");
+  const migration = read("packages/db/drizzle/0154_subject_id_expand.sql");
   if (!/ALTER TABLE public\.bid[\s\S]*subject_id/i.test(migration)) {
-    throw new Error("0151 must expand bid.subject_id");
+    throw new Error("0154 must expand bid.subject_id");
   }
   if (!/bid_subject_id_user_fk/i.test(migration)) {
-    throw new Error("0151 must add optional NOT VALID subject FK");
+    throw new Error("0154 must add optional NOT VALID subject FK");
   }
 
   const bidsSchema = read("packages/db/src/schema/bids.ts");
@@ -116,8 +123,8 @@ function verifyProductReaders() {
   if (/API_READ_TABLES\s*=\s*\[[^\]]*["']user["']/.test(roles)) {
     throw new Error("api_app still has user in API_READ_TABLES");
   }
-  if (/API_DENY_TABLES\s*=\s*\[[^\]]*["']user["']/.test(roles)) {
-    throw new Error("api_app user must be migration-controlled, not in API_DENY_TABLES");
+  if (!/API_DENY_TABLES\s*=\s*\[[^\]]*["']user["']/.test(roles)) {
+    throw new Error("api_app must deny user by default after the 0161 cutover");
   }
   if (
     !/restoreApiUserSelect[\s\S]*hasTablePrivilege[\s\S]*restoreApiUserSelect[\s\S]*grantIfExists\(\s*client,\s*["']api_app["'],\s*["']user["'],\s*["']SELECT["']/m.test(
@@ -129,20 +136,20 @@ function verifyProductReaders() {
 }
 
 function verifyDirectoryCutoverMigrations() {
-  const create = read("packages/db/drizzle/0156_bid_identity_directory.sql");
+  const create = read("packages/db/drizzle/0159_bid_identity_directory.sql");
   if (
     !/FROM "user" AS u/i.test(create) ||
     !/GRANT SELECT[\s\S]*bid_identity_directory TO api_app/i.test(create)
   ) {
-    throw new Error("0156 must backfill and grant the Bid Identity directory");
+    throw new Error("0159 must backfill and grant the Bid Identity directory");
   }
-  const workerRevoke = read("packages/db/drizzle/0157_revoke_worker_user_reads.sql");
+  const workerRevoke = read("packages/db/drizzle/0160_revoke_worker_user_reads.sql");
   if (!/REVOKE SELECT ON TABLE public\."user" FROM worker_app/i.test(workerRevoke)) {
-    throw new Error("0157 must revoke worker_app user SELECT");
+    throw new Error("0160 must revoke worker_app user SELECT");
   }
-  const apiRevoke = read("packages/db/drizzle/0158_revoke_api_user_reads.sql");
+  const apiRevoke = read("packages/db/drizzle/0161_revoke_api_user_reads.sql");
   if (!/REVOKE SELECT ON TABLE public\."user" FROM api_app/i.test(apiRevoke)) {
-    throw new Error("0158 must revoke api_app user SELECT");
+    throw new Error("0161 must revoke api_app user SELECT");
   }
 }
 

@@ -79,7 +79,7 @@ BEGIN
   SELECT count(*), coalesce(sum(duplicate_count - 1), 0)
     INTO affected_groups, removed_rows
     FROM "_migration_0143_oauth_consent_merge";
-  RAISE NOTICE 'migration 0143: merging % oauth_consent duplicate rows across % client/user groups',
+  RAISE NOTICE 'migration 0146: merging % oauth_consent duplicate rows across % client/user groups',
     removed_rows, affected_groups;
 END $$;
 --> statement-breakpoint

@@ -115,7 +115,17 @@ run("Install", "pnpm", ["install", "--frozen-lockfile"]);
 
 run("Biome", "pnpm", ["exec", "biome", "check", "."]);
 run("Queue registry", "node", ["scripts/lint-queue-registry.mjs"]);
-run("Gitleaks", "gitleaks", ["detect", "--source", ".", "--verbose", "--redact"]);
+const gitleaksBase = process.env.PR_BASE_SHA ?? "origin/main";
+const gitleaksHead = process.env.PR_HEAD_SHA ?? "HEAD";
+run("Gitleaks", "gitleaks", [
+  "detect",
+  "--source",
+  ".",
+  "--log-opts",
+  `${gitleaksBase}..${gitleaksHead}`,
+  "--verbose",
+  "--redact",
+]);
 run("UI guardrails", "pnpm", ["lint:ui-guardrails"]);
 run("Admin capability drift", "pnpm", ["lint:admin-capability-drift"]);
 run("Web guardrails", "pnpm", ["lint:web-guardrails"]);
@@ -128,32 +138,14 @@ run("Zod schema transform lint", "pnpm", ["lint:z-schema-transform"]);
 run("Turbo lint (affected)", "pnpm", ["turbo", "run", "lint", "--affected"]);
 run("Dependency graph", "pnpm", ["lint:deps"]);
 run("Package layers", "node", ["scripts/check-layers.mjs"]);
-run("Identity extractability", "node", ["scripts/ci/verify-identity-extractability.mjs"]);
-run("Identity exit criteria", "node", ["scripts/ci/verify-identity-exit-criteria.mjs"]);
+run("Identity extractability", "pnpm", ["ci:identity-extractability"]);
+run("Identity exit criteria", "pnpm", ["ci:identity-exit-criteria"]);
 run("API route DIP coverage", "node", ["apps/api/scripts/check-route-dip-coverage.mjs"]);
 run("Turbo typecheck (affected)", "pnpm", ["turbo", "run", "typecheck", "--affected"]);
 
 run("Ensure CI database", "node", ["scripts/ci/ensure-ci-database.mjs"]);
 run("DB migrate", "pnpm", ["--filter", "@auction/db", "db:migrate"]);
-// 0137-0140 are superseded expand/dual-write migrations. Their forward SQL
-// intentionally reads legacy user columns removed by 0150, so replaying those
-// pairs against the fully contracted schema is invalid.
-for (const tag of [
-  "0141_repair_sale_hero_presentation",
-  "0142_bid_identity_lifecycle_projection",
-  "0143_oauth_consent_client_user_unique",
-  "0144_oidc_rp_sessions",
-  "0145_oidc_logout_and_shop_sessions",
-  "0146_ssf_signal_transport",
-  "0152_ssf_reset_outbox_checkpoint",
-]) {
-  run(`Migration pair ${tag}`, "pnpm", [
-    "--filter",
-    "@auction/db",
-    "db:verify-migration-pair",
-    tag,
-  ]);
-}
+run("Executable migration pairs", "node", ["scripts/ci/verify-migration-pairs.mjs"]);
 
 run("Identity boundary conformance", "pnpm", ["ci:identity-boundary"]);
 run("Turbo test (affected)", "pnpm", ["turbo", "run", "test", "--affected"]);

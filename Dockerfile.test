@@ -23,5 +23,6 @@ ENV NODE_ENV=test
 ENV ENGLISH_ONLY_AUCTIONS=true
 ENV NEXT_PUBLIC_ENGLISH_ONLY_AUCTIONS=true
 
-# Default: migrate then all package tests (override in compose if needed).
-CMD ["sh", "-c", "pnpm --filter @auction/db db:migrate && pnpm turbo run test"]
+# Build workspace dependencies needed by the TypeScript migration entrypoint,
+# then migrate and run all package tests (override in compose if needed).
+CMD ["sh", "-c", "pnpm --filter @auction/db... build && pnpm --filter @auction/db db:migrate && pnpm turbo run test"]

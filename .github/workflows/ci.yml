@@ -99,6 +99,12 @@ jobs:
       - name: Package layer direction
         run: node scripts/check-layers.mjs
 
+      - name: Identity extractability
+        run: pnpm ci:identity-extractability
+
+      - name: Identity exit criteria
+        run: pnpm ci:identity-exit-criteria
+
       - name: API route DIP coverage
         run: node apps/api/scripts/check-route-dip-coverage.mjs
 
@@ -158,15 +164,8 @@ jobs:
 
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
-      - name: Verify Identity migration rollback
-        run: |
-          pnpm --filter @auction/db db:verify-migration-pair 0141_repair_sale_hero_presentation
-          pnpm --filter @auction/db db:verify-migration-pair 0142_bid_identity_lifecycle_projection
-          pnpm --filter @auction/db db:verify-migration-pair 0143_oauth_consent_client_user_unique
-          pnpm --filter @auction/db db:verify-migration-pair 0144_oidc_rp_sessions
-          pnpm --filter @auction/db db:verify-migration-pair 0145_oidc_logout_and_shop_sessions
-          pnpm --filter @auction/db db:verify-migration-pair 0146_ssf_signal_transport
-          pnpm --filter @auction/db db:verify-migration-pair 0152_ssf_reset_outbox_checkpoint
+      - name: Verify executable migration rollback pairs
+        run: node scripts/ci/verify-migration-pairs.mjs
 
       - name: Identity boundary conformance
         run: pnpm ci:identity-boundary
@@ -369,15 +368,8 @@ jobs:
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
 
-      - name: Verify Identity migration rollback
-        run: |
-          pnpm --filter @auction/db db:verify-migration-pair 0141_repair_sale_hero_presentation
-          pnpm --filter @auction/db db:verify-migration-pair 0142_bid_identity_lifecycle_projection
-          pnpm --filter @auction/db db:verify-migration-pair 0143_oauth_consent_client_user_unique
-          pnpm --filter @auction/db db:verify-migration-pair 0144_oidc_rp_sessions
-          pnpm --filter @auction/db db:verify-migration-pair 0145_oidc_logout_and_shop_sessions
-          pnpm --filter @auction/db db:verify-migration-pair 0146_ssf_signal_transport
-          pnpm --filter @auction/db db:verify-migration-pair 0152_ssf_reset_outbox_checkpoint
+      - name: Verify executable migration rollback pairs
+        run: node scripts/ci/verify-migration-pairs.mjs
 
       - name: Seed worker role contract probes
         run: pnpm --filter @auction/db exec tsx scripts/seed-worker-role-contract-probes.ts

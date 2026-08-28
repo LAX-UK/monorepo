@@ -22,11 +22,39 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * bookkeeping table and `folderMillis` ordering.
  */
 export async function runMigrationsPerTransaction(pool: pg.Pool): Promise<void> {
+  return runMigrationsPerTransactionThrough(pool);
+}
+
+export async function readLastAppliedFolderMillis(pool: pg.Pool): Promise<number | null> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query<{ created_at: string | number | null }>(
+      `select created_at
+       from "${MIGRATIONS_SCHEMA}"."${MIGRATIONS_TABLE}"
+       order by created_at desc
+       limit 1`,
+    );
+    const value = result.rows[0]?.created_at;
+    return value == null ? null : Number(value);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === "42P01" || code === "3F000") return null;
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function runMigrationsPerTransactionThrough(
+  pool: pg.Pool,
+  throughFolderMillis?: number,
+): Promise<void> {
   const migrationsFolder = path.join(__dirname, "../drizzle");
   const migrations = readMigrationFiles({ migrationsFolder });
 
   const setupClient = await pool.connect();
   let lastApplied: number | null;
+  let appliedMigrations: { hash: string; created_at: string | number | null }[];
   try {
     await setupClient.query(`CREATE SCHEMA IF NOT EXISTS "${MIGRATIONS_SCHEMA}"`);
     await setupClient.query(
@@ -36,16 +64,54 @@ export async function runMigrationsPerTransaction(pool: pg.Pool): Promise<void> 
         created_at bigint
       )`,
     );
-    const result = await setupClient.query<{ created_at: string | number | null }>(
-      `select created_at from "${MIGRATIONS_SCHEMA}"."${MIGRATIONS_TABLE}" order by created_at desc limit 1`,
+    const result = await setupClient.query<{
+      hash: string;
+      created_at: string | number | null;
+    }>(
+      `select hash, created_at
+       from "${MIGRATIONS_SCHEMA}"."${MIGRATIONS_TABLE}"
+       order by created_at asc`,
     );
-    const row = result.rows[0];
+    appliedMigrations = result.rows;
+    const row = result.rows.at(-1);
     lastApplied = row?.created_at == null ? null : Number(row.created_at);
   } finally {
     setupClient.release();
   }
 
+  if (lastApplied != null) {
+    const appliedByTimestamp = new Map<number, string>();
+    for (const applied of appliedMigrations) {
+      if (applied.created_at == null) {
+        throw new Error("Migration history contains a row without created_at");
+      }
+      const createdAt = Number(applied.created_at);
+      if (appliedByTimestamp.has(createdAt)) {
+        throw new Error(`Migration history contains duplicate timestamp ${createdAt}`);
+      }
+      appliedByTimestamp.set(createdAt, applied.hash);
+    }
+
+    for (const migration of migrations) {
+      if (migration.folderMillis > lastApplied) break;
+      const appliedHash = appliedByTimestamp.get(migration.folderMillis);
+      if (!appliedHash) {
+        throw new Error(
+          `Migration history is missing ${migration.folderMillis} before applied timestamp ${lastApplied}; manual reconciliation is required`,
+        );
+      }
+      if (appliedHash !== migration.hash) {
+        throw new Error(
+          `Migration history diverged at ${migration.folderMillis}; manual reconciliation is required`,
+        );
+      }
+    }
+  }
+
   for (const migration of migrations) {
+    if (throughFolderMillis !== undefined && migration.folderMillis > throughFolderMillis) {
+      break;
+    }
     if (lastApplied != null && lastApplied >= migration.folderMillis) {
       continue;
     }

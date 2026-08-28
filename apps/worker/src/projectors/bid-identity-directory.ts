@@ -191,7 +191,7 @@ export async function applyBidIdentityDirectoryEvent(
       }
 
       // Before Identity owned this event, apps/api emitted `{ userId }` without a
-      // timestamp. Migration 0156 backfills the state; replay only advances this
+      // timestamp. Migration 0159 backfills the state; replay only advances this
       // row's ordering marker so an old event cannot overwrite that backfill.
       const legacy = row.payload as { userId?: unknown };
       if (!legacy || typeof legacy !== "object" || typeof legacy.userId !== "string") {

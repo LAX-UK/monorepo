@@ -6,7 +6,7 @@ Streams are provisioned disabled and delivery is globally off while
 
 ## Provision and verify
 
-1. Confirm migrations `0143`–`0146`, role contracts, active RS256 signing key,
+1. Confirm migrations `0146`–`0149`, role contracts, active RS256 signing key,
    and exact receiver registry are present.
 2. Keep `SSF_DELIVERY_ENABLED=false`.
 3. Authenticate as the registered confidential receiver and create/read the
@@ -18,7 +18,8 @@ Streams are provisioned disabled and delivery is globally off while
    preserves the state, and rejects replay of the same `jti`.
 6. Set the stream status to `enabled`, then set
    `SSF_DELIVERY_ENABLED=true` on `apps/auth`. Enabling resets the stream
-   checkpoint to the current domain-event id; it does not backfill old events.
+   checkpoint to the current Identity lifecycle outbox id; it does not backfill
+   old events.
 
 ## Monitor
 
@@ -103,5 +104,5 @@ pause streams, then set `SSF_DELIVERY_ENABLED=false`; queued rows remain durable
 Do not delete streams or deliveries as a rollback mechanism.
 
 Schema rollback is last resort: stop auth delivery, prove no required pending
-or failed SETs remain, then roll back `0146`, `0145`, `0144`, `0143` in that
+or failed SETs remain, then roll back `0149`, `0148`, `0147`, `0146` in that
 order. Back-channel logout is a separate mechanism and should remain operational.

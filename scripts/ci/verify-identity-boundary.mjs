@@ -146,11 +146,11 @@ function verifyStaticContracts() {
   const journal = JSON.parse(readFileSync("packages/db/drizzle/meta/_journal.json", "utf8"));
   const tags = new Set(journal.entries.map((entry) => entry.tag));
   for (const tag of [
-    "0143_oauth_consent_client_user_unique",
-    "0144_oidc_rp_sessions",
-    "0145_oidc_logout_and_shop_sessions",
-    "0146_ssf_signal_transport",
-    "0147_remove_shop_session_id_token",
+    "0146_oauth_consent_client_user_unique",
+    "0147_oidc_rp_sessions",
+    "0148_oidc_logout_and_shop_sessions",
+    "0149_ssf_signal_transport",
+    "0150_remove_shop_session_id_token",
   ]) {
     if (!tags.has(tag)) throw new Error(`migration registry is missing ${tag}`);
     const version = tag.slice(0, 4);

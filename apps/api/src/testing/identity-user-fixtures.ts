@@ -18,7 +18,7 @@ export type IdentityUserFixture = {
 /**
  * Owner-only integration-test fixture. Product tests use this narrow helper
  * because api_app cannot seed or delete Identity-owned rows after migration
- * 0158; application code must never call it.
+ * 0161; application code must never call it.
  */
 export async function seedIdentityUserFixtures(
   db: SqlExecutor,
@@ -46,5 +46,10 @@ export async function deleteIdentityUserFixtures(
   userIds: readonly string[],
 ): Promise<void> {
   if (userIds.length === 0) return;
-  await db.execute(sql`DELETE FROM public."user" WHERE "id" = ANY(${userIds}::text[])`);
+  await db.execute(
+    sql`DELETE FROM public."user" WHERE "id" IN (${sql.join(
+      userIds.map((id) => sql`${id}`),
+      sql`, `,
+    )})`,
+  );
 }

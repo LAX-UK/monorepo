@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StaleSsfSignalError } from "../services/interfaces/ssf-signal.js";
 
 const verifyAndConsumeSet = vi.fn();
 
@@ -105,6 +106,25 @@ describe("Bid SSF socket revocation publication", () => {
         })
       ).status,
     ).toBe(400);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("acknowledges a stale ordered SET without publishing or requesting retry", async () => {
+    verifyAndConsumeSet.mockRejectedValueOnce(new StaleSsfSignalError());
+    const app = createBidSsfEventsRoute({
+      replayStore: { consume: vi.fn() },
+      issuer: baseSignal.issuer,
+      jwksUrl: `${baseSignal.issuer}/jwks`,
+      publish,
+    });
+
+    const response = await app.request("/", {
+      method: "POST",
+      headers: { "content-type": "application/secevent+jwt" },
+      body: "signed-set",
+    });
+
+    expect(response.status).toBe(202);
     expect(publish).not.toHaveBeenCalled();
   });
 });

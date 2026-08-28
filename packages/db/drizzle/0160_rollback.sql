@@ -1,16 +1,9 @@
-DELETE FROM "user_category_interest"
-WHERE "category_id" IN (
-  SELECT "id" FROM "category"
-  WHERE ("id", "slug") IN (
-    ('c1000017-0000-4000-8000-000000000017', 'jewellery'),
-    ('c1000018-0000-4000-8000-000000000018', 'antiques'),
-    ('c1000019-0000-4000-8000-000000000019', 'memorabilia')
-  )
-);
-
-DELETE FROM "category"
-WHERE ("id", "slug") IN (
-  ('c1000017-0000-4000-8000-000000000017', 'jewellery'),
-  ('c1000018-0000-4000-8000-000000000018', 'antiques'),
-  ('c1000019-0000-4000-8000-000000000019', 'memorabilia')
-);
+-- Restore the staged source-table read if worker code must roll back before the
+-- identity directory cutover is complete.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'worker_app') THEN
+    GRANT SELECT ON TABLE public."user" TO worker_app;
+  END IF;
+END;
+$$;

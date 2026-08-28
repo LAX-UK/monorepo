@@ -4,7 +4,7 @@ import {
   userProfileUpdatedPayloadSchemaV1,
 } from "@auction/identity-contracts";
 import { createIdentityDb } from "@auction/identity-db";
-import { identityLifecycleOutbox } from "@auction/identity-db/schema";
+import { identityLifecycleOutbox, user } from "@auction/identity-db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { createDrizzleIdentityEventPublisher } from "./drizzle-identity-event-publisher.js";
@@ -80,6 +80,15 @@ describeWithDatabase("createDrizzleIdentityEventPublisher transaction", () => {
     const publisher = createDrizzleIdentityEventPublisher(db);
 
     try {
+      const now = new Date();
+      await db.insert(user).values({
+        id: subjectId,
+        name: "Publisher Contract",
+        email: `${subjectId}@example.test`,
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      });
       await publisher.publish({
         type: "user.profile_updated",
         userId: subjectId,
@@ -110,6 +119,7 @@ describeWithDatabase("createDrizzleIdentityEventPublisher transaction", () => {
       await db
         .delete(identityLifecycleOutbox)
         .where(eq(identityLifecycleOutbox.aggregateId, subjectId));
+      await db.delete(user).where(eq(user.id, subjectId));
     }
   });
 

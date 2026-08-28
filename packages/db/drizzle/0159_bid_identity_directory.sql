@@ -1,6 +1,6 @@
 -- Introduce the Bid-local Identity directory while worker_app still has its
 -- staged read grant on public.user. The projector can be deployed and caught up
--- before migration 0157 removes that source-table access.
+-- before migration 0160 removes that source-table access.
 CREATE TABLE IF NOT EXISTS "bid_identity_directory" (
   "subject_id" text PRIMARY KEY NOT NULL,
   "email" text NOT NULL,

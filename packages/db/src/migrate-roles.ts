@@ -30,6 +30,7 @@ export const AUTH_DENY_TABLES = [
   "bid_user_profile",
 ] as const;
 export const API_DENY_TABLES = [
+  "user",
   "session",
   "account",
   "verification",
@@ -325,9 +326,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       await client.query(`grant usage on schema public to ${quoteIdent(role)}`);
     }
 
-    // public.user is migration-controlled for api_app. Preserve the pre-0158
-    // soak grant across this script's global reset, but do not recreate it once
-    // migration 0158 has revoked it.
+    // public.user is migration-controlled for worker_app and api_app. Preserve
+    // each soak grant across this script's global reset, but do not recreate it
+    // after migration 0160 or 0161 respectively has revoked it.
+    const restoreWorkerUserSelect = await hasTablePrivilege(client, "worker_app", "user", "SELECT");
     const restoreApiUserSelect = await hasTablePrivilege(client, "api_app", "user", "SELECT");
 
     for (const role of roles) {
@@ -475,6 +477,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
 
     for (const tableName of API_READ_TABLES) {
       await grantIfExists(client, "api_app", tableName, "SELECT");
+    }
+    if (restoreWorkerUserSelect) {
+      await grantIfExists(client, "worker_app", "user", "SELECT");
     }
     if (restoreApiUserSelect) {
       await grantIfExists(client, "api_app", "user", "SELECT");

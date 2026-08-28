@@ -5,13 +5,19 @@ import { describe, expect, it } from "vitest";
 const drizzle = resolve(import.meta.dirname, "../drizzle");
 
 describe("migration 0147 contract", () => {
-  it("removes Shop session id_token storage with a reversible rollback", async () => {
+  it("is rerunnable and rolls back every added table and column", async () => {
     const [forward, rollback] = await Promise.all([
-      readFile(resolve(drizzle, "0147_remove_shop_session_id_token.sql"), "utf8"),
+      readFile(resolve(drizzle, "0147_oidc_rp_sessions.sql"), "utf8"),
       readFile(resolve(drizzle, "0147_rollback.sql"), "utf8"),
     ]);
 
-    expect(forward).toContain('ALTER TABLE "shop_identity_session" DROP COLUMN "id_token"');
-    expect(rollback).toContain('ALTER TABLE "shop_identity_session" ADD COLUMN "id_token" text');
+    expect(forward.match(/ADD COLUMN IF NOT EXISTS/g)).toHaveLength(4);
+    expect(forward).toContain('CREATE TABLE IF NOT EXISTS "oidc_rp_session"');
+    expect(forward).not.toMatch(/CREATE (?:UNIQUE )?INDEX "/);
+    expect(rollback).toContain('DROP TABLE IF EXISTS "oidc_rp_session"');
+    expect(rollback.match(/DROP COLUMN IF EXISTS/g)).toHaveLength(4);
+    expect(rollback.indexOf('DROP TABLE IF EXISTS "oidc_rp_session"')).toBeLessThan(
+      rollback.indexOf('DROP COLUMN IF EXISTS "last_step_up_at"'),
+    );
   });
 });

@@ -1,46 +1,22 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { BUYER_INTEREST_CATEGORY_SEEDS } from "@auction/validators";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { API_DENY_TABLES } from "./migrate-roles.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const partial = readFileSync(
-  join(__dirname, "../drizzle/0160_buyer_interest_categories.sql"),
-  "utf8",
-);
-const complete = readFileSync(
-  join(__dirname, "../drizzle/0161_complete_buyer_interest_categories.sql"),
-  "utf8",
-);
-const rollback = readFileSync(join(__dirname, "../drizzle/0161_rollback.sql"), "utf8");
+const drizzle = resolve(import.meta.dirname, "../drizzle");
 
-const seedSlugs = Object.values(BUYER_INTEREST_CATEGORY_SEEDS).map(({ slug }) => slug);
+describe("migration 0161 contract", () => {
+  it("revokes and can restore the staged API user-table read", async () => {
+    const [forward, rollback, roles] = await Promise.all([
+      readFile(resolve(drizzle, "0161_revoke_api_user_reads.sql"), "utf8"),
+      readFile(resolve(drizzle, "0161_rollback.sql"), "utf8"),
+      readFile(resolve(import.meta.dirname, "migrate-roles.ts"), "utf8"),
+    ]);
 
-describe("migration 0161 complete buyer interest categories contract", () => {
-  it("seeds the full canonical catalog without mutating existing rows", () => {
-    expect(complete).toContain("ON CONFLICT DO NOTHING");
-    expect(complete).not.toContain("DO UPDATE");
-    expect(complete).not.toContain('"archived" = false');
-    for (const slug of seedSlugs) {
-      expect(complete).toContain(`'${slug}'`);
-    }
-  });
-
-  it("aligns 0160 plus 0161 with the shared seed contract", () => {
-    const combined = `${partial}\n${complete}`;
-    for (const seed of Object.values(BUYER_INTEREST_CATEGORY_SEEDS)) {
-      expect(combined).toContain(seed.id);
-      expect(combined).toContain(`'${seed.slug}'`);
-    }
-    expect(seedSlugs).toHaveLength(8);
-  });
-
-  it("keeps rollback non-destructive", () => {
-    expect(rollback).toMatch(/Intentionally non-destructive/i);
-    expect(rollback).not.toMatch(/\bDELETE\b/i);
-    expect(rollback).not.toMatch(/\bUPDATE\b/i);
-    expect(rollback).not.toMatch(/\bTRUNCATE\b/i);
-    expect(rollback).not.toMatch(/\bDROP\b/i);
+    expect(forward).toContain('REVOKE SELECT ON TABLE public."user" FROM api_app');
+    expect(rollback).toContain('GRANT SELECT ON TABLE public."user" TO api_app');
+    expect(roles).toContain("const restoreApiUserSelect = await hasTablePrivilege(");
+    expect(roles).toContain('await grantIfExists(client, "api_app", "user", "SELECT")');
+    expect([...API_DENY_TABLES]).toContain("user");
   });
 });

@@ -1,18 +1,6 @@
-DO $$
-BEGIN
-  IF
-    to_regclass('public.bid_identity_directory') IS NOT NULL
-    AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'worker_app')
-  THEN
-    REVOKE ALL PRIVILEGES ON TABLE public.bid_identity_directory FROM worker_app;
-  END IF;
-  IF
-    to_regclass('public.bid_identity_directory') IS NOT NULL
-    AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_app')
-  THEN
-    REVOKE ALL PRIVILEGES ON TABLE public.bid_identity_directory FROM api_app;
-  END IF;
-END;
-$$;
---> statement-breakpoint
-DROP TABLE IF EXISTS "bid_identity_directory";
+-- Intentionally non-destructive while the 0153-contracted user schema remains
+-- active. Restoring the pre-0156 body here would reference removed first_name,
+-- last_name, and mobile columns and make deletion fail at runtime.
+-- 0153_rollback.sql recreates the legacy columns and function together when the
+-- boundary contraction itself is reversed.
+SELECT 1;

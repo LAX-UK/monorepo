@@ -1,63 +1,46 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { getTableConfig } from "drizzle-orm/pg-core";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { getTableColumns, getTableName } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { userCategoryInterest } from "./schema/user-category-interests.js";
+import { bidIdentityDirectory } from "./schema/bid-identity-directory.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const forward = readFileSync(
-  join(__dirname, "../drizzle/0159_user_category_interests.sql"),
-  "utf8",
-);
-const rollback = readFileSync(join(__dirname, "../drizzle/0159_rollback.sql"), "utf8");
+const drizzle = resolve(import.meta.dirname, "../drizzle");
 
-describe("migration 0159 user category interests contract", () => {
-  it("backfills existing profiles complete while leaving the new-user marker without a default", () => {
-    expect(forward).toContain(
-      'ADD COLUMN IF NOT EXISTS "category_interests_onboarding_completed_at" timestamptz',
-    );
-    expect(forward).toContain('ALTER TABLE "bid_user_profile"');
-    expect(forward).toContain('SET "category_interests_onboarding_completed_at" = now()');
-    expect(forward).toContain("profile.category_interests_onboarding_completed_at IS NULL");
-    expect(forward).toContain("identity_user.created_at < transaction_timestamp()");
-    expect(forward).not.toMatch(
-      /category_interests_onboarding_completed_at"\s+timestamptz\s+(?:NOT NULL\s+)?DEFAULT/i,
-    );
-  });
-
-  it("normalizes ordered user interests with ownership and category constraints", () => {
-    expect(forward).toContain('"user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE');
-    expect(forward).toContain(
-      '"category_id" uuid NOT NULL REFERENCES "category"("id") ON DELETE RESTRICT',
-    );
-    expect(forward).toContain('PRIMARY KEY ("user_id", "category_id")');
-    expect(forward).toContain('ON "user_category_interest" ("user_id", "sort_order")');
-  });
-
-  it("rolls back the dependent table before the profile marker", () => {
-    expect(rollback.indexOf('DROP TABLE IF EXISTS "user_category_interest"')).toBeLessThan(
-      rollback.indexOf('DROP COLUMN IF EXISTS "category_interests_onboarding_completed_at"'),
-    );
-    expect(rollback).toContain('ALTER TABLE "bid_user_profile"');
-  });
-
-  it("keeps the Drizzle schema aligned with the migrated table contract", () => {
-    const config = getTableConfig(userCategoryInterest);
-    expect(config.name).toBe("user_category_interest");
-    expect(config.columns.map(({ name }) => name)).toEqual([
-      "user_id",
-      "category_id",
-      "sort_order",
-      "created_at",
+describe("migration 0159 contract", () => {
+  it("creates, backfills, grants, and can remove the Bid identity directory", async () => {
+    const [forward, rollback] = await Promise.all([
+      readFile(resolve(drizzle, "0159_bid_identity_directory.sql"), "utf8"),
+      readFile(resolve(drizzle, "0159_rollback.sql"), "utf8"),
     ]);
-    expect(config.primaryKeys).toHaveLength(1);
-    expect(config.indexes.map(({ config: index }) => index.name)).toEqual(
-      expect.arrayContaining([
-        "user_category_interest_category_id_idx",
-        "user_category_interest_user_sort_idx",
-      ]),
+
+    expect(getTableName(bidIdentityDirectory)).toBe("bid_identity_directory");
+    expect(Object.keys(getTableColumns(bidIdentityDirectory))).toEqual([
+      "subjectId",
+      "email",
+      "name",
+      "image",
+      "phone",
+      "emailVerified",
+      "deletionRequestedAt",
+      "mergedIntoSubjectId",
+      "identityCreatedAt",
+      "replicatedAt",
+      "lastEventId",
+    ]);
+
+    expect(forward).toContain('"subject_id" text PRIMARY KEY NOT NULL');
+    expect(forward).not.toMatch(/"subject_id"[^,\n]*REFERENCES/i);
+    expect(forward).toContain('"last_event_id" bigint DEFAULT 0 NOT NULL');
+    expect(forward).toContain('"bid_identity_directory_email_idx"');
+    expect(forward).toContain('"bid_identity_directory_phone_idx"');
+    expect(forward).toContain('"bid_identity_directory_merged_into_idx"');
+    expect(forward).toContain('u."phone_number"');
+    expect(forward).toContain('u."merged_into_subject_id"');
+    expect(forward).toContain('u."created_at"');
+    expect(forward).toContain(
+      "GRANT INSERT, SELECT, UPDATE, DELETE ON TABLE public.bid_identity_directory TO worker_app",
     );
-    expect(config.foreignKeys).toHaveLength(2);
+    expect(forward).toContain("GRANT SELECT ON TABLE public.bid_identity_directory TO api_app");
+    expect(rollback).toContain('DROP TABLE IF EXISTS "bid_identity_directory"');
   });
 });

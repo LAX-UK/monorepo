@@ -1,30 +1,17 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const migration = readFileSync(
-  join(__dirname, "../drizzle/0160_buyer_interest_categories.sql"),
-  "utf8",
-);
-const rollback = readFileSync(join(__dirname, "../drizzle/0160_rollback.sql"), "utf8");
+const drizzle = resolve(import.meta.dirname, "../drizzle");
 
-describe("migration 0160 buyer interest categories contract", () => {
-  it.each(["jewellery", "antiques", "memorabilia"])(
-    "creates the %s category without mutating existing rows",
-    (slug) => {
-      expect(migration).toContain(`'${slug}'`);
-      expect(migration).toContain("ON CONFLICT DO NOTHING");
-      expect(migration).not.toContain("DO UPDATE");
-      expect(migration).not.toContain('"archived" = false');
-    },
-  );
+describe("migration 0160 contract", () => {
+  it("revokes and can restore the staged worker user-table read", async () => {
+    const [forward, rollback] = await Promise.all([
+      readFile(resolve(drizzle, "0160_revoke_worker_user_reads.sql"), "utf8"),
+      readFile(resolve(drizzle, "0160_rollback.sql"), "utf8"),
+    ]);
 
-  it("rolls back only migration-owned id and slug pairs", () => {
-    expect(rollback).toContain('("id", "slug") IN');
-    expect(rollback).toContain("'jewellery'");
-    expect(rollback).toContain("'antiques'");
-    expect(rollback).toContain("'memorabilia'");
+    expect(forward).toContain('REVOKE SELECT ON TABLE public."user" FROM worker_app');
+    expect(rollback).toContain('GRANT SELECT ON TABLE public."user" TO worker_app');
   });
 });

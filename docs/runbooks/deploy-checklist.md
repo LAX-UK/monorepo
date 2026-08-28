@@ -18,8 +18,9 @@ The procedure for shipping a change to production. Follow it top to bottom; do n
 - [ ] CI is green.
 - [ ] At least one approving review.
 - [ ] If migrations are included, the migration has been reviewed against [../architecture/03-data-model.md](../architecture/03-data-model.md) — adding a `NOT NULL` column without a default is a multi-step process, not a one-shot migration.
-- [ ] For Identity hardening, forward order is `0143` → `0144` → `0145` →
-      `0146`; rollback order is `0146` → `0145` → `0144` → `0143`.
+- [ ] For OAuth/logout/SSF Identity hardening, forward order is `0146` →
+      `0147` → `0148` → `0149`; rollback order is `0149` → `0148` → `0147`
+      → `0146`.
 - [ ] If you touched anything in [../architecture/](../architecture/), the inline status block is still accurate.
 
 ## Before merging to test
@@ -57,6 +58,11 @@ console.
 - [ ] Merge `main` into `release` (or dispatch the prod deploy workflow).
 - [ ] Confirm **build-images** succeeded for all eight matrix components.
 - [ ] **Confirm the migration job runs first.** If it doesn't, abort.
+- [ ] Confirm `PRODUCTION_MIGRATION_THROUGH` is unset (default through `0159`)
+      unless you are deliberately promoting `0160` or `0161` after the
+      documented directory soak. A normal production migrate must not apply
+      those revokes. After a grant rollback, lower or clear the variable before
+      the next Job.
 - [ ] Watch `/health/ready` for every component during the rolling restart.
 - [ ] Smoke test the changed path against `lax.bid`.
 - [ ] Confirm required production Identity/BFF/client secrets are bound under
