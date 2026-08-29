@@ -495,6 +495,7 @@ export async function runLegacyDemoSeed() {
     artistCategories,
     artistProfile,
     bidUserProfile,
+    bidIdentityDirectory,
     user,
     account,
     category,
@@ -623,6 +624,19 @@ export async function runLegacyDemoSeed() {
     hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  });
+
+  const toBidIdentityDirectory = (row: SeedUserRow) => ({
+    subjectId: row.id,
+    email: row.email,
+    name: row.name,
+    image: row.image,
+    phone: row.mobile ?? null,
+    emailVerified: row.emailVerified,
+    deletionRequestedAt: null,
+    mergedIntoSubjectId: null,
+    identityCreatedAt: row.createdAt,
+    lastEventId: 0,
   });
 
   const seedUserRows: SeedUserRow[] = [
@@ -1069,6 +1083,10 @@ export async function runLegacyDemoSeed() {
 
   await db.insert(user).values(seedUserRows.map(toIdentityUser));
   await db.insert(bidUserProfile).values(seedUserRows.map(toBidUserProfile));
+  await db
+    .insert(bidIdentityDirectory)
+    .values(seedUserRows.map(toBidIdentityDirectory))
+    .onConflictDoNothing();
 
   // ── Credential accounts ────────────────────────────────────────────────────
   await db
