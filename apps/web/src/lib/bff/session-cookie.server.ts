@@ -3,9 +3,7 @@ import "server-only";
 import type { NextRequest, NextResponse } from "next/server";
 import { LOGIN_TTL_SECONDS, SESSION_TTL_SECONDS } from "./session-store.server";
 
-export function bidSessionCookieUsesSecureTransport(
-  env: NodeJS.ProcessEnv = process.env,
-): boolean {
+export function bidSessionCookieUsesSecureTransport(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.NODE_ENV === "production" && env.ALLOW_HTTP_COOKIES !== "true";
 }
 
