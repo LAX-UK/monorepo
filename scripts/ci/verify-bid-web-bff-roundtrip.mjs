@@ -30,13 +30,21 @@ function cookieHeader(jar) {
   return [...jar].map(([name, value]) => `${name}=${value}`).join("; ");
 }
 
+function bidSessionCookieEntry(jar) {
+  for (const [name, value] of jar) {
+    if (/^(?:__Host-)?lax-bid-session$/.test(name)) return { name, value };
+  }
+  return null;
+}
+
 function assertBidSessionCookie(jar) {
-  const name = [...jar.keys()].find((key) => /^(?:__Host-)?lax-bid-session$/.test(key));
-  if (!name) {
+  const entry = bidSessionCookieEntry(jar);
+  if (!entry) {
     throw new Error(
       `Bid BFF session cookie missing after callback (cookies: ${[...jar.keys()].join(", ") || "(none)"})`,
     );
   }
+  return entry;
 }
 
 async function main() {
@@ -67,7 +75,7 @@ async function main() {
   if (beginLogin.status !== 302 || !authorizeUrl) {
     throw new Error(`Bid BFF login did not redirect to authorize (${beginLogin.status})`);
   }
-  assertBidSessionCookie(webCookies);
+  const pendingSession = assertBidSessionCookie(webCookies);
 
   const authorize = await fetch(authorizeUrl, {
     redirect: "manual",
@@ -102,19 +110,33 @@ async function main() {
   });
   captureCookies(callback, webCookies);
   const callbackLocation = callback.headers.get("location") ?? "";
-  if (callback.status !== 303 || !callbackLocation.includes("/dashboard")) {
+  if (
+    (callback.status !== 302 && callback.status !== 303) ||
+    !callbackLocation.includes("/dashboard")
+  ) {
     throw new Error(
       `Bid BFF callback failed (${callback.status} -> ${callbackLocation || "(no location)"})`,
     );
   }
-  assertBidSessionCookie(webCookies);
+  const authenticatedSession = assertBidSessionCookie(webCookies);
+  if (authenticatedSession.value === pendingSession.value) {
+    const setCookies =
+      typeof callback.headers.getSetCookie === "function"
+        ? callback.headers.getSetCookie()
+        : [callback.headers.get("set-cookie")].filter(Boolean);
+    throw new Error(
+      `Bid BFF session cookie was not rotated after callback (set-cookie: ${setCookies.join(" | ") || "(none)"})`,
+    );
+  }
 
   const me = await fetch(`${webBase}/api/auth/me`, {
     headers: { cookie: cookieHeader(webCookies) },
   });
-  const profile = await me.json();
-  if (!me.ok || profile.authenticated !== true) {
-    throw new Error(`Bid BFF authenticated profile check failed (${me.status})`);
+  const profile = await me.json().catch(() => null);
+  if (!me.ok || profile?.authenticated !== true) {
+    const detail =
+      profile && typeof profile === "object" ? JSON.stringify(profile) : `(non-json ${me.status})`;
+    throw new Error(`Bid BFF authenticated profile check failed (${me.status}): ${detail}`);
   }
 
   console.log(`bid web BFF roundtrip passed for ${email}`);

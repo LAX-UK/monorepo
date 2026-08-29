@@ -6,7 +6,7 @@ import {
   parseConsentCookie,
 } from "@/lib/analytics/consent/cookie";
 import { BID_API_AUDIENCE } from "@/lib/bff/config.server";
-import { getBidSessionCookieName } from "@/lib/bff/session-cookie.server";
+import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.server";
 import { BidBffTokenService } from "@/lib/bff/token-service.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { deriveSsrOriginFromHeaders } from "@/lib/data/http/ssr-origin";
@@ -45,7 +45,7 @@ export async function deriveSsrOrigin(): Promise<string> {
 export function withBidApiBearer(): HeaderDecorator {
   return async (headers) => {
     const jar = await cookies();
-    const sessionId = jar.get(getBidSessionCookieName())?.value;
+    const sessionId = readBidSessionIdFromStore(jar);
     if (!sessionId) return;
     try {
       const resource = await new BidBffTokenService().resourceToken(

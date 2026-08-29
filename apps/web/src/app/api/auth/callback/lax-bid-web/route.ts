@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   if (!id || pending?.kind !== "pending" || !validateCallbackState(pending.state, state) || !code) {
     if (id) await sessions.invalidate(id);
-    const response = NextResponse.redirect(new URL("/login?error=oidc_callback", request.url), 303);
+    const response = NextResponse.redirect(new URL("/login?error=oidc_callback", request.url), 302);
     clearBidSessionCookie(response);
     return response;
   }
@@ -33,13 +33,13 @@ export async function GET(request: NextRequest) {
     });
     const authenticatedId = await sessions.rotateAuthenticated(id, authenticated);
     if (!authenticatedId) throw new Error("Login session rotation failed");
-    const response = NextResponse.redirect(new URL(pending.nextPath, request.url), 303);
+    const response = NextResponse.redirect(new URL(pending.nextPath, request.url), 302);
     setBidSessionCookie(response, authenticatedId, "authenticated");
     response.headers.set("cache-control", "no-store");
     return response;
   } catch {
     await sessions.invalidate(id);
-    const response = NextResponse.redirect(new URL("/login?error=oidc_exchange", request.url), 303);
+    const response = NextResponse.redirect(new URL("/login?error=oidc_exchange", request.url), 302);
     clearBidSessionCookie(response);
     return response;
   }

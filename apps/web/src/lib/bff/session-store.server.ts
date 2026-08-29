@@ -4,6 +4,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes }
 import type Redis from "ioredis";
 import { bffConfig } from "./config.server";
 import { ensureBffRedisConnected } from "./redis.server";
+import { isBidSessionId } from "./session-cookie.constants";
 
 export const LOGIN_TTL_SECONDS = 10 * 60;
 export const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -216,7 +217,7 @@ export class BidBffSessionStore {
   }
 
   async read(id: string): Promise<BidSession | null> {
-    if (!/^[A-Za-z0-9_-]{43}$/.test(id)) return null;
+    if (!isBidSessionId(id)) return null;
     const value = await (await ensureBffRedisConnected(this.redis)).get(sessionKey(id));
     return value ? decryptSession(value) : null;
   }
@@ -265,7 +266,7 @@ export class BidBffSessionStore {
   }
 
   async invalidate(id: string | null): Promise<void> {
-    if (id && /^[A-Za-z0-9_-]{43}$/.test(id)) {
+    if (isBidSessionId(id)) {
       await (await ensureBffRedisConnected(this.redis)).eval(
         DELETE_SESSION_SCRIPT,
         2,

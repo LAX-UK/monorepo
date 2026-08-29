@@ -47,6 +47,7 @@ const child = spawn(process.execPath, [server], {
     ...process.env,
     PORT: process.env.PORT ?? "3000",
     HOSTNAME: process.env.HOSTNAME ?? "0.0.0.0",
+    ALLOW_HTTP_COOKIES: process.env.ALLOW_HTTP_COOKIES ?? "true",
   },
 });
 
