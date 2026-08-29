@@ -1,4 +1,4 @@
-import { BID_SESSION_COOKIE_NAMES } from "@/lib/bff/session-cookie.server";
+import { BID_SESSION_COOKIE_NAMES } from "@/lib/bff/session-cookie.constants";
 import type { NextResponse } from "next/server";
 
 /** @deprecated use {@link BID_SESSION_COOKIE_NAMES} */
