@@ -8,47 +8,35 @@ import {
 import type { IdentityDatabase } from "@auction/identity-db";
 import { oauthApplication, user } from "@auction/identity-db/schema";
 import { eq } from "drizzle-orm";
-import { SignJWT, createLocalJWKSet, importJWK, jwtVerify } from "jose";
+import { createLocalJWKSet, jwtVerify } from "jose";
 import type { ConfidentialClientAuthenticator } from "../routes/token-exchange.routes.js";
 import type {
   LogoutTokenClaims,
   LogoutTokenSigner,
 } from "../services/backchannel-logout.service.js";
 import type { TokenExchangePorts } from "../services/token-exchange.service.js";
+import type { IdentityJwtSigner } from "./identity-jwt-signer.ports.js";
+import type { JwksProvider } from "./jwks-provider.js";
 
-type SigningJwk = {
-  id: string;
-  publicKey: string;
-  privateKey: string;
-  alg?: string | undefined;
-};
-
-export type JwksProvider = {
-  getJwks(): Promise<SigningJwk[]>;
-  getActiveSigningJwk(): Promise<SigningJwk | null>;
-};
+export type { JwksProvider, StoredSigningJwk } from "./jwks-provider.js";
 
 /** Keeps private JWK material inside the signing adapter boundary. */
-export function createLogoutTokenSigner(jwks: JwksProvider): LogoutTokenSigner {
+export function createLogoutTokenSigner(signer: IdentityJwtSigner): LogoutTokenSigner {
   return {
     async signLogoutToken(claims: LogoutTokenClaims): Promise<string> {
-      const active = await jwks.getActiveSigningJwk();
-      if (!active) throw new Error("No active Identity signing key");
-      const key = await importJWK(
-        JSON.parse(active.privateKey) as Record<string, unknown>,
-        active.alg ?? "RS256",
-      );
-      return new SignJWT({
-        events: claims.events,
-        ...(claims.sid ? { sid: claims.sid } : {}),
-        ...(claims.sub ? { sub: claims.sub } : {}),
-      })
-        .setProtectedHeader({ alg: "RS256", kid: active.id, typ: "logout+jwt" })
-        .setIssuer(claims.iss)
-        .setAudience(claims.aud)
-        .setIssuedAt(claims.iat)
-        .setJti(claims.jti)
-        .sign(key);
+      const { token } = await signer.sign({
+        typ: "logout+jwt",
+        issuer: claims.iss,
+        audience: claims.aud,
+        claims: {
+          events: claims.events,
+          ...(claims.sid ? { sid: claims.sid } : {}),
+          ...(claims.sub ? { sub: claims.sub } : {}),
+        },
+        issuedAt: claims.iat,
+        jwtId: claims.jti,
+      });
+      return token;
     },
   };
 }
@@ -96,6 +84,7 @@ export function createTokenExchangePorts(options: {
   db: IdentityDatabase;
   issuer: string;
   jwks: JwksProvider;
+  signer: IdentityJwtSigner;
 }): TokenExchangePorts {
   const issuer = options.issuer.replace(/\/+$/, "");
   return {
@@ -136,22 +125,19 @@ export function createTokenExchangePorts(options: {
       return Boolean(identity && !identity.disabledAt && !identity.mergedInto);
     },
     async signAccessToken({ subject, sid, audience, scopes }) {
-      const active = await options.jwks.getActiveSigningJwk();
-      if (!active) throw new Error("No active Identity signing key");
-      const privateJwk = JSON.parse(active.privateKey) as Record<string, unknown>;
-      const key = await importJWK(privateJwk, active.alg ?? "RS256");
-      const token = new SignJWT({
-        ...(scopes.length > 0 ? { scope: scopes.join(" ") } : {}),
-        ...(sid ? { sid } : {}),
-      })
-        .setProtectedHeader({ alg: "RS256", kid: active.id, typ: "at+jwt" })
-        .setIssuer(issuer)
-        .setSubject(subject)
-        .setAudience(audience)
-        .setJti(randomUUID())
-        .setIssuedAt()
-        .setExpirationTime(`${ACCESS_TOKEN_TTL_SECONDS}s`);
-      return token.sign(key);
+      const { token } = await options.signer.sign({
+        typ: "at+jwt",
+        issuer,
+        audience,
+        subject,
+        jwtId: randomUUID(),
+        expirationTime: `${ACCESS_TOKEN_TTL_SECONDS}s`,
+        claims: {
+          ...(scopes.length > 0 ? { scope: scopes.join(" ") } : {}),
+          ...(sid ? { sid } : {}),
+        },
+      });
+      return token;
     },
   };
 }

@@ -1,6 +1,7 @@
 import { decodeJwt, decodeProtectedHeader, exportJWK, generateKeyPair, jwtVerify } from "jose";
 import { describe, expect, it } from "vitest";
 import { BACKCHANNEL_LOGOUT_EVENT } from "../services/backchannel-logout.service.js";
+import { createIdentityJwtSigner } from "./create-identity-jwt-signer.js";
 import { createLogoutTokenSigner } from "./token-exchange-adapters.js";
 
 describe("logout token signer", () => {
@@ -10,7 +11,7 @@ describe("logout token signer", () => {
       exportJWK(privateKey),
       exportJWK(publicKey),
     ]);
-    const signer = createLogoutTokenSigner({
+    const jwks = {
       getJwks: async () => [],
       getActiveSigningJwk: async () => ({
         id: "key-1",
@@ -18,7 +19,13 @@ describe("logout token signer", () => {
         publicKey: JSON.stringify(publicJwk),
         alg: "RS256",
       }),
-    });
+    };
+    const signer = createLogoutTokenSigner(
+      createIdentityJwtSigner({
+        jwks,
+        authSecret: "development-secret-at-least-sixteen-characters",
+      }),
+    );
     const token = await signer.signLogoutToken({
       iss: "https://auth.example.test",
       aud: "lax-shop-web",

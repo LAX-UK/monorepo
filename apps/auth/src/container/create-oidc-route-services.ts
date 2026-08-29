@@ -1,7 +1,8 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import type { Redis } from "ioredis";
+import { createIdentityJwtSigner } from "../infrastructure/create-identity-jwt-signer.js";
+import type { JwksProvider } from "../infrastructure/jwks-provider.js";
 import { createTokenExchangePorts } from "../infrastructure/token-exchange-adapters.js";
-import type { JwksProvider } from "../infrastructure/token-exchange-adapters.js";
 import { TokenExchangeService } from "../services/token-exchange.service.js";
 import type { AuthRouteServicesSlice } from "./auth-container-slices.js";
 import { createOidcPhase3Services } from "./create-oidc-phase3-services.js";
@@ -12,10 +13,15 @@ export function createOidcRouteServices(options: {
   redis: Redis;
   issuer: string;
   jwks: JwksProvider;
+  authSecret: string;
   recentStepUpMaxAgeSec: number;
   environment: "development" | "test" | "production";
 }): AuthRouteServicesSlice {
-  const oidc = createOidcPhase3Services(options);
+  const identityJwtSigner = createIdentityJwtSigner({
+    jwks: options.jwks,
+    authSecret: options.authSecret,
+  });
+  const oidc = createOidcPhase3Services({ ...options, identityJwtSigner });
   return {
     oidc: {
       ...oidc,
@@ -24,13 +30,14 @@ export function createOidcRouteServices(options: {
           db: options.db,
           issuer: options.issuer,
           jwks: options.jwks,
+          signer: identityJwtSigner,
         }),
       ),
     },
     ssf: createSsfServices({
       db: options.db,
       issuer: options.issuer.replace(/\/+$/, ""),
-      jwks: options.jwks,
+      identityJwtSigner,
       environment: options.environment,
     }),
   };

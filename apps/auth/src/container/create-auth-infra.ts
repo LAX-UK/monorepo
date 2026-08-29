@@ -13,12 +13,12 @@ import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import { HttpEmailSender } from "../infrastructure/http-email-sender.js";
 import { HttpProductSubjectUsageProbe } from "../infrastructure/http-product-subject-usage-probe.js";
+import type { JwksProvider } from "../infrastructure/jwks-provider.js";
 import { ConsolePhoneVerificationService } from "../infrastructure/phone-verification/console.service.js";
 import {
   TwilioVerifyService,
   isTwilioVerifyConfigured,
 } from "../infrastructure/phone-verification/twilio-verify.service.js";
-import type { JwksProvider } from "../infrastructure/token-exchange-adapters.js";
 
 export type AuthInfra = {
   db: IdentityDb;

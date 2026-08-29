@@ -6,13 +6,14 @@ import {
 } from "../infrastructure/drizzle-backchannel-logout.adapters.js";
 import { DrizzleOauthTokenStore } from "../infrastructure/drizzle-oauth-token-store.js";
 import { HttpBackchannelLogoutDispatcher } from "../infrastructure/http-backchannel-logout.dispatcher.js";
+import type { IdentityJwtSigner } from "../infrastructure/identity-jwt-signer.ports.js";
+import type { JwksProvider } from "../infrastructure/jwks-provider.js";
 import {
   DrizzleOidcRpSessionRepository,
   RedisOidcCodeCorrelationStore,
 } from "../infrastructure/oidc-session-adapters.js";
 import {
   DrizzleConfidentialClientAuthenticator,
-  type JwksProvider,
   createLogoutTokenSigner,
 } from "../infrastructure/token-exchange-adapters.js";
 import { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";
@@ -25,9 +26,10 @@ export function createOidcPhase3Services(options: {
   redis: Redis;
   issuer: string;
   jwks: JwksProvider;
+  identityJwtSigner: IdentityJwtSigner;
   recentStepUpMaxAgeSec: number;
 }) {
-  const signer = createLogoutTokenSigner(options.jwks);
+  const signer = createLogoutTokenSigner(options.identityJwtSigner);
   const logout = new BackchannelLogoutRevocationCoordinator(
     new DrizzleRpLogoutRepository(options.db),
   );

@@ -42,6 +42,7 @@ const services = createOidcRouteServices({
   redis,
   issuer: env.OIDC_ISSUER_URL,
   jwks: infra.jwks,
+  authSecret: env.BETTER_AUTH_SECRET,
   recentStepUpMaxAgeSec: AUTH_TIMINGS.recentPasswordProofMaxAgeSec,
   environment: env.NODE_ENV,
 });

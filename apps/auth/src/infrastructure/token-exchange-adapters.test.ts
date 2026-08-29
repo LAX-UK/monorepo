@@ -1,11 +1,14 @@
 import { ACCESS_TOKEN_TTL_SECONDS } from "@auction/identity-contracts";
+import { symmetricEncrypt } from "better-auth/crypto";
 import { SignJWT, exportJWK, generateKeyPair, jwtVerify } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
+import { createIdentityJwtSigner } from "./create-identity-jwt-signer.js";
 import { createTokenExchangePorts } from "./token-exchange-adapters.js";
 
 describe("Identity token exchange cryptography", () => {
   let publicJwk: string;
   let privateJwk: string;
+  const authSecret = "development-secret-at-least-sixteen-characters";
 
   beforeAll(async () => {
     const pair = await generateKeyPair("RS256", { extractable: true });
@@ -13,21 +16,23 @@ describe("Identity token exchange cryptography", () => {
     privateJwk = JSON.stringify(await exportJWK(pair.privateKey));
   });
 
-  function ports() {
+  function ports(storedPrivateKey: string = privateJwk) {
+    const jwks = {
+      getJwks: async () => [
+        { id: "active-key", publicKey: publicJwk, privateKey: storedPrivateKey, alg: "RS256" },
+      ],
+      getActiveSigningJwk: async () => ({
+        id: "active-key",
+        publicKey: publicJwk,
+        privateKey: storedPrivateKey,
+        alg: "RS256",
+      }),
+    };
     return createTokenExchangePorts({
       db: {} as never,
       issuer: "https://auth.lax.bid/",
-      jwks: {
-        getJwks: async () => [
-          { id: "active-key", publicKey: publicJwk, privateKey: privateJwk, alg: "RS256" },
-        ],
-        getActiveSigningJwk: async () => ({
-          id: "active-key",
-          publicKey: publicJwk,
-          privateKey: privateJwk,
-          alg: "RS256",
-        }),
-      },
+      jwks,
+      signer: createIdentityJwtSigner({ jwks, authSecret }),
     });
   }
 
@@ -87,5 +92,25 @@ describe("Identity token exchange cryptography", () => {
       ACCESS_TOKEN_TTL_SECONDS,
     );
     expect(verified.protectedHeader).toMatchObject({ kid: "active-key", typ: "at+jwt" });
+  });
+
+  it("mints resource JWTs when Better Auth encrypts the stored private key", async () => {
+    const encryptedPrivateKey = JSON.stringify(
+      await symmetricEncrypt({ key: authSecret, data: privateJwk }),
+    );
+    const token = await ports(encryptedPrivateKey).signAccessToken({
+      subject: "subject-1",
+      audience: "lax-bid-api",
+      scopes: ["bid.read"],
+    });
+    const key = await import("jose").then(({ importJWK }) =>
+      importJWK(JSON.parse(publicJwk), "RS256"),
+    );
+    await expect(
+      jwtVerify(token, key, {
+        issuer: "https://auth.lax.bid",
+        audience: "lax-bid-api",
+      }),
+    ).resolves.toBeDefined();
   });
 });
