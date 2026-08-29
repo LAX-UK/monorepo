@@ -1,3 +1,4 @@
+import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import AxeBuilder from "@axe-core/playwright";
 import { type BrowserContext, type Page, type Response, expect } from "@playwright/test";
 
@@ -135,20 +136,20 @@ function trimUrl(value: string | undefined, fallback: string): string {
   return (value ?? fallback).replace(/\/+$/, "");
 }
 
-/** Probes Better Auth and `/users/me` with the current browser cookies. */
+/** Probes Better Auth and the Bid BFF session bridge on the web app. */
 export async function probePageSession(page: Page): Promise<SessionProbe> {
   const authUrl = trimUrl(
     process.env.OIDC_ISSUER_URL ?? process.env.NEXT_PUBLIC_AUTH_URL,
     "http://localhost:3003",
   );
-  const apiUrl = trimUrl(
-    process.env.API_PUBLIC_URL ?? process.env.NEXT_PUBLIC_API_URL,
-    "http://localhost:3001",
+  const webOrigin = trimUrl(
+    process.env.WEB_ORIGIN ?? process.env.PLAYWRIGHT_BASE_URL,
+    "http://localhost:3000",
   );
   const stored = await page.context().storageState();
   const [authRes, meRes] = await Promise.all([
     page.request.get(`${authUrl}/api/auth/get-session`),
-    page.request.get(`${apiUrl}/users/me`),
+    page.request.get(`${webOrigin}/api/auth/me`),
   ]);
   const authBody = (await authRes.json().catch(() => null)) as {
     user?: { id?: string; email?: string };
@@ -156,11 +157,12 @@ export async function probePageSession(page: Page): Promise<SessionProbe> {
   const meBody = (await meRes.json().catch(() => null)) as {
     data?: { email?: string };
     email?: string;
+    authenticated?: boolean;
   } | null;
   const sessionAlive = Boolean(authBody?.user?.id) && authRes.ok();
   return {
     sessionAlive,
-    authenticated: sessionAlive && meRes.ok(),
+    authenticated: meRes.ok() && meBody?.authenticated === true,
     authStatus: authRes.status(),
     meStatus: meRes.status(),
     email: authBody?.user?.email ?? meBody?.data?.email ?? meBody?.email ?? null,
@@ -175,7 +177,7 @@ export async function persistContextAuthState(
 ): Promise<void> {
   if (typeof storageState !== "string") return;
   const state = await context.storageState();
-  if (!state.cookies.some((cookie) => cookie.name.includes("session_token"))) return;
+  if (!state.cookies.some((cookie) => /(?:__Host-)?lax-bid-session/.test(cookie.name))) return;
   await context.storageState({ path: storageState });
 }
 
@@ -183,7 +185,7 @@ function formatPageSessionFailure(path: string, probe: SessionProbe, url: string
   return [
     `Expected authenticated staff session for ${path} but landed on ${url}.`,
     `get-session=${probe.authStatus}`,
-    `/users/me=${probe.meStatus}`,
+    `/api/auth/me=${probe.meStatus}`,
     `cookies=${probe.cookieNames.join(",") || "(none)"}`,
   ].join(" ");
 }
@@ -290,13 +292,25 @@ async function resumeIfAlreadySignedIn(page: Page, destination: RegExp): Promise
   return true;
 }
 
+function preservedNextFromUrl(url: string): string | null {
+  try {
+    const next = new URL(url).searchParams.get("next");
+    return next && isSafeNextPath(next) ? next : null;
+  } catch {
+    return null;
+  }
+}
+
 async function login(
   page: Page,
   credentials: Credentials,
   options: LoginOptions = {},
 ): Promise<void> {
   const destination = options.destination ?? /\/(admin|dashboard)/;
-  const loginUrl = `/login?email=${encodeURIComponent(credentials.email)}`;
+  const preservedNext = preservedNextFromUrl(page.url());
+  const loginUrl = preservedNext
+    ? `/login?email=${encodeURIComponent(credentials.email)}&next=${encodeURIComponent(preservedNext)}`
+    : `/login?email=${encodeURIComponent(credentials.email)}`;
   await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
   await dismissCookieConsentIfVisible(page);
   await Promise.race([
@@ -467,7 +481,7 @@ export async function staffLogin(page: Page): Promise<void> {
     await assertAuthenticatedStaffSession(page);
     return;
   }
-  await login(page, staffCredentials);
+  await login(page, staffCredentials, { destination: /\/admin(?:\/|$|\?)/ });
   await assertAuthenticatedStaffSession(page);
 }
 

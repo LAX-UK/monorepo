@@ -163,7 +163,7 @@ jobs:
           PORT=3001 pnpm --filter @auction/api start > /tmp/e2e-logs/api.log 2>&1 &
           PORT=3003 pnpm --filter @auction/auth-app start > /tmp/e2e-logs/auth.log 2>&1 &
           PORT=3010 pnpm --filter @auction/shop-identity start > /tmp/e2e-logs/shop-identity.log 2>&1 &
-          PORT=3000 pnpm --filter @auction/web start > /tmp/e2e-logs/web.log 2>&1 &
+          PORT=3000 node scripts/ci/start-e2e-web.mjs > /tmp/e2e-logs/web.log 2>&1 &
           npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live http://localhost:3010/health/ready --timeout 120000
       - name: Verify canonical identity boundary
         env:
@@ -179,6 +179,13 @@ jobs:
           SHOP_OIDC_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
         run: node scripts/ci/verify-shop-oidc-roundtrip.mjs
+      - name: Verify Bid web BFF roundtrip
+        env:
+          WEB_ORIGIN: http://localhost:3000
+          AUTH_BASE_URL: http://localhost:3003
+          BID_BFF_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
+          BID_BFF_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
+        run: node scripts/ci/verify-bid-web-bff-roundtrip.mjs
       - name: Verify refresh replay protection
         env:
           AUTH_BASE_URL: http://localhost:3003

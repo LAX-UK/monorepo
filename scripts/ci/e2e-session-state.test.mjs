@@ -52,7 +52,7 @@ describe("e2e session state cookies", () => {
     });
     assert.match(message, /staff/);
     assert.match(message, /get-session=200/);
-    assert.match(message, /\/users\/me=401/);
+    assert.match(message, /\/api\/auth\/me=401/);
     assert.doesNotMatch(message, /tok=/);
   });
 });

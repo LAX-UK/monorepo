@@ -1,7 +1,8 @@
+import { BID_SESSION_COOKIE_NAMES } from "@/lib/bff/session-cookie.server";
 import type { NextResponse } from "next/server";
 
-/** Bid BFF cookie names used in HTTP development and HTTPS production. */
-export const STALE_AUTH_COOKIE_NAMES = ["lax-bid-session", "__Host-lax-bid-session"] as const;
+/** @deprecated use {@link BID_SESSION_COOKIE_NAMES} */
+export const STALE_AUTH_COOKIE_NAMES = BID_SESSION_COOKIE_NAMES;
 
 /** Expire stale Better Auth cookies in the browser (see middleware comment for domain/secure matching). */
 export function purgeStaleAuthCookies(

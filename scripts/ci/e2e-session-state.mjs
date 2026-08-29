@@ -92,19 +92,18 @@ export function cookieDomainFromOrigin(origin) {
 export async function probeSession(input) {
   const endpoints = e2eAuthEndpoints();
   const authUrl = input.authUrl ?? endpoints.authUrl;
-  const apiUrl = input.apiUrl ?? endpoints.apiUrl;
   const webOrigin = input.webOrigin ?? endpoints.webOrigin;
   const headers = { cookie: input.cookie, origin: webOrigin };
   const [authResponse, meResponse] = await Promise.all([
     fetch(`${authUrl}/api/auth/get-session`, { headers }),
-    fetch(`${apiUrl}/users/me`, { headers }),
+    fetch(`${webOrigin}/api/auth/me`, { headers }),
   ]);
   const authBody = await authResponse.json().catch(() => null);
   const meBody = await meResponse.json().catch(() => null);
   const email = authBody?.user?.email ?? meBody?.data?.email ?? meBody?.email ?? null;
   const userId = authBody?.user?.id ?? meBody?.data?.id ?? meBody?.id ?? null;
   return {
-    authenticated: Boolean(userId) && authResponse.ok && meResponse.ok,
+    authenticated: meResponse.ok && meBody?.authenticated === true && Boolean(userId ?? email),
     authStatus: authResponse.status,
     meStatus: meResponse.status,
     email,
@@ -136,7 +135,7 @@ export function formatProbeFailure(role, filePath, probe) {
     `E2E auth state "${role}" is not an authenticated session.`,
     `file=${filePath}`,
     `get-session=${probe.authStatus}`,
-    `/users/me=${probe.meStatus}`,
+    `/api/auth/me=${probe.meStatus}`,
     `cookies=${(probe.cookieNames ?? []).join(",") || "(none)"}`,
     `domain=${probe.cookieDomain ?? "?"}`,
   ].join(" ");

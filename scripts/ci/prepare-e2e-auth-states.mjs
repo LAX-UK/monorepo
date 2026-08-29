@@ -104,13 +104,13 @@ for (const [role, filePath] of expectedFiles) {
   }
   forceHttpCookies(filePath);
   const meta = cookieMeta(filePath);
-  if (!meta.some((cookie) => /session_token/.test(cookie.name))) {
-    throw new Error(`${role} storage state has no session_token (${filePath})`);
+  if (!meta.some((cookie) => /(?:__Host-)?lax-bid-session/.test(cookie.name))) {
+    throw new Error(`${role} storage state has no lax-bid-session (${filePath})`);
   }
   const probe = await probeStorageStateFile(filePath);
   if (!probe.authenticated) {
     throw new Error(
-      `${role} cookie did not authenticate get-session=${probe.authStatus} /users/me=${probe.meStatus}`,
+      `${role} cookie did not authenticate get-session=${probe.authStatus} /api/auth/me=${probe.meStatus}`,
     );
   }
   probes.push({
@@ -122,7 +122,7 @@ for (const [role, filePath] of expectedFiles) {
     cookies: meta,
   });
   console.log(
-    `verified ${role} session get-session=${probe.authStatus} /users/me=${probe.meStatus}`,
+    `verified ${role} session get-session=${probe.authStatus} /api/auth/me=${probe.meStatus}`,
   );
 }
 

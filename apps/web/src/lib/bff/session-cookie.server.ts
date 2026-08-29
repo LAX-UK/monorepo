@@ -7,12 +7,15 @@ export function bidSessionCookieUsesSecureTransport(env: NodeJS.ProcessEnv = pro
   return env.NODE_ENV === "production" && env.ALLOW_HTTP_COOKIES !== "true";
 }
 
-export const BID_SESSION_COOKIE_NAME = bidSessionCookieUsesSecureTransport()
-  ? "__Host-lax-bid-session"
-  : "lax-bid-session";
+/** Names used across HTTP dev/E2E and HTTPS production (`__Host-` prefix). */
+export const BID_SESSION_COOKIE_NAMES = ["lax-bid-session", "__Host-lax-bid-session"] as const;
+
+export function getBidSessionCookieName(env: NodeJS.ProcessEnv = process.env): string {
+  return bidSessionCookieUsesSecureTransport(env) ? "__Host-lax-bid-session" : "lax-bid-session";
+}
 
 export function readBidSessionId(request: NextRequest): string | null {
-  const value = request.cookies.get(BID_SESSION_COOKIE_NAME)?.value;
+  const value = request.cookies.get(getBidSessionCookieName())?.value;
   return value && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : null;
 }
 
@@ -21,7 +24,7 @@ export function setBidSessionCookie(
   id: string,
   phase: "login" | "authenticated",
 ): void {
-  response.cookies.set(BID_SESSION_COOKIE_NAME, id, {
+  response.cookies.set(getBidSessionCookieName(), id, {
     httpOnly: true,
     secure: bidSessionCookieUsesSecureTransport(),
     sameSite: "lax",
@@ -31,11 +34,14 @@ export function setBidSessionCookie(
 }
 
 export function clearBidSessionCookie(response: NextResponse): void {
-  response.cookies.set(BID_SESSION_COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: bidSessionCookieUsesSecureTransport(),
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+  const secure = bidSessionCookieUsesSecureTransport();
+  for (const name of BID_SESSION_COOKIE_NAMES) {
+    response.cookies.set(name, "", {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+  }
 }
