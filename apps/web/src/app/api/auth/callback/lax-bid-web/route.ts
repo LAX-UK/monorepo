@@ -1,4 +1,5 @@
 import { exchangeAuthorizationCode, validateCallbackState } from "@/lib/bff/oidc.server";
+import { resolvePublicOriginUrl } from "@/lib/bff/public-origin-url.server";
 import { getBffRedis } from "@/lib/bff/redis.server";
 import {
   clearBidSessionCookie,
@@ -20,7 +21,10 @@ export async function GET(request: NextRequest) {
 
   if (!id || pending?.kind !== "pending" || !validateCallbackState(pending.state, state) || !code) {
     if (id) await sessions.invalidate(id);
-    const response = NextResponse.redirect(new URL("/login?error=oidc_callback", request.url), 302);
+    const response = NextResponse.redirect(
+      resolvePublicOriginUrl("/login?error=oidc_callback"),
+      302,
+    );
     clearBidSessionCookie(response);
     return response;
   }
@@ -33,13 +37,16 @@ export async function GET(request: NextRequest) {
     });
     const authenticatedId = await sessions.rotateAuthenticated(id, authenticated);
     if (!authenticatedId) throw new Error("Login session rotation failed");
-    const response = NextResponse.redirect(new URL(pending.nextPath, request.url), 302);
+    const response = NextResponse.redirect(resolvePublicOriginUrl(pending.nextPath), 302);
     setBidSessionCookie(response, authenticatedId, "authenticated");
     response.headers.set("cache-control", "no-store");
     return response;
   } catch {
     await sessions.invalidate(id);
-    const response = NextResponse.redirect(new URL("/login?error=oidc_exchange", request.url), 302);
+    const response = NextResponse.redirect(
+      resolvePublicOriginUrl("/login?error=oidc_exchange"),
+      302,
+    );
     clearBidSessionCookie(response);
     return response;
   }

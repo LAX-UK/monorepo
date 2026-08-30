@@ -35,4 +35,15 @@ describe("deriveSsrOriginFromHeaders", () => {
       }),
     ).toBe("http://localhost:3000");
   });
+
+  it("normalizes 0.0.0.0 bind host to the configured canonical loopback origin", () => {
+    expect(
+      deriveSsrOriginFromHeaders(
+        {
+          get: (n) => (n === "host" ? "0.0.0.0:3000" : null),
+        },
+        "http://localhost:3000",
+      ),
+    ).toBe("http://localhost:3000");
+  });
 });
