@@ -20,7 +20,7 @@ describe("resolvePublicOriginUrl", () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000");
     vi.stubEnv("OIDC_ISSUER_URL", "http://localhost:3003");
     vi.stubEnv("OIDC_CLIENT_SECRET_LAX_BID_WEB", "test-secret-at-least-32-characters-long");
-    vi.stubEnv("BID_BFF_SESSION_ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef");
+    vi.stubEnv("BID_BFF_SESSION_ENCRYPTION_KEY", "ci-test-bff-session-encryption-key-value");
 
     expect(resolvePublicOriginUrl("/admin").toString()).toBe("http://localhost:3000/admin");
     expect(resolvePublicOriginUrl("/login?error=oidc_callback").toString()).toBe(
@@ -33,7 +33,7 @@ describe("resolvePublicOriginUrl", () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://lax.bid");
     vi.stubEnv("OIDC_ISSUER_URL", "https://auth.lax.bid");
     vi.stubEnv("OIDC_CLIENT_SECRET_LAX_BID_WEB", "test-secret-at-least-32-characters-long");
-    vi.stubEnv("BID_BFF_SESSION_ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef");
+    vi.stubEnv("BID_BFF_SESSION_ENCRYPTION_KEY", "ci-test-bff-session-encryption-key-value");
 
     expect(resolvePublicOriginUrl("/dashboard").toString()).toBe("https://lax.bid/dashboard");
   });

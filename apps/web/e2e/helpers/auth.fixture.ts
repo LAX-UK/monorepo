@@ -1,44 +1,60 @@
 import { type BrowserContext, test as base } from "@playwright/test";
 import { persistContextAuthState } from "./auth";
 
+const BID_SESSION_COOKIE = /(?:__Host-)?lax-bid-session/;
+
 type WorkerFixtures = {
-  workerContext: BrowserContext;
+  contextsByStorageState: Map<string, BrowserContext>;
 };
 
-/** Reuses one cookie jar per worker so rotated Better Auth tokens stay live. */
+async function assertPreparedBidSession(context: BrowserContext, label: string): Promise<void> {
+  if (process.env.PLAYWRIGHT_E2E !== "1") return;
+  const cookies = (await context.storageState()).cookies;
+  if (!cookies.some((cookie) => BID_SESSION_COOKIE.test(cookie.name))) {
+    throw new Error(`Storage state missing lax-bid-session (${label})`);
+  }
+}
+
+/** Reuses one cookie jar per worker and storage-state file so BFF sessions stay live. */
 export const test = base.extend<object, WorkerFixtures>({
-  workerContext: [
-    async ({ browser }, use, workerInfo) => {
-      const projectUse = workerInfo.project.use;
-      const storageState =
-        typeof projectUse.storageState === "string" ? projectUse.storageState : undefined;
-      const context = await browser.newContext({
-        viewport: projectUse.viewport ?? { width: 1280, height: 800 },
-        deviceScaleFactor: projectUse.deviceScaleFactor ?? 1,
-        ...(projectUse.baseURL ? { baseURL: projectUse.baseURL } : {}),
-        ...(storageState ? { storageState } : {}),
-      });
-      const cookies = (await context.storageState()).cookies;
-      if (
-        process.env.PLAYWRIGHT_E2E === "1" &&
-        !cookies.some((cookie) => cookie.name.includes("session_token"))
-      ) {
-        await context.close();
-        throw new Error(`Project "${workerInfo.project.name}" storage state has no session_token`);
-      }
-      await use(context);
-      await context.close();
+  contextsByStorageState: [
+    async (_fixtures, use) => {
+      const contexts = new Map<string, BrowserContext>();
+      await use(contexts);
+      await Promise.all([...contexts.values()].map((context) => context.close()));
     },
     { scope: "worker" },
   ],
-  context: async ({ workerContext, storageState }, use) => {
-    await use(workerContext);
-    await persistContextAuthState(workerContext, storageState);
+  context: async ({ browser, storageState, contextsByStorageState }, use, testInfo) => {
+    const projectUse = testInfo.project.use;
+    const options = {
+      viewport: projectUse.viewport ?? { width: 1280, height: 800 },
+      deviceScaleFactor: projectUse.deviceScaleFactor ?? 1,
+      ...(projectUse.baseURL ? { baseURL: projectUse.baseURL } : {}),
+    };
+    const statePath = typeof storageState === "string" ? storageState : undefined;
+
+    if (!statePath) {
+      const ephemeral = await browser.newContext(options);
+      await use(ephemeral);
+      await ephemeral.close();
+      return;
+    }
+
+    let context = contextsByStorageState.get(statePath);
+    if (!context) {
+      context = await browser.newContext({ ...options, storageState: statePath });
+      await assertPreparedBidSession(context, statePath);
+      contextsByStorageState.set(statePath, context);
+    }
+
+    await use(context);
+    await persistContextAuthState(context, statePath);
   },
 });
 
 /** Per-test context that writes a still-valid session back after each describe. */
-export const persistAuthTest = base.extend({
+export const persistAuthTest = test.extend({
   page: async ({ page, storageState }, use) => {
     await use(page);
     await persistContextAuthState(page.context(), storageState);
