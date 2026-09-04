@@ -63,18 +63,82 @@ function flushRateLimits() {
 function forceHttpCookies(filePath) {
   const state = JSON.parse(readFileSync(filePath, "utf8"));
   const sessionExpiry = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+  const webOrigin = (
+    process.env.WEB_ORIGIN ??
+    process.env.PLAYWRIGHT_BASE_URL ??
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
   for (const cookie of state.cookies ?? []) {
     cookie.secure = false;
-    if (!cookie.path) cookie.path = "/";
-    if (typeof cookie.domain === "string") cookie.domain = cookie.domain.replace(/^\./, "");
     if (/^(?:__Host-)?lax-bid-session$/.test(cookie.name)) {
       cookie.name = "lax-bid-session";
       cookie.httpOnly = true;
       cookie.sameSite = "Lax";
       cookie.expires = sessionExpiry;
+      cookie.url = webOrigin;
+      delete cookie.domain;
+      delete cookie.path;
+      continue;
     }
+    if (!cookie.path) cookie.path = "/";
+    if (typeof cookie.domain === "string") cookie.domain = cookie.domain.replace(/^\./, "");
   }
   writeFileSync(filePath, `${JSON.stringify(state, null, 2)}\n`);
+}
+
+const ADMIN_NAV_ROLES = new Set([
+  "staff",
+  "staffRoles",
+  "staffPublic",
+  "finance",
+  "readonlyStaff",
+  "operations",
+  "catalogueManager",
+]);
+
+async function verifyPlaywrightStorageState(role, filePath) {
+  const { chromium } = await import("@playwright/test");
+  const webOrigin = (
+    process.env.WEB_ORIGIN ??
+    process.env.PLAYWRIGHT_BASE_URL ??
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+  const authUrl = (
+    process.env.OIDC_ISSUER_URL ??
+    process.env.NEXT_PUBLIC_AUTH_URL ??
+    "http://localhost:3003"
+  ).replace(/\/+$/, "");
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({
+      storageState: filePath,
+      baseURL: webOrigin,
+    });
+    const cookies = (await context.storageState()).cookies;
+    if (!cookies.some((cookie) => /^(?:__Host-)?lax-bid-session$/.test(cookie.name))) {
+      throw new Error(`${role} Playwright context missing lax-bid-session (${filePath})`);
+    }
+    const page = await context.newPage();
+    const [authRes, meRes] = await Promise.all([
+      page.request.get(`${authUrl}/api/auth/get-session`),
+      page.request.get(`${webOrigin}/api/auth/me`),
+    ]);
+    const meBody = await meRes.json().catch(() => null);
+    if (!meRes.ok() || meBody?.authenticated !== true) {
+      throw new Error(
+        `${role} Playwright request probe failed get-session=${authRes.status()} /api/auth/me=${meRes.status()} reason=${meBody?.reason ?? "?"}`,
+      );
+    }
+    if (ADMIN_NAV_ROLES.has(role)) {
+      await page.goto("/admin", { waitUntil: "domcontentloaded" });
+      if (/\/login(?:\?|$)/.test(page.url())) {
+        throw new Error(`${role} Playwright navigation lost BFF session (${page.url()})`);
+      }
+    }
+    await context.close();
+  } finally {
+    await browser.close();
+  }
 }
 
 function cookieMeta(filePath) {
@@ -123,6 +187,7 @@ for (const [role, filePath] of expectedFiles) {
       `${role} cookie did not authenticate get-session=${probe.authStatus} /api/auth/me=${probe.meStatus}`,
     );
   }
+  await verifyPlaywrightStorageState(role, filePath);
   probes.push({
     role,
     authenticated: probe.authenticated,
@@ -132,7 +197,7 @@ for (const [role, filePath] of expectedFiles) {
     cookies: meta,
   });
   console.log(
-    `verified ${role} session get-session=${probe.authStatus} /api/auth/me=${probe.meStatus}`,
+    `verified ${role} session get-session=${probe.authStatus} /api/auth/me=${probe.meStatus} (fetch + Playwright)`,
   );
 }
 
