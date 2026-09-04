@@ -208,21 +208,43 @@ function needsAuthRecovery(url: string): boolean {
   return isLoginUrl(url) || isOidcConsentUrl(url);
 }
 
+function adminDestinationPattern(path: string): RegExp {
+  return new RegExp(
+    `${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|/admin(?:/|$|\\?)|/dashboard(?:/|$|\\?)`,
+  );
+}
+
 /** Re-establishes the Bid BFF cookie when Identity cookies exist but `/api/auth/me` is 401. */
 async function recoverBidBffSession(page: Page, returnPath: string): Promise<boolean> {
-  const probe = await probePageSession(page);
+  const destination = adminDestinationPattern(returnPath);
+  let probe = await probePageSession(page);
   if (probe.authenticated) return true;
   if (!probe.sessionAlive) return false;
 
-  const destination = new RegExp(
-    `${returnPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|/admin(?:/|$|\\?)|/dashboard(?:/|$|\\?)`,
-  );
+  if (isOidcConsentUrl(page.url())) {
+    try {
+      await completeOidcAuthorizeStep(page, destination);
+    } catch {
+      return (await probePageSession(page)).authenticated;
+    }
+    return (await probePageSession(page)).authenticated;
+  }
+
   await page.goto(`/api/auth/login?next=${encodeURIComponent(returnPath)}`, {
     waitUntil: "domcontentloaded",
   });
   try {
     await waitForLoginDestination(page, destination);
   } catch {
+    probe = await probePageSession(page);
+    if (probe.authenticated) return true;
+    if (isOidcConsentUrl(page.url())) {
+      try {
+        await completeOidcAuthorizeStep(page, destination);
+      } catch {
+        return (await probePageSession(page)).authenticated;
+      }
+    }
     return (await probePageSession(page)).authenticated;
   }
 
@@ -238,8 +260,20 @@ function isLoginUrl(url: string): boolean {
  * valid and SSR `/users/me` missed. Tests never password-login or click Continue.
  */
 export async function gotoAdminPath(page: Page, path: string): Promise<Response | null> {
-  let response = await page.goto(path, { waitUntil: "domcontentloaded" });
+  const destination = adminDestinationPattern(path);
   let probe = await probePageSession(page);
+
+  // Mint a fresh BFF session before SSR can purge a stale cookie via /login?auth=required.
+  if (!probe.authenticated && probe.sessionAlive) {
+    const recovered = await recoverBidBffSession(page, path);
+    if (!recovered) {
+      throw new Error(formatPageSessionFailure(path, await probePageSession(page), page.url()));
+    }
+    probe = await probePageSession(page);
+  }
+
+  let response = await page.goto(path, { waitUntil: "domcontentloaded" });
+  probe = await probePageSession(page);
   if (probe.authenticated && !needsAuthRecovery(page.url())) return response;
 
   if (needsAuthRecovery(page.url()) && probe.sessionAlive) {
@@ -258,9 +292,6 @@ export async function gotoAdminPath(page: Page, path: string): Promise<Response 
   }
 
   if (isOidcConsentUrl(page.url()) && probe.sessionAlive) {
-    const destination = new RegExp(
-      `${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|/admin(?:/|$|\\?)|/dashboard(?:/|$|\\?)`,
-    );
     try {
       await completeOidcAuthorizeStep(page, destination);
       response = await page.goto(path, { waitUntil: "domcontentloaded" });
@@ -664,29 +695,38 @@ export async function catalogueManagerLogin(page: Page): Promise<void> {
 
 /** Re-mints the catalogue-manager BFF session when prepared storage state is stale. */
 export async function ensureCatalogueManagerSession(page: Page): Promise<void> {
-  if ((await probePageSession(page)).authenticated) return;
-  if (!hasCatalogueManagerCredentials()) {
-    throw new Error("Seeded catalogue-manager credentials are required.");
+  const probe = await probePageSession(page);
+  if (probe.authenticated) return;
+  if (!probe.sessionAlive) {
+    if (!hasCatalogueManagerCredentials()) {
+      throw new Error("Seeded catalogue-manager credentials are required.");
+    }
+    await catalogueManagerLogin(page);
+    return;
   }
-  await catalogueManagerLogin(page);
+  await recoverBidBffSession(page, "/admin/lots");
+  const after = await probePageSession(page);
+  if (!after.authenticated) {
+    throw new Error(formatPageSessionFailure("/admin/lots", after, page.url()));
+  }
 }
 
 export async function financeLogin(page: Page): Promise<void> {
   await login(page, financeCredentials);
-  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await gotoAdminPath(page, "/admin");
   await page.waitForURL(/\/admin(?:\/finance)?(?:\?|$)/);
   await assertAuthenticatedStaffSession(page);
 }
 
 export async function readonlyStaffLogin(page: Page): Promise<void> {
   await login(page, readonlyCredentials);
-  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await gotoAdminPath(page, "/admin");
   await assertAuthenticatedStaffSession(page);
 }
 
 export async function operationsLogin(page: Page): Promise<void> {
   await login(page, operationsCredentials);
-  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await gotoAdminPath(page, "/admin");
   await assertAuthenticatedStaffSession(page);
 }
 
