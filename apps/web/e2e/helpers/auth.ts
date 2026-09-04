@@ -257,6 +257,20 @@ export async function gotoAdminPath(page: Page, path: string): Promise<Response 
     }
   }
 
+  if (isOidcConsentUrl(page.url()) && probe.sessionAlive) {
+    const destination = new RegExp(
+      `${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|/admin(?:/|$|\\?)|/dashboard(?:/|$|\\?)`,
+    );
+    try {
+      await completeOidcAuthorizeStep(page, destination);
+      response = await page.goto(path, { waitUntil: "domcontentloaded" });
+      probe = await probePageSession(page);
+      if (probe.authenticated && !needsAuthRecovery(page.url())) return response;
+    } catch {
+      /* fall through to session failure */
+    }
+  }
+
   throw new Error(formatPageSessionFailure(path, probe, page.url()));
 }
 
@@ -332,21 +346,55 @@ async function submitOidcConsent(page: Page, destination: RegExp): Promise<void>
   }
 }
 
+async function completeOidcConsentViaApi(page: Page, destination: RegExp): Promise<void> {
+  const authUrl = trimUrl(
+    process.env.OIDC_ISSUER_URL ?? process.env.NEXT_PUBLIC_AUTH_URL,
+    "http://localhost:3003",
+  );
+  const authorizeUrl = page.url();
+  if (!isOidcConsentUrl(authorizeUrl)) {
+    throw new Error(`Expected OIDC authorize URL but got ${authorizeUrl}`);
+  }
+
+  const authorizeRes = await page.request.get(authorizeUrl);
+  if (!authorizeRes.ok()) {
+    throw new Error(`OIDC authorize failed (${authorizeRes.status()})`);
+  }
+  const consentHtml = await authorizeRes.text();
+  const consentCode = consentHtml.match(/id="consent-code"[^>]+value="([^"]+)"/)?.[1];
+  if (!consentCode) {
+    throw new Error(`OIDC authorize did not render a consent code (${authorizeUrl})`);
+  }
+
+  const consent = await page.request.post(`${authUrl}/api/auth/oauth2/consent`, {
+    headers: { "content-type": "application/json", origin: authUrl },
+    data: { accept: true, consent_code: consentCode },
+  });
+  const body = (await consent.json().catch(() => null)) as { redirectURI?: string } | null;
+  if (!consent.ok() || typeof body?.redirectURI !== "string") {
+    throw new Error(`OIDC consent failed (${consent.status()})`);
+  }
+
+  await page.goto(body.redirectURI, { waitUntil: "domcontentloaded" });
+  if (isOidcCallbackUrl(page.url())) {
+    await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    return;
+  }
+  if (!destination.test(page.url())) {
+    await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+  }
+}
+
 async function completeOidcAuthorizeStep(page: Page, destination: RegExp): Promise<void> {
+  if (destination.test(page.url())) return;
+
   const allow = page.getByRole("button", { name: /^allow$/i });
   if (await allow.isVisible().catch(() => false)) {
     await submitOidcConsent(page, destination);
     return;
   }
 
-  await page.waitForURL(
-    (url) => destination.test(url.toString()) || isOidcCallbackUrl(url.toString()),
-    { timeout: 60_000, waitUntil: "domcontentloaded" },
-  );
-
-  if (!destination.test(page.url())) {
-    await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
-  }
+  await completeOidcConsentViaApi(page, destination);
 }
 
 async function waitForLoginDestination(page: Page, destination: RegExp): Promise<void> {
@@ -620,6 +668,7 @@ export async function ensureCatalogueManagerSession(page: Page): Promise<void> {
   if (!hasCatalogueManagerCredentials()) {
     throw new Error("Seeded catalogue-manager credentials are required.");
   }
+  await page.context().clearCookies();
   await catalogueManagerLogin(page);
 }
 
