@@ -190,6 +190,38 @@ function formatPageSessionFailure(path: string, probe: SessionProbe, url: string
   ].join(" ");
 }
 
+function hasBidSessionCookie(probe: SessionProbe): boolean {
+  return probe.cookieNames.some((name) => /(?:__Host-)?lax-bid-session/.test(name));
+}
+
+/** Re-establishes the Bid BFF cookie when Identity cookies exist but `/api/auth/me` is 401. */
+async function recoverBidBffSession(page: Page, returnPath: string): Promise<boolean> {
+  const probe = await probePageSession(page);
+  if (probe.authenticated) return true;
+  if (!probe.sessionAlive || hasBidSessionCookie(probe)) return false;
+
+  const destination = new RegExp(
+    `${returnPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|/admin(?:/|$|\\?)|/dashboard(?:/|$|\\?)`,
+  );
+  await page.goto(`/api/auth/login?next=${encodeURIComponent(returnPath)}`, {
+    waitUntil: "domcontentloaded",
+  });
+  try {
+    await page.waitForURL(
+      (url) => destination.test(url.toString()) || isOidcConsentUrl(url.toString()),
+      { timeout: 60_000, waitUntil: "domcontentloaded" },
+    );
+  } catch {
+    return (await probePageSession(page)).authenticated;
+  }
+
+  if (isOidcConsentUrl(page.url())) {
+    await submitOidcConsent(page, destination);
+  }
+
+  return (await probePageSession(page)).authenticated;
+}
+
 function isLoginUrl(url: string): boolean {
   return /\/login(?:\?|$)/.test(url);
 }
@@ -202,11 +234,21 @@ export async function gotoAdminPath(page: Page, path: string): Promise<Response 
   let response = await page.goto(path, { waitUntil: "domcontentloaded" });
   if (!isLoginUrl(page.url())) return response;
 
-  const probe = await probePageSession(page);
+  let probe = await probePageSession(page);
   if (probe.sessionAlive) {
     response = await page.goto(path, { waitUntil: "domcontentloaded" });
     if (!isLoginUrl(page.url())) return response;
   }
+
+  if (!probe.authenticated && probe.sessionAlive) {
+    const recovered = await recoverBidBffSession(page, path);
+    if (recovered) {
+      response = await page.goto(path, { waitUntil: "domcontentloaded" });
+      if (!isLoginUrl(page.url())) return response;
+    }
+  }
+
+  probe = await probePageSession(page);
   throw new Error(formatPageSessionFailure(path, probe, page.url()));
 }
 
@@ -498,6 +540,12 @@ export async function ensureAuthenticatedStaffSession(page: Page): Promise<void>
 export async function catalogueManagerLogin(page: Page): Promise<void> {
   await login(page, catalogueCredentials);
   await gotoAdminPath(page, "/admin/lots");
+  const probe = await probePageSession(page);
+  if (!probe.authenticated) {
+    throw new Error(
+      `Catalogue manager login did not establish a Bid BFF session (get-session=${probe.authStatus}, /api/auth/me=${probe.meStatus}).`,
+    );
+  }
   await expect(page.getByRole("heading", { name: /^lots$/i }).first()).toBeVisible({
     timeout: 20_000,
   });
