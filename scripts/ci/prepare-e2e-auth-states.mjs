@@ -76,8 +76,8 @@ function forceHttpCookies(filePath) {
       cookie.sameSite = "Lax";
       cookie.expires = sessionExpiry;
       cookie.url = webOrigin;
-      delete cookie.domain;
-      delete cookie.path;
+      cookie.domain = undefined;
+      cookie.path = undefined;
       continue;
     }
     if (!cookie.path) cookie.path = "/";
