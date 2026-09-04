@@ -197,12 +197,6 @@ jobs:
           REFRESH_TEST_CLIENT_SECRET: ${{ env.OIDC_CLIENT_SECRET }}
         run: node scripts/ci/verify-refresh-reuse.mjs
       - name: Platform onboarding conformance
-        env:
-          PLATFORM_CONFORMANCE_LIVE: "1"
-          AUTH_BASE_URL: http://localhost:3003
-          SHOP_IDENTITY_BASE_URL: http://localhost:3010
-          SHOP_OIDC_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
-          SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
         run: node scripts/ci/run-platform-onboarding-conformance.mjs
       - name: Prepare auth sessions and run PR browser gates
         run: node scripts/ci/run-pr-browser-gates.mjs --skip-static
