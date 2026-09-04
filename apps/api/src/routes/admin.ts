@@ -26,7 +26,10 @@ import { attachAdminImpersonationRoutes } from "./admin/impersonation.routes.js"
 import { attachAdminLotFulfilmentRoutes } from "./admin/lot-fulfilment.routes.js";
 import { attachAdminLotsCatalogRoutes } from "./admin/lots-catalog.routes.js";
 import { attachAdminLotsRoutes } from "./admin/lots.routes.js";
-import { attachAdminOpsDashboardRoutes } from "./admin/ops-dashboard.routes.js";
+import {
+  attachAdminFinanceIssueRoutes,
+  attachAdminOpsDashboardRoutes,
+} from "./admin/ops-dashboard.routes.js";
 import { attachAdminAttentionRoutes, attachAdminOpsRoutes } from "./admin/ops.routes.js";
 import {
   attachAdminPaymentsListRoutes,
@@ -125,9 +128,11 @@ export function createAdminRoutes(
   // leak onto platform paths once this sub-app is merged into the parent router.
   const finance: AdminHono = new Hono();
   finance.use("/finance/*", requireFinanceAccess);
+  finance.use("/metrics/finance-issues", requireFinanceAccess);
   finance.use("/payments/:id/xero-sync", requireFinanceAccess);
   finance.use("/integrations/xero/*", requireFinanceAccess);
 
+  attachAdminFinanceIssueRoutes(finance, container);
   attachAdminFinanceRoutes(finance, container);
 
   // Mount finance first: its routes terminate the chain before platform's

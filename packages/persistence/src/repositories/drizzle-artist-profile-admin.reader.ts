@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
-import { artistProfile, lot, user } from "@auction/db/schema";
+import { artistProfile, bidIdentityDirectory, lot } from "@auction/db/schema";
 import type {
   AdminArtistListResult,
   AdminArtistStats,
@@ -69,11 +69,11 @@ export class DrizzleArtistProfileAdminReader implements IArtistProfileAdminReade
         ap: artistProfile,
         lotCount: lotCountExpr,
         aliasCount: aliasCountExpr,
-        ownerDisplayName: user.name,
-        ownerImage: user.image,
+        ownerDisplayName: bidIdentityDirectory.name,
+        ownerImage: bidIdentityDirectory.image,
       })
       .from(artistProfile)
-      .leftJoin(user, eq(artistProfile.ownerUserId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(artistProfile.ownerUserId, bidIdentityDirectory.subjectId))
       .where(where)
       .orderBy(...orderByClause(options.sort))
       .limit(limit)

@@ -1,8 +1,12 @@
 import { createDb } from "@auction/db";
-import { bid, legalEntity, legalEntityMember, lot, user } from "@auction/db/schema";
+import { bid, legalEntity, legalEntityMember, lot } from "@auction/db/schema";
 import { DrizzleBidRepository } from "@auction/persistence/repositories";
 import { count, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  deleteIdentityUserFixtures,
+  seedIdentityUserFixtures,
+} from "../testing/identity-user-fixtures.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
@@ -33,9 +37,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.markWinningBid (integration)", ()
       .where(
         sql`${legalEntity.id} IN (${sellerLeId}::uuid, ${buyer1LeId}::uuid, ${buyer2LeId}::uuid)`,
       );
-    await db
-      .delete(user)
-      .where(sql`${user.id} IN (${sellerUserId}, ${buyer1UserId}, ${buyer2UserId})`);
+    await deleteIdentityUserFixtures(db, [sellerUserId, buyer1UserId, buyer2UserId]);
   }
 
   beforeEach(async () => {
@@ -48,12 +50,11 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.markWinningBid (integration)", ()
 
   it("promotes a new winner without violating bid_one_winner_per_lot_uniq", async () => {
     const t = new Date();
-    await db.insert(user).values([
+    await seedIdentityUserFixtures(db, [
       {
         id: sellerUserId,
         name: "Seller",
         email: "p23_seller_u@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },
@@ -61,7 +62,6 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.markWinningBid (integration)", ()
         id: buyer1UserId,
         name: "Buyer 1",
         email: "p23_buyer1_u@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },
@@ -69,7 +69,6 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.markWinningBid (integration)", ()
         id: buyer2UserId,
         name: "Buyer 2",
         email: "p23_buyer2_u@integration.test",
-        emailVerified: true,
         createdAt: t,
         updatedAt: t,
       },
@@ -156,6 +155,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.markWinningBid (integration)", ()
         id: firstBidId,
         lotId,
         bidderId: buyer1UserId,
+        subjectId: buyer1UserId,
         buyerLegalEntityId: buyer1LeId,
         amount: "110.00",
         isWinning: true,
@@ -166,6 +166,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.markWinningBid (integration)", ()
         id: secondBidId,
         lotId,
         bidderId: buyer2UserId,
+        subjectId: buyer2UserId,
         buyerLegalEntityId: buyer2LeId,
         amount: "120.00",
         isWinning: false,

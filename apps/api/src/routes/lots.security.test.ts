@@ -10,7 +10,7 @@ import { createLotRoutes } from "./lots.js";
 
 const lotId = "11111111-1111-4111-8111-111111111111";
 const bidderId = "bidder-1";
-const SESSION_COOKIE = "better-auth.session_token=test-session-token-fixture";
+const RESOURCE_AUTHORIZATION = "Bearer test-lax-bid-api-token";
 
 function mount(user: { id: string; role: string; staffRole?: string } | null) {
   const app = new Hono();
@@ -84,7 +84,9 @@ function mount(user: { id: string; role: string; staffRole?: string } | null) {
     objectStorage: {},
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue(user),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue(user ? { ...user, scopes: ["bid.read", "bid.write"] } : null),
   };
   app.route("/lots", createLotRoutes(container, authenticator));
   return { app, lotServiceCreate, create: createMock };
@@ -104,7 +106,7 @@ describe("lot bid history privacy", () => {
 
   it("keeps bidder user id visible to the bidder", async () => {
     const res = await mount({ id: bidderId, role: "client" }).app.request(`/lots/${lotId}/bids`, {
-      headers: { cookie: SESSION_COOKIE },
+      headers: { authorization: RESOURCE_AUTHORIZATION },
     });
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
 
@@ -115,7 +117,7 @@ describe("lot bid history privacy", () => {
   it("keeps bidder user id visible to administrators", async () => {
     const res = await mount({ id: "admin-1", role: "staff", staffRole: "super_admin" }).app.request(
       `/lots/${lotId}/bids`,
-      { headers: { cookie: SESSION_COOKIE } },
+      { headers: { authorization: RESOURCE_AUTHORIZATION } },
     );
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
 

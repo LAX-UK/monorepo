@@ -10,24 +10,29 @@ domain (sales, lots, bids, payments). For platform/identity architecture see
 
 ```
 Browser / Next.js app (apps/web, port 3000)
-  ├─ REST/RPC JSON calls with Better Auth cookies
+  ├─ Opaque host-only Bid BFF session
+  ├─ REST/RPC JSON calls with exchanged lax-bid-api Bearer tokens
   │    └─ Hono API (apps/api, port 3001)
   │         ├─ PostgreSQL 16 via Drizzle ORM (api_app role)
   │         ├─ Redis cache, pub/sub, idempotency keys
   │         ├─ BullMQ lot-lifecycle queue (in-process today, target: apps/worker)
-  │         ├─ /api/auth/* via Better Auth (also served by apps/auth — D7 dual-stack)
-  │         └─ Inbound webhooks: Shopify, WordPress, Xero, Postmark
+  │         └─ Inbound webhooks: Xero, Stripe, Postmark, Brevo, Veriff
   ├─ Socket.IO client
   │    └─ WebSocket gateway (apps/ws, port 3002)
   │         └─ Redis PSUBSCRIBE: lot:*:events, sale:*:saleroom, sale:*:display, user:*:notifications
   └─ OIDC sign-in
        └─ Auth issuer (apps/auth, port 3003)
-            └─ /.well-known/openid-configuration, /.well-known/jwks.json, /api/auth/*
+            └─ discovery, JWKS, /api/auth/*, /ssf/*
+
+Custom Shop RP/BFF boundary (apps/shop-identity, port 3010)
+  ├─ Opaque host-only Shop session
+  ├─ OIDC client lax-shop-web
+  └─ Back-channel logout and SSF receivers
 
 Async work: apps/worker (port 3004, /health + /metrics only)
   ├─ BullMQ consumers: email, marketing-sync, webhook-events,
   │  validate-upload, image-cleanup, gc-pending-uploads
-  └─ domain_events polling runner (FOR UPDATE SKIP LOCKED) → Zoho/Xero projectors (stubs today)
+  └─ domain_events delivery runner → typed projectors (external writes off by default)
 ```
 
 ### Technology Stack
@@ -35,7 +40,7 @@ Async work: apps/worker (port 3004, /health + /metrics only)
 | Layer | Technology |
 |-------|------------|
 | Frontend | Next.js 15, React 19, Tailwind CSS v4 |
-| API | Hono on Node.js, Better Auth |
+| API | Hono on Node.js; Bearer resource-token verification |
 | Realtime | Socket.IO, Redis pub/sub |
 | Lifecycle jobs | BullMQ + Redis, plus API reconciliation interval |
 | Database | PostgreSQL 16 + Drizzle ORM |

@@ -1,30 +1,19 @@
+import { BID_SESSION_COOKIE_NAMES } from "@/lib/bff/session-cookie.constants";
 import type { NextResponse } from "next/server";
 
-/** Better Auth cookie names that may carry a stale session after server-side invalidation. */
-export const STALE_AUTH_COOKIE_NAMES = [
-  "better-auth.session_token",
-  "__Secure-better-auth.session_token",
-  "better-auth.session_data",
-  "__Secure-better-auth.session_data",
-  "better-auth.dont_remember",
-  "__Secure-better-auth.dont_remember",
-  "better-auth.two_factor",
-  "__Secure-better-auth.two_factor",
-] as const;
-
-export function authCookieDomain(): string | undefined {
-  const domain =
-    process.env.NEXT_PUBLIC_COOKIE_DOMAIN?.trim() || process.env.COOKIE_DOMAIN?.trim() || undefined;
-  return domain || undefined;
-}
+/** @deprecated use {@link BID_SESSION_COOKIE_NAMES} */
+export const STALE_AUTH_COOKIE_NAMES = BID_SESSION_COOKIE_NAMES;
 
 /** Expire stale Better Auth cookies in the browser (see middleware comment for domain/secure matching). */
 export function purgeStaleAuthCookies(
   response: NextResponse,
-  opts?: { nodeEnv?: string; cookieDomain?: string | undefined },
+  opts?: { nodeEnv?: string; allowHttpCookies?: string },
 ): void {
-  const domain = opts?.cookieDomain ?? authCookieDomain();
-  const secure = (opts?.nodeEnv ?? process.env.NODE_ENV) === "production";
+  const env = {
+    NODE_ENV: opts?.nodeEnv ?? process.env.NODE_ENV,
+    ALLOW_HTTP_COOKIES: opts?.allowHttpCookies ?? process.env.ALLOW_HTTP_COOKIES,
+  };
+  const secure = env.NODE_ENV === "production" && env.ALLOW_HTTP_COOKIES !== "true";
   for (const name of STALE_AUTH_COOKIE_NAMES) {
     response.cookies.set(name, "", {
       path: "/",
@@ -32,7 +21,6 @@ export function purgeStaleAuthCookies(
       maxAge: 0,
       sameSite: "lax",
       secure,
-      ...(domain ? { domain } : {}),
     });
   }
 }

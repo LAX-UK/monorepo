@@ -24,7 +24,6 @@ export function createUserMiscServices(
   const utility = createUserUtilityServices({
     env: input.env,
     db: input.db,
-    authDb: input.authDb,
     infra: input.infra,
     repos: input.repos,
     payments: input.payments,

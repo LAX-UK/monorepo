@@ -10,7 +10,7 @@ This file exists for two reasons:
 ## Where to look
 
 - **Trust boundaries diagram + canonical threat catalog:** [../architecture/07-security-model.md](../architecture/07-security-model.md).
-- **Architectural decisions that shape the threat model:** [../architecture/02-decisions.md](../architecture/02-decisions.md), particularly D2 (role split), D6 (HMAC verification), D9 (issuer URL), D10 (CompositeAuthenticator), D11 (social login).
+- **Architectural decisions that shape the threat model:** [../architecture/02-decisions.md](../architecture/02-decisions.md), particularly D2 (role split), D6 (provider verification), D9 (issuer URL), D14–D16 (resource tokens, host-only BFF sessions, logout/SSF), and D18 (subject type).
 - **Secrets inventory:** [./secrets-management.md](./secrets-management.md).
 - **DPA tracking with processors:** [./dpas.md](./dpas.md).
 - **Incident-response runbooks:** [../runbooks/jwt-key-leak.md](../runbooks/jwt-key-leak.md), [../runbooks/jwks-rotation.md](../runbooks/jwks-rotation.md).

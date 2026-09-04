@@ -122,7 +122,7 @@ export async function resolveProfilePhone(
   userId: string,
 ): Promise<Result<string, TelephoneBidBookingServiceError>> {
   const row = await deps.userPhoneReader.findByUserId(userId);
-  const phone = row?.phoneNumber?.trim() ?? row?.mobile?.trim();
+  const phone = row?.phoneNumber?.trim();
   if (!phone) {
     return telephoneBookingErr(
       "Add a mobile number to your profile before requesting a telephone line",

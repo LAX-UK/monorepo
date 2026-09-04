@@ -1,9 +1,42 @@
+import {
+  SOCKET_REVOCATION_CHANNEL_V1,
+  type SocketRevocationPayloadV1,
+  parseSocketRevocationPayloadV1,
+} from "@auction/identity-contracts";
 import { captureBackgroundError } from "@auction/observability";
 import { parseLotRealtimeRedisMessage } from "@auction/validators";
 import type { Redis } from "ioredis";
-import type { Server } from "socket.io";
+import type { Server, Socket } from "socket.io";
 
 const MAX_REDIS_MESSAGE_BYTES = 32 * 1024;
+
+function subjectRoom(subject: string): string {
+  return `identity:subject:${subject}`;
+}
+
+function sidRoom(sid: string): string {
+  return `identity:sid:${sid}`;
+}
+
+export async function bindSocketIdentity(
+  socket: Pick<Socket, "join">,
+  identity: { subject: string; sid?: string },
+): Promise<void> {
+  await socket.join([
+    subjectRoom(identity.subject),
+    ...(identity.sid ? [sidRoom(identity.sid)] : []),
+  ]);
+}
+
+export function disconnectRevokedSockets(io: Server, payload: SocketRevocationPayloadV1): void {
+  if (payload.sid) {
+    io.in(sidRoom(payload.sid)).disconnectSockets(true);
+    return;
+  }
+  if (payload.subject) {
+    io.in(subjectRoom(payload.subject)).disconnectSockets(true);
+  }
+}
 
 type ChannelRouter = {
   pattern: string;
@@ -94,13 +127,22 @@ const channelRouters: ChannelRouter[] = [
 
 /** Subscribes to Redis pub/sub channels published by the API and broadcasts JSON payloads to matching Socket.IO rooms. */
 export function bridgeRedisToSockets(io: Server, sub: Redis): void {
-  const patterns = channelRouters.map((router) => router.pattern);
+  const patterns = [
+    SOCKET_REVOCATION_CHANNEL_V1,
+    ...channelRouters.map((router) => router.pattern),
+  ];
   void sub.psubscribe(...patterns).catch((err: unknown) => {
     console.error("Redis psubscribe error", err);
     captureBackgroundError("ws-redis-bridge", err, { tags: { phase: "psubscribe" } });
   });
 
   sub.on("pmessage", (_pattern, channel, message) => {
+    if (channel === SOCKET_REVOCATION_CHANNEL_V1) {
+      const parsed = parseJsonMessage(message);
+      const revocation = parsed ? parseSocketRevocationPayloadV1(parsed) : null;
+      if (revocation) disconnectRevokedSockets(io, revocation);
+      return;
+    }
     for (const router of channelRouters) {
       const room = router.resolveRoom(channel);
       if (!room) continue;

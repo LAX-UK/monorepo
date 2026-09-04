@@ -1,14 +1,13 @@
 import type { Database } from "@auction/db";
-import { session, user, userStaffRoleEnum } from "@auction/db/schema";
-import { count, desc, eq, inArray, sql } from "drizzle-orm";
+import { bidIdentityDirectory, bidUserProfile, userStaffRoleEnum } from "@auction/db/schema";
+import { count, eq, inArray, sql } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
-  AdminActivityEntry,
   AdminUserDetail,
   AdminUserListFilter,
   AdminUserListResult,
   AdminUserListRow,
   AdminUserListSummary,
-  IAdminUserActivityReader,
   IAdminUserReader,
   IAdminUserRoleManager,
 } from "../interfaces/admin-user.repository.js";
@@ -25,13 +24,17 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
   async list(filter: AdminUserListFilter): Promise<AdminUserListResult> {
     const whereClause = buildAdminUserListWhere(filter);
 
-    const countQuery = this.db.select({ n: count() }).from(user);
+    const countQuery = this.db
+      .select({ n: count() })
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId));
     const [countRow] = whereClause ? await countQuery.where(whereClause) : await countQuery;
     const total = Number(countRow?.n ?? 0);
 
     const base = this.db
       .select(adminUserListSelect)
-      .from(user)
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .orderBy(buildAdminUserListOrderBy(filter.sort))
       .limit(filter.limit)
       .offset(filter.offset);
@@ -49,20 +52,21 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
     const staffRoleCountSelect = Object.fromEntries(
       userStaffRoleEnum.enumValues.map((role) => [
         `role_${role}`,
-        sql<number>`count(*) filter (where ${user.staffRole} = ${role})::int`,
+        sql<number>`count(*) filter (where ${bidUserProfile.staffRole} = ${role})::int`,
       ]),
     );
     const countBase = this.db
       .select({
         total: sql<number>`count(*)::int`,
-        active: sql<number>`count(*) filter (where ${user.suspendedAt} is null)::int`,
-        suspended: sql<number>`count(*) filter (where ${user.suspendedAt} is not null)::int`,
-        emailVerified: sql<number>`count(*) filter (where ${user.emailVerified} = true)::int`,
-        kycVerified: sql<number>`count(*) filter (where ${user.kycStatus} = 'approved')::int`,
-        legacyStaffRole: sql<number>`count(*) filter (where ${user.role} = 'staff' and ${user.staffRole} is null)::int`,
+        active: sql<number>`count(*) filter (where ${bidUserProfile.suspendedAt} is null)::int`,
+        suspended: sql<number>`count(*) filter (where ${bidUserProfile.suspendedAt} is not null)::int`,
+        emailVerified: sql<number>`count(*) filter (where ${bidIdentityDirectory.emailVerified} = true)::int`,
+        kycVerified: sql<number>`count(*) filter (where ${bidUserProfile.kycStatus} = 'approved')::int`,
+        legacyStaffRole: sql<number>`count(*) filter (where ${bidUserProfile.role} = 'staff' and ${bidUserProfile.staffRole} is null)::int`,
         ...staffRoleCountSelect,
       })
-      .from(user);
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId));
     const [row] = whereClause ? await countBase.where(whereClause) : await countBase;
     const byStaffRole: Record<string, number> = {};
     for (const role of userStaffRoleEnum.enumValues) {
@@ -84,18 +88,17 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
     const [row] = await this.db
       .select({
         ...adminUserListSelect,
-        suspendedReason: user.suspendedReason,
-        dateOfBirth: user.dateOfBirth,
-        emailStatusChangedAt: user.emailStatusChangedAt,
-        pendingNewEmail: user.pendingNewEmail,
-        emailChangeExpiresAt: user.emailChangeExpiresAt,
-        currentKycSessionId: user.currentKycSessionId,
-        amlHoldStatus: user.amlHoldStatus,
-        amlHoldReason: user.amlHoldReason,
-        amlHoldAt: user.amlHoldAt,
+        suspendedReason: bidUserProfile.suspendedReason,
+        dateOfBirth: bidUserProfile.dateOfBirth,
+        emailStatusChangedAt: bidUserProfile.emailStatusChangedAt,
+        currentKycSessionId: bidUserProfile.currentKycSessionId,
+        amlHoldStatus: bidUserProfile.amlHoldStatus,
+        amlHoldReason: bidUserProfile.amlHoldReason,
+        amlHoldAt: bidUserProfile.amlHoldAt,
       })
-      .from(user)
-      .where(eq(user.id, id))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, id))
       .limit(1);
     if (!row) return null;
     return {
@@ -103,8 +106,8 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
       suspendedReason: row.suspendedReason ?? null,
       dateOfBirth: row.dateOfBirth ?? null,
       emailStatusChangedAt: row.emailStatusChangedAt ?? null,
-      pendingNewEmail: row.pendingNewEmail ?? null,
-      emailChangeExpiresAt: row.emailChangeExpiresAt ?? null,
+      pendingNewEmail: null,
+      emailChangeExpiresAt: null,
       currentKycSessionId: row.currentKycSessionId ?? null,
       amlHoldStatus: row.amlHoldStatus ?? null,
       amlHoldReason: row.amlHoldReason ?? null,
@@ -114,7 +117,11 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
 
   async getByIds(ids: string[]): Promise<AdminUserListRow[]> {
     if (ids.length === 0) return [];
-    const rows = await this.db.select(adminUserListSelect).from(user).where(inArray(user.id, ids));
+    const rows = await this.db
+      .select(adminUserListSelect)
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(inArray(bidIdentityDirectory.subjectId, ids));
     return rows.map(mapAdminUserListRow);
   }
 }
@@ -124,48 +131,16 @@ export class DrizzleAdminUserRoleManager implements IAdminUserRoleManager {
 
   async setRoleAndStaff(userId: string, role: string, staffRole: string | null): Promise<void> {
     if (role === "client") {
-      await this.db
-        .update(user)
-        .set({ role: "client", staffRole: null, updatedAt: new Date() })
-        .where(eq(user.id, userId));
+      await writeBidUserProfile(this.db, userId, { role: "client", staffRole: null });
       return;
     }
     const value =
       staffRole === null || staffRole === ""
         ? null
         : (staffRole as (typeof userStaffRoleEnum.enumValues)[number]);
-    await this.db
-      .update(user)
-      .set({
-        role: "staff",
-        staffRole: value,
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
-  }
-}
-
-export class DrizzleAdminUserActivityReader implements IAdminUserActivityReader {
-  constructor(private readonly db: Database) {}
-
-  async getRecentSessions(userId: string, limit: number): Promise<AdminActivityEntry[]> {
-    const rows = await this.db
-      .select({
-        id: session.id,
-        createdAt: session.createdAt,
-        expiresAt: session.expiresAt,
-        ipAddress: session.ipAddress,
-      })
-      .from(session)
-      .where(eq(session.userId, userId))
-      .orderBy(desc(session.createdAt))
-      .limit(Math.min(100, Math.max(1, limit)));
-
-    return rows.map((r) => ({
-      id: r.id,
-      createdAt: r.createdAt,
-      expiresAt: r.expiresAt,
-      ipAddress: r.ipAddress ?? null,
-    }));
+    await writeBidUserProfile(this.db, userId, {
+      role: "staff",
+      staffRole: value,
+    });
   }
 }

@@ -36,6 +36,10 @@ export type AdminImpersonationRecordFailedEndResult =
   | { ok: true; alreadyEnded?: boolean }
   | { ok: false; status: 404 | 400; error: string };
 
+export type AdminUserDetailResponse = AdminUserDetail & {
+  securityStatusAvailable: boolean;
+};
+
 export interface IAdminImpersonationService {
   lookupForImpersonation(legalEntityId: string): Promise<AdminImpersonationLookupResult>;
   startImpersonation(input: {
@@ -63,7 +67,7 @@ export interface IAdminUserApplicationService {
     actorRole: string,
     actorStaffRole: string | null | undefined,
     id: string,
-  ): Promise<AdminUserDetail | null>;
+  ): Promise<AdminUserDetailResponse | null>;
   getByIds(
     actorRole: string,
     actorStaffRole: string | null | undefined,

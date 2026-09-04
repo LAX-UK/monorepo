@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
-import { kycWatchlistScreening, user } from "@auction/db/schema";
+import { bidUserProfile, kycWatchlistScreening } from "@auction/db/schema";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   IAmlHoldStore,
   IWatchlistScreeningReader,
@@ -272,27 +273,19 @@ export class DrizzleAmlHoldStore implements IAmlHoldStore {
     reason: AmlHoldReason,
     conn?: Database,
   ): Promise<void> {
-    await this.conn(conn)
-      .update(user)
-      .set({
-        amlHoldStatus: status,
-        amlHoldReason: reason,
-        amlHoldAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
+    await writeBidUserProfile(this.conn(conn), userId, {
+      amlHoldStatus: status,
+      amlHoldReason: reason,
+      amlHoldAt: new Date(),
+    });
   }
 
   async clearHold(userId: string, conn?: Database): Promise<void> {
-    await this.conn(conn)
-      .update(user)
-      .set({
-        amlHoldStatus: "none",
-        amlHoldReason: null,
-        amlHoldAt: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
+    await writeBidUserProfile(this.conn(conn), userId, {
+      amlHoldStatus: "none",
+      amlHoldReason: null,
+      amlHoldAt: null,
+    });
   }
 
   async getHold(
@@ -300,9 +293,9 @@ export class DrizzleAmlHoldStore implements IAmlHoldStore {
     conn?: Database,
   ): Promise<{ status: AmlHoldStatus; reason: AmlHoldReason | null } | null> {
     const rows = await this.conn(conn)
-      .select({ status: user.amlHoldStatus, reason: user.amlHoldReason })
-      .from(user)
-      .where(eq(user.id, userId))
+      .select({ status: bidUserProfile.amlHoldStatus, reason: bidUserProfile.amlHoldReason })
+      .from(bidUserProfile)
+      .where(eq(bidUserProfile.userId, userId))
       .limit(1);
     const row = rows[0];
     if (!row) return null;

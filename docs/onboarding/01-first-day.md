@@ -13,7 +13,7 @@ Ask the founders to grant the following before you sit down:
 - Cloudflare team access (read-only) so you can see DNS and WAF rules; admin is granted only on request.
 - Slack workspace and the on-call channel.
 
-You do not need direct access to Zoho EU, Xero, Shopify Partner, or the Apple/Google developer consoles on day one. Those are granted when you have a task that requires them.
+You do not need direct access to Zoho EU, Xero, or the Apple/Google developer consoles on day one. Those are granted when you have a task that requires them.
 
 ## Tools
 

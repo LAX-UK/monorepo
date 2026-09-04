@@ -1,6 +1,5 @@
 import { join } from "node:path";
-import { createJwksAdapter } from "@auction/auth";
-import type { Database, createDb } from "@auction/db";
+import type { Database } from "@auction/db";
 import {
   ConsoleEmailService,
   type IEmailService,
@@ -51,7 +50,6 @@ export type ContainerInfra = {
   queueOpts: (name: QueueName) => ReturnType<typeof createBullQueueOptions>;
   emailQueue: Queue<{ outboxId: string }>;
   emailService: IEmailService;
-  getPublicJwks: () => Promise<{ keys: unknown[] }>;
   objectStorage: IObjectStorage;
   stripeClientFactory: StripeClientFactory;
   stripeWebhookVerifier: StripeWebhookVerifier;
@@ -67,11 +65,7 @@ export type ContainerInfra = {
   webhookEventsProducer: WebhookEventsQueueProducer;
 };
 
-export function createInfra(
-  env: Env,
-  db: Database,
-  authDb: ReturnType<typeof createDb>,
-): ContainerInfra {
+export function createInfra(env: Env, db: Database): ContainerInfra {
   const redisFactory = createRedisConnectionFactory(env.REDIS_URL);
   const redisCache = redisFactory.getClient("cache");
   const redis = redisFactory.getClient("pubsub");
@@ -91,7 +85,6 @@ export function createInfra(
     env.EMAIL_PROVIDER === "postmark"
       ? new PostmarkEmailService(db, boundEmailQueue)
       : new ConsoleEmailService(db, boundEmailQueue);
-  const jwksAdapter = createJwksAdapter(authDb);
   const cache = new RedisCacheProvider(redisCache);
   const rateLimitStore = new RedisLuaRateLimitStore(redisCache);
   const uploadValidationQueue = new Queue(
@@ -152,7 +145,6 @@ export function createInfra(
     queueOpts,
     emailQueue,
     emailService,
-    getPublicJwks: jwksAdapter.getPublicJwks,
     objectStorage,
     stripeClientFactory,
     stripeWebhookVerifier,

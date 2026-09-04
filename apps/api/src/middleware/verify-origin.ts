@@ -23,12 +23,6 @@ export function createVerifyOriginMiddleware(webOrigins: string[], enabled: bool
       return;
     }
     const origin = c.req.header("origin") ?? c.req.header("referer");
-    const cookie = c.req.header("cookie") ?? "";
-    // Match the actual Better Auth session cookie names (with or without __Secure- prefix).
-    const hasSessionCookie = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/.test(cookie);
-    if (!origin && hasSessionCookie) {
-      return respondOriginBlocked(c);
-    }
     if (!origin) {
       await next();
       return;

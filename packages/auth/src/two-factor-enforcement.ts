@@ -52,11 +52,18 @@ export function extractNextFromCallbackUrl(callbackURL: string | null | undefine
   return next && isSafeMagicLinkNextPath(next) ? next : null;
 }
 
-/** `/login/two-factor` challenge URL on the web origin, with optional preserved `next`. */
-export function buildTwoFactorChallengeUrl(webOrigin: string, callbackURL?: string | null): string {
-  const base = `${webOrigin.replace(/\/$/, "")}/login/two-factor`;
+/** `/two-factor` challenge URL on the Identity issuer, with optional preserved `next`. */
+export function buildTwoFactorChallengeUrl(
+  authOrigin: string,
+  callbackURL?: string | null,
+): string {
+  const base = `${authOrigin.replace(/\/$/, "")}/two-factor`;
   const next = extractNextFromCallbackUrl(callbackURL);
-  return next ? `${base}?next=${encodeURIComponent(next)}` : base;
+  const params = new URLSearchParams();
+  if (next) params.set("next", next);
+  if (callbackURL) params.set("callbackURL", callbackURL);
+  const query = params.toString();
+  return query ? `${base}?${query}` : base;
 }
 
 /** Hands a 2FA user off to the TOTP challenge instead of keeping a single-factor session:
@@ -169,8 +176,8 @@ async function isTrustedDeviceForUser(ctx: AuthHookContext, userId: string): Pro
   return true;
 }
 
-export function buildTwoFactorEnforcementAfterHook(options: { webOrigin?: string | undefined }) {
-  const webOrigin = options.webOrigin ?? "https://lax.bid";
+export function buildTwoFactorEnforcementAfterHook(options: { authOrigin?: string | undefined }) {
+  const authOrigin = options.authOrigin ?? "https://auth.lax.bid";
 
   return {
     matcher: (context: { path?: string }) => !isTwoFactorExemptPath(context.path ?? ""),
@@ -185,7 +192,7 @@ export function buildTwoFactorEnforcementAfterHook(options: { webOrigin?: string
       await enforceTwoFactorOnNewSession({
         user,
         sessionToken: data.session?.token,
-        challengeUrl: buildTwoFactorChallengeUrl(webOrigin, callbackURL),
+        challengeUrl: buildTwoFactorChallengeUrl(authOrigin, callbackURL),
         isTrustedDevice: () =>
           user ? isTrustedDeviceForUser(ctx, user.id) : Promise.resolve(false),
         deleteSession: (token) => ctx.context.internalAdapter.deleteSession(token),
@@ -205,7 +212,7 @@ export function buildTwoFactorEnforcementAfterHook(options: { webOrigin?: string
  * the TOTP challenge, except the exempt paths above.
  */
 export function buildTwoFactorEnforcementPlugin(options: {
-  webOrigin?: string | undefined;
+  authOrigin?: string | undefined;
 }): BetterAuthPlugin {
   return {
     id: "two-factor-enforcement",

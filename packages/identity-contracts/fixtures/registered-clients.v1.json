@@ -1,0 +1,17 @@
+{
+  "clientIds": ["lax-bid-web", "lax-shop-web", "ws-mobile"],
+  "bidWeb": {
+    "allowedResources": ["lax-bid-api", "lax-ws"],
+    "allowedScopes": ["openid", "profile", "email", "offline_access", "bid.read", "bid.write"],
+    "backchannelLogoutUri": "https://lax.bid/api/auth/backchannel-logout"
+  },
+  "shopWeb": {
+    "allowedResources": ["lax-shop-api"],
+    "allowedScopes": ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"],
+    "backchannelLogoutUri": "https://shop.lax.art/api/auth/backchannel-logout"
+  },
+  "wsMobile": {
+    "allowedResources": ["lax-ws"],
+    "allowedScopes": ["openid", "profile", "email", "offline_access", "bid.read"]
+  }
+}

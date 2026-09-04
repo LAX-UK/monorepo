@@ -1,1 +1,5 @@
-export { registerSocketHandlers, type HandlerContext } from "./socket-handler-registry.js";
+export {
+  consumeSocketTicket,
+  registerSocketHandlers,
+  type HandlerContext,
+} from "./socket-handler-registry.js";

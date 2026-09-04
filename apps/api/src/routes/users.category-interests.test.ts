@@ -7,8 +7,14 @@ import { createUserRoutes } from "./users.js";
 
 const categoryId = "11111111-1111-4111-8111-111111111111";
 
+const defaultSessionUser = {
+  id: "u1",
+  role: "client" as const,
+  scopes: ["bid.read", "bid.write"] as const,
+};
+
 function createApp(input?: {
-  sessionUser?: { id: string; role: "client" } | null;
+  sessionUser?: { id: string; role: "client"; scopes?: readonly string[] } | null;
   repository?: {
     getForUser: ReturnType<typeof vi.fn>;
     replace: ReturnType<typeof vi.fn>;
@@ -44,7 +50,7 @@ function createApp(input?: {
   const container = {
     userRoutes: createTestUserRouteServices({
       categoryInterestsRepository: repository as never,
-      profileService: {
+      categoryInterestsEligibilityReader: {
         getProfile: vi.fn().mockResolvedValue(
           input && "profile" in input
             ? input.profile
@@ -62,9 +68,7 @@ function createApp(input?: {
   const authenticator: IAuthenticator = {
     getSessionUser: vi
       .fn()
-      .mockResolvedValue(
-        input && "sessionUser" in input ? input.sessionUser : { id: "u1", role: "client" },
-      ),
+      .mockResolvedValue(input && "sessionUser" in input ? input.sessionUser : defaultSessionUser),
   };
   const app = new Hono();
   app.route("/users", createUserRoutes(container, authenticator));
@@ -102,6 +106,15 @@ describe("GET /users/me/category-interests", () => {
     },
   ])("rejects an ineligible account before reading interests", async (profile) => {
     const { app, repository } = createApp({ profile });
+    const response = await app.request("/users/me/category-interests");
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "category_interests_not_eligible" });
+    expect(repository.getForUser).not.toHaveBeenCalled();
+  });
+
+  it("returns a controlled response when the Bid profile is missing", async () => {
+    const { app, repository } = createApp({ profile: null });
     const response = await app.request("/users/me/category-interests");
 
     expect(response.status).toBe(403);
@@ -164,6 +177,19 @@ describe("PUT /users/me/category-interests", () => {
     },
   ])("rejects an ineligible account before writing interests", async (profile) => {
     const { app, repository } = createApp({ profile });
+    const response = await app.request("/users/me/category-interests", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ categoryIds: [] }),
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "category_interests_not_eligible" });
+    expect(repository.replaceAndComplete).not.toHaveBeenCalled();
+  });
+
+  it("does not write interests when the Bid profile is missing", async () => {
+    const { app, repository } = createApp({ profile: null });
     const response = await app.request("/users/me/category-interests", {
       method: "PUT",
       headers: { "content-type": "application/json" },

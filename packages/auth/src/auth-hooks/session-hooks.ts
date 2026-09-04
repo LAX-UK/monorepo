@@ -1,5 +1,3 @@
-import { session as sessionTable } from "@auction/db/schema";
-import { count, eq } from "drizzle-orm";
 import { assertUserNotSuspendedForSession } from "../session-suspended-guard.js";
 import type { AuthHookDeps } from "./auth-hook-deps.js";
 
@@ -7,7 +5,7 @@ export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
   return {
     create: {
       before: async (sess: { userId: string }) => {
-        await assertUserNotSuspendedForSession(deps.db, sess.userId);
+        await assertUserNotSuspendedForSession(deps.ports.subjectStatusReader, sess.userId);
       },
       after: async (sess: {
         userId: string;
@@ -15,23 +13,12 @@ export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
         userAgent?: string | null | undefined;
       }) => {
         if (!deps.enableNewDeviceLoginEmail) return;
-        // Count all sessions for this user (the new one is already committed).
-        // If count === 1 this is the very first session — the user just registered.
-        // Don't send a "new device login" email in that case; they already receive
-        // a welcome / email-verification email and the duplicate is confusing.
-        const countResult = await deps.db
-          .select({ value: count() })
-          .from(sessionTable)
-          .where(eq(sessionTable.userId, sess.userId));
-        const sessionCount = countResult[0]?.value ?? 0;
+        const sessionCount = await deps.ports.sessionCountReader.countSessionsForUser(sess.userId);
         if (sessionCount <= 1) return;
-        const userRow = await deps.db.query.user.findFirst({
-          where: (u, { eq }) => eq(u.id, sess.userId),
-          columns: { email: true, name: true },
-        });
+        const userRow = await deps.ports.accountLinkReader.findUserEmailProfile(sess.userId);
         if (!userRow) return;
         const when = new Date(sess.createdAt);
-        deps.email
+        deps.ports.email
           ?.enqueue({
             template: "new-device-login",
             to: userRow.email,

@@ -16,13 +16,25 @@
       "types": "./dist/client.d.ts",
       "default": "./dist/client.js"
     },
-    "./permissions": {
-      "types": "./dist/permissions.d.ts",
-      "default": "./dist/permissions.js"
-    },
     "./magic-link-callback": {
       "types": "./dist/magic-link-callback.d.ts",
       "default": "./dist/magic-link-callback.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts.d.ts",
+      "default": "./dist/contracts.js"
+    },
+    "./timings": {
+      "types": "./dist/auth-timings.d.ts",
+      "default": "./dist/auth-timings.js"
+    },
+    "./token-verifier": {
+      "types": "./dist/middleware.d.ts",
+      "default": "./dist/middleware.js"
+    },
+    "./session-credential": {
+      "types": "./dist/session-credential.d.ts",
+      "default": "./dist/session-credential.js"
     }
   },
   "scripts": {
@@ -32,19 +44,15 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@auction/db": "workspace:*",
-    "@auction/email": "workspace:^",
-    "@auction/sms": "workspace:^",
-    "@auction/types": "workspace:*",
+    "@auction/identity-contracts": "workspace:^",
     "@better-auth/utils": "0.4.0",
     "better-auth": "^1.6.9",
-    "drizzle-orm": "^0.41.0",
     "jose": "^6.2.3",
-    "libphonenumber-js": "^1.12.9",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@auction/identity-db": "workspace:*",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   }

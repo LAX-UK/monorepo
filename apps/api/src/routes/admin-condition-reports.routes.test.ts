@@ -26,9 +26,12 @@ describe("admin condition report routes", () => {
     const getPage = vi.fn();
     const container = createConditionReportsContainer({ getPage } as never);
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -56,9 +59,12 @@ describe("admin condition report routes", () => {
     });
     const container = createConditionReportsContainer({ getPage } as never);
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -98,9 +104,12 @@ describe("admin condition report routes", () => {
     const fulfill = vi.fn().mockResolvedValue(ok(lot));
     const container = createConditionReportsContainer({ fulfill } as never);
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.write"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -130,9 +139,12 @@ describe("admin condition report routes", () => {
     const decline = vi.fn().mockResolvedValue(ok(undefined));
     const container = createConditionReportsContainer({ decline } as never);
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.write"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));

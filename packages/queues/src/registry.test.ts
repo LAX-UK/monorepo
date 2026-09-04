@@ -20,6 +20,7 @@ describe("QUEUE_REGISTRY", () => {
   it("marks email as hidden from Bull Board UI", () => {
     expect(QUEUE_REGISTRY.email.showInUi).toBe(false);
     expect(QUEUE_REGISTRY.email.allowUiRetries).toBe(false);
+    expect(QUEUE_REGISTRY.email.producers).toEqual(["api", "worker"]);
   });
 
   it("filters env-conditional queues", () => {

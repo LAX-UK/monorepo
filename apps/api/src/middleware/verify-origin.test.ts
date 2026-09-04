@@ -23,15 +23,12 @@ describe("verify-origin", () => {
     expect(res.status).toBe(200);
   });
 
-  it("returns 403 origin_blocked when session cookie present but Origin missing", async () => {
+  it("allows non-browser bearer-style requests without Origin", async () => {
     const res = await app(true).request("http://localhost/sales/s1", {
       method: "PATCH",
       headers: { Cookie: SESSION_COOKIE },
     });
-    expect(res.status).toBe(403);
-    const body = (await res.json()) as { code?: string; error?: string };
-    expect(body.code).toBe("origin_blocked");
-    expect(body.error).toBe("Forbidden");
+    expect(res.status).toBe(200);
   });
 
   it("returns 403 origin_blocked for foreign Origin", async () => {

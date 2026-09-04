@@ -1,6 +1,4 @@
 import type { Database } from "@auction/db";
-import type { IAuthCredentialReader } from "@auction/persistence/interfaces";
-import { DrizzleAuthCredentialReader } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { CompositeErrorClassifier } from "../infrastructure/composite-error.classifier.js";
 import { ConsoleErrorLogger } from "../infrastructure/console-error.logger.js";
@@ -32,14 +30,12 @@ export type ContainerUserUtilityServices = {
   emailUnsubscribeService: EmailUnsubscribeService;
   postmarkWebhookService: PostmarkWebhookService;
   adminPaymentListQueryService: AdminPaymentListQueryService;
-  authCredentialReader: IAuthCredentialReader;
   newsletterSignupService: NewsletterSignupService;
 };
 
 export type CreateUserUtilityServicesInput = {
   env: Env;
   db: Database;
-  authDb: Database;
   infra: ContainerInfra;
   repos: ContainerRepositories;
   payments: ContainerPaymentsServices;
@@ -48,7 +44,7 @@ export type CreateUserUtilityServicesInput = {
 export function createUserUtilityServices(
   input: CreateUserUtilityServicesInput,
 ): ContainerUserUtilityServices {
-  const { env, authDb, infra, repos, payments } = input;
+  const { env, infra, repos, payments } = input;
   const {
     redis,
     bullConnection,
@@ -133,7 +129,6 @@ export function createUserUtilityServices(
     emailSuppressionRepository,
     (token) => emailUnsubscribeService.applyToken(token),
   );
-  const authCredentialReader = new DrizzleAuthCredentialReader(authDb);
   const newsletterSignupService = new NewsletterSignupService(
     newsletterSignupRepository,
     marketingSyncQueue,
@@ -149,7 +144,6 @@ export function createUserUtilityServices(
     emailUnsubscribeService,
     postmarkWebhookService,
     adminPaymentListQueryService,
-    authCredentialReader,
     newsletterSignupService,
   };
 }

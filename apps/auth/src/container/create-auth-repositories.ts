@@ -1,13 +1,13 @@
-import type { Database } from "@auction/db";
-import type { IUserEmailVerifiedPublisher } from "@auction/persistence/interfaces";
-import { DrizzleUserEmailVerifiedPublisher } from "@auction/persistence/repositories";
+import type { IdentityEventPublisher } from "@auction/auth";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { createDrizzleIdentityEventPublisher } from "../infrastructure/drizzle-identity-event-publisher.js";
 
 export type AuthRepositories = {
-  userEmailVerifiedPublisher: IUserEmailVerifiedPublisher;
+  identityEventPublisher: IdentityEventPublisher;
 };
 
-export function createAuthRepositories(db: Database): AuthRepositories {
+export function createAuthRepositories(db: IdentityDatabase): AuthRepositories {
   return {
-    userEmailVerifiedPublisher: new DrizzleUserEmailVerifiedPublisher(db, "apps/auth"),
+    identityEventPublisher: createDrizzleIdentityEventPublisher(db),
   };
 }

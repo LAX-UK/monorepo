@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { category, user, userCategoryInterest } from "@auction/db/schema";
+import { bidUserProfile, category, userCategoryInterest } from "@auction/db/schema";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type {
   CategoryInterestsState,
@@ -17,12 +17,12 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
       .select({
         categoryId: userCategoryInterest.categoryId,
         archived: category.archived,
-        onboardingCompletedAt: user.categoryInterestsOnboardingCompletedAt,
+        onboardingCompletedAt: bidUserProfile.categoryInterestsOnboardingCompletedAt,
       })
-      .from(user)
-      .leftJoin(userCategoryInterest, eq(userCategoryInterest.userId, user.id))
+      .from(bidUserProfile)
+      .leftJoin(userCategoryInterest, eq(userCategoryInterest.userId, bidUserProfile.userId))
       .leftJoin(category, eq(category.id, userCategoryInterest.categoryId))
-      .where(eq(user.id, userId))
+      .where(eq(bidUserProfile.userId, userId))
       .orderBy(asc(userCategoryInterest.sortOrder), asc(userCategoryInterest.categoryId));
 
     if (rows.length === 0) {
@@ -43,9 +43,11 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
   ): Promise<ReplaceCategoryInterestsResult> {
     return this.db.transaction(async (tx) => {
       const [completionRow] = await tx
-        .select({ onboardingCompletedAt: user.categoryInterestsOnboardingCompletedAt })
-        .from(user)
-        .where(eq(user.id, userId))
+        .select({
+          onboardingCompletedAt: bidUserProfile.categoryInterestsOnboardingCompletedAt,
+        })
+        .from(bidUserProfile)
+        .where(eq(bidUserProfile.userId, userId))
         .for("key share");
       if (!completionRow) throw new Error("category interests user not found");
       const replaced = await this.replaceCategoryRows(tx, userId, categoryIds);
@@ -54,7 +56,7 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
         ok: true as const,
         state: {
           categoryIds: replaced.categoryIds,
-          onboardingCompletedAt: completionRow?.onboardingCompletedAt ?? null,
+          onboardingCompletedAt: completionRow.onboardingCompletedAt ?? null,
         },
       };
     });
@@ -65,26 +67,27 @@ export class DrizzleCategoryInterestsRepository implements ICategoryInterestsRep
     categoryIds: readonly string[],
   ): Promise<ReplaceCategoryInterestsResult> {
     return this.db.transaction(async (tx) => {
-      const [lockedUser] = await tx
-        .select({ id: user.id })
-        .from(user)
-        .where(eq(user.id, userId))
+      const [lockedProfile] = await tx
+        .select({ userId: bidUserProfile.userId })
+        .from(bidUserProfile)
+        .where(eq(bidUserProfile.userId, userId))
         .for("key share");
-      if (!lockedUser) throw new Error("category interests user not found");
+      if (!lockedProfile) throw new Error("category interests user not found");
 
       const replaced = await this.replaceCategoryRows(tx, userId, categoryIds);
       if (!replaced.ok) return replaced;
 
       const [completion] = await tx
-        .update(user)
+        .update(bidUserProfile)
         .set({
           categoryInterestsOnboardingCompletedAt: sql`
-            coalesce(${user.categoryInterestsOnboardingCompletedAt}, now())
+            coalesce(${bidUserProfile.categoryInterestsOnboardingCompletedAt}, now())
           `,
+          updatedAt: new Date(),
         })
-        .where(eq(user.id, userId))
+        .where(eq(bidUserProfile.userId, userId))
         .returning({
-          onboardingCompletedAt: user.categoryInterestsOnboardingCompletedAt,
+          onboardingCompletedAt: bidUserProfile.categoryInterestsOnboardingCompletedAt,
         });
       if (!completion) throw new Error("category interests completion user not found");
 

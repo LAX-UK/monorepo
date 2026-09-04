@@ -28,7 +28,6 @@ function mountRegister(overrides?: {
   );
   const container = {
     env,
-    authDb: {},
     userSuspensionChecker: { isSuspended: vi.fn(async () => false) },
     userRoutes,
   } as unknown as Container;

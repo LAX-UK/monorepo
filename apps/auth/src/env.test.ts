@@ -16,10 +16,16 @@ describe("auth app environment contract", () => {
       WEB_ORIGINS: "https://example.com,https://event.example.com",
       SSR_TRUSTED_ORIGINS: "https://internal.example.com",
       JWT_AUDIENCE: "example-api",
+      API_INTERNAL_BASE_URL: "https://api.internal.example.com",
+      IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS: "2500",
+      IDENTITY_SUBJECT_USAGE_TIMEOUT_MS: "1250",
     });
     expect(env.WEB_ORIGINS).toEqual(["https://example.com", "https://event.example.com"]);
     expect(env.SSR_TRUSTED_ORIGINS).toEqual(["https://internal.example.com"]);
     expect(env.JWT_AUDIENCE).toBe("example-api");
+    expect(env.API_INTERNAL_BASE_URL).toBe("https://api.internal.example.com");
+    expect(env.IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS).toBe(2500);
+    expect(env.IDENTITY_SUBJECT_USAGE_TIMEOUT_MS).toBe(1250);
   });
 
   it("rejects insecure production cookies and missing envelope encryption", () => {
@@ -29,7 +35,6 @@ describe("auth app environment contract", () => {
         NODE_ENV: "production",
         APP_ENV: "production",
         BETTER_AUTH_SECRET: "x".repeat(48),
-        API_PUBLIC_URL: "https://api.example.com",
         OIDC_ISSUER_URL: "https://auth.example.com",
         WEB_ORIGIN: "https://example.com",
         ALLOW_HTTP_COOKIES: "true",

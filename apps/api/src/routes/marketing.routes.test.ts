@@ -49,7 +49,11 @@ function setup(input?: {
   const authenticator: IAuthenticator = {
     getSessionUser: vi
       .fn()
-      .mockResolvedValue(input?.authenticated === false ? null : { id: "user-1", role: "client" }),
+      .mockResolvedValue(
+        input?.authenticated === false
+          ? null
+          : { id: "user-1", role: "client", scopes: ["bid.write"] },
+      ),
   };
   return {
     routes: createMarketingRoutes(container, authenticator),

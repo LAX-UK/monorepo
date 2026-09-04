@@ -1,11 +1,9 @@
-import type { Auth } from "@auction/auth/server";
 import type { Database } from "@auction/db";
 import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
-import { BetterAuthEmailSignupPersister } from "../infrastructure/better-auth-email-signup.persister.js";
-import { BetterAuthVerificationEmailResender } from "../infrastructure/better-auth-verification-email.resender.js";
-import { DrizzleExistingAccountReader } from "../infrastructure/drizzle-existing-account.reader.js";
-import { DrizzleRegistrationCompensator } from "../infrastructure/drizzle-registration.compensator.js";
+import { IdentityIssuerEmailSignupPersister } from "../infrastructure/identity-issuer-email-signup.persister.js";
+import { IdentityIssuerVerificationEmailResender } from "../infrastructure/identity-issuer-verification-email.resender.js";
+import { IdentityRegistrationCompensator } from "../infrastructure/identity-registration.compensator.js";
 import { NoOpWelcomeNotifier } from "../infrastructure/no-op-welcome.notifier.js";
 import { DrizzleUserProfilePersister } from "../infrastructure/user-profile.persister.js";
 import { ZodRegistrationValidator } from "../infrastructure/zod-registration.validator.js";
@@ -14,6 +12,12 @@ import { createSubmissionsLegalEntityContext } from "../middleware/require-legal
 import { AddressService } from "../services/address.service.js";
 import { AdminUserService } from "../services/admin-user.service.js";
 import { ArtistWatchlistService } from "../services/artist-watchlist.service.js";
+import type {
+  IIdentityIssuerClient,
+  IIdentityProfileClient,
+  IIdentitySecurityClient,
+  IIdentitySubjectClient,
+} from "../services/interfaces/identity-issuer-client.js";
 import { InvitationConsumptionService } from "../services/invitation-consumption.service.js";
 import { InvitationService } from "../services/invitation.service.js";
 import type { EnsurePersonalLegalEntityService } from "../services/legal-entity/ensure-personal-legal-entity.service.js";
@@ -21,7 +25,6 @@ import { PersonalLegalEntityResolver } from "../services/legal-entity/personal-l
 import { ProfileService } from "../services/profile.service.js";
 import { RegistrationService } from "../services/registration.service.js";
 import { SavedSearchService } from "../services/saved-search.service.js";
-import type { SessionRevocationService } from "../services/session-revocation.service.js";
 import { UserDashboardReadService } from "../services/user-dashboard-read.service.js";
 import { UserSecurityReadService } from "../services/user-security-read.service.js";
 import { UserService } from "../services/user.service.js";
@@ -54,9 +57,10 @@ export type ContainerUserProfileServices = {
 export type CreateUserProfileServicesInput = {
   env: Env;
   db: Database;
-  authDb: Database;
-  auth: Auth;
-  sessionRevocation: SessionRevocationService;
+  identityIssuer: IIdentityIssuerClient &
+    IIdentitySubjectClient &
+    IIdentityProfileClient &
+    IIdentitySecurityClient;
   ensurePersonalLegalEntityService: EnsurePersonalLegalEntityService;
   infra: ContainerInfra;
   repos: ContainerRepositories;
@@ -71,9 +75,7 @@ export function createUserProfileServices(
   const {
     env,
     db,
-    authDb,
-    auth,
-    sessionRevocation,
+    identityIssuer,
     ensurePersonalLegalEntityService,
     infra,
     repos,
@@ -99,7 +101,6 @@ export function createUserProfileServices(
     savedSearchRepository,
   } = repos;
   const {
-    domainEventSink,
     impersonationSessionService,
     impersonationAuditService,
     authAuditPublisher,
@@ -109,7 +110,7 @@ export function createUserProfileServices(
     complianceMedia;
   const { dashboardQueryService, saleService, artistProfileService } = catalog;
 
-  const userService = new UserService(userRepo, platform.transactionRunner, domainEventSink);
+  const userService = new UserService(userRepo, identityIssuer);
   const personalLegalEntityResolver = new PersonalLegalEntityResolver(
     legalEntityRepository,
     ensurePersonalLegalEntityService,
@@ -143,8 +144,26 @@ export function createUserProfileServices(
       return a ? { id: a.id } : null;
     },
   });
-  const profileService = new ProfileService(profileRepo, profileRepo, imageCleanupService);
-  const userSecurityReadService = new UserSecurityReadService(profileRepo);
+  const profileService = new ProfileService(
+    profileRepo,
+    {
+      updateProfile: async (userId, update) => {
+        if (update.name !== undefined || update.image !== undefined) {
+          await identityIssuer.updateSubjectProfile(userId, {
+            ...(update.name !== undefined ? { name: update.name } : {}),
+            ...(update.image !== undefined ? { image: update.image } : {}),
+          });
+        }
+        await profileRepo.updateProfile(userId, {
+          ...(update.mobile !== undefined ? { mobile: update.mobile } : {}),
+          ...(update.mobileCountry !== undefined ? { mobileCountry: update.mobileCountry } : {}),
+        });
+      },
+    },
+    imageCleanupService,
+    identityIssuer,
+  );
+  const userSecurityReadService = new UserSecurityReadService(identityIssuer);
   const addressService = new AddressService(addressRepo);
 
   const invitationService = new InvitationService(
@@ -157,18 +176,18 @@ export function createUserProfileServices(
 
   const registrationService = new RegistrationService(
     new ZodRegistrationValidator(),
-    new DrizzleExistingAccountReader(db),
-    new BetterAuthVerificationEmailResender(auth, env.WEB_ORIGIN),
-    new BetterAuthEmailSignupPersister(auth, env.WEB_ORIGIN),
+    identityIssuer,
+    new IdentityIssuerVerificationEmailResender(identityIssuer, env.WEB_ORIGIN),
+    new IdentityIssuerEmailSignupPersister(identityIssuer, env.WEB_ORIGIN),
     new DrizzleUserProfilePersister(db),
     new NoOpWelcomeNotifier(),
     invitationConsumptionService,
-    new DrizzleRegistrationCompensator(authDb),
+    new IdentityRegistrationCompensator(identityIssuer),
   );
 
   const orgModuleGate = createOrgModuleGate(env.WEB_ORIGIN);
 
-  const adminSuspender = new DrizzleAdminUserSuspender(db, sessionRevocation, {
+  const adminSuspender = new DrizzleAdminUserSuspender(db, {
     emailService,
     authAudit: authAuditPublisher,
     accountSuspendedSupportEmail: env.EMAIL_REPLY_TO?.trim() || "support@lax.bid",
@@ -181,6 +200,7 @@ export function createUserProfileServices(
     adminUserBidsReader,
     adminUserKycReader,
     cachedUserSuspensionChecker,
+    identityIssuer,
   );
 
   return {

@@ -1,10 +1,6 @@
 import pg from "pg";
 import { describe, expect, it } from "vitest";
-import {
-  AUTH_FULL_TABLES,
-  AUTH_INSERT_SELECT_TABLES,
-  AUTH_SELECT_TABLES,
-} from "./migrate-roles.js";
+import { AUTH_DENY_TABLES, AUTH_FULL_TABLES, AUTH_INSERT_SELECT_TABLES } from "./migrate-roles.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const AUTH_URL = process.env.DATABASE_URL_AUTH ?? process.env.AUTH_APP_DATABASE_URL;
@@ -64,22 +60,10 @@ describe.skipIf(!AUTH_URL)("auth_app role contract", () => {
     });
   });
 
-  it("can only read suppression tables", async () => {
+  it("cannot access product-owned tables", async () => {
     await withAuthClient(async (client) => {
-      for (const table of AUTH_SELECT_TABLES) {
-        const read = await client.query<{ allowed: boolean }>(
-          "select has_table_privilege(current_user, $1, 'SELECT') as allowed",
-          [`public.${table}`],
-        );
-        expect(read.rows[0]?.allowed, `${table}:SELECT`).toBe(true);
-        for (const privilege of [
-          "INSERT",
-          "UPDATE",
-          "DELETE",
-          "TRUNCATE",
-          "REFERENCES",
-          "TRIGGER",
-        ]) {
+      for (const table of AUTH_DENY_TABLES) {
+        for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
           const result = await client.query<{ allowed: boolean }>(
             "select has_table_privilege(current_user, $1, $2) as allowed",
             [`public.${table}`, privilege],
@@ -92,6 +76,17 @@ describe.skipIf(!AUTH_URL)("auth_app role contract", () => {
 });
 
 describe("auth_app role contract (static cutover gate)", () => {
+  it("keeps every product table used by Identity boundaries denied", () => {
+    expect(AUTH_DENY_TABLES).toEqual([
+      "email_outbox",
+      "email_suppression",
+      "external_accounts",
+      "bid_identity_directory",
+      "bid_user_profile",
+    ]);
+    expect(AUTH_INSERT_SELECT_TABLES).not.toContain("email_outbox");
+  });
+
   it("requires DATABASE_URL_AUTH in required CI jobs", () => {
     expect(
       process.env.CI === "true" && process.env.AUTH_ROLE_CONTRACT_REQUIRED === "true"

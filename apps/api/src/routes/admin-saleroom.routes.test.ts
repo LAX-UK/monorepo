@@ -30,9 +30,12 @@ describe("admin saleroom routes (DIP facade)", () => {
     const listOperationsRadar = vi.fn().mockResolvedValue(items);
     const container = createSaleroomContainer({ saleroom: { listOperationsRadar } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: "clerk-1", role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "clerk-1",
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -69,9 +72,12 @@ describe("admin saleroom routes (DIP facade)", () => {
     const listReadiness = vi.fn().mockResolvedValue(items);
     const container = createSaleroomContainer({ saleReadiness: { listReadiness } });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: "clerk-1", role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "clerk-1",
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -88,9 +94,12 @@ describe("admin saleroom routes (DIP facade)", () => {
     const getOperationsSnapshot = vi.fn().mockResolvedValue(snapshot);
     const container = createSaleroomContainer({ saleroom: { getOperationsSnapshot } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: "clerk-1", role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "clerk-1",
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -106,9 +115,12 @@ describe("admin saleroom routes (DIP facade)", () => {
     const goLive = vi.fn().mockResolvedValue(ok({ sessionId: "sess-1" }));
     const container = createSaleroomContainer({ saleroom: { goLive } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: "clerk-1", role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "clerk-1",
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.write"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));

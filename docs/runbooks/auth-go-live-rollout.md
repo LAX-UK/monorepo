@@ -1,33 +1,91 @@
 # Auth go-live rollout (phased)
 
 1. **DB**: Run collision report → apply `0057_auth_hardening` during a maintenance window.
-2. **JWKS + env**: Deploy `apps/auth` + `apps/api` with `pg_try_advisory_xact_lock` retirement; set `JWT_AUDIENCE`, `AUTH_DEK_KEY`, `WEB_ORIGINS`, production `superRefine` validations.
+2. **JWKS + env**: Deploy `apps/auth` with `pg_try_advisory_xact_lock` retirement and `AUTH_DEK_KEY`; deploy `apps/api` with its separate `CHECK_IN_TOKEN_SECRET`; set `JWT_AUDIENCE`, `WEB_ORIGINS`, and production `superRefine` validations.
 3. **Encryption**: Set `AUTH_DEK_KEY`, deploy auth stack with adapter + JWKS envelope writes; run `pnpm --filter @auction/db db:backfill-auth-at-rest` once against the auth DB.
 4. **Core + UX**: Deploy web redirect hardening, logout broadcast, reset-password URL strip, session revocation hooks.
 5. **Sessions UI + step-up + Turnstile**: Enable after API routes for `/me/sessions` and `POST /auth/reauth` ship.
 6. **CSP**: Start `Content-Security-Policy-Report-Only` on marketing surfaces; fix violations; switch to enforce (`CSP_ENFORCE=1` on `apps/web`). Before enforcing, in **Cloudflare** disable **Scrape Shield → Email Address Obfuscation** for each zone (`lax.bid`, `test.lax.bid`, etc.): Cloudflare injects `cdn-cgi/scripts/.../email-decode.min.js`, which violates `script-src 'strict-dynamic'` and cannot be allowlisted by host when enforcing.
-7. **GDPR purge**: Apply `0058_user_pii_purge.sql`; worker job `purge-soft-deleted-users` calls `SELECT user_pii_purge(id)` for users past deletion cooling-off.
+7. **GDPR purge**: Apply `0058_user_pii_purge.sql` and
+   `0156_repair_user_pii_purge.sql`; the daily `apps/auth` deletion schedule
+   calls `SELECT user_pii_purge(id)` in batches for subjects past the 30-day
+   cooling-off period.
+8. **Retired maintenance queues**: after deploying the auth-owned schedules,
+   remove the stale BullMQ repeatable entries `purge-expired-verifications-6h`
+   and `purge-soft-deleted-users-weekly` from Redis. The worker no longer
+   registers or consumes either queue.
+9. **Identity email boundary**: deploy the API
+   `/internal/identity/emails` endpoint first, with the same
+   `IDENTITY_MACHINE_CLIENT_ID` and `IDENTITY_MACHINE_CLIENT_SECRET` configured
+   on API and auth. Set auth's `API_INTERNAL_BASE_URL`, deploy the HTTP sender,
+   and verify a password-reset/verification intent reaches `email_outbox`.
+   Apply `0157_revoke_auth_email_pipeline` only after that verification; applying
+   it while an old auth instance is still serving removes its enqueue access.
+10. **Identity product-usage boundary**: deploy the API
+    `/internal/identity/subject-usage/:subjectId` endpoint first. Configure
+    auth's `IDENTITY_SUBJECT_USAGE_TIMEOUT_MS`, deploy the HTTP probe, and verify
+    an orphan-compensation request reaches the API and fails closed when the API
+    is unavailable. Apply `0158_revoke_auth_product_reads` only after that
+    verification; applying it while an old auth instance is serving removes its
+    direct `bid_user_profile` and `external_accounts` access.
+11. **Worker Identity directory boundary**: apply `0159` first to create and
+    backfill `bid_identity_directory`. Deploy auth with profile-image and
+    deletion-request lifecycle publishers, then deploy worker with the dedicated
+    directory projector and directory-backed readers. Soak until
+    `DATABASE_URL_OWNER=... node scripts/ci/verify-identity-directory-drift.mjs`
+    reports no missing, orphaned, mismatched, or pending rows within the configured
+    processing-lag threshold (`IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS`, default
+    60000). A default `pnpm db:migrate:prod` stops at `0159`. Only then apply
+    `0160_revoke_worker_user_reads` with
+    `PRODUCTION_MIGRATION_THROUGH=0160 pnpm db:migrate:prod`.
+    Applying `0160` while an old worker instance is serving breaks its direct
+    notification, marketing, finance, and media-cleanup reads from `user`.
+12. **Bid API Identity directory boundary**: deploy auth's machine-authenticated
+    subject security-status read first, then deploy API, persistence, exports,
+    and web admin filtering together. API contact/display reads must use
+    `bid_identity_directory`; MFA, phone-verification, pending email-change, and
+    verified-email ownership checks must use the live Identity boundary. Soak
+    until `verify-identity-directory-drift.mjs` remains clean, then apply
+    `0161_revoke_api_user_reads` with
+    `PRODUCTION_MIGRATION_THROUGH=0161 pnpm db:migrate:prod` (0160 must already
+    be applied). Applying `0161` while an old API instance is
+    serving breaks profile, admin, invitation, payment, saleroom, and export
+    reads that still join `user`. Normal role reconciliation preserves the
+    existing soak grant before `0161` but will not recreate it afterward.
+    Confirm the live API role can `SELECT` but cannot write
+    `bid_identity_directory`, and has no `user` privilege.
+    Directory-backed product records use left joins so Identity hard deletion
+    removes copied PII without deleting durable auction history.
+13. **Rollback coupling**: before rolling API code back across step 12, apply
+    `0161_rollback.sql` and set `PRODUCTION_MIGRATION_THROUGH=0160` (or unset it);
+    before rolling worker readers back across step 11, apply
+    `0160_rollback.sql` and unset `PRODUCTION_MIGRATION_THROUGH`. Roll
+    deployments and grants back as one change. A `db:roles` rerun is not a
+    substitute for either rollback migration. Leaving the promotion value set
+    re-applies the revoke on the next `pnpm db:migrate:prod`.
 
-See also: [key rotation](../security/key-rotation.md) and
-[JWKS rotation](./jwks-rotation.md).
+See also: [key rotation](../security/key-rotation.md),
+[JWKS rotation](./jwks-rotation.md), and
+[identity boundary cutover](./identity-boundary-cutover.md).
 
-## Standalone issuer decision gate
+## Canonical issuer and BFF gate
 
-Extraction readiness does **not** switch production traffic. Keep API-hosted
-`/api/auth/*` and `/.well-known/*` available until a separate cutover is approved.
-Approval requires all of the following:
+`apps/auth` is the sole issuer and API issuer routes are retired. Promotion of
+the host-only RP/BFF architecture requires all of the following:
 
-- API and `apps/auth` discovery documents and JWKS responses are byte-equivalent
-  against the same database, and auth responses retain the frozen no-store policy.
-- Sign-in, cookie round-trip, session refresh, password change, OIDC code exchange,
-  lifecycle events, and email verification pass with `NEXT_PUBLIC_AUTH_URL` pointed
-  at `apps/auth`.
+- Discovery/JWKS issuer, signing keys, and no-store policy are correct at
+  `auth.lax.bid`.
+- Bid and Shop code exchange, host-only product sessions, resource exchange,
+  password change, lifecycle events, and email verification pass.
 - `auth_app` role and schema/grant drift contracts pass after production migrations.
 - Dashboards, alerting, rollback routing, and a JWKS/key snapshot are confirmed.
-- No consumer still assumes the API base for issuer-hosted operations.
+- No API accepts a browser cookie or calls an Identity session endpoint to
+  authenticate a resource request.
+- Back-channel logout passes for Bid and Shop. SSF streams remain disabled until
+  verification and the dedicated operations runbook pass.
 
-Only after that evidence is reviewed may DNS/edge routing change. Database
-separation, API auth-route removal, and package publication are separate decisions.
+The cookie cutover causes one intentional logout. Do not claim production
+readiness until target-environment migration and E2E evidence is reviewed.
 
 ## Backfill: personal legal entity for users missing provisioning (LAX-PROD-AUTH-2)
 

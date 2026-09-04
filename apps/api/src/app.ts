@@ -1,9 +1,3 @@
-import {
-  buildTrustedAuthOrigins,
-  createAuthNoStoreMiddleware,
-  runSignInTurnstileGate,
-  stampLastPasswordAuthFromSignInResponse,
-} from "@auction/auth/server";
 import { lotNotDeleted } from "@auction/db";
 import { lot } from "@auction/db/schema";
 import { BROWSER_API_CUSTOM_HEADERS } from "@auction/http-headers";
@@ -14,16 +8,13 @@ import { cors } from "hono/cors";
 import { etag } from "hono/etag";
 import type { Container } from "./container.js";
 import type { Env } from "./env.js";
+import { createBidSsfReplayStore } from "./infrastructure/drizzle-bid-ssf-receiver.js";
 import { assertBullBoardProductionSafety, mountBullBoard } from "./lib/bull-board.js";
 import { createAppLogger } from "./lib/logger.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
+import { buildTrustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
-import {
-  createAuthRateLimitMiddleware,
-  createMagicLinkRateLimitMiddleware,
-  createRegisterRateLimitMiddleware,
-  createSendVerificationRateLimitMiddleware,
-} from "./middleware/auth-rate-limit.js";
+import { createRegisterRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
@@ -39,12 +30,14 @@ import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createArtistRoutes } from "./routes/artists.js";
-import { createAuthRoutes } from "./routes/auth.js";
+import { createProductAuthRoutes } from "./routes/auth.js";
 import { createBidRoutes } from "./routes/bids.js";
 import { createCategoryRoutes } from "./routes/categories.js";
 import { createEmailRoutes } from "./routes/email.js";
 import { createExportRoutes } from "./routes/exports.js";
 import { createInternalCronRoutes } from "./routes/internal-cron.js";
+import { createInternalIdentityEmailRoutes } from "./routes/internal-identity-email.routes.js";
+import { createInternalIdentitySubjectUsageRoutes } from "./routes/internal-identity-subject-usage.routes.js";
 import { createKycRoutes } from "./routes/kyc.js";
 import { createActingContextUserRoutes, createLegalEntityRoutes } from "./routes/legal-entities.js";
 import { createLegalEntityMemberRoutes } from "./routes/legal-entity-members.js";
@@ -62,6 +55,7 @@ import { createQrRoutes } from "./routes/qr.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
 import { createSaleroomDisplayRoutes } from "./routes/saleroom-display.js";
 import { createSaleRoutes } from "./routes/sales.js";
+import { createBidSsfEventsRoute } from "./routes/ssf-events.js";
 import { createStripeConnectRoutes } from "./routes/stripe-connect.js";
 import { createSubmissionDocumentRoutes } from "./routes/submission-documents.js";
 import { createSubmissionRoutes } from "./routes/submissions.js";
@@ -72,7 +66,6 @@ import { createVenueRoutes } from "./routes/venues.js";
 import { createWebhookRoutes } from "./routes/webhooks/index.js";
 import { createStripeWebhookRoutes } from "./routes/webhooks/stripe.js";
 import { createVeriffWebhookRoutes } from "./routes/webhooks/veriff.js";
-import { createWellKnownRoutes } from "./routes/well-known.js";
 import { createXeroWebhookRoutes } from "./routes/xero-webhook.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 
@@ -80,7 +73,7 @@ import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 export const BROWSER_CORS_ALLOW_HEADERS = BROWSER_API_CUSTOM_HEADERS;
 
 export function createApp(container: Container, env: Env, authenticator: IAuthenticator) {
-  const webOrigins = buildTrustedAuthOrigins({
+  const webOrigins = buildTrustedWebOrigins({
     webOrigin: env.WEB_ORIGIN,
     webOrigins: env.WEB_ORIGINS,
     additionalOrigins: env.SSR_TRUSTED_ORIGINS,
@@ -104,18 +97,20 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("*", createRequestIdMiddleware());
   app.use("*", createSecurityHeadersMiddleware());
   app.use("*", createMetricsMiddleware());
-  app.use("*", createMarketingConsentMiddleware());
-  app.use("*", createMarketingClientContextMiddleware());
-  app.use(
-    "/.well-known/*",
-    cors({
-      origin: "*",
-      allowHeaders: ["Content-Type", "Authorization"],
-      exposeHeaders: ["Content-Length"],
-      maxAge: 60,
+  app.route(
+    "/ssf/events",
+    createBidSsfEventsRoute({
+      replayStore: createBidSsfReplayStore(container.db),
+      issuer: env.OIDC_ISSUER_URL,
+      jwksUrl: `${(env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL).replace(
+        /\/+$/,
+        "",
+      )}/.well-known/jwks.json`,
+      publish: (channel, message) => container.redis.publish(channel, message),
     }),
   );
-  app.route("/.well-known", createWellKnownRoutes(container, env));
+  app.use("*", createMarketingConsentMiddleware());
+  app.use("*", createMarketingClientContextMiddleware());
   app.use(
     "*",
     cors({
@@ -128,8 +123,11 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   );
   app.use("*", createVerifyOriginMiddleware(webOrigins, env.VERIFY_ORIGIN));
 
-  app.use("/api/auth/*", createAuthNoStoreMiddleware());
-  app.use("/auth/*", createAuthNoStoreMiddleware());
+  app.use("/auth/*", async (c, next) => {
+    await next();
+    c.header("Cache-Control", "no-store");
+    c.header("Pragma", "no-cache");
+  });
 
   app.use("/lots/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/display/*", createRateLimitMiddleware(container.rateLimitStore));
@@ -163,10 +161,6 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/payouts/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/postmark", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/postmark/*", createRateLimitMiddleware(container.rateLimitStore));
-  app.use("/webhooks/shopify", createRateLimitMiddleware(container.rateLimitStore));
-  app.use("/webhooks/shopify/*", createRateLimitMiddleware(container.rateLimitStore));
-  app.use("/webhooks/wordpress", createRateLimitMiddleware(container.rateLimitStore));
-  app.use("/webhooks/wordpress/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/xero", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/xero/*", createRateLimitMiddleware(container.rateLimitStore));
 
@@ -205,23 +199,12 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     });
   });
 
-  app.use("/api/auth/*", createAuthRateLimitMiddleware(container.redis));
-  app.use("/api/auth/*", createMagicLinkRateLimitMiddleware(container.redis));
-  app.use("/api/auth/*", createSendVerificationRateLimitMiddleware(container.redis));
   app.use("/users/register", createRegisterRateLimitMiddleware(container.redis));
-  app.all("/api/auth/*", async (c) => {
-    return runSignInTurnstileGate({
-      incoming: c.req.raw,
-      redis: container.redis,
-      turnstileSecret: env.TURNSTILE_SECRET_KEY,
-      authHandler: (req: Request) => container.auth.handler(req),
-      onEmailPasswordSignInSuccess: (res: Response) =>
-        stampLastPasswordAuthFromSignInResponse(container.authDb, res),
-    });
-  });
 
   const routed = app
     .route("/internal/jobs", createInternalCronRoutes(container, env))
+    .route("/internal/identity", createInternalIdentityEmailRoutes(container, env))
+    .route("/internal/identity", createInternalIdentitySubjectUsageRoutes(container, env))
     .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
     .route("/lots", createLotRoutes(container, authenticator))
     .route("/lots", createLotDocumentRoutes(container, authenticator))
@@ -254,7 +237,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/webhooks/veriff", createVeriffWebhookRoutes(container))
     .route("/email", createEmailRoutes(container))
     .route("/newsletter", createNewsletterRoutes(container))
-    .route("/auth", createAuthRoutes(container))
+    .route("/auth", createProductAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
     .route("/venues", createVenueRoutes(container, authenticator))
     .route("/q", createQrRoutes(container))

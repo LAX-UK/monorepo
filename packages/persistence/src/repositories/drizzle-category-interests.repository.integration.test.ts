@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
-import { category, user, userCategoryInterest } from "@auction/db/schema";
+import { bidUserProfile, category, user, userCategoryInterest } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleCategoryInterestsRepository } from "./drizzle-category-interests.repository.js";
@@ -25,6 +25,11 @@ describe.skipIf(!HAS_DB)("DrizzleCategoryInterestsRepository (integration)", () 
           name: "Interests Buyer",
           email: `${userId}@integration.test`,
           emailVerified: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await tx.insert(bidUserProfile).values({
+          userId,
           createdAt: now,
           updatedAt: now,
         });

@@ -33,6 +33,8 @@ describe("POST /sales/:id/lots/:lotId/status", () => {
         id: "staff-1",
         role: "staff",
         staffRole: "auction_manager",
+
+        scopes: ["bid.write"],
       }),
     };
     app.route("/sales", createSaleRoutes(container, authenticator));

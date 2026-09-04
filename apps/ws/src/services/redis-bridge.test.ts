@@ -1,7 +1,76 @@
 import { EventEmitter } from "node:events";
 import type { Redis } from "ioredis";
+import type { Server, Socket } from "socket.io";
 import { describe, expect, it, vi } from "vitest";
-import { bridgeRedisToSockets } from "./redis-bridge.js";
+import {
+  bindSocketIdentity,
+  bridgeRedisToSockets,
+  disconnectRevokedSockets,
+} from "./redis-bridge.js";
+
+describe("Redis socket revocation bridge", () => {
+  it("binds authenticated sockets to subject and sid rooms", async () => {
+    const join = vi.fn().mockResolvedValue(undefined);
+    await bindSocketIdentity({ join } as unknown as Socket, {
+      subject: "user-1",
+      sid: "sid-1",
+    });
+    expect(join).toHaveBeenCalledWith(["identity:subject:user-1", "identity:sid:sid-1"]);
+  });
+
+  it("disconnects sid matches before the broader subject", () => {
+    const disconnectSockets = vi.fn();
+    const io = {
+      in: vi.fn(() => ({ disconnectSockets })),
+    } as unknown as Server;
+    disconnectRevokedSockets(io, {
+      version: 1,
+      subject: "user-1",
+      sid: "sid-1",
+      reason: "session_revoked",
+    });
+    expect(io.in).toHaveBeenCalledWith("identity:sid:sid-1");
+    expect(disconnectSockets).toHaveBeenCalledWith(true);
+  });
+
+  it("disconnects every subject socket for subject-only events and ignores invalid messages", () => {
+    let onMessage: ((pattern: string, channel: string, message: string) => void) | undefined;
+    const sub = {
+      psubscribe: vi.fn().mockResolvedValue(1),
+      on: vi.fn(
+        (_event: string, handler: (pattern: string, channel: string, message: string) => void) => {
+          onMessage = handler;
+        },
+      ),
+    } as unknown as Redis;
+    const disconnectSockets = vi.fn();
+    const io = {
+      in: vi.fn(() => ({ disconnectSockets })),
+    } as unknown as Server;
+    bridgeRedisToSockets(io, sub);
+
+    onMessage?.(
+      "identity:socket-revocation:v1",
+      "identity:socket-revocation:v1",
+      JSON.stringify({
+        version: 1,
+        subject: "user-1",
+        reason: "credential_change",
+      }),
+    );
+    expect(io.in).toHaveBeenCalledWith("identity:subject:user-1");
+    expect(disconnectSockets).toHaveBeenCalledWith(true);
+
+    vi.clearAllMocks();
+    onMessage?.(
+      "identity:socket-revocation:v1",
+      "identity:socket-revocation:v1",
+      JSON.stringify({ version: 2, subject: "user-1", reason: "credential_change" }),
+    );
+    onMessage?.("identity:socket-revocation:v1", "identity:socket-revocation:v1", "{");
+    expect(io.in).not.toHaveBeenCalled();
+  });
+});
 
 const LOT_EVENTS_PATTERN = "lot:*:events";
 

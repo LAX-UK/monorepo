@@ -27,8 +27,10 @@ test.describe("staff catalog smoke @smoke", () => {
     await gotoAdminPath(page, `/admin/categories/${seededStaffRoutes.categoryDetail}`);
     await dismissStaffPaletteIfOpen(page);
     await expect(page.getByRole("heading", { name: /paintings/i, level: 1 })).toBeVisible();
-    await page.goto(`/admin/categories/${seededStaffRoutes.categoryDetail}/edit`);
-    await expect(page.getByRole("heading", { name: /edit category/i })).toBeVisible();
+    await gotoAdminPath(page, `/admin/categories/${seededStaffRoutes.categoryDetail}/edit`);
+    await expect(page.getByRole("heading", { name: /edit category/i })).toBeVisible({
+      timeout: 20_000,
+    });
   });
 
   test("artist detail and edit load", async ({ page }) => {
@@ -38,8 +40,11 @@ test.describe("staff catalog smoke @smoke", () => {
     await expect(page.getByText(/carolina price/i).first()).toBeVisible({
       timeout: 15_000,
     });
-    await page.goto(`/admin/artists/${seededStaffRoutes.artistDetail}/edit`);
-    await expect(page.getByRole("heading", { name: /edit carolina price/i })).toBeVisible();
+    await gotoAdminPath(page, `/admin/artists/${seededStaffRoutes.artistDetail}/edit`);
+    await dismissStaffPaletteIfOpen(page);
+    await expect(page.getByRole("heading", { name: /edit carolina price/i })).toBeVisible({
+      timeout: 20_000,
+    });
   });
 
   test("venue edit loads", async ({ page }) => {

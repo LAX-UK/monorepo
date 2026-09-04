@@ -11,7 +11,7 @@ export const SALES_FILTER_SIDEBAR_GROUPS = [
 
 export type SalesFilterSidebarGroupValue = (typeof SALES_FILTER_SIDEBAR_GROUPS)[number]["value"];
 
-/** High-intent groups expanded by default on desktop (Shopify: collapse after first five). */
+/** High-intent groups expanded by default on desktop; collapse after the first five. */
 export const SALES_FILTER_SIDEBAR_DEFAULT_OPEN: SalesFilterSidebarGroupValue[] = [
   "delivery",
   "location",

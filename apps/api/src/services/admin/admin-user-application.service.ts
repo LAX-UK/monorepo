@@ -2,14 +2,16 @@ import type {
   AdminActivityEntry,
   AdminKycSession,
   AdminUserBidListResult,
-  AdminUserDetail,
   AdminUserListFilter,
   AdminUserListRow,
   IAdminUserBrowseReader,
 } from "@auction/persistence/interfaces";
 import { AuthzError } from "../../lib/errors.js";
 import type { AdminUserService } from "../admin-user.service.js";
-import type { IAdminUserApplicationService } from "../interfaces/admin-routes.js";
+import type {
+  AdminUserDetailResponse,
+  IAdminUserApplicationService,
+} from "../interfaces/admin-routes.js";
 import type { ProfileService } from "../profile.service.js";
 import type { AdminUserListPage } from "./admin-user-list-query.service.js";
 import { AdminUserListQueryService } from "./admin-user-list-query.service.js";
@@ -38,7 +40,7 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
     actorRole: string,
     actorStaffRole: string | null | undefined,
     id: string,
-  ): Promise<AdminUserDetail | null> {
+  ): Promise<AdminUserDetailResponse | null> {
     return this.adminUsers.getById(actorRole, actorStaffRole, id);
   }
 

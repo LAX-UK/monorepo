@@ -1,5 +1,7 @@
 /** Pure SSR origin derivation (no server-only; safe for unit tests). */
 
+import { isLoopbackHostHeader, normalizeLoopbackOrigin } from "@/lib/bff/loopback-host";
+
 export type HeaderBag = {
   get(name: string): string | null | undefined;
 };
@@ -10,16 +12,16 @@ export function deriveSsrOriginFromHeaders(
   envFallback = process.env.NEXT_PUBLIC_WEB_ORIGIN,
 ): string {
   const direct = bag.get("origin")?.trim();
-  if (direct) return direct;
+  if (direct) return normalizeLoopbackOrigin(direct, envFallback);
 
+  const hostHeader =
+    bag.get("x-forwarded-host")?.split(",")[0]?.trim() || bag.get("host")?.split(",")[0]?.trim();
   const proto =
     bag.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
-    (bag.get("host")?.includes("localhost") || bag.get("host")?.startsWith("127.")
-      ? "http"
-      : "https");
-  const host =
-    bag.get("x-forwarded-host")?.split(",")[0]?.trim() || bag.get("host")?.split(",")[0]?.trim();
-  if (host) return `${proto}://${host}`;
+    (hostHeader && isLoopbackHostHeader(hostHeader) ? "http" : "https");
+  if (hostHeader) {
+    return normalizeLoopbackOrigin(`${proto}://${hostHeader}`, envFallback);
+  }
 
   const fallback = envFallback?.replace(/\/$/, "");
   if (fallback) return fallback;

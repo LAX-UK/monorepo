@@ -193,12 +193,16 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
               Two-factor authentication
             </dt>
             <dd>
-              <AdminStatusBadge
-                domain="kyc"
-                status={user.twoFactorEnabled ? "approved" : "unverified"}
-                label={user.twoFactorEnabled ? "Enabled" : "Disabled"}
-                size="sm"
-              />
+              {user.securityStatusAvailable ? (
+                <AdminStatusBadge
+                  domain="kyc"
+                  status={user.twoFactorEnabled ? "approved" : "unverified"}
+                  label={user.twoFactorEnabled ? "Enabled" : "Disabled"}
+                  size="sm"
+                />
+              ) : (
+                <AdminStatusBadge domain="kyc" status="unknown" label="Unavailable" size="sm" />
+              )}
             </dd>
           </div>
         </dl>

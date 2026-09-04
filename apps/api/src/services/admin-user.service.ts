@@ -23,6 +23,10 @@ import {
   userHasAccessTo,
 } from "@auction/types";
 import { AuthzError } from "../lib/errors.js";
+import type {
+  IIdentitySecurityClient,
+  IdentitySecurityStatus,
+} from "./interfaces/identity-issuer-client.js";
 import type { IUserSuspensionCacheInvalidator } from "./interfaces/user-suspension.js";
 
 function assertAdminAccess(
@@ -46,6 +50,7 @@ export class AdminUserService {
     private readonly bids: IAdminUserBidsReader,
     private readonly kyc?: IAdminUserKycReader,
     private readonly suspensionCacheInvalidator?: IUserSuspensionCacheInvalidator,
+    private readonly identitySecurity?: IIdentitySecurityClient,
   ) {}
 
   list(actorRole: string, actorStaffRole: string | null | undefined, filter: AdminUserListFilter) {
@@ -57,9 +62,25 @@ export class AdminUserService {
     assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
   }
 
-  getById(actorRole: string, actorStaffRole: string | null | undefined, id: string) {
+  async getById(actorRole: string, actorStaffRole: string | null | undefined, id: string) {
     assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
-    return this.reader.getById(id);
+    const detail = await this.reader.getById(id);
+    if (!detail) return null;
+    if (!this.identitySecurity) return { ...detail, securityStatusAvailable: false };
+    let security: IdentitySecurityStatus | null;
+    try {
+      security = await this.identitySecurity.readSecurityStatus(id);
+    } catch {
+      return { ...detail, securityStatusAvailable: false };
+    }
+    if (!security) return { ...detail, securityStatusAvailable: false };
+    return {
+      ...detail,
+      securityStatusAvailable: true,
+      twoFactorEnabled: security.twoFactorEnabled,
+      pendingNewEmail: security.pendingNewEmail,
+      emailChangeExpiresAt: security.emailChangeExpiresAt,
+    };
   }
 
   getByIds(actorRole: string, actorStaffRole: string | null | undefined, ids: string[]) {

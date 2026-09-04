@@ -39,6 +39,7 @@ import type { WatchlistService } from "../services/watchlist.service.js";
 
 export type CreateUserRouteServicesInput = {
   env: Pick<Env, "WEB_ORIGIN" | "DISABLE_NEW_USER_REGISTRATION">;
+  categoryInterestsEligibilityReader: ICategoryInterestsEligibilityReader;
   categoryInterestsRepository: ICategoryInterestsRepository;
   registrationService: RegistrationService;
   marketingEventService: IMarketingEventService;
@@ -70,12 +71,10 @@ export type CreateUserRouteServicesInput = {
 };
 
 export function createUserRouteServices(input: CreateUserRouteServicesInput): UserRouteServices {
-  const categoryInterestsEligibilityReader: ICategoryInterestsEligibilityReader =
-    input.profileService;
   return {
     categoryInterestsHttp: new UserCategoryInterestsHttpApplicationService(
       input.categoryInterestsRepository,
-      categoryInterestsEligibilityReader,
+      input.categoryInterestsEligibilityReader,
     ),
     publicHttp: new UserPublicHttpApplicationService({
       env: input.env,

@@ -13,7 +13,7 @@ import {
   X_LEGAL_ENTITY_ID_HEADER,
 } from "@auction/http-headers";
 
-const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
+const base = "/api/bff";
 
 function withBrowserApiHeaders(init?: RequestInit): RequestInit {
   const headers = new Headers(init?.headers as HeadersInit | undefined);
@@ -50,7 +50,7 @@ export function browserApiBase(): string {
 
 let browserClient: RpcApp | null = null;
 
-/** Typed Hono RPC client with cookies sent on same-site API calls. */
+/** Typed Hono RPC client through the same-origin Bid BFF. */
 export function getBrowserHc(): RpcApp {
   if (!browserClient) {
     browserClient = hcAsRpcApp(base, {

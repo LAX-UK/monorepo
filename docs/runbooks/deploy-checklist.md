@@ -18,33 +18,56 @@ The procedure for shipping a change to production. Follow it top to bottom; do n
 - [ ] CI is green.
 - [ ] At least one approving review.
 - [ ] If migrations are included, the migration has been reviewed against [../architecture/03-data-model.md](../architecture/03-data-model.md) — adding a `NOT NULL` column without a default is a multi-step process, not a one-shot migration.
+- [ ] For OAuth/logout/SSF Identity hardening, forward order is `0146` →
+      `0147` → `0148` → `0149`; rollback order is `0149` → `0148` → `0147`
+      → `0146`.
 - [ ] If you touched anything in [../architecture/](../architecture/), the inline status block is still accurate.
 
 ## Before merging to test
 
 - [ ] No outstanding review threads.
 - [ ] CI green on the latest commit.
-- [ ] If your change requires a feature flag (better-auth provider creds, `LEGACY_WS_COOKIE_RELAY`, etc.), the env var is set in the test environment **before** the merge.
+- [ ] If your change requires a feature flag (provider credentials,
+      `IDENTITY_MERGE_ENABLED`, etc.), the env var is set in the test environment
+      **before** the merge.
 
 ## After test deploy
 
-- [ ] Test deploy completes and `/health/ready` is green on every app component (`apps/api`, `apps/auth`, `apps/ws`, `apps/worker`).
+- [ ] Test deploy completes and readiness is green on `apps/web`, `apps/api`,
+      `apps/auth`, `apps/ws`, `apps/worker`, and `apps/shop-identity`.
 - [ ] Smoke test the path you changed against `test.lax.bid`.
 - [ ] If you touched migrations, confirm the test migration job ran successfully — check its log in the DigitalOcean console.
 - [ ] If you touched OIDC or JWKS, fetch `/.well-known/openid-configuration` and `/.well-known/jwks.json` manually and confirm they still validate.
+- [ ] If the host-only cookie cutover is included, communicate and verify the
+      expected one-time logout; confirm no auth cookie has a `Domain` attribute.
+- [ ] Verify Bid/Shop callbacks, resource audiences/scopes, back-channel logout,
+      and receiver replay handling. Keep SSF streams and
+      `SSF_DELIVERY_ENABLED` disabled until verification passes.
 - [ ] Confirm test is not indexable: `curl -sI https://test.lax.bid/ | grep -i x-robots-tag` returns `noindex`; `curl -s https://test.lax.bid/robots.txt` has no `Sitemap:` line; `curl -s https://test.lax.bid/sitemap.xml` is empty.
 - [ ] Confirm prod SEO is unchanged: `curl -s https://lax.bid/robots.txt | grep -i sitemap` returns the sitemap URL; prod responses do not send `X-Robots-Tag: noindex`.
 - [ ] Soak the change for at least a few hours before promoting to production unless it's an outright bugfix.
 
 ## Promoting to production
 
-Production deploys are triggered by merging `main` → `release` (opens **App deploy prod**, which builds all six DOCR images and runs `doctl apps create-deployment`). For hotfixes, you can also dispatch **App deploy prod** manually or trigger from the DigitalOcean console.
+Production deploys are triggered by merging `main` → `release` (opens **App
+deploy prod**, which builds all eight DOCR images, including migration and
+ClamAV images, and runs `doctl apps create-deployment`). For hotfixes, you can
+also dispatch **App deploy prod** manually or trigger from the DigitalOcean
+console.
 
 - [ ] Merge `main` into `release` (or dispatch the prod deploy workflow).
-- [ ] Confirm **build-images** succeeded for all six components (including `web`).
+- [ ] Confirm **build-images** succeeded for all eight matrix components.
 - [ ] **Confirm the migration job runs first.** If it doesn't, abort.
+- [ ] Confirm `PRODUCTION_MIGRATION_THROUGH` is unset (default through `0159`)
+      unless you are deliberately promoting `0160` or `0161` after the
+      documented directory soak. A normal production migrate must not apply
+      those revokes. After a grant rollback, lower or clear the variable before
+      the next Job.
 - [ ] Watch `/health/ready` for every component during the rolling restart.
 - [ ] Smoke test the changed path against `lax.bid`.
+- [ ] Confirm required production Identity/BFF/client secrets are bound under
+      the exact schema names documented in
+      [06-deployment.md](../architecture/06-deployment.md).
 
 ## After production deploy
 

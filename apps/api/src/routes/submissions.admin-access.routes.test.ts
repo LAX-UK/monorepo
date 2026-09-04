@@ -19,7 +19,12 @@ function mount(staffRole: string | null) {
     }),
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "staff-1", role: "staff", staffRole }),
+    getSessionUser: vi.fn().mockResolvedValue({
+      id: "staff-1",
+      role: "staff",
+      staffRole,
+      scopes: ["bid.read", "bid.write"],
+    }),
   };
   app.route("/submissions", createSubmissionRoutes(container, authenticator));
   return { app, listSubmissions, startReview };

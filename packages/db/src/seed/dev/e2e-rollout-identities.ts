@@ -38,38 +38,38 @@ export async function seedE2eRolloutIdentities(): Promise<void> {
   const completedAt = new Date("2026-01-15T12:00:00.000Z");
 
   await db
-    .update(schema.user)
+    .update(schema.bidUserProfile)
     .set({
       categoryInterestsOnboardingCompletedAt: completedAt,
       updatedAt: stamp,
     })
-    .where(eq(schema.user.id, E2E_ROLLOUT_IDS.complete));
+    .where(eq(schema.bidUserProfile.userId, E2E_ROLLOUT_IDS.complete));
 
   await db
-    .update(schema.user)
+    .update(schema.bidUserProfile)
     .set({
       categoryInterestsOnboardingCompletedAt: completedAt,
       updatedAt: stamp,
     })
-    .where(eq(schema.user.id, E2E_ROLLOUT_IDS.unapproved));
+    .where(eq(schema.bidUserProfile.userId, E2E_ROLLOUT_IDS.unapproved));
 
   // Keep signupPersona unset so the admin clients snapshot stays "Not set".
   // Login resume still requires individual + FULL_BUYER_ONBOARDING_ENABLED.
   await db
-    .update(schema.user)
+    .update(schema.bidUserProfile)
     .set({
       categoryInterestsOnboardingCompletedAt: null,
       updatedAt: stamp,
     })
-    .where(eq(schema.user.id, E2E_ROLLOUT_IDS.incomplete));
+    .where(eq(schema.bidUserProfile.userId, E2E_ROLLOUT_IDS.incomplete));
 
   await db
-    .update(schema.user)
+    .update(schema.bidUserProfile)
     .set({
       categoryInterestsOnboardingCompletedAt: completedAt,
       updatedAt: stamp,
     })
-    .where(eq(schema.user.id, E2E_ROLLOUT_IDS.zeroLot));
+    .where(eq(schema.bidUserProfile.userId, E2E_ROLLOUT_IDS.zeroLot));
 
   await db
     .insert(schema.userCategoryInterest)

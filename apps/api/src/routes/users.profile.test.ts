@@ -33,7 +33,10 @@ function baseProfile(over: Partial<ProfileMeRow> = {}): ProfileMeRow {
   };
 }
 
-function appWithGetProfile(row: ProfileMeRow | null, opts?: { suspended?: boolean }) {
+function appWithGetProfile(
+  row: (ProfileMeRow & { securityStatusAvailable?: boolean }) | null,
+  opts?: { suspended?: boolean },
+) {
   const profileService = {
     getProfile: vi.fn().mockResolvedValue(row),
     updateProfile: vi.fn().mockResolvedValue(undefined),
@@ -63,20 +66,34 @@ function appWithGetProfile(row: ProfileMeRow | null, opts?: { suspended?: boolea
   const app = new Hono();
   const container = {
     env: {},
-    authDb: {},
     userSuspensionChecker: {
       isSuspended: vi.fn().mockResolvedValue(opts?.suspended ?? false),
     },
     userRoutes,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read", "bid.write"] }),
   };
   app.route("/users", createUserRoutes(container, authenticator));
   return { app, profileService };
 }
 
 describe("GET /users/me", () => {
+  it.each([true, false])("includes Identity security availability %s", async (available) => {
+    const { app } = appWithGetProfile({
+      ...baseProfile({ twoFactorEnabled: false }),
+      securityStatusAvailable: available,
+    });
+    const response = await app.request("/users/me");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      data: { securityStatusAvailable: boolean };
+    };
+    expect(body.data.securityStatusAvailable).toBe(available);
+  });
+
   it("includes twoFactorEnabled false", async () => {
     const { app } = appWithGetProfile(baseProfile({ twoFactorEnabled: false }));
     const res = await app.request("/users/me");
@@ -142,12 +159,13 @@ describe("PATCH /users/me/profile", () => {
     const app = new Hono();
     const container = {
       env: {},
-      authDb: {},
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       userRoutes,
     } as unknown as Container;
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read", "bid.write"] }),
     };
     app.route("/users", createUserRoutes(container, authenticator));
     return app;

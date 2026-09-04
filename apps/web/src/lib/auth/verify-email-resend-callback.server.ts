@@ -21,5 +21,6 @@ export async function buildVerifyEmailResendCallbackUrl(
   if (invite) {
     params.set("invite", invite);
   }
-  return `${origin}/verify-email?${params.toString()}`;
+  const verifiedPath = `/verify-email?${params.toString()}`;
+  return `${origin}/api/auth/login?next=${encodeURIComponent(verifiedPath)}`;
 }

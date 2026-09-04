@@ -22,6 +22,10 @@ export function createDb(connectionString: string): Database {
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
   });
+  return createDbFromPool(pool);
+}
+
+export function createDbFromPool(pool: pg.Pool): Database {
   return drizzle(pool, { schema });
 }
 

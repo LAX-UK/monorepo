@@ -32,7 +32,7 @@ export function AdminEditableTitle({
       <EditableCell
         value={value}
         onSave={onSave}
-        ariaLabel="Title"
+        ariaLabel={value}
         disabled={!editable}
         className={cn(isStandaloneHeading && "font-headline text-2xl font-semibold sm:text-3xl")}
         inputClassName={cn(isStandaloneHeading && "font-headline text-xl sm:text-2xl")}

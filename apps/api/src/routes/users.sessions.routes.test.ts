@@ -6,30 +6,22 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createTestUserRouteServicesInput } from "../testing/create-test-user-route-services.js";
 import { createUserRoutes } from "./users.js";
 
-const FAKE_COOKIE = "better-auth.session_token=test-session-token-fixture";
+const API_AUTHORIZATION = "Bearer test-lax-bid-api-token";
 
-function makeAuthDbForSessions(opts: {
+function makeIdentityStepUpClient(opts: {
   lastPasswordAuthAt: Date | null;
   hasCredential: boolean;
 }) {
-  let limitCall = 0;
   return {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          limit: vi.fn(async () => {
-            limitCall += 1;
-            if (limitCall === 1) return [{ lastPasswordAuthAt: opts.lastPasswordAuthAt }];
-            return opts.hasCredential ? [{ id: "cred-fixture" }] : [];
-          }),
-        })),
-      })),
+    stepUpStatus: vi.fn(async () => ({
+      lastPasswordAuthAt: opts.lastPasswordAuthAt,
+      hasCredential: opts.hasCredential,
     })),
   };
 }
 
 function sessionsTestApp(opts: {
-  authDb: ReturnType<typeof makeAuthDbForSessions>;
+  identityIssuer: ReturnType<typeof makeIdentityStepUpClient>;
   listForUser: ReturnType<typeof vi.fn>;
   deleteSessionForUser: ReturnType<typeof vi.fn>;
   getSessionIdForCookieToken?: ReturnType<typeof vi.fn>;
@@ -49,12 +41,19 @@ function sessionsTestApp(opts: {
   );
   const container = {
     env: {},
-    authDb: opts.authDb,
+    identityIssuer: opts.identityIssuer,
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     userRoutes,
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", staffRole: null }),
+    getSessionUser: vi.fn().mockResolvedValue({
+      id: "u1",
+      role: "client",
+      staffRole: null,
+      identitySessionId: "identity-session-1",
+
+      scopes: ["bid.write"],
+    }),
   };
   const app = new Hono();
   app.route("/users", createUserRoutes(container, authenticator));
@@ -63,7 +62,10 @@ function sessionsTestApp(opts: {
 
 describe("DELETE /users/me/sessions/:sessionId", () => {
   it("allows OAuth-only user (no credential) to revoke another session", async () => {
-    const authDb = makeAuthDbForSessions({ lastPasswordAuthAt: null, hasCredential: false });
+    const identityIssuer = makeIdentityStepUpClient({
+      lastPasswordAuthAt: null,
+      hasCredential: false,
+    });
     const otherId = "other-session-id";
     const listForUser = vi.fn().mockResolvedValue([
       {
@@ -87,14 +89,14 @@ describe("DELETE /users/me/sessions/:sessionId", () => {
     ]);
     const deleteSessionForUser = vi.fn().mockResolvedValue(true);
     const { app } = sessionsTestApp({
-      authDb,
+      identityIssuer,
       listForUser,
       deleteSessionForUser,
     });
 
     const res = await app.request(`/users/me/sessions/${otherId}`, {
       method: "DELETE",
-      headers: { cookie: FAKE_COOKIE },
+      headers: { authorization: API_AUTHORIZATION },
     });
 
     expect(res.status).toBe(204);
@@ -103,14 +105,17 @@ describe("DELETE /users/me/sessions/:sessionId", () => {
 
   it("returns recent_auth_required for password user without fresh proof", async () => {
     const stale = new Date(Date.now() - 20 * 60 * 1000);
-    const authDb = makeAuthDbForSessions({ lastPasswordAuthAt: stale, hasCredential: true });
+    const identityIssuer = makeIdentityStepUpClient({
+      lastPasswordAuthAt: stale,
+      hasCredential: true,
+    });
     const listForUser = vi.fn();
     const deleteSessionForUser = vi.fn();
-    const { app } = sessionsTestApp({ authDb, listForUser, deleteSessionForUser });
+    const { app } = sessionsTestApp({ identityIssuer, listForUser, deleteSessionForUser });
 
     const res = await app.request("/users/me/sessions/other-session-id", {
       method: "DELETE",
-      headers: { cookie: FAKE_COOKIE },
+      headers: { authorization: API_AUTHORIZATION },
     });
 
     expect(res.status).toBe(403);
@@ -122,14 +127,17 @@ describe("DELETE /users/me/sessions/:sessionId", () => {
 
 describe("POST /users/me/sessions/revoke-all", () => {
   it("allows OAuth-only user to revoke all others", async () => {
-    const authDb = makeAuthDbForSessions({ lastPasswordAuthAt: null, hasCredential: false });
+    const identityIssuer = makeIdentityStepUpClient({
+      lastPasswordAuthAt: null,
+      hasCredential: false,
+    });
     const listForUser = vi.fn();
     const deleteSessionForUser = vi.fn();
     const getSessionIdForCookieToken = vi.fn().mockResolvedValue("current-sess");
     const revokeAllForUserExcept = vi.fn().mockResolvedValue(undefined);
 
     const { app } = sessionsTestApp({
-      authDb,
+      identityIssuer,
       listForUser,
       deleteSessionForUser,
       getSessionIdForCookieToken,
@@ -138,25 +146,35 @@ describe("POST /users/me/sessions/revoke-all", () => {
 
     const res = await app.request("/users/me/sessions/revoke-all", {
       method: "POST",
-      headers: { cookie: FAKE_COOKIE },
+      headers: { authorization: API_AUTHORIZATION },
     });
 
     expect(res.status).toBe(200);
-    expect(revokeAllForUserExcept).toHaveBeenCalledWith("u1", "current-sess");
+    expect(revokeAllForUserExcept).toHaveBeenCalledWith("u1", "identity-session-1");
   });
 });
 
 describe("POST /users/me/delete step-up", () => {
   it("still returns credential_required for OAuth-only users", async () => {
-    const authDb = makeAuthDbForSessions({ lastPasswordAuthAt: null, hasCredential: false });
+    const identityIssuer = makeIdentityStepUpClient({
+      lastPasswordAuthAt: null,
+      hasCredential: false,
+    });
     const container = {
       env: {},
-      authDb,
+      identityIssuer,
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
       userRoutes: createUserRouteServices(createTestUserRouteServicesInput()),
     } as unknown as Container;
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", staffRole: null }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "u1",
+        role: "client",
+        staffRole: null,
+        identitySessionId: "identity-session-1",
+
+        scopes: ["bid.write"],
+      }),
     };
     const app = new Hono();
     app.route("/users", createUserRoutes(container, authenticator));
@@ -164,7 +182,7 @@ describe("POST /users/me/delete step-up", () => {
     const res = await app.request("/users/me/delete", {
       method: "POST",
       headers: {
-        cookie: FAKE_COOKIE,
+        authorization: API_AUTHORIZATION,
         "content-type": "application/json",
       },
       body: JSON.stringify({ confirmation: "DELETE MY ACCOUNT" }),

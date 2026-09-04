@@ -76,6 +76,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -100,6 +102,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "catalogue_manager",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -124,6 +128,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -148,6 +154,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -176,6 +184,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -215,6 +225,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -254,6 +266,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -293,6 +307,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -330,6 +346,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -359,6 +377,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -389,6 +409,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -412,6 +434,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -466,6 +490,8 @@ describe("admin dashboard metrics routes", () => {
         id: staffUserId,
         role: "staff",
         staffRole: "super_admin",
+
+        scopes: ["bid.read"],
       }),
     };
 
@@ -489,9 +515,12 @@ describe("admin dashboard metrics routes", () => {
     const listWorkItems = vi.fn();
     const container = createDashboardMetricsContainer({}, {}, {}, {}, { listWorkItems });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: "client-1", role: "client", staffRole: null }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "client-1",
+        role: "client",
+        staffRole: null,
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -534,6 +563,8 @@ describe("admin dashboard metrics routes", () => {
         id: "catalogue-1",
         role: "staff",
         staffRole: "catalogue_manager",
+
+        scopes: ["bid.read"],
       }),
     };
     const app = new Hono();

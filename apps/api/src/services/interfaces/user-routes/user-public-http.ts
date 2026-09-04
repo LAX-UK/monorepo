@@ -11,6 +11,7 @@ export interface IUserPublicHttpApplicationService {
     webOrigin: string;
     registrationDisabled: boolean;
     marketingContext: WebsiteEventContext;
+    headers?: Headers;
   }): Promise<UserHttpJson>;
 
   listPublicArtists(input: { limit: number; offset: number }): Promise<UserHttpJson>;

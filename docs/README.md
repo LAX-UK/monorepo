@@ -10,11 +10,12 @@ Documentation lives alongside code on purpose. Every change to the system that h
 
 Reference material — the system as it is, not as it was planned. Read these top to bottom on your first week.
 
-- [Overview](./architecture/01-overview.md) — what the system does, what each of the five apps owns, what's deliberately not in scope
-- [Decisions](./architecture/02-decisions.md) — the eleven architectural decisions (D1–D11) with alternatives considered and rationale
+- [Overview](./architecture/01-overview.md) — what the system does and what each deployable owns
+- [Decisions](./architecture/02-decisions.md) — the numbered decision history, including superseded and retired decisions
 - [Data model](./architecture/03-data-model.md) — every table, every relationship, every constraint that matters
 - [Domain events](./architecture/04-domain-events.md) — how the outbox pattern works and why we have it
-- [Identity flow](./architecture/05-identity-flow.md) — what happens when a user signs in across three domains
+- [Identity flow](./architecture/05-identity-flow.md) — Identity and product RP/BFF flows
+- [LAX Identity boundary](./architecture/09-lax-identity-boundary.md) — global Identity vs product profiles (D13)
 - [Deployment](./architecture/06-deployment.md) — how the system is laid out on DigitalOcean, what runs where
 - [Security model](./architecture/07-security-model.md) — trust boundaries, threat model, secrets handling
 
@@ -37,6 +38,9 @@ Operational procedures for things that go wrong or need to happen on a schedule.
 - [State recovery](./runbooks/state-recovery.md) — restoring a previous Terraform state version from Spaces
 - [On-call](./runbooks/on-call.md) — alert routing, escalation, and when to wake someone up
 - [Bootstrap](./runbooks/bootstrap.md) — one-line pointer to the authoritative `infra/terraform/BOOTSTRAP.md`
+- [Onboard a LAX product](./runbooks/onboard-lax-platform.md) — confidential client, BFF, resource, logout, and SSF checklist
+- [SSF stream operations](./runbooks/ssf-stream-operations.md) — verify, enable, monitor, replay, rotate, and disable streams
+- [Back-channel logout triage](./runbooks/backchannel-logout-triage.md) — diagnose issuer delivery and receiver invalidation
 
 ## Onboarding
 
@@ -55,7 +59,7 @@ For new engineers. Read in order, do the exercises, do not skip the first PR wal
 - [Key rotation](./security/key-rotation.md) — JWKS rotation math (30-minute retirement window) referenced from D2 and the rotation runbook
 - [Data deletion](./security/data-deletion.md) — GDPR Article 17 procedure referenced from the deletion-request runbook
 - [Social login setup](./security/social-login-setup.md) — Google + Apple Sign-In configuration including Apple client-secret JWT generation
-- [Data Processing Agreements](./security/dpas.md) — tracking sheet for processor agreements (Zoho, Shopify, Xero, DigitalOcean, Cloudflare, Postmark)
+- [Data Processing Agreements](./security/dpas.md) — tracking sheet for processor agreements (Zoho, Xero, DigitalOcean, Cloudflare, Postmark)
 
 ## Design
 
@@ -69,8 +73,6 @@ For new engineers. Read in order, do the exercises, do not skip the first PR wal
 
 How each external system talks to TheAlx and what to configure on the external side.
 
-- [WordPress](./integrations/wordpress.md) — OpenID Connect Generic plugin setup on lax.art
-- [Shopify](./integrations/shopify.md) — non-Plus webhook subscriptions including mandatory GDPR webhooks
 - [Zoho](./integrations/zoho.md) — api-console.zoho.eu setup, scopes, refresh-token persistence
 - [Email](./integrations/email.md) — Postmark transactional/notification + Zoho Campaigns one-way newsletter push, sender domain setup, suppression and unsubscribe semantics
 - [Marketing contacts (Brevo)](./integrations/marketing-contacts.md) — interim registered-user sync to Brevo for lifecycle campaigns (`news.lax.bid`), webhook opt-outs
@@ -96,7 +98,8 @@ repository-wide SOLID, scalability, test-pyramid, and release-evidence contract
 enforcement scripts. Domain-specific documents remain the source of truth for
 detailed boundaries.
 
-Architectural decisions are referenced by their D-number (D1, D2, ..., D11). When you see "per D8" in a doc or runbook, that means "the decision recorded in [02-decisions.md](./architecture/02-decisions.md) section D8." Decisions never change in place — when we revise one, we add a new D-number with a "supersedes Dn" header. The original stays so we have history.
+Architectural decisions are referenced by D-number. Superseded or retired
+entries remain as history and link to the current decision.
 
 Risks are referenced by R-number (R1–R5). Implementation revisions made during planning are referenced by F-number (F1–F10) and M-number (M1–M2). Entry-gate decisions are G1–G4. These numbers never change.
 

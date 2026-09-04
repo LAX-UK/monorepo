@@ -1,18 +1,14 @@
-import type { Database } from "@auction/db";
-import { user, verification } from "@auction/db/schema";
-import type { IEmailService } from "@auction/email";
-import type { IPhoneVerificationService } from "@auction/sms";
-import { InvalidPhoneNumberError, PhoneVerificationRateLimitedError } from "@auction/sms";
+import type { BetterAuthOptions } from "better-auth";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { phoneNumber } from "better-auth/plugins";
-import { eq, lt } from "drizzle-orm";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
-
-function resolveCountryFromE164(phoneE164: string): string | null {
-  const parsed = parsePhoneNumberFromString(phoneE164);
-  return parsed?.country ?? null;
-}
+import {
+  InvalidPhoneNumberError,
+  PhoneVerificationRateLimitedError,
+} from "./phone-number-errors.js";
+import type { EmailSender } from "./ports/email-sender.js";
+import type { PhoneNumberStore } from "./ports/phone-number-store.js";
+import type { SmsSender } from "./ports/sms-sender.js";
 
 function extractClientIp(headers: Headers | undefined): string | undefined {
   if (!headers) return undefined;
@@ -24,33 +20,12 @@ function extractClientIp(headers: Headers | undefined): string | undefined {
   return headers.get("x-real-ip")?.trim() ?? undefined;
 }
 
-async function syncLegacyMobileFields(
-  db: Database,
-  userId: string,
-  phoneE164: string,
-): Promise<void> {
-  const country = resolveCountryFromE164(phoneE164);
-  await db
-    .update(user)
-    .set({
-      mobile: phoneE164,
-      ...(country ? { mobileCountry: country } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(user.id, userId));
-}
-
-async function purgeExpiredVerificationRows(db: Database): Promise<void> {
-  const now = new Date();
-  await db.delete(verification).where(lt(verification.expiresAt, now));
-}
-
 export function buildPhoneNumberPlugin(options: {
-  db: Database;
-  phoneVerification?: IPhoneVerificationService | undefined;
-  email?: IEmailService | undefined;
+  phoneNumberStore: PhoneNumberStore;
+  phoneVerification?: SmsSender | undefined;
+  email?: EmailSender | undefined;
 }): ReturnType<typeof phoneNumber> {
-  const { db, phoneVerification, email } = options;
+  const { phoneNumberStore, phoneVerification, email } = options;
 
   return phoneNumber({
     requireVerification: true,
@@ -63,7 +38,7 @@ export function buildPhoneNumberPlugin(options: {
       const ipAddress = extractClientIp(ctx?.request?.headers);
       try {
         await phoneVerification.sendOtp(phoneE164, { ipAddress });
-        await purgeExpiredVerificationRows(db);
+        await phoneNumberStore.purgeExpiredVerifications();
       } catch (error) {
         if (error instanceof InvalidPhoneNumberError) {
           throw new APIError("BAD_REQUEST", { message: "Invalid phone number" });
@@ -105,15 +80,6 @@ export function buildPhoneNumberPlugin(options: {
       }
     },
     callbackOnVerification: async ({ phoneNumber: phoneE164, user: authUser }) => {
-      try {
-        await syncLegacyMobileFields(db, authUser.id, phoneE164);
-      } catch (err) {
-        console.error("[auth.phoneNumber] syncLegacyMobileFields failed", {
-          userId: authUser.id,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-
       email
         ?.enqueue({
           template: "new-device-login",
@@ -149,7 +115,7 @@ export function buildPhoneNumberRateLimitPlugin(): BetterAuthPlugin {
   } satisfies BetterAuthPlugin;
 }
 
-export function buildPhoneNumberGuardPlugin(db: Database): BetterAuthPlugin {
+export function buildPhoneNumberGuardPlugin(phoneNumberStore: PhoneNumberStore): BetterAuthPlugin {
   return {
     id: "phone-number-guard",
     hooks: {
@@ -157,7 +123,7 @@ export function buildPhoneNumberGuardPlugin(db: Database): BetterAuthPlugin {
         {
           matcher: (ctx) => ctx.path === "/phone-number/verify",
           handler: createAuthMiddleware(async (ctx) => {
-            await purgeExpiredVerificationRows(db);
+            await phoneNumberStore.purgeExpiredVerifications();
             return { context: ctx };
           }),
         },
@@ -166,26 +132,4 @@ export function buildPhoneNumberGuardPlugin(db: Database): BetterAuthPlugin {
   } satisfies BetterAuthPlugin;
 }
 
-export async function resetPhoneVerifiedIfNumberChanged(
-  db: Database,
-  userId: string,
-  previousPhone: string | null | undefined,
-  nextPhone: string | null | undefined,
-): Promise<void> {
-  const prev = previousPhone?.trim() ?? null;
-  const next = nextPhone?.trim() ?? null;
-  if (prev === next) return;
-  if (next === null) {
-    // Phone cleared: reset verified flag and clear legacy display fields.
-    await db
-      .update(user)
-      .set({ phoneNumberVerified: false, mobile: null, mobileCountry: null, updatedAt: new Date() })
-      .where(eq(user.id, userId));
-  } else {
-    // Phone changed to a different number: reset verified flag.
-    await db
-      .update(user)
-      .set({ phoneNumberVerified: false, updatedAt: new Date() })
-      .where(eq(user.id, userId));
-  }
-}
+export type AuthDatabase = NonNullable<BetterAuthOptions["database"]>;

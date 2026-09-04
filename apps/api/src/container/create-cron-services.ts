@@ -29,7 +29,6 @@ export type ContainerCronServices = {
 export type CreateCronServicesInput = {
   env: Env;
   db: Database;
-  authDb: Database;
   infra: ContainerInfra;
   repos: ContainerRepositories;
   platform: ContainerPlatformServices;
@@ -43,7 +42,6 @@ export type CreateCronServicesInput = {
 export function createCronServices(input: CreateCronServicesInput): ContainerCronServices {
   const {
     env,
-    authDb,
     infra,
     repos,
     platform,
@@ -105,7 +103,6 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
   );
 
   const hygieneCronService = new HygieneCronService(
-    authDb,
     catalog.itemSubmissionAdminApi,
     complianceMedia.amlService,
     biddingSaleroom.displayPairingService,

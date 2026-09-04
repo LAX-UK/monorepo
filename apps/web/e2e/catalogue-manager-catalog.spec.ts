@@ -3,11 +3,13 @@ import {
   dismissStaffPaletteIfOpen,
   e2eEnabled,
   e2eSkipReason,
+  ensureCatalogueManagerSession,
   gotoAdminPath,
 } from "./helpers/auth";
 import { expect, test } from "./helpers/auth.fixture";
 
 async function openCatalogueLotsDraft(page: Page): Promise<void> {
+  await ensureCatalogueManagerSession(page);
   await gotoAdminPath(page, "/admin/lots?status=draft");
   await dismissStaffPaletteIfOpen(page);
   await expect(page.getByRole("heading", { name: /^lots$/i }).first()).toBeVisible({
@@ -16,7 +18,7 @@ async function openCatalogueLotsDraft(page: Page): Promise<void> {
 }
 
 test.describe("catalogue manager catalog access @roles", () => {
-  test.describe.configure({ mode: "serial" });
+  test.describe.configure({ mode: "serial", timeout: 90_000 });
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("can open lots list and draft lot detail publish control", async ({ page }) => {

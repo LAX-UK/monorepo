@@ -30,6 +30,7 @@ import type {
 } from "../../interfaces/source-of-funds-review-projector.repository.js";
 import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
 import type { Db, ProjectorDbConnection } from "../../interfaces/worker-db.types.js";
+import type { ShopIdentityProjectionService } from "../../services/shop-identity-projection.service.js";
 
 export type { Db, ProjectorDbConnection };
 
@@ -68,6 +69,7 @@ export type ProjectorRunContext = {
   enqueueMarketingContactSync?:
     | ((data: { userId: string; reason: string; eventId: number }) => Promise<void>)
     | undefined;
+  shopIdentityProjection?: ShopIdentityProjectionService | undefined;
 };
 
 export interface Projector {

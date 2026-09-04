@@ -44,8 +44,16 @@ export {
   looseDomainEventPayloadV1,
   sourceOfFundsRequiredPayloadSchemaV1,
   sourceOfFundsReviewedPayloadSchemaV1,
+  userDeletionCancelledPayloadSchemaV1,
+  userDeletionRequestedPayloadSchemaV1,
   userEmailVerifiedPayloadSchemaV1,
-  userLinkedExternalPayloadSchemaV1,
+  userCredentialChangedPayloadSchemaV1,
+  userIdentityDeletedPayloadSchemaV1,
+  userIdentityDisabledPayloadSchemaV1,
+  userIdentityEnabledPayloadSchemaV1,
+  userIdentityMergedPayloadSchemaV1,
+  userSessionRevokedPayloadSchemaV1,
+  userProfileUpdatedPayloadSchemaV1,
   userRegisteredPayloadSchemaV1,
 } from "./payload-schemas.js";
 export { parseDomainEventPayload, type ParseDomainEventPayloadResult } from "./validate.js";

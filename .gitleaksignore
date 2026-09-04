@@ -2,7 +2,11 @@
 # Updated after history rewrite — prefer .gitleaks.toml allowlists for new FPs.
 375784de4352853a5f125d68802ccb473d21f523:apps/api/src/routes/auth-email-change.routes.test.ts:generic-api-key:6
 257d8241aa4d7e71fb354f87d7296686dc473ee0:apps/web/src/lib/data/http/newsletter-subscribe.server.test.ts:generic-api-key:24
+257d8241aa4d7e71fb354f87d7296686dc473ee0:apps/web/src/lib/data/http/email-unsubscribe.server.test.ts:generic-api-key:29
+257d8241aa4d7e71fb354f87d7296686dc473ee0:apps/web/src/app/api/display/[...path]/route.test.ts:generic-api-key:44
 a458b28276851535706b3f8bfd5c2f5c180b0d1d:infra/terraform/ephemeral/prod/main.tf:generic-api-key:220
 a458b28276851535706b3f8bfd5c2f5c180b0d1d:infra/terraform/ephemeral/prod/main.tf:generic-api-key:306
 69f8ce3855b1a6f570fb798aa7544ef83e8856aa:docs/runbooks/xero-stripe-payment-setup.md:curl-auth-user:47
 31c68cde86789fcddc109a33364e2a658b80d8b1:.github/workflows/e2e-pr.yml:generic-api-key:61
+621d600652cbd4ca0209508728ef57cd96acc5a9:apps/web/src/lib/bff/public-origin-url.server.test.ts:generic-api-key:23
+621d600652cbd4ca0209508728ef57cd96acc5a9:apps/web/src/lib/bff/public-origin-url.server.test.ts:generic-api-key:36

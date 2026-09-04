@@ -5,8 +5,9 @@ import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client
 import { Server } from "socket.io";
 import { createWsContainer } from "./container.js";
 import { loadWsEnv } from "./env.js";
-import { registerSocketHandlers } from "./handlers/register-handlers.js";
-import { bridgeRedisToSockets } from "./services/redis-bridge.js";
+import { consumeSocketTicket, registerSocketHandlers } from "./handlers/register-handlers.js";
+import { verifyBidApiPrivilegeToken, verifyWsResourceToken } from "./resource-authenticator.js";
+import { bindSocketIdentity, bridgeRedisToSockets } from "./services/redis-bridge.js";
 
 const env = loadWsEnv();
 if (env.SENTRY_DSN_WS) {
@@ -95,17 +96,83 @@ const io = new Server(httpServer, {
   cors: {
     origin: env.CORS_ORIGIN,
     methods: ["GET", "POST"],
-    credentials: true,
+    credentials: false,
   },
 });
 
 bridgeRedisToSockets(io, container.redisSub);
+
+io.use(async (socket, next) => {
+  const result = await consumeSocketTicket(socket, container.redis);
+  if (result === "invalid") {
+    next(new Error("invalid_ws_ticket"));
+    return;
+  }
+  if (result === "anonymous") {
+    const authToken =
+      typeof socket.handshake.auth?.token === "string"
+        ? socket.handshake.auth.token
+        : typeof socket.handshake.headers.authorization === "string" &&
+            socket.handshake.headers.authorization.startsWith("Bearer ")
+          ? socket.handshake.headers.authorization.slice("Bearer ".length)
+          : undefined;
+    if (authToken) {
+      const internalIssuer = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
+      const jwksUrl = `${internalIssuer.replace(/\/+$/, "")}/.well-known/jwks.json`;
+      const principal = await verifyWsResourceToken({
+        token: authToken,
+        issuer: env.OIDC_ISSUER_URL,
+        jwksUrl,
+      });
+      if (!principal) {
+        next(new Error("invalid_ws_resource_token"));
+        return;
+      }
+      socket.data.ticketUser = {
+        id: principal.subject,
+        ...(principal.sid ? { sid: principal.sid } : {}),
+        role: principal.role ?? "client",
+        ...(principal.staffRole ? { staff_role: principal.staffRole } : {}),
+      };
+      socket.data.authSubject = principal.subject;
+      socket.data.authSid = principal.sid;
+      const apiToken =
+        typeof socket.handshake.auth?.apiToken === "string"
+          ? socket.handshake.auth.apiToken
+          : undefined;
+      if (apiToken) {
+        const apiPrincipal = await verifyBidApiPrivilegeToken({
+          token: apiToken,
+          issuer: env.OIDC_ISSUER_URL,
+          jwksUrl,
+        });
+        if (
+          !apiPrincipal ||
+          apiPrincipal.subject !== principal.subject ||
+          (principal.sid && apiPrincipal.sid && apiPrincipal.sid !== principal.sid)
+        ) {
+          next(new Error("invalid_ws_privilege_token"));
+          return;
+        }
+        socket.data.privilegeToken = apiToken;
+      }
+    }
+  }
+  if (typeof socket.data.authSubject === "string") {
+    await bindSocketIdentity(socket, {
+      subject: socket.data.authSubject,
+      ...(typeof socket.data.authSid === "string" ? { sid: socket.data.authSid } : {}),
+    });
+  }
+  next();
+});
 
 io.on("connection", (socket) => {
   socketConnections.inc();
   registerSocketHandlers(socket, {
     io,
     env,
+    ticketStore: container.redis,
     recordLatencyProbeAckSeconds: (seconds) => {
       latencyProbeAckSeconds.observe(seconds);
     },

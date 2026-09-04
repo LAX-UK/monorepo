@@ -74,6 +74,11 @@ export {
 } from "./export-types.js";
 
 export { LotError } from "./lot.error.js";
+export {
+  activeIdentitySubject,
+  normalizeIdentityEmail,
+  normalizedIdentityEmailEquals,
+} from "./bid-identity-directory-query.js";
 export type {
   DomainEventConnection,
   DomainEventInput,

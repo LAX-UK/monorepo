@@ -26,17 +26,19 @@ export class UserSecurityHttpApplicationService implements IUserSecurityHttpAppl
     sessionTokenFromCookie: string | null;
   }): Promise<UserHttpJson> {
     try {
-      const rows = await this.deps.sessionRevocation.listForUser(input.userId);
-      const currentToken = input.sessionTokenFromCookie;
+      const rows = await this.deps.sessionRevocation.listForUser(
+        input.userId,
+        input.sessionTokenFromCookie ?? undefined,
+      );
       const data = rows.map(
-        ({ token, ipAddress, userAgent, id, createdAt, expiresAt, lastPasswordAuthAt }) => ({
+        ({ ipAddress, userAgent, id, createdAt, expiresAt, lastPasswordAuthAt, isCurrent }) => ({
           id,
           createdAt,
           expiresAt,
           ipAddress,
           userAgent,
           lastPasswordAuthAt,
-          isCurrent: currentToken !== null && token === currentToken,
+          isCurrent,
         }),
       );
       return { status: 200, body: { data } };
@@ -58,8 +60,11 @@ export class UserSecurityHttpApplicationService implements IUserSecurityHttpAppl
     sessionTokenFromCookie: string | null;
   }): Promise<UserHttpJson> {
     const currentToken = input.sessionTokenFromCookie;
-    const rows = await this.deps.sessionRevocation.listForUser(input.userId);
-    const current = rows.find((row) => row.token === currentToken);
+    const rows = await this.deps.sessionRevocation.listForUser(
+      input.userId,
+      currentToken ?? undefined,
+    );
+    const current = rows.find((row) => row.isCurrent);
     if (current?.id === input.sessionId) {
       return {
         status: 400,
@@ -100,7 +105,7 @@ export class UserSecurityHttpApplicationService implements IUserSecurityHttpAppl
     );
     if (!sid)
       return { status: 401, body: { error: "Session not found", code: "session_required" } };
-    await this.deps.sessionRevocation.revokeAllForUserExcept(input.userId, sid);
+    await this.deps.sessionRevocation.revokeAllForUserExcept(input.userId, currentToken);
     void this.deps.authAuditPublisher
       .publish({
         eventType: "auth.sessions_revoked_all_except_current",

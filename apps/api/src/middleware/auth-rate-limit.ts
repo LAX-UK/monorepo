@@ -1,17 +1,10 @@
-import { randomUUID } from "node:crypto";
-import { AUTH_RATE_LIMIT_POLICY, slidingWindowRetryAfterSec } from "@auction/auth";
-import type { Context } from "hono";
+import { createHash, randomUUID } from "node:crypto";
+import { AUTH_RATE_LIMIT_POLICY } from "@auction/auth/contracts";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
-import { extractBetterAuthSessionToken } from "../lib/session-cookie.js";
 
 /** Central auth rate-limit policy (sliding window, Redis sorted sets). */
 export const RATE_LIMIT_CONFIG = AUTH_RATE_LIMIT_POLICY;
-
-function rateLimited(c: Context, retryAfterSec: number) {
-  c.header("Retry-After", String(retryAfterSec));
-  return c.json({ error: "Too many requests", code: "rate_limited", retryAfterSec }, 429);
-}
 
 async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
   const now = Date.now();
@@ -26,46 +19,6 @@ async function slidingIncrement(redis: Redis, key: string, windowSec: number): P
   const results = await pipeline.exec();
   const card = results?.[3]?.[1];
   return typeof card === "number" ? card : Number(card ?? 0);
-}
-
-/** Stricter bucket for Better Auth (`/api/auth/*`) — sliding window per IP. */
-export function createAuthRateLimitMiddleware(redis: Redis) {
-  return createMiddleware(async (c, next) => {
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
-    const path = c.req.path;
-    const isTotp = path.includes("two-factor");
-    const isSignIn = path.includes("/sign-in");
-    if (isTotp) {
-      const lockKey = `rl:auth:totp-lock:${ip}`;
-      const locked = await redis.get(lockKey);
-      if (locked) {
-        const ttl = await redis.ttl(lockKey);
-        return rateLimited(c, ttl > 0 ? ttl : RATE_LIMIT_CONFIG.totpLockoutSec);
-      }
-      const key = `rl:auth:totp:${ip}`;
-      const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.totpWindowSec);
-      if (n > RATE_LIMIT_CONFIG.totpMax) {
-        await redis.set(lockKey, "1", "EX", RATE_LIMIT_CONFIG.totpLockoutSec);
-        return rateLimited(c, RATE_LIMIT_CONFIG.totpLockoutSec);
-      }
-      await next();
-      return;
-    }
-    const key = isSignIn ? `rl:auth:signin:${ip}` : `rl:auth:${ip}`;
-    const windowSec = isSignIn
-      ? RATE_LIMIT_CONFIG.signInWindowSec
-      : RATE_LIMIT_CONFIG.authGeneralWindowSec;
-    const maxRequests = isSignIn ? RATE_LIMIT_CONFIG.signInMax : RATE_LIMIT_CONFIG.authGeneralMax;
-    const n = await slidingIncrement(redis, key, windowSec);
-    if (n > maxRequests) {
-      const retryAfterSec = await slidingWindowRetryAfterSec(redis, key, windowSec, n, maxRequests);
-      return rateLimited(c, retryAfterSec);
-    }
-    await next();
-  });
 }
 
 /** Rate-limit the Hono `/auth/forgot-password` route. */
@@ -117,49 +70,6 @@ export function createConfirmEmailChangeRateLimitMiddleware(redis: Redis) {
     const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.confirmEmailChangeWindowSec);
     if (n > RATE_LIMIT_CONFIG.confirmEmailChangeMax) {
       return c.json({ error: "Too many requests" }, 429);
-    }
-    await next();
-  });
-}
-
-/** Rate-limit `POST /api/auth/sign-in/magic-link` (Better Auth handler). */
-export function createMagicLinkRateLimitMiddleware(redis: Redis) {
-  return createMiddleware(async (c, next) => {
-    if (c.req.method !== "POST" || !c.req.path.endsWith("/sign-in/magic-link")) {
-      await next();
-      return;
-    }
-
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
-    const ipKey = `rl:auth:magic-link-ip:${ip}`;
-    const ipCount = await slidingIncrement(redis, ipKey, RATE_LIMIT_CONFIG.magicLinkIpWindowSec);
-    if (ipCount > RATE_LIMIT_CONFIG.magicLinkIpMax) {
-      return c.json({ error: "Too many requests" }, 429);
-    }
-
-    let body: { email?: unknown } = {};
-    try {
-      body = (await c.req.raw.clone().json()) as { email?: unknown };
-    } catch {
-      await next();
-      return;
-    }
-    if (typeof body.email === "string") {
-      const normalised = body.email.trim().toLowerCase();
-      if (normalised.length > 0 && normalised.length <= 254) {
-        const emailKey = `rl:auth:magic-link-email:${normalised}`;
-        const emailCount = await slidingIncrement(
-          redis,
-          emailKey,
-          RATE_LIMIT_CONFIG.magicLinkEmailWindowSec,
-        );
-        if (emailCount > RATE_LIMIT_CONFIG.magicLinkEmailMax) {
-          return c.json({ error: "Too many requests" }, 429);
-        }
-      }
     }
     await next();
   });
@@ -252,52 +162,17 @@ export function createRegisterRateLimitMiddleware(redis: Redis) {
   });
 }
 
-/** Rate-limit `POST /api/auth/send-verification-email` (Better Auth handler) — per IP and per email. */
-export function createSendVerificationRateLimitMiddleware(redis: Redis) {
-  return createMiddleware(async (c, next) => {
-    if (c.req.method !== "POST" || !c.req.path.endsWith("/send-verification-email")) {
-      await next();
-      return;
-    }
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
-    const ipKey = `rl:auth:send-verification-ip:${ip}`;
-    const ipCount = await slidingIncrement(
-      redis,
-      ipKey,
-      RATE_LIMIT_CONFIG.sendVerificationIpWindowSec,
-    );
-    if (ipCount > RATE_LIMIT_CONFIG.sendVerificationIpMax) {
-      return c.json({ error: "Too many requests" }, 429);
-    }
-    const email = await emailFromJsonBody(c.req.raw);
-    if (email) {
-      const emailKey = `rl:auth:send-verification-email:${email}`;
-      const emailCount = await slidingIncrement(
-        redis,
-        emailKey,
-        RATE_LIMIT_CONFIG.sendVerificationEmailWindowSec,
-      );
-      if (emailCount > RATE_LIMIT_CONFIG.sendVerificationEmailMax) {
-        return c.json({ error: "Too many requests" }, 429);
-      }
-    }
-    await next();
-  });
-}
-
 /** Rate-limit `/auth/setup-password`. */
 export function createSetupPasswordRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
-    // Use the shared extractor so the `__Secure-` prefix is handled in production.
-    const sessionToken = extractBetterAuthSessionToken(c.req.header("cookie"));
+    const authorization = c.req.header("authorization");
     const ip =
       c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
       c.req.header("x-real-ip") ??
       "unknown";
-    const identity = sessionToken ? `s:${sessionToken.slice(0, 64)}` : `ip:${ip}`;
+    const identity = authorization?.startsWith("Bearer ")
+      ? `b:${createHash("sha256").update(authorization.slice(7)).digest("base64url")}`
+      : `ip:${ip}`;
     const key = `rl:auth:setup-password:${identity}`;
     const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.setupPasswordWindowSec);
     if (n > RATE_LIMIT_CONFIG.setupPasswordMax) {

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
+import type { IIdentitySubjectClient } from "../interfaces/identity-issuer-client.js";
 import type { InviteOutcome } from "../interfaces/invitation-lifecycle.js";
 import type { InviteMemberInput } from "../interfaces/member-management.js";
 import { MemberPermissionError } from "../interfaces/member-management.js";
@@ -17,6 +18,7 @@ export class InvitationInviteService {
     private readonly notifications: InvitationNotificationService,
     private readonly domainEventSink: IDomainEventSink,
     private readonly membershipGuard: LegalEntityMembershipGuard,
+    private readonly identitySubjects?: IIdentitySubjectClient,
   ) {}
 
   async invite(
@@ -26,10 +28,15 @@ export class InvitationInviteService {
   ): Promise<InviteOutcome> {
     await this.membershipGuard.assertActorIsAdmin(actingUserId, legalEntityId);
     const email = this.tokenService.normalizeEmail(input.email);
+    const identitySubject = this.identitySubjects
+      ? await this.identitySubjects.findSubjectByEmail(email)
+      : null;
+    const existingUserId = this.identitySubjects
+      ? (identitySubject?.id ?? null)
+      : await this.repo.findUserIdByEmail(email);
 
     const token = await this.transactionRunner.runInTransaction(async (tx) => {
       const txRepo = this.repo.forConnection(tx);
-      const existingUserId = await txRepo.findUserIdByEmail(email);
 
       if (existingUserId) {
         const alreadyMember = await txRepo.hasActiveMember(legalEntityId, existingUserId);
@@ -69,7 +76,9 @@ export class InvitationInviteService {
       return rawToken;
     });
 
-    const existingUser = await this.repo.userExistsByEmail(email);
+    const existingUser = this.identitySubjects
+      ? existingUserId !== null
+      : await this.repo.userExistsByEmail(email);
     await this.notifications.notifyInviteSent({
       email,
       token,

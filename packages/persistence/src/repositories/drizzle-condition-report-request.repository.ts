@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { conditionReportRequest, lot, user } from "@auction/db/schema";
+import { bidIdentityDirectory, conditionReportRequest, lot } from "@auction/db/schema";
 import type { Lot } from "@auction/types";
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
@@ -161,11 +161,14 @@ export class DrizzleConditionReportRequestRepository implements IConditionReport
       .select({
         r: conditionReportRequest,
         lotTitle: lot.title,
-        requesterEmail: user.email,
+        requesterEmail: bidIdentityDirectory.email,
       })
       .from(conditionReportRequest)
       .innerJoin(lot, eq(lot.id, conditionReportRequest.lotId))
-      .leftJoin(user, eq(user.id, conditionReportRequest.requestedByUserId))
+      .leftJoin(
+        bidIdentityDirectory,
+        eq(bidIdentityDirectory.subjectId, conditionReportRequest.requestedByUserId),
+      )
       .orderBy(desc(conditionReportRequest.createdAt))
       .limit(filter.limit)
       .offset(filter.offset);

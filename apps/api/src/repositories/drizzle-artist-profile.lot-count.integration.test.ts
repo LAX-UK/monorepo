@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
-import { artistProfile, legalEntity, lot, user } from "@auction/db/schema";
+import { artistProfile, legalEntity, lot } from "@auction/db/schema";
 import { createDrizzleArtistProfileRepository } from "@auction/persistence/repositories";
 import { describe, expect, it } from "vitest";
+import { seedIdentityUserFixtures } from "../testing/identity-user-fixtures.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
@@ -24,14 +25,15 @@ describe.skipIf(!HAS_DB)(
       try {
         await db.transaction(async (tx) => {
           const t = new Date();
-          await tx.insert(user).values({
-            id: sellerUserId,
-            name: "Lot Count Seller",
-            email: `lot-count-int-${sellerUserId}@integration.test`,
-            emailVerified: true,
-            createdAt: t,
-            updatedAt: t,
-          });
+          await seedIdentityUserFixtures(tx, [
+            {
+              id: sellerUserId,
+              name: "Lot Count Seller",
+              email: `lot-count-int-${sellerUserId}@integration.test`,
+              createdAt: t,
+              updatedAt: t,
+            },
+          ]);
           await tx.insert(legalEntity).values({
             id: sellerLeId,
             displayName: "Lot Count Gallery",

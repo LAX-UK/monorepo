@@ -13,5 +13,5 @@ Operational checklist:
    Brevo automatically when `MARKETING_CONTACT_SYNC_PROVIDER=brevo`. Confirm in
    `marketing_contact_sync_log` (`action=archive`, `status=archived`) or remove manually in Brevo if
    sync was disabled.
-7. Trigger Shopify/Xero processor deletion procedures where applicable.
+7. Trigger Xero or other active processor deletion procedures where applicable.
 8. Record completion and retain minimal legal/audit proof.

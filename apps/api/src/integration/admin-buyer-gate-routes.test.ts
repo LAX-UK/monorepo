@@ -16,6 +16,7 @@ const adminAuth: IAuthenticator = {
     id: "admin-user",
     role: "staff",
     staffRole: "super_admin",
+    scopes: ["bid.read", "bid.write"],
   }),
 };
 

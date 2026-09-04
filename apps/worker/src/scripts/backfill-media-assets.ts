@@ -14,13 +14,13 @@
  */
 import {
   artistProfile,
+  bidIdentityDirectory,
   category,
   createDb,
   itemSubmission,
   lot,
   mediaAsset,
   sale,
-  user,
 } from "@auction/db";
 import { sql } from "drizzle-orm";
 import pino from "pino";
@@ -84,7 +84,9 @@ async function listCatalogueImageKeys(
       union
       select ${artistProfile.heroImageUrl} as key from ${artistProfile} where ${artistProfile.heroImageUrl} is not null
       union
-      select ${user.image} as key from ${user} where ${user.image} is not null
+      select ${bidIdentityDirectory.image} as key
+      from ${bidIdentityDirectory}
+      where ${bidIdentityDirectory.image} is not null
     ) refs
     where refs.key is not null and trim(refs.key) <> ''
     ${missingOnlySql}

@@ -1,8 +1,7 @@
 import { createDb } from "@auction/db";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
-import { createAuthRepositories } from "./container/create-auth-repositories.js";
-import { createContainerAuth } from "./container/create-auth.js";
+import { createContainerAuthenticator } from "./container/create-auth.js";
 import { createBiddingRouteServices } from "./container/create-bidding-route-services.js";
 import { createBiddingSaleroom } from "./container/create-bidding-saleroom.js";
 import { createCatalogRouteServices } from "./container/create-catalog-route-services.js";
@@ -16,7 +15,6 @@ import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
 import { createPaymentsServices } from "./container/create-payments-services.js";
 import { createPlatformCronRouteServices } from "./container/create-platform-cron-route-services.js";
-import { createPlatformInboundWebhookRouteServices } from "./container/create-platform-inbound-webhook-route-services.js";
 import { createPlatformServices } from "./container/create-platform-services.js";
 import { createRepositories } from "./container/create-repositories.js";
 import { createSubmissionRouteServices } from "./container/create-submission-route-services.js";
@@ -24,7 +22,8 @@ import { createUserMiscServices } from "./container/create-user-misc-services.js
 import { createUserNotificationComposition } from "./container/create-user-notification-composition.js";
 import { createUserRouteServices } from "./container/create-user-route-services.js";
 import type { Env } from "./env.js";
-import { DrizzleAuthOAuthAccountReader } from "./infrastructure/drizzle-auth-oauth-account.reader.js";
+import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
+import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
@@ -33,34 +32,38 @@ export type { Container, ContainerComposedSlices };
 
 export function createContainer(env: Env): Container {
   const db = createDb(env.DATABASE_URL_API ?? env.DATABASE_URL);
-  const authDb = createDb(env.DATABASE_URL_AUTH ?? env.DATABASE_URL);
-  const infra = createInfra(env, db, authDb);
+  const infra = createInfra(env, db);
   const oauthAttributionStore = new RedisOAuthAttributionStore(infra.redis);
-  const authOAuthAccountReader = new DrizzleAuthOAuthAccountReader(authDb);
-
-  const { sessionRepository } = createAuthRepositories(authDb);
-  const sessionRevocation = new SessionRevocationService(sessionRepository);
-  const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
-  const { auth, authenticator } = createContainerAuth({
-    env,
-    db,
-    authDb,
-    emailService: infra.emailService,
-    sessionRevocation,
-    ensurePersonalLegalEntityService,
-    oauthAttributionStore,
+  const identityIssuer = new HttpIdentityIssuerClient({
+    issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
+    defaultOrigin: env.WEB_ORIGIN,
+    ...(env.IDENTITY_MACHINE_CLIENT_ID ? { machineClientId: env.IDENTITY_MACHINE_CLIENT_ID } : {}),
+    ...(env.IDENTITY_MACHINE_CLIENT_SECRET
+      ? { machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET }
+      : {}),
   });
+  const sessionRevocation = new SessionRevocationService(identityIssuer);
+  const subjectUsageReader = new DrizzleSubjectUsageReader(db);
+  const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
+  const authenticator = createContainerAuthenticator({ env, db });
 
-  const repos = createRepositories(db);
+  const repos = createRepositories(db, identityIssuer);
 
   const userNotification = createUserNotificationComposition(repos);
 
-  const platform = createPlatformServices({ env, db, infra, repos });
+  const platform = createPlatformServices({
+    env,
+    db,
+    infra,
+    repos,
+    identitySubjects: identityIssuer,
+  });
   const lotLifecycle = createLotLifecycle({ infra, repos, platform });
   const complianceMedia = createComplianceMedia({ env, db, infra, repos, platform });
   const catalog = createCatalogServices({
     env,
     db,
+    identitySecurity: identityIssuer,
     infra,
     repos,
     platform,
@@ -90,9 +93,7 @@ export function createContainer(env: Env): Container {
   const userMisc = createUserMiscServices({
     env,
     db,
-    authDb,
-    auth,
-    sessionRevocation,
+    identityIssuer,
     ensurePersonalLegalEntityService,
     infra,
     repos,
@@ -104,7 +105,6 @@ export function createContainer(env: Env): Container {
   const cron = createCronServices({
     env,
     db,
-    authDb,
     infra,
     repos,
     platform,
@@ -162,11 +162,6 @@ export function createContainer(env: Env): Container {
     lifecycleCronService: cron.lifecycleCronService,
     hygieneCronService: cron.hygieneCronService,
   });
-  const platformInboundWebhooks = createPlatformInboundWebhookRouteServices({
-    env,
-    webhookEventRepository: repos.webhookEventRepository,
-    webhookEventsProducer: infra.webhookEventsProducer,
-  });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,
     saleSoftDeleteService: catalog.saleSoftDeleteService,
@@ -215,16 +210,15 @@ export function createContainer(env: Env): Container {
   return {
     env,
     db,
-    authDb,
     sessionRevocation,
     redis: infra.redis,
     rateLimitStore: infra.rateLimitStore,
     vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
-    auth,
-    getPublicJwks: infra.getPublicJwks,
     authenticator,
+    identityIssuer,
+    subjectUsageReader,
     oauthAttributionStore,
-    authOAuthAccountReader,
+    authOAuthAccountReader: identityIssuer,
     repoFactory: repos.repoFactory,
     lotService: catalog.lotService,
     conditionReportService: catalog.conditionReportService,
@@ -283,7 +277,6 @@ export function createContainer(env: Env): Container {
     watchlistService: userMisc.watchlistService,
     savedSearchService: userMisc.savedSearchService,
     userSecurityReadService: userMisc.userSecurityReadService,
-    authCredentialReader: userMisc.authCredentialReader,
     newsletterSignupService: userMisc.newsletterSignupService,
     webhookEventRepository: repos.webhookEventRepository,
     artistWatchlistService: userMisc.artistWatchlistService,
@@ -323,7 +316,6 @@ export function createContainer(env: Env): Container {
     itemSubmissionService: catalog.itemSubmissionService,
     itemSubmissionSellerApi: catalog.itemSubmissionSellerApi,
     itemSubmissionAdminApi: catalog.itemSubmissionAdminApi,
-    userEmailChangeRepository: repos.userEmailChangeRepository,
     legalEntityRepository: repos.legalEntityRepository,
     personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
     legalEntityNotificationRecipients: repos.legalEntityNotificationRecipients,
@@ -390,15 +382,11 @@ export function createContainer(env: Env): Container {
     identityRoutes: createIdentityRouteServices({
       accountSecurity: {
         env,
-        authDb,
-        auth,
-        db,
+        identityIssuer,
         userService: userMisc.userService,
-        userEmailChangeRepository: repos.userEmailChangeRepository,
         emailService: infra.emailService,
-        sessionRevocation,
         authAuditPublisher: platform.authAuditPublisher,
-        authCredentialReader: userMisc.authCredentialReader,
+        authCredentialReader: identityIssuer,
       },
       legalEntityRepository: repos.legalEntityRepository,
       personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
@@ -413,6 +401,7 @@ export function createContainer(env: Env): Container {
     }),
     userRoutes: createUserRouteServices({
       env,
+      categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
       registrationService: userMisc.registrationService,
       marketingEventService: complianceMedia.marketingEventService,
@@ -445,7 +434,6 @@ export function createContainer(env: Env): Container {
     admin: admin.admin,
     finance,
     platformCron,
-    platformInboundWebhooks,
     compliance,
     catalogRoutes,
     submissionRoutes,
@@ -480,9 +468,10 @@ export type {
   ContainerExposedRepositoriesSlice,
   ContainerForgotPasswordSlice,
   ContainerInfraSlice,
-  ContainerInboundWebhookClaimRoutesSlice,
   ContainerInboundWebhookRoutesSlice,
   ContainerInternalCronRoutesSlice,
+  ContainerInternalIdentityEmailRoutesSlice,
+  ContainerInternalIdentitySubjectUsageRoutesSlice,
   ContainerKycRoutesSlice,
   ContainerLegalEntityMemberRoutesSlice,
   ContainerLegalEntityRoutesSlice,
@@ -505,7 +494,6 @@ export type {
   ContainerPayoutRoutesSlice,
   ContainerPayoutStatementRoutesSlice,
   ContainerPlatformSlice,
-  ContainerPlatformInboundWebhooksSlice,
   ContainerPostmarkWebhookRoutesSlice,
   ContainerPressRoutesSlice,
   ContainerQrRoutesSlice,
@@ -537,7 +525,6 @@ export type {
   ContainerSaleLotMembershipRoutesSlice,
   ContainerSaleReadRoutesSlice,
   ContainerSaleRoutesSlice,
-  ContainerWellKnownRoutesSlice,
   LotLifecyclePort,
   LotReadPort,
   SaleLifecycleWritePort,

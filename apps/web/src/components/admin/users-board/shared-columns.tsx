@@ -28,14 +28,6 @@ export function userJoinedColumn(): ColumnDef<AdminUserRow> {
   };
 }
 
-export function userLastActivityColumn(header = "Last activity"): ColumnDef<AdminUserRow> {
-  return {
-    id: "lastActivity",
-    header,
-    cell: ({ row }) => <AdminTableDateTimeCell iso={row.original.updatedAt} mode="timestamp" />,
-  };
-}
-
 export function userMobileColumn(): ColumnDef<AdminUserRow> {
   return {
     id: "mobile",
@@ -59,21 +51,6 @@ export function userPersonaColumn(): ColumnDef<AdminUserRow> {
     id: "persona",
     header: "Persona",
     cell: ({ row }) => <SignupPersonaBadge persona={row.original.signupPersona} size="compact" />,
-  };
-}
-
-export function userTwoFactorColumn(): ColumnDef<AdminUserRow> {
-  return {
-    id: "twoFactor",
-    header: "2FA",
-    cell: ({ row }) => (
-      <AdminStatusBadge
-        domain="kyc"
-        status={row.original.twoFactorEnabled ? "approved" : "unverified"}
-        label={row.original.twoFactorEnabled ? "On" : "Off"}
-        size="sm"
-      />
-    ),
   };
 }
 

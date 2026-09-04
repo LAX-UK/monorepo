@@ -32,9 +32,12 @@ describe("admin sale registration routes (DIP facade)", () => {
       saleRegistrations: { listForSaleAdmin } as never,
     });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -54,9 +57,12 @@ describe("admin sale registration routes (DIP facade)", () => {
       saleRegistrations: { approve } as never,
     });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.write"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -86,9 +92,12 @@ describe("admin sale registration routes (DIP facade)", () => {
       saleRegistrations: { reject } as never,
     });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.write"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -114,9 +123,12 @@ describe("admin sale registration routes (DIP facade)", () => {
       saleRegistrations: { updateBidLimit } as never,
     });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: staffUserId, role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.write"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));

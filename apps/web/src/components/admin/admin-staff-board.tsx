@@ -5,7 +5,6 @@ import { AdminUserListShell } from "@/components/admin/admin-user-list-shell";
 import { PeopleStaffMobileCard } from "@/components/admin/people/people-mobile-card";
 import {
   userJoinedColumn,
-  userLastActivityColumn,
   userRowActionsColumn,
   userStatusColumn,
 } from "@/components/admin/users-board";
@@ -54,7 +53,6 @@ function staffColumns(onOpen: (u: AdminUserRow) => void): ColumnDef<AdminUserRow
     },
     userStatusColumn(),
     userJoinedColumn(),
-    userLastActivityColumn("Last login"),
     userRowActionsColumn(onOpen),
   ];
 }

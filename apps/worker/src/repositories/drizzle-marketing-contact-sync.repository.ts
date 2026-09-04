@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
-import { emailSuppression, marketingContactSyncLog, user } from "@auction/db/schema";
+import {
+  bidIdentityDirectory,
+  bidUserProfile,
+  emailSuppression,
+  marketingContactSyncLog,
+} from "@auction/db/schema";
 import { emailHash } from "@auction/email";
 import { eq } from "drizzle-orm";
 import type {
@@ -14,24 +19,31 @@ export class DrizzleMarketingContactSyncRepository implements IMarketingContactS
   async findUserById(userId: string): Promise<MarketingContactSyncUserRow | null> {
     const [row] = await this.db
       .select({
-        id: user.id,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        country: user.mobileCountry,
-        kycStatus: user.kycStatus,
-        signupPersona: user.signupPersona,
-        emailStatus: user.emailStatus,
-        suspendedAt: user.suspendedAt,
-        deletionRequestedAt: user.deletionRequestedAt,
-        createdAt: user.createdAt,
+        id: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+        emailVerified: bidIdentityDirectory.emailVerified,
+        role: bidUserProfile.role,
+        firstName: bidUserProfile.firstName,
+        lastName: bidUserProfile.lastName,
+        country: bidUserProfile.mobileCountry,
+        kycStatus: bidUserProfile.kycStatus,
+        signupPersona: bidUserProfile.signupPersona,
+        emailStatus: bidUserProfile.emailStatus,
+        suspendedAt: bidUserProfile.suspendedAt,
+        deletionRequestedAt: bidIdentityDirectory.deletionRequestedAt,
+        createdAt: bidIdentityDirectory.identityCreatedAt,
       })
-      .from(user)
-      .where(eq(user.id, userId))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    return {
+      ...row,
+      role: row.role ?? "client",
+      emailStatus: row.emailStatus ?? "ok",
+      kycStatus: row.kycStatus ?? "unverified",
+    };
   }
 
   async isEmailSuppressed(email: string): Promise<boolean> {

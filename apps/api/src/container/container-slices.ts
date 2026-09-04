@@ -1,4 +1,3 @@
-import type { Auth } from "@auction/auth/server";
 import type { createDb } from "@auction/db";
 import type {
   IAttentionFeedReader,
@@ -12,7 +11,6 @@ import type {
   IPendingInvitationsReader,
   IRepositoryFactory,
   IUiPreferenceRepository,
-  IUserEmailChangeRepository,
   IWebhookEventRepository,
   IXeroWebhookEventRepository,
 } from "@auction/persistence/interfaces";
@@ -29,11 +27,18 @@ import type { BiddingRouteServices } from "../services/interfaces/bidding-routes
 import type { CatalogRouteServices } from "../services/interfaces/catalog-routes/index.js";
 import type { ComplianceRouteServices } from "../services/interfaces/compliance-routes/index.js";
 import type { FinanceRouteServices } from "../services/interfaces/finance-routes/index.js";
+import type {
+  IIdentityCredentialClient,
+  IIdentityEmailChangeClient,
+  IIdentityIssuerClient,
+  IIdentityProfileClient,
+  IIdentitySessionClient,
+  IIdentitySubjectClient,
+} from "../services/interfaces/identity-issuer-client.js";
 import type { IdentityRouteServices } from "../services/interfaces/identity-routes.js";
 import type { ILotLifecycleService, ILotReadService } from "../services/interfaces/lot-service.js";
 import type { IOAuthAttributionStore } from "../services/interfaces/oauth-attribution-store.js";
 import type { PlatformCronRouteServices } from "../services/interfaces/platform-cron-routes/index.js";
-import type { PlatformInboundWebhookRouteServices } from "../services/interfaces/platform-inbound-webhooks/index.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
 import type {
   ISaleLifecycleService,
@@ -45,6 +50,7 @@ import type {
   ISaleroomSessionReadService,
   SaleroomServicePort,
 } from "../services/interfaces/saleroom-service.js";
+import type { ISubjectUsageReader } from "../services/interfaces/subject-usage-reader.js";
 import type { SubmissionRouteServices } from "../services/interfaces/submission-routes/index.js";
 import type {
   ITelephoneBidBookingBuyerService,
@@ -93,13 +99,18 @@ export type TelephoneBookingRoutePort = ITelephoneBidBookingBuyerService &
 export type ContainerRootSlice = {
   env: Env;
   db: ReturnType<typeof createDb>;
-  authDb: ReturnType<typeof createDb>;
   sessionRevocation: SessionRevocationService;
   vapidPublicKey: string | null;
-  auth: Auth;
   authenticator: IAuthenticator;
+  identityIssuer: IIdentityIssuerClient &
+    IIdentitySubjectClient &
+    IIdentityCredentialClient &
+    IIdentitySessionClient &
+    IIdentityEmailChangeClient &
+    IIdentityProfileClient;
   oauthAttributionStore: IOAuthAttributionStore;
   authOAuthAccountReader: IAuthOAuthAccountReader;
+  subjectUsageReader: ISubjectUsageReader;
 };
 
 /** Repository ports re-exposed on the flat container bag (internal repos stay in factories). */
@@ -107,7 +118,6 @@ export type ContainerExposedRepositoriesSlice = {
   repoFactory: IRepositoryFactory;
   webhookEventRepository: IWebhookEventRepository;
   itemSubmissionRepository: IItemSubmissionRepository;
-  userEmailChangeRepository: IUserEmailChangeRepository;
   legalEntityRepository: ILegalEntityRepository;
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader;
   kycRepository: IKycRepository;
@@ -129,11 +139,6 @@ export type ContainerFinanceSlice = {
 /** Platform maintenance cron ingress (lifecycle, hygiene). */
 export type ContainerPlatformCronSlice = {
   platformCron: PlatformCronRouteServices;
-};
-
-/** Shopify + WordPress webhook claim ingress (platform integrations). */
-export type ContainerPlatformInboundWebhooksSlice = {
-  platformInboundWebhooks: PlatformInboundWebhookRouteServices;
 };
 
 /** Compliance route application ports (Veriff ingress, buyer SoF reads). */
@@ -162,7 +167,6 @@ export type ContainerInfraSlice = Pick<
   ContainerInfra,
   | "redis"
   | "rateLimitStore"
-  | "getPublicJwks"
   | "emailService"
   | "objectStorage"
   | "stripeClientFactory"
@@ -322,7 +326,6 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerCronSlice &
   ContainerFinanceSlice &
   ContainerPlatformCronSlice &
-  ContainerPlatformInboundWebhooksSlice &
   ContainerComplianceSlice &
   ContainerCatalogRoutesSlice &
   ContainerSubmissionRoutesServicesSlice &
@@ -434,22 +437,24 @@ export type ContainerEmailRoutesSlice = Pick<
   "env" | "userService" | "emailUnsubscribeService"
 >;
 
+/** Machine-authenticated Identity email enqueue boundary. */
+export type ContainerInternalIdentityEmailRoutesSlice = Pick<Container, "emailService">;
+
+/** Machine-authenticated Identity product-subject usage boundary. */
+export type ContainerInternalIdentitySubjectUsageRoutesSlice = Pick<
+  Container,
+  "subjectUsageReader"
+>;
+
 /** Brevo marketing webhook ingest. */
 export type ContainerBrevoWebhookRoutesSlice = Pick<Container, "env" | "brevoWebhookIngestService">;
 
 /** Postmark delivery webhook. */
 export type ContainerPostmarkWebhookRoutesSlice = Pick<Container, "env" | "postmarkWebhookService">;
 
-/** Shopify + WordPress inbound webhook routes. */
-export type ContainerInboundWebhookClaimRoutesSlice = ContainerPlatformInboundWebhooksSlice;
-
 /** Aggregated third-party webhook routes (`routes/webhooks/index.ts`). */
 export type ContainerInboundWebhookRoutesSlice = ContainerBrevoWebhookRoutesSlice &
-  ContainerPostmarkWebhookRoutesSlice &
-  ContainerInboundWebhookClaimRoutesSlice;
-
-/** JWKS well-known endpoint. */
-export type ContainerWellKnownRoutesSlice = Pick<Container, "getPublicJwks">;
+  ContainerPostmarkWebhookRoutesSlice;
 
 /** Venue CRUD (staff). */
 export type ContainerVenueRoutesSlice = Pick<Container, "catalogRoutes" | "userSuspensionChecker">;
@@ -483,14 +488,18 @@ export type ContainerSaleroomDisplayRoutesSlice = Pick<Container, "bidding">;
 /** User account routes (`routes/users/*`). */
 export type ContainerUserAccountRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "env" | "authDb" | "userRoutes"
->;
+  "userSuspensionChecker" | "env" | "userRoutes"
+> & {
+  identityIssuer: IIdentityCredentialClient;
+};
 
 /** Auth email/password flows. */
 export type ContainerAuthRoutesSlice = Pick<
   Container,
-  "env" | "redis" | "authenticator" | "userSuspensionChecker" | "authDb" | "identityRoutes"
->;
+  "env" | "redis" | "authenticator" | "userSuspensionChecker" | "identityRoutes"
+> & {
+  identityIssuer: IIdentityCredentialClient;
+};
 
 /** Buyer KYC session/status. */
 export type ContainerKycRoutesSlice = ContainerComplianceSlice &
@@ -607,19 +616,19 @@ export type ContainerAdminPlatformRoutesSlice = ContainerAdminRoutesSlice &
   ContainerAdminQueuesRoutesSlice;
 
 /** Password step-up middleware minimum deps. */
-export type ContainerPasswordStepUpSlice = Pick<Container, "authDb">;
+export type ContainerPasswordStepUpSlice = {
+  identityIssuer: IIdentityCredentialClient;
+};
 
 /** Forgot-password side effects. */
-export type ContainerForgotPasswordSlice = Pick<
-  Container,
-  "db" | "authDb" | "auth" | "emailService" | "env"
->;
+export type ContainerForgotPasswordSlice = Pick<Container, "emailService" | "env"> & {
+  identityIssuer: IIdentityIssuerClient & IIdentitySubjectClient & IIdentityCredentialClient;
+};
 
 /** Credential password setup. */
-export type ContainerCredentialSetupSlice = Pick<
-  Container,
-  "userService" | "auth" | "authDb" | "emailService"
->;
+export type ContainerCredentialSetupSlice = {
+  identityIssuer: IIdentityCredentialClient;
+};
 
 defineCompileTimeContainerSliceContract();
 

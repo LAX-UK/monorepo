@@ -7,6 +7,7 @@ export type DomainEventProjectorRow = {
   payload: unknown;
   actorUserId?: string | null;
   schemaVersion?: number;
+  occurredAt?: Date;
 };
 
 export type ListDomainEventsAfterCursorOptions = {

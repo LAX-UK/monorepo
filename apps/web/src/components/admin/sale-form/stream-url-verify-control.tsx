@@ -54,6 +54,8 @@ export function StreamUrlVerifyControl({
   const [state, setState] = useState<VerifyState>({ kind: "idle" });
   const [pending, startTransition] = useTransition();
   const lastVerifiedValueRef = useRef<string | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const runVerify = useCallback(
     (url: string) => {
@@ -98,17 +100,18 @@ export function StreamUrlVerifyControl({
     if (!gateRef) return;
     gateRef.current = {
       assertCanSubmit(currentUrl: string) {
+        const currentState = stateRef.current;
         const trimmed = currentUrl.trim();
         if (!trimmed) return null;
         if (trimmed === initialValue.trim()) return null;
         if (!parseStreamEmbedUrl(trimmed)) {
           return "Unsupported stream URL. Use YouTube, Vimeo, Twitch, or Cloudflare Stream.";
         }
-        if (!isResultState(state)) return null;
-        if (state.result.status === "not_found") {
+        if (!isResultState(currentState)) return null;
+        if (currentState.result.status === "not_found") {
           return "Stream not found or not embeddable. Check the link and Vimeo privacy/embed settings.";
         }
-        if (state.result.status === "unsupported") {
+        if (currentState.result.status === "unsupported") {
           return "Unsupported stream URL. Use YouTube, Vimeo, Twitch, or Cloudflare Stream.";
         }
         return null;
@@ -117,7 +120,7 @@ export function StreamUrlVerifyControl({
     return () => {
       gateRef.current = null;
     };
-  }, [gateRef, initialValue, state]);
+  }, [gateRef, initialValue]);
 
   useEffect(() => {
     if (!blurHandlerRef) return;

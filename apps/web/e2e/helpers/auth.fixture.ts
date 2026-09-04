@@ -1,47 +1,27 @@
 import { type BrowserContext, test as base } from "@playwright/test";
-import { persistContextAuthState } from "./auth";
+import { formatPageSessionFailure, probePageSession } from "./auth";
 
-type WorkerFixtures = {
-  workerContext: BrowserContext;
-};
+const BID_SESSION_COOKIE = /(?:__Host-)?lax-bid-session/;
 
-/** Reuses one cookie jar per worker so rotated Better Auth tokens stay live. */
-export const test = base.extend<object, WorkerFixtures>({
-  workerContext: [
-    async ({ browser }, use, workerInfo) => {
-      const projectUse = workerInfo.project.use;
-      const storageState =
-        typeof projectUse.storageState === "string" ? projectUse.storageState : undefined;
-      const context = await browser.newContext({
-        viewport: projectUse.viewport ?? { width: 1280, height: 800 },
-        deviceScaleFactor: projectUse.deviceScaleFactor ?? 1,
-        ...(projectUse.baseURL ? { baseURL: projectUse.baseURL } : {}),
-        ...(storageState ? { storageState } : {}),
-      });
-      const cookies = (await context.storageState()).cookies;
-      if (
-        process.env.PLAYWRIGHT_E2E === "1" &&
-        !cookies.some((cookie) => cookie.name.includes("session_token"))
-      ) {
-        await context.close();
-        throw new Error(`Project "${workerInfo.project.name}" storage state has no session_token`);
-      }
-      await use(context);
-      await context.close();
-    },
-    { scope: "worker" },
-  ],
-  context: async ({ workerContext, storageState }, use) => {
-    await use(workerContext);
-    await persistContextAuthState(workerContext, storageState);
-  },
-});
+async function assertPreparedBidSession(context: BrowserContext, label: string): Promise<void> {
+  if (process.env.PLAYWRIGHT_E2E !== "1" || process.env.PLAYWRIGHT_AUTH_PREPARED !== "1") return;
+  const cookies = (await context.storageState()).cookies;
+  if (!cookies.some((cookie) => BID_SESSION_COOKIE.test(cookie.name))) {
+    throw new Error(`Storage state missing lax-bid-session (${label})`);
+  }
+}
 
-/** Per-test context that writes a still-valid session back after each describe. */
-export const persistAuthTest = base.extend({
+/** Fresh Playwright context per test; prepared `.auth` files are read-only inputs. */
+export const test = base.extend({
   page: async ({ page, storageState }, use) => {
+    if (typeof storageState === "string") {
+      await assertPreparedBidSession(page.context(), storageState);
+      const probe = await probePageSession(page);
+      if (!probe.authenticated) {
+        throw new Error(formatPageSessionFailure(storageState, probe, page.url()));
+      }
+    }
     await use(page);
-    await persistContextAuthState(page.context(), storageState);
   },
 });
 

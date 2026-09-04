@@ -29,6 +29,7 @@ describe("AdminManualReviewPaymentQueryService.listManualReviewPayments", () => 
       .mockReturnValueOnce({
         from: vi.fn().mockReturnThis(),
         innerJoin: vi.fn().mockReturnThis(),
+        leftJoin: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue(paymentRows),

@@ -55,9 +55,7 @@ export function createOnsiteEventServices(
     onsiteEventRepo,
     repos.saleRepo,
   );
-  const onsiteEventPassTokenService = new OnsiteEventPassTokenService(
-    env.CHECK_IN_TOKEN_SECRET ?? env.BETTER_AUTH_SECRET,
-  );
+  const onsiteEventPassTokenService = new OnsiteEventPassTokenService(env.CHECK_IN_TOKEN_SECRET);
   const onsiteEventPublicRsvpService = new OnsiteEventPublicRsvpService(
     onsiteEventRepo,
     onsiteEventRsvpRepo,

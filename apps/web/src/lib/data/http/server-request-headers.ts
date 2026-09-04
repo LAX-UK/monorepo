@@ -5,6 +5,9 @@ import {
   type ConsentSnapshot,
   parseConsentCookie,
 } from "@/lib/analytics/consent/cookie";
+import { BID_API_AUDIENCE } from "@/lib/bff/config.server";
+import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.server";
+import { BidBffTokenService } from "@/lib/bff/token-service.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { deriveSsrOriginFromHeaders } from "@/lib/data/http/ssr-origin";
 import { getActingLegalEntityHeader } from "@/lib/legal-entity/acting-context.server";
@@ -39,14 +42,21 @@ export async function deriveSsrOrigin(): Promise<string> {
   });
 }
 
-export function withCookie(): HeaderDecorator {
+export function withBidApiBearer(): HeaderDecorator {
   return async (headers) => {
     const jar = await cookies();
-    const cookie = jar
-      .getAll()
-      .map((c) => `${c.name}=${c.value}`)
-      .join("; ");
-    if (cookie) headers.set("Cookie", cookie);
+    const sessionId = readBidSessionIdFromStore(jar);
+    if (!sessionId) return;
+    try {
+      const resource = await new BidBffTokenService().resourceToken(
+        sessionId,
+        BID_API_AUDIENCE,
+        "bid.read bid.write",
+      );
+      headers.set("Authorization", `Bearer ${resource.token}`);
+    } catch {
+      // Leave the request anonymous. The API remains the authorization boundary.
+    }
   };
 }
 
@@ -92,11 +102,11 @@ export type BuildAuthedSsrHeadersOptions = {
   init?: HeadersInit;
 };
 
-/** Cookie + Origin (+ optional acting LE + consent) for authenticated SSR API calls. */
+/** Resource Bearer + Origin (+ optional acting LE + consent) for authenticated SSR API calls. */
 export async function buildAuthedSsrHeaders(
   options: BuildAuthedSsrHeadersOptions = {},
 ): Promise<Headers> {
-  const decorators: HeaderDecorator[] = [withCookie(), withOrigin()];
+  const decorators: HeaderDecorator[] = [withBidApiBearer(), withOrigin()];
   if (options.consent !== undefined) {
     decorators.push(withConsent(options.consent));
   } else {

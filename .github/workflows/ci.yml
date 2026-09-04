@@ -2,13 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, release]
   pull_request:
     branches: [main, master]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  SSF_DELIVERY_ENABLED: "false"
+  SSF_DELIVERY_TIMEOUT_MS: "5000"
+  SSF_DELIVERY_MAX_ATTEMPTS: "8"
 
 jobs:
   static-checks:
@@ -94,6 +99,15 @@ jobs:
       - name: Package layer direction
         run: node scripts/check-layers.mjs
 
+      - name: Identity extractability
+        run: pnpm ci:identity-extractability
+
+      - name: Identity exit criteria
+        run: pnpm ci:identity-exit-criteria
+
+      - name: Identity extraction rehearsal
+        run: node scripts/ci/rehearse-identity-extraction.mjs
+
       - name: API route DIP coverage
         run: node apps/api/scripts/check-route-dip-coverage.mjs
 
@@ -151,8 +165,16 @@ jobs:
           restore-keys: |
             turbo-${{ github.job }}-${{ runner.os }}-
 
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
+
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
+      - name: Verify executable migration rollback pairs
+        run: node scripts/ci/verify-migration-pairs.mjs
+
+      - name: Identity boundary conformance
+        run: pnpm ci:identity-boundary
 
       - name: Test
         run: pnpm turbo run test --affected
@@ -203,6 +225,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
+
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
 
@@ -234,9 +259,12 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
       DATABASE_URL_AUTH: postgresql://auth_app:postgres@localhost:5432/auction_ci
+      DATABASE_URL_API: postgresql://api_app:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
       WORKER_APP_DB_PASSWORD: postgres
       API_APP_DB_PASSWORD: postgres
       AUTH_APP_DB_PASSWORD: postgres
+      SHOP_APP_DB_PASSWORD: postgres
       AUTH_ROLE_CONTRACT_REQUIRED: "true"
       CI: "true"
     steps:
@@ -248,12 +276,20 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
+
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
+
       - name: Apply application role grants
         run: pnpm --filter @auction/db db:roles
       - name: Auth app role and schema contracts
         run: pnpm --filter @auction/db test:auth-role-contract
+      - name: API app role contract
+        run: pnpm --filter @auction/db test:api-role-contract
+      - name: Shop app role contract
+        run: pnpm --filter @auction/db test:shop-role-contract
 
   build:
     runs-on: ubuntu-latest
@@ -266,8 +302,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "pnpm"
+          node-version-file: .nvmrc
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -282,6 +318,41 @@ jobs:
 
       - name: Build
         run: pnpm turbo run build --affected
+
+  migration-matrix:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+      - name: Verify executable migration rollback pairs
+        run: node scripts/ci/verify-migration-pairs.mjs
+      - name: FK removal inventory (report-only)
+        run: node scripts/ci/run-fk-removal-inventory-gate.mjs
 
   full-verify:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')
@@ -315,9 +386,12 @@ jobs:
       DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
       DATABASE_URL_WORKER: postgresql://worker_app:postgres@localhost:5432/auction_ci
       DATABASE_URL_AUTH: postgresql://auth_app:postgres@localhost:5432/auction_ci
+      DATABASE_URL_API: postgresql://api_app:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
       WORKER_APP_DB_PASSWORD: postgres
       API_APP_DB_PASSWORD: postgres
       AUTH_APP_DB_PASSWORD: postgres
+      SHOP_APP_DB_PASSWORD: postgres
       WORKER_ROLE_CONTRACT_REQUIRED: "true"
       AUTH_ROLE_CONTRACT_REQUIRED: "true"
       CI: "true"
@@ -334,8 +408,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
+
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
+
+      - name: Verify executable migration rollback pairs
+        run: node scripts/ci/verify-migration-pairs.mjs
 
       - name: Seed worker role contract probes
         run: pnpm --filter @auction/db exec tsx scripts/seed-worker-role-contract-probes.ts
@@ -354,3 +434,9 @@ jobs:
 
       - name: Auth app role and schema contracts
         run: pnpm --filter @auction/db test:auth-role-contract
+
+      - name: API app role contract
+        run: pnpm --filter @auction/db test:api-role-contract
+
+      - name: Shop app role contract
+        run: pnpm --filter @auction/db test:shop-role-contract

@@ -38,6 +38,8 @@ describe("POST /lots/:id/delete", () => {
         id: "staff-1",
         role,
         staffRole,
+
+        scopes: ["bid.write"],
       }),
     };
     app.route("/lots", createLotRoutes(container, authenticator));
@@ -131,6 +133,8 @@ describe("POST /lots/bulk soft_delete", () => {
         id: "staff-1",
         role,
         staffRole,
+
+        scopes: ["bid.write"],
       }),
     };
     app.route("/lots", createLotRoutes(container, authenticator));

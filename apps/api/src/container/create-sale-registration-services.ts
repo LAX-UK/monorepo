@@ -3,9 +3,10 @@ import {
   DrizzlePaddleBidWindowReader,
   DrizzleSaleRegistrationCheckInReader,
   DrizzleTelephoneBidBookingDetailReader,
-  DrizzleTelephoneBookingUserPhoneReader,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
+import { IdentityTelephoneBookingUserPhoneReader } from "../infrastructure/identity-telephone-booking-user-phone.reader.js";
+import type { IIdentitySecurityClient } from "../services/interfaces/identity-issuer-client.js";
 import type { TelephoneBidBookingServicePort } from "../services/interfaces/telephone-bid-booking-service.js";
 import { PaddleService } from "../services/paddle.service.js";
 import { SaleExpectedGuestsService } from "../services/sale-expected-guests.service.js";
@@ -28,6 +29,7 @@ export type ContainerSaleRegistrationServices = {
 export type CreateSaleRegistrationServicesInput = {
   env: Env;
   db: Database;
+  identitySecurity: IIdentitySecurityClient;
   infra: ContainerInfra;
   repos: ContainerRepositories;
   platform: ContainerPlatformServices;
@@ -37,7 +39,7 @@ export type CreateSaleRegistrationServicesInput = {
 export function createSaleRegistrationServices(
   input: CreateSaleRegistrationServicesInput,
 ): ContainerSaleRegistrationServices {
-  const { env, db, infra, repos, platform, complianceMedia } = input;
+  const { env, db, identitySecurity, infra, repos, platform, complianceMedia } = input;
   const { cache } = infra;
   const {
     lotRepo,
@@ -65,7 +67,7 @@ export function createSaleRegistrationServices(
     detailReader: new DrizzleTelephoneBidBookingDetailReader(db),
     saleRepo,
     lotRepo,
-    userPhoneReader: new DrizzleTelephoneBookingUserPhoneReader(db),
+    userPhoneReader: new IdentityTelephoneBookingUserPhoneReader(identitySecurity),
     legalEntityRepository,
     kycService,
     amlHoldStore,

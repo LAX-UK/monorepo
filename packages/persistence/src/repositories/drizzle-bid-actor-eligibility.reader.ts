@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type { IBidActorEligibilityReader } from "../interfaces/bid-actor-eligibility.reader.js";
 
@@ -9,12 +9,17 @@ export class DrizzleBidActorEligibilityReader implements IBidActorEligibilityRea
   async findBidActorEligibility(userId: string) {
     const [row] = await this.db
       .select({
-        emailVerified: user.emailVerified,
-        kycStatus: user.kycStatus,
+        emailVerified: bidIdentityDirectory.emailVerified,
+        kycStatus: bidUserProfile.kycStatus,
       })
-      .from(user)
-      .where(eq(user.id, userId))
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    return {
+      emailVerified: row.emailVerified,
+      kycStatus: row.kycStatus ?? "unverified",
+    };
   }
 }

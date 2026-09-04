@@ -1,14 +1,16 @@
 import { existsSync, readFileSync } from "node:fs";
 import { roleAuthState } from "./helpers/auth-state";
 
-function assertStateHasSessionToken(role: string, filePath: string): void {
+function assertStateHasBidSession(role: string, filePath: string): void {
   const state = JSON.parse(readFileSync(filePath, "utf8")) as {
     cookies?: Array<{ name: string }>;
   };
-  const hasToken = (state.cookies ?? []).some((cookie) => /session_token/.test(cookie.name));
-  if (!hasToken) {
+  const hasBidSession = (state.cookies ?? []).some((cookie) =>
+    /(?:__Host-)?lax-bid-session/.test(cookie.name),
+  );
+  if (!hasBidSession) {
     throw new Error(
-      `Prepared auth state "${role}" has no session_token cookie (${filePath}). Re-run node scripts/ci/prepare-e2e-auth-states.mjs`,
+      `Prepared auth state "${role}" has no lax-bid-session cookie (${filePath}). Re-run node scripts/ci/prepare-e2e-auth-states.mjs`,
     );
   }
 }
@@ -29,6 +31,6 @@ export default function globalSetup(): void {
 
   for (const [role, filePath] of Object.entries(roleAuthState)) {
     if (!existsSync(filePath)) continue;
-    assertStateHasSessionToken(role, filePath);
+    assertStateHasBidSession(role, filePath);
   }
 }

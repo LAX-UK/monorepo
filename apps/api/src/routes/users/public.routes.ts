@@ -15,6 +15,7 @@ export function attachUserPublicRoutes(r: UserHono, deps: UserRouteDeps): void {
       webOrigin: container.env.WEB_ORIGIN,
       registrationDisabled: Boolean(container.env?.DISABLE_NEW_USER_REGISTRATION),
       marketingContext: marketingWebsiteContextFromHono(c),
+      headers: c.req.raw.headers,
     });
     return respondUserHttpJson(c, response);
   });

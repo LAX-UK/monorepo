@@ -2,14 +2,18 @@
 
 This document is the source of truth for what's in the database. Every table that matters architecturally is described here. If you add a table or change a relationship, this doc gets updated in the same PR — stale schema docs are worse than no schema docs.
 
-The database is a single PostgreSQL 16 cluster. Three application roles (`auth_app`, `api_app`, `worker_app`) are created by [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) and granted least-privilege access per D2. The **privileged owner connection** used to run migrations is the Postgres user provisioned by DigitalOcean managed Postgres (referred to as `auction_owner` in env vars and in the runbooks); `migrate-roles.ts` does **not** create that user — it uses it. Migrations run via the dedicated migration entrypoint at [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts) (driven by `pnpm db:migrate:prod`), which in production is invoked from a one-shot job per F2; no long-running app process ever holds DDL grants.
+The database is a single PostgreSQL 16 cluster. Four application roles
+(`auth_app`, `api_app`, `worker_app`, `shop_app`) are created by
+[packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts).
+The privileged `DATABASE_URL_OWNER` connection is held only by the migration
+job; no long-running app process holds DDL grants.
 
-> **Implementation status (last reviewed 2026-05-05)**
+> **Implementation status (last reviewed 2026-08-20)**
 >
-> - **Implemented:** every table in the ERD below exists at [packages/db/src/schema/](../../packages/db/src/schema/), including `domain_events.actor_user_id`, `domain_events.correlation_id` (DB default `gen_random_uuid()`), and `domain_events.schema_version` (DB default 1). Email-pipeline tables (`email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`) plus `user.email_status` / `user.email_status_changed_at` and the `notification_preference.*Email` / `*Whatsapp` columns ship in migration `0021_email_integration_schema.sql`. Role grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) enforce the role split, including the email-pipeline grants (`auth_app` INSERT/SELECT on `email_outbox`, SELECT on `email_suppression`; `worker_app` SELECT/UPDATE on `email_outbox` and `newsletter_signup_log`).
+> - **Implemented:** every table in the ERD below exists at [packages/db/src/schema/](../../packages/db/src/schema/), including `domain_events.actor_user_id`, `domain_events.correlation_id` (DB default `gen_random_uuid()`), and `domain_events.schema_version` (DB default 1). Email-pipeline tables (`email_outbox`, `email_event`, `email_suppression`, `newsletter_signup_log`) plus the Bid-owned deliverability fields on `bid_user_profile` and the `notification_preference.*Email` / `*Whatsapp` columns ship from the email and Identity-boundary migrations. Role grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) enforce the role split: `api_app` owns synchronous email enqueue and product-subject usage reads, and `worker_app` has INSERT/SELECT/UPDATE on `email_outbox` plus SELECT/UPDATE on `newsletter_signup_log`; migrations `0157` and `0158` remove all direct email-pipeline and product-table access from `auth_app`.
 > - **Recent additions since the original schema landing:** multi-category for lots/sales/submissions (`lot_categories`, `sale_categories`, `submission_categories` join tables in migration `0022`), category admin metadata (`category.archived`, `sort_order`, etc. in migration `0024`), structured `user_address` (migration `0025`), `artist_profile` (migration `0026`; admin-curated catalogue registry with `kind`/`status` lifecycle), and the submission-expansion fields (`item_submissions` extended in migration `0023`).
 > - **Artist consolidation (migration `0046`)**: `lot.artist_id` (uuid → `artist_profile.id`) is the canonical link between a lot and its catalogue artist (legacy `marketing_details.sellerArtistId` was backfilled then cleared). `artist_watchlist.artist_id` was repointed from `user.id` to `artist_profile.id` in the same migration. Artist creation is admin-only via `POST /artists` (capability `artist.review`); clients never produce pending artist rows.
-> - **Scaffolded:** `external_accounts` exists with `(provider, external_id)` unique and `(email, provider)` index, but no service writes to it yet outside the seed script. `webhook_event` is written by the Shopify and WordPress handlers; the Xero handler does not write through it (D1 status).
+> - **Scaffolded:** `external_accounts` exists with `(provider, external_id)` unique and `(email, provider)` index, but no service writes to it yet outside the seed script. Generic `webhook_event` persistence and worker processing remain available for providers that require asynchronous ingest.
 > - **Planned:** the `(email, provider)` collision-resolution workflow per Q25 (no `collision_state` column today).
 
 ## Entity relationship diagram
@@ -245,23 +249,84 @@ erDiagram
 
 ### Identity tables — owned by apps/auth, role auth_app
 
-These tables contain everything related to who a user is and how they prove it. Only the `auth_app` Postgres role has full access. The `api_app` role has read access to `user` (for joins on bid and payment queries) but cannot read `session.token`, cannot read `account.password`, and has no access at all to `jwks_key`.
+These tables contain everything related to who a user is and how they prove it.
+Only `auth_app` has full access. Product code must not read them directly,
+including when a compatibility grant still exists.
 
 The `user` table is the canonical identity record. One row per human (modulo the deliberate exceptions documented below). The `email` column is unique, but linking happens by `(email, email_verified=true)` per D3 — an unverified email cannot claim ownership of an existing record.
 
 `user.email_status` carries the deliverability state observed from Postmark feedback (`ok` | `bounced` | `complained`). The Postmark webhook handler in `apps/api` flips this to `bounced` on a hard bounce and `complained` on a spam complaint, and stamps `email_status_changed_at`. The web shell ([apps/web/src/components/layout/app-shell.tsx](../../apps/web/src/components/layout/app-shell.tsx)) renders an in-app banner when this is non-`ok` so the user is aware their notifications are silently failing. See [04-domain-events.md → "Email pipeline"](./04-domain-events.md#email-pipeline) for the full feedback loop.
 
-The `session` table is better-auth's session storage. The `token` column is what the session cookie carries. In production the cookie is scoped to `.lax.bid` per F7, so both apps/web (lax.bid) and apps/auth (auth.lax.bid) can read it. Cross-registrable-suffix domains (lax.art, lax.shop) cannot share cookies and use JWTs instead.
+The `session` table is Better Auth's Identity-session storage. Its cookie is
+host-only to the Identity host. Bid and Shop maintain separate opaque host-only
+BFF sessions and never receive or query this token.
 
-The `account` table is better-auth's record of how a user authenticates. One row per (provider, account_id) pair. For email/password users, `provider_id = 'credential'` and the `password` column holds the bcrypt hash. For Google users, `provider_id = 'google'` and `account_id` is the Google `sub`. Note that this is distinct from `external_accounts` — `account` is for OAuth-flow-bearing identities (Google, Apple, future GitHub/Microsoft), while `external_accounts` is for cross-system identity stitching (Shopify customer ID, WordPress user ID).
+The `account` table is better-auth's record of how a user authenticates. One row per (provider, account_id) pair. For email/password users, `provider_id = 'credential'` and the `password` column holds the bcrypt hash. For Google users, `provider_id = 'google'` and `account_id` is the Google `sub`. This is distinct from `external_accounts`: `account` is for authentication identities, while `external_accounts` is a generic seam for trusted cross-system identity links.
 
-The `verification` table is better-auth's pending-verification scratch space — email verification tokens, password reset tokens. Rows expire and are deleted by better-auth's cleanup job; nothing else reads from this table.
+The `verification` table is better-auth's pending-verification scratch space —
+email verification tokens and password reset tokens. Expired rows are deleted
+in bounded batches by the `apps/auth` hourly maintenance schedule; no product
+process reads or writes this table.
 
-The `external_accounts` table is what links a single canonical user across our three external identity surfaces. When a Shopify webhook fires for a `customers/create` event, the worker either matches an existing user by verified email and writes a row here with `provider='shopify'`, or creates a new user and writes the link row. When Apple Sign-In returns a `@privaterelay.appleid.com` address, the linking happens by Apple `sub` only per F6 — never by email — so privacy-relay users get their own user record until they explicitly link.
+The `external_accounts` table can link trusted product-external records to a
+canonical Identity subject. No live commerce flow currently writes it. Google
+and Apple login accounts live in Better Auth's `account` table; Apple
+privacy-relay users remain separate subjects until an explicit merge.
 
-The unique constraint `UNIQUE (provider, external_id)` is non-negotiable per M2. Without it, race conditions on concurrent social signups create duplicate rows. The additional index on `(email, provider)` exists for the D3 verified-email lookup pattern. If Q25's admin-review collision-resolution workflow ever permits transient duplicates, the constraint becomes a partial unique on `WHERE collision_state IS NULL` — defer until that workflow exists.
+The unique constraint `UNIQUE (provider, external_id)` is non-negotiable per M2.
+Without it, concurrent external-system webhooks can create duplicate links. The
+additional index on `(email, provider)` supports the D3 verified-email lookup
+pattern.
 
 The `jwks_key` table holds the OIDC signing keys per D2. Only `auth_app` reads the `private_jwk` column. The `api_app` and `worker_app` roles have no grant on this table at all. Status transitions are `active` → `rotating` → `retired` → row deleted. Multiple rows can be `active` or `rotating` simultaneously during a 30-minute key rotation window — the runbook in [jwks-rotation.md](../runbooks/jwks-rotation.md) is the procedure.
+
+### Product profiles and Identity read models — D13 boundary
+
+Bid and Shop products maintain **local profiles** keyed by the immutable Identity subject (`user.id`).
+Product-local read models may copy the minimum Identity facts needed for asynchronous work, but
+those copies are never authoritative or product-writable. Products never read credentials,
+sessions, or JWKS tables.
+
+| Table | Owner role | Purpose |
+|-------|------------|---------|
+| `bid_user_profile` | `api_app` (writes), `worker_app` (provisioning) | Bid roles, staff roles, KYC/AML summary, persona, buyer-interest onboarding completion, paddle preference, Bid suspension, deliverability mirror |
+| `user_category_interest` | `api_app` | Ordered Bid-local buyer preferences keyed to `bid_user_profile.user_id` |
+| `bid_identity_directory` | Identity-owned facts; `worker_app` projects, product roles read | Minimal PII directory (`email`, `name`, `image`, `phone`) plus verification/deletion lifecycle needed by notifications, marketing sync, and media cleanup |
+| `shop_user_profile` | `shop_app` (writes), `worker_app` (projection) | Shop-local name/email mirror plus disable and subject-merge markers |
+
+`apps/auth` does not query either product profile table. Its orphan-signup
+compensation calls the machine-authenticated product API, where `api_app` checks
+`bid_user_profile` and `external_accounts` in one query. Migration `0158`
+removes the former `auth_app` grants on both product-owned tables.
+
+`bid_identity_directory` has no foreign key to Identity `user`; `subject_id` is an
+immutable external subject identifier. A retired merge alias is retained with
+`merged_into_subject_id` and the canonical contact snapshot so historical product
+records continue resolving locally. Identity lifecycle outbox events create and
+update the directory and its aliases, and `user.identity_deleted` hard-deletes the
+subject and aliases containing its PII. `api_app` has SELECT only; `worker_app` is
+granted DML solely because it hosts the projector. The
+`verify-identity-directory-drift.mjs` reconciliation must be clean before direct
+worker reads of `user` are revoked by migration `0160` and before API reads are
+revoked by migration `0161`. API repositories join the directory for product-safe
+Identity facts. MFA, phone-verification, pending email-change, and authoritative
+verified-email ownership remain live machine-authenticated Identity reads.
+
+Directory joins from durable product records are deliberately `LEFT JOIN`s.
+Identity hard deletion removes the directory row and its copied PII but does not
+erase auction history; callers must render a deleted/unavailable identity rather
+than dropping the product row. `identity_created_at` is the canonical Identity
+subject creation time copied from the lifecycle event/backfill.
+`replicated_at` is when this projection last applied a snapshot and is the
+freshness timestamp used by reconciliation; it is not a user activity time.
+`last_event_id` is the monotonic projector ordering/idempotency checkpoint.
+The worker projector is the only runtime writer of this table.
+
+Migration `0153` removed the former `0143` compatibility triggers and Bid-owned
+legacy columns from `user`, moved the buyer-interest completion marker to
+`bid_user_profile`, and repointed buyer-interest ownership to that product profile.
+The remaining product reads and foreign keys are tracked
+by the split exit criteria in [09-lax-identity-boundary.md](./09-lax-identity-boundary.md).
 
 ### Application tables — owned by apps/api, role api_app
 
@@ -287,7 +352,7 @@ The `projector_state` table holds one row per projector with `last_processed_eve
 
 ### Webhook ingest — webhook_event
 
-Inbound webhooks from Shopify, WordPress, Xero, and (future) Zoho all land in a single unified table per Q30. The `event_key` is a SHA-256 of the raw body plus relevant headers and is the dedupe key — when Shopify retries a webhook (which it does whenever it doesn't see a 200 within 5 seconds), the second delivery has the same `event_key` and is rejected on the unique constraint. The `source` column distinguishes which integration fired the event.
+The generic `webhook_event` table supports providers that need durable asynchronous ingest. The `event_key` is derived from the provider payload and routing identity; retries with the same key are rejected by the unique constraint. The `source` column selects the worker processor. Xero invoice processing is the current live consumer; other active webhooks use provider-specific ledgers where appropriate.
 
 `received_at` is set when the HTTP handler claims the row, `processed_at` is set when the worker successfully processes it. Failed processing increments `attempts` and records `last_error`; BullMQ handles the retry schedule (1s, 5s, 30s, 5min, 30min, 5 attempts max, then dead-letter).
 
@@ -295,7 +360,7 @@ Inbound webhooks from Shopify, WordPress, Xero, and (future) Zoho all land in a 
 
 These are the four tables behind the email pipeline. They are a **second outbox**, structurally similar to `domain_events` + `projector_state` but unrelated to the domain-events outbox: domain events project business state to external CRMs, the email outbox sends physical mail. See [04-domain-events.md → "Email pipeline"](./04-domain-events.md#email-pipeline) for the runtime flow.
 
-`email_outbox` is the durable record of every transactional or notification email we intend to send. `IEmailService.enqueue()` ([packages/email/src/outbox-service.ts](../../packages/email/src/outbox-service.ts)) writes one row per call, deduplicated on `idempotency_key` (default `template:userId-or-emailHash:sha256(vars)`). Status starts at `pending` (or `suppressed` if the recipient is in `email_suppression` *and* the category is `transactional`), and a BullMQ job is enqueued with `jobId = outboxId` to give the queue itself a second layer of idempotency. The worker's `send-email` job moves the row through `sending` → `sent`/`failed` and stores the Postmark `MessageID`. The `category` column has two values — `auth` (verification, password reset, password changed, change email, invite) and `transactional` (everything else). `auth` sends bypass `email_suppression` because they are operational mail the user must receive even if they previously bounced; the worker still sets `flagged_address=true` so the operator can spot the case in audit. `to_snapshot` is the plaintext recipient address kept for templates that resolve at enqueue time (e.g. invites to people without a `user.id`); `to_snapshot_purge_at` is the 30-day deadline at which a periodic job clears it back to NULL. `to_email_hash` (SHA-256 of the lowercased address) stays forever and is what we look up suppression by.
+`email_outbox` is the durable record of every transactional or notification email we intend to send. `IEmailService.enqueue()` ([packages/email/src/outbox-service.ts](../../packages/email/src/outbox-service.ts)) writes one row per call, deduplicated on `idempotency_key` (normally `template:userId-or-emailHash:sha256(vars)`; snapshot recipients also include the address hash so an address change cannot reuse an older snapshot). Status starts at `pending` (or `suppressed` if the recipient is in `email_suppression` *and* the category is `transactional`), and a BullMQ job is enqueued with `jobId = outboxId` to give the queue itself a second layer of idempotency. The worker's `send-email` job moves the row through `sending` → `sent`/`failed` and stores the Postmark `MessageID`. The `category` column has two values — `auth` (verification, password reset, password changed, change email, invite) and `transactional` (everything else). `auth` sends bypass `email_suppression` because they are operational mail the user must receive even if they previously bounced; the worker still sets `flagged_address=true` so the operator can spot the case in audit. `to_snapshot` is the plaintext recipient address kept for templates that resolve at enqueue time (e.g. invites to people without a `user.id`); `to_snapshot_purge_at` is the 30-day deadline at which a periodic job clears it back to NULL. `to_email_hash` (SHA-256 of the lowercased address) stays forever and is what we look up suppression by.
 
 `email_event` is the append-only log of Postmark webhook callbacks. The Postmark webhook handler at `apps/api/src/routes/webhooks/postmark.ts` validates Basic Auth, parses the body, looks up the matching outbox row by `MessageID`, and inserts one event row per `RecordType` (`Delivery`, `Bounce`, `SpamComplaint`, `Open`, `Click`, `SubscriptionChange`). Hard bounces and complaints additionally upsert `email_suppression` and flip `user.email_status`. `outbox_id` is nullable so we don't lose a webhook when the outbox row was already purged or never wrote (e.g. legacy mail).
 
@@ -305,7 +370,16 @@ These are the four tables behind the email pipeline. They are a **second outbox*
 
 `notification_preference` was extended with `*_email` and `*_whatsapp` columns matching each existing `*_in_app` toggle, plus `lot_ended_seller_email`/`_whatsapp` for the seller-side notification. The defaults intentionally minimize promotional-shaped mail: `outbid_email=false` and `watchlist_email=false` (high volume), but `won_email=true`, `lost_email=true`, `payment_email=true`, `lot_ended_seller_email=true` (operational). All `*_whatsapp` toggles default to `false` because the WhatsApp channel is a stub today (see `apps/api/src/infrastructure/whatsapp-notification.channel.ts` — it throws `NotImplementedError`).
 
-**Role grants (now in place).** `apps/auth` enqueues into `email_outbox` and reads `email_suppression` from the Better Auth send-verification hook; `auth_app` has `INSERT, SELECT` on `email_outbox` and `SELECT` on `email_suppression` (`AUTH_INSERT_SELECT_TABLES` / `AUTH_SELECT_TABLES` in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts)). `apps/api` writes all four tables; `api_app` falls into the default `ALL PRIVILEGES` branch for tables outside its deny/read lists. `apps/worker` updates `email_outbox` and `newsletter_signup_log`; `worker_app` has `SELECT, UPDATE` on both via `WORKER_LOCK_READ_TABLES` (the worker is denied `INSERT`/`DELETE` so it cannot inflate the audit trail or collapse it).
+**Role grants (now in place).** Identity email intents cross the
+machine-authenticated `/internal/identity/emails` API boundary. `api_app`
+performs the synchronous outbox/suppression work and writes all four pipeline
+tables; `auth_app` has no privilege on `email_outbox` or `email_suppression`.
+Identity-supplied recipients use the existing 30-day snapshot retention so the
+worker never needs a later Identity `user` lookup. `apps/worker` updates
+`email_outbox` and `newsletter_signup_log`; `worker_app` has `SELECT, UPDATE` on
+`newsletter_signup_log`. It has `INSERT, SELECT, UPDATE` on `email_outbox`
+because worker-owned projectors also enqueue notifications; `DELETE` remains
+denied so it cannot collapse the audit trail.
 
 ## Critical invariants
 
@@ -319,7 +393,7 @@ These are the rules the schema enforces or the application code maintains. Viola
 
 **JWKS retirement window.** A retired key remains in the `jwks_key` table with `status='retired'` for 30 minutes after rotation per D2 before deletion. The rotation procedure (P6 quarterly cron + the runbook) enforces this; do not write ad-hoc cleanup queries that delete retired keys faster than this.
 
-**Single canonical user per verified email.** The `user.email` column has a unique constraint. Two humans accidentally sharing an email (rare but possible during Shopify-to-our-system collision) goes through the admin-review flow per Q25 — never auto-merge until both sides are email-verified and the operator confirms.
+**Single canonical user per verified email.** The `user.email` column has a unique constraint. Any ambiguous external-identity email collision goes through the admin-review flow per Q25 — never auto-merge until both sides are email-verified and the operator confirms.
 
 ## Indexing
 
@@ -339,9 +413,25 @@ Every foreign key column has an index. The query patterns that matter beyond the
 
 Schema changes go through Drizzle migrations. The generated SQL files live at [packages/db/drizzle/](../../packages/db/drizzle/) (with the metadata journal at [packages/db/drizzle/meta/](../../packages/db/drizzle/meta/)); the schema sources that produce them live at [packages/db/src/schema/](../../packages/db/src/schema/). The production runner is [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts), invoked by `pnpm db:migrate:prod`. It uses the privileged owner connection URI held in `DATABASE_URL_OWNER`, which is set on the migration job and never loaded by application processes — the long-running app processes use `DATABASE_URL_API`, `DATABASE_URL_AUTH`, or `DATABASE_URL_WORKER` per role.
 
+Identity hardening applies `0146_oauth_consent_client_user_unique.sql`,
+`0147_oidc_rp_sessions.sql`, `0148_oidc_logout_and_shop_sessions.sql`, then
+`0149_ssf_signal_transport.sql`. Roll back only in reverse order with
+`0149_rollback.sql`, `0148_rollback.sql`, `0147_rollback.sql`, then
+`0146_rollback.sql`. Shop uses `DATABASE_URL_SHOP`; no product may use a direct
+Identity connection.
+
 Adding a new column with a default value is safe online. Adding a `NOT NULL` column without a default requires a multi-step migration: add nullable, backfill, then add the constraint in a separate migration. Renaming a column requires the same multi-step pattern (add new, dual-write from app, backfill old to new, switch reads, drop old) — Drizzle's automatic migration generation will not produce this safely.
 
 Role grants are applied by [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (script: `pnpm db:roles`, also called automatically at the end of `pnpm db:migrate:prod`). The script is idempotent. **When you add a new table, also add it to the appropriate `*_FULL_TABLES` / `*_DENY_TABLES` / `*_SELECT_TABLES` constant in `migrate-roles.ts`** — without that, the apps will fail at runtime trying to read tables they don't have permission for.
+
+`worker_app` and `api_app` access to Identity `user` is migration-controlled,
+not a static role-list grant. Role reconciliation captures and restores each
+existing pre-`0160`/pre-`0161` `SELECT` grant across its global reset, but never
+recreates a grant after the corresponding revocation. Deploy and soak each
+directory-backed reader stage before applying its cutover migration. Rolling
+application code back across either boundary requires the matching
+`0160_rollback.sql` or `0161_rollback.sql`; re-running roles alone cannot restore
+the source-table grant.
 
 ## Where to look in the code
 

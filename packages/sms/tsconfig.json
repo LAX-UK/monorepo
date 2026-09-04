@@ -1,9 +1,0 @@
-{
-  "extends": "../config-ts/base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "noEmit": false
-  },
-  "include": ["src"]
-}

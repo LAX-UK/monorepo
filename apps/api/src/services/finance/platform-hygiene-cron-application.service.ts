@@ -6,10 +6,6 @@ export class PlatformHygieneCronApplicationService
 {
   constructor(private readonly hygieneCronService: HygieneCronService) {}
 
-  purgeExpiredVerifications() {
-    return this.hygieneCronService.purgeExpiredVerifications();
-  }
-
   sendStaleSubmissionDraftReminders(staleDays: number) {
     return this.hygieneCronService.sendStaleSubmissionDraftReminders(staleDays);
   }

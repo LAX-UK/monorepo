@@ -74,9 +74,12 @@ function buildLiveBiddingApp(partial: {
   };
 
   const authenticator: IAuthenticator = {
-    getSessionUser: vi
-      .fn()
-      .mockResolvedValue({ id: "clerk-1", role: "staff", staffRole: "super_admin" }),
+    getSessionUser: vi.fn().mockResolvedValue({
+      id: "clerk-1",
+      role: "staff",
+      staffRole: "super_admin",
+      scopes: ["bid.write"],
+    }),
   };
 
   const app = new Hono();

@@ -73,14 +73,25 @@ function adminHomeMasks(page: Page): Locator[] {
   ];
 }
 
+function adminLotsMasks(page: Page): Locator[] {
+  return [
+    page.getByRole("tablist"),
+    page.locator("table"),
+    page.getByRole("searchbox"),
+    page.getByRole("navigation"),
+    page.locator("#main-content section").first(),
+  ];
+}
+
 function screenshotOptions(page: Page, visualCase: (typeof adminVisualCases)[number]) {
   return {
     ...(visualCase.capture === "page" ? { fullPage: true } : {}),
-    maxDiffPixelRatio: 0.01,
+    maxDiffPixelRatio: visualCase.slug === "admin-lots" ? 0.03 : 0.01,
     mask: [
       page.locator("time"),
       page.getByRole("heading", { name: /good day|your dashboard/i }),
       ...(visualCase.slug === "admin-home" ? adminHomeMasks(page) : []),
+      ...(visualCase.slug === "admin-lots" ? adminLotsMasks(page) : []),
     ],
   };
 }

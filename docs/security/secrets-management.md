@@ -16,16 +16,22 @@ The shape of every secret in this list:
 | Name | Where it lives | Who can read it | Rotation |
 |---|---|---|---|
 | `DATABASE_URL_OWNER` | DO App Platform env on the migration job; 1Password | Migration job only; founders | Annual or on suspected leak |
-| `DATABASE_URL_AUTH` | DO App Platform env on `apps/auth` and `apps/api`; 1Password | `apps/auth`, `apps/api`; founders | Annual |
+| `DATABASE_URL_AUTH` | DO App Platform env on `apps/auth`; 1Password | `apps/auth`; founders | Annual |
 | `DATABASE_URL_API` | DO App Platform env on `apps/api`; 1Password | `apps/api`; founders | Annual |
 | `DATABASE_URL_WORKER` | DO App Platform env on `apps/worker`; 1Password | `apps/worker`; founders | Annual |
-| `BETTER_AUTH_SECRET` | DO App Platform env on `apps/api`, `apps/auth`; 1Password | `apps/api`, `apps/auth`; founders | Quarterly |
+| `DATABASE_URL_SHOP` | DO App Platform env on the Shop BFF; 1Password | Shop only; founders | Annual |
+| `BETTER_AUTH_SECRET` | DO App Platform env on `apps/auth`; 1Password | `apps/auth`; founders | Quarterly |
+| `CHECK_IN_TOKEN_SECRET` | DO App Platform env on `apps/api`; 1Password | `apps/api`; founders | Quarterly |
+| `IDENTITY_MACHINE_CLIENT_ID` / `IDENTITY_MACHINE_CLIENT_SECRET` | DO App Platform env on `apps/api` and `apps/auth`; 1Password | `apps/api`, `apps/auth`; founders | Quarterly |
+| `OIDC_CLIENT_SECRET_LAX_BID_WEB` | DO App Platform env on `apps/web`; 1Password | Bid BFF and one-time client provisioning only | Quarterly |
+| `BID_BFF_SESSION_ENCRYPTION_KEY` | DO App Platform env on `apps/web`; 1Password | Bid BFF only | Quarterly; rotation logs out Bid sessions |
+| `OIDC_CLIENT_SECRET` (`lax-shop-web`) | DO App Platform env on the Shop BFF; 1Password | Shop BFF and one-time client provisioning only | Quarterly |
+| `SESSION_SECRET` (Shop) | DO App Platform env on the Shop BFF; 1Password | Shop BFF only | Quarterly; rotation logs out Shop sessions |
+| `AUTH_DEK_KEY` | DO App Platform env on `apps/auth`; 1Password | `apps/auth` only | Re-encryption procedure only; never rotate in place |
 | `JWKS` private keys | Postgres `jwks_key.private_jwk`, readable only by `auth_app` role | The role; nobody on the team has direct DB access at app-runtime time | Quarterly via [../runbooks/jwks-rotation.md](../runbooks/jwks-rotation.md) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | DO App Platform env on `apps/api`, `apps/auth`; Google Cloud console | `apps/api`, `apps/auth`; ops team | On suspected leak |
-| `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` | DO App Platform env on `apps/api`, `apps/auth`; Apple Developer Program | `apps/api`, `apps/auth`; ops team | Every 180 days or on suspected leak |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | DO App Platform env on `apps/auth`; Google Cloud console | `apps/auth`; ops team | On suspected leak |
+| `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` | DO App Platform env on `apps/auth`; Apple Developer Program | `apps/auth`; ops team | Every 180 days or on suspected leak |
 | `APPLE_DOMAIN_ASSOCIATION` | DO App Platform env on `apps/auth`; Apple Developer Program | `apps/auth`; ops team | When Apple domain verification content changes |
-| `SHOPIFY_WEBHOOK_SECRET` | DO App Platform env on `apps/api`; Shopify admin; 1Password | `apps/api`; ops team | Annual |
-| `WORDPRESS_WEBHOOK_SECRET` | DO App Platform env on `apps/api`; WordPress admin; 1Password | `apps/api`; ops team | Annual |
 | `XERO_*` (client id/secret/refresh token) | DO App Platform env on `apps/worker`; Xero developer console; 1Password | `apps/worker`; ops team | Refresh token rotates on use; client secret annually |
 | `ZOHO_*` (client id/secret/refresh token, region) | DO App Platform env on `apps/worker`; api-console.zoho.eu; 1Password | `apps/worker`; ops team | Refresh token rotates on use; client secret annually |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | DO App Platform env on `apps/api` and `apps/worker`; DigitalOcean Spaces keys; 1Password | `apps/api`, `apps/worker`; ops team | Annual or on suspected leak |
@@ -42,6 +48,10 @@ The shape of every secret in this list:
 
 When you add a secret to the codebase, add a row to this table in the same PR. When you rotate a secret, update the rotation date in 1Password (this file does not track exact dates — that's the 1Password entry's job).
 
+`SSF_DELIVERY_ENABLED`, `SSF_DELIVERY_TIMEOUT_MS`, and
+`SSF_DELIVERY_MAX_ATTEMPTS` are security-sensitive configuration but not
+secrets. Streams remain disabled until receiver verification passes.
+
 ## Rotation procedure
 
 The detailed procedure for the JWT signing keys is [../runbooks/jwks-rotation.md](../runbooks/jwks-rotation.md). For everything else, the procedure is:
@@ -56,7 +66,11 @@ For OAuth refresh tokens (Xero, Zoho), the refresh-flow rotates the token automa
 
 ## What never lives in env vars
 
-Database row contents are not secrets at the env-var level. JWKS private keys live in the `jwks_key.private_jwk` jsonb column, restricted to the `auth_app` Postgres role. Stripe customer payment-method tokens are stored on Stripe's side; we hold reference IDs only. Apple privacy-relay emails are stored in `external_accounts.email` as-is — they are not "real" secrets but their compromise still leaks a user's identity link to Apple.
+Database row contents are not secrets at the env-var level. JWKS private keys
+live in `jwks_key.private_jwk`, restricted to the `auth_app` Postgres role.
+Stripe customer payment-method tokens remain on Stripe's side; we hold reference
+IDs only. Apple privacy-relay addresses are Identity PII and receive the same
+protection as any other user email.
 
 ## Pre-commit scanning
 

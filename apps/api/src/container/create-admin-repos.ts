@@ -22,7 +22,6 @@ import type {
   IFailedJobRepository,
   ILegalEntityDocumentAdminRepository,
   ILegalEntityLifecycleAdminRepository,
-  IUserEmailVerifiedPublisher,
 } from "@auction/persistence/interfaces";
 import {
   DrizzleAdminDisputeCaseEnrichmentReader,
@@ -38,7 +37,6 @@ import {
   DrizzleAdminReviewTaskRepository,
   DrizzleAdminSaleOperationsSnapshotReader,
   DrizzleAdminSaleReadinessReader,
-  DrizzleAdminUserActivityReader,
   DrizzleAdminUserBidsReader,
   DrizzleAdminUserKycReader,
   DrizzleAdminUserReader,
@@ -47,7 +45,6 @@ import {
   DrizzleFailedJobRepository,
   DrizzleLegalEntityDocumentAdminRepository,
   DrizzleLegalEntityLifecycleAdminRepository,
-  DrizzleUserEmailVerifiedPublisher,
 } from "@auction/persistence/repositories";
 
 export type AdminRepositories = {
@@ -73,14 +70,15 @@ export type AdminRepositories = {
   legalEntityDocumentAdminRepository: ILegalEntityDocumentAdminRepository;
   adminMarketingEventOutboxRepository: IAdminMarketingEventOutboxRepository;
   failedJobRepository: IFailedJobRepository;
-  userEmailVerifiedPublisher: IUserEmailVerifiedPublisher;
 };
 
-export function createAdminRepositories(db: Database): AdminRepositories {
+export function createAdminRepositories(
+  db: Database,
+  adminActivityReader: IAdminUserActivityReader,
+): AdminRepositories {
   const adminUserReader = new DrizzleAdminUserReader(db);
   const adminUserKycReader = new DrizzleAdminUserKycReader(db);
   const adminRoleManager = new DrizzleAdminUserRoleManager(db);
-  const adminActivityReader = new DrizzleAdminUserActivityReader(db);
   const adminUserBidsReader = new DrizzleAdminUserBidsReader(db);
   const adminSaleOperationsSnapshotReader = new DrizzleAdminSaleOperationsSnapshotReader(db);
   const adminSaleReadinessReader = new DrizzleAdminSaleReadinessReader(db);
@@ -100,7 +98,6 @@ export function createAdminRepositories(db: Database): AdminRepositories {
   const legalEntityDocumentAdminRepository = new DrizzleLegalEntityDocumentAdminRepository(db);
   const adminMarketingEventOutboxRepository = new DrizzleAdminMarketingEventOutboxRepository(db);
   const failedJobRepository = new DrizzleFailedJobRepository(db);
-  const userEmailVerifiedPublisher = new DrizzleUserEmailVerifiedPublisher(db);
 
   return {
     adminUserReader,
@@ -125,6 +122,5 @@ export function createAdminRepositories(db: Database): AdminRepositories {
     legalEntityDocumentAdminRepository,
     adminMarketingEventOutboxRepository,
     failedJobRepository,
-    userEmailVerifiedPublisher,
   };
 }

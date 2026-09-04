@@ -1,8 +1,13 @@
 import type { Database } from "@auction/db";
 import type { EmailEventType } from "@auction/db/schema";
-import { emailEvent, emailOutbox, user } from "@auction/db/schema";
+import { bidIdentityDirectory, emailEvent, emailOutbox } from "@auction/db/schema";
 import { and, eq, gt, sql } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type { IEmailWebhookIngestRepository } from "../interfaces/email-webhook-ingest.repository.js";
+import {
+  activeIdentitySubject,
+  normalizedIdentityEmailEquals,
+} from "../lib/bid-identity-directory-query.js";
 
 export class DrizzleEmailWebhookIngestRepository implements IEmailWebhookIngestRepository {
   constructor(private readonly db: Database) {}
@@ -54,25 +59,31 @@ export class DrizzleEmailWebhookIngestRepository implements IEmailWebhookIngestR
     emailLower: string,
     status: "bounced" | "complained",
   ): Promise<void> {
-    await this.db
-      .update(user)
-      .set({
+    const rows = await this.db
+      .select({ id: bidIdentityDirectory.subjectId })
+      .from(bidIdentityDirectory)
+      .where(
+        and(
+          normalizedIdentityEmailEquals(bidIdentityDirectory.email, emailLower),
+          activeIdentitySubject(),
+        ),
+      );
+    const changedAt = new Date();
+    for (const row of rows) {
+      await writeBidUserProfile(this.db, row.id, {
         emailStatus: status,
-        emailStatusChangedAt: new Date(),
-      })
-      .where(sql`lower(${user.email}) = ${emailLower}`);
+        emailStatusChangedAt: changedAt,
+      });
+    }
   }
 
   async updateUserEmailStatusByUserId(
     userId: string,
     status: "bounced" | "complained",
   ): Promise<void> {
-    await this.db
-      .update(user)
-      .set({
-        emailStatus: status,
-        emailStatusChangedAt: new Date(),
-      })
-      .where(eq(user.id, userId));
+    await writeBidUserProfile(this.db, userId, {
+      emailStatus: status,
+      emailStatusChangedAt: new Date(),
+    });
   }
 }

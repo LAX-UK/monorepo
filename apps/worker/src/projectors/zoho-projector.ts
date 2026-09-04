@@ -17,7 +17,6 @@ const ZOHO_CONSUMER = "zoho";
 const ZOHO_CONTRACT_EVENT_TYPES = new Set([
   "user.registered",
   "user.email_verified",
-  "user.linked_external",
   "bid.lot_won",
   "bid.first_for_user",
   "bid.outbid",

@@ -1,8 +1,9 @@
 import { createDb } from "@auction/db";
-import { legalEntity, lot, sale, user } from "@auction/db/schema";
+import { legalEntity, lot, sale } from "@auction/db/schema";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
+import { seedIdentityUserFixtures } from "../testing/identity-user-fixtures.js";
 import { rollbackFailedEmergencyLotAdd } from "./emergency-lot-add.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -22,14 +23,15 @@ describe.skipIf(!HAS_DB)("rollbackFailedEmergencyLotAdd (integration)", () => {
     try {
       await db.transaction(async (tx) => {
         const t = new Date();
-        await tx.insert(user).values({
-          id: sellerUserId,
-          name: "Seller",
-          email: "emergency-rollback-seller@integration.test",
-          emailVerified: true,
-          createdAt: t,
-          updatedAt: t,
-        });
+        await seedIdentityUserFixtures(tx, [
+          {
+            id: sellerUserId,
+            name: "Seller",
+            email: "emergency-rollback-seller@integration.test",
+            createdAt: t,
+            updatedAt: t,
+          },
+        ]);
         await tx.insert(legalEntity).values({
           id: sellerLeId,
           displayName: "Gallery",

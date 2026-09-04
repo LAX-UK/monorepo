@@ -1,17 +1,17 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { bidUserProfile } from "@auction/db/schema";
+import { eq } from "drizzle-orm";
 import type { IUserSuspensionChecker } from "../interfaces/user-suspension.checker.js";
 
 export class DrizzleUserSuspensionChecker implements IUserSuspensionChecker {
   constructor(private readonly db: Database) {}
 
   async isSuspended(userId: string): Promise<boolean> {
-    const [row] = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .where(and(eq(user.id, userId), isNotNull(user.suspendedAt)))
+    const [profile] = await this.db
+      .select({ suspendedAt: bidUserProfile.suspendedAt })
+      .from(bidUserProfile)
+      .where(eq(bidUserProfile.userId, userId))
       .limit(1);
-    return Boolean(row);
+    return profile?.suspendedAt != null;
   }
 }

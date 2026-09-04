@@ -28,7 +28,7 @@ export type KycWebhookHandleResult = {
 };
 
 export type KycStatusSummary = {
-  /** Raw DB `user.kycStatus`. UI must use `feedback` + `latestSessionStatus` (or frontend helpers). */
+  /** Raw DB `bid_user_profile.kycStatus`. UI must use `feedback` + `latestSessionStatus` (or frontend helpers). */
   status: UserKycStatus;
   verifiedAt: Date | null;
   latestSessionId: string | null;

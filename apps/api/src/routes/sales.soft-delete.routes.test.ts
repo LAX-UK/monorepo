@@ -37,6 +37,8 @@ describe("POST /sales/:id/delete", () => {
         id: "staff-1",
         role,
         staffRole,
+
+        scopes: ["bid.write"],
       }),
     };
     app.route("/sales", createSaleRoutes(container, authenticator));
@@ -127,6 +129,8 @@ describe("POST /sales/bulk soft_delete", () => {
         id: "staff-1",
         role,
         staffRole,
+
+        scopes: ["bid.write"],
       }),
     };
     app.route("/sales", createSaleRoutes(container, authenticator));

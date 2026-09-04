@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { legalEntity, lot, payment, user } from "@auction/db/schema";
+import { bidIdentityDirectory, legalEntity, lot, payment } from "@auction/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import type { IAdminManualReviewPaymentReader } from "../interfaces/admin-manual-review-payment.reader.js";
 import type { ManualReviewPaymentBaseRow } from "../interfaces/admin-read-models.js";
@@ -15,7 +15,7 @@ export class DrizzleAdminManualReviewPaymentReader implements IAdminManualReview
         lotTitle: lot.title,
         lotNumber: lot.lotNumber,
         winnerUserId: payment.buyerId,
-        winnerEmail: user.email,
+        winnerEmail: sql<string>`coalesce(${bidIdentityDirectory.email}, '[deleted]')`,
         sellerLegalEntityId: payment.sellerLegalEntityId,
         sellerDisplayName: legalEntity.displayName,
         sellerStatus: legalEntity.status,
@@ -26,7 +26,7 @@ export class DrizzleAdminManualReviewPaymentReader implements IAdminManualReview
       .from(payment)
       .innerJoin(lot, eq(payment.lotId, lot.id))
       .innerJoin(legalEntity, eq(payment.sellerLegalEntityId, legalEntity.id))
-      .innerJoin(user, eq(payment.buyerId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .where(sql`${payment.status} = 'requires_manual_review'`)
       .orderBy(desc(payment.createdAt))
       .limit(100);

@@ -6,10 +6,12 @@ function productionEnvBase(overrides: Record<string, unknown> = {}) {
     NODE_ENV: "production",
     APP_ENV: "production",
     DATABASE_URL: "postgres://localhost/db",
-    BETTER_AUTH_SECRET: "x".repeat(48),
+    CHECK_IN_TOKEN_SECRET: "x".repeat(48),
     WEB_ORIGIN: "https://app.example.com",
     API_PUBLIC_URL: "https://api.example.com",
-    AUTH_DEK_KEY: "a".repeat(64),
+    OIDC_ISSUER_URL: "https://identity.example.com",
+    IDENTITY_MACHINE_CLIENT_ID: "api-service",
+    IDENTITY_MACHINE_CLIENT_SECRET: "identity-machine-secret-at-least-32-characters",
     CRON_INTERNAL_SECRET: "c".repeat(32),
     OPS_SUPPORT_EMAIL: "support@example.com",
     OPS_ONCALL_EMAIL: "oncall@example.com",
@@ -40,6 +42,25 @@ describe("envSchema WEB_ORIGINS", () => {
     } finally {
       process.env.CORS_ALLOWED_ORIGINS = prev ?? "";
     }
+  });
+});
+
+describe("envSchema identity audience migration", () => {
+  it("defaults to the Bid resource and disables legacy lax-api", () => {
+    const parsed = envSchema.safeParse(productionEnvBase());
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.JWT_AUDIENCE).toBe("lax-bid-api");
+    expect(parsed.data.ALLOW_LEGACY_LAX_API_AUDIENCE).toBe(false);
+  });
+
+  it("requires an explicit compatibility flag to enable legacy acceptance", () => {
+    const parsed = envSchema.safeParse(
+      productionEnvBase({ ALLOW_LEGACY_LAX_API_AUDIENCE: "true" }),
+    );
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.ALLOW_LEGACY_LAX_API_AUDIENCE).toBe(true);
   });
 });
 

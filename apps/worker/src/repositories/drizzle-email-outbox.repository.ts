@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import type { EmailSuppressionReason } from "@auction/db/schema";
-import { emailOutbox, emailSuppression, user } from "@auction/db/schema";
+import { bidIdentityDirectory, emailOutbox, emailSuppression } from "@auction/db/schema";
 import { and, eq, lt, sql } from "drizzle-orm";
 import type {
   EmailOutboxRow,
@@ -86,9 +86,9 @@ export class DrizzleEmailOutboxRepository implements IEmailOutboxRepository {
 
   async resolveUserEmail(userId: string): Promise<string | null> {
     const [recipient] = await this.db
-      .select({ email: user.email })
-      .from(user)
-      .where(eq(user.id, userId))
+      .select({ email: bidIdentityDirectory.email })
+      .from(bidIdentityDirectory)
+      .where(eq(bidIdentityDirectory.subjectId, userId))
       .limit(1);
     return recipient?.email ?? null;
   }

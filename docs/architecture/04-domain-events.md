@@ -6,10 +6,14 @@ This single pattern gives us four properties that would otherwise require signif
 
 > **Implementation status (last reviewed 2026-07-21).** Phase 2 async delivery is **implemented behind feature flags**; production cutover is staged per [docs/runbooks/async-delivery-phase-two.md](../runbooks/async-delivery-phase-two.md).
 >
-> - **Implemented:** Live producers across API/auth/worker; typed catalog in `@auction/types` ([packages/types/src/domain-event-catalog/](../../packages/types/src/domain-event-catalog/)); per-consumer **`domain_event_delivery`** ledger (leases, retry, dead-letter, replay); Zoho/Xero projectors with `off` → shadow/dry-run → canary → live modes; Shopify/WordPress webhook enqueue + worker processing; optional worker-owned lot lifecycle (`LIFECYCLE_EXECUTION_OWNER`).
+> - **Implemented:** Live producers across API/auth/worker; typed catalog in `@auction/types` ([packages/types/src/domain-event-catalog/](../../packages/types/src/domain-event-catalog/)); per-consumer **`domain_event_delivery`** ledger (leases, retry, dead-letter, replay); Zoho/Xero projectors with `off` → shadow/dry-run → canary → live modes; generic webhook enqueue + Xero worker processing; optional worker-owned lot lifecycle (`LIFECYCLE_EXECUTION_OWNER`).
 > - **Defaults:** `ZOHO_CRM_SYNC_MODE=off`, `XERO_PROJECTOR_MODE=off`, `DOMAIN_EVENT_PUBLISH_VALIDATE=off`, webhook enqueue/process **false**, lifecycle owner **api** — deploys do not enable external writes without explicit env changes.
 > - **Contract enforcement:** Zod schemas and consumer lists live in `@auction/types` (`domain-event-catalog/`). `guardDomainEventPublish` runs at append time in API and worker publishers when `DOMAIN_EVENT_PUBLISH_VALIDATE` is `observe` (log/metric only) or `enforce` (reject the transaction). Xero/Zoho delivery re-validates with `assertDomainEventConsumerContract`; invalid payloads are **fatal** (dead-letter, no silent cursor advance). Financial events (`payment.*`, `payout.*`) use strict v1 schemas in `financial-payload-schemas.ts` with fixtures in `financial-contracts.test.ts`. Executable gates: `DOMAIN_EVENT_SMOKE_GATES` in `@auction/background-runtime`, mapped from `apps/worker/src/domain-event-smoke.test.ts`. Before Xero live/canary: set `XERO_API_WRITES_DISABLED=true` on **apps/api** so direct API mutations cannot race worker projection — see [async-delivery-phase-two.md](../runbooks/async-delivery-phase-two.md) and [worker-runtime-cutover.md](../runbooks/worker-runtime-cutover.md).
 > - **Catalog source of truth:** registry + Zod payloads in `@auction/types`; legacy lot payload schemas in API re-export from the shared catalog.
+> - **Identity security transport:** Identity lifecycle events remain durable
+>   domain events. Enabled SSF streams map the supported subset into signed
+>   CAEP/RISC SETs with their own delivery ledger. OIDC back-channel logout is a
+>   separate session-termination mechanism.
 
 ## The flow at a glance
 
@@ -61,6 +65,33 @@ The decision in D5 documents the alternatives we rejected, but the reasoning is 
 
 The pattern's only meaningful cost is the discipline required to never bypass it. Anyone writing application code that calls Zoho directly defeats the entire architecture. Code review must reject any direct integration call from outside `apps/worker/src/projectors/`.
 
+## Identity lifecycle and SSF
+
+Identity emits versioned registration, profile, email-verification,
+deletion-request/cancellation, credential, session, disable/enable, deletion,
+and merge events. Bid and Shop own their authorization/profile facts and may
+maintain minimal, read-only Identity projections keyed by immutable `sub`;
+payloads never contain credentials, tokens, MFA secrets, Bid KYC/AML, or Shop
+authorization.
+
+The `bid_identity_directory` projector consumes `user.registered`,
+`user.profile_updated`, `user.email_verified`, `user.deletion_requested`,
+`user.deletion_cancelled`, `user.identity_merged`, and
+`user.identity_deleted`. It copies only contact/display and deletion lifecycle
+facts needed by worker jobs. It has an independent cursor and reconciliation
+gate; `user.identity_deleted` hard-deletes the local PII row.
+
+`apps/auth/src/services/ssf.service.ts` maps session revocation and credential
+change to CAEP, account disable/enable/purge to RISC, and account merge to the
+first-party merge event. Mapping appends a signed SET to `ssf_delivery`; it does
+not replace the source `domain_events` row. Each stream has an independent
+checkpoint and exact audience/endpoint. Streams are disabled by default and
+enabling starts from the then-current event id, so operators must use
+reconciliation rather than assume an implicit historical backfill.
+
+See [Identity boundary](./09-lax-identity-boundary.md) and
+[SSF operations](../runbooks/ssf-stream-operations.md).
+
 ## Payload PII policy
 
 **Principle.** Stored `domain_events.payload` JSON may contain sensitive attributes for downstream projectors and accounting. Anything **exported** to humans (CSV/JSON admin download, structured logs in worker projectors) must minimise PII by default: recursive redaction with a **default-deny** posture for string leaves, while retaining obvious reference fields (`*Id`, monetary amounts, ISO timestamps, status enums).
@@ -93,11 +124,13 @@ This catalog is the contract between event producers and projectors. When you ad
 
 | Event type | Producer | Consumers | Triggered by | Payload (v1) |
 |---|---|---|---|---|
-| `user.registered` | apps/api or apps/auth | zoho, marketing_contacts | New user row created | `{userId, email, name, source: 'credential'\|'google'\|'apple'}` |
+| `user.registered` | apps/auth or DB backfill | bid/shop provisioning, identity directory, zoho, marketing contacts | New Identity subject created | `{userId, email, name, source, image?, phone?, emailVerified?, createdAt?}` |
 | `user.email_verified` | apps/auth | zoho, marketing_contacts | Email verification token redeemed | `{userId, email, verifiedAt}` |
-| `user.deletion_requested` | apps/api | marketing_contacts | Self-serve account deletion requested (`POST /users/me/delete`) | `{userId}` |
+| `user.profile_updated` | apps/auth | bid identity directory, product lifecycle projectors | Identity contact/display field changed | `{schemaVersion, subjectId, email?, name?, phone?, image?, updatedAt}` |
+| `user.deletion_requested` | apps/auth | bid identity directory, marketing contacts | Self-serve account deletion requested | `{schemaVersion, subjectId, requestedAt}` |
+| `user.deletion_cancelled` | apps/auth | bid identity directory, marketing contacts | Pending account deletion cancelled | `{schemaVersion, subjectId, cancelledAt}` |
+| `user.identity_deleted` | apps/auth | bid identity directory, product lifecycle projectors | Identity PII purge completed | `{schemaVersion, subjectId, deletedAt}` |
 | `kyc.verified` | apps/api | marketing_contacts | Individual KYC approved; sole-trader `lead` → `connect_pending` | `{legalEntityIdsAdvancedToConnectPending[]}` (aggregate type `user`, id = userId) |
-| `user.linked_external` | apps/api | zoho | external_accounts row written | `{userId, provider, externalId, linkedAt}` |
 | `bid.first_for_user` | apps/api | zoho | First bid by this user on this lot | `{bidId, lotId, userId, amountCents, placedAt}` |
 | `bid.outbid` | apps/api | zoho, notifications | This user's bid was exceeded | `{previousBidId, lotId, userId, newHighAmountCents}` |
 | `bid.lot_won` | apps/worker (lot lifecycle) | zoho, notifications | Lot ended with this user as high bidder | `{lotId, userId, winningBidId, amountCents, endedAt}` |

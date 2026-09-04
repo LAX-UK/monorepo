@@ -72,7 +72,11 @@ function lotRoutesApp(opts: {
   } as unknown as Container;
 
   const authenticator: IAuthenticator = {
-    getSessionUser: vi.fn().mockResolvedValue(opts.session),
+    getSessionUser: vi
+      .fn()
+      .mockResolvedValue(
+        opts.session ? { ...opts.session, scopes: ["bid.read", "bid.write"] } : null,
+      ),
   };
 
   const app = new Hono();

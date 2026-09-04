@@ -5,6 +5,10 @@ export function createSecurityHeadersMiddleware() {
   return createMiddleware(async (c, next) => {
     c.header("X-Content-Type-Options", "nosniff");
     c.header("X-Frame-Options", "DENY");
+    c.header(
+      "Content-Security-Policy",
+      "default-src 'none'; script-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+    );
     c.header("Referrer-Policy", "strict-origin-when-cross-origin");
     c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
     if (c.req.header("x-forwarded-proto") === "https" || c.req.url.startsWith("https:")) {

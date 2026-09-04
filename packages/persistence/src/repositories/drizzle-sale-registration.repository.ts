@@ -1,5 +1,11 @@
 import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, saleRegistration, user } from "@auction/db/schema";
+import {
+  bidIdentityDirectory,
+  bidUserProfile,
+  legalEntity,
+  legalEntityMember,
+  saleRegistration,
+} from "@auction/db/schema";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type {
@@ -135,14 +141,15 @@ export class DrizzleSaleRegistrationRepository implements ISaleRegistrationRepos
         checkedInAt: saleRegistration.checkedInAt,
         laxNotes: saleRegistration.laxNotes,
         rejectionReason: saleRegistration.rejectionReason,
-        userEmail: user.email,
-        userName: user.name,
-        kycStatus: user.kycStatus,
+        userEmail: bidIdentityDirectory.email,
+        userName: bidIdentityDirectory.name,
+        kycStatus: bidUserProfile.kycStatus,
         buyerLegalEntityDisplayName: legalEntity.displayName,
         memberRole: legalEntityMember.role,
       })
       .from(saleRegistration)
-      .leftJoin(user, eq(user.id, saleRegistration.userId))
+      .leftJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, saleRegistration.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, saleRegistration.userId))
       .leftJoin(legalEntity, eq(legalEntity.id, saleRegistration.buyerLegalEntityId))
       .leftJoin(
         legalEntityMember,

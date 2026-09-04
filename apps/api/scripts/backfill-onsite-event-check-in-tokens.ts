@@ -11,7 +11,7 @@ import { buildPassUrl, issueCheckInToken } from "../src/lib/onsite-event-check-i
 
 const db = createDb(process.env.DATABASE_URL ?? "");
 const eventRepo = new DrizzleOnsiteEventRepository(db);
-const cipherSecret = process.env.BETTER_AUTH_SECRET?.trim();
+const cipherSecret = process.env.CHECK_IN_TOKEN_SECRET?.trim();
 
 const rows = await db
   .select({

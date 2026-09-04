@@ -5,6 +5,7 @@ import {
   defineCompileTimeContract,
 } from "../testing/compile-time-contract.js";
 import { AML_MATCH_REVIEW_PROJECTOR } from "./aml-match-review.js";
+import { BID_IDENTITY_DIRECTORY_PROJECTOR } from "./bid-identity-directory.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { LOT_INVOICE_INITIATION_PROJECTOR } from "./lot-invoice-initiation.js";
 import { MARKETING_CONTACTS_PROJECTOR } from "./marketing-contacts-projector.js";
@@ -22,6 +23,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   ZOHO_PROJECTOR,
   XERO_PROJECTOR,
   MARKETING_CONTACTS_PROJECTOR,
+  "shop_identity_projection",
   "admin_impersonation_notify",
   "payout_transfer_failed_notify",
   NOTIFICATION_FANOUT_PROJECTOR,
@@ -29,6 +31,8 @@ const EXPECTED_PROJECTOR_ORDER = [
   "lot_voided_anti_shilling_admin_notify",
   "clear_artist_blocks",
   "legal_entity_provisioning",
+  BID_IDENTITY_DIRECTORY_PROJECTOR,
+  "bid_profile_provisioning",
   AML_MATCH_REVIEW_PROJECTOR,
   SOURCE_OF_FUNDS_REVIEW_PROJECTOR,
   SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR,

@@ -27,9 +27,12 @@ describe("export routes", () => {
     const container = buildContainer({ createExport } as never);
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: userId, role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: userId,
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.write"],
+      }),
     };
 
     const app = new Hono();
@@ -67,9 +70,12 @@ describe("export routes", () => {
     const container = buildContainer({ createExport } as never);
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: userId, role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: userId,
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.write"],
+      }),
     };
 
     const app = new Hono();
@@ -97,7 +103,9 @@ describe("export routes", () => {
     const container = buildContainer({ createExport } as never);
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: userId, role: "client", staffRole: null }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: userId, role: "client", staffRole: null, scopes: ["bid.write"] }),
     };
 
     const app = new Hono();
@@ -121,9 +129,12 @@ describe("export routes", () => {
     const container = buildContainer({ previewExport } as never);
 
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: userId, role: "staff", staffRole: "auction_manager" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: userId,
+        role: "staff",
+        staffRole: "auction_manager",
+        scopes: ["bid.write"],
+      }),
     };
 
     const app = new Hono();

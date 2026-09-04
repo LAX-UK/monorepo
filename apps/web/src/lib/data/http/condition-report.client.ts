@@ -6,7 +6,7 @@ import type { BuyerConditionReportRequestRowDto } from "@/lib/condition-report/m
 import { parseConditionReportRequestRow } from "@/lib/condition-report/parse-condition-report-request-row";
 
 function apiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3001";
+  return "/api/bff";
 }
 
 function parseListRow(raw: unknown): BuyerConditionReportRequestRowDto | null {

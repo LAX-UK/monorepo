@@ -13,7 +13,12 @@
  *   --all-missing-events   Include users already synced via email_verified/kyc (default: only never-synced)
  */
 import crypto from "node:crypto";
-import { emailSuppression, marketingContactSyncLog, user } from "@auction/db/schema";
+import {
+  bidUserProfile,
+  emailSuppression,
+  marketingContactSyncLog,
+  user,
+} from "@auction/db/schema";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { createDb } from "../client.js";
 import { publishUserRegistered } from "../services/publish-user-registered.js";
@@ -51,11 +56,12 @@ async function main() {
       createdAt: user.createdAt,
     })
     .from(user)
+    .innerJoin(bidUserProfile, eq(bidUserProfile.userId, user.id))
     .where(
       and(
-        notInArray(user.role, [...MARKETING_EXCLUDED_ROLES]),
-        eq(user.emailStatus, "ok"),
-        isNull(user.suspendedAt),
+        notInArray(bidUserProfile.role, [...MARKETING_EXCLUDED_ROLES]),
+        eq(bidUserProfile.emailStatus, "ok"),
+        isNull(bidUserProfile.suspendedAt),
         isNull(user.deletionRequestedAt),
         sql`NOT EXISTS (
           SELECT 1 FROM domain_events de

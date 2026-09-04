@@ -13,6 +13,7 @@ import { Queue } from "bullmq";
 import { createApp } from "./app.js";
 import { createContainer } from "./container.js";
 import { loadEnv } from "./env.js";
+import { startBidSsfRetentionSchedule } from "./infrastructure/bid-ssf-retention.schedule.js";
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { closeBullBoardQueues } from "./lib/bull-board.js";
 import { runtimeOwnershipConfigFromApiEnv } from "./lib/runtime-ownership-config.js";
@@ -34,6 +35,11 @@ function reportBackground(component: string, err: unknown, extra?: Record<string
   console.error(`[${component}]`, err);
   captureBackgroundError(component, err, extra ? { extra } : undefined);
 }
+
+const bidSsfRetentionSchedule = startBidSsfRetentionSchedule({
+  db: container.db,
+  onError: (err) => reportBackground("bid-ssf-retention", err),
+});
 
 // BullMQ / ioredis emit `error`; without a listener Node exits the process.
 container.redis.on("error", (err: Error) => {
@@ -97,6 +103,7 @@ let shuttingDown = false;
 function shutdown(signal: NodeJS.Signals) {
   if (shuttingDown) return;
   shuttingDown = true;
+  const bidSsfRetentionStopped = bidSsfRetentionSchedule.stop();
   console.log(`[api] ${signal} received; draining HTTP server`);
   const timeout = setTimeout(() => {
     console.error("[api] graceful shutdown timed out");
@@ -108,19 +115,22 @@ function shutdown(signal: NodeJS.Signals) {
       console.error("[api] failed to close server", err);
       process.exit(1);
     }
-    void Promise.allSettled([
-      ...(lotWorker ? [lotWorker.close()] : []),
-      lotJobs.queue.close(),
-      deadLetterQueue.close(),
-      container.closeBullQueues(),
-      closeBullBoardQueues(),
-      container.redis.quit(),
-      closeDb(container.db),
-      closeDb(container.authDb),
-    ]).finally(() => {
-      clearTimeout(timeout);
-      process.exit(0);
-    });
+    void bidSsfRetentionStopped
+      .then(() =>
+        Promise.allSettled([
+          ...(lotWorker ? [lotWorker.close()] : []),
+          lotJobs.queue.close(),
+          deadLetterQueue.close(),
+          container.closeBullQueues(),
+          closeBullBoardQueues(),
+          container.redis.quit(),
+          closeDb(container.db),
+        ]),
+      )
+      .finally(() => {
+        clearTimeout(timeout);
+        process.exit(0);
+      });
   });
 }
 

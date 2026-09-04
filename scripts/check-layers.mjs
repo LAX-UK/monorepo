@@ -2,6 +2,9 @@
  * Enforces package layering (DIP direction between workspace layers):
  *   1. packages/persistence, packages/domain, packages/db must not import from apps/**.
  *   2. packages/domain must not import @auction/persistence or @auction/db.
+ *   3. Identity extractability: packages/auth and apps/auth import boundaries,
+ *      packages/auth must not import drizzle-orm, packages/identity-db must not
+ *      import @auction/db or @auction/persistence.
  *
  * Scans import/export-from specifiers in .ts/.tsx sources (tests and dist excluded).
  */
@@ -45,12 +48,16 @@ const rules = [
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
   },
   {
+    dir: "packages/identity-contracts",
+    label: "packages/identity-contracts must not import from apps/** or @auction/db",
+    forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event|db)(\/|$)/, /(^|\/)apps\//],
+  },
+  {
     dir: "packages/lot-lifecycle-app",
     label: "packages/lot-lifecycle-app must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
   },
 ];
-
 const SKIP_DIRS = new Set(["node_modules", "dist", ".turbo", "coverage"]);
 const SOURCE_RE = /\.(ts|tsx)$/;
 const TEST_RE = /\.(test|spec|integration\.test)\.(ts|tsx)$/;
@@ -125,6 +132,105 @@ const PUBLISH_TX_RE = /publish\s*\(\s*tx\b/;
 /** @param {string} rel POSIX path relative to repo root */
 function isTestSource(rel) {
   return /\.(test|spec|integration\.test)\.(ts|tsx)$/.test(rel);
+}
+
+// ─── API Identity storage boundary ───────────────────────────────────────────
+
+const IDENTITY_TABLE_IMPORT_RE =
+  /import\s+(?:type\s+)?\{([\s\S]*?)\}\s+from\s+["']@auction\/db\/schema["']/g;
+const API_FORBIDDEN_IDENTITY_TABLES = new Set([
+  "account",
+  "session",
+  "verification",
+  "twoFactor",
+  "oauthAccessToken",
+  "oauthConsent",
+  "jwksKey",
+]);
+const identityStorageViolations = [];
+
+for (const sourceRoot of ["apps/api/src", "packages/persistence/src"]) {
+  for (const file of listSources(join(root, sourceRoot))) {
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(IDENTITY_TABLE_IMPORT_RE)) {
+      const imported = (match[1] ?? "")
+        .split(",")
+        .map((name) => name.trim().split(/\s+as\s+/)[0])
+        .filter(Boolean);
+      for (const table of imported) {
+        if (API_FORBIDDEN_IDENTITY_TABLES.has(table)) {
+          identityStorageViolations.push(
+            `${relative(root, file)} imports Identity-owned table "${table}"`,
+          );
+        }
+      }
+    }
+  }
+}
+
+if (identityStorageViolations.length > 0) {
+  console.error("API Identity storage boundary violations detected:\n");
+  for (const violation of identityStorageViolations) console.error(`  ${violation}`);
+  process.exit(1);
+}
+
+// ─── Worker Identity directory boundary ─────────────────────────────────────
+
+/** @type {string[]} */
+const workerIdentityReadViolations = [];
+
+for (const file of listSources(join(root, "apps/worker/src"))) {
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(IDENTITY_TABLE_IMPORT_RE)) {
+    const imported = (match[1] ?? "")
+      .split(",")
+      .map((name) => name.trim().split(/\s+as\s+/)[0])
+      .filter(Boolean);
+    if (imported.includes("user")) {
+      workerIdentityReadViolations.push(
+        `${relative(root, file)} imports Identity-owned table "user" — read bidIdentityDirectory`,
+      );
+    }
+  }
+}
+
+if (workerIdentityReadViolations.length > 0) {
+  console.error("Worker Identity directory boundary violations detected:\n");
+  for (const violation of workerIdentityReadViolations) console.error(`  ${violation}`);
+  process.exit(1);
+}
+
+// ─── Bid API Identity directory boundary ────────────────────────────────────
+
+/** @type {string[]} */
+const apiIdentityReadViolations = [];
+
+for (const sourceRoot of ["apps/api/src", "packages/persistence/src", "packages/exports/src"]) {
+  const files =
+    sourceRoot === "apps/api/src"
+      ? listAllSources(join(root, sourceRoot))
+      : listSources(join(root, sourceRoot));
+  for (const file of files) {
+    const rel = relative(root, file).replace(/\\/g, "/");
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(IDENTITY_TABLE_IMPORT_RE)) {
+      const imported = (match[1] ?? "")
+        .split(",")
+        .map((name) => name.trim().split(/\s+as\s+/)[0])
+        .filter(Boolean);
+      if (imported.includes("user")) {
+        apiIdentityReadViolations.push(
+          `${rel}: imports Identity-owned table "user" — read bidIdentityDirectory or call the live Identity boundary`,
+        );
+      }
+    }
+  }
+}
+
+if (apiIdentityReadViolations.length > 0) {
+  console.error("Bid API Identity directory boundary violations detected:\n");
+  for (const violation of apiIdentityReadViolations) console.error(`  ${violation}`);
+  process.exit(1);
 }
 
 /** @param {string} rel */
@@ -361,6 +467,155 @@ if (concreteFacadeRouteViolations.length > 0) {
   for (const v of concreteFacadeRouteViolations) {
     console.error(`  ${v}`);
   }
+  process.exit(1);
+}
+
+// ─── Identity consumer boundary (D13) ───────────────────────────────────────
+
+const IDENTITY_SERVER_IMPORT_RE = /^@auction\/auth\/server(\/|$)/;
+const IDENTITY_CONSUMER_APPS = ["apps/shop-identity", "apps/ws"];
+
+/** @type {string[]} */
+const identityConsumerViolations = [];
+
+for (const appDir of IDENTITY_CONSUMER_APPS) {
+  const abs = join(root, appDir, "src");
+  if (!statSync(abs, { throwIfNoEntry: false })?.isDirectory()) continue;
+  for (const file of listAllSources(abs)) {
+    const rel = relative(root, file).replace(/\\/g, "/");
+    if (isTestSource(rel)) continue;
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(SPECIFIER_RE)) {
+      const specifier = match[1] ?? match[2] ?? match[3];
+      if (specifier && IDENTITY_SERVER_IMPORT_RE.test(specifier)) {
+        identityConsumerViolations.push(
+          `${rel}: imports "${specifier}" — use @auction/identity-contracts instead`,
+        );
+      }
+      if (appDir === "apps/shop-identity" && specifier && DB_IMPORT_RE.test(specifier)) {
+        identityConsumerViolations.push(
+          `${rel}: imports "${specifier}" — Shop Identity app must not access shared DB package`,
+        );
+      }
+    }
+  }
+}
+
+if (identityConsumerViolations.length > 0) {
+  console.error("Identity consumer boundary violations detected:\n");
+  for (const v of identityConsumerViolations) {
+    console.error(`  ${v}`);
+  }
+  process.exit(1);
+}
+
+// ─── Identity extractability (Phase 8) ────────────────────────────────────
+
+const AUCTION_PKG_RE = /^@auction\//;
+const IDENTITY_CONTRACTS_RE = /^@auction\/identity-contracts(\/|$)/;
+const IDENTITY_DB_RE = /^@auction\/identity-db(\/|$)/;
+const DRIZZLE_ORM_RE = /^drizzle-orm(\/|$)/;
+const IDENTITY_DB_FORBIDDEN_RE = /^@auction\/(db|persistence)(\/|$)/;
+
+/** @param {string} rel */
+function isAuthPkgConsentStoreReexport(rel) {
+  return rel === "packages/auth/src/ports/consent-store.ts";
+}
+
+/** @param {string} rel */
+function isAuthAppCompositionSite(rel) {
+  return (
+    /^apps\/auth\/src\/(container|infrastructure)\//.test(rel) || rel === "apps/auth/src/index.ts"
+  );
+}
+
+/** @param {string} rel */
+function isAuthAppCompositionAdapterSite(rel) {
+  return isAuthAppCompositionSite(rel);
+}
+
+/** @param {string} rel @param {string} specifier */
+function isAllowedPackagesAuthAuctionImport(rel, specifier) {
+  if (IDENTITY_CONTRACTS_RE.test(specifier)) return true;
+  if (IDENTITY_DB_RE.test(specifier) && isAuthPkgConsentStoreReexport(rel)) return true;
+  return false;
+}
+
+/** @param {string} rel @param {string} specifier */
+function isAllowedAppsAuthAuctionImport(rel, specifier) {
+  if (IDENTITY_CONTRACTS_RE.test(specifier)) return true;
+  // Composition root wires the extractable library and observability adapters.
+  if (/^@auction\/auth(\/|$)/.test(specifier)) return true;
+  if (/^@auction\/observability(\/|$)/.test(specifier)) return true;
+  if (IDENTITY_DB_RE.test(specifier) && isAuthAppCompositionAdapterSite(rel)) return true;
+  return false;
+}
+
+/** @type {string[]} */
+const identityExtractabilityViolations = [];
+
+for (const file of listSources(join(root, "packages/auth/src"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (!specifier) continue;
+    if (AUCTION_PKG_RE.test(specifier) && !isAllowedPackagesAuthAuctionImport(rel, specifier)) {
+      identityExtractabilityViolations.push(
+        `${rel}: imports "${specifier}" — packages/auth may only import @auction/identity-contracts and re-export @auction/identity-db from ports/consent-store.ts`,
+      );
+    }
+    if (DRIZZLE_ORM_RE.test(specifier)) {
+      identityExtractabilityViolations.push(
+        `${rel}: imports "${specifier}" — packages/auth must not import drizzle-orm (use ports + adapters in apps/auth or packages/identity-db)`,
+      );
+    }
+  }
+}
+
+for (const file of listSources(join(root, "apps/auth/src"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  const text = readFileSync(file, "utf8");
+  if (
+    /import\s*\{[^}]*\bdomainEvent\b[^}]*\}\s*from\s*["']@auction\/db(?:\/schema)?["']/s.test(text)
+  ) {
+    identityExtractabilityViolations.push(
+      `${rel}: imports domainEvent — apps/auth must publish identity events through IdentityEventPublisher`,
+    );
+  }
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (!specifier) continue;
+    if (AUCTION_PKG_RE.test(specifier) && !isAllowedAppsAuthAuctionImport(rel, specifier)) {
+      identityExtractabilityViolations.push(
+        `${rel}: imports "${specifier}" — apps/auth may only import @auction/auth, @auction/identity-contracts, @auction/observability, and @auction/identity-db from container/** or infrastructure/**`,
+      );
+    }
+  }
+}
+
+for (const file of listSources(join(root, "packages/identity-db"))) {
+  const rel = relative(root, file).replace(/\\/g, "/");
+  if (isTestSource(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  for (const match of text.matchAll(SPECIFIER_RE)) {
+    const specifier = match[1] ?? match[2] ?? match[3];
+    if (specifier && IDENTITY_DB_FORBIDDEN_RE.test(specifier)) {
+      identityExtractabilityViolations.push(
+        `${rel}: imports "${specifier}" — packages/identity-db must not depend on @auction/db or @auction/persistence`,
+      );
+    }
+  }
+}
+
+if (identityExtractabilityViolations.length > 0) {
+  console.error("Identity extractability violations detected:\n");
+  for (const violation of identityExtractabilityViolations) {
+    console.error(`  ${violation}`);
+  }
+  console.error(
+    "\nSee scripts/check-layers.mjs (Identity extractability) and docs/architecture/09-lax-identity-boundary.md.",
+  );
   process.exit(1);
 }
 

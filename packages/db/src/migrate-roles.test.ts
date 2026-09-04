@@ -1,26 +1,26 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getTableColumns } from "drizzle-orm";
 import ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-  API_COLUMN_UPDATE_GRANTS,
+  API_READ_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
   WORKER_DATA_EXPORT_TABLES,
+  WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_FULL_TABLES,
   WORKER_LIFECYCLE_READ_TABLES,
   WORKER_NOTIFICATION_OUTBOX_TABLES,
   WORKER_PAYMENT_MAINTENANCE_TABLES,
+  WORKER_PRODUCT_PROFILE_TABLES,
   WORKER_PROVISIONING_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
+  WORKER_READ_TABLES,
 } from "./migrate-roles.js";
-import { user } from "./schema/auth.js";
 
-/** AST-based audit of every `db.update(user|userTable).set({ ... })` call in the
- * API runtime, including persistence adapters composed by `apps/api`.
+/** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
  *
  * Why AST and not regex: aliased imports, helpers that take a `set` parameter,
  * spread `...patch`, and comments containing the pattern all cause regex parsers
@@ -34,17 +34,10 @@ import { user } from "./schema/auth.js";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const repoRoot = join(__dirname, "../../..");
 const apiSrc = join(repoRoot, "apps/api/src");
-const apiOwnedPersistenceFiles = [
-  join(repoRoot, "packages/persistence/src/repositories/drizzle-category-interests.repository.ts"),
-];
+const persistenceSrc = join(repoRoot, "packages/persistence/src");
+const apiRuntimeRoots = [apiSrc, persistenceSrc];
 
 const USER_TABLE_IDENTIFIERS = new Set(["user", "userTable"]);
-
-function propToDbColumn(prop: string): string | null {
-  const cols = getTableColumns(user);
-  const col = cols[prop as keyof typeof cols];
-  return col ? col.name : null;
-}
 
 async function* walkTsFiles(dir: string): AsyncGenerator<string> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -53,11 +46,6 @@ async function* walkTsFiles(dir: string): AsyncGenerator<string> {
     if (e.isDirectory()) yield* walkTsFiles(p);
     else if (e.isFile() && p.endsWith(".ts") && !p.endsWith(".test.ts")) yield p;
   }
-}
-
-async function* apiRuntimeTsFiles(): AsyncGenerator<string> {
-  yield* walkTsFiles(apiSrc);
-  yield* apiOwnedPersistenceFiles;
 }
 
 /** Pulls a string property name out of an object-literal property assignment.
@@ -303,43 +291,57 @@ type CallSiteRecord = {
 
 async function collectCallSites(): Promise<CallSiteRecord[]> {
   const records: CallSiteRecord[] = [];
-  for await (const absPath of apiRuntimeTsFiles()) {
-    const rel = relative(repoRoot, absPath);
-    const content = await readFile(absPath, "utf8");
-    const source = ts.createSourceFile(
-      absPath,
-      content,
-      ts.ScriptTarget.ES2022,
-      /*setParentNodes*/ true,
-      ts.ScriptKind.TS,
-    );
+  for (const root of apiRuntimeRoots) {
+    for await (const absPath of walkTsFiles(root)) {
+      const rel = relative(repoRoot, absPath);
+      const content = await readFile(absPath, "utf8");
+      const source = ts.createSourceFile(
+        absPath,
+        content,
+        ts.ScriptTarget.ES2022,
+        /*setParentNodes*/ true,
+        ts.ScriptKind.TS,
+      );
 
-    function visit(node: ts.Node): void {
-      if (ts.isCallExpression(node) && isUserTableUpdate(node)) {
-        const owner = resolveUpdateOwner(node, source);
-        if (!ownerIsAuthDb(owner)) {
-          const setCall = findSetCall(node);
-          if (setCall && setCall.arguments.length > 0) {
-            const { props, dynamic } = extractSetProps(setCall.arguments[0], source);
-            const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
-            records.push({ file: rel, line: line + 1, props, dynamic });
+      function visit(node: ts.Node): void {
+        if (ts.isCallExpression(node) && isUserTableUpdate(node)) {
+          const owner = resolveUpdateOwner(node, source);
+          if (!ownerIsAuthDb(owner)) {
+            const setCall = findSetCall(node);
+            if (setCall && setCall.arguments.length > 0) {
+              const { props, dynamic } = extractSetProps(setCall.arguments[0], source);
+              const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
+              records.push({ file: rel, line: line + 1, props, dynamic });
+            }
           }
         }
+        ts.forEachChild(node, visit);
       }
-      ts.forEachChild(node, visit);
+      visit(source);
     }
-    visit(source);
   }
   return records;
 }
 
 describe("migrate-roles invariants", () => {
+  it("grants append-only access to identity_lifecycle_outbox", () => {
+    expect([...AUTH_INSERT_SELECT_TABLES]).toContain("identity_lifecycle_outbox");
+    expect([...AUTH_FULL_TABLES]).not.toContain("identity_lifecycle_outbox");
+  });
+
   it("AUTH_FULL_TABLES includes two_factor (Better Auth twoFactor plugin uses auth_app)", () => {
     expect([...AUTH_FULL_TABLES]).toContain("two_factor");
   });
 
-  it("AUTH_INSERT_SELECT_TABLES includes domain_events (auth emits user.registered + user.email_verified)", () => {
-    expect([...AUTH_INSERT_SELECT_TABLES]).toContain("domain_events");
+  it("WORKER_READ_TABLES includes identity_lifecycle_outbox (outbox relay job)", () => {
+    expect([...WORKER_READ_TABLES]).toContain("identity_lifecycle_outbox");
+  });
+
+  it("models the post-0160 Identity directory cutover", () => {
+    expect([...API_READ_TABLES]).toContain("bid_identity_directory");
+    expect([...WORKER_PRODUCT_PROFILE_TABLES]).toContain("bid_identity_directory");
+    expect([...WORKER_READ_TABLES]).not.toContain("user");
+    expect([...WORKER_DENY_TABLES]).toContain("user");
   });
 
   it("WORKER_PROVISIONING_TABLES includes legal_entity tables", () => {
@@ -386,90 +388,60 @@ describe("migrate-roles invariants", () => {
   });
 });
 
-describe("api_app user UPDATE grants vs API runtime sources", { timeout: 60_000 }, () => {
+describe("api_app grants vs API runtime sources", { timeout: 60_000 }, () => {
   let records: CallSiteRecord[];
 
   beforeAll(async () => {
     records = await collectCallSites();
   }, 60_000);
 
-  it("every .update(user|userTable).set(...) column maps to API_COLUMN_UPDATE_GRANTS.user", () => {
-    const allowed = new Set(API_COLUMN_UPDATE_GRANTS.user);
-    const missing = new Map<string, string[]>();
-    const dynamicSites: string[] = [];
-    const unknownProps = new Map<string, string[]>();
-
-    for (const r of records) {
-      if (r.dynamic) dynamicSites.push(`${r.file}:${r.line}`);
-      for (const prop of r.props) {
-        const col = propToDbColumn(prop);
-        if (!col) {
-          const arr = unknownProps.get(prop) ?? [];
-          arr.push(`${r.file}:${r.line}`);
-          unknownProps.set(prop, arr);
-          continue;
-        }
-        if (!allowed.has(col)) {
-          const arr = missing.get(col) ?? [];
-          arr.push(`${r.file}:${r.line}`);
-          missing.set(col, arr);
-        }
-      }
-    }
-
-    const failures: string[] = [];
-    if (missing.size > 0) {
-      const detail = [...missing.entries()]
-        .map(([col, locs]) => `  - ${col} (used at ${locs.join(", ")})`)
-        .join("\n");
-      failures.push(
-        `api_app column UPDATE allow-list missing columns used by the API runtime.\nAdd to API_COLUMN_UPDATE_GRANTS.user in migrate-roles.ts:\n${detail}`,
-      );
-    }
-    if (unknownProps.size > 0) {
-      const detail = [...unknownProps.entries()]
-        .map(([p, locs]) => `  - ${p} (at ${locs.join(", ")})`)
-        .join("\n");
-      failures.push(
-        `Unknown user-table property in .set({...}) — either it isn't on the Drizzle schema or it's a typo:\n${detail}`,
-      );
-    }
-    if (dynamicSites.length > 0) {
-      failures.push(
-        `Could not statically enumerate columns at these .set(...) sites — refactor to a literal object so the static guard can audit them:\n${dynamicSites
-          .map((s) => `  - ${s}`)
-          .join("\n")}`,
-      );
-    }
-    if (failures.length > 0) throw new Error(failures.join("\n\n"));
-    expect(missing.size).toBe(0);
+  it("forbids direct Identity-owned user updates from API and persistence runtime", () => {
+    expect(
+      records.map((record) => `${record.file}:${record.line}`),
+      "direct user update call sites",
+    ).toEqual([]);
   });
 
-  it("API_COLUMN_UPDATE_GRANTS.user has no over-granted columns (reverse drift)", () => {
-    const observed = new Set<string>();
-    for (const r of records) {
-      for (const prop of r.props) {
-        const col = propToDbColumn(prop);
-        if (col) observed.add(col);
+  it("forbids direct Identity-table access from API and persistence runtime", async () => {
+    const forbiddenImports: string[] = [];
+    const forbiddenTables = new Set([
+      "account",
+      "session",
+      "verification",
+      "twoFactor",
+      "oauthAccessToken",
+      "oauthConsent",
+      "jwksKey",
+    ]);
+    for (const root of apiRuntimeRoots) {
+      for await (const absPath of walkTsFiles(root)) {
+        const source = ts.createSourceFile(
+          absPath,
+          await readFile(absPath, "utf8"),
+          ts.ScriptTarget.ES2022,
+          true,
+          ts.ScriptKind.TS,
+        );
+        for (const statement of source.statements) {
+          if (
+            !ts.isImportDeclaration(statement) ||
+            statement.moduleSpecifier.getText(source).replaceAll(/['"]/g, "") !==
+              "@auction/db/schema"
+          ) {
+            continue;
+          }
+          const bindings = statement.importClause?.namedBindings;
+          if (!bindings || !ts.isNamedImports(bindings)) continue;
+          for (const element of bindings.elements) {
+            if (forbiddenTables.has(element.propertyName?.text ?? element.name.text)) {
+              forbiddenImports.push(
+                `${relative(repoRoot, absPath)}:${source.getLineAndCharacterOfPosition(element.getStart(source)).line + 1}`,
+              );
+            }
+          }
+        }
       }
     }
-    // updated_at is touched by virtually every UPDATE; the audit cannot prove a
-    // negative for it because Drizzle may add it implicitly elsewhere. Keep it
-    // exempt from reverse-drift; same for any future column that lives in the
-    // allow-list intentionally for forward-compat.
-    const EXEMPT = new Set<string>(["updated_at"]);
-    const unused: string[] = [];
-    for (const col of API_COLUMN_UPDATE_GRANTS.user) {
-      if (EXEMPT.has(col)) continue;
-      if (!observed.has(col)) unused.push(col);
-    }
-    if (unused.length > 0) {
-      throw new Error(
-        `API_COLUMN_UPDATE_GRANTS.user contains columns no API runtime code writes anymore — drop them from migrate-roles.ts to keep api_app least-privileged:\n${unused
-          .map((c) => `  - ${c}`)
-          .join("\n")}`,
-      );
-    }
-    expect(unused).toEqual([]);
+    expect(forbiddenImports, "direct Identity table imports").toEqual([]);
   });
 });

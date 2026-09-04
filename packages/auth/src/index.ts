@@ -1,7 +1,19 @@
 export { createAuth, type Auth, type AuthEnv } from "./server.js";
 export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
-export { createEnvelopeCrypto } from "./crypto/envelope.js";
+export { createEnvelopeCrypto, type EnvelopeCrypto } from "./crypto/envelope.js";
 export { parseAuthDekKey } from "./crypto/dek.js";
+export {
+  OIDC_CONSENT_SCRIPT,
+  buildOidcConsentHtml,
+} from "./oidc-consent-html.js";
+export {
+  HOSTED_LOGIN_SCRIPT,
+  buildHostedLoginHtml,
+} from "./hosted-login-html.js";
+export {
+  HOSTED_TWO_FACTOR_SCRIPT,
+  buildHostedTwoFactorHtml,
+} from "./hosted-two-factor-html.js";
 export {
   createAuctionAuthClient,
   createAuthClientInstance,
@@ -10,24 +22,38 @@ export {
   type AuthClientError,
 } from "./client.js";
 export * from "./contracts.js";
-export { createJwksAdapter } from "./jwks.js";
-export { retireExpiredJwksKeys, startJwksRetirementSchedule } from "./jwks-retirement.js";
+export type { AuthDatabase } from "./phone-number-plugin.js";
+export {
+  InvalidPhoneNumberError,
+  PhoneVerificationRateLimitedError,
+} from "./phone-number-errors.js";
+export { IDENTITY_EMAIL_TEMPLATE_NAMES } from "./ports/index.js";
 export { verifyBearerToken, type VerifiedToken } from "./middleware.js";
-export * from "./permissions.js";
+export type {
+  EmailEnqueueInput,
+  EmailSender,
+  IdentityEmailTemplate,
+  IdentityEventPublisher,
+  IdentityLifecycleEvent,
+  ProductSubjectUsageProbe,
+  AuthPorts,
+  PhoneNumberStore,
+  SendOtpOptions,
+  SessionStampStore,
+  SmsSender,
+  SubjectStatusReader,
+} from "./ports/index.js";
 export {
   runSignInTurnstileGate,
   isSignInEmailPost,
   isSignInMagicLinkPost,
   type SignInGateRedis,
 } from "./sign-in-turnstile-gate.js";
-export { stampLastPasswordAuthFromSignInResponse } from "./stamp-last-password-auth.js";
-export { hasSessionCredential } from "./session-credential.js";
 export {
-  checkAndRotateRefreshToken,
-  RedisRefreshReplayStore,
-  type RefreshReplayStore,
-  type RefreshReplayResult,
-} from "./refresh-replay.js";
+  stampLastPasswordAuthFromSignInResponse,
+  stampMfaCompletedFromResponse,
+} from "./stamp-last-password-auth.js";
+export { hasSessionCredential } from "./session-credential.js";
 export {
   buildMagicLinkExpiredCallbackUrl,
   buildMagicLinkSetPasswordCallbackUrl,
@@ -39,3 +65,5 @@ export {
   slidingWindowRetryAfterSec,
   type SlidingWindowRedis,
 } from "./sliding-window-rate-limit.js";
+export { wrapAuthDatabaseAdapter } from "./adapter-at-rest.js";
+export { wrapOAuthConsentUpsertAdapter } from "./oauth-consent-upsert.js";

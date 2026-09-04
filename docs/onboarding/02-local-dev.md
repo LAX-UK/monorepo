@@ -15,17 +15,18 @@ pnpm db:seed
 pnpm dev
 ```
 
-`pnpm dev` runs all five apps under Turbo. The first run takes a couple of minutes because each app builds its TypeScript on first start.
+`pnpm dev` runs all six apps under Turbo. The first run takes a couple of minutes because each app builds its TypeScript on first start.
 
 ## Hosts and ports
 
 | App | URL | Notes |
 |---|---|---|
 | `apps/web` | http://localhost:3000 | Next.js |
-| `apps/api` | http://localhost:3001 | Hono; serves OIDC, JWKS, webhooks today (D7 dual-stack) |
+| `apps/api` | http://localhost:3001 | Hono auction API and inbound webhooks |
 | `apps/ws` | http://localhost:3002 | Socket.IO |
-| `apps/auth` | http://localhost:3003 | Hono OIDC issuer (the future single source) |
+| `apps/auth` | http://localhost:3003 | Canonical Hono OIDC issuer and auth routes |
 | `apps/worker` | http://localhost:3004 (`/health/live`, `/health/ready`, `/metrics` only) | BullMQ consumer + projector runner |
+| `apps/shop-identity` | http://localhost:3010 | Executable Shop OIDC/BFF boundary |
 
 Each app's port comes from its env file; the defaults above are what's wired in `.env.example` (`PORT`, `WS_PORT`, `WORKER_PORT`; `apps/auth` uses its own `PORT` default of 3003).
 

@@ -1,17 +1,17 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
-import { count } from "drizzle-orm";
-import type {
-  AdminUserListFilter,
-  AdminUserListResult,
-  IAdminUserReader,
-} from "../ports/admin-user.js";
+import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
 import {
   adminUserListSelect,
   buildAdminUserListOrderBy,
   buildAdminUserListWhere,
   mapAdminUserListRow,
-} from "./admin-user-list-sql.js";
+} from "@auction/persistence/repositories";
+import { count, eq } from "drizzle-orm";
+import type {
+  AdminUserListFilter,
+  AdminUserListResult,
+  IAdminUserReader,
+} from "../ports/admin-user.js";
 
 export class DrizzleExportAdminUserReader implements Pick<IAdminUserReader, "list"> {
   constructor(private readonly db: Database) {}
@@ -19,13 +19,17 @@ export class DrizzleExportAdminUserReader implements Pick<IAdminUserReader, "lis
   async list(filter: AdminUserListFilter): Promise<AdminUserListResult> {
     const whereClause = buildAdminUserListWhere(filter);
 
-    const countQuery = this.db.select({ n: count() }).from(user);
+    const countQuery = this.db
+      .select({ n: count() })
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId));
     const [countRow] = whereClause ? await countQuery.where(whereClause) : await countQuery;
 
     const orderBy = buildAdminUserListOrderBy(filter.sort);
     const base = this.db
       .select(adminUserListSelect)
-      .from(user)
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .orderBy(orderBy)
       .limit(filter.limit)
       .offset(filter.offset);

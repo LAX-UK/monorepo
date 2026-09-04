@@ -119,6 +119,9 @@ export function parseSessionUser(raw: unknown): SessionUser {
   if (deletionRequestedAt !== undefined) out.deletionRequestedAt = deletionRequestedAt;
   if (row.pendingNewEmail != null) out.pendingNewEmail = String(row.pendingNewEmail);
   if (typeof row.twoFactorEnabled === "boolean") out.twoFactorEnabled = row.twoFactorEnabled;
+  if (typeof row.securityStatusAvailable === "boolean") {
+    out.securityStatusAvailable = row.securityStatusAvailable;
+  }
   const uiPreferences = parseUiPreferences(row.uiPreferences);
   if (uiPreferences) out.uiPreferences = uiPreferences;
 

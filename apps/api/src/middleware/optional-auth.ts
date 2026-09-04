@@ -1,8 +1,8 @@
-import { hasSessionCredential } from "@auction/auth";
+import { hasSessionCredential } from "@auction/auth/session-credential";
 import { createMiddleware } from "hono/factory";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
-/** Sets userId / userRole when a session cookie is present; otherwise continues anonymously. */
+/** Sets user context when an exact-audience Bearer is present; otherwise continues anonymously. */
 export function createOptionalAuth(authenticator: IAuthenticator) {
   return createMiddleware<{
     Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };

@@ -38,9 +38,12 @@ describe("admin lot fulfilment routes (DIP facade)", () => {
     });
     const container = createFulfilmentContainer({ lotFulfilment: { getPage } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: "staff-1", role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "staff-1",
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.read"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));
@@ -68,9 +71,12 @@ describe("admin lot fulfilment routes (DIP facade)", () => {
     const approveRelease = vi.fn().mockResolvedValue(ok({ lotId: LOT_ID, status: "released" }));
     const container = createFulfilmentContainer({ lotFulfilment: { approveRelease } as never });
     const authenticator: IAuthenticator = {
-      getSessionUser: vi
-        .fn()
-        .mockResolvedValue({ id: "staff-1", role: "staff", staffRole: "super_admin" }),
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "staff-1",
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.write"],
+      }),
     };
     const app = new Hono();
     app.route("/admin", createAdminRoutes(container, authenticator));

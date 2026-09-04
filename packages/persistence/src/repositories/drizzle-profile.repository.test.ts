@@ -1,9 +1,9 @@
-import { user } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
 import { describe, expect, it, vi } from "vitest";
 import { DrizzleProfileRepository } from "./drizzle-profile.repository.js";
 
 describe("DrizzleProfileRepository.getProfile", () => {
-  it("selects twoFactorEnabled from the user row", async () => {
+  it("reads product-safe Identity facts from the local directory", async () => {
     const limit = vi.fn().mockResolvedValue([
       {
         id: "u1",
@@ -17,16 +17,15 @@ describe("DrizzleProfileRepository.getProfile", () => {
         emailVerified: true,
         emailStatus: "ok",
         emailStatusChangedAt: null,
-        pendingNewEmail: null,
         hasSeenActingContextTooltip: false,
         kycStatus: "unverified",
         signupPersona: null,
         deletionRequestedAt: null,
-        twoFactorEnabled: true,
       },
     ]);
     const where = vi.fn().mockReturnValue({ limit });
-    const from = vi.fn().mockReturnValue({ where });
+    const leftJoin = vi.fn().mockReturnValue({ where });
+    const from = vi.fn().mockReturnValue({ leftJoin });
     const select = vi.fn().mockReturnValue({ from });
     const db = { select } as never;
 
@@ -35,29 +34,49 @@ describe("DrizzleProfileRepository.getProfile", () => {
 
     expect(select).toHaveBeenCalledWith(
       expect.objectContaining({
-        mobile: user.mobile,
-        mobileCountry: user.mobileCountry,
-        twoFactorEnabled: user.twoFactorEnabled,
+        email: bidIdentityDirectory.email,
+        phoneNumber: bidIdentityDirectory.phone,
       }),
     );
-    expect(from).toHaveBeenCalledWith(user);
+    expect(from).toHaveBeenCalledWith(bidIdentityDirectory);
     expect(where).toHaveBeenCalled();
     expect(row?.mobile).toBe("+447400123456");
     expect(row?.mobileCountry).toBe("GB");
-    expect(row?.twoFactorEnabled).toBe(true);
+    expect(row?.twoFactorEnabled).toBe(false);
   });
 });
 
 describe("DrizzleProfileRepository.updateProfile", () => {
-  it("sets mobile when provided", async () => {
+  function createDbMock() {
     const where = vi.fn().mockResolvedValue(undefined);
     const set = vi.fn().mockReturnValue({ where });
     const update = vi.fn().mockReturnValue({ set });
-    const db = { update } as never;
+    const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+    const values = vi.fn().mockReturnValue({ onConflictDoUpdate });
+    const insert = vi.fn().mockReturnValue({ values });
+    const sourceWhere = vi.fn().mockResolvedValue([
+      {
+        userId: "u1",
+        identityDisabledAt: null,
+        mergedIntoSubjectId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    const sourceFrom = vi.fn().mockReturnValue({ where: sourceWhere });
+    const select = vi.fn().mockReturnValue({ from: sourceFrom });
+    const tx = { insert, select, update };
+    const transaction = vi.fn(async (fn: (value: typeof tx) => Promise<void>) => fn(tx));
+    return { db: { transaction } as never, update, set };
+  }
+
+  it("writes mobile to bid_user_profile", async () => {
+    const { db, update, set } = createDbMock();
 
     const repo = new DrizzleProfileRepository(db);
     await repo.updateProfile("u1", { mobile: "+447400123456", mobileCountry: "GB" });
 
+    expect(update).toHaveBeenCalledWith(bidUserProfile);
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({
         mobile: "+447400123456",
@@ -67,10 +86,7 @@ describe("DrizzleProfileRepository.updateProfile", () => {
   });
 
   it("clears mobile with null", async () => {
-    const where = vi.fn().mockResolvedValue(undefined);
-    const set = vi.fn().mockReturnValue({ where });
-    const update = vi.fn().mockReturnValue({ set });
-    const db = { update } as never;
+    const { db, set } = createDbMock();
 
     const repo = new DrizzleProfileRepository(db);
     await repo.updateProfile("u1", { mobile: null, mobileCountry: null });

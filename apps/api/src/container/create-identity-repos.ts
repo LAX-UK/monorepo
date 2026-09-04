@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type {
   IAccountDeletionEligibilityReader,
   IAddressRepository,
+  ICategoryInterestsEligibilityReader,
   ICategoryInterestsRepository,
   IEntityInvitationRepository,
   IImpersonationDomainEventReader,
@@ -21,7 +22,6 @@ import type {
   IPushSubscriptionRepository,
   ISavedSearchRepository,
   IUiPreferenceRepository,
-  IUserEmailChangeRepository,
   IUserInvitationRepository,
   IUserRepository,
   IUserSuspensionChecker,
@@ -29,6 +29,7 @@ import type {
 import {
   DrizzleAccountDeletionEligibilityReader,
   DrizzleAddressRepository,
+  DrizzleCategoryInterestsEligibilityReader,
   DrizzleCategoryInterestsRepository,
   DrizzleEntityInvitationRepository,
   DrizzleImpersonationDomainEventReader,
@@ -45,7 +46,6 @@ import {
   DrizzlePushSubscriptionRepository,
   DrizzleSavedSearchRepository,
   DrizzleUiPreferenceRepository,
-  DrizzleUserEmailChangeRepository,
   DrizzleUserInvitationRepository,
   DrizzleUserRepository,
   DrizzleUserSuspensionChecker,
@@ -56,9 +56,9 @@ export type IProfileRepository = IProfileReader & IProfileWriter;
 
 export type IdentityRepositories = {
   userRepo: IUserRepository;
-  userEmailChangeRepository: IUserEmailChangeRepository;
   profileRepo: IProfileRepository;
   addressRepo: IAddressRepository;
+  categoryInterestsEligibilityReader: ICategoryInterestsEligibilityReader;
   categoryInterestsRepository: ICategoryInterestsRepository;
   legalEntityRepository: ILegalEntityRepository;
   legalEntityOnboardingRepository: ILegalEntityOnboardingRepository;
@@ -83,9 +83,9 @@ export type IdentityRepositories = {
 
 export function createIdentityRepositories(db: Database): IdentityRepositories {
   const userRepo = new DrizzleUserRepository(db);
-  const userEmailChangeRepository = new DrizzleUserEmailChangeRepository(db);
   const profileRepo = new DrizzleProfileRepository(db);
   const addressRepo = new DrizzleAddressRepository(db);
+  const categoryInterestsEligibilityReader = new DrizzleCategoryInterestsEligibilityReader(db);
   const categoryInterestsRepository = new DrizzleCategoryInterestsRepository(db);
   const legalEntityRepository = createDrizzleLegalEntityRepository(db);
   const legalEntityOnboardingRepository = new DrizzleLegalEntityOnboardingRepository(db);
@@ -112,9 +112,9 @@ export function createIdentityRepositories(db: Database): IdentityRepositories {
 
   return {
     userRepo,
-    userEmailChangeRepository,
     profileRepo,
     addressRepo,
+    categoryInterestsEligibilityReader,
     categoryInterestsRepository,
     legalEntityRepository,
     legalEntityOnboardingRepository,

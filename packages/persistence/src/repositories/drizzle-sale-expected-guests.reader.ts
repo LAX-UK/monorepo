@@ -1,16 +1,17 @@
 import type { Database } from "@auction/db";
 import { saleNotDeleted } from "@auction/db";
 import {
+  bidIdentityDirectory,
+  bidUserProfile,
   legalEntity,
   legalEntityMember,
   onsiteEvent,
   onsiteEventRsvp,
   sale,
   saleRegistration,
-  user,
 } from "@auction/db/schema";
 import type { SaleExpectedGuestRow, SaleExpectedGuestsSummary } from "@auction/types";
-import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { ISaleExpectedGuestsReader } from "../interfaces/sale-expected-guests.reader.js";
 import { groupEligibleCheckInEntities } from "../lib/saleroom-check-in-entities.js";
 
@@ -42,20 +43,21 @@ export class DrizzleSaleExpectedGuestsReader implements ISaleExpectedGuestsReade
     const rsvpRows = await this.db
       .select({
         rsvpId: onsiteEventRsvp.id,
-        userId: user.id,
-        name: user.name,
-        email: user.email,
-        kycStatus: user.kycStatus,
-        emailVerified: user.emailVerified,
-        suspendedAt: user.suspendedAt,
+        userId: onsiteEventRsvp.userId,
+        name: bidIdentityDirectory.name,
+        email: sql<string>`coalesce(${bidIdentityDirectory.email}, '[deleted]')`,
+        kycStatus: bidUserProfile.kycStatus,
+        emailVerified: bidIdentityDirectory.emailVerified,
+        suspendedAt: bidUserProfile.suspendedAt,
         attendanceSegment: onsiteEventRsvp.attendanceSegment,
         galaCheckedInAt: onsiteEventRsvp.checkedInAt,
         plusOne: onsiteEventRsvp.plusOne,
       })
       .from(onsiteEventRsvp)
-      .innerJoin(user, eq(user.id, onsiteEventRsvp.userId))
+      .leftJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, onsiteEventRsvp.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, onsiteEventRsvp.userId))
       .where(eq(onsiteEventRsvp.eventSlug, eventRow.slug))
-      .orderBy(asc(user.name), asc(user.email));
+      .orderBy(asc(bidIdentityDirectory.name), asc(bidIdentityDirectory.email));
 
     if (rsvpRows.length === 0) {
       return {
@@ -158,7 +160,7 @@ export class DrizzleSaleExpectedGuestsReader implements ISaleExpectedGuestsReade
         galaCheckedInAt: row.galaCheckedInAt?.toISOString() ?? null,
         plusOne: row.plusOne,
         kycApproved: row.kycStatus === "approved",
-        emailVerified: row.emailVerified,
+        emailVerified: row.emailVerified ?? false,
         suspended: row.suspendedAt != null,
         eligibleEntities,
         saleRegistration: reg

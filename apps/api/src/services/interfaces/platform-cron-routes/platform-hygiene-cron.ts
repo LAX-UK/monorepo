@@ -1,7 +1,6 @@
 import type { HygieneCronService } from "../../cron/hygiene-cron.service.js";
 
 export interface IPlatformHygieneCronApplicationService {
-  purgeExpiredVerifications(): ReturnType<HygieneCronService["purgeExpiredVerifications"]>;
   sendStaleSubmissionDraftReminders(
     staleDays: number,
   ): ReturnType<HygieneCronService["sendStaleSubmissionDraftReminders"]>;

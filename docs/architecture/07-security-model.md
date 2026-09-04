@@ -6,10 +6,27 @@ The threat model is real. We have actual attackers — every public-facing aucti
 
 > **Implementation status (last reviewed 2026-05-05)**
 >
-> - **Implemented:** Postgres role split with least-privilege grants ([packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts)). HMAC verification for Shopify and WordPress webhooks with `crypto.timingSafeEqual` ([apps/api/src/lib/shopify-hmac.ts](../../apps/api/src/lib/shopify-hmac.ts), [apps/api/src/lib/wordpress-secret.ts](../../apps/api/src/lib/wordpress-secret.ts)). Basic Auth verification for the Postmark webhook ([apps/api/src/routes/webhooks/postmark.ts](../../apps/api/src/routes/webhooks/postmark.ts)). HMAC-signed unsubscribe tokens ([apps/api/src/lib/email-unsubscribe-token.ts](../../apps/api/src/lib/email-unsubscribe-token.ts)) for List-Unsubscribe URLs. Per-IP sign-in rate limit (5 / 15 min) enforced at the application layer in [apps/api/src/middleware/auth-rate-limit.ts](../../apps/api/src/middleware/auth-rate-limit.ts). 15-minute access-token lifetime in [packages/auth/src/server.ts](../../packages/auth/src/server.ts). `SameSite=Lax` and `Secure` cookies via better-auth's defaults. Sentry SDK initialization in each app, conditional on env DSN.
+> - **Implemented:** least-privilege `auth_app`, `api_app`, `shop_app`, and
+>   `worker_app` roles; canonical auth-host rate limits; 15-minute access tokens;
+>   secure cookies; backend security headers; signed webhooks and unsubscribe
+>   links; and conditional Sentry initialization.
 > - **Edge controls (codified in Terraform, applied via the GitHub Actions workflow):** Cloudflare DDoS, full-strict TLS, a single shared edge rate-limit rule on `/api/auth/sign-up` + `/api/auth/send-verification-email` (Cloudflare Free caps the `http_ratelimit` phase at one rule per zone and requires **10s** `period` and **10s** `mitigation_timeout` in that phase; production auth abuse takes the slot), WAF challenges on `/api/auth/authorize`, and zone-level DDoS protection — all live in [infra/terraform/modules/cloudflare-domain/](../../infra/terraform/modules/cloudflare-domain/) and are applied from `infra/terraform/persistent/<env>/`. Lower-priority paths (`/.well-known/*`, `/webhooks/postmark`) are rate-limited at the app layer until the zone is upgraded to Pro and the per-path edge rules are restored. See [../integrations/cloudflare.md](../integrations/cloudflare.md) for the full rule layout.
-> - **Email-pipeline role grants (resolved):** `auth_app` has `INSERT, SELECT` on `email_outbox` and `SELECT` on `email_suppression`; `worker_app` has `SELECT, UPDATE` on `email_outbox` and `newsletter_signup_log`. Wired in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (`AUTH_INSERT_SELECT_TABLES`, `AUTH_SELECT_TABLES`, `WORKER_LOCK_READ_TABLES`).
-> - **Planned:** Content-Security-Policy and other security headers (no `headers()` export in [apps/web/next.config.ts](../../apps/web/next.config.ts) and no headers middleware in any backend app today). MFA. Rotation-with-reuse-detection on refresh tokens (today better-auth issues sessions plus short-lived JWTs only). Pino redaction config for the secrets-in-logs claim — currently the apps rely on never logging secrets by convention rather than runtime redaction.
+> - **Email-pipeline boundary (resolved):** Identity email intents cross a
+>   machine-authenticated internal API route. `auth_app` has no email-pipeline
+>   table privilege; `api_app` enqueues and `worker_app` has `SELECT, UPDATE` on
+>   `email_outbox` and `newsletter_signup_log`. Wired in
+>   [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts)
+>   (`AUTH_DENY_TABLES`, `WORKER_LOCK_READ_TABLES`).
+> - **Product-storage boundary (resolved for Identity):** orphan-signup
+>   compensation reads `bid_user_profile` and `external_accounts` through a
+>   machine-authenticated internal API endpoint. Migration `0158` removes
+>   `auth_app` privileges on both product tables; the role now has DML only on
+>   Identity tables plus append/select access to `identity_lifecycle_outbox`.
+> - **Implemented in code:** OIDC bearer columns are one-way `h1:` fingerprints;
+>   refresh reuse has family tracking, atomic reservation, whole-family/session
+>   revocation, post-success consumption, and encrypted retry grace. Existing
+>   deployments must run the documented at-rest backfill during cutover.
+> - **Planned:** MFA and complete structured-log redaction.
 
 Anywhere the prose below describes a control as if it were active, the status block above is the reality check.
 
@@ -24,9 +41,10 @@ flowchart TB
   DO[DigitalOcean App Platform]
   Auth[apps/auth]
   Api[apps/api]
+  Shop[Shop RP/BFF]
   Worker[apps/worker]
   PG[Postgres]
-  External[Zoho · Xero · Shopify · WordPress]
+  External[Zoho · Xero · Stripe · Veriff]
   Postmark[Postmark · Zoho Campaigns]
   Recipient[User mailbox]
 
@@ -36,6 +54,7 @@ flowchart TB
   DO -.->|JWT verification, CORS| Api
   Auth -.->|auth_app role| PG
   Api -.->|api_app role, no JWKS access| PG
+  Shop -.->|shop_app role, shop profile only| PG
   Worker -.->|worker_app role, read-only events| PG
   External -.->|HMAC signed webhooks| Api
   Postmark -.->|delivery webhooks, Basic Auth| Api
@@ -49,17 +68,31 @@ flowchart TB
 
 **Cloudflare to DigitalOcean origin.** The connection from Cloudflare to our App Platform origin is HTTPS using a DigitalOcean-managed origin certificate. Cloudflare verifies the certificate (full-strict TLS mode per D38), so a man-in-the-middle between Cloudflare and our origin would fail verification.
 
-**HTTP request to authenticated app.** Every protected endpoint validates a JWT from `Authorization: Bearer` or a session cookie. The CompositeAuthenticator from D10 unifies these two paths behind the `IAuthenticator` interface. Routes that don't require auth (`/.well-known/*`, `/health/*`, `/webhooks/*` with their own HMAC verification) are explicitly opted out of the auth middleware.
+**Browser to product.** Each product BFF validates its opaque host-only session;
+tokens remain server-side. No authentication cookie has a parent-domain
+`Domain` attribute.
+
+**Product to resource server.** Protected API and WS endpoints require an
+RS256 Bearer resource token with canonical issuer, exact resource audience,
+valid lifetime, and required namespaced scopes. They then load product
+authorization locally. ID tokens and browser cookies are rejected as API
+credentials.
+
+**Identity to receivers.** Back-channel logout receivers validate
+client-addressed `logout+jwt` and atomically invalidate matching local sessions.
+SSF receivers separately validate resource-addressed `secevent+jwt`, reserve
+`jti`, and apply one supported event atomically. See
+[09-lax-identity-boundary.md](./09-lax-identity-boundary.md).
 
 **App to database.** The most important internal trust boundary in the system. Each app holds a different Postgres role with different grants. A SQL injection in apps/api cannot read JWT signing keys — the `api_app` role has no grant on `jwks_key`. This is not theoretical defense; this is the actual mechanism that limits blast radius if any single app is compromised.
 
-**External webhook to API.** Inbound webhooks from Shopify, WordPress, and Xero are HMAC-verified per source per D6. The shared secret is per source, stored in `apps/api`'s environment as `SHOPIFY_WEBHOOK_SECRET` etc. A request without a valid HMAC signature is rejected with 401 before any business logic runs.
+**External webhook to API.** Active inbound providers use source-specific verification per D6: Stripe and Xero validate signatures over the raw body, Postmark uses dedicated Basic Auth, Brevo uses its webhook secret, and Veriff validates its provider signature. Authentication is checked before business logic runs.
 
 **Postmark webhook to API.** Postmark posts delivery, bounce, complaint, open, click, and `SubscriptionChange` callbacks to `POST /webhooks/postmark`. We authenticate them with HTTP Basic Auth (`POSTMARK_WEBHOOK_BASIC_AUTH`) configured on the Postmark side and validated in `apps/api/src/routes/webhooks/postmark.ts`. The handler also writes through `email_event` so a replay is observable in the audit log even if it slips past the auth check. A Cloudflare rate-limit rule on `/webhooks/postmark` bounds enumeration attempts. Postmark does not currently sign webhook bodies, which is why the Basic Auth credential is treated as the trust boundary; on rotation, both Postmark and our env var must be updated together.
 
 **Recipient to API (unsubscribe).** Every notification mail with a List-Unsubscribe URL embeds an HMAC-signed token (`EMAIL_UNSUBSCRIBE_SECRET`) scoped to either `(userId, notificationType)` or `globalUnsubscribe`. The unsubscribe route at `apps/api/src/routes/email.ts` rebuilds the signature and rejects mismatched tokens. This means a leaked or scraped unsubscribe URL cannot be used to opt out a different user, and tokens have no exposure to any other secret.
 
-**App to external service.** Outbound calls from apps/worker to Zoho, Xero, Shopify, Postmark, Zoho Campaigns, and other external services use OAuth refresh tokens or per-vendor API keys stored in the database or environment. The worker is the only component making these calls; `apps/api` never calls them directly. This isolates the credential surface to one component.
+**App to external service.** Outbound calls from apps/worker to Zoho, Xero, Postmark, Zoho Campaigns, and other external services use OAuth refresh tokens or per-vendor API keys stored in the database or environment. The worker is the only component making these calls; `apps/api` never calls them directly. This isolates the credential surface to one component.
 
 ## Threats and mitigations
 
@@ -81,9 +114,27 @@ The threat catalog below is roughly ordered by likelihood-times-impact. Each thr
 
 **Impact:** Full impersonation of the victim user for the lifetime of the access token.
 
-**Mitigations.** Short access token lifetime — 15 minutes per Q2. Refresh tokens are server-side and rotation-detecting per Q3, so a stolen refresh token is single-use and triggers token-family invalidation if reused. JWTs include a per-domain audience claim (Q5) so a token issued for lax.bid does not validate on lax.shop. TLS everywhere prevents passive interception.
+**Mitigations.** Short access token lifetime — 15 minutes per Q2. Refresh-token
+reuse triggers family and session revocation, with a short encrypted idempotency
+window for legitimate concurrent retries. JWT consumers verify issuer and their
+configured audience. TLS prevents passive interception.
 
 **Acceptance.** A determined attacker with active access to a user's device can extract tokens. We mitigate the replay window (15 min) but cannot prevent the initial theft. The user's recovery path is to sign out from all devices, which invalidates all refresh tokens.
+
+### Cross-product cookie theft or confused-deputy token use
+
+**Likelihood:** Medium if a product host or subdomain is compromised.
+
+**Impact:** Reuse of one product's session or token against another product.
+
+**Mitigations.** Identity, Bid, and Shop use separate host-only cookies. BFFs
+store tokens server-side. Resource tokens have one audience and namespaced
+scopes; ID tokens use the client id and are not API credentials. Verifiers reject
+wrong token class, issuer, audience, or scope.
+
+**Acceptance.** A compromised product BFF can act within that product until its
+client secret and sessions are revoked, but it cannot read another product's
+host-only cookie or mint a token for an unregistered resource.
 
 ### SQL injection in apps/api
 
@@ -111,13 +162,13 @@ The threat catalog below is roughly ordered by likelihood-times-impact. Each thr
 
 **Likelihood:** Medium (webhook URLs leak; people probe them).
 
-**Impact:** Attacker pretending to be Shopify could create fake `orders/paid` events, leading to fraudulent CRM enrichment or accounting entries.
+**Impact:** An attacker impersonating an active webhook provider could inject false delivery, identity, or finance events.
 
-**Mitigations.** Every webhook source has its own HMAC verification (D6). Shopify sends `X-Shopify-Hmac-SHA256` over the raw body, computed with our `SHOPIFY_WEBHOOK_SECRET`. WordPress sends a similar signature. Verification uses Node's `crypto.timingSafeEqual` to prevent timing-based key extraction. A forged request without the correct signature is rejected with 401 before any business logic runs.
+**Mitigations.** Every active webhook source uses its provider-specific authentication contract (D6). Stripe and Xero bind signatures to the raw body; Postmark, Brevo, and Veriff use dedicated credentials or signatures. Invalid requests are rejected before business logic.
 
-The dedupe key (`event_key`) on `webhook_event` ensures the same payload is processed only once even on retries. The 5-minute replay-window check on the `Date` / `X-*-Triggered-At` header (D6, Q31) is **(planned)** — neither the Shopify nor the WordPress verifier enforces a timestamp-skew bound today, so replay protection currently rests on the dedupe constraint alone.
+The dedupe key (`event_key`) on `webhook_event` ensures persisted provider events are processed only once on retries. Provider-specific event ledgers and idempotency keys provide the equivalent guarantee for routes that do not use the generic table.
 
-**Acceptance.** If an attacker steals our `SHOPIFY_WEBHOOK_SECRET`, they can forge webhooks. Secret theft requires App Platform compromise or accidental disclosure. We accept this and rely on secret hygiene — never log secrets, never commit them to git, rotate them annually.
+**Acceptance.** A stolen provider credential can permit forged callbacks within that provider's scope. We rely on least-privilege credential binding, secret hygiene, rotation, and idempotent processing to bound the impact.
 
 ### Cross-site request forgery (CSRF) on auth flows
 
@@ -237,11 +288,11 @@ Secrets are scoped to the smallest possible audience. Only apps/worker has Zoho 
 
 We operate from the UK with EU users in scope per Q45. The compliance burden:
 
-**UK GDPR + EU GDPR.** Both apply post-Brexit and have substantively the same requirements. We bake in data minimization (PII in JWTs is limited per Q6), keep an audit trail (domain_events as audit log), and have a documented deletion procedure (manual for v1, self-serve in v2). DPAs are signed with all processors (Zoho, Shopify, Xero, DigitalOcean, Cloudflare, Sentry) — tracker in [dpas.md](../security/dpas.md).
+**UK GDPR + EU GDPR.** Both apply post-Brexit and have substantively the same requirements. We bake in data minimization (PII in JWTs is limited per Q6), keep an audit trail (domain_events as audit log), and have a documented deletion procedure (manual for v1, self-serve in v2). DPAs are signed with all processors (Zoho, Xero, DigitalOcean, Cloudflare, Sentry) — tracker in [dpas.md](../security/dpas.md).
 
 **Zoho EU region** for data residency per Q11 — confirmed as `one.zoho.eu`. EU user data stays in EU regardless of where we operate.
 
-**PCI scope is zero.** We never touch card data. Stripe handles payment intents, Shopify handles checkout, Xero handles invoicing. Our codebase has no PAN-handling code paths and never will. The security posture document records this so penetration tests don't go looking for nonexistent PCI scope.
+**PCI scope is zero.** We never touch card data. Stripe handles payment intents and Xero handles invoicing. Our codebase has no PAN-handling code paths and never will. The security posture document records this so penetration tests don't go looking for nonexistent PCI scope.
 
 **CCPA, LGPD, and other jurisdictions** are architecturally identical to GDPR per Q45 — same minimization, same audit, same deletion. No code changes required when these activate; just paperwork (privacy policy updates, processor disclosures).
 

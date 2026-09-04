@@ -1,7 +1,8 @@
 import { createDb } from "@auction/db";
-import { bid, legalEntity, legalEntityMember, lot, user } from "@auction/db/schema";
+import { bid, legalEntity, legalEntityMember, lot } from "@auction/db/schema";
 import { DrizzleBidRepository } from "@auction/persistence/repositories";
 import { describe, expect, it } from "vitest";
+import { seedIdentityUserFixtures } from "../testing/identity-user-fixtures.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
@@ -22,23 +23,25 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
     try {
       await db.transaction(async (tx) => {
         const t = new Date();
-        await tx.insert(user).values({
-          id: sellerUserId,
-          name: "Seller",
-          email: "p21_seller_u@integration.test",
-          emailVerified: true,
-          createdAt: t,
-          updatedAt: t,
-        });
-        for (let i = 0; i < 10; i++) {
-          await tx.insert(user).values({
-            id: buyerUser(i),
-            name: `B${i}`,
-            email: `p21_b${i}_u@integration.test`,
-            emailVerified: true,
+        await seedIdentityUserFixtures(tx, [
+          {
+            id: sellerUserId,
+            name: "Seller",
+            email: "p21_seller_u@integration.test",
             createdAt: t,
             updatedAt: t,
-          });
+          },
+        ]);
+        for (let i = 0; i < 10; i++) {
+          await seedIdentityUserFixtures(tx, [
+            {
+              id: buyerUser(i),
+              name: `B${i}`,
+              email: `p21_b${i}_u@integration.test`,
+              createdAt: t,
+              updatedAt: t,
+            },
+          ]);
         }
 
         await tx.insert(legalEntity).values({
@@ -115,6 +118,7 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
           await tx.insert(bid).values({
             lotId,
             bidderId: buyerUser(i),
+            subjectId: buyerUser(i),
             buyerLegalEntityId: buyerLeId(i),
             amount: `${amt}.00`,
             isWinning: false,
@@ -155,23 +159,25 @@ describe.skipIf(!HAS_DB)("DrizzleBidRepository.findEligibleBidsForLotClose (inte
     try {
       await db.transaction(async (tx) => {
         const t = new Date();
-        await tx.insert(user).values({
-          id: `${sellerUserId}_2`,
-          name: "Seller2",
-          email: "p21_seller2_u@integration.test",
-          emailVerified: true,
-          createdAt: t,
-          updatedAt: t,
-        });
-        for (let i = 0; i < 3; i++) {
-          await tx.insert(user).values({
-            id: `${buyerUser(i)}_2`,
-            name: `B${i}2`,
-            email: `p21_b${i}_u2@integration.test`,
-            emailVerified: true,
+        await seedIdentityUserFixtures(tx, [
+          {
+            id: `${sellerUserId}_2`,
+            name: "Seller2",
+            email: "p21_seller2_u@integration.test",
             createdAt: t,
             updatedAt: t,
-          });
+          },
+        ]);
+        for (let i = 0; i < 3; i++) {
+          await seedIdentityUserFixtures(tx, [
+            {
+              id: `${buyerUser(i)}_2`,
+              name: `B${i}2`,
+              email: `p21_b${i}_u2@integration.test`,
+              createdAt: t,
+              updatedAt: t,
+            },
+          ]);
         }
 
         const leSeller = "80000000-0000-4000-8000-000000000019";

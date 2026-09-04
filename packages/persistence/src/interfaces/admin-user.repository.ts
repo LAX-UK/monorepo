@@ -5,7 +5,6 @@ export type AdminUserListSort =
   | "created_asc"
   | "name_asc"
   | "name_desc"
-  | "last_active_desc"
   | "kyc_status";
 
 export type AdminUserAccountStatus = "active" | "suspended";
@@ -24,15 +23,12 @@ export type AdminUserListFilter = {
   kycStatus?: UserKycStatus | undefined;
   kycStatuses?: UserKycStatus[] | undefined;
   persona?: "individual" | "organisation" | "none" | undefined;
-  twoFactorEnabled?: boolean | undefined;
   deletionRequestedOnly?: boolean | undefined;
   hasMobile?: boolean | undefined;
   createdFrom?: Date | undefined;
   createdToExclusive?: Date | undefined;
   kycVerifiedFrom?: Date | undefined;
   kycVerifiedToExclusive?: Date | undefined;
-  lastActiveFrom?: Date | undefined;
-  lastActiveToExclusive?: Date | undefined;
   sort?: AdminUserListSort | undefined;
 };
 

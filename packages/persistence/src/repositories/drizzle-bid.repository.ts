@@ -22,6 +22,7 @@ export class DrizzleBidRepository implements IBidRepository {
       .values({
         lotId: row.lotId,
         bidderId: row.placedByUserId,
+        subjectId: row.placedByUserId,
         buyerLegalEntityId: row.buyerLegalEntityId,
         amount: row.amount,
         isWinning: row.isWinning,

@@ -7,6 +7,9 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertRepoNodeVersion } from "./require-node-version.mjs";
+
+assertRepoNodeVersion({ tool: "Visual baseline update" });
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const webDir = path.join(ROOT, "apps/web");

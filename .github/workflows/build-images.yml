@@ -5,7 +5,7 @@ name: Build images
 # Registry. App Platform then only PULLS these images instead of building from
 # source, which is the bulk of the ~30 min deploy time.
 #
-# Scope: api, auth, ws, worker, migrate, web, clamav, event (prod only). `web` bakes
+# Scope: api, auth, shop identity proof, ws, worker, migrate, web, clamav. `web` bakes
 # NEXT_PUBLIC_* at build time, so its public build args come from the private
 # LAX-UK/auction-infra repository plus GitHub env vars/secrets.
 #
@@ -49,6 +49,8 @@ jobs:
             dockerfile: apps/api/Dockerfile
           - component: auth
             dockerfile: apps/auth/Dockerfile
+          - component: shop-identity
+            dockerfile: apps/shop-identity/Dockerfile
           - component: ws
             dockerfile: apps/ws/Dockerfile
           - component: worker

@@ -68,7 +68,7 @@ Optional overrides: `apps/event/.env.development` (`VITE_API_BASE`, `VITE_WEB_OR
 ## Production deploy
 
 1. Run DB migrations through `0101_onsite_event_pass_metadata` (after `0099`, `0100`)
-2. Set `CHECK_IN_TOKEN_SECRET` (≥16 chars; separate from `BETTER_AUTH_SECRET` recommended)
+2. Set the API-owned `CHECK_IN_TOKEN_SECRET` (≥16 chars locally, ≥48 in production)
 3. Confirm `EMAIL_PROVIDER=postmark` and `POSTMARK_SERVER_TOKEN` on `api` (Terraform already wires these; pass emails send via Postmark)
 4. Rebuild `api`, `web`, and `event` images
 5. Rehearse check-in with **Dry-run on** before door opens

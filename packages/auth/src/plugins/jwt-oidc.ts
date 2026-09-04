@@ -1,38 +1,56 @@
-import type { Database } from "@auction/db";
-import { account } from "@auction/db/schema";
-import type { IEmailService } from "@auction/email";
-import type { IPhoneVerificationService } from "@auction/sms";
+import { ACCESS_TOKEN_TTL_SECONDS, allRegisteredOidcScopes } from "@auction/identity-contracts";
 import type { BetterAuthPlugin } from "better-auth";
 import { magicLink, twoFactor } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { oidcProvider } from "better-auth/plugins/oidc-provider";
-import { eq } from "drizzle-orm";
 import { AUTH_TIMINGS } from "../auth-timings.js";
 import type { EnvelopeCrypto } from "../crypto/envelope.js";
-import { createJwksAdapter } from "../jwks.js";
 import { pickMagicLinkTemplate } from "../magic-link-email.js";
 import { buildMagicLinkVerifyPlugin } from "../magic-link-verify-hooks.js";
+import { buildOidcConsentHtml } from "../oidc-consent-html.js";
 import {
   buildPhoneNumberGuardPlugin,
   buildPhoneNumberPlugin,
   buildPhoneNumberRateLimitPlugin,
 } from "../phone-number-plugin.js";
+import type {
+  AccountLinkReader,
+  EmailSender,
+  JwksStore,
+  PhoneNumberStore,
+  SmsSender,
+} from "../ports/index.js";
 import { buildTwoFactorEnforcementPlugin } from "../two-factor-enforcement.js";
 
 export function buildJwtAndOidcPlugins(options: {
-  db: Database;
+  jwksStore: JwksStore;
+  accountLinkReader: AccountLinkReader;
+  phoneNumberStore: PhoneNumberStore;
   issuer: string;
   webOrigin?: string | undefined;
   jwtAudience: string;
+  totpIssuer?: string | undefined;
   envelope?: EnvelopeCrypto | undefined;
-  email?: IEmailService | undefined;
-  phoneVerification?: IPhoneVerificationService | undefined;
+  email?: EmailSender | undefined;
+  phoneVerification?: SmsSender | undefined;
   onEmailVerified?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
     | undefined;
+  resolveOidcIdTokenClaims?:
+    | ((input: {
+        subjectId: string;
+        clientId: string;
+      }) => Promise<{
+        sid?: string;
+        auth_time?: number;
+        acr?: string;
+        amr?: string[];
+      }>)
+    | undefined;
 }): BetterAuthPlugin[] {
-  const jwksAdapter = createJwksAdapter(options.db, options.envelope);
-  const { db, issuer, webOrigin, jwtAudience, email, phoneVerification, onEmailVerified } = options;
+  const jwksAdapter = options.jwksStore;
+  const { issuer, webOrigin, jwtAudience, email, phoneVerification, onEmailVerified } = options;
+  const issuerBase = issuer.replace(/\/$/, "");
   const webBase = (webOrigin ?? "https://lax.bid").replace(/\/$/, "");
   return [
     jwt({
@@ -47,15 +65,11 @@ export function buildJwtAndOidcPlugins(options: {
       jwt: {
         issuer,
         audience: jwtAudience,
-        expirationTime: "15 minutes",
+        expirationTime: `${ACCESS_TOKEN_TTL_SECONDS} seconds`,
         definePayload: ({ user: sessionUser }) => ({
           email: sessionUser.email,
           email_verified: sessionUser.emailVerified,
           name: sessionUser.name,
-          // `image` is intentionally excluded — it is PII (avatar URL) and not required
-          // for authorization decisions; clients should fetch it from the userinfo endpoint.
-          role: (sessionUser as { role?: string }).role ?? "client",
-          staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
         }),
       },
       adapter: {
@@ -65,23 +79,30 @@ export function buildJwtAndOidcPlugins(options: {
     }),
     oidcProvider({
       __skipDeprecationWarning: true,
-      accessTokenExpiresIn: 60 * 15,
+      accessTokenExpiresIn: ACCESS_TOKEN_TTL_SECONDS,
       refreshTokenExpiresIn: AUTH_TIMINGS.oidcRefreshTokenExpiresSec,
-      loginPage: `${webOrigin ?? issuer}/login`,
+      storeClientSecret: "hashed",
+      loginPage: `${issuerBase}/login`,
       useJWTPlugin: true,
       requirePKCE: true,
-      scopes: ["openid", "profile", "email", "offline_access"],
+      scopes: [...allRegisteredOidcScopes()],
+      getConsentHTML: ({ clientName, scopes, code }) =>
+        buildOidcConsentHtml({ clientName, scopes, code }),
       metadata: {
         issuer,
         jwks_uri: `${issuer.replace(/\/$/, "")}/.well-known/jwks.json`,
       },
-      getAdditionalUserInfoClaim: (sessionUser) => ({
+      getAdditionalUserInfoClaim: async (sessionUser, _scopes, client) => ({
         email_verified: sessionUser.emailVerified,
-        role: (sessionUser as { role?: string }).role ?? "client",
-        staff_role: (sessionUser as { staffRole?: string | null }).staffRole ?? null,
+        ...(options.resolveOidcIdTokenClaims
+          ? await options.resolveOidcIdTokenClaims({
+              subjectId: sessionUser.id,
+              clientId: client.clientId,
+            })
+          : {}),
       }),
     }),
-    twoFactor({ issuer: "LAX", allowPasswordless: true }),
+    twoFactor({ issuer: options.totpIssuer ?? "LAX", allowPasswordless: true }),
     magicLink({
       disableSignUp: true,
       storeToken: "hashed",
@@ -91,14 +112,8 @@ export function buildJwtAndOidcPlugins(options: {
         const found = await ctx.context.internalAdapter.findUserByEmail(recipientEmail);
         const authUser = found?.user;
         if (!authUser) return;
-        // Any linked account (credential or social) means an established user —
-        // only truly account-less users (seeded passwordless) get activation copy.
-        const [linked] = await db
-          .select({ id: account.id })
-          .from(account)
-          .where(eq(account.userId, authUser.id))
-          .limit(1);
-        const template = pickMagicLinkTemplate(Boolean(linked));
+        const linkedCount = await options.accountLinkReader.countAccountsForUser(authUser.id);
+        const template = pickMagicLinkTemplate(linkedCount > 0);
         const linkUrl = `${webBase}/auth/activate?token=${encodeURIComponent(token)}`;
         const expirationMinutes = Math.round(AUTH_TIMINGS.magicLinkExpiresSec / 60);
         const baseEnqueue = {
@@ -137,9 +152,13 @@ export function buildJwtAndOidcPlugins(options: {
       },
     }),
     buildMagicLinkVerifyPlugin({ onEmailVerified }),
-    buildTwoFactorEnforcementPlugin({ webOrigin }),
-    buildPhoneNumberPlugin({ db, phoneVerification, email }),
+    buildTwoFactorEnforcementPlugin({ authOrigin: issuerBase }),
+    buildPhoneNumberPlugin({
+      phoneNumberStore: options.phoneNumberStore,
+      phoneVerification,
+      email,
+    }),
     buildPhoneNumberRateLimitPlugin(),
-    buildPhoneNumberGuardPlugin(db),
+    buildPhoneNumberGuardPlugin(options.phoneNumberStore),
   ];
 }

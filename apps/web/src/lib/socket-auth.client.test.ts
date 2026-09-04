@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchAuthJwtForSocket, resolveSocketHandshakeAuth } from "./socket-auth.client";
+import { fetchSocketTicket, resolveSocketHandshakeAuth } from "./socket-auth.client";
 
-describe("fetchAuthJwtForSocket", () => {
+describe("fetchSocketTicket", () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
@@ -13,20 +13,20 @@ describe("fetchAuthJwtForSocket", () => {
   });
 
   it("returns null on server", async () => {
-    await expect(fetchAuthJwtForSocket()).resolves.toBeNull();
+    await expect(fetchSocketTicket()).resolves.toBeNull();
   });
 
-  it("returns token from auth issuer", async () => {
+  it("returns an opaque ticket from the same-origin BFF", async () => {
     vi.stubGlobal("window", {} as Window);
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ token: "jwt-abc" }),
+      json: async () => ({ ticket: "ticket-abc" }),
     });
 
-    await expect(fetchAuthJwtForSocket()).resolves.toBe("jwt-abc");
+    await expect(fetchSocketTicket()).resolves.toBe("ticket-abc");
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringMatching(/\/api\/auth\/token$/),
-      expect.objectContaining({ credentials: "include" }),
+      "/api/auth/ws-ticket",
+      expect.objectContaining({ method: "POST", credentials: "same-origin" }),
     );
   });
 
@@ -34,7 +34,7 @@ describe("fetchAuthJwtForSocket", () => {
     vi.stubGlobal("window", {} as Window);
     fetchMock.mockResolvedValue({ ok: false });
 
-    await expect(fetchAuthJwtForSocket()).resolves.toBeNull();
+    await expect(fetchSocketTicket()).resolves.toBeNull();
   });
 });
 
@@ -51,40 +51,32 @@ describe("resolveSocketHandshakeAuth", () => {
   });
 
   it("returns empty auth on server without calling fetch", async () => {
+    vi.stubGlobal("window", undefined);
     await expect(resolveSocketHandshakeAuth()).resolves.toEqual({});
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("returns empty auth for guests without calling fetch", async () => {
+  it("returns empty auth when the BFF reports no session", async () => {
     vi.stubGlobal("window", {} as Window);
     vi.stubGlobal("document", { cookie: "lax_theme=dark" } as Document);
 
-    await expect(resolveSocketHandshakeAuth()).resolves.toEqual({});
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("returns empty auth when session cookie is present but token fetch fails", async () => {
-    vi.stubGlobal("window", {} as Window);
-    vi.stubGlobal("document", {
-      cookie: "better-auth.session_token=abc",
-    } as Document);
     fetchMock.mockResolvedValue({ ok: false });
 
     await expect(resolveSocketHandshakeAuth()).resolves.toEqual({});
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("returns token auth when session cookie is present and fetch succeeds", async () => {
+  it("returns ticket auth when the BFF succeeds", async () => {
     vi.stubGlobal("window", {} as Window);
     vi.stubGlobal("document", {
-      cookie: "__Secure-better-auth.session_token=abc",
+      cookie: "",
     } as Document);
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ token: "jwt-abc" }),
+      json: async () => ({ ticket: "ticket-abc" }),
     });
 
-    await expect(resolveSocketHandshakeAuth()).resolves.toEqual({ token: "jwt-abc" });
+    await expect(resolveSocketHandshakeAuth()).resolves.toEqual({ ticket: "ticket-abc" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,5 +1,5 @@
 import { index, integer, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { user } from "./auth.js";
+import { bidUserProfile } from "./bid-user-profile.js";
 import { category } from "./categories.js";
 
 export const userCategoryInterest = pgTable(
@@ -7,7 +7,7 @@ export const userCategoryInterest = pgTable(
   {
     userId: text("user_id")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => bidUserProfile.userId, { onDelete: "cascade" }),
     categoryId: uuid("category_id")
       .notNull()
       .references(() => category.id, { onDelete: "restrict" }),

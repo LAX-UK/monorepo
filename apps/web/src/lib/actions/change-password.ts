@@ -11,7 +11,6 @@ import {
   firstZodErrorMessage,
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
-import { resolveAuthBaseUrl } from "@auction/auth/client";
 import { passwordChangeFormSchema } from "@auction/validators";
 
 export type ChangePasswordInput = {
@@ -20,8 +19,7 @@ export type ChangePasswordInput = {
   confirmPassword: string;
 };
 
-/** Server action: POST to Better Auth `change-password` (issuer base + cookies).
- */
+/** Server action through the Bid API with the BFF-held resource token and OIDC sid. */
 export async function changePasswordAction(
   input: ChangePasswordInput,
 ): Promise<ActionResult<void>> {
@@ -30,17 +28,13 @@ export async function changePasswordAction(
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
     }
-    const res = await authedServerFetch("/api/auth/change-password", {
-      baseUrl: resolveAuthBaseUrl({
-        authUrl: process.env.NEXT_PUBLIC_AUTH_URL,
-        apiUrl: process.env.NEXT_PUBLIC_API_URL,
-      }),
+    const res = await authedServerFetch("/auth/change-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         currentPassword: parsed.data.currentPassword,
         newPassword: parsed.data.newPassword,
-        revokeOtherSessions: false,
+        confirmPassword: parsed.data.confirmPassword,
       }),
     });
     const body = await res.json().catch(() => ({}));

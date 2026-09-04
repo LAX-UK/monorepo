@@ -1,9 +1,13 @@
+import { defineConfig } from "@playwright/test";
+import { assertRepoNodeVersion } from "../../scripts/ci/require-node-version.mjs";
+import { roleAuthState } from "./e2e/helpers/auth-state";
+
 /**
  * E2E saleroom tests require PLAYWRIGHT_BASE_URL=http://localhost:3000 (not 127.0.0.1)
  * so auth cookies match the API host. Set PLAYWRIGHT_E2E=1 and staff credentials to run.
  */
-import { defineConfig } from "@playwright/test";
-import { roleAuthState } from "./e2e/helpers/auth-state";
+
+assertRepoNodeVersion({ tool: "Playwright" });
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 const e2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
@@ -120,6 +124,7 @@ const roleProjects = [
           name: "catalogue-chromium",
           testMatch: /catalogue-manager-.*\.spec\.ts/,
           dependencies: ["setup-catalogue"],
+          timeout: 90_000,
           workers: 1,
           use: { ...chromium, storageState: roleAuthState.catalogueManager },
         },

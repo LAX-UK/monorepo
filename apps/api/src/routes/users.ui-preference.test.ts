@@ -29,7 +29,7 @@ describe("GET /users/me/preferences/ui", () => {
     const app = new Hono();
     const container = uiPreferenceTestContainer(uiPreferenceService);
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read"] }),
     };
     app.route("/users", createUserRoutes(container, authenticator));
 
@@ -56,7 +56,9 @@ describe("PATCH /users/me/preferences/ui", () => {
     const app = new Hono();
     const container = uiPreferenceTestContainer(uiPreferenceService);
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.write"] }),
     };
     app.route("/users", createUserRoutes(container, authenticator));
 
@@ -94,7 +96,9 @@ describe("POST /users/me/preferences/ui/reset-layout", () => {
     const app = new Hono();
     const container = uiPreferenceTestContainer(uiPreferenceService);
     const authenticator: IAuthenticator = {
-      getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client" }),
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.write"] }),
     };
     app.route("/users", createUserRoutes(container, authenticator));
 

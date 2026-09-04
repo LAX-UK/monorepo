@@ -90,19 +90,16 @@ function mockLotRepo(
 
 function mockUserPhoneReader(
   overrides: {
-    mobile?: string | null;
     phoneNumber?: string | null;
     phoneNumberVerified?: boolean;
   } = {},
 ) {
-  const mobile = "mobile" in overrides ? overrides.mobile : "+447700900123";
-  const phoneNumber = "phoneNumber" in overrides ? overrides.phoneNumber : (mobile ?? null);
+  const phoneNumber = "phoneNumber" in overrides ? overrides.phoneNumber : "+447700900123";
   const phoneNumberVerified =
     "phoneNumberVerified" in overrides ? overrides.phoneNumberVerified : true;
 
   return {
     findByUserId: vi.fn().mockResolvedValue({
-      mobile,
       phoneNumber,
       phoneNumberVerified,
     }),
@@ -125,7 +122,6 @@ function createService(input: {
   sale?: { deliveryMode: string; status: string } | null;
   lots?: Array<{ id: string; saleId: string; deletedAt: null }>;
   phone?: {
-    mobile?: string | null;
     phoneNumber?: string | null;
     phoneNumberVerified?: boolean;
   };
@@ -182,7 +178,7 @@ describe("TelephoneBidBookingService", () => {
   it("rejects request without profile phone", async () => {
     const service = createService({
       repo,
-      phone: { mobile: null, phoneNumber: null, phoneNumberVerified: false },
+      phone: { phoneNumber: null, phoneNumberVerified: false },
     });
     const result = await service.requestBooking({
       userId: "user-1",

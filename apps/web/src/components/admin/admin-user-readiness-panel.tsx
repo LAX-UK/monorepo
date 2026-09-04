@@ -41,12 +41,16 @@ export function AdminUserReadinessPanel({ snapshot }: { snapshot: AdminUserReadi
               size="sm"
             />
             <AdminStatusBadge domain="kyc" status={identity.kycStatus} size="sm" />
-            <AdminStatusBadge
-              domain="kyc"
-              status={identity.twoFactorEnabled ? "approved" : "unverified"}
-              label={identity.twoFactorEnabled ? "2FA on" : "2FA off"}
-              size="sm"
-            />
+            {identity.securityStatusAvailable ? (
+              <AdminStatusBadge
+                domain="kyc"
+                status={identity.twoFactorEnabled ? "approved" : "unverified"}
+                label={identity.twoFactorEnabled ? "2FA on" : "2FA off"}
+                size="sm"
+              />
+            ) : (
+              <AdminStatusBadge domain="kyc" status="unknown" label="2FA unavailable" size="sm" />
+            )}
           </dd>
         </div>
 

@@ -16,16 +16,18 @@ test.describe("marketing auth routing @smoke", () => {
     const base = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000");
     await page.context().addCookies([
       {
-        name: "better-auth.session_token",
-        value: "test-stale-or-valid",
+        name: "lax-bid-session",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         domain: base.hostname,
         path: "/",
+        httpOnly: true,
+        sameSite: "Lax",
       },
     ]);
     await page.goto("/login?next=%2F%2Fevil.com");
-    await page.waitForLoadState("networkidle");
+    await page.waitForURL(/\/auth\/post-login|\/login/, { timeout: 15_000 });
     expect(page.url()).not.toContain("evil.com");
-    expect(page.url()).toMatch(/dashboard|login/);
+    expect(page.url()).toMatch(/auth\/post-login|login/);
   });
 
   test("session_expired query shows recovery copy on login", async ({ page }) => {

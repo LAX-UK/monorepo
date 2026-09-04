@@ -26,9 +26,13 @@ const envSchema = z
     PORT: z.coerce.number().default(3003),
     DATABASE_URL: z.string().min(1),
     DATABASE_URL_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
+    API_INTERNAL_BASE_URL: z.string().url().default("http://127.0.0.1:3001"),
+    IDENTITY_EMAIL_ENQUEUE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    IDENTITY_PRODUCT_USAGE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS: z.coerce.number().int().min(250).max(10_000).default(3_000),
+    IDENTITY_SUBJECT_USAGE_TIMEOUT_MS: z.coerce.number().int().min(250).max(10_000).default(1_500),
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
     BETTER_AUTH_SECRET: z.string().min(16),
-    API_PUBLIC_URL: z.string().url().default("http://localhost:3003"),
     OIDC_ISSUER_URL: z.string().url().default("http://localhost:3003"),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     WEB_ORIGINS: z.preprocess((val) => {
@@ -56,18 +60,22 @@ const envSchema = z
     JWT_AUDIENCE: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     AUTH_DEK_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     METRICS_TOKEN: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
-    COOKIE_DOMAIN: z.preprocess(emptyToUndefined, z.string().optional()),
+    IDENTITY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    IDENTITY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    IDENTITY_MERGE_ENABLED: z
+      .preprocess((value) => value === "true" || value === true, z.boolean())
+      .default(false),
+    /** First-party SSF streams and delivery worker are opt-in in every environment. */
+    SSF_DELIVERY_ENABLED: z
+      .preprocess((value) => value === "true" || value === true, z.boolean())
+      .default(false),
+    SSF_DELIVERY_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5_000),
+    SSF_DELIVERY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(8),
     ALLOW_HTTP_COOKIES: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
     SENTRY_DSN_AUTH: z.preprocess(emptyToUndefined, z.string().url().optional()),
-    EMAIL_PROVIDER: z.enum(["console", "postmark"]).default("console"),
-    EMAIL_FROM: z.string().default("LAX.BID by London Art Exchange <no-reply@mail.lax.bid>"),
-    EMAIL_REPLY_TO: z.preprocess(emptyToUndefined, z.string().optional()),
-    POSTMARK_SERVER_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
-    POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),
-    POSTMARK_BROADCAST_STREAM: z.string().default("broadcast"),
     REQUIRE_EMAIL_VERIFICATION: z
       .preprocess((val) => {
         if (val === undefined || val === "") return true;
@@ -80,6 +88,7 @@ const envSchema = z
     APPLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     APPLE_DOMAIN_ASSOCIATION: z.preprocess(emptyToUndefined, z.string().optional()),
     TURNSTILE_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    TOTP_ISSUER: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     ENABLE_PHONE_VERIFICATION: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
@@ -90,12 +99,6 @@ const envSchema = z
     TWILIO_AUTH_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
   })
   .superRefine((e, ctx) => {
-    if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark",
-      });
-    }
     if (e.NODE_ENV === "production") {
       if (e.ALLOW_HTTP_COOKIES) {
         ctx.addIssue({
@@ -111,7 +114,7 @@ const envSchema = z
           path: ["BETTER_AUTH_SECRET"],
         });
       }
-      for (const u of [e.WEB_ORIGIN, e.API_PUBLIC_URL, e.OIDC_ISSUER_URL]) {
+      for (const u of [e.WEB_ORIGIN, e.OIDC_ISSUER_URL, e.API_INTERNAL_BASE_URL]) {
         if (u.includes("localhost") || u.includes("127.0.0.1")) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -145,6 +148,14 @@ const envSchema = z
             path: ["AUTH_DEK_KEY"],
           });
         }
+      }
+      if (!e.IDENTITY_MACHINE_CLIENT_ID || !e.IDENTITY_MACHINE_CLIENT_SECRET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "IDENTITY_MACHINE_CLIENT_ID and IDENTITY_MACHINE_CLIENT_SECRET are required in production",
+          path: ["IDENTITY_MACHINE_CLIENT_ID"],
+        });
       }
     }
     if (e.NODE_ENV === "production" && e.ENABLE_PHONE_VERIFICATION) {

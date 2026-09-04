@@ -22,6 +22,7 @@ export class DrizzleDomainEventProjectorReader implements IDomainEventProjectorR
         payload: domainEvent.payload,
         actorUserId: domainEvent.actorUserId,
         schemaVersion: domainEvent.schemaVersion,
+        occurredAt: domainEvent.occurredAt,
       })
       .from(domainEvent)
       .where(eq(domainEvent.id, eventId))
@@ -42,6 +43,7 @@ export class DrizzleDomainEventProjectorReader implements IDomainEventProjectorR
         aggregateId: domainEvent.aggregateId,
         payload: domainEvent.payload,
         actorUserId: domainEvent.actorUserId,
+        occurredAt: domainEvent.occurredAt,
       })
       .from(domainEvent)
       .where(
@@ -60,7 +62,7 @@ export class DrizzleDomainEventProjectorReader implements IDomainEventProjectorR
     conn: ProjectorDbConnection,
   ): Promise<DomainEventProjectorRow[]> {
     const rows = await conn.execute(sql`
-      select id, event_type, aggregate_id, payload, actor_user_id
+      select id, event_type, aggregate_id, payload, actor_user_id, occurred_at
       from ${domainEvent}
       where id > (select last_processed_event_id from ${projectorState} where projector_name = ${projectorName})
       order by id
@@ -73,6 +75,7 @@ export class DrizzleDomainEventProjectorReader implements IDomainEventProjectorR
       aggregate_id: string;
       payload: unknown;
       actor_user_id?: string | null;
+      occurred_at?: Date | string;
     }>;
     return events.map((event) => ({
       id: Number(event.id),
@@ -80,6 +83,7 @@ export class DrizzleDomainEventProjectorReader implements IDomainEventProjectorR
       aggregateId: event.aggregate_id,
       payload: event.payload,
       actorUserId: event.actor_user_id ?? null,
+      ...(event.occurred_at ? { occurredAt: new Date(event.occurred_at) } : {}),
     }));
   }
 }

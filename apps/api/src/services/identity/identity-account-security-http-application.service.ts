@@ -1,15 +1,10 @@
-import type { Auth } from "@auction/auth/server";
-import type { createDb } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import type {
-  IAuthCredentialReader,
-  IUserEmailChangeRepository,
-} from "@auction/persistence/interfaces";
 import type {
   ContainerCredentialSetupSlice,
   ContainerForgotPasswordSlice,
 } from "../../container/container-slices.js";
 import type { Env } from "../../env.js";
+import { IdentityIssuerClientError } from "../../infrastructure/http-identity-issuer.client.js";
 import { createAppLogger } from "../../lib/logger.js";
 import { setupCredentialPassword } from "../auth/credential-setup.service.js";
 import type { EmailChangeDeps } from "../auth/email-change.service.js";
@@ -19,24 +14,28 @@ import {
   requestEmailChange,
 } from "../auth/email-change.service.js";
 import { runForgotPasswordSideEffects } from "../auth/forgot-password.service.js";
-import { stampReauthWithPassword, stampSessionPasswordProofNow } from "../auth/reauth.service.js";
+import { stampReauthWithPassword } from "../auth/reauth.service.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
+import type {
+  IIdentityCredentialClient,
+  IIdentityEmailChangeClient,
+  IIdentityIssuerClient,
+  IIdentitySubjectClient,
+} from "../interfaces/identity-issuer-client.js";
 import type { IIdentityAccountSecurityHttpApplicationService } from "../interfaces/identity-routes/identity-account-security-http.js";
 import type { IdentityHttpJson } from "../interfaces/identity-routes/identity-route-http.js";
-import type { SessionRevocationService } from "../session-revocation.service.js";
 import type { UserService } from "../user.service.js";
 
 export type IdentityAccountSecurityDeps = {
   env: Env;
-  authDb: ContainerCredentialSetupSlice["authDb"];
-  auth: Auth;
-  db: ReturnType<typeof createDb>;
+  identityIssuer: IIdentityIssuerClient &
+    IIdentitySubjectClient &
+    IIdentityCredentialClient &
+    IIdentityEmailChangeClient;
   userService: UserService;
-  userEmailChangeRepository: IUserEmailChangeRepository;
   emailService: IEmailService;
-  sessionRevocation: SessionRevocationService;
   authAuditPublisher: IAuthAuditPublisher;
-  authCredentialReader: IAuthCredentialReader;
+  authCredentialReader: Pick<IIdentityCredentialClient, "hasCredentialAccount">;
 };
 
 export class IdentityAccountSecurityHttpApplicationService
@@ -47,28 +46,21 @@ export class IdentityAccountSecurityHttpApplicationService
   private emailChangeDeps(): EmailChangeDeps {
     return {
       userService: this.deps.userService,
-      emailChange: this.deps.userEmailChangeRepository,
+      identityIssuer: this.deps.identityIssuer,
       emailService: this.deps.emailService,
       env: this.deps.env,
-      authDb: this.deps.authDb,
-      sessionRevocation: this.deps.sessionRevocation,
     };
   }
 
   private credentialSetupSlice(): ContainerCredentialSetupSlice {
     return {
-      userService: this.deps.userService,
-      auth: this.deps.auth,
-      authDb: this.deps.authDb,
-      emailService: this.deps.emailService,
+      identityIssuer: this.deps.identityIssuer,
     };
   }
 
   private forgotPasswordSlice(): ContainerForgotPasswordSlice {
     return {
-      db: this.deps.db,
-      authDb: this.deps.authDb,
-      auth: this.deps.auth,
+      identityIssuer: this.deps.identityIssuer,
       emailService: this.deps.emailService,
       env: this.deps.env,
     };
@@ -84,7 +76,7 @@ export class IdentityAccountSecurityHttpApplicationService
       return { status: 401, body: { error: "Unauthorized", code: "session_required" } };
     }
     const out = await stampReauthWithPassword({
-      authDb: this.deps.authDb,
+      identityIssuer: this.deps.identityIssuer,
       userId,
       password: input.password,
       sessionTokenFromCookie: input.sessionTokenFromCookie ?? null,
@@ -113,6 +105,40 @@ export class IdentityAccountSecurityHttpApplicationService
       };
     }
     return { status: 401, body: { error: "Session not found", code: "session_required" } };
+  }
+
+  async changePassword(input: {
+    userId: string | undefined;
+    currentPassword: string;
+    newPassword: string;
+    sessionToken: string | null | undefined;
+  }): Promise<IdentityHttpJson> {
+    if (!input.userId || !input.sessionToken) {
+      return { status: 401, body: { error: "Unauthorized", code: "session_required" } };
+    }
+    try {
+      await this.deps.identityIssuer.changePassword({
+        subjectId: input.userId,
+        currentPassword: input.currentPassword,
+        newPassword: input.newPassword,
+        sessionToken: input.sessionToken,
+      });
+      return { status: 200, body: { ok: true } };
+    } catch (error) {
+      if (error instanceof IdentityIssuerClientError && error.code === "invalid_password") {
+        return {
+          status: 401,
+          body: { error: "Current password is incorrect", code: "invalid_password" },
+        };
+      }
+      if (error instanceof IdentityIssuerClientError && error.code === "invalid_password_policy") {
+        return {
+          status: 400,
+          body: { error: "Password does not meet policy", code: error.code },
+        };
+      }
+      throw error;
+    }
   }
 
   async forgotPassword(input: {
@@ -155,16 +181,10 @@ export class IdentityAccountSecurityHttpApplicationService
       container: this.credentialSetupSlice(),
       userId,
       password: input.password,
+      sessionTokenFromCookie: input.sessionTokenFromCookie,
       authAudit: this.deps.authAuditPublisher,
     });
-    if (result.ok) {
-      void stampSessionPasswordProofNow({
-        authDb: this.deps.authDb,
-        userId,
-        sessionTokenFromCookie: input.sessionTokenFromCookie ?? null,
-      }).catch(() => {});
-      return { status: 200, body: { ok: true } };
-    }
+    if (result.ok) return { status: 200, body: { ok: true } };
     if (result.kind === "user_not_found") {
       return { status: 404, body: { error: "User not found", code: "user_not_found" } };
     }

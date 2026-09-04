@@ -1,5 +1,11 @@
 import type { Database } from "@auction/db";
-import { lot, lotFulfilment, payment, paymentExternalRef, user } from "@auction/db/schema";
+import {
+  bidIdentityDirectory,
+  lot,
+  lotFulfilment,
+  payment,
+  paymentExternalRef,
+} from "@auction/db/schema";
 import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type {
@@ -38,8 +44,8 @@ function adminTableWhere(filter: Omit<ListPaymentsAdminTableFilter, "limit" | "o
         ilike(payment.id, pattern),
         ilike(payment.buyerId, pattern),
         ilike(lot.title, pattern),
-        ilike(user.name, pattern),
-        ilike(user.email, pattern),
+        ilike(bidIdentityDirectory.name, pattern),
+        ilike(bidIdentityDirectory.email, pattern),
         ilike(lotFulfilment.status, pattern),
       ),
     );
@@ -344,8 +350,8 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .select({
         payment,
         lotTitle: lot.title,
-        buyerName: user.name,
-        buyerEmail: user.email,
+        buyerName: bidIdentityDirectory.name,
+        buyerEmail: bidIdentityDirectory.email,
         fulfilmentStatus: lotFulfilment.status,
         refInvoiceNumber: paymentExternalRef.xeroInvoiceNumber,
         refOnlineUrl: paymentExternalRef.onlineInvoiceUrl,
@@ -354,7 +360,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       })
       .from(payment)
       .innerJoin(lot, eq(payment.lotId, lot.id))
-      .leftJoin(user, eq(payment.buyerId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId))
       .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId));
     const rows = await (where ? base.where(where) : base)
@@ -388,7 +394,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .select({ n: sql<number>`count(*)::int` })
       .from(payment)
       .innerJoin(lot, eq(payment.lotId, lot.id))
-      .leftJoin(user, eq(payment.buyerId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId));
     const [row] = await (where ? base.where(where) : base);
     return row?.n ?? 0;
@@ -407,7 +413,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       })
       .from(payment)
       .innerJoin(lot, eq(payment.lotId, lot.id))
-      .leftJoin(user, eq(payment.buyerId, user.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId));
     const [row] = await (where ? base.where(where) : base);
     return {

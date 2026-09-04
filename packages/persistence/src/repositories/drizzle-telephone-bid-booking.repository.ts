@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { legalEntity, telephoneBidBooking, user } from "@auction/db/schema";
+import { bidIdentityDirectory, legalEntity, telephoneBidBooking } from "@auction/db/schema";
 import type { TelephoneBidBookingStatus } from "@auction/types";
 import { and, arrayContains, desc, eq, inArray, or, sql } from "drizzle-orm";
 import type {
@@ -96,12 +96,15 @@ export class DrizzleTelephoneBidBookingRepository implements ITelephoneBidBookin
     return this.db
       .select({
         booking: telephoneBidBooking,
-        userEmail: user.email,
-        userName: user.name,
+        userEmail: bidIdentityDirectory.email,
+        userName: bidIdentityDirectory.name,
         buyerLegalEntityDisplayName: legalEntity.displayName,
       })
       .from(telephoneBidBooking)
-      .leftJoin(user, eq(telephoneBidBooking.userId, user.id))
+      .leftJoin(
+        bidIdentityDirectory,
+        eq(telephoneBidBooking.userId, bidIdentityDirectory.subjectId),
+      )
       .leftJoin(legalEntity, eq(telephoneBidBooking.buyerLegalEntityId, legalEntity.id));
   }
 

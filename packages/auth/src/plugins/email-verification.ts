@@ -1,8 +1,8 @@
-import type { IEmailService } from "@auction/email";
 import { AUTH_TIMINGS } from "../auth-timings.js";
+import type { EmailSender } from "../ports/email-sender.js";
 
 export function buildEmailVerificationBlock(options?: {
-  email?: IEmailService | undefined;
+  email?: EmailSender | undefined;
   onEmailVerified?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
     | undefined;

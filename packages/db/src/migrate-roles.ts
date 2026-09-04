@@ -10,37 +10,74 @@ export const AUTH_FULL_TABLES = [
   "account",
   "verification",
   "jwks_key",
-  "external_accounts",
   "oauth_application",
   "oauth_access_token",
   "oauth_consent",
-  /** `twoFactor` plugin backing table — required for `requestPasswordReset` / sign-in hooks on apps/api. */
+  "oidc_rp_session",
+  "oidc_backchannel_logout_delivery",
+  "ssf_stream",
+  "ssf_delivery",
+  /** `twoFactor` plugin backing table used only by the canonical auth issuer. */
   "two_factor",
 ] as const;
-// apps/auth (auth_app) needs to enqueue email via IEmailService.enqueue() from the
-// Better Auth send-verification-email / send-reset-password / databaseHooks.user.create.after
-// hooks. That requires INSERT + SELECT on email_outbox, plus SELECT on email_suppression
-// to honour suppression at enqueue time. Auth must NOT be able to update the outbox
-// (that's the worker's job) or write to the suppression table (that's apps/api via the
-// Postmark webhook and the unsubscribe route).
-/** Tables `auth_app` may INSERT and SELECT (no UPDATE/DELETE).
- * - `email_outbox`: enqueue transactional mail from Better Auth hooks.
- * - `domain_events`: append `user.registered` (INSERT) and `user.email_verified`
- *   (`publishUserEmailVerified` SELECT pre-check + INSERT; see apps/auth). */
-export const AUTH_INSERT_SELECT_TABLES = ["email_outbox", "domain_events"] as const;
-export const AUTH_SELECT_TABLES = ["email_suppression"] as const;
-const API_DENY_TABLES = [
+/** Append-only Identity side effects emitted by apps/auth. */
+export const AUTH_INSERT_SELECT_TABLES = ["identity_lifecycle_outbox"] as const;
+export const AUTH_DENY_TABLES = [
+  "email_outbox",
+  "email_suppression",
+  "external_accounts",
+  "bid_identity_directory",
+  "bid_user_profile",
+] as const;
+export const API_DENY_TABLES = [
+  "user",
   "session",
   "account",
   "verification",
+  "two_factor",
   "jwks_key",
   "oauth_application",
   "oauth_access_token",
   "oauth_consent",
-];
-const API_READ_TABLES = ["user"];
-const WORKER_READ_TABLES = [
-  "user",
+  "oidc_rp_session",
+  "oidc_backchannel_logout_delivery",
+  "shop_user_profile",
+  "shop_identity_session",
+  "shop_logout_token_replay",
+  "ssf_stream",
+  "ssf_delivery",
+  "identity_lifecycle_outbox",
+  "shop_ssf_replay",
+] as const;
+/** Identity-backed read models exposed to the Bid API without write privileges. */
+export const API_READ_TABLES = ["bid_identity_directory"] as const;
+/** Product-local profile tables owned by apps/api (Bid). */
+export const API_PRODUCT_PROFILE_TABLES = ["bid_user_profile"] as const;
+export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;
+/** Shop Identity owns only its local Identity projection. */
+export const SHOP_PRODUCT_PROFILE_TABLES = [
+  "shop_user_profile",
+  "shop_identity_session",
+  "shop_logout_token_replay",
+] as const;
+export const SHOP_SSF_RECEIVER_TABLES = ["shop_ssf_replay"] as const;
+/** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
+export const WORKER_PRODUCT_PROFILE_TABLES = [
+  "shop_user_profile",
+  "bid_user_profile",
+  "bid_identity_directory",
+] as const;
+/** Tables whose DML must remain unavailable to worker_app. */
+export const WORKER_DENY_TABLES = [
+  ...AUTH_FULL_TABLES,
+  ...API_SSF_RECEIVER_TABLES,
+  "shop_identity_session",
+  "shop_logout_token_replay",
+  ...SHOP_SSF_RECEIVER_TABLES,
+] as const;
+export const WORKER_READ_TABLES = [
+  /** Identity lifecycle outbox relay reads pending rows before inserting into domain_events. */
+  "identity_lifecycle_outbox",
   /** Catalogue tables scanned by backfill-media-assets (read image key columns only). */
   "sale",
   "item_submission",
@@ -56,28 +93,6 @@ const WORKER_READ_TABLES = [
   /** SoF projectors read case status / exposure for emails and retention job. */
   "source_of_funds",
 ];
-/** Columns `api_app` may UPDATE on `public.user` — must cover every `apps/api` write path
- * that uses `container.db`. Anything missing here surfaces as `permission denied for table user`.
- *
- * Intentionally denied to api_app (writes routed through `container.authDb` / `auth_app`):
- *   - `email`, `email_verified` — identity rewrite; only the dual-confirm email-change flow
- *     in `routes/auth.ts:confirm-email-change` may flip these, and it goes through authDb.
- *   - `two_factor_enabled` — managed by the Better Auth two-factor plugin.
- *   - `id`, `created_at` — never updatable from app code.
- */
-export const API_COLUMN_UPDATE_GRANTS: Record<string, readonly string[]> = {
-  user: [
-    "first_name",
-    "last_name",
-    "mobile",
-    "mobile_country",
-    "signup_persona",
-    "category_interests_onboarding_completed_at",
-    "suspended_at",
-    "suspended_reason",
-    "updated_at",
-  ],
-};
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
 // so worker_app needs SELECT + UPDATE on these tables. Keep them out of WORKER_FULL_TABLES
@@ -165,11 +180,12 @@ export const WORKER_ABSENTEE_BID_TABLES = ["absentee_bid"] as const;
 /** Worker absentee replay inserts bids during activation replay. */
 export const WORKER_BID_PLACEMENT_TABLES = ["bid"] as const;
 
-type RoleName = "auth_app" | "api_app" | "worker_app";
+type RoleName = "auth_app" | "api_app" | "shop_app" | "worker_app";
 
 const ROLE_PASSWORD_ENV: Record<RoleName, string> = {
   auth_app: "AUTH_APP_DB_PASSWORD",
   api_app: "API_APP_DB_PASSWORD",
+  shop_app: "SHOP_APP_DB_PASSWORD",
   worker_app: "WORKER_APP_DB_PASSWORD",
 };
 
@@ -181,13 +197,17 @@ function quoteLiteral(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
 }
 
-async function tableExists(client: pg.Client, tableName: string): Promise<boolean> {
+async function tableExists(
+  client: pg.Client,
+  tableName: string,
+  schemaName = "public",
+): Promise<boolean> {
   const res = await client.query<{ exists: boolean }>(
     `select exists (
       select 1 from information_schema.tables
-      where table_schema = 'public' and table_name = $1
+      where table_schema = $1 and table_name = $2
     )`,
-    [tableName],
+    [schemaName, tableName],
   );
   return Boolean(res.rows[0]?.exists);
 }
@@ -200,6 +220,21 @@ async function existingPublicTables(client: pg.Client): Promise<string[]> {
      order by table_name`,
   );
   return res.rows.map((row) => row.table_name);
+}
+
+async function hasTablePrivilege(
+  client: pg.Client,
+  role: RoleName,
+  tableName: string,
+  privilege: "SELECT",
+  schemaName = "public",
+): Promise<boolean> {
+  if (!(await tableExists(client, tableName, schemaName))) return false;
+  const res = await client.query<{ allowed: boolean }>(
+    "select has_table_privilege($1, $2, $3) as allowed",
+    [role, `${quoteIdent(schemaName)}.${quoteIdent(tableName)}`, privilege],
+  );
+  return Boolean(res.rows[0]?.allowed);
 }
 
 async function ensureRole(client: pg.Client, role: RoleName): Promise<void> {
@@ -230,13 +265,15 @@ async function grantIfExists(
     | "SELECT, UPDATE, DELETE"
     | "INSERT"
     | "INSERT, SELECT"
+    | "INSERT, SELECT, DELETE"
     | "INSERT, SELECT, UPDATE"
     | "INSERT, SELECT, UPDATE, DELETE"
     | "ALL PRIVILEGES",
+  schemaName = "public",
 ): Promise<void> {
-  if (!(await tableExists(client, tableName))) return;
+  if (!(await tableExists(client, tableName, schemaName))) return;
   await client.query(
-    `grant ${privileges} on table public.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
+    `grant ${privileges} on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
   );
 }
 
@@ -245,11 +282,12 @@ async function grantColumnUpdateIfExists(
   role: RoleName,
   tableName: string,
   columns: readonly string[],
+  schemaName = "public",
 ): Promise<void> {
-  if (!(await tableExists(client, tableName)) || columns.length === 0) return;
+  if (!(await tableExists(client, tableName, schemaName)) || columns.length === 0) return;
   const columnList = columns.map(quoteIdent).join(", ");
   await client.query(
-    `grant update (${columnList}) on table public.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
+    `grant update (${columnList}) on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
   );
 }
 
@@ -258,16 +296,21 @@ async function revokeIfExists(
   role: RoleName,
   tableName: string,
   privileges = "ALL PRIVILEGES",
+  schemaName = "public",
 ): Promise<void> {
-  if (!(await tableExists(client, tableName))) return;
+  if (!(await tableExists(client, tableName, schemaName))) return;
   await client.query(
-    `revoke ${privileges} on table public.${quoteIdent(tableName)} from ${quoteIdent(role)}`,
+    `revoke ${privileges} on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} from ${quoteIdent(role)}`,
   );
 }
 
-async function grantSequences(client: pg.Client, role: RoleName): Promise<void> {
+async function grantSequences(
+  client: pg.Client,
+  role: RoleName,
+  schemaName: string,
+): Promise<void> {
   await client.query(
-    `grant usage, select on all sequences in schema public to ${quoteIdent(role)}`,
+    `grant usage, select on all sequences in schema ${quoteIdent(schemaName)} to ${quoteIdent(role)}`,
   );
 }
 
@@ -277,9 +320,19 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
   try {
     await client.query("begin");
 
-    for (const role of ["auth_app", "api_app", "worker_app"] as const) {
+    const roles = ["auth_app", "api_app", "shop_app", "worker_app"] as const;
+    for (const role of roles) {
       await ensureRole(client, role);
       await client.query(`grant usage on schema public to ${quoteIdent(role)}`);
+    }
+
+    // public.user is migration-controlled for worker_app and api_app. Preserve
+    // each soak grant across this script's global reset, but do not recreate it
+    // after migration 0160 or 0161 respectively has revoked it.
+    const restoreWorkerUserSelect = await hasTablePrivilege(client, "worker_app", "user", "SELECT");
+    const restoreApiUserSelect = await hasTablePrivilege(client, "api_app", "user", "SELECT");
+
+    for (const role of roles) {
       await client.query(
         `revoke all privileges on all tables in schema public from ${quoteIdent(role)}`,
       );
@@ -293,28 +346,39 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     for (const tableName of AUTH_INSERT_SELECT_TABLES) {
       await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
     }
-    for (const tableName of AUTH_SELECT_TABLES) {
-      await grantIfExists(client, "auth_app", tableName, "SELECT");
-    }
     for (const tableName of tables) {
-      if (API_DENY_TABLES.includes(tableName)) {
+      if ((API_DENY_TABLES as readonly string[]).includes(tableName)) {
         await revokeIfExists(client, "api_app", tableName);
         continue;
       }
-      if (API_READ_TABLES.includes(tableName)) {
-        await grantIfExists(client, "api_app", tableName, "SELECT");
-        await grantColumnUpdateIfExists(
-          client,
-          "api_app",
-          tableName,
-          API_COLUMN_UPDATE_GRANTS[tableName] ?? [],
-        );
+      if ((API_READ_TABLES as readonly string[]).includes(tableName)) {
+        continue;
+      }
+      if ((API_PRODUCT_PROFILE_TABLES as readonly string[]).includes(tableName)) {
+        await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, UPDATE");
+        continue;
+      }
+      if ((API_SSF_RECEIVER_TABLES as readonly string[]).includes(tableName)) {
+        await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
         continue;
       }
       await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");
     }
     for (const tableName of WORKER_READ_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "SELECT");
+    }
+    for (const tableName of SHOP_PRODUCT_PROFILE_TABLES) {
+      await grantIfExists(
+        client,
+        "shop_app",
+        tableName,
+        tableName === "shop_user_profile"
+          ? "INSERT, SELECT, UPDATE"
+          : "INSERT, SELECT, UPDATE, DELETE",
+      );
+    }
+    for (const tableName of SHOP_SSF_RECEIVER_TABLES) {
+      await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT, DELETE");
     }
     for (const tableName of WORKER_LOCK_READ_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
@@ -346,6 +410,16 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     await grantIfExists(client, "worker_app", "marketing_contact_sync_log", "INSERT, SELECT");
     for (const tableName of WORKER_DATA_EXPORT_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
+    }
+    for (const tableName of WORKER_PRODUCT_PROFILE_TABLES) {
+      await grantIfExists(
+        client,
+        "worker_app",
+        tableName,
+        tableName === "bid_identity_directory"
+          ? "INSERT, SELECT, UPDATE, DELETE"
+          : "INSERT, SELECT, UPDATE",
+      );
     }
     for (const tableName of WORKER_FULL_TABLES) {
       await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
@@ -401,8 +475,18 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS,
     );
 
+    for (const tableName of API_READ_TABLES) {
+      await grantIfExists(client, "api_app", tableName, "SELECT");
+    }
+    if (restoreWorkerUserSelect) {
+      await grantIfExists(client, "worker_app", "user", "SELECT");
+    }
+    if (restoreApiUserSelect) {
+      await grantIfExists(client, "api_app", "user", "SELECT");
+    }
+
     for (const role of ["auth_app", "api_app", "worker_app"] as const) {
-      await grantSequences(client, role);
+      await grantSequences(client, role, "public");
     }
 
     await client.query("commit");

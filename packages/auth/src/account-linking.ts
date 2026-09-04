@@ -1,8 +1,6 @@
-import type { Database } from "@auction/db";
-import { account as accountTable } from "@auction/db/schema";
-import type { IEmailService } from "@auction/email";
 import { APIError } from "better-auth/api";
-import { count, eq } from "drizzle-orm";
+import type { AccountLinkReader } from "./ports/account-link-reader.js";
+import type { EmailSender } from "./ports/email-sender.js";
 
 type SocialLinkProvider = "google" | "apple";
 
@@ -27,37 +25,23 @@ export function shouldNotifySocialAccountLinked(options: {
 
 /** Block removing the last account row when verified email (magic link) is not available. */
 export async function shouldBlockLastAccountUnlink(options: {
-  db: Database;
+  accounts: AccountLinkReader;
   userId: string;
   accountRowsForUser: number;
 }): Promise<boolean> {
   if (options.accountRowsForUser > 1) return false;
-  const userRow = await options.db.query.user.findFirst({
-    where: (u, { eq }) => eq(u.id, options.userId),
-    columns: { emailVerified: true },
-  });
-  if (!userRow) return true;
-  return userRow.emailVerified !== true;
+  const emailVerified = await options.accounts.isEmailVerified(options.userId);
+  if (emailVerified === null) return true;
+  return emailVerified !== true;
 }
 
-/**
- * Guard for `databaseHooks.account.delete.before`. Throws (rather than
- * returning `false`) when unlinking would remove the user's last sign-in
- * method: Better Auth's `deleteWithHooks` silently no-ops on a `false` return
- * and `/unlink-account` still reports `{ status: true }`, so a `false` return
- * would leave the account linked while telling the client it was removed.
- */
 export async function assertCanUnlinkAccount(options: {
-  db: Database;
+  accounts: AccountLinkReader;
   userId: string;
 }): Promise<void> {
-  const countResult = await options.db
-    .select({ value: count() })
-    .from(accountTable)
-    .where(eq(accountTable.userId, options.userId));
-  const accountRowsForUser = countResult[0]?.value ?? 0;
+  const accountRowsForUser = await options.accounts.countAccountsForUser(options.userId);
   const block = await shouldBlockLastAccountUnlink({
-    db: options.db,
+    accounts: options.accounts,
     userId: options.userId,
     accountRowsForUser,
   });
@@ -70,32 +54,24 @@ export async function assertCanUnlinkAccount(options: {
 }
 
 export async function notifySocialAccountChange(options: {
-  db: Database;
-  email?: IEmailService | undefined;
+  accounts: AccountLinkReader;
+  email?: EmailSender | undefined;
   userId: string;
   providerId: string;
   template: "social-account-linked" | "social-account-unlinked";
 }) {
-  const { db, email, userId, providerId, template } = options;
+  const { accounts, email, userId, providerId, template } = options;
   if (!email || !isSocialLinkProvider(providerId)) return;
-  const userRow = await db.query.user.findFirst({
-    where: (u, { eq }) => eq(u.id, userId),
-    columns: { email: true, name: true },
-  });
+  const userRow = await accounts.findUserEmailProfile(userId);
   if (!userRow) return;
-  email
-    .enqueue({
-      template,
-      to: userRow.email,
-      userId,
-      category: "auth",
-      vars: { provider: providerId, userName: userRow.name },
-    })
-    .catch((err: unknown) => {
-      console.error(`[auth] enqueue ${template} failed`, {
-        userId,
-        providerId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    });
+  await email.enqueue({
+    template,
+    to: userRow.email,
+    userId,
+    category: "auth",
+    vars: {
+      userName: userRow.name,
+      providerName: providerId === "google" ? "Google" : "Apple",
+    },
+  });
 }

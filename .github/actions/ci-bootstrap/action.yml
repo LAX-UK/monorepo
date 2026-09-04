@@ -1,0 +1,25 @@
+name: CI bootstrap
+description: Checkout, pnpm, Node 22, and optional dependency install for CI jobs.
+inputs:
+  install:
+    description: Run pnpm install --frozen-lockfile
+    required: false
+    default: "true"
+  fetch_depth:
+    description: Git fetch depth for checkout
+    required: false
+    default: "0"
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: ${{ inputs.fetch_depth }}
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - if: inputs.install == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile

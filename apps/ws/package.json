@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@auction/identity-contracts": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
     "@auction/observability": "workspace:*",

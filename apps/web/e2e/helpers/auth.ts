@@ -1,5 +1,6 @@
+import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import AxeBuilder from "@axe-core/playwright";
-import { type BrowserContext, type Page, type Response, expect } from "@playwright/test";
+import { type Page, type Response, expect } from "@playwright/test";
 
 export const e2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
 export const e2eSkipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web with seeded credentials.";
@@ -127,6 +128,7 @@ export type SessionProbe = {
   sessionAlive: boolean;
   authStatus: number;
   meStatus: number;
+  meReason: string | null;
   email: string | null;
   cookieNames: string[];
 };
@@ -135,20 +137,20 @@ function trimUrl(value: string | undefined, fallback: string): string {
   return (value ?? fallback).replace(/\/+$/, "");
 }
 
-/** Probes Better Auth and `/users/me` with the current browser cookies. */
+/** Probes Better Auth and the Bid BFF session bridge on the web app. */
 export async function probePageSession(page: Page): Promise<SessionProbe> {
   const authUrl = trimUrl(
     process.env.OIDC_ISSUER_URL ?? process.env.NEXT_PUBLIC_AUTH_URL,
     "http://localhost:3003",
   );
-  const apiUrl = trimUrl(
-    process.env.API_PUBLIC_URL ?? process.env.NEXT_PUBLIC_API_URL,
-    "http://localhost:3001",
+  const webOrigin = trimUrl(
+    process.env.WEB_ORIGIN ?? process.env.PLAYWRIGHT_BASE_URL,
+    "http://localhost:3000",
   );
   const stored = await page.context().storageState();
   const [authRes, meRes] = await Promise.all([
     page.request.get(`${authUrl}/api/auth/get-session`),
-    page.request.get(`${apiUrl}/users/me`),
+    page.request.get(`${webOrigin}/api/auth/me`),
   ]);
   const authBody = (await authRes.json().catch(() => null)) as {
     user?: { id?: string; email?: string };
@@ -156,36 +158,45 @@ export async function probePageSession(page: Page): Promise<SessionProbe> {
   const meBody = (await meRes.json().catch(() => null)) as {
     data?: { email?: string };
     email?: string;
+    authenticated?: boolean;
+    reason?: string;
+    message?: string;
   } | null;
   const sessionAlive = Boolean(authBody?.user?.id) && authRes.ok();
   return {
     sessionAlive,
-    authenticated: sessionAlive && meRes.ok(),
+    authenticated: meRes.ok() && meBody?.authenticated === true,
     authStatus: authRes.status(),
     meStatus: meRes.status(),
+    meReason: meBody?.reason ?? meBody?.message ?? null,
     email: authBody?.user?.email ?? meBody?.data?.email ?? meBody?.email ?? null,
     cookieNames: stored.cookies.map((cookie) => cookie.name),
   };
 }
 
-/** Writes the live cookie jar back only when a session token is still present. */
-export async function persistContextAuthState(
-  context: BrowserContext,
-  storageState: unknown,
-): Promise<void> {
-  if (typeof storageState !== "string") return;
-  const state = await context.storageState();
-  if (!state.cookies.some((cookie) => cookie.name.includes("session_token"))) return;
-  await context.storageState({ path: storageState });
-}
-
-function formatPageSessionFailure(path: string, probe: SessionProbe, url: string): string {
-  return [
+export function formatPageSessionFailure(path: string, probe: SessionProbe, url: string): string {
+  const parts = [
     `Expected authenticated staff session for ${path} but landed on ${url}.`,
     `get-session=${probe.authStatus}`,
-    `/users/me=${probe.meStatus}`,
+    `/api/auth/me=${probe.meStatus}`,
     `cookies=${probe.cookieNames.join(",") || "(none)"}`,
-  ].join(" ");
+  ];
+  if (process.env.CI === "true" && probe.meReason) {
+    parts.push(`me-reason=${probe.meReason}`);
+  }
+  return parts.join(" ");
+}
+
+function isOidcCallbackUrl(url: string): boolean {
+  try {
+    return new URL(url).pathname === "/api/auth/callback/lax-bid-web";
+  } catch {
+    return /\/api\/auth\/callback\/lax-bid-web(?:\?|$)/.test(url);
+  }
+}
+
+function needsAuthRecovery(url: string): boolean {
+  return isLoginUrl(url) || isOidcConsentUrl(url);
 }
 
 function isLoginUrl(url: string): boolean {
@@ -197,14 +208,21 @@ function isLoginUrl(url: string): boolean {
  * valid and SSR `/users/me` missed. Tests never password-login or click Continue.
  */
 export async function gotoAdminPath(page: Page, path: string): Promise<Response | null> {
-  let response = await page.goto(path, { waitUntil: "domcontentloaded" });
-  if (!isLoginUrl(page.url())) return response;
-
-  const probe = await probePageSession(page);
-  if (probe.sessionAlive) {
-    response = await page.goto(path, { waitUntil: "domcontentloaded" });
-    if (!isLoginUrl(page.url())) return response;
+  let probe = await probePageSession(page);
+  if (!probe.authenticated) {
+    throw new Error(formatPageSessionFailure(path, probe, page.url()));
   }
+
+  let response = await page.goto(path, { waitUntil: "domcontentloaded" });
+  probe = await probePageSession(page);
+  if (probe.authenticated && !needsAuthRecovery(page.url())) return response;
+
+  if (needsAuthRecovery(page.url()) && probe.sessionAlive) {
+    response = await page.goto(path, { waitUntil: "domcontentloaded" });
+    probe = await probePageSession(page);
+    if (probe.authenticated && !needsAuthRecovery(page.url())) return response;
+  }
+
   throw new Error(formatPageSessionFailure(path, probe, page.url()));
 }
 
@@ -217,10 +235,151 @@ export async function gotoStaffPage(
   return page.goto(path, { waitUntil: options?.waitUntil ?? "domcontentloaded" });
 }
 
+function isOidcConsentUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname === "/api/auth/oauth2/authorize";
+  } catch {
+    return /\/api\/auth\/oauth2\/authorize(?:\?|$)/.test(url);
+  }
+}
+
+async function submitOidcConsent(page: Page, destination: RegExp): Promise<void> {
+  if (destination.test(page.url())) return;
+
+  const allow = page.getByRole("button", { name: /^allow$/i });
+  const consentOutcome = await Promise.race([
+    allow.waitFor({ state: "visible", timeout: 30_000 }).then(() => "allow" as const),
+    page
+      .waitForURL((url) => destination.test(url.toString()) || isOidcCallbackUrl(url.toString()), {
+        timeout: 60_000,
+        waitUntil: "domcontentloaded",
+      })
+      .then(() => "done" as const),
+  ]).catch(async (error) => {
+    if (destination.test(page.url()) || isOidcCallbackUrl(page.url())) return "done" as const;
+    const probe = await probePageSession(page);
+    if (probe.authenticated) return "done" as const;
+    throw error;
+  });
+
+  if (consentOutcome === "done" || destination.test(page.url()) || isOidcCallbackUrl(page.url())) {
+    if (!destination.test(page.url())) {
+      await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    }
+    return;
+  }
+
+  await Promise.all([
+    page.waitForURL(
+      (url) => destination.test(url.toString()) || isOidcCallbackUrl(url.toString()),
+      { timeout: 60_000, waitUntil: "domcontentloaded" },
+    ),
+    allow.click(),
+  ]).catch(async (error) => {
+    if (destination.test(page.url()) || isOidcCallbackUrl(page.url())) {
+      if (!destination.test(page.url())) {
+        await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+      }
+      return;
+    }
+    const probe = await probePageSession(page);
+    if (probe.authenticated) return;
+    const visibleError = page.locator('#error[role="alert"]:not([hidden])');
+    if (await visibleError.isVisible().catch(() => false)) {
+      const text = (await visibleError.textContent())?.trim();
+      throw new Error(`OIDC consent failed (${page.url()}). ${text ?? "unknown error"}`);
+    }
+    throw error;
+  });
+
+  if (!destination.test(page.url())) {
+    await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+  }
+}
+
+async function completeOidcConsentViaApi(page: Page, destination: RegExp): Promise<void> {
+  const authUrl = trimUrl(
+    process.env.OIDC_ISSUER_URL ?? process.env.NEXT_PUBLIC_AUTH_URL,
+    "http://localhost:3003",
+  );
+  const authorizeUrl = page.url();
+  if (!isOidcConsentUrl(authorizeUrl)) {
+    throw new Error(`Expected OIDC authorize URL but got ${authorizeUrl}`);
+  }
+
+  const authorizeRes = await page.request.get(authorizeUrl);
+  if (!authorizeRes.ok()) {
+    throw new Error(`OIDC authorize failed (${authorizeRes.status()})`);
+  }
+  const consentHtml = await authorizeRes.text();
+  const consentCode = consentHtml.match(/id="consent-code"[^>]+value="([^"]+)"/)?.[1];
+  if (!consentCode) {
+    throw new Error(`OIDC authorize did not render a consent code (${authorizeUrl})`);
+  }
+
+  const consent = await page.request.post(`${authUrl}/api/auth/oauth2/consent`, {
+    headers: { "content-type": "application/json", origin: authUrl },
+    data: { accept: true, consent_code: consentCode },
+  });
+  const body = (await consent.json().catch(() => null)) as { redirectURI?: string } | null;
+  if (!consent.ok() || typeof body?.redirectURI !== "string") {
+    throw new Error(`OIDC consent failed (${consent.status()})`);
+  }
+
+  await page.goto(body.redirectURI, { waitUntil: "domcontentloaded" });
+  if (isOidcCallbackUrl(page.url())) {
+    await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    return;
+  }
+  if (!destination.test(page.url())) {
+    await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+  }
+}
+
+async function completeOidcAuthorizeStep(page: Page, destination: RegExp): Promise<void> {
+  if (destination.test(page.url())) return;
+
+  const allow = page.getByRole("button", { name: /^allow$/i });
+  if (await allow.isVisible().catch(() => false)) {
+    await submitOidcConsent(page, destination);
+    return;
+  }
+
+  await completeOidcConsentViaApi(page, destination);
+}
+
+async function waitForLoginDestination(page: Page, destination: RegExp): Promise<void> {
+  try {
+    await page.waitForURL(
+      (url) => destination.test(url.toString()) || isOidcConsentUrl(url.toString()),
+      { timeout: 60_000, waitUntil: "domcontentloaded" },
+    );
+  } catch (error) {
+    if (await resumeIfAlreadySignedIn(page, destination)) return;
+    throw error;
+  }
+
+  if (
+    isOidcConsentUrl(page.url()) ||
+    (await page
+      .locator("#oidc-consent")
+      .isVisible()
+      .catch(() => false))
+  ) {
+    await completeOidcAuthorizeStep(page, destination);
+    return;
+  }
+
+  if (!destination.test(page.url())) {
+    throw new Error(`Sign-in did not redirect (${page.url()}). Expected ${destination}.`);
+  }
+}
+
 async function readLoginBannerErrors(page: Page): Promise<string> {
   if (page.isClosed()) return "";
   const bannerError = await page
-    .locator('[role="alert"], output[aria-live="polite"]')
+    .locator('[role="alert"]:visible, output[aria-live="polite"]:visible')
     .allTextContents()
     .catch(() => [] as string[]);
   return bannerError.filter(Boolean).join(" · ");
@@ -234,11 +393,17 @@ async function resumeIfAlreadySignedIn(page: Page, destination: RegExp): Promise
   }
   if (!(await continueLink.isVisible().catch(() => false))) return false;
   await continueLink.click();
-  await page.waitForURL(destination, {
-    timeout: 60_000,
-    waitUntil: "domcontentloaded",
-  });
+  await waitForLoginDestination(page, destination);
   return true;
+}
+
+function preservedNextFromUrl(url: string): string | null {
+  try {
+    const next = new URL(url).searchParams.get("next");
+    return next && isSafeNextPath(next) ? next : null;
+  } catch {
+    return null;
+  }
 }
 
 async function login(
@@ -247,7 +412,10 @@ async function login(
   options: LoginOptions = {},
 ): Promise<void> {
   const destination = options.destination ?? /\/(admin|dashboard)/;
-  const loginUrl = `/login?email=${encodeURIComponent(credentials.email)}`;
+  const preservedNext = preservedNextFromUrl(page.url());
+  const loginUrl = preservedNext
+    ? `/login?email=${encodeURIComponent(credentials.email)}&next=${encodeURIComponent(preservedNext)}`
+    : `/login?email=${encodeURIComponent(credentials.email)}`;
   await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
   await dismissCookieConsentIfVisible(page);
   await Promise.race([
@@ -296,10 +464,7 @@ async function login(
     (await alreadySignedIn.isVisible().catch(() => false))
   ) {
     await continueAuthed.first().click();
-    await page.waitForURL(destination, {
-      timeout: 60_000,
-      waitUntil: "domcontentloaded",
-    });
+    await waitForLoginDestination(page, destination);
     return;
   }
 
@@ -311,22 +476,17 @@ async function login(
   await password.click();
   await password.fill(credentials.password);
   const submit = page.getByRole("button", { name: /^sign in$/i });
-  await Promise.all([
-    page.waitForURL(destination, {
-      timeout: 60_000,
-      waitUntil: "domcontentloaded",
-    }),
-    (async () => {
-      if (await submit.isVisible().catch(() => false)) {
-        await submit.click();
-        return;
-      }
+  try {
+    if (await submit.isVisible().catch(() => false)) {
+      await submit.click();
+    } else {
       await page
         .locator("form")
         .first()
         .evaluate((form) => (form as HTMLFormElement).requestSubmit());
-    })(),
-  ]).catch(async (error) => {
+    }
+    await waitForLoginDestination(page, destination);
+  } catch (error) {
     if (await resumeIfAlreadySignedIn(page, destination)) return;
     const detail = await readLoginBannerErrors(page);
     throw new Error(
@@ -334,7 +494,7 @@ async function login(
         ? `Sign-in did not redirect (${page.url()}). ${detail}`
         : `Sign-in did not redirect (${page.url()}). ${String(error)}`,
     );
-  });
+  }
 }
 
 /** Sign in with a named seeded fixture without duplicating the login journey in specs. */
@@ -426,7 +586,7 @@ export async function staffLogin(page: Page): Promise<void> {
     await assertAuthenticatedStaffSession(page);
     return;
   }
-  await login(page, staffCredentials);
+  await login(page, staffCredentials, { destination: /\/admin(?:\/|$|\?)/ });
   await assertAuthenticatedStaffSession(page);
 }
 
@@ -443,27 +603,40 @@ export async function ensureAuthenticatedStaffSession(page: Page): Promise<void>
 export async function catalogueManagerLogin(page: Page): Promise<void> {
   await login(page, catalogueCredentials);
   await gotoAdminPath(page, "/admin/lots");
+  const probe = await probePageSession(page);
+  if (!probe.authenticated) {
+    throw new Error(
+      `Catalogue manager login did not establish a Bid BFF session (get-session=${probe.authStatus}, /api/auth/me=${probe.meStatus}).`,
+    );
+  }
   await expect(page.getByRole("heading", { name: /^lots$/i }).first()).toBeVisible({
     timeout: 20_000,
   });
 }
 
+/** Fails fast when prepared catalogue-manager storage state is not authenticated. */
+export async function ensureCatalogueManagerSession(page: Page): Promise<void> {
+  const probe = await probePageSession(page);
+  if (probe.authenticated) return;
+  throw new Error(formatPageSessionFailure("/admin/lots", probe, page.url()));
+}
+
 export async function financeLogin(page: Page): Promise<void> {
   await login(page, financeCredentials);
-  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await gotoAdminPath(page, "/admin");
   await page.waitForURL(/\/admin(?:\/finance)?(?:\?|$)/);
   await assertAuthenticatedStaffSession(page);
 }
 
 export async function readonlyStaffLogin(page: Page): Promise<void> {
   await login(page, readonlyCredentials);
-  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await gotoAdminPath(page, "/admin");
   await assertAuthenticatedStaffSession(page);
 }
 
 export async function operationsLogin(page: Page): Promise<void> {
   await login(page, operationsCredentials);
-  await page.goto("/admin", { waitUntil: "domcontentloaded" });
+  await gotoAdminPath(page, "/admin");
   await assertAuthenticatedStaffSession(page);
 }
 

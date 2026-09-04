@@ -37,6 +37,7 @@ export class UserPublicHttpApplicationService implements IUserPublicHttpApplicat
     webOrigin: string;
     registrationDisabled: boolean;
     marketingContext: WebsiteEventContext;
+    headers?: Headers;
   }): Promise<UserHttpJson> {
     if (input.registrationDisabled) {
       return {
@@ -61,6 +62,7 @@ export class UserPublicHttpApplicationService implements IUserPublicHttpApplicat
       persona: reg.persona,
       ...(reg.inviteToken !== undefined ? { inviteToken: reg.inviteToken } : {}),
       allowEntityInvites: orgModuleEnabled,
+      ...(input.headers ? { requestHeaders: input.headers } : {}),
       ...("mobile" in reg && reg.mobile !== undefined
         ? { mobile: reg.mobile, mobileCountry: reg.mobileCountry }
         : {}),

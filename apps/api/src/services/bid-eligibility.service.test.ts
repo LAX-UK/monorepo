@@ -8,22 +8,27 @@ type WhereStep = { kind: "limit"; rows: unknown[] } | { kind: "all"; rows: unkno
 
 function createSequentialDb(steps: WhereStep[]): Database {
   const queue = [...steps];
+  const createFromChain = () => {
+    const chain = {
+      leftJoin: vi.fn(() => chain),
+      where: vi.fn(() => {
+        const step = queue.shift();
+        if (!step) {
+          throw new Error("BidEligibilityService test: unexpected extra query");
+        }
+        if (step.kind === "limit") {
+          return {
+            limit: vi.fn(() => Promise.resolve(step.rows)),
+          };
+        }
+        return Promise.resolve(step.rows);
+      }),
+    };
+    return chain;
+  };
   const db = {
     select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => {
-          const step = queue.shift();
-          if (!step) {
-            throw new Error("BidEligibilityService test: unexpected extra query");
-          }
-          if (step.kind === "limit") {
-            return {
-              limit: vi.fn(() => Promise.resolve(step.rows)),
-            };
-          }
-          return Promise.resolve(step.rows);
-        }),
-      })),
+      from: vi.fn(() => createFromChain()),
     })),
   };
   return db as unknown as Database;

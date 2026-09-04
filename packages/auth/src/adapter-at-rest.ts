@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { EnvelopeCrypto } from "./crypto/envelope.js";
 
 const wrappedSym = Symbol("auction.auth.atRestWrapped");
@@ -12,6 +13,8 @@ type AuthDbAdapter = {
   findMany: AdapterMethod;
   update: AdapterMethod;
   updateMany: AdapterMethod;
+  delete: AdapterMethod;
+  deleteMany: AdapterMethod;
   transaction: (cb: (tx: AuthDbAdapter) => Promise<unknown>) => Promise<unknown>;
   [key: string]: unknown;
 };
@@ -22,6 +25,12 @@ function isAlreadyWrapped(a: AuthDbAdapter): boolean {
 
 const ACCOUNT_FIELDS = ["accessToken", "refreshToken", "idToken"] as const;
 const TWO_FACTOR_FIELDS = ["secret", "backupCodes"] as const;
+const OAUTH_TOKEN_FIELDS = ["accessToken", "refreshToken"] as const;
+const TOKEN_HASH_PREFIX = "h1:";
+
+function hashOpaqueToken(value: string): string {
+  return `${TOKEN_HASH_PREFIX}${createHash("sha256").update(value).digest("base64url")}`;
+}
 
 function isSealed(value: unknown): value is string {
   return typeof value === "string" && value.startsWith("v1:");
@@ -47,8 +56,32 @@ function encryptFields(
         out[f] = crypto.seal(v);
       }
     }
+  } else if (model === "oauthAccessToken") {
+    for (const field of OAUTH_TOKEN_FIELDS) {
+      const value = out[field];
+      if (typeof value === "string" && value.length > 0 && !value.startsWith(TOKEN_HASH_PREFIX)) {
+        out[field] = hashOpaqueToken(value);
+      }
+    }
   }
   return out;
+}
+
+function hashOauthTokenWhere(model: string, where: unknown): unknown {
+  if (model !== "oauthAccessToken") return where;
+  if (Array.isArray(where)) return where.map((entry) => hashOauthTokenWhere(model, entry));
+  if (!where || typeof where !== "object") return where;
+  const clause = where as Record<string, unknown>;
+  const field = clause.field;
+  const value = clause.value;
+  if (
+    (field === "accessToken" || field === "refreshToken") &&
+    typeof value === "string" &&
+    !value.startsWith(TOKEN_HASH_PREFIX)
+  ) {
+    return { ...clause, value: hashOpaqueToken(value) };
+  }
+  return clause;
 }
 
 function decryptFields(
@@ -113,19 +146,33 @@ export function wrapAuthDatabaseAdapter(
       async create(
         args: { model: string; data: Record<string, unknown> } & Record<string, unknown>,
       ) {
+        const rawOauthTokens =
+          args.model === "oauthAccessToken"
+            ? {
+                accessToken: args.data.accessToken,
+                refreshToken: args.data.refreshToken,
+              }
+            : null;
         const next = {
           ...args,
           data: encryptFields(args.model, args.data, crypto),
         };
         const row = (await adapter.create(next)) as Record<string, unknown> | null;
-        return decryptFields(args.model, row, crypto);
+        const decrypted = decryptFields(args.model, row, crypto);
+        return decrypted && rawOauthTokens ? { ...decrypted, ...rawOauthTokens } : decrypted;
       },
       async findOne(args: { model: string } & Record<string, unknown>) {
-        const row = (await adapter.findOne(args)) as Record<string, unknown> | null;
+        const row = (await adapter.findOne({
+          ...args,
+          where: hashOauthTokenWhere(args.model, args.where),
+        })) as Record<string, unknown> | null;
         return decryptFields(args.model, row, crypto);
       },
       async findMany(args: { model: string } & Record<string, unknown>) {
-        const rows = (await adapter.findMany(args)) as Record<string, unknown>[] | null;
+        const rows = (await adapter.findMany({
+          ...args,
+          where: hashOauthTokenWhere(args.model, args.where),
+        })) as Record<string, unknown>[] | null;
         if (!Array.isArray(rows)) return rows;
         return rows.map((r) => decryptFields(args.model, r, crypto) as Record<string, unknown>);
       },
@@ -138,6 +185,7 @@ export function wrapAuthDatabaseAdapter(
       ) {
         const next = {
           ...args,
+          where: hashOauthTokenWhere(args.model, args.where),
           update: encryptFields(args.model, args.update, crypto),
         };
         const row = (await adapter.update(next)) as Record<string, unknown> | null;
@@ -152,9 +200,22 @@ export function wrapAuthDatabaseAdapter(
       ) {
         const next = {
           ...args,
+          where: hashOauthTokenWhere(args.model, args.where),
           update: encryptFields(args.model, args.update, crypto),
         };
         return adapter.updateMany(next);
+      },
+      async delete(args: { model: string; where: unknown } & Record<string, unknown>) {
+        return adapter.delete({
+          ...args,
+          where: hashOauthTokenWhere(args.model, args.where),
+        });
+      },
+      async deleteMany(args: { model: string; where: unknown } & Record<string, unknown>) {
+        return adapter.deleteMany({
+          ...args,
+          where: hashOauthTokenWhere(args.model, args.where),
+        });
       },
       async transaction(cb: (tx: AuthDbAdapter) => Promise<unknown>) {
         return adapter.transaction(async (tx) => cb(wrap(tx as AuthDbAdapter)));

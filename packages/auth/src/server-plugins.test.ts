@@ -4,7 +4,9 @@ import { buildEmailAndPasswordBlock, buildJwtAndOidcPlugins } from "./server-plu
 
 describe("buildEmailAndPasswordBlock", () => {
   it("wires resetPasswordTokenExpiresIn from AUTH_TIMINGS", () => {
-    const block = buildEmailAndPasswordBlock({});
+    const block = buildEmailAndPasswordBlock({
+      sessionsSettingsUrl: "https://lax.bid/dashboard/settings/sessions",
+    });
     expect(block.resetPasswordTokenExpiresIn).toBe(AUTH_TIMINGS.resetPasswordExpiresSec);
   });
 
@@ -12,7 +14,7 @@ describe("buildEmailAndPasswordBlock", () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
     const block = buildEmailAndPasswordBlock({
       email: { enqueue },
-      webOrigin: "https://lax.bid",
+      sessionsSettingsUrl: "https://lax.bid/dashboard/settings/sessions",
       revokeAllSessions: vi.fn().mockRejectedValue(new Error("db down")),
     });
 
@@ -36,9 +38,20 @@ describe("buildEmailAndPasswordBlock", () => {
 describe("buildJwtAndOidcPlugins", () => {
   it("enables passwordless 2FA management for OAuth-only users", () => {
     const plugins = buildJwtAndOidcPlugins({
-      db: {} as never,
+      jwksStore: { getJwks: vi.fn(), createJwk: vi.fn() },
+      accountLinkReader: {
+        countAccountsForUser: vi.fn(),
+        isEmailVerified: vi.fn(),
+        findUserEmailProfile: vi.fn(),
+      },
+      phoneNumberStore: {
+        purgeExpiredVerifications: vi.fn(),
+        findPhoneNumber: vi.fn(),
+        resetPhoneVerifiedIfNumberChanged: vi.fn(),
+      },
       issuer: "https://auth.lax.bid",
-      jwtAudience: "lax-api",
+      jwtAudience: "lax-bid-api",
+      totpIssuer: "LAX",
     });
 
     const twoFactorPlugin = plugins.find((plugin) => {

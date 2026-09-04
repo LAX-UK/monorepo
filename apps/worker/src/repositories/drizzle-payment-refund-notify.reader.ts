@@ -1,6 +1,13 @@
 import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, lot, payment, user } from "@auction/db/schema";
-import { and, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import {
+  bidIdentityDirectory,
+  bidUserProfile,
+  legalEntity,
+  legalEntityMember,
+  lot,
+  payment,
+} from "@auction/db/schema";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { IPaymentRefundNotifyReader } from "../interfaces/payment-refund-notify.reader.js";
 
 export class DrizzlePaymentRefundNotifyReader implements IPaymentRefundNotifyReader {
@@ -33,12 +40,15 @@ export class DrizzlePaymentRefundNotifyReader implements IPaymentRefundNotifyRea
 
     const sellerMembers = await this.db
       .selectDistinct({
-        email: user.email,
-        userId: user.id,
-        firstName: user.firstName,
+        email: bidIdentityDirectory.email,
+        userId: bidIdentityDirectory.subjectId,
+        firstName: sql<
+          string | null
+        >`coalesce(${bidUserProfile.firstName}, ${bidIdentityDirectory.name})`,
       })
       .from(legalEntityMember)
-      .innerJoin(user, eq(user.id, legalEntityMember.userId))
+      .innerJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, legalEntityMember.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .where(
         and(
           eq(legalEntityMember.legalEntityId, sellerLegalEntityId),

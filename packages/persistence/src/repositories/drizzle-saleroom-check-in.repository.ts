@@ -1,7 +1,14 @@
 import type { Database } from "@auction/db";
-import { legalEntity, legalEntityMember, saleRegistration, user } from "@auction/db/schema";
+import {
+  bidIdentityDirectory,
+  bidUserProfile,
+  legalEntity,
+  legalEntityMember,
+  saleRegistration,
+} from "@auction/db/schema";
 import { PADDLE_NUMBER_MIN } from "@auction/validators";
 import { and, eq, ilike, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   CheckInCandidateRow,
   CheckInWithPaddleInput,
@@ -28,15 +35,18 @@ export class DrizzleSaleroomCheckInRepository implements ISaleroomCheckInReposit
     const needle = `%${q.trim()}%`;
     const userRows = await this.db
       .select({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        kycStatus: user.kycStatus,
-        suspendedAt: user.suspendedAt,
+        id: bidIdentityDirectory.subjectId,
+        name: bidIdentityDirectory.name,
+        email: bidIdentityDirectory.email,
+        emailVerified: bidIdentityDirectory.emailVerified,
+        kycStatus: bidUserProfile.kycStatus,
+        suspendedAt: bidUserProfile.suspendedAt,
       })
-      .from(user)
-      .where(or(ilike(user.email, needle), ilike(user.name, needle)))
+      .from(bidIdentityDirectory)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(
+        or(ilike(bidIdentityDirectory.email, needle), ilike(bidIdentityDirectory.name, needle)),
+      )
       .limit(limit);
 
     if (userRows.length === 0) return [];
@@ -157,10 +167,9 @@ export class DrizzleSaleroomCheckInRepository implements ISaleroomCheckInReposit
         if (!row) throw new Error("Could not upsert sale registration");
 
         if (paddleNumber != null) {
-          await tx
-            .update(user)
-            .set({ preferredPaddleNumber: paddleNumber })
-            .where(eq(user.id, input.userId));
+          await writeBidUserProfile(tx, input.userId, {
+            preferredPaddleNumber: paddleNumber,
+          });
         }
 
         return { registrationId: row.id, paddleNumber, checkedInAt: now };

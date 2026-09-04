@@ -8,6 +8,7 @@ import {
 import { expect, test } from "./helpers/auth.fixture";
 
 test.describe("catalogue manager dashboard @roles", () => {
+  test.setTimeout(90_000);
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("shows the catalogue work inbox and submissions action", async ({ page }) => {

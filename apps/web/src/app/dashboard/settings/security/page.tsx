@@ -22,8 +22,6 @@ export default async function SecuritySettingsPage() {
     loginNext: "/dashboard/settings/security",
   });
   const deletionRequestedAt = me.deletionRequestedAt ? new Date(me.deletionRequestedAt) : null;
-  const twoFactorEnabled = me.twoFactorEnabled === true;
-
   return (
     <DashboardPage className={`space-y-6 ${SETTINGS_NARROW_MAX_WIDTH}`}>
       <SettingsFormHeader
@@ -59,7 +57,17 @@ export default async function SecuritySettingsPage() {
         </div>
         <SecurityAccountMethods emailVerified={me.emailVerified === true} />
       </Surface>
-      <TwoFactorStatusCard twoFactorEnabled={twoFactorEnabled} />
+      {me.securityStatusAvailable === true ? (
+        <TwoFactorStatusCard twoFactorEnabled={me.twoFactorEnabled === true} />
+      ) : (
+        <Alert>
+          <AlertTitle>Two-factor status unavailable</AlertTitle>
+          <AlertDescription>
+            We could not load your current two-factor authentication status. Try again later before
+            changing this setting.
+          </AlertDescription>
+        </Alert>
+      )}
       {deletionRequestedAt ? null : (
         <Surface variant="section" padding="md" className="space-y-4 border-destructive/30">
           <div className="space-y-1">

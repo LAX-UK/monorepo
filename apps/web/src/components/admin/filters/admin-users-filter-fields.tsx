@@ -73,14 +73,6 @@ export function AdminUsersFilterFields() {
       />
 
       <AdminFilterDraftSelect
-        id="admin-users-filter-two-factor"
-        label="Two-factor auth"
-        value={draft.twoFactor}
-        onChange={(twoFactor) => patch({ twoFactor })}
-        options={triStateOptions}
-      />
-
-      <AdminFilterDraftSelect
         id="admin-users-filter-has-mobile"
         label="Mobile on file"
         value={draft.hasMobile}
@@ -98,7 +90,6 @@ export function AdminUsersFilterFields() {
           { value: "created_asc", label: "Oldest first" },
           { value: "name_asc", label: "Name A–Z" },
           { value: "name_desc", label: "Name Z–A" },
-          { value: "last_active_desc", label: "Last active" },
           { value: "kyc_status", label: "KYC status" },
         ]}
       />
@@ -124,12 +115,6 @@ export function AdminUsersFilterFields() {
           label="KYC verified"
           value={{ from: draft.kycVerifiedFrom, to: draft.kycVerifiedTo }}
           onChange={({ from, to }) => patch({ kycVerifiedFrom: from, kycVerifiedTo: to })}
-        />
-        <AdminFilterDraftDateRange
-          id="admin-users-filter-last-active"
-          label="Last active"
-          value={{ from: draft.lastActiveFrom, to: draft.lastActiveTo }}
-          onChange={({ from, to }) => patch({ lastActiveFrom: from, lastActiveTo: to })}
         />
       </AdminFilterSection>
     </AdminFilterSheetFields>

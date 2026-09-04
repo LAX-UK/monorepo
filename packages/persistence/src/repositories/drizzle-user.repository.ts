@@ -1,21 +1,38 @@
 import type { Database } from "@auction/db";
-import { user } from "@auction/db/schema";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import type { DbTransaction } from "../interfaces/artist-delete.repository.js";
+import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type { IUserRepository } from "../interfaces/user.repository.js";
+import {
+  activeIdentitySubject,
+  normalizedIdentityEmailEquals,
+} from "../lib/bid-identity-directory-query.js";
 
 export class DrizzleUserRepository implements IUserRepository {
   constructor(private readonly db: Database) {}
 
   async findById(id: string) {
-    const rows = await this.db.select().from(user).where(eq(user.id, id)).limit(1);
+    const rows = await this.db
+      .select({
+        id: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+        name: bidIdentityDirectory.name,
+        role: bidUserProfile.role,
+        staffRole: bidUserProfile.staffRole,
+        image: bidIdentityDirectory.image,
+        hasSeenActingContextTooltip: bidUserProfile.hasSeenActingContextTooltip,
+      })
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(eq(bidIdentityDirectory.subjectId, id))
+      .limit(1);
     const row = rows[0];
     if (!row) return null;
     return {
       id: row.id,
       email: row.email,
       name: row.name,
-      role: row.role,
+      role: row.role ?? "client",
       staffRole: row.staffRole ?? null,
       image: row.image ?? null,
       hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
@@ -23,11 +40,24 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async findByEmail(email: string) {
-    const normalized = email.trim().toLowerCase();
     const rows = await this.db
-      .select()
-      .from(user)
-      .where(sql`lower(${user.email}) = ${normalized}`)
+      .select({
+        id: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+        name: bidIdentityDirectory.name,
+        role: bidUserProfile.role,
+        staffRole: bidUserProfile.staffRole,
+        image: bidIdentityDirectory.image,
+        hasSeenActingContextTooltip: bidUserProfile.hasSeenActingContextTooltip,
+      })
+      .from(bidIdentityDirectory)
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(
+        and(
+          normalizedIdentityEmailEquals(bidIdentityDirectory.email, email),
+          activeIdentitySubject(),
+        ),
+      )
       .limit(1);
     const row = rows[0];
     if (!row) return null;
@@ -35,7 +65,7 @@ export class DrizzleUserRepository implements IUserRepository {
       id: row.id,
       email: row.email,
       name: row.name,
-      role: row.role,
+      role: row.role ?? "client",
       staffRole: row.staffRole ?? null,
       image: row.image ?? null,
       hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
@@ -43,18 +73,26 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async findVerifiedIdByEmail(email: string): Promise<string | null> {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized) return null;
+    if (!email.trim()) return null;
     const [row] = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .where(and(eq(user.emailVerified, true), sql`lower(${user.email}) = ${normalized}`))
+      .select({ id: bidIdentityDirectory.subjectId })
+      .from(bidIdentityDirectory)
+      .where(
+        and(
+          eq(bidIdentityDirectory.emailVerified, true),
+          normalizedIdentityEmailEquals(bidIdentityDirectory.email, email),
+          activeIdentitySubject(),
+        ),
+      )
       .limit(1);
     return row?.id ?? null;
   }
 
   async listIdsByRole(role: string): Promise<string[]> {
-    const rows = await this.db.select({ id: user.id }).from(user).where(eq(user.role, role));
+    const rows = await this.db
+      .select({ id: bidUserProfile.userId })
+      .from(bidUserProfile)
+      .where(eq(bidUserProfile.role, role));
     return rows.map((r) => r.id);
   }
 
@@ -67,41 +105,39 @@ export class DrizzleUserRepository implements IUserRepository {
       "operations",
     ] as const;
     const rows = await this.db
-      .select({ id: user.id })
-      .from(user)
-      .where(and(eq(user.role, "staff"), inArray(user.staffRole, [...staffRoles])));
+      .select({ id: bidUserProfile.userId })
+      .from(bidUserProfile)
+      .where(
+        and(eq(bidUserProfile.role, "staff"), inArray(bidUserProfile.staffRole, [...staffRoles])),
+      );
     return rows.map((r) => r.id);
   }
 
   async listStaffEmails(): Promise<string[]> {
     const rows = await this.db
-      .select({ email: user.email })
-      .from(user)
-      .where(eq(user.role, "staff"));
+      .select({ email: bidIdentityDirectory.email })
+      .from(bidIdentityDirectory)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(and(eq(bidUserProfile.role, "staff"), activeIdentitySubject()));
     return [...new Set(rows.map((r) => r.email).filter((e): e is string => Boolean(e?.trim())))];
   }
 
   async listPublicProfiles(params: { limit: number; offset: number }) {
     const rows = await this.db
-      .select({ id: user.id, name: user.name, image: user.image })
-      .from(user)
-      .orderBy(asc(user.name))
+      .select({
+        id: bidIdentityDirectory.subjectId,
+        name: bidIdentityDirectory.name,
+        image: bidIdentityDirectory.image,
+      })
+      .from(bidIdentityDirectory)
+      .where(activeIdentitySubject())
+      .orderBy(asc(bidIdentityDirectory.name))
       .limit(params.limit)
       .offset(params.offset);
     return rows;
   }
 
   async updateActingContextTooltipSeen(userId: string, seen: boolean): Promise<void> {
-    await this.db
-      .update(user)
-      .set({ hasSeenActingContextTooltip: seen })
-      .where(eq(user.id, userId));
-  }
-
-  async markDeletionRequested(userId: string, tx: DbTransaction): Promise<void> {
-    await tx
-      .update(user)
-      .set({ deletionRequestedAt: new Date(), updatedAt: new Date() })
-      .where(eq(user.id, userId));
+    await writeBidUserProfile(this.db, userId, { hasSeenActingContextTooltip: seen });
   }
 }

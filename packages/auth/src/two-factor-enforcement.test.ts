@@ -61,20 +61,24 @@ describe("extractNextFromCallbackUrl", () => {
 });
 
 describe("buildTwoFactorChallengeUrl", () => {
-  it("builds the bare challenge URL", () => {
-    expect(buildTwoFactorChallengeUrl("https://lax.bid")).toBe("https://lax.bid/login/two-factor");
+  it("builds the bare challenge URL on the Identity issuer", () => {
+    expect(buildTwoFactorChallengeUrl("https://auth.lax.bid")).toBe(
+      "https://auth.lax.bid/two-factor",
+    );
   });
 
   it("preserves a safe next from the callback URL", () => {
     expect(
-      buildTwoFactorChallengeUrl("https://lax.bid/", "https://lax.bid/cb?next=%2Flots%2F1"),
-    ).toBe("https://lax.bid/login/two-factor?next=%2Flots%2F1");
+      buildTwoFactorChallengeUrl("https://auth.lax.bid/", "https://lax.bid/cb?next=%2Flots%2F1"),
+    ).toBe(
+      "https://auth.lax.bid/two-factor?next=%2Flots%2F1&callbackURL=https%3A%2F%2Flax.bid%2Fcb%3Fnext%3D%252Flots%252F1",
+    );
   });
 });
 
 describe("buildTwoFactorEnforcementAfterHook", () => {
   it("matches non-exempt paths only", () => {
-    const hook = buildTwoFactorEnforcementAfterHook({ webOrigin: "https://lax.bid" });
+    const hook = buildTwoFactorEnforcementAfterHook({ authOrigin: "https://auth.lax.bid" });
     expect(hook.matcher({ path: "/magic-link/verify" })).toBe(true);
     expect(hook.matcher({ path: "/verify-email" })).toBe(true);
     expect(hook.matcher({ path: "/sign-in/email" })).toBe(false);
@@ -91,7 +95,7 @@ function baseDeps(overrides: Partial<Parameters<typeof enforceTwoFactorOnNewSess
   return {
     user: { id: "u1", email: "a@b.com", name: "A", twoFactorEnabled: false },
     sessionToken: "tok",
-    challengeUrl: "https://lax.bid/login/two-factor",
+    challengeUrl: "https://auth.lax.bid/two-factor",
     isTrustedDevice: vi.fn().mockResolvedValue(false),
     deleteSession: vi.fn().mockResolvedValue(undefined),
     deleteCookie: vi.fn(),
@@ -134,7 +138,7 @@ describe("enforceTwoFactorOnNewSession", () => {
       user: { id: "u1", email: "a@b.com", name: "A", twoFactorEnabled: true },
     });
     await expect(enforceTwoFactorOnNewSession(deps)).rejects.toThrow(
-      "redirect:https://lax.bid/login/two-factor",
+      "redirect:https://auth.lax.bid/two-factor",
     );
     expect(deps.deleteSession).toHaveBeenCalledWith("tok");
     expect(deps.deleteCookie).toHaveBeenCalledTimes(1);
@@ -161,7 +165,7 @@ describe("enforceTwoFactorOnNewSession", () => {
       createPendingChallenge: vi.fn().mockRejectedValue(new Error("db down")),
     });
     await expect(enforceTwoFactorOnNewSession(deps)).rejects.toThrow(
-      "redirect:https://lax.bid/login/two-factor",
+      "redirect:https://auth.lax.bid/two-factor",
     );
     expect(deps.deleteSession).toHaveBeenCalledWith("tok");
   });

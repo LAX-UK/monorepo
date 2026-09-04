@@ -96,6 +96,7 @@ export class UserProfileHttpApplicationService implements IUserProfileHttpApplic
             row.categoryInterestsOnboardingCompletedAt ?? null,
           deletionRequestedAt: row.deletionRequestedAt,
           twoFactorEnabled: row.twoFactorEnabled,
+          securityStatusAvailable: row.securityStatusAvailable,
           suspended: row.suspended,
           uiPreferences: uiPrefs,
         },

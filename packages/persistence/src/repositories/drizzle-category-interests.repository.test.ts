@@ -150,7 +150,7 @@ describe("DrizzleCategoryInterestsRepository", () => {
 
   it("atomically replaces interests and records only the first completion", async () => {
     const completedAt = new Date("2026-08-20T12:00:00.000Z");
-    const lockFor = vi.fn().mockResolvedValue([{ id: "u1" }]);
+    const lockFor = vi.fn().mockResolvedValue([{ userId: "u1" }]);
     const userWhere = vi.fn().mockReturnValue({ for: lockFor });
     const userFrom = vi.fn().mockReturnValue({ where: userWhere });
     const categoryWhere = vi
@@ -264,7 +264,7 @@ describe("DrizzleCategoryInterestsRepository", () => {
   });
 
   it("does not mutate interests when a category is unknown", async () => {
-    const lockFor = vi.fn().mockResolvedValue([{ id: "u1" }]);
+    const lockFor = vi.fn().mockResolvedValue([{ userId: "u1" }]);
     const userWhere = vi.fn().mockReturnValue({ for: lockFor });
     const userFrom = vi.fn().mockReturnValue({ where: userWhere });
     const categoryWhere = vi.fn().mockResolvedValue([{ id: firstCategoryId }]);

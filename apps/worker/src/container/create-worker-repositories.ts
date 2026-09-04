@@ -22,6 +22,7 @@ import type { IComplianceRecipientReader } from "../interfaces/compliance-recipi
 import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { IDomainEventProjectorReader } from "../interfaces/domain-event-projector.reader.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
+import type { IIdentityOutboxRelayRepository } from "../interfaces/identity-outbox-relay.repository.js";
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
 import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
 import type { ILotNotifyReader } from "../interfaces/lot-notify.reader.js";
@@ -51,8 +52,6 @@ import type {
 } from "../interfaces/source-of-funds-review-projector.repository.js";
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
-import type { IUserPiiPurgeRepository } from "../interfaces/user-pii-purge.repository.js";
-import type { IVerificationPurgeRepository } from "../interfaces/verification-purge.repository.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import { WorkerDomainEventPublisher } from "../lib/domain-event-publisher.js";
 import { WorkerDomainEventSink } from "../lib/worker-domain-event-sink.js";
@@ -64,6 +63,7 @@ import { DrizzleComplianceRecipientReader } from "../repositories/drizzle-compli
 import { DrizzleDataExportJobRepository } from "../repositories/drizzle-data-export.repository.js";
 import { DrizzleDomainEventProjectorReader } from "../repositories/drizzle-domain-event-projector.reader.js";
 import { DrizzleEmailOutboxRepository } from "../repositories/drizzle-email-outbox.repository.js";
+import { DrizzleIdentityOutboxRelayRepository } from "../repositories/drizzle-identity-outbox-relay.repository.js";
 import { DrizzleImpersonationSweepRepository } from "../repositories/drizzle-impersonation-sweep.repository.js";
 import { DrizzleLegalEntityArchiveCascadeReader } from "../repositories/drizzle-legal-entity-archive-cascade.reader.js";
 import { DrizzleLotNotifyReader } from "../repositories/drizzle-lot-notify.reader.js";
@@ -93,8 +93,6 @@ import {
 } from "../repositories/drizzle-source-of-funds-review-projector.repository.js";
 import { DrizzleStaffOpsRecipientReader } from "../repositories/drizzle-staff-ops-recipient.reader.js";
 import { DrizzleUploadValidationRepository } from "../repositories/drizzle-upload-validation.repository.js";
-import { DrizzleUserPiiPurgeRepository } from "../repositories/drizzle-user-pii-purge.repository.js";
-import { DrizzleVerificationPurgeRepository } from "../repositories/drizzle-verification-purge.repository.js";
 import type { WorkerDb } from "../workers/types.js";
 
 export type WorkerRepositories = {
@@ -119,8 +117,7 @@ export type WorkerRepositories = {
   transactionRunner: ITransactionRunner;
   adminReviewTaskProjectorRepo: IAdminReviewTaskProjectorRepository;
   impersonationSweepRepo: IImpersonationSweepRepository;
-  verificationPurgeRepo: IVerificationPurgeRepository;
-  userPiiPurgeRepo: IUserPiiPurgeRepository;
+  identityOutboxRelayRepo: IIdentityOutboxRelayRepository;
   legalEntityArchiveCascadeReader: ILegalEntityArchiveCascadeReader;
   domainEventSink: IWorkerDomainEventSink;
   projectorStateRepo: IProjectorStateRepository;
@@ -173,8 +170,7 @@ export function createWorkerRepositories(
     transactionRunner: new DrizzleTransactionRunner(db),
     adminReviewTaskProjectorRepo: new DrizzleAdminReviewTaskProjectorRepository(db),
     impersonationSweepRepo: new DrizzleImpersonationSweepRepository(db),
-    verificationPurgeRepo: new DrizzleVerificationPurgeRepository(db),
-    userPiiPurgeRepo: new DrizzleUserPiiPurgeRepository(db),
+    identityOutboxRelayRepo: new DrizzleIdentityOutboxRelayRepository(db),
     legalEntityArchiveCascadeReader: new DrizzleLegalEntityArchiveCascadeReader(db),
     domainEventSink: new WorkerDomainEventSink(domainEventPublisher, db),
     projectorStateRepo,

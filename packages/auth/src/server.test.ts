@@ -1,6 +1,7 @@
-import type { Database } from "@auction/db";
 import { APIError } from "better-auth/api";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { AuthDatabase } from "./phone-number-plugin.js";
+import type { AccountLinkReader, AuthPorts, PhoneNumberStore } from "./ports/index.js";
 import {
   assertCanUnlinkAccount,
   createAuth,
@@ -9,33 +10,63 @@ import {
   shouldNotifySocialAccountLinked,
 } from "./server.js";
 
-/** Minimal Drizzle-shaped stub: `select().from().where()` resolves to the
- * account-row count, and `query.user.findFirst` returns the email state. */
-function mockUnlinkDb(options: {
+function mockAuthDatabase(): AuthDatabase {
+  const adapter = {
+    transaction: vi.fn(async (callback: (tx: unknown) => Promise<void>) => callback(adapter)),
+  };
+  return (() => adapter) as AuthDatabase;
+}
+
+function mockAccountLinkReader(options: {
   accountRows: number;
   emailVerified: boolean | null;
-}): Database {
-  const whereResult = Promise.resolve([{ value: options.accountRows }]);
+}): AccountLinkReader {
   return {
-    select: () => ({
-      from: () => ({
-        where: () => whereResult,
-      }),
-    }),
-    query: {
-      user: {
-        findFirst: async () =>
-          options.emailVerified === null ? undefined : { emailVerified: options.emailVerified },
-      },
+    countAccountsForUser: vi.fn().mockResolvedValue(options.accountRows),
+    isEmailVerified: vi.fn().mockResolvedValue(options.emailVerified),
+    findUserEmailProfile: vi.fn(),
+  };
+}
+
+function mockPhoneNumberStore(): PhoneNumberStore {
+  return {
+    purgeExpiredVerifications: vi.fn(async () => undefined),
+    findPhoneNumber: vi.fn(async () => null),
+    resetPhoneVerifiedIfNumberChanged: vi.fn(async () => undefined),
+  };
+}
+
+function mockAuthPorts(overrides?: Partial<AuthPorts>): AuthPorts {
+  return {
+    consentStore: { upsert: vi.fn(async (input) => input) },
+    jwksStore: {
+      getJwks: vi.fn(async () => []),
+      getActiveSigningJwk: vi.fn(async () => null),
+      createJwk: vi.fn(async (data) => ({ id: "kid-1", ...data })),
+      getPublicJwks: vi.fn(async () => ({ keys: [] })),
+      markKeyRetired: vi.fn(async () => undefined),
     },
-  } as unknown as Database;
+    sessionStampStore: {
+      stampPasswordAuth: vi.fn(async () => undefined),
+      stampMfaCompleted: vi.fn(async () => undefined),
+    },
+    subjectStatusReader: { isDisabledOrMerged: vi.fn(async () => false) },
+    accountLinkReader: mockAccountLinkReader({ accountRows: 0, emailVerified: true }),
+    sessionCountReader: { countSessionsForUser: vi.fn(async () => 0) },
+    phoneNumberStore: mockPhoneNumberStore(),
+    email: undefined,
+    sms: undefined,
+    events: undefined,
+    ...overrides,
+  };
 }
 
 describe("createAuth", () => {
   it("boots when Apple Sign-In is feature-flagged off", () => {
     expect(() =>
       createAuth({
-        db: {} as Database,
+        database: mockAuthDatabase(),
+        ports: mockAuthPorts(),
         secret: "test-secret-that-is-long-enough",
         baseURL: "http://localhost:3001",
         issuerURL: "http://localhost:3001",
@@ -45,13 +76,13 @@ describe("createAuth", () => {
     ).not.toThrow();
   });
 
-  it("boots with crossSubDomainCookies when cookieDomain is set (__Host- is incompatible with Domain)", () => {
+  it("boots with host-only issuer cookies", () => {
     expect(() =>
       createAuth({
-        db: {} as Database,
+        database: mockAuthDatabase(),
+        ports: mockAuthPorts(),
         secret: "test-secret-that-is-long-enough",
         baseURL: "https://auth.example.com",
-        cookieDomain: ".example.com",
       }),
     ).not.toThrow();
   });
@@ -111,7 +142,7 @@ describe("shouldBlockLastAccountUnlink", () => {
   it("does not block when multiple account rows remain", async () => {
     expect(
       await shouldBlockLastAccountUnlink({
-        db: {} as Database,
+        accounts: mockAccountLinkReader({ accountRows: 2, emailVerified: false }),
         userId: "u1",
         accountRowsForUser: 2,
       }),
@@ -119,17 +150,9 @@ describe("shouldBlockLastAccountUnlink", () => {
   });
 
   it("blocks last account row removal when email is not verified", async () => {
-    const db = {
-      query: {
-        user: {
-          findFirst: async () => ({ emailVerified: false }),
-        },
-      },
-    } as unknown as Database;
-
     expect(
       await shouldBlockLastAccountUnlink({
-        db,
+        accounts: mockAccountLinkReader({ accountRows: 1, emailVerified: false }),
         userId: "u1",
         accountRowsForUser: 1,
       }),
@@ -137,17 +160,9 @@ describe("shouldBlockLastAccountUnlink", () => {
   });
 
   it("allows last account row removal when email is verified (magic link remains)", async () => {
-    const db = {
-      query: {
-        user: {
-          findFirst: async () => ({ emailVerified: true }),
-        },
-      },
-    } as unknown as Database;
-
     expect(
       await shouldBlockLastAccountUnlink({
-        db,
+        accounts: mockAccountLinkReader({ accountRows: 1, emailVerified: true }),
         userId: "u1",
         accountRowsForUser: 1,
       }),
@@ -157,23 +172,25 @@ describe("shouldBlockLastAccountUnlink", () => {
 
 describe("assertCanUnlinkAccount (delete.before guard)", () => {
   it("throws a FAILED_TO_UNLINK_LAST_ACCOUNT APIError for the last method of an unverified user", async () => {
-    const db = mockUnlinkDb({ accountRows: 1, emailVerified: false });
+    const accounts = mockAccountLinkReader({ accountRows: 1, emailVerified: false });
 
-    await expect(assertCanUnlinkAccount({ db, userId: "u1" })).rejects.toBeInstanceOf(APIError);
-    await expect(assertCanUnlinkAccount({ db, userId: "u1" })).rejects.toMatchObject({
+    await expect(assertCanUnlinkAccount({ accounts, userId: "u1" })).rejects.toBeInstanceOf(
+      APIError,
+    );
+    await expect(assertCanUnlinkAccount({ accounts, userId: "u1" })).rejects.toMatchObject({
       body: { code: "FAILED_TO_UNLINK_LAST_ACCOUNT" },
     });
   });
 
   it("resolves (allows unlink) when another account row remains", async () => {
-    const db = mockUnlinkDb({ accountRows: 2, emailVerified: false });
+    const accounts = mockAccountLinkReader({ accountRows: 2, emailVerified: false });
 
-    await expect(assertCanUnlinkAccount({ db, userId: "u1" })).resolves.toBeUndefined();
+    await expect(assertCanUnlinkAccount({ accounts, userId: "u1" })).resolves.toBeUndefined();
   });
 
   it("resolves for the last account row when email is verified (magic link remains)", async () => {
-    const db = mockUnlinkDb({ accountRows: 1, emailVerified: true });
+    const accounts = mockAccountLinkReader({ accountRows: 1, emailVerified: true });
 
-    await expect(assertCanUnlinkAccount({ db, userId: "u1" })).resolves.toBeUndefined();
+    await expect(assertCanUnlinkAccount({ accounts, userId: "u1" })).resolves.toBeUndefined();
   });
 });

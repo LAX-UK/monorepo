@@ -74,6 +74,9 @@ importers:
       '@auction/http-headers':
         specifier: workspace:*
         version: link:../../packages/http-headers
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../../packages/identity-contracts
       '@auction/lot-lifecycle-app':
         specifier: workspace:*
         version: link:../../packages/lot-lifecycle-app
@@ -89,9 +92,6 @@ importers:
       '@auction/queues':
         specifier: workspace:*
         version: link:../../packages/queues
-      '@auction/sms':
-        specifier: workspace:^
-        version: link:../../packages/sms
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -104,9 +104,6 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1041.0
         version: 3.1041.0
-      '@better-auth/utils':
-        specifier: ^0.4.0
-        version: 0.4.0
       '@bull-board/api':
         specifier: ^6.20.6
         version: 6.21.3(@bull-board/ui@6.21.3)
@@ -122,9 +119,6 @@ importers:
       '@sentry/node':
         specifier: ^10.51.0
         version: 10.51.0
-      better-auth:
-        specifier: ^1.6.9
-        version: 1.6.9(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(drizzle-orm@0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0))(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(pg@8.20.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0))
       bullmq:
         specifier: ^5.74.1
         version: 5.74.1
@@ -201,33 +195,24 @@ importers:
       '@auction/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@auction/db':
+      '@auction/identity-contracts':
         specifier: workspace:*
-        version: link:../../packages/db
-      '@auction/email':
-        specifier: workspace:^
-        version: link:../../packages/email
+        version: link:../../packages/identity-contracts
+      '@auction/identity-db':
+        specifier: workspace:*
+        version: link:../../packages/identity-db
       '@auction/observability':
         specifier: workspace:*
         version: link:../../packages/observability
-      '@auction/persistence':
-        specifier: workspace:*
-        version: link:../../packages/persistence
-      '@auction/queues':
-        specifier: workspace:*
-        version: link:../../packages/queues
-      '@auction/sms':
-        specifier: workspace:^
-        version: link:../../packages/sms
+      '@better-auth/utils':
+        specifier: ^0.4.0
+        version: 0.4.0
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.19.13(hono@4.12.12)
       '@sentry/node':
         specifier: ^10.51.0
         version: 10.51.0
-      bullmq:
-        specifier: ^5.74.1
-        version: 5.74.1
       drizzle-orm:
         specifier: ^0.41.0
         version: 0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0)
@@ -237,12 +222,18 @@ importers:
       ioredis:
         specifier: ^5.4.2
         version: 5.10.1
+      jose:
+        specifier: ^6.2.3
+        version: 6.2.3
       pino:
         specifier: ^10.3.1
         version: 10.3.1
       prom-client:
         specifier: ^15.1.3
         version: 15.1.3
+      twilio:
+        specifier: ^5.5.2
+        version: 5.13.1
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -288,6 +279,46 @@ importers:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
 
+  apps/shop-identity:
+    dependencies:
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../../packages/identity-contracts
+      '@hono/node-server':
+        specifier: ^1.13.7
+        version: 1.19.13(hono@4.12.12)
+      hono:
+        specifier: ^4.6.14
+        version: 4.12.12
+      jose:
+        specifier: ^6.2.3
+        version: 6.2.3
+      pg:
+        specifier: ^8.13.1
+        version: 8.20.0
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.19.17
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
   apps/web:
     dependencies:
       '@auction/api':
@@ -311,6 +342,9 @@ importers:
       '@auction/http-headers':
         specifier: workspace:*
         version: link:../../packages/http-headers
+      '@auction/identity-contracts':
+        specifier: workspace:^
+        version: link:../../packages/identity-contracts
       '@auction/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -364,7 +398,7 @@ importers:
         version: 0.2.0(@zxing/library@0.22.0)
       better-auth:
         specifier: ^1.6.9
-        version: 1.6.9(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(drizzle-orm@0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0))(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(pg@8.20.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0))
+        version: 1.6.9(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(pg@8.20.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0))
       cmdk:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -380,6 +414,12 @@ importers:
       hono:
         specifier: ^4.6.14
         version: 4.12.12
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.10.1
+      jose:
+        specifier: ^6.2.3
+        version: 6.2.3
       libphonenumber-js:
         specifier: ^1.12.9
         version: 1.13.4
@@ -523,6 +563,12 @@ importers:
       '@auction/finance-runtime':
         specifier: workspace:*
         version: link:../../packages/finance-runtime
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../../packages/identity-contracts
+      '@auction/identity-db':
+        specifier: workspace:*
+        version: link:../../packages/identity-db
       '@auction/lot-lifecycle-app':
         specifier: workspace:*
         version: link:../../packages/lot-lifecycle-app
@@ -611,6 +657,9 @@ importers:
 
   apps/ws:
     dependencies:
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../../packages/identity-contracts
       '@auction/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -660,33 +709,18 @@ importers:
 
   packages/auth:
     dependencies:
-      '@auction/db':
-        specifier: workspace:*
-        version: link:../db
-      '@auction/email':
+      '@auction/identity-contracts':
         specifier: workspace:^
-        version: link:../email
-      '@auction/sms':
-        specifier: workspace:^
-        version: link:../sms
-      '@auction/types':
-        specifier: workspace:*
-        version: link:../types
+        version: link:../identity-contracts
       '@better-auth/utils':
         specifier: 0.4.0
         version: 0.4.0
       better-auth:
         specifier: ^1.6.9
         version: 1.6.9(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(drizzle-orm@0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0))(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(pg@8.20.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0))
-      drizzle-orm:
-        specifier: ^0.41.0
-        version: 0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0)
       jose:
         specifier: ^6.2.3
         version: 6.2.3
-      libphonenumber-js:
-        specifier: ^1.12.9
-        version: 1.13.4
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -694,6 +728,9 @@ importers:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../config-ts
+      '@auction/identity-db':
+        specifier: workspace:*
+        version: link:../identity-db
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -784,6 +821,12 @@ importers:
 
   packages/db:
     dependencies:
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../identity-contracts
+      '@auction/identity-db':
+        specifier: workspace:*
+        version: link:../identity-db
       '@auction/types':
         specifier: workspace:*
         version: link:../types
@@ -986,6 +1029,50 @@ importers:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
 
+  packages/identity-contracts:
+    dependencies:
+      jose:
+        specifier: ^6.2.3
+        version: 6.2.3
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+
+  packages/identity-db:
+    dependencies:
+      '@auction/identity-contracts':
+        specifier: workspace:^
+        version: link:../identity-contracts
+      better-auth:
+        specifier: ^1.6.9
+        version: 1.6.9(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(drizzle-orm@0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0))(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(pg@8.20.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0))
+      drizzle-orm:
+        specifier: ^0.41.0
+        version: 0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0)
+      pg:
+        specifier: ^8.13.1
+        version: 8.20.0
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/lot-lifecycle-app:
     dependencies:
       '@auction/persistence':
@@ -1103,22 +1190,6 @@ importers:
       zod:
         specifier: ^3.24.1
         version: 3.25.76
-    devDependencies:
-      '@auction/config-ts':
-        specifier: workspace:*
-        version: link:../config-ts
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.0.5
-        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
-
-  packages/sms:
-    dependencies:
-      twilio:
-        specifier: ^5.5.2
-        version: 5.13.1
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*
@@ -12068,6 +12139,36 @@ snapshots:
       - '@cloudflare/workers-types'
       - '@opentelemetry/api'
 
+  better-auth@1.6.9(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(pg@8.20.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)):
+    dependencies:
+      '@better-auth/core': 1.6.9(@better-auth/utils@0.4.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.3.5(zod@3.25.76))(jose@6.2.3)(kysely@0.28.15)(nanostores@1.2.0)
+      '@better-auth/drizzle-adapter': 1.6.9(@better-auth/core@1.6.9(@better-auth/utils@0.4.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.3.5(zod@3.25.76))(jose@6.2.3)(kysely@0.28.15)(nanostores@1.2.0))(@better-auth/utils@0.4.0)(drizzle-orm@0.41.0(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.28.15)(pg@8.20.0))
+      '@better-auth/kysely-adapter': 1.6.9(@better-auth/core@1.6.9(@better-auth/utils@0.4.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.3.5(zod@3.25.76))(jose@6.2.3)(kysely@0.28.15)(nanostores@1.2.0))(@better-auth/utils@0.4.0)(kysely@0.28.15)
+      '@better-auth/memory-adapter': 1.6.9(@better-auth/core@1.6.9(@better-auth/utils@0.4.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.3.5(zod@3.25.76))(jose@6.2.3)(kysely@0.28.15)(nanostores@1.2.0))(@better-auth/utils@0.4.0)
+      '@better-auth/mongo-adapter': 1.6.9(@better-auth/core@1.6.9(@better-auth/utils@0.4.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.3.5(zod@3.25.76))(jose@6.2.3)(kysely@0.28.15)(nanostores@1.2.0))(@better-auth/utils@0.4.0)
+      '@better-auth/prisma-adapter': 1.6.9(@better-auth/core@1.6.9(@better-auth/utils@0.4.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.3.5(zod@3.25.76))(jose@6.2.3)(kysely@0.28.15)(nanostores@1.2.0))(@better-auth/utils@0.4.0)
+      '@better-auth/telemetry': 1.6.9(@better-auth/core@1.6.9(@better-auth/utils@0.4.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.3.5(zod@3.25.76))(jose@6.2.3)(kysely@0.28.15)(nanostores@1.2.0))(@better-auth/utils@0.4.0)(@better-fetch/fetch@1.1.21)
+      '@better-auth/utils': 0.4.0
+      '@better-fetch/fetch': 1.1.21
+      '@noble/ciphers': 2.1.1
+      '@noble/hashes': 2.0.1
+      better-call: 1.3.5(zod@4.3.6)
+      defu: 6.1.7
+      jose: 6.2.3
+      kysely: 0.28.15
+      nanostores: 1.2.0
+      zod: 4.3.6
+    optionalDependencies:
+      drizzle-kit: 0.31.10
+      next: 15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.52.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      pg: 8.20.0
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+      vitest: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)
+    transitivePeerDependencies:
+      - '@cloudflare/workers-types'
+      - '@opentelemetry/api'
+
   better-call@1.3.5(zod@4.3.6):
     dependencies:
       '@better-auth/utils': 0.4.0
@@ -13497,7 +13598,7 @@ snapshots:
       lodash.isstring: 4.0.1
       lodash.once: 4.1.1
       ms: 2.1.3
-      semver: 7.8.0
+      semver: 7.8.5
 
   jwa@2.0.1:
     dependencies:

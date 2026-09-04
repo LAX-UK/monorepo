@@ -17,9 +17,12 @@ function mountApp(role: string, staffRole?: string) {
     catalogRoutes: stubCatalogRouteServices({ artistHttp }),
   } as unknown as Container;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi
-      .fn()
-      .mockResolvedValue({ id: "u1", role, ...(staffRole ? { staffRole } : {}) }),
+    getSessionUser: vi.fn().mockResolvedValue({
+      id: "u1",
+      role,
+      ...(staffRole ? { staffRole } : {}),
+      scopes: ["bid.read", "bid.write"],
+    }),
   };
   app.route("/artists", createArtistRoutes(container, authenticator));
   return { app, artistHttp };

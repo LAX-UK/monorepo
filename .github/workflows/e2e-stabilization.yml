@@ -95,6 +95,7 @@ jobs:
         run: pnpm --filter @auction/web exec playwright install chromium --with-deps
       - name: Migrate and seed
         run: |
+          pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
       - name: Build web, API, and auth issuer
@@ -104,14 +105,8 @@ jobs:
           mkdir -p /tmp/e2e-logs
           PORT=3001 pnpm --filter @auction/api start > /tmp/e2e-logs/api.log 2>&1 &
           PORT=3003 pnpm --filter @auction/auth-app start > /tmp/e2e-logs/auth.log 2>&1 &
-          PORT=3000 pnpm --filter @auction/web start > /tmp/e2e-logs/web.log 2>&1 &
+          PORT=3000 node scripts/ci/start-e2e-web.mjs > /tmp/e2e-logs/web.log 2>&1 &
           npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live --timeout 120000
-      - name: Verify dual-host OIDC and auth response parity
-        env:
-          AUTH_PUBLIC_URL: http://localhost:3003
-          AUTH_PARITY_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
-          AUTH_PARITY_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
-        run: node scripts/ci/verify-auth-dual-host.mjs
       - name: Prepare auth sessions
         run: pnpm --filter @auction/web exec node ../../scripts/ci/prepare-e2e-auth-states.mjs
       - name: Playwright stabilization suite

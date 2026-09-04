@@ -9,7 +9,8 @@ export function getSocket(): Socket {
     socket = io(url, {
       // WebSocket-only: DO App Platform has no sticky sessions across ws replicas.
       transports: ["websocket"],
-      withCredentials: true,
+      // Authentication is the one-time BFF ticket below; never send browser cookies to WS.
+      withCredentials: false,
       auth: (cb) => {
         void resolveSocketHandshakeAuth().then(cb);
       },

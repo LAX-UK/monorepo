@@ -66,6 +66,7 @@ export class RegistrationService implements IRegistrationService {
         email: input.email,
         persona: input.persona,
         ...(input.inviteToken ? { inviteToken: input.inviteToken } : {}),
+        ...(input.requestHeaders ? { headers: input.requestHeaders } : {}),
       });
       return { ok: true as const, userId: existing.userId };
     }
@@ -77,6 +78,7 @@ export class RegistrationService implements IRegistrationService {
       password: input.password,
       ...(input.inviteToken ? { inviteToken: input.inviteToken } : {}),
       persona: input.persona,
+      ...(input.requestHeaders ? { headers: input.requestHeaders } : {}),
     });
     if (!signup.ok) {
       return { ok: false as const, message: signup.message, status: signup.status ?? 400 };

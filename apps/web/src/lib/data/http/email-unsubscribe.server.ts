@@ -1,6 +1,6 @@
 import "server-only";
 
-import { apiBaseUrl } from "@/lib/auth/api-base";
+import { getServerApiBase } from "@/lib/data/http/hc-server";
 
 export type UnsubscribePreview = {
   scope: "global" | "type";
@@ -10,7 +10,7 @@ export type UnsubscribePreview = {
 
 export async function getUnsubscribePreview(token: string): Promise<UnsubscribePreview | null> {
   const res = await fetch(
-    `${apiBaseUrl()}/email/unsubscribe/preview?t=${encodeURIComponent(token)}`,
+    `${getServerApiBase()}/email/unsubscribe/preview?t=${encodeURIComponent(token)}`,
     {
       cache: "no-store",
     },

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Root auth session provider — the single owner of `authClient.useSession()`.
+ * Root auth session provider backed only by the Bid BFF session.
  *
  * - Seeds client state from server `SessionUser` (`GET /users/me`) when Better Auth
  *   has not resolved yet (`clientUser ?? serverUser`).
@@ -10,12 +10,10 @@
  *   (sign-out / user updates). Window-focus refetch is handled by Better Auth defaults.
  * - Do not call `authClient.useSession()` outside this module (enforced by lint script).
  */
-import { authClient } from "@/lib/auth-client";
 import { AUTH_BROADCAST_CHANNEL, type AuthBroadcastMessage } from "@/lib/auth/auth-broadcast";
-import { type AuthUserLike, mapAuthSessionUser } from "@/lib/auth/map-auth-session-user";
-import { refetchAuthSessionClient } from "@/lib/auth/refetch-auth-session.client";
 import type { SessionUser } from "@/lib/data/contracts";
-import { type ReactNode, createContext, useCallback, useEffect, useMemo } from "react";
+import { fetchCurrentBffSession } from "@/lib/data/http/auth-session.client";
+import { type ReactNode, createContext, useCallback, useEffect, useMemo, useState } from "react";
 
 /** Better Auth cross-tab session signal key (localStorage storage event). */
 export const BETTER_AUTH_MESSAGE_STORAGE_KEY = "better-auth.message";
@@ -38,13 +36,17 @@ export function AuthSessionProvider({
   authCookiePresent: boolean;
   children: ReactNode;
 }) {
-  const session = authClient.useSession();
-  const rawUser = session.data?.user as AuthUserLike | undefined;
-  const clientUser = rawUser ? mapAuthSessionUser(rawUser) : null;
-  const user = clientUser ?? serverUser ?? null;
-  const pending = session.isPending && serverUser == null && authCookiePresent;
+  const [user, setUser] = useState<SessionUser | null>(serverUser);
+  const [pending, setPending] = useState(serverUser == null && authCookiePresent);
 
-  const refetch = useCallback(() => refetchAuthSessionClient(session.refetch), [session.refetch]);
+  const refetch = useCallback(async () => {
+    setPending(true);
+    try {
+      setUser(await fetchCurrentBffSession());
+    } finally {
+      setPending(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof BroadcastChannel === "undefined") return;
