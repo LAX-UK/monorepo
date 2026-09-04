@@ -11,6 +11,32 @@ import { type AuthenticatedBidSession, BidBffSessionStore } from "./session-stor
 
 const EXPIRY_SKEW_MS = 30_000;
 
+function parseScopes(scopes: string): Set<string> {
+  return new Set(scopes.split(/\s+/).filter(Boolean));
+}
+
+/** Reuse a cached resource token when its granted scopes cover the request. */
+function scopesSatisfy(cachedScopes: string, requestedScopes: string): boolean {
+  const cached = parseScopes(cachedScopes);
+  for (const scope of parseScopes(requestedScopes)) {
+    if (!cached.has(scope)) return false;
+  }
+  return true;
+}
+
+function cachedResourceTokenStillValid(
+  cached: { scopes: string; expiresAt: number } | undefined,
+  scopes: string,
+  forceExchange: boolean,
+): cached is { scopes: string; expiresAt: number; token: string } {
+  return (
+    !forceExchange &&
+    cached !== undefined &&
+    scopesSatisfy(cached.scopes, scopes) &&
+    cached.expiresAt > Date.now() + EXPIRY_SKEW_MS
+  );
+}
+
 export class BidBffSessionRequiredError extends Error {
   constructor() {
     super("BFF session is not authenticated");
@@ -35,12 +61,7 @@ export class BidBffTokenService {
     const session = await this.readAuthenticated(sessionId);
     if (!session) throw new BidBffSessionRequiredError();
     const cached = session.resourceTokens[audience as keyof typeof session.resourceTokens];
-    if (
-      !forceExchange &&
-      cached &&
-      cached.scopes === scopes &&
-      cached.expiresAt > Date.now() + EXPIRY_SKEW_MS
-    ) {
+    if (cachedResourceTokenStillValid(cached, scopes, forceExchange)) {
       return { token: cached.token, session };
     }
 
@@ -48,12 +69,7 @@ export class BidBffTokenService {
       let current = await this.readAuthenticated(sessionId);
       if (!current) throw new BidBffSessionRequiredError();
       const currentCached = current.resourceTokens[audience as keyof typeof current.resourceTokens];
-      if (
-        !forceExchange &&
-        currentCached &&
-        currentCached.scopes === scopes &&
-        currentCached.expiresAt > Date.now() + EXPIRY_SKEW_MS
-      ) {
+      if (cachedResourceTokenStillValid(currentCached, scopes, forceExchange)) {
         return { token: currentCached.token, session: current };
       }
       if (current.accessTokenExpiresAt <= Date.now() + EXPIRY_SKEW_MS) {

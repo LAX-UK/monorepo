@@ -53,6 +53,31 @@ describe("BidBffTokenService", () => {
     vi.clearAllMocks();
   });
 
+  it("reuses a broader cached resource token for narrower scope requests", async () => {
+    const sessions = new DeterministicSessionStore({
+      kind: "authenticated",
+      subject: "user-1",
+      sid: "sid-1",
+      idToken: "id-token",
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      accessTokenExpiresAt: Date.now() + 120_000,
+      resourceTokens: {
+        "lax-bid-api": {
+          token: "resource-token",
+          expiresAt: Date.now() + 120_000,
+          scopes: "bid.read bid.write",
+        },
+      },
+    });
+    const service = new BidBffTokenService(sessions as never);
+
+    const result = await service.resourceToken("session-id", "lax-bid-api", "bid.read");
+
+    expect(oidc.exchangeResourceToken).not.toHaveBeenCalled();
+    expect(result.token).toBe("resource-token");
+  });
+
   it("single-flights parallel resource token requests and returns the persisted result", async () => {
     const sessions = new DeterministicSessionStore({
       kind: "authenticated",
