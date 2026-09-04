@@ -668,7 +668,6 @@ export async function ensureCatalogueManagerSession(page: Page): Promise<void> {
   if (!hasCatalogueManagerCredentials()) {
     throw new Error("Seeded catalogue-manager credentials are required.");
   }
-  await page.context().clearCookies();
   await catalogueManagerLogin(page);
 }
 

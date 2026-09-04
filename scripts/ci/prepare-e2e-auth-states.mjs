@@ -62,10 +62,17 @@ function flushRateLimits() {
 
 function forceHttpCookies(filePath) {
   const state = JSON.parse(readFileSync(filePath, "utf8"));
+  const sessionExpiry = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
   for (const cookie of state.cookies ?? []) {
     cookie.secure = false;
     if (!cookie.path) cookie.path = "/";
     if (typeof cookie.domain === "string") cookie.domain = cookie.domain.replace(/^\./, "");
+    if (/^(?:__Host-)?lax-bid-session$/.test(cookie.name)) {
+      cookie.name = "lax-bid-session";
+      cookie.httpOnly = true;
+      cookie.sameSite = "Lax";
+      cookie.expires = sessionExpiry;
+    }
   }
   writeFileSync(filePath, `${JSON.stringify(state, null, 2)}\n`);
 }
