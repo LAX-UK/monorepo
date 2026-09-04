@@ -37,6 +37,7 @@ const { db, redis, emailSender, productSubjectUsage, webOrigins, envelope, phone
   infra;
 const repositories = createAuthRepositories(db);
 const identityPorts = createIdentityAuthPorts(db, { envelope: envelope ?? undefined });
+const metrics = createAuthMetrics();
 const services = createOidcRouteServices({
   db,
   redis,
@@ -45,6 +46,10 @@ const services = createOidcRouteServices({
   authSecret: env.BETTER_AUTH_SECRET,
   recentStepUpMaxAgeSec: AUTH_TIMINGS.recentPasswordProofMaxAgeSec,
   environment: env.NODE_ENV,
+  onBackchannelOutcome: (outcome) => {
+    metrics.backchannelDeliveryOutcomes.inc({ outcome });
+    if (outcome !== "delivered") log.warn({ outcome }, "backchannel_logout_delivery_outcome");
+  },
 });
 const auth = createAuthIssuer({
   env,
@@ -77,7 +82,6 @@ const authHandler = createAuthRequestHandler({
   oidcSessions: services.oidc.sessions,
   logout: services.oidc.logout,
 });
-const metrics = createAuthMetrics();
 const schedules = createAuthSchedules({
   db,
   log,

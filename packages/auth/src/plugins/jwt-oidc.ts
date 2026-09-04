@@ -50,6 +50,7 @@ export function buildJwtAndOidcPlugins(options: {
 }): BetterAuthPlugin[] {
   const jwksAdapter = options.jwksStore;
   const { issuer, webOrigin, jwtAudience, email, phoneVerification, onEmailVerified } = options;
+  const issuerBase = issuer.replace(/\/$/, "");
   const webBase = (webOrigin ?? "https://lax.bid").replace(/\/$/, "");
   return [
     jwt({
@@ -81,7 +82,7 @@ export function buildJwtAndOidcPlugins(options: {
       accessTokenExpiresIn: ACCESS_TOKEN_TTL_SECONDS,
       refreshTokenExpiresIn: AUTH_TIMINGS.oidcRefreshTokenExpiresSec,
       storeClientSecret: "hashed",
-      loginPage: `${webOrigin ?? issuer}/login`,
+      loginPage: `${issuerBase}/login`,
       useJWTPlugin: true,
       requirePKCE: true,
       scopes: [...allRegisteredOidcScopes()],
@@ -151,7 +152,7 @@ export function buildJwtAndOidcPlugins(options: {
       },
     }),
     buildMagicLinkVerifyPlugin({ onEmailVerified }),
-    buildTwoFactorEnforcementPlugin({ webOrigin }),
+    buildTwoFactorEnforcementPlugin({ authOrigin: issuerBase }),
     buildPhoneNumberPlugin({
       phoneNumberStore: options.phoneNumberStore,
       phoneVerification,

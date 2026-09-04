@@ -107,6 +107,18 @@ function collectAuctionClosure(rootPackage) {
   return edges;
 }
 
+/** @param {string} dir @param {string[]} extensions @returns {string[]} */
+function walkFiles(dir, extensions) {
+  /** @type {string[]} */
+  const files = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...walkFiles(path, extensions));
+    else if (extensions.some((ext) => entry.name.endsWith(ext))) files.push(path);
+  }
+  return files;
+}
+
 /** @type {string[]} */
 const violations = [];
 /** @type {Set<string>} */
@@ -128,8 +140,22 @@ for (const rootPackage of ROOT_PACKAGES) {
   }
 }
 
+/** @type {string[]} */
+const forbiddenDirectImports = ["@auction/email", "@auction/queues"];
+const authAppDir = join(root, "apps/auth/src");
+if (existsSync(authAppDir)) {
+  for (const file of walkFiles(authAppDir, [".ts", ".tsx"])) {
+    const source = readFileSync(file, "utf8");
+    for (const pkg of forbiddenDirectImports) {
+      if (source.includes(`from "${pkg}`) || source.includes(`from '${pkg}`)) {
+        violations.push(`${file} imports forbidden ${pkg}; use ports/adapters instead`);
+      }
+    }
+  }
+}
+
 if (violations.length > 0) {
-  console.error("Identity extractability dependency violations detected:\n");
+  console.error("Identity extractability violations detected:\n");
   for (const violation of violations) {
     console.error(`  ${violation}`);
   }

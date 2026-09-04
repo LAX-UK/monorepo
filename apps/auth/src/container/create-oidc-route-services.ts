@@ -16,12 +16,21 @@ export function createOidcRouteServices(options: {
   authSecret: string;
   recentStepUpMaxAgeSec: number;
   environment: "development" | "test" | "production";
+  onBackchannelOutcome?: (outcome: "delivered" | "retry_scheduled" | "failed") => void;
 }): AuthRouteServicesSlice {
   const identityJwtSigner = createIdentityJwtSigner({
     jwks: options.jwks,
     authSecret: options.authSecret,
   });
-  const oidc = createOidcPhase3Services({ ...options, identityJwtSigner });
+  const oidc = createOidcPhase3Services({
+    db: options.db,
+    redis: options.redis,
+    issuer: options.issuer,
+    jwks: options.jwks,
+    identityJwtSigner,
+    recentStepUpMaxAgeSec: options.recentStepUpMaxAgeSec,
+    onBackchannelOutcome: options.onBackchannelOutcome,
+  });
   return {
     oidc: {
       ...oidc,

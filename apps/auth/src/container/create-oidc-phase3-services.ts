@@ -28,6 +28,7 @@ export function createOidcPhase3Services(options: {
   jwks: JwksProvider;
   identityJwtSigner: IdentityJwtSigner;
   recentStepUpMaxAgeSec: number;
+  onBackchannelOutcome?: (outcome: "delivered" | "retry_scheduled" | "failed") => void;
 }) {
   const signer = createLogoutTokenSigner(options.identityJwtSigner);
   const logout = new BackchannelLogoutRevocationCoordinator(
@@ -52,6 +53,8 @@ export function createOidcPhase3Services(options: {
       options.issuer,
       signer,
       new HttpBackchannelLogoutDispatcher(),
+      undefined,
+      options.onBackchannelOutcome,
     ),
   };
 }

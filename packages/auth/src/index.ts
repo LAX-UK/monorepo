@@ -7,6 +7,14 @@ export {
   buildOidcConsentHtml,
 } from "./oidc-consent-html.js";
 export {
+  HOSTED_LOGIN_SCRIPT,
+  buildHostedLoginHtml,
+} from "./hosted-login-html.js";
+export {
+  HOSTED_TWO_FACTOR_SCRIPT,
+  buildHostedTwoFactorHtml,
+} from "./hosted-two-factor-html.js";
+export {
   createAuctionAuthClient,
   createAuthClientInstance,
   resolveAuthBaseUrl,

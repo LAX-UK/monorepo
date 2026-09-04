@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, release]
   pull_request:
     branches: [main, master]
 
@@ -104,6 +104,9 @@ jobs:
 
       - name: Identity exit criteria
         run: pnpm ci:identity-exit-criteria
+
+      - name: Identity extraction rehearsal
+        run: node scripts/ci/rehearse-identity-extraction.mjs
 
       - name: API route DIP coverage
         run: node apps/api/scripts/check-route-dip-coverage.mjs
@@ -299,8 +302,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "pnpm"
+          node-version-file: .nvmrc
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -315,6 +318,35 @@ jobs:
 
       - name: Build
         run: pnpm turbo run build --affected
+
+  migration-matrix:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+    steps:
+      - uses: ./.github/actions/ci-bootstrap
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+      - name: Verify executable migration rollback pairs
+        run: node scripts/ci/verify-migration-pairs.mjs
+      - name: FK removal inventory (report-only)
+        run: node scripts/ci/run-fk-removal-inventory-gate.mjs
 
   full-verify:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')

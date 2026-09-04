@@ -30,6 +30,8 @@ echo "publish-identity-contracts: stub for @auction/identity-contracts@${VERSION
 if $DRY_RUN; then
   echo "would run: pnpm --filter @auction/identity-contracts build test"
   echo "would run: npm publish $PACKAGE_DIR --access public"
+  pnpm --filter @auction/identity-contracts build
+  pnpm --filter @auction/identity-contracts test
   exit 0
 fi
 

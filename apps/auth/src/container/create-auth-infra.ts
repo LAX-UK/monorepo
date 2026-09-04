@@ -38,14 +38,16 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
     log.error({ err }, "redis connection error");
     Sentry.captureException(err);
   });
+  const emailBaseUrl = env.IDENTITY_EMAIL_ENQUEUE_URL ?? env.API_INTERNAL_BASE_URL;
+  const usageBaseUrl = env.IDENTITY_PRODUCT_USAGE_URL ?? env.API_INTERNAL_BASE_URL;
   const emailSender = new HttpEmailSender({
-    baseUrl: env.API_INTERNAL_BASE_URL,
+    baseUrl: emailBaseUrl,
     clientId: env.IDENTITY_MACHINE_CLIENT_ID,
     clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
     timeoutMs: env.IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS,
   });
   const productSubjectUsage = new HttpProductSubjectUsageProbe({
-    baseUrl: env.API_INTERNAL_BASE_URL,
+    baseUrl: usageBaseUrl,
     clientId: env.IDENTITY_MACHINE_CLIENT_ID,
     clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
     timeoutMs: env.IDENTITY_SUBJECT_USAGE_TIMEOUT_MS,

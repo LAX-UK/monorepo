@@ -38,6 +38,7 @@ export class BackchannelLogoutDeliveryWorker {
     private readonly signer: LogoutTokenSigner,
     private readonly dispatcher: BackchannelLogoutDispatcher,
     private readonly now: () => Date = () => new Date(),
+    private readonly onOutcome?: (outcome: "delivered" | "retry_scheduled" | "failed") => void,
   ) {}
 
   async drain(batchSize = 40): Promise<number> {
@@ -93,5 +94,12 @@ export class BackchannelLogoutDeliveryWorker {
       errorMessage,
       finalizedAt,
     });
+    this.onOutcome?.(
+      errorMessage === null
+        ? "delivered"
+        : next.status === "failed"
+          ? "failed"
+          : "retry_scheduled",
+    );
   }
 }

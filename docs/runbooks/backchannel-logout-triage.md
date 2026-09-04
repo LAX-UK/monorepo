@@ -33,6 +33,14 @@ Identity delivers four at a time, times out after five seconds, and tries eight
 times with backoff from 15 seconds to one hour. A stuck `delivering` claim is
 returned to pending after 60 seconds.
 
+## Baseline SLO signals (measure before paging)
+
+- `auction_auth_backchannel_delivery_outcomes_total{outcome="failed"}` sustained above 5/min for 15 minutes
+- Oldest `oidc_backchannel_logout_delivery` row in `pending` older than 15 minutes during healthy receiver uptime
+- Failed backlog count above 25 rows without a matching receiver outage
+
+Record baseline throughput during a normal release week before tightening thresholds in Terraform alerts.
+
 ## Retention
 
 Identity's overlap-guarded purge runs every 15 minutes with a 500-row limit per

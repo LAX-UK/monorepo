@@ -1,5 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
-import { OIDC_CONSENT_SCRIPT, type createAuth } from "@auction/auth";
+import {
+  HOSTED_LOGIN_SCRIPT,
+  HOSTED_TWO_FACTOR_SCRIPT,
+  OIDC_CONSENT_SCRIPT,
+  buildHostedLoginHtml,
+  buildHostedTwoFactorHtml,
+  type createAuth,
+} from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { sql } from "drizzle-orm";
 import type { Hono } from "hono";
@@ -23,6 +30,33 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
     return c.body(OIDC_CONSENT_SCRIPT, 200, {
       "Content-Type": "text/javascript; charset=utf-8",
     });
+  });
+  app.get("/hosted-login.js", (c) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(HOSTED_LOGIN_SCRIPT, 200, {
+      "Content-Type": "text/javascript; charset=utf-8",
+    });
+  });
+  app.get("/hosted-two-factor.js", (c) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(HOSTED_TWO_FACTOR_SCRIPT, 200, {
+      "Content-Type": "text/javascript; charset=utf-8",
+    });
+  });
+  app.get("/login", (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.html(buildHostedLoginHtml());
+  });
+  app.get("/two-factor", (c) => {
+    c.header("Cache-Control", "no-store");
+    const next = c.req.query("next");
+    const callbackURL = c.req.query("callbackURL");
+    return c.html(
+      buildHostedTwoFactorHtml({
+        next: typeof next === "string" ? next : null,
+        callbackURL: typeof callbackURL === "string" ? callbackURL : null,
+      }),
+    );
   });
   if (options.internal) {
     app.use("/internal/oauth/token", createMachineTokenRateLimitMiddleware(options.internal.redis));

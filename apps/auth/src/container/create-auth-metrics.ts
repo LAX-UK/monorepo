@@ -37,5 +37,10 @@ export function createAuthMetrics() {
       "First-party SSF push delivery outcomes.",
       ["outcome"],
     ),
+    backchannelDeliveryOutcomes: counter(
+      "auction_auth_backchannel_delivery_outcomes_total",
+      "OIDC back-channel logout delivery outcomes.",
+      ["outcome"],
+    ),
   };
 }
