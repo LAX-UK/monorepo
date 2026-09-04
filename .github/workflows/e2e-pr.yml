@@ -142,6 +142,9 @@ jobs:
         run: |
           pnpm exec biome check .
           node --test scripts/ci/e2e-session-state.test.mjs
+          node --test scripts/ci/require-node-version.test.mjs
+          node scripts/ci/require-node-version.mjs
+          pnpm --filter @auction/web exec playwright test --list --grep "@smoke|@visual|@roles"
       - name: Install pinned Chromium
         run: pnpm --filter @auction/web exec playwright install chromium --with-deps
       - name: Migrate and seed

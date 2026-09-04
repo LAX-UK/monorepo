@@ -18,7 +18,8 @@ async function assertPreparedBidSession(context: BrowserContext, label: string):
 /** Reuses one cookie jar per worker and storage-state file so BFF sessions stay live. */
 export const test = base.extend<object, WorkerFixtures>({
   contextsByStorageState: [
-    async (_fixtures, use) => {
+    // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructuring pattern for fixture functions
+    async ({}, use) => {
       const contexts = new Map<string, BrowserContext>();
       await use(contexts);
       await Promise.all([...contexts.values()].map((context) => context.close()));

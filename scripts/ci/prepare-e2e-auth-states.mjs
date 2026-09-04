@@ -9,6 +9,9 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { probeStorageStateFile, writeProbeReport } from "./e2e-session-state.mjs";
+import { assertRepoNodeVersion } from "./require-node-version.mjs";
+
+assertRepoNodeVersion({ tool: "E2E auth state preparation" });
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const webDir = path.join(root, "apps/web");
