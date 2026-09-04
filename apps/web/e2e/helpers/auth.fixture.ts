@@ -1,64 +1,27 @@
 import { type BrowserContext, test as base } from "@playwright/test";
-import { persistContextAuthState } from "./auth";
+import { formatPageSessionFailure, probePageSession } from "./auth";
 
 const BID_SESSION_COOKIE = /(?:__Host-)?lax-bid-session/;
 
-type WorkerFixtures = {
-  contextsByStorageState: Map<string, BrowserContext>;
-};
-
 async function assertPreparedBidSession(context: BrowserContext, label: string): Promise<void> {
-  if (process.env.PLAYWRIGHT_E2E !== "1") return;
+  if (process.env.PLAYWRIGHT_E2E !== "1" || process.env.PLAYWRIGHT_AUTH_PREPARED !== "1") return;
   const cookies = (await context.storageState()).cookies;
   if (!cookies.some((cookie) => BID_SESSION_COOKIE.test(cookie.name))) {
     throw new Error(`Storage state missing lax-bid-session (${label})`);
   }
 }
 
-/** Reuses one cookie jar per worker and storage-state file so BFF sessions stay live. */
-export const test = base.extend<object, WorkerFixtures>({
-  contextsByStorageState: [
-    // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructuring pattern for fixture functions
-    async ({}, use) => {
-      const contexts = new Map<string, BrowserContext>();
-      await use(contexts);
-      await Promise.all([...contexts.values()].map((context) => context.close()));
-    },
-    { scope: "worker" },
-  ],
-  context: async ({ browser, storageState, contextsByStorageState }, use, testInfo) => {
-    const projectUse = testInfo.project.use;
-    const options = {
-      viewport: projectUse.viewport ?? { width: 1280, height: 800 },
-      deviceScaleFactor: projectUse.deviceScaleFactor ?? 1,
-      ...(projectUse.baseURL ? { baseURL: projectUse.baseURL } : {}),
-    };
-    const statePath = typeof storageState === "string" ? storageState : undefined;
-
-    if (!statePath) {
-      const ephemeral = await browser.newContext(options);
-      await use(ephemeral);
-      await ephemeral.close();
-      return;
-    }
-
-    let context = contextsByStorageState.get(statePath);
-    if (!context) {
-      context = await browser.newContext({ ...options, storageState: statePath });
-      await assertPreparedBidSession(context, statePath);
-      contextsByStorageState.set(statePath, context);
-    }
-
-    await use(context);
-    await persistContextAuthState(context, statePath);
-  },
-});
-
-/** Per-test context that writes a still-valid session back after each describe. */
-export const persistAuthTest = test.extend({
+/** Fresh Playwright context per test; prepared `.auth` files are read-only inputs. */
+export const test = base.extend({
   page: async ({ page, storageState }, use) => {
+    if (typeof storageState === "string") {
+      await assertPreparedBidSession(page.context(), storageState);
+      const probe = await probePageSession(page);
+      if (!probe.authenticated) {
+        throw new Error(formatPageSessionFailure(storageState, probe, page.url()));
+      }
+    }
     await use(page);
-    await persistContextAuthState(page.context(), storageState);
   },
 });
 

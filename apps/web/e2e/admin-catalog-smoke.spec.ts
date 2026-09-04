@@ -27,7 +27,7 @@ test.describe("staff catalog smoke @smoke", () => {
     await gotoAdminPath(page, `/admin/categories/${seededStaffRoutes.categoryDetail}`);
     await dismissStaffPaletteIfOpen(page);
     await expect(page.getByRole("heading", { name: /paintings/i, level: 1 })).toBeVisible();
-    await page.goto(`/admin/categories/${seededStaffRoutes.categoryDetail}/edit`);
+    await gotoAdminPath(page, `/admin/categories/${seededStaffRoutes.categoryDetail}/edit`);
     await expect(page.getByRole("heading", { name: /edit category/i })).toBeVisible({
       timeout: 20_000,
     });

@@ -1,6 +1,6 @@
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import AxeBuilder from "@axe-core/playwright";
-import { type BrowserContext, type Page, type Response, expect } from "@playwright/test";
+import { type Page, type Response, expect } from "@playwright/test";
 
 export const e2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
 export const e2eSkipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web with seeded credentials.";
@@ -128,6 +128,7 @@ export type SessionProbe = {
   sessionAlive: boolean;
   authStatus: number;
   meStatus: number;
+  meReason: string | null;
   email: string | null;
   cookieNames: string[];
 };
@@ -158,6 +159,8 @@ export async function probePageSession(page: Page): Promise<SessionProbe> {
     data?: { email?: string };
     email?: string;
     authenticated?: boolean;
+    reason?: string;
+    message?: string;
   } | null;
   const sessionAlive = Boolean(authBody?.user?.id) && authRes.ok();
   return {
@@ -165,35 +168,23 @@ export async function probePageSession(page: Page): Promise<SessionProbe> {
     authenticated: meRes.ok() && meBody?.authenticated === true,
     authStatus: authRes.status(),
     meStatus: meRes.status(),
+    meReason: meBody?.reason ?? meBody?.message ?? null,
     email: authBody?.user?.email ?? meBody?.data?.email ?? meBody?.email ?? null,
     cookieNames: stored.cookies.map((cookie) => cookie.name),
   };
 }
 
-/** Writes the live cookie jar back only when a session token is still present. */
-export async function persistContextAuthState(
-  context: BrowserContext,
-  storageState: unknown,
-): Promise<void> {
-  if (typeof storageState !== "string") return;
-  try {
-    const state = await context.storageState();
-    if (!state.cookies.some((cookie) => /(?:__Host-)?lax-bid-session/.test(cookie.name))) return;
-    await context.storageState({ path: storageState });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (/target.*closed|browser has been closed/i.test(message)) return;
-    throw error;
-  }
-}
-
-function formatPageSessionFailure(path: string, probe: SessionProbe, url: string): string {
-  return [
+export function formatPageSessionFailure(path: string, probe: SessionProbe, url: string): string {
+  const parts = [
     `Expected authenticated staff session for ${path} but landed on ${url}.`,
     `get-session=${probe.authStatus}`,
     `/api/auth/me=${probe.meStatus}`,
     `cookies=${probe.cookieNames.join(",") || "(none)"}`,
-  ].join(" ");
+  ];
+  if (process.env.CI === "true" && probe.meReason) {
+    parts.push(`me-reason=${probe.meReason}`);
+  }
+  return parts.join(" ");
 }
 
 function isOidcCallbackUrl(url: string): boolean {
@@ -208,49 +199,6 @@ function needsAuthRecovery(url: string): boolean {
   return isLoginUrl(url) || isOidcConsentUrl(url);
 }
 
-function adminDestinationPattern(path: string): RegExp {
-  return new RegExp(
-    `${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|/admin(?:/|$|\\?)|/dashboard(?:/|$|\\?)`,
-  );
-}
-
-/** Re-establishes the Bid BFF cookie when Identity cookies exist but `/api/auth/me` is 401. */
-async function recoverBidBffSession(page: Page, returnPath: string): Promise<boolean> {
-  const destination = adminDestinationPattern(returnPath);
-  let probe = await probePageSession(page);
-  if (probe.authenticated) return true;
-  if (!probe.sessionAlive) return false;
-
-  if (isOidcConsentUrl(page.url())) {
-    try {
-      await completeOidcAuthorizeStep(page, destination);
-    } catch {
-      return (await probePageSession(page)).authenticated;
-    }
-    return (await probePageSession(page)).authenticated;
-  }
-
-  await page.goto(`/api/auth/login?next=${encodeURIComponent(returnPath)}`, {
-    waitUntil: "domcontentloaded",
-  });
-  try {
-    await waitForLoginDestination(page, destination);
-  } catch {
-    probe = await probePageSession(page);
-    if (probe.authenticated) return true;
-    if (isOidcConsentUrl(page.url())) {
-      try {
-        await completeOidcAuthorizeStep(page, destination);
-      } catch {
-        return (await probePageSession(page)).authenticated;
-      }
-    }
-    return (await probePageSession(page)).authenticated;
-  }
-
-  return (await probePageSession(page)).authenticated;
-}
-
 function isLoginUrl(url: string): boolean {
   return /\/login(?:\?|$)/.test(url);
 }
@@ -260,16 +208,9 @@ function isLoginUrl(url: string): boolean {
  * valid and SSR `/users/me` missed. Tests never password-login or click Continue.
  */
 export async function gotoAdminPath(page: Page, path: string): Promise<Response | null> {
-  const destination = adminDestinationPattern(path);
   let probe = await probePageSession(page);
-
-  // Mint a fresh BFF session before SSR can purge a stale cookie via /login?auth=required.
-  if (!probe.authenticated && probe.sessionAlive) {
-    const recovered = await recoverBidBffSession(page, path);
-    if (!recovered) {
-      throw new Error(formatPageSessionFailure(path, await probePageSession(page), page.url()));
-    }
-    probe = await probePageSession(page);
+  if (!probe.authenticated) {
+    throw new Error(formatPageSessionFailure(path, probe, page.url()));
   }
 
   let response = await page.goto(path, { waitUntil: "domcontentloaded" });
@@ -280,26 +221,6 @@ export async function gotoAdminPath(page: Page, path: string): Promise<Response 
     response = await page.goto(path, { waitUntil: "domcontentloaded" });
     probe = await probePageSession(page);
     if (probe.authenticated && !needsAuthRecovery(page.url())) return response;
-  }
-
-  if (!probe.authenticated && probe.sessionAlive) {
-    const recovered = await recoverBidBffSession(page, path);
-    if (recovered) {
-      response = await page.goto(path, { waitUntil: "domcontentloaded" });
-      probe = await probePageSession(page);
-      if (probe.authenticated && !needsAuthRecovery(page.url())) return response;
-    }
-  }
-
-  if (isOidcConsentUrl(page.url()) && probe.sessionAlive) {
-    try {
-      await completeOidcAuthorizeStep(page, destination);
-      response = await page.goto(path, { waitUntil: "domcontentloaded" });
-      probe = await probePageSession(page);
-      if (probe.authenticated && !needsAuthRecovery(page.url())) return response;
-    } catch {
-      /* fall through to session failure */
-    }
   }
 
   throw new Error(formatPageSessionFailure(path, probe, page.url()));
@@ -693,22 +614,11 @@ export async function catalogueManagerLogin(page: Page): Promise<void> {
   });
 }
 
-/** Re-mints the catalogue-manager BFF session when prepared storage state is stale. */
+/** Fails fast when prepared catalogue-manager storage state is not authenticated. */
 export async function ensureCatalogueManagerSession(page: Page): Promise<void> {
   const probe = await probePageSession(page);
   if (probe.authenticated) return;
-  if (!probe.sessionAlive) {
-    if (!hasCatalogueManagerCredentials()) {
-      throw new Error("Seeded catalogue-manager credentials are required.");
-    }
-    await catalogueManagerLogin(page);
-    return;
-  }
-  await recoverBidBffSession(page, "/admin/lots");
-  const after = await probePageSession(page);
-  if (!after.authenticated) {
-    throw new Error(formatPageSessionFailure("/admin/lots", after, page.url()));
-  }
+  throw new Error(formatPageSessionFailure("/admin/lots", probe, page.url()));
 }
 
 export async function financeLogin(page: Page): Promise<void> {

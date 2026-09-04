@@ -5,9 +5,7 @@ import {
   e2eSkipReason,
   ensureCatalogueManagerSession,
   gotoAdminPath,
-  persistContextAuthState,
 } from "./helpers/auth";
-import { roleAuthState } from "./helpers/auth-state";
 import { expect, test } from "./helpers/auth.fixture";
 
 async function openCatalogueLotsDraft(page: Page): Promise<void> {
@@ -22,10 +20,6 @@ async function openCatalogueLotsDraft(page: Page): Promise<void> {
 test.describe("catalogue manager catalog access @roles", () => {
   test.describe.configure({ mode: "serial", timeout: 90_000 });
   test.skip(!e2eEnabled, e2eSkipReason);
-
-  test.afterEach(async ({ page }) => {
-    await persistContextAuthState(page.context(), roleAuthState.catalogueManager);
-  });
 
   test("can open lots list and draft lot detail publish control", async ({ page }) => {
     await openCatalogueLotsDraft(page);
