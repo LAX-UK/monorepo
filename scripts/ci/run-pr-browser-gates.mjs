@@ -4,10 +4,24 @@
  * Static checks fail in seconds; auth mint + Playwright share this script.
  */
 import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { assertRepoNodeVersion } from "./require-node-version.mjs";
 
 assertRepoNodeVersion({ tool: "PR browser gates" });
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+function flushRateLimits() {
+  const result = spawnSync("node", [path.join(repoRoot, "scripts/ci/flush-auth-rate-limits.mjs")], {
+    stdio: "inherit",
+    env: process.env,
+  });
+  if (result.status !== 0) {
+    throw new Error("failed to flush auth rate-limit keys before PR browser tests");
+  }
+}
 
 const args = parseArgs({
   options: {
@@ -37,6 +51,7 @@ if (!args.values["skip-prepare"]) {
   run("pnpm --filter @auction/web exec node ../../scripts/ci/prepare-e2e-auth-states.mjs");
 }
 
+flushRateLimits();
 run("pnpm --filter @auction/web test:e2e:pr", {
   PLAYWRIGHT_E2E: "1",
   PLAYWRIGHT_AUTH_PREPARED: "1",
