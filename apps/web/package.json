@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test",
     "test:e2e:smoke": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep @smoke",
-    "test:e2e:pr": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test --grep \"@smoke|@visual|@roles\" --no-deps",
+    "test:e2e:pr": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep \"@smoke|@roles\" --no-deps",
     "test:e2e:roles": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep @roles",
     "test:e2e:stabilization": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep \"@smoke|@journey|@a11y|@roles\"",
     "test:e2e:visual": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test --grep @visual",

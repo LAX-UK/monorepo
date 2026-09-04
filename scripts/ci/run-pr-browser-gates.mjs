@@ -30,7 +30,7 @@ if (!args.values["skip-static"]) {
   run("node --test scripts/ci/e2e-session-state.test.mjs");
   run("node --test scripts/ci/require-node-version.test.mjs");
   run("node scripts/ci/require-node-version.mjs");
-  run('pnpm --filter @auction/web exec playwright test --list --grep "@smoke|@visual|@roles"');
+  run('pnpm --filter @auction/web exec playwright test --list --grep "@smoke|@roles"');
 }
 
 if (!args.values["skip-prepare"]) {
@@ -39,6 +39,5 @@ if (!args.values["skip-prepare"]) {
 
 run("pnpm --filter @auction/web test:e2e:pr", {
   PLAYWRIGHT_E2E: "1",
-  PLAYWRIGHT_VISUAL: "1",
   PLAYWRIGHT_AUTH_PREPARED: "1",
 });

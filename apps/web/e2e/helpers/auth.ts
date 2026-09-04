@@ -207,16 +207,9 @@ async function recoverBidBffSession(page: Page, returnPath: string): Promise<boo
     waitUntil: "domcontentloaded",
   });
   try {
-    await page.waitForURL(
-      (url) => destination.test(url.toString()) || isOidcConsentUrl(url.toString()),
-      { timeout: 60_000, waitUntil: "domcontentloaded" },
-    );
+    await waitForLoginDestination(page, destination);
   } catch {
     return (await probePageSession(page)).authenticated;
-  }
-
-  if (isOidcConsentUrl(page.url())) {
-    await submitOidcConsent(page, destination);
   }
 
   return (await probePageSession(page)).authenticated;
@@ -271,12 +264,30 @@ function isOidcConsentUrl(url: string): boolean {
 }
 
 async function submitOidcConsent(page: Page, destination: RegExp): Promise<void> {
+  if (destination.test(page.url())) return;
+
   const allow = page.getByRole("button", { name: /^allow$/i });
-  await allow.waitFor({ state: "visible", timeout: 30_000 });
+  const consentOutcome = await Promise.race([
+    allow.waitFor({ state: "visible", timeout: 30_000 }).then(() => "allow" as const),
+    page
+      .waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" })
+      .then(() => "done" as const),
+  ]).catch(async (error) => {
+    if (destination.test(page.url())) return "done" as const;
+    const probe = await probePageSession(page);
+    if (probe.authenticated) return "done" as const;
+    throw error;
+  });
+
+  if (consentOutcome === "done" || destination.test(page.url())) return;
+
   await Promise.all([
     page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" }),
     allow.click(),
   ]).catch(async (error) => {
+    if (destination.test(page.url())) return;
+    const probe = await probePageSession(page);
+    if (probe.authenticated) return;
     const visibleError = page.locator('#error[role="alert"]:not([hidden])');
     if (await visibleError.isVisible().catch(() => false)) {
       const text = (await visibleError.textContent())?.trim();

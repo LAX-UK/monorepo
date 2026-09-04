@@ -86,7 +86,7 @@ function adminLotsMasks(page: Page): Locator[] {
 function screenshotOptions(page: Page, visualCase: (typeof adminVisualCases)[number]) {
   return {
     ...(visualCase.capture === "page" ? { fullPage: true } : {}),
-    maxDiffPixelRatio: visualCase.slug === "admin-lots" ? 0.05 : 0.01,
+    maxDiffPixelRatio: visualCase.slug === "admin-lots" ? 0.03 : 0.01,
     mask: [
       page.locator("time"),
       page.getByRole("heading", { name: /good day|your dashboard/i }),

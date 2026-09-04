@@ -58,7 +58,7 @@ Specs declare intent with tags in describe titles: `@smoke`, `@journey`, `@a11y`
 `@roles`, `@visual`. Commands select by tag — do not hardcode file lists.
 
 ```bash
-# CI-parity PR gate (format, session mint, @smoke|@visual|@roles)
+# CI-parity PR gate (format, session mint, @smoke|@roles)
 # Requires the seeded stack on :3000 / :3001 / :3003 and a clean test Redis.
 pnpm ci:e2e-pr
 
