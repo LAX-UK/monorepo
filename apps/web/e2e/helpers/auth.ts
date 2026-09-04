@@ -176,9 +176,15 @@ export async function persistContextAuthState(
   storageState: unknown,
 ): Promise<void> {
   if (typeof storageState !== "string") return;
-  const state = await context.storageState();
-  if (!state.cookies.some((cookie) => /(?:__Host-)?lax-bid-session/.test(cookie.name))) return;
-  await context.storageState({ path: storageState });
+  try {
+    const state = await context.storageState();
+    if (!state.cookies.some((cookie) => /(?:__Host-)?lax-bid-session/.test(cookie.name))) return;
+    await context.storageState({ path: storageState });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/target.*closed|browser has been closed/i.test(message)) return;
+    throw error;
+  }
 }
 
 function formatPageSessionFailure(path: string, probe: SessionProbe, url: string): string {
@@ -560,6 +566,15 @@ export async function catalogueManagerLogin(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: /^lots$/i }).first()).toBeVisible({
     timeout: 20_000,
   });
+}
+
+/** Re-mints the catalogue-manager BFF session when prepared storage state is stale. */
+export async function ensureCatalogueManagerSession(page: Page): Promise<void> {
+  if ((await probePageSession(page)).authenticated) return;
+  if (!hasCatalogueManagerCredentials()) {
+    throw new Error("Seeded catalogue-manager credentials are required.");
+  }
+  await catalogueManagerLogin(page);
 }
 
 export async function financeLogin(page: Page): Promise<void> {

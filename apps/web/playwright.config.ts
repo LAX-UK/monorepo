@@ -124,6 +124,7 @@ const roleProjects = [
           name: "catalogue-chromium",
           testMatch: /catalogue-manager-.*\.spec\.ts/,
           dependencies: ["setup-catalogue"],
+          timeout: 90_000,
           workers: 1,
           use: { ...chromium, storageState: roleAuthState.catalogueManager },
         },
