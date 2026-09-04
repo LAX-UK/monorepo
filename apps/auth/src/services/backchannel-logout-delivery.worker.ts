@@ -95,11 +95,7 @@ export class BackchannelLogoutDeliveryWorker {
       finalizedAt,
     });
     this.onOutcome?.(
-      errorMessage === null
-        ? "delivered"
-        : next.status === "failed"
-          ? "failed"
-          : "retry_scheduled",
+      errorMessage === null ? "delivered" : next.status === "failed" ? "failed" : "retry_scheduled",
     );
   }
 }

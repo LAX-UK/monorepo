@@ -29,7 +29,9 @@ export function createOidcRouteServices(options: {
     jwks: options.jwks,
     identityJwtSigner,
     recentStepUpMaxAgeSec: options.recentStepUpMaxAgeSec,
-    onBackchannelOutcome: options.onBackchannelOutcome,
+    ...(options.onBackchannelOutcome
+      ? { onBackchannelOutcome: options.onBackchannelOutcome }
+      : {}),
   });
   return {
     oidc: {

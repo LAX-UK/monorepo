@@ -11,7 +11,10 @@ const repo = process.env.GITHUB_REPOSITORY;
 const token = process.env.GITHUB_TOKEN;
 const maxWaitMs = Number(process.env.CI_GATE_MAX_WAIT_MS ?? 90 * 60 * 1000);
 const pollMs = Number(process.env.CI_GATE_POLL_MS ?? 30_000);
-const requiredWorkflows = ["CI", ...(process.env.CI_GATE_REQUIRE_BROWSER === "1" ? ["Web PR browser gates"] : [])];
+const requiredWorkflows = [
+  "CI",
+  ...(process.env.CI_GATE_REQUIRE_BROWSER === "1" ? ["Web PR browser gates"] : []),
+];
 
 if (!sha || !repo || !token) {
   console.error("Requires GITHUB_SHA, GITHUB_REPOSITORY, and GITHUB_TOKEN");

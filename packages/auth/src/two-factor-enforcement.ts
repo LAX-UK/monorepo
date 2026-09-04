@@ -53,7 +53,10 @@ export function extractNextFromCallbackUrl(callbackURL: string | null | undefine
 }
 
 /** `/two-factor` challenge URL on the Identity issuer, with optional preserved `next`. */
-export function buildTwoFactorChallengeUrl(authOrigin: string, callbackURL?: string | null): string {
+export function buildTwoFactorChallengeUrl(
+  authOrigin: string,
+  callbackURL?: string | null,
+): string {
   const base = `${authOrigin.replace(/\/$/, "")}/two-factor`;
   const next = extractNextFromCallbackUrl(callbackURL);
   const params = new URLSearchParams();

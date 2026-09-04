@@ -28,14 +28,14 @@ run("Identity boundary (fixture)", "pnpm", ["ci:identity-boundary"]);
 run("Shop app role contract", "pnpm", ["--filter", "@auction/db", "test:shop-role-contract"], {
   ...process.env,
   AUTH_ROLE_CONTRACT_REQUIRED: "true",
-  DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/auction_ci",
+  DATABASE_URL:
+    process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/auction_ci",
   DATABASE_URL_OWNER:
     process.env.DATABASE_URL_OWNER ??
     process.env.DATABASE_URL ??
     "postgresql://postgres:postgres@localhost:5432/auction_ci",
   DATABASE_URL_SHOP:
-    process.env.DATABASE_URL_SHOP ??
-    "postgresql://shop_app:postgres@localhost:5432/auction_ci",
+    process.env.DATABASE_URL_SHOP ?? "postgresql://shop_app:postgres@localhost:5432/auction_ci",
   SHOP_APP_DB_PASSWORD: process.env.SHOP_APP_DB_PASSWORD ?? "postgres",
 });
 

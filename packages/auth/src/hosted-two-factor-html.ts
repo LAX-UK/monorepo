@@ -64,7 +64,10 @@ document.getElementById("backup-form").addEventListener("submit", async (event) 
 });`;
 
 /** Same-origin TOTP challenge UI on the Identity issuer host. */
-export function buildHostedTwoFactorHtml(input: { next?: string | null; callbackURL?: string | null }) {
+export function buildHostedTwoFactorHtml(input: {
+  next?: string | null;
+  callbackURL?: string | null;
+}) {
   const query = new URLSearchParams();
   if (input.next) query.set("next", input.next);
   if (input.callbackURL) query.set("callbackURL", input.callbackURL);

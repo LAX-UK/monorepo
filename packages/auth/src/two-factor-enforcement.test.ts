@@ -69,11 +69,10 @@ describe("buildTwoFactorChallengeUrl", () => {
 
   it("preserves a safe next from the callback URL", () => {
     expect(
-      buildTwoFactorChallengeUrl(
-        "https://auth.lax.bid/",
-        "https://lax.bid/cb?next=%2Flots%2F1",
-      ),
-    ).toBe("https://auth.lax.bid/two-factor?next=%2Flots%2F1&callbackURL=https%3A%2F%2Flax.bid%2Fcb%3Fnext%3D%252Flots%252F1");
+      buildTwoFactorChallengeUrl("https://auth.lax.bid/", "https://lax.bid/cb?next=%2Flots%2F1"),
+    ).toBe(
+      "https://auth.lax.bid/two-factor?next=%2Flots%2F1&callbackURL=https%3A%2F%2Flax.bid%2Fcb%3Fnext%3D%252Flots%252F1",
+    );
   });
 });
 
