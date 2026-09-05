@@ -141,6 +141,6 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
-    ).rejects.toMatchObject({ code: "23505" });
+    ).rejects.toMatchObject({ cause: { code: "23505" } });
   });
 });
