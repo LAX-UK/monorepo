@@ -58,6 +58,8 @@ ENV CSP_ENFORCE=$CSP_ENFORCE
 ENV SENTRY_RELEASE=$SENTRY_RELEASE
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
 ENV NEXT_TELEMETRY_DISABLED=1
+COPY scripts/ci/require-node-version.mjs ./scripts/ci/require-node-version.mjs
+COPY .nvmrc ./.nvmrc
 COPY apps/api ./apps/api
 COPY apps/web ./apps/web
 # SENTRY_AUTH_TOKEN via BuildKit secret — never baked into image layers or cache.
