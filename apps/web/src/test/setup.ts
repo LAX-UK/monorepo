@@ -7,6 +7,7 @@ vi.mock("server-only", () => ({}));
 class MockIntersectionObserver implements IntersectionObserver {
   readonly root: Element | Document | null = null;
   readonly rootMargin = "";
+  readonly scrollMargin = "";
   readonly thresholds: readonly number[] = [];
 
   constructor(private callback: IntersectionObserverCallback) {}
@@ -21,11 +22,7 @@ class MockIntersectionObserver implements IntersectionObserver {
 }
 
 class MockResizeObserver implements ResizeObserver {
-  constructor(private callback: ResizeObserverCallback) {}
-
-  observe = vi.fn((target: Element) => {
-    this.callback([{ target } as ResizeObserverEntry], this);
-  });
+  observe = vi.fn();
 
   unobserve = vi.fn();
   disconnect = vi.fn();

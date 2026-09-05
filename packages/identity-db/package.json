@@ -40,17 +40,19 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "biome check .",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@auction/identity-contracts": "workspace:^",
-    "better-auth": "^1.6.9",
-    "drizzle-orm": "^0.41.0",
+    "better-auth": "^1.6.22",
+    "drizzle-orm": "^0.45.2",
     "pg": "^8.13.1"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
     "@types/pg": "^8.11.10",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.6"
   }
 }

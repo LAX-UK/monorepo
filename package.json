@@ -58,6 +58,19 @@
     "cost:check": "tsx scripts/check-do-bill.ts",
     "audit:dark-mode": "tsx apps/web/src/lib/theme/audit-dark-mode.ts"
   },
+  "pnpm": {
+    "overrides": {
+      "axios@>=1.13.5 <1.18.0": "1.18.0",
+      "brace-expansion@>=5.0.0 <5.0.9": "5.0.9",
+      "engine.io@>=6.5.0 <6.6.7": "6.6.7",
+      "fast-xml-builder@<=1.1.6": "1.1.7",
+      "form-data@>=4.0.0 <4.0.6": "4.0.6",
+      "postcss@<=8.5.17": "8.5.18",
+      "sharp@<0.35.0": "0.35.0",
+      "socket.io-parser@>=4.0.0 <4.2.7": "4.2.7",
+      "ws@>=8.0.0 <8.21.0": "8.21.0"
+    }
+  },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1041.0",
     "@biomejs/biome": "^1.9.4",

@@ -22,7 +22,7 @@
     "@auction/persistence": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.2",
     "ioredis": "^5.4.2",
     "pino": "^10.3.1",
     "stripe": "^22.1.1",

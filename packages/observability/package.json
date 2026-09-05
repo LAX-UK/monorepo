@@ -28,13 +28,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@sentry/core": "^10.51.0",
-    "@sentry/node": "^10.51.0",
+    "@sentry/core": "10.51.0",
+    "@sentry/node": "10.51.0",
     "bullmq-otel": "^1.1.0"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^3.2.6"
   }
 }

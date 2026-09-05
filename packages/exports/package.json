@@ -28,7 +28,7 @@
     "@auction/persistence": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
-    "drizzle-orm": "^0.41.0"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",

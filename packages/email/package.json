@@ -24,7 +24,7 @@
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.8",
     "bullmq": "^5.74.1",
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.2",
     "react": "^19.0.0",
     "safe-stable-stringify": "^2.5.0"
   },

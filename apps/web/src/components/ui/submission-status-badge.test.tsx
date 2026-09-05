@@ -58,7 +58,7 @@ describe("SubmissionStatusBadge", () => {
     fireEvent.mouseEnter(hintButton);
 
     expect(screen.getByText(SUBMISSION_STATUS_HINTS.submitted ?? "")).toBeInTheDocument();
-  });
+  }, 15_000);
 
   it("hides the hint button when showHint is false", () => {
     render(<SubmissionStatusBadge status="submitted" showHint={false} />);

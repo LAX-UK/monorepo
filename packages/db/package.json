@@ -42,12 +42,12 @@
     "db:seed:press-demo": "tsx scripts/seed-press-hub-demo.ts"
   },
   "dependencies": {
-    "@auction/identity-db": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
+    "@auction/identity-db": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
     "@better-auth/utils": "0.4.0",
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.2",
     "pg": "^8.13.1"
   },
   "devDependencies": {

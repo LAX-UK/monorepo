@@ -17,7 +17,10 @@ import {
 } from "@auction/identity-db/schema";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
-export function buildDrizzleDatabase(db: IdentityDatabase, envelope?: EnvelopeCrypto) {
+export function buildDrizzleDatabase(
+  db: IdentityDatabase,
+  envelope?: EnvelopeCrypto,
+): ReturnType<typeof drizzleAdapter> {
   const consentStore = createDrizzleConsentStore(db);
   const inner = drizzleAdapter(db, {
     provider: "pg",
