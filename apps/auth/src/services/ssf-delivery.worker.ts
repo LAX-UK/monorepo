@@ -13,6 +13,8 @@ import type {
 } from "./ssf.ports.js";
 
 const ORDERED_SSF_JTI_VERSION = "lax-identity-outbox-v1";
+const SSF_INITIAL_RETRY_DELAY_MS = 15_000;
+const SSF_MAX_RETRY_DELAY_MS = 60 * 60_000;
 
 function ssfSubjectKey(subjectId: string): string {
   return createHash("sha256").update(subjectId).digest("base64url");
@@ -41,7 +43,10 @@ export function nextSsfDeliveryAttempt(
   if (attemptCount >= maxAttempts) {
     return { status: "failed" as const, attemptCount, nextAttemptAt: now };
   }
-  const backoffMs = Math.min(60 * 60_000, 1_000 * 2 ** Math.min(attemptCount - 1, 12));
+  const backoffMs = Math.min(
+    SSF_MAX_RETRY_DELAY_MS,
+    SSF_INITIAL_RETRY_DELAY_MS * 2 ** Math.min(attemptCount - 1, 12),
+  );
   return {
     status: "pending" as const,
     attemptCount,

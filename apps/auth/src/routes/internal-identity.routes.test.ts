@@ -34,6 +34,9 @@ function setup() {
       set: async (key, value) => {
         tokens.set(key, value);
       },
+      del: async (key) => {
+        tokens.delete(key);
+      },
     },
     machineClientId: "api-service",
     machineClientSecret: "machine-secret-at-least-32-characters",
@@ -79,6 +82,29 @@ describe("internal Identity machine routes", () => {
     });
     expect(response.status).toBe(200);
     expect(lifecycle.disable).toHaveBeenCalledWith("u1", "security_review");
+  });
+
+  it("revokes a machine token before its expiry", async () => {
+    const { app } = setup();
+    const token = await issueToken(app);
+    const basic = Buffer.from("api-service:machine-secret-at-least-32-characters", "utf8").toString(
+      "base64",
+    );
+
+    const revoked = await app.request("/oauth/revoke", {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${basic}`,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ token }),
+    });
+    const denied = await app.request("/identity/subjects/u1", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(revoked.status).toBe(200);
+    expect(denied.status).toBe(401);
   });
 
   it("requires the canonical subject for merges", async () => {

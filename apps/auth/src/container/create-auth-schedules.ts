@@ -2,6 +2,7 @@ import { type IdentityDatabase, startJwksRetirementSchedule } from "@auction/ide
 import { Sentry } from "@auction/observability";
 import type pino from "pino";
 import { startIdentityDeletionPurgeSchedule } from "../infrastructure/identity-deletion-purge.schedule.js";
+import { startIdentityLifecycleReconciliationSchedule } from "../infrastructure/identity-lifecycle-reconciliation.schedule.js";
 import { startIdentityRetentionSchedule } from "../infrastructure/identity-retention.schedule.js";
 import type { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";
 import { startBackchannelLogoutSchedule } from "../services/backchannel-logout.schedule.js";
@@ -57,6 +58,14 @@ export function createAuthSchedules(options: {
     },
     onPurged: (count) => options.log.info({ count }, "identity_deletion_purge_batch"),
   });
+  const lifecycleReconciliation = startIdentityLifecycleReconciliationSchedule({
+    db: options.db,
+    onError: (err) => {
+      options.log.error({ err }, "identity_lifecycle_reconciliation_failed");
+      Sentry.captureException(err);
+    },
+    onReconciled: (counts) => options.log.warn(counts, "identity_lifecycle_outbox_reconciled"),
+  });
   let ssfDrain: Promise<void> | null = null;
   const ssf = options.ssfEnabled
     ? setInterval(() => {
@@ -92,6 +101,7 @@ export function createAuthSchedules(options: {
         logout.stop(),
         retention.stop(),
         deletionPurge.stop(),
+        lifecycleReconciliation.stop(),
         ssfDrain ?? Promise.resolve(),
       ]);
     },

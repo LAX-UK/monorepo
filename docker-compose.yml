@@ -72,6 +72,7 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-local-docker-dev-secret-min-16-chars}
       OIDC_ISSUER_URL: http://localhost:3003
       JWT_AUDIENCE: lax-bid-api
+      AUTH_TRUSTED_PROXY_CIDRS: ${AUTH_TRUSTED_PROXY_CIDRS:-}
       IDENTITY_MACHINE_CLIENT_ID: ${IDENTITY_MACHINE_CLIENT_ID:-api-service}
       IDENTITY_MACHINE_CLIENT_SECRET: ${IDENTITY_MACHINE_CLIENT_SECRET:-local-identity-machine-secret-32}
       SSF_DELIVERY_ENABLED: ${SSF_DELIVERY_ENABLED:-false}

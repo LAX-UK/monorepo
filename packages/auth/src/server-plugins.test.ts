@@ -10,7 +10,7 @@ describe("buildEmailAndPasswordBlock", () => {
     expect(block.resetPasswordTokenExpiresIn).toBe(AUTH_TIMINGS.resetPasswordExpiresSec);
   });
 
-  it("enqueues warning email when revokeAllSessions fails on password reset", async () => {
+  it("surfaces password-reset revocation failure after enqueuing a warning", async () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
     const block = buildEmailAndPasswordBlock({
       email: { enqueue },
@@ -20,7 +20,7 @@ describe("buildEmailAndPasswordBlock", () => {
 
     await expect(
       block.onPasswordReset({ user: { id: "u1", email: "e@e.com", name: "N" } }),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow("db down");
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -31,7 +31,9 @@ describe("buildEmailAndPasswordBlock", () => {
         }),
       }),
     );
-    expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({ template: "password-changed" }));
+    expect(enqueue).not.toHaveBeenCalledWith(
+      expect.objectContaining({ template: "password-changed" }),
+    );
   });
 });
 

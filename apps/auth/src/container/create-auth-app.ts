@@ -1,6 +1,7 @@
 import { Sentry } from "@auction/observability";
 import { Hono } from "hono";
 import type pino from "pino";
+import { createClientIpResolver } from "../infrastructure/client-ip.js";
 import { createSecurityHeadersMiddleware } from "../middleware/security-headers.js";
 import {
   type AuthOperationalRoutes,
@@ -13,8 +14,8 @@ type Counter = { inc(labels: Record<string, string>): void };
 
 export type CreateAuthAppOptions = {
   log: pino.Logger;
-  operational: Omit<AuthOperationalRoutes, "log">;
-  oidc: OidcRouteMountOptions;
+  operational: Omit<AuthOperationalRoutes, "log" | "clientIp">;
+  oidc: Omit<OidcRouteMountOptions, "clientIp">;
   issuerHttpOutcomes: Counter;
 };
 
@@ -40,8 +41,9 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
             : "other";
     options.issuerHttpOutcomes.inc({ operation, status: String(c.res.status) });
   });
-  mountAuthOperationalRoutes(app, { ...options.operational, log: options.log });
-  mountOidcRoutes(app, options.oidc);
+  const clientIp = createClientIpResolver(options.oidc.env.AUTH_TRUSTED_PROXY_CIDRS);
+  mountAuthOperationalRoutes(app, { ...options.operational, log: options.log, clientIp });
+  mountOidcRoutes(app, { ...options.oidc, clientIp });
   return app;
 }
 

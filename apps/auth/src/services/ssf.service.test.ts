@@ -80,7 +80,7 @@ describe("SSF delivery retry policy", () => {
     expect(nextSsfDeliveryAttempt(false, 0, 3, now)).toEqual({
       status: "pending",
       attemptCount: 1,
-      nextAttemptAt: new Date("2026-08-13T06:00:01Z"),
+      nextAttemptAt: new Date("2026-08-13T06:00:15Z"),
     });
     expect(nextSsfDeliveryAttempt(false, 2, 3, now)).toEqual({
       status: "failed",

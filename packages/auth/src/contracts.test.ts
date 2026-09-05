@@ -75,7 +75,7 @@ describe("auth issuer contracts", () => {
 });
 
 describe("auth lifecycle callback contract", () => {
-  it("runs user effects before account attribution and registration", async () => {
+  it("publishes registration before optional account attribution", async () => {
     const calls: string[] = [];
     const callbacks = createAuthLifecycleCallbacks({
       markUserForOAuthAttribution: async () => {
@@ -98,7 +98,7 @@ describe("auth lifecycle callback contract", () => {
     await callbacks.onUserCreated?.(user);
     await callbacks.onAccountCreated?.({ userId: user.id, providerId: "google" });
     await callbacks.onEmailVerified?.(user);
-    expect(calls).toEqual(["attribution", "legal-entity", "account", "registered", "verified"]);
+    expect(calls).toEqual(["attribution", "legal-entity", "registered", "account", "verified"]);
   });
 
   it("keeps attribution marking non-blocking without swallowing required effects", async () => {
@@ -106,6 +106,9 @@ describe("auth lifecycle callback contract", () => {
     const publishUserRegisteredForAccount = vi.fn(async () => undefined);
     const callbacks = createAuthLifecycleCallbacks({
       markUserForOAuthAttribution: async () => {
+        throw new Error("redis unavailable");
+      },
+      completeOAuthAttribution: async () => {
         throw new Error("redis unavailable");
       },
       publishUserRegisteredForAccount,
@@ -123,5 +126,6 @@ describe("auth lifecycle callback contract", () => {
       "user-1",
     );
     expect(publishUserRegisteredForAccount).toHaveBeenCalledOnce();
+    expect(onNonBlockingError).toHaveBeenCalledTimes(2);
   });
 });

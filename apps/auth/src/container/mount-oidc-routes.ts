@@ -16,6 +16,7 @@ import type { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Redis } from "ioredis";
 import type { AuthAppEnv } from "../env.js";
+import type { ClientIpResolver } from "../infrastructure/client-ip.js";
 import {
   createAuthIssuerRateLimitMiddleware,
   createMagicLinkIssuerRateLimitMiddleware,
@@ -49,6 +50,7 @@ export type OidcRouteMountOptions = {
   retryResponseCrypto?: { seal(value: string): string; open(value: string): string } | undefined;
   refreshFamilies: IRefreshTokenFamilyRepository;
   replay: RefreshReplayRedis;
+  clientIp: ClientIpResolver;
   services: AuthRouteServicesSlice;
   authHandler: AuthRequestHandler;
   metrics: {
@@ -83,9 +85,12 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     }),
   );
   app.use("/api/auth/*", createAuthNoStoreMiddleware());
-  app.use("/api/auth/*", createSendVerificationIssuerRateLimitMiddleware(options.redis));
-  app.use("/api/auth/*", createAuthIssuerRateLimitMiddleware(options.redis));
-  app.use("/api/auth/*", createMagicLinkIssuerRateLimitMiddleware(options.redis));
+  app.use(
+    "/api/auth/*",
+    createSendVerificationIssuerRateLimitMiddleware(options.redis, options.clientIp),
+  );
+  app.use("/api/auth/*", createAuthIssuerRateLimitMiddleware(options.redis, options.clientIp));
+  app.use("/api/auth/*", createMagicLinkIssuerRateLimitMiddleware(options.redis, options.clientIp));
   app.get("/.well-known/jwks.json", async (c) => {
     c.header("Cache-Control", "public, max-age=60");
     return c.json(await options.auth.api.getJwks());

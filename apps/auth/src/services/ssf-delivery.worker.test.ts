@@ -1,6 +1,10 @@
 import { IDENTITY_EVENT_TYPES, SSF_EVENT_TYPES } from "@auction/identity-contracts";
 import { describe, expect, it, vi } from "vitest";
-import { SsfDeliveryWorker, createOrderedSsfJti } from "./ssf-delivery.worker.js";
+import {
+  SsfDeliveryWorker,
+  createOrderedSsfJti,
+  nextSsfDeliveryAttempt,
+} from "./ssf-delivery.worker.js";
 import { SsfEventMapper } from "./ssf-event.mapper.js";
 import type {
   SsfDeliveryRepository,
@@ -75,6 +79,21 @@ describe("SSF delivery worker", () => {
     expect(() => createOrderedSsfJti("subject-1", Number.MAX_SAFE_INTEGER + 1)).toThrow(
       "invalid_ssf_source_event_id",
     );
+  });
+
+  it("backs failed delivery off from 15 seconds and caps retries at one hour", () => {
+    const now = new Date("2026-08-13T06:00:00Z");
+
+    expect(nextSsfDeliveryAttempt(false, 0, 20, now)).toMatchObject({
+      status: "pending",
+      attemptCount: 1,
+      nextAttemptAt: new Date("2026-08-13T06:00:15Z"),
+    });
+    expect(nextSsfDeliveryAttempt(false, 19, 30, now)).toMatchObject({
+      status: "pending",
+      attemptCount: 20,
+      nextAttemptAt: new Date("2026-08-13T07:00:00Z"),
+    });
   });
 
   it("claims, dispatches, and finalizes terminal retry exhaustion", async () => {

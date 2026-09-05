@@ -13,6 +13,7 @@ const MACHINE_SCOPE = "identity.lifecycle";
 type MachineTokenRedis = {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ex: "EX", ttl: number): Promise<unknown>;
+  del(key: string): Promise<unknown>;
 };
 
 function tokenKey(token: string): string {
@@ -20,9 +21,20 @@ function tokenKey(token: string): string {
 }
 
 function safeEqual(left: string, right: string): boolean {
-  const a = Buffer.from(left);
-  const b = Buffer.from(right);
-  return a.length === b.length && timingSafeEqual(a, b);
+  const a = createHash("sha256").update(left).digest();
+  const b = createHash("sha256").update(right).digest();
+  return timingSafeEqual(a, b);
+}
+
+function hasValidMachineCredentials(
+  credentials: { clientId: string; clientSecret: string } | null,
+  expectedClientId: string,
+  expectedClientSecret: string,
+): boolean {
+  if (!credentials) return false;
+  const clientIdMatches = safeEqual(credentials.clientId, expectedClientId);
+  const clientSecretMatches = safeEqual(credentials.clientSecret, expectedClientSecret);
+  return clientIdMatches && clientSecretMatches;
 }
 
 function parseBasicCredentials(header: string | undefined): {
@@ -60,16 +72,14 @@ export function createInternalIdentityRoutes(options: {
     if (
       body.grant_type !== "client_credentials" ||
       body.scope !== MACHINE_SCOPE ||
-      !credentials ||
-      !safeEqual(credentials.clientId, options.machineClientId) ||
-      !safeEqual(credentials.clientSecret, options.machineClientSecret)
+      !hasValidMachineCredentials(credentials, options.machineClientId, options.machineClientSecret)
     ) {
       c.header("Cache-Control", "no-store");
       return c.json({ error: "invalid_client" }, 401);
     }
 
     const token = randomBytes(32).toString("base64url");
-    await options.redis.set(tokenKey(token), credentials.clientId, "EX", MACHINE_TOKEN_TTL_SEC);
+    await options.redis.set(tokenKey(token), options.machineClientId, "EX", MACHINE_TOKEN_TTL_SEC);
     c.header("Cache-Control", "no-store");
     return c.json({
       access_token: token,
@@ -77,6 +87,22 @@ export function createInternalIdentityRoutes(options: {
       expires_in: MACHINE_TOKEN_TTL_SEC,
       scope: MACHINE_SCOPE,
     });
+  });
+
+  app.post("/oauth/revoke", async (c) => {
+    c.header("Cache-Control", "no-store");
+    const credentials = parseBasicCredentials(c.req.header("authorization"));
+    const body = await c.req.parseBody();
+    if (
+      !hasValidMachineCredentials(credentials, options.machineClientId, options.machineClientSecret)
+    ) {
+      return c.json({ error: "invalid_client" }, 401);
+    }
+    if (typeof body.token !== "string" || !body.token) {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    await options.redis.del(tokenKey(body.token));
+    return c.body(null, 200);
   });
 
   app.use("/identity/*", async (c, next) => {

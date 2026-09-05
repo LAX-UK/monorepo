@@ -118,9 +118,9 @@ export class IdentityOperationsService {
         { type: "user.credential_changed", userId: subjectId, changeType: "create" },
         { transaction },
       );
+      await this.repositories.sessions.purgeSubjectSessionsAndTokens(transaction, subjectId);
     });
     await this.logout?.revokeSubject(subjectId);
-    await this.repositories.sessions.purgeSubjectSessionsAndTokens(null, subjectId);
     await this.notifier.passwordChanged({
       to: subject.email,
       subjectId,
@@ -210,7 +210,6 @@ export class IdentityOperationsService {
 
   async revokeSession(subjectId: string, sessionId: string): Promise<boolean> {
     if (!(await this.repositories.sessions.ownsSession(subjectId, sessionId))) return false;
-    await this.logout?.revokeIdentitySessions([sessionId]);
     let deleted = false;
     await this.repositories.unitOfWork.transaction(async (transaction) => {
       deleted = await this.repositories.sessions.deleteSession(transaction, subjectId, sessionId);
@@ -221,11 +220,11 @@ export class IdentityOperationsService {
         );
       }
     });
+    if (deleted) await this.logout?.revokeIdentitySessions([sessionId]);
     return deleted;
   }
 
   async revokeAllSessions(subjectId: string, exceptSessionToken?: string): Promise<number> {
-    await this.logout?.revokeSubject(subjectId);
     let deletedCount = 0;
     await this.repositories.unitOfWork.transaction(async (transaction) => {
       deletedCount = await this.repositories.sessions.deleteAllSessions(
@@ -240,6 +239,7 @@ export class IdentityOperationsService {
         );
       }
     });
+    if (deletedCount > 0) await this.logout?.revokeSubject(subjectId);
     return deletedCount;
   }
 

@@ -3,6 +3,7 @@ import { AUTH_RATE_LIMIT_POLICY, slidingWindowRetryAfterSec } from "@auction/aut
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
+import type { ClientIpResolver } from "../infrastructure/client-ip.js";
 
 /** Sliding-window thresholds mirroring apps/api to protect the auth issuer from distributed attacks. */
 const RL = AUTH_RATE_LIMIT_POLICY;
@@ -38,17 +39,16 @@ async function emailFromJsonBody(req: Request): Promise<string | null> {
 }
 
 /** Match the API host's strict resend-verification IP and email buckets. */
-export function createSendVerificationIssuerRateLimitMiddleware(redis: Redis) {
+export function createSendVerificationIssuerRateLimitMiddleware(
+  redis: Redis,
+  clientIp: ClientIpResolver,
+) {
   return createMiddleware(async (c, next) => {
     if (c.req.method !== "POST" || !c.req.path.endsWith("/send-verification-email")) {
       await next();
       return;
     }
-    const ip =
-      c.req.header("cf-connecting-ip") ??
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = clientIp(c);
     const ipCount = await slidingIncrement(
       redis,
       `rl:auth-issuer:send-verification-ip:${ip}`,
@@ -80,18 +80,14 @@ export function createSendVerificationIssuerRateLimitMiddleware(redis: Redis) {
  * infra).  Without its own rate limit it is vulnerable to distributed brute-
  * force that bypasses the API gateway.
  */
-export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis) {
+export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis, clientIp: ClientIpResolver) {
   return createMiddleware(async (c, next) => {
     if (c.req.method !== "POST" || !c.req.path.endsWith("/sign-in/magic-link")) {
       await next();
       return;
     }
 
-    const ip =
-      c.req.header("cf-connecting-ip") ??
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = clientIp(c);
     const ipKey = `rl:auth-issuer:magic-link-ip:${ip}`;
     const ipCount = await slidingIncrement(redis, ipKey, RL.magicLinkIpWindowSec);
     if (ipCount > RL.magicLinkIpMax) {
@@ -133,13 +129,9 @@ export function createMagicLinkIssuerRateLimitMiddleware(redis: Redis) {
   });
 }
 
-export function createAuthIssuerRateLimitMiddleware(redis: Redis) {
+export function createAuthIssuerRateLimitMiddleware(redis: Redis, clientIp: ClientIpResolver) {
   return createMiddleware(async (c, next) => {
-    const ip =
-      c.req.header("cf-connecting-ip") ??
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = clientIp(c);
     const path = c.req.path;
     const isTotp = path.includes("two-factor");
     const isSignIn = path.includes("/sign-in");
@@ -201,13 +193,9 @@ export function createAuthIssuerRateLimitMiddleware(redis: Redis) {
 }
 
 /** Protect the public edge from brute-force attempts against machine credentials. */
-export function createMachineTokenRateLimitMiddleware(redis: Redis) {
+export function createMachineTokenRateLimitMiddleware(redis: Redis, clientIp: ClientIpResolver) {
   return createMiddleware(async (c, next) => {
-    const ip =
-      c.req.header("cf-connecting-ip") ??
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = clientIp(c);
     const windowSec = 60;
     const max = 10;
     const key = `rl:auth-issuer:machine-token:${ip}`;

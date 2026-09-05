@@ -35,10 +35,10 @@ describe("runMagicLinkVerifyAfter", () => {
     expect(deps.onEmailVerified).toHaveBeenCalledWith({ id: "u1", email: "a@b.com", name: "A" });
   });
 
-  it("swallows onEmailVerified failures (parity is best-effort)", async () => {
+  it("surfaces email-verification publication failures", async () => {
     const deps = baseDeps({
       onEmailVerified: vi.fn().mockRejectedValue(new Error("boom")),
     });
-    await expect(runMagicLinkVerifyAfter(deps)).resolves.toBeUndefined();
+    await expect(runMagicLinkVerifyAfter(deps)).rejects.toThrow("boom");
   });
 });

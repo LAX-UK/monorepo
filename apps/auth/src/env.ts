@@ -57,6 +57,19 @@ const envSchema = z
         .filter((s) => s.length > 0);
       return parts.length > 0 ? parts : undefined;
     }, z.array(z.string().url()).optional()),
+    AUTH_TRUSTED_PROXY_CIDRS: z
+      .preprocess(
+        (val) => {
+          if (val === undefined || val === "" || val == null) return [];
+          if (typeof val !== "string") return val;
+          return val
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean);
+        },
+        z.array(z.string().min(1)),
+      )
+      .default([]),
     JWT_AUDIENCE: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     AUTH_DEK_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     METRICS_TOKEN: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
@@ -100,6 +113,24 @@ const envSchema = z
   })
   .superRefine((e, ctx) => {
     if (e.NODE_ENV === "production") {
+      const browserFacingUrls: Array<[field: string, url: string]> = [
+        ["OIDC_ISSUER_URL", e.OIDC_ISSUER_URL],
+        ["WEB_ORIGIN", e.WEB_ORIGIN],
+        ...(e.WEB_ORIGINS ?? []).map((url): [field: string, url: string] => ["WEB_ORIGINS", url]),
+        ...(e.SSR_TRUSTED_ORIGINS ?? []).map((url): [field: string, url: string] => [
+          "SSR_TRUSTED_ORIGINS",
+          url,
+        ]),
+      ];
+      for (const [field, url] of browserFacingUrls) {
+        if (new URL(url).protocol !== "https:") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${field} must use HTTPS in NODE_ENV=production`,
+            path: [field],
+          });
+        }
+      }
       if (e.ALLOW_HTTP_COOKIES) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
