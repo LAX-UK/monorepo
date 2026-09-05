@@ -13,7 +13,7 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
 ARG NEXT_PUBLIC_API_URL=http://127.0.0.1:3001
-ARG NEXT_PUBLIC_AUTH_URL=
+ARG NEXT_PUBLIC_AUTH_URL=http://127.0.0.1:3003
 ARG NEXT_PUBLIC_WS_URL=http://127.0.0.1:3002
 ARG NEXT_PUBLIC_SETTLEMENTS_EMAIL=
 ARG NEXT_PUBLIC_SETTLEMENTS_PHONE=
@@ -28,7 +28,7 @@ ARG NEXT_PUBLIC_SENTRY_DSN_WEB=
 # Public site origin — critical: drives canonical URLs, sitemap, robots and the
 # production indexing gate. Must be passed for prebuilt images or the build
 # bakes a non-production origin (noindex / wrong canonical).
-ARG NEXT_PUBLIC_WEB_ORIGIN=
+ARG NEXT_PUBLIC_WEB_ORIGIN=http://127.0.0.1:3000
 ARG NEXT_PUBLIC_CSP_REPORT_URI=
 # Set to "false" for non-production images to keep them out of search indexes.
 ARG NEXT_PUBLIC_ALLOW_INDEXING=
