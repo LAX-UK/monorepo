@@ -107,6 +107,12 @@ The retired `lax-api` audience is denied by default. The temporary
 emitting `identity_legacy_audience_accepted` telemetry; remove the flag and
 compatibility branch after zero acceptances for 30 consecutive days.
 
+Token exchange also binds the declared `subject_token_type` to the JWT `typ`
+header. An access-token subject must use `at+jwt`; an ID-token or generic JWT
+subject may use the OIDC-compatible absent/`JWT` type. Logout tokens, Security
+Event Tokens, and other explicitly typed JWTs are rejected even when signed by
+an active Identity key for the expected client audience.
+
 OIDC advertises public subjects. `sub` is the canonical immutable Identity id.
 Pairwise subjects require a new decision only when an external or independently
 controlled RP needs cross-client unlinkability.
@@ -202,6 +208,74 @@ rows only after the receiver is fixed.
   the other.
 - Global disablement revokes Identity/OAuth sessions and is projected to
   products; each product must deny locally even if another receiver is down.
+
+Better Auth post-write lifecycle hooks await durable outbox publication and
+surface publication failures instead of logging and continuing. Because the
+upstream adapter does not expose its state transaction to those hooks, Auth also
+runs a transaction-locked reconciliation pass every minute. It reconstructs
+missing registration, email-verification, profile-snapshot, and
+credential-change rows from authoritative Identity state. Registration and
+email-verification remain unique in the outbox; profile and credential repair
+compare source `updated_at` with the newest durable event. Password-reset
+session deletion and credential-event insertion share an Auth-owned transaction
+before back-channel logout is dispatched. Security side effects are all
+attempted and any failure remains observable to the caller and telemetry.
+
+Production browser-facing issuer and trusted-origin URLs must use HTTPS.
+Forwarded client-IP headers are ignored unless the immediate network peer is in
+`AUTH_TRUSTED_PROXY_CIDRS`. The issuer walks a trusted `X-Forwarded-For` chain
+from right to left and rate-limits the first untrusted address; malformed or
+untrusted forwarding data falls back to the direct peer. Deployments behind a
+proxy must configure its exact IPv4/IPv6 addresses or CIDRs and must not include
+client networks.
+
+Internal machine tokens are random, stored only by hash with a five-minute TTL,
+and can be invalidated early through the authenticated `/oauth/revoke`
+endpoint. Token exchange rejects empty scope sets as well as unknown,
+cross-product, and duplicate scopes.
+
+Adversarial gates cover missing and mismatched PKCE verifiers in the live
+refresh-reuse probe, callback state/nonce/verifier binding and browser-session
+rotation in the Bid BFF route test, forged browser origins in the Auth package,
+and IP limits for both OAuth token exchange and machine token issue/revocation.
+Machine credential validation always performs both constant-time comparisons
+when Basic credentials are present.
+
+## Source and image portability proof
+
+The extractable source closure is deliberately limited to `apps/auth`,
+`packages/auth`, `packages/identity-contracts`, `packages/identity-db`,
+`packages/observability`, and `packages/config-ts`, plus the root pnpm
+manifests, frozen lockfile, and Node version declaration. Product applications,
+product persistence, queues, and email implementations are outside this
+closure.
+
+`pnpm ci:identity-extractability` is the fast manifest/import policy check.
+`pnpm ci:identity-extraction-rehearsal` provides execution proof by:
+
+1. copying only the approved source closure to a fresh temporary workspace;
+2. excluding existing `node_modules`, build output, coverage, and Turbo caches;
+3. proving a synthetic forbidden `@auction/*` dependency is rejected;
+4. installing the selected closure from `pnpm-lock.yaml` with
+   `--frozen-lockfile`;
+5. building and typechecking the closure in dependency order; and
+6. running every available Identity test suite in that isolated workspace; and
+7. reinstalling production-only dependencies without optional peers and proving
+   that Next.js, Sharp, Vitest, and Playwright are absent from the Auth runtime
+   closure.
+
+CI runs the fast closure check and the hermetic rehearsal together in the
+`identity-portability` job. The Auth Dockerfile uses the same approved
+manifests and source directories, builds without Turbo or unrelated product
+manifests, and runs as the unprivileged `node` user. The Docker matrix remains
+the executable image-build proof.
+
+These gates prove source dependency and image-context portability, not physical
+database separation or target-environment production readiness. They do not
+replace migration application, role probes, reconciliation soak, live
+OIDC/BFF/logout/SSF probes, capacity evidence, rollback rehearsal, or cutover
+approval. A green portability job therefore means “code/extraction ready,” not
+“production promoted.”
 
 ## Per-product database split exit criteria
 

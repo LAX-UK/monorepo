@@ -6,6 +6,8 @@
 #   split/identity/auth              <- packages/auth
 #   split/identity/identity-contracts  <- packages/identity-contracts
 #   split/identity/identity-db         <- packages/identity-db
+#   split/identity/observability       <- packages/observability
+#   split/identity/config-ts           <- packages/config-ts
 #
 # Usage:
 #   ./scripts/identity/repo-split.sh
@@ -25,6 +27,8 @@ declare -a SPLITS=(
   "packages/auth:split/identity/auth"
   "packages/identity-contracts:split/identity/identity-contracts"
   "packages/identity-db:split/identity/identity-db"
+  "packages/observability:split/identity/observability"
+  "packages/config-ts:split/identity/config-ts"
 )
 
 for entry in "${SPLITS[@]}"; do

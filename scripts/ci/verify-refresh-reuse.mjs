@@ -39,17 +39,7 @@ async function form(path, values, headers = {}) {
   });
 }
 
-async function main() {
-  const cookies = new Map();
-  const signIn = await fetch(`${authBase}/api/auth/sign-in/email`, {
-    method: "POST",
-    headers: { "content-type": "application/json", origin: "http://localhost:3000" },
-    body: JSON.stringify({ email, password }),
-  });
-  captureCookies(signIn, cookies);
-  if (!signIn.ok) throw new Error(`sign-in failed (${signIn.status})`);
-
-  const verifier = randomBytes(32).toString("base64url");
+async function issueAuthorizationCode(cookies, verifier) {
   const challenge = createHash("sha256").update(verifier).digest("base64url");
   const state = randomBytes(16).toString("base64url");
   const authorizeUrl = new URL(`${authBase}/api/auth/oauth2/authorize`);
@@ -86,6 +76,48 @@ async function main() {
   if (!consent.ok || callback.searchParams.get("state") !== state || !code) {
     throw new Error(`consent failed (${consent.status})`);
   }
+  return code;
+}
+
+async function main() {
+  const cookies = new Map();
+  const signIn = await fetch(`${authBase}/api/auth/sign-in/email`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+    body: JSON.stringify({ email, password }),
+  });
+  captureCookies(signIn, cookies);
+  if (!signIn.ok) throw new Error(`sign-in failed (${signIn.status})`);
+
+  const missingVerifier = randomBytes(32).toString("base64url");
+  const missingVerifierCode = await issueAuthorizationCode(cookies, missingVerifier);
+  const missingVerifierExchange = await form("/api/auth/oauth2/token", {
+    grant_type: "authorization_code",
+    code: missingVerifierCode,
+    redirect_uri: redirectUri,
+    client_id: clientId,
+    client_secret: clientSecret,
+  });
+  if (missingVerifierExchange.ok) {
+    throw new Error("authorization code exchange accepted a missing PKCE verifier");
+  }
+
+  const mismatchVerifier = randomBytes(32).toString("base64url");
+  const mismatchVerifierCode = await issueAuthorizationCode(cookies, mismatchVerifier);
+  const mismatchExchange = await form("/api/auth/oauth2/token", {
+    grant_type: "authorization_code",
+    code: mismatchVerifierCode,
+    redirect_uri: redirectUri,
+    client_id: clientId,
+    client_secret: clientSecret,
+    code_verifier: randomBytes(32).toString("base64url"),
+  });
+  if (mismatchExchange.ok) {
+    throw new Error("authorization code exchange accepted a mismatched PKCE verifier");
+  }
+
+  const verifier = randomBytes(32).toString("base64url");
+  const code = await issueAuthorizationCode(cookies, verifier);
 
   const exchange = await form("/api/auth/oauth2/token", {
     grant_type: "authorization_code",
@@ -129,7 +161,9 @@ async function main() {
     client_secret: clientSecret,
   });
   if (descendant.ok) throw new Error("descendant refresh token survived family revocation");
-  console.log("refresh rotation, retry grace, replay detection, and family revocation passed");
+  console.log(
+    "PKCE rejection, refresh rotation, retry grace, replay detection, and family revocation passed",
+  );
 }
 
 main().catch((error) => {
