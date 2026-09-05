@@ -17,6 +17,7 @@
     "@auction/identity-db": "workspace:*",
     "@auction/observability": "workspace:*",
     "@better-auth/utils": "^0.4.0",
+    "better-auth": "^1.6.9",
     "@hono/node-server": "^1.13.7",
     "@sentry/node": "^10.51.0",
     "drizzle-orm": "^0.41.0",
