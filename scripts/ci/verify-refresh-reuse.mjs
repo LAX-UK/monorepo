@@ -39,6 +39,36 @@ async function form(path, values, headers = {}) {
   });
 }
 
+function readCodeFromRedirectUri(redirectUriValue, state) {
+  const callback = new URL(redirectUriValue);
+  const code = callback.searchParams.get("code");
+  if (callback.searchParams.get("state") !== state || !code) return null;
+  return code;
+}
+
+async function readAuthorizationCodeFromAuthorizeResponse(authorize, state) {
+  if (authorize.status < 200 || authorize.status >= 400) return null;
+
+  const location = authorize.headers.get("location");
+  if (location) return readCodeFromRedirectUri(location, state);
+
+  const contentType = authorize.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const body = await authorize.clone().json();
+    const redirect =
+      typeof body.redirectURI === "string"
+        ? body.redirectURI
+        : typeof body.url === "string"
+          ? body.url
+          : null;
+    return redirect ? readCodeFromRedirectUri(redirect, state) : null;
+  }
+
+  const html = await authorize.text();
+  const consentCode = html.match(/id="consent-code"[^>]+value="([^"]+)"/)?.[1];
+  return consentCode ? { consentCode } : null;
+}
+
 async function issueAuthorizationCode(cookies, verifier) {
   const challenge = createHash("sha256").update(verifier).digest("base64url");
   const state = randomBytes(16).toString("base64url");
@@ -57,9 +87,10 @@ async function issueAuthorizationCode(cookies, verifier) {
     headers: { cookie: cookieHeader(cookies) },
   });
   captureCookies(authorize, cookies);
-  const html = await authorize.text();
-  const consentCode = html.match(/id="consent-code"[^>]+value="([^"]+)"/)?.[1];
-  if (!authorize.ok || !consentCode) throw new Error(`authorize failed (${authorize.status})`);
+
+  const authorizeResult = await readAuthorizationCodeFromAuthorizeResponse(authorize, state);
+  if (typeof authorizeResult === "string") return authorizeResult;
+  if (!authorizeResult?.consentCode) throw new Error(`authorize failed (${authorize.status})`);
 
   const consent = await fetch(`${authBase}/api/auth/oauth2/consent`, {
     method: "POST",
@@ -68,12 +99,11 @@ async function issueAuthorizationCode(cookies, verifier) {
       cookie: cookieHeader(cookies),
       origin: authBase,
     },
-    body: JSON.stringify({ accept: true, consent_code: consentCode }),
+    body: JSON.stringify({ accept: true, consent_code: authorizeResult.consentCode }),
   });
   const consentBody = await consent.json();
-  const callback = new URL(consentBody.redirectURI);
-  const code = callback.searchParams.get("code");
-  if (!consent.ok || callback.searchParams.get("state") !== state || !code) {
+  const code = readCodeFromRedirectUri(consentBody.redirectURI, state);
+  if (!consent.ok || !code) {
     throw new Error(`consent failed (${consent.status})`);
   }
   return code;
