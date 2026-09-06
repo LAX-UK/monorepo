@@ -188,8 +188,21 @@ jobs:
       - name: Identity boundary conformance
         run: pnpm ci:identity-boundary
 
-      - name: Test
-        run: pnpm turbo run test --affected
+      - name: Test affected packages (excluding web)
+        run: pnpm turbo run test --affected --filter=!@auction/web
+
+      - name: Test web suite (sharded)
+        run: |
+          set -euo pipefail
+          if ! pnpm turbo run test --affected --filter=@auction/web --dry-run 2>&1 | grep -q '@auction/web'; then
+            echo "Web tests not affected; skipping sharded vitest run."
+            exit 0
+          fi
+          pnpm turbo run build --filter=@auction/web...
+          for shard in 1 2 3 4; do
+            echo "Running web vitest shard ${shard}/4"
+            pnpm --filter @auction/web exec vitest run --shard="${shard}/4"
+          done
 
       - name: Runtime ownership smoke gates
         run: pnpm --filter @auction/types build && pnpm --filter @auction/background-runtime build && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
