@@ -64,4 +64,35 @@ describe("user profile update hooks", () => {
 
     expect(onUserUpdated).toHaveBeenCalledTimes(2);
   });
+
+  it("publishes from the durable post-update snapshot without process-local before state", async () => {
+    const onUserUpdated = vi.fn(async () => undefined);
+    const hooks = buildUserDatabaseHooks(createDeps(onUserUpdated));
+
+    await hooks.update.after({
+      id: "subject-1",
+      email: "user@example.com",
+      name: "Updated",
+      phoneNumber: null,
+      image: null,
+    });
+
+    expect(onUserUpdated).toHaveBeenCalledOnce();
+  });
+
+  it("surfaces lifecycle publication failures to the auth request", async () => {
+    const hooks = buildUserDatabaseHooks(
+      createDeps(vi.fn().mockRejectedValue(new Error("outbox unavailable"))),
+    );
+
+    await expect(
+      hooks.update.after({
+        id: "subject-1",
+        email: "user@example.com",
+        name: "Updated",
+        phoneNumber: null,
+        image: null,
+      }),
+    ).rejects.toThrow("outbox unavailable");
+  });
 });

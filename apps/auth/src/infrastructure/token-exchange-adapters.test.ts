@@ -2,6 +2,11 @@ import { ACCESS_TOKEN_TTL_SECONDS } from "@auction/identity-contracts";
 import { symmetricEncrypt } from "better-auth/crypto";
 import { SignJWT, exportJWK, generateKeyPair, jwtVerify } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
+import {
+  ACCESS_TOKEN_TYPE,
+  ID_TOKEN_TYPE,
+  JWT_TOKEN_TYPE,
+} from "../services/token-exchange.service.js";
 import { createIdentityJwtSigner } from "./create-identity-jwt-signer.js";
 import { createTokenExchangePorts } from "./token-exchange-adapters.js";
 
@@ -36,12 +41,18 @@ describe("Identity token exchange cryptography", () => {
     });
   }
 
-  async function subjectToken(overrides: { issuer?: string; audience?: string } = {}) {
+  async function subjectToken(
+    overrides: { issuer?: string; audience?: string; typ?: string } = {},
+  ) {
     const key = await import("jose").then(({ importJWK }) =>
       importJWK(JSON.parse(privateJwk), "RS256"),
     );
     return new SignJWT({})
-      .setProtectedHeader({ alg: "RS256", kid: "active-key" })
+      .setProtectedHeader({
+        alg: "RS256",
+        kid: "active-key",
+        ...(overrides.typ ? { typ: overrides.typ } : {}),
+      })
       .setIssuer(overrides.issuer ?? "https://auth.lax.bid")
       .setAudience(overrides.audience ?? "lax-bid-web")
       .setSubject("subject-1")
@@ -67,6 +78,36 @@ describe("Identity token exchange cryptography", () => {
         ports().verifySubjectToken({
           token,
           tokenType: "urn:ietf:params:oauth:token-type:jwt",
+          expectedAudience: "lax-bid-web",
+        }),
+      ).resolves.toBeNull();
+    }
+  });
+
+  it("binds the declared subject-token type to the JWT typ header", async () => {
+    await expect(
+      ports().verifySubjectToken({
+        token: await subjectToken({ typ: "at+jwt" }),
+        tokenType: ACCESS_TOKEN_TYPE,
+        expectedAudience: "lax-bid-web",
+      }),
+    ).resolves.toEqual({ subject: "subject-1" });
+    await expect(
+      ports().verifySubjectToken({
+        token: await subjectToken(),
+        tokenType: ID_TOKEN_TYPE,
+        expectedAudience: "lax-bid-web",
+      }),
+    ).resolves.toEqual({ subject: "subject-1" });
+
+    for (const input of [
+      { token: await subjectToken(), tokenType: ACCESS_TOKEN_TYPE },
+      { token: await subjectToken({ typ: "logout+jwt" }), tokenType: JWT_TOKEN_TYPE },
+      { token: await subjectToken({ typ: "secevent+jwt" }), tokenType: ID_TOKEN_TYPE },
+    ]) {
+      await expect(
+        ports().verifySubjectToken({
+          ...input,
           expectedAudience: "lax-bid-web",
         }),
       ).resolves.toBeNull();

@@ -43,28 +43,36 @@ export function createAuthRequestHandler(options: {
     if (response.ok && priorSubjectId) {
       if (path.endsWith("/sign-out") || path.endsWith("/oauth2/endsession")) {
         if (priorSessionId) {
-          await options.logout.revokeIdentitySessions([priorSessionId]);
-          await options.events.publish({
-            type: "user.session_revoked",
-            userId: priorSubjectId,
-            sessionId: priorSessionId,
-          });
+          await completeSecuritySideEffects([
+            options.events.publish({
+              type: "user.session_revoked",
+              userId: priorSubjectId,
+              sessionId: priorSessionId,
+            }),
+            options.logout.revokeIdentitySessions([priorSessionId]).then(() => undefined),
+          ]);
         }
       } else if (logoutSensitive) {
-        await options.logout.revokeSubject(priorSubjectId);
+        const effects: Promise<void>[] = [];
         if (path.endsWith("/revoke-sessions")) {
-          await options.events.publish({
-            type: "user.session_revoked",
-            userId: priorSubjectId,
-          });
+          effects.push(
+            options.events.publish({
+              type: "user.session_revoked",
+              userId: priorSubjectId,
+            }),
+          );
         }
         if (path.endsWith("/change-password")) {
-          await options.events.publish({
-            type: "user.credential_changed",
-            userId: priorSubjectId,
-            changeType: "update",
-          });
+          effects.push(
+            options.events.publish({
+              type: "user.credential_changed",
+              userId: priorSubjectId,
+              changeType: "update",
+            }),
+          );
         }
+        effects.push(options.logout.revokeSubject(priorSubjectId).then(() => undefined));
+        await completeSecuritySideEffects(effects);
       }
     }
     if (
@@ -96,4 +104,14 @@ export function createAuthRequestHandler(options: {
     }
     return response;
   };
+}
+
+async function completeSecuritySideEffects(effects: Promise<void>[]): Promise<void> {
+  const failures = (await Promise.allSettled(effects))
+    .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+    .map((result) => result.reason);
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1) {
+    throw new AggregateError(failures, "Multiple authentication security side effects failed");
+  }
 }

@@ -7,6 +7,8 @@ import {
   createSendVerificationIssuerRateLimitMiddleware,
 } from "./auth-rate-limit.js";
 
+const clientIp = () => "192.0.2.1";
+
 function buildFakeRedis(counts: number[]) {
   let call = 0;
   return {
@@ -34,7 +36,7 @@ function createApp(counts: number[]) {
   const app = new Hono();
   app.use(
     "/api/auth/*",
-    createSendVerificationIssuerRateLimitMiddleware(buildFakeRedis(counts) as never),
+    createSendVerificationIssuerRateLimitMiddleware(buildFakeRedis(counts) as never, clientIp),
   );
   app.post("/api/auth/send-verification-email", (c) => c.json({ ok: true }));
   return app;
@@ -76,23 +78,29 @@ describe("standalone verification email rate limit", () => {
 });
 
 describe("machine token rate limit", () => {
-  it("blocks attempts over the per-IP limit", async () => {
-    const app = new Hono();
-    app.use(
-      "/internal/oauth/token",
-      createMachineTokenRateLimitMiddleware(buildFakeRedis([11]) as never),
-    );
-    app.post("/internal/oauth/token", (c) => c.json({ ok: true }));
+  it.each(["/internal/oauth/token", "/internal/oauth/revoke"])(
+    "blocks attempts over the per-IP limit for %s",
+    async (path) => {
+      const app = new Hono();
+      app.use(
+        "/internal/oauth/*",
+        createMachineTokenRateLimitMiddleware(buildFakeRedis([11]) as never, clientIp),
+      );
+      app.post(path, (c) => c.json({ ok: true }));
 
-    const response = await app.request("/internal/oauth/token", { method: "POST" });
-    expect(response.status).toBe(429);
-  });
+      const response = await app.request(path, { method: "POST" });
+      expect(response.status).toBe(429);
+    },
+  );
 });
 
 describe("session read rate limit", () => {
   function createSessionApp(count: number) {
     const app = new Hono();
-    app.use("/api/auth/*", createAuthIssuerRateLimitMiddleware(buildFakeRedis([count]) as never));
+    app.use(
+      "/api/auth/*",
+      createAuthIssuerRateLimitMiddleware(buildFakeRedis([count]) as never, clientIp),
+    );
     app.get("/api/auth/get-session", (c) => c.json({ user: null }));
     return app;
   }
@@ -112,10 +120,30 @@ describe("session read rate limit", () => {
   });
 });
 
+describe("OAuth token endpoint rate limit", () => {
+  it("bounds repeated authorization-code and refresh exchanges by client IP", async () => {
+    const app = new Hono();
+    app.use(
+      "/api/auth/*",
+      createAuthIssuerRateLimitMiddleware(
+        buildFakeRedis([AUTH_RATE_LIMIT_POLICY.authGeneralMax + 1]) as never,
+        clientIp,
+      ),
+    );
+    app.post("/api/auth/oauth2/token", (c) => c.json({ ok: true }));
+
+    const response = await app.request("/api/auth/oauth2/token", { method: "POST" });
+    expect(response.status).toBe(429);
+  });
+});
+
 describe("sign-in rate limit", () => {
   function createSignInApp(counts: number[]) {
     const app = new Hono();
-    app.use("/api/auth/*", createAuthIssuerRateLimitMiddleware(buildFakeRedis(counts) as never));
+    app.use(
+      "/api/auth/*",
+      createAuthIssuerRateLimitMiddleware(buildFakeRedis(counts) as never, clientIp),
+    );
     app.post("/api/auth/sign-in/email", (c) => c.json({ ok: true }));
     return app;
   }

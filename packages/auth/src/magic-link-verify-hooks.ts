@@ -23,12 +23,7 @@ export async function runMagicLinkVerifyAfter(deps: {
   if (!user || !sessionToken) return;
 
   if (deps.onEmailVerified) {
-    void deps.onEmailVerified({ id: user.id, email: user.email, name: user.name }).catch((err) => {
-      console.error("[auth] onEmailVerified after magic-link failed", {
-        userId: user.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    });
+    await deps.onEmailVerified({ id: user.id, email: user.email, name: user.name });
   }
 }
 

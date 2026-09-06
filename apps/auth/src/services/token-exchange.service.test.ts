@@ -8,6 +8,18 @@ import {
 } from "./token-exchange.service.js";
 
 describe("token exchange policy", () => {
+  it("rejects an empty requested scope", () => {
+    expect(() =>
+      resolveTokenExchangePolicy({
+        clientId: "lax-shop-web",
+        resource: "https://shop.lax.art/api",
+        scope: "",
+      }),
+    ).toThrowError(
+      new TokenExchangeError("invalid_scope", "At least one product scope is required"),
+    );
+  });
+
   it("maps canonical resource indicators to one audience", () => {
     expect(
       resolveTokenExchangePolicy({

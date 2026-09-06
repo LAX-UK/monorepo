@@ -14,7 +14,11 @@ import type {
   LogoutTokenClaims,
   LogoutTokenSigner,
 } from "../services/backchannel-logout.service.js";
-import type { TokenExchangePorts } from "../services/token-exchange.service.js";
+import {
+  ACCESS_TOKEN_TYPE,
+  ID_TOKEN_TYPE,
+  type TokenExchangePorts,
+} from "../services/token-exchange.service.js";
 import type { IdentityJwtSigner } from "./identity-jwt-signer.ports.js";
 import type { JwksProvider } from "./jwks-provider.js";
 
@@ -88,7 +92,7 @@ export function createTokenExchangePorts(options: {
 }): TokenExchangePorts {
   const issuer = options.issuer.replace(/\/+$/, "");
   return {
-    async verifySubjectToken({ token, expectedAudience }) {
+    async verifySubjectToken({ token, tokenType, expectedAudience }) {
       try {
         const storedKeys = await options.jwks.getJwks();
         const keys = storedKeys.map((stored) => ({
@@ -101,6 +105,14 @@ export function createTokenExchangePorts(options: {
           issuer,
           algorithms: ["RS256"],
         });
+        const typ = result.protectedHeader.typ;
+        const tokenClassMatches =
+          tokenType === ACCESS_TOKEN_TYPE
+            ? typ === "at+jwt"
+            : tokenType === ID_TOKEN_TYPE
+              ? typ === undefined || typ === "JWT"
+              : typ === undefined || typ === "JWT";
+        if (!tokenClassMatches) return null;
         // Token exchange is bound to the authenticated client that received the
         // source token. Arrays and multi-audience tokens are deliberately denied.
         if (!result.payload.sub || result.payload.aud !== expectedAudience) return null;

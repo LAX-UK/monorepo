@@ -195,8 +195,12 @@ export function createAuthLifecycleCallbacks(
     onAccountCreated:
       adapters.completeOAuthAttribution || adapters.publishUserRegisteredForAccount
         ? async (account) => {
-            await adapters.completeOAuthAttribution?.(account);
             await adapters.publishUserRegisteredForAccount?.(account);
+            if (adapters.completeOAuthAttribution) {
+              await adapters.completeOAuthAttribution(account).catch((error: unknown) => {
+                adapters.onNonBlockingError?.("oauth-attribution", error, account.userId);
+              });
+            }
           }
         : undefined,
     onEmailVerified: adapters.publishUserEmailVerified

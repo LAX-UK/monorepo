@@ -12,6 +12,7 @@ import { sql } from "drizzle-orm";
 import type { Hono } from "hono";
 import type { Redis } from "ioredis";
 import type pino from "pino";
+import type { ClientIpResolver } from "../infrastructure/client-ip.js";
 import { createMachineTokenRateLimitMiddleware } from "../middleware/auth-rate-limit.js";
 
 export type AuthOperationalRoutes = {
@@ -21,6 +22,7 @@ export type AuthOperationalRoutes = {
   nodeEnv: "development" | "test" | "production";
   metricsToken?: string | undefined;
   metrics: { metrics(): Promise<string> };
+  clientIp: ClientIpResolver;
   internal?: { redis: Redis; routes: Hono } | undefined;
 };
 
@@ -59,7 +61,10 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
     );
   });
   if (options.internal) {
-    app.use("/internal/oauth/token", createMachineTokenRateLimitMiddleware(options.internal.redis));
+    app.use(
+      "/internal/oauth/*",
+      createMachineTokenRateLimitMiddleware(options.internal.redis, options.clientIp),
+    );
     app.route("/internal", options.internal.routes);
   }
   app.get("/health/live", (c) => c.json({ service: "auction-auth", status: "ok" }));

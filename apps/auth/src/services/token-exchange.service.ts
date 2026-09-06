@@ -69,6 +69,9 @@ export function resolveTokenExchangePolicy(input: {
   }
 
   const requested = (input.scope ?? "").split(/\s+/).filter(Boolean) as ProductScope[];
+  if (requested.length === 0) {
+    throw new TokenExchangeError("invalid_scope", "At least one product scope is required");
+  }
   if (new Set(requested).size !== requested.length) {
     throw new TokenExchangeError("invalid_scope", "The requested scope contains duplicates");
   }

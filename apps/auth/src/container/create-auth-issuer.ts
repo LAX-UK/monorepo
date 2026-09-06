@@ -22,6 +22,28 @@ import type { OidcSessionCoordinator } from "../services/oidc-session-coordinato
 import { publishIdentityProfileUpdated } from "../services/publish-identity-profile-updated.js";
 import { publishUserEmailVerified } from "../services/publish-user-email-verified.js";
 
+export function createPasswordResetSessionRevoker(options: {
+  db: IdentityDatabase;
+  logout: Pick<BackchannelLogoutRevoker, "revokeSubject">;
+  identityEventPublisher: IdentityEventPublisher;
+}): (userId: string) => Promise<number> {
+  return async (userId) => {
+    let rows: { id: string }[] = [];
+    await options.db.transaction(async (transaction) => {
+      rows = await transaction
+        .delete(session)
+        .where(eq(session.userId, userId))
+        .returning({ id: session.id });
+      await options.identityEventPublisher.publish(
+        { type: "user.credential_changed", userId, changeType: "update" },
+        { transaction },
+      );
+    });
+    await options.logout.revokeSubject(userId);
+    return rows.length;
+  };
+}
+
 export function createAuthIssuer(options: {
   env: AuthAppEnv;
   db: IdentityDatabase;
@@ -92,7 +114,7 @@ export function createAuthIssuer(options: {
         email: user.email,
       }),
     onNonBlockingError: (_stage, error, userId) => {
-      options.log.error({ error, userId }, "failed to mark new user for OAuth attribution");
+      options.log.error({ error, userId }, "oauth_attribution_failed");
     },
   });
   const env = options.env;
@@ -124,14 +146,7 @@ export function createAuthIssuer(options: {
     jwtAudience: env.JWT_AUDIENCE ?? DEFAULT_JWT_AUDIENCE,
     totpIssuer: env.TOTP_ISSUER ?? "LAX",
     sessionsSettingsUrl: `${env.WEB_ORIGIN.replace(/\/$/, "")}/dashboard/settings/sessions`,
-    revokeAllSessions: async (userId) => {
-      await options.logout.revokeSubject(userId);
-      const rows = await options.db
-        .delete(session)
-        .where(eq(session.userId, userId))
-        .returning({ id: session.id });
-      return rows.length;
-    },
+    revokeAllSessions: createPasswordResetSessionRevoker(options),
     ...lifecycle,
     onUserUpdated: (user) =>
       publishIdentityProfileUpdated(options.identityEventPublisher, {

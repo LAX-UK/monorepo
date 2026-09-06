@@ -87,6 +87,32 @@ describe("createAuth", () => {
     ).not.toThrow();
   });
 
+  it("rejects credential writes from an untrusted browser origin", async () => {
+    const auth = createAuth({
+      database: mockAuthDatabase(),
+      ports: mockAuthPorts(),
+      secret: "test-secret-that-is-long-enough",
+      baseURL: "https://auth.example.com",
+      trustedOrigins: ["https://web.example.com"],
+    });
+    // Better Auth disables origin checks under NODE_ENV=test; force the production branch.
+    (await auth.$context).skipOriginCheck = false;
+
+    const response = await auth.handler(
+      new Request("https://auth.example.com/api/auth/sign-in/email", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: "better-auth.session_token=attacker-session",
+          origin: "https://attacker.example.com",
+        },
+        body: JSON.stringify({ email: "user@example.com", password: "password" }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
   it("registers Google and Apple providers when credentials are configured", () => {
     expect(
       createSocialProviders({

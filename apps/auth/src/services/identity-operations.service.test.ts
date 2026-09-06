@@ -162,7 +162,7 @@ describe("IdentityOperationsService", () => {
     );
     expect(logout.revokeSubject).toHaveBeenCalledWith("subject");
     expect(repositories.sessions.purgeSubjectSessionsAndTokens).toHaveBeenCalledWith(
-      null,
+      transaction,
       "subject",
     );
     expect(notifier.passwordChanged).toHaveBeenCalledWith({
@@ -214,8 +214,8 @@ describe("IdentityOperationsService", () => {
     expect(identityEventPublisher.publish).not.toHaveBeenCalled();
   });
 
-  it("publishes session revocation only after a deletion", async () => {
-    const { service, repositories, identityEventPublisher } = createService();
+  it("commits session revocation before dispatching logout", async () => {
+    const { service, repositories, identityEventPublisher, logout } = createService();
 
     await expect(service.revokeSession("subject", "session")).resolves.toBe(true);
     expect(repositories.sessions.deleteSession).toHaveBeenCalledWith(
@@ -231,6 +231,31 @@ describe("IdentityOperationsService", () => {
       },
       { transaction },
     );
+    expect(vi.mocked(repositories.sessions.deleteSession).mock.invocationCallOrder[0]).toBeLessThan(
+      logout.revokeIdentitySessions.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it("does not dispatch logout when the session transaction fails", async () => {
+    const repositories = createRepositories();
+    vi.mocked(repositories.sessions.deleteSession).mockRejectedValue(
+      new Error("database unavailable"),
+    );
+    const { service, logout } = createService(repositories);
+
+    await expect(service.revokeSession("subject", "session")).rejects.toThrow(
+      "database unavailable",
+    );
+    expect(logout.revokeIdentitySessions).not.toHaveBeenCalled();
+  });
+
+  it("dispatches subject logout only after revoke-all commits", async () => {
+    const { service, repositories, logout } = createService();
+
+    await expect(service.revokeAllSessions("subject")).resolves.toBe(1);
+    expect(
+      vi.mocked(repositories.sessions.deleteAllSessions).mock.invocationCallOrder[0],
+    ).toBeLessThan(logout.revokeSubject.mock.invocationCallOrder[0] ?? 0);
   });
 
   it.each([
