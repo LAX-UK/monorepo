@@ -99,20 +99,32 @@ jobs:
       - name: Package layer direction
         run: node scripts/check-layers.mjs
 
-      - name: Identity extractability
-        run: pnpm ci:identity-extractability
-
       - name: Identity exit criteria
         run: pnpm ci:identity-exit-criteria
-
-      - name: Identity extraction rehearsal
-        run: node scripts/ci/rehearse-identity-extraction.mjs
 
       - name: API route DIP coverage
         run: node apps/api/scripts/check-route-dip-coverage.mjs
 
       - name: Typecheck
         run: pnpm turbo run typecheck --affected
+
+  identity-portability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Verify Identity dependency closure
+        run: pnpm ci:identity-extractability
+
+      - name: Rehearse hermetic Identity extraction
+        run: pnpm ci:identity-extraction-rehearsal
 
   test:
     runs-on: ubuntu-latest
@@ -147,6 +159,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch main for turbo affected
+        run: git fetch origin main:main
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -176,8 +191,21 @@ jobs:
       - name: Identity boundary conformance
         run: pnpm ci:identity-boundary
 
-      - name: Test
-        run: pnpm turbo run test --affected
+      - name: Test affected packages (excluding web)
+        run: pnpm turbo run test --affected --filter=!@auction/web
+
+      - name: Test web suite (sharded)
+        run: |
+          set -euo pipefail
+          if ! pnpm turbo run test --affected --filter=@auction/web --dry-run 2>&1 | grep -q '@auction/web'; then
+            echo "Web tests not affected; skipping sharded vitest run."
+            exit 0
+          fi
+          pnpm turbo run build --filter=@auction/web...
+          for shard in 1 2 3 4; do
+            echo "Running web vitest shard ${shard}/4"
+            pnpm --filter @auction/web exec vitest run --shard="${shard}/4"
+          done
 
       - name: Runtime ownership smoke gates
         run: pnpm --filter @auction/types build && pnpm --filter @auction/background-runtime build && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
@@ -327,6 +355,8 @@ jobs:
         include:
           - component: auth
             dockerfile: apps/auth/Dockerfile
+          - component: shop-identity
+            dockerfile: apps/shop-identity/Dockerfile
           - component: web
             dockerfile: apps/web/Dockerfile
     steps:
