@@ -13,10 +13,10 @@
   },
   "dependencies": {
     "@auction/identity-contracts": "workspace:*",
+    "@auction/observability": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
-    "@auction/observability": "workspace:*",
-    "@sentry/node": "^10.51.0",
+    "@sentry/node": "10.51.0",
     "ioredis": "^5.4.2",
     "jose": "^6.2.3",
     "pino": "^10.3.1",

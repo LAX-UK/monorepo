@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const betterAuthRoot = resolve(import.meta.dirname, "../../../../node_modules/better-auth");
+const require = createRequire(import.meta.url);
+const betterAuthRoot = resolve(dirname(require.resolve("better-auth")), "..");
 
 async function sha256(path: string): Promise<string> {
   return createHash("sha256")
@@ -11,18 +13,18 @@ async function sha256(path: string): Promise<string> {
     .digest("hex");
 }
 
-describe("Better Auth 1.6.9 OIDC compatibility contract", () => {
+describe("Better Auth 1.6.22 OIDC compatibility contract", () => {
   it("pins the exact upstream implementation used by session claim interception", async () => {
     const packageJson = JSON.parse(
       await readFile(resolve(betterAuthRoot, "package.json"), "utf8"),
     ) as { version: string };
-    expect(packageJson.version).toBe("1.6.9");
+    expect(packageJson.version).toBe("1.6.22");
     await expect(
       sha256(resolve(betterAuthRoot, "dist/plugins/oidc-provider/index.mjs")),
-    ).resolves.toBe("924d063a2aeb658c8e37aa7681951183bbf1c3eacd6d073c87b51492f0b57bc3");
+    ).resolves.toBe("f197a47338d5fddc4c0fb53e078fe77e92e191e9c3e7f36a11cdb9fc434cd037");
     await expect(
       sha256(resolve(betterAuthRoot, "dist/plugins/oidc-provider/authorize.mjs")),
-    ).resolves.toBe("2e0b17cf2a2121cb86f05da13392d8190545cebc34866cc9ad1c951215cc162f");
+    ).resolves.toBe("d22b3eae8f557af7bd483ebf27ceff821f4221d78c92d6ddcbb919feb7ae4604");
   });
 
   it("pins the supported callback and authorize/token response assumptions", async () => {
@@ -37,7 +39,18 @@ describe("Better Auth 1.6.9 OIDC compatibility contract", () => {
       'return ctx.json({\n\t\t\t\t\taccess_token: accessToken,\n\t\t\t\t\ttoken_type: "Bearer"',
     );
     expect(tokenSource).toContain(
-      "await ctx.context.internalAdapter.deleteVerificationByIdentifier(code.toString())",
+      "await ctx.context.internalAdapter.consumeVerificationValue(code.toString())",
+    );
+    expect(tokenSource).toContain(
+      "if (token.clientId !== client_id?.toString()) throw new APIError",
+    );
+    expect(tokenSource).toContain("if (options.requirePKCE && !code_verifier)");
+    expect(tokenSource).toContain(
+      '(value.codeChallengeMethod === "plain" ? code_verifier : await createHash("SHA-256", "base64urlnopad").digest(code_verifier)) !== value.codeChallenge',
+    );
+    expect(tokenSource).toContain("client_secret is required for confidential clients");
+    expect(authorizeSource).toContain(
+      'const allowedCodeChallengeMethods = options.allowPlainCodeChallengeMethod ? ["s256", "plain"] : ["s256"]',
     );
     expect(authorizeSource).toContain('redirectURIWithCode.searchParams.set("code", code)');
     expect(authorizeSource).toContain("return handleRedirect(redirectURIWithCode.toString())");

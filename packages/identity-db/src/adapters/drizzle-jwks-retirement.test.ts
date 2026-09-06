@@ -1,30 +1,11 @@
-import type { IdentityDatabase } from "@auction/identity-db";
-import { jwksKey } from "@auction/identity-db/schema";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jwksKey } from "../schema/jwks-key.js";
+import type { IdentityDatabase } from "./drizzle-consent-store.js";
+import { retireExpiredJwksKeys, startJwksRetirementSchedule } from "./drizzle-jwks-retirement.js";
 
-const orm = vi.hoisted(() => ({
-  and: vi.fn((...conditions: unknown[]) => ({ kind: "and", conditions })),
-  eq: vi.fn((column: unknown, value: unknown) => ({ kind: "eq", column, value })),
-  lt: vi.fn((column: unknown, value: unknown) => ({ kind: "lt", column, value })),
-  sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => ({
-    kind: "sql",
-    strings: Array.from(strings),
-    values,
-  })),
-}));
-
-vi.mock("drizzle-orm", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("drizzle-orm")>();
-  return {
-    ...actual,
-    and: orm.and,
-    eq: orm.eq,
-    lt: orm.lt,
-    sql: orm.sql,
-  };
-});
-
-const { retireExpiredJwksKeys, startJwksRetirementSchedule } = await import("@auction/identity-db");
+const dialect = new PgDialect();
 
 function createMockDb() {
   const where = vi.fn(async () => undefined);
@@ -60,21 +41,10 @@ describe("retireExpiredJwksKeys", () => {
     expect(update).toHaveBeenCalledWith(jwksKey);
     expect(set).toHaveBeenCalledWith({ status: "retired" });
 
-    const predicate = (where.mock.calls as unknown[][])[0]?.[0] as {
-      kind: string;
-      conditions: Array<{ kind: string; column: unknown; value: unknown }>;
-    };
-    expect(predicate.kind).toBe("and");
-    expect(predicate.conditions[0]).toMatchObject({
-      kind: "eq",
-      column: jwksKey.status,
-      value: "rotating",
-    });
-    expect(predicate.conditions[1]).toMatchObject({
-      kind: "lt",
-      column: jwksKey.rotatedAt,
-      value: new Date("2026-05-03T18:09:59.062Z"),
-    });
+    const predicate = (where.mock.calls as unknown[][])[0]?.[0] as SQL;
+    const query = dialect.sqlToQuery(predicate);
+    expect(query.sql).toBe(`("jwks_key"."status" = $1 and "jwks_key"."rotated_at" < $2)`);
+    expect(query.params).toEqual(["rotating", "2026-05-03T18:09:59.062Z"]);
   });
 });
 
@@ -102,10 +72,9 @@ describe("startJwksRetirementSchedule", () => {
 
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(execute).toHaveBeenCalledTimes(1);
-    expect(execute.mock.calls[0]?.[0]).toMatchObject({
-      kind: "sql",
-      values: ["123"],
-    });
+    const lockQuery = dialect.sqlToQuery(execute.mock.calls[0]?.[0] as SQL);
+    expect(lockQuery.sql).toBe("select pg_try_advisory_xact_lock($1::bigint) as lock_acquired");
+    expect(lockQuery.params).toEqual(["123"]);
     expect(update).toHaveBeenCalledWith(jwksKey);
     expect(log.info).toHaveBeenCalledWith({ lockKey: "123" }, "jwks_retirement_tick");
     expect(log.error).not.toHaveBeenCalled();
