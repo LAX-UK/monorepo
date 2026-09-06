@@ -128,12 +128,12 @@ export async function reconcileIdentityLifecycleOutbox(
         jsonb_build_object(
           'userId', candidates."id",
           'email', candidates."email",
-          'verifiedAt', ${now}
+          'verifiedAt', ${now}::timestamptz
         ),
         'apps/auth-reconciliation',
         candidates."id",
         1,
-        ${now}
+        ${now}::timestamptz
       FROM candidates
       ON CONFLICT DO NOTHING
     `);
