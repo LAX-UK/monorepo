@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { prepareIdentityWorkspace } from "../ci/prepare-identity-lockfile.mjs";
+import {
+  identityPnpmEnvironment,
+  prepareIdentityWorkspace,
+} from "../ci/prepare-identity-lockfile.mjs";
 import { IDENTITY_PACKAGES, IDENTITY_PACKAGE_NAMES, IDENTITY_PACKAGE_PATHS } from "./closure.mjs";
 import { extractIdentityHistory } from "./extract-history.mjs";
 import { importSpecifiers } from "./import-specifiers.mjs";
@@ -34,6 +37,11 @@ test("closure fixes the six path-preserving workspace packages", () => {
 test("Docker COPY paths stay aligned with the package closure", () => {
   const dockerfile = readFileSync(join(repoRoot, "apps/auth/Dockerfile"), "utf8");
   assert.deepEqual(verifyDockerClosureText(dockerfile), []);
+  assert.match(dockerfile, /RUN corepack enable/);
+  assert.doesNotMatch(dockerfile, /COREPACK_ENABLE_PROJECT_SPEC|corepack prepare/);
+  assert.equal(dockerfile.match(/--config\.node-linker=isolated/g)?.length, 2);
+  assert.doesNotMatch(dockerfile, /COPY scripts\/ci\/prepare-identity-lockfile\.mjs/);
+  assert.doesNotMatch(dockerfile, /node scripts\/ci\/prepare-identity-lockfile\.mjs/);
 
   const drifted = dockerfile.replaceAll(
     "COPY packages/identity-db/package.json ./packages/identity-db/",
@@ -127,6 +135,23 @@ test("bootstrap writes an exact isolated workspace without generating a lockfile
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("Identity pnpm children ignore parent workspace topology", () => {
+  assert.deepEqual(
+    identityPnpmEnvironment({
+      npm_config_node_linker: "hoisted",
+      npm_config_auto_install_peers: "true",
+      npm_config_dedupe_peer_dependents: "true",
+      npm_config_public_hoist_pattern: "*",
+      npm_config_store_dir: "/tmp/identity-store",
+      PATH: "/usr/bin",
+    }),
+    {
+      npm_config_store_dir: "/tmp/identity-store",
+      PATH: "/usr/bin",
+    },
+  );
 });
 
 test("history extraction is one path-preserving filter operation", () => {

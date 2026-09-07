@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM node:22-alpine AS base
-RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
+RUN corepack enable
 WORKDIR /app
 
 FROM base AS deps
@@ -11,11 +11,7 @@ COPY packages/config-ts/package.json ./packages/config-ts/
 COPY packages/identity-contracts/package.json ./packages/identity-contracts/
 COPY packages/identity-db/package.json ./packages/identity-db/
 COPY packages/observability/package.json ./packages/observability/
-COPY scripts/ci/prepare-identity-lockfile.mjs ./scripts/ci/prepare-identity-lockfile.mjs
-RUN node scripts/ci/prepare-identity-lockfile.mjs pnpm-lock.yaml package.json \
-  && pnpm --config.node-linker=isolated install \
-    --frozen-lockfile \
-    --filter @auction/auth-app...
+RUN pnpm --config.node-linker=isolated install --frozen-lockfile --filter @auction/auth-app...
 
 FROM deps AS builder
 COPY apps/auth ./apps/auth
@@ -34,9 +30,7 @@ COPY packages/config-ts/package.json ./packages/config-ts/
 COPY packages/identity-contracts/package.json ./packages/identity-contracts/
 COPY packages/identity-db/package.json ./packages/identity-db/
 COPY packages/observability/package.json ./packages/observability/
-COPY scripts/ci/prepare-identity-lockfile.mjs ./scripts/ci/prepare-identity-lockfile.mjs
-RUN node scripts/ci/prepare-identity-lockfile.mjs pnpm-lock.yaml package.json \
-  && pnpm --config.node-linker=isolated install \
+RUN pnpm --config.node-linker=isolated install \
   --prod \
   --no-optional \
   --frozen-lockfile \

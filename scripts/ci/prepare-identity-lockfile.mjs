@@ -6,6 +6,17 @@ import { fileURLToPath } from "node:url";
 
 export const IDENTITY_PNPM_VERSION = "10.34.5";
 
+const IDENTITY_WORKSPACE_CONFIG_ENV =
+  /^npm_config_(?:node_linker|auto_install_peers|dedupe_peer_dependents|public_hoist_pattern)$/i;
+
+export function identityPnpmEnvironment(source = process.env) {
+  const environment = { ...source };
+  for (const name of Object.keys(environment)) {
+    if (IDENTITY_WORKSPACE_CONFIG_ENV.test(name)) delete environment[name];
+  }
+  return environment;
+}
+
 const BIOME_CONFIG = {
   $schema: "https://biomejs.dev/schemas/1.9.4/schema.json",
   vcs: { enabled: true, clientKind: "git", useIgnoreFile: true },
@@ -117,6 +128,7 @@ export function generateIdentityLockfile(workspaceRoot) {
     ],
     {
       cwd: workspaceRoot,
+      env: identityPnpmEnvironment(),
       stdio: "inherit",
     },
   );
@@ -138,6 +150,7 @@ export function generateIdentityLockfile(workspaceRoot) {
           ],
           {
             cwd: workspaceRoot,
+            env: identityPnpmEnvironment(),
             stdio: "inherit",
           },
         )

@@ -33,9 +33,6 @@ export function verifyDockerClosureText(dockerfile) {
   for (const sourcePath of IDENTITY_DOCKER.sourceCopyPaths) {
     if (!sources.has(sourcePath)) violations.push(`missing source COPY ${sourcePath}`);
   }
-  if (!sources.has(IDENTITY_DOCKER.prepareScript)) {
-    violations.push(`missing tool COPY ${IDENTITY_DOCKER.prepareScript}`);
-  }
   if (!dockerfile.includes(`--filter ${IDENTITY_DOCKER.workspaceFilter}`)) {
     violations.push(`missing workspace filter ${IDENTITY_DOCKER.workspaceFilter}`);
   }

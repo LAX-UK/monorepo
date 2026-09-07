@@ -53,7 +53,6 @@ export const IDENTITY_GENERATED_ROOT_FILES = Object.freeze([
 export const IDENTITY_DOCKER = Object.freeze({
   dockerfile: "apps/auth/Dockerfile",
   workspaceFilter: "@auction/auth-app...",
-  prepareScript: "scripts/ci/prepare-identity-lockfile.mjs",
   manifestCopyPaths: Object.freeze(IDENTITY_PACKAGE_PATHS.map((path) => `${path}/package.json`)),
   sourceCopyPaths: IDENTITY_PACKAGE_PATHS,
 });

@@ -49,6 +49,26 @@ issuer `https://test-auth.lax.bid`; JWKS key ID
 document does not yet advertise `end_session_endpoint`; this is baseline
 evidence, not a passing target-host result.
 
+### Lockfile portability diagnosis
+
+Diagnostic commit `e19e721e79cb699b3654b99d06d608c8f7577dc2` and
+[CI run 34146359250](https://github.com/LAX-UK/monorepo/actions/runs/34146359250)
+captured the generated closure lock and effective pnpm configuration. The CI
+lock and a cold-store local lock were byte-for-byte identical at SHA-256
+`a33b4f496a0f44a4f780c556d84c4aa8fc6ea2770956cdc6ee4a10167a435624`.
+
+The failure was configuration inheritance, not nondeterministic resolution.
+The CI workflow launches the Node rehearsal through the monorepo pnpm script,
+which exported the parent `node-linker=hoisted` as
+`npm_config_node_linker=hoisted`. That environment value overrode the
+extracted workspace's `node-linker=isolated` and made pnpm 10.34.5 reject the
+otherwise valid lock while filtering production dependencies. The captured
+workspace reproduced the missing `vitest@3.2.7` lock entry with the inherited
+value and passed unchanged after removing it. Identity lock generation and
+rehearsal now remove parent workspace-topology pnpm variables before invoking
+child pnpm, leaving registry, authentication, proxy, and store configuration
+intact.
+
 - [ ] Full monorepo verification and Identity extraction rehearsal green.
 - [ ] Filtered Identity history passed full-history Gitleaks.
 - [ ] Standalone CI ran every DB integration test; none skipped for missing

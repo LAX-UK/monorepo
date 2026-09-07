@@ -19,16 +19,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { IDENTITY_PACKAGE_PATHS } from "../identity/closure.mjs";
 import { extractIdentityRepository } from "../identity/extract-identity.mjs";
-import { IDENTITY_PNPM_VERSION } from "./prepare-identity-lockfile.mjs";
+import { IDENTITY_PNPM_VERSION, identityPnpmEnvironment } from "./prepare-identity-lockfile.mjs";
 import { assertRepoNodeVersion } from "./require-node-version.mjs";
 
 assertRepoNodeVersion({ tool: "Identity extraction rehearsal" });
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
-function run(label, command, args, cwd = repoRoot) {
+function run(label, command, args, cwd = repoRoot, env = process.env) {
   console.log(`\n=== ${label} ===`);
-  const result = spawnSync(command, args, { cwd, stdio: "inherit" });
+  const result = spawnSync(command, args, { cwd, env, stdio: "inherit" });
   if (result.status !== 0) {
     throw new Error(`FAILED: ${label}${result.error ? ` (${result.error.message})` : ""}`, {
       cause: result.error,
@@ -37,7 +37,13 @@ function run(label, command, args, cwd = repoRoot) {
 }
 
 function runIdentityPnpm(label, args, cwd) {
-  run(label, "corepack", [`pnpm@${IDENTITY_PNPM_VERSION}`, ...args], cwd);
+  run(
+    label,
+    "corepack",
+    [`pnpm@${IDENTITY_PNPM_VERSION}`, ...args],
+    cwd,
+    identityPnpmEnvironment(),
+  );
 }
 
 function assertUnrelatedRootDependenciesWereNotInstalled(workspaceRoot) {
@@ -85,6 +91,7 @@ function sanitizedPnpmConfig() {
   const result = spawnSync("corepack", [`pnpm@${IDENTITY_PNPM_VERSION}`, "config", "list"], {
     cwd: workspaceRoot,
     encoding: "utf8",
+    env: identityPnpmEnvironment(),
   });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
   return output
