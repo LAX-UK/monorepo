@@ -1,6 +1,55 @@
+import { Hono } from "hono";
 import type { Pool } from "pg";
 import { describe, expect, it, vi } from "vitest";
 import { createPgShopSessionRepository } from "./db/shop-session.repository.js";
+import {
+  OIDC_ID_TOKEN_COOKIE_NAME,
+  clearOidcIdTokenCookie,
+  readOidcIdToken,
+  writeOidcIdTokenCookie,
+} from "./session.js";
+
+describe("Shop OIDC logout hint cookie", () => {
+  it("stores a host-only HTTP-only token and reads only compact JWTs", async () => {
+    const app = new Hono();
+    app.get("/write", (c) => {
+      writeOidcIdTokenCookie(c, "header.payload.signature", true);
+      return c.body(null);
+    });
+    app.get("/read", (c) => c.text(readOidcIdToken(c) ?? "missing"));
+
+    const written = await app.request("/write");
+    const setCookie = written.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain(`${OIDC_ID_TOKEN_COOKIE_NAME}=header.payload.signature`);
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).not.toContain("Domain=");
+
+    const valid = await app.request("/read", {
+      headers: { cookie: `${OIDC_ID_TOKEN_COOKIE_NAME}=header.payload.signature` },
+    });
+    expect(await valid.text()).toBe("header.payload.signature");
+
+    const malformed = await app.request("/read", {
+      headers: { cookie: `${OIDC_ID_TOKEN_COOKIE_NAME}=not-a-jwt` },
+    });
+    expect(await malformed.text()).toBe("missing");
+  });
+
+  it("expires the logout hint at the same path", async () => {
+    const app = new Hono();
+    app.get("/", (c) => {
+      clearOidcIdTokenCookie(c);
+      return c.body(null);
+    });
+
+    const response = await app.request("/");
+    expect(response.headers.get("set-cookie")).toContain(
+      `${OIDC_ID_TOKEN_COOKIE_NAME}=; Max-Age=0; Path=/`,
+    );
+  });
+});
 
 describe("Shop back-channel logout persistence", () => {
   it("records jti and invalidates the targeted sid in one transaction", async () => {

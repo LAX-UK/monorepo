@@ -121,11 +121,13 @@ export function buildAuthorizeUrl(input: {
 export function buildEndSessionUrl(input: {
   discovery: OidcDiscovery;
   clientId: string;
+  idTokenHint?: string | null;
   postLogoutRedirectUri: string;
   state: string;
 }): string {
   const url = new URL(input.discovery.end_session_endpoint);
   url.searchParams.set("client_id", input.clientId);
+  if (input.idTokenHint) url.searchParams.set("id_token_hint", input.idTokenHint);
   url.searchParams.set("post_logout_redirect_uri", input.postLogoutRedirectUri);
   url.searchParams.set("state", input.state);
   return url.toString();
