@@ -53,7 +53,7 @@ describe("migration history contract", () => {
       },
     ]);
     expect(journal.entries[139]?.tag).toBe("0140_identity_boundary_profiles");
-    expect(journal.entries.at(-1)?.tag).toBe("0161_revoke_api_user_reads");
+    expect(journal.entries.at(-1)?.tag).toBe("0162_enable_oidc_end_session");
   });
 
   it("keeps every registered migration and rollback pair on disk", async () => {
