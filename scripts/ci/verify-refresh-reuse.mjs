@@ -7,7 +7,8 @@ const password = process.env.REFRESH_TEST_PASSWORD;
 const clientId = process.env.REFRESH_TEST_CLIENT_ID ?? "lax-shop-web";
 const clientSecret = process.env.REFRESH_TEST_CLIENT_SECRET;
 const redirectUri = process.env.REFRESH_TEST_REDIRECT_URI ?? "http://localhost:3010/auth/callback";
-const browserOrigin = process.env.REFRESH_TEST_ORIGIN ?? new URL(redirectUri).origin;
+const browserOrigin =
+  process.env.REFRESH_TEST_ORIGIN ?? process.env.WEB_ORIGIN ?? new URL(redirectUri).origin;
 const requestedScopes =
   process.env.REFRESH_TEST_SCOPES ?? "openid profile email offline_access shop.read shop.write";
 const graceMs = Number(process.env.REFRESH_TEST_GRACE_MS ?? 5_000);
