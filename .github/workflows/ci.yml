@@ -135,6 +135,16 @@ jobs:
 
       - name: Rehearse hermetic Identity extraction
         run: pnpm ci:identity-extraction-rehearsal
+        env:
+          IDENTITY_REHEARSAL_TMPDIR: ${{ runner.temp }}/identity-rehearsal
+
+      - name: Upload Identity rehearsal diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: identity-rehearsal-diagnostics
+          path: ${{ runner.temp }}/identity-rehearsal
+          if-no-files-found: error
 
   test:
     runs-on: ubuntu-latest

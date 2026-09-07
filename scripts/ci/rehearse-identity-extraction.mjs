@@ -5,7 +5,15 @@
  * installs against the generated closure-only lockfile.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,8 +73,41 @@ function removeWorkspaceNodeModules(workspaceRoot) {
 }
 
 const rehearsalTempRoot = process.env.IDENTITY_REHEARSAL_TMPDIR ?? tmpdir();
+mkdirSync(rehearsalTempRoot, { recursive: true });
+if (process.env.IDENTITY_PNPM_STORE_DIR) {
+  process.env.npm_config_store_dir = process.env.IDENTITY_PNPM_STORE_DIR;
+}
 const workspaceRoot = mkdtempSync(join(rehearsalTempRoot, "auction-identity-rehearsal-"));
 const keepWorkspace = process.env.IDENTITY_REHEARSAL_KEEP_TEMP === "1";
+let failed = false;
+
+function sanitizedPnpmConfig() {
+  const result = spawnSync("corepack", [`pnpm@${IDENTITY_PNPM_VERSION}`, "config", "list"], {
+    cwd: workspaceRoot,
+    encoding: "utf8",
+  });
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+  return output
+    .split(/\r?\n/)
+    .map((line) =>
+      /(?:auth|password|secret|token)\s*=/i.test(line)
+        ? `${line.slice(0, Math.max(0, line.indexOf("=") + 1))}[REDACTED]`
+        : line,
+    )
+    .join("\n");
+}
+
+function captureFailureDiagnostics(error) {
+  const diagnosticsRoot = join(rehearsalTempRoot, "diagnostics");
+  mkdirSync(diagnosticsRoot, { recursive: true });
+  for (const name of ["pnpm-lock.yaml", ".npmrc", "pnpm-workspace.yaml"]) {
+    const source = join(workspaceRoot, name);
+    if (existsSync(source)) copyFileSync(source, join(diagnosticsRoot, name));
+  }
+  writeFileSync(join(diagnosticsRoot, "pnpm-config.txt"), sanitizedPnpmConfig());
+  writeFileSync(join(diagnosticsRoot, "failure.txt"), `${error.stack ?? error}\n`);
+  console.error(`Identity rehearsal diagnostics captured in ${diagnosticsRoot}`);
+}
 
 try {
   console.log(`\n=== Extract and verify history (${workspaceRoot}) ===`);
@@ -107,8 +148,16 @@ try {
     workspaceRoot,
   );
   console.log("\nIdentity extraction rehearsal passed.");
+} catch (error) {
+  failed = true;
+  try {
+    captureFailureDiagnostics(error);
+  } catch (diagnosticError) {
+    console.error(`Could not capture Identity rehearsal diagnostics: ${diagnosticError}`);
+  }
+  throw error;
 } finally {
-  if (keepWorkspace) {
+  if (keepWorkspace || failed) {
     console.log(`Preserving rehearsal workspace: ${workspaceRoot}`);
   } else {
     rmSync(workspaceRoot, { recursive: true, force: true });
