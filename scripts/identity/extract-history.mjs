@@ -70,12 +70,20 @@ export function extractIdentityHistory({
     sourceRoot,
   );
   const sourceBranch = run("git", ["branch", "--show-current"], destination);
-  run(
-    "git",
-    sourceBranch ? ["branch", "-M", "main"] : ["switch", "-c", "main"],
-    destination,
-  );
+  run("git", sourceBranch ? ["branch", "-M", "main"] : ["switch", "-c", "main"], destination);
   run("git", ["filter-repo", "--force", ...filterArguments], destination);
+  const branches = run(
+    "git",
+    ["for-each-ref", "--format=%(refname:short)", "refs/heads"],
+    destination,
+  )
+    .split("\n")
+    .filter(Boolean);
+  for (const branch of branches) {
+    if (branch !== "main") {
+      run("git", ["update-ref", "-d", `refs/heads/${branch}`], destination);
+    }
+  }
 
   if (includeWorkingTree) overlayWorkingTree(sourceRoot, destination);
 
