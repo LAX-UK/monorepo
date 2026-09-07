@@ -29,8 +29,7 @@
   },
   "dependencies": {
     "@sentry/core": "10.51.0",
-    "@sentry/node": "10.51.0",
-    "bullmq-otel": "^1.1.0"
+    "@sentry/node": "10.51.0"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",

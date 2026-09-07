@@ -1,6 +1,6 @@
 import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
-import { getBullMqTelemetry, initNodeSentry } from "@auction/observability";
+import { initNodeSentry } from "@auction/observability";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { DrizzleWebhookEventRepository } from "@auction/persistence/repositories";
 import {
@@ -12,6 +12,7 @@ import {
   listWorkerHeartbeatKeys,
   registerDlqHandlers,
 } from "@auction/queues";
+import { getBullMqTelemetry } from "@auction/queues/bullmq-telemetry";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import pino, { type Logger } from "pino";

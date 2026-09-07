@@ -97,3 +97,4 @@ export {
   parseSocketRevocationPayloadV1,
   type SocketRevocationPayloadV1,
 } from "./socket-revocation.js";
+export type { ConsentRecord, ConsentStore } from "./consent-store.js";

@@ -95,7 +95,33 @@ async function main() {
   if (!me.ok || profile.authenticated !== true || typeof profile.subject !== "string") {
     throw new Error(`Shop authenticated profile check failed (${me.status})`);
   }
-  console.log(`shop OIDC roundtrip passed for subject ${profile.subject}`);
+
+  const logout = await fetch(`${shopBase}/logout`, {
+    method: "POST",
+    redirect: "manual",
+    headers: { cookie: cookieHeader(shopCookies), origin: shopBase },
+  });
+  captureCookies(logout, shopCookies);
+  const endSessionUrl = logout.headers.get("location");
+  if (logout.status !== 303 || !endSessionUrl) {
+    throw new Error(`Shop logout did not return an OP redirect (${logout.status})`);
+  }
+  const endSession = await fetch(endSessionUrl, {
+    redirect: "manual",
+    headers: { cookie: cookieHeader(authCookies) },
+  });
+  if (endSession.status < 300 || endSession.status >= 400) {
+    throw new Error(`Shop OP end-session failed (${endSession.status})`);
+  }
+  const signedOut = await fetch(`${shopBase}/me`, {
+    headers: { cookie: cookieHeader(shopCookies) },
+  });
+  const signedOutBody = await signedOut.json().catch(() => null);
+  if (signedOut.ok || signedOutBody?.authenticated !== false) {
+    throw new Error(`Shop session remained active after central logout (${signedOut.status})`);
+  }
+
+  console.log(`shop OIDC roundtrip and central logout passed for subject ${profile.subject}`);
 }
 
 main().catch((error) => {

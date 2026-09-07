@@ -1,5 +1,5 @@
+import type { ConsentStore } from "@auction/identity-contracts";
 import type { Jwk } from "better-auth/plugins/jwt";
-import type { ConsentStore } from "../ports/consent-store.js";
 import { createDrizzleAccountLinkReader } from "./drizzle-account-link-reader.js";
 import { createDrizzleConsentStore } from "./drizzle-consent-store.js";
 import type { IdentityDatabase } from "./drizzle-consent-store.js";

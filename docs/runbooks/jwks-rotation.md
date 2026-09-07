@@ -4,7 +4,7 @@ Quarterly proactive rotation of the JWT signing key, plus emergency rotation on 
 
 This runbook is the operational checklist. The retirement-window math and the table schema live in [../security/key-rotation.md](../security/key-rotation.md), and the rationale for storing keys in Postgres at all is D2 in [../architecture/02-decisions.md](../architecture/02-decisions.md).
 
-> **Status today.** The retirement helper and 15-minute schedule live in [packages/auth/src/jwks-retirement.ts](../../packages/auth/src/jwks-retirement.ts) and run inside `apps/auth` under the `auth_app` database role. The scheduler uses a Postgres advisory lock so only one auth replica performs each retirement tick.
+> **Status today.** Key persistence lives in [packages/identity-db/src/adapters/drizzle-jwks-store.ts](../../packages/identity-db/src/adapters/drizzle-jwks-store.ts). The retirement helper and 15-minute schedule live in [packages/identity-db/src/adapters/drizzle-jwks-retirement.ts](../../packages/identity-db/src/adapters/drizzle-jwks-retirement.ts) and run inside `apps/auth` under the `auth_app` database role. The scheduler uses a Postgres advisory lock so only one auth replica performs each retirement tick.
 
 ## Triggers
 
@@ -16,11 +16,11 @@ This runbook is the operational checklist. The retirement-window math and the ta
 The retirement window is **30 minutes** = `max(60s discovery cache TTL, 15min access-token lifetime) + 15min safety margin`.
 
 1. **Pre-flight.** Confirm `apps/auth` and `apps/api` are healthy. Confirm Cloudflare cache for `/.well-known/jwks.json` is up. Open the on-call channel and post "starting JWKS rotation".
-2. **Insert a rotating key.** Connect to Postgres as `auction_owner` and run the insert that creates a new RS256 key pair, status `rotating`. The exact SQL lives in [packages/auth/src/jwks.ts](../../packages/auth/src/jwks.ts) — use the `createRotatingKey` helper exported from there rather than hand-writing the insert.
+2. **Insert a rotating key.** Use the repository's tested JWKS rotation command to generate and envelope-encrypt a new RS256 key with status `rotating`. Do not hand-write private JWK SQL. If the command is unavailable or its dry-run/preflight fails, stop the rotation.
 3. **Wait 60 seconds.** This is the Cloudflare cache TTL on `/.well-known/jwks.json`. After 60 s, every consumer's next fetch will see both keys.
 4. **Promote.** `UPDATE jwks_key SET status='active' WHERE kid='<new_kid>'`. Demote the previous active key with `UPDATE jwks_key SET status='retired', rotated_at=now() WHERE kid='<old_kid>' AND status='active'`. Both keys remain in JWKS.
 5. **Wait 30 minutes** from the previous step. During this window, in-flight access tokens signed with the old key continue to validate.
-6. **Retire the rotating key.** The scheduled `retireExpiredJwksKeys` helper from [packages/auth/src/jwks-retirement.ts](../../packages/auth/src/jwks-retirement.ts) updates eligible `rotating` rows to `retired` after the 30-minute window. If running the step manually, use the helper rather than hand-writing the update so the predicate stays aligned with code.
+6. **Retire the old key.** The scheduled `retireExpiredJwksKeys` helper from [packages/identity-db/src/adapters/drizzle-jwks-retirement.ts](../../packages/identity-db/src/adapters/drizzle-jwks-retirement.ts) updates eligible rotating rows after the 30-minute window. If running the step manually, use the repository command rather than hand-writing the update so the predicate stays aligned with code.
 7. **Smoke test.** Issue a fresh sign-in and verify the resulting JWT validates against the JWKS endpoint. Force-fetch JWKS through Cloudflare with `cache-bypass=1` to confirm the new key is published.
 8. **Post-completion.** Post "JWKS rotation complete, new kid `<new_kid>`" in the on-call channel. Update the rotation log in 1Password.
 

@@ -2,6 +2,38 @@
 
 Staged rollout for the LAX Identity boundary ([architecture/09-lax-identity-boundary.md](../architecture/09-lax-identity-boundary.md)).
 
+## Standalone staging source transition
+
+This runbook also governs the D23 extraction to `LAX-UK/lax-identity`.
+The transition does not move the database or change the issuer:
+
+| Responsibility | Owner during staging extraction |
+|---|---|
+| Six-path issuer source and `lax-test-identity` image | `LAX-UK/lax-identity` after acceptance |
+| Shared migration journal, migrate image, role grants | monorepo |
+| OIDC client registry provisioning | monorepo |
+| Bid/Shop projectors and relying-party contracts | monorepo |
+| App Platform staging deployment orchestration | monorepo |
+| Production auth image and rollback source | frozen monorepo closure |
+
+Release order is fail-closed:
+
+1. A green monorepo commit publishes the migrate image required by the
+   standalone repository's `schema-contract.json`.
+2. The deployment orchestrator verifies migration lineage, applies migrations,
+   reconciles roles, and runs the full OIDC client registry command.
+3. A green standalone commit publishes immutable and rolling Identity tags,
+   creates its Sentry release/source maps, and dispatches its SHA and digest.
+4. The monorepo validates the dispatch and image digest, serializes deployment,
+   and starts the App Platform release.
+5. The target-host acceptance bundle and soak record decide acceptance or
+   rollback.
+
+Neither repository may add an Identity schema migration during this phase.
+Public contract changes require the later package-publication/consumer cutover.
+An emergency change to the frozen production fallback requires the
+`identity-fallback-hotfix` label and a recorded synchronization patch.
+
 ## Migration-lineage preflight
 
 The only supported production upgrade path is released main through
@@ -128,6 +160,13 @@ product activity. `last_event_id` is the projector ordering/idempotency cursor.
 ## Rollback
 
 - Roll back the API and auth deployment images as one tested release unit.
+- For a standalone staging regression, first move `lax-test-identity:test` back
+  to a previously accepted standalone SHA and redeploy through the monorepo
+  orchestrator.
+- For extraction rollback, revert the staging Terraform auth image repository
+  and Sentry-release env change together, then deploy the recorded
+  `lax-test-auth:<sha>`. Do not retag a monorepo image into the standalone
+  repository or change DNS.
 - Do not recreate the issuer inside `apps/api` with a runtime flag.
 - Disable SSF delivery before schema rollback. Reverse `0149`, `0148`, `0147`,
   `0146`, then earlier migrations in descending order. Earlier profile
@@ -158,3 +197,11 @@ product activity. `last_event_id` is the projector ordering/idempotency cursor.
 - [x] Code: migrations `0159`–`0161`, directory-backed readers, and static exit gates
 - [ ] Target: directory reconciliation soak, `0160`/`0161`, and live API/worker role probes
 - [ ] Dashboards and rollback routing documented
+- [ ] Standalone CI ran DB integration tests against the pinned migration-image digest
+- [ ] Extracted history passed a full-history secret scan
+- [ ] `lax-test-identity:<sha>` digest, SBOM, Sentry release, and source maps recorded
+- [ ] Staging `/health/ready` admitted traffic with the required production env
+- [ ] Machine issue/introspect/revoke, RFC 8693, origin/CSRF, and rate-limit live probes
+- [ ] Lifecycle outbox/projector lag and directory drift stayed within signed thresholds
+- [ ] Standalone-image rollback and monorepo-fallback rollback both rehearsed
+- [ ] Identity staging extraction acceptance record signed by Engineering and Ops

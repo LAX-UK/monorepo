@@ -1,0 +1,36 @@
+name: Identity fallback ownership guard
+
+on:
+  pull_request:
+    paths:
+      - apps/auth/**
+      - packages/auth/**
+      - packages/config-ts/**
+      - packages/identity-contracts/**
+      - packages/identity-db/**
+      - packages/observability/**
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  fallback-hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require synchronization evidence after authority transfer
+        if: vars.IDENTITY_SOURCE_AUTHORITY == 'standalone'
+        run: |
+          jq -e 'index("identity-fallback-hotfix") != null' <<<"$LABELS" >/dev/null
+          changed="$(
+            gh api "repos/${GITHUB_REPOSITORY}/pulls/${{ github.event.pull_request.number }}/files" \
+              --paginate --jq '.[].filename'
+          )"
+          grep -E '^docs/runbooks/identity-fallback-sync/.+\.md$' <<<"$changed" |
+            grep -v '/README\.md$' >/dev/null
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+      - name: Authority remains in the monorepo
+        if: vars.IDENTITY_SOURCE_AUTHORITY != 'standalone'
+        run: echo "Standalone source authority has not transferred; fallback guard is dormant."

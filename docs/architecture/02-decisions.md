@@ -26,7 +26,7 @@ A retired key remains in the published JWKS for thirty minutes before deletion. 
 
 **Why this wins.** The role split is a security boundary that matters. If `apps/api` is compromised by a SQL injection or a leaked credential, the attacker cannot read the signing key — the database role they hold does not permit it. This is the cheapest, most reliable way to bound the blast radius of a single-app compromise. The pattern matches how we already store Xero OAuth refresh tokens, so it adds zero cognitive load. Rotation is zero-downtime because new and retired keys coexist in JWKS during the transition window.
 
-**Status.** *Implemented.* Schema in [packages/db/src/schema/jwks-key.ts](../../packages/db/src/schema/jwks-key.ts); role-scoped grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (`auth_app` ALL on `jwks_key`; `api_app` denied; `worker_app` denied). The 30-minute retirement helper and schedule live in [packages/auth/src/jwks-retirement.ts](../../packages/auth/src/jwks-retirement.ts), run inside `apps/auth` under `auth_app`, and use a Postgres advisory lock so only one auth replica performs each retirement tick while preserving the `worker_app` deny boundary. JWKS state is snapshotted to DigitalOcean Spaces (`secrets-backup/jwks/<env>/`) using the env-scoped encryption key set up in [BOOTSTRAP.md](../../infra/terraform/BOOTSTRAP.md).
+**Status.** *Implemented.* Schema in [packages/identity-db/src/schema/jwks-key.ts](../../packages/identity-db/src/schema/jwks-key.ts); role-scoped grants in [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts) (`auth_app` ALL on `jwks_key`; `api_app` denied; `worker_app` denied). The 30-minute retirement helper and schedule live in [packages/identity-db/src/adapters/drizzle-jwks-retirement.ts](../../packages/identity-db/src/adapters/drizzle-jwks-retirement.ts), run inside `apps/auth` under `auth_app`, and use a Postgres advisory lock so only one auth replica performs each retirement tick while preserving the `worker_app` deny boundary. JWKS state is snapshotted to DigitalOcean Spaces (`secrets-backup/jwks/<env>/`) using the env-scoped encryption key documented in the private `LAX-UK/auction-infra` repository's `terraform/BOOTSTRAP.md`.
 
 ## D3. Account linking happens at sign-in, gated on email verification
 
@@ -406,3 +406,37 @@ risk.
 **Why this wins.** Adding a variant is appending a rule. Flag parsing has one test surface. Strict bid eligibility still falls back on `APP_ENV`, matching the API.
 
 **Status.** *Implemented.* Rules in [apps/web/src/lib/marketing/prompts/policy.ts](../../apps/web/src/lib/marketing/prompts/policy.ts), parser in [apps/web/src/lib/rollout/parse-boolean-flag.ts](../../apps/web/src/lib/rollout/parse-boolean-flag.ts).
+
+## D23. Identity source extracts before its database
+
+**Chosen.** Extract the six-path Identity issuer closure to the private
+`LAX-UK/lax-identity` repository and make that repository authoritative only
+after standalone CI, staging integration, measured soak, and rollback evidence
+pass. During this transition, staging runs the standalone image at the existing
+issuer host while production retains the frozen monorepo image. The monorepo
+continues to own the shared migration journal, application-role grants, OIDC
+client provisioning, product projectors, and the single staging deployment
+orchestrator.
+
+Public Identity contracts and database schema are frozen for this phase.
+Schema compatibility is represented by a pinned monorepo migration-image
+digest, commit, and journal hash in the standalone repository. Identity never
+runs an independent migration journal. Emergency production-fallback fixes
+require an explicit hotfix label and synchronization record across repositories.
+
+**Alternatives considered.** Moving Identity migrations with the source was
+rejected because product tables, foreign keys, projectors, and grants still
+share one journal. Letting both repositories deploy the App Platform
+application directly was rejected because mutable image tags and the shared
+PRE_DEPLOY migration job create a release-order race. A second staging issuer
+hostname was rejected because it would not exercise the registered issuer,
+redirect URI, cookie, or relying-party contracts.
+
+**Why this wins.** Source and image portability become independently provable
+without pretending the database is already separated. One deployment authority
+serializes migration, role, client-registry, image, and rollback operations,
+while the unchanged issuer URL provides a real staging contract test.
+
+**Status.** *Accepted for staged implementation.* Production traffic, package
+publication, independent Identity migrations, and physical database separation
+remain deferred.

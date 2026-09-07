@@ -7,6 +7,9 @@ const password = process.env.REFRESH_TEST_PASSWORD;
 const clientId = process.env.REFRESH_TEST_CLIENT_ID ?? "lax-shop-web";
 const clientSecret = process.env.REFRESH_TEST_CLIENT_SECRET;
 const redirectUri = process.env.REFRESH_TEST_REDIRECT_URI ?? "http://localhost:3010/auth/callback";
+const browserOrigin = process.env.REFRESH_TEST_ORIGIN ?? new URL(redirectUri).origin;
+const requestedScopes =
+  process.env.REFRESH_TEST_SCOPES ?? "openid profile email offline_access shop.read shop.write";
 const graceMs = Number(process.env.REFRESH_TEST_GRACE_MS ?? 5_000);
 
 if (!email || !password || !clientSecret) {
@@ -77,7 +80,7 @@ async function issueAuthorizationCode(cookies, verifier) {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "openid profile email offline_access",
+    scope: requestedScopes,
     code_challenge: challenge,
     code_challenge_method: "S256",
     state,
@@ -113,7 +116,7 @@ async function main() {
   const cookies = new Map();
   const signIn = await fetch(`${authBase}/api/auth/sign-in/email`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+    headers: { "content-type": "application/json", origin: browserOrigin },
     body: JSON.stringify({ email, password }),
   });
   captureCookies(signIn, cookies);
@@ -161,6 +164,41 @@ async function main() {
   if (!exchange.ok || typeof issued.refresh_token !== "string") {
     throw new Error(`code exchange failed (${exchange.status})`);
   }
+  if (typeof issued.access_token !== "string") {
+    throw new Error("code exchange did not issue an access token");
+  }
+
+  const tokenExchange = (resource, scope) =>
+    form("/api/auth/oauth2/token", {
+      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+      subject_token: issued.access_token,
+      subject_token_type: "urn:ietf:params:oauth:token-type:access_token",
+      requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
+      resource,
+      scope,
+      client_id: clientId,
+      client_secret: clientSecret,
+    });
+  const resourceExchange = await tokenExchange("https://shop.lax.art/api", "shop.read");
+  const resourceBody = await resourceExchange.json();
+  if (!resourceExchange.ok || typeof resourceBody.access_token !== "string") {
+    throw new Error(`valid RFC 8693 exchange failed (${resourceExchange.status})`);
+  }
+  const resourceClaims = JSON.parse(
+    Buffer.from(resourceBody.access_token.split(".")[1] ?? "", "base64url").toString("utf8"),
+  );
+  const audience = Array.isArray(resourceClaims.aud) ? resourceClaims.aud : [resourceClaims.aud];
+  const scopes =
+    typeof resourceClaims.scope === "string"
+      ? resourceClaims.scope.split(/\s+/).filter(Boolean)
+      : [];
+  if (!audience.includes("lax-shop-api") || !scopes.includes("shop.read")) {
+    throw new Error(`unexpected resource token claims: ${JSON.stringify(resourceClaims)}`);
+  }
+  const wrongAudience = await tokenExchange("https://api.lax.bid", "shop.read");
+  if (wrongAudience.ok) throw new Error("RFC 8693 accepted a resource outside the Shop client");
+  const wrongScope = await tokenExchange("https://shop.lax.art/api", "bid.read");
+  if (wrongScope.ok) throw new Error("RFC 8693 accepted a scope outside the Shop resource");
 
   const rotate = () =>
     form("/api/auth/oauth2/token", {
@@ -192,7 +230,7 @@ async function main() {
   });
   if (descendant.ok) throw new Error("descendant refresh token survived family revocation");
   console.log(
-    "PKCE rejection, refresh rotation, retry grace, replay detection, and family revocation passed",
+    "PKCE, RFC 8693 audience/scope, refresh rotation, replay, and family revocation passed",
   );
 }
 

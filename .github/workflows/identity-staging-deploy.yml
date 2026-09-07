@@ -1,0 +1,120 @@
+name: Identity staging deployment
+
+on:
+  repository_dispatch:
+    types: [identity-staging-image-published]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: app-deploy-test
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    if: github.event.client_payload.repository == 'LAX-UK/lax-identity'
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      APP_ID: ${{ secrets.DO_TEST_APP_ID }}
+      REGISTRY: ${{ vars.DOCR_REGISTRY }}
+      IDENTITY_SHA: ${{ github.event.client_payload.sha }}
+      IDENTITY_DIGEST: ${{ github.event.client_payload.digest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate dispatch contract
+        run: |
+          set -euo pipefail
+          [[ "$IDENTITY_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::Invalid Identity SHA"
+            exit 1
+          }
+          [[ "$IDENTITY_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+            echo "::error::Invalid Identity image digest"
+            exit 1
+          }
+          test -n "$APP_ID"
+          test -n "$REGISTRY"
+
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+      - name: Verify immutable Identity and migration images
+        id: lineage
+        run: |
+          set -euo pipefail
+          doctl registry repository list-tags lax-test-identity --output json \
+            > "$RUNNER_TEMP/identity-tags.json"
+          rolling_digest="$(
+            jq -r '.[] | select(.tag == "test") | .manifest_digest' \
+              "$RUNNER_TEMP/identity-tags.json"
+          )"
+          sha_digest="$(
+            jq -r --arg sha "$IDENTITY_SHA" \
+              '.[] | select(.tag == $sha) | .manifest_digest' \
+              "$RUNNER_TEMP/identity-tags.json"
+          )"
+          test "$rolling_digest" = "$IDENTITY_DIGEST"
+          test "$sha_digest" = "$IDENTITY_DIGEST"
+
+          doctl registry login --expiry-seconds 900
+          identity_image="$REGISTRY/lax-test-identity@$IDENTITY_DIGEST"
+          docker pull "$identity_image"
+          docker run --rm --entrypoint cat "$identity_image" /app/schema-contract.json \
+            > "$RUNNER_TEMP/schema-contract.json"
+          jq -e '
+            (.monorepoCommit | test("^[0-9a-f]{40}$")) and
+            (.migrationJournal.tip | type == "string") and
+            (.migrationJournal.sha256 | test("^[0-9a-f]{64}$")) and
+            (.migrateImage | test("@sha256:[0-9a-f]{64}$"))
+          ' "$RUNNER_TEMP/schema-contract.json"
+          docker image inspect "$identity_image" |
+            jq -e --arg release "SENTRY_RELEASE=$IDENTITY_SHA" \
+              '.[0].Config.Env | index($release) != null' >/dev/null
+
+          expected_migrate_digest="$(
+            jq -r '.migrateImage | split("@")[1]' "$RUNNER_TEMP/schema-contract.json"
+          )"
+          doctl registry repository list-tags lax-test-migrate --output json \
+            > "$RUNNER_TEMP/migrate-tags.json"
+          migrate_digest="$(
+            jq -r '.[] | select(.tag == "test") | .manifest_digest' \
+              "$RUNNER_TEMP/migrate-tags.json"
+          )"
+          jq -e --arg digest "$expected_migrate_digest" \
+            'any(.[]; .manifest_digest == $digest)' "$RUNNER_TEMP/migrate-tags.json" >/dev/null
+          [[ "$migrate_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          migrate_sha="$(
+            jq -r --arg digest "$migrate_digest" '
+              [.[] | select(.manifest_digest == $digest) | .tag |
+               select(test("^[0-9a-f]{40}$"))][0] // empty
+            ' "$RUNNER_TEMP/migrate-tags.json"
+          )"
+          [[ "$migrate_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "migrate_sha=$migrate_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Verify migration source and journal lineage
+        env:
+          MIGRATE_SHA: ${{ steps.lineage.outputs.migrate_sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          contract_commit="$(jq -r .monorepoCommit "$RUNNER_TEMP/schema-contract.json")"
+          contract_tip="$(jq -r .migrationJournal.tip "$RUNNER_TEMP/schema-contract.json")"
+          contract_hash="$(jq -r .migrationJournal.sha256 "$RUNNER_TEMP/schema-contract.json")"
+          git fetch origin "$contract_commit" "$MIGRATE_SHA"
+          git merge-base --is-ancestor "$contract_commit" "$MIGRATE_SHA"
+          git show "$MIGRATE_SHA:packages/db/drizzle/meta/_journal.json" \
+            > "$RUNNER_TEMP/migrate-journal.json"
+          test "$(shasum -a 256 "$RUNNER_TEMP/migrate-journal.json" | cut -d' ' -f1)" = "$contract_hash"
+          test "$(jq -r '.entries[-1].tag' "$RUNNER_TEMP/migrate-journal.json")" = "$contract_tip"
+          GITHUB_SHA="$MIGRATE_SHA" node scripts/ci/require-ci-success-for-sha.mjs
+
+      - name: Deploy through the serialized App Platform release
+        run: doctl apps create-deployment "$APP_ID"

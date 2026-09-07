@@ -20,6 +20,7 @@ export type AuthOperationalRoutes = {
   auth: ReturnType<typeof createAuth>;
   log: pino.Logger;
   nodeEnv: "development" | "test" | "production";
+  release?: string | undefined;
   metricsToken?: string | undefined;
   metrics: { metrics(): Promise<string> };
   clientIp: ClientIpResolver;
@@ -67,7 +68,9 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
     );
     app.route("/internal", options.internal.routes);
   }
-  app.get("/health/live", (c) => c.json({ service: "auction-auth", status: "ok" }));
+  app.get("/health/live", (c) =>
+    c.json({ service: "auction-auth", status: "ok", release: options.release ?? "unknown" }),
+  );
   app.get("/health/ready", async (c) => {
     try {
       await options.db.execute(sql`select 1`);
@@ -94,7 +97,13 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
       }
       const keySet = await options.auth.api.getJwks();
       if (keySet.keys.length === 0) throw new Error("jwks_empty");
-      return c.json({ service: "auction-auth", status: "ok", database: "ok", jwks: "ok" });
+      return c.json({
+        service: "auction-auth",
+        status: "ok",
+        database: "ok",
+        jwks: "ok",
+        release: options.release ?? "unknown",
+      });
     } catch (err) {
       options.log.error({ err }, "auth readiness failed");
       return c.json({ service: "auction-auth", status: "degraded" }, 503);

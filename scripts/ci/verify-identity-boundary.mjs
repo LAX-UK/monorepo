@@ -62,10 +62,11 @@ const focusedTests = [
   ],
 ];
 
-async function fetchJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${url} -> ${res.status}`);
-  return res.json();
+function assertHeader(response, name, expected, label) {
+  const value = response.headers.get(name) ?? "";
+  if (!expected.test(value)) {
+    throw new Error(`${label} ${name}=${JSON.stringify(value)} did not match ${expected}`);
+  }
 }
 
 function run(command, args) {
@@ -170,7 +171,24 @@ function runFixtureVerification() {
 }
 
 async function runLiveVerification() {
-  const authDiscovery = await fetchJson(`${authBase}/.well-known/openid-configuration`);
+  for (const [label, base] of [
+    ["Auth", authBase],
+    ["API", apiBase],
+  ]) {
+    const parsed = new URL(base);
+    if (!["localhost", "127.0.0.1"].includes(parsed.hostname) && parsed.protocol !== "https:") {
+      throw new Error(`${label} live boundary must use HTTPS: ${base}`);
+    }
+  }
+
+  const discoveryResponse = await fetch(`${authBase}/.well-known/openid-configuration`);
+  if (!discoveryResponse.ok) {
+    throw new Error(`canonical discovery unavailable: ${discoveryResponse.status}`);
+  }
+  assertHeader(discoveryResponse, "cache-control", /public.*max-age=60/i, "discovery");
+  assertHeader(discoveryResponse, "x-content-type-options", /^nosniff$/i, "discovery");
+  assertHeader(discoveryResponse, "x-frame-options", /^DENY$/i, "discovery");
+  const authDiscovery = await discoveryResponse.json();
   const issuer = authBase.replace(/\/+$/, "");
   const expected = {
     issuer,
@@ -200,7 +218,10 @@ async function runLiveVerification() {
       throw new Error(`unexpected discovery ${key}: ${JSON.stringify(authDiscovery[key])}`);
     }
   }
-  const authJwks = await fetchJson(`${authBase}/.well-known/jwks.json`);
+  const jwksResponse = await fetch(`${authBase}/.well-known/jwks.json`);
+  if (!jwksResponse.ok) throw new Error(`canonical JWKS unavailable: ${jwksResponse.status}`);
+  assertHeader(jwksResponse, "cache-control", /public.*max-age=60/i, "JWKS");
+  const authJwks = await jwksResponse.json();
   if (!Array.isArray(authJwks.keys) || authJwks.keys.length === 0) {
     throw new Error("canonical JWKS has no signing keys");
   }
@@ -218,6 +239,18 @@ async function runLiveVerification() {
   if (!session.ok) {
     throw new Error(`canonical get-session unavailable: ${session.status}`);
   }
+
+  const introspection = await fetch(`${authBase}/oauth/introspect`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: "token=invalid-live-boundary-probe",
+  });
+  if (introspection.status < 400) {
+    throw new Error(
+      `unauthenticated introspection unexpectedly succeeded: ${introspection.status}`,
+    );
+  }
+  assertHeader(introspection, "cache-control", /no-store/i, "introspection");
 
   if (shopRequired && !shopBase) {
     throw new Error("SHOP_IDENTITY_BASE_URL is required when Shop verification is enabled");
