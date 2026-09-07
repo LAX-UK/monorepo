@@ -1,0 +1,132 @@
+name: Identity staging acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      identity_sha:
+        description: Standalone Identity commit under test
+        required: true
+        type: string
+      shop_identity_base_url:
+        description: Staging Shop relying-party origin
+        required: true
+        type: string
+      outbox_max_age_ms:
+        description: Approved lifecycle-outbox lag threshold in milliseconds
+        required: true
+        type: number
+      ssf_delivery_enabled:
+        description: Must match the reviewed SSF_DELIVERY_ENABLED staging value
+        required: true
+        default: false
+        type: boolean
+      ssf_failure_rehearsal:
+        description: Accelerate a dedicated SSF retry/dead-letter probe, then restore the receiver
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: identity-staging-acceptance
+  cancel-in-progress: false
+
+jobs:
+  live-contracts:
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      AUTH_BASE_URL: https://test-auth.lax.bid
+      API_BASE_URL: https://test-api.lax.bid
+      WEB_ORIGIN: https://test.lax.bid
+      SHOP_IDENTITY_BASE_URL: ${{ inputs.shop_identity_base_url }}
+      IDENTITY_BOUNDARY_SHOP_REQUIRED: "true"
+      BID_BFF_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+      BID_BFF_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+      SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+      SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+      REFRESH_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+      REFRESH_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+      REFRESH_TEST_REDIRECT_URI: ${{ inputs.shop_identity_base_url }}/auth/callback
+      IDENTITY_MACHINE_CLIENT_ID: auth-service
+      IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS: "60000"
+      IDENTITY_OUTBOX_MAX_AGE_MS: ${{ inputs.outbox_max_age_ms }}
+      SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
+      SSF_DELIVERY_ENABLED: ${{ inputs.ssf_delivery_enabled }}
+      SSF_FAILURE_REHEARSAL: ${{ inputs.ssf_failure_rehearsal }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+          run_install: false
+      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: .infra-config/terraform/ephemeral/test
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Load masked staging contracts from Terraform state
+        run: |
+          set -euo pipefail
+          declare -A outputs=(
+            [DATABASE_URL_OWNER]=postgres_owner_uri
+            [DATABASE_URL_AUTH]=database_url_auth
+            [DATABASE_URL_API]=database_url_api
+            [DATABASE_URL_SHOP]=database_url_shop
+            [DATABASE_URL_WORKER]=database_url_worker
+            [IDENTITY_MACHINE_CLIENT_SECRET]=identity_machine_client_secret
+            [REFRESH_TEST_CLIENT_SECRET]=oidc_shop_web_client_secret
+            [SSF_TEST_CLIENT_SECRET]=oidc_bid_web_client_secret
+          )
+          for env_name in "${!outputs[@]}"; do
+            value="$(terraform -chdir=.infra-config/terraform/ephemeral/test output -raw "${outputs[$env_name]}")"
+            test -n "$value"
+            echo "::add-mask::$value"
+            echo "$env_name=$value" >> "$GITHUB_ENV"
+          done
+      - name: Validate requested Identity release
+        run: |
+          [[ "${{ inputs.identity_sha }}" =~ ^[0-9a-f]{40}$ ]]
+          test "$(
+            curl --fail --silent https://test-auth.lax.bid/health/ready |
+              jq -r '.release // .version // empty'
+          )" = "${{ inputs.identity_sha }}"
+          echo "ACCEPTANCE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+      - name: Discovery, JWKS, HTTPS, headers, and retired API routes
+        run: node scripts/ci/verify-identity-boundary.mjs --live
+      - name: Bid BFF login, callback, exchanged resource token, and scopes
+        run: node scripts/ci/verify-bid-web-bff-roundtrip.mjs
+      - name: Shop cold login, SSO, session, and logout isolation
+        run: node scripts/ci/verify-shop-oidc-roundtrip.mjs
+      - name: Refresh rotation and reuse rejection
+        run: node scripts/ci/verify-refresh-reuse.mjs
+      - name: Machine token lifecycle, forged origin, and rate limit
+        run: node scripts/ci/verify-identity-machine-live.mjs
+      - name: Bid and Shop back-channel logout delivery
+        run: node scripts/ci/verify-backchannel-logout-live.mjs
+      - name: SSF durable delivery and replay contract
+        run: node scripts/ci/verify-identity-ssf-live.mjs
+      - name: Directory reconciliation
+        run: node scripts/ci/verify-identity-directory-drift.mjs
+      - name: Lifecycle outbox lag
+        run: node scripts/ci/verify-identity-outbox-live.mjs
+      - name: Live database role contracts
+        run: |
+          pnpm --filter @auction/db test:auth-role-contract
+          pnpm --filter @auction/db test:api-role-contract
+          pnpm --filter @auction/db test:shop-role-contract
+          pnpm --filter @auction/db test:worker-role-contract

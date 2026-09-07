@@ -9,6 +9,7 @@ describe("registered OIDC clients", () => {
     expect(bid.allowedScopes).toContain("bid.write");
     expect(bid.allowedScopes).not.toContain("shop.read");
     expect(bid.backchannelLogoutUri).toBe("https://lax.bid/api/auth/backchannel-logout");
+    expect(bid.testBackchannelLogoutUri).toBe("https://test.lax.bid/api/auth/backchannel-logout");
     expect(bid.backchannelLogoutSessionRequired).toBe(true);
     expect(bid.postLogoutRedirectUris).toContain("https://lax.bid/");
 
@@ -22,7 +23,11 @@ describe("registered OIDC clients", () => {
     expect(shop.postLogoutRedirectUris).toEqual([
       "http://localhost:3010/",
       "https://shop.lax.art/",
+      "https://test-shop.lax.art/",
     ]);
+    expect(shop.testBackchannelLogoutUri).toBe(
+      "https://test-shop.lax.art/api/auth/backchannel-logout",
+    );
   });
 
   it("does not retain the proof client or grant Shop access to ws-mobile", () => {

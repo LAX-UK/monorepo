@@ -1,6 +1,6 @@
+import type { ConsentStore } from "@auction/identity-contracts";
 import { describe, expect, it, vi } from "vitest";
 import { wrapOAuthConsentUpsertAdapter } from "./oauth-consent-upsert.js";
-import type { ConsentStore } from "./ports/consent-store.js";
 
 describe("oauth consent upsert adapter", () => {
   it("routes oauthConsent creates through ConsentStore.upsert", async () => {

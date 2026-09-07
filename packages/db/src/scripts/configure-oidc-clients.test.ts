@@ -17,10 +17,17 @@ describe("OIDC client provisioning", () => {
       allowedScopes: ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"],
       allowedResources: ["lax-shop-api"],
       pkceRequired: true,
-      postLogoutRedirectUris: ["http://localhost:3010/", "https://shop.lax.art/"],
+      postLogoutRedirectUris: [
+        "http://localhost:3010/",
+        "https://shop.lax.art/",
+        "https://test-shop.lax.art/",
+      ],
       backchannelLogoutUri: "https://shop.lax.art/api/auth/backchannel-logout",
       backchannelLogoutSessionRequired: true,
     });
+    expect(JSON.parse(buildOidcClientMetadata("lax-shop-web", "test")).backchannelLogoutUri).toBe(
+      "https://test-shop.lax.art/api/auth/backchannel-logout",
+    );
   });
 
   it("requires HTTPS in production and permits localhost HTTP only in development", () => {

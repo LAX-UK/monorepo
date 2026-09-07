@@ -16,14 +16,27 @@ export function hashOidcClientSecret(secret: string): string {
   return createHash("sha256").update(secret).digest("base64url");
 }
 
-export function buildOidcClientMetadata(clientId: RegisteredOidcClientId): string {
+function backchannelLogoutUri(
+  clientId: RegisteredOidcClientId,
+  environment: "production" | "test",
+): string | undefined {
+  const client = REGISTERED_OIDC_CLIENTS[clientId];
+  return environment === "test"
+    ? (client.testBackchannelLogoutUri ?? client.backchannelLogoutUri)
+    : client.backchannelLogoutUri;
+}
+
+export function buildOidcClientMetadata(
+  clientId: RegisteredOidcClientId,
+  environment: "production" | "test" = "production",
+): string {
   const client = REGISTERED_OIDC_CLIENTS[clientId];
   return JSON.stringify({
     allowedScopes: client.allowedScopes,
     allowedResources: client.allowedResources,
     pkceRequired: client.pkceRequired,
     postLogoutRedirectUris: client.postLogoutRedirectUris,
-    backchannelLogoutUri: client.backchannelLogoutUri,
+    backchannelLogoutUri: backchannelLogoutUri(clientId, environment),
     backchannelLogoutSessionRequired: client.backchannelLogoutSessionRequired,
   });
 }
@@ -56,9 +69,11 @@ async function main(): Promise<void> {
     const clients = Object.values(REGISTERED_OIDC_CLIENTS).filter(
       (client) => !selectedIds?.length || selectedIds.includes(client.clientId),
     );
+    const environment = process.env.APP_ENV === "test" ? "test" : "production";
     for (const client of clients) {
+      const selectedBackchannelLogoutUri = backchannelLogoutUri(client.clientId, environment);
       assertBackchannelLogoutUriAllowed(
-        client.backchannelLogoutUri,
+        selectedBackchannelLogoutUri,
         process.env.NODE_ENV === "production",
       );
       const isConfidential = client.kind === OidcClientKind.Confidential;
@@ -77,9 +92,9 @@ async function main(): Promise<void> {
         redirectUrls: client.redirectUris.join(","),
         type: isConfidential ? "web" : "public",
         disabled: false,
-        backchannelLogoutUri: client.backchannelLogoutUri ?? null,
+        backchannelLogoutUri: selectedBackchannelLogoutUri ?? null,
         backchannelLogoutSessionRequired: client.backchannelLogoutSessionRequired ?? false,
-        metadata: buildOidcClientMetadata(client.clientId),
+        metadata: buildOidcClientMetadata(client.clientId, environment),
         createdAt: now,
         updatedAt: now,
       };

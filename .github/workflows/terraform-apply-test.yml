@@ -11,6 +11,11 @@ on:
         type: string
         required: false
         default: main
+      enable_auth_ssf_delivery:
+        description: Enable Auth SSF delivery only after staging receivers pass verification
+        type: boolean
+        required: false
+        default: false
 concurrency:
   group: terraform-test-${{ inputs.layer }}
   cancel-in-progress: false
@@ -78,6 +83,7 @@ jobs:
       # (The DOCR registry itself is account-level and created only by the prod
       # persistent apply; test reuses the same registry with lax-test-* repos.)
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
+      TF_VAR_enable_auth_ssf_delivery: ${{ inputs.enable_auth_ssf_delivery && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/checkout-infra
@@ -85,6 +91,9 @@ jobs:
           ref: ${{ inputs.infra_ref }}
           app-id: ${{ vars.INFRA_REPO_APP_ID }}
           private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - name: Verify Auth Terraform environment contract
+        if: inputs.layer == 'ephemeral'
+        run: node scripts/ci/verify-auth-terraform-env.mjs .infra-config/terraform/ephemeral/test/main.tf
       - uses: ./.github/actions/sentry-auth-preflight
         if: inputs.layer == 'sentry'
         with:

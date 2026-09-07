@@ -277,6 +277,39 @@ OIDC/BFF/logout/SSF probes, capacity evidence, rollback rehearsal, or cutover
 approval. A green portability job therefore means “code/extraction ready,” not
 “production promoted.”
 
+## Standalone repository transition
+
+The staging extraction approved in D23 keeps the existing issuer and database
+contracts while changing source authority:
+
+- `LAX-UK/lax-identity` receives `apps/auth`, `packages/auth`,
+  `packages/identity-contracts`, `packages/identity-db`,
+  `packages/observability`, and `packages/config-ts` with their relevant
+  history. It owns this closure only after the staging acceptance record is
+  signed.
+- The monorepo owns `packages/db`, the migration journal and runner, application
+  role grants, OIDC client provisioning, product projectors, and staging
+  deployment orchestration until a later database/package cutover.
+- Identity contracts and schema are frozen during this phase. The standalone
+  repository pins the compatible monorepo commit, migration-journal hash, and
+  immutable migrate-image digest as a CI schema contract.
+- The monorepo closure remains a frozen production fallback. An emergency
+  fallback fix must use the explicit hotfix path and record how the patch was
+  synchronized with the authoritative repository.
+
+Staging uses the existing `https://test-auth.lax.bid` issuer and shared
+`auth_app` role. The standalone repository may publish an image and request a
+deployment, but only the monorepo orchestrator may sequence migrations, role
+reconciliation, OIDC client configuration, and the App Platform deployment.
+Production continues to build and run the monorepo closure.
+
+Source transfer is prohibited until all of the following are recorded:
+standalone CI including database adapters; full-history secret scan; immutable
+image digest and SBOM; target-host OIDC/BFF, token, logout, SSF, rate-limit, and
+origin probes; clean directory/outbox reconciliation; live role contracts; a
+minimum 24-hour measured soak; and successful standalone-image and monorepo-
+fallback rollback rehearsals.
+
 ## Per-product database split exit criteria
 
 The current single cluster with role isolation is transitional. A product may

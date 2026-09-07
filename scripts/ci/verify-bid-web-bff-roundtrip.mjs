@@ -139,7 +139,65 @@ async function main() {
     throw new Error(`Bid BFF authenticated profile check failed (${me.status}): ${detail}`);
   }
 
-  console.log(`bid web BFF roundtrip passed for ${email}`);
+  const resource = await fetch(`${webBase}/api/bff/users/me`, {
+    headers: { cookie: cookieHeader(webCookies) },
+  });
+  const resourceBody = await resource.json().catch(() => null);
+  if (!resource.ok) {
+    throw new Error(
+      `Bid BFF resource call failed (${resource.status}): ${JSON.stringify(resourceBody)}`,
+    );
+  }
+  if (
+    !resourceBody ||
+    typeof resourceBody !== "object" ||
+    !("data" in resourceBody) ||
+    !resourceBody.data ||
+    typeof resourceBody.data !== "object" ||
+    !("id" in resourceBody.data)
+  ) {
+    throw new Error("Bid BFF resource response did not contain the authenticated user");
+  }
+
+  const forgedMutation = await fetch(`${webBase}/api/bff/users/me/preferences/ui/reset-layout`, {
+    method: "POST",
+    headers: {
+      cookie: cookieHeader(webCookies),
+      origin: "https://attacker.invalid",
+      "sec-fetch-site": "cross-site",
+    },
+  });
+  const forgedBody = await forgedMutation.json().catch(() => null);
+  if (forgedMutation.status !== 403 || forgedBody?.error !== "csrf_rejected") {
+    throw new Error(
+      `Bid BFF accepted a forged-origin mutation (${forgedMutation.status}): ${JSON.stringify(
+        forgedBody,
+      )}`,
+    );
+  }
+
+  const logout = await fetch(`${webBase}/api/auth/logout`, {
+    method: "POST",
+    headers: { cookie: cookieHeader(webCookies), origin: webBase },
+  });
+  captureCookies(logout, webCookies);
+  const logoutBody = await logout.json();
+  if (!logout.ok || typeof logoutBody.redirectTo !== "string") {
+    throw new Error(`Bid logout did not return an OP redirect (${logout.status})`);
+  }
+  const endSession = await fetch(logoutBody.redirectTo, {
+    redirect: "manual",
+    headers: { cookie: cookieHeader(authCookies) },
+  });
+  if (endSession.status < 300 || endSession.status >= 400) {
+    throw new Error(`Bid OP end-session failed (${endSession.status})`);
+  }
+  const signedOut = await fetch(`${webBase}/api/auth/me`, {
+    headers: { cookie: cookieHeader(webCookies) },
+  });
+  if (signedOut.ok) throw new Error("Bid BFF session remained active after central logout");
+
+  console.log(`bid BFF roundtrip, CSRF rejection, and central logout passed for ${email}`);
 }
 
 main().catch((error) => {

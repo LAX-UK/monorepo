@@ -11,6 +11,10 @@
     "./registry": {
       "types": "./dist/registry.d.ts",
       "default": "./dist/registry.js"
+    },
+    "./bullmq-telemetry": {
+      "types": "./dist/bullmq-telemetry.d.ts",
+      "default": "./dist/bullmq-telemetry.js"
     }
   },
   "scripts": {
@@ -24,6 +28,7 @@
     "@auction/exports": "workspace:*",
     "@auction/observability": "workspace:*",
     "bullmq": "^5.74.1",
+    "bullmq-otel": "^1.1.0",
     "drizzle-orm": "^0.45.2",
     "zod": "^3.24.1"
   },
