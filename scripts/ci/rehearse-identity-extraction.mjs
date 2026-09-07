@@ -11,6 +11,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { IDENTITY_PACKAGE_PATHS } from "../identity/closure.mjs";
 import { extractIdentityRepository } from "../identity/extract-identity.mjs";
+import { IDENTITY_PNPM_VERSION } from "./prepare-identity-lockfile.mjs";
 import { assertRepoNodeVersion } from "./require-node-version.mjs";
 
 assertRepoNodeVersion({ tool: "Identity extraction rehearsal" });
@@ -25,6 +26,10 @@ function run(label, command, args, cwd = repoRoot) {
       cause: result.error,
     });
   }
+}
+
+function runIdentityPnpm(label, args, cwd) {
+  run(label, "corepack", [`pnpm@${IDENTITY_PNPM_VERSION}`, ...args], cwd);
 }
 
 function assertUnrelatedRootDependenciesWereNotInstalled(workspaceRoot) {
@@ -73,36 +78,31 @@ try {
   });
 
   removeWorkspaceNodeModules(workspaceRoot);
-  run(
+  runIdentityPnpm(
     "Hermetic Identity production install",
-    "pnpm",
     ["install", "--prod", "--no-optional", "--frozen-lockfile", "--filter", "@auction/auth-app..."],
     workspaceRoot,
   );
   assertProductionDependencyClosure(workspaceRoot);
   removeWorkspaceNodeModules(workspaceRoot);
-  run(
+  runIdentityPnpm(
     "Hermetic frozen install",
-    "pnpm",
     ["install", "--frozen-lockfile", "--filter", "@auction/auth-app..."],
     workspaceRoot,
   );
   assertUnrelatedRootDependenciesWereNotInstalled(workspaceRoot);
-  run(
+  runIdentityPnpm(
     "Hermetic Identity build",
-    "pnpm",
     ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "build"],
     workspaceRoot,
   );
-  run(
+  runIdentityPnpm(
     "Hermetic Identity typecheck",
-    "pnpm",
     ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "typecheck"],
     workspaceRoot,
   );
-  run(
+  runIdentityPnpm(
     "Hermetic Identity tests",
-    "pnpm",
     ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "--if-present", "test"],
     workspaceRoot,
   );

@@ -97,7 +97,7 @@ test("bootstrap writes an exact isolated workspace without generating a lockfile
       join(root, "package.json"),
       `${JSON.stringify({
         name: "auction",
-        packageManager: "pnpm@9.15.4",
+        packageManager: "pnpm@10.34.5",
         devDependencies: { "@biomejs/biome": "^1.9.4", unrelated: "1.0.0" },
       })}\n`,
     );

@@ -4,6 +4,8 @@ import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "no
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+export const IDENTITY_PNPM_VERSION = "10.34.5";
+
 const BIOME_CONFIG = {
   $schema: "https://biomejs.dev/schemas/1.9.4/schema.json",
   vcs: { enabled: true, clientKind: "git", useIgnoreFile: true },
@@ -47,7 +49,7 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
     name: `${manifest.name ?? "workspace"}-identity`,
     private: true,
     type: "module",
-    ...(manifest.packageManager ? { packageManager: manifest.packageManager } : {}),
+    packageManager: `pnpm@${IDENTITY_PNPM_VERSION}`,
     ...(manifest.engines ? { engines: manifest.engines } : {}),
     scripts: {
       build: "pnpm --filter @auction/auth-app... --workspace-concurrency=1 build",
@@ -104,8 +106,9 @@ export function generateIdentityLockfile(workspaceRoot) {
   const lockfilePath = join(workspaceRoot, "pnpm-lock.yaml");
   rmSync(lockfilePath, { force: true });
   const result = spawnSync(
-    "pnpm",
+    "corepack",
     [
+      `pnpm@${IDENTITY_PNPM_VERSION}`,
       "install",
       "--lockfile-only",
       "--ignore-scripts",
