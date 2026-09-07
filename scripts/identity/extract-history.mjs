@@ -57,6 +57,7 @@ export function extractIdentityHistory({
   if (dryRun) {
     return [
       `git clone --template= --no-local --no-tags --single-branch ${sourceRoot} ${destination}`,
+      "normalize extracted HEAD to main",
       `git filter-repo --force ${filterArguments.join(" ")}`,
       ...(includeWorkingTree ? ["overlay approved working-tree paths"] : []),
     ];
@@ -67,6 +68,12 @@ export function extractIdentityHistory({
     "git",
     ["clone", "--template=", "--no-local", "--no-tags", "--single-branch", sourceRoot, destination],
     sourceRoot,
+  );
+  const sourceBranch = run("git", ["branch", "--show-current"], destination);
+  run(
+    "git",
+    sourceBranch ? ["branch", "-M", "main"] : ["switch", "-c", "main"],
+    destination,
   );
   run("git", ["filter-repo", "--force", ...filterArguments], destination);
 

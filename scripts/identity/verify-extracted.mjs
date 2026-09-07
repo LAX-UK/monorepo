@@ -62,7 +62,9 @@ function verifyRefs(root) {
     .split("\n")
     .filter(Boolean);
   const violations = [];
-  if (branches.length !== 1) violations.push(`expected one local branch, found ${branches.length}`);
+  if (branches.length !== 1 || branches[0] !== "refs/heads/main") {
+    violations.push(`expected only refs/heads/main, found ${branches.join(", ") || "none"}`);
+  }
   if (tags.length > 0) violations.push(`unexpected tags: ${tags.join(", ")}`);
   if (remotes.length > 0) violations.push(`unexpected remote refs: ${remotes.join(", ")}`);
   return violations;

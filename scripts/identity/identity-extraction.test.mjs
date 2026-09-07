@@ -135,5 +135,6 @@ test("history extraction is one path-preserving filter operation", () => {
     dryRun: true,
   });
   assert.equal(commands.filter((command) => command.startsWith("git filter-repo")).length, 1);
+  assert.equal(commands.filter((command) => command === "normalize extracted HEAD to main").length, 1);
   assert.doesNotMatch(commands.join("\n"), /subtree|split\/identity|--path-rename/);
 });
