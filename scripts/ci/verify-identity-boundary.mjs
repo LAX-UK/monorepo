@@ -240,7 +240,7 @@ async function runLiveVerification() {
     throw new Error(`canonical get-session unavailable: ${session.status}`);
   }
 
-  const introspection = await fetch(`${authBase}/oauth/introspect`, {
+  const introspection = await fetch(authDiscovery.introspection_endpoint, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: "token=invalid-live-boundary-probe",

@@ -14,7 +14,7 @@ any required field is blank or any gate is red.
 | Identity commit | Full SHA and green standalone CI URL |
 | Identity image | `lax-test-identity:<sha>` plus immutable digest |
 | Migration contract | Source `eb16ec8630af125b315637e44b395078bc1dfcea`; `0161_revoke_api_user_reads`; journal `29a4f140fee4cdfb466fead01fc55d494aefb5e534f393bc004d097b542699ea`; pinned test artifact `lax-test-migrate@sha256:fceea8076c999500ab88877d1fe352b9bf3f84920615facab591c4e2eb7511c8` |
-| Fallback image | Captured 2026-09-06: `lax-test-auth:c4df7fbb540304192b10f197df480c626c4e9b95` at `sha256:e1ce432eacf1f8e63e932947df9ea1f44115342fd7d20eededce130d3a19223c` |
+| Fallback image | Captured 2026-09-06: `lax-test-auth:c4df7fbb540304192b10f197df480c626c4e9b95` at `sha256:e1ce432eacf1f8e63e932947df9ea1f44115342fd7d20eededce130d3a19223c` <!-- gitleaks:allow — immutable public image identifiers, not credentials --> |
 | Sentry | Auth release URL and source-map upload result |
 | Supply chain | SBOM and vulnerability-scan artifacts |
 
