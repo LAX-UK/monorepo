@@ -96,7 +96,7 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
   );
   writeFileSync(
     join(workspaceRoot, ".npmrc"),
-    "node-linker=isolated\nauto-install-peers=false\npublic-hoist-pattern[]=drizzle-orm\n",
+    "node-linker=isolated\nauto-install-peers=false\ndedupe-peer-dependents=false\npublic-hoist-pattern[]=drizzle-orm\n",
   );
   writeJson(join(workspaceRoot, "biome.json"), BIOME_CONFIG);
 }

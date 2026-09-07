@@ -116,6 +116,7 @@ test("bootstrap writes an exact isolated workspace without generating a lockfile
       [
         "node-linker=isolated",
         "auto-install-peers=false",
+        "dedupe-peer-dependents=false",
         "public-hoist-pattern[]=drizzle-orm",
         "",
       ].join("\n"),
