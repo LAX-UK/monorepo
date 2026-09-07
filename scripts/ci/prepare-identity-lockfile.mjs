@@ -108,7 +108,7 @@ export function generateIdentityLockfile(workspaceRoot) {
   rmSync(lockfilePath, { force: true });
   const result = spawnSync(
     "pnpm",
-    ["install", "--ignore-scripts", "--no-frozen-lockfile", "--fix-lockfile"],
+    ["install", "--ignore-scripts", "--no-frozen-lockfile", "--fix-lockfile", "--force"],
     {
       cwd: workspaceRoot,
       stdio: "inherit",
@@ -124,6 +124,7 @@ export function generateIdentityLockfile(workspaceRoot) {
             "--ignore-scripts",
             "--no-frozen-lockfile",
             "--fix-lockfile",
+            "--force",
           ],
           {
             cwd: workspaceRoot,
