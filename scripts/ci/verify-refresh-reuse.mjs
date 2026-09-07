@@ -168,12 +168,15 @@ async function main() {
   if (typeof issued.access_token !== "string") {
     throw new Error("code exchange did not issue an access token");
   }
+  if (typeof issued.id_token !== "string") {
+    throw new Error("code exchange did not issue an ID token");
+  }
 
   const tokenExchange = (resource, scope) =>
     form("/api/auth/oauth2/token", {
       grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
-      subject_token: issued.access_token,
-      subject_token_type: "urn:ietf:params:oauth:token-type:access_token",
+      subject_token: issued.id_token,
+      subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
       requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
       resource,
       scope,
