@@ -7,8 +7,6 @@ import {
 } from "@auction/auth";
 import {
   FIRST_PARTY_SSF_EVENT_TYPES,
-  REGISTERED_OIDC_CLIENTS,
-  type RegisteredOidcClientId,
   buildOidcDiscoveryDocument,
 } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
@@ -32,6 +30,7 @@ import {
   createRefreshReplayGateMiddleware,
 } from "../middleware/refresh-replay-gate.js";
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
+import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";
 import { createTokenExchangeRoutes } from "../routes/token-exchange.routes.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
@@ -146,35 +145,15 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       onOutcome: (outcome) => options.metrics.tokenExchangeOutcomes.inc({ outcome }),
     }),
   );
-  app.all("/api/auth/oauth2/endsession", async (c) => {
-    const requestUrl = new URL(c.req.url);
-    const postLogoutRedirectUri = requestUrl.searchParams.get("post_logout_redirect_uri");
-    if (!postLogoutRedirectUri) return options.authHandler(c.req.raw);
-    const clientId = requestUrl.searchParams.get("client_id");
-    if (!clientId || !(clientId in REGISTERED_OIDC_CLIENTS)) {
-      return c.json({ error: "invalid_client" }, 400);
-    }
-    const client = REGISTERED_OIDC_CLIENTS[clientId as RegisteredOidcClientId];
-    if (!client.postLogoutRedirectUris.includes(postLogoutRedirectUri)) {
-      return c.json(
-        {
-          error: "invalid_request",
-          error_description: "post_logout_redirect_uri is not registered",
-        },
-        400,
-      );
-    }
-    const state = requestUrl.searchParams.get("state");
-    requestUrl.searchParams.delete("post_logout_redirect_uri");
-    requestUrl.searchParams.delete("state");
-    const upstream = await options.authHandler(new Request(requestUrl, c.req.raw));
-    if (!upstream.ok) return upstream;
-    const redirect = new URL(postLogoutRedirectUri);
-    if (state) redirect.searchParams.set("state", state);
-    const headers = new Headers(upstream.headers);
-    headers.set("Location", redirect.toString());
-    return new Response(null, { status: 302, headers });
-  });
+  app.route(
+    "/api/auth",
+    createRpInitiatedLogoutRoutes({
+      authHandler: options.authHandler,
+      verifier: services.oidc.rpInitiatedLogout,
+      currentSessionSubject: async (headers) =>
+        (await options.auth.api.getSession({ headers }))?.user?.id ?? null,
+    }),
+  );
   app.all("/api/auth/*", async (c) =>
     runSignInTurnstileGate({
       incoming: c.req.raw,

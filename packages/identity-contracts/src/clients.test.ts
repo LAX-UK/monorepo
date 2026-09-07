@@ -12,7 +12,6 @@ describe("registered OIDC clients", () => {
     expect(bid.testBackchannelLogoutUri).toBe("https://test.lax.bid/api/auth/backchannel-logout");
     expect(bid.backchannelLogoutSessionRequired).toBe(true);
     expect(bid.postLogoutRedirectUris).toContain("https://lax.bid/");
-    expect(bid.endSessionEnabled).toBe(true);
 
     const shop = REGISTERED_OIDC_CLIENTS[REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB];
     expect(shop.kind).toBe(OidcClientKind.Confidential);
@@ -21,7 +20,6 @@ describe("registered OIDC clients", () => {
     expect(shop.allowedScopes).not.toContain("bid.read");
     expect(shop.backchannelLogoutUri).toBe("https://shop.lax.art/api/auth/backchannel-logout");
     expect(shop.backchannelLogoutSessionRequired).toBe(true);
-    expect(shop.endSessionEnabled).toBe(true);
     expect(shop.postLogoutRedirectUris).toEqual([
       "http://localhost:3010/",
       "https://shop.lax.art/",
@@ -40,6 +38,5 @@ describe("registered OIDC clients", () => {
     expect(mobile.allowedScopes.some((scope) => scope.startsWith("shop."))).toBe(false);
     expect(mobile.backchannelLogoutUri).toBeUndefined();
     expect(mobile.backchannelLogoutSessionRequired).toBeUndefined();
-    expect(mobile.endSessionEnabled).toBe(false);
   });
 });

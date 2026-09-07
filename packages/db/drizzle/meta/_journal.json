@@ -1128,13 +1128,6 @@
       "when": 1788000037000,
       "tag": "0161_revoke_api_user_reads",
       "breakpoints": true
-    },
-    {
-      "idx": 161,
-      "version": "7",
-      "when": 1788000038000,
-      "tag": "0162_enable_oidc_end_session",
-      "breakpoints": true
     }
   ]
 }

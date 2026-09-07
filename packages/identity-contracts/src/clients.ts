@@ -24,8 +24,6 @@ export type RegisteredOidcClientMetadata = {
   redirectUris: readonly string[];
   /** Exact RP-Initiated Logout redirect URIs; never reused as login callbacks. */
   postLogoutRedirectUris: readonly string[];
-  /** Trusts this RP to terminate the Identity session with a signed ID-token hint. */
-  endSessionEnabled: boolean;
   allowedScopes: readonly IdentityScope[];
   allowedResources: readonly LaxResourceId[];
   /** Mandatory for public/browser clients per OAuth 2.0 Security BCP. */
@@ -54,7 +52,6 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
         "https://lax.bid/",
         "https://test.lax.bid/",
       ],
-      endSessionEnabled: true,
       allowedScopes: ["openid", "profile", "email", "offline_access", "bid.read", "bid.write"],
       allowedResources: [LAX_RESOURCE_IDS.LAX_BID_API, LAX_RESOURCE_IDS.LAX_WS],
       pkceRequired: true,
@@ -76,7 +73,6 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
         "https://shop.lax.art/",
         "https://test-shop.lax.art/",
       ],
-      endSessionEnabled: true,
       allowedScopes: ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"],
       allowedResources: [LAX_RESOURCE_IDS.LAX_SHOP_API],
       pkceRequired: true,
@@ -90,7 +86,6 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
       displayName: "WebSocket / Mobile",
       redirectUris: ["com.lax.bid:/oauth/callback"],
       postLogoutRedirectUris: [],
-      endSessionEnabled: false,
       allowedScopes: ["openid", "profile", "email", "offline_access", "bid.read"],
       allowedResources: [LAX_RESOURCE_IDS.LAX_WS],
       pkceRequired: true,

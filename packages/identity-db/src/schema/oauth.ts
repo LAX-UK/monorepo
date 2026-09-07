@@ -23,7 +23,6 @@ export const oauthApplication = pgTable(
     redirectUrls: text("redirect_urls").notNull(),
     type: text("type").notNull(),
     disabled: boolean("disabled").notNull().default(false),
-    enableEndSession: boolean("enable_end_session").notNull().default(false),
     backchannelLogoutUri: text("backchannel_logout_uri"),
     backchannelLogoutSessionRequired: boolean("backchannel_logout_session_required")
       .notNull()

@@ -22,7 +22,6 @@ describe("OIDC client provisioning", () => {
         "https://shop.lax.art/",
         "https://test-shop.lax.art/",
       ],
-      endSessionEnabled: true,
       backchannelLogoutUri: "https://shop.lax.art/api/auth/backchannel-logout",
       backchannelLogoutSessionRequired: true,
     });

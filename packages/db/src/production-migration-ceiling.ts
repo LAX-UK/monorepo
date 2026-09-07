@@ -3,15 +3,14 @@
  *
  * A normal `pnpm db:migrate:prod` applies through 0159 only. Operators must set
  * PRODUCTION_MIGRATION_THROUGH to promote 0160 (worker user-read revoke) and
- * then 0161 (API user-read revoke) and 0162 (OIDC RP logout). Local/CI
- * `pnpm db:migrate` is unchanged.
+ * then 0161 (API user-read revoke). Local/CI `pnpm db:migrate` is unchanged.
  *
  * folderMillis values are the journal `when` stamps for those tags; the contract
  * test fails if the journal drifts.
  */
 export const PRODUCTION_MIGRATION_THROUGH_ENV = "PRODUCTION_MIGRATION_THROUGH";
 
-export const PRODUCTION_MIGRATION_THROUGH_TAGS = ["0159", "0160", "0161", "0162"] as const;
+export const PRODUCTION_MIGRATION_THROUGH_TAGS = ["0159", "0160", "0161"] as const;
 
 export type ProductionMigrationThroughTag = (typeof PRODUCTION_MIGRATION_THROUGH_TAGS)[number];
 
@@ -24,7 +23,6 @@ export const PRODUCTION_MIGRATION_CEILING_BY_TAG: Record<
   "0159": { folderMillis: 1788000035000, requiresAppliedAtLeast: null },
   "0160": { folderMillis: 1788000036000, requiresAppliedAtLeast: 1788000035000 },
   "0161": { folderMillis: 1788000037000, requiresAppliedAtLeast: 1788000036000 },
-  "0162": { folderMillis: 1788000038000, requiresAppliedAtLeast: 1788000037000 },
 };
 
 export type ProductionMigrationCeiling = {
@@ -53,7 +51,7 @@ export function resolveProductionMigrationCeiling(
   const value = raw === undefined ? DEFAULT_PRODUCTION_MIGRATION_THROUGH : raw.trim();
   if (!isProductionMigrationThroughTag(value)) {
     throw new Error(
-      `Invalid ${PRODUCTION_MIGRATION_THROUGH_ENV}=${JSON.stringify(raw)}. Allowed values: 0159 (default, directory only), 0160 (worker user-read revoke), 0161 (API user-read revoke), 0162 (OIDC RP logout).`,
+      `Invalid ${PRODUCTION_MIGRATION_THROUGH_ENV}=${JSON.stringify(raw)}. Allowed values: 0159 (default, directory only), 0160 (worker user-read revoke), 0161 (API user-read revoke).`,
     );
   }
   return {
@@ -71,13 +69,7 @@ export function assertStagedProductionMigrationPromotion(
   if (lastAppliedFolderMillis != null && lastAppliedFolderMillis >= required) return;
 
   const requiredTag =
-    tag === "0160"
-      ? DEFAULT_PRODUCTION_MIGRATION_THROUGH
-      : tag === "0161"
-        ? "0160"
-        : tag === "0162"
-          ? "0161"
-          : tag;
+    tag === "0160" ? DEFAULT_PRODUCTION_MIGRATION_THROUGH : tag === "0161" ? "0160" : tag;
   throw new Error(
     `Cannot promote production migrations through ${tag} until ${requiredTag} is already applied. Current head is ${describeAppliedHead(lastAppliedFolderMillis)}. Set ${PRODUCTION_MIGRATION_THROUGH_ENV}=${requiredTag} first.`,
   );

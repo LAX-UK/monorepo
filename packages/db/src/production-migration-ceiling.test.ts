@@ -36,7 +36,7 @@ describe("production migration ceiling", () => {
     expect(
       resolveProductionMigrationThrough(
         { [PRODUCTION_MIGRATION_THROUGH_ENV]: "0159" },
-        PRODUCTION_MIGRATION_CEILING_BY_TAG["0162"].folderMillis,
+        PRODUCTION_MIGRATION_CEILING_BY_TAG["0161"].folderMillis,
       ),
     ).toEqual(ceiling);
   });
@@ -60,15 +60,6 @@ describe("production migration ceiling", () => {
       tag: "0161",
       folderMillis: PRODUCTION_MIGRATION_CEILING_BY_TAG["0161"].folderMillis,
     });
-    expect(
-      resolveProductionMigrationThrough(
-        { [PRODUCTION_MIGRATION_THROUGH_ENV]: "0162" },
-        PRODUCTION_MIGRATION_CEILING_BY_TAG["0161"].folderMillis,
-      ),
-    ).toEqual({
-      tag: "0162",
-      folderMillis: PRODUCTION_MIGRATION_CEILING_BY_TAG["0162"].folderMillis,
-    });
   });
 
   it("fails closed on missing prior stage and invalid values", () => {
@@ -91,13 +82,7 @@ describe("production migration ceiling", () => {
       resolveProductionMigrationCeiling({ [PRODUCTION_MIGRATION_THROUGH_ENV]: "" }),
     ).toThrow(/Invalid PRODUCTION_MIGRATION_THROUGH/);
     expect(() =>
-      resolveProductionMigrationThrough(
-        { [PRODUCTION_MIGRATION_THROUGH_ENV]: "0162" },
-        PRODUCTION_MIGRATION_CEILING_BY_TAG["0160"].folderMillis,
-      ),
-    ).toThrow(/until 0161 is already applied/);
-    expect(() =>
-      resolveProductionMigrationCeiling({ [PRODUCTION_MIGRATION_THROUGH_ENV]: "0163" }),
+      resolveProductionMigrationCeiling({ [PRODUCTION_MIGRATION_THROUGH_ENV]: "0162" }),
     ).toThrow(/Allowed values/);
     expect(() =>
       resolveProductionMigrationCeiling({ [PRODUCTION_MIGRATION_THROUGH_ENV]: "all" }),

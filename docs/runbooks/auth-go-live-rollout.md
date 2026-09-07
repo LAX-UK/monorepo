@@ -56,12 +56,7 @@
     `bid_identity_directory`, and has no `user` privilege.
     Directory-backed product records use left joins so Identity hard deletion
     removes copied PII without deleting durable auction history.
-13. **Trusted RP logout**: apply `0162_enable_oidc_end_session` with
-    `PRODUCTION_MIGRATION_THROUGH=0162 pnpm db:migrate:prod` only after `0161`.
-    Re-run OIDC client provisioning and require Bid and Shop RP-initiated logout
-    with signed ID-token hints to pass before promotion.
-14. **Rollback coupling**: before rolling logout callers back across step 13,
-    apply `0162_rollback.sql`; before rolling API code back across step 12, apply
+13. **Rollback coupling**: before rolling API code back across step 12, apply
     `0161_rollback.sql` and set `PRODUCTION_MIGRATION_THROUGH=0160` (or unset it);
     before rolling worker readers back across step 11, apply
     `0160_rollback.sql` and unset `PRODUCTION_MIGRATION_THROUGH`. Roll

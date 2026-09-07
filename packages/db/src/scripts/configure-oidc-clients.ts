@@ -36,7 +36,6 @@ export function buildOidcClientMetadata(
     allowedResources: client.allowedResources,
     pkceRequired: client.pkceRequired,
     postLogoutRedirectUris: client.postLogoutRedirectUris,
-    endSessionEnabled: client.endSessionEnabled,
     backchannelLogoutUri: backchannelLogoutUri(clientId, environment),
     backchannelLogoutSessionRequired: client.backchannelLogoutSessionRequired,
   });
@@ -93,7 +92,6 @@ async function main(): Promise<void> {
         redirectUrls: client.redirectUris.join(","),
         type: isConfidential ? "web" : "public",
         disabled: false,
-        enableEndSession: client.endSessionEnabled,
         backchannelLogoutUri: selectedBackchannelLogoutUri ?? null,
         backchannelLogoutSessionRequired: client.backchannelLogoutSessionRequired ?? false,
         metadata: buildOidcClientMetadata(client.clientId, environment),
@@ -116,7 +114,6 @@ async function main(): Promise<void> {
             redirectUrls: values.redirectUrls,
             type: values.type,
             disabled: values.disabled,
-            enableEndSession: values.enableEndSession,
             backchannelLogoutUri: values.backchannelLogoutUri,
             backchannelLogoutSessionRequired: values.backchannelLogoutSessionRequired,
             metadata: values.metadata,
