@@ -120,11 +120,13 @@ export function generateIdentityLockfile(workspaceRoot) {
           "pnpm",
           [
             "install",
-            "--lockfile-only",
+            "--prod",
             "--ignore-scripts",
             "--no-frozen-lockfile",
             "--fix-lockfile",
             "--force",
+            "--filter",
+            "@auction/auth-app...",
           ],
           {
             cwd: workspaceRoot,
