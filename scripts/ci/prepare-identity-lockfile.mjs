@@ -120,6 +120,28 @@ export function generateIdentityLockfile(workspaceRoot) {
       stdio: "inherit",
     },
   );
+  const productionResult =
+    result.status === 0
+      ? spawnSync(
+          "corepack",
+          [
+            `pnpm@${IDENTITY_PNPM_VERSION}`,
+            "install",
+            "--prod",
+            "--no-optional",
+            "--ignore-scripts",
+            "--no-frozen-lockfile",
+            "--fix-lockfile",
+            "--force",
+            "--filter",
+            "@auction/auth-app...",
+          ],
+          {
+            cwd: workspaceRoot,
+            stdio: "inherit",
+          },
+        )
+      : undefined;
   rmSync(join(workspaceRoot, "node_modules"), { force: true, recursive: true });
   for (const workspacePath of discoverWorkspacePackagePaths(workspaceRoot)) {
     rmSync(join(workspaceRoot, workspacePath, "node_modules"), {
@@ -130,6 +152,13 @@ export function generateIdentityLockfile(workspaceRoot) {
   if (result.status !== 0) {
     throw new Error(
       `pnpm failed to generate the Identity lockfile${result.error ? `: ${result.error.message}` : ""}`,
+    );
+  }
+  if (productionResult?.status !== 0) {
+    throw new Error(
+      `pnpm failed to finalize the Identity production lockfile${
+        productionResult?.error ? `: ${productionResult.error.message}` : ""
+      }`,
     );
   }
 }
