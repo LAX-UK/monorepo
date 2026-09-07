@@ -110,7 +110,6 @@ export function generateIdentityLockfile(workspaceRoot) {
     [
       `pnpm@${IDENTITY_PNPM_VERSION}`,
       "install",
-      "--lockfile-only",
       "--ignore-scripts",
       "--no-frozen-lockfile",
       "--fix-lockfile",
@@ -121,6 +120,13 @@ export function generateIdentityLockfile(workspaceRoot) {
       stdio: "inherit",
     },
   );
+  rmSync(join(workspaceRoot, "node_modules"), { force: true, recursive: true });
+  for (const workspacePath of discoverWorkspacePackagePaths(workspaceRoot)) {
+    rmSync(join(workspaceRoot, workspacePath, "node_modules"), {
+      force: true,
+      recursive: true,
+    });
+  }
   if (result.status !== 0) {
     throw new Error(
       `pnpm failed to generate the Identity lockfile${result.error ? `: ${result.error.message}` : ""}`,
