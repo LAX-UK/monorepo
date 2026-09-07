@@ -62,9 +62,6 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
     ...(manifest.pnpm?.overrides ? { pnpm: { overrides: manifest.pnpm.overrides } } : {}),
     devDependencies: {
       "@biomejs/biome": biomeVersion,
-      // pnpm 9 can omit pg's optional package from Linux-generated locks
-      // unless the standalone root makes the lock entry explicit.
-      "pg-cloudflare": "1.4.0",
     },
   };
   writeJson(manifestPath, identityManifest);
@@ -108,49 +105,22 @@ export function generateIdentityLockfile(workspaceRoot) {
   rmSync(lockfilePath, { force: true });
   const result = spawnSync(
     "pnpm",
-    ["install", "--ignore-scripts", "--no-frozen-lockfile", "--fix-lockfile", "--force"],
+    [
+      "install",
+      "--lockfile-only",
+      "--ignore-scripts",
+      "--no-frozen-lockfile",
+      "--fix-lockfile",
+      "--force",
+    ],
     {
       cwd: workspaceRoot,
       stdio: "inherit",
     },
   );
-  const repairResult =
-    result.status === 0
-      ? spawnSync(
-          "pnpm",
-          [
-            "install",
-            "--prod",
-            "--ignore-scripts",
-            "--no-frozen-lockfile",
-            "--fix-lockfile",
-            "--force",
-            "--filter",
-            "@auction/auth-app...",
-          ],
-          {
-            cwd: workspaceRoot,
-            stdio: "inherit",
-          },
-        )
-      : undefined;
-  rmSync(join(workspaceRoot, "node_modules"), { force: true, recursive: true });
-  for (const workspacePath of discoverWorkspacePackagePaths(workspaceRoot)) {
-    rmSync(join(workspaceRoot, workspacePath, "node_modules"), {
-      force: true,
-      recursive: true,
-    });
-  }
   if (result.status !== 0) {
     throw new Error(
       `pnpm failed to generate the Identity lockfile${result.error ? `: ${result.error.message}` : ""}`,
-    );
-  }
-  if (repairResult?.status !== 0) {
-    throw new Error(
-      `pnpm failed to repair the Identity lockfile${
-        repairResult?.error ? `: ${repairResult.error.message}` : ""
-      }`,
     );
   }
 }

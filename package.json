@@ -67,7 +67,7 @@
       "engine.io@>=6.5.0 <6.6.7": "6.6.7",
       "fast-xml-builder@<=1.1.6": "1.1.7",
       "form-data@>=4.0.0 <4.0.6": "4.0.6",
-      "pg-cloudflare": "1.4.0",
+      "pg>pg-cloudflare": "-",
       "postcss@<=8.5.17": "8.5.18",
       "sharp@<0.35.0": "0.35.0",
       "socket.io-parser@>=4.0.0 <4.2.7": "4.2.7",

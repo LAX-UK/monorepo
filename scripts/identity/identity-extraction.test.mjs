@@ -110,10 +110,7 @@ test("bootstrap writes an exact isolated workspace without generating a lockfile
     prepareIdentityWorkspace(root, { generateLockfile: false });
 
     const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-    assert.deepEqual(manifest.devDependencies, {
-      "@biomejs/biome": "^1.9.4",
-      "pg-cloudflare": "1.4.0",
-    });
+    assert.deepEqual(manifest.devDependencies, { "@biomejs/biome": "^1.9.4" });
     assert.equal(
       readFileSync(join(root, ".npmrc"), "utf8"),
       [
