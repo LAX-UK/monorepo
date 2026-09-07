@@ -103,10 +103,14 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
 export function generateIdentityLockfile(workspaceRoot) {
   const lockfilePath = join(workspaceRoot, "pnpm-lock.yaml");
   rmSync(lockfilePath, { force: true });
-  const result = spawnSync("pnpm", ["install", "--lockfile-only", "--ignore-scripts"], {
-    cwd: workspaceRoot,
-    stdio: "inherit",
-  });
+  const result = spawnSync(
+    "pnpm",
+    ["install", "--lockfile-only", "--ignore-scripts", "--no-frozen-lockfile", "--fix-lockfile"],
+    {
+      cwd: workspaceRoot,
+      stdio: "inherit",
+    },
+  );
   if (result.status !== 0) {
     throw new Error(
       `pnpm failed to generate the Identity lockfile${result.error ? `: ${result.error.message}` : ""}`,
