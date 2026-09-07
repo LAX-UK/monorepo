@@ -16,9 +16,8 @@ function run(command, args, cwd, { capture = false } = {}) {
     stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
   if (result.status !== 0) {
-    throw new Error(
-      `${command} ${args.join(" ")} failed${capture ? `:\n${result.stderr || result.stdout}` : ""}`,
-    );
+    const details = result.error?.message ?? (capture ? result.stderr || result.stdout : undefined);
+    throw new Error(`${command} ${args.join(" ")} failed${details ? `:\n${details}` : ""}`);
   }
   return result.stdout?.trim() ?? "";
 }
