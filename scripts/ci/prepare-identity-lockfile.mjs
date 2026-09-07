@@ -62,6 +62,9 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
     ...(manifest.pnpm?.overrides ? { pnpm: { overrides: manifest.pnpm.overrides } } : {}),
     devDependencies: {
       "@biomejs/biome": biomeVersion,
+      // pnpm 9 can omit pg's optional package from Linux-generated locks
+      // unless the standalone root makes the lock entry explicit.
+      "pg-cloudflare": "1.4.0",
     },
   };
   writeJson(manifestPath, identityManifest);
