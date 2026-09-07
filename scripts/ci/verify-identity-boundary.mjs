@@ -152,6 +152,7 @@ function verifyStaticContracts() {
     "0148_oidc_logout_and_shop_sessions",
     "0149_ssf_signal_transport",
     "0150_remove_shop_session_id_token",
+    "0162_enable_oidc_end_session",
   ]) {
     if (!tags.has(tag)) throw new Error(`migration registry is missing ${tag}`);
     const version = tag.slice(0, 4);

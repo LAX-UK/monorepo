@@ -389,7 +389,7 @@ physical database separation.
 ## Deployment gates
 
 The canonical production lineage keeps the buyer-interest migrations released
-on main at `0137`–`0139` and runs Identity at `0140`–`0161`. An environment that
+on main at `0137`–`0139` and runs Identity at `0140`–`0162`. An environment that
 ran the superseded feature-branch ordering (Identity at `0137` onward) has
 timestamp/hash collisions with released main and must stop for manual
 reconciliation. The migration runner rejects that divergent history; it does not
@@ -407,7 +407,9 @@ For the Bid directory cutover, apply `0159` with a default
 reconcile and soak, apply `0160` with `PRODUCTION_MIGRATION_THROUGH=0160`,
 deploy/soak all API and export readers, then apply `0161` with
 `PRODUCTION_MIGRATION_THROUGH=0161`. A normal production migrate does not
-apply `0160` or `0161`. Run normal role reconciliation at each release; it
+apply `0160`, `0161`, or the trusted-RP logout capability in `0162`; apply
+`0162` explicitly after `0161` before requiring central Bid/Shop logout. Run
+normal role reconciliation at each release; it
 preserves only a still-present migration-controlled soak grant.
 Rollback is coupled in reverse: restore the `0161` grant before rolling API code
 back, and restore `0160` before rolling worker readers back. Never use a

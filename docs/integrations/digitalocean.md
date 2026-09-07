@@ -30,13 +30,14 @@ Production migrations are run by a one-shot DigitalOcean Job before each deploy
 
 ```sh
 pnpm db:migrate:prod
-# After directory soak, worker revoke then API revoke:
+# After directory soak, worker revoke, API revoke, then trusted-RP logout:
 # PRODUCTION_MIGRATION_THROUGH=0160 pnpm db:migrate:prod
 # PRODUCTION_MIGRATION_THROUGH=0161 pnpm db:migrate:prod
+# PRODUCTION_MIGRATION_THROUGH=0162 pnpm db:migrate:prod
 ```
 
 The Job applies through `0159` unless `PRODUCTION_MIGRATION_THROUGH` is `0160`
-or `0161`. Unknown values and skipped stages fail closed.
+through `0162`. Unknown values and skipped stages fail closed.
 
 Required secret for the Job only:
 
