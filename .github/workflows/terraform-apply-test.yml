@@ -94,6 +94,16 @@ jobs:
       - name: Verify Auth Terraform environment contract
         if: inputs.layer == 'ephemeral'
         run: node scripts/ci/verify-auth-terraform-env.mjs .infra-config/terraform/ephemeral/test/main.tf
+      - uses: digitalocean/action-doctl@v2
+        if: inputs.layer == 'ephemeral'
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Require published Identity image before ephemeral apply
+        if: inputs.layer == 'ephemeral'
+        run: |
+          set -euo pipefail
+          doctl registry repository list-tags lax-test-identity --output json |
+            jq -e 'any(.[]; .tag == "test" and (.manifest_digest | test("^sha256:[0-9a-f]{64}$")))'
       - uses: ./.github/actions/sentry-auth-preflight
         if: inputs.layer == 'sentry'
         with:

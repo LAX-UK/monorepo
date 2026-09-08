@@ -102,6 +102,9 @@ jobs:
       - name: Identity exit criteria
         run: pnpm ci:identity-exit-criteria
 
+      - name: Identity staging workflow contracts
+        run: node --test scripts/ci/identity-staging-workflows.test.mjs
+
       - name: API route DIP coverage
         run: node apps/api/scripts/check-route-dip-coverage.mjs
 

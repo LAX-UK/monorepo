@@ -5,6 +5,7 @@
  */
 const webBase = (process.env.WEB_ORIGIN ?? "http://localhost:3000").replace(/\/+$/, "");
 const authBase = (process.env.AUTH_BASE_URL ?? "http://localhost:3003").replace(/\/+$/, "");
+const apiBase = (process.env.API_BASE_URL ?? "http://localhost:3001").replace(/\/+$/, "");
 const email = process.env.BID_BFF_TEST_EMAIL ?? process.env.SHOP_OIDC_TEST_EMAIL;
 const password = process.env.BID_BFF_TEST_PASSWORD ?? process.env.SHOP_OIDC_TEST_PASSWORD;
 
@@ -158,6 +159,17 @@ async function main() {
   ) {
     throw new Error("Bid BFF resource response did not contain the authenticated user");
   }
+  // The API route accepts only a lax-bid-api resource token carrying bid.read.
+  // A successful BFF call therefore proves the exchanged audience/scope contract,
+  // while this negative check proves the opaque browser session is not reusable.
+  const cookieAsBearer = await fetch(`${apiBase}/users/me`, {
+    headers: { authorization: `Bearer ${authenticatedSession.value}` },
+  });
+  if (cookieAsBearer.status !== 401) {
+    throw new Error(
+      `Bid API accepted the browser session cookie as a bearer token (${cookieAsBearer.status})`,
+    );
+  }
 
   const forgedMutation = await fetch(`${webBase}/api/bff/users/me/preferences/ui/reset-layout`, {
     method: "POST",
@@ -197,7 +209,9 @@ async function main() {
   });
   if (signedOut.ok) throw new Error("Bid BFF session remained active after central logout");
 
-  console.log(`bid BFF roundtrip, CSRF rejection, and central logout passed for ${email}`);
+  console.log(
+    `bid BFF audience/scope roundtrip, cookie-bearer and CSRF rejection, and central logout passed for ${email}`,
+  );
 }
 
 main().catch((error) => {

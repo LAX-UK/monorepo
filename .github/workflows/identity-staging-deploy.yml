@@ -22,10 +22,30 @@ jobs:
       REGISTRY: ${{ vars.DOCR_REGISTRY }}
       IDENTITY_SHA: ${{ github.event.client_payload.sha }}
       IDENTITY_DIGEST: ${{ github.event.client_payload.digest }}
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
+      SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: .infra-config/terraform/ephemeral/test
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
 
       - name: Validate dispatch contract
         run: |
@@ -89,7 +109,7 @@ jobs:
           )"
           jq -e --arg digest "$expected_migrate_digest" \
             'any(.[]; .manifest_digest == $digest)' "$RUNNER_TEMP/migrate-tags.json" >/dev/null
-          [[ "$migrate_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          test "$migrate_digest" = "$expected_migrate_digest"
           migrate_sha="$(
             jq -r --arg digest "$migrate_digest" '
               [.[] | select(.manifest_digest == $digest) | .tag |
@@ -98,6 +118,8 @@ jobs:
           )"
           [[ "$migrate_sha" =~ ^[0-9a-f]{40}$ ]]
           echo "migrate_sha=$migrate_sha" >> "$GITHUB_OUTPUT"
+          echo "migrate_image=$(jq -r .migrateImage "$RUNNER_TEMP/schema-contract.json")" \
+            >> "$GITHUB_OUTPUT"
 
       - name: Verify migration source and journal lineage
         env:
@@ -116,5 +138,121 @@ jobs:
           test "$(jq -r '.entries[-1].tag' "$RUNNER_TEMP/migrate-journal.json")" = "$contract_tip"
           GITHUB_SHA="$MIGRATE_SHA" node scripts/ci/require-ci-success-for-sha.mjs
 
+      - name: Load masked staging database and OIDC contracts
+        run: |
+          set -euo pipefail
+          declare -A outputs=(
+            [DATABASE_URL_OWNER]=postgres_owner_uri
+            [DATABASE_URL_AUTH]=database_url_auth
+            [DATABASE_URL_API]=database_url_api
+            [DATABASE_URL_SHOP]=database_url_shop
+            [DATABASE_URL_WORKER]=database_url_worker
+            [OIDC_CLIENT_SECRET_LAX_BID_WEB]=oidc_bid_web_client_secret
+            [OIDC_CLIENT_SECRET_LAX_SHOP_WEB]=oidc_shop_web_client_secret
+          )
+          for env_name in "${!outputs[@]}"; do
+            value="$(
+              terraform -chdir=.infra-config/terraform/ephemeral/test \
+                output -raw "${outputs[$env_name]}"
+            )"
+            test -n "$value"
+            echo "::add-mask::$value"
+            echo "$env_name=$value" >> "$GITHUB_ENV"
+          done
+
+      - name: Derive masked role passwords from application URLs
+        run: |
+          set -euo pipefail
+          while read -r password_name url_name; do
+            url="${!url_name}"
+            password="$(
+              node -e \
+                'process.stdout.write(decodeURIComponent(new URL(process.argv[1]).password))' \
+                "$url"
+            )"
+            test -n "$password"
+            echo "::add-mask::$password"
+            echo "$password_name=$password" >> "$GITHUB_ENV"
+          done <<'ROLES'
+          AUTH_APP_DB_PASSWORD DATABASE_URL_AUTH
+          API_APP_DB_PASSWORD DATABASE_URL_API
+          SHOP_APP_DB_PASSWORD DATABASE_URL_SHOP
+          WORKER_APP_DB_PASSWORD DATABASE_URL_WORKER
+          ROLES
+
+      - name: Apply pinned migrations, grants, and OIDC registry
+        env:
+          MIGRATE_IMAGE: ${{ steps.lineage.outputs.migrate_image }}
+        run: |
+          set -euo pipefail
+          docker pull "$MIGRATE_IMAGE"
+          docker run --rm \
+            -e DATABASE_URL_OWNER \
+            -e AUTH_APP_DB_PASSWORD \
+            -e API_APP_DB_PASSWORD \
+            -e SHOP_APP_DB_PASSWORD \
+            -e WORKER_APP_DB_PASSWORD \
+            -e OIDC_CLIENT_SECRET_LAX_BID_WEB \
+            -e OIDC_CLIENT_SECRET_LAX_SHOP_WEB \
+            -e NODE_ENV=production \
+            -e APP_ENV=test \
+            "$MIGRATE_IMAGE" \
+            sh -ceu '
+              node packages/db/dist/migrate-prod.js
+              node packages/db/dist/migrate-roles.js
+              node packages/db/dist/scripts/configure-oidc-clients.js
+            '
+
+      - name: Capture encrypted pre-deploy JWKS snapshot
+        run: pnpm tsx scripts/jwks-snapshot.ts test
+
       - name: Deploy through the serialized App Platform release
-        run: doctl apps create-deployment "$APP_ID"
+        id: deploy
+        run: |
+          set -euo pipefail
+          deployment_json="$(doctl apps create-deployment "$APP_ID" --output json)"
+          deployment_id="$(
+            jq -r 'if type == "array" then .[0].id else .id end // empty' \
+              <<<"$deployment_json"
+          )"
+          test -n "$deployment_id"
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+
+          for _ in $(seq 1 120); do
+            deployment="$(
+              doctl apps get-deployment "$APP_ID" "$deployment_id" --output json
+            )"
+            phase="$(
+              jq -r 'if type == "array" then .[0].phase else .phase end // empty' \
+                <<<"$deployment"
+            )"
+            case "$phase" in
+              ACTIVE) break ;;
+              ERROR|CANCELED|SUPERSEDED)
+                echo "::error::App Platform deployment ended in phase $phase"
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          test "$phase" = "ACTIVE"
+
+      - name: Require candidate readiness and release provenance
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            body="$(curl --fail --silent https://test-auth.lax.bid/health/ready || true)"
+            if test "$(jq -r '.status // empty' <<<"$body")" = "ok" &&
+              test "$(jq -r '.release // empty' <<<"$body")" = "$IDENTITY_SHA"; then
+              {
+                echo "### Identity staging deployment"
+                echo "- Identity: \`$IDENTITY_SHA\`"
+                echo "- Digest: \`$IDENTITY_DIGEST\`"
+                echo "- App deployment: \`${{ steps.deploy.outputs.deployment_id }}\`"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Identity candidate did not become ready with the dispatched release"
+          exit 1

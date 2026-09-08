@@ -77,6 +77,9 @@ jobs:
           terraform fmt -check -recursive .infra-config/terraform
           terraform -chdir=.infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }} init -backend=false -input=false
           terraform -chdir=.infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }} validate
+      - name: Verify Auth Terraform environment contract
+        if: matrix.layer == 'ephemeral' && matrix.env == 'test'
+        run: node scripts/ci/verify-auth-terraform-env.mjs .infra-config/terraform/ephemeral/test/main.tf
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: .infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }}

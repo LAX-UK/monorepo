@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 const terraformPath = resolve(
@@ -8,6 +8,7 @@ const terraformPath = resolve(
 );
 const envSource = readFileSync(resolve(repoRoot, "apps/auth/src/env.ts"), "utf8");
 const terraform = readFileSync(terraformPath, "utf8");
+const outputs = readFileSync(resolve(dirname(terraformPath), "outputs.tf"), "utf8");
 
 const authStart = terraform.indexOf('name              = "auth"');
 const authEnd = terraform.indexOf('name              = "shop-identity"', authStart);
@@ -18,6 +19,12 @@ if (authStart < 0 || authEnd < 0 || migrateStart < 0) {
 
 const auth = terraform.slice(authStart, authEnd);
 const migrate = terraform.slice(migrateStart);
+const commonEnvStart = terraform.indexOf("common_secret_env = [");
+const commonEnvEnd = terraform.indexOf("\n  ]", commonEnvStart);
+if (commonEnvStart < 0 || commonEnvEnd < 0 || !auth.includes("local.common_secret_env")) {
+  throw new Error("Could not prove that auth consumes common_secret_env");
+}
+const commonAuthEnv = terraform.slice(commonEnvStart, commonEnvEnd);
 const requiredAuthKeys = [
   "NODE_ENV",
   "APP_ENV",
@@ -35,12 +42,14 @@ const requiredAuthKeys = [
   "METRICS_TOKEN",
   "SSF_DELIVERY_ENABLED",
 ];
+const inheritedCommonKeys = new Set(["NODE_ENV", "APP_ENV", "BETTER_AUTH_SECRET"]);
 
 const violations = [];
 for (const key of requiredAuthKeys) {
   if (!envSource.includes(`${key}:`))
     violations.push(`${key} is not declared by apps/auth/src/env.ts`);
-  if (!auth.includes(`key = "${key}"`) && !terraform.includes(`key = "${key}"`)) {
+  const source = inheritedCommonKeys.has(key) ? commonAuthEnv : auth;
+  if (!source.includes(`key = "${key}"`)) {
     violations.push(`Terraform auth environment omits ${key}`);
   }
 }
@@ -55,6 +64,9 @@ if (!/health_check_path\s*=\s*"\/health\/ready"/.test(auth)) {
 }
 if (auth.includes('key = "SENTRY_RELEASE"')) {
   violations.push("auth overrides the image-embedded SENTRY_RELEASE");
+}
+if (!/output\s+"auth_metrics_token"\s*\{/.test(outputs)) {
+  violations.push("Terraform does not expose the test-only auth metrics token to acceptance");
 }
 for (const command of ["migrate-prod.js", "migrate-roles.js", "configure-oidc-clients.js"]) {
   if (!migrate.includes(command)) violations.push(`migrate PRE_DEPLOY omits ${command}`);

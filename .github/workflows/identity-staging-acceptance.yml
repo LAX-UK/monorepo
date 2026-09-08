@@ -56,6 +56,7 @@ jobs:
       SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
       SSF_DELIVERY_ENABLED: ${{ inputs.ssf_delivery_enabled }}
       SSF_FAILURE_REHEARSAL: ${{ inputs.ssf_failure_rehearsal }}
+      JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -89,6 +90,7 @@ jobs:
             [DATABASE_URL_SHOP]=database_url_shop
             [DATABASE_URL_WORKER]=database_url_worker
             [IDENTITY_MACHINE_CLIENT_SECRET]=identity_machine_client_secret
+            [AUTH_METRICS_TOKEN]=auth_metrics_token
             [REFRESH_TEST_CLIENT_SECRET]=oidc_shop_web_client_secret
             [SSF_TEST_CLIENT_SECRET]=oidc_bid_web_client_secret
           )
@@ -120,10 +122,23 @@ jobs:
         run: node scripts/ci/verify-backchannel-logout-live.mjs
       - name: SSF durable delivery and replay contract
         run: node scripts/ci/verify-identity-ssf-live.mjs
-      - name: Directory reconciliation
-        run: node scripts/ci/verify-identity-directory-drift.mjs
+      - name: Directory and profile reconciliation
+        run: |
+          node scripts/ci/verify-identity-directory-drift.mjs
+          pnpm --filter @auction/db db:reconcile-identity-profiles
       - name: Lifecycle outbox lag
         run: node scripts/ci/verify-identity-outbox-live.mjs
+      - name: JWKS snapshot encryption and metrics visibility
+        run: |
+          pnpm tsx scripts/jwks-snapshot.ts test --verify
+          test "$(
+            curl --silent --output /dev/null --write-out '%{http_code}' \
+              https://test-auth.lax.bid/metrics
+          )" = "401"
+          curl --fail --silent \
+            --header "Authorization: Bearer $AUTH_METRICS_TOKEN" \
+            https://test-auth.lax.bid/metrics > "$RUNNER_TEMP/auth-metrics.txt"
+          rg -q '^# (HELP|TYPE) ' "$RUNNER_TEMP/auth-metrics.txt"
       - name: Live database role contracts
         run: |
           pnpm --filter @auction/db test:auth-role-contract
