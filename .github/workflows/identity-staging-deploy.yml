@@ -3,6 +3,22 @@ name: Identity staging deployment
 on:
   repository_dispatch:
     types: [identity-staging-image-published]
+  workflow_dispatch:
+    inputs:
+      identity_sha:
+        description: Qualified lax-identity commit SHA
+        required: true
+      identity_digest:
+        description: Qualified lax-test-identity manifest digest
+        required: true
+      publish_run_id:
+        description: Successful lax-identity publish workflow run
+        required: true
+      stage_only:
+        description: Qualify and stage the digest without changing traffic
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,18 +30,26 @@ concurrency:
 
 jobs:
   validate-and-deploy:
-    if: github.event.client_payload.repository == 'LAX-UK/lax-identity'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.client_payload.repository == 'LAX-UK/lax-identity'
     runs-on: ubuntu-latest
     environment: test
     env:
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
-      REGISTRY: ${{ vars.DOCR_REGISTRY }}
-      IDENTITY_SHA: ${{ github.event.client_payload.sha }}
-      IDENTITY_DIGEST: ${{ github.event.client_payload.digest }}
+      REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
+      IDENTITY_SHA: ${{ github.event.client_payload.sha || inputs.identity_sha }}
+      IDENTITY_DIGEST: ${{ github.event.client_payload.digest || inputs.identity_digest }}
+      PUBLISH_RUN_ID: ${{ github.event.client_payload.publish_run_id || inputs.publish_run_id }}
       DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
       SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
       SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      STAGE_ONLY: >-
+        ${{ github.event_name == 'repository_dispatch' &&
+            vars.IDENTITY_STANDALONE_CUTOVER_COMPLETE != 'true' ||
+            inputs.stage_only }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -58,29 +82,52 @@ jobs:
             echo "::error::Invalid Identity image digest"
             exit 1
           }
-          test -n "$APP_ID"
+          [[ "$PUBLISH_RUN_ID" =~ ^[0-9]+$ ]] || {
+            echo "::error::Invalid Identity publish workflow run"
+            exit 1
+          }
           test -n "$REGISTRY"
 
       - uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
+      - name: Record previous rolling Identity tag and cutover mode
+        id: rollback
+        run: |
+          set -euo pipefail
+          doctl registry repository list-tags lax-test-identity --output json \
+            > "$RUNNER_TEMP/identity-tags-before-promotion.json"
+          previous_digest="$(
+            jq -r '.[] | select(.tag == "test") | .manifest_digest // empty' \
+              "$RUNNER_TEMP/identity-tags-before-promotion.json"
+          )"
+          previous_sha="$(
+            jq -r --arg digest "$previous_digest" '
+              [.[] |
+               select(.manifest_digest == $digest) |
+               .tag |
+               select(test("^[0-9a-f]{40}$"))][0] // empty
+            ' "$RUNNER_TEMP/identity-tags-before-promotion.json"
+          )"
+          echo "previous_digest=$previous_digest" >> "$GITHUB_OUTPUT"
+          echo "previous_sha=$previous_sha" >> "$GITHUB_OUTPUT"
+          if test "$STAGE_ONLY" = "true"; then
+            echo "first_cutover=true" >> "$GITHUB_OUTPUT"
+          else
+            test -n "$APP_ID"
+            echo "first_cutover=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Verify immutable Identity and migration images
         id: lineage
         run: |
           set -euo pipefail
-          doctl registry repository list-tags lax-test-identity --output json \
-            > "$RUNNER_TEMP/identity-tags.json"
-          rolling_digest="$(
-            jq -r '.[] | select(.tag == "test") | .manifest_digest' \
-              "$RUNNER_TEMP/identity-tags.json"
-          )"
           sha_digest="$(
             jq -r --arg sha "$IDENTITY_SHA" \
               '.[] | select(.tag == $sha) | .manifest_digest' \
-              "$RUNNER_TEMP/identity-tags.json"
+              "$RUNNER_TEMP/identity-tags-before-promotion.json"
           )"
-          test "$rolling_digest" = "$IDENTITY_DIGEST"
           test "$sha_digest" = "$IDENTITY_DIGEST"
 
           doctl registry login --expiry-seconds 900
@@ -137,6 +184,62 @@ jobs:
           test "$(shasum -a 256 "$RUNNER_TEMP/migrate-journal.json" | cut -d' ' -f1)" = "$contract_hash"
           test "$(jq -r '.entries[-1].tag' "$RUNNER_TEMP/migrate-journal.json")" = "$contract_tip"
           GITHUB_SHA="$MIGRATE_SHA" node scripts/ci/require-ci-success-for-sha.mjs
+
+      - name: Create read-only standalone Identity evidence token
+        id: identity-evidence-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.IDENTITY_REPO_APP_ID }}
+          private-key: ${{ secrets.IDENTITY_REPO_APP_PRIVATE_KEY }}
+          owner: LAX-UK
+          repositories: lax-identity
+          permission-actions: read
+          permission-contents: read
+
+      - name: Verify standalone publish, vulnerability, SBOM, and Sentry evidence
+        env:
+          GH_TOKEN: ${{ steps.identity-evidence-token.outputs.token }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$SENTRY_AUTH_TOKEN"
+          test -n "$SENTRY_ORG"
+          run_json="$(
+            gh api "repos/LAX-UK/lax-identity/actions/runs/$PUBLISH_RUN_ID"
+          )"
+          jq -e \
+            '.name == "Publish Identity image" and
+             .event == "workflow_run" and
+             .head_branch == "main" and
+             .conclusion == "success"' <<<"$run_json" >/dev/null
+          compare_json="$(
+            gh api "repos/LAX-UK/lax-identity/compare/$IDENTITY_SHA...main"
+          )"
+          jq -e --arg sha "$IDENTITY_SHA" \
+            '.merge_base_commit.sha == $sha' <<<"$compare_json" >/dev/null
+
+          evidence_dir="$RUNNER_TEMP/identity-release-evidence"
+          mkdir -p "$evidence_dir"
+          gh run download "$PUBLISH_RUN_ID" \
+            --repo LAX-UK/lax-identity \
+            --name "identity-release-$IDENTITY_SHA" \
+            --dir "$evidence_dir"
+          jq -e \
+            --arg sha "$IDENTITY_SHA" \
+            --arg image "$REGISTRY/lax-test-identity@$IDENTITY_DIGEST" \
+            '.repository == "LAX-UK/lax-identity" and
+             .sha == $sha and
+             .image == $image and
+             .sentryRelease == $sha' \
+            "$evidence_dir/identity-release-$IDENTITY_SHA.json" >/dev/null
+          test -s "$evidence_dir/identity-$IDENTITY_SHA.spdx.json"
+          jq -e '[.runs[].results[]?] | length == 0' \
+            "$evidence_dir/identity-$IDENTITY_SHA.trivy.sarif" >/dev/null
+
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+            "https://sentry.io/api/0/organizations/$SENTRY_ORG/releases/$IDENTITY_SHA/" \
+            | jq -e --arg release "$IDENTITY_SHA" '.version == $release' >/dev/null
 
       - name: Load masked staging database and OIDC contracts
         run: |
@@ -206,7 +309,24 @@ jobs:
       - name: Capture encrypted pre-deploy JWKS snapshot
         run: pnpm tsx scripts/jwks-snapshot.ts test
 
+      - name: Promote the qualified digest to the rolling test tag
+        id: promote
+        run: |
+          set -euo pipefail
+          doctl registry login --expiry-seconds 900
+          docker buildx imagetools create \
+            --tag "$REGISTRY/lax-test-identity:test" \
+            "$REGISTRY/lax-test-identity@$IDENTITY_DIGEST"
+          doctl registry repository list-tags lax-test-identity --output json \
+            > "$RUNNER_TEMP/identity-tags-after-promotion.json"
+          rolling_digest="$(
+            jq -r '.[] | select(.tag == "test") | .manifest_digest' \
+              "$RUNNER_TEMP/identity-tags-after-promotion.json"
+          )"
+          test "$rolling_digest" = "$IDENTITY_DIGEST"
+
       - name: Deploy through the serialized App Platform release
+        if: steps.rollback.outputs.first_cutover == 'false'
         id: deploy
         run: |
           set -euo pipefail
@@ -238,6 +358,8 @@ jobs:
           test "$phase" = "ACTIVE"
 
       - name: Require candidate readiness and release provenance
+        if: steps.rollback.outputs.first_cutover == 'false'
+        id: readiness
         run: |
           set -euo pipefail
           for _ in $(seq 1 60); do
@@ -256,3 +378,69 @@ jobs:
           done
           echo "::error::Identity candidate did not become ready with the dispatched release"
           exit 1
+
+      - name: Record first-cutover candidate without changing traffic
+        if: steps.rollback.outputs.first_cutover == 'true'
+        run: |
+          {
+            echo "### Identity first-cutover candidate staged"
+            echo "- Identity: \`$IDENTITY_SHA\`"
+            echo "- Digest: \`$IDENTITY_DIGEST\`"
+            echo "- Traffic unchanged; apply the reviewed Terraform plan, then rerun this workflow"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore previous rolling tag and redeploy on failure
+        if: failure() && steps.promote.outcome != 'skipped'
+        env:
+          PREVIOUS_DIGEST: ${{ steps.rollback.outputs.previous_digest }}
+          PREVIOUS_SHA: ${{ steps.rollback.outputs.previous_sha }}
+          FIRST_CUTOVER: ${{ steps.rollback.outputs.first_cutover }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+        run: |
+          set -euo pipefail
+          doctl registry login --expiry-seconds 900
+          if [[ "$PREVIOUS_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            docker buildx imagetools create \
+              --tag "$REGISTRY/lax-test-identity:test" \
+              "$REGISTRY/lax-test-identity@$PREVIOUS_DIGEST"
+            if test "$FIRST_CUTOVER" = "false" && test "$DEPLOY_OUTCOME" != "skipped"; then
+              deployment_json="$(doctl apps create-deployment "$APP_ID" --output json)"
+              deployment_id="$(
+                jq -r 'if type == "array" then .[0].id else .id end // empty' \
+                  <<<"$deployment_json"
+              )"
+              test -n "$deployment_id"
+              for _ in $(seq 1 120); do
+                deployment="$(
+                  doctl apps get-deployment "$APP_ID" "$deployment_id" --output json
+                )"
+                phase="$(
+                  jq -r 'if type == "array" then .[0].phase else .phase end // empty' \
+                    <<<"$deployment"
+                )"
+                case "$phase" in
+                  ACTIVE) break ;;
+                  ERROR|CANCELED|SUPERSEDED) exit 1 ;;
+                esac
+                sleep 10
+              done
+              test "$phase" = "ACTIVE"
+            fi
+            if test "$FIRST_CUTOVER" = "false" &&
+              test "$DEPLOY_OUTCOME" != "skipped" &&
+              [[ "$PREVIOUS_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              for _ in $(seq 1 60); do
+                body="$(curl --fail --silent https://test-auth.lax.bid/health/ready || true)"
+                if test "$(jq -r '.status // empty' <<<"$body")" = "ok" &&
+                  test "$(jq -r '.release // empty' <<<"$body")" = "$PREVIOUS_SHA"; then
+                  exit 0
+                fi
+                sleep 10
+              done
+              echo "::error::Previous Identity release did not become ready after rollback"
+              exit 1
+            fi
+          else
+            doctl registry repository delete-tag lax-test-identity test --force
+          fi
+          echo "::error::Identity promotion or deployment failed; restored the previous rolling image contract when available"

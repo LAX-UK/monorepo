@@ -9,6 +9,16 @@ on:
       - packages/identity-contracts/**
       - packages/identity-db/**
       - packages/observability/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .npmrc
+      - scripts/ci/prepare-identity-lockfile.mjs
+      - scripts/ci/rehearse-identity-extraction.mjs
+      - scripts/identity/**
+      - .github/workflows/identity-staging-deploy.yml
+      - .github/workflows/identity-staging-acceptance.yml
+      - .github/workflows/build-images.yml
 
 permissions:
   contents: read

@@ -34,6 +34,13 @@ test("closure fixes the six path-preserving workspace packages", () => {
   ]);
 });
 
+test("bootstrap seeds extraction from the source lockfile", () => {
+  const bootstrap = readFileSync(join(repoRoot, "scripts/identity/bootstrap.mjs"), "utf8");
+  const extraction = readFileSync(join(repoRoot, "scripts/identity/extract-identity.mjs"), "utf8");
+  assert.match(bootstrap, /sourceLockfile: join\(sourceRoot, "pnpm-lock\.yaml"\)/);
+  assert.match(extraction, /bootstrapIdentityWorkspace\(destination, sourceRoot\)/);
+});
+
 test("Docker COPY paths stay aligned with the package closure", () => {
   const dockerfile = readFileSync(join(repoRoot, "apps/auth/Dockerfile"), "utf8");
   assert.deepEqual(verifyDockerClosureText(dockerfile), []);

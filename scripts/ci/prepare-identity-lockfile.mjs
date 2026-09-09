@@ -67,7 +67,9 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
       lint: "biome check .",
       "lint:layers": "node scripts/check-layers.mjs",
       typecheck: "pnpm --filter @auction/auth-app... --workspace-concurrency=1 typecheck",
-      test: "pnpm --filter @auction/auth-app... --workspace-concurrency=1 --if-present test",
+      test: "pnpm test:unit",
+      "test:unit":
+        "pnpm --filter @auction/auth-app... --workspace-concurrency=1 --if-present test --exclude='**/*.integration.test.ts'",
       "ci:identity-extractability": "node scripts/ci/verify-identity-extractability.mjs",
       "ci:verify":
         "pnpm lint && pnpm lint:layers && pnpm ci:identity-extractability && pnpm typecheck && pnpm test && pnpm build",
@@ -112,23 +114,34 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
   writeJson(join(workspaceRoot, "biome.json"), BIOME_CONFIG);
 }
 
-/** Generate a native lock from only the six-package standalone workspace. */
-export function generateIdentityLockfile(workspaceRoot) {
+/** Prune a copied source lock to the closure without resolving dependencies online. */
+export function generateIdentityLockfile(workspaceRoot, options = {}) {
   const lockfilePath = join(workspaceRoot, "pnpm-lock.yaml");
-  rmSync(lockfilePath, { force: true });
+  if (!options.sourceLockfile) {
+    throw new Error("Identity lock generation requires a source lockfile");
+  }
+  if (!existsSync(options.sourceLockfile)) {
+    throw new Error(`Identity lock seed not found: ${options.sourceLockfile}`);
+  }
+  const workspacePaths = discoverWorkspacePackagePaths(workspaceRoot);
+  const sourceLockfile = readFileSync(options.sourceLockfile, "utf8");
+  writeFileSync(lockfilePath, pruneIdentityLockfile(sourceLockfile, workspacePaths));
+
   const result = spawnSync(
     "corepack",
     [
       `pnpm@${IDENTITY_PNPM_VERSION}`,
       "install",
+      "--lockfile-only",
+      "--offline",
       "--ignore-scripts",
-      "--no-frozen-lockfile",
-      "--fix-lockfile",
-      "--force",
+      "--frozen-lockfile",
+      "--filter",
+      "@auction/auth-app...",
     ],
     {
       cwd: workspaceRoot,
-      env: identityPnpmEnvironment(),
+      env: identityPnpmEnvironment(options.environment),
       stdio: "inherit",
     },
   );
@@ -139,18 +152,18 @@ export function generateIdentityLockfile(workspaceRoot) {
           [
             `pnpm@${IDENTITY_PNPM_VERSION}`,
             "install",
+            "--lockfile-only",
+            "--offline",
             "--prod",
             "--no-optional",
             "--ignore-scripts",
-            "--no-frozen-lockfile",
-            "--fix-lockfile",
-            "--force",
+            "--frozen-lockfile",
             "--filter",
             "@auction/auth-app...",
           ],
           {
             cwd: workspaceRoot,
-            env: identityPnpmEnvironment(),
+            env: identityPnpmEnvironment(options.environment),
             stdio: "inherit",
           },
         )
@@ -164,26 +177,81 @@ export function generateIdentityLockfile(workspaceRoot) {
   }
   if (result.status !== 0) {
     throw new Error(
-      `pnpm failed to generate the Identity lockfile${result.error ? `: ${result.error.message}` : ""}`,
+      `pnpm failed to prune the Identity lockfile${result.error ? `: ${result.error.message}` : ""}`,
     );
   }
   if (productionResult?.status !== 0) {
     throw new Error(
-      `pnpm failed to finalize the Identity production lockfile${
+      `pnpm failed to validate the Identity production lockfile${
         productionResult?.error ? `: ${productionResult.error.message}` : ""
       }`,
     );
   }
 }
 
-export function prepareIdentityWorkspace(workspaceRoot, { generateLockfile = true } = {}) {
+/**
+ * Retains only Identity importers. The package and snapshot graphs remain from
+ * the validated source lock; pnpm tolerates unreachable entries and frozen,
+ * offline validation proves all retained importers are closed.
+ */
+export function pruneIdentityLockfile(source, workspacePaths) {
+  const importersStart = source.indexOf("importers:\n");
+  const packagesStart = source.indexOf("\npackages:\n", importersStart);
+  if (importersStart === -1 || packagesStart === -1) {
+    throw new Error("Source lockfile does not contain pnpm v9 importers and packages sections");
+  }
+
+  const importerSection = source.slice(importersStart + "importers:\n".length, packagesStart);
+  const importerMatches = [...importerSection.matchAll(/^ {2}([^ ].*?):(?: \{\})?$/gm)];
+  const importers = new Map();
+  for (const [index, match] of importerMatches.entries()) {
+    const start = match.index;
+    const end = importerMatches[index + 1]?.index ?? importerSection.length;
+    importers.set(match[1], importerSection.slice(start, end).trimEnd());
+  }
+
+  const rootImporter = importers.get(".");
+  const biome = rootImporter?.match(
+    /\n {6}'@biomejs\/biome':\n {8}specifier: ([^\n]+)\n {8}version: ([^\n]+)/,
+  );
+  if (!biome) {
+    throw new Error("Source lockfile root importer does not pin @biomejs/biome");
+  }
+
+  const retained = [
+    [
+      "  .:",
+      "    devDependencies:",
+      "      '@biomejs/biome':",
+      `        specifier: ${biome[1]}`,
+      `        version: ${biome[2]}`,
+    ].join("\n"),
+  ];
+  for (const path of workspacePaths) {
+    const importer = importers.get(path);
+    // Older lockfiles may omit dependency-free importers; current pnpm writes `{}`.
+    if (importer) retained.push(importer);
+  }
+
+  const prefix = source
+    .slice(0, importersStart)
+    .replace(/(^settings:\n(?:^ {2}.*\n)*)/m, (settings) =>
+      settings.replace(/^ {2}autoInstallPeers: .+$/m, "  autoInstallPeers: false"),
+    );
+  return `${prefix}importers:\n\n${retained.join("\n\n")}\n${source.slice(packagesStart + 1)}`;
+}
+
+export function prepareIdentityWorkspace(
+  workspaceRoot,
+  { environment, generateLockfile = true, sourceLockfile } = {},
+) {
   const workspacePaths = discoverWorkspacePackagePaths(workspaceRoot);
   if (workspacePaths.length === 0) {
     throw new Error(`No workspace packages found in ${workspaceRoot}`);
   }
   prepareIdentityRootManifest(join(workspaceRoot, "package.json"), workspacePaths);
   if (generateLockfile) {
-    generateIdentityLockfile(workspaceRoot);
+    generateIdentityLockfile(workspaceRoot, { environment, sourceLockfile });
   }
 }
 
@@ -191,8 +259,9 @@ const invokedPath = process.argv[1] ? resolve(process.argv[1]) : undefined;
 if (invokedPath === fileURLToPath(import.meta.url)) {
   const lockfilePath = resolve(process.argv[2] ?? "pnpm-lock.yaml");
   const manifestPath = resolve(process.argv[3] ?? join(dirname(lockfilePath), "package.json"));
+  const sourceLockfile = process.argv[4] ? resolve(process.argv[4]) : undefined;
   if (dirname(lockfilePath) !== dirname(manifestPath)) {
     throw new Error("Identity lockfile and root manifest must share a directory");
   }
-  prepareIdentityWorkspace(dirname(manifestPath));
+  prepareIdentityWorkspace(dirname(manifestPath), { sourceLockfile });
 }

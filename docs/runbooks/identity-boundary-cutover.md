@@ -22,17 +22,36 @@ Release order is fail-closed:
    standalone repository's `schema-contract.json`.
 2. The deployment orchestrator verifies migration lineage, applies migrations,
    reconciles roles, and runs the full OIDC client registry command.
-3. A green standalone commit publishes immutable and rolling Identity tags,
-   creates its Sentry release/source maps, and dispatches its SHA and digest.
-4. The monorepo validates the dispatch and image digest, serializes deployment,
-   and starts the App Platform release.
-5. The target-host acceptance bundle and soak record decide acceptance or
+3. A green standalone commit publishes only its immutable Identity tag, scans
+   that exact digest, records its SBOM/Sentry evidence, and dispatches its SHA,
+   digest, and successful publish run ID.
+4. The monorepo validates the standalone workflow and retained evidence before
+   moving the rolling tag. Until the repository variable
+   `IDENTITY_STANDALONE_CUTOVER_COMPLETE=true`, dispatches stage the qualified
+   digest without changing traffic.
+   Configure `IDENTITY_REPO_APP_ID` and `IDENTITY_REPO_APP_PRIVATE_KEY` for a
+   GitHub App installed on `LAX-UK/lax-identity` with read-only Actions and
+   Contents permissions; the repository-scoped workflow token cannot read
+   cross-repository artifacts.
+5. Apply the reviewed staging Terraform plan against that exact Identity and
+   Shop image contract, set the cutover variable, then manually rerun
+   `identity-staging-deploy.yml` with the same SHA, digest, and publish run ID.
+   Subsequent dispatches serialize rolling-tag promotion and App Platform
+   deployment normally.
+6. The target-host acceptance bundle and soak record decide acceptance or
    rollback.
 
 Neither repository may add an Identity schema migration during this phase.
 Public contract changes require the later package-publication/consumer cutover.
 An emergency change to the frozen production fallback requires the
 `identity-fallback-hotfix` label and a recorded synchronization patch.
+
+Merge and release the `auction-infra` changes before the corresponding
+monorepo workflow changes. The monorepo checks out infra `main`, and its
+environment and safe-delete contracts intentionally fail against the old
+Terraform source. Removing Shop's default privileges affects future objects;
+the same release must run `migrate-roles.js` after apply to revoke grants from
+objects that already exist.
 
 ## Migration-lineage preflight
 
@@ -154,8 +173,10 @@ product activity. `last_event_id` is the projector ordering/idempotency cursor.
 2. Verify Bid and Shop back-channel receivers before relying on delivery.
 3. Provision SSF streams disabled; send verification SETs to both exact
    receivers.
-4. Enable streams, then set `SSF_DELIVERY_ENABLED=true`; monitor delivery
-   outcomes and replay/dead-letter behavior.
+4. Enable streams, set repository variable
+   `ENABLE_AUTH_SSF_DELIVERY_TEST=true`, and apply the ephemeral layer before
+   running acceptance. Monitor delivery outcomes and replay/dead-letter
+   behavior.
 
 ## Rollback
 
@@ -167,6 +188,9 @@ product activity. `last_event_id` is the projector ordering/idempotency cursor.
   and Sentry-release env change together, then deploy the recorded
   `lax-test-auth:<sha>`. Do not retag a monorepo image into the standalone
   repository or change DNS.
+- On the first-cutover rerun, the previous rolling digest is the candidate
+  digest staged in the prior run. It is not an independent image rollback
+  target; use the reviewed Terraform source fallback above if deployment fails.
 - Do not recreate the issuer inside `apps/api` with a runtime flag.
 - Disable SSF delivery before schema rollback. Reverse `0149`, `0148`, `0147`,
   `0146`, then earlier migrations in descending order. Earlier profile

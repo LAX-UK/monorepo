@@ -9,6 +9,29 @@ const apiBase = (process.env.API_BASE_URL ?? "http://localhost:3001").replace(/\
 const email = process.env.BID_BFF_TEST_EMAIL ?? process.env.SHOP_OIDC_TEST_EMAIL;
 const password = process.env.BID_BFF_TEST_PASSWORD ?? process.env.SHOP_OIDC_TEST_PASSWORD;
 
+const allowedWebOrigins = new Set([
+  webBase,
+  "http://localhost:3000",
+  "https://test.lax.bid",
+  ...(authBase === "https://auth.lax.bid" ? ["https://lax.bid"] : []),
+]);
+const allowedAuthOrigins = new Set([
+  authBase,
+  "http://localhost:3003",
+  "https://test-auth.lax.bid",
+]);
+
+function assertTrustedRedirect(url, allowedOrigins, expectedPath, label) {
+  const parsed = new URL(url);
+  if (!allowedOrigins.has(parsed.origin)) {
+    throw new Error(`${label} redirect origin is not trusted: ${parsed.origin}`);
+  }
+  if (parsed.pathname !== expectedPath) {
+    throw new Error(`${label} redirect path is not trusted: ${parsed.pathname}`);
+  }
+  return parsed;
+}
+
 if (!email || !password) {
   throw new Error(
     "BID_BFF_TEST_EMAIL and BID_BFF_TEST_PASSWORD (or SHOP_OIDC_* fallbacks) are required",
@@ -76,6 +99,12 @@ async function main() {
   if (beginLogin.status !== 302 || !authorizeUrl) {
     throw new Error(`Bid BFF login did not redirect to authorize (${beginLogin.status})`);
   }
+  assertTrustedRedirect(
+    authorizeUrl,
+    allowedAuthOrigins,
+    "/api/auth/oauth2/authorize",
+    "Bid BFF authorize",
+  );
   const pendingSession = assertBidSessionCookie(webCookies);
 
   const authorize = await fetch(authorizeUrl, {
@@ -104,6 +133,12 @@ async function main() {
   if (!consent.ok || typeof consentBody.redirectURI !== "string") {
     throw new Error(`OIDC consent failed (${consent.status})`);
   }
+  assertTrustedRedirect(
+    consentBody.redirectURI,
+    allowedWebOrigins,
+    "/api/auth/callback/lax-bid-web",
+    "Bid BFF callback",
+  );
 
   const callback = await fetch(consentBody.redirectURI, {
     redirect: "manual",
@@ -197,6 +232,12 @@ async function main() {
   if (!logout.ok || typeof logoutBody.redirectTo !== "string") {
     throw new Error(`Bid logout did not return an OP redirect (${logout.status})`);
   }
+  assertTrustedRedirect(
+    logoutBody.redirectTo,
+    allowedAuthOrigins,
+    "/api/auth/oauth2/endsession",
+    "Bid OP end-session",
+  );
   const endSession = await fetch(logoutBody.redirectTo, {
     redirect: "manual",
     headers: { cookie: cookieHeader(authCookies) },
@@ -204,6 +245,9 @@ async function main() {
   if (endSession.status < 300 || endSession.status >= 400) {
     throw new Error(`Bid OP end-session failed (${endSession.status})`);
   }
+  const postLogout = endSession.headers.get("location");
+  if (!postLogout) throw new Error("Bid OP end-session omitted its post-logout redirect");
+  assertTrustedRedirect(postLogout, allowedWebOrigins, "/", "Bid post-logout");
   const signedOut = await fetch(`${webBase}/api/auth/me`, {
     headers: { cookie: cookieHeader(webCookies) },
   });

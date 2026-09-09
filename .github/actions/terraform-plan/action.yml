@@ -17,6 +17,6 @@ runs:
     - uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.plan-name }}
-        path: |
-          ${{ inputs.working-directory }}/${{ inputs.plan-name }}.tfplan
-          ${{ inputs.working-directory }}/${{ inputs.plan-name }}.txt
+        path: ${{ inputs.working-directory }}/${{ inputs.plan-name }}.txt
+        if-no-files-found: error
+        retention-days: 30

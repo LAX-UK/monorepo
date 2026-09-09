@@ -150,8 +150,13 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     createRpInitiatedLogoutRoutes({
       authHandler: options.authHandler,
       verifier: services.oidc.rpInitiatedLogout,
-      currentSessionSubject: async (headers) =>
-        (await options.auth.api.getSession({ headers }))?.user?.id ?? null,
+      currentSession: async (headers) => {
+        const session = await options.auth.api.getSession({ headers });
+        const subjectId = session?.user?.id;
+        const sessionId = session?.session?.id;
+        if (!subjectId || !sessionId) return null;
+        return { subjectId, sessionId };
+      },
     }),
   );
   app.all("/api/auth/*", async (c) =>

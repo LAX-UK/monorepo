@@ -7,24 +7,10 @@ on:
         description: Standalone Identity commit under test
         required: true
         type: string
-      shop_identity_base_url:
-        description: Staging Shop relying-party origin
-        required: true
-        type: string
       outbox_max_age_ms:
         description: Approved lifecycle-outbox lag threshold in milliseconds
         required: true
         type: number
-      ssf_delivery_enabled:
-        description: Must match the reviewed SSF_DELIVERY_ENABLED staging value
-        required: true
-        default: false
-        type: boolean
-      ssf_failure_rehearsal:
-        description: Accelerate a dedicated SSF retry/dead-letter probe, then restore the receiver
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -41,7 +27,7 @@ jobs:
       AUTH_BASE_URL: https://test-auth.lax.bid
       API_BASE_URL: https://test-api.lax.bid
       WEB_ORIGIN: https://test.lax.bid
-      SHOP_IDENTITY_BASE_URL: ${{ inputs.shop_identity_base_url }}
+      SHOP_IDENTITY_BASE_URL: https://test-shop.lax.art
       IDENTITY_BOUNDARY_SHOP_REQUIRED: "true"
       BID_BFF_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
       BID_BFF_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
@@ -49,13 +35,13 @@ jobs:
       SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
       REFRESH_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
       REFRESH_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
-      REFRESH_TEST_REDIRECT_URI: ${{ inputs.shop_identity_base_url }}/auth/callback
+      REFRESH_TEST_REDIRECT_URI: https://test-shop.lax.art/auth/callback
       IDENTITY_MACHINE_CLIENT_ID: auth-service
       IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS: "60000"
       IDENTITY_OUTBOX_MAX_AGE_MS: ${{ inputs.outbox_max_age_ms }}
       SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
-      SSF_DELIVERY_ENABLED: ${{ inputs.ssf_delivery_enabled }}
-      SSF_FAILURE_REHEARSAL: ${{ inputs.ssf_failure_rehearsal }}
+      SSF_DELIVERY_ENABLED: "true"
+      SSF_FAILURE_REHEARSAL: "true"
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
     steps:
       - uses: actions/checkout@v4
@@ -100,6 +86,25 @@ jobs:
             echo "::add-mask::$value"
             echo "$env_name=$value" >> "$GITHUB_ENV"
           done
+          app_id="$(terraform -chdir=.infra-config/terraform/ephemeral/test output -raw app_id)"
+          test -n "$app_id"
+          echo "APP_ID=$app_id" >> "$GITHUB_ENV"
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Require live Identity SSF delivery worker
+        run: |
+          set -euo pipefail
+          doctl apps get "$APP_ID" --output json |
+            jq -e '
+              (if type == "array" then .[0] else . end).spec.services[]
+              | select(.name == "auth")
+              | any(.envs[]?;
+                  .key == "SSF_DELIVERY_ENABLED" and .value == "true")
+            ' >/dev/null || {
+              echo "::error::Live Identity app must have SSF_DELIVERY_ENABLED=true before acceptance"
+              exit 1
+            }
       - name: Validate requested Identity release
         run: |
           [[ "${{ inputs.identity_sha }}" =~ ^[0-9a-f]{40}$ ]]
@@ -120,7 +125,17 @@ jobs:
         run: node scripts/ci/verify-identity-machine-live.mjs
       - name: Bid and Shop back-channel logout delivery
         run: node scripts/ci/verify-backchannel-logout-live.mjs
-      - name: SSF durable delivery and replay contract
+      - name: SSF durable delivery and replay contract (Bid receiver)
+        env:
+          SSF_TEST_CLIENT_ID: lax-bid-web
+          SSF_TEST_CLIENT_SECRET: ${{ env.SSF_TEST_CLIENT_SECRET }}
+          SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
+        run: node scripts/ci/verify-identity-ssf-live.mjs
+      - name: SSF durable delivery and replay contract (Shop receiver)
+        env:
+          SSF_TEST_CLIENT_ID: lax-shop-web
+          SSF_TEST_CLIENT_SECRET: ${{ env.REFRESH_TEST_CLIENT_SECRET }}
+          SSF_TEST_ENDPOINT: https://test-shop.lax.art/api/ssf/events
         run: node scripts/ci/verify-identity-ssf-live.mjs
       - name: Directory and profile reconciliation
         run: |

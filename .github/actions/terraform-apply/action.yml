@@ -5,12 +5,36 @@ inputs:
     required: true
   state-key:
     required: true
+  verify-plan-safe:
+    required: false
+    default: "false"
+  allowed-delete-addresses:
+    description: JSON array of exact resource addresses allowed to be deleted
+    required: false
+    default: "[]"
 runs:
   using: composite
   steps:
     - shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: terraform plan -input=false -out=tfapply.tfplan
+    - name: Render redacted Terraform plan evidence
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform show -no-color tfapply.tfplan > "$RUNNER_TEMP/${{ inputs.state-key }}-plan.txt"
+    - name: Retain redacted Terraform plan
+      uses: actions/upload-artifact@v4
+      with:
+        name: terraform-plan-${{ inputs.state-key }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/${{ inputs.state-key }}-plan.txt
+        if-no-files-found: error
+        retention-days: 30
+    - shell: bash
+      if: inputs.verify-plan-safe == 'true'
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        TF_ALLOWED_DELETE_ADDRESSES: ${{ inputs.allowed-delete-addresses }}
+      run: node "$GITHUB_WORKSPACE/scripts/ci/verify-terraform-plan-safe.mjs" tfapply.tfplan
     - shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: terraform apply -input=false tfapply.tfplan

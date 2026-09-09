@@ -4,6 +4,7 @@ import { SHOP_PRODUCT_PROFILE_TABLES, SHOP_SSF_RECEIVER_TABLES } from "./migrate
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const SHOP_URL = process.env.DATABASE_URL_SHOP;
+const OWNER_URL = process.env.DATABASE_URL_OWNER;
 const { Client } = pg;
 
 async function withShopClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
@@ -60,6 +61,37 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", () => {
       }
     });
   });
+
+  it.skipIf(!OWNER_URL)(
+    "does not inherit default privileges on newly owner-created tables or sequences",
+    async () => {
+      const canary = `shop_default_privilege_canary_${process.pid}`;
+      const sequence = `${canary}_id_seq`;
+      const owner = new Client(buildPgConnectionConfig(OWNER_URL ?? ""));
+      await owner.connect();
+      try {
+        await owner.query(
+          `create table public."${canary}" (id bigint generated always as identity primary key)`,
+        );
+        await withShopClient(async (client) => {
+          const tableResult = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, 'SELECT') as allowed",
+            [`public.${canary}`],
+          );
+          expect(tableResult.rows[0]?.allowed).toBe(false);
+
+          const sequenceResult = await client.query<{ allowed: boolean }>(
+            "select has_sequence_privilege(current_user, $1, 'USAGE') as allowed",
+            [`public.${sequence}`],
+          );
+          expect(sequenceResult.rows[0]?.allowed).toBe(false);
+        });
+      } finally {
+        await owner.query(`drop table if exists public."${canary}" cascade`);
+        await owner.end();
+      }
+    },
+  );
 
   it("owns only the Shop SSF replay ledger", async () => {
     await withShopClient(async (client) => {

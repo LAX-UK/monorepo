@@ -149,11 +149,7 @@ try {
     ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "typecheck"],
     workspaceRoot,
   );
-  runIdentityPnpm(
-    "Hermetic Identity tests",
-    ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "--if-present", "test"],
-    workspaceRoot,
-  );
+  runIdentityPnpm("Hermetic Identity unit tests", ["test:unit"], workspaceRoot);
   console.log("\nIdentity extraction rehearsal passed.");
 } catch (error) {
   failed = true;

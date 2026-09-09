@@ -23,7 +23,9 @@ export function assertIdentityPackageManifests(workspaceRoot) {
   }
 }
 
-export function bootstrapIdentityWorkspace(workspaceRoot) {
+export function bootstrapIdentityWorkspace(workspaceRoot, sourceRoot) {
   assertIdentityPackageManifests(workspaceRoot);
-  prepareIdentityWorkspace(workspaceRoot);
+  prepareIdentityWorkspace(workspaceRoot, {
+    sourceLockfile: join(sourceRoot, "pnpm-lock.yaml"),
+  });
 }

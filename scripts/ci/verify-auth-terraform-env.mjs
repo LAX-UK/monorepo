@@ -65,6 +65,13 @@ if (!/health_check_path\s*=\s*"\/health\/ready"/.test(auth)) {
 if (auth.includes('key = "SENTRY_RELEASE"')) {
   violations.push("auth overrides the image-embedded SENTRY_RELEASE");
 }
+if (
+  !/auth_sentry_env\s*=\s*\[[\s\S]*?contains\(\["SENTRY_RELEASE", "SENTRY_AUTH_TOKEN", "SENTRY_ORG"\]/.test(
+    terraform,
+  )
+) {
+  violations.push("auth runtime does not filter all build-only Sentry environment variables");
+}
 if (!/output\s+"auth_metrics_token"\s*\{/.test(outputs)) {
   violations.push("Terraform does not expose the test-only auth metrics token to acceptance");
 }

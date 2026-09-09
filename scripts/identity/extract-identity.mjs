@@ -21,7 +21,7 @@ export function extractIdentityRepository({
     throw new Error(`Source Identity closure drift:\n${sourceViolations.join("\n")}`);
   }
   extractIdentityHistory({ sourceRoot, destination, includeWorkingTree });
-  bootstrapIdentityWorkspace(destination);
+  bootstrapIdentityWorkspace(destination, sourceRoot);
   verifyExtractedIdentity(destination, { scanSecrets });
   return destination;
 }
