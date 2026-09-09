@@ -68,8 +68,7 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
       "lint:layers": "node scripts/check-layers.mjs",
       typecheck: "pnpm --filter @auction/auth-app... --workspace-concurrency=1 typecheck",
       test: "pnpm test:unit",
-      "test:unit":
-        "pnpm --filter @auction/auth-app... --workspace-concurrency=1 --if-present test --exclude='**/*.integration.test.ts'",
+      "test:unit": `corepack pnpm@${IDENTITY_PNPM_VERSION} --filter @auction/auth-app... --workspace-concurrency=1 --if-present test --exclude='**/*.integration.test.ts'`,
       "ci:identity-extractability": "node scripts/ci/verify-identity-extractability.mjs",
       "ci:verify":
         "pnpm lint && pnpm lint:layers && pnpm ci:identity-extractability && pnpm typecheck && pnpm test && pnpm build",
