@@ -88,6 +88,7 @@ const envSchema = z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+    SENTRY_RELEASE: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     SENTRY_DSN_AUTH: z.preprocess(emptyToUndefined, z.string().url().optional()),
     REQUIRE_EMAIL_VERIFICATION: z
       .preprocess((val) => {

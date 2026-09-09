@@ -105,6 +105,28 @@ export function createInternalIdentityRoutes(options: {
     return c.body(null, 200);
   });
 
+  app.post("/oauth/introspect", async (c) => {
+    c.header("Cache-Control", "no-store");
+    const credentials = parseBasicCredentials(c.req.header("authorization"));
+    if (
+      !hasValidMachineCredentials(credentials, options.machineClientId, options.machineClientSecret)
+    ) {
+      return c.json({ error: "invalid_client" }, 401);
+    }
+    const body = await c.req.parseBody();
+    const token = typeof body.token === "string" ? body.token : "";
+    const clientId = token ? await options.redis.get(tokenKey(token)) : null;
+    if (!clientId || !safeEqual(clientId, options.machineClientId)) {
+      return c.json({ active: false });
+    }
+    return c.json({
+      active: true,
+      client_id: clientId,
+      token_type: "Bearer",
+      scope: MACHINE_SCOPE,
+    });
+  });
+
   app.use("/identity/*", async (c, next) => {
     const authorization = c.req.header("authorization");
     const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";

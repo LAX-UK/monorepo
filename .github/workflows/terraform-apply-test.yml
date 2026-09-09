@@ -11,8 +11,29 @@ on:
         type: string
         required: false
         default: main
+      enable_auth_ssf_delivery:
+        description: Enable Auth SSF delivery only after staging receivers pass verification
+        type: boolean
+        required: false
+        default: false
+      identity_sha:
+        description: Approved standalone Identity commit for ephemeral image deploys
+        type: string
+        required: false
+      identity_digest:
+        description: Approved lax-test-identity digest for ephemeral image deploys
+        type: string
+        required: false
+      shop_identity_sha:
+        description: Approved Shop Identity commit for ephemeral image deploys
+        type: string
+        required: false
+      shop_identity_digest:
+        description: Approved lax-test-shop-identity digest for ephemeral image deploys
+        type: string
+        required: false
 concurrency:
-  group: terraform-test-${{ inputs.layer }}
+  group: ${{ inputs.layer == 'ephemeral' && 'app-deploy-test' || format('terraform-test-{0}', inputs.layer) }}
   cancel-in-progress: false
 jobs:
   apply:
@@ -78,6 +99,7 @@ jobs:
       # (The DOCR registry itself is account-level and created only by the prod
       # persistent apply; test reuses the same registry with lax-test-* repos.)
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
+      TF_VAR_enable_auth_ssf_delivery: ${{ inputs.enable_auth_ssf_delivery && 'true' || vars.ENABLE_AUTH_SSF_DELIVERY_TEST || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/checkout-infra
@@ -85,6 +107,30 @@ jobs:
           ref: ${{ inputs.infra_ref }}
           app-id: ${{ vars.INFRA_REPO_APP_ID }}
           private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - name: Verify Cloudflare zone access before ephemeral apply
+        if: inputs.layer == 'ephemeral'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ci/verify-cloudflare-zone-access.mjs
+      - name: Verify Auth Terraform environment contract
+        if: inputs.layer == 'ephemeral'
+        run: node scripts/ci/verify-auth-terraform-env.mjs .infra-config/terraform/ephemeral/test/main.tf
+      - uses: digitalocean/action-doctl@v2
+        if: inputs.layer == 'ephemeral'
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Require approved Identity and Shop image contracts before ephemeral apply
+        if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_TEST == 'image'
+        env:
+          IDENTITY_SHA: ${{ inputs.identity_sha }}
+          IDENTITY_DIGEST: ${{ inputs.identity_digest }}
+          SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
+          SHOP_IDENTITY_DIGEST: ${{ inputs.shop_identity_digest }}
+          DOCR_REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
+        run: |
+          doctl registry login --expiry-seconds 900
+          node scripts/ci/verify-staging-image-contract.mjs
       - uses: ./.github/actions/sentry-auth-preflight
         if: inputs.layer == 'sentry'
         with:
@@ -99,3 +145,36 @@ jobs:
         with:
           working-directory: .infra-config/terraform/${{ inputs.layer }}/test
           state-key: ${{ inputs.layer }}-test
+          verify-plan-safe: ${{ inputs.layer == 'ephemeral' && 'true' || 'false' }}
+          allowed-delete-addresses: >-
+            ["module.postgres_rbac.postgresql_default_privileges.app_tables[\"shop_app\"]",
+            "module.postgres_rbac.postgresql_default_privileges.app_sequences[\"shop_app\"]"]
+      - name: Require Shop DNS, TLS, and readiness after apply
+        if: inputs.layer == 'ephemeral'
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            if curl --fail --silent --show-error --max-time 10 \
+              https://test-shop.lax.art/health/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Shop DNS, TLS, and readiness did not converge"
+          exit 1
+      - name: Prove Identity readiness after ephemeral traffic change
+        if: inputs.layer == 'ephemeral' && inputs.identity_sha != ''
+        env:
+          EXPECTED_IDENTITY_SHA: ${{ inputs.identity_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_IDENTITY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          for _ in $(seq 1 30); do
+            body="$(curl --fail --silent https://test-auth.lax.bid/health/ready || true)"
+            if test "$(jq -r '.release // empty' <<<"$body")" = "$EXPECTED_IDENTITY_SHA"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Auth readiness did not report the approved Identity release"
+          exit 1

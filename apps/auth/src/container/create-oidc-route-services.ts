@@ -3,6 +3,7 @@ import type { Redis } from "ioredis";
 import { createIdentityJwtSigner } from "../infrastructure/create-identity-jwt-signer.js";
 import type { JwksProvider } from "../infrastructure/jwks-provider.js";
 import { createTokenExchangePorts } from "../infrastructure/token-exchange-adapters.js";
+import { RpInitiatedLogoutVerifier } from "../services/rp-initiated-logout-verifier.js";
 import { TokenExchangeService } from "../services/token-exchange.service.js";
 import type { AuthRouteServicesSlice } from "./auth-container-slices.js";
 import { createOidcPhase3Services } from "./create-oidc-phase3-services.js";
@@ -34,6 +35,7 @@ export function createOidcRouteServices(options: {
   return {
     oidc: {
       ...oidc,
+      rpInitiatedLogout: new RpInitiatedLogoutVerifier(options.issuer, options.jwks),
       tokenExchange: new TokenExchangeService(
         createTokenExchangePorts({
           db: options.db,

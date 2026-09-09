@@ -36,4 +36,3 @@ export {
   probeSentryConnectivity,
   type BackgroundErrorContext,
 } from "./sentry-capture.js";
-export { getBullMqTelemetry } from "./bullmq-telemetry.js";

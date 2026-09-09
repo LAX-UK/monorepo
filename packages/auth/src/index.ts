@@ -14,13 +14,6 @@ export {
   HOSTED_TWO_FACTOR_SCRIPT,
   buildHostedTwoFactorHtml,
 } from "./hosted-two-factor-html.js";
-export {
-  createAuctionAuthClient,
-  createAuthClientInstance,
-  resolveAuthBaseUrl,
-  type AuctionAuthClient,
-  type AuthClientError,
-} from "./client.js";
 export * from "./contracts.js";
 export type { AuthDatabase } from "./phone-number-plugin.js";
 export {

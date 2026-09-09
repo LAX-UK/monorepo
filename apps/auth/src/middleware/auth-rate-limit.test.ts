@@ -78,7 +78,7 @@ describe("standalone verification email rate limit", () => {
 });
 
 describe("machine token rate limit", () => {
-  it.each(["/internal/oauth/token", "/internal/oauth/revoke"])(
+  it.each(["/internal/oauth/token", "/internal/oauth/introspect", "/internal/oauth/revoke"])(
     "blocks attempts over the per-IP limit for %s",
     async (path) => {
       const app = new Hono();

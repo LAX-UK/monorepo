@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM node:22-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+RUN corepack enable
 WORKDIR /app
 
 FROM base AS deps
@@ -11,11 +11,7 @@ COPY packages/config-ts/package.json ./packages/config-ts/
 COPY packages/identity-contracts/package.json ./packages/identity-contracts/
 COPY packages/identity-db/package.json ./packages/identity-db/
 COPY packages/observability/package.json ./packages/observability/
-COPY scripts/ci/prepare-identity-lockfile.mjs ./scripts/ci/prepare-identity-lockfile.mjs
-RUN node scripts/ci/prepare-identity-lockfile.mjs pnpm-lock.yaml package.json \
-  && pnpm --config.node-linker=isolated install \
-    --frozen-lockfile \
-    --filter @auction/auth-app...
+RUN pnpm --config.node-linker=isolated install --frozen-lockfile --filter @auction/auth-app...
 
 FROM deps AS builder
 COPY apps/auth ./apps/auth
@@ -34,20 +30,25 @@ COPY packages/config-ts/package.json ./packages/config-ts/
 COPY packages/identity-contracts/package.json ./packages/identity-contracts/
 COPY packages/identity-db/package.json ./packages/identity-db/
 COPY packages/observability/package.json ./packages/observability/
-COPY scripts/ci/prepare-identity-lockfile.mjs ./scripts/ci/prepare-identity-lockfile.mjs
-RUN node scripts/ci/prepare-identity-lockfile.mjs pnpm-lock.yaml package.json \
-  && pnpm --config.node-linker=isolated install \
+RUN pnpm --config.node-linker=isolated install \
   --prod \
   --no-optional \
   --frozen-lockfile \
   --filter @auction/auth-app... \
   && test -z "$(find node_modules/.pnpm -maxdepth 1 \
-    \( -name 'next@*' -o -name 'sharp@*' -o -name 'vitest@*' -o -name '@playwright+test@*' \) \
+    \( -name 'next@*' -o -name 'sharp@*' -o -name 'vitest@*' -o -name '@playwright+test@*' \
+      -o -name 'bullmq-otel@*' \) \
     -print -quit)"
 
 FROM node:22-alpine AS runner
 WORKDIR /app
+RUN apk upgrade --no-cache \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+    /usr/local/bin/pnpm /usr/local/bin/pnpx /usr/local/bin/yarn /usr/local/bin/yarnpkg
+ARG IMAGE_SHA=unknown
 ENV NODE_ENV=production
+ENV SENTRY_RELEASE=${IMAGE_SHA}
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/auth/node_modules ./apps/auth/node_modules
 COPY --from=prod-deps /app/packages/auth/node_modules ./packages/auth/node_modules
@@ -67,5 +68,5 @@ COPY --from=builder /app/packages/observability/dist ./packages/observability/di
 EXPOSE 3003
 USER node
 HEALTHCHECK --interval=15s --timeout=10s --start-period=30s --retries=5 \
-  CMD node -e "fetch('http://127.0.0.1:3003/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:3003/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "apps/auth/dist/index.js"]

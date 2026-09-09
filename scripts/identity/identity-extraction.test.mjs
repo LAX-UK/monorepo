@@ -1,0 +1,176 @@
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+import {
+  identityPnpmEnvironment,
+  prepareIdentityWorkspace,
+} from "../ci/prepare-identity-lockfile.mjs";
+import { IDENTITY_PACKAGES, IDENTITY_PACKAGE_NAMES, IDENTITY_PACKAGE_PATHS } from "./closure.mjs";
+import { extractIdentityHistory } from "./extract-history.mjs";
+import { importSpecifiers } from "./import-specifiers.mjs";
+import { verifyDockerClosureText, verifyPackageClosure } from "./verify-docker-closure.mjs";
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
+
+test("closure fixes the six path-preserving workspace packages", () => {
+  assert.deepEqual(IDENTITY_PACKAGE_PATHS, [
+    "apps/auth",
+    "packages/auth",
+    "packages/identity-contracts",
+    "packages/identity-db",
+    "packages/observability",
+    "packages/config-ts",
+  ]);
+  assert.deepEqual(IDENTITY_PACKAGE_NAMES, [
+    "@auction/auth-app",
+    "@auction/auth",
+    "@auction/identity-contracts",
+    "@auction/identity-db",
+    "@auction/observability",
+    "@auction/config-ts",
+  ]);
+});
+
+test("bootstrap seeds extraction from the source lockfile", () => {
+  const bootstrap = readFileSync(join(repoRoot, "scripts/identity/bootstrap.mjs"), "utf8");
+  const extraction = readFileSync(join(repoRoot, "scripts/identity/extract-identity.mjs"), "utf8");
+  assert.match(bootstrap, /sourceLockfile: join\(sourceRoot, "pnpm-lock\.yaml"\)/);
+  assert.match(extraction, /bootstrapIdentityWorkspace\(destination, sourceRoot\)/);
+});
+
+test("Docker COPY paths stay aligned with the package closure", () => {
+  const dockerfile = readFileSync(join(repoRoot, "apps/auth/Dockerfile"), "utf8");
+  assert.deepEqual(verifyDockerClosureText(dockerfile), []);
+  assert.match(dockerfile, /RUN corepack enable/);
+  assert.doesNotMatch(dockerfile, /COREPACK_ENABLE_PROJECT_SPEC|corepack prepare/);
+  assert.equal(dockerfile.match(/--config\.node-linker=isolated/g)?.length, 2);
+  assert.doesNotMatch(dockerfile, /COPY scripts\/ci\/prepare-identity-lockfile\.mjs/);
+  assert.doesNotMatch(dockerfile, /node scripts\/ci\/prepare-identity-lockfile\.mjs/);
+
+  const drifted = dockerfile.replaceAll(
+    "COPY packages/identity-db/package.json ./packages/identity-db/",
+    "",
+  );
+  assert.match(
+    verifyDockerClosureText(drifted).join("\n"),
+    /missing manifest COPY packages\/identity-db\/package\.json/,
+  );
+});
+
+test("package closure rejects an unapproved workspace dependency", () => {
+  const root = mkdtempSync(join(tmpdir(), "identity-closure-test-"));
+  try {
+    for (const entry of IDENTITY_PACKAGES) {
+      const path = join(root, entry.path);
+      mkdirSync(path, { recursive: true });
+      writeFileSync(
+        join(path, "package.json"),
+        `${JSON.stringify({ name: entry.name, dependencies: {} })}\n`,
+      );
+    }
+    const authManifest = join(root, "apps/auth/package.json");
+    writeFileSync(
+      authManifest,
+      `${JSON.stringify({
+        name: "@auction/auth-app",
+        dependencies: { "@auction/not-in-closure": "workspace:*" },
+      })}\n`,
+    );
+    assert.match(
+      verifyPackageClosure(root).join("\n"),
+      /out-of-closure package @auction\/not-in-closure/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("import scanner checks literal and rejects non-literal dynamic imports", () => {
+  assert.deepEqual(
+    importSpecifiers(`
+      import { value } from "@auction/auth";
+      export type { Contract } from "@auction/identity-contracts";
+      await import("@auction/identity-db/schema");
+      await import(packageName);
+    `),
+    [
+      { specifier: "@auction/auth", dynamic: false },
+      { specifier: "@auction/identity-contracts", dynamic: false },
+      { specifier: "@auction/identity-db/schema", dynamic: true },
+      { expression: "packageName", dynamic: true, unresolved: true },
+    ],
+  );
+});
+
+test("bootstrap writes an exact isolated workspace without generating a lockfile", () => {
+  const root = mkdtempSync(join(tmpdir(), "identity-bootstrap-test-"));
+  try {
+    writeFileSync(
+      join(root, "package.json"),
+      `${JSON.stringify({
+        name: "auction",
+        packageManager: "pnpm@10.34.5",
+        devDependencies: { "@biomejs/biome": "^1.9.4", unrelated: "1.0.0" },
+      })}\n`,
+    );
+    for (const entry of IDENTITY_PACKAGES) {
+      const path = join(root, entry.path);
+      mkdirSync(path, { recursive: true });
+      writeFileSync(join(path, "package.json"), `${JSON.stringify({ name: entry.name })}\n`);
+    }
+
+    prepareIdentityWorkspace(root, { generateLockfile: false });
+
+    const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    assert.deepEqual(manifest.devDependencies, { "@biomejs/biome": "^1.9.4" });
+    assert.equal(
+      readFileSync(join(root, ".npmrc"), "utf8"),
+      [
+        "node-linker=isolated",
+        "auto-install-peers=false",
+        "dedupe-peer-dependents=false",
+        "public-hoist-pattern[]=drizzle-orm",
+        "",
+      ].join("\n"),
+    );
+    const workspace = readFileSync(join(root, "pnpm-workspace.yaml"), "utf8");
+    for (const path of IDENTITY_PACKAGE_PATHS) assert.match(workspace, new RegExp(path));
+    assert.doesNotMatch(workspace, /apps\/\*|packages\/\*/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Identity pnpm children ignore parent workspace topology", () => {
+  assert.deepEqual(
+    identityPnpmEnvironment({
+      npm_config_node_linker: "hoisted",
+      npm_config_auto_install_peers: "true",
+      npm_config_dedupe_peer_dependents: "true",
+      npm_config_public_hoist_pattern: "*",
+      npm_config_store_dir: "/tmp/identity-store",
+      PATH: "/usr/bin",
+    }),
+    {
+      npm_config_store_dir: "/tmp/identity-store",
+      PATH: "/usr/bin",
+    },
+  );
+});
+
+test("history extraction is one path-preserving filter operation", () => {
+  const commands = extractIdentityHistory({
+    sourceRoot: repoRoot,
+    destination: join(tmpdir(), "identity-dry-run"),
+    dryRun: true,
+  });
+  assert.equal(commands.filter((command) => command.startsWith("git filter-repo")).length, 1);
+  assert.equal(
+    commands.filter((command) => command === "normalize extracted HEAD to main").length,
+    1,
+  );
+  assert.doesNotMatch(commands.join("\n"), /subtree|split\/identity|--path-rename/);
+});

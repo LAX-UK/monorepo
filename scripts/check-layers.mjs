@@ -11,6 +11,8 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { IDENTITY_PACKAGES, IDENTITY_PACKAGE_NAMES } from "./identity/closure.mjs";
+import { readImportSpecifiers } from "./identity/import-specifiers.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -69,6 +71,7 @@ const SPECIFIER_RE =
 function listSources(dir) {
   /** @type {string[]} */
   const out = [];
+  if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return out;
   for (const entry of readdirSync(dir)) {
     if (SKIP_DIRS.has(entry)) continue;
     const full = join(dir, entry);
@@ -258,6 +261,7 @@ function isAllowedRepositoriesImportSite(rel) {
 function listAllSources(dir) {
   /** @type {string[]} */
   const out = [];
+  if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return out;
   for (const entry of readdirSync(dir)) {
     if (SKIP_DIRS.has(entry)) continue;
     const full = join(dir, entry);
@@ -553,6 +557,34 @@ function isAllowedAppsAuthAuctionImport(rel, specifier) {
 
 /** @type {string[]} */
 const identityExtractabilityViolations = [];
+const identityClosureNames = new Set(IDENTITY_PACKAGE_NAMES);
+
+for (const identityPackage of IDENTITY_PACKAGES) {
+  const packageRoot = join(root, identityPackage.path);
+  if (!statSync(packageRoot, { throwIfNoEntry: false })?.isDirectory()) {
+    identityExtractabilityViolations.push(`missing Identity closure path ${identityPackage.path}`);
+    continue;
+  }
+  for (const file of listSources(packageRoot)) {
+    const rel = relative(root, file).replace(/\\/g, "/");
+    for (const imported of readImportSpecifiers(file)) {
+      if (imported.unresolved) {
+        identityExtractabilityViolations.push(
+          `${rel}: non-literal dynamic import(${imported.expression}) cannot be boundary-checked`,
+        );
+        continue;
+      }
+      const specifier = imported.specifier;
+      if (!specifier?.startsWith("@auction/")) continue;
+      const packageName = specifier.split("/").slice(0, 2).join("/");
+      if (!identityClosureNames.has(packageName)) {
+        identityExtractabilityViolations.push(
+          `${rel}: imports "${specifier}" outside the approved Identity closure`,
+        );
+      }
+    }
+  }
+}
 
 for (const file of listSources(join(root, "packages/auth/src"))) {
   const rel = relative(root, file).replace(/\\/g, "/");

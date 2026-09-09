@@ -123,6 +123,7 @@ const app = createAuthApp({
     db,
     auth,
     nodeEnv: env.NODE_ENV,
+    release: env.SENTRY_RELEASE,
     metricsToken: env.METRICS_TOKEN,
     metrics: metrics.registry,
     ...(internal ? { internal } : {}),

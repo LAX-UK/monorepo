@@ -41,8 +41,7 @@ export class SsfStreamService {
         id: `ssf-${clientId}`,
         clientId,
         audience: receiver.audience,
-        endpoint:
-          this.environment === "development" ? receiver.developmentEndpoints[0] : receiver.endpoint,
+        endpoint: endpointForEnvironment(receiver, this.environment),
         enabled,
         events: [...FIRST_PARTY_SSF_EVENT_TYPES],
         checkpoint,
@@ -166,4 +165,13 @@ function supported(requested: string[]): SsfEventType[] {
   );
   if (events.length === 0) throw new Error("unsupported_events");
   return events;
+}
+
+function endpointForEnvironment(
+  receiver: (typeof SSF_RECEIVER_REGISTRY)[keyof typeof SSF_RECEIVER_REGISTRY],
+  environment: "development" | "test" | "production",
+): string {
+  if (environment === "development") return receiver.developmentEndpoints[0];
+  if (environment === "test") return receiver.testEndpoints[0];
+  return receiver.endpoint;
 }

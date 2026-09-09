@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 export const SESSION_COOKIE_NAME = "shop_identity_session";
+export const OIDC_ID_TOKEN_COOKIE_NAME = "shop_identity_id_token";
 
 export type PendingOAuthSession = {
   state: string;
@@ -62,4 +63,30 @@ export function writeSessionCookie(
 
 export function clearSessionCookie(c: Context): void {
   deleteCookie(c, SESSION_COOKIE_NAME, { path: "/" });
+}
+
+export function readOidcIdToken(c: Context): string | null {
+  const token = getCookie(c, OIDC_ID_TOKEN_COOKIE_NAME);
+  if (
+    !token ||
+    token.length > 3_800 ||
+    !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)
+  ) {
+    return null;
+  }
+  return token;
+}
+
+export function writeOidcIdTokenCookie(c: Context, token: string, secure: boolean): void {
+  setCookie(c, OIDC_ID_TOKEN_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure,
+    sameSite: "Lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+}
+
+export function clearOidcIdTokenCookie(c: Context): void {
+  deleteCookie(c, OIDC_ID_TOKEN_COOKIE_NAME, { path: "/" });
 }

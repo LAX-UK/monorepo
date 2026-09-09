@@ -25,4 +25,6 @@ regexes = [
   '''GA4_MEASUREMENT_ID''',
   # Stripe doc placeholder in runbook curl examples.
   '''sk_test_YOUR_KEY''',
+  # Immutable public fallback commit captured as rollback evidence.
+  '''c4df7fbb540304192b10f197df480c626c4e9b95''',
 ]

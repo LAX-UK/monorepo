@@ -1,6 +1,6 @@
+import type { ConsentRecord, ConsentStore } from "@auction/identity-contracts";
 import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import type { ConsentRecord, ConsentStore } from "../ports/consent-store.js";
 import type * as schema from "../schema/index.js";
 import { oauthConsent } from "../schema/oauth.js";
 

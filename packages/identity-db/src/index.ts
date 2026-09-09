@@ -26,5 +26,4 @@ export {
   startJwksRetirementSchedule,
 } from "./adapters/drizzle-jwks-retirement.js";
 export type { EnvelopeCrypto } from "./adapters/envelope.js";
-export type { ConsentRecord, ConsentStore } from "./ports/consent-store.js";
 export * from "./schema/index.js";

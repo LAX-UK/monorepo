@@ -30,6 +30,8 @@ export type RegisteredOidcClientMetadata = {
   pkceRequired: boolean;
   /** Exact future OpenID Connect Back-Channel Logout endpoint, when supported by the RP. */
   backchannelLogoutUri?: string | undefined;
+  /** Staging receiver on the same product origin boundary. */
+  testBackchannelLogoutUri?: string | undefined;
   /** The RP requires the OP's logout token to carry the browser-session `sid`. */
   backchannelLogoutSessionRequired?: boolean | undefined;
 };
@@ -54,18 +56,28 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
       allowedResources: [LAX_RESOURCE_IDS.LAX_BID_API, LAX_RESOURCE_IDS.LAX_WS],
       pkceRequired: true,
       backchannelLogoutUri: "https://lax.bid/api/auth/backchannel-logout",
+      testBackchannelLogoutUri: "https://test.lax.bid/api/auth/backchannel-logout",
       backchannelLogoutSessionRequired: true,
     },
     [REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB]: {
       clientId: REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB,
       kind: OidcClientKind.Confidential,
       displayName: "LAX Shop Web",
-      redirectUris: ["http://localhost:3010/auth/callback", "https://shop.lax.art/auth/callback"],
-      postLogoutRedirectUris: ["http://localhost:3010/", "https://shop.lax.art/"],
+      redirectUris: [
+        "http://localhost:3010/auth/callback",
+        "https://shop.lax.art/auth/callback",
+        "https://test-shop.lax.art/auth/callback",
+      ],
+      postLogoutRedirectUris: [
+        "http://localhost:3010/",
+        "https://shop.lax.art/",
+        "https://test-shop.lax.art/",
+      ],
       allowedScopes: ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"],
       allowedResources: [LAX_RESOURCE_IDS.LAX_SHOP_API],
       pkceRequired: true,
       backchannelLogoutUri: "https://shop.lax.art/api/auth/backchannel-logout",
+      testBackchannelLogoutUri: "https://test-shop.lax.art/api/auth/backchannel-logout",
       backchannelLogoutSessionRequired: true,
     },
     [REGISTERED_OIDC_CLIENT_IDS.WS_MOBILE]: {

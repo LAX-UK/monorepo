@@ -68,6 +68,39 @@ See also: [key rotation](../security/key-rotation.md),
 [JWKS rotation](./jwks-rotation.md), and
 [identity boundary cutover](./identity-boundary-cutover.md).
 
+## Standalone Identity staging release
+
+The D23 source extraction changes staging image ownership without changing the
+issuer, database, or migration authority. `LAX-UK/lax-identity` publishes
+`lax-test-identity:<sha>` and the rolling `:test` tag only after standalone CI
+passes. It then sends an authenticated deployment request to the monorepo.
+
+The monorepo remains the only staging deployment orchestrator. It must serialize
+the request with ordinary staging releases, verify the dispatched image digest
+and pinned migration contract, ensure the required migrate image is from a
+compatible green commit, apply/verify migrations, reconcile roles, and run
+`db:configure-oidc-clients` before App Platform deployment.
+
+The staging Auth component keeps `https://test-auth.lax.bid`, the shared
+`auth_app` connection, and all existing runtime secrets. It pulls
+`lax-test-identity`, admits traffic through `/health/ready`, and obtains
+`SENTRY_RELEASE` from the image SHA. Its production env must include non-local
+`API_INTERNAL_BASE_URL`, matching Identity machine credentials, a protected
+metrics token, and `SSF_DELIVERY_ENABLED=false` until both receivers pass
+verification. The staging Shop relying party is
+`https://test-shop.lax.art`; its callback, post-logout URI, back-channel logout
+receiver, and SSF receiver are test-only registrations. Run the acceptance
+workflow once with delivery disabled to prove durable queuing, apply the
+reviewed ephemeral layer with `enable_auth_ssf_delivery=true`, then rerun
+acceptance with `ssf_delivery_enabled=true` and
+`ssf_failure_rehearsal=true` to prove retry, dead-letter, recovery, signed
+delivery, and replay rejection.
+
+Do not remove the monorepo production image or transfer source authority until
+the signed [Identity staging extraction evidence](./identity-staging-extraction-evidence.md)
+contains target-host adversarial gates, live role/reconciliation results,
+measured soak thresholds, and both rollback rehearsals.
+
 ## Canonical issuer and BFF gate
 
 `apps/auth` is the sole issuer and API issuer routes are retired. Promotion of

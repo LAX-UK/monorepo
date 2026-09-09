@@ -1,54 +1,34 @@
 #!/usr/bin/env node
 /**
- * Rehearses Identity extraction in a workspace containing only its approved
- * source closure. Generated artifacts and installed dependencies are never
- * copied from the monorepo.
+ * Rehearses the same fresh-clone, path-preserving extraction used for a real
+ * Identity repository handoff, then proves frozen development and production
+ * installs against the generated closure-only lockfile.
  */
 import { spawnSync } from "node:child_process";
 import {
-  cpSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, sep } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  prepareIdentityRootManifest,
-  removeRootImporterFromLockfile,
-} from "./prepare-identity-lockfile.mjs";
+import { IDENTITY_PACKAGE_PATHS } from "../identity/closure.mjs";
+import { extractIdentityRepository } from "../identity/extract-identity.mjs";
+import { IDENTITY_PNPM_VERSION, identityPnpmEnvironment } from "./prepare-identity-lockfile.mjs";
 import { assertRepoNodeVersion } from "./require-node-version.mjs";
 
 assertRepoNodeVersion({ tool: "Identity extraction rehearsal" });
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const rootFiles = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc", ".nvmrc"];
-const identityPaths = [
-  "apps/auth",
-  "packages/auth",
-  "packages/identity-contracts",
-  "packages/identity-db",
-  "packages/observability",
-  "packages/config-ts",
-];
-const allowedWorkspacePackages = new Set([
-  "@auction/auth-app",
-  "@auction/auth",
-  "@auction/identity-contracts",
-  "@auction/identity-db",
-  "@auction/observability",
-  "@auction/config-ts",
-]);
-const excludedDirectoryNames = new Set(["node_modules", "dist", "coverage", ".turbo"]);
 
-function run(label, command, args, cwd = repoRoot) {
+function run(label, command, args, cwd = repoRoot, env = process.env) {
   console.log(`\n=== ${label} ===`);
-  const result = spawnSync(command, args, { cwd, stdio: "inherit" });
+  const result = spawnSync(command, args, { cwd, env, stdio: "inherit" });
   if (result.status !== 0) {
     throw new Error(`FAILED: ${label}${result.error ? ` (${result.error.message})` : ""}`, {
       cause: result.error,
@@ -56,92 +36,14 @@ function run(label, command, args, cwd = repoRoot) {
   }
 }
 
-function copyWorkspaceEntry(workspaceRoot, path) {
-  const source = join(repoRoot, path);
-  if (!existsSync(source)) {
-    throw new Error(`Missing required Identity extraction input: ${path}`);
-  }
-  const destination = join(workspaceRoot, path);
-  mkdirSync(dirname(destination), { recursive: true });
-  cpSync(source, destination, {
-    recursive: true,
-    filter: (candidate) => {
-      const candidateRelativePath = relative(source, candidate);
-      return !candidateRelativePath
-        .split(sep)
-        .some((segment) => excludedDirectoryNames.has(segment));
-    },
-  });
-}
-
-function workspaceManifestPaths(workspaceRoot) {
-  return identityPaths
-    .map((path) => join(workspaceRoot, path, "package.json"))
-    .filter((path) => existsSync(path));
-}
-
-function forbiddenWorkspaceDependencies(workspaceRoot) {
-  const violations = [];
-  for (const manifestPath of workspaceManifestPaths(workspaceRoot)) {
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    for (const dependencyField of [
-      "dependencies",
-      "devDependencies",
-      "optionalDependencies",
-      "peerDependencies",
-    ]) {
-      const dependencies = manifest[dependencyField];
-      if (!dependencies || typeof dependencies !== "object") continue;
-      for (const dependencyName of Object.keys(dependencies)) {
-        if (
-          dependencyName.startsWith("@auction/") &&
-          !allowedWorkspacePackages.has(dependencyName)
-        ) {
-          violations.push(
-            `${manifest.name ?? manifestPath} ${dependencyField} includes ${dependencyName}`,
-          );
-        }
-      }
-    }
-  }
-  return violations;
-}
-
-function assertApprovedClosure(workspaceRoot) {
-  const violations = forbiddenWorkspaceDependencies(workspaceRoot);
-  if (violations.length > 0) {
-    throw new Error(`Forbidden Identity workspace dependencies:\n${violations.join("\n")}`);
-  }
-}
-
-function proveForbiddenDependencyFails(workspaceRoot) {
-  const authManifestPath = join(workspaceRoot, "apps/auth/package.json");
-  const original = readFileSync(authManifestPath, "utf8");
-  const manifest = JSON.parse(original);
-  manifest.dependencies = {
-    ...manifest.dependencies,
-    "@auction/forbidden-portability-probe": "workspace:*",
-  };
-  writeFileSync(authManifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-
-  try {
-    if (forbiddenWorkspaceDependencies(workspaceRoot).length === 0) {
-      throw new Error("Forbidden dependency probe was not rejected");
-    }
-    console.log("Forbidden workspace dependency probe: rejected as expected");
-  } finally {
-    writeFileSync(authManifestPath, original);
-  }
-}
-
-function prepareHermeticWorkspace(workspaceRoot) {
-  for (const path of rootFiles) copyWorkspaceEntry(workspaceRoot, path);
-  for (const path of identityPaths) copyWorkspaceEntry(workspaceRoot, path);
-  const lockfilePath = join(workspaceRoot, "pnpm-lock.yaml");
-  removeRootImporterFromLockfile(lockfilePath);
-  prepareIdentityRootManifest(join(workspaceRoot, "package.json"));
-  assertApprovedClosure(workspaceRoot);
-  proveForbiddenDependencyFails(workspaceRoot);
+function runIdentityPnpm(label, args, cwd) {
+  run(
+    label,
+    "corepack",
+    [`pnpm@${IDENTITY_PNPM_VERSION}`, ...args],
+    cwd,
+    identityPnpmEnvironment(),
+  );
 }
 
 function assertUnrelatedRootDependenciesWereNotInstalled(workspaceRoot) {
@@ -154,7 +56,7 @@ function assertUnrelatedRootDependenciesWereNotInstalled(workspaceRoot) {
 
 function assertProductionDependencyClosure(workspaceRoot) {
   const virtualStore = join(workspaceRoot, "node_modules/.pnpm");
-  const forbiddenPrefixes = ["next@", "sharp@", "vitest@", "@playwright+test@"];
+  const forbiddenPrefixes = ["next@", "sharp@", "vitest@", "@playwright+test@", "bullmq-otel@"];
   const violations = readdirSync(virtualStore).filter((entry) =>
     forbiddenPrefixes.some((prefix) => entry.startsWith(prefix)),
   );
@@ -168,7 +70,7 @@ function assertProductionDependencyClosure(workspaceRoot) {
 
 function removeWorkspaceNodeModules(workspaceRoot) {
   rmSync(join(workspaceRoot, "node_modules"), { force: true, recursive: true });
-  for (const packageRelativePath of identityPaths) {
+  for (const packageRelativePath of IDENTITY_PACKAGE_PATHS) {
     rmSync(join(workspaceRoot, packageRelativePath, "node_modules"), {
       force: true,
       recursive: true,
@@ -176,65 +78,89 @@ function removeWorkspaceNodeModules(workspaceRoot) {
   }
 }
 
-const workspaceRoot = mkdtempSync(join(tmpdir(), "auction-identity-rehearsal-"));
+const rehearsalTempRoot = process.env.IDENTITY_REHEARSAL_TMPDIR ?? tmpdir();
+mkdirSync(rehearsalTempRoot, { recursive: true });
+if (process.env.IDENTITY_PNPM_STORE_DIR) {
+  process.env.npm_config_store_dir = process.env.IDENTITY_PNPM_STORE_DIR;
+}
+const workspaceRoot = mkdtempSync(join(rehearsalTempRoot, "auction-identity-rehearsal-"));
 const keepWorkspace = process.env.IDENTITY_REHEARSAL_KEEP_TEMP === "1";
+let failed = false;
+
+function sanitizedPnpmConfig() {
+  const result = spawnSync("corepack", [`pnpm@${IDENTITY_PNPM_VERSION}`, "config", "list"], {
+    cwd: workspaceRoot,
+    encoding: "utf8",
+    env: identityPnpmEnvironment(),
+  });
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+  return output
+    .split(/\r?\n/)
+    .map((line) =>
+      /(?:auth|password|secret|token)\s*=/i.test(line)
+        ? `${line.slice(0, Math.max(0, line.indexOf("=") + 1))}[REDACTED]`
+        : line,
+    )
+    .join("\n");
+}
+
+function captureFailureDiagnostics(error) {
+  const diagnosticsRoot = join(rehearsalTempRoot, "diagnostics");
+  mkdirSync(diagnosticsRoot, { recursive: true });
+  for (const name of ["pnpm-lock.yaml", ".npmrc", "pnpm-workspace.yaml"]) {
+    const source = join(workspaceRoot, name);
+    if (existsSync(source)) copyFileSync(source, join(diagnosticsRoot, name));
+  }
+  writeFileSync(join(diagnosticsRoot, "pnpm-config.txt"), sanitizedPnpmConfig());
+  writeFileSync(join(diagnosticsRoot, "failure.txt"), `${error.stack ?? error}\n`);
+  console.error(`Identity rehearsal diagnostics captured in ${diagnosticsRoot}`);
+}
 
 try {
-  run("Repo split dry run", "bash", ["scripts/identity/repo-split.sh", "--dry-run"]);
+  console.log(`\n=== Extract and verify history (${workspaceRoot}) ===`);
+  extractIdentityRepository({
+    sourceRoot: repoRoot,
+    destination: workspaceRoot,
+    includeWorkingTree: true,
+    scanSecrets: true,
+  });
 
-  console.log(`\n=== Prepare hermetic workspace (${workspaceRoot}) ===`);
-  prepareHermeticWorkspace(workspaceRoot);
-
-  run(
-    "Hermetic frozen install",
-    "pnpm",
-    [
-      "--config.node-linker=isolated",
-      "install",
-      "--frozen-lockfile",
-      "--filter",
-      "@auction/auth-app...",
-    ],
-    workspaceRoot,
-  );
-  assertUnrelatedRootDependenciesWereNotInstalled(workspaceRoot);
-  run(
-    "Hermetic Identity build",
-    "pnpm",
-    ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "build"],
-    workspaceRoot,
-  );
-  run(
-    "Hermetic Identity typecheck",
-    "pnpm",
-    ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "typecheck"],
-    workspaceRoot,
-  );
-  run(
-    "Hermetic Identity tests",
-    "pnpm",
-    ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "--if-present", "test"],
-    workspaceRoot,
-  );
   removeWorkspaceNodeModules(workspaceRoot);
-  run(
+  runIdentityPnpm(
     "Hermetic Identity production install",
-    "pnpm",
-    [
-      "--config.node-linker=isolated",
-      "install",
-      "--prod",
-      "--no-optional",
-      "--frozen-lockfile",
-      "--filter",
-      "@auction/auth-app...",
-    ],
+    ["install", "--prod", "--no-optional", "--frozen-lockfile", "--filter", "@auction/auth-app..."],
     workspaceRoot,
   );
   assertProductionDependencyClosure(workspaceRoot);
+  removeWorkspaceNodeModules(workspaceRoot);
+  runIdentityPnpm(
+    "Hermetic frozen install",
+    ["install", "--frozen-lockfile", "--filter", "@auction/auth-app..."],
+    workspaceRoot,
+  );
+  assertUnrelatedRootDependenciesWereNotInstalled(workspaceRoot);
+  runIdentityPnpm(
+    "Hermetic Identity build",
+    ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "build"],
+    workspaceRoot,
+  );
+  runIdentityPnpm(
+    "Hermetic Identity typecheck",
+    ["--filter", "@auction/auth-app...", "--workspace-concurrency=1", "typecheck"],
+    workspaceRoot,
+  );
+  runIdentityPnpm("Hermetic Identity unit tests", ["test:unit"], workspaceRoot);
   console.log("\nIdentity extraction rehearsal passed.");
+} catch (error) {
+  failed = true;
+  try {
+    captureFailureDiagnostics(error);
+  } catch (diagnosticError) {
+    console.error(`Could not capture Identity rehearsal diagnostics: ${diagnosticError}`);
+  }
+  throw error;
 } finally {
-  if (keepWorkspace) {
+  if (keepWorkspace || failed) {
     console.log(`Preserving rehearsal workspace: ${workspaceRoot}`);
   } else {
     rmSync(workspaceRoot, { recursive: true, force: true });

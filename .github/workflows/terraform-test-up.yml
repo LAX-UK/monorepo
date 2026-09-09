@@ -7,8 +7,24 @@ on:
         type: string
         required: false
         default: main
+      identity_sha:
+        description: Approved standalone Identity commit for ephemeral image deploys
+        type: string
+        required: false
+      identity_digest:
+        description: Approved lax-test-identity digest for ephemeral image deploys
+        type: string
+        required: false
+      shop_identity_sha:
+        description: Approved Shop Identity commit for ephemeral image deploys
+        type: string
+        required: false
+      shop_identity_digest:
+        description: Approved lax-test-shop-identity digest for ephemeral image deploys
+        type: string
+        required: false
 concurrency:
-  group: terraform-test-ephemeral
+  group: app-deploy-test
   cancel-in-progress: false
 jobs:
   up:
@@ -64,6 +80,8 @@ jobs:
       TF_VAR_kyc_onboarding_enabled: ${{ vars.KYC_ONBOARDING_ENABLED || 'false' }}
       TF_VAR_full_buyer_onboarding_enabled: ${{ vars.FULL_BUYER_ONBOARDING_ENABLED || 'false' }}
       TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
+      TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
+      TF_VAR_enable_auth_ssf_delivery: ${{ vars.ENABLE_AUTH_SSF_DELIVERY_TEST || 'false' }}
       DATABASE_URL_OWNER: ${{ secrets.DATABASE_URL_OWNER }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
       SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
@@ -81,6 +99,27 @@ jobs:
           node-version: '22'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Verify Cloudflare zone access before ephemeral apply
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ci/verify-cloudflare-zone-access.mjs
+      - name: Verify Auth Terraform environment contract
+        run: node scripts/ci/verify-auth-terraform-env.mjs .infra-config/terraform/ephemeral/test/main.tf
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Require approved Identity and Shop image contracts before ephemeral apply
+        if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
+        env:
+          IDENTITY_SHA: ${{ inputs.identity_sha }}
+          IDENTITY_DIGEST: ${{ inputs.identity_digest }}
+          SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
+          SHOP_IDENTITY_DIGEST: ${{ inputs.shop_identity_digest }}
+          DOCR_REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
+        run: |
+          doctl registry login --expiry-seconds 900
+          node scripts/ci/verify-staging-image-contract.mjs
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: .infra-config/terraform/ephemeral/test
@@ -90,6 +129,22 @@ jobs:
         with:
           working-directory: .infra-config/terraform/ephemeral/test
           state-key: ephemeral-test
+          verify-plan-safe: "true"
+          allowed-delete-addresses: >-
+            ["module.postgres_rbac.postgresql_default_privileges.app_tables[\"shop_app\"]",
+            "module.postgres_rbac.postgresql_default_privileges.app_sequences[\"shop_app\"]"]
+      - name: Require Shop DNS, TLS, and readiness after apply
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            if curl --fail --silent --show-error --max-time 10 \
+              https://test-shop.lax.art/health/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Shop DNS, TLS, and readiness did not converge"
+          exit 1
       - run: pnpm tsx scripts/jwks-restore.ts test
       - run: pnpm db:seed
       - run: |

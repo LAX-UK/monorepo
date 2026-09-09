@@ -6,7 +6,6 @@ import {
   PostmarkEmailService,
   bindEmailQueue,
 } from "@auction/email";
-import { getBullMqTelemetry } from "@auction/observability";
 import {
   DATA_EXPORT_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
@@ -26,6 +25,7 @@ import {
   bindWebhookEventsQueue,
   createBullQueueOptions,
 } from "@auction/queues";
+import { getBullMqTelemetry } from "@auction/queues/bullmq-telemetry";
 import { Queue } from "bullmq";
 import type { Redis, RedisOptions } from "ioredis";
 import type { Env } from "../env.js";

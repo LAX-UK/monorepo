@@ -152,7 +152,9 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: false
-          build-args: ${{ steps.webargs.outputs.args }}
+          build-args: |
+            IMAGE_SHA=${{ env.SHA }}
+            ${{ steps.webargs.outputs.args }}
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |

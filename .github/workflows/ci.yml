@@ -102,6 +102,12 @@ jobs:
       - name: Identity exit criteria
         run: pnpm ci:identity-exit-criteria
 
+      - name: Identity staging workflow contracts
+        run: node --test scripts/ci/identity-staging-workflows.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs
+
+      - name: Identity lockfile determinism contracts
+        run: node --test scripts/identity/identity-lockfile.test.mjs
+
       - name: API route DIP coverage
         run: node apps/api/scripts/check-route-dip-coverage.mjs
 
@@ -120,11 +126,31 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      - name: Install deterministic history filter
+        run: pipx install git-filter-repo==2.47.0
+
+      - name: Install history secret scanner
+        run: |
+          mkdir -p "$RUNNER_TEMP/gitleaks-bin"
+          curl -sSLf https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz |
+            tar -xz -C "$RUNNER_TEMP/gitleaks-bin" gitleaks
+          echo "$RUNNER_TEMP/gitleaks-bin" >> "$GITHUB_PATH"
+
       - name: Verify Identity dependency closure
         run: pnpm ci:identity-extractability
 
       - name: Rehearse hermetic Identity extraction
         run: pnpm ci:identity-extraction-rehearsal
+        env:
+          IDENTITY_REHEARSAL_TMPDIR: ${{ runner.temp }}/identity-rehearsal
+
+      - name: Upload Identity rehearsal diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: identity-rehearsal-diagnostics
+          path: ${{ runner.temp }}/identity-rehearsal
+          if-no-files-found: error
 
   test:
     runs-on: ubuntu-latest

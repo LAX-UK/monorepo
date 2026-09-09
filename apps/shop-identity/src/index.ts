@@ -25,7 +25,15 @@ import {
   verifyLogoutToken,
 } from "./oidc.js";
 import { startShopRetentionSchedule } from "./retention.schedule.js";
-import { clearSessionCookie, readSession, readSessionId, writeSessionCookie } from "./session.js";
+import {
+  clearOidcIdTokenCookie,
+  clearSessionCookie,
+  readOidcIdToken,
+  readSession,
+  readSessionId,
+  writeOidcIdTokenCookie,
+  writeSessionCookie,
+} from "./session.js";
 import { createShopSsfEventsRoute } from "./ssf.js";
 
 const env = loadShopIdentityEnv();
@@ -171,6 +179,7 @@ app.get("/auth/callback", async (c) => {
     subject: verified.subject,
     sid,
   });
+  writeOidcIdTokenCookie(c, tokenResponse.id_token, secureCookies);
   return c.redirect("/", 302);
 });
 
@@ -216,13 +225,16 @@ app.post("/api/auth/backchannel-logout", async (c) => {
 app.post("/logout", async (c) => {
   const session = await readSession(sessionRepository, c);
   const sessionId = session?.id ?? readSessionId(c);
+  const idTokenHint = readOidcIdToken(c);
   await sessionRepository.invalidate(sessionId);
   clearSessionCookie(c);
+  clearOidcIdTokenCookie(c);
   const state = randomBytes(24).toString("base64url");
   return c.redirect(
     buildEndSessionUrl({
       discovery,
       clientId: env.OIDC_CLIENT_ID,
+      idTokenHint,
       postLogoutRedirectUri: env.OIDC_POST_LOGOUT_REDIRECT_URI,
       state,
     }),

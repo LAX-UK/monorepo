@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ConsentStore } from "./ports/consent-store.js";
+import type { ConsentStore } from "@auction/identity-contracts";
 
 // biome-ignore lint/suspicious/noExplicitAny: Better Auth adapter methods use heterogeneous per-model args
 type AdapterMethod = (...args: any[]) => Promise<any>;

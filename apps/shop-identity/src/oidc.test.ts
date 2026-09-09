@@ -72,12 +72,13 @@ describe("OIDC logout", () => {
       buildEndSessionUrl({
         discovery: resolveOidcDiscovery("https://auth.example.test"),
         clientId: "lax-shop-web",
+        idTokenHint: "header.payload.signature",
         postLogoutRedirectUri: "https://shop.example.test/",
         state: "logout-state",
       }),
     );
     expect(url.pathname).toBe("/api/auth/oauth2/endsession");
-    expect(url.searchParams.has("id_token_hint")).toBe(false);
+    expect(url.searchParams.get("id_token_hint")).toBe("header.payload.signature");
     expect(url.searchParams.get("client_id")).toBe("lax-shop-web");
     expect(url.searchParams.get("post_logout_redirect_uri")).toBe("https://shop.example.test/");
     expect(url.searchParams.get("state")).toBe("logout-state");

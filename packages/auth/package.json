@@ -45,14 +45,15 @@
   },
   "dependencies": {
     "@auction/identity-contracts": "workspace:^",
-    "@better-auth/utils": "0.4.0",
-    "better-auth": "^1.6.22",
+    "@better-auth/utils": "0.4.2",
+    "better-auth": "1.6.22",
     "jose": "^6.2.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
-    "@auction/identity-db": "workspace:*",
+    "@types/node": "^22.10.5",
+    "react": "^19.2.5",
     "typescript": "^5.7.3",
     "vitest": "^3.2.6"
   }

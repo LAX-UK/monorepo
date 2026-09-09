@@ -31,12 +31,14 @@ export const SSF_RECEIVER_REGISTRY = {
     clientId: "lax-bid-web",
     audience: "lax-bid-api",
     endpoint: "https://api.lax.bid/ssf/events",
+    testEndpoints: ["https://test-api.lax.bid/ssf/events"],
     developmentEndpoints: ["http://localhost:3001/ssf/events"],
   },
   "lax-shop-web": {
     clientId: "lax-shop-web",
     audience: "lax-shop-api",
     endpoint: "https://shop.lax.art/api/ssf/events",
+    testEndpoints: ["https://test-shop.lax.art/api/ssf/events"],
     developmentEndpoints: ["http://localhost:3010/api/ssf/events"],
   },
 } as const;
@@ -51,6 +53,7 @@ export function isAllowedSsfEndpoint(
   const receiver = SSF_RECEIVER_REGISTRY[clientId as SsfReceiverClientId];
   if (!receiver) return false;
   if (endpoint === receiver.endpoint) return true;
+  if (environment === "test" && receiver.testEndpoints.includes(endpoint as never)) return true;
   return environment === "development" && receiver.developmentEndpoints.includes(endpoint as never);
 }
 

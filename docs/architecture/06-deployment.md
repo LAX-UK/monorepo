@@ -98,7 +98,7 @@ Container starts with `node apps/web/server.js` from the standalone output. Heal
 
 The OIDC issuer per D9. It runs better-auth with the OIDC Provider plugin, the Google and Apple social provider plugins, and a custom JWKS endpoint backed by the `jwks_key` table. It exposes `/.well-known/openid-configuration`, `/.well-known/jwks.json`, `/.well-known/apple-developer-domain-association.txt`, and `/api/auth/*` for sign-in flows and token issuance.
 
-The auth server is the only component with direct read access to the JWKS private keys via the `auth_app` Postgres role. No other component can read those keys — that's the security boundary that the role split enforces (D2). `apps/auth` also runs the JWKS retirement scheduler ([packages/auth/src/jwks-retirement.ts](../../packages/auth/src/jwks-retirement.ts)) under a Postgres advisory lock so only one auth replica retires expired keys per tick.
+The auth server is the only component with direct read access to the JWKS private keys via the `auth_app` Postgres role. No other component can read those keys — that's the security boundary that the role split enforces (D2). `apps/auth` also runs the JWKS retirement scheduler ([packages/identity-db/src/adapters/drizzle-jwks-retirement.ts](../../packages/identity-db/src/adapters/drizzle-jwks-retirement.ts)) under a Postgres advisory lock so only one auth replica retires expired keys per tick.
 
 `apps/auth` retains Redis for issuer-local rate limits, replay protection, and
 coordination. Better Auth email hooks depend on the Identity-owned `EmailSender`

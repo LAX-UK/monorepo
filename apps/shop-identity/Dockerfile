@@ -20,7 +20,9 @@ RUN pnpm turbo run build --filter=@auction/shop-identity
 
 FROM node:22-alpine AS runner
 WORKDIR /app
+ARG IMAGE_SHA=unknown
 ENV NODE_ENV=production
+ENV SENTRY_RELEASE=${IMAGE_SHA}
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages

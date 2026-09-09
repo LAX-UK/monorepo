@@ -1,4 +1,4 @@
-import { SSF_EVENT_TYPES } from "@auction/identity-contracts";
+import { SSF_EVENT_TYPES, SSF_RECEIVER_REGISTRY } from "@auction/identity-contracts";
 import { describe, expect, it, vi } from "vitest";
 import { SsfStreamService } from "./ssf-stream.service.js";
 import type { SsfStreamRecord, SsfStreamRepository } from "./ssf.ports.js";
@@ -66,4 +66,36 @@ describe("SsfStreamService.setStatus checkpoint semantics", () => {
       );
     },
   );
+});
+
+describe("SsfStreamService.provisionRegisteredStreams", () => {
+  it.each([
+    ["development", "lax-bid-web", SSF_RECEIVER_REGISTRY["lax-bid-web"].developmentEndpoints[0]],
+    ["test", "lax-bid-web", SSF_RECEIVER_REGISTRY["lax-bid-web"].testEndpoints[0]],
+    ["production", "lax-bid-web", SSF_RECEIVER_REGISTRY["lax-bid-web"].endpoint],
+    ["test", "lax-shop-web", SSF_RECEIVER_REGISTRY["lax-shop-web"].testEndpoints[0]],
+  ] as const)("uses the %s endpoint for %s", async (environment, clientId, endpoint) => {
+    const provision = vi.fn().mockResolvedValue(undefined);
+    const streams = {
+      currentDomainEventId: vi.fn().mockResolvedValue(11),
+      provision,
+    } as unknown as SsfStreamRepository;
+    const service = new SsfStreamService(
+      streams,
+      {} as never,
+      {} as never,
+      "https://auth.test",
+      environment,
+    );
+
+    await service.provisionRegisteredStreams(false);
+
+    expect(provision).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: `ssf-${clientId}`,
+        clientId,
+        endpoint,
+      }),
+    );
+  });
 });

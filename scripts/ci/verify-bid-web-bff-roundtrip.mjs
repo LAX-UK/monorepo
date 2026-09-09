@@ -5,8 +5,32 @@
  */
 const webBase = (process.env.WEB_ORIGIN ?? "http://localhost:3000").replace(/\/+$/, "");
 const authBase = (process.env.AUTH_BASE_URL ?? "http://localhost:3003").replace(/\/+$/, "");
+const apiBase = (process.env.API_BASE_URL ?? "http://localhost:3001").replace(/\/+$/, "");
 const email = process.env.BID_BFF_TEST_EMAIL ?? process.env.SHOP_OIDC_TEST_EMAIL;
 const password = process.env.BID_BFF_TEST_PASSWORD ?? process.env.SHOP_OIDC_TEST_PASSWORD;
+
+const allowedWebOrigins = new Set([
+  webBase,
+  "http://localhost:3000",
+  "https://test.lax.bid",
+  ...(authBase === "https://auth.lax.bid" ? ["https://lax.bid"] : []),
+]);
+const allowedAuthOrigins = new Set([
+  authBase,
+  "http://localhost:3003",
+  "https://test-auth.lax.bid",
+]);
+
+function assertTrustedRedirect(url, allowedOrigins, expectedPath, label) {
+  const parsed = new URL(url);
+  if (!allowedOrigins.has(parsed.origin)) {
+    throw new Error(`${label} redirect origin is not trusted: ${parsed.origin}`);
+  }
+  if (parsed.pathname !== expectedPath) {
+    throw new Error(`${label} redirect path is not trusted: ${parsed.pathname}`);
+  }
+  return parsed;
+}
 
 if (!email || !password) {
   throw new Error(
@@ -75,6 +99,12 @@ async function main() {
   if (beginLogin.status !== 302 || !authorizeUrl) {
     throw new Error(`Bid BFF login did not redirect to authorize (${beginLogin.status})`);
   }
+  assertTrustedRedirect(
+    authorizeUrl,
+    allowedAuthOrigins,
+    "/api/auth/oauth2/authorize",
+    "Bid BFF authorize",
+  );
   const pendingSession = assertBidSessionCookie(webCookies);
 
   const authorize = await fetch(authorizeUrl, {
@@ -103,6 +133,12 @@ async function main() {
   if (!consent.ok || typeof consentBody.redirectURI !== "string") {
     throw new Error(`OIDC consent failed (${consent.status})`);
   }
+  assertTrustedRedirect(
+    consentBody.redirectURI,
+    allowedWebOrigins,
+    "/api/auth/callback/lax-bid-web",
+    "Bid BFF callback",
+  );
 
   const callback = await fetch(consentBody.redirectURI, {
     redirect: "manual",
@@ -139,7 +175,87 @@ async function main() {
     throw new Error(`Bid BFF authenticated profile check failed (${me.status}): ${detail}`);
   }
 
-  console.log(`bid web BFF roundtrip passed for ${email}`);
+  const resource = await fetch(`${webBase}/api/bff/users/me`, {
+    headers: { cookie: cookieHeader(webCookies) },
+  });
+  const resourceBody = await resource.json().catch(() => null);
+  if (!resource.ok) {
+    throw new Error(
+      `Bid BFF resource call failed (${resource.status}): ${JSON.stringify(resourceBody)}`,
+    );
+  }
+  if (
+    !resourceBody ||
+    typeof resourceBody !== "object" ||
+    !("data" in resourceBody) ||
+    !resourceBody.data ||
+    typeof resourceBody.data !== "object" ||
+    !("id" in resourceBody.data)
+  ) {
+    throw new Error("Bid BFF resource response did not contain the authenticated user");
+  }
+  // The API route accepts only a lax-bid-api resource token carrying bid.read.
+  // A successful BFF call therefore proves the exchanged audience/scope contract,
+  // while this negative check proves the opaque browser session is not reusable.
+  const cookieAsBearer = await fetch(`${apiBase}/users/me`, {
+    headers: { authorization: `Bearer ${authenticatedSession.value}` },
+  });
+  if (cookieAsBearer.status !== 401) {
+    throw new Error(
+      `Bid API accepted the browser session cookie as a bearer token (${cookieAsBearer.status})`,
+    );
+  }
+
+  const forgedMutation = await fetch(`${webBase}/api/bff/users/me/preferences/ui/reset-layout`, {
+    method: "POST",
+    headers: {
+      cookie: cookieHeader(webCookies),
+      origin: "https://attacker.invalid",
+      "sec-fetch-site": "cross-site",
+    },
+  });
+  const forgedBody = await forgedMutation.json().catch(() => null);
+  if (forgedMutation.status !== 403 || forgedBody?.error !== "csrf_rejected") {
+    throw new Error(
+      `Bid BFF accepted a forged-origin mutation (${forgedMutation.status}): ${JSON.stringify(
+        forgedBody,
+      )}`,
+    );
+  }
+
+  const logout = await fetch(`${webBase}/api/auth/logout`, {
+    method: "POST",
+    headers: { cookie: cookieHeader(webCookies), origin: webBase },
+  });
+  captureCookies(logout, webCookies);
+  const logoutBody = await logout.json();
+  if (!logout.ok || typeof logoutBody.redirectTo !== "string") {
+    throw new Error(`Bid logout did not return an OP redirect (${logout.status})`);
+  }
+  assertTrustedRedirect(
+    logoutBody.redirectTo,
+    allowedAuthOrigins,
+    "/api/auth/oauth2/endsession",
+    "Bid OP end-session",
+  );
+  const endSession = await fetch(logoutBody.redirectTo, {
+    redirect: "manual",
+    headers: { cookie: cookieHeader(authCookies) },
+  });
+  if (endSession.status < 300 || endSession.status >= 400) {
+    throw new Error(`Bid OP end-session failed (${endSession.status})`);
+  }
+  const postLogout = endSession.headers.get("location");
+  if (!postLogout) throw new Error("Bid OP end-session omitted its post-logout redirect");
+  assertTrustedRedirect(postLogout, allowedWebOrigins, "/", "Bid post-logout");
+  const signedOut = await fetch(`${webBase}/api/auth/me`, {
+    headers: { cookie: cookieHeader(webCookies) },
+  });
+  if (signedOut.ok) throw new Error("Bid BFF session remained active after central logout");
+
+  console.log(
+    `bid BFF audience/scope roundtrip, cookie-bearer and CSRF rejection, and central logout passed for ${email}`,
+  );
 }
 
 main().catch((error) => {

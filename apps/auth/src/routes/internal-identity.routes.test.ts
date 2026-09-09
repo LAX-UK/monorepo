@@ -91,6 +91,14 @@ describe("internal Identity machine routes", () => {
       "base64",
     );
 
+    const active = await app.request("/oauth/introspect", {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${basic}`,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ token }),
+    });
     const revoked = await app.request("/oauth/revoke", {
       method: "POST",
       headers: {
@@ -102,9 +110,23 @@ describe("internal Identity machine routes", () => {
     const denied = await app.request("/identity/subjects/u1", {
       headers: { authorization: `Bearer ${token}` },
     });
+    const inactive = await app.request("/oauth/introspect", {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${basic}`,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ token }),
+    });
 
+    expect(await active.json()).toMatchObject({
+      active: true,
+      client_id: "api-service",
+      scope: "identity.lifecycle",
+    });
     expect(revoked.status).toBe(200);
     expect(denied.status).toBe(401);
+    expect(await inactive.json()).toEqual({ active: false });
   });
 
   it("requires the canonical subject for merges", async () => {

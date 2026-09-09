@@ -161,6 +161,12 @@ describe("first-party SSF endpoint registry", () => {
     expect(isAllowedSsfEndpoint("lax-bid-web", "http://localhost:3001/ssf/events", "test")).toBe(
       false,
     );
+    expect(isAllowedSsfEndpoint("lax-bid-web", "https://test-api.lax.bid/ssf/events", "test")).toBe(
+      true,
+    );
+    expect(
+      isAllowedSsfEndpoint("lax-bid-web", "https://test-api.lax.bid/ssf/events", "production"),
+    ).toBe(false);
     expect(
       isAllowedSsfEndpoint("lax-bid-web", "http://localhost:3001/ssf/events", "development"),
     ).toBe(true);
