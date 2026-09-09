@@ -30,6 +30,7 @@ on:
       - "scripts/ci/verify-refresh-reuse.mjs"
       - "packages/db/src/seed/**"
       - "packages/ui/**"
+      - ".github/workflows/ci.yml"
       - ".github/workflows/e2e-pr.yml"
       - "scripts/ci/e2e-session-state.mjs"
       - "scripts/ci/e2e-session-state.test.mjs"
