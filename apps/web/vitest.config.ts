@@ -8,7 +8,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
-    maxWorkers: process.env.CI ? 4 : "50%",
+    maxWorkers: process.env.CI ? 2 : "50%",
   },
   resolve: {
     alias: {
