@@ -315,9 +315,24 @@ jobs:
           MIGRATE_IMAGE: ${{ steps.lineage.outputs.migrate_image }}
         run: |
           set -euo pipefail
+          db_cluster_id="$(
+            doctl databases list --format ID,Name --no-header \
+              | awk '$2 == "lax-test-postgres" { print $1; exit }'
+          )"
+          test -n "$db_cluster_id"
+          database_ca_cert="$(
+            doctl databases get-ca "$db_cluster_id" --no-header
+          )"
+          test -n "$database_ca_cert"
+          {
+            echo "DATABASE_CA_CERT<<EOF"
+            echo "$database_ca_cert"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
           docker pull "$MIGRATE_IMAGE"
           docker run --rm \
             -e DATABASE_URL_OWNER \
+            -e DATABASE_CA_CERT="$database_ca_cert" \
             -e AUTH_APP_DB_PASSWORD \
             -e API_APP_DB_PASSWORD \
             -e SHOP_APP_DB_PASSWORD \

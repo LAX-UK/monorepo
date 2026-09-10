@@ -2,6 +2,7 @@ import { createCipheriv, randomBytes } from "node:crypto";
 import process from "node:process";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import pg from "pg";
+import { buildPgConnectionConfig } from "../packages/db/src/ssl.js";
 
 const { Client } = pg;
 type EnvName = "test" | "prod";
@@ -42,7 +43,7 @@ function encryptJson(payload: unknown, keyBase64: string): Buffer {
 
 async function main() {
   const env = parseEnv();
-  const client = new Client({ connectionString: requireEnv("DATABASE_URL_OWNER") });
+  const client = new Client(buildPgConnectionConfig(requireEnv("DATABASE_URL_OWNER")));
   await client.connect();
   const result = await client.query(
     "select kid, algorithm, public_jwk, private_jwk, status, created_at, rotated_at from jwks_key order by created_at asc",
