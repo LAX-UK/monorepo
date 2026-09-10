@@ -234,17 +234,20 @@ jobs:
       - name: Load masked staging database and OIDC contracts
         env:
           OIDC_CLIENT_SECRET_LAX_SHOP_WEB_FALLBACK: ${{ secrets.OIDC_CLIENT_SECRET_LAX_SHOP_WEB }}
+          SHOP_APP_DB_PASSWORD_FALLBACK: ${{ secrets.SHOP_APP_DB_PASSWORD }}
         run: |
           set -euo pipefail
           tf_output() {
             terraform -chdir=.infra-config/terraform/ephemeral/test \
               output -raw "$1" 2>/dev/null || true
           }
+          valid_postgres_url() {
+            node -e 'new URL(process.argv[1]); process.exit(0)' "$1" 2>/dev/null
+          }
           declare -A outputs=(
             [DATABASE_URL_OWNER]=postgres_owner_uri
             [DATABASE_URL_AUTH]=database_url_auth
             [DATABASE_URL_API]=database_url_api
-            [DATABASE_URL_SHOP]=database_url_shop
             [DATABASE_URL_WORKER]=database_url_worker
             [OIDC_CLIENT_SECRET_LAX_BID_WEB]=oidc_bid_web_client_secret
             [OIDC_CLIENT_SECRET_LAX_SHOP_WEB]=oidc_shop_web_client_secret
@@ -261,6 +264,27 @@ jobs:
             echo "::add-mask::$value"
             echo "$env_name=$value" >> "$GITHUB_ENV"
           done
+
+          shop_url="$(tf_output database_url_shop)"
+          if ! valid_postgres_url "$shop_url"; then
+            if [ -z "${SHOP_APP_DB_PASSWORD_FALLBACK:-}" ]; then
+              echo "::error::Invalid database_url_shop output and SHOP_APP_DB_PASSWORD fallback is unset"
+              exit 1
+            fi
+            shop_url="$(
+              DATABASE_URL_AUTH="$DATABASE_URL_AUTH" \
+              SHOP_APP_DB_PASSWORD="$SHOP_APP_DB_PASSWORD_FALLBACK" \
+              node -e '
+                const auth = new URL(process.env.DATABASE_URL_AUTH);
+                const shop = new URL(auth);
+                shop.username = "shop_app";
+                shop.password = process.env.SHOP_APP_DB_PASSWORD;
+                process.stdout.write(shop.toString());
+              '
+            )"
+          fi
+          echo "::add-mask::$shop_url"
+          echo "DATABASE_URL_SHOP=$shop_url" >> "$GITHUB_ENV"
 
       - name: Derive masked role passwords from application URLs
         run: |
