@@ -185,32 +185,12 @@ jobs:
           test "$(jq -r '.entries[-1].tag' "$RUNNER_TEMP/migrate-journal.json")" = "$contract_tip"
           GITHUB_SHA="$MIGRATE_SHA" node scripts/ci/require-ci-success-for-sha.mjs
 
-      - name: Create read-only standalone Identity evidence token
-        id: identity-evidence-token
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ vars.IDENTITY_REPO_APP_ID || vars.INFRA_REPO_APP_ID }}
-          private-key: >-
-            ${{ secrets.IDENTITY_REPO_APP_PRIVATE_KEY ||
-                secrets.INFRA_REPO_APP_PRIVATE_KEY }}
-          owner: LAX-UK
-          repositories: lax-identity
-          permission-actions: read
-          permission-contents: read
-
       - name: Verify standalone publish, vulnerability, SBOM, and Sentry evidence
         env:
-          IDENTITY_EVIDENCE_PAT: ${{ secrets.IDENTITY_EVIDENCE_PAT }}
-          APP_TOKEN: ${{ steps.identity-evidence-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.IDENTITY_EVIDENCE_PAT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -n "${IDENTITY_EVIDENCE_PAT:-}" ]; then
-            GH_TOKEN="$IDENTITY_EVIDENCE_PAT"
-          else
-            GH_TOKEN="$APP_TOKEN"
-          fi
-          export GH_TOKEN
           test -n "$GH_TOKEN"
           test -n "$SENTRY_AUTH_TOKEN"
           test -n "$SENTRY_ORG"
