@@ -2,7 +2,7 @@ import { createCipheriv, randomBytes } from "node:crypto";
 import process from "node:process";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import pg from "pg";
-import { buildPgConnectionConfig } from "../packages/db/src/ssl.js";
+import { buildPgConnectionConfig } from "../packages/identity-db/src/pg/ssl.ts";
 
 const { Client } = pg;
 type EnvName = "test" | "prod";
