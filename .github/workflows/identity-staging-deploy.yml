@@ -252,6 +252,7 @@ jobs:
             [OIDC_CLIENT_SECRET_LAX_BID_WEB]=oidc_bid_web_client_secret
             [OIDC_CLIENT_SECRET_LAX_SHOP_WEB]=oidc_shop_web_client_secret
           )
+          auth_url=""
           for env_name in "${!outputs[@]}"; do
             value="$(tf_output "${outputs[$env_name]}")"
             if [ -z "$value" ] && [ "$env_name" = "OIDC_CLIENT_SECRET_LAX_SHOP_WEB" ]; then
@@ -261,18 +262,21 @@ jobs:
               echo "::error::Missing Terraform output ${outputs[$env_name]} for $env_name"
               exit 1
             fi
+            if [ "$env_name" = "DATABASE_URL_AUTH" ]; then
+              auth_url="$value"
+            fi
             echo "::add-mask::$value"
             echo "$env_name=$value" >> "$GITHUB_ENV"
           done
 
           shop_url="$(tf_output database_url_shop)"
           if ! valid_postgres_url "$shop_url"; then
-            if [ -z "${SHOP_APP_DB_PASSWORD_FALLBACK:-}" ]; then
-              echo "::error::Invalid database_url_shop output and SHOP_APP_DB_PASSWORD fallback is unset"
+            if [ -z "${SHOP_APP_DB_PASSWORD_FALLBACK:-}" ] || [ -z "$auth_url" ]; then
+              echo "::error::Invalid database_url_shop output and shop DB fallback inputs are incomplete"
               exit 1
             fi
             shop_url="$(
-              DATABASE_URL_AUTH="$DATABASE_URL_AUTH" \
+              DATABASE_URL_AUTH="$auth_url" \
               SHOP_APP_DB_PASSWORD="$SHOP_APP_DB_PASSWORD_FALLBACK" \
               node -e '
                 const auth = new URL(process.env.DATABASE_URL_AUTH);
