@@ -232,8 +232,14 @@ jobs:
             | jq -e --arg release "$IDENTITY_SHA" '.version == $release' >/dev/null
 
       - name: Load masked staging database and OIDC contracts
+        env:
+          OIDC_CLIENT_SECRET_LAX_SHOP_WEB_FALLBACK: ${{ secrets.OIDC_CLIENT_SECRET_LAX_SHOP_WEB }}
         run: |
           set -euo pipefail
+          tf_output() {
+            terraform -chdir=.infra-config/terraform/ephemeral/test \
+              output -raw "$1" 2>/dev/null || true
+          }
           declare -A outputs=(
             [DATABASE_URL_OWNER]=postgres_owner_uri
             [DATABASE_URL_AUTH]=database_url_auth
@@ -244,11 +250,14 @@ jobs:
             [OIDC_CLIENT_SECRET_LAX_SHOP_WEB]=oidc_shop_web_client_secret
           )
           for env_name in "${!outputs[@]}"; do
-            value="$(
-              terraform -chdir=.infra-config/terraform/ephemeral/test \
-                output -raw "${outputs[$env_name]}"
-            )"
-            test -n "$value"
+            value="$(tf_output "${outputs[$env_name]}")"
+            if [ -z "$value" ] && [ "$env_name" = "OIDC_CLIENT_SECRET_LAX_SHOP_WEB" ]; then
+              value="${OIDC_CLIENT_SECRET_LAX_SHOP_WEB_FALLBACK:-}"
+            fi
+            if [ -z "$value" ]; then
+              echo "::error::Missing Terraform output ${outputs[$env_name]} for $env_name"
+              exit 1
+            fi
             echo "::add-mask::$value"
             echo "$env_name=$value" >> "$GITHUB_ENV"
           done
