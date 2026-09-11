@@ -1,0 +1,88 @@
+name: Auth at-rest maintenance (test)
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        required: true
+      confirm_backup:
+        type: boolean
+        required: true
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: inventory, apply, or verify
+        required: true
+        type: choice
+        options: [inventory, apply, verify]
+      confirm_backup:
+        description: Confirm recent managed-database backup/PITR evidence was reviewed
+        required: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auth-at-rest-maintenance-test
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    if: inputs.confirm_backup
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build compiled maintenance command
+        run: pnpm turbo run build --filter=@auction/db
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: .infra-config/terraform/ephemeral/test
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Load auth database contract
+        run: |
+          set -euo pipefail
+          auth_url="$(
+            terraform -chdir=.infra-config/terraform/ephemeral/test output -raw database_url_auth
+          )"
+          test -n "$auth_url"
+          echo "::add-mask::$auth_url"
+          echo "DATABASE_URL_AUTH=$auth_url" >> "$GITHUB_ENV"
+      - name: Capture encrypted JWKS snapshot evidence
+        if: inputs.mode == 'apply'
+        run: pnpm tsx scripts/jwks-snapshot.ts test
+      - name: Inventory auth at-rest state
+        if: inputs.mode == 'inventory' || inputs.mode == 'apply'
+        env:
+          DATABASE_URL_AUTH: ${{ env.DATABASE_URL_AUTH }}
+        run: node packages/db/dist/scripts/backfill-auth-at-rest.js
+      - name: Apply auth at-rest backfill
+        if: inputs.mode == 'apply'
+        env:
+          AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
+          DATABASE_URL_AUTH: ${{ env.DATABASE_URL_AUTH }}
+        run: node packages/db/dist/scripts/backfill-auth-at-rest.js --apply
+      - name: Verify auth at-rest state and key
+        if: inputs.mode == 'verify' || inputs.mode == 'apply'
+        env:
+          AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
+          DATABASE_URL_AUTH: ${{ env.DATABASE_URL_AUTH }}
+        run: |
+          node packages/db/dist/scripts/backfill-auth-at-rest.js --verify

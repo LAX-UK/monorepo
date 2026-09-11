@@ -251,6 +251,12 @@ manifests, frozen lockfile, and Node version declaration. Product applications,
 product persistence, queues, and email implementations are outside this
 closure.
 
+Dependency-light Auth at-rest envelope, fingerprint, and transform policy lives
+in `packages/identity-contracts`; SQL inventory lives in
+`packages/identity-db`. The runtime adapter and monorepo maintenance runner
+reuse those lower boundaries, so `packages/db` does not depend back on the
+higher-level `packages/auth` package.
+
 `pnpm ci:identity-extractability` is the fast manifest/import policy check.
 `pnpm ci:identity-extraction-rehearsal` provides execution proof by:
 

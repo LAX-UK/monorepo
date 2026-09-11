@@ -12,12 +12,34 @@ inputs:
     description: JSON array of exact resource addresses allowed to be deleted
     required: false
     default: "[]"
+  app-id:
+    description: Optional App Platform ID used for failure diagnostics
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
     - shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: terraform plan -input=false -out=tfapply.tfplan
+    - name: Back up Terraform state before apply
+      shell: bash
+      run: |
+        set -euo pipefail
+        ts="$(date -u +%Y%m%dT%H%M%SZ)"
+        source="s3://${STATE_BUCKET_NAME:-lax-tf-state}/${{ inputs.state-key }}/terraform.tfstate"
+        destination="s3://${STATE_BUCKET_NAME:-lax-tf-state}/${{ inputs.state-key }}/backups/pre-apply-${ts}.tfstate"
+        error_file="$RUNNER_TEMP/${{ inputs.state-key }}-pre-apply-backup-error.txt"
+        if aws --endpoint-url "https://lon1.digitaloceanspaces.com" \
+          s3 cp "$source" "$destination" 2>"$error_file"; then
+          rm -f "$error_file"
+        elif grep -Eq '404|NoSuchKey|does not exist' "$error_file"; then
+          rm -f "$error_file"
+          echo "No pre-existing remote state object; this is an initial state."
+        else
+          cat "$error_file" >&2
+          exit 1
+        fi
     - name: Render redacted Terraform plan evidence
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -35,10 +57,62 @@ runs:
       env:
         TF_ALLOWED_DELETE_ADDRESSES: ${{ inputs.allowed-delete-addresses }}
       run: node "$GITHUB_WORKSPACE/scripts/ci/verify-terraform-plan-safe.mjs" tfapply.tfplan
-    - shell: bash
+    - id: apply
+      continue-on-error: true
+      shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: terraform apply -input=false tfapply.tfplan
-    - shell: bash
+    - name: Capture post-apply state addresses
+      if: always()
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: terraform state list > "$RUNNER_TEMP/${{ inputs.state-key }}-state-addresses.txt" || true
+    - name: Retain post-apply state diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: terraform-state-addresses-${{ inputs.state-key }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/${{ inputs.state-key }}-state-addresses.txt
+        if-no-files-found: warn
+        retention-days: 30
+    - name: Capture failed App Platform deployment diagnostics
+      if: steps.apply.outcome == 'failure' && inputs.app-id != ''
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
       run: |
+        set -euo pipefail
+        deployments="$(doctl apps list-deployments "$APP_ID" --output json)"
+        deployment_id="$(jq -r '.[0].id // empty' <<<"$deployments")"
+        test -n "$deployment_id" || exit 0
+        doctl apps get-deployment "$APP_ID" "$deployment_id" --output json || true
+        for component in auth shop shop-identity api ws worker web; do
+          doctl apps logs "$APP_ID" "$component" \
+            --type run --tail 200 --deployment "$deployment_id" || true
+        done
+    - name: Back up Terraform state after apply attempt
+      if: always()
+      shell: bash
+      env:
+        APPLY_OUTCOME: ${{ steps.apply.outcome }}
+      run: |
+        set -euo pipefail
         ts="$(date -u +%Y%m%dT%H%M%SZ)"
-        aws --endpoint-url "https://lon1.digitaloceanspaces.com" s3 cp           "s3://${STATE_BUCKET_NAME:-lax-tf-state}/${{ inputs.state-key }}/terraform.tfstate"           "s3://${STATE_BUCKET_NAME:-lax-tf-state}/${{ inputs.state-key }}/backups/${ts}.tfstate"
+        source="s3://${STATE_BUCKET_NAME:-lax-tf-state}/${{ inputs.state-key }}/terraform.tfstate"
+        destination="s3://${STATE_BUCKET_NAME:-lax-tf-state}/${{ inputs.state-key }}/backups/post-${APPLY_OUTCOME}-${ts}.tfstate"
+        error_file="$RUNNER_TEMP/${{ inputs.state-key }}-post-apply-backup-error.txt"
+        if aws --endpoint-url "https://lon1.digitaloceanspaces.com" \
+          s3 cp "$source" "$destination" 2>"$error_file"; then
+          rm -f "$error_file"
+        elif test "$APPLY_OUTCOME" = "failure" &&
+          grep -Eq '404|NoSuchKey|does not exist' "$error_file"; then
+          rm -f "$error_file"
+          echo "No remote state was created by the failed initial apply."
+        else
+          cat "$error_file" >&2
+          exit 1
+        fi
+    - name: Fail when Terraform apply failed
+      if: steps.apply.outcome == 'failure'
+      shell: bash
+      run: exit 1

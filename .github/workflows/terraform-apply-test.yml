@@ -1,5 +1,40 @@
 name: Terraform apply test
 on:
+  workflow_call:
+    inputs:
+      layer:
+        type: string
+        required: true
+      infra_ref:
+        type: string
+        required: false
+        default: main
+      parent_holds_deploy_lock:
+        type: boolean
+        required: false
+        default: false
+      enable_auth_ssf_delivery:
+        type: boolean
+        required: false
+        default: false
+      identity_sha:
+        type: string
+        required: false
+      identity_digest:
+        type: string
+        required: false
+      shop_identity_sha:
+        type: string
+        required: false
+      shop_identity_digest:
+        type: string
+        required: false
+      shop_sha:
+        type: string
+        required: false
+      shop_digest:
+        type: string
+        required: false
   workflow_dispatch:
     inputs:
       layer:
@@ -41,7 +76,13 @@ on:
         type: string
         required: false
 concurrency:
-  group: ${{ inputs.layer == 'ephemeral' && 'app-deploy-test' || format('terraform-test-{0}', inputs.layer) }}
+  group: >-
+    ${{
+      inputs.parent_holds_deploy_lock &&
+      format('staging-recovery-child-{0}-{1}', github.run_id, inputs.layer) ||
+      (inputs.layer == 'ephemeral' && 'app-deploy-test' ||
+       format('terraform-test-{0}', inputs.layer))
+    }}
   cancel-in-progress: false
 jobs:
   apply:
@@ -107,7 +148,11 @@ jobs:
       # (The DOCR registry itself is account-level and created only by the prod
       # persistent apply; test reuses the same registry with lax-test-* repos.)
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
-      TF_VAR_enable_auth_ssf_delivery: ${{ inputs.enable_auth_ssf_delivery && 'true' || vars.ENABLE_AUTH_SSF_DELIVERY_TEST || 'false' }}
+      TF_VAR_enable_auth_ssf_delivery: ${{ inputs.enable_auth_ssf_delivery && 'true' || 'false' }}
+      TF_VAR_identity_image_tag: ${{ inputs.identity_sha }}
+      TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
+      TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
+      APP_ID: ${{ secrets.DO_TEST_APP_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/checkout-infra
@@ -156,21 +201,36 @@ jobs:
           working-directory: .infra-config/terraform/${{ inputs.layer }}/test
           state-key: ${{ inputs.layer }}-test
           verify-plan-safe: ${{ inputs.layer == 'ephemeral' && 'true' || 'false' }}
+          app-id: ${{ inputs.layer == 'ephemeral' && env.APP_ID || '' }}
           allowed-delete-addresses: >-
             ["module.postgres_rbac.postgresql_default_privileges.app_tables[\"shop_app\"]",
             "module.postgres_rbac.postgresql_default_privileges.app_sequences[\"shop_app\"]"]
       - name: Require Shop DNS, TLS, and readiness after apply
         if: inputs.layer == 'ephemeral'
+        env:
+          EXPECTED_SHOP_SHA: ${{ inputs.shop_sha }}
+          EXPECTED_SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
         run: |
           set -euo pipefail
           for _ in $(seq 1 60); do
-            if curl --fail --silent --show-error --max-time 10 \
-              https://test-shop.lax.bid/health/ready >/dev/null; then
+            body="$(
+              curl --fail --silent --show-error --max-time 10 \
+                https://test-shop.lax.bid/health/ready || true
+            )"
+            status="$(jq -r '.status // empty' <<<"$body" 2>/dev/null || true)"
+            shop_release="$(jq -r '.release // empty' <<<"$body" 2>/dev/null || true)"
+            identity_release="$(
+              jq -r '.dependencies.shopIdentity.release // empty' <<<"$body" 2>/dev/null || true
+            )"
+            if test "$status" = "ok" &&
+              { test -z "$EXPECTED_SHOP_SHA" || test "$shop_release" = "$EXPECTED_SHOP_SHA"; } &&
+              { test -z "$EXPECTED_SHOP_IDENTITY_SHA" ||
+                test "$identity_release" = "$EXPECTED_SHOP_IDENTITY_SHA"; }; then
               exit 0
             fi
             sleep 10
           done
-          echo "::error::Shop DNS, TLS, and readiness did not converge"
+          echo "::error::Shop readiness/release contract did not converge"
           exit 1
       - name: Prove Identity readiness after ephemeral traffic change
         if: inputs.layer == 'ephemeral' && inputs.identity_sha != ''

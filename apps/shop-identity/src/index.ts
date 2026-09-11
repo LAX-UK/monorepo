@@ -37,6 +37,7 @@ import {
 import { createShopSsfEventsRoute } from "./ssf.js";
 
 const env = loadShopIdentityEnv();
+const release = process.env.SENTRY_RELEASE ?? "unknown";
 const pool = new pg.Pool({ connectionString: env.DATABASE_URL_SHOP ?? env.DATABASE_URL });
 const sessionRepository = createPgShopSessionRepository(pool);
 const ssfRepository = createPgShopSsfRepository(pool);
@@ -68,17 +69,34 @@ app.get("/health/live", (c) => c.json({ service: "shop-identity", status: "ok" }
 app.get("/health/ready", async (c) => {
   try {
     await pingShopDatabase(pool);
-    await checkIdentityProvider(env.OIDC_ISSUER_URL, fetch, internalBaseUrl);
     return c.json({
       service: "shop-identity",
       status: "ok",
+      release,
       database: "ok",
-      identity: "ok",
     });
   } catch {
-    return c.json({ service: "shop-identity", status: "degraded" }, 503);
+    return c.json({ service: "shop-identity", status: "degraded", release }, 503);
   }
 });
+for (const path of ["/health/deps", "/api/health/deps"] as const) {
+  app.get(path, async (c) => {
+    try {
+      await checkIdentityProvider(env.OIDC_ISSUER_URL, fetch, internalBaseUrl);
+      return c.json({
+        service: "shop-identity",
+        status: "ok",
+        release,
+        identity: "ok",
+      });
+    } catch {
+      return c.json(
+        { service: "shop-identity", status: "degraded", release, identity: "unavailable" },
+        503,
+      );
+    }
+  });
+}
 
 app.get("/", async (c) => {
   const session = await readSession(sessionRepository, c);

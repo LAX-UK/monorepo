@@ -4,6 +4,14 @@ export {
   getIdentityPool,
   type IdentityDb,
 } from "./client.js";
+export {
+  type AuthAtRestPendingCounts,
+  type AuthAtRestQueryable,
+  countAuthAtRestPending,
+  hasAuthAtRestPending,
+  totalAuthAtRestPending,
+  verifyAuthAtRestStorage,
+} from "./auth-at-rest.js";
 export type { IdentityDatabase } from "./adapters/drizzle-consent-store.js";
 export { createDrizzleConsentStore } from "./adapters/drizzle-consent-store.js";
 export {

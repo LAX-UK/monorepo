@@ -100,7 +100,12 @@ function buildPresentation(
 
     case "recording": {
       const dateSuffix = endTime
-        ? ` · ${endTime.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+        ? ` · ${endTime.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            timeZone: "Europe/London",
+          })}`
         : "";
       return {
         phase,

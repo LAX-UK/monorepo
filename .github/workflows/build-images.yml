@@ -160,10 +160,37 @@ jobs:
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |
-            registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.ENVIRONMENT }}
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.SHA }}
+            ${{ !contains(fromJSON('["shop-identity","shop"]'), matrix.component) && format('registry.digitalocean.com/{0}/lax-{1}-{2}:{1}', env.REGISTRY, env.ENVIRONMENT, matrix.component) || '' }}
           cache-from: type=gha,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
+
+  release-manifest:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      REGISTRY: ${{ vars.DOCR_REGISTRY }}
+      ENVIRONMENT: ${{ inputs.environment }}
+      GIT_SHA: ${{ inputs.git_sha || github.sha }}
+      RELEASE_COMPONENTS: api,auth,shop-identity,shop,ws,worker,migrate,web,clamav
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - run: doctl registry login --expiry-seconds 1200
+      - name: Write release manifest
+        run: |
+          node scripts/ci/write-release-manifest.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest-${{ inputs.environment }}-${{ inputs.git_sha || github.sha }}
+          path: release-manifest.json
+          if-no-files-found: error
+          retention-days: 30
 
   build-push-event:
     if: inputs.environment == 'prod'

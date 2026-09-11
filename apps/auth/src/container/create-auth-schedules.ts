@@ -20,6 +20,7 @@ export function createAuthSchedules(options: {
   ssfTimeoutMs: number;
   ssfMaxAttempts: number;
   onSsfOutcome: (outcome: "delivered" | "retry_scheduled" | "failed", id: string) => void;
+  reconcileAuthAtRest?: () => Promise<void>;
 }) {
   const provisioning = options.ssfStreams.provisionRegisteredStreams(options.ssfEnabled);
   void provisioning.catch((err) => {
@@ -91,11 +92,23 @@ export function createAuthSchedules(options: {
     : null;
   ssf?.unref();
   const retirement = startJwksRetirementSchedule({ db: options.db, log: options.log });
+  const reconcileAuthAtRest = () => {
+    void options.reconcileAuthAtRest?.().catch((err) => {
+      options.log.error({ err }, "auth_at_rest_reconciliation_failed");
+      Sentry.captureException(err);
+    });
+  };
+  if (options.reconcileAuthAtRest) reconcileAuthAtRest();
+  const atRestReconciliation = options.reconcileAuthAtRest
+    ? setInterval(reconcileAuthAtRest, 5 * 60 * 1_000)
+    : null;
+  atRestReconciliation?.unref();
 
   return {
     stop: async () => {
       retirement.stop();
       clearInterval(verification);
+      if (atRestReconciliation) clearInterval(atRestReconciliation);
       if (ssf) clearInterval(ssf);
       await Promise.allSettled([
         logout.stop(),

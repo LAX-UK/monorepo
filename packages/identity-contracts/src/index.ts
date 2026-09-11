@@ -1,3 +1,4 @@
+export * from "./auth-at-rest.js";
 export {
   AUTH_ROUTE_PATH,
   JWKS_PATH,

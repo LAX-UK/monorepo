@@ -44,5 +44,11 @@ describe("auth adapter at-rest protection", () => {
       where: [{ field: "accessToken", value: "access-raw" }],
     });
     expect(deleteRow.mock.calls[0]?.[0].where[0].value).toMatch(/^h1:/);
+
+    await adapter.create({
+      model: "account",
+      data: { accessToken: "", refreshToken: null, idToken: null },
+    });
+    expect(create.mock.calls[1]?.[0].data.accessToken).toMatch(/^v1:/);
   });
 });

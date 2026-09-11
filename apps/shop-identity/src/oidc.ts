@@ -87,10 +87,12 @@ export async function checkIdentityProvider(
   issuerUrl: string,
   fetchImpl: typeof fetch = fetch,
   internalBaseUrl: string = issuerUrl,
+  timeoutMs = 3_000,
 ): Promise<void> {
   const expected = resolveOidcDiscovery(issuerUrl);
   const response = await fetchImpl(
     `${normalizeIssuerUrl(internalBaseUrl)}/.well-known/openid-configuration`,
+    { signal: AbortSignal.timeout(timeoutMs) },
   );
   if (!response.ok) throw new Error(`Identity discovery unavailable (${response.status})`);
   const discovered = (await response.json()) as { issuer?: unknown; jwks_uri?: unknown };

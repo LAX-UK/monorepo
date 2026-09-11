@@ -2,7 +2,7 @@
 
 1. **DB**: Run collision report → apply `0057_auth_hardening` during a maintenance window.
 2. **JWKS + env**: Deploy `apps/auth` with `pg_try_advisory_xact_lock` retirement and `AUTH_DEK_KEY`; deploy `apps/api` with its separate `CHECK_IN_TOKEN_SECRET`; set `JWT_AUDIENCE`, `WEB_ORIGINS`, and production `superRefine` validations.
-3. **Encryption**: Set `AUTH_DEK_KEY`, deploy auth stack with adapter + JWKS envelope writes; run `pnpm --filter @auction/db db:backfill-auth-at-rest` once against the auth DB.
+3. **Encryption**: Set `AUTH_DEK_KEY`, deploy auth stack with adapter + JWKS envelope writes; run `pnpm --filter @auction/db db:backfill-auth-at-rest --apply` once against the auth DB after `db:backfill-auth-at-rest` inventory reports pending rows.
 4. **Core + UX**: Deploy web redirect hardening, logout broadcast, reset-password URL strip, session revocation hooks.
 5. **Sessions UI + step-up + Turnstile**: Enable after API routes for `/me/sessions` and `POST /auth/reauth` ship.
 6. **CSP**: Start `Content-Security-Policy-Report-Only` on marketing surfaces; fix violations; switch to enforce (`CSP_ENFORCE=1` on `apps/web`). Before enforcing, in **Cloudflare** disable **Scrape Shield → Email Address Obfuscation** for each zone (`lax.bid`, `test.lax.bid`, etc.): Cloudflare injects `cdn-cgi/scripts/.../email-decode.min.js`, which violates `script-src 'strict-dynamic'` and cannot be allowlisted by host when enforcing.
@@ -72,18 +72,20 @@ See also: [key rotation](../security/key-rotation.md),
 
 The D23 source extraction changes staging image ownership without changing the
 issuer, database, or migration authority. `LAX-UK/lax-identity` publishes
-`lax-test-identity:<sha>` and the rolling `:test` tag only after standalone CI
-passes. It then sends an authenticated deployment request to the monorepo.
+`lax-test-identity:<sha>` only after standalone CI passes. It then sends an
+authenticated immutable-candidate request to the monorepo; qualification and
+database preparation never move a registry alias or traffic.
 
 The monorepo remains the only staging deployment orchestrator. It must serialize
 the request with ordinary staging releases, verify the dispatched image digest
 and pinned migration contract, ensure the required migrate image is from a
 compatible green commit, apply/verify migrations, reconcile roles, and run
-`db:configure-oidc-clients` before App Platform deployment.
+`db:configure-oidc-clients` before a reviewed Terraform apply pins all three
+component SHAs and changes App Platform traffic.
 
 The staging Auth component keeps `https://test-auth.lax.bid`, the shared
-`auth_app` connection, and all existing runtime secrets. It pulls
-`lax-test-identity`, admits traffic through `/health/ready`, and obtains
+`auth_app` connection, and all existing runtime secrets. It pulls the pinned
+`lax-test-identity:<sha>`, admits traffic through `/health/ready`, and obtains
 `SENTRY_RELEASE` from the image SHA. Its production env must include non-local
 `API_INTERNAL_BASE_URL`, matching Identity machine credentials, a protected
 metrics token, and `SSF_DELIVERY_ENABLED=false` until both receivers pass
