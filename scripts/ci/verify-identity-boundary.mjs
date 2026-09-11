@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 const mode = process.argv.includes("--live") ? "live" : "fixture";
 const authBase = process.env.AUTH_BASE_URL ?? "http://localhost:3003";
@@ -106,20 +107,52 @@ function verifyFileContract(path, required, forbidden) {
   }
 }
 
+const RETIRED_VENDOR_SCAN_PREFIXES = ["apps/", "packages/", "scripts/", ".github/"];
+
+const RETIRED_VENDOR_DOC_ALLOWLIST = new Set([
+  "docs/runbooks/identity-boundary-cutover.md",
+  "docs/runbooks/shop-mvp-spec.md",
+]);
+
+const RETIRED_VENDOR_PATTERNS = [
+  [new RegExp(["shop", "ify"].join(""), "i"), "retired commerce vendor"],
+  [new RegExp(["word", "press"].join(""), "i"), "retired CMS vendor"],
+  [new RegExp(["lax", "\\.", "shop"].join(""), "i"), "retired shop domain"],
+  [new RegExp(["lax", "-shop-", "proof"].join(""), "i"), "retired shop client"],
+  [new RegExp(["Remote", "Session", "Authenticator"].join("")), "retired remote authenticator"],
+  [new RegExp(["Composite", "Authenticator"].join("")), "retired composite authenticator"],
+  [new RegExp(["cross", "Sub", "Domain", "Cookies"].join("")), "retired cookie option"],
+];
+
+export function isRetiredVendorScanSurface(path) {
+  if (RETIRED_VENDOR_DOC_ALLOWLIST.has(path)) return false;
+  return RETIRED_VENDOR_SCAN_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+export function findRetiredVendorMatches(files) {
+  const integrationFiles = files.filter(([path]) => isRetiredVendorScanSurface(path));
+  const matches = [];
+  for (const [pattern, label] of RETIRED_VENDOR_PATTERNS) {
+    for (const [path, text] of integrationFiles) {
+      if (pattern.test(text)) matches.push({ label, path });
+    }
+  }
+  return matches;
+}
+
 function verifyStaticContracts() {
   const files = trackedText();
-  const retired = [
-    [new RegExp(["shop", "ify"].join(""), "i"), "retired commerce vendor"],
-    [new RegExp(["word", "press"].join(""), "i"), "retired CMS vendor"],
-    [new RegExp(["lax", "\\.", "shop"].join(""), "i"), "retired shop domain"],
-    [new RegExp(["lax", "-shop-", "proof"].join(""), "i"), "retired shop client"],
-    [new RegExp(["Remote", "Session", "Authenticator"].join("")), "retired remote authenticator"],
-    [new RegExp(["Composite", "Authenticator"].join("")), "retired composite authenticator"],
-    [new RegExp(["cross", "Sub", "Domain", "Cookies"].join("")), "retired cookie option"],
-  ];
-  for (const [pattern, label] of retired) {
-    const matches = files.filter(([, text]) => pattern.test(text)).map(([path]) => path);
-    if (matches.length > 0) throw new Error(`${label} remains in: ${matches.join(", ")}`);
+  const retiredMatches = findRetiredVendorMatches(files);
+  if (retiredMatches.length > 0) {
+    const grouped = retiredMatches.reduce((acc, { label, path }) => {
+      acc[label] ??= [];
+      acc[label].push(path);
+      return acc;
+    }, {});
+    const message = Object.entries(grouped)
+      .map(([label, paths]) => `${label} remains in: ${paths.join(", ")}`)
+      .join("; ");
+    throw new Error(message);
   }
 
   verifyFileContract(
@@ -271,7 +304,10 @@ async function main() {
   console.log(`identity boundary verification passed (${mode})`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

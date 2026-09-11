@@ -5,7 +5,9 @@ export default function ShopSignedOutPage() {
     <main className="shop-shell">
       <h1 className="text-2xl font-semibold uppercase tracking-tight">Signed out</h1>
       <div className="shop-panel">
-        <p className="text-sm text-[var(--color-on-surface-variant)]">Your Shop session has ended.</p>
+        <p className="text-sm text-[var(--color-on-surface-variant)]">
+          Your Shop session has ended.
+        </p>
         <Link href="/login" className="text-link underline-offset-4 hover:underline">
           Sign in again
         </Link>

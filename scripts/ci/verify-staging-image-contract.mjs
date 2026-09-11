@@ -18,6 +18,12 @@ const contracts = [
     digest: process.env.SHOP_IDENTITY_DIGEST,
     releaseEnv: process.env.SHOP_IDENTITY_SHA,
   },
+  {
+    repository: "lax-test-shop",
+    sha: process.env.SHOP_SHA,
+    digest: process.env.SHOP_DIGEST,
+    releaseEnv: process.env.SHOP_SHA,
+  },
 ];
 
 const requiredInputs = [
@@ -25,6 +31,8 @@ const requiredInputs = [
   ["IDENTITY_DIGEST", process.env.IDENTITY_DIGEST],
   ["SHOP_IDENTITY_SHA", process.env.SHOP_IDENTITY_SHA],
   ["SHOP_IDENTITY_DIGEST", process.env.SHOP_IDENTITY_DIGEST],
+  ["SHOP_SHA", process.env.SHOP_SHA],
+  ["SHOP_DIGEST", process.env.SHOP_DIGEST],
 ];
 const missingInputs = requiredInputs.filter(([, value]) => !value).map(([name]) => name);
 if (missingInputs.length > 0) {
@@ -86,4 +94,4 @@ for (const contract of contracts) {
   }
 }
 
-console.log("Staging image contracts verified for Identity and Shop");
+console.log("Staging image contracts verified for Identity, Shop Identity, and Shop");

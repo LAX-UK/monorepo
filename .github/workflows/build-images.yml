@@ -51,6 +51,8 @@ jobs:
             dockerfile: apps/auth/Dockerfile
           - component: shop-identity
             dockerfile: apps/shop-identity/Dockerfile
+          - component: shop
+            dockerfile: apps/shop/Dockerfile
           - component: ws
             dockerfile: apps/ws/Dockerfile
           - component: worker

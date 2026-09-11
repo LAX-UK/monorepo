@@ -542,7 +542,10 @@ if (statSync(shopSrc, { throwIfNoEntry: false })?.isDirectory()) {
           `${rel}: imports "${specifier}" — apps/shop must not import apps/web internals`,
         );
       }
-      if (specifier.startsWith("@auction/") && !SHOP_ALLOWED_AUCTION_IMPORTS.has(specifier.split("/").slice(0, 2).join("/"))) {
+      if (
+        specifier.startsWith("@auction/") &&
+        !SHOP_ALLOWED_AUCTION_IMPORTS.has(specifier.split("/").slice(0, 2).join("/"))
+      ) {
         if (SHOP_FORBIDDEN_IMPORT_RE.test(specifier)) {
           shopBoundaryViolations.push(
             `${rel}: imports "${specifier}" — apps/shop must stay on Shop-owned boundaries`,

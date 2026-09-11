@@ -11,6 +11,10 @@ const envSchema = z
     OIDC_CLIENT_SECRET: z.string().min(32),
     OIDC_REDIRECT_URI: z.string().url(),
     OIDC_POST_LOGOUT_REDIRECT_URI: z.string().url(),
+    OIDC_SUCCESS_REDIRECT_URI: z
+      .string()
+      .regex(/^\/(?!\/)/, "Success redirect must be a same-origin path")
+      .default("/account"),
     SESSION_SECRET: z.string().min(32),
     DATABASE_URL_SHOP: z.string().min(1).optional(),
     DATABASE_URL: z.string().min(1).optional(),
@@ -38,10 +42,7 @@ const envSchema = z
       });
     }
     const registered = REGISTERED_OIDC_CLIENTS[env.OIDC_CLIENT_ID as RegisteredOidcClientId];
-    if (
-      registered &&
-      !registered.redirectUris.includes(env.OIDC_REDIRECT_URI)
-    ) {
+    if (registered && !registered.redirectUris.includes(env.OIDC_REDIRECT_URI)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "OIDC_REDIRECT_URI must be exactly registered for the client",

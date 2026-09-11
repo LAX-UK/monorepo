@@ -2,15 +2,19 @@ import { timingSafeEqual } from "node:crypto";
 import {
   HOSTED_FORGOT_PASSWORD_SCRIPT,
   HOSTED_LOGIN_SCRIPT,
+  HOSTED_RESEND_VERIFICATION_SCRIPT,
   HOSTED_RESET_PASSWORD_SCRIPT,
   HOSTED_SIGN_UP_SCRIPT,
   HOSTED_TWO_FACTOR_SCRIPT,
+  HOSTED_VERIFY_EMAIL_SCRIPT,
   OIDC_CONSENT_SCRIPT,
   buildHostedForgotPasswordHtml,
   buildHostedLoginHtml,
+  buildHostedResendVerificationHtml,
   buildHostedResetPasswordHtml,
   buildHostedSignUpHtml,
   buildHostedTwoFactorHtml,
+  buildHostedVerifyEmailHtml,
   type createAuth,
 } from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";
@@ -70,6 +74,18 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
       "Content-Type": "text/javascript; charset=utf-8",
     });
   });
+  app.get("/hosted-verify-email.js", (c) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(HOSTED_VERIFY_EMAIL_SCRIPT, 200, {
+      "Content-Type": "text/javascript; charset=utf-8",
+    });
+  });
+  app.get("/hosted-resend-verification.js", (c) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(HOSTED_RESEND_VERIFICATION_SCRIPT, 200, {
+      "Content-Type": "text/javascript; charset=utf-8",
+    });
+  });
   app.get("/login", (c) => {
     c.header("Cache-Control", "no-store");
     return c.html(buildHostedLoginHtml());
@@ -96,6 +112,14 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
         callbackURL: typeof callbackURL === "string" ? callbackURL : null,
       }),
     );
+  });
+  app.get("/verify-email", (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.html(buildHostedVerifyEmailHtml());
+  });
+  app.get("/resend-verification", (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.html(buildHostedResendVerificationHtml());
   });
   if (options.internal) {
     app.use(

@@ -105,18 +105,18 @@ app.get("/auth/callback", async (c) => {
   const session = await readSession(sessionRepository, c);
   const pending = session?.oauth;
   if (!pending) {
-    return c.text("Missing OAuth session", 400);
+    return c.redirect("/session-expired", 302);
   }
 
   const receivedState = c.req.query("state") ?? null;
   if (!validateOAuthState(pending.state, receivedState)) {
-    return c.text("Invalid OAuth state", 400);
+    return c.redirect("/auth/callback?error=invalid_state", 302);
   }
 
   const code = c.req.query("code");
   if (!code) {
     const error = c.req.query("error") ?? "unknown";
-    return c.text(`OAuth authorization failed: ${error}`, 400);
+    return c.redirect(`/auth/callback?error=${encodeURIComponent(error)}`, 302);
   }
 
   let tokenResponse: Awaited<ReturnType<typeof exchangeAuthorizationCode>>;
@@ -129,9 +129,8 @@ app.get("/auth/callback", async (c) => {
       code,
       codeVerifier: pending.codeVerifier,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Token exchange failed";
-    return c.text(message, 502);
+  } catch {
+    return c.redirect("/auth/callback?error=token_exchange_failed", 302);
   }
 
   const decodedClaims = decodeJwtPayload(tokenResponse.id_token);
@@ -142,7 +141,7 @@ app.get("/auth/callback", async (c) => {
       nonce: pending.nonce,
     })
   ) {
-    return c.text("Invalid id_token claims", 401);
+    return c.redirect("/auth/callback?error=invalid_id_token", 302);
   }
 
   const verified = await verifyIdentityToken({
@@ -152,7 +151,7 @@ app.get("/auth/callback", async (c) => {
     audience: env.OIDC_CLIENT_ID,
   });
   if (!verified) {
-    return c.text("Invalid id_token signature", 401);
+    return c.redirect("/auth/callback?error=invalid_id_token", 302);
   }
 
   const email =
@@ -170,9 +169,16 @@ app.get("/auth/callback", async (c) => {
     name,
   });
 
+  const profile = await findShopUserProfile(pool, verified.subject);
+  if (profile?.disabledAt) {
+    await sessionRepository.invalidate(session.id);
+    clearSessionCookie(c);
+    return c.redirect("/account/disabled", 302);
+  }
+
   const sid = typeof verified.payload.sid === "string" ? verified.payload.sid : null;
   if (!sid || !session) {
-    return c.text("id_token is missing required sid", 401);
+    return c.redirect("/auth/callback?error=missing_sid", 302);
   }
   await sessionRepository.authenticate({
     id: session.id,
@@ -180,7 +186,7 @@ app.get("/auth/callback", async (c) => {
     sid,
   });
   writeOidcIdTokenCookie(c, tokenResponse.id_token, secureCookies);
-  return c.redirect("/", 302);
+  return c.redirect(env.OIDC_SUCCESS_REDIRECT_URI, 302);
 });
 
 app.get("/me", async (c) => {

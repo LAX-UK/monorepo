@@ -392,6 +392,13 @@ jobs:
               ACTIVE) break ;;
               ERROR|CANCELED|SUPERSEDED)
                 echo "::error::App Platform deployment ended in phase $phase"
+                doctl apps logs "$APP_ID" --type run --tail 200 auth || true
+                doctl apps get-deployment "$APP_ID" "$deployment_id" --output json |
+                  jq -r '
+                    (if type == "array" then .[0].progress.steps[]? else .progress.steps[]? end)
+                    | select(.status == "ERROR")
+                    | "\(.name): \(.reason // .message // "unknown")"
+                  ' || true
                 exit 1
                 ;;
             esac

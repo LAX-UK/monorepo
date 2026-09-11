@@ -7,7 +7,7 @@ describe("loadShopIdentityEnv", () => {
       OIDC_ISSUER_URL: "https://auth.example.test",
       OIDC_CLIENT_ID: "lax-shop-web",
       OIDC_CLIENT_SECRET: "super-secret-client-value-32-characters",
-      OIDC_REDIRECT_URI: "https://shop.example.test/callback",
+      OIDC_REDIRECT_URI: "http://localhost:3010/auth/callback",
       OIDC_POST_LOGOUT_REDIRECT_URI: "http://localhost:3010/",
       SESSION_SECRET: "01234567890123456789012345678901",
       DATABASE_URL_SHOP: "postgres://shop:shop@127.0.0.1:5432/shop",

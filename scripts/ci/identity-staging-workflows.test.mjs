@@ -79,6 +79,8 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
     "IDENTITY_DIGEST",
     "SHOP_IDENTITY_SHA",
     "SHOP_IDENTITY_DIGEST",
+    "SHOP_SHA",
+    "SHOP_DIGEST",
   ]) {
     assert.match(imageContract, new RegExp(`\\["${required}",`));
   }
@@ -92,15 +94,22 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
   assert.match(read(".github/workflows/terraform-plan.yml"), /verify-auth-terraform-env\.mjs/);
 });
 
-test("live acceptance uses fixed Shop origin and both SSF receivers", () => {
+test("live acceptance uses fixed Shop origin, credential preflight, and phased SSF modes", () => {
   const acceptance = read(".github/workflows/identity-staging-acceptance.yml");
   const machineProbe = read("scripts/ci/verify-identity-machine-live.mjs");
   const bidProbe = read("scripts/ci/verify-bid-web-bff-roundtrip.mjs");
   const shopProbe = read("scripts/ci/verify-shop-oidc-roundtrip.mjs");
   const ssfProbe = read("scripts/ci/verify-identity-ssf-live.mjs");
 
+  assert.match(acceptance, /Require acceptance credentials before infrastructure access/);
+  assert.match(acceptance, /IDENTITY_ACCEPTANCE_EMAIL/);
+  assert.match(acceptance, /IDENTITY_ACCEPTANCE_PASSWORD/);
+  assert.match(acceptance, /ssf_mode:/);
+  assert.match(acceptance, /ssf_disabled/);
+  assert.match(acceptance, /ssf_enabled/);
   assert.match(acceptance, /SHOP_IDENTITY_BASE_URL: https:\/\/test-shop\.lax\.bid/);
   assert.doesNotMatch(acceptance, /shop_identity_base_url/);
+  assert.match(acceptance, /if: inputs\.ssf_mode == 'ssf_enabled'/);
   assert.match(acceptance, /SSF durable delivery and replay contract \(Bid receiver\)/);
   assert.match(acceptance, /SSF durable delivery and replay contract \(Shop receiver\)/);
   assert.match(acceptance, /db:reconcile-identity-profiles/);
@@ -109,8 +118,7 @@ test("live acceptance uses fixed Shop origin and both SSF receivers", () => {
   assert.match(machineProbe, /expiringBody\.expires_in \+ 2/);
   assert.match(bidProbe, /redirect path is not trusted/);
   assert.match(shopProbe, /redirect path is not trusted/);
-  assert.doesNotMatch(acceptance, /SSF_FAILURE_REHEARSAL: "false"/);
-  assert.match(acceptance, /SSF_FAILURE_REHEARSAL: "true"/);
+  assert.match(acceptance, /SSF_FAILURE_REHEARSAL: \$\{\{ inputs\.ssf_mode == 'ssf_enabled'/);
   assert.match(ssfProbe, /status: "disabled"/);
   assert.match(ssfProbe, /status: "enabled"/);
   assert.match(ssfProbe, /pre-enable receiver verification passed/);
@@ -119,10 +127,12 @@ test("live acceptance uses fixed Shop origin and both SSF receivers", () => {
   assert.match(acceptance, /Require live Identity SSF delivery worker/);
 });
 
-test("Shop image embeds the release provenance required by image contracts", () => {
-  const dockerfile = read("apps/shop-identity/Dockerfile");
-  assert.match(dockerfile, /ARG IMAGE_SHA=unknown/);
-  assert.match(dockerfile, /ENV SENTRY_RELEASE=\$\{IMAGE_SHA\}/);
+test("Shop images embed the release provenance required by image contracts", () => {
+  for (const dockerfile of ["apps/shop-identity/Dockerfile", "apps/shop/Dockerfile"]) {
+    const contents = read(dockerfile);
+    assert.match(contents, /ARG IMAGE_SHA=unknown/);
+    assert.match(contents, /ENV SENTRY_RELEASE=\$\{IMAGE_SHA\}/);
+  }
 });
 
 test("fallback guard covers extraction manifests, lockfiles, and image workflows", () => {

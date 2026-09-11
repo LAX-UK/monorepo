@@ -129,7 +129,7 @@ async function main() {
   assertTrustedRedirect(
     new URL(callbackLocation, shopBase).toString(),
     allowedShopOrigins,
-    "/",
+    "/account",
     "Shop callback",
   );
 

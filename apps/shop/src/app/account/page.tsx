@@ -1,5 +1,7 @@
-import { shopIdentityBaseUrl } from "@/lib/shop-identity.server";
+import { shopIdentityCookieHeader, shopIdentityUrl } from "@/lib/shop-identity.server";
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 type AccountPayload = {
   authenticated?: boolean;
@@ -9,9 +11,14 @@ type AccountPayload = {
 };
 
 async function loadAccount(): Promise<AccountPayload> {
-  const response = await fetch(`${shopIdentityBaseUrl()}/me`, {
+  const cookieStore = await cookies();
+  const cookieHeader = shopIdentityCookieHeader(cookieStore.getAll());
+  const response = await fetch(shopIdentityUrl("/me"), {
     cache: "no-store",
-    headers: { accept: "application/json" },
+    headers: {
+      accept: "application/json",
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
+    },
   });
   return (await response.json()) as AccountPayload;
 }
@@ -19,14 +26,15 @@ async function loadAccount(): Promise<AccountPayload> {
 export default async function ShopAccountPage() {
   const account = await loadAccount();
   if (!account.authenticated) {
+    if (account.reason === "identity_disabled") {
+      redirect("/account/disabled");
+    }
     return (
       <main className="shop-shell">
         <h1 className="text-2xl font-semibold uppercase tracking-tight">Sign in required</h1>
         <div className="shop-panel">
           <p className="text-sm text-[var(--color-on-surface-variant)]">
-            {account.reason === "identity_disabled"
-              ? "This account is disabled."
-              : "Start sign-in through the Shop Identity boundary."}
+            Start sign-in through the Shop Identity boundary.
           </p>
           <Link href="/login" className="text-link underline-offset-4 hover:underline">
             Continue to sign in
@@ -54,7 +62,7 @@ export default async function ShopAccountPage() {
             <dd>{account.profile?.name ?? "—"}</dd>
           </div>
         </dl>
-        <form action={`${shopIdentityBaseUrl()}/logout`} method="post" className="mt-4">
+        <form action={shopIdentityUrl("/logout")} method="post" className="mt-4">
           <button type="submit" className="text-link underline-offset-4 hover:underline">
             Sign out
           </button>

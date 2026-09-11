@@ -24,6 +24,15 @@ export {
   HOSTED_TWO_FACTOR_SCRIPT,
   buildHostedTwoFactorHtml,
 } from "./hosted-two-factor-html.js";
+export {
+  HOSTED_VERIFY_EMAIL_SCRIPT,
+  buildHostedVerifyEmailHtml,
+} from "./hosted-verify-email-html.js";
+export {
+  HOSTED_RESEND_VERIFICATION_SCRIPT,
+  buildHostedResendVerificationHtml,
+} from "./hosted-resend-verification-html.js";
+export { isSafeHostedReturnPath, resolveHostedReturnUrl } from "./safe-return-url.js";
 export * from "./contracts.js";
 export type { AuthDatabase } from "./phone-number-plugin.js";
 export {

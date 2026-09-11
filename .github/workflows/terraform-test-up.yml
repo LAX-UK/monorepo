@@ -23,6 +23,14 @@ on:
         description: Approved lax-test-shop-identity digest for ephemeral image deploys
         type: string
         required: false
+      shop_sha:
+        description: Approved Shop storefront commit for ephemeral image deploys
+        type: string
+        required: false
+      shop_digest:
+        description: Approved lax-test-shop digest for ephemeral image deploys
+        type: string
+        required: false
 concurrency:
   group: app-deploy-test
   cancel-in-progress: false
@@ -116,6 +124,8 @@ jobs:
           IDENTITY_DIGEST: ${{ inputs.identity_digest }}
           SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
           SHOP_IDENTITY_DIGEST: ${{ inputs.shop_identity_digest }}
+          SHOP_SHA: ${{ inputs.shop_sha }}
+          SHOP_DIGEST: ${{ inputs.shop_digest }}
           DOCR_REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
         run: |
           doctl registry login --expiry-seconds 900

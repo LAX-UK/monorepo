@@ -11,6 +11,13 @@ on:
         description: Approved lifecycle-outbox lag threshold in milliseconds
         required: true
         type: number
+      ssf_mode:
+        description: Acceptance phase — core behavior first, then SSF delivery
+        required: true
+        type: choice
+        options:
+          - ssf_disabled
+          - ssf_enabled
 
 permissions:
   contents: read
@@ -40,10 +47,21 @@ jobs:
       IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS: "60000"
       IDENTITY_OUTBOX_MAX_AGE_MS: ${{ inputs.outbox_max_age_ms }}
       SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
-      SSF_DELIVERY_ENABLED: "true"
-      SSF_FAILURE_REHEARSAL: "true"
+      SSF_DELIVERY_ENABLED: ${{ inputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
+      SSF_FAILURE_REHEARSAL: ${{ inputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
     steps:
+      - name: Require acceptance credentials before infrastructure access
+        run: |
+          set -euo pipefail
+          test -n "${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}" || {
+            echo "::error::IDENTITY_ACCEPTANCE_EMAIL must be configured on the test environment"
+            exit 1
+          }
+          test -n "${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}" || {
+            echo "::error::IDENTITY_ACCEPTANCE_PASSWORD must be configured on the test environment"
+            exit 1
+          }
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
@@ -93,6 +111,7 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Require live Identity SSF delivery worker
+        if: inputs.ssf_mode == 'ssf_enabled'
         run: |
           set -euo pipefail
           doctl apps get "$APP_ID" --output json |
@@ -102,7 +121,7 @@ jobs:
               | any(.envs[]?;
                   .key == "SSF_DELIVERY_ENABLED" and .value == "true")
             ' >/dev/null || {
-              echo "::error::Live Identity app must have SSF_DELIVERY_ENABLED=true before acceptance"
+              echo "::error::Live Identity app must have SSF_DELIVERY_ENABLED=true before ssf_enabled acceptance"
               exit 1
             }
       - name: Validate requested Identity release
@@ -113,6 +132,7 @@ jobs:
               jq -r '.release // .version // empty'
           )" = "${{ inputs.identity_sha }}"
           echo "ACCEPTANCE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          echo "ACCEPTANCE_SSF_MODE=${{ inputs.ssf_mode }}" >> "$GITHUB_ENV"
       - name: Discovery, JWKS, HTTPS, headers, and retired API routes
         run: node scripts/ci/verify-identity-boundary.mjs --live
       - name: Bid BFF login, callback, exchanged resource token, and scopes
@@ -126,12 +146,14 @@ jobs:
       - name: Bid and Shop back-channel logout delivery
         run: node scripts/ci/verify-backchannel-logout-live.mjs
       - name: SSF durable delivery and replay contract (Bid receiver)
+        if: inputs.ssf_mode == 'ssf_enabled'
         env:
           SSF_TEST_CLIENT_ID: lax-bid-web
           SSF_TEST_CLIENT_SECRET: ${{ env.SSF_TEST_CLIENT_SECRET }}
           SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
         run: node scripts/ci/verify-identity-ssf-live.mjs
       - name: SSF durable delivery and replay contract (Shop receiver)
+        if: inputs.ssf_mode == 'ssf_enabled'
         env:
           SSF_TEST_CLIENT_ID: lax-shop-web
           SSF_TEST_CLIENT_SECRET: ${{ env.REFRESH_TEST_CLIENT_SECRET }}
