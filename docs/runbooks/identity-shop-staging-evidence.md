@@ -24,5 +24,6 @@ Residual ops blockers before full acceptance:
 2. Import or reconcile `shop_app` in ephemeral Terraform state, then re-run ephemeral apply with approved image contracts.
 3. Merge [lax-identity#4](https://github.com/LAX-UK/lax-identity/pull/4), publish a new Identity image, redeploy with `stage_only=false`.
 4. Re-run `identity-staging-acceptance.yml` against live staging and record 24h soak here.
+5. Configure `IDENTITY_ACCEPTANCE_EMAIL` and `IDENTITY_ACCEPTANCE_PASSWORD` GitHub secrets on the `test` environment (acceptance run [34553565800](https://github.com/LAX-UK/monorepo/actions/runs/34553565800) also failed because those secrets were empty and `pnpm` was installed after `setup-node`; fixed in `fb698167` follow-up).
 
 `IDENTITY_STANDALONE_CUTOVER_COMPLETE` remains **unset** until the acceptance workflow is green and soak is signed.
