@@ -66,18 +66,18 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
       redirectUris: [
         "http://localhost:3010/auth/callback",
         "https://shop.lax.art/auth/callback",
-        "https://test-shop.lax.art/auth/callback",
+        "https://test-shop.lax.bid/auth/callback",
       ],
       postLogoutRedirectUris: [
         "http://localhost:3010/",
         "https://shop.lax.art/",
-        "https://test-shop.lax.art/",
+        "https://test-shop.lax.bid/",
       ],
       allowedScopes: ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"],
       allowedResources: [LAX_RESOURCE_IDS.LAX_SHOP_API],
       pkceRequired: true,
       backchannelLogoutUri: "https://shop.lax.art/api/auth/backchannel-logout",
-      testBackchannelLogoutUri: "https://test-shop.lax.art/api/auth/backchannel-logout",
+      testBackchannelLogoutUri: "https://test-shop.lax.bid/api/auth/backchannel-logout",
       backchannelLogoutSessionRequired: true,
     },
     [REGISTERED_OIDC_CLIENT_IDS.WS_MOBILE]: {

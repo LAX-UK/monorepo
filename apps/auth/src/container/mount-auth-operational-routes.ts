@@ -4,7 +4,13 @@ import {
   HOSTED_TWO_FACTOR_SCRIPT,
   OIDC_CONSENT_SCRIPT,
   buildHostedLoginHtml,
+  buildHostedForgotPasswordHtml,
+  buildHostedResetPasswordHtml,
+  buildHostedSignUpHtml,
   buildHostedTwoFactorHtml,
+  HOSTED_FORGOT_PASSWORD_SCRIPT,
+  HOSTED_RESET_PASSWORD_SCRIPT,
+  HOSTED_SIGN_UP_SCRIPT,
   type createAuth,
 } from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";
@@ -40,6 +46,24 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
       "Content-Type": "text/javascript; charset=utf-8",
     });
   });
+  app.get("/hosted-sign-up.js", (c) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(HOSTED_SIGN_UP_SCRIPT, 200, {
+      "Content-Type": "text/javascript; charset=utf-8",
+    });
+  });
+  app.get("/hosted-forgot-password.js", (c) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(HOSTED_FORGOT_PASSWORD_SCRIPT, 200, {
+      "Content-Type": "text/javascript; charset=utf-8",
+    });
+  });
+  app.get("/hosted-reset-password.js", (c) => {
+    c.header("Cache-Control", "public, max-age=3600");
+    return c.body(HOSTED_RESET_PASSWORD_SCRIPT, 200, {
+      "Content-Type": "text/javascript; charset=utf-8",
+    });
+  });
   app.get("/hosted-two-factor.js", (c) => {
     c.header("Cache-Control", "public, max-age=3600");
     return c.body(HOSTED_TWO_FACTOR_SCRIPT, 200, {
@@ -49,6 +73,18 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
   app.get("/login", (c) => {
     c.header("Cache-Control", "no-store");
     return c.html(buildHostedLoginHtml());
+  });
+  app.get("/sign-up", (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.html(buildHostedSignUpHtml());
+  });
+  app.get("/forgot-password", (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.html(buildHostedForgotPasswordHtml());
+  });
+  app.get("/reset-password", (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.html(buildHostedResetPasswordHtml());
   });
   app.get("/two-factor", (c) => {
     c.header("Cache-Control", "no-store");

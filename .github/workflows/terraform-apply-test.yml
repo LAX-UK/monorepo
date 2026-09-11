@@ -155,7 +155,7 @@ jobs:
           set -euo pipefail
           for _ in $(seq 1 60); do
             if curl --fail --silent --show-error --max-time 10 \
-              https://test-shop.lax.art/health/ready >/dev/null; then
+              https://test-shop.lax.bid/health/ready >/dev/null; then
               exit 0
             fi
             sleep 10

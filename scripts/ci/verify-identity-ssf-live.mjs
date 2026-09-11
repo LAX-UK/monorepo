@@ -44,7 +44,7 @@ async function body(response) {
 }
 
 function defaultEndpoint(receiverClientId) {
-  if (receiverClientId === "lax-shop-web") return "https://test-shop.lax.art/api/ssf/events";
+  if (receiverClientId === "lax-shop-web") return "https://test-shop.lax.bid/api/ssf/events";
   return "https://test-api.lax.bid/ssf/events";
 }
 

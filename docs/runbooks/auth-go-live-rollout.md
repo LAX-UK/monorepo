@@ -88,7 +88,7 @@ The staging Auth component keeps `https://test-auth.lax.bid`, the shared
 `API_INTERNAL_BASE_URL`, matching Identity machine credentials, a protected
 metrics token, and `SSF_DELIVERY_ENABLED=false` until both receivers pass
 verification. The staging Shop relying party is
-`https://test-shop.lax.art`; its callback, post-logout URI, back-channel logout
+`https://test-shop.lax.bid`; its callback, post-logout URI, back-channel logout
 receiver, and SSF receiver are test-only registrations. Run the acceptance
 workflow once with delivery disabled to prove durable queuing, apply the
 reviewed ephemeral layer with `enable_auth_ssf_delivery=true`, then rerun

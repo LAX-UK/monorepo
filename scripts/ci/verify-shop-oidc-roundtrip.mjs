@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const STAGING_SHOP_ORIGIN = "https://test-shop.lax.art";
+const STAGING_SHOP_ORIGIN = "https://test-shop.lax.bid";
 const LOCAL_SHOP_ORIGIN = "http://localhost:3010";
 
 const authBase = (process.env.AUTH_BASE_URL ?? "http://localhost:3003").replace(/\/+$/, "");

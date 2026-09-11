@@ -99,7 +99,7 @@ test("live acceptance uses fixed Shop origin and both SSF receivers", () => {
   const shopProbe = read("scripts/ci/verify-shop-oidc-roundtrip.mjs");
   const ssfProbe = read("scripts/ci/verify-identity-ssf-live.mjs");
 
-  assert.match(acceptance, /SHOP_IDENTITY_BASE_URL: https:\/\/test-shop\.lax\.art/);
+  assert.match(acceptance, /SHOP_IDENTITY_BASE_URL: https:\/\/test-shop\.lax\.bid/);
   assert.doesNotMatch(acceptance, /shop_identity_base_url/);
   assert.match(acceptance, /SSF durable delivery and replay contract \(Bid receiver\)/);
   assert.match(acceptance, /SSF durable delivery and replay contract \(Shop receiver\)/);

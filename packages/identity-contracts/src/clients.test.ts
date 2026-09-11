@@ -23,10 +23,10 @@ describe("registered OIDC clients", () => {
     expect(shop.postLogoutRedirectUris).toEqual([
       "http://localhost:3010/",
       "https://shop.lax.art/",
-      "https://test-shop.lax.art/",
+      "https://test-shop.lax.bid/",
     ]);
     expect(shop.testBackchannelLogoutUri).toBe(
-      "https://test-shop.lax.art/api/auth/backchannel-logout",
+      "https://test-shop.lax.bid/api/auth/backchannel-logout",
     );
   });
 

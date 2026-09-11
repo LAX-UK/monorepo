@@ -1,3 +1,5 @@
+import { buildHostedAuthHtml } from "./hosted-auth-shell.js";
+
 export const HOSTED_LOGIN_SCRIPT = `const params = new URLSearchParams(window.location.search);
 const callbackURL = params.get("callbackURL");
 const errorEl = document.getElementById("error");
@@ -43,28 +45,25 @@ document.getElementById("login-form").addEventListener("submit", async (event) =
   redirectAfterSignIn(payload);
 });`;
 
-/** Minimal hosted credential login for OIDC loginPage redirects on the Identity issuer. */
+/** Hosted credential login for OIDC loginPage redirects on the Identity issuer. */
 export function buildHostedLoginHtml(): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign in</title>
-</head>
-<body>
-  <main>
-    <h1>Sign in to LAX</h1>
-    <form id="login-form">
-      <label for="email">Email</label>
-      <input id="email" type="email" autocomplete="username" required>
-      <label for="password">Password</label>
-      <input id="password" type="password" autocomplete="current-password" required>
+  return buildHostedAuthHtml({
+    title: "Sign in",
+    description: "Use your LAX account to continue.",
+    body: `<form id="login-form">
+      <label for="email">Email
+        <input id="email" type="email" autocomplete="username" required>
+      </label>
+      <label for="password">Password
+        <input id="password" type="password" autocomplete="current-password" required>
+      </label>
       <button type="submit">Continue</button>
-    </form>
-    <p id="error" role="alert" hidden></p>
-  </main>
-  <script src="/hosted-login.js" defer></script>
-</body>
-</html>`;
+      <p id="error" role="alert" hidden></p>
+      <div class="links">
+        <a href="/forgot-password">Forgot password</a>
+        <a href="/sign-up">Create account</a>
+      </div>
+    </form>`,
+    scriptSrc: "/hosted-login.js",
+  });
 }

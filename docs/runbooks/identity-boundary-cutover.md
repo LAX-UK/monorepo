@@ -46,6 +46,39 @@ Public contract changes require the later package-publication/consumer cutover.
 An emergency change to the frozen production fallback requires the
 `identity-fallback-hotfix` label and a recorded synchronization patch.
 
+## Scoped exception: Shop staging origin on `test-shop.lax.bid`
+
+`lax.art` is not yet under LAX operational control (Shopify/Hostinger still
+serves `shop.lax.art`). Staging Shop Identity and acceptance must not block on
+that handover.
+
+This exception is **test-only** and **does not change production contracts**:
+
+| Contract field | Production (unchanged) | Test staging (exception) |
+|---|---|---|
+| Shop redirect | `https://shop.lax.art/auth/callback` | `https://test-shop.lax.bid/auth/callback` |
+| Shop post-logout | `https://shop.lax.art/` | `https://test-shop.lax.bid/` |
+| Shop back-channel logout | `https://shop.lax.art/api/auth/backchannel-logout` | `https://test-shop.lax.bid/api/auth/backchannel-logout` |
+| Shop SSF receiver | `https://shop.lax.art/api/ssf/events` | `https://test-shop.lax.bid/api/ssf/events` |
+| `lax-shop-api` resource indicator | `https://shop.lax.art/api` | unchanged |
+
+Implementation requirements:
+
+1. Mirror the registry change in `LAX-UK/lax-identity` and re-pin
+   `schema-contract.json` before publishing a new Identity image.
+2. Apply `auction-infra` DNS on the existing `lax.bid` Cloudflare zone; do **not**
+   read or mutate the `lax.art` zone for this exception.
+3. Re-run migrate/OIDC registry provisioning so `oauth_application` carries the
+   new test URIs.
+4. Record that same-registrable-domain staging (`*.lax.bid`) is weaker evidence
+   than the final `shop.lax.art` origin for cross-site cookie isolation. Repeat
+   the full Shop OIDC/logout/SSF acceptance after `shop.lax.art` handover.
+
+**Revert condition:** when `shop.lax.art` DNS is under LAX control, restore the
+`test-shop.lax.art` test seams (or retire them if test moves to production
+hostnames), attach production Shop DNS, rerun full acceptance, and remove this
+exception section after sign-off.
+
 Merge and release the `auction-infra` changes before the corresponding
 monorepo workflow changes. The monorepo checks out infra `main`, and its
 environment and safe-delete contracts intentionally fail against the old

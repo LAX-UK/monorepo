@@ -40,6 +40,16 @@ const envSchema = z
     const registered = REGISTERED_OIDC_CLIENTS[env.OIDC_CLIENT_ID as RegisteredOidcClientId];
     if (
       registered &&
+      !registered.redirectUris.includes(env.OIDC_REDIRECT_URI)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "OIDC_REDIRECT_URI must be exactly registered for the client",
+        path: ["OIDC_REDIRECT_URI"],
+      });
+    }
+    if (
+      registered &&
       !registered.postLogoutRedirectUris.includes(env.OIDC_POST_LOGOUT_REDIRECT_URI)
     ) {
       ctx.addIssue({

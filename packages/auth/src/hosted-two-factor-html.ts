@@ -1,11 +1,4 @@
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
+import { buildHostedAuthHtml, escapeHostedHtml } from "./hosted-auth-shell.js";
 
 export const HOSTED_TWO_FACTOR_SCRIPT = `const params = new URLSearchParams(window.location.search);
 const next = params.get("next");
@@ -72,33 +65,25 @@ export function buildHostedTwoFactorHtml(input: {
   if (input.next) query.set("next", input.next);
   if (input.callbackURL) query.set("callbackURL", input.callbackURL);
   const hiddenQuery = query.toString();
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Two-step verification</title>
-</head>
-<body>
-  <main>
-    <h1>Two-step verification</h1>
-    <p>Enter the 6-digit code from your authenticator app.</p>
-    <form id="totp-form">
-      <label for="totp-code">Authenticator code</label>
-      <input id="totp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+  return buildHostedAuthHtml({
+    title: "Two-step verification",
+    description: "Enter the 6-digit code from your authenticator app.",
+    body: `<form id="totp-form">
+      <label for="totp-code">Authenticator code
+        <input id="totp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+      </label>
       <label><input id="trust-device" type="checkbox"> Trust this device for 30 days</label>
       <button type="submit">Verify</button>
     </form>
     <hr>
     <form id="backup-form">
-      <label for="backup-code">Backup code</label>
-      <input id="backup-code" autocomplete="off" required>
-      <button type="submit">Use backup code</button>
+      <label for="backup-code">Backup code
+        <input id="backup-code" autocomplete="off" required>
+      </label>
+      <button type="submit" class="secondary">Use backup code</button>
     </form>
     <p id="error" role="alert" hidden></p>
-  </main>
-  <script src="/hosted-two-factor.js" defer></script>
-  ${hiddenQuery ? `<!-- preserved query: ${escapeHtml(hiddenQuery)} -->` : ""}
-</body>
-</html>`;
+    ${hiddenQuery ? `<!-- preserved query: ${escapeHostedHtml(hiddenQuery)} -->` : ""}`,
+    scriptSrc: "/hosted-two-factor.js",
+  });
 }

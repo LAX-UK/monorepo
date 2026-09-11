@@ -38,7 +38,7 @@ export const SSF_RECEIVER_REGISTRY = {
     clientId: "lax-shop-web",
     audience: "lax-shop-api",
     endpoint: "https://shop.lax.art/api/ssf/events",
-    testEndpoints: ["https://test-shop.lax.art/api/ssf/events"],
+    testEndpoints: ["https://test-shop.lax.bid/api/ssf/events"],
     developmentEndpoints: ["http://localhost:3010/api/ssf/events"],
   },
 } as const;

@@ -14,6 +14,7 @@ document is not updated in the same change.
 | `ws.lax.bid` | `apps/ws` | Resource server `lax-ws`; Bearer token in Socket.IO handshake |
 | `lax.art` | static marketing initially | No client, resource, API token, or login session |
 | `shop.lax.art` | custom Shop; reference boundary in `apps/shop-identity` | Confidential RP `lax-shop-web`; opaque host-only Shop session; resource `lax-shop-api` |
+| `test-shop.lax.bid` | Shop Identity BFF on staging (`apps/shop-identity`) | Temporary staging origin while `lax.art` is unavailable; test-only contract seams in `@auction/identity-contracts`; production `shop.lax.art` URIs remain frozen until handover |
 
 Identity (`apps/auth`, `auth_app`) owns `user`, credentials, Better Auth
 `account` and `verification`, Identity `session`, MFA evidence, OAuth/OIDC

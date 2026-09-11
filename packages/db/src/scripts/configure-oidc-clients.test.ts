@@ -20,13 +20,13 @@ describe("OIDC client provisioning", () => {
       postLogoutRedirectUris: [
         "http://localhost:3010/",
         "https://shop.lax.art/",
-        "https://test-shop.lax.art/",
+        "https://test-shop.lax.bid/",
       ],
       backchannelLogoutUri: "https://shop.lax.art/api/auth/backchannel-logout",
       backchannelLogoutSessionRequired: true,
     });
     expect(JSON.parse(buildOidcClientMetadata("lax-shop-web", "test")).backchannelLogoutUri).toBe(
-      "https://test-shop.lax.art/api/auth/backchannel-logout",
+      "https://test-shop.lax.bid/api/auth/backchannel-logout",
     );
   });
 

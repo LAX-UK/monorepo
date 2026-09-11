@@ -11,6 +11,16 @@ export {
   buildHostedLoginHtml,
 } from "./hosted-login-html.js";
 export {
+  HOSTED_SIGN_UP_SCRIPT,
+  buildHostedSignUpHtml,
+} from "./hosted-sign-up-html.js";
+export {
+  HOSTED_FORGOT_PASSWORD_SCRIPT,
+  HOSTED_RESET_PASSWORD_SCRIPT,
+  buildHostedForgotPasswordHtml,
+  buildHostedResetPasswordHtml,
+} from "./hosted-forgot-password-html.js";
+export {
   HOSTED_TWO_FACTOR_SCRIPT,
   buildHostedTwoFactorHtml,
 } from "./hosted-two-factor-html.js";

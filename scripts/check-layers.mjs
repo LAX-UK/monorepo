@@ -513,6 +513,59 @@ if (identityConsumerViolations.length > 0) {
   process.exit(1);
 }
 
+// ─── Shop product boundary ───────────────────────────────────────────────────
+
+const SHOP_FORBIDDEN_IMPORT_RE =
+  /^@auction\/(api|web|worker|ws|auth-app|event|db|persistence|domain|bidding-runtime)(\/|$)/;
+const SHOP_ALLOWED_AUCTION_IMPORTS = new Set([
+  "@auction/config-ts",
+  "@auction/identity-contracts",
+  "@auction/observability",
+  "@auction/ui",
+  "@auction/branding",
+]);
+
+/** @type {string[]} */
+const shopBoundaryViolations = [];
+
+const shopSrc = join(root, "apps/shop/src");
+if (statSync(shopSrc, { throwIfNoEntry: false })?.isDirectory()) {
+  for (const file of listAllSources(shopSrc)) {
+    const rel = relative(root, file).replace(/\\/g, "/");
+    if (isTestSource(rel)) continue;
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(SPECIFIER_RE)) {
+      const specifier = match[1] ?? match[2] ?? match[3];
+      if (!specifier) continue;
+      if (/(^|\/)apps\/web\//.test(specifier)) {
+        shopBoundaryViolations.push(
+          `${rel}: imports "${specifier}" — apps/shop must not import apps/web internals`,
+        );
+      }
+      if (specifier.startsWith("@auction/") && !SHOP_ALLOWED_AUCTION_IMPORTS.has(specifier.split("/").slice(0, 2).join("/"))) {
+        if (SHOP_FORBIDDEN_IMPORT_RE.test(specifier)) {
+          shopBoundaryViolations.push(
+            `${rel}: imports "${specifier}" — apps/shop must stay on Shop-owned boundaries`,
+          );
+        }
+      }
+      if (IDENTITY_SERVER_IMPORT_RE.test(specifier)) {
+        shopBoundaryViolations.push(
+          `${rel}: imports "${specifier}" — apps/shop must use Shop Identity BFF, not @auction/auth/server`,
+        );
+      }
+    }
+  }
+}
+
+if (shopBoundaryViolations.length > 0) {
+  console.error("Shop product boundary violations detected:\n");
+  for (const v of shopBoundaryViolations) {
+    console.error(`  ${v}`);
+  }
+  process.exit(1);
+}
+
 // ─── Identity extractability (Phase 8) ────────────────────────────────────
 
 const AUCTION_PKG_RE = /^@auction\//;
