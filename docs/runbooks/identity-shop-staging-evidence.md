@@ -5,10 +5,9 @@ Implementation commits:
 
 | Repository | Commit | Notes |
 |---|---|---|
-| LAX-UK/monorepo | `aad7b4707e997828e534a291d33b19c0b7a79df5` | Shop contract seams, hosted Identity UI, `apps/shop`, layer guardrails, workflows |
-| LAX-UK/monorepo | `079b9f0fe77ae5cad6b5a2f79ede503889cd5bdc` | Staging Cloudflare gate no longer requires `lax.art` |
-| LAX-UK/auction-infra | `b484c8d` on `feat/identity-staging-routing` | `test-shop.lax.bid` DNS + ephemeral Shop component env |
-| LAX-UK/lax-identity | `a702f51` on `fix/schema-contract-migrate-digest` | Mirrored contracts + hosted pages; PR [#4](https://github.com/LAX-UK/lax-identity/pull/4) awaiting merge |
+| LAX-UK/monorepo | `48c32b9381582d66abe3eec267399ea6fc14737b` | Recovery gates: boundary scan, hosted verify/resend, Shop Dockerfile, workflow hardening, identity-db lockfile |
+| LAX-UK/auction-infra | `9095083` on `feat/identity-staging-routing` | Rebased on main; `shop_app` import; Shop catch-all + shop-identity path routes |
+| LAX-UK/lax-identity | `d9cc427` on `fix/schema-contract-migrate-digest` | Mirrored hosted pages, drizzle-orm runtime dep, image import smoke; PR [#4](https://github.com/LAX-UK/lax-identity/pull/4) awaiting merge |
 
 Workflow runs attempted:
 
@@ -20,10 +19,10 @@ Workflow runs attempted:
 
 Residual ops blockers before full acceptance:
 
-1. Merge [auction-infra#2](https://github.com/LAX-UK/auction-infra/pull/2) (or keep using `infra_ref=feat/identity-staging-routing`).
-2. Import or reconcile `shop_app` in ephemeral Terraform state, then re-run ephemeral apply with approved image contracts.
-3. Merge [lax-identity#4](https://github.com/LAX-UK/lax-identity/pull/4), publish a new Identity image, redeploy with `stage_only=false`.
-4. Re-run `identity-staging-acceptance.yml` against live staging and record 24h soak here.
-5. Configure `IDENTITY_ACCEPTANCE_EMAIL` and `IDENTITY_ACCEPTANCE_PASSWORD` GitHub secrets on the `test` environment (acceptance run [34553565800](https://github.com/LAX-UK/monorepo/actions/runs/34553565800) also failed because those secrets were empty and `pnpm` was installed after `setup-node`; fixed in `fb698167` follow-up).
+1. Merge [auction-infra#2](https://github.com/LAX-UK/auction-infra/pull/2) with rebased `9095083` and obtain a reviewed zero-destructive Terraform plan (includes `shop_app` import).
+2. Configure `IDENTITY_ACCEPTANCE_EMAIL` and `IDENTITY_ACCEPTANCE_PASSWORD` on the GitHub `test` environment.
+3. Merge [lax-identity#4](https://github.com/LAX-UK/lax-identity/pull/4), publish Identity + Shop Identity + Shop images, then run ephemeral apply with all three image contracts.
+4. Run Identity deploy with `stage_only=true`, then `stage_only=false` only after readiness gates pass.
+5. Run `identity-staging-acceptance.yml` in `ssf_disabled` mode, enable SSF delivery, then rerun in `ssf_enabled` mode; record 24h soak here.
 
 `IDENTITY_STANDALONE_CUTOVER_COMPLETE` remains **unset** until the acceptance workflow is green and soak is signed.
