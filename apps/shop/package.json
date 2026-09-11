@@ -2,6 +2,7 @@
   "name": "@auction/shop",
   "version": "0.0.0",
   "private": true,
+  "description": "LAX Shop storefront for staging OIDC flows",
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3020 --turbopack",
