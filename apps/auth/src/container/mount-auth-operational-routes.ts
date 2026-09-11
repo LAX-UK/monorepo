@@ -1,16 +1,16 @@
 import { timingSafeEqual } from "node:crypto";
 import {
+  HOSTED_FORGOT_PASSWORD_SCRIPT,
   HOSTED_LOGIN_SCRIPT,
+  HOSTED_RESET_PASSWORD_SCRIPT,
+  HOSTED_SIGN_UP_SCRIPT,
   HOSTED_TWO_FACTOR_SCRIPT,
   OIDC_CONSENT_SCRIPT,
-  buildHostedLoginHtml,
   buildHostedForgotPasswordHtml,
+  buildHostedLoginHtml,
   buildHostedResetPasswordHtml,
   buildHostedSignUpHtml,
   buildHostedTwoFactorHtml,
-  HOSTED_FORGOT_PASSWORD_SCRIPT,
-  HOSTED_RESET_PASSWORD_SCRIPT,
-  HOSTED_SIGN_UP_SCRIPT,
   type createAuth,
 } from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";

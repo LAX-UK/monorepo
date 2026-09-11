@@ -2,7 +2,7 @@
 
 const token = process.env.CLOUDFLARE_API_TOKEN ?? process.env.TF_VAR_cloudflare_api_token;
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID ?? process.env.TF_VAR_cloudflare_account_id;
-const zones = ["lax.bid", "lax.art"];
+const zones = ["lax.bid"];
 
 if (!token || !accountId) {
   throw new Error("CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required");
