@@ -144,12 +144,16 @@ test("build images emits a release manifest artifact", () => {
 
 test("App Platform deploy action exposes exact deployment evidence and release checks", () => {
   const action = read(".github/actions/app-platform-deploy/action.yml");
+  const testDeploy = read(".github/workflows/app-deploy-test.yml");
   assert.match(action, /deployment_id:/);
   assert.match(action, /value: \$\{\{ steps\.create\.outputs\.deployment_id \}\}/);
   assert.match(action, /EXPECTED_RELEASES/);
   assert.match(action, /--deployment "\$DEPLOYMENT_ID"/);
   assert.match(action, /timed out in phase/);
-  assert.match(read(".github/workflows/app-deploy-test.yml"), /actions\/app-platform-deploy/);
+  assert.match(testDeploy, /actions\/app-platform-deploy/);
+  assert.match(testDeploy, /Detect changes requiring immutable staging cutover/);
+  assert.match(testDeploy, /apps\/shop apps\/shop-identity/);
+  assert.match(testDeploy, /needs\.classify\.outputs\.immutable_boundary_changed != 'true'/);
   assert.match(read(".github/workflows/app-deploy-prod.yml"), /actions\/app-platform-deploy/);
 });
 
@@ -213,6 +217,10 @@ test("Shop images embed the release provenance required by image contracts", () 
     assert.match(contents, /ARG IMAGE_SHA=unknown/);
     assert.match(contents, /ENV SENTRY_RELEASE=\$\{IMAGE_SHA\}/);
   }
+
+  const shopIdentity = read("apps/shop-identity/src/index.ts");
+  assert.match(shopIdentity, /buildPgConnectionConfig/);
+  assert.match(shopIdentity, /new pg\.Pool\(buildPgConnectionConfig\(databaseUrl\)\)/);
 });
 
 test("fallback guard covers extraction manifests, lockfiles, and image workflows", () => {
