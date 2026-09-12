@@ -18,6 +18,11 @@ export type AccountTokenRow = {
 export type OauthAccessTokenRow = {
   accessToken: string;
   refreshToken: string;
+  /**
+   * Unprefixed rotation-family fingerprint. Better Auth issues rows with this
+   * null; the refresh rotation repository populates it lazily on first use, so
+   * a null value is not a storage-protection defect.
+   */
   refreshTokenHash: string | null;
 };
 
@@ -139,15 +144,16 @@ export function transformOauthAccessToken(row: OauthAccessTokenRow): OauthAccess
   };
 }
 
+/**
+ * A row needs the backfill only when a bearer token is still stored in plaintext.
+ * The rotation hash is derived alongside that rewrite; on its own, a missing hash
+ * is the expected state of a token that has never been refreshed.
+ */
 export function oauthAccessTokenNeedsUpdate(
   before: OauthAccessTokenRow,
   after: OauthAccessTokenRow,
 ): boolean {
-  return (
-    before.accessToken !== after.accessToken ||
-    before.refreshToken !== after.refreshToken ||
-    before.refreshTokenHash !== after.refreshTokenHash
-  );
+  return before.accessToken !== after.accessToken || before.refreshToken !== after.refreshToken;
 }
 
 export function transformTwoFactor(row: TwoFactorRow, crypto: EnvelopeCrypto): TwoFactorRow {

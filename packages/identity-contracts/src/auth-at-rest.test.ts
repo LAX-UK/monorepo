@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   accountTokensNeedUpdate,
   createEnvelopeCrypto,
+  hashOpaqueToken,
   isEnvelopeSealed,
   isOpaqueTokenFingerprint,
+  oauthAccessTokenNeedsUpdate,
   parseAuthDekKey,
   transformAccountTokens,
   transformJwksPrivateJwk,
@@ -37,7 +39,26 @@ describe("auth at-rest transforms", () => {
     const after = transformOauthAccessToken(before);
     expect(isOpaqueTokenFingerprint(after.accessToken)).toBe(true);
     expect(isOpaqueTokenFingerprint(after.refreshToken)).toBe(true);
+    expect(after.refreshTokenHash).toBe(after.refreshToken.slice("h1:".length));
+    expect(oauthAccessTokenNeedsUpdate(before, after)).toBe(true);
     expect(transformOauthAccessToken(after)).toEqual(after);
+  });
+
+  it("does not flag fingerprinted tokens whose rotation hash is still unpopulated", () => {
+    // Better Auth issues rows without refresh_token_hash; the rotation repository
+    // fills it on first refresh. Verification must not treat that as plaintext.
+    const issued = {
+      accessToken: hashOpaqueToken("access-raw"),
+      refreshToken: hashOpaqueToken("refresh-raw"),
+      refreshTokenHash: null,
+    };
+    const after = transformOauthAccessToken(issued);
+    expect(after.accessToken).toBe(issued.accessToken);
+    expect(after.refreshToken).toBe(issued.refreshToken);
+    expect(oauthAccessTokenNeedsUpdate(issued, after)).toBe(false);
+
+    const rotated = { ...issued, refreshTokenHash: issued.refreshToken.slice("h1:".length) };
+    expect(oauthAccessTokenNeedsUpdate(rotated, transformOauthAccessToken(rotated))).toBe(false);
   });
 
   it("seals two-factor secrets and JWKS private keys", () => {
