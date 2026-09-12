@@ -130,14 +130,14 @@ jobs:
           echo "ACCEPTANCE_SSF_MODE=${{ inputs.ssf_mode }}" >> "$GITHUB_ENV"
       - name: Discovery, JWKS, HTTPS, headers, and retired API routes
         run: node scripts/ci/verify-identity-boundary.mjs --live
+      - name: Machine token lifecycle, forged origin, and rate limit
+        run: node scripts/ci/verify-identity-machine-live.mjs
       - name: Bid BFF login, callback, exchanged resource token, and scopes
         run: node scripts/ci/verify-bid-web-bff-roundtrip.mjs
       - name: Shop cold login, SSO, session, and logout isolation
         run: node scripts/ci/verify-shop-oidc-roundtrip.mjs
       - name: Refresh rotation and reuse rejection
         run: node scripts/ci/verify-refresh-reuse.mjs
-      - name: Machine token lifecycle, forged origin, and rate limit
-        run: node scripts/ci/verify-identity-machine-live.mjs
       - name: Bid and Shop back-channel logout delivery
         run: node scripts/ci/verify-backchannel-logout-live.mjs
       - name: SSF durable delivery and replay contract (Bid receiver)

@@ -237,6 +237,9 @@ export function createAuth(env: AuthEnv): Auth {
     }),
     advanced: {
       useSecureCookies: env.allowInsecureCookies ? false : undefined,
+      ipAddress: {
+        ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"],
+      },
     },
   }) as unknown as Auth;
 }
