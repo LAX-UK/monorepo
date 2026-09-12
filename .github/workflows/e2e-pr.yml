@@ -32,6 +32,7 @@ on:
       - "packages/ui/**"
       - ".github/workflows/ci.yml"
       - ".github/workflows/e2e-pr.yml"
+      - ".github/workflows/identity-staging-acceptance.yml"
       - "scripts/ci/e2e-session-state.mjs"
       - "scripts/ci/e2e-session-state.test.mjs"
       - "scripts/ci/flush-auth-rate-limits.mjs"

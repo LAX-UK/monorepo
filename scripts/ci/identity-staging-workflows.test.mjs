@@ -180,6 +180,7 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
 
 test("live acceptance uses fixed Shop origin, credential preflight, and phased SSF modes", () => {
   const acceptance = read(".github/workflows/identity-staging-acceptance.yml");
+  const browserGates = read(".github/workflows/e2e-pr.yml");
   const machineProbe = read("scripts/ci/verify-identity-machine-live.mjs");
   const bidProbe = read("scripts/ci/verify-bid-web-bff-roundtrip.mjs");
   const shopProbe = read("scripts/ci/verify-shop-oidc-roundtrip.mjs");
@@ -191,6 +192,7 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
   assert.match(acceptance, /database_ca_certificate/);
   assert.match(acceptance, /NODE_EXTRA_CA_CERTS/);
+  assert.match(browserGates, /\.github\/workflows\/identity-staging-acceptance\.yml/);
   assert.match(acceptance, /ssf_mode:/);
   assert.match(acceptance, /ssf_disabled/);
   assert.match(acceptance, /ssf_enabled/);
