@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { verifyIdentityToken } from "@auction/identity-contracts/verify";
+import { buildPgConnectionConfig } from "@auction/identity-db/pg";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import pg from "pg";
@@ -38,7 +39,9 @@ import { createShopSsfEventsRoute } from "./ssf.js";
 
 const env = loadShopIdentityEnv();
 const release = process.env.SENTRY_RELEASE ?? "unknown";
-const pool = new pg.Pool({ connectionString: env.DATABASE_URL_SHOP ?? env.DATABASE_URL });
+const pool = new pg.Pool(
+  buildPgConnectionConfig(env.DATABASE_URL_SHOP ?? env.DATABASE_URL),
+);
 const sessionRepository = createPgShopSessionRepository(pool);
 const ssfRepository = createPgShopSsfRepository(pool);
 const discovery = resolveOidcDiscovery(env.OIDC_ISSUER_URL);
