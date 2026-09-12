@@ -133,7 +133,7 @@ export async function reconcileIdentityLifecycleOutbox(
         jsonb_build_object(
           'userId', candidates."id",
           'email', candidates."email",
-          'verifiedAt', ${canonicalNow}
+          'verifiedAt', ${canonicalNow}::text
         ),
         'apps/auth-reconciliation',
         candidates."id",
