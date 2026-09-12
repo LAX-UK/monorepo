@@ -208,7 +208,7 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(ssfProbe, /pre-enable receiver verification passed/);
   assert.match(ssfProbe, /retry and dead-letter probe passed/);
   assert.match(ssfProbe, /Provisioned SSF stream/);
-  assert.match(acceptance, /Require live Identity SSF delivery worker/);
+  assert.doesNotMatch(acceptance, /digitalocean\/action-doctl/);
 });
 
 test("Shop images embed the release provenance required by image contracts", () => {
