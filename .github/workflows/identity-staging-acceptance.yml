@@ -119,6 +119,15 @@ jobs:
           app_id="$(terraform -chdir=.infra-config/terraform/ephemeral/test output -raw app_id)"
           test -n "$app_id"
           echo "APP_ID=$app_id" >> "$GITHUB_ENV"
+          database_ca_cert="$(
+            terraform -chdir=.infra-config/terraform/ephemeral/test \
+              output -raw database_ca_certificate
+          )"
+          test -n "$database_ca_cert"
+          database_ca_path="$RUNNER_TEMP/staging-postgres-ca.crt"
+          printf '%s\n' "$database_ca_cert" > "$database_ca_path"
+          chmod 0600 "$database_ca_path"
+          echo "NODE_EXTRA_CA_CERTS=$database_ca_path" >> "$GITHUB_ENV"
       - name: Validate requested Identity release
         run: |
           [[ "${{ inputs.identity_sha }}" =~ ^[0-9a-f]{40}$ ]]
