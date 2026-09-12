@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createHash, randomBytes } from "node:crypto";
+import { readAuthorizeOutcome } from "./oidc-authorize-response.mjs";
 
 const authBase = (process.env.AUTH_BASE_URL ?? "http://localhost:3003").replace(/\/+$/, "");
 const email = process.env.REFRESH_TEST_EMAIL;
@@ -51,26 +52,10 @@ function readCodeFromRedirectUri(redirectUriValue, state) {
 }
 
 async function readAuthorizationCodeFromAuthorizeResponse(authorize, state) {
-  if (authorize.status < 200 || authorize.status >= 400) return null;
-
-  const location = authorize.headers.get("location");
-  if (location) return readCodeFromRedirectUri(location, state);
-
-  const contentType = authorize.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    const body = await authorize.clone().json();
-    const redirect =
-      typeof body.redirectURI === "string"
-        ? body.redirectURI
-        : typeof body.url === "string"
-          ? body.url
-          : null;
-    return redirect ? readCodeFromRedirectUri(redirect, state) : null;
-  }
-
-  const html = await authorize.text();
-  const consentCode = html.match(/id="consent-code"[^>]+value="([^"]+)"/)?.[1];
-  return consentCode ? { consentCode } : null;
+  const outcome = await readAuthorizeOutcome(authorize);
+  if (!outcome) return null;
+  if (outcome.kind === "redirect") return readCodeFromRedirectUri(outcome.redirectUri, state);
+  return { consentCode: outcome.consentCode };
 }
 
 async function issueAuthorizationCode(cookies, verifier) {
