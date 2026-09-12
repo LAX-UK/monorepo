@@ -90,6 +90,10 @@ jobs:
       TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
       TF_VAR_enable_auth_ssf_delivery: ${{ vars.ENABLE_AUTH_SSF_DELIVERY_TEST || 'false' }}
+      TF_VAR_identity_image_tag: ${{ inputs.identity_sha }}
+      TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
+      TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
+      APP_ID: ${{ secrets.DO_TEST_APP_ID }}
       DATABASE_URL_OWNER: ${{ secrets.DATABASE_URL_OWNER }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
       SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
@@ -140,20 +144,51 @@ jobs:
           working-directory: .infra-config/terraform/ephemeral/test
           state-key: ephemeral-test
           verify-plan-safe: "true"
+          app-id: ${{ env.APP_ID }}
           allowed-delete-addresses: >-
             ["module.postgres_rbac.postgresql_default_privileges.app_tables[\"shop_app\"]",
             "module.postgres_rbac.postgresql_default_privileges.app_sequences[\"shop_app\"]"]
       - name: Require Shop DNS, TLS, and readiness after apply
+        env:
+          EXPECTED_SHOP_SHA: ${{ inputs.shop_sha }}
+          EXPECTED_SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
         run: |
           set -euo pipefail
           for _ in $(seq 1 60); do
-            if curl --fail --silent --show-error --max-time 10 \
-              https://test-shop.lax.bid/health/ready >/dev/null; then
+            body="$(
+              curl --fail --silent --show-error --max-time 10 \
+                https://test-shop.lax.bid/health/ready || true
+            )"
+            status="$(jq -r '.status // empty' <<<"$body" 2>/dev/null || true)"
+            shop_release="$(jq -r '.release // empty' <<<"$body" 2>/dev/null || true)"
+            identity_release="$(
+              jq -r '.dependencies.shopIdentity.release // empty' <<<"$body" 2>/dev/null || true
+            )"
+            if test "$status" = "ok" &&
+              { test -z "$EXPECTED_SHOP_SHA" || test "$shop_release" = "$EXPECTED_SHOP_SHA"; } &&
+              { test -z "$EXPECTED_SHOP_IDENTITY_SHA" ||
+                test "$identity_release" = "$EXPECTED_SHOP_IDENTITY_SHA"; }; then
               exit 0
             fi
             sleep 10
           done
-          echo "::error::Shop DNS, TLS, and readiness did not converge"
+          echo "::error::Shop readiness/release contract did not converge"
+          exit 1
+      - name: Prove Identity readiness after ephemeral traffic change
+        if: inputs.identity_sha != ''
+        env:
+          EXPECTED_IDENTITY_SHA: ${{ inputs.identity_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_IDENTITY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          for _ in $(seq 1 30); do
+            body="$(curl --fail --silent https://test-auth.lax.bid/health/ready || true)"
+            if test "$(jq -r '.release // empty' <<<"$body")" = "$EXPECTED_IDENTITY_SHA"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Identity release did not match the pinned immutable tag"
           exit 1
       - run: pnpm tsx scripts/jwks-restore.ts test
       - run: pnpm db:seed

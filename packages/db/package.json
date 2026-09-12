@@ -32,7 +32,7 @@
     "db:seed:dev": "tsx src/seed/runners/cli.ts --env=dev",
     "db:studio": "drizzle-kit studio",
     "db:report-email-collisions": "tsx scripts/report-email-collisions.ts",
-    "db:backfill-auth-at-rest": "tsx scripts/backfill-auth-at-rest.ts",
+    "db:backfill-auth-at-rest": "tsx src/scripts/backfill-auth-at-rest.ts",
     "db:backfill-lot-lifecycle-snapshot": "tsx src/scripts/backfill-lot-lifecycle-snapshot.ts",
     "db:backfill-user-mobile-e164": "tsx src/scripts/backfill-user-mobile-e164.ts",
     "db:backfill-user-registered-events": "tsx src/scripts/backfill-user-registered-events.ts",

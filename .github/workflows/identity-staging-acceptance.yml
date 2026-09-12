@@ -1,6 +1,17 @@
 name: Identity staging acceptance
 
 on:
+  workflow_call:
+    inputs:
+      identity_sha:
+        type: string
+        required: true
+      outbox_max_age_ms:
+        type: number
+        required: true
+      ssf_mode:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       identity_sha:

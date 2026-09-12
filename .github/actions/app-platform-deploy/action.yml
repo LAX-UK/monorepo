@@ -1,0 +1,117 @@
+name: App Platform deploy
+description: Create a deployment, poll to a terminal phase, and collect diagnostics
+inputs:
+  app-id:
+    required: true
+  timeout-seconds:
+    required: false
+    default: "1200"
+  poll-interval-seconds:
+    required: false
+    default: "10"
+  expected-releases:
+    description: JSON object keyed by readiness URL with expected release values
+    required: false
+    default: "{}"
+  readiness-urls:
+    description: JSON array of HTTPS URLs that must return status ok
+    required: false
+    default: "[]"
+outputs:
+  deployment_id:
+    description: Exact App Platform deployment ID
+    value: ${{ steps.create.outputs.deployment_id }}
+  phase:
+    description: Terminal App Platform deployment phase
+    value: ${{ steps.poll.outputs.phase }}
+runs:
+  using: composite
+  steps:
+    - name: Create App Platform deployment
+      id: create
+      shell: bash
+      run: |
+        set -euo pipefail
+        deployment_json="$(doctl apps create-deployment "${{ inputs.app-id }}" --output json)"
+        deployment_id="$(
+          jq -r 'if type == "array" then .[0].id else .id end // empty' <<<"$deployment_json"
+        )"
+        test -n "$deployment_id"
+        echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+
+    - name: Poll deployment to terminal phase
+      id: poll
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
+        DEPLOYMENT_ID: ${{ steps.create.outputs.deployment_id }}
+        TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
+        POLL_INTERVAL_SECONDS: ${{ inputs.poll-interval-seconds }}
+      run: |
+        set -euo pipefail
+        deadline=$((SECONDS + TIMEOUT_SECONDS))
+        phase=""
+        while (( SECONDS < deadline )); do
+          deployment="$(doctl apps get-deployment "$APP_ID" "$DEPLOYMENT_ID" --output json)"
+          phase="$(
+            jq -r 'if type == "array" then .[0].phase else .phase end // empty' <<<"$deployment"
+          )"
+          case "$phase" in
+            ACTIVE) break ;;
+            ERROR|CANCELED|SUPERSEDED)
+              echo "::error::App Platform deployment ended in phase $phase"
+              doctl apps get-deployment "$APP_ID" "$DEPLOYMENT_ID" --output json |
+                jq -r '
+                  (if type == "array" then .[0].progress.steps[]? else .progress.steps[]? end)
+                  | select(.status == "ERROR")
+                  | "\(.name): \(.reason // .message // "unknown")"
+                ' || true
+              for component in auth shop shop-identity api ws worker web; do
+                doctl apps logs "$APP_ID" "$component" \
+                  --type run --tail 200 --deployment "$DEPLOYMENT_ID" || true
+              done
+              exit 1
+              ;;
+          esac
+          sleep "$POLL_INTERVAL_SECONDS"
+        done
+        echo "phase=$phase" >> "$GITHUB_OUTPUT"
+        if test "$phase" != "ACTIVE"; then
+          echo "::error::App Platform deployment $DEPLOYMENT_ID timed out in phase ${phase:-unknown}"
+          doctl apps get-deployment "$APP_ID" "$DEPLOYMENT_ID" --output json || true
+          for component in auth shop shop-identity api ws worker web; do
+            doctl apps logs "$APP_ID" "$component" \
+              --type run --tail 200 --deployment "$DEPLOYMENT_ID" || true
+          done
+          exit 1
+        fi
+
+    - name: Verify readiness URLs
+      if: inputs.readiness-urls != '[]'
+      shell: bash
+      env:
+        READINESS_URLS: ${{ inputs.readiness-urls }}
+        EXPECTED_RELEASES: ${{ inputs.expected-releases }}
+      run: |
+        set -euo pipefail
+        mapfile -t urls < <(jq -r '.[]' <<<"$READINESS_URLS")
+        for url in "${urls[@]}"; do
+          expected_release="$(jq -r --arg url "$url" '.[$url] // empty' <<<"$EXPECTED_RELEASES")"
+          for _ in $(seq 1 60); do
+            body="$(curl --fail --silent --max-time 10 "$url" || true)"
+            actual_release="$(jq -r '.release // empty' <<<"$body" 2>/dev/null || true)"
+            status="$(jq -r '.status // empty' <<<"$body" 2>/dev/null || true)"
+            if test "$status" = "ok" &&
+              { test -z "$expected_release" || test "$actual_release" = "$expected_release"; }; then
+              break
+            fi
+            sleep 10
+          done
+          actual_release="$(jq -r '.release // empty' <<<"$body" 2>/dev/null || true)"
+          status="$(jq -r '.status // empty' <<<"$body" 2>/dev/null || true)"
+          test "$status" = "ok" &&
+            { test -z "$expected_release" || test "$actual_release" = "$expected_release"; } || {
+            echo "::error::Readiness contract failed for $url: expected release ${expected_release:-any}, actual ${actual_release:-missing}"
+            exit 1
+          }
+        done

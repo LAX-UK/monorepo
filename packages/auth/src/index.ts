@@ -3,6 +3,25 @@ export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 export { createEnvelopeCrypto, type EnvelopeCrypto } from "./crypto/envelope.js";
 export { parseAuthDekKey } from "./crypto/dek.js";
 export {
+  AUTH_AT_REST_ENVELOPE_PREFIX,
+  AUTH_AT_REST_TOKEN_HASH_PREFIX,
+  isEnvelopeSealed,
+  isOpaqueTokenFingerprint,
+} from "./at-rest/constants.js";
+export { hashOpaqueToken } from "./at-rest/token-fingerprint.js";
+export {
+  accountTokensNeedUpdate,
+  oauthAccessTokenNeedsUpdate,
+  transformAccountTokens,
+  transformJwksPrivateJwk,
+  transformOauthAccessToken,
+  transformTwoFactor,
+  twoFactorNeedsUpdate,
+  type AccountTokenRow,
+  type OauthAccessTokenRow,
+  type TwoFactorRow,
+} from "./at-rest/transform.js";
+export {
   OIDC_CONSENT_SCRIPT,
   buildOidcConsentHtml,
 } from "./oidc-consent-html.js";

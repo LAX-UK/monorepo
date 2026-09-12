@@ -1,0 +1,207 @@
+name: Staging recovery (test)
+
+on:
+  workflow_dispatch:
+    inputs:
+      identity_sha:
+        description: Approved Identity commit SHA
+        required: true
+      identity_digest:
+        description: Approved lax-test-identity digest
+        required: true
+      shop_identity_sha:
+        description: Approved Shop Identity commit SHA
+        required: true
+      shop_identity_digest:
+        description: Approved lax-test-shop-identity digest
+        required: true
+      shop_sha:
+        description: Approved Shop commit SHA
+        required: true
+      shop_digest:
+        description: Approved lax-test-shop digest
+        required: true
+      run_acceptance:
+        description: Run live acceptance after deploy
+        required: true
+        type: boolean
+        default: false
+      rollback_rehearsal:
+        description: Rehearse rollback to the previous accepted manifest
+        required: true
+        type: boolean
+        default: false
+      rollback_manifest:
+        description: Accepted immutable manifest JSON used only for rollback rehearsal
+        required: false
+        default: "{}"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: app-deploy-test
+  cancel-in-progress: false
+
+jobs:
+  validate_inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate recovery and rollback inputs
+        env:
+          RUN_ACCEPTANCE: ${{ inputs.run_acceptance }}
+          ROLLBACK_REHEARSAL: ${{ inputs.rollback_rehearsal }}
+          ROLLBACK_MANIFEST: ${{ inputs.rollback_manifest }}
+        run: |
+          set -euo pipefail
+          if test "$ROLLBACK_REHEARSAL" = "true"; then
+            test "$RUN_ACCEPTANCE" = "true" || {
+              echo "::error::Rollback rehearsal requires both acceptance phases"
+              exit 1
+            }
+            jq -e '
+              [.identity, .shopIdentity, .shop] |
+              all(
+                (.sha | test("^[0-9a-f]{40}$")) and
+                (.digest | test("^sha256:[0-9a-f]{64}$"))
+              ) and
+              (.enableAuthSsfDelivery | type == "boolean")
+            ' <<<"$ROLLBACK_MANIFEST" >/dev/null
+          fi
+
+  maintenance:
+    needs: validate_inputs
+    uses: ./.github/workflows/auth-at-rest-maintenance-test.yml
+    with:
+      mode: apply
+      confirm_backup: true
+    secrets: inherit
+
+  deploy:
+    needs: maintenance
+    uses: ./.github/workflows/terraform-apply-test.yml
+    with:
+      layer: ephemeral
+      parent_holds_deploy_lock: true
+      identity_sha: ${{ inputs.identity_sha }}
+      identity_digest: ${{ inputs.identity_digest }}
+      shop_identity_sha: ${{ inputs.shop_identity_sha }}
+      shop_identity_digest: ${{ inputs.shop_identity_digest }}
+      shop_sha: ${{ inputs.shop_sha }}
+      shop_digest: ${{ inputs.shop_digest }}
+    secrets: inherit
+
+  acceptance_disabled:
+    if: inputs.run_acceptance
+    needs: deploy
+    uses: ./.github/workflows/identity-staging-acceptance.yml
+    with:
+      identity_sha: ${{ inputs.identity_sha }}
+      outbox_max_age_ms: 300000
+      ssf_mode: ssf_disabled
+    secrets: inherit
+
+  enable_ssf:
+    if: inputs.run_acceptance
+    needs: acceptance_disabled
+    uses: ./.github/workflows/terraform-apply-test.yml
+    with:
+      layer: ephemeral
+      parent_holds_deploy_lock: true
+      enable_auth_ssf_delivery: true
+      identity_sha: ${{ inputs.identity_sha }}
+      identity_digest: ${{ inputs.identity_digest }}
+      shop_identity_sha: ${{ inputs.shop_identity_sha }}
+      shop_identity_digest: ${{ inputs.shop_identity_digest }}
+      shop_sha: ${{ inputs.shop_sha }}
+      shop_digest: ${{ inputs.shop_digest }}
+    secrets: inherit
+
+  acceptance_enabled:
+    if: inputs.run_acceptance
+    needs: enable_ssf
+    uses: ./.github/workflows/identity-staging-acceptance.yml
+    with:
+      identity_sha: ${{ inputs.identity_sha }}
+      outbox_max_age_ms: 300000
+      ssf_mode: ssf_enabled
+    secrets: inherit
+
+  rollback_rehearsal:
+    if: inputs.rollback_rehearsal
+    needs: acceptance_enabled
+    uses: ./.github/workflows/terraform-apply-test.yml
+    with:
+      layer: ephemeral
+      parent_holds_deploy_lock: true
+      enable_auth_ssf_delivery: ${{ fromJSON(inputs.rollback_manifest).enableAuthSsfDelivery }}
+      identity_sha: ${{ fromJSON(inputs.rollback_manifest).identity.sha }}
+      identity_digest: ${{ fromJSON(inputs.rollback_manifest).identity.digest }}
+      shop_identity_sha: ${{ fromJSON(inputs.rollback_manifest).shopIdentity.sha }}
+      shop_identity_digest: ${{ fromJSON(inputs.rollback_manifest).shopIdentity.digest }}
+      shop_sha: ${{ fromJSON(inputs.rollback_manifest).shop.sha }}
+      shop_digest: ${{ fromJSON(inputs.rollback_manifest).shop.digest }}
+    secrets: inherit
+
+  restore_candidate:
+    if: inputs.rollback_rehearsal
+    needs: rollback_rehearsal
+    uses: ./.github/workflows/terraform-apply-test.yml
+    with:
+      layer: ephemeral
+      parent_holds_deploy_lock: true
+      enable_auth_ssf_delivery: true
+      identity_sha: ${{ inputs.identity_sha }}
+      identity_digest: ${{ inputs.identity_digest }}
+      shop_identity_sha: ${{ inputs.shop_identity_sha }}
+      shop_identity_digest: ${{ inputs.shop_identity_digest }}
+      shop_sha: ${{ inputs.shop_sha }}
+      shop_digest: ${{ inputs.shop_digest }}
+    secrets: inherit
+
+  acceptance_after_rehearsal:
+    if: inputs.rollback_rehearsal
+    needs: restore_candidate
+    uses: ./.github/workflows/identity-staging-acceptance.yml
+    with:
+      identity_sha: ${{ inputs.identity_sha }}
+      outbox_max_age_ms: 300000
+      ssf_mode: ssf_enabled
+    secrets: inherit
+
+  record_accepted_release:
+    needs: [acceptance_enabled, acceptance_after_rehearsal]
+    if: >-
+      always() &&
+      needs.acceptance_enabled.result == 'success' &&
+      (!inputs.rollback_rehearsal ||
+       needs.acceptance_after_rehearsal.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record accepted release manifest evidence
+        run: |
+          mkdir -p "$RUNNER_TEMP/recovery-evidence"
+          cat > "$RUNNER_TEMP/recovery-evidence/accepted-release.json" <<EOF
+          {
+            "enableAuthSsfDelivery": true,
+            "identity": {
+              "sha": "${{ inputs.identity_sha }}",
+              "digest": "${{ inputs.identity_digest }}"
+            },
+            "shopIdentity": {
+              "sha": "${{ inputs.shop_identity_sha }}",
+              "digest": "${{ inputs.shop_identity_digest }}"
+            },
+            "shop": {
+              "sha": "${{ inputs.shop_sha }}",
+              "digest": "${{ inputs.shop_digest }}"
+            }
+          }
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-recovery-accepted-release
+          path: ${{ runner.temp }}/recovery-evidence/accepted-release.json
+          retention-days: 30

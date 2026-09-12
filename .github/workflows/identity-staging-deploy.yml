@@ -1,4 +1,4 @@
-name: Identity staging deployment
+name: Identity staging qualification and preparation
 
 on:
   repository_dispatch:
@@ -25,18 +25,21 @@ permissions:
   actions: read
 
 concurrency:
-  group: app-deploy-test
+  group: >-
+    identity-staging-${{
+      github.event_name == 'workflow_dispatch' && inputs.stage_only &&
+      'qualification' || 'db-preparation-test'
+    }}
   cancel-in-progress: false
 
 jobs:
-  validate-and-deploy:
+  validate-and-prepare:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.client_payload.repository == 'LAX-UK/lax-identity'
     runs-on: ubuntu-latest
     environment: test
     env:
-      APP_ID: ${{ secrets.DO_TEST_APP_ID }}
       REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
       IDENTITY_SHA: ${{ github.event.client_payload.sha || inputs.identity_sha }}
       IDENTITY_DIGEST: ${{ github.event.client_payload.digest || inputs.identity_digest }}
@@ -92,32 +95,11 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
 
-      - name: Record previous rolling Identity tag and cutover mode
-        id: rollback
+      - name: Read immutable Identity registry metadata
         run: |
           set -euo pipefail
           doctl registry repository list-tags lax-test-identity --output json \
-            > "$RUNNER_TEMP/identity-tags-before-promotion.json"
-          previous_digest="$(
-            jq -r '.[] | select(.tag == "test") | .manifest_digest // empty' \
-              "$RUNNER_TEMP/identity-tags-before-promotion.json"
-          )"
-          previous_sha="$(
-            jq -r --arg digest "$previous_digest" '
-              [.[] |
-               select(.manifest_digest == $digest) |
-               .tag |
-               select(test("^[0-9a-f]{40}$"))][0] // empty
-            ' "$RUNNER_TEMP/identity-tags-before-promotion.json"
-          )"
-          echo "previous_digest=$previous_digest" >> "$GITHUB_OUTPUT"
-          echo "previous_sha=$previous_sha" >> "$GITHUB_OUTPUT"
-          if test "$STAGE_ONLY" = "true"; then
-            echo "first_cutover=true" >> "$GITHUB_OUTPUT"
-          else
-            test -n "$APP_ID"
-            echo "first_cutover=false" >> "$GITHUB_OUTPUT"
-          fi
+            > "$RUNNER_TEMP/identity-tags.json"
 
       - name: Verify immutable Identity and migration images
         id: lineage
@@ -126,7 +108,7 @@ jobs:
           sha_digest="$(
             jq -r --arg sha "$IDENTITY_SHA" \
               '.[] | select(.tag == $sha) | .manifest_digest' \
-              "$RUNNER_TEMP/identity-tags-before-promotion.json"
+              "$RUNNER_TEMP/identity-tags.json"
           )"
           test "$sha_digest" = "$IDENTITY_DIGEST"
 
@@ -150,15 +132,10 @@ jobs:
           )"
           doctl registry repository list-tags lax-test-migrate --output json \
             > "$RUNNER_TEMP/migrate-tags.json"
-          migrate_digest="$(
-            jq -r '.[] | select(.tag == "test") | .manifest_digest' \
-              "$RUNNER_TEMP/migrate-tags.json"
-          )"
           jq -e --arg digest "$expected_migrate_digest" \
             'any(.[]; .manifest_digest == $digest)' "$RUNNER_TEMP/migrate-tags.json" >/dev/null
-          test "$migrate_digest" = "$expected_migrate_digest"
           migrate_sha="$(
-            jq -r --arg digest "$migrate_digest" '
+            jq -r --arg digest "$expected_migrate_digest" '
               [.[] | select(.manifest_digest == $digest) | .tag |
                select(test("^[0-9a-f]{40}$"))][0] // empty
             ' "$RUNNER_TEMP/migrate-tags.json"
@@ -232,6 +209,7 @@ jobs:
             | jq -e --arg release "$IDENTITY_SHA" '.version == $release' >/dev/null
 
       - name: Load masked staging database and OIDC contracts
+        if: env.STAGE_ONLY != 'true'
         env:
           OIDC_CLIENT_SECRET_LAX_SHOP_WEB_FALLBACK: ${{ secrets.OIDC_CLIENT_SECRET_LAX_SHOP_WEB }}
           SHOP_APP_DB_PASSWORD_FALLBACK: ${{ secrets.SHOP_APP_DB_PASSWORD }}
@@ -291,6 +269,7 @@ jobs:
           echo "DATABASE_URL_SHOP=$shop_url" >> "$GITHUB_ENV"
 
       - name: Derive masked role passwords from application URLs
+        if: env.STAGE_ONLY != 'true'
         run: |
           set -euo pipefail
           while read -r password_name url_name; do
@@ -311,6 +290,7 @@ jobs:
           ROLES
 
       - name: Apply pinned migrations, grants, and OIDC registry
+        if: env.STAGE_ONLY != 'true'
         env:
           MIGRATE_IMAGE: ${{ steps.lineage.outputs.migrate_image }}
         run: |
@@ -349,147 +329,27 @@ jobs:
             '
 
       - name: Capture encrypted pre-deploy JWKS snapshot
+        if: env.STAGE_ONLY != 'true'
         run: pnpm tsx scripts/jwks-snapshot.ts test
 
-      - name: Promote the qualified digest to the rolling test tag
-        id: promote
-        run: |
-          set -euo pipefail
-          doctl registry login --expiry-seconds 900
-          docker buildx imagetools create \
-            --tag "$REGISTRY/lax-test-identity:test" \
-            "$REGISTRY/lax-test-identity@$IDENTITY_DIGEST"
-          doctl registry repository list-tags lax-test-identity --output json \
-            > "$RUNNER_TEMP/identity-tags-after-promotion.json"
-          rolling_digest="$(
-            jq -r '.[] | select(.tag == "test") | .manifest_digest' \
-              "$RUNNER_TEMP/identity-tags-after-promotion.json"
-          )"
-          test "$rolling_digest" = "$IDENTITY_DIGEST"
-
-      - name: Deploy through the serialized App Platform release
-        if: steps.rollback.outputs.first_cutover == 'false'
-        id: deploy
-        run: |
-          set -euo pipefail
-          deployment_json="$(doctl apps create-deployment "$APP_ID" --output json)"
-          deployment_id="$(
-            jq -r 'if type == "array" then .[0].id else .id end // empty' \
-              <<<"$deployment_json"
-          )"
-          test -n "$deployment_id"
-          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
-
-          for _ in $(seq 1 120); do
-            deployment="$(
-              doctl apps get-deployment "$APP_ID" "$deployment_id" --output json
-            )"
-            phase="$(
-              jq -r 'if type == "array" then .[0].phase else .phase end // empty' \
-                <<<"$deployment"
-            )"
-            case "$phase" in
-              ACTIVE) break ;;
-              ERROR|CANCELED|SUPERSEDED)
-                echo "::error::App Platform deployment ended in phase $phase"
-                doctl apps logs "$APP_ID" --type run --tail 200 auth || true
-                doctl apps get-deployment "$APP_ID" "$deployment_id" --output json |
-                  jq -r '
-                    (if type == "array" then .[0].progress.steps[]? else .progress.steps[]? end)
-                    | select(.status == "ERROR")
-                    | "\(.name): \(.reason // .message // "unknown")"
-                  ' || true
-                exit 1
-                ;;
-            esac
-            sleep 10
-          done
-          test "$phase" = "ACTIVE"
-
-      - name: Require candidate readiness and release provenance
-        if: steps.rollback.outputs.first_cutover == 'false'
-        id: readiness
-        run: |
-          set -euo pipefail
-          for _ in $(seq 1 60); do
-            body="$(curl --fail --silent https://test-auth.lax.bid/health/ready || true)"
-            if test "$(jq -r '.status // empty' <<<"$body")" = "ok" &&
-              test "$(jq -r '.release // empty' <<<"$body")" = "$IDENTITY_SHA"; then
-              {
-                echo "### Identity staging deployment"
-                echo "- Identity: \`$IDENTITY_SHA\`"
-                echo "- Digest: \`$IDENTITY_DIGEST\`"
-                echo "- App deployment: \`${{ steps.deploy.outputs.deployment_id }}\`"
-              } >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "::error::Identity candidate did not become ready with the dispatched release"
-          exit 1
-
-      - name: Record first-cutover candidate without changing traffic
-        if: steps.rollback.outputs.first_cutover == 'true'
+      - name: Record stage-only qualification without mutating traffic or database
+        if: env.STAGE_ONLY == 'true'
         run: |
           {
-            echo "### Identity first-cutover candidate staged"
+            echo "### Identity stage-only qualification"
             echo "- Identity: \`$IDENTITY_SHA\`"
             echo "- Digest: \`$IDENTITY_DIGEST\`"
-            echo "- Traffic unchanged; apply the reviewed Terraform plan, then rerun this workflow"
+            echo "- No database writes, registry alias changes, or App Platform deployment were performed"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Restore previous rolling tag and redeploy on failure
-        if: failure() && steps.promote.outcome != 'skipped'
-        env:
-          PREVIOUS_DIGEST: ${{ steps.rollback.outputs.previous_digest }}
-          PREVIOUS_SHA: ${{ steps.rollback.outputs.previous_sha }}
-          FIRST_CUTOVER: ${{ steps.rollback.outputs.first_cutover }}
-          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+      - name: Record prepared immutable candidate for Terraform cutover
+        if: env.STAGE_ONLY != 'true'
         run: |
-          set -euo pipefail
-          doctl registry login --expiry-seconds 900
-          if [[ "$PREVIOUS_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            docker buildx imagetools create \
-              --tag "$REGISTRY/lax-test-identity:test" \
-              "$REGISTRY/lax-test-identity@$PREVIOUS_DIGEST"
-            if test "$FIRST_CUTOVER" = "false" && test "$DEPLOY_OUTCOME" != "skipped"; then
-              deployment_json="$(doctl apps create-deployment "$APP_ID" --output json)"
-              deployment_id="$(
-                jq -r 'if type == "array" then .[0].id else .id end // empty' \
-                  <<<"$deployment_json"
-              )"
-              test -n "$deployment_id"
-              for _ in $(seq 1 120); do
-                deployment="$(
-                  doctl apps get-deployment "$APP_ID" "$deployment_id" --output json
-                )"
-                phase="$(
-                  jq -r 'if type == "array" then .[0].phase else .phase end // empty' \
-                    <<<"$deployment"
-                )"
-                case "$phase" in
-                  ACTIVE) break ;;
-                  ERROR|CANCELED|SUPERSEDED) exit 1 ;;
-                esac
-                sleep 10
-              done
-              test "$phase" = "ACTIVE"
-            fi
-            if test "$FIRST_CUTOVER" = "false" &&
-              test "$DEPLOY_OUTCOME" != "skipped" &&
-              [[ "$PREVIOUS_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-              for _ in $(seq 1 60); do
-                body="$(curl --fail --silent https://test-auth.lax.bid/health/ready || true)"
-                if test "$(jq -r '.status // empty' <<<"$body")" = "ok" &&
-                  test "$(jq -r '.release // empty' <<<"$body")" = "$PREVIOUS_SHA"; then
-                  exit 0
-                fi
-                sleep 10
-              done
-              echo "::error::Previous Identity release did not become ready after rollback"
-              exit 1
-            fi
-          else
-            doctl registry repository delete-tag lax-test-identity test --force
-          fi
-          echo "::error::Identity promotion or deployment failed; restored the previous rolling image contract when available"
+          {
+            echo "### Identity candidate prepared"
+            echo "- Identity: \`$IDENTITY_SHA\`"
+            echo "- Digest: \`$IDENTITY_DIGEST\`"
+            echo "- Database and OIDC preparation complete"
+            echo "- Traffic and registry aliases unchanged"
+            echo "- Cut over only through a reviewed Terraform apply that pins this immutable SHA"
+          } >> "$GITHUB_STEP_SUMMARY"

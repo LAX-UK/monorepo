@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { isEnvelopeSealed, isOpaqueTokenFingerprint } from "./at-rest/constants.js";
+import { hashOpaqueToken } from "./at-rest/token-fingerprint.js";
 import type { EnvelopeCrypto } from "./crypto/envelope.js";
 
 const wrappedSym = Symbol("auction.auth.atRestWrapped");
@@ -26,14 +27,8 @@ function isAlreadyWrapped(a: AuthDbAdapter): boolean {
 const ACCOUNT_FIELDS = ["accessToken", "refreshToken", "idToken"] as const;
 const TWO_FACTOR_FIELDS = ["secret", "backupCodes"] as const;
 const OAUTH_TOKEN_FIELDS = ["accessToken", "refreshToken"] as const;
-const TOKEN_HASH_PREFIX = "h1:";
-
-function hashOpaqueToken(value: string): string {
-  return `${TOKEN_HASH_PREFIX}${createHash("sha256").update(value).digest("base64url")}`;
-}
-
 function isSealed(value: unknown): value is string {
-  return typeof value === "string" && value.startsWith("v1:");
+  return typeof value === "string" && isEnvelopeSealed(value);
 }
 
 function encryptFields(
@@ -45,21 +40,21 @@ function encryptFields(
   if (model === "account") {
     for (const f of ACCOUNT_FIELDS) {
       const v = out[f];
-      if (typeof v === "string" && v.length > 0 && !isSealed(v)) {
+      if (typeof v === "string" && !isSealed(v)) {
         out[f] = crypto.seal(v);
       }
     }
   } else if (model === "twoFactor") {
     for (const f of TWO_FACTOR_FIELDS) {
       const v = out[f];
-      if (typeof v === "string" && v.length > 0 && !isSealed(v)) {
+      if (typeof v === "string" && !isSealed(v)) {
         out[f] = crypto.seal(v);
       }
     }
   } else if (model === "oauthAccessToken") {
     for (const field of OAUTH_TOKEN_FIELDS) {
       const value = out[field];
-      if (typeof value === "string" && value.length > 0 && !value.startsWith(TOKEN_HASH_PREFIX)) {
+      if (typeof value === "string" && !isOpaqueTokenFingerprint(value)) {
         out[field] = hashOpaqueToken(value);
       }
     }
@@ -77,7 +72,7 @@ function hashOauthTokenWhere(model: string, where: unknown): unknown {
   if (
     (field === "accessToken" || field === "refreshToken") &&
     typeof value === "string" &&
-    !value.startsWith(TOKEN_HASH_PREFIX)
+    !isOpaqueTokenFingerprint(value)
   ) {
     return { ...clause, value: hashOpaqueToken(value) };
   }

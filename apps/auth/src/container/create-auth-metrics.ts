@@ -1,4 +1,4 @@
-import { Counter, Registry, collectDefaultMetrics } from "prom-client";
+import { Counter, Gauge, Registry, collectDefaultMetrics } from "prom-client";
 
 export function createAuthMetrics() {
   const registry = new Registry();
@@ -42,5 +42,10 @@ export function createAuthMetrics() {
       "OIDC back-channel logout delivery outcomes.",
       ["outcome"],
     ),
+    authAtRestPending: new Gauge({
+      name: "auction_auth_at_rest_pending",
+      help: "1 when legacy plaintext auth material remains in the database; 0 when complete.",
+      registers: [registry],
+    }),
   };
 }
