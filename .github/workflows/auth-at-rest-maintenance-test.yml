@@ -58,6 +58,23 @@ jobs:
       - uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Load managed Postgres CA certificate
+        run: |
+          set -euo pipefail
+          db_cluster_id="$(
+            doctl databases list --format ID,Name --no-header \
+              | awk '$2 == "lax-test-postgres" { print $1; exit }'
+          )"
+          test -n "$db_cluster_id"
+          database_ca_cert="$(
+            doctl databases get-ca "$db_cluster_id" --no-header
+          )"
+          test -n "$database_ca_cert"
+          {
+            echo "DATABASE_CA_CERT<<EOF"
+            echo "$database_ca_cert"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
       - name: Load staging database contracts
         run: |
           set -euo pipefail
