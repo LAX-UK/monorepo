@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { completeAuthorization } from "./oidc-authorize-response.mjs";
 
 const STAGING_SHOP_ORIGIN = "https://test-shop.lax.bid";
 const LOCAL_SHOP_ORIGIN = "http://localhost:3010";
@@ -89,35 +90,15 @@ async function main() {
     headers: { cookie: cookieHeader(authCookies) },
   });
   captureCookies(authorize, authCookies);
-  if (!authorize.ok) {
-    throw new Error(`OIDC authorize failed (${authorize.status})`);
-  }
-  const consentHtml = await authorize.text();
-  const consentCode = consentHtml.match(/id="consent-code"[^>]+value="([^"]+)"/)?.[1];
-  if (!consentCode) throw new Error("OIDC authorize did not render a consent code");
-
-  const consent = await fetch(`${authBase}/api/auth/oauth2/consent`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      cookie: cookieHeader(authCookies),
-      origin: authBase,
-    },
-    body: JSON.stringify({ accept: true, consent_code: consentCode }),
+  const callbackUri = await completeAuthorization({
+    authBase,
+    authorizeResponse: authorize,
+    cookieHeader: cookieHeader(authCookies),
+    onResponse: (response) => captureCookies(response, authCookies),
   });
-  captureCookies(consent, authCookies);
-  const consentBody = await consent.json();
-  if (!consent.ok || typeof consentBody.redirectURI !== "string") {
-    throw new Error(`OIDC consent failed (${consent.status})`);
-  }
-  assertTrustedRedirect(
-    consentBody.redirectURI,
-    allowedShopOrigins,
-    "/auth/callback",
-    "Shop OIDC callback",
-  );
+  assertTrustedRedirect(callbackUri, allowedShopOrigins, "/auth/callback", "Shop OIDC callback");
 
-  const callback = await fetch(consentBody.redirectURI, {
+  const callback = await fetch(callbackUri, {
     redirect: "manual",
     headers: { cookie: cookieHeader(shopCookies) },
   });

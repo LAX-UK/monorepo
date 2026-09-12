@@ -3,6 +3,8 @@
  * Exercises the Bid web BFF OIDC login path end-to-end over HTTP.
  * Fails fast with actionable errors when callback/session/token exchange breaks.
  */
+import { completeAuthorization } from "./oidc-authorize-response.mjs";
+
 const webBase = (process.env.WEB_ORIGIN ?? "http://localhost:3000").replace(/\/+$/, "");
 const authBase = (process.env.AUTH_BASE_URL ?? "http://localhost:3003").replace(/\/+$/, "");
 const apiBase = (process.env.API_BASE_URL ?? "http://localhost:3001").replace(/\/+$/, "");
@@ -112,35 +114,20 @@ async function main() {
     headers: { cookie: cookieHeader(authCookies) },
   });
   captureCookies(authorize, authCookies);
-  if (!authorize.ok) {
-    throw new Error(`OIDC authorize failed (${authorize.status})`);
-  }
-  const consentHtml = await authorize.text();
-  const consentCode = consentHtml.match(/id="consent-code"[^>]+value="([^"]+)"/)?.[1];
-  if (!consentCode) throw new Error("OIDC authorize did not render a consent code");
-
-  const consent = await fetch(`${authBase}/api/auth/oauth2/consent`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      cookie: cookieHeader(authCookies),
-      origin: authBase,
-    },
-    body: JSON.stringify({ accept: true, consent_code: consentCode }),
+  const callbackUri = await completeAuthorization({
+    authBase,
+    authorizeResponse: authorize,
+    cookieHeader: cookieHeader(authCookies),
+    onResponse: (response) => captureCookies(response, authCookies),
   });
-  captureCookies(consent, authCookies);
-  const consentBody = await consent.json();
-  if (!consent.ok || typeof consentBody.redirectURI !== "string") {
-    throw new Error(`OIDC consent failed (${consent.status})`);
-  }
   assertTrustedRedirect(
-    consentBody.redirectURI,
+    callbackUri,
     allowedWebOrigins,
     "/api/auth/callback/lax-bid-web",
     "Bid BFF callback",
   );
 
-  const callback = await fetch(consentBody.redirectURI, {
+  const callback = await fetch(callbackUri, {
     redirect: "manual",
     headers: { cookie: cookieHeader(webCookies) },
   });
