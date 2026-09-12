@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { readForwardedClientIp } from "@auction/auth";
 import { AUTH_RATE_LIMIT_POLICY } from "@auction/auth/contracts";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
@@ -24,10 +25,7 @@ async function slidingIncrement(redis: Redis, key: string, windowSec: number): P
 /** Rate-limit the Hono `/auth/forgot-password` route. */
 export function createForgotPasswordRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
     const ipKey = `rl:auth:forgot-ip:${ip}`;
     const ipCount = await slidingIncrement(redis, ipKey, RATE_LIMIT_CONFIG.forgotIpWindowSec);
     if (ipCount > RATE_LIMIT_CONFIG.forgotIpMax) {
@@ -62,10 +60,7 @@ export function createForgotPasswordRateLimitMiddleware(redis: Redis) {
 /** Rate-limit `POST /auth/confirm-email-change` — per IP. */
 export function createConfirmEmailChangeRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
     const key = `rl:auth:confirm-email-change:${ip}`;
     const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.confirmEmailChangeWindowSec);
     if (n > RATE_LIMIT_CONFIG.confirmEmailChangeMax) {
@@ -84,10 +79,7 @@ export function createInviteRateLimitMiddleware(redis: Redis) {
     Variables: { userId?: string };
   }>(async (c, next) => {
     const actorId = c.get("userId");
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
     const identity = actorId ? `u:${actorId}` : `ip:${ip}`;
     const key = `rl:invite:${identity}`;
     const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.inviteWindowSec);
@@ -104,10 +96,7 @@ export function createInviteRateLimitMiddleware(redis: Redis) {
  */
 export function createInvitePreviewRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
     const key = `rl:invite-preview:${ip}`;
     const n = await slidingIncrement(redis, key, RATE_LIMIT_CONFIG.invitePreviewWindowSec);
     if (n > RATE_LIMIT_CONFIG.invitePreviewMax) {
@@ -137,10 +126,7 @@ export function createRegisterRateLimitMiddleware(redis: Redis) {
       await next();
       return;
     }
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
     const ipKey = `rl:register:ip:${ip}`;
     const ipCount = await slidingIncrement(redis, ipKey, RATE_LIMIT_CONFIG.registerIpWindowSec);
     if (ipCount > RATE_LIMIT_CONFIG.registerIpMax) {
@@ -166,10 +152,7 @@ export function createRegisterRateLimitMiddleware(redis: Redis) {
 export function createSetupPasswordRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
     const authorization = c.req.header("authorization");
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
     const identity = authorization?.startsWith("Bearer ")
       ? `b:${createHash("sha256").update(authorization.slice(7)).digest("base64url")}`
       : `ip:${ip}`;

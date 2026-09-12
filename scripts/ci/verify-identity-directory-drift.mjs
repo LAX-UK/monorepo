@@ -7,6 +7,7 @@
  *   DATABASE_URL_OWNER=... node scripts/ci/verify-identity-directory-drift.mjs
  */
 import pg from "pg";
+import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
 
 const { Client } = pg;
 const connectionString = process.env.DATABASE_URL_OWNER ?? process.env.DATABASE_URL;
@@ -19,7 +20,7 @@ if (!Number.isFinite(maxProcessingLagMs) || maxProcessingLagMs < 0) {
   throw new Error("IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS must be a non-negative number");
 }
 
-const client = new Client({ connectionString });
+const client = new Client(buildPgConnectionConfig(connectionString));
 
 try {
   await client.connect();

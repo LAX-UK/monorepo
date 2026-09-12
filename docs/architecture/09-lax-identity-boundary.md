@@ -224,11 +224,14 @@ attempted and any failure remains observable to the caller and telemetry.
 
 Production browser-facing issuer and trusted-origin URLs must use HTTPS.
 Forwarded client-IP headers are ignored unless the immediate network peer is in
-`AUTH_TRUSTED_PROXY_CIDRS`. The issuer walks a trusted `X-Forwarded-For` chain
-from right to left and rate-limits the first untrusted address; malformed or
-untrusted forwarding data falls back to the direct peer. Deployments behind a
-proxy must configure its exact IPv4/IPv6 addresses or CIDRs and must not include
-client networks.
+`AUTH_TRUSTED_PROXY_CIDRS`. On DigitalOcean App Platform, the issuer uses
+`DO-Connecting-IP`; when that hop is in
+`AUTH_TRUSTED_CLOUDFLARE_PROXY_CIDRS`, it accepts Cloudflare's single-value
+`CF-Connecting-IP` as the original visitor. Otherwise it walks a trusted
+`X-Forwarded-For` chain from right to left and rate-limits the first untrusted
+address. Malformed or untrusted forwarding data falls back to the authenticated
+DigitalOcean hop or direct peer. Deployments must keep both proxy CIDR sets
+current from their providers and must not include client networks.
 
 Internal machine tokens are random, stored only by hash with a five-minute TTL,
 and can be invalidated early through the authenticated `/oauth/revoke`
@@ -240,7 +243,10 @@ refresh-reuse probe, callback state/nonce/verifier binding and browser-session
 rotation in the Bid BFF route test, forged browser origins in the Auth package,
 and IP limits for both OAuth token exchange and machine token issue/revocation.
 Machine credential validation always performs both constant-time comparisons
-when Basic credentials are present.
+when Basic credentials are present. Failed machine authentication is also
+limited per hashed client id across issue, introspection, and revocation; the
+counter resets after successful authentication and fails open, with a warning,
+if Redis is unavailable.
 
 ## Source and image portability proof
 

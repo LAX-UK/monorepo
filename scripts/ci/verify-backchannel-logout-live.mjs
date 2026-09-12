@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import pg from "pg";
+import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
 
 const databaseUrl = process.env.DATABASE_URL_OWNER;
 const startedAt = process.env.ACCEPTANCE_STARTED_AT;
@@ -13,10 +14,7 @@ if (!databaseUrl || !startedAt || Number.isNaN(Date.parse(startedAt))) {
   throw new Error("DATABASE_URL_OWNER and a valid ACCEPTANCE_STARTED_AT are required");
 }
 
-const client = new pg.Client({
-  connectionString: databaseUrl,
-  ssl: process.env.DATABASE_SSL === "false" ? undefined : { rejectUnauthorized: false },
-});
+const client = new pg.Client(buildPgConnectionConfig(databaseUrl));
 
 try {
   await client.connect();

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import pg from "pg";
+import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
 
 const databaseUrl = process.env.DATABASE_URL_OWNER;
 const maxAgeMs = Number(process.env.IDENTITY_OUTBOX_MAX_AGE_MS);
@@ -9,10 +10,7 @@ if (!Number.isFinite(maxAgeMs) || maxAgeMs <= 0) {
   throw new Error("IDENTITY_OUTBOX_MAX_AGE_MS must be an approved positive numeric threshold");
 }
 
-const client = new pg.Client({
-  connectionString: databaseUrl,
-  ssl: process.env.DATABASE_SSL === "false" ? undefined : { rejectUnauthorized: false },
-});
+const client = new pg.Client(buildPgConnectionConfig(databaseUrl));
 
 try {
   await client.connect();

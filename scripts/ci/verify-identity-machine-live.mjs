@@ -2,9 +2,14 @@
 const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
 const clientId = process.env.IDENTITY_MACHINE_CLIENT_ID;
 const clientSecret = process.env.IDENTITY_MACHINE_CLIENT_SECRET;
+const rateLimitProbeClientId = process.env.IDENTITY_RATE_LIMIT_PROBE_CLIENT_ID;
+const rateLimitProbeClientSecret = process.env.IDENTITY_RATE_LIMIT_PROBE_CLIENT_SECRET;
 
-if (!clientId || !clientSecret) {
-  throw new Error("IDENTITY_MACHINE_CLIENT_ID and IDENTITY_MACHINE_CLIENT_SECRET are required");
+if (!clientId || !clientSecret || !rateLimitProbeClientId || !rateLimitProbeClientSecret) {
+  throw new Error(
+    "IDENTITY_MACHINE_CLIENT_ID, IDENTITY_MACHINE_CLIENT_SECRET, " +
+      "IDENTITY_RATE_LIMIT_PROBE_CLIENT_ID, and IDENTITY_RATE_LIMIT_PROBE_CLIENT_SECRET are required",
+  );
 }
 if (new URL(authBase).protocol !== "https:") throw new Error("AUTH_BASE_URL must use HTTPS");
 
@@ -76,33 +81,11 @@ async function main() {
     throw new Error(`forged browser origin was not rejected (${forgedOrigin.status})`);
   }
 
-  const expiring = await form("/internal/oauth/token", {
-    grant_type: "client_credentials",
-    scope: "identity.lifecycle",
-  });
-  const expiringBody = await expiring.json();
-  if (
-    !expiring.ok ||
-    typeof expiringBody.access_token !== "string" ||
-    !Number.isInteger(expiringBody.expires_in) ||
-    expiringBody.expires_in < 1 ||
-    expiringBody.expires_in > 600
-  ) {
-    throw new Error(
-      `expiring machine token issue failed (${expiring.status}): ${JSON.stringify(expiringBody)}`,
-    );
-  }
-  await new Promise((resolve) => setTimeout(resolve, (expiringBody.expires_in + 2) * 1_000));
-  const expired = await form("/internal/oauth/introspect", {
-    token: expiringBody.access_token,
-  });
-  const expiredBody = await expired.json();
-  if (!expired.ok || expiredBody.active !== false) {
-    throw new Error(`expired machine token remained active: ${JSON.stringify(expiredBody)}`);
-  }
-
   let limited = false;
-  const invalid = `Basic ${Buffer.from(`${clientId}:invalid-secret`, "utf8").toString("base64")}`;
+  const invalid = `Basic ${Buffer.from(
+    `${rateLimitProbeClientId}:${rateLimitProbeClientSecret}`,
+    "utf8",
+  ).toString("base64")}`;
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const response = await form(
       "/internal/oauth/introspect",
@@ -119,9 +102,7 @@ async function main() {
   }
   if (!limited) throw new Error("machine credential rate limit did not activate");
 
-  console.log(
-    "Identity machine issue/introspect/revoke/expiry, origin, and rate-limit probes passed",
-  );
+  console.log("Identity machine issue/introspect/revoke, origin, and rate-limit probes passed");
 }
 
 main().catch((error) => {

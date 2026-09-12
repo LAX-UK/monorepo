@@ -1,4 +1,5 @@
 import { BlockList, isIP } from "node:net";
+import { CLIENT_IP_HEADER_NAMES } from "@auction/auth";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import type { Context } from "hono";
 
@@ -9,13 +10,16 @@ function normalizedIp(value: string | undefined): string | null {
   return candidate && isIP(candidate) !== 0 ? candidate : null;
 }
 
-function createTrustedProxyMatcher(cidrs: readonly string[]): (address: string) => boolean {
+function createTrustedProxyMatcher(
+  cidrs: readonly string[],
+  envName = "AUTH_TRUSTED_PROXY_CIDRS",
+): (address: string) => boolean {
   const blockList = new BlockList();
   for (const cidr of cidrs) {
     const [address, prefix, ...extra] = cidr.trim().split("/");
     const version = isIP(address ?? "");
     if (!address || version === 0 || extra.length > 0) {
-      throw new Error(`Invalid AUTH_TRUSTED_PROXY_CIDRS entry: ${cidr}`);
+      throw new Error(`Invalid ${envName} entry: ${cidr}`);
     }
     const type = version === 4 ? "ipv4" : "ipv6";
     if (prefix === undefined) {
@@ -25,7 +29,7 @@ function createTrustedProxyMatcher(cidrs: readonly string[]): (address: string) 
     const prefixLength = Number(prefix);
     const maxPrefixLength = version === 4 ? 32 : 128;
     if (!Number.isInteger(prefixLength) || prefixLength < 0 || prefixLength > maxPrefixLength) {
-      throw new Error(`Invalid AUTH_TRUSTED_PROXY_CIDRS prefix: ${cidr}`);
+      throw new Error(`Invalid ${envName} prefix: ${cidr}`);
     }
     blockList.addSubnet(address, prefixLength, type);
   }
@@ -39,11 +43,23 @@ export function resolveClientIp(input: {
   remoteAddress: string | undefined;
   forwardedFor: string | undefined;
   realIp: string | undefined;
+  cfConnectingIp: string | undefined;
+  doConnectingIp: string | undefined;
   isTrustedProxy: (address: string) => boolean;
+  isTrustedCloudflareProxy: (address: string) => boolean;
 }): string {
   const remoteAddress = normalizedIp(input.remoteAddress);
   if (!remoteAddress) return "unknown";
   if (!input.isTrustedProxy(remoteAddress)) return remoteAddress;
+
+  const doConnectingIp = normalizedIp(input.doConnectingIp);
+  if (doConnectingIp) {
+    const cfConnectingIp = normalizedIp(input.cfConnectingIp);
+    if (cfConnectingIp && input.isTrustedCloudflareProxy(doConnectingIp)) {
+      return cfConnectingIp;
+    }
+    return doConnectingIp;
+  }
 
   if (input.forwardedFor) {
     const forwardedChain = input.forwardedFor.split(",").map((value) => normalizedIp(value));
@@ -59,8 +75,15 @@ export function resolveClientIp(input: {
   return normalizedIp(input.realIp) ?? remoteAddress;
 }
 
-export function createClientIpResolver(trustedProxyCidrs: readonly string[]): ClientIpResolver {
+export function createClientIpResolver(
+  trustedProxyCidrs: readonly string[],
+  trustedCloudflareProxyCidrs: readonly string[] = [],
+): ClientIpResolver {
   const isTrustedProxy = createTrustedProxyMatcher(trustedProxyCidrs);
+  const isTrustedCloudflareProxy = createTrustedProxyMatcher(
+    trustedCloudflareProxyCidrs,
+    "AUTH_TRUSTED_CLOUDFLARE_PROXY_CIDRS",
+  );
   return (context) => {
     let remoteAddress: string | undefined;
     try {
@@ -70,9 +93,12 @@ export function createClientIpResolver(trustedProxyCidrs: readonly string[]): Cl
     }
     return resolveClientIp({
       remoteAddress,
-      forwardedFor: context.req.header("x-forwarded-for"),
-      realIp: context.req.header("x-real-ip"),
+      forwardedFor: context.req.header(CLIENT_IP_HEADER_NAMES.forwardedFor),
+      realIp: context.req.header(CLIENT_IP_HEADER_NAMES.realIp),
+      cfConnectingIp: context.req.header(CLIENT_IP_HEADER_NAMES.cloudflare),
+      doConnectingIp: context.req.header(CLIENT_IP_HEADER_NAMES.digitalOcean),
       isTrustedProxy,
+      isTrustedCloudflareProxy,
     });
   };
 }

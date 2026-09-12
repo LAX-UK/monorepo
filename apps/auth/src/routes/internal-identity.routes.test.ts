@@ -5,6 +5,9 @@ import { createInternalIdentityRoutes } from "./internal-identity.routes.js";
 
 function setup() {
   const tokens = new Map<string, string>();
+  const setToken = vi.fn(async (key: string, value: string) => {
+    tokens.set(key, value);
+  });
   const lifecycle = {
     disable: vi.fn(async () => undefined),
     enable: vi.fn(async () => undefined),
@@ -31,18 +34,23 @@ function setup() {
     operations: operations as never,
     redis: {
       get: async (key) => tokens.get(key) ?? null,
-      set: async (key, value) => {
-        tokens.set(key, value);
-      },
+      set: setToken,
       del: async (key) => {
         tokens.delete(key);
       },
+      incr: async (key) => {
+        const next = Number(tokens.get(key) ?? 0) + 1;
+        tokens.set(key, String(next));
+        return next;
+      },
+      expire: async () => 1,
+      ttl: async () => 60,
     },
     machineClientId: "api-service",
     machineClientSecret: "machine-secret-at-least-32-characters",
     allowMerge: true,
   });
-  return { app, lifecycle, operations };
+  return { app, lifecycle, operations, setToken, tokens };
 }
 
 async function issueToken(app: ReturnType<typeof createInternalIdentityRoutes>): Promise<string> {
@@ -70,8 +78,9 @@ describe("internal Identity machine routes", () => {
   });
 
   it("issues a short-lived client-credentials token and disables a subject", async () => {
-    const { app, lifecycle } = setup();
+    const { app, lifecycle, setToken } = setup();
     const token = await issueToken(app);
+    expect(setToken).toHaveBeenCalledWith(expect.any(String), "api-service", "EX", 300);
     const response = await app.request("/identity/subjects/u1/disable", {
       method: "POST",
       headers: {
@@ -82,6 +91,24 @@ describe("internal Identity machine routes", () => {
     });
     expect(response.status).toBe(200);
     expect(lifecycle.disable).toHaveBeenCalledWith("u1", "security_review");
+  });
+
+  it("reports a machine token inactive after its Redis TTL expires", async () => {
+    const { app, tokens } = setup();
+    const token = await issueToken(app);
+    tokens.clear();
+    const basic = Buffer.from("api-service:machine-secret-at-least-32-characters", "utf8").toString(
+      "base64",
+    );
+    const response = await app.request("/oauth/introspect", {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${basic}`,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ token }),
+    });
+    await expect(response.json()).resolves.toEqual({ active: false });
   });
 
   it("revokes a machine token before its expiry", async () => {
@@ -127,6 +154,62 @@ describe("internal Identity machine routes", () => {
     expect(revoked.status).toBe(200);
     expect(denied.status).toBe(401);
     expect(await inactive.json()).toEqual({ active: false });
+  });
+
+  it("locks repeated failed client authentication and returns Retry-After", async () => {
+    const { app } = setup();
+    const invalid = Buffer.from("api-service:invalid-machine-secret", "utf8").toString("base64");
+    let response: Response | undefined;
+    for (let attempt = 0; attempt < 11; attempt += 1) {
+      response = await app.request("/oauth/introspect", {
+        method: "POST",
+        headers: {
+          authorization: `Basic ${invalid}`,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: "token=invalid",
+      });
+    }
+    expect(response?.status).toBe(429);
+    expect(response?.headers.get("retry-after")).toBe("60");
+  });
+
+  it("fails open when the credential limiter store is unavailable", async () => {
+    const errors: unknown[] = [];
+    const failingApp = createInternalIdentityRoutes({
+      lifecycle: {} as never,
+      operations: {} as never,
+      redis: {
+        get: async () => {
+          throw new Error("redis unavailable");
+        },
+        set: async () => undefined,
+        del: async () => {
+          throw new Error("redis unavailable");
+        },
+        incr: async () => {
+          throw new Error("redis unavailable");
+        },
+        expire: async () => 0,
+        ttl: async () => 0,
+      },
+      machineClientId: "api-service",
+      machineClientSecret: "machine-secret-at-least-32-characters",
+      onCredentialRateLimitError: (error) => errors.push(error),
+    });
+    const basic = Buffer.from("api-service:machine-secret-at-least-32-characters", "utf8").toString(
+      "base64",
+    );
+    const response = await failingApp.request("/oauth/token", {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${basic}`,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: "grant_type=client_credentials&scope=identity.lifecycle",
+    });
+    expect(response.status).toBe(200);
+    expect(errors).toHaveLength(2);
   });
 
   it("requires the canonical subject for merges", async () => {

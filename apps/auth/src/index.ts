@@ -118,6 +118,9 @@ const internal =
           machineClientId: env.IDENTITY_MACHINE_CLIENT_ID,
           machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
           allowMerge: env.IDENTITY_MERGE_ENABLED,
+          onCredentialRateLimitError: (error) => {
+            log.warn({ err: error }, "machine_credential_rate_limit_unavailable");
+          },
           onOperation: (operation, subjectId) => {
             metrics.identityLifecycleOperations.inc({ operation });
             log.info({ operation, subjectId }, "identity_lifecycle_operation");

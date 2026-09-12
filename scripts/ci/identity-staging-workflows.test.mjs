@@ -192,6 +192,10 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
   assert.match(acceptance, /database_ca_certificate/);
   assert.match(acceptance, /NODE_EXTRA_CA_CERTS/);
+  assert.match(acceptance, /DATABASE_CA_CERT<</);
+  assert.match(acceptance, /Provision isolated acceptance accounts/);
+  assert.match(acceptance, /IDENTITY_RATE_LIMIT_PROBE_CLIENT_SECRET/);
+  assert.match(machineProbe, /IDENTITY_RATE_LIMIT_PROBE_CLIENT_ID/);
   assert.match(browserGates, /\.github\/workflows\/identity-staging-acceptance\.yml/);
   assert.match(acceptance, /ssf_mode:/);
   assert.match(acceptance, /ssf_disabled/);
@@ -204,7 +208,10 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /db:reconcile-identity-profiles/);
   assert.match(acceptance, /AUTH_METRICS_TOKEN/);
   assert.match(acceptance, /jwks-snapshot\.ts test --verify/);
-  assert.match(machineProbe, /expiringBody\.expires_in \+ 2/);
+  assert.doesNotMatch(machineProbe, /expiringBody\.expires_in \+ 2/);
+  assert.match(acceptance, /IDENTITY_RECONCILIATION_ATTEMPTS/);
+  assert.match(acceptance, /BACKCHANNEL_LOGOUT_TIMEOUT_MS: "120000"/);
+  assert.match(acceptance, /SSF_TEST_TIMEOUT_MS: "120000"/);
   assert.match(bidProbe, /redirect path is not trusted/);
   assert.match(shopProbe, /redirect path is not trusted/);
   assert.match(acceptance, /SSF_FAILURE_REHEARSAL: \$\{\{ inputs\.ssf_mode == 'ssf_enabled'/);

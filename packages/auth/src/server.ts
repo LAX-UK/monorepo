@@ -26,6 +26,7 @@
 import { betterAuth } from "better-auth";
 import { buildDatabaseHooks } from "./auth-hooks/database-hooks.js";
 import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
+import { AUTH_IP_ADDRESS_HEADERS } from "./client-ip-headers.js";
 import type { AuthLifecycleCallbacks } from "./contracts.js";
 import type { AuthDatabase } from "./phone-number-plugin.js";
 import type { AuthPorts } from "./ports/index.js";
@@ -238,7 +239,7 @@ export function createAuth(env: AuthEnv): Auth {
     advanced: {
       useSecureCookies: env.allowInsecureCookies ? false : undefined,
       ipAddress: {
-        ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"],
+        ipAddressHeaders: [...AUTH_IP_ADDRESS_HEADERS],
       },
     },
   }) as unknown as Auth;
