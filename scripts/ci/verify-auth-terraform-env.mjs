@@ -10,9 +10,14 @@ const envSource = readFileSync(resolve(repoRoot, "apps/auth/src/env.ts"), "utf8"
 const terraform = readFileSync(terraformPath, "utf8");
 const outputs = readFileSync(resolve(dirname(terraformPath), "outputs.tf"), "utf8");
 
-const authStart = terraform.indexOf('name              = "auth"');
-const authEnd = terraform.indexOf('name              = "shop-identity"', authStart);
-const migrateStart = terraform.indexOf('name            = "migrate"');
+function locateComponent(name) {
+  const match = terraform.match(new RegExp(`name\\s*=\\s*"${name}"`));
+  return match?.index ?? -1;
+}
+
+const authStart = locateComponent("auth");
+const authEnd = locateComponent("shop-identity");
+const migrateStart = locateComponent("migrate");
 if (authStart < 0 || authEnd < 0 || migrateStart < 0) {
   throw new Error("Could not locate auth, shop-identity, and migrate component boundaries");
 }
