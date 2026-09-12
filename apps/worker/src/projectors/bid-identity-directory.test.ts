@@ -76,7 +76,7 @@ describe("applyBidIdentityDirectoryEvent", () => {
         image: "https://example.test/avatar.jpg",
         phone: "+441234567890",
         emailVerified: true,
-        createdAt: "2026-08-18T10:00:00.000Z",
+        createdAt: "2026-08-18T10:00:00+00:00",
       }),
       replicatedAt,
     );
@@ -88,7 +88,7 @@ describe("applyBidIdentityDirectoryEvent", () => {
       image: "https://example.test/avatar.jpg",
       phone: "+441234567890",
       emailVerified: true,
-      identityCreatedAt: new Date("2026-08-18T10:00:00.000Z"),
+      identityCreatedAt: new Date("2026-08-18T10:00:00+00:00"),
       replicatedAt,
       lastEventId: 10,
     });

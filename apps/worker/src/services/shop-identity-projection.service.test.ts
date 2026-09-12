@@ -2,6 +2,29 @@ import { describe, expect, it, vi } from "vitest";
 import { ShopIdentityProjectionService } from "./shop-identity-projection.service.js";
 
 describe("ShopIdentityProjectionService", () => {
+  it("accepts PostgreSQL timestamp offsets for registrations", async () => {
+    const onConflictDoUpdate = vi.fn(async () => undefined);
+    const values = vi.fn(() => ({ onConflictDoUpdate }));
+    const db = { insert: vi.fn(() => ({ values })) };
+    const service = new ShopIdentityProjectionService(db as never);
+
+    await service.apply("user.registered", {
+      userId: "subject-1",
+      email: "person@example.com",
+      name: "Person",
+      source: "credential",
+      createdAt: "2026-08-03T00:00:00+00:00",
+    });
+
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identitySubjectId: "subject-1",
+        email: "person@example.com",
+        name: "Person",
+      }),
+    );
+  });
+
   it("soft-merges a retired profile atomically", async () => {
     const onConflictDoNothing = vi.fn(async () => undefined);
     const values = vi.fn(() => ({ onConflictDoNothing }));

@@ -13,6 +13,15 @@ const base = {
 };
 
 describe("identity event payload contracts", () => {
+  it("accepts RFC 3339 offsets emitted by PostgreSQL JSON", () => {
+    expect(
+      userProfileUpdatedPayloadSchemaV1.parse({
+        ...base,
+        updatedAt: "2026-08-19T18:00:00+00:00",
+      }),
+    ).toMatchObject({ subjectId: "subject-1" });
+  });
+
   it("accepts image changes in profile-updated payloads", () => {
     expect(
       userProfileUpdatedPayloadSchemaV1.parse({
