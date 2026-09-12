@@ -10,7 +10,10 @@ describe("auth client IP resolution", () => {
         remoteAddress: "198.51.100.7",
         forwardedFor: "203.0.113.9",
         realIp: "203.0.113.10",
+        cfConnectingIp: "203.0.113.11",
+        doConnectingIp: "203.0.113.12",
         isTrustedProxy: trusted,
+        isTrustedCloudflareProxy: () => true,
       }),
     ).toBe("198.51.100.7");
   });
@@ -21,7 +24,10 @@ describe("auth client IP resolution", () => {
         remoteAddress: "10.0.0.2",
         forwardedFor: "203.0.113.9, 10.0.0.1",
         realIp: undefined,
+        cfConnectingIp: undefined,
+        doConnectingIp: undefined,
         isTrustedProxy: trusted,
+        isTrustedCloudflareProxy: () => false,
       }),
     ).toBe("203.0.113.9");
   });
@@ -32,7 +38,10 @@ describe("auth client IP resolution", () => {
         remoteAddress: "10.0.0.2",
         forwardedFor: "not-an-ip, 10.0.0.1",
         realIp: undefined,
+        cfConnectingIp: undefined,
+        doConnectingIp: undefined,
         isTrustedProxy: trusted,
+        isTrustedCloudflareProxy: () => false,
       }),
     ).toBe("10.0.0.2");
   });
@@ -41,5 +50,47 @@ describe("auth client IP resolution", () => {
     expect(() => createClientIpResolver(["10.0.0.0/99"])).toThrow(
       "Invalid AUTH_TRUSTED_PROXY_CIDRS prefix",
     );
+  });
+
+  it("uses Cloudflare's client IP only when DigitalOcean identifies a trusted Cloudflare hop", () => {
+    expect(
+      resolveClientIp({
+        remoteAddress: "10.0.0.2",
+        forwardedFor: "10.0.0.1",
+        realIp: undefined,
+        cfConnectingIp: "203.0.113.9",
+        doConnectingIp: "173.245.48.10",
+        isTrustedProxy: trusted,
+        isTrustedCloudflareProxy: (address) => address.startsWith("173.245."),
+      }),
+    ).toBe("203.0.113.9");
+  });
+
+  it("falls back to DigitalOcean's authenticated client hop when Cloudflare is not trusted", () => {
+    expect(
+      resolveClientIp({
+        remoteAddress: "10.0.0.2",
+        forwardedFor: "10.0.0.1",
+        realIp: undefined,
+        cfConnectingIp: "198.51.100.99",
+        doConnectingIp: "198.51.100.7",
+        isTrustedProxy: trusted,
+        isTrustedCloudflareProxy: () => false,
+      }),
+    ).toBe("198.51.100.7");
+  });
+
+  it("ignores malformed DigitalOcean and Cloudflare headers", () => {
+    expect(
+      resolveClientIp({
+        remoteAddress: "10.0.0.2",
+        forwardedFor: "203.0.113.9, 10.0.0.1",
+        realIp: undefined,
+        cfConnectingIp: "not-an-ip",
+        doConnectingIp: "also-not-an-ip",
+        isTrustedProxy: trusted,
+        isTrustedCloudflareProxy: () => true,
+      }),
+    ).toBe("203.0.113.9");
   });
 });

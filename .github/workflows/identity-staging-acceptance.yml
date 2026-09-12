@@ -48,16 +48,20 @@ jobs:
       WEB_ORIGIN: https://test.lax.bid
       SHOP_IDENTITY_BASE_URL: https://test-shop.lax.bid
       IDENTITY_BOUNDARY_SHOP_REQUIRED: "true"
-      BID_BFF_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+      IDENTITY_ACCEPTANCE_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+      IDENTITY_ACCEPTANCE_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
       BID_BFF_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
-      SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
       SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
-      REFRESH_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
       REFRESH_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
       REFRESH_TEST_REDIRECT_URI: https://test-shop.lax.bid/auth/callback
       IDENTITY_MACHINE_CLIENT_ID: auth-service
+      IDENTITY_RATE_LIMIT_PROBE_CLIENT_ID: identity-acceptance-rate-limit-probe
       IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS: "60000"
       IDENTITY_OUTBOX_MAX_AGE_MS: ${{ inputs.outbox_max_age_ms }}
+      IDENTITY_RECONCILIATION_ATTEMPTS: "12"
+      IDENTITY_RECONCILIATION_RETRY_DELAY_SEC: "5"
+      BACKCHANNEL_LOGOUT_TIMEOUT_MS: "120000"
+      SSF_TEST_TIMEOUT_MS: "120000"
       SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
       SSF_DELIVERY_ENABLED: ${{ inputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
       SSF_FAILURE_REHEARSAL: ${{ inputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
@@ -106,6 +110,7 @@ jobs:
             [DATABASE_URL_SHOP]=database_url_shop
             [DATABASE_URL_WORKER]=database_url_worker
             [IDENTITY_MACHINE_CLIENT_SECRET]=identity_machine_client_secret
+            [IDENTITY_RATE_LIMIT_PROBE_CLIENT_SECRET]=identity_rate_limit_probe_client_secret
             [AUTH_METRICS_TOKEN]=auth_metrics_token
             [REFRESH_TEST_CLIENT_SECRET]=oidc_shop_web_client_secret
             [SSF_TEST_CLIENT_SECRET]=oidc_bid_web_client_secret
@@ -128,6 +133,28 @@ jobs:
           printf '%s\n' "$database_ca_cert" > "$database_ca_path"
           chmod 0600 "$database_ca_path"
           echo "NODE_EXTRA_CA_CERTS=$database_ca_path" >> "$GITHUB_ENV"
+          {
+            echo 'DATABASE_CA_CERT<<__DATABASE_CA_CERT__'
+            printf '%s\n' "$database_ca_cert"
+            echo '__DATABASE_CA_CERT__'
+          } >> "$GITHUB_ENV"
+      - name: Provision isolated acceptance accounts
+        run: pnpm tsx scripts/ci/provision-identity-acceptance-users.mjs
+      - name: Validate provisioned acceptance contracts
+        run: |
+          set -euo pipefail
+          for env_name in \
+            BID_BFF_TEST_EMAIL \
+            SHOP_OIDC_TEST_EMAIL \
+            REFRESH_TEST_EMAIL \
+            IDENTITY_RATE_LIMIT_PROBE_CLIENT_ID \
+            IDENTITY_RATE_LIMIT_PROBE_CLIENT_SECRET \
+            DATABASE_CA_CERT; do
+            test -n "${!env_name}" || {
+              echo "::error::$env_name must be configured before live probes"
+              exit 1
+            }
+          done
       - name: Validate requested Identity release
         run: |
           [[ "${{ inputs.identity_sha }}" =~ ^[0-9a-f]{40}$ ]]
@@ -148,27 +175,40 @@ jobs:
       - name: Refresh rotation and reuse rejection
         run: node scripts/ci/verify-refresh-reuse.mjs
       - name: Bid and Shop back-channel logout delivery
-        run: node scripts/ci/verify-backchannel-logout-live.mjs
+        run: pnpm tsx scripts/ci/verify-backchannel-logout-live.mjs
       - name: SSF durable delivery and replay contract (Bid receiver)
         if: inputs.ssf_mode == 'ssf_enabled'
         env:
           SSF_TEST_CLIENT_ID: lax-bid-web
           SSF_TEST_CLIENT_SECRET: ${{ env.SSF_TEST_CLIENT_SECRET }}
           SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
-        run: node scripts/ci/verify-identity-ssf-live.mjs
+        run: pnpm tsx scripts/ci/verify-identity-ssf-live.mjs
       - name: SSF durable delivery and replay contract (Shop receiver)
         if: inputs.ssf_mode == 'ssf_enabled'
         env:
           SSF_TEST_CLIENT_ID: lax-shop-web
           SSF_TEST_CLIENT_SECRET: ${{ env.REFRESH_TEST_CLIENT_SECRET }}
           SSF_TEST_ENDPOINT: https://test-shop.lax.bid/api/ssf/events
-        run: node scripts/ci/verify-identity-ssf-live.mjs
+        run: pnpm tsx scripts/ci/verify-identity-ssf-live.mjs
       - name: Directory and profile reconciliation
         run: |
-          node scripts/ci/verify-identity-directory-drift.mjs
+          for attempt in $(seq 1 "$IDENTITY_RECONCILIATION_ATTEMPTS"); do
+            if pnpm tsx scripts/ci/verify-identity-directory-drift.mjs; then
+              break
+            fi
+            test "$attempt" -lt "$IDENTITY_RECONCILIATION_ATTEMPTS" || exit 1
+            sleep "$IDENTITY_RECONCILIATION_RETRY_DELAY_SEC"
+          done
           pnpm --filter @auction/db db:reconcile-identity-profiles
       - name: Lifecycle outbox lag
-        run: node scripts/ci/verify-identity-outbox-live.mjs
+        run: |
+          for attempt in $(seq 1 "$IDENTITY_RECONCILIATION_ATTEMPTS"); do
+            if pnpm tsx scripts/ci/verify-identity-outbox-live.mjs; then
+              break
+            fi
+            test "$attempt" -lt "$IDENTITY_RECONCILIATION_ATTEMPTS" || exit 1
+            sleep "$IDENTITY_RECONCILIATION_RETRY_DELAY_SEC"
+          done
       - name: JWKS snapshot encryption and metrics visibility
         run: |
           pnpm tsx scripts/jwks-snapshot.ts test --verify

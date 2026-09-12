@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import pg from "pg";
+import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
 
 const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/?$/, "");
 const clientId = process.env.SSF_TEST_CLIENT_ID ?? "lax-bid-web";
@@ -48,10 +49,7 @@ function defaultEndpoint(receiverClientId) {
   return "https://test-api.lax.bid/ssf/events";
 }
 
-const client = new pg.Client({
-  connectionString: databaseUrl,
-  ssl: process.env.DATABASE_SSL === "false" ? undefined : { rejectUnauthorized: false },
-});
+const client = new pg.Client(buildPgConnectionConfig(databaseUrl));
 
 try {
   await client.connect();

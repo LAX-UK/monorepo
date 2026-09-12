@@ -41,8 +41,16 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
             : "other";
     options.issuerHttpOutcomes.inc({ operation, status: String(c.res.status) });
   });
-  const clientIp = createClientIpResolver(options.oidc.env.AUTH_TRUSTED_PROXY_CIDRS);
-  mountAuthOperationalRoutes(app, { ...options.operational, log: options.log, clientIp });
+  const clientIp = createClientIpResolver(
+    options.oidc.env.AUTH_TRUSTED_PROXY_CIDRS,
+    options.oidc.env.AUTH_TRUSTED_CLOUDFLARE_PROXY_CIDRS,
+  );
+  mountAuthOperationalRoutes(app, {
+    ...options.operational,
+    log: options.log,
+    clientIp,
+    clientIpDiagnostics: options.oidc.env.AUTH_CLIENT_IP_DIAGNOSTICS,
+  });
   mountOidcRoutes(app, { ...options.oidc, clientIp });
   return app;
 }

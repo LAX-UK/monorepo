@@ -6,14 +6,16 @@ import {
   IdentityOperationError,
   type IdentityOperationsService,
 } from "../services/identity-operations.service.js";
+import {
+  type MachineCredentialRateLimitRedis,
+  MachineCredentialRateLimiter,
+} from "../services/machine-credential-rate-limiter.js";
 
 const MACHINE_TOKEN_TTL_SEC = 5 * 60;
 const MACHINE_SCOPE = "identity.lifecycle";
 
-type MachineTokenRedis = {
-  get(key: string): Promise<string | null>;
+type MachineTokenRedis = MachineCredentialRateLimitRedis & {
   set(key: string, value: string, ex: "EX", ttl: number): Promise<unknown>;
-  del(key: string): Promise<unknown>;
 };
 
 function tokenKey(token: string): string {
@@ -55,6 +57,47 @@ function parseBasicCredentials(header: string | undefined): {
   }
 }
 
+async function authenticateMachineClient(input: {
+  credentials: { clientId: string; clientSecret: string } | null;
+  expectedClientId: string;
+  expectedClientSecret: string;
+  limiter: MachineCredentialRateLimiter;
+  onLimiterError?: ((error: unknown) => void) | undefined;
+}): Promise<
+  | { valid: true; limited: false }
+  | { valid: false; limited: false }
+  | { valid: false; limited: true; retryAfterSec: number }
+> {
+  const clientId = input.credentials?.clientId;
+  if (clientId) {
+    try {
+      const decision = await input.limiter.check(clientId);
+      if (decision.limited) return { valid: false, ...decision };
+    } catch (error) {
+      input.onLimiterError?.(error);
+    }
+  }
+
+  const valid = hasValidMachineCredentials(
+    input.credentials,
+    input.expectedClientId,
+    input.expectedClientSecret,
+  );
+  if (!clientId) return { valid, limited: false };
+
+  try {
+    if (valid) {
+      await input.limiter.reset(clientId);
+      return { valid: true, limited: false };
+    }
+    const decision = await input.limiter.recordFailure(clientId);
+    if (decision.limited) return { valid: false, ...decision };
+  } catch (error) {
+    input.onLimiterError?.(error);
+  }
+  return { valid, limited: false };
+}
+
 export function createInternalIdentityRoutes(options: {
   lifecycle: IIdentityLifecycleService;
   operations: IdentityOperationsService;
@@ -62,17 +105,31 @@ export function createInternalIdentityRoutes(options: {
   machineClientId: string;
   machineClientSecret: string;
   allowMerge?: boolean;
+  onCredentialRateLimitError?: (error: unknown) => void;
   onOperation?: (operation: "disable" | "enable" | "merge", subjectId: string) => void;
 }) {
   const app = new Hono();
+  const credentialRateLimiter = new MachineCredentialRateLimiter(options.redis);
 
   app.post("/oauth/token", async (c) => {
     const credentials = parseBasicCredentials(c.req.header("authorization"));
     const body = await c.req.parseBody();
+    const authentication = await authenticateMachineClient({
+      credentials,
+      expectedClientId: options.machineClientId,
+      expectedClientSecret: options.machineClientSecret,
+      limiter: credentialRateLimiter,
+      onLimiterError: options.onCredentialRateLimitError,
+    });
+    if (authentication.limited) {
+      c.header("Cache-Control", "no-store");
+      c.header("Retry-After", String(authentication.retryAfterSec));
+      return c.json({ error: "rate_limited" }, 429);
+    }
     if (
+      !authentication.valid ||
       body.grant_type !== "client_credentials" ||
-      body.scope !== MACHINE_SCOPE ||
-      !hasValidMachineCredentials(credentials, options.machineClientId, options.machineClientSecret)
+      body.scope !== MACHINE_SCOPE
     ) {
       c.header("Cache-Control", "no-store");
       return c.json({ error: "invalid_client" }, 401);
@@ -93,9 +150,18 @@ export function createInternalIdentityRoutes(options: {
     c.header("Cache-Control", "no-store");
     const credentials = parseBasicCredentials(c.req.header("authorization"));
     const body = await c.req.parseBody();
-    if (
-      !hasValidMachineCredentials(credentials, options.machineClientId, options.machineClientSecret)
-    ) {
+    const authentication = await authenticateMachineClient({
+      credentials,
+      expectedClientId: options.machineClientId,
+      expectedClientSecret: options.machineClientSecret,
+      limiter: credentialRateLimiter,
+      onLimiterError: options.onCredentialRateLimitError,
+    });
+    if (authentication.limited) {
+      c.header("Retry-After", String(authentication.retryAfterSec));
+      return c.json({ error: "rate_limited" }, 429);
+    }
+    if (!authentication.valid) {
       return c.json({ error: "invalid_client" }, 401);
     }
     if (typeof body.token !== "string" || !body.token) {
@@ -108,9 +174,18 @@ export function createInternalIdentityRoutes(options: {
   app.post("/oauth/introspect", async (c) => {
     c.header("Cache-Control", "no-store");
     const credentials = parseBasicCredentials(c.req.header("authorization"));
-    if (
-      !hasValidMachineCredentials(credentials, options.machineClientId, options.machineClientSecret)
-    ) {
+    const authentication = await authenticateMachineClient({
+      credentials,
+      expectedClientId: options.machineClientId,
+      expectedClientSecret: options.machineClientSecret,
+      limiter: credentialRateLimiter,
+      onLimiterError: options.onCredentialRateLimitError,
+    });
+    if (authentication.limited) {
+      c.header("Retry-After", String(authentication.retryAfterSec));
+      return c.json({ error: "rate_limited" }, 429);
+    }
+    if (!authentication.valid) {
       return c.json({ error: "invalid_client" }, 401);
     }
     const body = await c.req.parseBody();

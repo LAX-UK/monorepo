@@ -28,6 +28,8 @@ describe("auth app environment contract", () => {
       WEB_ORIGINS: "https://example.com,https://event.example.com",
       SSR_TRUSTED_ORIGINS: "https://internal.example.com",
       AUTH_TRUSTED_PROXY_CIDRS: "10.0.0.0/8,2001:db8::/32",
+      AUTH_TRUSTED_CLOUDFLARE_PROXY_CIDRS: "173.245.48.0/20,2400:cb00::/32",
+      AUTH_CLIENT_IP_DIAGNOSTICS: "true",
       JWT_AUDIENCE: "example-api",
       API_INTERNAL_BASE_URL: "https://api.internal.example.com",
       IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS: "2500",
@@ -36,6 +38,8 @@ describe("auth app environment contract", () => {
     expect(env.WEB_ORIGINS).toEqual(["https://example.com", "https://event.example.com"]);
     expect(env.SSR_TRUSTED_ORIGINS).toEqual(["https://internal.example.com"]);
     expect(env.AUTH_TRUSTED_PROXY_CIDRS).toEqual(["10.0.0.0/8", "2001:db8::/32"]);
+    expect(env.AUTH_TRUSTED_CLOUDFLARE_PROXY_CIDRS).toEqual(["173.245.48.0/20", "2400:cb00::/32"]);
+    expect(env.AUTH_CLIENT_IP_DIAGNOSTICS).toBe(true);
     expect(env.JWT_AUDIENCE).toBe("example-api");
     expect(env.API_INTERNAL_BASE_URL).toBe("https://api.internal.example.com");
     expect(env.IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS).toBe(2500);

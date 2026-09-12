@@ -1,3 +1,4 @@
+import { readForwardedClientIp } from "@auction/auth";
 import { createMiddleware } from "hono/factory";
 import type { IRateLimitStore } from "../services/interfaces/rate-limit-store.js";
 
@@ -13,11 +14,7 @@ export function createRateLimitMiddleware(store: IRateLimitStore) {
       await next();
       return;
     }
-    const ip =
-      c.req.header("cf-connecting-ip") ??
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      "unknown";
+    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
     const key = `rl:${ip}:${c.req.path}`;
     const max =
       c.req.method === "GET" && c.req.path === "/users/me"

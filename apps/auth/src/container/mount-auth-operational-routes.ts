@@ -18,6 +18,7 @@ import {
   type createAuth,
 } from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import type { Hono } from "hono";
 import type { Redis } from "ioredis";
 import type pino from "pino";
@@ -34,6 +35,7 @@ export type AuthOperationalRoutes = {
   metricsToken?: string | undefined;
   metrics: { metrics(): Promise<string> };
   clientIp: ClientIpResolver;
+  clientIpDiagnostics?: boolean | undefined;
   redis?: Redis | undefined;
   internal?: { redis: Redis; routes: Hono } | undefined;
 };
@@ -123,6 +125,27 @@ export function mountAuthOperationalRoutes(app: Hono, options: AuthOperationalRo
     return c.html(buildHostedResendVerificationHtml());
   });
   if (options.internal) {
+    if (options.clientIpDiagnostics) {
+      app.use("/internal/oauth/*", async (c, next) => {
+        let remoteAddress: string | undefined;
+        try {
+          remoteAddress = getConnInfo(c).remote.address;
+        } catch {
+          remoteAddress = undefined;
+        }
+        options.log.info(
+          {
+            remoteAddress,
+            xForwardedFor: c.req.header("x-forwarded-for"),
+            xRealIp: c.req.header("x-real-ip"),
+            cfConnectingIp: c.req.header("cf-connecting-ip"),
+            doConnectingIp: c.req.header("do-connecting-ip"),
+          },
+          "auth_client_ip_diagnostics",
+        );
+        await next();
+      });
+    }
     app.use(
       "/internal/oauth/*",
       createMachineTokenRateLimitMiddleware(options.internal.redis, options.clientIp),
