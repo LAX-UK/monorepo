@@ -1,7 +1,12 @@
+import {
+  userCredentialChangedPayloadSchemaV1,
+  userProfileUpdatedPayloadSchemaV1,
+} from "@auction/identity-contracts";
 import { createIdentityDb } from "@auction/identity-db";
 import { account, identityLifecycleOutbox, user } from "@auction/identity-db/schema";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { reconcileIdentityLifecycleOutbox } from "./identity-lifecycle-reconciliation.schedule.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -58,6 +63,19 @@ describe.skipIf(!DATABASE_URL)("Identity lifecycle outbox reconciliation integra
         image: null,
         phone: null,
       });
+      userProfileUpdatedPayloadSchemaV1.parse(
+        rows.find((row) => row.eventType === "user.profile_updated")?.payload,
+      );
+      userCredentialChangedPayloadSchemaV1.parse(
+        rows.find((row) => row.eventType === "user.credential_changed")?.payload,
+      );
+      const rfc3339Timestamp = z.string().datetime({ offset: true });
+      const registeredPayload = rows.find((row) => row.eventType === "user.registered")
+        ?.payload as Record<string, unknown>;
+      const emailVerifiedPayload = rows.find((row) => row.eventType === "user.email_verified")
+        ?.payload as Record<string, unknown>;
+      rfc3339Timestamp.parse(registeredPayload.createdAt);
+      rfc3339Timestamp.parse(emailVerifiedPayload.verifiedAt);
     } finally {
       await db
         .delete(identityLifecycleOutbox)

@@ -21,6 +21,8 @@ export async function reconcileIdentityLifecycleOutbox(
   now = new Date(),
   batchSize = IDENTITY_LIFECYCLE_RECONCILIATION_BATCH_SIZE,
 ): Promise<IdentityLifecycleReconciliationCounts> {
+  const canonicalNow = now.toISOString();
+
   return db.transaction(async (transaction) => {
     const lock = await transaction.execute(sql`
       SELECT pg_try_advisory_xact_lock(
@@ -86,7 +88,10 @@ export async function reconcileIdentityLifecycleOutbox(
           'image', candidates."image",
           'phone', candidates."phone_number",
           'emailVerified', candidates."email_verified",
-          'createdAt', candidates."created_at"
+          'createdAt', to_char(
+            candidates."created_at" AT TIME ZONE 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+          )
         )),
         'apps/auth-reconciliation',
         NULL,
@@ -128,7 +133,7 @@ export async function reconcileIdentityLifecycleOutbox(
         jsonb_build_object(
           'userId', candidates."id",
           'email', candidates."email",
-          'verifiedAt', ${now}::timestamptz
+          'verifiedAt', ${canonicalNow}::text
         ),
         'apps/auth-reconciliation',
         candidates."id",
@@ -181,7 +186,10 @@ export async function reconcileIdentityLifecycleOutbox(
           'name', candidates."name",
           'phone', candidates."phone_number",
           'image', candidates."image",
-          'updatedAt', candidates."updated_at"
+          'updatedAt', to_char(
+            candidates."updated_at" AT TIME ZONE 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+          )
         ),
         'apps/auth-reconciliation',
         NULL,
@@ -227,7 +235,10 @@ export async function reconcileIdentityLifecycleOutbox(
           'subjectId', candidates."user_id",
           'credentialType', 'password',
           'changeType', 'update',
-          'changedAt', candidates."updated_at"
+          'changedAt', to_char(
+            candidates."updated_at" AT TIME ZONE 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+          )
         ),
         'apps/auth-reconciliation',
         NULL,
