@@ -33,6 +33,8 @@ jobs:
     if: inputs.confirm_backup
     runs-on: ubuntu-latest
     environment: test
+    env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
