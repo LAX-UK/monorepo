@@ -32,7 +32,6 @@
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
-    "@auction/types": "workspace:*",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.11.10",
     "tsx": "^4.19.2",

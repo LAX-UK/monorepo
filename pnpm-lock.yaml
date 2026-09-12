@@ -259,9 +259,6 @@ importers:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../../packages/config-ts
-      '@auction/types':
-        specifier: workspace:*
-        version: link:../../packages/types
       '@types/node':
         specifier: ^22.10.5
         version: 22.20.1
