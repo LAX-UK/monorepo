@@ -39,9 +39,9 @@ import { createShopSsfEventsRoute } from "./ssf.js";
 
 const env = loadShopIdentityEnv();
 const release = process.env.SENTRY_RELEASE ?? "unknown";
-const pool = new pg.Pool(
-  buildPgConnectionConfig(env.DATABASE_URL_SHOP ?? env.DATABASE_URL),
-);
+const databaseUrl = env.DATABASE_URL_SHOP ?? env.DATABASE_URL;
+if (!databaseUrl) throw new Error("DATABASE_URL_SHOP is required");
+const pool = new pg.Pool(buildPgConnectionConfig(databaseUrl));
 const sessionRepository = createPgShopSessionRepository(pool);
 const ssfRepository = createPgShopSsfRepository(pool);
 const discovery = resolveOidcDiscovery(env.OIDC_ISSUER_URL);
