@@ -50,6 +50,16 @@ describe("verifyAuthAtRestStorage", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("accepts fingerprinted OAuth tokens that have not been refreshed yet", async () => {
+    // Better Auth issues oauth_access_token rows with refresh_token_hash null until
+    // the rotation repository sees the first refresh. That is the steady state of
+    // every freshly issued token and must not fail startup or maintenance.
+    const crypto = createEnvelopeCrypto(Buffer.alloc(32, 1));
+    await expect(
+      verifyAuthAtRestStorage(storageWith({ oauthAccessToken: hashOpaqueToken("access") }), crypto),
+    ).resolves.toBeUndefined();
+  });
+
   it("rejects pending plaintext, wrong-key envelopes, and malformed fingerprints", async () => {
     const crypto = createEnvelopeCrypto(Buffer.alloc(32, 1));
     await expect(

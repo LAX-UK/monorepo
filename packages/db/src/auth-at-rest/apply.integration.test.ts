@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { createEnvelopeCrypto, parseAuthDekKey } from "@auction/identity-contracts";
+import {
+  createEnvelopeCrypto,
+  hashOpaqueToken,
+  parseAuthDekKey,
+} from "@auction/identity-contracts";
 import { hasAuthAtRestPending, totalAuthAtRestPending } from "@auction/identity-db";
 import pg from "pg";
 import { describe, expect, it } from "vitest";
@@ -89,6 +93,13 @@ describe("auth at-rest backfill integration", () => {
            values ($1, $2, $3)`,
           ["tok-1", "access-plain", "refresh-plain"],
         );
+        // A token Better Auth issued through the at-rest adapter: fingerprinted on
+        // write, rotation hash still unpopulated until the first refresh.
+        await pool.query(
+          `insert into "oauth_access_token" (id, access_token, refresh_token)
+           values ($1, $2, $3)`,
+          ["tok-issued", hashOpaqueToken("issued-access"), hashOpaqueToken("issued-refresh")],
+        );
         await pool.query(
           `insert into "two_factor" (id, secret, backup_codes)
            values ($1, $2, $3)`,
@@ -118,6 +129,24 @@ describe("auth at-rest backfill integration", () => {
         expect(batches.every((batch) => batch.scanned <= 1)).toBe(true);
 
         await verifyAuthAtRestComplete(pool, crypto, 1);
+        const { rows: tokens } = await pool.query<{
+          id: string;
+          refresh_token: string;
+          refresh_token_hash: string | null;
+        }>(`select id, refresh_token, refresh_token_hash from "oauth_access_token" order by id`);
+        expect(tokens).toEqual([
+          {
+            id: "tok-1",
+            refresh_token: hashOpaqueToken("refresh-plain"),
+            refresh_token_hash: hashOpaqueToken("refresh-plain").slice("h1:".length),
+          },
+          // Left for the rotation repository: verification tolerates the null hash.
+          {
+            id: "tok-issued",
+            refresh_token: hashOpaqueToken("issued-refresh"),
+            refresh_token_hash: null,
+          },
+        ]);
         const secondPass = await applyAuthAtRestBackfill(pool, { crypto, batchSize: 10 });
         expect(secondPass.account).toBe(0);
         expect(secondPass.oauthAccessToken).toBe(0);
