@@ -58,17 +58,24 @@ jobs:
       - uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-      - name: Load auth database contract
+      - name: Load staging database contracts
         run: |
           set -euo pipefail
-          auth_url="$(
-            terraform -chdir=.infra-config/terraform/ephemeral/test output -raw database_url_auth
-          )"
+          tf_dir=.infra-config/terraform/ephemeral/test
+          auth_url="$(terraform -chdir="$tf_dir" output -raw database_url_auth)"
+          owner_url="$(terraform -chdir="$tf_dir" output -raw postgres_owner_uri)"
           test -n "$auth_url"
+          test -n "$owner_url"
           echo "::add-mask::$auth_url"
+          echo "::add-mask::$owner_url"
           echo "DATABASE_URL_AUTH=$auth_url" >> "$GITHUB_ENV"
+          echo "DATABASE_URL_OWNER=$owner_url" >> "$GITHUB_ENV"
       - name: Capture encrypted JWKS snapshot evidence
         if: inputs.mode == 'apply'
+        env:
+          JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
+          SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
         run: pnpm tsx scripts/jwks-snapshot.ts test
       - name: Inventory auth at-rest state
         if: inputs.mode == 'inventory' || inputs.mode == 'apply'
