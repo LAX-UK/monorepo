@@ -13,7 +13,17 @@ function rateLimited(c: Context, retryAfterSec: number) {
   return c.json({ error: "Too many requests", code: "rate_limited", retryAfterSec }, 429);
 }
 
-async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
+type SlidingWindowAttempt = {
+  count: number;
+  key: string;
+  member: string;
+};
+
+async function slidingIncrementTracked(
+  redis: Redis,
+  key: string,
+  windowSec: number,
+): Promise<SlidingWindowAttempt> {
   const now = Date.now();
   const minScore = now - windowSec * 1000;
   const member = `${now}:${randomUUID()}`;
@@ -24,7 +34,15 @@ async function slidingIncrement(redis: Redis, key: string, windowSec: number): P
   pipeline.zcard(key);
   const results = await pipeline.exec();
   const card = results?.[3]?.[1];
-  return typeof card === "number" ? card : Number(card ?? 0);
+  return {
+    count: typeof card === "number" ? card : Number(card ?? 0),
+    key,
+    member,
+  };
+}
+
+async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
+  return (await slidingIncrementTracked(redis, key, windowSec)).count;
 }
 
 async function emailFromJsonBody(req: Request): Promise<string | null> {
@@ -155,34 +173,52 @@ export function createAuthIssuerRateLimitMiddleware(redis: Redis, clientIp: Clie
     }
 
     if (isSignIn && c.req.method === "POST") {
+      const attempts: SlidingWindowAttempt[] = [];
       const email = await emailFromJsonBody(c.req.raw);
       if (email) {
         const emailKey = `rl:auth-issuer:signin-email:${email}`;
-        const emailCount = await slidingIncrement(redis, emailKey, RL.signInEmailWindowSec);
-        if (emailCount > RL.signInEmailMax) {
+        const emailAttempt = await slidingIncrementTracked(
+          redis,
+          emailKey,
+          RL.signInEmailWindowSec,
+        );
+        attempts.push(emailAttempt);
+        if (emailAttempt.count > RL.signInEmailMax) {
           const retryAfterSec = await slidingWindowRetryAfterSec(
             redis,
             emailKey,
             RL.signInEmailWindowSec,
-            emailCount,
+            emailAttempt.count,
             RL.signInEmailMax,
           );
           return rateLimited(c, retryAfterSec);
         }
       }
+
+      const ipKey = `rl:auth-issuer:signin:${ip}`;
+      const ipAttempt = await slidingIncrementTracked(redis, ipKey, RL.signInWindowSec);
+      attempts.push(ipAttempt);
+      if (ipAttempt.count > RL.signInMax) {
+        const retryAfterSec = await slidingWindowRetryAfterSec(
+          redis,
+          ipKey,
+          RL.signInWindowSec,
+          ipAttempt.count,
+          RL.signInMax,
+        );
+        return rateLimited(c, retryAfterSec);
+      }
+
+      await next();
+      if (c.res.status < 400) {
+        await Promise.all(attempts.map((attempt) => redis.zrem(attempt.key, attempt.member)));
+      }
+      return;
     }
 
-    const key = isSignIn
-      ? `rl:auth-issuer:signin:${ip}`
-      : isSessionRead
-        ? `rl:auth-issuer:session-read:${ip}`
-        : `rl:auth-issuer:${ip}`;
-    const windowSec = isSignIn
-      ? RL.signInWindowSec
-      : isSessionRead
-        ? RL.sessionReadWindowSec
-        : RL.authGeneralWindowSec;
-    const max = isSignIn ? RL.signInMax : isSessionRead ? RL.sessionReadMax : RL.authGeneralMax;
+    const key = isSessionRead ? `rl:auth-issuer:session-read:${ip}` : `rl:auth-issuer:${ip}`;
+    const windowSec = isSessionRead ? RL.sessionReadWindowSec : RL.authGeneralWindowSec;
+    const max = isSessionRead ? RL.sessionReadMax : RL.authGeneralMax;
     const n = await slidingIncrement(redis, key, windowSec);
     if (n > max) {
       const retryAfterSec = await slidingWindowRetryAfterSec(redis, key, windowSec, n, max);
