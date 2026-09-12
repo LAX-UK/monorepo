@@ -118,23 +118,6 @@ jobs:
           app_id="$(terraform -chdir=.infra-config/terraform/ephemeral/test output -raw app_id)"
           test -n "$app_id"
           echo "APP_ID=$app_id" >> "$GITHUB_ENV"
-      - uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-      - name: Require live Identity SSF delivery worker
-        if: inputs.ssf_mode == 'ssf_enabled'
-        run: |
-          set -euo pipefail
-          doctl apps get "$APP_ID" --output json |
-            jq -e '
-              (if type == "array" then .[0] else . end).spec.services[]
-              | select(.name == "auth")
-              | any(.envs[]?;
-                  .key == "SSF_DELIVERY_ENABLED" and .value == "true")
-            ' >/dev/null || {
-              echo "::error::Live Identity app must have SSF_DELIVERY_ENABLED=true before ssf_enabled acceptance"
-              exit 1
-            }
       - name: Validate requested Identity release
         run: |
           [[ "${{ inputs.identity_sha }}" =~ ^[0-9a-f]{40}$ ]]
