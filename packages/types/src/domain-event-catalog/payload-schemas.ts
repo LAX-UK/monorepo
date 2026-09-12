@@ -3,6 +3,7 @@ import { z } from "zod";
 /** Default v1 payload when no stricter contract is frozen yet. */
 export const looseDomainEventPayloadV1 = z.record(z.string(), z.unknown());
 export const emptyDomainEventPayloadV1 = z.object({}).strict();
+const rfc3339Timestamp = z.string().datetime({ offset: true });
 
 export const userRegisteredPayloadSchemaV1 = z.object({
   userId: z.string(),
@@ -12,7 +13,7 @@ export const userRegisteredPayloadSchemaV1 = z.object({
   image: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   emailVerified: z.boolean().optional(),
-  createdAt: z.string().datetime().optional(),
+  createdAt: rfc3339Timestamp.optional(),
 });
 
 export const userProfileUpdatedPayloadSchemaV1 = z.object({
@@ -22,52 +23,52 @@ export const userProfileUpdatedPayloadSchemaV1 = z.object({
   name: z.string().optional(),
   phone: z.string().nullable().optional(),
   image: z.string().nullable().optional(),
-  updatedAt: z.string().datetime(),
+  updatedAt: rfc3339Timestamp,
 });
 
 export const userDeletionRequestedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),
-  requestedAt: z.string().datetime(),
+  requestedAt: rfc3339Timestamp,
 });
 
 export const userDeletionCancelledPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),
-  cancelledAt: z.string().datetime(),
+  cancelledAt: rfc3339Timestamp,
 });
 
 export const userIdentityDisabledPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),
-  disabledAt: z.string().datetime(),
+  disabledAt: rfc3339Timestamp,
   reason: z.string().optional(),
 });
 
 export const userIdentityEnabledPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),
-  enabledAt: z.string().datetime(),
+  enabledAt: rfc3339Timestamp,
 });
 
 export const userIdentityMergedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),
   retiredSubjectId: z.string(),
-  mergedAt: z.string().datetime(),
+  mergedAt: rfc3339Timestamp,
 });
 
 export const userIdentityDeletedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),
-  deletedAt: z.string().datetime(),
+  deletedAt: rfc3339Timestamp,
 });
 
 export const userSessionRevokedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),
   sessionId: z.string().optional(),
-  revokedAt: z.string().datetime(),
+  revokedAt: rfc3339Timestamp,
 });
 
 export const userCredentialChangedPayloadSchemaV1 = z.object({
@@ -75,13 +76,13 @@ export const userCredentialChangedPayloadSchemaV1 = z.object({
   subjectId: z.string(),
   credentialType: z.literal("password"),
   changeType: z.enum(["create", "update", "revoke", "delete"]),
-  changedAt: z.string().datetime(),
+  changedAt: rfc3339Timestamp,
 });
 
 export const userEmailVerifiedPayloadSchemaV1 = z.object({
   userId: z.string(),
   email: z.string(),
-  verifiedAt: z.string().datetime(),
+  verifiedAt: rfc3339Timestamp,
 });
 
 export const bidFirstForUserPayloadSchemaV1 = z.object({
@@ -89,7 +90,7 @@ export const bidFirstForUserPayloadSchemaV1 = z.object({
   lotId: z.string().uuid(),
   userId: z.string(),
   amountCents: z.number().int().nonnegative(),
-  placedAt: z.string().datetime(),
+  placedAt: rfc3339Timestamp,
 });
 
 export const bidOutbidPayloadSchemaV1 = z.object({
@@ -104,7 +105,7 @@ export const bidLotWonPayloadSchemaV1 = z.object({
   userId: z.string(),
   winningBidId: z.string().uuid(),
   amountCents: z.number().int().nonnegative(),
-  endedAt: z.string().datetime(),
+  endedAt: rfc3339Timestamp,
 });
 
 export const amlScreeningPayloadSchemaV1 = z.object({

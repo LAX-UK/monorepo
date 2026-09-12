@@ -107,7 +107,7 @@ describe("processBidProfileProvisioning", () => {
 
   it("strictly parses registration and provisions from its Identity timestamp", async () => {
     const advanceCursor = vi.fn();
-    const createdAt = "2026-08-20T08:00:00.000Z";
+    const createdAt = "2026-08-20T08:00:00+00:00";
     const ctx = {
       projectorStateRepo: {
         ensureCursor: vi.fn(),

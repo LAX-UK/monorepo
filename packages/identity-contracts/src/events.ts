@@ -15,6 +15,7 @@ export const IDENTITY_EVENT_TYPES = {
 } as const;
 
 export type IdentityEventType = (typeof IDENTITY_EVENT_TYPES)[keyof typeof IDENTITY_EVENT_TYPES];
+const rfc3339Timestamp = z.string().datetime({ offset: true });
 
 const identityEventBaseSchemaV1 = z.object({
   schemaVersion: z.literal(IDENTITY_EVENT_SCHEMA_VERSION),
@@ -26,44 +27,44 @@ export const userProfileUpdatedPayloadSchemaV1 = identityEventBaseSchemaV1.exten
   name: z.string().optional(),
   phone: z.string().nullable().optional(),
   image: z.string().nullable().optional(),
-  updatedAt: z.string().datetime(),
+  updatedAt: rfc3339Timestamp,
 });
 
 export const userDeletionRequestedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
-  requestedAt: z.string().datetime(),
+  requestedAt: rfc3339Timestamp,
 });
 
 export const userDeletionCancelledPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
-  cancelledAt: z.string().datetime(),
+  cancelledAt: rfc3339Timestamp,
 });
 
 export const userIdentityDisabledPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
-  disabledAt: z.string().datetime(),
+  disabledAt: rfc3339Timestamp,
   reason: z.string().optional(),
 });
 
 export const userIdentityEnabledPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
-  enabledAt: z.string().datetime(),
+  enabledAt: rfc3339Timestamp,
 });
 
 export const userIdentityMergedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
   retiredSubjectId: z.string(),
-  mergedAt: z.string().datetime(),
+  mergedAt: rfc3339Timestamp,
 });
 
 export const userSessionRevokedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
   sessionId: z.string().optional(),
-  revokedAt: z.string().datetime(),
+  revokedAt: rfc3339Timestamp,
 });
 
 export const userCredentialChangedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
   credentialType: z.literal("password"),
   changeType: z.enum(["create", "update", "revoke", "delete"]),
-  changedAt: z.string().datetime(),
+  changedAt: rfc3339Timestamp,
 });
 
 export const userIdentityDeletedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
-  deletedAt: z.string().datetime(),
+  deletedAt: rfc3339Timestamp,
 });
 
 export type UserProfileUpdatedPayloadV1 = z.infer<typeof userProfileUpdatedPayloadSchemaV1>;
