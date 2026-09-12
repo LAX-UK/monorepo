@@ -188,6 +188,7 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /Require acceptance credentials before infrastructure access/);
   assert.match(acceptance, /IDENTITY_ACCEPTANCE_EMAIL/);
   assert.match(acceptance, /IDENTITY_ACCEPTANCE_PASSWORD/);
+  assert.match(acceptance, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
   assert.match(acceptance, /ssf_mode:/);
   assert.match(acceptance, /ssf_disabled/);
   assert.match(acceptance, /ssf_enabled/);

@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
       AUTH_BASE_URL: https://test-auth.lax.bid
       API_BASE_URL: https://test-api.lax.bid
       WEB_ORIGIN: https://test.lax.bid
