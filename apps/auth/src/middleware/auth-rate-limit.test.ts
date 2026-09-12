@@ -13,6 +13,7 @@ function buildFakeRedis(counts: number[]) {
   let call = 0;
   return {
     zrange: vi.fn(async () => [String(Date.now() - 1_000)]),
+    zrem: vi.fn(async () => 1),
     multi: vi.fn(() => ({
       zadd: vi.fn().mockReturnThis(),
       zremrangebyscore: vi.fn().mockReturnThis(),
@@ -138,37 +139,46 @@ describe("OAuth token endpoint rate limit", () => {
 });
 
 describe("sign-in rate limit", () => {
-  function createSignInApp(counts: number[]) {
+  function createSignInApp(counts: number[], responseStatus = 200) {
     const app = new Hono();
-    app.use(
-      "/api/auth/*",
-      createAuthIssuerRateLimitMiddleware(buildFakeRedis(counts) as never, clientIp),
+    const redis = buildFakeRedis(counts);
+    app.use("/api/auth/*", createAuthIssuerRateLimitMiddleware(redis as never, clientIp));
+    app.post("/api/auth/sign-in/email", (c) =>
+      c.json({ ok: responseStatus < 400 }, responseStatus as 200),
     );
-    app.post("/api/auth/sign-in/email", (c) => c.json({ ok: true }));
-    return app;
+    return { app, redis };
   }
 
   it("blocks repeated attempts for one normalized email", async () => {
-    const response = await createSignInApp([AUTH_RATE_LIMIT_POLICY.signInEmailMax + 1]).request(
-      "/api/auth/sign-in/email",
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: " USER@example.com " }),
-      },
-    );
+    const { app, redis } = createSignInApp([AUTH_RATE_LIMIT_POLICY.signInEmailMax + 1]);
+    const response = await app.request("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: " USER@example.com " }),
+    });
     expect(response.status).toBe(429);
+    expect(redis.zrem).not.toHaveBeenCalled();
   });
 
-  it("allows a valid attempt below the email and shared-IP limits", async () => {
-    const response = await createSignInApp([1, AUTH_RATE_LIMIT_POLICY.signInMax]).request(
-      "/api/auth/sign-in/email",
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: "user@example.com" }),
-      },
-    );
+  it("removes a valid attempt from the email and shared-IP failure buckets", async () => {
+    const { app, redis } = createSignInApp([1, AUTH_RATE_LIMIT_POLICY.signInMax]);
+    const response = await app.request("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "user@example.com" }),
+    });
     expect(response.status).toBe(200);
+    expect(redis.zrem).toHaveBeenCalledTimes(2);
+  });
+
+  it("retains a rejected sign-in in both failure buckets", async () => {
+    const { app, redis } = createSignInApp([1, 1], 401);
+    const response = await app.request("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "user@example.com" }),
+    });
+    expect(response.status).toBe(401);
+    expect(redis.zrem).not.toHaveBeenCalled();
   });
 });
