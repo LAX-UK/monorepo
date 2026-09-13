@@ -4,6 +4,8 @@
  * Requires gh CLI and repository maintainer permissions.
  */
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 const required = [
   "IDENTITY_SHA",
@@ -12,6 +14,7 @@ const required = [
   "SHOP_IDENTITY_DIGEST",
   "SHOP_SHA",
   "SHOP_DIGEST",
+  "INFRA_SHA",
 ];
 
 for (const name of required) {
@@ -20,14 +23,21 @@ for (const name of required) {
   }
 }
 
+const gitHead = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" });
+if (gitHead.status !== 0) throw new Error("Unable to resolve the monorepo HEAD");
+const monorepoSha = process.env.MONOREPO_SHA ?? gitHead.stdout.trim();
+const migrationJournalSha = createHash("sha256")
+  .update(readFileSync("packages/db/drizzle/meta/_journal.json"))
+  .digest("hex");
+
 const rollbackManifest = JSON.stringify({
   version: 1,
   repository: "LAX-UK/monorepo",
-  monorepoSha: process.env.MONOREPO_SHA ?? process.env.IDENTITY_SHA,
-  infraSha: process.env.INFRA_SHA ?? "main",
+  monorepoSha,
+  infraSha: process.env.INFRA_SHA,
   migrationJournal: {
     tip: "0161_revoke_api_user_reads",
-    sha256: process.env.MIGRATION_JOURNAL_SHA256 ?? "",
+    sha256: process.env.MIGRATION_JOURNAL_SHA256 ?? migrationJournalSha,
   },
   dataContractVersion: "identity-v1",
   enableAuthSsfDelivery: true,
