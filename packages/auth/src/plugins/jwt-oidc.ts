@@ -8,11 +8,7 @@ import type { EnvelopeCrypto } from "../crypto/envelope.js";
 import { pickMagicLinkTemplate } from "../magic-link-email.js";
 import { buildMagicLinkVerifyPlugin } from "../magic-link-verify-hooks.js";
 import { buildOidcConsentHtml } from "../oidc-consent-html.js";
-import {
-  buildPhoneNumberGuardPlugin,
-  buildPhoneNumberPlugin,
-  buildPhoneNumberRateLimitPlugin,
-} from "../phone-number-plugin.js";
+import { buildPhoneNumberGuardPlugin, buildPhoneNumberPlugin } from "../phone-number-plugin.js";
 import type {
   AccountLinkReader,
   EmailSender,
@@ -158,7 +154,6 @@ export function buildJwtAndOidcPlugins(options: {
       phoneVerification,
       email,
     }),
-    buildPhoneNumberRateLimitPlugin(),
     buildPhoneNumberGuardPlugin(options.phoneNumberStore),
   ];
 }

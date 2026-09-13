@@ -167,6 +167,11 @@ export function createAuth(env: AuthEnv): Auth {
     basePath: "/api/auth",
     trustedOrigins: env.trustedOrigins,
     database: env.database,
+    // Rate limiting is enforced once, at the issuer boundary, by the
+    // Redis-backed createAuthIssuerRateLimitMiddleware using
+    // AUTH_RATE_LIMIT_POLICY. Better Auth's production default is an
+    // independent per-process memory limiter and must remain disabled.
+    rateLimit: { enabled: false },
     socialProviders,
     account: {
       accountLinking: {

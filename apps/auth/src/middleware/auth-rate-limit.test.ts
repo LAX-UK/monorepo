@@ -138,6 +138,103 @@ describe("OAuth token endpoint rate limit", () => {
   });
 });
 
+describe("issuer-owned sensitive endpoint rate limits", () => {
+  const cases = [
+    {
+      path: "/api/auth/sign-up/email",
+      max: AUTH_RATE_LIMIT_POLICY.registerIpMax,
+      body: { email: "new@example.com", password: "secret-password" },
+    },
+    {
+      path: "/api/auth/request-password-reset",
+      max: AUTH_RATE_LIMIT_POLICY.forgotIpMax,
+      body: { email: "user@example.com" },
+    },
+    {
+      path: "/api/auth/forget-password",
+      max: AUTH_RATE_LIMIT_POLICY.forgotIpMax,
+      body: { email: "user@example.com" },
+    },
+    {
+      path: "/api/auth/change-password",
+      max: AUTH_RATE_LIMIT_POLICY.setupPasswordMax,
+      body: { currentPassword: "old", newPassword: "new" },
+    },
+    {
+      path: "/api/auth/change-email",
+      max: AUTH_RATE_LIMIT_POLICY.confirmEmailChangeMax,
+      body: { newEmail: "new@example.com" },
+    },
+    {
+      path: "/api/auth/phone-number/send-otp",
+      max: AUTH_RATE_LIMIT_POLICY.phoneSendOtpMax,
+      body: { phoneNumber: "+14155550100" },
+    },
+  ];
+
+  it.each(cases)("allows $path below its Redis threshold", async ({ path, body }) => {
+    const app = new Hono();
+    app.use(
+      "/api/auth/*",
+      createAuthIssuerRateLimitMiddleware(buildFakeRedis([1, 1]) as never, clientIp),
+    );
+    app.post(path, (c) => c.json({ ok: true }));
+
+    const response = await app.request(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it.each(cases)("blocks $path above its Redis threshold", async ({ path, max, body }) => {
+    const app = new Hono();
+    app.use(
+      "/api/auth/*",
+      createAuthIssuerRateLimitMiddleware(buildFakeRedis([max + 1]) as never, clientIp),
+    );
+    app.post(path, (c) => c.json({ ok: true }));
+
+    const response = await app.request(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    expect(response.status).toBe(429);
+    expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
+  });
+
+  it.each([
+    {
+      path: "/api/auth/sign-up/email",
+      max: AUTH_RATE_LIMIT_POLICY.registerEmailMax,
+    },
+    {
+      path: "/api/auth/request-password-reset",
+      max: AUTH_RATE_LIMIT_POLICY.forgotEmailMax,
+    },
+  ])("enforces the normalized email bucket for $path", async ({ path, max }) => {
+    const app = new Hono();
+    app.use(
+      "/api/auth/*",
+      createAuthIssuerRateLimitMiddleware(buildFakeRedis([1, max + 1]) as never, clientIp),
+    );
+    app.post(path, (c) => c.json({ ok: true }));
+
+    const response = await app.request(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: " USER@example.com " }),
+    });
+
+    expect(response.status).toBe(429);
+    expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
+  });
+});
+
 describe("sign-in rate limit", () => {
   function createSignInApp(counts: number[], responseStatus = 200) {
     const app = new Hono();
@@ -180,5 +277,20 @@ describe("sign-in rate limit", () => {
     });
     expect(response.status).toBe(401);
     expect(redis.zrem).not.toHaveBeenCalled();
+  });
+
+  it("allows four successful sign-ins from one IP inside ten seconds", async () => {
+    const { app, redis } = createSignInApp(Array.from({ length: 8 }, () => 1));
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const response = await app.request("/api/auth/sign-in/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: `user-${attempt}@example.com` }),
+      });
+      expect(response.status).toBe(200);
+    }
+
+    expect(redis.zrem).toHaveBeenCalledTimes(8);
   });
 });

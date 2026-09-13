@@ -4,7 +4,7 @@ import {
   InvalidPhoneNumberError,
   PhoneVerificationRateLimitedError,
 } from "./phone-number-errors.js";
-import { buildPhoneNumberPlugin, buildPhoneNumberRateLimitPlugin } from "./phone-number-plugin.js";
+import { buildPhoneNumberPlugin } from "./phone-number-plugin.js";
 import type { PhoneNumberStore } from "./ports/phone-number-store.js";
 import type { SmsSender } from "./ports/sms-sender.js";
 
@@ -96,16 +96,6 @@ describe("buildPhoneNumberPlugin", () => {
     });
     expect(valid).toBe(false);
     expect(phoneVerification.checkOtp).toHaveBeenCalledWith("+14155550100", "123456");
-  });
-});
-
-describe("buildPhoneNumberRateLimitPlugin", () => {
-  it("throttles send-otp path", () => {
-    const plugin = buildPhoneNumberRateLimitPlugin();
-    const rule = plugin.rateLimit?.[0];
-    expect(rule?.pathMatcher?.("/phone-number/send-otp")).toBe(true);
-    expect(rule?.max).toBe(5);
-    expect(rule?.window).toBe(60);
   });
 });
 

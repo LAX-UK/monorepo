@@ -87,6 +87,17 @@ describe("createAuth", () => {
     ).not.toThrow();
   });
 
+  it("disables Better Auth's per-process rate limiter", async () => {
+    const auth = createAuth({
+      database: mockAuthDatabase(),
+      ports: mockAuthPorts(),
+      secret: "test-secret-that-is-long-enough",
+      baseURL: "https://auth.example.com",
+    });
+
+    expect((await auth.$context).rateLimit.enabled).toBe(false);
+  });
+
   it("rejects credential writes from an untrusted browser origin", async () => {
     const auth = createAuth({
       database: mockAuthDatabase(),

@@ -102,19 +102,6 @@ export function buildPhoneNumberPlugin(options: {
   });
 }
 
-export function buildPhoneNumberRateLimitPlugin(): BetterAuthPlugin {
-  return {
-    id: "phone-number-rate-limit",
-    rateLimit: [
-      {
-        pathMatcher: (path) => path === "/phone-number/send-otp",
-        max: 5,
-        window: 60,
-      },
-    ],
-  } satisfies BetterAuthPlugin;
-}
-
 export function buildPhoneNumberGuardPlugin(phoneNumberStore: PhoneNumberStore): BetterAuthPlugin {
   return {
     id: "phone-number-guard",

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { describeRejection } from "./http-diagnostics.mjs";
+
 const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
 const clientId = process.env.IDENTITY_MACHINE_CLIENT_ID;
 const clientSecret = process.env.IDENTITY_MACHINE_CLIENT_SECRET;
@@ -78,7 +80,9 @@ async function main() {
     body: JSON.stringify({ email: "nobody@example.invalid", password: "invalid" }),
   });
   if (forgedOrigin.status !== 403) {
-    throw new Error(`forged browser origin was not rejected (${forgedOrigin.status})`);
+    throw new Error(
+      `forged browser origin was not rejected: ${await describeRejection(forgedOrigin)}`,
+    );
   }
 
   let limited = false;

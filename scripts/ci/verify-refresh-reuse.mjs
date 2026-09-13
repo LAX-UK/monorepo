@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createHash, randomBytes } from "node:crypto";
+import { describeRejection } from "./http-diagnostics.mjs";
 import { readAuthorizeOutcome } from "./oidc-authorize-response.mjs";
 
 const authBase = (process.env.AUTH_BASE_URL ?? "http://localhost:3003").replace(/\/+$/, "");
@@ -106,7 +107,7 @@ async function main() {
     body: JSON.stringify({ email, password }),
   });
   captureCookies(signIn, cookies);
-  if (!signIn.ok) throw new Error(`sign-in failed (${signIn.status})`);
+  if (!signIn.ok) throw new Error(`sign-in failed: ${await describeRejection(signIn)}`);
 
   const missingVerifier = randomBytes(32).toString("base64url");
   const missingVerifierCode = await issueAuthorizationCode(cookies, missingVerifier);
