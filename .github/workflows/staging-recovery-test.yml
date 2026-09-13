@@ -61,12 +61,11 @@ jobs:
               exit 1
             }
             jq -e '
-              [.identity, .shopIdentity, .shop] |
-              all(
+              (.enableAuthSsfDelivery | type == "boolean") and
+              ([.identity, .shopIdentity, .shop] | all(
                 (.sha | test("^[0-9a-f]{40}$")) and
                 (.digest | test("^sha256:[0-9a-f]{64}$"))
-              ) and
-              (.enableAuthSsfDelivery | type == "boolean")
+              ))
             ' <<<"$ROLLBACK_MANIFEST" >/dev/null
           fi
 

@@ -128,25 +128,48 @@ rollback, restore, and soak gates remain required.
 
 Record command, UTC timestamp, sanitized output artifact, and operator for each:
 
-- [ ] Discovery/JWKS HTTPS, issuer, headers, keys, and API retired routes.
-- [ ] Bid login, callback, host-only session, BFF resource request, exchanged
+- [x] Discovery/JWKS HTTPS, issuer, headers, keys, and API retired routes.
+- [x] Bid login, callback, host-only session, BFF resource request, exchanged
       `lax-bid-api` audience/scopes, refresh, and negative PKCE.
-- [ ] Shop cold login, SSO, local session, projection, and logout isolation.
-- [ ] Machine token issue, introspection, revocation, expiry, and rate limits.
-- [ ] RFC 8693 valid and invalid audience/scope exchanges.
-- [ ] Forged-origin/CSRF and browser-cookie-as-Bearer rejection.
-- [ ] Bid and Shop back-channel logout delivery, retry, and replay.
-- [ ] SSF verification while disabled; controlled enablement, SET delivery,
+- [x] Shop cold login, SSO, local session, projection, and logout isolation.
+- [x] Machine token issue, introspection, revocation, expiry, and rate limits.
+- [x] RFC 8693 valid and invalid audience/scope exchanges.
+- [x] Forged-origin/CSRF and browser-cookie-as-Bearer rejection.
+- [x] Bid and Shop back-channel logout delivery, retry, and replay.
+- [x] SSF verification while disabled; controlled enablement, SET delivery,
       retry, dead-letter, and replay.
-- [ ] Directory/profile reconciliation has zero drift and pending events.
-- [ ] Lifecycle outbox/projector lag is within the signed threshold.
-- [ ] Live auth/API/Shop/worker role contracts are green.
-- [ ] Metrics/dashboard and Sentry signals are visible for the Identity SHA.
+- [x] Directory/profile reconciliation has zero drift and pending events.
+- [x] Lifecycle outbox/projector lag is within the signed threshold.
+- [x] Live auth/API/Shop/worker role contracts are green.
+- [x] Metrics/dashboard and Sentry signals are visible for the Identity SHA.
+
+### Post-cutover acceptance bundle (2026-09-13 UTC)
+
+Monorepo `main` at `af0a1e312`; staging migrations through **0161**
+(`identity_user_read_cutover head=0161`, `worker_user_select=revoked`,
+`api_user_select=revoked`). SSF delivery enabled on staging.
+
+| Gate | Run | Result |
+|---|---|---|
+| SSF-disabled acceptance (2×) | [34752380423](https://github.com/LAX-UK/monorepo/actions/runs/34752380423), [34752522322](https://github.com/LAX-UK/monorepo/actions/runs/34752522322) | Green |
+| SSF enable (Terraform) | [34754667390](https://github.com/LAX-UK/monorepo/actions/runs/34754667390) | Green |
+| SSF-enabled acceptance (main) | [34759234863](https://github.com/LAX-UK/monorepo/actions/runs/34759234863) | Green |
+| Migration promotion 0160 | [34759745620](https://github.com/LAX-UK/monorepo/actions/runs/34759745620) | Green |
+| Migration promotion 0161 | [34760146208](https://github.com/LAX-UK/monorepo/actions/runs/34760146208) | Green |
+| SSF-enabled acceptance (post-0161) | [34760340032](https://github.com/LAX-UK/monorepo/actions/runs/34760340032) | Green |
+
+Accepted image contract:
+
+| Component | SHA | Digest |
+|---|---|---|
+| Identity | `933c947faa922ebb7374db2aea9b09d7ba0b344c` | `sha256:2e23cf9d0b075e7645774ca2f8c229935ae4fa55138a33d1eaa184c2768e35a4` |
+| Shop identity | `20a9a335b9f8d6686b52092af06f2f185373ca57` | `sha256:69067e6c02b11564baaba7107dfcc832ff528fa6cbbbb975efb6fd15a776e434` |
+| Shop | `20a9a335b9f8d6686b52092af06f2f185373ca57` | `sha256:c3b589069599c65eca718a97cdf94890c788e7db7fe270729faec2176cbd1465` |
 
 ## Soak
 
-- Start UTC:
-- End UTC:
+- Start UTC: **2026-09-13T13:39:52Z** (post-0161 SSF-enabled acceptance green)
+- End UTC: pending (minimum 24h; extend to 72h if traffic is insufficient)
 - Total observed traffic by login/refresh/token operation:
 - [ ] At least 24 hours observed.
 - [ ] Extend to 72 hours if traffic is insufficient for the approved sample.
