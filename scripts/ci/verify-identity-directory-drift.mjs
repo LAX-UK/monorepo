@@ -40,6 +40,19 @@ try {
     SELECT
       count(*) FILTER (WHERE d.subject_id IS NULL)::int AS missing_rows,
       count(*) FILTER (WHERE u.id IS NULL)::int AS orphan_rows,
+      count(*) FILTER (WHERE d.email IS DISTINCT FROM u.email)::int AS email_mismatches,
+      count(*) FILTER (WHERE d.name IS DISTINCT FROM u.name)::int AS name_mismatches,
+      count(*) FILTER (WHERE d.image IS DISTINCT FROM u.image)::int AS image_mismatches,
+      count(*) FILTER (WHERE d.phone IS DISTINCT FROM u.phone_number)::int AS phone_mismatches,
+      count(*) FILTER (
+        WHERE d.email_verified IS DISTINCT FROM u.email_verified
+      )::int AS email_verified_mismatches,
+      count(*) FILTER (
+        WHERE d.deletion_requested_at IS DISTINCT FROM u.deletion_requested_at
+      )::int AS deletion_requested_at_mismatches,
+      count(*) FILTER (
+        WHERE d.identity_created_at IS DISTINCT FROM u.created_at
+      )::int AS identity_created_at_mismatches,
       count(*) FILTER (
         WHERE u.id IS NOT NULL
           AND d.subject_id IS NOT NULL
@@ -118,6 +131,15 @@ try {
   const missing = Number(source.missing_rows ?? 0);
   const orphan = Number(source.orphan_rows ?? 0);
   const mismatched = Number(source.mismatched_rows ?? 0);
+  const mismatchFields = [
+    ["email", Number(source.email_mismatches ?? 0)],
+    ["name", Number(source.name_mismatches ?? 0)],
+    ["image", Number(source.image_mismatches ?? 0)],
+    ["phone", Number(source.phone_mismatches ?? 0)],
+    ["email_verified", Number(source.email_verified_mismatches ?? 0)],
+    ["deletion_requested_at", Number(source.deletion_requested_at_mismatches ?? 0)],
+    ["identity_created_at", Number(source.identity_created_at_mismatches ?? 0)],
+  ];
   const invalidAliases = Number(source.invalid_alias_rows ?? 0);
   const cursorRows = Number(projector.cursor_rows ?? 0);
   const pending = Number(projector.pending_events ?? 0);
@@ -129,6 +151,7 @@ try {
       `missing=${missing}`,
       `orphan=${orphan}`,
       `mismatched=${mismatched}`,
+      `mismatch_fields=${mismatchFields.map(([field, count]) => `${field}:${count}`).join(",")}`,
       `invalid_alias=${invalidAliases}`,
       `cursor_rows=${cursorRows}`,
       `pending_events=${pending}`,
