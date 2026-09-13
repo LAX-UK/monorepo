@@ -126,8 +126,7 @@ async function main() {
   run("pnpm", ["--filter", "@auction/db", "db:roles"], "Apply roles");
   run("pnpm", ["--filter", "@auction/db", "db:configure-oidc-clients"], "Configure OIDC clients");
   run("node", ["scripts/ci/seed-identity-acceptance-fixtures.mjs"], "Seed OAuth fixtures");
-  process.env.AUTH_DEK_KEY ??=
-    "0707070707070707070707070707070707070707070707070707070707070707";
+  process.env.AUTH_DEK_KEY ??= "0707070707070707070707070707070707070707070707070707070707070707";
   run(
     "pnpm",
     ["--filter", "@auction/db", "db:backfill-auth-at-rest", "--", "--apply"],
