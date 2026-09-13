@@ -222,21 +222,6 @@ async function existingPublicTables(client: pg.Client): Promise<string[]> {
   return res.rows.map((row) => row.table_name);
 }
 
-async function hasTablePrivilege(
-  client: pg.Client,
-  role: RoleName,
-  tableName: string,
-  privilege: "SELECT",
-  schemaName = "public",
-): Promise<boolean> {
-  if (!(await tableExists(client, tableName, schemaName))) return false;
-  const res = await client.query<{ allowed: boolean }>(
-    "select has_table_privilege($1, $2, $3) as allowed",
-    [role, `${quoteIdent(schemaName)}.${quoteIdent(tableName)}`, privilege],
-  );
-  return Boolean(res.rows[0]?.allowed);
-}
-
 async function ensureRole(client: pg.Client, role: RoleName): Promise<void> {
   const password = process.env[ROLE_PASSWORD_ENV[role]];
   const exists = await client.query<{ exists: boolean }>(
@@ -325,12 +310,6 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       await ensureRole(client, role);
       await client.query(`grant usage on schema public to ${quoteIdent(role)}`);
     }
-
-    // public.user is migration-controlled for worker_app and api_app. Preserve
-    // each soak grant across this script's global reset, but do not recreate it
-    // after migration 0160 or 0161 respectively has revoked it.
-    const restoreWorkerUserSelect = await hasTablePrivilege(client, "worker_app", "user", "SELECT");
-    const restoreApiUserSelect = await hasTablePrivilege(client, "api_app", "user", "SELECT");
 
     for (const role of roles) {
       await client.query(
@@ -478,13 +457,6 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     for (const tableName of API_READ_TABLES) {
       await grantIfExists(client, "api_app", tableName, "SELECT");
     }
-    if (restoreWorkerUserSelect) {
-      await grantIfExists(client, "worker_app", "user", "SELECT");
-    }
-    if (restoreApiUserSelect) {
-      await grantIfExists(client, "api_app", "user", "SELECT");
-    }
-
     for (const role of ["auth_app", "api_app", "worker_app"] as const) {
       await grantSequences(client, role, "public");
     }

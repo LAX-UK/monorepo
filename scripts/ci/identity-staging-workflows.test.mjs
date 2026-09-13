@@ -137,6 +137,18 @@ test("directory repair is approved maintenance, never acceptance self-healing", 
   assert.doesNotMatch(acceptance, /reconcile-identity-directory\.mjs --apply/);
 });
 
+test("role repair is reviewed maintenance with post-apply verification", () => {
+  const maintenance = read(".github/workflows/identity-role-maintenance-test.yml");
+
+  assert.match(maintenance, /confirm_review/);
+  assert.match(maintenance, /environment: test/);
+  assert.match(maintenance, /pnpm --filter @auction\/db db:roles/);
+  assert.match(maintenance, /pnpm --filter @auction\/db test:auth-role-contract/);
+  assert.match(maintenance, /pnpm --filter @auction\/db test:api-role-contract/);
+  assert.match(maintenance, /pnpm --filter @auction\/db test:shop-role-contract/);
+  assert.match(maintenance, /pnpm --filter @auction\/db test:worker-role-contract/);
+});
+
 test("build images emits a release manifest artifact", () => {
   const workflow = read(".github/workflows/build-images.yml");
   const writer = read("scripts/ci/write-release-manifest.mjs");
