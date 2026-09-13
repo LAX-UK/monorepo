@@ -328,6 +328,7 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
     browserGates,
     /\.github\/workflows\/identity-staging-acceptance\.yml/,
   );
+  assert.match(browserGates, /scripts\/ci\/verify-identity-ssf-live\.mjs/);
   assert.match(acceptance, /ssf_mode:/);
   assert.match(acceptance, /ssf_disabled/);
   assert.match(acceptance, /ssf_enabled/);
@@ -345,7 +346,7 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
     acceptance,
     /SSF durable delivery and replay contract \(Shop receiver\)/,
   );
-  assert.match(acceptance, /db:reconcile-identity-profiles/);
+  assert.doesNotMatch(acceptance, /db:reconcile-identity-profiles/);
   assert.match(acceptance, /db:report-user-read-cutover/);
   assert.match(acceptance, /AUTH_METRICS_TOKEN/);
   assert.match(acceptance, /jwks-snapshot\.ts test --verify/);
