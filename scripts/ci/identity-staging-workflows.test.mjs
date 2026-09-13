@@ -209,7 +209,7 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
   assertOrdered(workflow, [
     "acceptance_enabled:",
     "  rollback_rehearsal:\n    if:",
-    "  restore_candidate:\n    if:",
+    "  restore_candidate:\n    #",
     "  acceptance_after_rehearsal:\n    if:",
     "  record_accepted_release:\n    needs:",
   ]);
@@ -238,6 +238,7 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /IDENTITY_RATE_LIMIT_PROBE_CLIENT_SECRET/);
   assert.match(machineProbe, /IDENTITY_RATE_LIMIT_PROBE_CLIENT_ID/);
   assert.match(browserGates, /\.github\/workflows\/identity-staging-acceptance\.yml/);
+  assert.match(browserGates, /scripts\/ci\/verify-identity-ssf-live\.mjs/);
   assert.match(acceptance, /ssf_mode:/);
   assert.match(acceptance, /ssf_disabled/);
   assert.match(acceptance, /ssf_enabled/);
@@ -246,11 +247,18 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /if: inputs\.ssf_mode == 'ssf_enabled'/);
   assert.match(acceptance, /SSF durable delivery and replay contract \(Bid receiver\)/);
   assert.match(acceptance, /SSF durable delivery and replay contract \(Shop receiver\)/);
-  assert.match(acceptance, /db:reconcile-identity-profiles/);
+  assert.doesNotMatch(acceptance, /db:reconcile-identity-profiles/);
   assert.match(acceptance, /db:report-user-read-cutover/);
   assert.match(acceptance, /AUTH_METRICS_TOKEN/);
   assert.match(acceptance, /jwks-snapshot\.ts test --verify/);
-  assert.match(acceptance, /grep -Eq '\^# \(HELP\|TYPE\) '/);
+  for (const metric of [
+    "auction_auth_refresh_rotation_outcomes_total",
+    "auction_auth_identity_lifecycle_operations_total",
+    "auction_auth_ssf_delivery_outcomes_total",
+    "auction_auth_at_rest_pending",
+  ]) {
+    assert.match(acceptance, new RegExp(metric));
+  }
   assert.doesNotMatch(acceptance, /\brg -q\b/);
   assert.doesNotMatch(machineProbe, /expiringBody\.expires_in \+ 2/);
   assert.match(acceptance, /IDENTITY_RECONCILIATION_ATTEMPTS/);

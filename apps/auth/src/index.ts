@@ -44,7 +44,9 @@ try {
   throw error;
 }
 const repositories = createAuthRepositories(db);
-const identityPorts = createIdentityAuthPorts(db, { envelope: envelope ?? undefined });
+const identityPorts = createIdentityAuthPorts(db, {
+  envelope: envelope ?? undefined,
+});
 const metrics = createAuthMetrics();
 const services = createOidcRouteServices({
   db,
@@ -90,7 +92,7 @@ const authHandler = createAuthRequestHandler({
   oidcSessions: services.oidc.sessions,
   logout: services.oidc.logout,
 });
-const schedules = createAuthSchedules({
+const schedules = await createAuthSchedules({
   db,
   log,
   identityOperations,

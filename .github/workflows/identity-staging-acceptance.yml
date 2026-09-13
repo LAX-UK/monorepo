@@ -66,6 +66,8 @@ jobs:
       SSF_DELIVERY_ENABLED: ${{ inputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
       SSF_FAILURE_REHEARSAL: ${{ inputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
+      ACCEPTANCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+      ACCEPTANCE_MANIFEST_PATH: ${{ runner.temp }}/identity-acceptance-manifest.json
     steps:
       - name: Require acceptance credentials before infrastructure access
         run: |
@@ -199,8 +201,6 @@ jobs:
             test "$attempt" -lt "$IDENTITY_RECONCILIATION_ATTEMPTS" || exit 1
             sleep "$IDENTITY_RECONCILIATION_RETRY_DELAY_SEC"
           done
-          pnpm --filter @auction/db... build
-          pnpm --filter @auction/db db:reconcile-identity-profiles
       - name: Lifecycle outbox lag
         run: |
           for attempt in $(seq 1 "$IDENTITY_RECONCILIATION_ATTEMPTS"); do
@@ -220,7 +220,10 @@ jobs:
           curl --fail --silent \
             --header "Authorization: Bearer $AUTH_METRICS_TOKEN" \
             https://test-auth.lax.bid/metrics > "$RUNNER_TEMP/auth-metrics.txt"
-          grep -Eq '^# (HELP|TYPE) ' "$RUNNER_TEMP/auth-metrics.txt"
+          grep -Eq '^auction_auth_refresh_rotation_outcomes_total' "$RUNNER_TEMP/auth-metrics.txt"
+          grep -Eq '^auction_auth_identity_lifecycle_operations_total' "$RUNNER_TEMP/auth-metrics.txt"
+          grep -Eq '^auction_auth_ssf_delivery_outcomes_total' "$RUNNER_TEMP/auth-metrics.txt"
+          grep -Eq '^auction_auth_at_rest_pending' "$RUNNER_TEMP/auth-metrics.txt"
       - name: Live database role contracts
         run: |
           pnpm --filter @auction/db db:report-user-read-cutover
@@ -228,3 +231,16 @@ jobs:
           pnpm --filter @auction/db test:api-role-contract
           pnpm --filter @auction/db test:shop-role-contract
           pnpm --filter @auction/db test:worker-role-contract
+      - name: Clean up run-scoped acceptance accounts
+        if: always()
+        run: |
+          test -s "$ACCEPTANCE_MANIFEST_PATH" || exit 0
+          pnpm tsx scripts/ci/cleanup-identity-acceptance-users.mjs
+      - name: Retain acceptance run manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: identity-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/identity-acceptance-manifest.json
+          if-no-files-found: warn
+          retention-days: 30

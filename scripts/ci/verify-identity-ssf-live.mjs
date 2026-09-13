@@ -58,7 +58,7 @@ try {
   if (!listed.ok || !Array.isArray(streams)) {
     throw new Error(`SSF stream listing failed (${listed.status}): ${JSON.stringify(streams)}`);
   }
-  let stream =
+  const stream =
     streams.find((candidate) => candidate.stream_id === provisionedStreamId) ??
     streams.find((candidate) => candidate.delivery?.endpoint_url === endpoint);
   if (!stream) {
@@ -67,33 +67,9 @@ try {
     );
   }
   if (stream.delivery?.endpoint_url !== endpoint) {
-    const stagingAuth = authBase.includes("test-auth.lax.bid");
-    if (!stagingAuth) {
-      throw new Error(
-        `Provisioned SSF stream ${stream.stream_id} points at ${stream.delivery?.endpoint_url}, expected ${endpoint}`,
-      );
-    }
-    console.log(
-      `Repairing staging SSF stream ${stream.stream_id} endpoint ${stream.delivery?.endpoint_url} -> ${endpoint}`,
+    throw new Error(
+      `Provisioned SSF stream ${stream.stream_id} points at ${stream.delivery?.endpoint_url}, expected ${endpoint}`,
     );
-    await client.query("UPDATE ssf_stream SET endpoint = $1, updated_at = now() WHERE id = $2", [
-      endpoint,
-      stream.stream_id,
-    ]);
-    const repaired = await request("/ssf/stream");
-    const repairedStreams = await body(repaired);
-    if (!repaired.ok || !Array.isArray(repairedStreams)) {
-      throw new Error(
-        `SSF stream re-list failed after endpoint repair (${repaired.status}): ${JSON.stringify(repairedStreams)}`,
-      );
-    }
-    stream =
-      repairedStreams.find((candidate) => candidate.stream_id === stream.stream_id) ?? stream;
-    if (stream.delivery?.endpoint_url !== endpoint) {
-      throw new Error(
-        `Provisioned SSF stream ${stream.stream_id} still points at ${stream.delivery?.endpoint_url} after repair, expected ${endpoint}`,
-      );
-    }
   }
 
   let probeError;

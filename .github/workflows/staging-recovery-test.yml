@@ -48,6 +48,7 @@ jobs:
   validate_inputs:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Validate recovery and rollback inputs
         env:
           RUN_ACCEPTANCE: ${{ inputs.run_acceptance }}
@@ -60,14 +61,10 @@ jobs:
               echo "::error::Rollback rehearsal requires both acceptance phases"
               exit 1
             }
-            jq -e '
-              [.identity, .shopIdentity, .shop] |
-              all(
-                (.sha | test("^[0-9a-f]{40}$")) and
-                (.digest | test("^sha256:[0-9a-f]{64}$"))
-              ) and
-              (.enableAuthSsfDelivery | type == "boolean")
-            ' <<<"$ROLLBACK_MANIFEST" >/dev/null
+            node --input-type=module -e '
+              import { parseRecoveryManifest } from "./scripts/ci/identity-recovery/manifest.mjs";
+              parseRecoveryManifest(process.env.ROLLBACK_MANIFEST);
+            '
           fi
 
   maintenance:
@@ -145,7 +142,9 @@ jobs:
     secrets: inherit
 
   restore_candidate:
-    if: inputs.rollback_rehearsal
+    # `needs` otherwise skips this job when a rollback deploy fails. Restoring the
+    # reviewed candidate is the safety action, so it must be attempted regardless.
+    if: always() && inputs.rollback_rehearsal
     needs: rollback_rehearsal
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
@@ -161,7 +160,10 @@ jobs:
     secrets: inherit
 
   acceptance_after_rehearsal:
-    if: inputs.rollback_rehearsal
+    if: >-
+      always() &&
+      inputs.rollback_rehearsal &&
+      needs.restore_candidate.result == 'success'
     needs: restore_candidate
     uses: ./.github/workflows/identity-staging-acceptance.yml
     with:

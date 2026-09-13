@@ -25,4 +25,9 @@ Residual ops blockers before full acceptance:
 4. Run Identity deploy with `stage_only=true`, then `stage_only=false` only after readiness gates pass.
 5. Run `identity-staging-acceptance.yml` in `ssf_disabled` mode, enable SSF delivery, then rerun in `ssf_enabled` mode; record 24h soak here.
 
+**2026-09-13 update:** Steps 1–5 complete on staging. SSF-disabled and SSF-enabled
+acceptance green on `main` through migration **0161**; see
+[identity-staging-extraction-evidence.md](./identity-staging-extraction-evidence.md)
+for run URLs and image contract. Soak window started **2026-09-13T13:39:52Z**.
+
 `IDENTITY_STANDALONE_CUTOVER_COMPLETE` remains **unset** until the acceptance workflow is green and soak is signed.

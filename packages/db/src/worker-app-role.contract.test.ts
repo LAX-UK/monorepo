@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
+import pg from "pg";
 import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import { WORKER_DENY_TABLES } from "./migrate-roles.js";
+import { expectTablePrivileges, readTablePrivileges } from "./role-contract/table-privileges.js";
 import {
   absenteeBid,
   bid,
@@ -16,30 +18,39 @@ import {
   payout,
   payoutLine,
 } from "./schema/index.js";
+import { buildPgConnectionConfig } from "./ssl.js";
 
 const WORKER_URL = process.env.DATABASE_URL_WORKER ?? process.env.WORKER_APP_DATABASE_URL;
+const { Client } = pg;
+
+async function withWorkerClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
+  if (!WORKER_URL) throw new Error("DATABASE_URL_WORKER is required");
+  const client = new Client(buildPgConnectionConfig(WORKER_URL));
+  await client.connect();
+  try {
+    return await fn(client);
+  } finally {
+    await client.end();
+  }
+}
 
 /** Cutover gate: worker_app can perform delivery, payment maintenance, and lifecycle writes. */
 describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
   it("has no DML privileges on Identity and receiver-local tables", async () => {
     const cutover = await readUserReadCutoverFromEnv();
-    // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
-    const db = createDb(WORKER_URL!);
-    for (const table of WORKER_DENY_TABLES) {
-      const privileges = await db.execute(sql`
-        SELECT
-          has_table_privilege(current_user, ${`public.${table}`}, 'SELECT') AS can_select,
-          has_table_privilege(current_user, ${`public.${table}`}, 'INSERT') AS can_insert,
-          has_table_privilege(current_user, ${`public.${table}`}, 'UPDATE') AS can_update,
-          has_table_privilege(current_user, ${`public.${table}`}, 'DELETE') AS can_delete
-      `);
-      expect(privileges.rows[0], `${table} head=${cutover.head}`).toMatchObject({
-        can_select: table === "user" ? !cutover.workerUserSelectRevoked : false,
-        can_insert: false,
-        can_update: false,
-        can_delete: false,
-      });
-    }
+    await withWorkerClient(async (client) => {
+      const rows = await readTablePrivileges(client, WORKER_DENY_TABLES, [
+        "SELECT",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+      ]);
+      expectTablePrivileges(rows, (row) =>
+        row.table_name === "user" && row.privilege === "SELECT"
+          ? !cutover.workerUserSelectRevoked
+          : false,
+      );
+    });
   });
 
   it("has the DML required by each product identity projection", async () => {
