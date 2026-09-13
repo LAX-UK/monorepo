@@ -41,6 +41,7 @@ const baseEnv = {
   IDENTITY_MACHINE_CLIENT_ID: "api-service",
   IDENTITY_MACHINE_CLIENT_SECRET: "ci-identity-machine-secret-at-least-32",
 };
+const imagePlatform = process.env.AUTH_IMAGE_PLATFORM ?? "linux/amd64";
 
 function run(command, args, label) {
   console.log(`\n=== ${label} ===`);
@@ -57,6 +58,8 @@ async function bootAndProbe(image, release, expectOk) {
     "docker",
     [
       "run",
+      "--platform",
+      imagePlatform,
       "--name",
       containerName,
       "--add-host=host.docker.internal:host-gateway",
@@ -124,10 +127,23 @@ async function main() {
   if (process.env.BUILD_NN1_IMAGES !== "false") {
     run(
       "docker",
-      ["build", "-f", "apps/auth/Dockerfile", "-t", candidateImage, "."],
+      [
+        "build",
+        "--platform",
+        imagePlatform,
+        "-f",
+        "apps/auth/Dockerfile",
+        "-t",
+        candidateImage,
+        ".",
+      ],
       "Build candidate auth image",
     );
-    run("docker", ["pull", rollbackImage], "Pull qualified rollback auth image");
+    run(
+      "docker",
+      ["pull", "--platform", imagePlatform, rollbackImage],
+      "Pull qualified rollback auth image",
+    );
   }
 
   await bootAndProbe(candidateImage, process.env.CANDIDATE_IDENTITY_SHA ?? "local-candidate", true);
