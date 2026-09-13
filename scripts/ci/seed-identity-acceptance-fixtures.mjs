@@ -3,9 +3,13 @@
  * Seeds OAuth rows used by hermetic N/N-1 and acceptance preflight gates,
  * including an issued-but-unrefreshed token with null refresh_token_hash.
  */
-import { hashOpaqueToken } from "@auction/identity-contracts";
+import { createHash } from "node:crypto";
 import pg from "pg";
 import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
+
+function hashOpaqueToken(value) {
+  return `h1:${createHash("sha256").update(value).digest("base64url")}`;
+}
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL_OWNER ?? process.env.DATABASE_URL;
@@ -60,6 +64,31 @@ async function main() {
         row.user_id,
       ],
     );
+    await client.query(`
+        update public.bid_identity_directory d
+           set phone = u.phone_number
+          from public."user" u
+         where d.subject_id = u.id
+           and d.phone is distinct from u.phone_number
+      `);
+    await client.query(`
+        insert into public.projector_state (
+          projector_name,
+          last_processed_event_id,
+          updated_at,
+          last_error
+        )
+        values (
+          'bid_identity_directory',
+          coalesce((select max(id) from public.domain_events), 0),
+          now(),
+          null
+        )
+        on conflict (projector_name) do update
+          set last_processed_event_id = excluded.last_processed_event_id,
+              updated_at = excluded.updated_at,
+              last_error = null
+      `);
   } finally {
     await client.end();
   }

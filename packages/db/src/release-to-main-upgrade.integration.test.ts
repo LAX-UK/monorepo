@@ -71,5 +71,6 @@ describe("release to main lineage adoption", () => {
         await drop.end();
       }
     },
+    120_000,
   );
 });

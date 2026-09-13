@@ -22,9 +22,24 @@ async function main() {
   const client = new pg.Client(buildPgConnectionConfig(databaseUrl));
   await client.connect();
   try {
-    await client.query('delete from public."user" where lower(email) = any($1::text[])', [
-      manifest.emails.map((email) => email.toLowerCase()),
-    ]);
+    const emails = manifest.emails.map((email) => email.toLowerCase());
+    await client.query("begin");
+    const users = await client.query(
+      'select id from public."user" where lower(email) = any($1::text[]) for update',
+      [emails],
+    );
+    const userIds = users.rows.map((row) => row.id);
+    if (userIds.length > 0) {
+      await client.query(
+        "delete from public.legal_entity where created_by_user_id = any($1::text[])",
+        [userIds],
+      );
+      await client.query('delete from public."user" where id = any($1::text[])', [userIds]);
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
   } finally {
     await client.end();
   }
