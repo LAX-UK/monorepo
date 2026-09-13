@@ -12,6 +12,10 @@ on:
       ssf_mode:
         type: string
         required: true
+      repair_directory:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       identity_sha:
@@ -29,6 +33,11 @@ on:
         options:
           - ssf_disabled
           - ssf_enabled
+      repair_directory:
+        description: One-time canonical directory repair before fail-closed verification
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -190,6 +199,9 @@ jobs:
           SSF_TEST_CLIENT_SECRET: ${{ env.REFRESH_TEST_CLIENT_SECRET }}
           SSF_TEST_ENDPOINT: https://test-shop.lax.bid/api/ssf/events
         run: pnpm tsx scripts/ci/verify-identity-ssf-live.mjs
+      - name: Repair historical Identity directory drift
+        if: inputs.repair_directory
+        run: node scripts/ci/reconcile-identity-directory.mjs --apply
       - name: Directory and profile reconciliation
         run: |
           for attempt in $(seq 1 "$IDENTITY_RECONCILIATION_ATTEMPTS"); do

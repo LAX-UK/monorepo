@@ -115,11 +115,13 @@ try {
         ) AS pending_events,
         (
           SELECT COALESCE(
-            max(extract(epoch FROM (d.replicated_at - e.occurred_at)) * 1000),
+            max(extract(epoch FROM (clock_timestamp() - e.occurred_at)) * 1000),
             0
           )::float8
-          FROM public.bid_identity_directory d
-          JOIN public.domain_events e ON e.id = d.last_event_id
+          FROM public.domain_events e
+          CROSS JOIN cursor c
+          WHERE e.id > c.last_processed_event_id
+            AND e.event_type = ANY($1::text[])
         ) AS max_processing_lag_ms
     `,
     [
