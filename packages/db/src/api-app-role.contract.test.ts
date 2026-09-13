@@ -7,6 +7,7 @@ import {
   API_READ_TABLES,
   API_SSF_RECEIVER_TABLES,
 } from "./migrate-roles.js";
+import { expectTablePrivileges, readTablePrivileges } from "./role-contract/table-privileges.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const API_URL = process.env.DATABASE_URL_API ?? process.env.API_APP_DATABASE_URL;
@@ -86,31 +87,31 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
   it("has no DML privileges on the API deny-list", async () => {
     const cutover = await readUserReadCutoverFromEnv();
     await withApiClient(async (client) => {
-      for (const table of API_DENY_TABLES) {
-        for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
-          const result = await client.query<{ allowed: boolean }>(
-            "select has_table_privilege(current_user, $1, $2) as allowed",
-            [`public.${table}`, privilege],
-          );
-          const expected =
-            table === "user" && privilege === "SELECT" ? !cutover.apiUserSelectRevoked : false;
-          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(expected);
-        }
-      }
+      const rows = await readTablePrivileges(client, API_DENY_TABLES, [
+        "SELECT",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+      ]);
+      expectTablePrivileges(rows, (row) =>
+        row.table_name === "user" && row.privilege === "SELECT"
+          ? !cutover.apiUserSelectRevoked
+          : false,
+      );
     });
   });
 
   it("follows the applied 0161 user-read cutover", async () => {
     const cutover = await readUserReadCutoverFromEnv();
     await withApiClient(async (client) => {
-      for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
-        const result = await client.query<{ allowed: boolean }>(
-          `select has_table_privilege(current_user, 'public."user"', $1) as allowed`,
-          [privilege],
-        );
-        const expected = privilege === "SELECT" ? !cutover.apiUserSelectRevoked : false;
-        expect(result.rows[0]?.allowed, `user:${privilege} head=${cutover.head}`).toBe(expected);
-      }
+      const rows = await readTablePrivileges(
+        client,
+        ["user"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, (row) =>
+        row.privilege === "SELECT" ? !cutover.apiUserSelectRevoked : false,
+      );
     });
   });
 
