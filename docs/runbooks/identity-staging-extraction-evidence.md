@@ -111,6 +111,15 @@ failures. Four product or probe defects were found and corrected:
    refresh sign-in the fourth request in that rolling window. The canonical
    fix explicitly disables the built-in limiter and ports its remaining
    sensitive-path coverage into the Redis issuer middleware.
+5. After the limiter correction allowed refresh rotation to pass, staging
+   recovery run
+   [34735858227](https://github.com/LAX-UK/monorepo/actions/runs/34735858227)
+   found that RP-initiated logout produced no Bid delivery row. Better Auth
+   deletes the OP session before post-response security side effects run, and
+   the `ON DELETE SET NULL` foreign key cleared `identity_session_id` before
+   the logout repository queried it. The durable RP `sid` intentionally
+   retains the same session identifier; revocation now matches either field,
+   with a PostgreSQL regression test that reproduces the FK transition.
 
 These runs are diagnostic evidence, not accepted releases: SSF-enabled,
 rollback, restore, and soak gates remain required.

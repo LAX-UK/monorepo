@@ -28,7 +28,13 @@ export class DrizzleRpLogoutRepository implements RpLogoutRepository {
 
   revokeIdentitySessionsAndEnqueue(ids: readonly string[], now: Date): Promise<number> {
     const condition = and(
-      inArray(oidcRpSession.identitySessionId, [...ids]),
+      or(
+        inArray(oidcRpSession.identitySessionId, [...ids]),
+        // Better Auth deletes the OP session before the post-response security
+        // side effect runs. The FK then sets identity_session_id to null, while
+        // sid intentionally retains that same session identifier.
+        inArray(oidcRpSession.sid, [...ids]),
+      ),
       isNull(oidcRpSession.revokedAt),
     );
     if (!condition) throw new Error("Identity session revocation condition is empty");
