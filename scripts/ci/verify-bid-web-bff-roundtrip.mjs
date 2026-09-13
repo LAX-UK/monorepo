@@ -3,6 +3,7 @@
  * Exercises the Bid web BFF OIDC login path end-to-end over HTTP.
  * Fails fast with actionable errors when callback/session/token exchange breaks.
  */
+import { describeRejection } from "./http-diagnostics.mjs";
 import { completeAuthorization } from "./oidc-authorize-response.mjs";
 
 const webBase = (process.env.WEB_ORIGIN ?? "http://localhost:3000").replace(/\/+$/, "");
@@ -86,7 +87,7 @@ async function main() {
   });
   captureCookies(signIn, authCookies);
   if (!signIn.ok || authCookies.size === 0) {
-    throw new Error(`Identity sign-in failed (${signIn.status})`);
+    throw new Error(`Identity sign-in failed: ${await describeRejection(signIn)}`);
   }
 
   const webCookies = new Map();

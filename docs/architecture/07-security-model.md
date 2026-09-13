@@ -104,7 +104,24 @@ The threat catalog below is roughly ordered by likelihood-times-impact. Each thr
 
 **Impact:** Account takeover for users with reused passwords. Stripe payment fraud if takeover succeeds.
 
-**Mitigations.** Application-layer rate limit at `/api/auth/sign-in` of 5 attempts per IP per 15 minutes, enforced in [apps/api/src/middleware/auth-rate-limit.ts](../../apps/api/src/middleware/auth-rate-limit.ts) using a Redis counter (Q37 calls for an additional Cloudflare-edge limit; configuring it at the edge is **(operational, not in repo)** per [../integrations/cloudflare.md](../integrations/cloudflare.md)). Better-auth hashes credentials via `@better-auth/utils/password` (default scrypt-family parameters; the explicit cost-factor 12 referenced in earlier drafts is **not configured in repo today** — adopting an explicit override is **(planned)**). We do not currently mandate MFA — the sign-in rate limit is the primary defense, and MFA is on the v2 backlog.
+**Mitigations.** The Auth issuer enforces two independent Redis sliding-window
+buckets on failed `/api/auth/sign-in/*` attempts: five per normalized email and
+30 per source IP per 15 minutes. Successful sign-ins are removed from both
+buckets. The account bucket resists distributed guessing of one identity while
+the IP bucket bounds password spraying; keeping them separate avoids the
+IP-plus-email key bypass. `AUTH_RATE_LIMIT_POLICY` is the policy SSOT and
+[apps/auth/src/middleware/auth-rate-limit.ts](../../apps/auth/src/middleware/auth-rate-limit.ts)
+is the canonical issuer enforcement point. Better Auth's built-in production
+limiter is explicitly disabled because its per-process memory counters split
+state across replicas and previously imposed an undocumented 3-per-10-second
+all-attempt IP limit. Q37 calls for an additional Cloudflare-edge limit;
+configuring it at the edge is **(operational, not in repo)** per
+[../integrations/cloudflare.md](../integrations/cloudflare.md). Better-auth
+hashes credentials via `@better-auth/utils/password` (default scrypt-family
+parameters; the explicit cost-factor 12 referenced in earlier drafts is **not
+configured in repo today** — adopting an explicit override is **(planned)**).
+We do not currently mandate MFA — the sign-in rate limit is the primary
+defense, and MFA is on the v2 backlog.
 
 **Acceptance.** A determined attacker with a botnet can spread attempts across enough IPs to evade IP-based rate limits. Account-level limits constrain damage per target. We accept that low-effort attackers will be filtered; high-effort targeted attacks may succeed. MFA is the planned mitigation when it ships.
 

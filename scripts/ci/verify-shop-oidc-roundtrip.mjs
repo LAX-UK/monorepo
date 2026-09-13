@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { describeRejection } from "./http-diagnostics.mjs";
 import { completeAuthorization } from "./oidc-authorize-response.mjs";
 
 const STAGING_SHOP_ORIGIN = "https://test-shop.lax.bid";
@@ -68,7 +69,7 @@ async function main() {
   });
   captureCookies(signIn, authCookies);
   if (!signIn.ok || authCookies.size === 0) {
-    throw new Error(`Identity sign-in failed (${signIn.status})`);
+    throw new Error(`Identity sign-in failed: ${await describeRejection(signIn)}`);
   }
 
   const shopCookies = new Map();

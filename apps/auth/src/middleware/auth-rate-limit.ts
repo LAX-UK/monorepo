@@ -45,6 +45,19 @@ async function slidingIncrement(redis: Redis, key: string, windowSec: number): P
   return (await slidingIncrementTracked(redis, key, windowSec)).count;
 }
 
+async function enforceSlidingLimit(
+  c: Context,
+  redis: Redis,
+  key: string,
+  windowSec: number,
+  max: number,
+): Promise<Response | null> {
+  const count = await slidingIncrement(redis, key, windowSec);
+  if (count <= max) return null;
+  const retryAfterSec = await slidingWindowRetryAfterSec(redis, key, windowSec, count, max);
+  return rateLimited(c, retryAfterSec);
+}
+
 async function emailFromJsonBody(req: Request): Promise<string | null> {
   try {
     const body = (await req.clone().json()) as { email?: unknown };
@@ -151,6 +164,7 @@ export function createAuthIssuerRateLimitMiddleware(redis: Redis, clientIp: Clie
   return createMiddleware(async (c, next) => {
     const ip = clientIp(c);
     const path = c.req.path;
+    const isPost = c.req.method === "POST";
     const isTotp = path.includes("two-factor");
     const isSignIn = path.includes("/sign-in");
     const isSessionRead = c.req.method === "GET" && path.endsWith("/get-session");
@@ -172,7 +186,94 @@ export function createAuthIssuerRateLimitMiddleware(redis: Redis, clientIp: Clie
       return;
     }
 
-    if (isSignIn && c.req.method === "POST") {
+    if (isPost && path.includes("/sign-up/")) {
+      const limitedByIp = await enforceSlidingLimit(
+        c,
+        redis,
+        `rl:auth-issuer:register-ip:${ip}`,
+        RL.registerIpWindowSec,
+        RL.registerIpMax,
+      );
+      if (limitedByIp) return limitedByIp;
+      const email = await emailFromJsonBody(c.req.raw);
+      if (email) {
+        const limitedByEmail = await enforceSlidingLimit(
+          c,
+          redis,
+          `rl:auth-issuer:register-email:${email}`,
+          RL.registerEmailWindowSec,
+          RL.registerEmailMax,
+        );
+        if (limitedByEmail) return limitedByEmail;
+      }
+      await next();
+      return;
+    }
+
+    if (isPost && (path.endsWith("/request-password-reset") || path.includes("/forget-password"))) {
+      const limitedByIp = await enforceSlidingLimit(
+        c,
+        redis,
+        `rl:auth-issuer:forgot-ip:${ip}`,
+        RL.forgotIpWindowSec,
+        RL.forgotIpMax,
+      );
+      if (limitedByIp) return limitedByIp;
+      const email = await emailFromJsonBody(c.req.raw);
+      if (email) {
+        const limitedByEmail = await enforceSlidingLimit(
+          c,
+          redis,
+          `rl:auth-issuer:forgot-email:${email}`,
+          RL.forgotEmailWindowSec,
+          RL.forgotEmailMax,
+        );
+        if (limitedByEmail) return limitedByEmail;
+      }
+      await next();
+      return;
+    }
+
+    if (isPost && path.endsWith("/change-password")) {
+      const limited = await enforceSlidingLimit(
+        c,
+        redis,
+        `rl:auth-issuer:change-password:${ip}`,
+        RL.setupPasswordWindowSec,
+        RL.setupPasswordMax,
+      );
+      if (limited) return limited;
+      await next();
+      return;
+    }
+
+    if (isPost && path.endsWith("/change-email")) {
+      const limited = await enforceSlidingLimit(
+        c,
+        redis,
+        `rl:auth-issuer:change-email:${ip}`,
+        RL.confirmEmailChangeWindowSec,
+        RL.confirmEmailChangeMax,
+      );
+      if (limited) return limited;
+      await next();
+      return;
+    }
+
+    if (isPost && path.endsWith("/phone-number/send-otp")) {
+      const limited = await enforceSlidingLimit(
+        c,
+        redis,
+        `rl:auth-issuer:phone-send-otp:${ip}`,
+        RL.phoneSendOtpWindowSec,
+        RL.phoneSendOtpMax,
+      );
+      if (limited) return limited;
+      await next();
+      return;
+    }
+
+    if (isSignIn && isPost) {
       const attempts: SlidingWindowAttempt[] = [];
       const email = await emailFromJsonBody(c.req.raw);
       if (email) {

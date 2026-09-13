@@ -43,6 +43,8 @@ export const AUTH_RATE_LIMIT_POLICY = {
   sendVerificationIpMax: 5,
   sendVerificationEmailWindowSec: 60 * 60,
   sendVerificationEmailMax: 3,
+  phoneSendOtpWindowSec: 60,
+  phoneSendOtpMax: 5,
 } as const;
 
 export type OidcDiscoveryDocument = {

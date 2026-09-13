@@ -233,6 +233,15 @@ address. Malformed or untrusted forwarding data falls back to the authenticated
 DigitalOcean hop or direct peer. Deployments must keep both proxy CIDR sets
 current from their providers and must not include client networks.
 
+The issuer has one rate-limit authority:
+`createAuthIssuerRateLimitMiddleware`, backed by shared Redis and configured by
+`AUTH_RATE_LIMIT_POLICY`. It applies independent failed-attempt email and IP
+buckets to sign-in and explicit all-attempt budgets to sign-up, password reset,
+credential changes, phone OTP, session reads, and general Auth operations.
+Better Auth's built-in limiter is disabled explicitly: its production default
+counts all sign-ins in per-process memory, which both penalizes successful users
+behind shared IPs and divides the effective quota across replicas.
+
 Internal machine tokens are random, stored only by hash with a five-minute TTL,
 and can be invalidated early through the authenticated `/oauth/revoke`
 endpoint. Token exchange rejects empty scope sets as well as unknown,

@@ -81,6 +81,40 @@ intact.
 - [ ] Terraform state backup and reviewed plan recorded.
 - [ ] Numeric thresholds above approved.
 
+### Live-gate defects discovered before acceptance
+
+The staging gate is doing real qualification rather than being waived around
+failures. Four product or probe defects were found and corrected:
+
+1. Successful sign-ins consumed the issuer's 15-minute failure buckets, causing
+   repeated acceptance runs to return 429. Fixed by retaining only failed
+   attempts; monorepo
+   [PR #348](https://github.com/LAX-UK/monorepo/pull/348) and standalone
+   Identity [PR #11](https://github.com/LAX-UK/lax-identity/pull/11).
+2. Bid and Shop probes understood only a first-time OIDC consent HTML page.
+   After consent was stored, Better Auth returned a JSON redirect envelope.
+   Fixed by the shared authorize-response interpreter; monorepo
+   [PR #349](https://github.com/LAX-UK/monorepo/pull/349).
+3. Auth-at-rest verification treated an expected null `refresh_token_hash` on a
+   newly issued, not-yet-refreshed OAuth token as plaintext. The same verifier
+   would fail closed at the next Identity startup. Fixed in monorepo
+   [PR #350](https://github.com/LAX-UK/monorepo/pull/350) and standalone
+   Identity [PR #12](https://github.com/LAX-UK/lax-identity/pull/12).
+   Maintenance passed in staging recovery runs
+   [34733452065](https://github.com/LAX-UK/monorepo/actions/runs/34733452065)
+   and
+   [34733828681](https://github.com/LAX-UK/monorepo/actions/runs/34733828681).
+4. Better Auth's implicit production limiter independently counted every
+   `/sign-in/*` request in per-process memory (three per IP and path per ten
+   seconds), on top of the documented Redis failed-attempt policy. In both
+   recovery runs above, forged-origin, Bid, Shop, and refresh probes made the
+   refresh sign-in the fourth request in that rolling window. The canonical
+   fix explicitly disables the built-in limiter and ports its remaining
+   sensitive-path coverage into the Redis issuer middleware.
+
+These runs are diagnostic evidence, not accepted releases: SSF-enabled,
+rollback, restore, and soak gates remain required.
+
 ## Target-host acceptance
 
 Record command, UTC timestamp, sanitized output artifact, and operator for each:
