@@ -156,8 +156,12 @@ jobs:
 
   restore_candidate:
     # `needs` otherwise skips this job when a rollback deploy fails. Restoring the
-    # reviewed candidate is the safety action, so it must be attempted regardless.
-    if: always() && inputs.rollback_rehearsal
+    # reviewed candidate is the safety action, so it must be attempted after any
+    # rollback attempt. It must not deploy when validation skipped the rollback.
+    if: >-
+      always() &&
+      inputs.rollback_rehearsal &&
+      needs.rollback_rehearsal.result != 'skipped'
     needs: rollback_rehearsal
     uses: ./.github/workflows/terraform-apply-test.yml
     with:

@@ -293,7 +293,8 @@ test("identity staging soak samples read-only contracts on a schedule", () => {
   const soak = read(".github/workflows/identity-staging-soak.yml");
   assert.match(soak, /verify-identity-directory-drift\.mjs/);
   assert.match(soak, /verify-identity-outbox-live\.mjs/);
-  assert.match(soak, /minimum_hours/);
+  assert.match(soak, /evaluate-identity-staging-soak\.mjs/);
+  assert.match(soak, /\*\/15 \* \* \* \*/);
 });
 
 test("recovery reconcile reacts to failed recovery runs", () => {

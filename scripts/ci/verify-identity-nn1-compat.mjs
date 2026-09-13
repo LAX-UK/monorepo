@@ -17,7 +17,9 @@ const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 const logDir = process.env.IDENTITY_NN1_LOG_DIR ?? join(repoRoot, ".tmp/identity-nn1-logs");
 
 const candidateImage = process.env.CANDIDATE_AUTH_IMAGE ?? "lax-auth-nn1-candidate:local";
-const rollbackImage = process.env.ROLLBACK_AUTH_IMAGE ?? "lax-auth-nn1-rollback:local";
+const rollbackImage =
+  process.env.ROLLBACK_AUTH_IMAGE ??
+  "registry.digitalocean.com/lax-bid/lax-test-identity@sha256:2e23cf9d0b075e7645774ca2f8c229935ae4fa55138a33d1eaa184c2768e35a4";
 const quarantineSha =
   process.env.QUARANTINE_IDENTITY_SHA ?? "88ad1cf24995365554b49cef00e25fc5292d6c3a";
 const qualifiedRollbackSha =
@@ -26,17 +28,20 @@ const qualifiedRollbackSha =
 const baseEnv = {
   DATABASE_URL: "postgresql://auth_app:postgres@host.docker.internal:5432/auction_ci",
   REDIS_URL: "redis://host.docker.internal:6379",
-  BETTER_AUTH_SECRET: "ci-auth-secret-at-least-sixteen-characters",
+  BETTER_AUTH_SECRET: "ci-auth-secret-at-least-forty-eight-characters-long",
   AUTH_DEK_KEY: "0707070707070707070707070707070707070707070707070707070707070707",
   NODE_ENV: "production",
   APP_ENV: "test",
   PORT: "3003",
-  ALLOW_HTTP_COOKIES: "true",
+  ALLOW_HTTP_COOKIES: "false",
   SSF_DELIVERY_ENABLED: "false",
-  WEB_ORIGIN: "http://localhost:3000",
-  OIDC_ISSUER_URL: "http://localhost:3003",
-  OIDC_INTERNAL_BASE_URL: "http://localhost:3003",
+  WEB_ORIGIN: "https://test.lax.bid",
+  OIDC_ISSUER_URL: "https://test-auth.lax.bid",
+  API_INTERNAL_BASE_URL: "https://test-api.lax.bid",
+  IDENTITY_MACHINE_CLIENT_ID: "api-service",
+  IDENTITY_MACHINE_CLIENT_SECRET: "ci-identity-machine-secret-at-least-32",
 };
+const imagePlatform = process.env.AUTH_IMAGE_PLATFORM ?? "linux/amd64";
 
 function run(command, args, label) {
   console.log(`\n=== ${label} ===`);
@@ -53,6 +58,8 @@ async function bootAndProbe(image, release, expectOk) {
     "docker",
     [
       "run",
+      "--platform",
+      imagePlatform,
       "--name",
       containerName,
       "--add-host=host.docker.internal:host-gateway",
@@ -84,10 +91,13 @@ async function bootAndProbe(image, release, expectOk) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
+  const logs = spawnSync("docker", ["logs", containerName], { encoding: "utf8" });
   spawnSync("docker", ["rm", "-f", containerName], { stdio: "ignore" });
   child.kill("SIGKILL");
 
   if (expectOk && !ok) {
+    if (logs.stdout?.trim()) console.error(logs.stdout);
+    if (logs.stderr?.trim()) console.error(logs.stderr);
     throw new Error(`Expected ${release} to become ready`);
   }
   if (!expectOk && ok) {
@@ -102,32 +112,46 @@ async function main() {
   process.env.DATABASE_URL = databaseUrl;
   process.env.DATABASE_URL_OWNER = databaseUrl;
   process.env.REDIS_URL = redisUrl;
+  process.env.OIDC_CLIENT_SECRET_LAX_BID_WEB ??= "ci-bid-web-client-secret-at-least-32";
+  process.env.OIDC_CLIENT_SECRET_LAX_SHOP_WEB ??= "ci-shop-web-client-secret-at-least-32";
+  process.env.AUTH_APP_DB_PASSWORD ??= "postgres";
+  process.env.API_APP_DB_PASSWORD ??= "postgres";
+  process.env.SHOP_APP_DB_PASSWORD ??= "postgres";
+  process.env.WORKER_APP_DB_PASSWORD ??= "postgres";
   await import("./ensure-ci-database.mjs");
 
   run("pnpm", ["--filter", "@auction/db...", "build"], "Build db closure");
   run("pnpm", ["--filter", "@auction/db", "db:migrate"], "Migrate database");
+  run("pnpm", ["--filter", "@auction/db", "db:seed:dev"], "Seed dev fixtures");
   run("pnpm", ["--filter", "@auction/db", "db:roles"], "Apply roles");
+  run("pnpm", ["--filter", "@auction/db", "db:configure-oidc-clients"], "Configure OIDC clients");
   run("node", ["scripts/ci/seed-identity-acceptance-fixtures.mjs"], "Seed OAuth fixtures");
+  process.env.AUTH_DEK_KEY ??= "0707070707070707070707070707070707070707070707070707070707070707";
+  run(
+    "pnpm",
+    ["--filter", "@auction/db", "db:backfill-auth-at-rest", "--", "--apply"],
+    "Apply auth at-rest backfill for production startup",
+  );
 
   if (process.env.BUILD_NN1_IMAGES !== "false") {
     run(
       "docker",
-      ["build", "-f", "apps/auth/Dockerfile", "-t", candidateImage, "."],
+      [
+        "build",
+        "--platform",
+        imagePlatform,
+        "-f",
+        "apps/auth/Dockerfile",
+        "-t",
+        candidateImage,
+        ".",
+      ],
       "Build candidate auth image",
     );
     run(
       "docker",
-      [
-        "build",
-        "-f",
-        "apps/auth/Dockerfile",
-        "--build-arg",
-        `IMAGE_SHA=${qualifiedRollbackSha}`,
-        "-t",
-        rollbackImage,
-        ".",
-      ],
-      "Build rollback auth image tag",
+      ["pull", "--platform", imagePlatform, rollbackImage],
+      "Pull qualified rollback auth image",
     );
   }
 
