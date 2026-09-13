@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import { WORKER_DENY_TABLES } from "./migrate-roles.js";
 import {
@@ -21,6 +22,7 @@ const WORKER_URL = process.env.DATABASE_URL_WORKER ?? process.env.WORKER_APP_DAT
 /** Cutover gate: worker_app can perform delivery, payment maintenance, and lifecycle writes. */
 describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
   it("has no DML privileges on Identity and receiver-local tables", async () => {
+    const cutover = await readUserReadCutoverFromEnv();
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);
     for (const table of WORKER_DENY_TABLES) {
@@ -31,8 +33,8 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
           has_table_privilege(current_user, ${`public.${table}`}, 'UPDATE') AS can_update,
           has_table_privilege(current_user, ${`public.${table}`}, 'DELETE') AS can_delete
       `);
-      expect(privileges.rows[0], table).toMatchObject({
-        can_select: false,
+      expect(privileges.rows[0], `${table} head=${cutover.head}`).toMatchObject({
+        can_select: table === "user" ? !cutover.workerUserSelectRevoked : false,
         can_insert: false,
         can_update: false,
         can_delete: false,

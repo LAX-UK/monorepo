@@ -78,6 +78,7 @@ jobs:
         env:
           AUTH_ROLE_CONTRACT_REQUIRED: "true"
         run: |
+          pnpm --filter @auction/db db:report-user-read-cutover
           pnpm --filter @auction/db test:auth-role-contract
           pnpm --filter @auction/db test:api-role-contract
           pnpm --filter @auction/db test:shop-role-contract

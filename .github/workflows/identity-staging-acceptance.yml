@@ -223,6 +223,7 @@ jobs:
           grep -Eq '^# (HELP|TYPE) ' "$RUNNER_TEMP/auth-metrics.txt"
       - name: Live database role contracts
         run: |
+          pnpm --filter @auction/db db:report-user-read-cutover
           pnpm --filter @auction/db test:auth-role-contract
           pnpm --filter @auction/db test:api-role-contract
           pnpm --filter @auction/db test:shop-role-contract

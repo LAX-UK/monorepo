@@ -145,6 +145,7 @@ test("role repair is reviewed maintenance with post-apply verification", () => {
   assert.match(maintenance, /environment: test/);
   assert.match(maintenance, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
   assert.match(maintenance, /pnpm --filter @auction\/db db:roles/);
+  assert.match(maintenance, /pnpm --filter @auction\/db db:report-user-read-cutover/);
   assert.match(maintenance, /pnpm --filter @auction\/db test:auth-role-contract/);
   assert.match(maintenance, /pnpm --filter @auction\/db test:api-role-contract/);
   assert.match(maintenance, /pnpm --filter @auction\/db test:shop-role-contract/);
@@ -233,6 +234,7 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /SSF durable delivery and replay contract \(Bid receiver\)/);
   assert.match(acceptance, /SSF durable delivery and replay contract \(Shop receiver\)/);
   assert.match(acceptance, /db:reconcile-identity-profiles/);
+  assert.match(acceptance, /db:report-user-read-cutover/);
   assert.match(acceptance, /AUTH_METRICS_TOKEN/);
   assert.match(acceptance, /jwks-snapshot\.ts test --verify/);
   assert.match(acceptance, /grep -Eq '\^# \(HELP\|TYPE\) '/);

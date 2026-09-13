@@ -15,7 +15,7 @@ describe("migration 0161 contract", () => {
 
     expect(forward).toContain('REVOKE SELECT ON TABLE public."user" FROM api_app');
     expect(rollback).toContain('GRANT SELECT ON TABLE public."user" TO api_app');
-    expect(roles).toContain('PRODUCTION_MIGRATION_CEILING_BY_TAG["0161"].folderMillis');
+    expect(roles).toContain("readUserReadCutover");
     expect(roles).toContain("const restoreApiUserSelect =");
     expect(roles).toContain('await grantIfExists(client, "api_app", "user", "SELECT")');
     expect([...API_DENY_TABLES]).toContain("user");

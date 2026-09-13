@@ -37,6 +37,7 @@
     "db:backfill-user-mobile-e164": "tsx src/scripts/backfill-user-mobile-e164.ts",
     "db:backfill-user-registered-events": "tsx src/scripts/backfill-user-registered-events.ts",
     "db:reconcile-identity-profiles": "tsx src/scripts/reconcile-identity-profile-drift.ts",
+    "db:report-user-read-cutover": "tsx src/scripts/report-user-read-cutover.ts",
     "db:backfill-bid-milestone-events": "tsx src/scripts/backfill-bid-milestone-events.ts",
     "db:backfill-qr-code": "tsx src/scripts/backfill-qr-code.ts",
     "db:seed:press-demo": "tsx scripts/seed-press-hub-demo.ts"

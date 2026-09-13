@@ -387,6 +387,10 @@ remain operational promotion evidence; they are not implied by a green source
 check. `migrate-roles` preserves already-present worker/API `user` reads during
 their pre-`0160`/pre-`0161` soak stages, but treats both grants as
 migration-controlled and cannot recreate either after its revocation migration.
+Live role probes follow the applied journal head: they expect the soak `SELECT`
+until `0160`/`0161` are present, then the revoked contract. Do not promote those
+migrations from acceptance; use the staged `PRODUCTION_MIGRATION_THROUGH`
+operator path after directory drift is clean.
 
 The directory does not contain credentials, MFA state, pending email-change state,
 or any other security decision input; those remain authoritative Identity facts
