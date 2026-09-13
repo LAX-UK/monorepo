@@ -65,8 +65,15 @@ COPY --from=builder /app/packages/identity-db/package.json ./packages/identity-d
 COPY --from=builder /app/packages/identity-db/dist ./packages/identity-db/dist
 COPY --from=builder /app/packages/observability/package.json ./packages/observability/package.json
 COPY --from=builder /app/packages/observability/dist ./packages/observability/dist
-EXPOSE 3003
+USER root
+RUN set -eu; \
+  pg_path="$(find /app/node_modules/.pnpm -maxdepth 3 -type d -path '*/pg@*/node_modules/pg' | head -n 1)"; \
+  test -n "$pg_path"; \
+  for drizzle_dir in $(find /app/node_modules/.pnpm -maxdepth 3 -type d -path '*/node_modules/drizzle-orm'); do \
+    ln -sfn "$pg_path" "$(dirname "$drizzle_dir")/pg"; \
+  done
 USER node
+EXPOSE 3003
 HEALTHCHECK --interval=15s --timeout=10s --start-period=30s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:3003/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "apps/auth/dist/index.js"]

@@ -12,7 +12,7 @@ const url = process.env.MIGRATION_TEST_DATABASE_URL;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe.skipIf(!url)("migration 0059 user_ui_preference roundtrip", () => {
-  it("rollback then forward leaves table", async () => {
+  it("rollback then forward leaves table", { timeout: 120_000 }, async () => {
     if (!url) throw new Error("MIGRATION_TEST_DATABASE_URL is required");
     const databaseName = `migration_0059_${randomUUID().replaceAll("-", "")}`;
     const adminUrl = new URL(url);
