@@ -15,3 +15,19 @@ Main is the future source of truth. Release-only work is re-expressed in main’
 Terraform `variable` blocks for `strict_bid_eligibility_enabled`, `kyc_onboarding_enabled`, `full_buyer_onboarding_enabled`, and `marketing_prompts_enabled` live in the private `.infra-config` repo. In-repo wiring is workflows, env examples, `docker-compose.prod.yml`, and `turbo.json` only.
 
 See also [D15](../architecture/02-decisions.md) and [D16](../architecture/02-decisions.md).
+
+## Identity migration lineage
+
+`release` and `main` are intentionally not directly upgrade-compatible today. The
+verified comparison on 2026-09-13 found `release` at migration `0131` and `main`
+at `0161`; the release `0128`–`0131` hashes differ from main even though the
+four feature SQL files are byte-identical to main's renumbered `0135`, `0137`,
+`0138`, and `0139`.
+
+Any future production upgrade must use an approved, dry-run-first lineage
+adoption tool that recognizes only those exact release hashes, verifies the
+byte-identical mapping, normalizes the ledger through `0139`, and then applies
+main migrations. `0159` remains rolling-compatible. Before an old production
+binary can run after `0160`/`0161`, its required user-table grants must be
+restored. This is an Identity-scoped compatibility record, not evidence that
+the broader `release` → `main` merge is safe.

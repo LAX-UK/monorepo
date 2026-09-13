@@ -1,4 +1,7 @@
-import { type IdentityDatabase, startJwksRetirementSchedule } from "@auction/identity-db";
+import {
+  type IdentityDatabase,
+  startJwksRetirementSchedule,
+} from "@auction/identity-db";
 import { Sentry } from "@auction/observability";
 import type pino from "pino";
 import { startIdentityDeletionPurgeSchedule } from "../infrastructure/identity-deletion-purge.schedule.js";
@@ -9,30 +12,42 @@ import { startBackchannelLogoutSchedule } from "../services/backchannel-logout.s
 import type { SsfDeliveryWorker } from "../services/ssf-delivery.worker.js";
 import type { SsfStreamService } from "../services/ssf-stream.service.js";
 
-export function createAuthSchedules(options: {
+export async function createAuthSchedules(options: {
   db: IdentityDatabase;
   log: pino.Logger;
   identityOperations: { purgeExpiredVerifications(): Promise<number> };
   logoutDelivery: Pick<BackchannelLogoutDeliveryWorker, "drain">;
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
-  ssfDelivery: Pick<SsfDeliveryWorker, "enqueueFromDomainEvents" | "deliverDue">;
+  ssfDelivery: Pick<
+    SsfDeliveryWorker,
+    "enqueueFromDomainEvents" | "deliverDue"
+  >;
   ssfEnabled: boolean;
   ssfTimeoutMs: number;
   ssfMaxAttempts: number;
-  onSsfOutcome: (outcome: "delivered" | "retry_scheduled" | "failed", id: string) => void;
+  onSsfOutcome: (
+    outcome: "delivered" | "retry_scheduled" | "failed",
+    id: string,
+  ) => void;
   reconcileAuthAtRest?: () => Promise<void>;
 }) {
-  const provisioning = options.ssfStreams.provisionRegisteredStreams(options.ssfEnabled);
-  void provisioning.catch((err) => {
+  let provisioning: Promise<void>;
+  try {
+    await options.ssfStreams.provisionRegisteredStreams(options.ssfEnabled);
+    provisioning = Promise.resolve();
+  } catch (err) {
     options.log.error({ err }, "ssf_stream_provisioning_failed");
     Sentry.captureException(err);
-  });
+    throw err;
+  }
   const verification = setInterval(
     () => {
-      void options.identityOperations.purgeExpiredVerifications().catch((err) => {
-        options.log.error({ err }, "expired verification cleanup failed");
-        Sentry.captureException(err);
-      });
+      void options.identityOperations
+        .purgeExpiredVerifications()
+        .catch((err) => {
+          options.log.error({ err }, "expired verification cleanup failed");
+          Sentry.captureException(err);
+        });
     },
     60 * 60 * 1_000,
   );
@@ -57,7 +72,8 @@ export function createAuthSchedules(options: {
       options.log.error({ err }, "identity_deletion_purge_failed");
       Sentry.captureException(err);
     },
-    onPurged: (count) => options.log.info({ count }, "identity_deletion_purge_batch"),
+    onPurged: (count) =>
+      options.log.info({ count }, "identity_deletion_purge_batch"),
   });
   const lifecycleReconciliation = startIdentityLifecycleReconciliationSchedule({
     db: options.db,
@@ -65,7 +81,8 @@ export function createAuthSchedules(options: {
       options.log.error({ err }, "identity_lifecycle_reconciliation_failed");
       Sentry.captureException(err);
     },
-    onReconciled: (counts) => options.log.warn(counts, "identity_lifecycle_outbox_reconciled"),
+    onReconciled: (counts) =>
+      options.log.warn(counts, "identity_lifecycle_outbox_reconciled"),
   });
   let ssfDrain: Promise<void> | null = null;
   const ssf = options.ssfEnabled
@@ -91,7 +108,10 @@ export function createAuthSchedules(options: {
       }, 1_000)
     : null;
   ssf?.unref();
-  const retirement = startJwksRetirementSchedule({ db: options.db, log: options.log });
+  const retirement = startJwksRetirementSchedule({
+    db: options.db,
+    log: options.log,
+  });
   const reconcileAuthAtRest = () => {
     void options.reconcileAuthAtRest?.().catch((err) => {
       options.log.error({ err }, "auth_at_rest_reconciliation_failed");

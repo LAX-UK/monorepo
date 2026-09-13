@@ -23,14 +23,26 @@ test("Identity staging qualification is immutable and preparation is fail-closed
   const workflow = read(".github/workflows/identity-staging-deploy.yml");
 
   assert.match(workflow, /identity-staging-/);
-  assert.match(workflow, /client_payload\.repository == 'LAX-UK\/lax-identity'/);
+  assert.match(
+    workflow,
+    /client_payload\.repository == 'LAX-UK\/lax-identity'/,
+  );
   assert.match(workflow, /Read immutable Identity registry metadata/);
-  assert.match(workflow, /REGISTRY: registry\.digitalocean\.com\/\$\{\{ vars\.DOCR_REGISTRY \}\}/);
+  assert.match(
+    workflow,
+    /REGISTRY: registry\.digitalocean\.com\/\$\{\{ vars\.DOCR_REGISTRY \}\}/,
+  );
   assert.match(workflow, /\.event == "workflow_run"/);
   assert.match(workflow, /compare\/\$IDENTITY_SHA\.\.\.main/);
   assert.match(workflow, /STAGE_ONLY != 'true'/);
-  assert.match(workflow, /Record stage-only qualification without mutating traffic or database/);
-  assert.match(workflow, /Record prepared immutable candidate for Terraform cutover/);
+  assert.match(
+    workflow,
+    /Record stage-only qualification without mutating traffic or database/,
+  );
+  assert.match(
+    workflow,
+    /Record prepared immutable candidate for Terraform cutover/,
+  );
   assert.doesNotMatch(workflow, /imagetools create/);
   assert.doesNotMatch(workflow, /create-deployment/);
   assert.doesNotMatch(workflow, /delete-tag/);
@@ -109,8 +121,14 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
   const planAction = read(".github/actions/terraform-plan/action.yml");
   assert.match(planAction, /retention-days: 30/);
   assert.doesNotMatch(planAction, /path: \|[\s\S]*\.tfplan/);
-  assert.match(read(".github/workflows/terraform-plan.yml"), /verify-auth-terraform-env\.mjs/);
-  assert.match(read(".github/workflows/terraform-apply-test.yml"), /TF_VAR_identity_image_tag/);
+  assert.match(
+    read(".github/workflows/terraform-plan.yml"),
+    /verify-auth-terraform-env\.mjs/,
+  );
+  assert.match(
+    read(".github/workflows/terraform-apply-test.yml"),
+    /TF_VAR_identity_image_tag/,
+  );
 });
 
 test("auth at-rest maintenance workflow is manually approved and phased", () => {
@@ -120,17 +138,25 @@ test("auth at-rest maintenance workflow is manually approved and phased", () => 
   assert.match(workflow, /Inventory auth at-rest state/);
   assert.match(workflow, /Apply auth at-rest backfill/);
   assert.match(workflow, /Verify auth at-rest state and key/);
-  assert.match(workflow, /packages\/db\/dist\/scripts\/backfill-auth-at-rest\.js/);
+  assert.match(
+    workflow,
+    /packages\/db\/dist\/scripts\/backfill-auth-at-rest\.js/,
+  );
   assert.match(workflow, /jwks-snapshot\.ts test/);
 });
 
 test("directory repair is approved maintenance, never acceptance self-healing", () => {
-  const maintenance = read(".github/workflows/identity-directory-maintenance-test.yml");
+  const maintenance = read(
+    ".github/workflows/identity-directory-maintenance-test.yml",
+  );
   const acceptance = read(".github/workflows/identity-staging-acceptance.yml");
 
   assert.match(maintenance, /confirm_backup/);
   assert.match(maintenance, /environment: test/);
-  assert.match(maintenance, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
+  assert.match(
+    maintenance,
+    /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/,
+  );
   assert.match(maintenance, /reconcile-identity-directory\.mjs --apply/);
   assert.match(maintenance, /verify-identity-directory-drift\.mjs/);
   assert.match(maintenance, /pnpm --filter @auction\/db\.\.\. build/);
@@ -139,30 +165,64 @@ test("directory repair is approved maintenance, never acceptance self-healing", 
 });
 
 test("role repair is reviewed maintenance with post-apply verification", () => {
-  const maintenance = read(".github/workflows/identity-role-maintenance-test.yml");
+  const maintenance = read(
+    ".github/workflows/identity-role-maintenance-test.yml",
+  );
 
   assert.match(maintenance, /confirm_review/);
   assert.match(maintenance, /environment: test/);
-  assert.match(maintenance, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
+  assert.match(
+    maintenance,
+    /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/,
+  );
   assert.match(maintenance, /pnpm --filter @auction\/db db:roles/);
-  assert.match(maintenance, /pnpm --filter @auction\/db db:report-user-read-cutover/);
-  assert.match(maintenance, /pnpm --filter @auction\/db test:auth-role-contract/);
-  assert.match(maintenance, /pnpm --filter @auction\/db test:api-role-contract/);
-  assert.match(maintenance, /pnpm --filter @auction\/db test:shop-role-contract/);
-  assert.match(maintenance, /pnpm --filter @auction\/db test:worker-role-contract/);
+  assert.match(
+    maintenance,
+    /pnpm --filter @auction\/db db:report-user-read-cutover/,
+  );
+  assert.match(
+    maintenance,
+    /pnpm --filter @auction\/db test:auth-role-contract/,
+  );
+  assert.match(
+    maintenance,
+    /pnpm --filter @auction\/db test:api-role-contract/,
+  );
+  assert.match(
+    maintenance,
+    /pnpm --filter @auction\/db test:shop-role-contract/,
+  );
+  assert.match(
+    maintenance,
+    /pnpm --filter @auction\/db test:worker-role-contract/,
+  );
 });
 
 test("migration promotion is reviewed maintenance with staged ceilings", () => {
-  const maintenance = read(".github/workflows/identity-migration-maintenance-test.yml");
+  const maintenance = read(
+    ".github/workflows/identity-migration-maintenance-test.yml",
+  );
 
   assert.match(maintenance, /confirm_review/);
   assert.match(maintenance, /environment: test/);
-  assert.match(maintenance, /PRODUCTION_MIGRATION_THROUGH: \$\{\{ inputs\.migration_through \}\}/);
+  assert.match(
+    maintenance,
+    /PRODUCTION_MIGRATION_THROUGH: \$\{\{ inputs\.migration_through \}\}/,
+  );
   assert.match(maintenance, /options: \["0159", "0160", "0161"\]/);
   assert.match(maintenance, /pnpm --filter @auction\/db db:migrate:prod/);
-  assert.match(maintenance, /pnpm --filter @auction\/db db:configure-oidc-clients/);
-  assert.match(maintenance, /pnpm --filter @auction\/db db:report-user-read-cutover/);
-  assert.match(maintenance, /pnpm --filter @auction\/db test:worker-role-contract/);
+  assert.match(
+    maintenance,
+    /pnpm --filter @auction\/db db:configure-oidc-clients/,
+  );
+  assert.match(
+    maintenance,
+    /pnpm --filter @auction\/db db:report-user-read-cutover/,
+  );
+  assert.match(
+    maintenance,
+    /pnpm --filter @auction\/db test:worker-role-contract/,
+  );
 });
 
 test("build images emits a release manifest artifact", () => {
@@ -170,7 +230,10 @@ test("build images emits a release manifest artifact", () => {
   const writer = read("scripts/ci/write-release-manifest.mjs");
   assert.match(workflow, /write-release-manifest\.mjs/);
   assert.match(workflow, /release-manifest-/);
-  assert.match(workflow, /!\s*contains\(fromJSON\('\["shop-identity","shop"\]'\)/);
+  assert.match(
+    workflow,
+    /!\s*contains\(fromJSON\('\["shop-identity","shop"\]'\)/,
+  );
   for (const field of [
     "repository",
     "component",
@@ -187,15 +250,27 @@ test("App Platform deploy action exposes exact deployment evidence and release c
   const action = read(".github/actions/app-platform-deploy/action.yml");
   const testDeploy = read(".github/workflows/app-deploy-test.yml");
   assert.match(action, /deployment_id:/);
-  assert.match(action, /value: \$\{\{ steps\.create\.outputs\.deployment_id \}\}/);
+  assert.match(
+    action,
+    /value: \$\{\{ steps\.create\.outputs\.deployment_id \}\}/,
+  );
   assert.match(action, /EXPECTED_RELEASES/);
   assert.match(action, /--deployment "\$DEPLOYMENT_ID"/);
   assert.match(action, /timed out in phase/);
   assert.match(testDeploy, /actions\/app-platform-deploy/);
-  assert.match(testDeploy, /Detect changes requiring immutable staging cutover/);
+  assert.match(
+    testDeploy,
+    /Detect changes requiring immutable staging cutover/,
+  );
   assert.match(testDeploy, /apps\/shop apps\/shop-identity/);
-  assert.match(testDeploy, /needs\.classify\.outputs\.immutable_boundary_changed != 'true'/);
-  assert.match(read(".github/workflows/app-deploy-prod.yml"), /actions\/app-platform-deploy/);
+  assert.match(
+    testDeploy,
+    /needs\.classify\.outputs\.immutable_boundary_changed != 'true'/,
+  );
+  assert.match(
+    read(".github/workflows/app-deploy-prod.yml"),
+    /actions\/app-platform-deploy/,
+  );
 });
 
 test("staging rollback restores a reviewed immutable manifest through Terraform", () => {
@@ -204,12 +279,18 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
   assert.match(workflow, /rollback_manifest/);
   assert.match(workflow, /Validate recovery and rollback inputs/);
   assert.match(workflow, /parent_holds_deploy_lock: true/);
-  assert.match(workflow, /fromJSON\(inputs\.rollback_manifest\)\.identity\.sha/);
-  assert.match(workflow, /uses: \.\/\.github\/workflows\/terraform-apply-test\.yml/);
+  assert.match(
+    workflow,
+    /fromJSON\(inputs\.rollback_manifest\)\.identity\.sha/,
+  );
+  assert.match(
+    workflow,
+    /uses: \.\/\.github\/workflows\/terraform-apply-test\.yml/,
+  );
   assertOrdered(workflow, [
     "acceptance_enabled:",
     "  rollback_rehearsal:\n    if:",
-    "  restore_candidate:\n    if:",
+    "  restore_candidate:\n    #",
     "  acceptance_after_rehearsal:\n    if:",
     "  record_accepted_release:\n    needs:",
   ]);
@@ -227,30 +308,55 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   const shopProbe = read("scripts/ci/verify-shop-oidc-roundtrip.mjs");
   const ssfProbe = read("scripts/ci/verify-identity-ssf-live.mjs");
 
-  assert.match(acceptance, /Require acceptance credentials before infrastructure access/);
+  assert.match(
+    acceptance,
+    /Require acceptance credentials before infrastructure access/,
+  );
   assert.match(acceptance, /IDENTITY_ACCEPTANCE_EMAIL/);
   assert.match(acceptance, /IDENTITY_ACCEPTANCE_PASSWORD/);
-  assert.match(acceptance, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
+  assert.match(
+    acceptance,
+    /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/,
+  );
   assert.match(acceptance, /database_ca_certificate/);
   assert.match(acceptance, /NODE_EXTRA_CA_CERTS/);
   assert.match(acceptance, /DATABASE_CA_CERT<</);
   assert.match(acceptance, /Provision isolated acceptance accounts/);
   assert.match(acceptance, /IDENTITY_RATE_LIMIT_PROBE_CLIENT_SECRET/);
   assert.match(machineProbe, /IDENTITY_RATE_LIMIT_PROBE_CLIENT_ID/);
-  assert.match(browserGates, /\.github\/workflows\/identity-staging-acceptance\.yml/);
+  assert.match(
+    browserGates,
+    /\.github\/workflows\/identity-staging-acceptance\.yml/,
+  );
   assert.match(acceptance, /ssf_mode:/);
   assert.match(acceptance, /ssf_disabled/);
   assert.match(acceptance, /ssf_enabled/);
-  assert.match(acceptance, /SHOP_IDENTITY_BASE_URL: https:\/\/test-shop\.lax\.bid/);
+  assert.match(
+    acceptance,
+    /SHOP_IDENTITY_BASE_URL: https:\/\/test-shop\.lax\.bid/,
+  );
   assert.doesNotMatch(acceptance, /shop_identity_base_url/);
   assert.match(acceptance, /if: inputs\.ssf_mode == 'ssf_enabled'/);
-  assert.match(acceptance, /SSF durable delivery and replay contract \(Bid receiver\)/);
-  assert.match(acceptance, /SSF durable delivery and replay contract \(Shop receiver\)/);
+  assert.match(
+    acceptance,
+    /SSF durable delivery and replay contract \(Bid receiver\)/,
+  );
+  assert.match(
+    acceptance,
+    /SSF durable delivery and replay contract \(Shop receiver\)/,
+  );
   assert.match(acceptance, /db:reconcile-identity-profiles/);
   assert.match(acceptance, /db:report-user-read-cutover/);
   assert.match(acceptance, /AUTH_METRICS_TOKEN/);
   assert.match(acceptance, /jwks-snapshot\.ts test --verify/);
-  assert.match(acceptance, /grep -Eq '\^# \(HELP\|TYPE\) '/);
+  for (const metric of [
+    "auction_auth_refresh_rotation_outcomes_total",
+    "auction_auth_identity_lifecycle_operations_total",
+    "auction_auth_ssf_delivery_outcomes_total",
+    "auction_auth_at_rest_pending",
+  ]) {
+    assert.match(acceptance, new RegExp(metric));
+  }
   assert.doesNotMatch(acceptance, /\brg -q\b/);
   assert.doesNotMatch(machineProbe, /expiringBody\.expires_in \+ 2/);
   assert.match(acceptance, /IDENTITY_RECONCILIATION_ATTEMPTS/);
@@ -258,7 +364,10 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /SSF_TEST_TIMEOUT_MS: "120000"/);
   assert.match(bidProbe, /redirect path is not trusted/);
   assert.match(shopProbe, /redirect path is not trusted/);
-  assert.match(acceptance, /SSF_FAILURE_REHEARSAL: \$\{\{ inputs\.ssf_mode == 'ssf_enabled'/);
+  assert.match(
+    acceptance,
+    /SSF_FAILURE_REHEARSAL: \$\{\{ inputs\.ssf_mode == 'ssf_enabled'/,
+  );
   assert.match(ssfProbe, /status: "disabled"/);
   assert.match(ssfProbe, /status: "enabled"/);
   assert.match(ssfProbe, /pre-enable receiver verification passed/);
@@ -268,7 +377,10 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
 });
 
 test("Shop images embed the release provenance required by image contracts", () => {
-  for (const dockerfile of ["apps/shop-identity/Dockerfile", "apps/shop/Dockerfile"]) {
+  for (const dockerfile of [
+    "apps/shop-identity/Dockerfile",
+    "apps/shop/Dockerfile",
+  ]) {
     const contents = read(dockerfile);
     assert.match(contents, /ARG IMAGE_SHA=unknown/);
     assert.match(contents, /ENV SENTRY_RELEASE=\$\{IMAGE_SHA\}/);
@@ -276,7 +388,10 @@ test("Shop images embed the release provenance required by image contracts", () 
 
   const shopIdentity = read("apps/shop-identity/src/index.ts");
   assert.match(shopIdentity, /buildPgConnectionConfig/);
-  assert.match(shopIdentity, /new pg\.Pool\(buildPgConnectionConfig\(databaseUrl\)\)/);
+  assert.match(
+    shopIdentity,
+    /new pg\.Pool\(buildPgConnectionConfig\(databaseUrl\)\)/,
+  );
 });
 
 test("fallback guard covers extraction manifests, lockfiles, and image workflows", () => {

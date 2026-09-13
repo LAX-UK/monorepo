@@ -3,7 +3,10 @@ import { closeIdentityDb, createIdentityAuthPorts } from "@auction/identity-db";
 import { initNodeSentry } from "@auction/observability";
 import { serve } from "@hono/node-server";
 import pino from "pino";
-import { assertAuthAtRestReady, reconcileAuthAtRestMetric } from "./container/auth-health.js";
+import {
+  assertAuthAtRestReady,
+  reconcileAuthAtRestMetric,
+} from "./container/auth-health.js";
 import { createAuthApp } from "./container/create-auth-app.js";
 import { createAuthInfra } from "./container/create-auth-infra.js";
 import { createAuthIssuer } from "./container/create-auth-issuer.js";
@@ -34,8 +37,15 @@ const log = pino({
 });
 
 const infra = createAuthInfra(env, log);
-const { db, redis, emailSender, productSubjectUsage, webOrigins, envelope, phoneVerification } =
-  infra;
+const {
+  db,
+  redis,
+  emailSender,
+  productSubjectUsage,
+  webOrigins,
+  envelope,
+  phoneVerification,
+} = infra;
 try {
   await assertAuthAtRestReady({ db, crypto: envelope, nodeEnv: env.NODE_ENV });
 } catch (error) {
@@ -44,7 +54,9 @@ try {
   throw error;
 }
 const repositories = createAuthRepositories(db);
-const identityPorts = createIdentityAuthPorts(db, { envelope: envelope ?? undefined });
+const identityPorts = createIdentityAuthPorts(db, {
+  envelope: envelope ?? undefined,
+});
 const metrics = createAuthMetrics();
 const services = createOidcRouteServices({
   db,
@@ -56,7 +68,8 @@ const services = createOidcRouteServices({
   environment: env.NODE_ENV,
   onBackchannelOutcome: (outcome) => {
     metrics.backchannelDeliveryOutcomes.inc({ outcome });
-    if (outcome !== "delivered") log.warn({ outcome }, "backchannel_logout_delivery_outcome");
+    if (outcome !== "delivered")
+      log.warn({ outcome }, "backchannel_logout_delivery_outcome");
   },
 });
 const auth = createAuthIssuer({
@@ -90,7 +103,7 @@ const authHandler = createAuthRequestHandler({
   oidcSessions: services.oidc.sessions,
   logout: services.oidc.logout,
 });
-const schedules = createAuthSchedules({
+const schedules = await createAuthSchedules({
   db,
   log,
   identityOperations,
@@ -102,10 +115,13 @@ const schedules = createAuthSchedules({
   ssfMaxAttempts: env.SSF_DELIVERY_MAX_ATTEMPTS,
   onSsfOutcome: (outcome, deliveryId) => {
     metrics.ssfDeliveryOutcomes.inc({ outcome });
-    if (outcome !== "delivered") log.warn({ outcome, deliveryId }, "ssf_delivery_outcome");
+    if (outcome !== "delivered")
+      log.warn({ outcome, deliveryId }, "ssf_delivery_outcome");
   },
   reconcileAuthAtRest: () =>
-    reconcileAuthAtRestMetric(db, (pending) => metrics.authAtRestPending.set(pending)),
+    reconcileAuthAtRestMetric(db, (pending) =>
+      metrics.authAtRestPending.set(pending),
+    ),
 });
 const internal =
   env.IDENTITY_MACHINE_CLIENT_ID && env.IDENTITY_MACHINE_CLIENT_SECRET
@@ -119,7 +135,10 @@ const internal =
           machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
           allowMerge: env.IDENTITY_MERGE_ENABLED,
           onCredentialRateLimitError: (error) => {
-            log.warn({ err: error }, "machine_credential_rate_limit_unavailable");
+            log.warn(
+              { err: error },
+              "machine_credential_rate_limit_unavailable",
+            );
           },
           onOperation: (operation, subjectId) => {
             metrics.identityLifecycleOperations.inc({ operation });
@@ -128,7 +147,10 @@ const internal =
         }),
       }
     : undefined;
-const refreshFamilies = createRefreshTokenFamilyRepository(db, services.oidc.logout);
+const refreshFamilies = createRefreshTokenFamilyRepository(
+  db,
+  services.oidc.logout,
+);
 const app = createAuthApp({
   log,
   issuerHttpOutcomes: metrics.issuerHttpOutcomes,
@@ -171,8 +193,9 @@ const app = createAuthApp({
   },
 });
 
-const server = serve({ fetch: app.fetch, hostname: "0.0.0.0", port: env.PORT }, (info) =>
-  log.info({ port: info.port }, "auth service listening"),
+const server = serve(
+  { fetch: app.fetch, hostname: "0.0.0.0", port: env.PORT },
+  (info) => log.info({ port: info.port }, "auth service listening"),
 );
 
 function shutdown(signal: NodeJS.Signals) {

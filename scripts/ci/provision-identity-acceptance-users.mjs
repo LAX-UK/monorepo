@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { appendFile } from "node:fs/promises";
+import { appendFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
@@ -10,20 +10,22 @@ const ACCOUNT_LABELS = {
   REFRESH_TEST_EMAIL: "refresh",
 };
 
-export function deriveAcceptanceEmail(sourceEmail, label) {
+export function deriveAcceptanceEmail(sourceEmail, label, runId) {
   const separator = sourceEmail.lastIndexOf("@");
   if (separator < 1 || separator === sourceEmail.length - 1) {
     throw new Error("IDENTITY_ACCEPTANCE_EMAIL must be a valid email address");
   }
   const local = sourceEmail.slice(0, separator).split("+")[0];
   const domain = sourceEmail.slice(separator + 1);
-  return `${local}+lax-${label}-acceptance@${domain}`.toLowerCase();
+  const suffix = runId ? `-${runId}` : "";
+  return `${local}+lax-${label}-acceptance${suffix}@${domain}`.toLowerCase();
 }
 
 async function ensureUser(client, authBase, email, password, label) {
-  const existing = await client.query('select 1 from public."user" where lower(email) = $1', [
-    email,
-  ]);
+  const existing = await client.query(
+    'select 1 from public."user" where lower(email) = $1',
+    [email],
+  );
   if (existing.rowCount) return;
 
   const response = await fetch(`${authBase}/api/auth/sign-up/email`, {
@@ -46,13 +48,16 @@ async function ensureUser(client, authBase, email, password, label) {
 
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
-    const created = await client.query('select 1 from public."user" where lower(email) = $1', [
-      email,
-    ]);
+    const created = await client.query(
+      'select 1 from public."user" where lower(email) = $1',
+      [email],
+    );
     if (created.rowCount) return;
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error(`${label} acceptance user was not persisted within 30 seconds`);
+  throw new Error(
+    `${label} acceptance user was not persisted within 30 seconds`,
+  );
 }
 
 async function waitForBidProjection(client, emails) {
@@ -69,7 +74,9 @@ async function waitForBidProjection(client, emails) {
     if (Number(result.rows[0]?.projected ?? 0) === emails.length) return;
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
-  throw new Error("acceptance accounts were not projected to Bid within 60 seconds");
+  throw new Error(
+    "acceptance accounts were not projected to Bid within 60 seconds",
+  );
 }
 
 async function main() {
@@ -77,10 +84,26 @@ async function main() {
   const password = process.env.IDENTITY_ACCEPTANCE_PASSWORD;
   const databaseUrl = process.env.DATABASE_URL_OWNER;
   const githubEnv = process.env.GITHUB_ENV;
-  const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
-  if (!sourceEmail || !password || !databaseUrl || !githubEnv) {
+  const runId = process.env.ACCEPTANCE_RUN_ID;
+  const manifestPath = process.env.ACCEPTANCE_MANIFEST_PATH;
+  const authBase = (
+    process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid"
+  ).replace(/\/+$/, "");
+  if (
+    !sourceEmail ||
+    !password ||
+    !databaseUrl ||
+    !githubEnv ||
+    !runId ||
+    !manifestPath
+  ) {
     throw new Error(
-      "IDENTITY_ACCEPTANCE_EMAIL, IDENTITY_ACCEPTANCE_PASSWORD, DATABASE_URL_OWNER, and GITHUB_ENV are required",
+      "IDENTITY_ACCEPTANCE_EMAIL, IDENTITY_ACCEPTANCE_PASSWORD, DATABASE_URL_OWNER, GITHUB_ENV, ACCEPTANCE_RUN_ID, and ACCEPTANCE_MANIFEST_PATH are required",
+    );
+  }
+  if (!/^[a-zA-Z0-9_-]{1,80}$/.test(runId)) {
+    throw new Error(
+      "ACCEPTANCE_RUN_ID must contain only letters, digits, underscores, and hyphens",
     );
   }
 
@@ -89,19 +112,27 @@ async function main() {
   try {
     const emails = [];
     for (const [envName, label] of Object.entries(ACCOUNT_LABELS)) {
-      const email = deriveAcceptanceEmail(sourceEmail, label);
+      const email = deriveAcceptanceEmail(sourceEmail, label, runId);
       await ensureUser(client, authBase, email, password, label);
       emails.push(email);
       console.log(`::add-mask::${email}`);
       await appendFile(githubEnv, `${envName}=${email}\n`);
     }
     await waitForBidProjection(client, emails);
+    await writeFile(
+      manifestPath,
+      `${JSON.stringify({ runId, emails, createdAt: new Date().toISOString() }, null, 2)}\n`,
+      { mode: 0o600 },
+    );
   } finally {
     await client.end();
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   main().catch((error) => {
     console.error(error);
     process.exit(1);

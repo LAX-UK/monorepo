@@ -31,6 +31,11 @@ on:
         description: Approved lax-test-shop digest for ephemeral image deploys
         type: string
         required: false
+      enable_auth_ssf_delivery:
+        description: Enable Auth SSF delivery; use staging recovery for a phased acceptance transition
+        type: boolean
+        required: false
+        default: false
 concurrency:
   group: app-deploy-test
   cancel-in-progress: false
@@ -89,7 +94,7 @@ jobs:
       TF_VAR_full_buyer_onboarding_enabled: ${{ vars.FULL_BUYER_ONBOARDING_ENABLED || 'false' }}
       TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
-      TF_VAR_enable_auth_ssf_delivery: ${{ vars.ENABLE_AUTH_SSF_DELIVERY_TEST || 'false' }}
+      TF_VAR_enable_auth_ssf_delivery: ${{ inputs.enable_auth_ssf_delivery && 'true' || 'false' }}
       TF_VAR_identity_image_tag: ${{ inputs.identity_sha }}
       TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
@@ -108,7 +113,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Verify Cloudflare zone access before ephemeral apply

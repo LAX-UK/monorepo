@@ -57,11 +57,64 @@ runs:
       env:
         TF_ALLOWED_DELETE_ADDRESSES: ${{ inputs.allowed-delete-addresses }}
       run: node "$GITHUB_WORKSPACE/scripts/ci/verify-terraform-plan-safe.mjs" tfapply.tfplan
+    - name: Snapshot App Platform deployments before apply
+      if: inputs.app-id != ''
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
+      run: |
+        set -euo pipefail
+        doctl apps list-deployments "$APP_ID" --output json |
+          jq '[.[].id]' > "$RUNNER_TEMP/${{ inputs.state-key }}-deployments-before.json"
     - id: apply
       continue-on-error: true
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: terraform apply -input=false tfapply.tfplan
+    - name: Capture exact App Platform deployment diagnostics
+      if: always() && inputs.app-id != ''
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
+      run: |
+        set -euo pipefail
+        before="$RUNNER_TEMP/${{ inputs.state-key }}-deployments-before.json"
+        deployments="$RUNNER_TEMP/${{ inputs.state-key }}-deployments-after.json"
+        evidence="$RUNNER_TEMP/${{ inputs.state-key }}-app-platform-diagnostics.json"
+        doctl apps list-deployments "$APP_ID" --output json > "$deployments" || true
+        deployment_id="$(
+          jq -r --slurpfile before "$before" '
+            ($before[0] // []) as $prior |
+            [.[] | select(.id as $id | ($prior | index($id) | not))] |
+            sort_by(.created_at) | last | .id // empty
+          ' "$deployments"
+        )"
+        # A no-op apply creates no deployment; retain the current one for evidence.
+        if test -z "$deployment_id"; then
+          deployment_id="$(jq -r 'sort_by(.created_at) | last | .id // empty' "$deployments")"
+        fi
+        jq -n --arg appId "$APP_ID" --arg deploymentId "$deployment_id" \
+          --arg applyOutcome "${{ steps.apply.outcome }}" \
+          '{appId: $appId, deploymentId: $deploymentId, applyOutcome: $applyOutcome}' > "$evidence"
+        if test -n "$deployment_id"; then
+          doctl apps get-deployment "$APP_ID" "$deployment_id" --output json \
+            > "$RUNNER_TEMP/${{ inputs.state-key }}-deployment-${deployment_id}.json" || true
+          for component in auth shop shop-identity api ws worker web; do
+            for log_type in run run_restarted; do
+              doctl apps logs "$APP_ID" "$component" --type "$log_type" --tail 200 \
+                --deployment "$deployment_id" \
+                > "$RUNNER_TEMP/${{ inputs.state-key }}-${component}-${log_type}.log" 2>&1 || true
+            done
+          done
+        fi
+    - name: Retain App Platform diagnostics
+      if: always() && inputs.app-id != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-platform-diagnostics-${{ inputs.state-key }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/${{ inputs.state-key }}-*
+        if-no-files-found: warn
+        retention-days: 30
     - name: Capture post-apply state addresses
       if: always()
       shell: bash
@@ -75,21 +128,6 @@ runs:
         path: ${{ runner.temp }}/${{ inputs.state-key }}-state-addresses.txt
         if-no-files-found: warn
         retention-days: 30
-    - name: Capture failed App Platform deployment diagnostics
-      if: steps.apply.outcome == 'failure' && inputs.app-id != ''
-      shell: bash
-      env:
-        APP_ID: ${{ inputs.app-id }}
-      run: |
-        set -euo pipefail
-        deployments="$(doctl apps list-deployments "$APP_ID" --output json)"
-        deployment_id="$(jq -r '.[0].id // empty' <<<"$deployments")"
-        test -n "$deployment_id" || exit 0
-        doctl apps get-deployment "$APP_ID" "$deployment_id" --output json || true
-        for component in auth shop shop-identity api ws worker web; do
-          doctl apps logs "$APP_ID" "$component" \
-            --type run --tail 200 --deployment "$deployment_id" || true
-        done
     - name: Back up Terraform state after apply attempt
       if: always()
       shell: bash
