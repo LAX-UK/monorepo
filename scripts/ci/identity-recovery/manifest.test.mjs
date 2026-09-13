@@ -22,10 +22,6 @@ test("accepts a complete immutable recovery manifest", () => {
 });
 
 test("rejects incomplete manifests", () => {
-  assert.throws(() =>
-    parseRecoveryManifest(JSON.stringify({ ...manifest, version: 2 })),
-  );
-  assert.throws(() =>
-    parseRecoveryManifest(JSON.stringify({ ...manifest, identity: { sha } })),
-  );
+  assert.throws(() => parseRecoveryManifest(JSON.stringify({ ...manifest, version: 2 })));
+  assert.throws(() => parseRecoveryManifest(JSON.stringify({ ...manifest, identity: { sha } })));
 });

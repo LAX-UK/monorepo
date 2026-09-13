@@ -2,9 +2,7 @@
 import pg from "pg";
 import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
 
-const authBase = (
-  process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid"
-).replace(/\/?$/, "");
+const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/?$/, "");
 const clientId = process.env.SSF_TEST_CLIENT_ID ?? "lax-bid-web";
 const clientSecret = process.env.SSF_TEST_CLIENT_SECRET;
 const endpoint = process.env.SSF_TEST_ENDPOINT ?? defaultEndpoint(clientId);
@@ -18,16 +16,13 @@ if (!clientSecret || !databaseUrl) {
   throw new Error("SSF_TEST_CLIENT_SECRET and DATABASE_URL_OWNER are required");
 }
 if (!deliveryEnabled) {
-  throw new Error(
-    "SSF_DELIVERY_ENABLED=true is required to prove disabled and enabled delivery",
-  );
+  throw new Error("SSF_DELIVERY_ENABLED=true is required to prove disabled and enabled delivery");
 }
 for (const [label, value] of [
   ["AUTH_BASE_URL", authBase],
   ["SSF_TEST_ENDPOINT", endpoint],
 ]) {
-  if (new URL(value).protocol !== "https:")
-    throw new Error(`${label} must use HTTPS`);
+  if (new URL(value).protocol !== "https:") throw new Error(`${label} must use HTTPS`);
 }
 if (!Number.isFinite(timeoutMs) || timeoutMs < 1_000) {
   throw new Error("SSF_TEST_TIMEOUT_MS must be at least 1000");
@@ -50,8 +45,7 @@ async function body(response) {
 }
 
 function defaultEndpoint(receiverClientId) {
-  if (receiverClientId === "lax-shop-web")
-    return "https://test-shop.lax.bid/api/ssf/events";
+  if (receiverClientId === "lax-shop-web") return "https://test-shop.lax.bid/api/ssf/events";
   return "https://test-api.lax.bid/ssf/events";
 }
 
@@ -62,11 +56,9 @@ try {
   const listed = await request("/ssf/stream");
   const streams = await body(listed);
   if (!listed.ok || !Array.isArray(streams)) {
-    throw new Error(
-      `SSF stream listing failed (${listed.status}): ${JSON.stringify(streams)}`,
-    );
+    throw new Error(`SSF stream listing failed (${listed.status}): ${JSON.stringify(streams)}`);
   }
-  let stream =
+  const stream =
     streams.find((candidate) => candidate.stream_id === provisionedStreamId) ??
     streams.find((candidate) => candidate.delivery?.endpoint_url === endpoint);
   if (!stream) {
@@ -103,9 +95,7 @@ try {
       }),
     });
     if (disabledVerification.status !== 204) {
-      throw new Error(
-        `SSF disabled verification enqueue failed (${disabledVerification.status})`,
-      );
+      throw new Error(`SSF disabled verification enqueue failed (${disabledVerification.status})`);
     }
     let disabledDelivery;
     const disabledDeadline = Date.now() + timeoutMs;
@@ -124,10 +114,7 @@ try {
       if (disabledDelivery?.status === "delivered") break;
       await new Promise((resolve) => setTimeout(resolve, 1_000));
     } while (Date.now() < disabledDeadline);
-    if (
-      disabledDelivery?.status !== "delivered" ||
-      disabledDelivery.last_status_code !== 202
-    ) {
+    if (disabledDelivery?.status !== "delivered" || disabledDelivery.last_status_code !== 202) {
       throw new Error(
         `Disabled-stream verification was not delivered for ${clientId}: ${JSON.stringify(disabledDelivery)}`,
       );
@@ -147,10 +134,10 @@ try {
 
     if (failureRehearsal) {
       const failedStartedAt = new Date();
-      await client.query(
-        "UPDATE ssf_stream SET endpoint = $1, updated_at = now() WHERE id = $2",
-        ["https://ssf-failure-probe.invalid/events", stream.stream_id],
-      );
+      await client.query("UPDATE ssf_stream SET endpoint = $1, updated_at = now() WHERE id = $2", [
+        "https://ssf-failure-probe.invalid/events",
+        stream.stream_id,
+      ]);
       try {
         const failedVerification = await request("/ssf/verification", {
           method: "POST",
@@ -161,9 +148,7 @@ try {
           }),
         });
         if (failedVerification.status !== 204) {
-          throw new Error(
-            `SSF failure verification enqueue failed (${failedVerification.status})`,
-          );
+          throw new Error(`SSF failure verification enqueue failed (${failedVerification.status})`);
         }
         const failureDeadline = Date.now() + timeoutMs;
         let failedDelivery;
@@ -180,10 +165,7 @@ try {
           );
           failedDelivery = result.rows[0];
           if (failedDelivery?.status === "failed") break;
-          if (
-            failedDelivery?.status === "pending" &&
-            failedDelivery.attempt_count > 0
-          ) {
+          if (failedDelivery?.status === "pending" && failedDelivery.attempt_count > 0) {
             await client.query(
               "UPDATE ssf_delivery SET next_attempt_at = now() WHERE id = $1 AND status = 'pending'",
               [failedDelivery.id],
@@ -219,9 +201,7 @@ try {
       body: JSON.stringify({ stream_id: stream.stream_id, state }),
     });
     if (verification.status !== 204) {
-      throw new Error(
-        `SSF verification enqueue failed (${verification.status})`,
-      );
+      throw new Error(`SSF verification enqueue failed (${verification.status})`);
     }
 
     let delivery;
@@ -243,9 +223,7 @@ try {
     } while (Date.now() < deadline);
 
     if (!delivery) {
-      throw new Error(
-        `SSF verification did not create a durable delivery for ${clientId}`,
-      );
+      throw new Error(`SSF verification did not create a durable delivery for ${clientId}`);
     }
     if (delivery.status !== "delivered" || delivery.last_status_code !== 202) {
       throw new Error(

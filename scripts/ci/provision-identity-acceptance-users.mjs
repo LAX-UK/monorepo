@@ -22,10 +22,9 @@ export function deriveAcceptanceEmail(sourceEmail, label, runId) {
 }
 
 async function ensureUser(client, authBase, email, password, label) {
-  const existing = await client.query(
-    'select 1 from public."user" where lower(email) = $1',
-    [email],
-  );
+  const existing = await client.query('select 1 from public."user" where lower(email) = $1', [
+    email,
+  ]);
   if (existing.rowCount) return;
 
   const response = await fetch(`${authBase}/api/auth/sign-up/email`, {
@@ -48,16 +47,13 @@ async function ensureUser(client, authBase, email, password, label) {
 
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
-    const created = await client.query(
-      'select 1 from public."user" where lower(email) = $1',
-      [email],
-    );
+    const created = await client.query('select 1 from public."user" where lower(email) = $1', [
+      email,
+    ]);
     if (created.rowCount) return;
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error(
-    `${label} acceptance user was not persisted within 30 seconds`,
-  );
+  throw new Error(`${label} acceptance user was not persisted within 30 seconds`);
 }
 
 async function waitForBidProjection(client, emails) {
@@ -74,9 +70,7 @@ async function waitForBidProjection(client, emails) {
     if (Number(result.rows[0]?.projected ?? 0) === emails.length) return;
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
-  throw new Error(
-    "acceptance accounts were not projected to Bid within 60 seconds",
-  );
+  throw new Error("acceptance accounts were not projected to Bid within 60 seconds");
 }
 
 async function main() {
@@ -86,17 +80,8 @@ async function main() {
   const githubEnv = process.env.GITHUB_ENV;
   const runId = process.env.ACCEPTANCE_RUN_ID;
   const manifestPath = process.env.ACCEPTANCE_MANIFEST_PATH;
-  const authBase = (
-    process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid"
-  ).replace(/\/+$/, "");
-  if (
-    !sourceEmail ||
-    !password ||
-    !databaseUrl ||
-    !githubEnv ||
-    !runId ||
-    !manifestPath
-  ) {
+  const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
+  if (!sourceEmail || !password || !databaseUrl || !githubEnv || !runId || !manifestPath) {
     throw new Error(
       "IDENTITY_ACCEPTANCE_EMAIL, IDENTITY_ACCEPTANCE_PASSWORD, DATABASE_URL_OWNER, GITHUB_ENV, ACCEPTANCE_RUN_ID, and ACCEPTANCE_MANIFEST_PATH are required",
     );
@@ -129,10 +114,7 @@ async function main() {
   }
 }
 
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error) => {
     console.error(error);
     process.exit(1);

@@ -1,14 +1,11 @@
 import { randomUUID } from "node:crypto";
-import pg from "pg";
 import { sql } from "drizzle-orm";
+import pg from "pg";
 import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import { WORKER_DENY_TABLES } from "./migrate-roles.js";
-import {
-  expectTablePrivileges,
-  readTablePrivileges,
-} from "./role-contract/table-privileges.js";
+import { expectTablePrivileges, readTablePrivileges } from "./role-contract/table-privileges.js";
 import {
   absenteeBid,
   bid,
@@ -23,13 +20,10 @@ import {
 } from "./schema/index.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
-const WORKER_URL =
-  process.env.DATABASE_URL_WORKER ?? process.env.WORKER_APP_DATABASE_URL;
+const WORKER_URL = process.env.DATABASE_URL_WORKER ?? process.env.WORKER_APP_DATABASE_URL;
 const { Client } = pg;
 
-async function withWorkerClient<T>(
-  fn: (client: pg.Client) => Promise<T>,
-): Promise<T> {
+async function withWorkerClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
   if (!WORKER_URL) throw new Error("DATABASE_URL_WORKER is required");
   const client = new Client(buildPgConnectionConfig(WORKER_URL));
   await client.connect();
@@ -148,8 +142,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
         throw new Error("rollback_role_contract");
       })
       .catch((err: unknown) => {
-        if (!(err instanceof Error) || err.message !== "rollback_role_contract")
-          throw err;
+        if (!(err instanceof Error) || err.message !== "rollback_role_contract") throw err;
       });
   });
 
@@ -162,10 +155,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
   it("can read notification_outbox (lifecycle staging drain path)", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);
-    await db
-      .select({ id: notificationOutbox.id })
-      .from(notificationOutbox)
-      .limit(1);
+    await db.select({ id: notificationOutbox.id }).from(notificationOutbox).limit(1);
   });
 
   it("can take row locks on lot (FOR UPDATE lifecycle path)", async () => {
@@ -178,11 +168,8 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
   it("can insert payout and payout_line for settlement (rolled back)", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);
-    const entityRows = await db.execute(
-      sql`SELECT id FROM legal_entity LIMIT 1`,
-    );
-    const legalEntityId = (entityRows.rows[0] as { id?: string } | undefined)
-      ?.id;
+    const entityRows = await db.execute(sql`SELECT id FROM legal_entity LIMIT 1`);
+    const legalEntityId = (entityRows.rows[0] as { id?: string } | undefined)?.id;
     if (!legalEntityId) {
       if (process.env.WORKER_ROLE_CONTRACT_REQUIRED === "true") {
         expect.fail("seed legal_entity for worker role contract");
@@ -216,8 +203,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
         throw new Error("rollback_role_contract");
       })
       .catch((err: unknown) => {
-        if (!(err instanceof Error) || err.message !== "rollback_role_contract")
-          throw err;
+        if (!(err instanceof Error) || err.message !== "rollback_role_contract") throw err;
       });
   });
 
@@ -247,9 +233,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
       | undefined;
     if (!row?.lot_id || !row.user_id || !row.legal_entity_id) {
       if (process.env.WORKER_ROLE_CONTRACT_REQUIRED === "true") {
-        expect.fail(
-          "seed lot, user, and legal_entity for worker absentee contract probe",
-        );
+        expect.fail("seed lot, user, and legal_entity for worker absentee contract probe");
       }
       return;
     }
@@ -280,9 +264,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
       | undefined;
     if (!row?.lot_id || !row.user_id || !row.legal_entity_id) {
       if (process.env.WORKER_ROLE_CONTRACT_REQUIRED === "true") {
-        expect.fail(
-          "seed lot, user, and legal_entity for worker absentee contract probe",
-        );
+        expect.fail("seed lot, user, and legal_entity for worker absentee contract probe");
       }
       return;
     }
@@ -304,8 +286,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
         throw new Error("rollback_role_contract");
       })
       .catch((err: unknown) => {
-        if (!(err instanceof Error) || err.message !== "rollback_role_contract")
-          throw err;
+        if (!(err instanceof Error) || err.message !== "rollback_role_contract") throw err;
       });
   });
 
@@ -318,9 +299,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
       expect(process.env.WORKER_ROLE_CONTRACT_REQUIRED).not.toBe("true");
       return;
     }
-    await expect(
-      db.execute(sql`DELETE FROM bid WHERE id = ${bidId}`),
-    ).rejects.toThrow();
+    await expect(db.execute(sql`DELETE FROM bid WHERE id = ${bidId}`)).rejects.toThrow();
   });
 
   it("can upsert lot_lifecycle_snapshot (rolled back)", async () => {
@@ -334,9 +313,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
     const lotId = (probe.rows[0] as { lot_id?: string } | undefined)?.lot_id;
     if (!lotId) {
       if (process.env.WORKER_ROLE_CONTRACT_REQUIRED === "true") {
-        expect.fail(
-          "seed lot row for worker lifecycle snapshot contract probe",
-        );
+        expect.fail("seed lot row for worker lifecycle snapshot contract probe");
       }
       return;
     }
@@ -360,8 +337,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
         throw new Error("rollback_role_contract");
       })
       .catch((err: unknown) => {
-        if (!(err instanceof Error) || err.message !== "rollback_role_contract")
-          throw err;
+        if (!(err instanceof Error) || err.message !== "rollback_role_contract") throw err;
       });
   });
 
@@ -384,8 +360,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
         throw new Error("rollback_role_contract");
       })
       .catch((err: unknown) => {
-        if (!(err instanceof Error) || err.message !== "rollback_role_contract")
-          throw err;
+        if (!(err instanceof Error) || err.message !== "rollback_role_contract") throw err;
       });
   });
 });
@@ -393,8 +368,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
 describe("worker_app role contract (static cutover gate)", () => {
   it("requires DATABASE_URL_WORKER in CI cutover jobs", () => {
     expect(
-      process.env.CI === "true" &&
-        process.env.WORKER_ROLE_CONTRACT_REQUIRED === "true"
+      process.env.CI === "true" && process.env.WORKER_ROLE_CONTRACT_REQUIRED === "true"
         ? Boolean(WORKER_URL)
         : true,
     ).toBe(true);
@@ -408,14 +382,10 @@ describe("worker_app role contract (static cutover gate)", () => {
       WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS,
     } = await import("./migrate-roles.js");
     expect(WORKER_FINANCE_INTEGRATION_TABLES).toContain("xero_connection");
-    expect(WORKER_FINANCE_INTEGRATION_TABLES).toContain(
-      "payment_refund_reconcile",
-    );
+    expect(WORKER_FINANCE_INTEGRATION_TABLES).toContain("payment_refund_reconcile");
     expect(WORKER_DISPLAY_PAIRING_TABLES).toContain("saleroom_display_pairing");
     expect(WORKER_PAYOUT_SETTLEMENT_TABLES).toEqual(["payout", "payout_line"]);
-    expect(
-      WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS.length,
-    ).toBeGreaterThan(0);
+    expect(WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS.length).toBeGreaterThan(0);
   });
 
   it("documents worker lifecycle absentee and bid grants for migrate-roles", async () => {
@@ -429,15 +399,12 @@ describe("worker_app role contract (static cutover gate)", () => {
     expect(WORKER_ABSENTEE_BID_TABLES).toEqual(["absentee_bid"]);
     expect(WORKER_BID_PLACEMENT_TABLES).toEqual(["bid"]);
     expect(WORKER_LIFECYCLE_READ_TABLES).toContain("watchlist");
-    expect(WORKER_LIFECYCLE_SNAPSHOT_TABLES).toEqual([
-      "lot_lifecycle_snapshot",
-    ]);
+    expect(WORKER_LIFECYCLE_SNAPSHOT_TABLES).toEqual(["lot_lifecycle_snapshot"]);
     expect(WORKER_FAILED_JOBS_TABLES).toEqual(["failed_jobs"]);
   });
 
   it("denies worker_app writes to auth session table (static grant model)", async () => {
-    const { AUTH_FULL_TABLES, WORKER_DENY_TABLES } =
-      await import("./migrate-roles.js");
+    const { AUTH_FULL_TABLES, WORKER_DENY_TABLES } = await import("./migrate-roles.js");
     expect(AUTH_FULL_TABLES).toContain("session");
     expect(AUTH_FULL_TABLES).toContain("oidc_rp_session");
     expect(AUTH_FULL_TABLES).toContain("oidc_backchannel_logout_delivery");
@@ -448,21 +415,17 @@ describe("worker_app role contract (static cutover gate)", () => {
   });
 
   it("grants worker_app product profile projection tables", async () => {
-    const { WORKER_PRODUCT_PROFILE_TABLES } =
-      await import("./migrate-roles.js");
+    const { WORKER_PRODUCT_PROFILE_TABLES } = await import("./migrate-roles.js");
     expect(WORKER_PRODUCT_PROFILE_TABLES).toEqual([
       "shop_user_profile",
       "bid_user_profile",
       "bid_identity_directory",
     ]);
-    expect(WORKER_PRODUCT_PROFILE_TABLES).not.toContain(
-      "shop_identity_session",
-    );
+    expect(WORKER_PRODUCT_PROFILE_TABLES).not.toContain("shop_identity_session");
   });
 
   it("denies worker_app direct user reads after the directory cutover", async () => {
-    const { WORKER_DENY_TABLES, WORKER_READ_TABLES } =
-      await import("./migrate-roles.js");
+    const { WORKER_DENY_TABLES, WORKER_READ_TABLES } = await import("./migrate-roles.js");
     expect(WORKER_DENY_TABLES).toContain("user");
     expect(WORKER_READ_TABLES).not.toContain("user");
   });

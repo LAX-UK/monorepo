@@ -1,7 +1,4 @@
-import {
-  type IdentityDatabase,
-  startJwksRetirementSchedule,
-} from "@auction/identity-db";
+import { type IdentityDatabase, startJwksRetirementSchedule } from "@auction/identity-db";
 import { Sentry } from "@auction/observability";
 import type pino from "pino";
 import { startIdentityDeletionPurgeSchedule } from "../infrastructure/identity-deletion-purge.schedule.js";
@@ -18,17 +15,11 @@ export async function createAuthSchedules(options: {
   identityOperations: { purgeExpiredVerifications(): Promise<number> };
   logoutDelivery: Pick<BackchannelLogoutDeliveryWorker, "drain">;
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
-  ssfDelivery: Pick<
-    SsfDeliveryWorker,
-    "enqueueFromDomainEvents" | "deliverDue"
-  >;
+  ssfDelivery: Pick<SsfDeliveryWorker, "enqueueFromDomainEvents" | "deliverDue">;
   ssfEnabled: boolean;
   ssfTimeoutMs: number;
   ssfMaxAttempts: number;
-  onSsfOutcome: (
-    outcome: "delivered" | "retry_scheduled" | "failed",
-    id: string,
-  ) => void;
+  onSsfOutcome: (outcome: "delivered" | "retry_scheduled" | "failed", id: string) => void;
   reconcileAuthAtRest?: () => Promise<void>;
 }) {
   let provisioning: Promise<void>;
@@ -42,12 +33,10 @@ export async function createAuthSchedules(options: {
   }
   const verification = setInterval(
     () => {
-      void options.identityOperations
-        .purgeExpiredVerifications()
-        .catch((err) => {
-          options.log.error({ err }, "expired verification cleanup failed");
-          Sentry.captureException(err);
-        });
+      void options.identityOperations.purgeExpiredVerifications().catch((err) => {
+        options.log.error({ err }, "expired verification cleanup failed");
+        Sentry.captureException(err);
+      });
     },
     60 * 60 * 1_000,
   );
@@ -72,8 +61,7 @@ export async function createAuthSchedules(options: {
       options.log.error({ err }, "identity_deletion_purge_failed");
       Sentry.captureException(err);
     },
-    onPurged: (count) =>
-      options.log.info({ count }, "identity_deletion_purge_batch"),
+    onPurged: (count) => options.log.info({ count }, "identity_deletion_purge_batch"),
   });
   const lifecycleReconciliation = startIdentityLifecycleReconciliationSchedule({
     db: options.db,
@@ -81,8 +69,7 @@ export async function createAuthSchedules(options: {
       options.log.error({ err }, "identity_lifecycle_reconciliation_failed");
       Sentry.captureException(err);
     },
-    onReconciled: (counts) =>
-      options.log.warn(counts, "identity_lifecycle_outbox_reconciled"),
+    onReconciled: (counts) => options.log.warn(counts, "identity_lifecycle_outbox_reconciled"),
   });
   let ssfDrain: Promise<void> | null = null;
   const ssf = options.ssfEnabled
