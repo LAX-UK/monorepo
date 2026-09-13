@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   maintain:
-    if: inputs.confirm_backup
+    if: inputs.confirm_backup || inputs.mode == 'inventory'
     runs-on: ubuntu-latest
     environment: test
     env:

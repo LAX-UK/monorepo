@@ -1,0 +1,33 @@
+name: Staging recovery reconcile
+
+on:
+  workflow_run:
+    workflows: ["Staging recovery (test)"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reconcile:
+    if: >-
+      github.event.workflow_run.conclusion != 'success' &&
+      github.event.workflow_run.conclusion != 'skipped'
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - name: Require trusted recovery artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          artifacts="$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/artifacts")"
+          echo "$artifacts" | jq -e '.artifacts[] | select(.name == "staging-recovery-accepted-release")' >/dev/null || {
+            echo "No trusted accepted-release artifact; manual reconciliation required."
+            exit 1
+          }
+      - name: Record reconciliation requirement
+        run: |
+          echo "::warning::Recovery run ${{ github.event.workflow_run.id }} did not succeed. Review App Platform active deployment and rerun restore_candidate through staging-recovery-test.yml."

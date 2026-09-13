@@ -231,6 +231,29 @@ jobs:
           pnpm --filter @auction/db test:api-role-contract
           pnpm --filter @auction/db test:shop-role-contract
           pnpm --filter @auction/db test:worker-role-contract
+      - name: Record bounded acceptance phase evidence
+        if: always()
+        run: |
+          node --input-type=module -e '
+            import { writeRecoveryEvidence, acceptancePhaseEvidence } from "./scripts/ci/identity-recovery/evidence-writer.mjs";
+            const payload = acceptancePhaseEvidence(process.env.ACCEPTANCE_SSF_MODE ?? "unknown", {
+              identitySha: process.env.IDENTITY_SHA,
+              startedAt: process.env.ACCEPTANCE_STARTED_AT ?? null,
+              runId: process.env.ACCEPTANCE_RUN_ID,
+            });
+            writeRecoveryEvidence(process.env.ACCEPTANCE_EVIDENCE_PATH, payload);
+          '
+        env:
+          IDENTITY_SHA: ${{ inputs.identity_sha }}
+          ACCEPTANCE_EVIDENCE_PATH: ${{ runner.temp }}/identity-acceptance-phase.json
+      - name: Retain acceptance phase evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: identity-acceptance-phase-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/identity-acceptance-phase.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Clean up run-scoped acceptance accounts
         if: always()
         run: |

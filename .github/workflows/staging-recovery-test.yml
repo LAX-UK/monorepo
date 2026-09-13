@@ -21,6 +21,9 @@ on:
       shop_digest:
         description: Approved lax-test-shop digest
         required: true
+      publish_run_id:
+        description: Successful lax-identity publish workflow run
+        required: true
       run_acceptance:
         description: Run live acceptance after deploy
         required: true
@@ -67,16 +70,26 @@ jobs:
             '
           fi
 
-  maintenance:
+  inventory_auth_at_rest:
     needs: validate_inputs
     uses: ./.github/workflows/auth-at-rest-maintenance-test.yml
     with:
-      mode: apply
-      confirm_backup: true
+      mode: inventory
+      confirm_backup: false
+    secrets: inherit
+
+  qualify_identity:
+    needs: inventory_auth_at_rest
+    uses: ./.github/workflows/identity-staging-deploy.yml
+    with:
+      identity_sha: ${{ inputs.identity_sha }}
+      identity_digest: ${{ inputs.identity_digest }}
+      publish_run_id: ${{ inputs.publish_run_id }}
+      stage_only: true
     secrets: inherit
 
   deploy:
-    needs: maintenance
+    needs: qualify_identity
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -187,18 +200,30 @@ jobs:
           mkdir -p "$RUNNER_TEMP/recovery-evidence"
           cat > "$RUNNER_TEMP/recovery-evidence/accepted-release.json" <<EOF
           {
+            "version": 1,
+            "repository": "LAX-UK/lax-identity",
+            "monorepoSha": "${{ github.sha }}",
+            "infraSha": "main",
+            "migrationJournal": {
+              "tip": "0161_revoke_api_user_reads",
+              "sha256": ""
+            },
+            "dataContractVersion": "identity-v1",
             "enableAuthSsfDelivery": true,
             "identity": {
               "sha": "${{ inputs.identity_sha }}",
-              "digest": "${{ inputs.identity_digest }}"
+              "digest": "${{ inputs.identity_digest }}",
+              "buildRun": "${{ github.run_id }}"
             },
             "shopIdentity": {
               "sha": "${{ inputs.shop_identity_sha }}",
-              "digest": "${{ inputs.shop_identity_digest }}"
+              "digest": "${{ inputs.shop_identity_digest }}",
+              "buildRun": "${{ github.run_id }}"
             },
             "shop": {
               "sha": "${{ inputs.shop_sha }}",
-              "digest": "${{ inputs.shop_digest }}"
+              "digest": "${{ inputs.shop_digest }}",
+              "buildRun": "${{ github.run_id }}"
             }
           }
           EOF

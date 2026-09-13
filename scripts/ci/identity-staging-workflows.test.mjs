@@ -200,6 +200,8 @@ test("App Platform deploy action exposes exact deployment evidence and release c
 
 test("staging rollback restores a reviewed immutable manifest through Terraform", () => {
   const workflow = read(".github/workflows/staging-recovery-test.yml");
+  assert.match(workflow, /inventory_auth_at_rest/);
+  assert.match(workflow, /qualify_identity/);
   assert.match(workflow, /group: app-deploy-test/);
   assert.match(workflow, /rollback_manifest/);
   assert.match(workflow, /Validate recovery and rollback inputs/);
@@ -285,6 +287,19 @@ test("Shop images embed the release provenance required by image contracts", () 
   const shopIdentity = read("apps/shop-identity/src/index.ts");
   assert.match(shopIdentity, /buildPgConnectionConfig/);
   assert.match(shopIdentity, /new pg\.Pool\(buildPgConnectionConfig\(databaseUrl\)\)/);
+});
+
+test("identity staging soak samples read-only contracts on a schedule", () => {
+  const soak = read(".github/workflows/identity-staging-soak.yml");
+  assert.match(soak, /verify-identity-directory-drift\.mjs/);
+  assert.match(soak, /verify-identity-outbox-live\.mjs/);
+  assert.match(soak, /minimum_hours/);
+});
+
+test("recovery reconcile reacts to failed recovery runs", () => {
+  const reconcile = read(".github/workflows/staging-recovery-reconcile.yml");
+  assert.match(reconcile, /workflow_run/);
+  assert.match(reconcile, /Staging recovery \(test\)/);
 });
 
 test("fallback guard covers extraction manifests, lockfiles, and image workflows", () => {

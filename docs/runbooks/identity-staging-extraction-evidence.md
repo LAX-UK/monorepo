@@ -168,7 +168,9 @@ Accepted image contract:
 
 ## Soak
 
-- Start UTC: **2026-09-13T13:39:52Z** (post-0161 SSF-enabled acceptance green)
+- Previous soak start **2026-09-13T13:39:52Z** is invalidated by rollback/spec drift; do not count it.
+- Restart only after the final restored standalone acceptance is green.
+- Start UTC: pending (trigger `identity-staging-soak.yml` after final restore)
 - End UTC: pending (minimum 24h; extend to 72h if traffic is insufficient)
 - Total observed traffic by login/refresh/token operation:
 - [ ] At least 24 hours observed.

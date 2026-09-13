@@ -3,6 +3,20 @@ name: Identity staging qualification and preparation
 on:
   repository_dispatch:
     types: [identity-staging-image-published]
+  workflow_call:
+    inputs:
+      identity_sha:
+        type: string
+        required: true
+      identity_digest:
+        type: string
+        required: true
+      publish_run_id:
+        type: string
+        required: true
+      stage_only:
+        type: boolean
+        required: true
   workflow_dispatch:
     inputs:
       identity_sha:
@@ -35,6 +49,7 @@ concurrency:
 jobs:
   validate-and-prepare:
     if: >-
+      github.event_name == 'workflow_call' ||
       github.event_name == 'workflow_dispatch' ||
       github.event.client_payload.repository == 'LAX-UK/lax-identity'
     runs-on: ubuntu-latest
@@ -44,15 +59,16 @@ jobs:
       IDENTITY_SHA: ${{ github.event.client_payload.sha || inputs.identity_sha }}
       IDENTITY_DIGEST: ${{ github.event.client_payload.digest || inputs.identity_digest }}
       PUBLISH_RUN_ID: ${{ github.event.client_payload.publish_run_id || inputs.publish_run_id }}
+      STAGE_ONLY: >-
+        ${{ github.event_name == 'workflow_call' && inputs.stage_only ||
+            github.event_name == 'repository_dispatch' &&
+            vars.IDENTITY_STANDALONE_CUTOVER_COMPLETE != 'true' ||
+            inputs.stage_only }}
       DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
       SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
       SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       SENTRY_ORG: ${{ vars.SENTRY_ORG }}
-      STAGE_ONLY: >-
-        ${{ github.event_name == 'repository_dispatch' &&
-            vars.IDENTITY_STANDALONE_CUTOVER_COMPLETE != 'true' ||
-            inputs.stage_only }}
     steps:
       - uses: actions/checkout@v4
         with:

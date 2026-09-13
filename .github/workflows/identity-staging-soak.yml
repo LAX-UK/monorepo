@@ -1,0 +1,79 @@
+name: Identity staging soak
+
+on:
+  workflow_dispatch:
+    inputs:
+      identity_sha:
+        description: Standalone Identity SHA under soak
+        required: true
+        type: string
+      minimum_hours:
+        description: Minimum soak duration in hours
+        required: true
+        type: number
+        default: 24
+      sample_interval_minutes:
+        description: Read-only sample interval in minutes
+        required: true
+        type: number
+        default: 15
+
+permissions:
+  contents: read
+
+concurrency:
+  group: identity-staging-soak
+  cancel-in-progress: false
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      IDENTITY_SHA: ${{ inputs.identity_sha }}
+      MINIMUM_HOURS: ${{ inputs.minimum_hours }}
+      SAMPLE_INTERVAL_MINUTES: ${{ inputs.sample_interval_minutes }}
+      AUTH_BASE_URL: https://test-auth.lax.bid
+      API_BASE_URL: https://test-api.lax.bid
+      SHOP_IDENTITY_BASE_URL: https://test-shop.lax.bid
+      IDENTITY_OUTBOX_MAX_AGE_MS: "300000"
+      IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS: "60000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate soak inputs
+        run: |
+          set -euo pipefail
+          [[ "$IDENTITY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$MINIMUM_HOURS" -ge 24
+          test "$SAMPLE_INTERVAL_MINUTES" -ge 5
+      - name: Collect read-only soak samples
+        run: |
+          set -euo pipefail
+          samples="$RUNNER_TEMP/soak-samples.jsonl"
+          end_epoch="$(( $(date -u +%s) + MINIMUM_HOURS * 3600 ))"
+          while test "$(date -u +%s)" -lt "$end_epoch"; do
+            ready="$(curl --fail --silent "$AUTH_BASE_URL/health/ready")"
+            release="$(jq -r '.release // empty' <<<"$ready")"
+            test "$release" = "$IDENTITY_SHA"
+            jq -cn \
+              --arg observedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --argjson ready "$ready" \
+              '{observedAt: $observedAt, ready: $ready}' >> "$samples"
+            pnpm tsx scripts/ci/verify-identity-directory-drift.mjs
+            pnpm tsx scripts/ci/verify-identity-outbox-live.mjs
+            sleep "$(( SAMPLE_INTERVAL_MINUTES * 60 ))"
+          done
+      - name: Upload soak evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: identity-staging-soak-${{ github.run_id }}
+          path: ${{ runner.temp }}/soak-samples.jsonl
+          if-no-files-found: warn
+          retention-days: 90
