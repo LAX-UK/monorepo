@@ -170,7 +170,7 @@ Accepted image contract:
 
 - Previous soak start **2026-09-13T13:39:52Z** is invalidated by rollback/spec drift; do not count it.
 - Restart only after the final restored standalone acceptance is green.
-- Start UTC: pending (trigger `identity-staging-soak.yml` after final restore)
+- Start UTC: **2026-09-13T15:12:00Z** ([soak run 34766953869](https://github.com/LAX-UK/monorepo/actions/runs/34766953869))
 - End UTC: pending (minimum 24h; extend to 72h if traffic is insufficient)
 - Total observed traffic by login/refresh/token operation:
 - [ ] At least 24 hours observed.
