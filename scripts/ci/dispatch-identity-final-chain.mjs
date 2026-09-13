@@ -15,6 +15,7 @@ const required = [
   "SHOP_SHA",
   "SHOP_DIGEST",
   "INFRA_SHA",
+  "PUBLISH_RUN_ID",
 ];
 
 for (const name of required) {
@@ -78,6 +79,8 @@ const args = [
   `shop_sha=${process.env.SHOP_SHA}`,
   "-f",
   `shop_digest=${process.env.SHOP_DIGEST}`,
+  "-f",
+  `publish_run_id=${process.env.PUBLISH_RUN_ID}`,
   "-f",
   "run_acceptance=true",
   "-f",
