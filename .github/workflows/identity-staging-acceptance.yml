@@ -211,7 +211,7 @@ jobs:
             test "$attempt" -lt "$IDENTITY_RECONCILIATION_ATTEMPTS" || exit 1
             sleep "$IDENTITY_RECONCILIATION_RETRY_DELAY_SEC"
           done
-          pnpm --filter @auction/identity-db build
+          pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:reconcile-identity-profiles
       - name: Lifecycle outbox lag
         run: |
