@@ -1,0 +1,82 @@
+name: Identity database role maintenance (test)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: apply or verify
+        required: true
+        type: choice
+        options: [apply, verify]
+      confirm_review:
+        description: Confirm the role diff and rollback evidence were reviewed
+        required: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: identity-role-maintenance-test
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    if: inputs.mode == 'verify' || inputs.confirm_review
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: .infra-config/terraform/ephemeral/test
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Load masked staging role contracts
+        run: |
+          set -euo pipefail
+          tf_dir=.infra-config/terraform/ephemeral/test
+          declare -A outputs=(
+            [DATABASE_URL_OWNER]=postgres_owner_uri
+            [DATABASE_URL_AUTH]=database_url_auth
+            [DATABASE_URL_API]=database_url_api
+            [DATABASE_URL_SHOP]=database_url_shop
+            [DATABASE_URL_WORKER]=database_url_worker
+          )
+          for env_name in "${!outputs[@]}"; do
+            value="$(terraform -chdir="$tf_dir" output -raw "${outputs[$env_name]}")"
+            test -n "$value"
+            echo "::add-mask::$value"
+            echo "$env_name=$value" >> "$GITHUB_ENV"
+          done
+          database_ca_cert="$(terraform -chdir="$tf_dir" output -raw database_ca_certificate)"
+          test -n "$database_ca_cert"
+          {
+            echo 'DATABASE_CA_CERT<<__DATABASE_CA_CERT__'
+            printf '%s\n' "$database_ca_cert"
+            echo '__DATABASE_CA_CERT__'
+          } >> "$GITHUB_ENV"
+      - name: Build database dependency closure
+        run: pnpm --filter @auction/db... build
+      - name: Apply reviewed database role contracts
+        if: inputs.mode == 'apply'
+        run: pnpm --filter @auction/db db:roles
+      - name: Verify database role contracts
+        env:
+          AUTH_ROLE_CONTRACT_REQUIRED: "true"
+        run: |
+          pnpm --filter @auction/db test:auth-role-contract
+          pnpm --filter @auction/db test:api-role-contract
+          pnpm --filter @auction/db test:shop-role-contract
+          pnpm --filter @auction/db test:worker-role-contract

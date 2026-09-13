@@ -127,11 +127,11 @@ function verifyProductReaders() {
     throw new Error("api_app must deny user by default after the 0161 cutover");
   }
   if (
-    !/restoreApiUserSelect[\s\S]*hasTablePrivilege[\s\S]*restoreApiUserSelect[\s\S]*grantIfExists\(\s*client,\s*["']api_app["'],\s*["']user["'],\s*["']SELECT["']/m.test(
+    !/restoreApiUserSelect[\s\S]*migrationApplied\([\s\S]*0161[\s\S]*hasTablePrivilege[\s\S]*restoreApiUserSelect[\s\S]*grantIfExists\(\s*client,\s*["']api_app["'],\s*["']user["'],\s*["']SELECT["']/m.test(
       roles,
     )
   ) {
-    throw new Error("migrate-roles must preserve only an existing api_app user SELECT grant");
+    throw new Error("migrate-roles must preserve the API user read only before the 0161 cutover");
   }
 }
 

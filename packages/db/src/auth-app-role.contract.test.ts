@@ -17,60 +17,73 @@ async function withAuthClient<T>(fn: (client: pg.Client) => Promise<T>): Promise
   }
 }
 
+async function readPrivileges(
+  client: pg.Client,
+  tables: readonly string[],
+  privileges: readonly string[],
+): Promise<Array<{ table_name: string; privilege: string; allowed: boolean }>> {
+  const result = await client.query<{
+    table_name: string;
+    privilege: string;
+    allowed: boolean;
+  }>(
+    `select table_name, privilege,
+            has_table_privilege(current_user, 'public.' || table_name, privilege) as allowed
+       from unnest($1::text[]) as table_name
+       cross join unnest($2::text[]) as privilege`,
+    [[...tables], [...privileges]],
+  );
+  return result.rows;
+}
+
+function expectPrivileges(
+  rows: Array<{ table_name: string; privilege: string; allowed: boolean }>,
+  expected: boolean,
+): void {
+  for (const row of rows) {
+    expect(row.allowed, `${row.table_name}:${row.privilege}`).toBe(expected);
+  }
+}
+
 describe.skipIf(!AUTH_URL)("auth_app role contract", () => {
   it("has full DML only for Better Auth-owned tables", async () => {
     await withAuthClient(async (client) => {
-      for (const table of AUTH_FULL_TABLES) {
-        for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
-          const result = await client.query<{ allowed: boolean }>(
-            "select has_table_privilege(current_user, $1, $2) as allowed",
-            [`public.${table}`, privilege],
-          );
-          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(true);
-        }
-        for (const privilege of ["TRUNCATE", "REFERENCES", "TRIGGER"]) {
-          const result = await client.query<{ allowed: boolean }>(
-            "select has_table_privilege(current_user, $1, $2) as allowed",
-            [`public.${table}`, privilege],
-          );
-          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
-        }
-      }
+      expectPrivileges(
+        await readPrivileges(client, AUTH_FULL_TABLES, ["SELECT", "INSERT", "UPDATE", "DELETE"]),
+        true,
+      );
+      expectPrivileges(
+        await readPrivileges(client, AUTH_FULL_TABLES, ["TRUNCATE", "REFERENCES", "TRIGGER"]),
+        false,
+      );
     });
   });
 
   it("can append but cannot mutate auth side-effect tables", async () => {
     await withAuthClient(async (client) => {
-      for (const table of AUTH_INSERT_SELECT_TABLES) {
-        for (const privilege of ["SELECT", "INSERT"]) {
-          const result = await client.query<{ allowed: boolean }>(
-            "select has_table_privilege(current_user, $1, $2) as allowed",
-            [`public.${table}`, privilege],
-          );
-          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(true);
-        }
-        for (const privilege of ["UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]) {
-          const result = await client.query<{ allowed: boolean }>(
-            "select has_table_privilege(current_user, $1, $2) as allowed",
-            [`public.${table}`, privilege],
-          );
-          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
-        }
-      }
+      expectPrivileges(
+        await readPrivileges(client, AUTH_INSERT_SELECT_TABLES, ["SELECT", "INSERT"]),
+        true,
+      );
+      expectPrivileges(
+        await readPrivileges(client, AUTH_INSERT_SELECT_TABLES, [
+          "UPDATE",
+          "DELETE",
+          "TRUNCATE",
+          "REFERENCES",
+          "TRIGGER",
+        ]),
+        false,
+      );
     });
   });
 
   it("cannot access product-owned tables", async () => {
     await withAuthClient(async (client) => {
-      for (const table of AUTH_DENY_TABLES) {
-        for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
-          const result = await client.query<{ allowed: boolean }>(
-            "select has_table_privilege(current_user, $1, $2) as allowed",
-            [`public.${table}`, privilege],
-          );
-          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
-        }
-      }
+      expectPrivileges(
+        await readPrivileges(client, AUTH_DENY_TABLES, ["SELECT", "INSERT", "UPDATE", "DELETE"]),
+        false,
+      );
     });
   });
 });

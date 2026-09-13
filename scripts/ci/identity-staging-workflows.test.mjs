@@ -124,6 +124,31 @@ test("auth at-rest maintenance workflow is manually approved and phased", () => 
   assert.match(workflow, /jwks-snapshot\.ts test/);
 });
 
+test("directory repair is approved maintenance, never acceptance self-healing", () => {
+  const maintenance = read(".github/workflows/identity-directory-maintenance-test.yml");
+  const acceptance = read(".github/workflows/identity-staging-acceptance.yml");
+
+  assert.match(maintenance, /confirm_backup/);
+  assert.match(maintenance, /environment: test/);
+  assert.match(maintenance, /reconcile-identity-directory\.mjs --apply/);
+  assert.match(maintenance, /verify-identity-directory-drift\.mjs/);
+  assert.match(maintenance, /pnpm --filter @auction\/db\.\.\. build/);
+  assert.doesNotMatch(acceptance, /repair_directory/);
+  assert.doesNotMatch(acceptance, /reconcile-identity-directory\.mjs --apply/);
+});
+
+test("role repair is reviewed maintenance with post-apply verification", () => {
+  const maintenance = read(".github/workflows/identity-role-maintenance-test.yml");
+
+  assert.match(maintenance, /confirm_review/);
+  assert.match(maintenance, /environment: test/);
+  assert.match(maintenance, /pnpm --filter @auction\/db db:roles/);
+  assert.match(maintenance, /pnpm --filter @auction\/db test:auth-role-contract/);
+  assert.match(maintenance, /pnpm --filter @auction\/db test:api-role-contract/);
+  assert.match(maintenance, /pnpm --filter @auction\/db test:shop-role-contract/);
+  assert.match(maintenance, /pnpm --filter @auction\/db test:worker-role-contract/);
+});
+
 test("build images emits a release manifest artifact", () => {
   const workflow = read(".github/workflows/build-images.yml");
   const writer = read("scripts/ci/write-release-manifest.mjs");
@@ -208,6 +233,8 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /db:reconcile-identity-profiles/);
   assert.match(acceptance, /AUTH_METRICS_TOKEN/);
   assert.match(acceptance, /jwks-snapshot\.ts test --verify/);
+  assert.match(acceptance, /grep -Eq '\^# \(HELP\|TYPE\) '/);
+  assert.doesNotMatch(acceptance, /\brg -q\b/);
   assert.doesNotMatch(machineProbe, /expiringBody\.expires_in \+ 2/);
   assert.match(acceptance, /IDENTITY_RECONCILIATION_ATTEMPTS/);
   assert.match(acceptance, /BACKCHANNEL_LOGOUT_TIMEOUT_MS: "120000"/);
