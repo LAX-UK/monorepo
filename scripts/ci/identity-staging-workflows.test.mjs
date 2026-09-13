@@ -221,6 +221,8 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /db:reconcile-identity-profiles/);
   assert.match(acceptance, /AUTH_METRICS_TOKEN/);
   assert.match(acceptance, /jwks-snapshot\.ts test --verify/);
+  assert.match(acceptance, /grep -Eq '\^# \(HELP\|TYPE\) '/);
+  assert.doesNotMatch(acceptance, /\brg -q\b/);
   assert.doesNotMatch(machineProbe, /expiringBody\.expires_in \+ 2/);
   assert.match(acceptance, /IDENTITY_RECONCILIATION_ATTEMPTS/);
   assert.match(acceptance, /BACKCHANNEL_LOGOUT_TIMEOUT_MS: "120000"/);
