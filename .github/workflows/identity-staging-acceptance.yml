@@ -221,10 +221,13 @@ jobs:
           curl --fail --silent \
             --header "Authorization: Bearer $AUTH_METRICS_TOKEN" \
             https://test-auth.lax.bid/metrics > "$RUNNER_TEMP/auth-metrics.txt"
-          grep -Eq '^auction_auth_refresh_rotation_outcomes_total' "$RUNNER_TEMP/auth-metrics.txt"
-          grep -Eq '^auction_auth_identity_lifecycle_operations_total' "$RUNNER_TEMP/auth-metrics.txt"
-          grep -Eq '^auction_auth_ssf_delivery_outcomes_total' "$RUNNER_TEMP/auth-metrics.txt"
-          grep -Eq '^auction_auth_at_rest_pending' "$RUNNER_TEMP/auth-metrics.txt"
+          for metric in \
+            auction_auth_refresh_rotation_outcomes_total \
+            auction_auth_identity_lifecycle_operations_total \
+            auction_auth_ssf_delivery_outcomes_total \
+            auction_auth_at_rest_pending; do
+            grep -Fq "$metric" "$RUNNER_TEMP/auth-metrics.txt"
+          done
       - name: Live database role contracts
         run: |
           pnpm --filter @auction/db db:report-user-read-cutover
