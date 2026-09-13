@@ -67,7 +67,6 @@ jobs:
       SSF_FAILURE_REHEARSAL: ${{ inputs.ssf_mode == 'ssf_enabled' && 'true' || 'false' }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
       ACCEPTANCE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
-      ACCEPTANCE_MANIFEST_PATH: ${{ runner.temp }}/identity-acceptance-manifest.json
     steps:
       - name: Require acceptance credentials before infrastructure access
         run: |
@@ -141,6 +140,8 @@ jobs:
             echo '__DATABASE_CA_CERT__'
           } >> "$GITHUB_ENV"
       - name: Provision isolated acceptance accounts
+        env:
+          ACCEPTANCE_MANIFEST_PATH: ${{ runner.temp }}/identity-acceptance-manifest.json
         run: pnpm tsx scripts/ci/provision-identity-acceptance-users.mjs
       - name: Validate provisioned acceptance contracts
         run: |
@@ -256,6 +257,8 @@ jobs:
           retention-days: 30
       - name: Clean up run-scoped acceptance accounts
         if: always()
+        env:
+          ACCEPTANCE_MANIFEST_PATH: ${{ runner.temp }}/identity-acceptance-manifest.json
         run: |
           test -s "$ACCEPTANCE_MANIFEST_PATH" || exit 0
           pnpm tsx scripts/ci/cleanup-identity-acceptance-users.mjs
