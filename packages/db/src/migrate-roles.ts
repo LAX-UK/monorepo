@@ -183,6 +183,8 @@ export const WORKER_BID_PLACEMENT_TABLES = ["bid"] as const;
 
 type RoleName = "auth_app" | "api_app" | "shop_app" | "worker_app";
 
+export const APPLICATION_ROLE_GRANT_LOCK_KEY = "lax:application_role_grants";
+
 const ROLE_PASSWORD_ENV: Record<RoleName, string> = {
   auth_app: "AUTH_APP_DB_PASSWORD",
   api_app: "API_APP_DB_PASSWORD",
@@ -238,15 +240,34 @@ async function hasTablePrivilege(
   return Boolean(res.rows[0]?.allowed);
 }
 
+export async function withApplicationRoleGrantLock<T>(
+  client: pg.Client,
+  run: () => Promise<T>,
+): Promise<T> {
+  await client.query("select pg_advisory_lock(hashtext($1))", [APPLICATION_ROLE_GRANT_LOCK_KEY]);
+  try {
+    return await run();
+  } finally {
+    await client.query("select pg_advisory_unlock(hashtext($1))", [
+      APPLICATION_ROLE_GRANT_LOCK_KEY,
+    ]);
+  }
+}
+
 async function ensureRole(client: pg.Client, role: RoleName): Promise<void> {
   const password = process.env[ROLE_PASSWORD_ENV[role]];
-  const passwordSql = password ? ` password ${quoteLiteral(password)}` : "";
-  try {
-    await client.query(`create role ${quoteIdent(role)} login${passwordSql}`);
-  } catch (err) {
-    const code = (err as { code?: string }).code;
-    if (code !== "42710" && code !== "23505") throw err;
-  }
+  const createSql = password
+    ? `create role ${quoteIdent(role)} login password ${quoteLiteral(password)}`
+    : `create role ${quoteIdent(role)} login`;
+  await client.query(
+    `do $ensure$
+     begin
+       execute ${quoteLiteral(createSql)};
+     exception
+       when duplicate_object then null;
+     end
+     $ensure$`,
+  );
   if (password) {
     await client.query(
       `alter role ${quoteIdent(role)} with login password ${quoteLiteral(password)}`,
@@ -254,6 +275,17 @@ async function ensureRole(client: pg.Client, role: RoleName): Promise<void> {
   } else {
     await client.query(`alter role ${quoteIdent(role)} with login`);
   }
+}
+
+export async function ensureApplicationRolesExist(
+  client: pg.Client,
+  roles: readonly RoleName[],
+): Promise<void> {
+  await withApplicationRoleGrantLock(client, async () => {
+    for (const role of roles) {
+      await ensureRole(client, role);
+    }
+  });
 }
 
 async function grantIfExists(
@@ -319,185 +351,188 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
   const client = new Client(buildPgConnectionConfig(connectionString));
   await client.connect();
   try {
-    await client.query("begin");
+    await withApplicationRoleGrantLock(client, async () => {
+      await client.query("begin");
+      try {
+        const roles = ["auth_app", "api_app", "shop_app", "worker_app"] as const;
+        for (const role of roles) {
+          await ensureRole(client, role);
+          await client.query(`grant usage on schema public to ${quoteIdent(role)}`);
+        }
 
-    const roles = ["auth_app", "api_app", "shop_app", "worker_app"] as const;
-    for (const role of roles) {
-      await ensureRole(client, role);
-      await client.query(`grant usage on schema public to ${quoteIdent(role)}`);
-    }
+        // Preserve temporary staged reads only until the matching cutover
+        // migration. Privilege state alone cannot distinguish a legitimate
+        // pre-cutover grant from stale post-cutover drift.
+        const cutover = await readUserReadCutover(client);
+        const restoreWorkerUserSelect =
+          !cutover.workerUserSelectRevoked &&
+          (await hasTablePrivilege(client, "worker_app", "user", "SELECT"));
+        const restoreApiUserSelect =
+          !cutover.apiUserSelectRevoked &&
+          (await hasTablePrivilege(client, "api_app", "user", "SELECT"));
 
-    // Preserve temporary staged reads only until the matching cutover
-    // migration. Privilege state alone cannot distinguish a legitimate
-    // pre-cutover grant from stale post-cutover drift.
-    const cutover = await readUserReadCutover(client);
-    const restoreWorkerUserSelect =
-      !cutover.workerUserSelectRevoked &&
-      (await hasTablePrivilege(client, "worker_app", "user", "SELECT"));
-    const restoreApiUserSelect =
-      !cutover.apiUserSelectRevoked &&
-      (await hasTablePrivilege(client, "api_app", "user", "SELECT"));
+        for (const role of roles) {
+          await client.query(
+            `revoke all privileges on all tables in schema public from ${quoteIdent(role)}`,
+          );
+        }
 
-    for (const role of roles) {
-      await client.query(
-        `revoke all privileges on all tables in schema public from ${quoteIdent(role)}`,
-      );
-    }
+        const tables = await existingPublicTables(client);
 
-    const tables = await existingPublicTables(client);
+        for (const tableName of AUTH_FULL_TABLES) {
+          await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT, UPDATE, DELETE");
+        }
+        for (const tableName of AUTH_INSERT_SELECT_TABLES) {
+          await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of tables) {
+          if ((API_DENY_TABLES as readonly string[]).includes(tableName)) {
+            await revokeIfExists(client, "api_app", tableName);
+            continue;
+          }
+          if ((API_READ_TABLES as readonly string[]).includes(tableName)) {
+            continue;
+          }
+          if ((API_PRODUCT_PROFILE_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, UPDATE");
+            continue;
+          }
+          if ((API_SSF_RECEIVER_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
+            continue;
+          }
+          await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");
+        }
+        for (const tableName of WORKER_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_PRODUCT_PROFILE_TABLES) {
+          await grantIfExists(
+            client,
+            "shop_app",
+            tableName,
+            tableName === "shop_user_profile"
+              ? "INSERT, SELECT, UPDATE"
+              : "INSERT, SELECT, UPDATE, DELETE",
+          );
+        }
+        for (const tableName of SHOP_SSF_RECEIVER_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT, DELETE");
+        }
+        for (const tableName of WORKER_LOCK_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
+        }
+        /** worker jobs append domain_events (archive cascade, impersonation sweeper). */
+        await grantIfExists(client, "worker_app", "domain_events", "INSERT");
+        /** AML / SoF projectors insert and resolve MLRO review work items (admin_review_task). */
+        await grantIfExists(client, "worker_app", "admin_review_task", "INSERT, SELECT, UPDATE");
+        /** SoF documents projector inserts buyer in-app notifications (documents requested / closure). */
+        await grantIfExists(client, "worker_app", "notification", "INSERT, SELECT");
+        /** Retention job anonymizes buyer-supplied SoF evidence after AML window. */
+        await grantIfExists(client, "worker_app", "source_of_funds_document", "SELECT, UPDATE");
+        /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
+        await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT");
+        /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email
+         * job updates rows to sent/failed/sending (SELECT, UPDATE). DELETE remains denied so the
+         * outbox stays an immutable audit trail of attempted delivery. */
+        await grantIfExists(client, "worker_app", "email_outbox", "INSERT, SELECT, UPDATE");
+        /** worker drains marketing_event_outbox (Meta CAPI + sGTM publisher) — INSERT for skipped
+         * audit rows, SELECT + UPDATE for poller, DELETE for retention purge of terminal rows only. */
+        await grantIfExists(
+          client,
+          "worker_app",
+          "marketing_event_outbox",
+          "INSERT, SELECT, UPDATE, DELETE",
+        );
+        /** worker writes one audit row per marketing-contact-sync attempt (Brevo). INSERT + SELECT
+         * only; rows are an immutable audit trail (no UPDATE/DELETE from app code). */
+        await grantIfExists(client, "worker_app", "marketing_contact_sync_log", "INSERT, SELECT");
+        for (const tableName of WORKER_DATA_EXPORT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
+        }
+        for (const tableName of WORKER_PRODUCT_PROFILE_TABLES) {
+          await grantIfExists(
+            client,
+            "worker_app",
+            tableName,
+            tableName === "bid_identity_directory"
+              ? "INSERT, SELECT, UPDATE, DELETE"
+              : "INSERT, SELECT, UPDATE",
+          );
+        }
+        for (const tableName of WORKER_FULL_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
+        }
+        for (const tableName of WORKER_PROVISIONING_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        /** FK target when inserting scan rows. */
+        await grantIfExists(client, "worker_app", "qr_code", "SELECT");
+        for (const tableName of WORKER_QR_CODE_SCAN_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_DOMAIN_EVENT_DELIVERY_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_PAYMENT_MAINTENANCE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_FINANCE_INTEGRATION_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_DISPLAY_PAIRING_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
+        }
+        for (const tableName of WORKER_FINANCE_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const tableName of WORKER_NOTIFICATION_OUTBOX_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_LIFECYCLE_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const tableName of WORKER_LIFECYCLE_SNAPSHOT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_FAILED_JOBS_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ABSENTEE_BID_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_BID_PLACEMENT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_PAYOUT_SETTLEMENT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        await grantColumnUpdateIfExists(
+          client,
+          "worker_app",
+          "legal_entity",
+          WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS,
+        );
 
-    for (const tableName of AUTH_FULL_TABLES) {
-      await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT, UPDATE, DELETE");
-    }
-    for (const tableName of AUTH_INSERT_SELECT_TABLES) {
-      await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
-    }
-    for (const tableName of tables) {
-      if ((API_DENY_TABLES as readonly string[]).includes(tableName)) {
-        await revokeIfExists(client, "api_app", tableName);
-        continue;
+        for (const tableName of API_READ_TABLES) {
+          await grantIfExists(client, "api_app", tableName, "SELECT");
+        }
+        if (restoreWorkerUserSelect) {
+          await grantIfExists(client, "worker_app", "user", "SELECT");
+        }
+        if (restoreApiUserSelect) {
+          await grantIfExists(client, "api_app", "user", "SELECT");
+        }
+        for (const role of ["auth_app", "api_app", "worker_app"] as const) {
+          await grantSequences(client, role, "public");
+        }
+
+        await client.query("commit");
+      } catch (err) {
+        await client.query("rollback");
+        throw err;
       }
-      if ((API_READ_TABLES as readonly string[]).includes(tableName)) {
-        continue;
-      }
-      if ((API_PRODUCT_PROFILE_TABLES as readonly string[]).includes(tableName)) {
-        await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, UPDATE");
-        continue;
-      }
-      if ((API_SSF_RECEIVER_TABLES as readonly string[]).includes(tableName)) {
-        await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
-        continue;
-      }
-      await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");
-    }
-    for (const tableName of WORKER_READ_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "SELECT");
-    }
-    for (const tableName of SHOP_PRODUCT_PROFILE_TABLES) {
-      await grantIfExists(
-        client,
-        "shop_app",
-        tableName,
-        tableName === "shop_user_profile"
-          ? "INSERT, SELECT, UPDATE"
-          : "INSERT, SELECT, UPDATE, DELETE",
-      );
-    }
-    for (const tableName of SHOP_SSF_RECEIVER_TABLES) {
-      await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT, DELETE");
-    }
-    for (const tableName of WORKER_LOCK_READ_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
-    }
-    /** worker jobs append domain_events (archive cascade, impersonation sweeper). */
-    await grantIfExists(client, "worker_app", "domain_events", "INSERT");
-    /** AML / SoF projectors insert and resolve MLRO review work items (admin_review_task). */
-    await grantIfExists(client, "worker_app", "admin_review_task", "INSERT, SELECT, UPDATE");
-    /** SoF documents projector inserts buyer in-app notifications (documents requested / closure). */
-    await grantIfExists(client, "worker_app", "notification", "INSERT, SELECT");
-    /** Retention job anonymizes buyer-supplied SoF evidence after AML window. */
-    await grantIfExists(client, "worker_app", "source_of_funds_document", "SELECT, UPDATE");
-    /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
-    await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT");
-    /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email
-     * job updates rows to sent/failed/sending (SELECT, UPDATE). DELETE remains denied so the
-     * outbox stays an immutable audit trail of attempted delivery. */
-    await grantIfExists(client, "worker_app", "email_outbox", "INSERT, SELECT, UPDATE");
-    /** worker drains marketing_event_outbox (Meta CAPI + sGTM publisher) — INSERT for skipped
-     * audit rows, SELECT + UPDATE for poller, DELETE for retention purge of terminal rows only. */
-    await grantIfExists(
-      client,
-      "worker_app",
-      "marketing_event_outbox",
-      "INSERT, SELECT, UPDATE, DELETE",
-    );
-    /** worker writes one audit row per marketing-contact-sync attempt (Brevo). INSERT + SELECT
-     * only; rows are an immutable audit trail (no UPDATE/DELETE from app code). */
-    await grantIfExists(client, "worker_app", "marketing_contact_sync_log", "INSERT, SELECT");
-    for (const tableName of WORKER_DATA_EXPORT_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
-    }
-    for (const tableName of WORKER_PRODUCT_PROFILE_TABLES) {
-      await grantIfExists(
-        client,
-        "worker_app",
-        tableName,
-        tableName === "bid_identity_directory"
-          ? "INSERT, SELECT, UPDATE, DELETE"
-          : "INSERT, SELECT, UPDATE",
-      );
-    }
-    for (const tableName of WORKER_FULL_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "ALL PRIVILEGES");
-    }
-    for (const tableName of WORKER_PROVISIONING_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
-    }
-    /** FK target when inserting scan rows. */
-    await grantIfExists(client, "worker_app", "qr_code", "SELECT");
-    for (const tableName of WORKER_QR_CODE_SCAN_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
-    }
-    for (const tableName of WORKER_DOMAIN_EVENT_DELIVERY_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
-    }
-    for (const tableName of WORKER_PAYMENT_MAINTENANCE_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
-    }
-    for (const tableName of WORKER_FINANCE_INTEGRATION_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
-    }
-    for (const tableName of WORKER_DISPLAY_PAIRING_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
-    }
-    for (const tableName of WORKER_FINANCE_READ_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "SELECT");
-    }
-    for (const tableName of WORKER_NOTIFICATION_OUTBOX_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
-    }
-    for (const tableName of WORKER_LIFECYCLE_READ_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "SELECT");
-    }
-    for (const tableName of WORKER_LIFECYCLE_SNAPSHOT_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
-    }
-    for (const tableName of WORKER_FAILED_JOBS_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
-    }
-    for (const tableName of WORKER_ABSENTEE_BID_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
-    }
-    for (const tableName of WORKER_BID_PLACEMENT_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
-    }
-    for (const tableName of WORKER_PAYOUT_SETTLEMENT_TABLES) {
-      await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
-    }
-    await grantColumnUpdateIfExists(
-      client,
-      "worker_app",
-      "legal_entity",
-      WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS,
-    );
-
-    for (const tableName of API_READ_TABLES) {
-      await grantIfExists(client, "api_app", tableName, "SELECT");
-    }
-    if (restoreWorkerUserSelect) {
-      await grantIfExists(client, "worker_app", "user", "SELECT");
-    }
-    if (restoreApiUserSelect) {
-      await grantIfExists(client, "api_app", "user", "SELECT");
-    }
-    for (const role of ["auth_app", "api_app", "worker_app"] as const) {
-      await grantSequences(client, role, "public");
-    }
-
-    await client.query("commit");
-  } catch (err) {
-    await client.query("rollback");
-    throw err;
+    });
   } finally {
     await client.end();
   }

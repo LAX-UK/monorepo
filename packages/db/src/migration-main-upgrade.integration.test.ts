@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import pg from "pg";
 import { describe, expect, it } from "vitest";
-import { applyApplicationRoleGrants } from "./migrate-roles.js";
+import { applyApplicationRoleGrants, ensureApplicationRolesExist } from "./migrate-roles.js";
 import {
   runMigrationsPerTransaction,
   runMigrationsPerTransactionThrough,
@@ -381,20 +381,16 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
            now(), now())`,
         [userId],
       );
-      await pool.query(`
-        DO $$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'worker_app') THEN
-            CREATE ROLE worker_app;
-          END IF;
-          IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_app') THEN
-            CREATE ROLE api_app;
-          END IF;
-        END
-        $$;
-        GRANT USAGE ON SCHEMA public TO worker_app, api_app;
-        GRANT SELECT ON TABLE public."user" TO worker_app, api_app;
-      `);
+      const roleClient = await pool.connect();
+      try {
+        await ensureApplicationRolesExist(roleClient, ["worker_app", "api_app"]);
+        await roleClient.query(`
+          GRANT USAGE ON SCHEMA public TO worker_app, api_app;
+          GRANT SELECT ON TABLE public."user" TO worker_app, api_app;
+        `);
+      } finally {
+        roleClient.release();
+      }
 
       await runMigrationsPerTransactionThrough(pool, DIRECTORY_0159_FOLDER_MILLIS);
 
