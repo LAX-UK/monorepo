@@ -130,6 +130,7 @@ test("directory repair is approved maintenance, never acceptance self-healing", 
 
   assert.match(maintenance, /confirm_backup/);
   assert.match(maintenance, /environment: test/);
+  assert.match(maintenance, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
   assert.match(maintenance, /reconcile-identity-directory\.mjs --apply/);
   assert.match(maintenance, /verify-identity-directory-drift\.mjs/);
   assert.match(maintenance, /pnpm --filter @auction\/db\.\.\. build/);
@@ -142,6 +143,7 @@ test("role repair is reviewed maintenance with post-apply verification", () => {
 
   assert.match(maintenance, /confirm_review/);
   assert.match(maintenance, /environment: test/);
+  assert.match(maintenance, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
   assert.match(maintenance, /pnpm --filter @auction\/db db:roles/);
   assert.match(maintenance, /pnpm --filter @auction\/db test:auth-role-contract/);
   assert.match(maintenance, /pnpm --filter @auction\/db test:api-role-contract/);
