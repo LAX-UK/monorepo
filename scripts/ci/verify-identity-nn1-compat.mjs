@@ -106,6 +106,12 @@ async function main() {
   process.env.DATABASE_URL = databaseUrl;
   process.env.DATABASE_URL_OWNER = databaseUrl;
   process.env.REDIS_URL = redisUrl;
+  process.env.OIDC_CLIENT_SECRET_LAX_BID_WEB ??= "ci-bid-web-client-secret-at-least-32";
+  process.env.OIDC_CLIENT_SECRET_LAX_SHOP_WEB ??= "ci-shop-web-client-secret-at-least-32";
+  process.env.AUTH_APP_DB_PASSWORD ??= "postgres";
+  process.env.API_APP_DB_PASSWORD ??= "postgres";
+  process.env.SHOP_APP_DB_PASSWORD ??= "postgres";
+  process.env.WORKER_APP_DB_PASSWORD ??= "postgres";
   await import("./ensure-ci-database.mjs");
 
   run("pnpm", ["--filter", "@auction/db...", "build"], "Build db closure");
