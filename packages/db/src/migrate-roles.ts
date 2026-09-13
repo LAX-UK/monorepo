@@ -240,17 +240,32 @@ async function hasTablePrivilege(
   return Boolean(res.rows[0]?.allowed);
 }
 
+function clusterLockDatabaseUrl(connectionString: string): string {
+  const adminUrl = new URL(connectionString);
+  adminUrl.pathname = "/postgres";
+  return adminUrl.toString();
+}
+
+/** Roles are cluster-wide; serialize grant work through the admin database lock. */
 export async function withApplicationRoleGrantLock<T>(
-  client: pg.Client,
+  connectionString: string,
   run: () => Promise<T>,
 ): Promise<T> {
-  await client.query("select pg_advisory_lock(hashtext($1))", [APPLICATION_ROLE_GRANT_LOCK_KEY]);
+  const lockClient = new Client(buildPgConnectionConfig(clusterLockDatabaseUrl(connectionString)));
+  await lockClient.connect();
   try {
-    return await run();
-  } finally {
-    await client.query("select pg_advisory_unlock(hashtext($1))", [
+    await lockClient.query("select pg_advisory_lock(hashtext($1))", [
       APPLICATION_ROLE_GRANT_LOCK_KEY,
     ]);
+    try {
+      return await run();
+    } finally {
+      await lockClient.query("select pg_advisory_unlock(hashtext($1))", [
+        APPLICATION_ROLE_GRANT_LOCK_KEY,
+      ]);
+    }
+  } finally {
+    await lockClient.end();
   }
 }
 
@@ -278,10 +293,11 @@ async function ensureRole(client: pg.Client, role: RoleName): Promise<void> {
 }
 
 export async function ensureApplicationRolesExist(
+  connectionString: string,
   client: pg.Client,
   roles: readonly RoleName[],
 ): Promise<void> {
-  await withApplicationRoleGrantLock(client, async () => {
+  await withApplicationRoleGrantLock(connectionString, async () => {
     for (const role of roles) {
       await ensureRole(client, role);
     }
@@ -351,7 +367,7 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
   const client = new Client(buildPgConnectionConfig(connectionString));
   await client.connect();
   try {
-    await withApplicationRoleGrantLock(client, async () => {
+    await withApplicationRoleGrantLock(connectionString, async () => {
       await client.query("begin");
       try {
         const roles = ["auth_app", "api_app", "shop_app", "worker_app"] as const;

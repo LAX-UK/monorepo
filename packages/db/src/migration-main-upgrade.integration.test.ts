@@ -383,7 +383,7 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
       );
       const roleClient = await pool.connect();
       try {
-        await ensureApplicationRolesExist(roleClient, ["worker_app", "api_app"]);
+        await ensureApplicationRolesExist(databaseUrl, roleClient, ["worker_app", "api_app"]);
         await roleClient.query(`
           GRANT USAGE ON SCHEMA public TO worker_app, api_app;
           GRANT SELECT ON TABLE public."user" TO worker_app, api_app;
