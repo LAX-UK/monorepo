@@ -1,5 +1,6 @@
 import pg from "pg";
 import { describe, expect, it } from "vitest";
+import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import {
   API_DENY_TABLES,
   API_PRODUCT_PROFILE_TABLES,
@@ -83,6 +84,7 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
   });
 
   it("has no DML privileges on the API deny-list", async () => {
+    const cutover = await readUserReadCutoverFromEnv();
     await withApiClient(async (client) => {
       for (const table of API_DENY_TABLES) {
         for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
@@ -90,20 +92,24 @@ describe.skipIf(!API_URL)("api_app role contract", () => {
             "select has_table_privilege(current_user, $1, $2) as allowed",
             [`public.${table}`, privilege],
           );
-          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
+          const expected =
+            table === "user" && privilege === "SELECT" ? !cutover.apiUserSelectRevoked : false;
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(expected);
         }
       }
     });
   });
 
-  it("cannot access migration-controlled Identity user after 0161", async () => {
+  it("follows the applied 0161 user-read cutover", async () => {
+    const cutover = await readUserReadCutoverFromEnv();
     await withApiClient(async (client) => {
       for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
         const result = await client.query<{ allowed: boolean }>(
           `select has_table_privilege(current_user, 'public."user"', $1) as allowed`,
           [privilege],
         );
-        expect(result.rows[0]?.allowed, `user:${privilege}`).toBe(false);
+        const expected = privilege === "SELECT" ? !cutover.apiUserSelectRevoked : false;
+        expect(result.rows[0]?.allowed, `user:${privilege} head=${cutover.head}`).toBe(expected);
       }
     });
   });

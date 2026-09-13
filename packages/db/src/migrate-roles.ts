@@ -1,5 +1,5 @@
 import pg from "pg";
-import { PRODUCTION_MIGRATION_CEILING_BY_TAG } from "./production-migration-ceiling.js";
+import { readUserReadCutover } from "./applied-user-read-cutover.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const { Client } = pg;
@@ -223,23 +223,6 @@ async function existingPublicTables(client: pg.Client): Promise<string[]> {
   return res.rows.map((row) => row.table_name);
 }
 
-async function migrationApplied(client: pg.Client, folderMillis: number): Promise<boolean> {
-  try {
-    const result = await client.query<{ applied: boolean }>(
-      `select exists(
-         select 1
-         from drizzle.__drizzle_migrations
-         where created_at = $1
-       ) as applied`,
-      [folderMillis],
-    );
-    return Boolean(result.rows[0]?.applied);
-  } catch (error) {
-    if ((error as { code?: string }).code === "42P01") return false;
-    throw error;
-  }
-}
-
 async function hasTablePrivilege(
   client: pg.Client,
   role: RoleName,
@@ -347,11 +330,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     // Preserve temporary staged reads only until the matching cutover
     // migration. Privilege state alone cannot distinguish a legitimate
     // pre-cutover grant from stale post-cutover drift.
+    const cutover = await readUserReadCutover(client);
     const restoreWorkerUserSelect =
-      !(await migrationApplied(client, PRODUCTION_MIGRATION_CEILING_BY_TAG["0160"].folderMillis)) &&
+      !cutover.workerUserSelectRevoked &&
       (await hasTablePrivilege(client, "worker_app", "user", "SELECT"));
     const restoreApiUserSelect =
-      !(await migrationApplied(client, PRODUCTION_MIGRATION_CEILING_BY_TAG["0161"].folderMillis)) &&
+      !cutover.apiUserSelectRevoked &&
       (await hasTablePrivilege(client, "api_app", "user", "SELECT"));
 
     for (const role of roles) {
