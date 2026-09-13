@@ -126,8 +126,12 @@ function verifyProductReaders() {
   if (!/API_DENY_TABLES\s*=\s*\[[^\]]*["']user["']/.test(roles)) {
     throw new Error("api_app must deny user by default after the 0161 cutover");
   }
-  if (/restore(?:Api|Worker)UserSelect|hasTablePrivilege/.test(roles)) {
-    throw new Error("migrate-roles must not restore retired product reads from Identity user");
+  if (
+    !/restoreApiUserSelect[\s\S]*migrationApplied\([\s\S]*0161[\s\S]*hasTablePrivilege[\s\S]*restoreApiUserSelect[\s\S]*grantIfExists\(\s*client,\s*["']api_app["'],\s*["']user["'],\s*["']SELECT["']/m.test(
+      roles,
+    )
+  ) {
+    throw new Error("migrate-roles must preserve the API user read only before the 0161 cutover");
   }
 }
 

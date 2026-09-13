@@ -1,4 +1,5 @@
 import pg from "pg";
+import { PRODUCTION_MIGRATION_CEILING_BY_TAG } from "./production-migration-ceiling.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const { Client } = pg;
@@ -222,6 +223,38 @@ async function existingPublicTables(client: pg.Client): Promise<string[]> {
   return res.rows.map((row) => row.table_name);
 }
 
+async function migrationApplied(client: pg.Client, folderMillis: number): Promise<boolean> {
+  try {
+    const result = await client.query<{ applied: boolean }>(
+      `select exists(
+         select 1
+         from drizzle.__drizzle_migrations
+         where created_at = $1
+       ) as applied`,
+      [folderMillis],
+    );
+    return Boolean(result.rows[0]?.applied);
+  } catch (error) {
+    if ((error as { code?: string }).code === "42P01") return false;
+    throw error;
+  }
+}
+
+async function hasTablePrivilege(
+  client: pg.Client,
+  role: RoleName,
+  tableName: string,
+  privilege: "SELECT",
+  schemaName = "public",
+): Promise<boolean> {
+  if (!(await tableExists(client, tableName, schemaName))) return false;
+  const res = await client.query<{ allowed: boolean }>(
+    "select has_table_privilege($1, $2, $3) as allowed",
+    [role, `${quoteIdent(schemaName)}.${quoteIdent(tableName)}`, privilege],
+  );
+  return Boolean(res.rows[0]?.allowed);
+}
+
 async function ensureRole(client: pg.Client, role: RoleName): Promise<void> {
   const password = process.env[ROLE_PASSWORD_ENV[role]];
   const exists = await client.query<{ exists: boolean }>(
@@ -310,6 +343,16 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
       await ensureRole(client, role);
       await client.query(`grant usage on schema public to ${quoteIdent(role)}`);
     }
+
+    // Preserve temporary staged reads only until the matching cutover
+    // migration. Privilege state alone cannot distinguish a legitimate
+    // pre-cutover grant from stale post-cutover drift.
+    const restoreWorkerUserSelect =
+      !(await migrationApplied(client, PRODUCTION_MIGRATION_CEILING_BY_TAG["0160"].folderMillis)) &&
+      (await hasTablePrivilege(client, "worker_app", "user", "SELECT"));
+    const restoreApiUserSelect =
+      !(await migrationApplied(client, PRODUCTION_MIGRATION_CEILING_BY_TAG["0161"].folderMillis)) &&
+      (await hasTablePrivilege(client, "api_app", "user", "SELECT"));
 
     for (const role of roles) {
       await client.query(
@@ -456,6 +499,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
 
     for (const tableName of API_READ_TABLES) {
       await grantIfExists(client, "api_app", tableName, "SELECT");
+    }
+    if (restoreWorkerUserSelect) {
+      await grantIfExists(client, "worker_app", "user", "SELECT");
+    }
+    if (restoreApiUserSelect) {
+      await grantIfExists(client, "api_app", "user", "SELECT");
     }
     for (const role of ["auth_app", "api_app", "worker_app"] as const) {
       await grantSequences(client, role, "public");
