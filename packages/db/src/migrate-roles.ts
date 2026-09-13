@@ -240,14 +240,14 @@ async function hasTablePrivilege(
 
 async function ensureRole(client: pg.Client, role: RoleName): Promise<void> {
   const password = process.env[ROLE_PASSWORD_ENV[role]];
-  const exists = await client.query<{ exists: boolean }>(
-    "select exists (select 1 from pg_roles where rolname = $1)",
-    [role],
-  );
-  if (!exists.rows[0]?.exists) {
-    const passwordSql = password ? ` password ${quoteLiteral(password)}` : "";
+  const passwordSql = password ? ` password ${quoteLiteral(password)}` : "";
+  try {
     await client.query(`create role ${quoteIdent(role)} login${passwordSql}`);
-  } else if (password) {
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "42710" && code !== "23505") throw err;
+  }
+  if (password) {
     await client.query(
       `alter role ${quoteIdent(role)} with login password ${quoteLiteral(password)}`,
     );

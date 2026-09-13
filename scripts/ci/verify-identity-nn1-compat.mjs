@@ -91,10 +91,13 @@ async function bootAndProbe(image, release, expectOk) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
+  const logs = spawnSync("docker", ["logs", containerName], { encoding: "utf8" });
   spawnSync("docker", ["rm", "-f", containerName], { stdio: "ignore" });
   child.kill("SIGKILL");
 
   if (expectOk && !ok) {
+    if (logs.stdout?.trim()) console.error(logs.stdout);
+    if (logs.stderr?.trim()) console.error(logs.stderr);
     throw new Error(`Expected ${release} to become ready`);
   }
   if (!expectOk && ok) {
@@ -123,6 +126,13 @@ async function main() {
   run("pnpm", ["--filter", "@auction/db", "db:roles"], "Apply roles");
   run("pnpm", ["--filter", "@auction/db", "db:configure-oidc-clients"], "Configure OIDC clients");
   run("node", ["scripts/ci/seed-identity-acceptance-fixtures.mjs"], "Seed OAuth fixtures");
+  process.env.AUTH_DEK_KEY ??=
+    "0707070707070707070707070707070707070707070707070707070707070707";
+  run(
+    "pnpm",
+    ["--filter", "@auction/db", "db:backfill-auth-at-rest", "--", "--apply"],
+    "Apply auth at-rest backfill for production startup",
+  );
 
   if (process.env.BUILD_NN1_IMAGES !== "false") {
     run(
