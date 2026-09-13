@@ -1,0 +1,72 @@
+name: Identity directory maintenance (test)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: inventory, apply, or verify
+        required: true
+        type: choice
+        options: [inventory, apply, verify]
+      confirm_backup:
+        description: Confirm managed-database backup/PITR evidence was reviewed
+        required: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: identity-directory-maintenance-test
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    if: inputs.mode != 'apply' || inputs.confirm_backup
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: .infra-config/terraform/ephemeral/test
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Load masked staging database contract
+        run: |
+          set -euo pipefail
+          tf_dir=.infra-config/terraform/ephemeral/test
+          owner_url="$(terraform -chdir="$tf_dir" output -raw postgres_owner_uri)"
+          database_ca_cert="$(terraform -chdir="$tf_dir" output -raw database_ca_certificate)"
+          test -n "$owner_url"
+          test -n "$database_ca_cert"
+          echo "::add-mask::$owner_url"
+          echo "DATABASE_URL_OWNER=$owner_url" >> "$GITHUB_ENV"
+          {
+            echo 'DATABASE_CA_CERT<<__DATABASE_CA_CERT__'
+            printf '%s\n' "$database_ca_cert"
+            echo '__DATABASE_CA_CERT__'
+          } >> "$GITHUB_ENV"
+      - name: Inventory canonical directory drift
+        if: inputs.mode == 'inventory' || inputs.mode == 'apply'
+        run: pnpm tsx scripts/ci/reconcile-identity-directory.mjs
+      - name: Apply canonical directory reconciliation
+        if: inputs.mode == 'apply'
+        run: pnpm tsx scripts/ci/reconcile-identity-directory.mjs --apply
+      - name: Verify canonical directory and profile state
+        if: inputs.mode == 'verify' || inputs.mode == 'apply'
+        run: |
+          pnpm tsx scripts/ci/verify-identity-directory-drift.mjs
+          pnpm --filter @auction/db... build
+          pnpm --filter @auction/db db:reconcile-identity-profiles

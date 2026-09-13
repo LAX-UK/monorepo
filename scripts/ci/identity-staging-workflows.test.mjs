@@ -124,6 +124,19 @@ test("auth at-rest maintenance workflow is manually approved and phased", () => 
   assert.match(workflow, /jwks-snapshot\.ts test/);
 });
 
+test("directory repair is approved maintenance, never acceptance self-healing", () => {
+  const maintenance = read(".github/workflows/identity-directory-maintenance-test.yml");
+  const acceptance = read(".github/workflows/identity-staging-acceptance.yml");
+
+  assert.match(maintenance, /confirm_backup/);
+  assert.match(maintenance, /environment: test/);
+  assert.match(maintenance, /reconcile-identity-directory\.mjs --apply/);
+  assert.match(maintenance, /verify-identity-directory-drift\.mjs/);
+  assert.match(maintenance, /pnpm --filter @auction\/db\.\.\. build/);
+  assert.doesNotMatch(acceptance, /repair_directory/);
+  assert.doesNotMatch(acceptance, /reconcile-identity-directory\.mjs --apply/);
+});
+
 test("build images emits a release manifest artifact", () => {
   const workflow = read(".github/workflows/build-images.yml");
   const writer = read("scripts/ci/write-release-manifest.mjs");
