@@ -4,6 +4,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { describe, expect, it } from "vitest";
+import { readUserReadCutover } from "./applied-user-read-cutover.js";
+import { applyApplicationRoleGrants } from "./migrate-roles.js";
 import {
   APPROVED_RELEASE_HEAD,
   RELEASE_TO_MAIN_SQL_MAPPING,
@@ -59,8 +61,13 @@ describe("release to main lineage adoption", () => {
         );
         expect(Number(applied.rows[0]?.count ?? 0)).toBeGreaterThan(150);
 
+        await applyApplicationRoleGrants(databaseUrl.toString());
+
+        const cutover = await readUserReadCutover(pool);
+        expect(cutover.apiUserSelectRevoked).toBe(true);
+
         const userSelect = await pool.query<{ revoked: boolean }>(
-          "select not has_table_privilege('api_app', 'public.user', 'SELECT') as revoked",
+          `select not has_table_privilege('api_app', 'public."user"', 'SELECT') as revoked`,
         );
         expect(userSelect.rows[0]?.revoked).toBe(true);
       } finally {
