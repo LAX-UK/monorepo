@@ -53,6 +53,15 @@ try {
       count(*) FILTER (
         WHERE d.identity_created_at IS DISTINCT FROM u.created_at
       )::int AS identity_created_at_mismatches,
+      count(*) FILTER (WHERE u.email LIKE 'v1:%')::int AS source_sealed_emails,
+      count(*) FILTER (WHERE d.email LIKE 'v1:%')::int AS directory_sealed_emails,
+      count(*) FILTER (WHERE u.email LIKE '%@%')::int AS source_email_shaped,
+      count(*) FILTER (WHERE d.email LIKE '%@%')::int AS directory_email_shaped,
+      count(*) FILTER (WHERE u.image IS NULL)::int AS source_null_images,
+      count(*) FILTER (WHERE d.image IS NULL)::int AS directory_null_images,
+      count(*) FILTER (
+        WHERE lower(trim(d.email)) IS NOT DISTINCT FROM lower(trim(u.email))
+      )::int AS normalized_email_matches,
       count(*) FILTER (
         WHERE u.id IS NOT NULL
           AND d.subject_id IS NOT NULL
@@ -140,6 +149,15 @@ try {
     ["deletion_requested_at", Number(source.deletion_requested_at_mismatches ?? 0)],
     ["identity_created_at", Number(source.identity_created_at_mismatches ?? 0)],
   ];
+  const mismatchShape = [
+    ["source_sealed_emails", Number(source.source_sealed_emails ?? 0)],
+    ["directory_sealed_emails", Number(source.directory_sealed_emails ?? 0)],
+    ["source_email_shaped", Number(source.source_email_shaped ?? 0)],
+    ["directory_email_shaped", Number(source.directory_email_shaped ?? 0)],
+    ["source_null_images", Number(source.source_null_images ?? 0)],
+    ["directory_null_images", Number(source.directory_null_images ?? 0)],
+    ["normalized_email_matches", Number(source.normalized_email_matches ?? 0)],
+  ];
   const invalidAliases = Number(source.invalid_alias_rows ?? 0);
   const cursorRows = Number(projector.cursor_rows ?? 0);
   const pending = Number(projector.pending_events ?? 0);
@@ -152,6 +170,7 @@ try {
       `orphan=${orphan}`,
       `mismatched=${mismatched}`,
       `mismatch_fields=${mismatchFields.map(([field, count]) => `${field}:${count}`).join(",")}`,
+      `mismatch_shape=${mismatchShape.map(([field, count]) => `${field}:${count}`).join(",")}`,
       `invalid_alias=${invalidAliases}`,
       `cursor_rows=${cursorRows}`,
       `pending_events=${pending}`,
