@@ -152,6 +152,19 @@ test("role repair is reviewed maintenance with post-apply verification", () => {
   assert.match(maintenance, /pnpm --filter @auction\/db test:worker-role-contract/);
 });
 
+test("migration promotion is reviewed maintenance with staged ceilings", () => {
+  const maintenance = read(".github/workflows/identity-migration-maintenance-test.yml");
+
+  assert.match(maintenance, /confirm_review/);
+  assert.match(maintenance, /environment: test/);
+  assert.match(maintenance, /PRODUCTION_MIGRATION_THROUGH: \$\{\{ inputs\.migration_through \}\}/);
+  assert.match(maintenance, /options: \["0159", "0160", "0161"\]/);
+  assert.match(maintenance, /pnpm --filter @auction\/db db:migrate:prod/);
+  assert.match(maintenance, /pnpm --filter @auction\/db db:configure-oidc-clients/);
+  assert.match(maintenance, /pnpm --filter @auction\/db db:report-user-read-cutover/);
+  assert.match(maintenance, /pnpm --filter @auction\/db test:worker-role-contract/);
+});
+
 test("build images emits a release manifest artifact", () => {
   const workflow = read(".github/workflows/build-images.yml");
   const writer = read("scripts/ci/write-release-manifest.mjs");
