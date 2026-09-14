@@ -36,6 +36,7 @@
     "ci:record-evidence": "node scripts/ci/record-release-evidence.mjs",
     "ci:staging-acceptance": "node scripts/ci/run-staging-acceptance-preflight.mjs",
     "ci:identity-acceptance-preflight": "node scripts/ci/run-identity-acceptance-preflight.mjs",
+    "ci:identity-soak-gate-validation": "node --test scripts/ci/identity-soak-gate-validation.test.mjs",
     "ci:identity-nn1-compat": "node scripts/ci/verify-identity-nn1-compat.mjs",
     "ci:identity-source-parity": "node scripts/ci/verify-identity-source-parity.mjs",
     "ci:authorize-cutover": "node scripts/ci/authorize-cutover-preflight.mjs",

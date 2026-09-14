@@ -137,6 +137,8 @@ test("directory repair is approved maintenance, never acceptance self-healing", 
   assert.match(maintenance, /pnpm --filter @auction\/db\.\.\. build/);
   assert.doesNotMatch(acceptance, /repair_directory/);
   assert.doesNotMatch(acceptance, /reconcile-identity-directory\.mjs --apply/);
+  const recovery = read(".github/workflows/staging-recovery-test.yml");
+  assert.doesNotMatch(recovery, /identity-directory-maintenance-test\.yml/);
 });
 
 test("role repair is reviewed maintenance with post-apply verification", () => {
@@ -216,12 +218,7 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
     /app_image_tag: \$\{\{ fromJSON\(inputs\.rollback_manifest\)\.monorepoSha \}\}/,
   );
   assert.match(workflow, /uses: \.\/\.github\/workflows\/terraform-apply-test\.yml/);
-  assert.match(workflow, /repair_identity_directory:/);
-  assert.match(workflow, /identity-directory-maintenance-test\.yml/);
   assertOrdered(workflow, [
-    "  deploy:\n    needs: qualify_identity",
-    "  repair_identity_directory:\n    if:",
-    "  acceptance_disabled:\n    if:",
     "acceptance_enabled:",
     "  rollback_rehearsal:\n    if:",
     "  restore_candidate:\n    #",
@@ -306,9 +303,12 @@ test("Shop images embed the release provenance required by image contracts", () 
 
 test("identity staging soak samples read-only contracts on a schedule", () => {
   const soak = read(".github/workflows/identity-staging-soak.yml");
-  assert.match(soak, /verify-identity-directory-drift\.mjs/);
-  assert.match(soak, /verify-identity-outbox-live\.mjs/);
+  assert.match(soak, /collect-identity-staging-soak-sample\.mjs/);
   assert.match(soak, /evaluate-identity-staging-soak\.mjs/);
+  assert.match(soak, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
+  assert.match(soak, /actions: write/);
+  assert.match(soak, /if: always\(\)/);
+  assert.match(soak, /gh workflow run identity-staging-soak\.yml/);
   assert.match(soak, /\*\/15 \* \* \* \*/);
 });
 

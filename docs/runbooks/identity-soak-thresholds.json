@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "description": "Staging Identity soak pass/fail contract. Derive numeric SLO rows in identity-staging-extraction-evidence.md from measured baselines; this file is the machine-enforced subset.",
+  "stagingTrafficNote": "Staging has minimal organic traffic; http5xxRate applies only when httpRequestsTotal meets httpMinRequestsForRate. Capacity and latency SLOs must be re-measured on production traffic before production cutover.",
+  "criticalReadiness": ["status", "database", "redis", "jwks"],
+  "directoryMaxProcessingLagMs": 60000,
+  "outboxMaxPendingAgeMs": 300000,
+  "authAtRestPendingMax": 0,
+  "httpMinRequestsForRate": 10,
+  "http5xxRateMax": 0.05,
+  "ssfDeliveryFailedMax": 0,
+  "backchannelDeliveryFailedMax": 0
+}

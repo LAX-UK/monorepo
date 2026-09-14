@@ -192,6 +192,10 @@ async function main() {
         "tsx",
         "scripts/ci/verify-identity-directory-drift.mjs",
       ]);
+      run("Acceptance cleanup directory regression", "pnpm", [
+        "tsx",
+        "scripts/ci/verify-acceptance-cleanup-directory.mjs",
+      ]);
       run("Outbox lag (read-only)", "pnpm", ["tsx", "scripts/ci/verify-identity-outbox-live.mjs"], {
         IDENTITY_OUTBOX_MAX_AGE_MS: "300000",
       });

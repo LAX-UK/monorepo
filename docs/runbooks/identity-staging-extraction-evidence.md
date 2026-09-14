@@ -13,7 +13,7 @@ any required field is blank or any gate is red.
 | Infra commit | Full SHA and reviewed Terraform plan URL |
 | Identity commit | Full SHA and green standalone CI URL |
 | Identity image | `lax-test-identity:<sha>` plus immutable digest |
-| Migration contract | Source `eb16ec8630af125b315637e44b395078bc1dfcea`; `0161_revoke_api_user_reads`; journal `29a4f140fee4cdfb466fead01fc55d494aefb5e534f393bc004d097b542699ea`; pinned test artifact `lax-test-migrate@sha256:fceea8076c999500ab88877d1fe352b9bf3f84920615facab591c4e2eb7511c8` |
+| Migration contract | Journal tip `0161_revoke_api_user_reads`; hash `29a4f140fee4cdfb466fead01fc55d494aefb5e534f393bc004d097b542699ea`. Record the **immutable migrate image that ran PRE_DEPLOY role grants** on acceptance (candidate `ada95855` pins `lax-test-migrate@sha256:1d557e7d…` / monorepo `c9761ee4b`; recovery deploy after #363 uses `lax-test-migrate@sha256:b187a534…` / monorepo `b76f4843f`). |
 | Fallback image | Captured 2026-09-06: `lax-test-auth:c4df7fbb540304192b10f197df480c626c4e9b95` at `sha256:e1ce432eacf1f8e63e932947df9ea1f44115342fd7d20eededce130d3a19223c` <!-- gitleaks:allow — immutable public image identifiers, not credentials --> |
 | Sentry | Auth release URL and source-map upload result |
 | Supply chain | SBOM and vulnerability-scan artifacts |
@@ -22,7 +22,11 @@ any required field is blank or any gate is red.
 
 Capture at least 24 hours of pre-switch staging data. Engineering and Ops must
 write numeric values and approve them before the Terraform apply; “no
-regression”, “normal”, and other placeholders are not accepted.
+regression”, “normal”, and other placeholders are not accepted. Machine-enforced
+staging soak gates read [identity-soak-thresholds.json](./identity-soak-thresholds.json);
+populate the table below from measured baselines (SRE workbook: round down from
+observed SLIs). Staging has minimal organic traffic—treat availability and
+latency rows as non-authoritative until re-measured on production traffic.
 
 | Signal | Baseline window/value | Green threshold | Rollback threshold |
 |---|---|---|---|
@@ -84,7 +88,7 @@ intact.
 ### Live-gate defects discovered before acceptance
 
 The staging gate is doing real qualification rather than being waived around
-failures. Four product or probe defects were found and corrected:
+failures. Six product or probe defects were found and corrected:
 
 1. Successful sign-ins consumed the issuer's 15-minute failure buckets, causing
    repeated acceptance runs to return 429. Fixed by retaining only failed
@@ -120,6 +124,12 @@ failures. Four product or probe defects were found and corrected:
    the logout repository queried it. The durable RP `sid` intentionally
    retains the same session identifier; revocation now matches either field,
    with a PostgreSQL regression test that reproduces the FK transition.
+6. Acceptance teardown deleted run-scoped `user` rows but left matching
+   `bid_identity_directory` rows, leaking three orphans per run and failing
+   directory drift on the next recovery acceptance (`orphan=3`). Fixed by
+   deleting directory rows in
+   `scripts/ci/cleanup-identity-acceptance-users.mjs` and hermetic regression in
+   `scripts/ci/verify-acceptance-cleanup-directory.mjs`.
 
 These runs are diagnostic evidence, not accepted releases: SSF-enabled,
 rollback, restore, and soak gates remain required.
@@ -138,7 +148,7 @@ Record command, UTC timestamp, sanitized output artifact, and operator for each:
 - [x] Bid and Shop back-channel logout delivery, retry, and replay.
 - [x] SSF verification while disabled; controlled enablement, SET delivery,
       retry, dead-letter, and replay.
-- [x] Directory/profile reconciliation has zero drift and pending events.
+- [ ] Directory/profile reconciliation has zero drift and pending events (invalidated 2026-09-14 by acceptance orphan leak; re-verify after cleanup fix and maintenance apply).
 - [x] Lifecycle outbox/projector lag is within the signed threshold.
 - [x] Live auth/API/Shop/worker role contracts are green.
 - [x] Metrics/dashboard and Sentry signals are visible for the Identity SHA.
@@ -170,7 +180,7 @@ Accepted image contract:
 
 - Previous soak start **2026-09-13T13:39:52Z** is invalidated by rollback/spec drift; do not count it.
 - Restart only after the final restored standalone acceptance is green.
-- Start UTC: **2026-09-13T15:12:00Z** ([soak run 34766953869](https://github.com/LAX-UK/monorepo/actions/runs/34766953869))
+- Start UTC: **pending** — prior starts (`2026-09-13T13:39:52Z`, `2026-09-13T15:12:00Z`) produced **zero** usable samples (soak workflow missing `DIGITALOCEAN_TOKEN`; cron gaps). Restart only after green restored acceptance and set repo vars `IDENTITY_SOAK_SHA_TEST` + `IDENTITY_SOAK_STARTED_AT_TEST`, then dispatch `identity-staging-soak.yml` (`mode=sample`).
 - End UTC: pending (minimum 24h; extend to 72h if traffic is insufficient)
 - Total observed traffic by login/refresh/token operation:
 - [ ] At least 24 hours observed.

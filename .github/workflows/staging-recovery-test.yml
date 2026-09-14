@@ -103,18 +103,9 @@ jobs:
       app_image_tag: ${{ inputs.shop_sha }}
     secrets: inherit
 
-  repair_identity_directory:
-    if: inputs.run_acceptance
-    needs: deploy
-    uses: ./.github/workflows/identity-directory-maintenance-test.yml
-    with:
-      mode: apply
-      confirm_backup: true
-    secrets: inherit
-
   acceptance_disabled:
     if: inputs.run_acceptance
-    needs: repair_identity_directory
+    needs: deploy
     uses: ./.github/workflows/identity-staging-acceptance.yml
     with:
       identity_sha: ${{ inputs.identity_sha }}
