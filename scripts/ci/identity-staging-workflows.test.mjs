@@ -309,6 +309,7 @@ test("identity staging soak samples read-only contracts on a schedule", () => {
   assert.match(soak, /actions: write/);
   assert.match(soak, /if: always\(\)/);
   assert.match(soak, /gh workflow run identity-staging-soak\.yml/);
+  assert.match(soak, /AUTH_METRICS_TOKEN:auth_metrics_token/);
   assert.match(soak, /\*\/15 \* \* \* \*/);
 });
 

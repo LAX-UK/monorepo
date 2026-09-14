@@ -52,7 +52,6 @@ jobs:
       SHOP_IDENTITY_BASE_URL: https://test-shop.lax.bid
       IDENTITY_OUTBOX_MAX_AGE_MS: "300000"
       IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS: "60000"
-      AUTH_METRICS_TOKEN: ${{ secrets.AUTH_METRICS_TOKEN }}
       SOAK_VALIDATION_MODE: enforce
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +77,8 @@ jobs:
           [[ "$IDENTITY_SHA" =~ ^[0-9a-f]{40}$ ]]
           for pair in \
             DATABASE_URL_OWNER:postgres_owner_uri \
-            DATABASE_URL_WORKER:database_url_worker; do
+            DATABASE_URL_WORKER:database_url_worker \
+            AUTH_METRICS_TOKEN:auth_metrics_token; do
             env_name="${pair%%:*}"
             output_name="${pair##*:}"
             value="$(terraform -chdir=.infra-config/terraform/ephemeral/test output -raw "$output_name")"

@@ -180,7 +180,8 @@ Accepted image contract:
 
 - Previous soak start **2026-09-13T13:39:52Z** is invalidated by rollback/spec drift; do not count it.
 - Restart only after the final restored standalone acceptance is green.
-- Start UTC: **2026-09-14T08:10:02Z** ([soak sample 34821323478](https://github.com/LAX-UK/monorepo/actions/runs/34821323478)) after green recovery [34815075529](https://github.com/LAX-UK/monorepo/actions/runs/34815075529). Set repo vars `IDENTITY_SOAK_SHA_TEST=ada95855…` and `IDENTITY_SOAK_STARTED_AT_TEST=2026-09-14T08:10:02Z` so scheduled samples share the window.
+- **2026-09-14T08:10:02Z** dispatch invalidated: samples failed metrics scrape (`AUTH_METRICS_TOKEN` was not loaded; fixed by reading `auth_metrics_token` from Terraform like acceptance).
+- Start UTC: **2026-09-14T08:37:21Z** on `main` after merge [f60ea990](https://github.com/LAX-UK/monorepo/commit/f60ea99013b95f2be90199f24e25ecf521c4ad02) and metrics-token fix. Candidate SHA `ada95855ba3ac912eb68a9da976b8ab31028a9e1`. Repo vars `IDENTITY_SOAK_SHA_TEST` / `IDENTITY_SOAK_STARTED_AT_TEST` set to match.
 - End UTC: pending (minimum 24h; extend to 72h if traffic is insufficient)
 - Total observed traffic by login/refresh/token operation:
 - [ ] At least 24 hours observed.
