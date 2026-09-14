@@ -211,7 +211,10 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
   assert.match(workflow, /parent_holds_deploy_lock: true/);
   assert.match(workflow, /fromJSON\(inputs\.rollback_manifest\)\.identity\.sha/);
   assert.match(workflow, /app_image_tag: \$\{\{ inputs\.shop_sha \}\}/);
-  assert.match(workflow, /app_image_tag: \$\{\{ fromJSON\(inputs\.rollback_manifest\)\.monorepoSha \}\}/);
+  assert.match(
+    workflow,
+    /app_image_tag: \$\{\{ fromJSON\(inputs\.rollback_manifest\)\.monorepoSha \}\}/,
+  );
   assert.match(workflow, /uses: \.\/\.github\/workflows\/terraform-apply-test\.yml/);
   assertOrdered(workflow, [
     "acceptance_enabled:",
