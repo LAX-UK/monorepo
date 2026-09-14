@@ -180,7 +180,7 @@ Accepted image contract:
 
 - Previous soak start **2026-09-13T13:39:52Z** is invalidated by rollback/spec drift; do not count it.
 - Restart only after the final restored standalone acceptance is green.
-- Start UTC: **pending** — prior starts (`2026-09-13T13:39:52Z`, `2026-09-13T15:12:00Z`) produced **zero** usable samples (soak workflow missing `DIGITALOCEAN_TOKEN`; cron gaps). Restart only after green restored acceptance and set repo vars `IDENTITY_SOAK_SHA_TEST` + `IDENTITY_SOAK_STARTED_AT_TEST`, then dispatch `identity-staging-soak.yml` (`mode=sample`).
+- Start UTC: **2026-09-14T08:10:02Z** ([soak sample 34821323478](https://github.com/LAX-UK/monorepo/actions/runs/34821323478)) after green recovery [34815075529](https://github.com/LAX-UK/monorepo/actions/runs/34815075529). Set repo vars `IDENTITY_SOAK_SHA_TEST=ada95855…` and `IDENTITY_SOAK_STARTED_AT_TEST=2026-09-14T08:10:02Z` so scheduled samples share the window.
 - End UTC: pending (minimum 24h; extend to 72h if traffic is insufficient)
 - Total observed traffic by login/refresh/token operation:
 - [ ] At least 24 hours observed.
