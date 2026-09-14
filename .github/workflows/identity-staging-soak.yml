@@ -16,7 +16,7 @@ on:
         required: true
         type: string
       soak_started_at:
-        description: UTC start timestamp used by the final evaluator
+        description: UTC start timestamp used by the final evaluator and sample chain
         required: false
         type: string
       minimum_operations:
@@ -24,10 +24,15 @@ on:
         required: true
         type: number
         default: 1
+      chain_next:
+        description: After a sample, sleep 15 minutes and dispatch the next sample
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
-  actions: read
+  actions: write
 
 concurrency:
   group: identity-staging-soak
@@ -39,13 +44,16 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
       IDENTITY_SHA: ${{ github.event_name == 'schedule' && vars.IDENTITY_SOAK_SHA_TEST || inputs.identity_sha }}
+      SOAK_STARTED_AT: ${{ github.event_name == 'schedule' && vars.IDENTITY_SOAK_STARTED_AT_TEST || inputs.soak_started_at }}
       AUTH_BASE_URL: https://test-auth.lax.bid
       API_BASE_URL: https://test-api.lax.bid
       SHOP_IDENTITY_BASE_URL: https://test-shop.lax.bid
       IDENTITY_OUTBOX_MAX_AGE_MS: "300000"
       IDENTITY_DIRECTORY_MAX_PROCESSING_LAG_MS: "60000"
       AUTH_METRICS_TOKEN: ${{ secrets.AUTH_METRICS_TOKEN }}
+      SOAK_VALIDATION_MODE: enforce
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -93,35 +101,43 @@ jobs:
             echo '__DATABASE_CA_CERT__'
           } >> "$GITHUB_ENV"
       - name: Collect one read-only soak sample
-        run: |
-          set -euo pipefail
-          sample="$RUNNER_TEMP/soak-sample.json"
-          ready="$(curl --fail --silent "$AUTH_BASE_URL/health/ready")"
-          release="$(jq -r '.release // empty' <<<"$ready")"
-          test "$release" = "$IDENTITY_SHA"
-          pnpm tsx scripts/ci/verify-identity-directory-drift.mjs
-          pnpm tsx scripts/ci/verify-identity-outbox-live.mjs
-          curl --fail --silent \
-            --header "Authorization: Bearer $AUTH_METRICS_TOKEN" \
-            "$AUTH_BASE_URL/metrics" > "$RUNNER_TEMP/auth-metrics.txt"
-          operations="$(
-            awk '/^auction_auth_(refresh_rotation_outcomes|identity_lifecycle_operations|ssf_delivery_outcomes)_total/ { sum += $NF } END { print sum + 0 }' \
-              "$RUNNER_TEMP/auth-metrics.txt"
-          )"
-          jq -cn \
-            --arg observedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg identitySha "$IDENTITY_SHA" \
-            --argjson ready "$ready" \
-            --argjson operations "$operations" \
-            '{observedAt: $observedAt, identitySha: $identitySha, ready: $ready, operations: $operations}' \
-            > "$sample"
+        if: always()
+        env:
+          SOAK_SAMPLE_PATH: ${{ runner.temp }}/soak-sample.json
+        run: pnpm tsx scripts/ci/collect-identity-staging-soak-sample.mjs
       - name: Upload soak evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: identity-staging-soak-sample-${{ github.run_id }}
           path: ${{ runner.temp }}/soak-sample.json
           if-no-files-found: error
           retention-days: 90
+      - name: Schedule next soak sample
+        if: >-
+          always() &&
+          (github.event_name == 'schedule' ||
+           (github.event_name == 'workflow_dispatch' && inputs.chain_next != false))
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -n "${SOAK_STARTED_AT:-}" || exit 0
+          start_epoch="$(date -u -d "$SOAK_STARTED_AT" +%s)"
+          end_epoch=$((start_epoch + 24 * 60 * 60))
+          now_epoch="$(date -u +%s)"
+          if test "$now_epoch" -ge "$end_epoch"; then
+            echo "Soak window complete; not scheduling another sample."
+            exit 0
+          fi
+          sleep 900
+          gh workflow run identity-staging-soak.yml \
+            --ref "${GITHUB_REF_NAME:-main}" \
+            -f mode=sample \
+            -f "identity_sha=$IDENTITY_SHA" \
+            -f "soak_started_at=$SOAK_STARTED_AT" \
+            -f minimum_operations=1 \
+            -f chain_next=true
 
   evaluate:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'evaluate'

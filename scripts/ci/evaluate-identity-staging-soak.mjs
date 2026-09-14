@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { assertSampleMeetsSoakThresholds } from "./identity-soak-threshold-contract.mjs";
 
 const token = process.env.GH_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY ?? "LAX-UK/monorepo";
@@ -90,16 +91,13 @@ const operationDelta = lastOperations - firstOperations;
 if (!Number.isFinite(operationDelta) || operationDelta < minimumOperations) {
   throw new Error(`Observed Auth operation delta ${operationDelta} is below ${minimumOperations}`);
 }
-if (
-  samples.some(
-    (sample) =>
-      sample.ready?.status !== "ok" ||
-      sample.ready?.database !== "ok" ||
-      sample.ready?.redis !== "ok" ||
-      sample.ready?.jwks !== "ok",
-  )
-) {
-  throw new Error("One or more soak readiness samples were unhealthy");
+for (const sample of samples) {
+  if (sample.probeStatus === "failed") {
+    throw new Error(
+      `Soak sample at ${sample.observedAt} failed: ${sample.probeError ?? "unknown"}`,
+    );
+  }
+  assertSampleMeetsSoakThresholds(sample);
 }
 
 writeFileSync(

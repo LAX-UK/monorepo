@@ -100,6 +100,7 @@ jobs:
       shop_identity_digest: ${{ inputs.shop_identity_digest }}
       shop_sha: ${{ inputs.shop_sha }}
       shop_digest: ${{ inputs.shop_digest }}
+      app_image_tag: ${{ inputs.shop_sha }}
     secrets: inherit
 
   acceptance_disabled:
@@ -126,6 +127,7 @@ jobs:
       shop_identity_digest: ${{ inputs.shop_identity_digest }}
       shop_sha: ${{ inputs.shop_sha }}
       shop_digest: ${{ inputs.shop_digest }}
+      app_image_tag: ${{ inputs.shop_sha }}
     secrets: inherit
 
   acceptance_enabled:
@@ -152,6 +154,7 @@ jobs:
       shop_identity_digest: ${{ fromJSON(inputs.rollback_manifest).shopIdentity.digest }}
       shop_sha: ${{ fromJSON(inputs.rollback_manifest).shop.sha }}
       shop_digest: ${{ fromJSON(inputs.rollback_manifest).shop.digest }}
+      app_image_tag: ${{ fromJSON(inputs.rollback_manifest).monorepoSha }}
     secrets: inherit
 
   restore_candidate:
@@ -174,6 +177,7 @@ jobs:
       shop_identity_digest: ${{ inputs.shop_identity_digest }}
       shop_sha: ${{ inputs.shop_sha }}
       shop_digest: ${{ inputs.shop_digest }}
+      app_image_tag: ${{ inputs.shop_sha }}
     secrets: inherit
 
   acceptance_after_rehearsal:
