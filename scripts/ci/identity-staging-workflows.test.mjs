@@ -301,6 +301,12 @@ test("Shop images embed the release provenance required by image contracts", () 
   assert.match(shopIdentity, /new pg\.Pool\(buildPgConnectionConfig\(databaseUrl\)\)/);
 });
 
+test("identity staging soak watch fails closed on unhealthy chains", () => {
+  const watch = read(".github/workflows/identity-staging-soak-watch.yml");
+  assert.match(watch, /watch-identity-staging-pipelines\.mjs/);
+  assert.match(watch, /IDENTITY_SOAK_STARTED_AT_TEST/);
+});
+
 test("identity staging soak samples read-only contracts on a schedule", () => {
   const soak = read(".github/workflows/identity-staging-soak.yml");
   assert.match(soak, /collect-identity-staging-soak-sample\.mjs/);

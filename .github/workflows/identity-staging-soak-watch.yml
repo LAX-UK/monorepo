@@ -1,0 +1,23 @@
+name: Identity staging soak watch
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify soak chain health
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SOAK_STARTED_AT: ${{ vars.IDENTITY_SOAK_STARTED_AT_TEST }}
+          IDENTITY_SHA: ${{ vars.IDENTITY_SOAK_SHA_TEST }}
+        run: node scripts/ci/watch-identity-staging-pipelines.mjs
