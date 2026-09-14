@@ -84,6 +84,22 @@ for (const command of ["migrate-prod.js", "migrate-roles.js", "configure-oidc-cl
   if (!migrate.includes(command)) violations.push(`migrate PRE_DEPLOY omits ${command}`);
 }
 
+const shopStart = locateComponent("shop");
+const wsStart = locateComponent("ws");
+if (shopStart < 0 || wsStart < 0) {
+  violations.push("Could not locate shop and ws component boundaries");
+} else {
+  const shop = terraform.slice(shopStart, wsStart);
+  for (const key of ["SHOP_IDENTITY_BASE_URL", "IDENTITY_PUBLIC_BASE_URL"]) {
+    if (!shop.includes(`key = "${key}"`)) {
+      violations.push(`Terraform shop environment omits ${key}`);
+    }
+  }
+  if (shop.includes("shop-identity.PRIVATE_URL")) {
+    violations.push("shop SHOP_IDENTITY_BASE_URL must use the public shop origin, not PRIVATE_URL");
+  }
+}
+
 if (violations.length > 0) {
   console.error("Auth Terraform contract violations:\n");
   for (const violation of violations) console.error(`- ${violation}`);
