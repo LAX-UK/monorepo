@@ -204,6 +204,8 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
   assert.match(workflow, /qualify_identity/);
   assert.match(workflow, /group: app-deploy-test/);
   assert.match(workflow, /rollback_manifest/);
+  assert.match(workflow, /infra_sha:/);
+  assert.match(workflow, /write-recovery-accepted-release\.mjs/);
   assert.match(workflow, /Validate recovery and rollback inputs/);
   assert.match(workflow, /parent_holds_deploy_lock: true/);
   assert.match(workflow, /fromJSON\(inputs\.rollback_manifest\)\.identity\.sha/);
@@ -253,15 +255,17 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.match(acceptance, /db:report-user-read-cutover/);
   assert.match(acceptance, /AUTH_METRICS_TOKEN/);
   assert.match(acceptance, /jwks-snapshot\.ts test --verify/);
+  assert.match(acceptance, /verify-identity-auth-metrics-live\.mjs/);
   for (const metric of [
     "auction_auth_refresh_rotation_outcomes_total",
     "auction_auth_identity_lifecycle_operations_total",
     "auction_auth_ssf_delivery_outcomes_total",
     "auction_auth_at_rest_pending",
   ]) {
-    assert.match(acceptance, new RegExp(metric));
+    assert.match(read("scripts/ci/identity-auth-metrics-contract.mjs"), new RegExp(metric));
   }
   assert.doesNotMatch(acceptance, /\brg -q\b/);
+  assert.doesNotMatch(acceptance, /grep -Eq '\^auction_auth_/);
   assert.doesNotMatch(machineProbe, /expiringBody\.expires_in \+ 2/);
   assert.match(acceptance, /IDENTITY_RECONCILIATION_ATTEMPTS/);
   assert.match(acceptance, /BACKCHANNEL_LOGOUT_TIMEOUT_MS: "120000"/);
