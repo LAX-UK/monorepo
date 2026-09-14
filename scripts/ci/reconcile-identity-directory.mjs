@@ -14,6 +14,16 @@ const client = new pg.Client(buildPgConnectionConfig(connectionString));
 try {
   await client.connect();
   await client.query("BEGIN");
+  const orphanPredicate = `
+    d.merged_into_subject_id IS NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public."user" u
+      WHERE u.id = d.subject_id
+        AND u.merged_into_subject_id IS NULL
+        AND u.email <> 'deleted+' || u.id || '@purged.invalid'
+    )
+  `;
   const { rows } = await client.query(`
     WITH mismatched AS (
       SELECT d.subject_id
@@ -30,14 +40,24 @@ try {
           OR d.deletion_requested_at IS DISTINCT FROM u.deletion_requested_at
           OR d.identity_created_at IS DISTINCT FROM u.created_at
         )
+    ),
+    orphaned AS (
+      SELECT d.subject_id
+      FROM public.bid_identity_directory d
+      WHERE ${orphanPredicate}
     )
-    SELECT count(*)::int AS mismatch_count FROM mismatched
+    SELECT
+      (SELECT count(*)::int FROM mismatched) AS mismatch_count,
+      (SELECT count(*)::int FROM orphaned) AS orphan_count
   `);
   const mismatchCount = Number(rows[0]?.mismatch_count ?? 0);
+  const orphanCount = Number(rows[0]?.orphan_count ?? 0);
 
   if (!apply) {
     await client.query("ROLLBACK");
-    console.log(`identity directory reconciliation dry-run: mismatched=${mismatchCount}`);
+    console.log(
+      `identity directory reconciliation dry-run: mismatched=${mismatchCount} orphan=${orphanCount}`,
+    );
   } else {
     const result = await client.query(`
       UPDATE public.bid_identity_directory d
@@ -63,12 +83,19 @@ try {
           OR d.identity_created_at IS DISTINCT FROM u.created_at
         )
     `);
-    await client.query("COMMIT");
-    console.log(
-      `identity directory reconciliation applied: expected=${mismatchCount} updated=${result.rowCount}`,
-    );
     if (result.rowCount !== mismatchCount) {
       throw new Error("identity_directory_reconciliation_concurrent_change");
+    }
+    const orphanResult = await client.query(`
+      DELETE FROM public.bid_identity_directory d
+      WHERE ${orphanPredicate}
+    `);
+    await client.query("COMMIT");
+    console.log(
+      `identity directory reconciliation applied: expected_mismatched=${mismatchCount} updated=${result.rowCount} removed_orphans=${orphanResult.rowCount}`,
+    );
+    if (orphanResult.rowCount !== orphanCount) {
+      throw new Error("identity_directory_orphan_reconciliation_concurrent_change");
     }
   }
 } catch (error) {

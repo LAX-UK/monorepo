@@ -216,7 +216,12 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
     /app_image_tag: \$\{\{ fromJSON\(inputs\.rollback_manifest\)\.monorepoSha \}\}/,
   );
   assert.match(workflow, /uses: \.\/\.github\/workflows\/terraform-apply-test\.yml/);
+  assert.match(workflow, /repair_identity_directory:/);
+  assert.match(workflow, /identity-directory-maintenance-test\.yml/);
   assertOrdered(workflow, [
+    "  deploy:\n    needs: qualify_identity",
+    "  repair_identity_directory:\n    if:",
+    "  acceptance_disabled:\n    if:",
     "acceptance_enabled:",
     "  rollback_rehearsal:\n    if:",
     "  restore_candidate:\n    #",
