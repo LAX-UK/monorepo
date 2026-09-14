@@ -111,6 +111,7 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
   assert.doesNotMatch(planAction, /path: \|[\s\S]*\.tfplan/);
   assert.match(read(".github/workflows/terraform-plan.yml"), /verify-auth-terraform-env\.mjs/);
   assert.match(read(".github/workflows/terraform-apply-test.yml"), /TF_VAR_identity_image_tag/);
+  assert.match(read(".github/workflows/terraform-apply-test.yml"), /TF_VAR_app_image_tag/);
 });
 
 test("auth at-rest maintenance workflow is manually approved and phased", () => {
@@ -209,6 +210,8 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
   assert.match(workflow, /Validate recovery and rollback inputs/);
   assert.match(workflow, /parent_holds_deploy_lock: true/);
   assert.match(workflow, /fromJSON\(inputs\.rollback_manifest\)\.identity\.sha/);
+  assert.match(workflow, /app_image_tag: \$\{\{ inputs\.shop_sha \}\}/);
+  assert.match(workflow, /app_image_tag: \$\{\{ fromJSON\(inputs\.rollback_manifest\)\.monorepoSha \}\}/);
   assert.match(workflow, /uses: \.\/\.github\/workflows\/terraform-apply-test\.yml/);
   assertOrdered(workflow, [
     "acceptance_enabled:",

@@ -35,6 +35,10 @@ on:
       shop_digest:
         type: string
         required: false
+      app_image_tag:
+        type: string
+        required: false
+        description: Immutable monorepo SHA for lax-test-migrate and default worker images
   workflow_dispatch:
     inputs:
       layer:
@@ -73,6 +77,10 @@ on:
         required: false
       shop_digest:
         description: Approved lax-test-shop digest for ephemeral image deploys
+        type: string
+        required: false
+      app_image_tag:
+        description: Immutable monorepo SHA for lax-test-migrate and default worker images
         type: string
         required: false
 concurrency:
@@ -149,6 +157,7 @@ jobs:
       # persistent apply; test reuses the same registry with lax-test-* repos.)
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_TEST || 'github' }}
       TF_VAR_enable_auth_ssf_delivery: ${{ inputs.enable_auth_ssf_delivery && 'true' || 'false' }}
+      TF_VAR_app_image_tag: ${{ inputs.app_image_tag }}
       TF_VAR_identity_image_tag: ${{ inputs.identity_sha }}
       TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
