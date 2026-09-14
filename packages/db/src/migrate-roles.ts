@@ -240,10 +240,16 @@ async function hasTablePrivilege(
   return Boolean(res.rows[0]?.allowed);
 }
 
-function clusterLockDatabaseUrl(connectionString: string): string {
-  const adminUrl = new URL(connectionString);
-  adminUrl.pathname = "/postgres";
-  return adminUrl.toString();
+/** Advisory locks are cluster-wide; any existing database on the URI works. */
+export function resolveApplicationRoleGrantLockDatabaseUrl(connectionString: string): string {
+  const configured = process.env.APPLICATION_ROLE_GRANT_LOCK_DATABASE?.trim();
+  const url = new URL(connectionString);
+  if (configured) {
+    url.pathname = `/${configured.replace(/^\//, "")}`;
+    return url.toString();
+  }
+  // DO Managed Postgres exposes defaultdb/auction, not a database named "postgres".
+  return connectionString;
 }
 
 /** Roles are cluster-wide; serialize grant work through the admin database lock. */
@@ -251,7 +257,9 @@ export async function withApplicationRoleGrantLock<T>(
   connectionString: string,
   run: () => Promise<T>,
 ): Promise<T> {
-  const lockClient = new Client(buildPgConnectionConfig(clusterLockDatabaseUrl(connectionString)));
+  const lockClient = new Client(
+    buildPgConnectionConfig(resolveApplicationRoleGrantLockDatabaseUrl(connectionString)),
+  );
   await lockClient.connect();
   try {
     await lockClient.query("select pg_advisory_lock(hashtext($1))", [
