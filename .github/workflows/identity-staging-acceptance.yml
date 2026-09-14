@@ -217,6 +217,7 @@ jobs:
           node scripts/ci/verify-identity-auth-metrics-live.mjs
       - name: Live database role contracts
         run: |
+          pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:report-user-read-cutover
           pnpm --filter @auction/db test:auth-role-contract
           pnpm --filter @auction/db test:api-role-contract
