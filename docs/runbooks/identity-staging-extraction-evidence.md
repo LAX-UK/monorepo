@@ -130,6 +130,12 @@ failures. Six product or probe defects were found and corrected:
    deleting directory rows in
    `scripts/ci/cleanup-identity-acceptance-users.mjs` and hermetic regression in
    `scripts/ci/verify-acceptance-cleanup-directory.mjs`.
+7. Temporary staging `AUTH_CLIENT_IP_DIAGNOSTICS` (auction-infra
+   [PR #10](https://github.com/LAX-UK/auction-infra/pull/10)) completed topology
+   capture; removed on infra `main` via
+   [PR #12](https://github.com/LAX-UK/auction-infra/pull/12) (`534ac328`) and
+   monorepo Terraform apply test
+   [34832659467](https://github.com/LAX-UK/monorepo/actions/runs/34832659467).
 
 These runs are diagnostic evidence, not accepted releases: SSF-enabled,
 rollback, restore, and soak gates remain required.
