@@ -24,9 +24,6 @@ on:
       publish_run_id:
         description: Successful lax-identity publish workflow run
         required: true
-      infra_sha:
-        description: Reviewed auction-infra commit pinned for this recovery run
-        required: true
       run_acceptance:
         description: Run live acceptance after deploy
         required: true
@@ -202,10 +199,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout-infra
+        with:
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
       - name: Record accepted release manifest evidence
         env:
           MONOREPO_SHA: ${{ github.sha }}
-          INFRA_SHA: ${{ inputs.infra_sha }}
           IDENTITY_SHA: ${{ inputs.identity_sha }}
           IDENTITY_DIGEST: ${{ inputs.identity_digest }}
           IDENTITY_BUILD_RUN: ${{ github.run_id }}
@@ -219,6 +219,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/recovery-evidence"
+          INFRA_SHA="$(git -C .infra-config rev-parse HEAD)"
+          export INFRA_SHA
           node scripts/ci/write-recovery-accepted-release.mjs
       - uses: actions/upload-artifact@v4
         with:

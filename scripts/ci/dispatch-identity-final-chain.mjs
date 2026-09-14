@@ -82,8 +82,6 @@ const args = [
   "-f",
   `publish_run_id=${process.env.PUBLISH_RUN_ID}`,
   "-f",
-  `infra_sha=${process.env.INFRA_SHA}`,
-  "-f",
   "run_acceptance=true",
   "-f",
   "rollback_rehearsal=true",
