@@ -182,58 +182,6 @@
   }
 }
 
-/* Desktop mega-menu: full-bleed shelf under header (break out of max-width container). */
-.header-megamenu {
-  display: grid;
-  grid-template-rows: 0fr;
-  left: 0;
-  width: 100dvw;
-  margin-inline: calc(50% - 50dvw);
-  transform: translateY(-4px);
-  opacity: 0;
-  pointer-events: none;
-  border-bottom: 1px solid var(--color-nav-border, transparent);
-  transition: grid-template-rows var(--motion-duration-md, 320ms) var(--motion-ease-emphasize),
-    transform var(--motion-duration-sm, 200ms) var(--motion-ease-emphasize), opacity
-    var(--motion-duration-sm, 200ms) var(--motion-ease-decelerate);
-}
-
-@supports not (width: 100dvw) {
-  .header-megamenu {
-    width: 100%;
-    margin-inline: 0;
-  }
-}
-
-.header-megamenu > div {
-  min-height: 0;
-}
-
-.header-megamenu__inner {
-  overflow: hidden;
-  padding-top: 1.5rem;
-  padding-bottom: 1.5rem;
-}
-
-.header-megamenu[data-open="false"] {
-  background: transparent;
-}
-
-.header-megamenu[data-open="true"] {
-  grid-template-rows: 1fr;
-  transform: translateY(0);
-  opacity: 1;
-  pointer-events: auto;
-  background: var(--color-surface);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .header-megamenu {
-    transition: none;
-    transform: none;
-  }
-}
-
 /* Artwork live session — bid row flash + stagger */
 @keyframes artwork-bid-flash {
   0%,
@@ -320,33 +268,4 @@
 .admin-data-table-virtualized tbody tr {
   content-visibility: auto;
   contain-intrinsic-size: auto 3rem;
-}
-
-/* Marketing site header — light chrome over immersive home hero */
-[data-chrome-variant="transparentUntilScroll"][data-at-top="true"]::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: linear-gradient(to bottom, rgb(0 0 0 / 0.42), transparent 85%);
-}
-
-[data-header-tone="on-dark"] .site-header-search-icon,
-[data-header-tone="on-dark"] .site-header-search-placeholder {
-  color: var(--color-hero-foreground);
-}
-
-[data-header-tone="on-dark"] .site-header-search-placeholder {
-  opacity: 0.72;
-}
-
-[data-header-tone="on-dark"] .site-header-search-kbd {
-  color: var(--color-hero-foreground);
-  border-color: color-mix(in srgb, var(--color-hero-foreground) 45%, transparent);
-}
-
-[data-header-tone="on-dark"] .site-header-page-title {
-  color: var(--color-hero-foreground);
-  border-color: color-mix(in srgb, var(--color-hero-foreground) 25%, transparent);
 }

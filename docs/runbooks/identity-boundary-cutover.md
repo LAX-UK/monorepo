@@ -194,7 +194,8 @@ product activity. `last_event_id` is the projector ordering/idempotency cursor.
 ## Phase 5 — Shop RP/BFF
 
 1. Deploy the Shop boundary with `DATABASE_URL_SHOP`, client secret, callback,
-   post-logout URI, and `SESSION_SECRET`.
+   post-logout URI, and `SHOP_STOREFRONT_URL`. Shop uses opaque PostgreSQL
+   sessions and has no session-signing secret.
 2. Run `verify-shop-oidc-roundtrip.mjs`, cold login, SSO, logout isolation, and
    projection-disable tests.
 3. Confirm the executable boundary still matches the custom Shop contract for

@@ -5,6 +5,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 COPY packages/config-ts/package.json ./packages/config-ts/
 COPY apps/event/package.json ./apps/event/
 RUN pnpm install --frozen-lockfile --filter @auction/event...

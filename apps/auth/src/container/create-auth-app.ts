@@ -7,6 +7,8 @@ import {
   type AuthOperationalRoutes,
   mountAuthOperationalRoutes,
 } from "./mount-auth-operational-routes.js";
+import { mountHostedAuthAssets } from "./mount-hosted-auth-assets.js";
+import { mountHostedAuthPages } from "./mount-hosted-auth-pages.js";
 import type { OidcRouteMountOptions } from "./mount-oidc-routes.js";
 import { mountOidcRoutes } from "./mount-oidc-routes.js";
 
@@ -26,7 +28,12 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     Sentry.captureException(err);
     return c.json({ error: "Internal server error" }, 500);
   });
-  app.use("*", createSecurityHeadersMiddleware());
+  app.use(
+    "*",
+    createSecurityHeadersMiddleware({
+      turnstileEnabled: Boolean(options.oidc.env.TURNSTILE_SITE_KEY),
+    }),
+  );
   app.use("/api/auth/*", async (c, next) => {
     await next();
     const path = c.req.path;
@@ -45,6 +52,20 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     options.oidc.env.AUTH_TRUSTED_PROXY_CIDRS,
     options.oidc.env.AUTH_TRUSTED_CLOUDFLARE_PROXY_CIDRS,
   );
+  mountHostedAuthAssets(app);
+  mountHostedAuthPages(app, {
+    googleEnabled: Boolean(
+      options.oidc.env.GOOGLE_CLIENT_ID && options.oidc.env.GOOGLE_CLIENT_SECRET,
+    ),
+    appleEnabled: Boolean(options.oidc.env.APPLE_CLIENT_ID && options.oidc.env.APPLE_CLIENT_SECRET),
+    phoneEnabled: options.oidc.env.ENABLE_PHONE_VERIFICATION,
+    turnstileSiteKey: options.oidc.env.TURNSTILE_SITE_KEY ?? null,
+    shopOrigin: options.oidc.env.SHOP_ORIGIN,
+    bidOrigin: options.oidc.env.WEB_ORIGIN,
+    emailFirst: options.oidc.env.HOSTED_AUTH_EMAIL_FIRST,
+    requireEmailVerification: options.oidc.env.REQUIRE_EMAIL_VERIFICATION,
+    getSession: (headers) => options.oidc.auth.api.getSession({ headers }),
+  });
   mountAuthOperationalRoutes(app, {
     ...options.operational,
     log: options.log,

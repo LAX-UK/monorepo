@@ -1,0 +1,46 @@
+{
+  "name": "@auction/marketing-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./marketing-ui.css": "./src/marketing-ui.css",
+    "./marketing-header.css": "./src/marketing-header.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "biome check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "next": ">=15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "next": "15.5.9",
+    "@auction/branding": "workspace:*",
+    "@auction/ui": "workspace:*",
+    "@radix-ui/react-slot": "^1.2.4",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.8.0"
+  },
+  "devDependencies": {
+    "@auction/config-ts": "workspace:*",
+    "@vitejs/plugin-react": "^4.7.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "jsdom": "^25.0.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

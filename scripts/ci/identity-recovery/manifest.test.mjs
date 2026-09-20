@@ -15,6 +15,7 @@ const manifest = {
   identity: { sha, digest, buildRun: "1" },
   shopIdentity: { sha, digest, buildRun: "2" },
   shop: { sha, digest, buildRun: "3" },
+  shopApi: { sha, digest, buildRun: "4" },
 };
 
 test("accepts a complete immutable recovery manifest", () => {

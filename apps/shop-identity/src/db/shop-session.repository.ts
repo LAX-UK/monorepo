@@ -52,15 +52,61 @@ export function createPgShopSessionRepository(pool: Pool): ShopSessionRepository
       return id;
     },
 
-    async authenticate(input): Promise<void> {
-      await pool.query(
+    async attachPendingOAuthToAuthenticatedSession(
+      sessionId: string,
+      oauth: PendingOAuthSession,
+    ): Promise<boolean> {
+      const result = await pool.query(
         `update shop_identity_session
-            set subject_id = $2, sid = $3,
-                oauth_state = null, oauth_nonce = null, oauth_code_verifier = null,
-                expires_at = now() + interval '7 days', updated_at = now()
-          where id = $1 and invalidated_at is null`,
-        [input.id, input.subject, input.sid],
+            set oauth_state = $2,
+                oauth_nonce = $3,
+                oauth_code_verifier = $4,
+                updated_at = now()
+          where id = $1
+            and subject_id is not null
+            and invalidated_at is null
+            and expires_at > now()`,
+        [sessionId, oauth.state, oauth.nonce, oauth.codeVerifier],
       );
+      return (result.rowCount ?? 0) > 0;
+    },
+
+    async createGuestSession(): Promise<string> {
+      const id = randomBytes(32).toString("base64url");
+      await pool.query(
+        `insert into shop_identity_session
+          (id, expires_at, created_at, updated_at)
+         values ($1, now() + interval '14 days', now(), now())`,
+        [id],
+      );
+      return id;
+    },
+
+    async authenticate(input): Promise<string> {
+      const newId = randomBytes(32).toString("base64url");
+      const client = await pool.connect();
+      try {
+        await client.query("begin");
+        await client.query(
+          `insert into shop_identity_session
+            (id, subject_id, sid, expires_at, created_at, updated_at)
+           values ($1, $2, $3, now() + interval '7 days', now(), now())`,
+          [newId, input.subject, input.sid],
+        );
+        await client.query(
+          `update shop_identity_session
+              set invalidated_at = now(), updated_at = now()
+            where id = $1`,
+          [input.id],
+        );
+        await client.query("commit");
+        return newId;
+      } catch (error) {
+        await client.query("rollback");
+        throw error;
+      } finally {
+        client.release();
+      }
     },
 
     async invalidate(id): Promise<void> {

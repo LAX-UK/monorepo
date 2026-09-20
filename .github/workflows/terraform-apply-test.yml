@@ -35,6 +35,12 @@ on:
       shop_digest:
         type: string
         required: false
+      shop_api_sha:
+        type: string
+        required: false
+      shop_api_digest:
+        type: string
+        required: false
       app_image_tag:
         type: string
         required: false
@@ -77,6 +83,14 @@ on:
         required: false
       shop_digest:
         description: Approved lax-test-shop digest for ephemeral image deploys
+        type: string
+        required: false
+      shop_api_sha:
+        description: Approved Shop API commit for ephemeral image deploys
+        type: string
+        required: false
+      shop_api_digest:
+        description: Approved lax-test-shop-api digest for ephemeral image deploys
         type: string
         required: false
       app_image_tag:
@@ -161,6 +175,7 @@ jobs:
       TF_VAR_identity_image_tag: ${{ inputs.identity_sha }}
       TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
+      TF_VAR_shop_api_image_tag: ${{ inputs.shop_api_sha }}
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
     steps:
       - uses: actions/checkout@v4
@@ -191,6 +206,8 @@ jobs:
           SHOP_IDENTITY_DIGEST: ${{ inputs.shop_identity_digest }}
           SHOP_SHA: ${{ inputs.shop_sha }}
           SHOP_DIGEST: ${{ inputs.shop_digest }}
+          SHOP_API_SHA: ${{ inputs.shop_api_sha }}
+          SHOP_API_DIGEST: ${{ inputs.shop_api_digest }}
           DOCR_REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
         run: |
           doctl registry login --expiry-seconds 900

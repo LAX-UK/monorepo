@@ -39,6 +39,7 @@ const manifest = {
   identity: component("IDENTITY"),
   shopIdentity: component("SHOP_IDENTITY"),
   shop: component("SHOP"),
+  shopApi: component("SHOP_API"),
 };
 
 const serialized = JSON.stringify(manifest);

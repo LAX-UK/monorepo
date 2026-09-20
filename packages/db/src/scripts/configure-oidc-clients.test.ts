@@ -19,6 +19,7 @@ describe("OIDC client provisioning", () => {
       pkceRequired: true,
       postLogoutRedirectUris: [
         "http://localhost:3010/",
+        "http://localhost:3020/",
         "https://shop.lax.art/",
         "https://test-shop.lax.bid/",
       ],

@@ -5,6 +5,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY patches ./patches
 COPY apps/auth/package.json ./apps/auth/
 COPY packages/auth/package.json ./packages/auth/
 COPY packages/config-ts/package.json ./packages/config-ts/
@@ -24,6 +25,7 @@ RUN pnpm --filter @auction/auth-app... --workspace-concurrency=1 build
 
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY patches ./patches
 COPY apps/auth/package.json ./apps/auth/
 COPY packages/auth/package.json ./packages/auth/
 COPY packages/config-ts/package.json ./packages/config-ts/

@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   generateIdentityLockfile,
+  patchedDependenciesFromLockfile,
+  prepareIdentityRootManifest,
   prepareIdentityWorkspace,
   pruneIdentityLockfile,
+  rewritePatchedDependencyHashes,
 } from "../ci/prepare-identity-lockfile.mjs";
 import { IDENTITY_PACKAGES, IDENTITY_PACKAGE_PATHS } from "./closure.mjs";
 
@@ -33,6 +36,7 @@ function seedWorkspace(root) {
       readFileSync(join(repoRoot, entry.path, "package.json"), "utf8"),
     );
   }
+  cpSync(join(repoRoot, "patches"), join(root, "patches"), { recursive: true });
 }
 
 function lockDigest(path) {
@@ -70,6 +74,116 @@ test("Identity lock generation requires a source lock", () => {
     seedWorkspace(root);
     prepareIdentityWorkspace(root, { generateLockfile: false });
     assert.throws(() => generateIdentityLockfile(root), /requires a source lockfile/);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("lock pruning preserves patchedDependencies for Identity frozen installs", () => {
+  const source = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+
+patchedDependencies:
+  better-auth@1.6.22:
+    hash: pgexwqbqhhhylvmy7ape7e2l5i
+    path: patches/better-auth@1.6.22.patch
+
+importers:
+
+  .:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.9.4
+        version: 1.9.4
+
+  apps/auth: {}
+
+packages:
+
+  '@biomejs/biome@1.9.4': {}
+`;
+  const pruned = pruneIdentityLockfile(source, ["apps/auth"]);
+  assert.deepEqual(patchedDependenciesFromLockfile(pruned), {
+    "better-auth@1.6.22": {
+      hash: "pgexwqbqhhhylvmy7ape7e2l5i",
+      path: "patches/better-auth@1.6.22.patch",
+    },
+  });
+});
+
+test("Identity lockfile rewrites pnpm 9 patch hashes to pnpm 10 SHA-256", () => {
+  const source = `lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+
+patchedDependencies:
+  better-auth@1.6.22:
+    hash: pgexwqbqhhhylvmy7ape7e2l5i
+    path: patches/better-auth@1.6.22.patch
+
+importers:
+
+  .:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.9.4
+        version: 1.9.4
+
+  apps/auth: {}
+
+packages:
+
+  '@biomejs/biome@1.9.4': {}
+`;
+  const root = mkdtempSync(join(tmpdir(), "identity-lock-hash-"));
+  try {
+    mkdirSync(join(root, "patches"), { recursive: true });
+    cpSync(
+      join(repoRoot, "patches/better-auth@1.6.22.patch"),
+      join(root, "patches/better-auth@1.6.22.patch"),
+    );
+    const rewritten = rewritePatchedDependencyHashes(root, source);
+    assert.deepEqual(patchedDependenciesFromLockfile(rewritten), {
+      "better-auth@1.6.22": {
+        hash: "2730e70822acf4ad0b3c55364f9d3920f0dcce3d21c71117a661f9207421613d",
+        path: "patches/better-auth@1.6.22.patch",
+      },
+    });
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("Identity root manifest copies patchedDependencies and lock generation pins hashes", () => {
+  const root = mkdtempSync(join(tmpdir(), "identity-lock-patches-"));
+  try {
+    seedWorkspace(root);
+    prepareIdentityRootManifest(join(root, "package.json"), IDENTITY_PACKAGE_PATHS);
+    const before = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    assert.equal(
+      before.pnpm.patchedDependencies["better-auth@1.6.22"],
+      "patches/better-auth@1.6.22.patch",
+    );
+    generateIdentityLockfile(root, {
+      environment: {
+        ...process.env,
+        npm_config_registry: "http://127.0.0.1:9",
+        npm_config_store_dir: join(root, "empty-store"),
+      },
+      sourceLockfile: join(repoRoot, "pnpm-lock.yaml"),
+    });
+    const after = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    assert.equal(
+      after.pnpm.patchedDependencies["better-auth@1.6.22"],
+      "patches/better-auth@1.6.22.patch",
+    );
+    assert.match(
+      readFileSync(join(root, "pnpm-lock.yaml"), "utf8"),
+      /hash: 2730e70822acf4ad0b3c55364f9d3920f0dcce3d21c71117a661f9207421613d/,
+    );
   } finally {
     rmSync(root, { force: true, recursive: true });
   }

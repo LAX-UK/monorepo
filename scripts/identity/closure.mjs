@@ -25,6 +25,7 @@ export const IDENTITY_ROOT_FILES = Object.freeze([
   ".npmrc",
   "biome.json",
   "package.json",
+  "patches",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
 ]);
@@ -54,7 +55,7 @@ export const IDENTITY_DOCKER = Object.freeze({
   dockerfile: "apps/auth/Dockerfile",
   workspaceFilter: "@auction/auth-app...",
   manifestCopyPaths: Object.freeze(IDENTITY_PACKAGE_PATHS.map((path) => `${path}/package.json`)),
-  sourceCopyPaths: IDENTITY_PACKAGE_PATHS,
+  sourceCopyPaths: Object.freeze([...IDENTITY_PACKAGE_PATHS, "patches"]),
 });
 
 export const IDENTITY_ALLOWED_TOP_LEVEL = Object.freeze([
@@ -68,5 +69,6 @@ export const IDENTITY_ALLOWED_TOP_LEVEL = Object.freeze([
   "packages",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
+  "patches",
   "scripts",
 ]);

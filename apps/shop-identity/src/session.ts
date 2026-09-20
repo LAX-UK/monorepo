@@ -3,6 +3,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 export const SESSION_COOKIE_NAME = "shop_identity_session";
 export const OIDC_ID_TOKEN_COOKIE_NAME = "shop_identity_id_token";
+export const SHOP_TOKEN_UPGRADE_COOKIE_NAME = "shop_token_upgrade";
 
 export type PendingOAuthSession = {
   state: string;
@@ -27,7 +28,12 @@ export type LogoutToken = {
 export interface ShopSessionRepository {
   findActive(id: string): Promise<ShopIdentitySession | null>;
   createPendingOAuth(oauth: PendingOAuthSession): Promise<string>;
-  authenticate(input: { id: string; subject: string; sid: string }): Promise<void>;
+  attachPendingOAuthToAuthenticatedSession(
+    sessionId: string,
+    oauth: PendingOAuthSession,
+  ): Promise<boolean>;
+  createGuestSession(): Promise<string>;
+  authenticate(input: { id: string; subject: string; sid: string }): Promise<string>;
   invalidate(id: string | null): Promise<void>;
   consumeLogoutToken(input: LogoutToken): Promise<"consumed" | "replay">;
 }

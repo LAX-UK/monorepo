@@ -28,6 +28,17 @@ describe("renderEmail", () => {
     expect(rendered.text).not.toContain("activate your account");
   });
 
+  it("renders shop-order-receipt", async () => {
+    const rendered = await renderEmail("shop-order-receipt", {
+      orderId: "ord-1",
+      totalAmount: "GBP 120.00",
+      orderUrl: "https://shop.lax.art/account/orders/ord-1",
+      lineSummary: "Print A (edition 1) — £120.00",
+    });
+    expect(rendered.subject).toContain("order confirmation");
+    expect(rendered.text).toContain("ord-1");
+  });
+
   it("renders payment-invoice with bill-to block", async () => {
     const rendered = await renderEmail("payment-invoice", {
       userName: "Ada",

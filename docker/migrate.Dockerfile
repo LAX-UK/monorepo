@@ -15,6 +15,7 @@ FROM base AS deps
 # Same install layer shape as the app Dockerfiles so the deps layer can be
 # reused from cache across all images.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 COPY packages ./packages
 COPY apps/auth/package.json ./apps/auth/
 COPY apps/api/package.json ./apps/api/

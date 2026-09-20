@@ -38,9 +38,10 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/build-hosted-assets.mjs && mkdir -p dist/hosted-auth/assets && cp src/hosted-auth/assets/lax-shop-logo.svg dist/hosted-auth/assets/lax-shop-logo.svg",
+    "build:hosted-assets": "node scripts/build-hosted-assets.mjs",
     "lint": "biome check .",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.browser.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
@@ -53,6 +54,7 @@
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
     "@types/node": "^22.10.5",
+    "esbuild": "^0.25.12",
     "react": "^19.2.5",
     "typescript": "^5.7.3",
     "vitest": "^3.2.6"

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const WEB_SRC = join(__dirname, "../../../apps/web/src");
+const SHOP_SRC = join(__dirname, "../../../apps/shop/src");
 
 /** Legacy palette / fonts that must not reappear in component source. */
 const BANNED_PATTERNS: { label: string; re: RegExp }[] = [
@@ -30,19 +31,41 @@ function collectSourceFiles(dir: string): string[] {
   return out;
 }
 
-describe("apps/web token drift guardrail", () => {
-  const files = collectSourceFiles(WEB_SRC);
-
+function assertNoBannedPatterns(appLabel: string, rootDir: string, skipRelPaths: string[] = []) {
+  const files = collectSourceFiles(rootDir);
   for (const { label, re } of BANNED_PATTERNS) {
-    it(`blocks ${label} in apps/web/src`, () => {
+    it(`blocks ${label} in ${appLabel}`, () => {
       const hits: string[] = [];
       for (const file of files) {
-        const rel = file.replace(`${WEB_SRC}/`, "");
-        if (rel === "app/globals.css") continue;
+        const rel = file.replace(`${rootDir}/`, "");
+        if (skipRelPaths.includes(rel)) continue;
         const content = readFileSync(file, "utf8");
         if (re.test(content)) hits.push(rel);
       }
       expect(hits, `Found banned ${label} in:\n${hits.join("\n")}`).toEqual([]);
     });
   }
+}
+
+describe("apps/web token drift guardrail", () => {
+  assertNoBannedPatterns("apps/web/src", WEB_SRC, ["app/globals.css"]);
+});
+
+describe("apps/shop token drift guardrail", () => {
+  assertNoBannedPatterns("apps/shop/src", SHOP_SRC, ["app/globals.css"]);
+});
+
+describe("Shop brand font adoption", () => {
+  it("loads Montserrat and Outfit via next/font in layout", () => {
+    const layout = readFileSync(join(SHOP_SRC, "app/layout.tsx"), "utf8");
+    expect(layout).toMatch(/Montserrat/);
+    expect(layout).toMatch(/Outfit/);
+    expect(layout).not.toMatch(/fonts\.googleapis\.com/);
+  });
+
+  it("depends on @auction/branding and @auction/ui", () => {
+    const pkg = readFileSync(join(__dirname, "../../../apps/shop/package.json"), "utf8");
+    expect(pkg).toMatch(/"@auction\/branding"/);
+    expect(pkg).toMatch(/"@auction\/ui"/);
+  });
 });

@@ -1,4 +1,15 @@
-import { Ban, Check, Info, type LucideIcon, Radio, TriangleAlert, X } from "lucide-react";
+import {
+  Ban,
+  Check,
+  Clock,
+  Eye,
+  File,
+  Info,
+  type LucideIcon,
+  Radio,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 import type { DotStatusPillTone } from "./dot-status-pill.js";
 import { STATUS_TAG_VARIANT, type StatusTagGlyph } from "./status-tag-variant.js";
 import { TagGlyphBadge } from "./tag-glyph-badge.js";
@@ -10,6 +21,9 @@ const GLYPH_ICONS: Record<StatusTagGlyph, LucideIcon> = {
   warning: TriangleAlert,
   info: Info,
   banned: Ban,
+  file: File,
+  clock: Clock,
+  eye: Eye,
 };
 
 /** Figma Tag-Review 16px status glyphs (Lucide on colored circle). */

@@ -4,14 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { parseAuthEnv } from "../env.js";
 import { type CreateAuthAppOptions, createAuthApp } from "./create-auth-app.js";
 
-function buildApp() {
+function buildApp(session: unknown = null, getSessionImpl?: () => Promise<unknown>) {
   const internal = new Hono().post("/oauth/token", (c) => c.json({ internal: true }));
   const counter = { inc: vi.fn() };
   const auth = {
     handler: vi.fn(async () => Response.json({ handledBy: "issuer" })),
     api: {
       getJwks: vi.fn(async () => ({ keys: [{ kid: "kid-1" }] })),
-      getSession: vi.fn(async () => null),
+      getSession: vi.fn(getSessionImpl ?? (async () => session)),
     },
   };
   const env = parseAuthEnv({
@@ -86,6 +86,73 @@ describe("auth HTTP app composition", () => {
     expect(paths).toContain("/ssf/stream");
     expect(paths).toContain("/internal/oauth/token");
     expect(paths).toContain("/api/auth/oauth2/endsession");
+    expect(paths).toContain("/login");
+    expect(paths).toContain("/magic-link");
+    expect(paths).toContain("/hosted-auth.css");
+    expect(paths).toContain("/hosted-auth-runtime.js");
+    expect(paths).toContain("/hosted-auth/lax-shop-logo.svg");
+  });
+
+  it("renders Shop branding for a validated Shop authorization query", async () => {
+    const app = buildApp();
+    const query =
+      "response_type=code&client_id=lax-shop-web&redirect_uri=http://localhost:3010/auth/callback&scope=openid&state=abc&nonce=def&code_challenge=challenge&code_challenge_method=S256";
+    const response = await app.request(`https://auth.test/login?${query}`);
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("theme-shop");
+    expect(html).toContain("/hosted-auth/lax-shop-logo.svg");
+    expect(html).toContain("Sign in");
+    expect(html).toContain("field-control");
+    expect(html).toContain("btn btn-primary");
+    expect(html).toContain('data-email-first="true"');
+    expect(html).toContain("client_id=lax-shop-web");
+    expect(html).not.toMatch(/href="\/[^"]*code_challenge/);
+    expect(html).not.toContain("challenges.cloudflare.com");
+    expect(html).not.toContain('params.get("callbackURL")');
+  });
+
+  it("redirects a live session with only a product hint to the Shop restart URL", async () => {
+    const app = buildApp({ session: { id: "s1" }, user: { id: "u1" } });
+    const login = await app.request("https://auth.test/login?client_id=lax-shop-web");
+    expect(login.status).toBe(302);
+    expect(login.headers.get("location")).toBe("http://localhost:3020/login");
+    const signUp = await app.request("https://auth.test/sign-up?client_id=lax-shop-web");
+    expect(signUp.status).toBe(302);
+    expect(signUp.headers.get("location")).toBe("http://localhost:3020/login");
+  });
+
+  it("still renders the login form when a session accompanies a resumable authorize query", async () => {
+    const app = buildApp({ session: { id: "s1" }, user: { id: "u1" } });
+    const query =
+      "response_type=code&client_id=lax-shop-web&redirect_uri=http://localhost:3010/auth/callback&scope=openid&state=abc&nonce=def&code_challenge=challenge&code_challenge_method=S256";
+    const response = await app.request(`https://auth.test/login?${query}`);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Sign in");
+  });
+
+  it("fails open and renders login when session lookup throws", async () => {
+    const app = buildApp(null, async () => {
+      throw new Error("session store down");
+    });
+    const response = await app.request("https://auth.test/login?client_id=lax-shop-web");
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Sign in");
+  });
+
+  it("serves scoped hosted CSS without global button or boxed input rules", async () => {
+    const app = buildApp();
+    const response = await app.request("https://auth.test/hosted-auth.css");
+    expect(response.status).toBe(200);
+    const css = await response.text();
+    expect(css).toContain("--auth-column: 528px");
+    expect(css).toContain(".field-control");
+    expect(css).toContain(".btn-reveal");
+    expect(css).toContain("border-bottom: 1px solid var(--color-input-border)");
+    expect(css).toContain(".field-input:focus + .field-label");
+    expect(css).toContain(".field-input:-webkit-autofill");
+    expect(css).not.toContain("input:not([type=");
+    expect(css).not.toContain("button {");
   });
 
   it("registers token parsing before refresh and exchange, and internal routes before catch-all", () => {

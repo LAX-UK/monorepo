@@ -14,6 +14,8 @@ const required = [
   "SHOP_IDENTITY_DIGEST",
   "SHOP_SHA",
   "SHOP_DIGEST",
+  "SHOP_API_SHA",
+  "SHOP_API_DIGEST",
   "INFRA_SHA",
   "PUBLISH_RUN_ID",
 ];
@@ -59,6 +61,11 @@ const rollbackManifest = JSON.stringify({
     digest: process.env.SHOP_DIGEST,
     buildRun: process.env.SHOP_BUILD_RUN ?? "0",
   },
+  shopApi: {
+    sha: process.env.SHOP_API_SHA,
+    digest: process.env.SHOP_API_DIGEST,
+    buildRun: process.env.SHOP_API_BUILD_RUN ?? "0",
+  },
 });
 
 const args = [
@@ -79,6 +86,10 @@ const args = [
   `shop_sha=${process.env.SHOP_SHA}`,
   "-f",
   `shop_digest=${process.env.SHOP_DIGEST}`,
+  "-f",
+  `shop_api_sha=${process.env.SHOP_API_SHA}`,
+  "-f",
+  `shop_api_digest=${process.env.SHOP_API_DIGEST}`,
   "-f",
   `publish_run_id=${process.env.PUBLISH_RUN_ID}`,
   "-f",

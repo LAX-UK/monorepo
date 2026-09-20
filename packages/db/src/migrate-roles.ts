@@ -30,6 +30,23 @@ export const AUTH_DENY_TABLES = [
   "bid_identity_directory",
   "bid_user_profile",
 ] as const;
+/** Shop commerce catalogue tables owned by apps/shop-api under shop_app. */
+export const SHOP_COMMERCE_TABLES = [
+  "shop_party",
+  "shop_artist",
+  "shop_artwork",
+  "shop_edition",
+  "shop_category",
+  "shop_artwork_category",
+  "shop_home_placement",
+  "shop_basket",
+  "shop_basket_line",
+  "shop_order",
+  "shop_order_line",
+  "shop_payout_ledger",
+  "shop_processed_payment_event",
+  "shop_artwork_interest",
+] as const;
 export const API_DENY_TABLES = [
   "user",
   "session",
@@ -49,6 +66,7 @@ export const API_DENY_TABLES = [
   "ssf_delivery",
   "identity_lifecycle_outbox",
   "shop_ssf_replay",
+  ...SHOP_COMMERCE_TABLES,
 ] as const;
 /** Identity-backed read models exposed to the Bid API without write privileges. */
 export const API_READ_TABLES = ["bid_identity_directory"] as const;
@@ -62,6 +80,8 @@ export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_logout_token_replay",
 ] as const;
 export const SHOP_SSF_RECEIVER_TABLES = ["shop_ssf_replay"] as const;
+/** Shop-api enqueues transactional mail via email_outbox (worker relay delivers). */
+export const SHOP_EMAIL_OUTBOX_TABLES = ["email_outbox"] as const;
 /** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
 export const WORKER_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -75,6 +95,7 @@ export const WORKER_DENY_TABLES = [
   "shop_identity_session",
   "shop_logout_token_replay",
   ...SHOP_SSF_RECEIVER_TABLES,
+  ...SHOP_COMMERCE_TABLES,
 ] as const;
 export const WORKER_READ_TABLES = [
   /** Identity lifecycle outbox relay reads pending rows before inserting into domain_events. */
@@ -442,6 +463,13 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of SHOP_SSF_RECEIVER_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT, DELETE");
+        }
+        for (const tableName of SHOP_COMMERCE_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT, UPDATE, DELETE");
+        }
+        await grantIfExists(client, "shop_app", "domain_events", "INSERT, SELECT");
+        for (const tableName of SHOP_EMAIL_OUTBOX_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_LOCK_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");

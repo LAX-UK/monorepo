@@ -21,6 +21,12 @@ on:
       shop_digest:
         description: Approved lax-test-shop digest
         required: true
+      shop_api_sha:
+        description: Approved Shop API commit SHA
+        required: true
+      shop_api_digest:
+        description: Approved lax-test-shop-api digest
+        required: true
       publish_run_id:
         description: Successful lax-identity publish workflow run
         required: true
@@ -100,6 +106,8 @@ jobs:
       shop_identity_digest: ${{ inputs.shop_identity_digest }}
       shop_sha: ${{ inputs.shop_sha }}
       shop_digest: ${{ inputs.shop_digest }}
+      shop_api_sha: ${{ inputs.shop_api_sha }}
+      shop_api_digest: ${{ inputs.shop_api_digest }}
       app_image_tag: ${{ inputs.shop_sha }}
     secrets: inherit
 
@@ -127,6 +135,8 @@ jobs:
       shop_identity_digest: ${{ inputs.shop_identity_digest }}
       shop_sha: ${{ inputs.shop_sha }}
       shop_digest: ${{ inputs.shop_digest }}
+      shop_api_sha: ${{ inputs.shop_api_sha }}
+      shop_api_digest: ${{ inputs.shop_api_digest }}
       app_image_tag: ${{ inputs.shop_sha }}
     secrets: inherit
 
@@ -154,6 +164,8 @@ jobs:
       shop_identity_digest: ${{ fromJSON(inputs.rollback_manifest).shopIdentity.digest }}
       shop_sha: ${{ fromJSON(inputs.rollback_manifest).shop.sha }}
       shop_digest: ${{ fromJSON(inputs.rollback_manifest).shop.digest }}
+      shop_api_sha: ${{ fromJSON(inputs.rollback_manifest).shopApi.sha }}
+      shop_api_digest: ${{ fromJSON(inputs.rollback_manifest).shopApi.digest }}
       app_image_tag: ${{ fromJSON(inputs.rollback_manifest).monorepoSha }}
     secrets: inherit
 
@@ -177,6 +189,8 @@ jobs:
       shop_identity_digest: ${{ inputs.shop_identity_digest }}
       shop_sha: ${{ inputs.shop_sha }}
       shop_digest: ${{ inputs.shop_digest }}
+      shop_api_sha: ${{ inputs.shop_api_sha }}
+      shop_api_digest: ${{ inputs.shop_api_digest }}
       app_image_tag: ${{ inputs.shop_sha }}
     secrets: inherit
 
@@ -219,6 +233,9 @@ jobs:
           SHOP_SHA: ${{ inputs.shop_sha }}
           SHOP_DIGEST: ${{ inputs.shop_digest }}
           SHOP_BUILD_RUN: ${{ github.run_id }}
+          SHOP_API_SHA: ${{ inputs.shop_api_sha }}
+          SHOP_API_DIGEST: ${{ inputs.shop_api_digest }}
+          SHOP_API_BUILD_RUN: ${{ github.run_id }}
           RECOVERY_ACCEPTED_RELEASE_PATH: ${{ runner.temp }}/recovery-evidence/accepted-release.json
         run: |
           set -euo pipefail

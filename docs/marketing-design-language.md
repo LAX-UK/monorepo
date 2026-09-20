@@ -85,6 +85,8 @@ Load fonts in `apps/web/src/app/layout.tsx` via `next/font/google`. Components M
 - **Hover (cards):** image `scale-[1.02]`, card `-translate-y-px`, `ring-1 ring-primary/20`.
 - **Focus:** `FOCUS_RING` on all interactive marketing chrome and link-cards.
 - **Icon buttons (chrome):** min touch target 44×44.
+- **Card rails (Shop home rows, Bid Editor’s Picks):** compose `MarketingHorizontalRail` — swipe/scroll on touch, optional forward chevron on `sm+` when content overflows. Do **not** add bottom progress thumbs, previous controls, or Embla slide semantics to card rails.
+- **Media carousels (hero, gallery, press):** Embla with arrows/dots. **Catalogue pagination:** numbered URL/page controls — distinct from card rails.
 
 ## Motion (marketing)
 
@@ -92,7 +94,7 @@ Use the wrappers in `apps/web/src/components/marketing/marketing-reveal.tsx` and
 
 | Surface | Primitive | Variant | Stagger |
 |---------|-----------|---------|---------|
-| Card grids, carousels, archive rows | `MarketingCardReveal` | `fadeUp` | 50 ms step, 150 ms cap |
+| Card grids, card rails, archive rows | `MarketingCardReveal` | `fadeUp` | 50 ms step, 150 ms cap |
 | Section copy columns (CTA bands) | `MarketingSectionReveal` | `fadeUp` | 60 ms step, 120 ms cap |
 | Hero media (above fold) | `MarketingHeroReveal` / `RevealOnMount fadeUp` | `fadeUp` | optional `delayMs` |
 | Hero copy choreography | legacy `.fade-up-d1…d4` inside hero shells only | — | fixed 150–550 ms presets |
@@ -116,11 +118,17 @@ Use the wrappers in `apps/web/src/components/marketing/marketing-reveal.tsx` and
 | `MarketingQueryToast` | Query-param toasts (`welcome`, `auth=required`) with `aria-live="polite"`. |
 | `CatalogByView` | Generic grid / list / card view dispatcher for catalog surfaces. |
 | `PolicyNotice` | `error` \| `primary` \| `warning` policy alerts (suspended, staff, own lot). |
-| `MarketingEmptyState` | Unified empty / error copy + CTA on catalog surfaces. |
+| `MarketingStatusState` | Cross-product gallery placard for empty, filtered, and error states (`inline` \| `page` \| `banner` layouts). Styles live in `@auction/marketing-ui/marketing-ui.css`; motif uses the shared 72px hatched `MediaPlaceholder` plate plus contextual icons. Static page loads default to `announcement="none"`; dynamic banners may use `assertive`. |
+| `MarketingStatusAction` | Primary/secondary CTA chrome for status states (`asChild` for links). |
+| `MarketingEmptyState` (Bid) | Thin wrapper mapping Bid `context` / illustrations onto `MarketingStatusState`. |
 | `MarketingSectionHeader` | Section title + subtitle + trailing action (home rails). |
+| `MarketingHorizontalRail` | Home/marketing **card rails**: native horizontal scroll + snap, hidden scrollbar, right fade, single forward control from `sm` while overflow remains. Not for Embla media carousels or catalogue pagination. |
 | `MarketingStickyBidBar` | Mobile sticky bid / sale summary (`lg:hidden`); inner gutters match `MARKETING_PAGE_GUTTER_X`. |
 | `SaleTypeBadge` + `SaleTypeExplainerPopover` | Format badge with optional help popover; popover is **contextual to the sale's delivery mode** — copy resolved by `resolveSaleFormatExplainer` (`sale-format-explainer.ts`) from the policy SSOT (`sale-mode-policy.ts`). Pass `explainerContext` (from `saleFormatExplainerContextFromSale`) for stream/gating-aware copy; falls back to `{ deliveryMode }` when omitted. |
-| `ChromeIconButton` | 44×44 header icon button with `FOCUS_RING`. |
+| `MarketingChromeIconButton` / `ChromeIconButton` (Bid re-export) | 44×44 header icon button with `FOCUS_RING`; tone helpers in `header-chrome-tone.ts`. |
+| `MarketingHeaderMegaNav` | Desktop mega shelf (hover intent, shift, roving focus); Bid/Shop pass section config + badges. |
+| `MarketingMobileNavDrawer` | Right-side Dialog drawer (accordion sections, theme slot, footer slot). |
+| `@auction/marketing-ui/marketing-header.css` | Mega-menu shelf, theme View Transition reveal, transparent hero scrim. |
 | `ChromePopoverPanel` | Shared account / notification dropdown shell. |
 | `NavLabel` | Uppercase utility / nav label (`NAV_LABEL_CLASSES`, etc.). |
 | `KbdHint` | Keyboard shortcut chip (`⌘K` / `Ctrl+K`). |
@@ -530,6 +538,30 @@ On **lg+ viewports** the hero height is capped (`clamp(520px, 60vh, 720px)`) so 
 **Optional focal override:** Per-slide `objectPosition` on the VM (e.g. `center 30%`) can fine-tune crop without a second upload — wire from CMS when available.
 
 **Content audit:** [`docs/runbooks/hero-cover-content-audit.md`](runbooks/hero-cover-content-audit.md)
+
+---
+
+## Shop profile (`apps/shop`)
+
+Shop is a **sibling marketing surface**: same brand primitives, typography, gutters, header/footer rhythm, page shells, and interaction tokens as Bid marketing. Bid `(marketing)` is the **parity reference** for Shop chrome and catalogue presentation; Shop does not import `apps/web/**`.
+
+| Shared with Bid | Shop-owned |
+|-----------------|------------|
+| Montserrat + Outfit (`next/font`), four brand hex values | Header utility row + search strip (Figma `19:10008`) |
+| `--container-max` 1440px rhythm, white page shell | Original / category / print rails and card dimensions |
+| `FOCUS_RING`, 44px control targets, skip link → `#main-content` | Hero layered photography, signup 872px media column |
+| LAX product switcher + reciprocal footer link to Bid (env URLs) | Primary “Collect / Artists” nav and commerce cards |
+| `@auction/marketing-ui` shells (page, catalogue hub, detail), **catalogue filter chrome** (sticky list toolbar, filter sidebar/sheet, chip strip, active chips, split overlay), card shells, hover, focus, scroll reveal, **Lucide chrome icons** | Commerce IA, catalogue query/facet contracts, BFF, home section content and rails |
+| Session-aware account utility (guest vs signed-in via server VM) | Shop Identity BFF routes (`/login`, `/logout`) |
+| `@auction/ui` on account and auth recovery surfaces | Primary “Collect / Artists” nav and commerce IA |
+
+**Icons:** Interactive chrome (search, bag, heart, carousel, view-all chevrons) MUST come from `@auction/marketing-ui` wrappers over `lucide-react`. Footer social brand marks use `@auction/marketing-ui` social glyphs plus `LAX_SOCIAL_LINKS` from `@auction/branding` (Lucide does not ship trademark logos). Shop app code MUST NOT import `lucide-react` directly or ship SVG icons under `apps/shop/public/shop` (logos and raster photography stay exempt).
+
+**Drift guardrail:** `packages/branding/tests/token-drift.test.ts` also scans `apps/shop/src` for legacy `#050505`, DM Sans, and Poppins hardcodes. `pnpm ci:shop-architecture` enforces the Shop Lucide boundary.
+
+**Data:** Typed `home-marketing.ts` for hero/signup/section copy; home catalogue cards from `shop-api` placements via the Next BFF composer — no CMS in this slice.
+
+Detail: [Shop storefront architecture](./ui/shop-storefront-architecture.md).
 
 ---
 

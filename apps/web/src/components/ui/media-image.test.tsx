@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { MediaImage } from "./media-image";
@@ -30,7 +30,7 @@ describe("MediaImage", () => {
     expect(screen.queryByAltText("Artwork")).not.toBeInTheDocument();
   });
 
-  it("shows a loading placeholder until the image loads", () => {
+  it("shows a loading placeholder until the image loads", async () => {
     render(<MediaImage src="/artwork.jpg" alt="Artwork" label="Lot artwork" aspect={[4, 5]} />);
 
     expect(screen.getByLabelText("Lot artwork placeholder")).toHaveClass("animate-pulse");
@@ -39,7 +39,9 @@ describe("MediaImage", () => {
 
     fireEvent.load(image);
 
-    expect(screen.queryByLabelText("Lot artwork placeholder")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Lot artwork placeholder")).not.toBeInTheDocument();
+    });
     expect(image).toHaveClass("opacity-100");
   });
 

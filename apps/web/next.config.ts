@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: workspaceRoot,
   poweredByHeader: false,
   reactStrictMode: true,
-  transpilePackages: ["@auction/api", "@auction/types", "@auction/ui"],
+  transpilePackages: ["@auction/api", "@auction/marketing-ui", "@auction/types", "@auction/ui"],
   async headers() {
     return [
       {

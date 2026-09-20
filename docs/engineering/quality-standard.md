@@ -57,7 +57,24 @@ Every production change must:
 - update architecture, API, runbook, or design docs when their contracts change.
 
 The complete local gate is `pnpm ci:verify`. The focused pre-push gate is
-`pnpm ci:pre-push`.
+`pnpm ci:pre-push`. While iterating, `pnpm ci:verify:fast` runs Biome, Turbo
+`lint`, `typecheck`, and `test --affected` only (no custom lint gates, full web
+shards, or build).
+
+### Vitest and workspace UI packages
+
+App Vitest configs (`apps/web`, `apps/shop`) resolve `@auction/ui` and
+`@auction/marketing-ui` to **package source** via
+`scripts/vitest/workspace-source-aliases.mjs`, not to prebuilt `dist/`. That
+keeps `vi.mock("next/image")` and similar app-level mocks effective after shared
+extracts, and lets local test runs reflect TSX edits without rebuilding those
+packages. Turbo still runs `^build` before `test` in CI. `apps/web` also inlines
+those packages via Vitest `server.deps.inline` so app-level `vi.mock("next/*")`
+hooks apply inside shared UI code.
+
+`pnpm lint:test-mocks` fails when a test file mocks `next/*` or `@auction/*`
+modules that never appear in its static import graph (a common sign of a dead
+mock after refactors).
 
 ## Browser test commands
 
@@ -76,6 +93,7 @@ Run with Node.js 22, seeded stack on `:3000` (web) and `:3001` (API), and
 | Broader stabilization | `pnpm --filter @auction/web test:e2e:stabilization` | a11y + journeys | weekly shard |
 | Admin baseline refresh | `pnpm --filter @auction/web test:e2e:admin-visual-update` | explicit UI refresh | `visual-baselines.yml` |
 | Marketing visuals | `UPDATE_MARKETING_VISUALS=1 pnpm ci:visual-baseline` | opt-in only | not in PR gates |
+| Shop baseline refresh | `pnpm ci:visual-baseline shop` | Shop storefront visuals | manual / after UI change |
 
 Tag ownership in specs: `@smoke`, `@journey`, `@a11y`, `@roles`, `@visual`,
 `@optin`. Every `test.describe` block must declare one tier tag; `pnpm lint:e2e-tags`

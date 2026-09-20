@@ -107,12 +107,21 @@ export function buildAuthorizeUrl(input: {
   redirectUri: string;
   params: Pick<OAuthLoginParams, "state" | "nonce" | "codeChallenge">;
   scopes?: string[];
+  prompt?: string;
 }): string {
   const url = new URL(input.discovery.authorization_endpoint);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", input.clientId);
   url.searchParams.set("redirect_uri", input.redirectUri);
-  url.searchParams.set("scope", (input.scopes ?? ["openid", "profile", "email"]).join(" "));
+  url.searchParams.set(
+    "scope",
+    (
+      input.scopes ?? ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"]
+    ).join(" "),
+  );
+  if (input.prompt) {
+    url.searchParams.set("prompt", input.prompt);
+  }
   url.searchParams.set("state", input.params.state);
   url.searchParams.set("nonce", input.params.nonce);
   url.searchParams.set("code_challenge", input.params.codeChallenge);
@@ -184,6 +193,40 @@ export async function exchangeAuthorizationCode(input: {
   const json = (await response.json()) as TokenResponse;
   if (!json.id_token) {
     throw new Error("OIDC token exchange response missing id_token");
+  }
+  return json;
+}
+
+export async function refreshOAuthTokens(input: {
+  discovery: OidcDiscovery;
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+  fetchImpl?: typeof fetch;
+}): Promise<TokenResponse> {
+  const fetchFn = input.fetchImpl ?? fetch;
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: input.refreshToken,
+    client_id: input.clientId,
+    client_secret: input.clientSecret,
+  });
+  const response = await fetchFn(input.discovery.token_endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    const error = new Error(`OIDC refresh failed (${response.status}): ${detail}`);
+    (error as Error & { status?: number; body?: string }).status = response.status;
+    (error as Error & { status?: number; body?: string }).body = detail;
+    throw error;
+  }
+  const json = (await response.json()) as TokenResponse;
+  if (!json.id_token || !json.refresh_token) {
+    throw new Error("OIDC refresh response missing required tokens");
   }
   return json;
 }

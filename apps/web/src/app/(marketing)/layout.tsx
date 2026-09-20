@@ -4,6 +4,10 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { AuthRequiredToast } from "@/components/marketing/auth-required-toast";
 import { MarketingLotQuickLookShell } from "@/components/marketing/lot-quick-look/marketing-lot-quick-look-shell";
 import { MarketingPromptOrchestrator } from "@/components/marketing/marketing-prompt-orchestrator";
+import {
+  loadBidCrossProductFooterLinks,
+  loadBidProductDirectoryLinks,
+} from "@/lib/ecosystem/product-directory.server";
 import { MarketingGlobalHotkeys } from "@/lib/hotkeys/marketing-global-hotkeys";
 import { MarketingHeaderTitleProvider } from "@/lib/marketing/marketing-header-title-context";
 import { loadCachedMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
@@ -12,6 +16,8 @@ import { type ReactNode, Suspense } from "react";
 
 export default async function MarketingLayout({ children }: { children: ReactNode }) {
   const nav = await loadCachedMegaMenuSections();
+  const laxProductLinks = loadBidProductDirectoryLinks();
+  const crossProductFooterLinks = loadBidCrossProductFooterLinks();
 
   return (
     <>
@@ -20,13 +26,13 @@ export default async function MarketingLayout({ children }: { children: ReactNod
           <MarketingHeaderTitleProvider>
             <CommandPaletteLazy variant="marketing" />
             <MarketingGlobalHotkeys />
-            <SiteHeader nav={nav} transparentPaths={["/"]} />
+            <SiteHeader nav={nav} transparentPaths={["/"]} laxProductLinks={laxProductLinks} />
             {children}
             <AuthRequiredToast />
           </MarketingHeaderTitleProvider>
         </MarketingLotQuickLookShell>
       </div>
-      <SiteFooter />
+      <SiteFooter crossProductLinks={crossProductFooterLinks} />
       <Suspense fallback={null}>
         <MarketingPromptOrchestrator enabled={areMarketingPromptsEnabled()} />
       </Suspense>

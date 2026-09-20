@@ -15,8 +15,16 @@ test("reads the consent code from a first-time consent page", async () => {
   });
 });
 
-test("reads the callback from a fetch-metadata JSON redirect after prior consent", async () => {
+test("reads the callback from a fetch-metadata JSON url envelope", async () => {
   const response = Response.json({ redirect: true, url: callback });
+  assert.deepEqual(await readAuthorizeOutcome(response), {
+    kind: "redirect",
+    redirectUri: callback,
+  });
+});
+
+test("reads the callback from a fetch-metadata JSON redirectURI envelope", async () => {
+  const response = Response.json({ redirectURI: callback });
   assert.deepEqual(await readAuthorizeOutcome(response), {
     kind: "redirect",
     redirectUri: callback,
@@ -88,4 +96,43 @@ test("surfaces consent rejections", async () => {
     }),
     /OIDC consent failed \(400\)/,
   );
+});
+
+test("first-party skip mode rejects consent HTML and redirects without a code", async () => {
+  await assert.rejects(
+    completeAuthorization({
+      authBase: "https://test-auth.lax.bid",
+      authorizeResponse: new Response('<input id="consent-code" value="opaque-code">', {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+      cookieHeader: "session=1",
+      requireFirstPartySkip: true,
+    }),
+    /rendered consent instead of a callback redirect/,
+  );
+
+  await assert.rejects(
+    completeAuthorization({
+      authBase: "https://test-auth.lax.bid",
+      authorizeResponse: new Response(null, {
+        status: 302,
+        headers: { location: "https://test.lax.bid/api/auth/callback/lax-bid-web?state=xyz" },
+      }),
+      cookieHeader: "session=1",
+      requireFirstPartySkip: true,
+    }),
+    /omitted an authorization code/,
+  );
+});
+
+test("first-party skip mode preserves state on a callback redirect", async () => {
+  const redirect = await completeAuthorization({
+    authBase: "https://test-auth.lax.bid",
+    authorizeResponse: new Response(null, { status: 302, headers: { location: callback } }),
+    cookieHeader: "session=1",
+    requireFirstPartySkip: true,
+    expectedState: "xyz",
+  });
+  assert.equal(redirect, callback);
 });

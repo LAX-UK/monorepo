@@ -1,0 +1,1 @@
+-- Irreversible: PostgreSQL cannot drop individual enum labels from shop_order_status safely.

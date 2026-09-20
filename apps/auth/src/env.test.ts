@@ -16,6 +16,7 @@ const production = {
   IDENTITY_MACHINE_CLIENT_SECRET: "m".repeat(32),
   OIDC_ISSUER_URL: "https://auth.example.com",
   WEB_ORIGIN: "https://example.com",
+  SHOP_ORIGIN: "https://shop.example.com",
   API_INTERNAL_BASE_URL: "https://api.internal.example.com",
 };
 
@@ -44,6 +45,12 @@ describe("auth app environment contract", () => {
     expect(env.API_INTERNAL_BASE_URL).toBe("https://api.internal.example.com");
     expect(env.IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS).toBe(2500);
     expect(env.IDENTITY_SUBJECT_USAGE_TIMEOUT_MS).toBe(1250);
+    expect(env.HOSTED_AUTH_EMAIL_FIRST).toBe(true);
+  });
+
+  it("allows disabling email-first hosted sign-in", () => {
+    const env = parseAuthEnv({ ...base, HOSTED_AUTH_EMAIL_FIRST: "false" });
+    expect(env.HOSTED_AUTH_EMAIL_FIRST).toBe(false);
   });
 
   it("rejects insecure production cookies and missing envelope encryption", () => {
@@ -63,6 +70,7 @@ describe("auth app environment contract", () => {
   it.each([
     ["OIDC_ISSUER_URL", "http://auth.example.com"],
     ["WEB_ORIGIN", "http://example.com"],
+    ["SHOP_ORIGIN", "http://shop.example.com"],
     ["WEB_ORIGINS", "https://example.com,http://shop.example.com"],
     ["SSR_TRUSTED_ORIGINS", "http://web.internal.example.com"],
   ])("rejects a non-HTTPS production %s", (field, value) => {

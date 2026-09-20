@@ -1,10 +1,10 @@
 /**
  * Interprets a Better Auth `/oauth2/authorize` response for live acceptance probes.
  *
- * A first-time authorization renders the same-origin consent page. Once the
- * subject has already granted the requested scopes, Better Auth skips consent
- * and answers a fetch-metadata request with a JSON redirect envelope or, for
- * navigations, a 3xx redirect carrying the authorization code.
+ * First-party Bid/Shop web clients skip the consent HTML and return a redirect
+ * with an authorization code. Explicit clients (mobile and future third-party
+ * apps) still render the same-origin consent page on first grant. Fetch-metadata
+ * requests may instead receive a JSON redirect envelope.
  */
 const CONSENT_CODE_PATTERN = /id="consent-code"[^>]+value="([^"]+)"/;
 
@@ -13,6 +13,24 @@ function readRedirectFromJson(body) {
   if (typeof body.redirectURI === "string") return body.redirectURI;
   if (typeof body.url === "string") return body.url;
   return null;
+}
+
+function assertCallbackRedirect(redirectUri, expectedState) {
+  let url;
+  try {
+    url = new URL(redirectUri);
+  } catch {
+    throw new Error(`OIDC authorize redirect is not a URL: ${redirectUri}`);
+  }
+  if (!url.searchParams.get("code")) {
+    throw new Error(`OIDC authorize redirect omitted an authorization code (${redirectUri})`);
+  }
+  if (expectedState != null && url.searchParams.get("state") !== expectedState) {
+    throw new Error(
+      `OIDC authorize redirect state mismatch (expected ${expectedState}, got ${url.searchParams.get("state")})`,
+    );
+  }
+  return redirectUri;
 }
 
 /**
@@ -39,8 +57,11 @@ export async function readAuthorizeOutcome(response) {
 }
 
 /**
- * Completes authorization for a signed-in subject, granting consent only when
- * the issuer asks for it, and returns the client callback URI carrying the code.
+ * Completes authorization for a signed-in subject.
+ *
+ * First-party probes must set `requireFirstPartySkip` so a consent page fails
+ * the gate instead of being auto-accepted. Explicit-consent clients keep the
+ * default permissive path.
  */
 export async function completeAuthorization({
   authBase,
@@ -48,6 +69,8 @@ export async function completeAuthorization({
   cookieHeader,
   fetchImpl = fetch,
   onResponse = () => {},
+  requireFirstPartySkip = false,
+  expectedState,
 }) {
   const outcome = await readAuthorizeOutcome(authorizeResponse);
   if (!outcome) {
@@ -55,7 +78,12 @@ export async function completeAuthorization({
       `OIDC authorize returned neither a consent page nor a redirect (${authorizeResponse.status})`,
     );
   }
-  if (outcome.kind === "redirect") return outcome.redirectUri;
+  if (outcome.kind === "redirect") {
+    return assertCallbackRedirect(outcome.redirectUri, expectedState);
+  }
+  if (requireFirstPartySkip) {
+    throw new Error("First-party OIDC authorize rendered consent instead of a callback redirect");
+  }
 
   const consent = await fetchImpl(`${authBase}/api/auth/oauth2/consent`, {
     method: "POST",
@@ -72,5 +100,5 @@ export async function completeAuthorization({
   if (!consent.ok || typeof consentBody?.redirectURI !== "string" || !redirectUri) {
     throw new Error(`OIDC consent failed (${consent.status})`);
   }
-  return redirectUri;
+  return assertCallbackRedirect(redirectUri, expectedState);
 }

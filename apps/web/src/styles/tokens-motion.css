@@ -6,36 +6,6 @@
   contain-intrinsic-size: 1px 800px;
 }
 
-/* F8 — Theme toggle circular reveal via View Transitions API. The new theme
-   wipes in from the toggle center to the farthest corner. Browsers without
-   support fall back to instant swap. */
-@supports (view-transition-name: root) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
-    mix-blend-mode: normal;
-  }
-
-  ::view-transition-old(root) {
-    z-index: 1;
-  }
-  ::view-transition-new(root) {
-    z-index: 2;
-    animation: theme-reveal var(--motion-duration-xl, 900ms) var(--motion-ease-emphasize) forwards;
-  }
-}
-
-@keyframes theme-reveal {
-  from {
-    clip-path: circle(0 at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0));
-  }
-  to {
-    clip-path: circle(
-      var(--theme-toggle-radius, 200vmax) at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0)
-    );
-  }
-}
-
 /* Focusable skip link — off-screen until focused */
 .skip-link {
   position: absolute;

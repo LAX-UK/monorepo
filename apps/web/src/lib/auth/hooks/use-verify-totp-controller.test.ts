@@ -1,13 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useVerifyTotpController } from "./use-verify-totp-controller";
-
-const push = vi.fn();
-const refresh = vi.fn();
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push, refresh }),
-}));
 
 vi.mock("@/lib/auth/use-refetch-app-session", () => ({
   useRefetchAppSession: () => vi.fn().mockResolvedValue(undefined),
@@ -34,11 +27,6 @@ vi.mock("@/lib/ui/notify", () => ({
 }));
 
 describe("useVerifyTotpController", () => {
-  beforeEach(() => {
-    push.mockReset();
-    refresh.mockReset();
-  });
-
   it("clears busy after verifyTotpService throws", async () => {
     const { result } = renderHook(() => useVerifyTotpController("/dashboard"));
 

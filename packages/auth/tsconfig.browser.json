@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["src/hosted-auth/browser/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/hosted-auth/build-hosted-assets.setup.ts"]
+}

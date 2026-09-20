@@ -109,6 +109,7 @@ async function main() {
     "Bid BFF authorize",
   );
   const pendingSession = assertBidSessionCookie(webCookies);
+  const expectedState = new URL(authorizeUrl).searchParams.get("state") ?? undefined;
 
   const authorize = await fetch(authorizeUrl, {
     redirect: "manual",
@@ -120,6 +121,8 @@ async function main() {
     authorizeResponse: authorize,
     cookieHeader: cookieHeader(authCookies),
     onResponse: (response) => captureCookies(response, authCookies),
+    requireFirstPartySkip: true,
+    expectedState,
   });
   assertTrustedRedirect(
     callbackUri,

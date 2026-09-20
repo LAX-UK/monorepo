@@ -1,0 +1,33 @@
+import { defineConfig, devices } from "@playwright/test";
+
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3020";
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: "list",
+  snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{arg}-{projectName}{ext}",
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.001,
+      threshold: 0.2,
+    },
+  },
+  use: {
+    baseURL,
+    trace: "on-first-retry",
+  },
+  projects: [
+    {
+      name: "chromium-desktop",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+    {
+      name: "chromium-mobile",
+      use: { ...devices["Pixel 7"], viewport: { width: 412, height: 915 } },
+    },
+  ],
+});

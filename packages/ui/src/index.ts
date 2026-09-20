@@ -176,6 +176,8 @@ export type {
 } from "./components/ui/filter-chip-group.js";
 export { DotStatusPill, TONE_SHELL } from "./components/ui/dot-status-pill.js";
 export type { DotStatusPillProps, DotStatusPillTone } from "./components/ui/dot-status-pill.js";
+export { MediaPlaceholder } from "./components/ui/media-placeholder.js";
+export type { MediaPlaceholderProps } from "./components/ui/media-placeholder.js";
 export { DeliveryModePill } from "./components/ui/delivery-mode-pill.js";
 export type {
   DeliveryModePillProps,

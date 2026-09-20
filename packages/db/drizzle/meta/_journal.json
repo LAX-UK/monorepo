@@ -1128,6 +1128,111 @@
       "when": 1788000037000,
       "tag": "0161_revoke_api_user_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 161,
+      "version": "7",
+      "when": 1788000038000,
+      "tag": "0162_shop_commerce_catalogue",
+      "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1789459200000,
+      "tag": "0163_shop_artwork_media",
+      "breakpoints": true
+    },
+    {
+      "idx": 163,
+      "version": "7",
+      "when": 1789545600000,
+      "tag": "0164_shop_storefront_curation",
+      "breakpoints": true
+    },
+    {
+      "idx": 164,
+      "version": "7",
+      "when": 1789632000000,
+      "tag": "0165_shop_catalogue_cursor_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1789718400000,
+      "tag": "0166_shop_commerce_purchase",
+      "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1789804800000,
+      "tag": "0167_shop_artwork_interest",
+      "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1789891200000,
+      "tag": "0168_shop_order_line_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
+      "when": 1789977600000,
+      "tag": "0169_shop_artwork_search",
+      "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1790064000000,
+      "tag": "0170_shop_order_delivery_address",
+      "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1790150400000,
+      "tag": "0171_shop_party_display_name_search",
+      "breakpoints": true
+    },
+    {
+      "idx": 171,
+      "version": "7",
+      "when": 1790236800000,
+      "tag": "0172_shop_edition_reserved_by_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1790323200000,
+      "tag": "0173_shop_artwork_interest_intent",
+      "breakpoints": true
+    },
+    {
+      "idx": 173,
+      "version": "7",
+      "when": 1790409600000,
+      "tag": "0174_shop_order_status_payment_failed",
+      "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1790496000000,
+      "tag": "0175_shop_order_pending_checkout_expires_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1790582400000,
+      "tag": "0176_shop_session_oidc_tokens",
+      "breakpoints": true
     }
   ]
 }

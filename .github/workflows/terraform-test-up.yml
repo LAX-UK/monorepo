@@ -31,6 +31,14 @@ on:
         description: Approved lax-test-shop digest for ephemeral image deploys
         type: string
         required: false
+      shop_api_sha:
+        description: Approved Shop API commit for ephemeral image deploys
+        type: string
+        required: false
+      shop_api_digest:
+        description: Approved lax-test-shop-api digest for ephemeral image deploys
+        type: string
+        required: false
       enable_auth_ssf_delivery:
         description: Enable Auth SSF delivery; use staging recovery for a phased acceptance transition
         type: boolean
@@ -98,6 +106,7 @@ jobs:
       TF_VAR_identity_image_tag: ${{ inputs.identity_sha }}
       TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
+      TF_VAR_shop_api_image_tag: ${{ inputs.shop_api_sha }}
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
       DATABASE_URL_OWNER: ${{ secrets.DATABASE_URL_OWNER }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
@@ -135,6 +144,8 @@ jobs:
           SHOP_IDENTITY_DIGEST: ${{ inputs.shop_identity_digest }}
           SHOP_SHA: ${{ inputs.shop_sha }}
           SHOP_DIGEST: ${{ inputs.shop_digest }}
+          SHOP_API_SHA: ${{ inputs.shop_api_sha }}
+          SHOP_API_DIGEST: ${{ inputs.shop_api_digest }}
           DOCR_REGISTRY: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}
         run: |
           doctl registry login --expiry-seconds 900

@@ -39,6 +39,22 @@ describe("OIDC client policy", () => {
     const pkce = validParams();
     pkce.delete("code_challenge");
     expect(validateOidcAuthorizationRequest(pkce)).toBe("invalid_pkce");
+
+    const plain = validParams();
+    plain.set("code_challenge_method", "plain");
+    expect(validateOidcAuthorizationRequest(plain)).toBe("invalid_pkce");
+  });
+
+  it("rejects cross-product Shop scopes on the Bid web client", () => {
+    const bid = new URLSearchParams({
+      client_id: "lax-bid-web",
+      redirect_uri: "http://localhost:3000/api/auth/callback/lax-bid-web",
+      response_type: "code",
+      scope: "openid shop.read",
+      code_challenge: "challenge",
+      code_challenge_method: "S256",
+    });
+    expect(validateOidcAuthorizationRequest(bid)).toBe("invalid_scope");
   });
 
   it("returns protocol errors through a previously validated redirect URI", async () => {

@@ -11,6 +11,7 @@ import { CookiePreferencesLink } from "@/components/marketing/consent/cookie-pre
 import { FOOTER_NAV_LABEL_CLASSES } from "@/components/marketing/nav-label";
 import { siteCopyrightLine } from "@/lib/brand";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
+import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
@@ -19,12 +20,19 @@ type SiteFooterProps = {
   tagline?: ReactNode;
   /** Cities/regions strapline appended to the bottom row. */
   regionsLine?: ReactNode;
+  /** Cross-product wayfinding (validated at composition root). */
+  crossProductLinks?: LaxProductLinkVm[];
 };
 
 export function SiteFooter({
   tagline = "Fine art auctions since 2018.",
   regionsLine = "London",
+  crossProductLinks = [],
 }: SiteFooterProps = {}) {
+  const ecosystemFooterLinks = crossProductLinks.map((link) => ({
+    href: link.href,
+    label: link.label,
+  }));
   const linkClass = cn(
     "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-link",
     FOCUS_RING,
@@ -61,6 +69,14 @@ export function SiteFooter({
             linkClassName={linkClass}
             headingClassName={headingClass}
           />
+          {ecosystemFooterLinks.length > 0 ? (
+            <FooterColumn
+              title="LAX products"
+              links={ecosystemFooterLinks}
+              linkClassName={linkClass}
+              headingClassName={headingClass}
+            />
+          ) : null}
           <div className="flex flex-col gap-4">
             <FooterColumn
               title="Legal"

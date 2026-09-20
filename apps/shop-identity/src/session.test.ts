@@ -101,15 +101,20 @@ describe("Shop back-channel logout persistence", () => {
 
   it("authenticates without persisting an id_token", async () => {
     const query = vi.fn().mockResolvedValue({ rowCount: 1 });
-    const pool = { query } as unknown as Pool;
+    const pool = {
+      connect: async () => ({ query, release: vi.fn() }),
+    } as unknown as Pool;
 
-    await createPgShopSessionRepository(pool).authenticate({
+    const newId = await createPgShopSessionRepository(pool).authenticate({
       id: "session-1",
       subject: "subject-1",
       sid: "sid-1",
     });
 
-    expect(query.mock.calls[0]?.[0]).not.toContain("id_token");
-    expect(query.mock.calls[0]?.[1]).toEqual(["session-1", "subject-1", "sid-1"]);
+    expect(typeof newId).toBe("string");
+    expect(newId.length).toBeGreaterThan(40);
+    const sql = query.mock.calls.map((call) => String(call[0])).join("\n");
+    expect(sql).not.toContain("id_token");
+    expect(query.mock.calls.some((call) => call[1]?.[0] === "session-1")).toBe(true);
   });
 });

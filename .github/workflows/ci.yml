@@ -99,6 +99,12 @@ jobs:
       - name: Package layer direction
         run: node scripts/check-layers.mjs
 
+      - name: Shop architecture and asset budgets
+        run: pnpm ci:shop-architecture
+
+      - name: Docker patchedDependencies context
+        run: pnpm ci:docker-patches
+
       - name: Identity exit criteria
         run: pnpm ci:identity-exit-criteria
 
@@ -183,6 +189,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      SHOP_APP_DB_PASSWORD: postgres
       REDIS_URL: redis://127.0.0.1:6379
     steps:
       - uses: actions/checkout@v4
@@ -216,6 +224,8 @@ jobs:
 
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
+      - name: Apply application role grants
+        run: pnpm --filter @auction/db db:roles
       - name: Verify executable migration rollback pairs
         run: node scripts/ci/verify-migration-pairs.mjs
 
@@ -390,6 +400,8 @@ jobs:
             dockerfile: apps/shop-identity/Dockerfile
           - component: shop
             dockerfile: apps/shop/Dockerfile
+          - component: shop-api
+            dockerfile: apps/shop-api/Dockerfile
           - component: web
             dockerfile: apps/web/Dockerfile
     steps:

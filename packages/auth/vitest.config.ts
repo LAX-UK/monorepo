@@ -4,5 +4,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    globalSetup: ["./src/hosted-auth/build-hosted-assets.setup.ts"],
   },
 });

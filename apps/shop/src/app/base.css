@@ -1,0 +1,267 @@
+@import "tailwindcss";
+@import "@auction/branding/brand-primitives.css" layer(base);
+@import "@auction/marketing-ui/marketing-ui.css";
+@import "@auction/marketing-ui/marketing-header.css" layer(base);
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../../packages/marketing-ui/src/**/*.{ts,tsx}";
+@source "../../../../packages/branding/src/**/*.ts";
+
+@theme {
+  --color-brand-200: var(--brand-light-gray);
+  --color-brand-100: #d1d1d1;
+  --color-brand-300: #757575;
+  --color-brand-400: #474747;
+  --color-brand-800: #0a0a0a;
+  --color-brand-900: var(--color-brand-obsidian);
+  --color-brand-obsidian: var(--brand-obsidian);
+  --color-brand-midnight: var(--brand-midnight);
+  --color-brand-light-gray: var(--brand-light-gray);
+  --color-brand-light-cream: var(--brand-light-cream);
+  --color-accent-gold: var(--brand-accent-gold);
+  --color-page-bg: #ffffff;
+  --color-background: #ffffff;
+  --color-surface: #ffffff;
+  --color-on-surface: #1c170d;
+  --color-on-surface-variant: #474747;
+  --color-on-background: var(--color-on-surface);
+  --color-primary: var(--color-brand-obsidian);
+  --color-on-primary: #ffffff;
+  --color-secondary: var(--color-brand-midnight);
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: color-mix(in srgb, var(--color-brand-midnight) 8%, white);
+  --color-on-secondary-container: var(--color-brand-midnight);
+  --color-primary-container: color-mix(in srgb, var(--color-brand-midnight) 12%, white);
+  --color-surface-container: #eeeeee;
+  --color-surface-container-low: #f3f3f3;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-high: #e8e8e8;
+  --color-outline-variant: color-mix(in srgb, var(--color-brand-light-gray) 50%, white);
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #410002;
+  --color-lot-orange: #e17100;
+  --color-live-red: #e83030;
+  --color-success: #2ea043;
+  --color-success-container: oklch(0.94 0.06 145);
+  --color-info: #3a70e2;
+  --color-info-container: #e4f2ff;
+  --color-warning: oklch(0.72 0.14 55);
+  --color-warning-container: oklch(0.94 0.06 85);
+  --color-danger: oklch(0.55 0.2 25);
+  --color-danger-container: oklch(0.94 0.04 25);
+  --color-alert-surface: color-mix(
+    in srgb,
+    var(--color-brand-light-cream) 40%,
+    var(--color-surface)
+  );
+  --color-alert-border: color-mix(
+    in srgb,
+    var(--color-brand-midnight) 35%,
+    var(--color-outline-variant)
+  );
+  --color-link: var(--color-brand-midnight);
+  --color-ring: var(--color-brand-midnight);
+  --color-cta-bg: var(--color-brand-obsidian);
+  --color-cta-on: var(--color-brand-light-cream);
+  --color-border-hairline: color-mix(in srgb, var(--color-brand-light-gray) 60%, white);
+  --color-input-border: var(--color-brand-light-gray);
+
+  /* shadcn/ui variable bridge — selective @auction/ui on account and commerce flows */
+  --color-foreground: var(--color-on-surface);
+  --color-primary-foreground: var(--color-on-primary);
+  --color-secondary-foreground: var(--color-on-secondary);
+  --color-accent: var(--color-surface-container-high);
+  --color-accent-foreground: var(--color-on-surface);
+  --color-muted: var(--color-surface-container);
+  --color-muted-foreground: var(--color-on-surface-variant);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-on-surface);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-on-surface);
+  --color-border: var(--color-outline-variant);
+  --color-input: var(--color-input-border);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: var(--color-on-error);
+
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+
+  --container-max: 90rem;
+  --container-inner: 86rem;
+  --header-height: 7rem;
+  --page-bottom-padding: 3rem;
+  --color-footer-bg: #ededef;
+  --color-nav-border: #e6e8eb;
+  --color-nav-text: var(--color-brand-obsidian);
+  --color-hero-foreground: #ffffff;
+  --color-scrim-hero-mid: rgba(0, 0, 0, 0.4);
+  --color-scrim-hero-strong: rgba(0, 0, 0, 0.88);
+  --text-display-lg: clamp(2rem, 4vw, 3rem);
+  --text-display-md: clamp(1.5rem, 3vw, 2rem);
+  --text-display-sm: clamp(1.125rem, 2vw, 1.375rem);
+  --text-title-section: clamp(1.25rem, 2.5vw, 1.75rem);
+  --text-label-caps-tracking: 0.22em;
+  --font-headline: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-supporting: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --auth-column: 528px;
+  --color-cta-bg: var(--color-brand-obsidian);
+  --color-cta-on: var(--color-brand-light-cream);
+  /* Section spacing rhythm — parity with Bid marketing (docs/marketing-design-language.md). */
+  --section-spacing: 5rem;
+  --section-spacing-tight: 3rem;
+  --section-spacing-loose: 7.5rem;
+  --shop-page-gutter: clamp(2rem, 4vw, 3.5rem);
+  --shop-section-gap: 2.5rem;
+  --shop-section-spacing: var(--section-spacing-tight, 3rem);
+  --shop-motion-duration: 0.45s;
+  --shop-header-max: 90rem;
+  --shop-header-inline: 2.5rem;
+  --shop-nav-label: 0.875rem;
+  --shop-nav-leading: 1.3125rem;
+  --shop-card-pad-x: 1.25rem;
+  --shop-card-pad-y: 1rem;
+  --shop-card-gap: 0.75rem;
+  --motion-duration-sm: 200ms;
+  --motion-duration-md: 320ms;
+  --motion-duration-lg: 520ms;
+  --motion-duration-xl: 900ms;
+  --motion-ease-emphasize: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);
+}
+
+.shop-home-shell {
+  width: 100%;
+  overflow-x: clip;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--color-page-bg);
+  color: var(--color-on-surface);
+  font-family: var(--font-body);
+}
+
+.shop-focus-ring:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -0.0625rem;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.shop-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.shop-skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+  --color-page-bg: #121414;
+  --color-background: #121414;
+  --color-surface: #1a1c1c;
+  --color-on-surface: var(--color-brand-light-cream);
+  --color-on-surface-variant: #c9c5bc;
+  --color-on-background: var(--color-brand-light-cream);
+  --color-primary: var(--color-brand-light-cream);
+  --color-on-primary: var(--color-brand-obsidian);
+  --color-secondary: color-mix(in srgb, var(--color-brand-midnight) 75%, white);
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: color-mix(in srgb, var(--color-brand-midnight) 25%, black);
+  --color-on-secondary-container: #e8e7e7;
+  --color-primary-container: color-mix(in srgb, var(--color-brand-midnight) 35%, black);
+  --color-surface-container: #333534;
+  --color-surface-container-low: #2d2f2e;
+  --color-surface-container-lowest: #0f1111;
+  --color-surface-container-high: #383a39;
+  --color-outline-variant: #5c5a54;
+  --color-brand-100: #5c5a54;
+  --color-live-red: #ff6b6b;
+  --color-success: #56d364;
+  --color-success-container: oklch(0.28 0.06 145);
+  --color-accent-blue: #2b7fff;
+  --color-info: color-mix(in srgb, var(--color-accent-blue) 72%, white);
+  --color-info-container: color-mix(
+    in srgb,
+    var(--color-brand-midnight) 45%,
+    var(--color-surface-container)
+  );
+  --color-warning: oklch(0.78 0.12 85);
+  --color-warning-container: oklch(0.28 0.06 85);
+  --color-danger: oklch(0.72 0.14 25);
+  --color-danger-container: oklch(0.28 0.08 25);
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-alert-surface: color-mix(
+    in srgb,
+    var(--color-surface-container-low) 85%,
+    var(--color-surface)
+  );
+  --color-alert-border: color-mix(in srgb, var(--color-outline-variant) 70%, transparent);
+  --color-link: color-mix(in srgb, var(--color-brand-midnight) 60%, white);
+  --color-ring: color-mix(in srgb, var(--color-brand-midnight) 60%, white);
+  --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
+  --color-input-border: var(--color-brand-light-gray);
+  --color-footer-bg: #0d0f0f;
+  --color-nav-border: #333534;
+  --color-nav-text: var(--color-brand-light-cream);
+  --color-hero-foreground: #fafafa;
+  --color-foreground: var(--color-on-surface);
+  --color-primary-foreground: var(--color-on-primary);
+  --color-secondary-foreground: var(--color-on-secondary);
+  --color-accent: var(--color-surface-container-high);
+  --color-accent-foreground: var(--color-on-surface);
+  --color-muted: var(--color-surface-container);
+  --color-muted-foreground: var(--color-on-surface-variant);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-on-surface);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-on-surface);
+  --color-border: var(--color-outline-variant);
+  --color-input: var(--color-input-border);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: var(--color-on-error);
+}
+
+.shop-logo {
+  display: inline-flex;
+  line-height: 0;
+}
+
+html.dark .shop-logo__mark,
+[data-header-tone="on-dark"] .shop-logo__mark {
+  filter: brightness(0) invert(1);
+}

@@ -34,7 +34,9 @@ The procedure for shipping a change to production. Follow it top to bottom; do n
 ## After test deploy
 
 - [ ] Test deploy completes and readiness is green on `apps/web`, `apps/api`,
-      `apps/auth`, `apps/ws`, `apps/worker`, and `apps/shop-identity`.
+      `apps/auth`, `apps/ws`, `apps/worker`, `apps/shop`, `apps/shop-identity`,
+      and `apps/shop-api` (Shop storefront `/health/ready`; Shop API internal
+      `/health/ready` via platform checks).
 - [ ] Smoke test the path you changed against `test.lax.bid`.
 - [ ] If you touched migrations, confirm the test migration job ran successfully — check its log in the DigitalOcean console.
 - [ ] If you touched OIDC or JWKS, fetch `/.well-known/openid-configuration` and `/.well-known/jwks.json` manually and confirm they still validate.

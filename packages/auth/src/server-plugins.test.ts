@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 import { AUTH_TIMINGS } from "./auth-timings.js";
 import { buildEmailAndPasswordBlock, buildJwtAndOidcPlugins } from "./server-plugins.js";
@@ -66,5 +67,10 @@ describe("buildJwtAndOidcPlugins", () => {
     expect((twoFactorPlugin as { options?: { allowPasswordless?: boolean } }).options).toEqual(
       expect.objectContaining({ issuer: "LAX", allowPasswordless: true }),
     );
+  });
+
+  it("pre-authorizes Bid and Shop web clients through skipConsentClientIds", async () => {
+    const source = await readFile(new URL("./plugins/jwt-oidc.ts", import.meta.url), "utf8");
+    expect(source).toContain("skipConsentClientIds: [...oidcClientIdsWithImplicitConsent()]");
   });
 });

@@ -11,6 +11,10 @@
     "./schema": {
       "types": "./dist/schema/index.d.ts",
       "default": "./dist/schema/index.js"
+    },
+    "./migrate-roles": {
+      "types": "./dist/migrate-roles.d.ts",
+      "default": "./dist/migrate-roles.js"
     }
   },
   "scripts": {

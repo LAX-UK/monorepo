@@ -44,6 +44,7 @@ test("bootstrap seeds extraction from the source lockfile", () => {
 test("Docker COPY paths stay aligned with the package closure", () => {
   const dockerfile = readFileSync(join(repoRoot, "apps/auth/Dockerfile"), "utf8");
   assert.deepEqual(verifyDockerClosureText(dockerfile), []);
+  assert.match(dockerfile, /COPY patches \.\/patches/);
   assert.match(dockerfile, /RUN corepack enable/);
   assert.doesNotMatch(dockerfile, /COREPACK_ENABLE_PROJECT_SPEC|corepack prepare/);
   assert.equal(dockerfile.match(/--config\.node-linker=isolated/g)?.length, 2);
@@ -114,6 +115,9 @@ test("bootstrap writes an exact isolated workspace without generating a lockfile
         name: "auction",
         packageManager: "pnpm@10.34.5",
         devDependencies: { "@biomejs/biome": "^1.9.4", unrelated: "1.0.0" },
+        pnpm: {
+          patchedDependencies: { "better-auth@1.6.22": "patches/better-auth@1.6.22.patch" },
+        },
       })}\n`,
     );
     for (const entry of IDENTITY_PACKAGES) {
@@ -126,6 +130,10 @@ test("bootstrap writes an exact isolated workspace without generating a lockfile
 
     const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
     assert.deepEqual(manifest.devDependencies, { "@biomejs/biome": "^1.9.4" });
+    assert.equal(
+      manifest.pnpm.patchedDependencies["better-auth@1.6.22"],
+      "patches/better-auth@1.6.22.patch",
+    );
     assert.equal(
       readFileSync(join(root, ".npmrc"), "utf8"),
       [
