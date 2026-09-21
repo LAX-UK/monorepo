@@ -183,6 +183,9 @@ jobs:
             OIDC_CLIENT_SECRET_LAX_BID_WEB="$OIDC_CLIENT_SECRET_LAX_BID_WEB" \
             OIDC_CLIENT_SECRET_LAX_SHOP_WEB="$OIDC_CLIENT_SECRET" \
             pnpm --filter @auction/db db:configure-oidc-clients
+          # The catalogue seed imports @auction/shop-domain, so its closure has to be
+          # built here rather than in the later application build step.
+          pnpm --filter @auction/shop-api... build
           pnpm --filter @auction/shop-api seed:catalogue
       - name: Build product applications
         run: pnpm --filter @auction/api... build && pnpm --filter @auction/auth-app... build && pnpm --filter @auction/shop-identity... build && pnpm --filter @auction/web... build && pnpm --filter @auction/shop-api... build && pnpm --filter @auction/shop... build

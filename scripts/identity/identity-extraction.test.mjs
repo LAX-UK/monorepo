@@ -8,12 +8,24 @@ import {
   identityPnpmEnvironment,
   prepareIdentityWorkspace,
 } from "../ci/prepare-identity-lockfile.mjs";
-import { IDENTITY_PACKAGES, IDENTITY_PACKAGE_NAMES, IDENTITY_PACKAGE_PATHS } from "./closure.mjs";
+import {
+  IDENTITY_PACKAGES,
+  IDENTITY_PACKAGE_NAMES,
+  IDENTITY_PACKAGE_PATHS,
+  IDENTITY_ROOT_FILES,
+} from "./closure.mjs";
 import { extractIdentityHistory } from "./extract-history.mjs";
 import { importSpecifiers } from "./import-specifiers.mjs";
 import { verifyDockerClosureText, verifyPackageClosure } from "./verify-docker-closure.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
+
+test("carries the monorepo gitleaks policy into extracted Identity history scans", () => {
+  assert.ok(
+    IDENTITY_ROOT_FILES.includes(".gitleaks.toml"),
+    "extracted repo must reuse .gitleaks.toml or portability scans use a different allowlist",
+  );
+});
 
 test("closure fixes the six path-preserving workspace packages", () => {
   assert.deepEqual(IDENTITY_PACKAGE_PATHS, [

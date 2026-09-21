@@ -23,6 +23,9 @@ export const IDENTITY_PACKAGE_NAMES = Object.freeze(IDENTITY_PACKAGES.map(({ nam
 export const IDENTITY_ROOT_FILES = Object.freeze([
   ".nvmrc",
   ".npmrc",
+  // The extracted repo is secret-scanned on its own history, so it needs the
+  // same allowlist as the monorepo or it applies a different policy.
+  ".gitleaks.toml",
   "biome.json",
   "package.json",
   "patches",
@@ -60,6 +63,7 @@ export const IDENTITY_DOCKER = Object.freeze({
 
 export const IDENTITY_ALLOWED_TOP_LEVEL = Object.freeze([
   ".git",
+  ".gitleaks.toml",
   ".nvmrc",
   ".npmrc",
   "apps",

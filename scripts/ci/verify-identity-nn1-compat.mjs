@@ -36,6 +36,7 @@ const baseEnv = {
   ALLOW_HTTP_COOKIES: "false",
   SSF_DELIVERY_ENABLED: "false",
   WEB_ORIGIN: "https://test.lax.bid",
+  SHOP_ORIGIN: "https://test-shop.lax.bid",
   OIDC_ISSUER_URL: "https://test-auth.lax.bid",
   API_INTERNAL_BASE_URL: "https://test-api.lax.bid",
   IDENTITY_MACHINE_CLIENT_ID: "api-service",

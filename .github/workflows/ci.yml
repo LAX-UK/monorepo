@@ -113,7 +113,8 @@ jobs:
 
       - name: Actionlint workflow contracts
         run: |
-          curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash -s -- 1.7.7
+          # 1.7.12+ aligns with GitHub's 25-input workflow_dispatch limit (see changelog 2025-12-04).
+          curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash -s -- 1.7.12
           ./actionlint -shellcheck=""
 
       - name: Identity lockfile determinism contracts

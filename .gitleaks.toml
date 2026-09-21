@@ -15,6 +15,11 @@ paths = [
   # Server-side fetch fixtures use synthetic internal base URLs, not secrets.
   '''apps/web/src/lib/data/http/.*\.server\.test\.ts''',
   '''apps/web/src/app/api/display/.*\.test\.ts''',
+  # Shop Identity Vitest fixtures (synthetic JWTs and idempotency keys).
+  '''apps/shop-identity/src/.*\.test\.ts''',
+  '''apps/shop-identity/src/db/.*integration\.test\.ts''',
+  # Documented local/dev env template — not deployed secrets.
+  '''\.env\.example''',
   # Runbook uses sk_test_YOUR_KEY placeholder in curl examples.
   '''docs/runbooks/xero-stripe-payment-setup\.md''',
   # Never scan pnpm content-store or node_modules (minified code triggers generic-api-key / jwt).
@@ -22,6 +27,14 @@ paths = [
   '''(^|/)node_modules/''',
 ]
 regexes = [
+  # Documented all-zeros-through-f placeholder for the 32-byte token sealing key.
+  # Shared by .env.example, the shop-identity dev fallback, and its test fixtures;
+  # production reads SHOP_IDENTITY_TOKEN_ENCRYPTION_KEY and refuses to boot without it.
+  '''0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef''',
+  # Unsigned test JWTs whose signature segment is the literal word "signature".
+  '''eyJhbGciOi[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.signature''',
+  # Fixed idempotency key in shop-identity request-body fixtures.
+  '''idem-key-12345678''',
   # Public GA4 env key name in Terraform maps — not a secret value.
   '''GA4_MEASUREMENT_ID''',
   # Stripe doc placeholder in runbook curl examples.
