@@ -8,7 +8,7 @@ import {
   shopOrderLine,
   shopUserProfile,
 } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
@@ -62,9 +62,9 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
     const [edition] = await db
       .select()
       .from(shopEdition)
-      .where(eq(shopEdition.artworkId, imported.artworkId))
+      .where(and(eq(shopEdition.artworkId, imported.artworkId), eq(shopEdition.allocation, "lax")))
       .limit(1);
-    const reservedEdition = requireDefined(edition, "edition");
+    const reservedEdition = requireDefined(edition, "lax edition");
     const ownerPartyId = requireDefined(reservedEdition.ownerPartyId, "owner party");
 
     const pastExpiry = new Date(Date.now() - 60_000);

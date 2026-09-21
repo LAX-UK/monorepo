@@ -1,7 +1,8 @@
 import { createDbFromPool } from "@auction/db";
 import { applyApplicationRoleGrants } from "@auction/db/migrate-roles";
 import { shopEdition, shopOrder, shopOrderLine } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { LAX_ALLOCATION_COUNT } from "@auction/shop-domain";
+import { and, eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
@@ -19,6 +20,16 @@ function requireDefined<T>(value: T | undefined, label: string): T {
     throw new Error(`Missing ${label}`);
   }
   return value;
+}
+
+/** Sellable stock lives on LAX-owned editions (10/10/4 plan), not edition #1. */
+async function selectLaxEdition(db: ReturnType<typeof createDbFromPool>, artworkId: string) {
+  const [edition] = await db
+    .select()
+    .from(shopEdition)
+    .where(and(eq(shopEdition.artworkId, artworkId), eq(shopEdition.allocation, "lax")))
+    .limit(1);
+  return requireDefined(edition, "lax edition");
 }
 
 describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => {
@@ -52,12 +63,8 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       eligibleForEditionAllocation: true,
       printPricePence: 5_000,
     });
-    const [edition] = await db
-      .select()
-      .from(shopEdition)
-      .where(eq(shopEdition.artworkId, imported.artworkId))
-      .limit(1);
-    const reservedEdition = requireDefined(edition, "edition");
+    const reservedEdition = await selectLaxEdition(db, imported.artworkId);
+    expect(await countSellableForArtwork(db, imported.artworkId)).toBe(LAX_ALLOCATION_COUNT);
 
     const past = new Date(Date.now() - 60_000);
     const [orderRow] = await db
@@ -83,7 +90,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       .where(eq(shopEdition.id, reservedEdition.id));
 
     const sellable = await countSellableForArtwork(db, imported.artworkId);
-    expect(sellable).toBe(0);
+    expect(sellable).toBe(LAX_ALLOCATION_COUNT - 1);
   });
 
   it("rejects completion when the edition is reserved for a different order", async () => {
@@ -101,16 +108,8 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       eligibleForEditionAllocation: true,
       printPricePence: 5_000,
     });
-    const [edition] = await db
-      .select()
-      .from(shopEdition)
-      .where(eq(shopEdition.artworkId, imported.artworkId))
-      .limit(1);
-    expect(edition?.ownerPartyId).toBeTruthy();
-    const ownerPartyId = edition?.ownerPartyId;
-    if (!edition || !ownerPartyId) {
-      throw new Error("Expected edition with owner party");
-    }
+    const edition = await selectLaxEdition(db, imported.artworkId);
+    const ownerPartyId = requireDefined(edition.ownerPartyId, "owner party");
     const reservedEdition = { ...edition, ownerPartyId };
 
     const insertedOrders = await db
@@ -195,15 +194,8 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       eligibleForEditionAllocation: true,
       printPricePence: 5_000,
     });
-    const [editionRow] = await db
-      .select()
-      .from(shopEdition)
-      .where(eq(shopEdition.artworkId, imported.artworkId))
-      .limit(1);
-    const ownerPartyId = editionRow?.ownerPartyId;
-    if (!editionRow || !ownerPartyId) {
-      throw new Error("Expected edition with owner party");
-    }
+    const editionRow = await selectLaxEdition(db, imported.artworkId);
+    const ownerPartyId = requireDefined(editionRow.ownerPartyId, "owner party");
     const reservedEdition = { ...editionRow, ownerPartyId };
 
     const insertedOrders = await db
