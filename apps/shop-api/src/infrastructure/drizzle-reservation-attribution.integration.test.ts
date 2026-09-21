@@ -15,8 +15,8 @@ import { countSellableForArtwork } from "./shop-edition-availability.js";
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const shopUrl = process.env.DATABASE_URL_SHOP;
 
-function requireDefined<T>(value: T | undefined, label: string): T {
-  if (value === undefined) {
+function requireDefined<T>(value: T | null | undefined, label: string): T {
+  if (value === undefined || value === null) {
     throw new Error(`Missing ${label}`);
   }
   return value;
@@ -140,18 +140,18 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
 
     await db.insert(shopOrderLine).values([
       {
-        orderId: orderA.id,
-        editionId: reservedEdition.id,
+        orderId: requireDefined(orderA.id, "order A id"),
+        editionId: requireDefined(reservedEdition.id, "edition id"),
         artworkId: imported.artworkId,
-        sellerPartyId: reservedEdition.ownerPartyId,
+        sellerPartyId: ownerPartyId,
         editionNumber: reservedEdition.editionNumber,
         unitPricePence: 5_000,
       },
       {
-        orderId: orderB.id,
-        editionId: reservedEdition.id,
+        orderId: requireDefined(orderB.id, "order B id"),
+        editionId: requireDefined(reservedEdition.id, "edition id"),
         artworkId: imported.artworkId,
-        sellerPartyId: reservedEdition.ownerPartyId,
+        sellerPartyId: ownerPartyId,
         editionNumber: reservedEdition.editionNumber,
         unitPricePence: 5_000,
       },
@@ -225,8 +225,8 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
     const orderB = requireDefined(insertedOrders[1], "order B");
 
     await db.insert(shopOrderLine).values({
-      orderId: orderA.id,
-      editionId: reservedEdition.id,
+      orderId: requireDefined(orderA.id, "order A id"),
+      editionId: requireDefined(reservedEdition.id, "edition id"),
       artworkId: imported.artworkId,
       sellerPartyId: ownerPartyId,
       editionNumber: reservedEdition.editionNumber,
