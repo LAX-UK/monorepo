@@ -1,15 +1,82 @@
 /** @vitest-environment jsdom */
-import {
-  ShopAuthenticatedAccountMenu,
-  ShopGuestAccountMenu,
-} from "@/components/header/shop-header-account-menu";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
+
+vi.mock("@auction/ui/components/dropdown-menu", async () => {
+  const React = await import("react");
+  const DropdownOpenContext = React.createContext(false);
+
+  function DropdownMenu({
+    children,
+    open,
+    defaultOpen,
+  }: {
+    children: ReactNode;
+    open?: boolean;
+    defaultOpen?: boolean;
+  }) {
+    const isOpen = open ?? defaultOpen ?? false;
+    return <DropdownOpenContext.Provider value={isOpen}>{children}</DropdownOpenContext.Provider>;
+  }
+
+  function DropdownMenuContent({ children }: { children: ReactNode }) {
+    const isOpen = React.useContext(DropdownOpenContext);
+    if (!isOpen) return null;
+    return <div role="menu">{children}</div>;
+  }
+
+  function DropdownMenuItem({
+    children,
+    asChild,
+    className,
+    onSelect,
+  }: {
+    children: ReactNode;
+    asChild?: boolean;
+    className?: string;
+    onSelect?: (event: { preventDefault: () => void }) => void;
+  }) {
+    if (asChild && React.isValidElement(children)) {
+      const child = children as ReactElement<{ className?: string }>;
+      return React.cloneElement(child, {
+        role: "menuitem",
+        className: [className, child.props.className].filter(Boolean).join(" "),
+      });
+    }
+    return (
+      <button
+        type="button"
+        role="menuitem"
+        className={className}
+        onClick={() => onSelect?.({ preventDefault: () => {} })}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return {
+    DropdownMenu,
+    DropdownMenuTrigger: ({ children }: { asChild?: boolean; children: ReactNode }) => (
+      <>{children}</>
+    ),
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    DropdownMenuSeparator: () => <hr />,
+  };
+});
+
+import {
+  ShopAuthenticatedAccountMenu,
+  ShopGuestAccountMenu,
+} from "@/components/header/shop-header-account-menu";
 
 const productLinks: LaxProductLinkVm[] = [
   {
