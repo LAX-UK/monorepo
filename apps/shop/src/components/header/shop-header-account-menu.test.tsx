@@ -43,7 +43,7 @@ vi.mock("@auction/ui/components/dropdown-menu", async () => {
     onSelect?: (event: { preventDefault: () => void }) => void;
   }) {
     if (asChild && React.isValidElement(children)) {
-      const child = children as ReactElement<{ className?: string }>;
+      const child = children as ReactElement<{ className?: string; role?: string }>;
       return React.cloneElement(child, {
         role: "menuitem",
         className: [className, child.props.className].filter(Boolean).join(" "),
