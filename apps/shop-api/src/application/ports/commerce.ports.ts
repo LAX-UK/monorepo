@@ -103,6 +103,7 @@ export interface BasketRepository {
 
 export interface CheckoutWriter {
   createCheckoutOrder(input: CheckoutOrderInput): Promise<CheckoutOrderResult>;
+  cancelCheckoutOrder(input: { subject: string; orderId: string }): Promise<void>;
 }
 
 export interface OrderReader {

@@ -19,4 +19,14 @@ export function registerCommerceOrdersRoutes(app: Hono, deps: CommerceRoutesDeps
       scopes: "shop.read",
     });
   });
+
+  app.post("/commerce/orders/:orderId/cancel", async (c) => {
+    const orderId = c.req.param("orderId");
+    return proxyAuthenticatedCommerce(c, deps, {
+      method: "POST",
+      path: `/v1/orders/${encodeURIComponent(orderId)}/cancel`,
+      scopes: "shop.write",
+      requireCsrf: true,
+    });
+  });
 }

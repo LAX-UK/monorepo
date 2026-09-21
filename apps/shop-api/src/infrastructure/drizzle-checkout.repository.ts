@@ -16,6 +16,7 @@ import type {
 } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
+import { cancelShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 import {
   assertBasketStock,
   assertStorefrontRedirectUrl,
@@ -222,6 +223,25 @@ export function createDrizzleCheckoutRepository(
         needsStripeSession: pending.needsStripeSession,
         existingSessionId: orderRow?.stripeCheckoutSessionId ?? null,
         existingCheckoutExpiresAt: orderRow?.checkoutExpiresAt ?? null,
+      });
+    },
+    async cancelCheckoutOrder(input) {
+      const locked = await db
+        .select({ id: shopOrder.id, identitySubjectId: shopOrder.identitySubjectId })
+        .from(shopOrder)
+        .where(eq(shopOrder.id, input.orderId))
+        .limit(1);
+      const order = locked[0];
+      if (!order) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Order not found", 404);
+      }
+      if (order.identitySubjectId !== input.subject) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Order ownership mismatch", 403);
+      }
+      await cancelShopCheckoutSession(db, {
+        eventId: `buyer-cancel:${input.orderId}`,
+        orderId: input.orderId,
+        source: "buyer",
       });
     },
   };

@@ -14,6 +14,7 @@ export function createMinimalShopApiTestDeps(
       OIDC_ISSUER_URL: "http://localhost:3001",
       SHOP_SCHEDULER_ENABLED: false,
       SHOP_SCHEDULER_INTERVAL_MS: 60_000,
+      SHOP_FAKE_CHECKOUT_ENABLED: false,
     },
     auth: {
       jwksUrl: "http://localhost:3001/.well-known/jwks.json",
@@ -46,6 +47,7 @@ export function createMinimalShopApiTestDeps(
       checkoutOrder: async () => {
         throw new Error("not implemented");
       },
+      cancelCheckoutOrder: async () => undefined,
       listOrders: async () => ({ items: [] }),
       getOrder: async () => null,
     },

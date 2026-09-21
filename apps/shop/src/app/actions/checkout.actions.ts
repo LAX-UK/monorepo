@@ -45,7 +45,7 @@ export async function startCheckout(input: {
         fulfilment: input.fulfilment,
         idempotencyKey,
         successUrl: `${origin}/checkout/confirmation?orderId={ORDER_ID}`,
-        cancelUrl: `${origin}/basket?cancelled=1`,
+        cancelUrl: `${origin}/basket?cancelled=1&orderId={ORDER_ID}`,
         ...(input.deliveryAddress ? { deliveryAddress: input.deliveryAddress } : {}),
       }),
     },

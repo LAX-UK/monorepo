@@ -35,9 +35,14 @@ The procedure for shipping a change to production. Follow it top to bottom; do n
 
 - [ ] Test deploy completes and readiness is green on `apps/web`, `apps/api`,
       `apps/auth`, `apps/ws`, `apps/worker`, `apps/shop`, `apps/shop-identity`,
-      and `apps/shop-api` (Shop storefront `/health/ready`; Shop API internal
+      and `apps/shop-api` (Shop storefront `/health/ready`; Shop API
       `/health/ready` via platform checks).
-- [ ] Smoke test the path you changed against `test.lax.bid`.
+- [ ] When Shop checkout is in scope: GitHub `test` environment has
+      `STRIPE_SHOP_SECRET_KEY` and `STRIPE_SHOP_WEBHOOK_SECRET`; Terraform apply
+      picked them up; `curl -sS -o /dev/null -w '%{http_code}\n' -X POST
+      https://test-shop.lax.bid/webhooks/stripe` returns **400**, not **404** (see
+      [shop-stripe-setup.md](./shop-stripe-setup.md)).
+- [ ] Smoke test the path you changed against `test.lax.bid` (and `test-shop.lax.bid` when Shop changed).
 - [ ] If you touched migrations, confirm the test migration job ran successfully — check its log in the DigitalOcean console.
 - [ ] If you touched OIDC or JWKS, fetch `/.well-known/openid-configuration` and `/.well-known/jwks.json` manually and confirm they still validate.
 - [ ] If the host-only cookie cutover is included, communicate and verify the

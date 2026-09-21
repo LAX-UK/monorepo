@@ -193,6 +193,38 @@ export async function completeShopCheckoutSession(
   });
 }
 
+export async function cancelShopCheckoutSession(
+  db: Database,
+  input: { eventId: string; orderId: string; source?: string },
+): Promise<"processed" | "duplicate"> {
+  const source = input.source ?? "buyer";
+  return db.transaction(async (tx) => {
+    const [claim] = await tx
+      .insert(shopProcessedPaymentEvent)
+      .values({ eventId: input.eventId, source })
+      .onConflictDoNothing()
+      .returning({ eventId: shopProcessedPaymentEvent.eventId });
+    if (!claim) return "duplicate";
+
+    const locked = await tx
+      .select()
+      .from(shopOrder)
+      .where(eq(shopOrder.id, input.orderId))
+      .for("update")
+      .limit(1);
+    const order = locked[0];
+    if (!order || order.status !== "pending_payment") {
+      return "processed";
+    }
+    await tx
+      .update(shopOrder)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(shopOrder.id, input.orderId));
+    await releaseReservedEditionsForOrder(tx as Database, input.orderId);
+    return "processed";
+  });
+}
+
 export async function expireShopCheckoutSession(
   db: Database,
   input: { eventId: string; orderId: string; source?: string },

@@ -22,8 +22,8 @@ export type ArtworkCatalogueUrlState = {
   minPrice?: number;
   maxPrice?: number;
   sort: ArtworkCatalogueSort;
-  cursor?: string;
-  back?: string;
+  cursor?: string | undefined;
+  back?: string | undefined;
 };
 
 export type ArtworkCatalogueSearchParams = Record<string, string | string[] | undefined>;

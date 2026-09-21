@@ -31,6 +31,12 @@ const OrderListSchema = Type.Object({
   nextCursor: Type.Optional(Type.String()),
 });
 
+/** JSON body rather than 204: the Shop Identity proxy re-serialises every upstream response. */
+const OrderCancelledSchema = Type.Object({
+  orderId: Type.String({ format: "uuid" }),
+  status: Type.Literal("cancelled"),
+});
+
 export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRoutesDeps) {
   app.get(
     "/v1/orders",
@@ -132,6 +138,28 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
         ...(body.deliveryAddress ? { deliveryAddress: body.deliveryAddress } : {}),
       });
       return presentCheckoutSession(session);
+    },
+  );
+
+  app.post(
+    "/v1/orders/:orderId/cancel",
+    {
+      schema: {
+        tags: ["commerce"],
+        params: Type.Object({ orderId: Type.String({ format: "uuid" }) }),
+        response: {
+          200: OrderCancelledSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.write");
+      const subject = requireShopSubject(request);
+      const { orderId } = request.params as { orderId: string };
+      await deps.cancelCheckoutOrder({ subject, orderId });
+      return { orderId, status: "cancelled" as const };
     },
   );
 }

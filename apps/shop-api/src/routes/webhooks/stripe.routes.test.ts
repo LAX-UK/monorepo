@@ -46,4 +46,44 @@ describe("POST /webhooks/stripe", () => {
     expect(response.body).toContain("Invalid signature");
     await app.close();
   });
+
+  it("ignores checkout sessions that are not tagged for Shop", async () => {
+    const app = createShopApiApp({
+      deps: createMinimalShopApiTestDeps({
+        stripeWebhook: {
+          webhookSecret: "whsec_test",
+          verifyWebhook: () => ({
+            id: "evt_foreign",
+            type: "checkout.session.completed",
+            created: 1,
+            data: {
+              object: {
+                metadata: { app: "bid", paymentId: "pay_1" },
+                amount_total: 100,
+                currency: "gbp",
+                payment_status: "paid",
+              },
+            },
+          }),
+          parseCheckoutSessionCompleted: () => null,
+          parseCheckoutSessionExpired: () => null,
+          parseCheckoutSessionAsyncPaymentFailed: () => null,
+          completeCheckout: async () => "processed",
+          expireCheckout: async () => "processed" as const,
+          failCheckout: async () => "processed" as const,
+        },
+      }),
+      logger: false,
+    });
+    await app.ready();
+    const response = await app.inject({
+      method: "POST",
+      url: "/webhooks/stripe",
+      payload: Buffer.from("{}"),
+      headers: { "content-type": "application/json", "stripe-signature": "sig" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ received: true, ignored: true });
+    await app.close();
+  });
 });

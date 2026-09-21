@@ -101,6 +101,4 @@ if (outputPath) {
   );
 }
 
-console.log(
-  "Staging image contracts verified for Identity, Shop Identity, Shop, and Shop API",
-);
+console.log("Staging image contracts verified for Identity, Shop Identity, Shop, and Shop API");

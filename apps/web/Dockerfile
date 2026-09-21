@@ -60,6 +60,7 @@ ENV SENTRY_RELEASE=$SENTRY_RELEASE
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY scripts/ci/require-node-version.mjs ./scripts/ci/require-node-version.mjs
+COPY scripts/vitest ./scripts/vitest
 COPY .nvmrc ./.nvmrc
 COPY apps/api ./apps/api
 COPY apps/web ./apps/web

@@ -14,8 +14,10 @@ describe("stripe webhook DTO", () => {
       created: 1_700_000_000,
       data: {
         object: {
-          metadata: { orderId: "11111111-1111-4111-8111-111111111111" },
+          metadata: { app: "shop", orderId: "11111111-1111-4111-8111-111111111111" },
           amount_total: 4200,
+          currency: "gbp",
+          payment_status: "paid",
         },
       },
     } as unknown as Stripe.Event;
@@ -35,8 +37,10 @@ describe("stripe webhook DTO", () => {
       created: 1_700_000_001,
       data: {
         object: {
-          metadata: { orderId: "11111111-1111-4111-8111-111111111111" },
+          metadata: { app: "shop", orderId: "11111111-1111-4111-8111-111111111111" },
           amount_total: 4200,
+          currency: "gbp",
+          payment_status: "paid",
           customer_details: { email: "buyer@example.com" },
         },
       },
@@ -53,13 +57,49 @@ describe("stripe webhook DTO", () => {
       type: "checkout.session.async_payment_failed",
       created: 1,
       data: {
-        object: { metadata: { orderId: "33333333-3333-4333-8333-333333333333" } },
+        object: {
+          metadata: { app: "shop", orderId: "33333333-3333-4333-8333-333333333333" },
+        },
       },
     } as unknown as Stripe.Event;
     expect(parseCheckoutSessionAsyncPaymentFailed(event)).toEqual({
       eventId: "evt_async_fail",
       orderId: "33333333-3333-4333-8333-333333333333",
     });
+  });
+
+  it("ignores foreign checkout sessions tagged for another product", () => {
+    const event = {
+      id: "evt_bid",
+      type: "checkout.session.completed",
+      created: 1,
+      data: {
+        object: {
+          metadata: { app: "bid", paymentId: "pay_1" },
+          amount_total: 4200,
+          currency: "gbp",
+          payment_status: "paid",
+        },
+      },
+    } as unknown as Stripe.Event;
+    expect(parseCheckoutSessionCompleted(event)).toBeNull();
+  });
+
+  it("returns null when payment is not settled", () => {
+    const event = {
+      id: "evt_unpaid",
+      type: "checkout.session.completed",
+      created: 1,
+      data: {
+        object: {
+          metadata: { app: "shop", orderId: "11111111-1111-4111-8111-111111111111" },
+          amount_total: 4200,
+          currency: "gbp",
+          payment_status: "unpaid",
+        },
+      },
+    } as unknown as Stripe.Event;
+    expect(parseCheckoutSessionCompleted(event)).toBeNull();
   });
 
   it("returns null when checkout metadata is missing", () => {
@@ -78,7 +118,9 @@ describe("stripe webhook DTO", () => {
       type: "checkout.session.expired",
       created: 1,
       data: {
-        object: { metadata: { orderId: "22222222-2222-4222-8222-222222222222" } },
+        object: {
+          metadata: { app: "shop", orderId: "22222222-2222-4222-8222-222222222222" },
+        },
       },
     } as unknown as Stripe.Event;
     expect(parseCheckoutSessionExpired(event)).toEqual({

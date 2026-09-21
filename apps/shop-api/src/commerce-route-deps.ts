@@ -1,3 +1,4 @@
+import type { createCancelCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createGetBasketHandler } from "./application/handlers/commerce-handlers.js";
 import type { createGetOrderHandler } from "./application/handlers/commerce-handlers.js";
@@ -17,6 +18,7 @@ export type CommerceRoutesDeps = {
   removeBasketLine: ReturnType<typeof createRemoveBasketLineHandler>;
   mergeBaskets: ReturnType<typeof createMergeBasketsHandler>;
   checkoutOrder: ReturnType<typeof createCheckoutOrderHandler>;
+  cancelCheckoutOrder: ReturnType<typeof createCancelCheckoutOrderHandler>;
   listOrders: ReturnType<typeof createListOrdersHandler>;
   getOrder: ReturnType<typeof createGetOrderHandler>;
 };

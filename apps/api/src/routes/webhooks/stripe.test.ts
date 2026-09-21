@@ -158,4 +158,43 @@ describe("POST /webhooks/stripe/payments", () => {
     expect(handlePaymentIntentSucceeded).toHaveBeenCalledWith(event, event.data.object);
     expect(await res.json()).toMatchObject({ ok: true, action: "payment_intent_succeeded" });
   });
+
+  it("returns 200 for Shop-shaped checkout.session.async_payment_failed events", async () => {
+    const handleCheckoutSessionAsyncPaymentFailed = vi.fn().mockResolvedValue({
+      processed: true,
+      action: "skipped",
+      reason: "missing_payment_id_metadata",
+    });
+    const { container, stripeWebhookVerifier } = makeStripeWebhookRoutesContainer({
+      stripePaymentWebhookService: {
+        handleCheckoutSessionAsyncPaymentFailed,
+      } as unknown as StripePaymentWebhookService,
+    });
+    const event = {
+      id: "evt_shop_checkout",
+      type: "checkout.session.async_payment_failed",
+      data: {
+        object: {
+          id: "cs_shop",
+          metadata: { app: "shop", orderId: "11111111-1111-4111-8111-111111111111" },
+        },
+      },
+    } as unknown as Stripe.Event;
+    vi.mocked(stripeWebhookVerifier.verify).mockReturnValue(event);
+    const app = createStripeWebhookRoutes(container);
+
+    const res = await app.request("/payments", {
+      method: "POST",
+      body: "{}",
+      headers: { "stripe-signature": "sig" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(handleCheckoutSessionAsyncPaymentFailed).toHaveBeenCalledWith(event, event.data.object);
+    expect(await res.json()).toMatchObject({
+      ok: true,
+      action: "skipped",
+      reason: "missing_payment_id_metadata",
+    });
+  });
 });

@@ -55,7 +55,7 @@ Test/staging Shop runs on DigitalOcean App Platform (`auction-infra`):
 
 - **`shop`** — public host (`test-shop.lax.bid`), port 3020.
 - **`shop-identity`** — same host via ingress path prefixes for auth routes, port 3010.
-- **`shop-api`** — internal service only; the storefront reaches it at `http://shop-api:3011` through `SHOP_API_BASE_URL`.
+- **`shop-api`** — internal for catalogue and commerce APIs; the storefront reaches it at `http://shop-api:3011` through `SHOP_API_BASE_URL`. Stripe delivers to `https://<shop-host>/webhooks/stripe` via App Platform ingress (see [shop-stripe-setup.md](../runbooks/shop-stripe-setup.md)).
 
 Legacy `docker-compose.prod.yml` still lists `shop-identity` for the single-droplet stack but does not deploy `shop-api` or the Next storefront; treat App Platform as the SSOT for Shop delivery.
 

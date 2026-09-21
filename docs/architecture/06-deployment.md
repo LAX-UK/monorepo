@@ -123,7 +123,7 @@ The authoritative Shop runtime is three App Platform components (see
 |---|---|---|
 | `apps/shop` | 3020 | Public shop host (primary domain) |
 | `apps/shop-identity` | 3010 | Path routes on the shop host (`/login`, `/auth`, `/api`, `/me`, …) |
-| `apps/shop-api` | 3011 | Internal only (`internal_ports`); storefront reads via `SHOP_API_BASE_URL=http://shop-api:3011` |
+| `apps/shop-api` | 3011 | Internal catalogue/commerce (`SHOP_API_BASE_URL=http://shop-api:3011`); public ingress only for `POST /webhooks/stripe` on the shop host |
 
 Images are built in GitHub Actions ([`.github/workflows/build-images.yml`](../../.github/workflows/build-images.yml))
 and pulled from DOCR; Terraform pins immutable SHA tags per component.

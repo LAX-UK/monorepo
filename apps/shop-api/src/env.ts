@@ -32,6 +32,10 @@ export const shopApiEnvSchema = z.object({
     (val) => (val === "" ? undefined : val),
     z.string().email().optional(),
   ),
+  SHOP_FAKE_CHECKOUT_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 export type ShopApiEnv = z.infer<typeof shopApiEnvSchema>;

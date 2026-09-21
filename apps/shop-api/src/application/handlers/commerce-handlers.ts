@@ -31,6 +31,11 @@ export function createCheckoutOrderHandler(repo: CheckoutWriter) {
     repo.createCheckoutOrder(input);
 }
 
+export function createCancelCheckoutOrderHandler(repo: CheckoutWriter) {
+  return (input: Parameters<CheckoutWriter["cancelCheckoutOrder"]>[0]) =>
+    repo.cancelCheckoutOrder(input);
+}
+
 export function createListOrdersHandler(repo: OrderReader) {
   return (subject: string, input: ListOrdersInput) => repo.listOrders(subject, input);
 }

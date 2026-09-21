@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import {
+  createCancelCheckoutOrderHandler,
   createCheckoutOrderHandler,
   createGetBasketHandler,
   createGetOrderHandler,
@@ -29,6 +30,7 @@ export function createCommerceServices(
   const paymentGateway = createStripeShopCheckoutGateway({
     secretKey: env.STRIPE_SECRET_KEY,
     storefrontUrl: env.SHOP_STOREFRONT_URL,
+    fakeCheckoutEnabled: env.SHOP_FAKE_CHECKOUT_ENABLED,
   });
   const repository = createDrizzleCommerceRepository(db, paymentGateway, {
     storefrontUrl: env.SHOP_STOREFRONT_URL,
@@ -47,6 +49,7 @@ export function createCommerceServices(
       removeBasketLine: createRemoveBasketLineHandler(repository),
       mergeBaskets: createMergeBasketsHandler(repository),
       checkoutOrder: createCheckoutOrderHandler(repository),
+      cancelCheckoutOrder: createCancelCheckoutOrderHandler(repository),
       listOrders: createListOrdersHandler(repository),
       getOrder: createGetOrderHandler(repository),
     },

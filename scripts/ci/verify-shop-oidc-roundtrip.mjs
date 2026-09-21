@@ -172,7 +172,7 @@ async function main() {
   const logout = await fetch(`${shopBase}/logout`, {
     method: "POST",
     redirect: "manual",
-    headers: { cookie: cookieHeader(shopCookies), origin: shopBase },
+    headers: { cookie: cookieHeader(shopCookies), origin: storefrontBase },
   });
   captureCookies(logout, shopCookies);
   const endSessionUrl = logout.headers.get("location");

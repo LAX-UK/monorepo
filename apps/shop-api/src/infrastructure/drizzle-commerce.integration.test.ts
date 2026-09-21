@@ -36,6 +36,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle commerce checkout", () => {
       createStripeShopCheckoutGateway({
         secretKey: undefined,
         storefrontUrl: "http://localhost:3020",
+        fakeCheckoutEnabled: true,
       }),
       { storefrontUrl: "http://localhost:3020" },
     );
@@ -49,6 +50,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle commerce checkout", () => {
       createStripeShopCheckoutGateway({
         secretKey: undefined,
         storefrontUrl: "http://localhost:3020",
+        fakeCheckoutEnabled: true,
       }),
       { storefrontUrl: "http://localhost:3020" },
     );
