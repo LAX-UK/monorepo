@@ -3,6 +3,7 @@
  * Mirror GitHub PR CI locally before pushing.
  *
  * Usage:
+ *   git fetch origin main:main   # match turbo --affected with PR CI
  *   node scripts/ci/run-pr-ci-local.mjs
  *   node scripts/ci/run-pr-ci-local.mjs --with-browser-build
  *
@@ -10,6 +11,10 @@
  *   - Postgres on localhost:5432 (database auction_ci)
  *   - Redis on localhost:6379
  *   - gitleaks on PATH (same scan CI runs)
+ *
+ * Does not run: identity-portability rehearsal, docker image builds, migration-matrix,
+ * identity-acceptance-preflight, or Web PR browser gates (Playwright). For browser gates:
+ *   node scripts/ci/run-pr-browser-gates.mjs
  */
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -146,10 +151,23 @@ run("Turbo typecheck (affected)", "pnpm", ["turbo", "run", "typecheck", "--affec
 run("Ensure CI database", "node", ["scripts/ci/ensure-ci-database.mjs"]);
 run("DB package deps build", "pnpm", ["--filter", "@auction/db...", "build"]);
 run("DB migrate", "pnpm", ["--filter", "@auction/db", "db:migrate"]);
+run(
+  "Apply application role grants (test job parity)",
+  "pnpm",
+  ["--filter", "@auction/db", "db:roles"],
+  {
+    env: authRoleEnv,
+  },
+);
 run("Executable migration pairs", "node", ["scripts/ci/verify-migration-pairs.mjs"]);
 
 run("Identity boundary conformance", "pnpm", ["ci:identity-boundary"]);
-run("Turbo test (affected)", "pnpm", ["turbo", "run", "test", "--affected"]);
+run(
+  "Turbo test (affected, excluding web)",
+  "pnpm",
+  ["turbo", "run", "test", "--affected", "--filter=!@auction/web"],
+  { env: authRoleEnv },
+);
 run("Runtime ownership smoke gates", "pnpm", ["--filter", "@auction/types", "build"]);
 run("Background runtime build", "pnpm", ["--filter", "@auction/background-runtime", "build"]);
 run("Runtime ownership smoke", "node", ["scripts/ci/run-runtime-ownership-smoke-gates.mjs"], {
