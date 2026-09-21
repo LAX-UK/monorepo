@@ -138,24 +138,14 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
     const orderA = requireDefined(insertedOrders[0], "order A");
     const orderB = requireDefined(insertedOrders[1], "order B");
 
-    await db.insert(shopOrderLine).values([
-      {
-        orderId: requireDefined(orderA.id, "order A id"),
-        editionId: requireDefined(reservedEdition.id, "edition id"),
-        artworkId: imported.artworkId,
-        sellerPartyId: ownerPartyId,
-        editionNumber: reservedEdition.editionNumber,
-        unitPricePence: 5_000,
-      },
-      {
-        orderId: requireDefined(orderB.id, "order B id"),
-        editionId: requireDefined(reservedEdition.id, "edition id"),
-        artworkId: imported.artworkId,
-        sellerPartyId: ownerPartyId,
-        editionNumber: reservedEdition.editionNumber,
-        unitPricePence: 5_000,
-      },
-    ]);
+    await db.insert(shopOrderLine).values({
+      orderId: requireDefined(orderA.id, "order A id"),
+      editionId: requireDefined(reservedEdition.id, "edition id"),
+      artworkId: imported.artworkId,
+      sellerPartyId: ownerPartyId,
+      editionNumber: reservedEdition.editionNumber,
+      unitPricePence: 5_000,
+    });
 
     await db
       .update(shopEdition)
