@@ -26,6 +26,8 @@ export default defineConfig({
       ? {
           // jsdom + Next imports are heavy; serialize in CI so Vitest worker RPC does not time out
           // when turbo runs @auction/api and other packages' tests on the same host.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
           fileParallelism: false,
           maxWorkers: 1,
           pool: "forks" as const,
