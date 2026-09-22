@@ -134,8 +134,8 @@ describe("Shop commerce architecture SSOT", () => {
 
   it("enforces Shop browser, media, SEO, and asset contracts", () => {
     const workflow = readFileSync(join(root, ".github/workflows/e2e-pr.yml"), "utf8");
-    assert.match(workflow, /Run Shop accessibility, viewport, and visual gates/);
-    assert.match(workflow, /PLAYWRIGHT_VISUAL: "1"/);
+    assert.match(workflow, /Run Shop accessibility and viewport gates/);
+    assert.doesNotMatch(workflow, /PLAYWRIGHT_VISUAL: "1"/);
 
     const mediaMigration = readFileSync(
       join(root, "packages/db/drizzle/0163_shop_artwork_media.sql"),

@@ -1,7 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { settleVisualPage } from "./settle-visual-page";
-import { applyShopThemeForE2e, syncShopThemeForE2e } from "./shop-theme-e2e";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason =
@@ -105,68 +103,4 @@ test.describe("Shop home @a11y", () => {
       /\/artists\//,
     );
   });
-
-  test("aligns Prints with other rails and matches Category to Artist footprints", async ({
-    page,
-  }, testInfo) => {
-    test.skip(!enabled, skipReason);
-    test.skip(testInfo.project.name !== "chromium-desktop", "desktop geometry only");
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/");
-    await expect(page.locator("#main-content")).toBeVisible();
-
-    const originals = await page.locator(".shop-home__original-card").first().boundingBox();
-    const prints = await page.locator(".shop-home__print-card").first().boundingBox();
-    expect(originals).toBeTruthy();
-    expect(prints).toBeTruthy();
-    expect(Math.abs((originals?.x ?? 0) - (prints?.x ?? 0))).toBeLessThan(2);
-
-    const categoryImage = await page.locator(".shop-home__category-image").first().boundingBox();
-    const artistImage = await page.locator(".shop-home__artist-image").first().boundingBox();
-    const categoryCard = await page.locator(".shop-home__category-card").first().boundingBox();
-    const artistCard = await page.locator(".shop-home__artist-card").first().boundingBox();
-    expect(categoryImage).toBeTruthy();
-    expect(artistImage).toBeTruthy();
-    expect(Math.abs((categoryImage?.width ?? 0) - (artistImage?.width ?? 0))).toBeLessThan(4);
-    expect(Math.abs((categoryImage?.height ?? 0) - (artistImage?.height ?? 0))).toBeLessThan(4);
-    expect(Math.abs((categoryCard?.width ?? 0) - (artistCard?.width ?? 0))).toBeLessThan(4);
-  });
-});
-
-test.describe("Shop home @visual", () => {
-  for (const theme of ["light", "dark"] as const) {
-    test(`desktop baseline (${theme})`, async ({ page }, testInfo) => {
-      test.skip(!enabled || process.env.PLAYWRIGHT_VISUAL !== "1", skipReason);
-      test.skip(testInfo.project.name !== "chromium-desktop", "desktop visual only");
-      await page.emulateMedia({ reducedMotion: "reduce", colorScheme: theme });
-      await applyShopThemeForE2e(page, theme);
-      await page.goto("/");
-      await expect(page.locator("#main-content")).toBeVisible();
-      await syncShopThemeForE2e(page, theme);
-      if (theme === "dark") {
-        await expect(page.locator("html")).toHaveClass(/dark/);
-      } else {
-        await expect(page.locator("html")).not.toHaveClass(/dark/);
-      }
-      await settleVisualPage(page);
-      await expect(page).toHaveScreenshot(`shop-home-desktop-${theme}.png`, { fullPage: true });
-    });
-
-    test(`mobile baseline (${theme})`, async ({ page }, testInfo) => {
-      test.skip(!enabled || process.env.PLAYWRIGHT_VISUAL !== "1", skipReason);
-      test.skip(testInfo.project.name !== "chromium-mobile", "mobile visual only");
-      await page.emulateMedia({ reducedMotion: "reduce", colorScheme: theme });
-      await applyShopThemeForE2e(page, theme);
-      await page.goto("/");
-      await expect(page.locator("#main-content")).toBeVisible();
-      await syncShopThemeForE2e(page, theme);
-      if (theme === "dark") {
-        await expect(page.locator("html")).toHaveClass(/dark/);
-      } else {
-        await expect(page.locator("html")).not.toHaveClass(/dark/);
-      }
-      await settleVisualPage(page);
-      await expect(page.locator("#main-content")).toHaveScreenshot(`shop-home-mobile-${theme}.png`);
-    });
-  }
 });

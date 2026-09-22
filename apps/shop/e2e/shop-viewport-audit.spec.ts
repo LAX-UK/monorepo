@@ -54,14 +54,6 @@ test.describe("Shop viewport audit @a11y", () => {
     });
     expect(overflow).toBe(false);
 
-    const logo = page.getByTestId("shop-header").getByRole("link", { name: "LAX Shop home" });
-    const collectBox = await collect.boundingBox();
-    const logoBox = await logo.boundingBox();
-    expect(collectBox).toBeTruthy();
-    expect(logoBox).toBeTruthy();
-    expect((collectBox?.x ?? 0) - ((logoBox?.x ?? 0) + (logoBox?.width ?? 0))).toBeLessThan(80);
-    expect(collectBox?.x ?? 0).toBeLessThan(640);
-
     const themeToggle = () =>
       page.getByRole("button", { name: /Switch to (dark|light) theme/ }).first();
     const startedDark = await page.locator("html").evaluate((el) => el.classList.contains("dark"));

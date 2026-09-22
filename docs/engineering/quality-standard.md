@@ -93,7 +93,7 @@ Run with Node.js 22, seeded stack on `:3000` (web) and `:3001` (API), and
 | Broader stabilization | `pnpm --filter @auction/web test:e2e:stabilization` | a11y + journeys | weekly shard |
 | Admin baseline refresh | `pnpm --filter @auction/web test:e2e:admin-visual-update` | explicit UI refresh | `visual-baselines.yml` |
 | Marketing visuals | `UPDATE_MARKETING_VISUALS=1 pnpm ci:visual-baseline` | opt-in only | not in PR gates |
-| Shop baseline refresh | `pnpm ci:visual-baseline shop` | Shop storefront visuals | manual / after UI change |
+| Shop browser gates | `pnpm --filter @auction/shop test:e2e` | behavior, a11y, theme | `e2e-pr.yml` |
 
 Tag ownership in specs: `@smoke`, `@journey`, `@a11y`, `@roles`, `@visual`,
 `@optin`. Every `test.describe` block must declare one tier tag; `pnpm lint:e2e-tags`

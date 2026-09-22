@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 /**
- * Refreshes Playwright visual regression baselines.
- * - web admin (default): apps/web admin surfaces
- * - web marketing (opt-in): UPDATE_MARKETING_VISUALS=1
- * - shop: full Shop Playwright suite including @visual and hosted-auth screenshots
+ * Refreshes Playwright visual regression baselines for web admin (and opt-in marketing).
  *
- * Usage: node scripts/ci/update-visual-baselines.mjs [web|shop|all]
+ * Usage: node scripts/ci/update-visual-baselines.mjs [web|all]
  */
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -37,25 +34,14 @@ function updateWeb() {
   console.log("Web visual baselines updated. Commit snapshot diffs under apps/web/e2e/.");
 }
 
-function updateShop() {
-  const shopDir = path.join(ROOT, "apps/shop");
-  console.log("Updating Shop visual baselines (full e2e suite with --update-snapshots)…");
-  runIn(shopDir, "test:e2e:visual-update", {
-    PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3020",
-  });
-  console.log(
-    "Shop visual baselines updated. Commit snapshot diffs under apps/shop/e2e/__screenshots__/.",
-  );
-}
-
-if (target === "web") {
+if (target === "web" || target === "all") {
   updateWeb();
 } else if (target === "shop") {
-  updateShop();
-} else if (target === "all") {
-  updateWeb();
-  updateShop();
+  console.error(
+    "Shop storefront no longer uses Playwright screenshot baselines. Use apps/shop test:e2e for behavior gates.",
+  );
+  process.exit(1);
 } else {
-  console.error(`Unknown target "${target}". Use web, shop, or all.`);
+  console.error(`Unknown target "${target}". Use web or all.`);
   process.exit(1);
 }

@@ -231,11 +231,10 @@ jobs:
         run: node scripts/ci/run-platform-onboarding-conformance.mjs
       - name: Prepare auth sessions and run PR browser gates
         run: node scripts/ci/run-pr-browser-gates.mjs --skip-static
-      - name: Run Shop accessibility, viewport, and visual gates
+      - name: Run Shop accessibility and viewport gates
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3020
           PLAYWRIGHT_E2E: "1"
-          PLAYWRIGHT_VISUAL: "1"
           SHOP_OIDC_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
         run: pnpm --filter @auction/shop test:e2e

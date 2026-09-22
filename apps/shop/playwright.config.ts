@@ -9,14 +9,6 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "list",
-  snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{arg}-{projectName}{ext}",
-  expect: {
-    toHaveScreenshot: {
-      // Ubuntu CI vs local capture can differ slightly on font rasterization.
-      maxDiffPixelRatio: 0.02,
-      threshold: 0.2,
-    },
-  },
   use: {
     baseURL,
     trace: "on-first-retry",

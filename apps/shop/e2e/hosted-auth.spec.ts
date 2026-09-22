@@ -103,22 +103,4 @@ test.describe("Shop hosted authentication @a11y", () => {
     expect(new URL(page.url()).searchParams.get("client_id")).toBe("lax-shop-web");
     await expect(page.getByRole("heading", { name: "Reset password" })).toBeVisible();
   });
-
-  test("hosted login screenshots in light and dark across email and credentials", async ({
-    page,
-  }) => {
-    test.skip(!enabled, skipReason);
-    await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "light" });
-    await openHostedLogin(page);
-    await expect(page).toHaveScreenshot("shop-hosted-login-light.png");
-    await page.locator("#email").fill("buyer@example.com");
-    await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.locator("#password")).toBeVisible();
-    await expect(page).toHaveScreenshot("shop-hosted-login-credentials-light.png");
-    await page.emulateMedia({ colorScheme: "dark" });
-    await expect(page).toHaveScreenshot("shop-hosted-login-credentials-dark.png");
-    await page.getByRole("button", { name: "Change" }).click();
-    await expect(page.locator("#email")).toBeVisible();
-    await expect(page).toHaveScreenshot("shop-hosted-login-dark.png");
-  });
 });

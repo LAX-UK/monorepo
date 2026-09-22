@@ -67,4 +67,4 @@ session-aware header account VM).
 - `pnpm --filter @auction/shop test`, `lint`, `typecheck`, `build`
 - `packages/branding` token drift includes `apps/shop/src`
 - `pnpm ci:shop-architecture` — SSOT files and Shop UI gates
-- Playwright (`PLAYWRIGHT_E2E=1`, base URL `http://localhost:3020`) — axe on `#main-content`, `e2e/shop-viewport-audit.spec.ts`, keyboard on rail controls, visual baselines under `apps/shop/e2e/__screenshots__/`. PR CI runs the full suite with `PLAYWRIGHT_VISUAL=1` (`.github/workflows/e2e-pr.yml`). **Regold:** start the Shop stack (`pnpm dev:shop` or equivalent on `:3020`), then `pnpm ci:visual-baseline shop` or `pnpm --filter @auction/shop test:e2e:visual-update` (updates `@visual` and hosted-auth screenshot baselines; not only `--grep @visual`).
+- Playwright (`PLAYWRIGHT_E2E=1`, base URL `http://localhost:3020`) — axe on `#main-content`, `e2e/shop-viewport-audit.spec.ts`, theme contrast in `e2e/theme-audit.spec.ts`, buyer/notify-me `@e2e` journeys, and hosted-auth keyboard flows. PR CI runs the full Shop suite (`.github/workflows/e2e-pr.yml`); no screenshot baselines.
