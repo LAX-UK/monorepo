@@ -11,6 +11,13 @@ test("run-test-suite supports skipping web shards for split CI", () => {
   assert.match(source, /CI_SKIP_WEB_VITEST_SHARDS/);
 });
 
+test("run-test-suite isolates @auction/db when migration integration DB is configured", () => {
+  const source = readFileSync(join(root, "scripts/ci/run-test-suite.mjs"), "utf8");
+  assert.match(source, /MIGRATION_TEST_DATABASE_URL/);
+  assert.match(source, /--filter=!@auction\/db/);
+  assert.match(source, /--filter=@auction\/db/);
+});
+
 test("main full-verify runs web vitest on matrix runners", () => {
   const workflow = readFileSync(join(root, ".github/workflows/ci.yml"), "utf8");
   assert.match(workflow, /full-verify-web-vitest:/);

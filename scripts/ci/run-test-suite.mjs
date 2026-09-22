@@ -82,8 +82,30 @@ function warnSkippedShopDbIntegrationSuites() {
 
 warnSkippedShopDbIntegrationSuites();
 
+function usesMigrationIntegrationDb() {
+  return Boolean(process.env.MIGRATION_TEST_DATABASE_URL?.trim());
+}
+
+const isolateDbIntegrationTests = usesMigrationIntegrationDb();
+
 // Shop Vitest (jsdom + Next) starves under parallel @auction/api; run it in isolation.
-runSync(["turbo", "run", "test", "--filter=!@auction/web", "--filter=!@auction/shop"]);
+// @auction/db CREATE DATABASE suites race the shared Postgres catalog when turbo runs
+// other packages' tests in parallel on the same service container.
+const turboTestFilters = [
+  "turbo",
+  "run",
+  "test",
+  "--filter=!@auction/web",
+  "--filter=!@auction/shop",
+];
+if (isolateDbIntegrationTests) {
+  turboTestFilters.push("--filter=!@auction/db");
+}
+runSync(turboTestFilters);
 runSync(["turbo", "run", "test", "--filter=@auction/shop"]);
+if (isolateDbIntegrationTests) {
+  console.log("Running @auction/db integration tests in isolation (MIGRATION_TEST_DATABASE_URL).");
+  runSync(["turbo", "run", "test", "--filter=@auction/db"]);
+}
 runSync(["turbo", "run", "build", "--filter=@auction/web..."]);
 await runWebShards(4);
