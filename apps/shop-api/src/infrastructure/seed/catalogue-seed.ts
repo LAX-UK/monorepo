@@ -65,7 +65,7 @@ export async function seedShopFoundationCatalogue(
     slug: SHOP_SEED_BUYER_FIXTURE_SLUG,
     title: "Harbor Print",
     description: "A coastal print edition kept in stock for commerce acceptance fixtures.",
-    primaryImageUrl: "/shop/home/print-1.webp",
+    primaryImageUrl: "/shop/home/artwork-warm-basket.webp",
     dimensions: "60 × 45 cm",
     yearCreated: 2016,
     saleState: "for_sale",
