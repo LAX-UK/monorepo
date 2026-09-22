@@ -31,3 +31,15 @@ acceptance green on `main` through migration **0161**; see
 for run URLs and image contract. Soak window started **2026-09-13T13:39:52Z**.
 
 `IDENTITY_STANDALONE_CUTOVER_COMPLETE` remains **unset** until the acceptance workflow is green and soak is signed.
+
+## Shop commerce staging acceptance (2026-09-22)
+
+Immutable cutover publishes four Shop-related images on test: `shop`, `shop-identity`, `shop-api`, and migrate (see [`staging-recovery-test.yml`](../../.github/workflows/staging-recovery-test.yml) inputs). Commerce migrations apply through the latest shop schema on the target SHA; identity evidence through **0161** is not a substitute for commerce deploy proof.
+
+| Check | Workflow / command |
+|---|---|
+| Identity + Shop BFF boundary | [`identity-staging-acceptance.yml`](../../.github/workflows/identity-staging-acceptance.yml) |
+| Shop health + Stripe webhook route + browser gates | [`shop-staging-acceptance.yml`](../../.github/workflows/shop-staging-acceptance.yml) |
+| Optional foundation catalogue fixtures | Run [`shop-staging-acceptance.yml`](../../.github/workflows/shop-staging-acceptance.yml) manually with `seed_catalogue=true` (destructive on `reed-study` edition ownership). Recovery cutover runs tier 1 only (`seed_catalogue=false`). |
+
+Record run URLs and accepted image digests (including **shop-api**) in [identity-staging-extraction-evidence.md](./identity-staging-extraction-evidence.md) when commerce acceptance completes.

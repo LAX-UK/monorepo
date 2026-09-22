@@ -150,9 +150,17 @@ jobs:
       ssf_mode: ssf_enabled
     secrets: inherit
 
+  shop_acceptance:
+    if: inputs.run_acceptance
+    needs: acceptance_enabled
+    uses: ./.github/workflows/shop-staging-acceptance.yml
+    with:
+      seed_catalogue: false
+    secrets: inherit
+
   rollback_rehearsal:
     if: inputs.rollback_rehearsal
-    needs: acceptance_enabled
+    needs: [acceptance_enabled, shop_acceptance]
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -208,10 +216,11 @@ jobs:
     secrets: inherit
 
   record_accepted_release:
-    needs: [acceptance_enabled, acceptance_after_rehearsal]
+    needs: [acceptance_enabled, shop_acceptance, acceptance_after_rehearsal]
     if: >-
       always() &&
       needs.acceptance_enabled.result == 'success' &&
+      (needs.shop_acceptance.result == 'success' || needs.shop_acceptance.result == 'skipped') &&
       (!inputs.rollback_rehearsal ||
        needs.acceptance_after_rehearsal.result == 'success')
     runs-on: ubuntu-latest

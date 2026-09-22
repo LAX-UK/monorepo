@@ -132,6 +132,26 @@ describe("Shop commerce architecture SSOT", () => {
     assert.match(browserGate, /visible without JavaScript/);
   });
 
+  it("routes Shop triple changes through immutable staging cutover", () => {
+    const deployTest = readFileSync(join(root, ".github/workflows/app-deploy-test.yml"), "utf8");
+    assert.match(deployTest, /apps\/shop apps\/shop-identity apps\/shop-api/);
+    assert.match(deployTest, /test-shop\.lax\.bid\/health\/ready/);
+    assert.match(deployTest, /select\(\.name == "shop"\)/);
+
+    const shopAcceptance = readFileSync(
+      join(root, ".github/workflows/shop-staging-acceptance.yml"),
+      "utf8",
+    );
+    assert.match(shopAcceptance, /PLAYWRIGHT_E2E: "1"/);
+    assert.match(shopAcceptance, /seed_catalogue/);
+
+    const recovery = readFileSync(
+      join(root, ".github/workflows/staging-recovery-test.yml"),
+      "utf8",
+    );
+    assert.match(recovery, /shop-staging-acceptance\.yml/);
+  });
+
   it("enforces Shop browser, media, SEO, and asset contracts", () => {
     const workflow = readFileSync(join(root, ".github/workflows/e2e-pr.yml"), "utf8");
     assert.match(workflow, /Run Shop accessibility and viewport gates/);

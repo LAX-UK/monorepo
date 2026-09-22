@@ -1,0 +1,132 @@
+name: Shop staging acceptance
+
+on:
+  workflow_call:
+    inputs:
+      seed_catalogue:
+        type: boolean
+        required: false
+        default: false
+  workflow_dispatch:
+    inputs:
+      seed_catalogue:
+        description: >-
+          Run foundation catalogue seed (destructive: re-sold-outs reed-study editions).
+          Only enable on disposable staging data.
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shop-staging-acceptance
+  cancel-in-progress: false
+
+jobs:
+  commerce-contracts:
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      SHOP_STOREFRONT_URL: https://test-shop.lax.bid
+      AUTH_BASE_URL: https://test-auth.lax.bid
+      SHOP_IDENTITY_BASE_URL: https://test-shop.lax.bid
+      PLAYWRIGHT_BASE_URL: https://test-shop.lax.bid
+      PLAYWRIGHT_E2E: "1"
+      SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
+      SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
+    steps:
+      - name: Require acceptance credentials before infrastructure access
+        run: |
+          set -euo pipefail
+          test -n "${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}" || {
+            echo "::error::IDENTITY_ACCEPTANCE_EMAIL must be configured on the test environment"
+            exit 1
+          }
+          test -n "${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}" || {
+            echo "::error::IDENTITY_ACCEPTANCE_PASSWORD must be configured on the test environment"
+            exit 1
+          }
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: .infra-config/terraform/ephemeral/test
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Load Shop database contract from Terraform state
+        run: |
+          set -euo pipefail
+          database_url_shop="$(
+            terraform -chdir=.infra-config/terraform/ephemeral/test output -raw database_url_shop
+          )"
+          test -n "$database_url_shop"
+          echo "::add-mask::$database_url_shop"
+          echo "DATABASE_URL_SHOP=$database_url_shop" >> "$GITHUB_ENV"
+          database_ca_cert="$(
+            terraform -chdir=.infra-config/terraform/ephemeral/test \
+              output -raw database_ca_certificate
+          )"
+          test -n "$database_ca_cert"
+          database_ca_path="$RUNNER_TEMP/staging-postgres-ca.crt"
+          printf '%s\n' "$database_ca_cert" > "$database_ca_path"
+          chmod 0600 "$database_ca_path"
+          echo "NODE_EXTRA_CA_CERTS=$database_ca_path" >> "$GITHUB_ENV"
+      - name: Shop storefront readiness
+        run: |
+          set -euo pipefail
+          body="$(curl --fail --silent --max-time 30 "$SHOP_STOREFRONT_URL/health/ready")"
+          echo "$body" | jq -e '.status == "ok" or .ok == true' >/dev/null
+      - name: Shop Stripe webhook route is wired
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$SHOP_STOREFRONT_URL/webhooks/stripe")"
+          test "$code" != "404"
+          test "$code" = "400" || test "$code" = "401" || test "$code" = "403"
+      - name: Seed foundation catalogue (opt-in)
+        if: inputs.seed_catalogue
+        run: |
+          set -euo pipefail
+          echo "::warning::Catalogue seed may mark reed-study editions sold; use only on disposable staging data."
+          pnpm --filter @auction/shop-api... build
+          pnpm --filter @auction/shop-api seed:catalogue
+      - name: Install pinned Chromium
+        run: pnpm --filter @auction/shop exec playwright install chromium --with-deps
+      - name: Shop browser tier 1 (fixture-independent)
+        run: |
+          pnpm --filter @auction/shop exec playwright test \
+            e2e/home.spec.ts \
+            e2e/theme-audit.spec.ts \
+            e2e/shop-viewport-audit.spec.ts
+      - name: Shop browser tier 2 (foundation catalogue fixtures)
+        if: inputs.seed_catalogue
+        run: |
+          pnpm --filter @auction/shop exec playwright test \
+            e2e/artwork-detail.spec.ts \
+            e2e/catalogue-routes.spec.ts \
+            e2e/buyer-flow.spec.ts \
+            e2e/unavailable-notify-me.spec.ts
+      - name: Retain Shop acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shop-staging-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            apps/shop/playwright-report/
+            apps/shop/test-results/
+          if-no-files-found: ignore
+          retention-days: 30

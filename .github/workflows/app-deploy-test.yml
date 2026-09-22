@@ -33,7 +33,7 @@ jobs:
           changed=false
           if test "${{ github.event_name }}" = "push" &&
             git diff --quiet "$BEFORE_SHA" "$CURRENT_SHA" -- \
-              apps/shop apps/shop-identity; then
+              apps/shop apps/shop-identity apps/shop-api; then
             changed=false
           elif test "${{ github.event_name }}" = "push"; then
             changed=true
@@ -96,8 +96,23 @@ jobs:
         if: env.APP_ID != ''
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Build post-deploy readiness URL list
+        if: env.APP_ID != ''
+        id: readiness
+        env:
+          APP_ID: ${{ env.APP_ID }}
+        run: |
+          set -euo pipefail
+          urls='["https://test-api.lax.bid/health/ready"]'
+          app_json="$(doctl apps get "$APP_ID" --output json)"
+          if jq -e '
+            .[0].spec.services[]? | select(.name == "shop")
+          ' <<<"$app_json" >/dev/null; then
+            urls='["https://test-api.lax.bid/health/ready","https://test-shop.lax.bid/health/ready"]'
+          fi
+          echo "urls=$urls" >> "$GITHUB_OUTPUT"
       - if: env.APP_ID != ''
         uses: ./.github/actions/app-platform-deploy
         with:
           app-id: ${{ env.APP_ID }}
-          readiness-urls: '["https://test-api.lax.bid/health/ready"]'
+          readiness-urls: ${{ steps.readiness.outputs.urls }}
