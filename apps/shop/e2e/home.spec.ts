@@ -78,29 +78,4 @@ test.describe("Shop home @a11y", () => {
     await expect(firstReveal).not.toHaveAttribute("data-reveal-init", "true");
     await context.close();
   });
-
-  test("renders seeded, navigable cards for every catalogue section", async ({
-    page,
-  }, testInfo) => {
-    test.skip(!enabled, skipReason);
-    test.skip(testInfo.project.name !== "chromium-desktop", "home catalogue cards once on desktop");
-    await page.goto("/");
-
-    await expect(page.locator(".shop-home__original-card").first()).toHaveAttribute(
-      "href",
-      /\/artworks\//,
-    );
-    await expect(page.locator(".shop-home__category-card").first()).toHaveAttribute(
-      "href",
-      /\/categories\//,
-    );
-    await expect(page.locator(".shop-home__print-card").first()).toHaveAttribute(
-      "href",
-      /\/artworks\//,
-    );
-    await expect(page.locator(".shop-home__artist-card").first()).toHaveAttribute(
-      "href",
-      /\/artists\//,
-    );
-  });
 });

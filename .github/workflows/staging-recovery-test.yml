@@ -15,17 +15,11 @@ on:
       shop_identity_digest:
         description: Approved lax-test-shop-identity digest
         required: true
-      shop_sha:
-        description: Approved Shop commit SHA
+      shop_image:
+        description: Approved lax-test-shop as `<40-char-sha>@<digest>`
         required: true
-      shop_digest:
-        description: Approved lax-test-shop digest
-        required: true
-      shop_api_sha:
-        description: Approved Shop API commit SHA
-        required: true
-      shop_api_digest:
-        description: Approved lax-test-shop-api digest
+      shop_api_image:
+        description: Approved lax-test-shop-api as `<40-char-sha>@<digest>`
         required: true
       publish_run_id:
         description: Successful lax-identity publish workflow run
@@ -56,15 +50,35 @@ concurrency:
 jobs:
   validate_inputs:
     runs-on: ubuntu-latest
+    outputs:
+      shop_sha: ${{ steps.parse.outputs.shop_sha }}
+      shop_digest: ${{ steps.parse.outputs.shop_digest }}
+      shop_api_sha: ${{ steps.parse.outputs.shop_api_sha }}
+      shop_api_digest: ${{ steps.parse.outputs.shop_api_digest }}
     steps:
       - uses: actions/checkout@v4
-      - name: Validate recovery and rollback inputs
+      - id: parse
+        name: Validate recovery and rollback inputs
         env:
           RUN_ACCEPTANCE: ${{ inputs.run_acceptance }}
           ROLLBACK_REHEARSAL: ${{ inputs.rollback_rehearsal }}
           ROLLBACK_MANIFEST: ${{ inputs.rollback_manifest }}
+          SHOP_IMAGE: ${{ inputs.shop_image }}
+          SHOP_API_IMAGE: ${{ inputs.shop_api_image }}
         run: |
           set -euo pipefail
+          parse_image() {
+            local label="$1"
+            local value="$2"
+            if [[ ! "$value" =~ ^([0-9a-f]{40})@(.+)$ ]]; then
+              echo "::error::${label} must be <40-char-sha>@<digest>"
+              exit 1
+            fi
+            echo "${label}_sha=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+            echo "${label}_digest=${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
+          }
+          parse_image shop "$SHOP_IMAGE"
+          parse_image shop_api "$SHOP_API_IMAGE"
           if test "$ROLLBACK_REHEARSAL" = "true"; then
             test "$RUN_ACCEPTANCE" = "true" || {
               echo "::error::Rollback rehearsal requires both acceptance phases"
@@ -95,7 +109,7 @@ jobs:
     secrets: inherit
 
   deploy:
-    needs: qualify_identity
+    needs: [qualify_identity, validate_inputs]
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -104,11 +118,11 @@ jobs:
       identity_digest: ${{ inputs.identity_digest }}
       shop_identity_sha: ${{ inputs.shop_identity_sha }}
       shop_identity_digest: ${{ inputs.shop_identity_digest }}
-      shop_sha: ${{ inputs.shop_sha }}
-      shop_digest: ${{ inputs.shop_digest }}
-      shop_api_sha: ${{ inputs.shop_api_sha }}
-      shop_api_digest: ${{ inputs.shop_api_digest }}
-      app_image_tag: ${{ inputs.shop_sha }}
+      shop_sha: ${{ needs.validate_inputs.outputs.shop_sha }}
+      shop_digest: ${{ needs.validate_inputs.outputs.shop_digest }}
+      shop_api_sha: ${{ needs.validate_inputs.outputs.shop_api_sha }}
+      shop_api_digest: ${{ needs.validate_inputs.outputs.shop_api_digest }}
+      app_image_tag: ${{ needs.validate_inputs.outputs.shop_sha }}
     secrets: inherit
 
   acceptance_disabled:
@@ -123,7 +137,7 @@ jobs:
 
   enable_ssf:
     if: inputs.run_acceptance
-    needs: acceptance_disabled
+    needs: [acceptance_disabled, validate_inputs]
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -133,11 +147,11 @@ jobs:
       identity_digest: ${{ inputs.identity_digest }}
       shop_identity_sha: ${{ inputs.shop_identity_sha }}
       shop_identity_digest: ${{ inputs.shop_identity_digest }}
-      shop_sha: ${{ inputs.shop_sha }}
-      shop_digest: ${{ inputs.shop_digest }}
-      shop_api_sha: ${{ inputs.shop_api_sha }}
-      shop_api_digest: ${{ inputs.shop_api_digest }}
-      app_image_tag: ${{ inputs.shop_sha }}
+      shop_sha: ${{ needs.validate_inputs.outputs.shop_sha }}
+      shop_digest: ${{ needs.validate_inputs.outputs.shop_digest }}
+      shop_api_sha: ${{ needs.validate_inputs.outputs.shop_api_sha }}
+      shop_api_digest: ${{ needs.validate_inputs.outputs.shop_api_digest }}
+      app_image_tag: ${{ needs.validate_inputs.outputs.shop_sha }}
     secrets: inherit
 
   acceptance_enabled:
@@ -152,9 +166,10 @@ jobs:
 
   shop_acceptance:
     if: inputs.run_acceptance
-    needs: acceptance_enabled
+    needs: [acceptance_enabled, validate_inputs]
     uses: ./.github/workflows/shop-staging-acceptance.yml
     with:
+      shop_sha: ${{ needs.validate_inputs.outputs.shop_sha }}
       seed_catalogue: false
     secrets: inherit
 
@@ -185,7 +200,7 @@ jobs:
       always() &&
       inputs.rollback_rehearsal &&
       needs.rollback_rehearsal.result != 'skipped'
-    needs: rollback_rehearsal
+    needs: [rollback_rehearsal, validate_inputs]
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
@@ -195,11 +210,11 @@ jobs:
       identity_digest: ${{ inputs.identity_digest }}
       shop_identity_sha: ${{ inputs.shop_identity_sha }}
       shop_identity_digest: ${{ inputs.shop_identity_digest }}
-      shop_sha: ${{ inputs.shop_sha }}
-      shop_digest: ${{ inputs.shop_digest }}
-      shop_api_sha: ${{ inputs.shop_api_sha }}
-      shop_api_digest: ${{ inputs.shop_api_digest }}
-      app_image_tag: ${{ inputs.shop_sha }}
+      shop_sha: ${{ needs.validate_inputs.outputs.shop_sha }}
+      shop_digest: ${{ needs.validate_inputs.outputs.shop_digest }}
+      shop_api_sha: ${{ needs.validate_inputs.outputs.shop_api_sha }}
+      shop_api_digest: ${{ needs.validate_inputs.outputs.shop_api_digest }}
+      app_image_tag: ${{ needs.validate_inputs.outputs.shop_sha }}
     secrets: inherit
 
   acceptance_after_rehearsal:
@@ -215,14 +230,34 @@ jobs:
       ssf_mode: ssf_enabled
     secrets: inherit
 
+  shop_acceptance_after_rehearsal:
+    if: >-
+      always() &&
+      inputs.rollback_rehearsal &&
+      needs.restore_candidate.result == 'success'
+    needs: [restore_candidate, validate_inputs]
+    uses: ./.github/workflows/shop-staging-acceptance.yml
+    with:
+      shop_sha: ${{ needs.validate_inputs.outputs.shop_sha }}
+      seed_catalogue: false
+    secrets: inherit
+
   record_accepted_release:
-    needs: [acceptance_enabled, shop_acceptance, acceptance_after_rehearsal]
+    needs:
+      [
+        acceptance_enabled,
+        shop_acceptance,
+        acceptance_after_rehearsal,
+        shop_acceptance_after_rehearsal,
+        validate_inputs,
+      ]
     if: >-
       always() &&
       needs.acceptance_enabled.result == 'success' &&
       (needs.shop_acceptance.result == 'success' || needs.shop_acceptance.result == 'skipped') &&
       (!inputs.rollback_rehearsal ||
-       needs.acceptance_after_rehearsal.result == 'success')
+       (needs.acceptance_after_rehearsal.result == 'success' &&
+        needs.shop_acceptance_after_rehearsal.result == 'success'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -239,11 +274,11 @@ jobs:
           SHOP_IDENTITY_SHA: ${{ inputs.shop_identity_sha }}
           SHOP_IDENTITY_DIGEST: ${{ inputs.shop_identity_digest }}
           SHOP_IDENTITY_BUILD_RUN: ${{ github.run_id }}
-          SHOP_SHA: ${{ inputs.shop_sha }}
-          SHOP_DIGEST: ${{ inputs.shop_digest }}
+          SHOP_SHA: ${{ needs.validate_inputs.outputs.shop_sha }}
+          SHOP_DIGEST: ${{ needs.validate_inputs.outputs.shop_digest }}
           SHOP_BUILD_RUN: ${{ github.run_id }}
-          SHOP_API_SHA: ${{ inputs.shop_api_sha }}
-          SHOP_API_DIGEST: ${{ inputs.shop_api_digest }}
+          SHOP_API_SHA: ${{ needs.validate_inputs.outputs.shop_api_sha }}
+          SHOP_API_DIGEST: ${{ needs.validate_inputs.outputs.shop_api_digest }}
           SHOP_API_BUILD_RUN: ${{ github.run_id }}
           RECOVERY_ACCEPTED_RELEASE_PATH: ${{ runner.temp }}/recovery-evidence/accepted-release.json
         run: |

@@ -163,7 +163,7 @@ jobs:
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.SHA }}
-            ${{ !contains(fromJSON('["shop-identity","shop"]'), matrix.component) && format('registry.digitalocean.com/{0}/lax-{1}-{2}:{1}', env.REGISTRY, env.ENVIRONMENT, matrix.component) || '' }}
+            ${{ !contains(fromJSON('["shop-identity","shop","shop-api"]'), matrix.component) && format('registry.digitalocean.com/{0}/lax-{1}-{2}:{1}', env.REGISTRY, env.ENVIRONMENT, matrix.component) || '' }}
           cache-from: type=gha,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
 

@@ -45,58 +45,6 @@ on:
         type: string
         required: false
         description: Immutable monorepo SHA for lax-test-migrate and default worker images
-  workflow_dispatch:
-    inputs:
-      layer:
-        type: choice
-        required: true
-        options: [persistent, sentry, ephemeral]
-      infra_ref:
-        description: auction-infra branch, tag, or commit
-        type: string
-        required: false
-        default: main
-      enable_auth_ssf_delivery:
-        description: Enable Auth SSF delivery only after staging receivers pass verification
-        type: boolean
-        required: false
-        default: false
-      identity_sha:
-        description: Approved standalone Identity commit for ephemeral image deploys
-        type: string
-        required: false
-      identity_digest:
-        description: Approved lax-test-identity digest for ephemeral image deploys
-        type: string
-        required: false
-      shop_identity_sha:
-        description: Approved Shop Identity commit for ephemeral image deploys
-        type: string
-        required: false
-      shop_identity_digest:
-        description: Approved lax-test-shop-identity digest for ephemeral image deploys
-        type: string
-        required: false
-      shop_sha:
-        description: Approved Shop storefront commit for ephemeral image deploys
-        type: string
-        required: false
-      shop_digest:
-        description: Approved lax-test-shop digest for ephemeral image deploys
-        type: string
-        required: false
-      shop_api_sha:
-        description: Approved Shop API commit for ephemeral image deploys
-        type: string
-        required: false
-      shop_api_digest:
-        description: Approved lax-test-shop-api digest for ephemeral image deploys
-        type: string
-        required: false
-      app_image_tag:
-        description: Immutable monorepo SHA for lax-test-migrate and default worker images
-        type: string
-        required: false
 concurrency:
   group: >-
     ${{

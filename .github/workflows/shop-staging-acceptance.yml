@@ -3,12 +3,19 @@ name: Shop staging acceptance
 on:
   workflow_call:
     inputs:
+      shop_sha:
+        type: string
+        required: true
       seed_catalogue:
         type: boolean
         required: false
         default: false
   workflow_dispatch:
     inputs:
+      shop_sha:
+        description: Deployed Shop storefront commit SHA (must match /health/ready release)
+        required: true
+        type: string
       seed_catalogue:
         description: >-
           Run foundation catalogue seed (destructive: re-sold-outs reed-study editions).
@@ -21,7 +28,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: shop-staging-acceptance
+  group: app-deploy-test
   cancel-in-progress: false
 
 jobs:
@@ -29,15 +36,61 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     env:
+      SHOP_SHA: ${{ inputs.shop_sha }}
       SHOP_STOREFRONT_URL: https://test-shop.lax.bid
       AUTH_BASE_URL: https://test-auth.lax.bid
       SHOP_IDENTITY_BASE_URL: https://test-shop.lax.bid
       PLAYWRIGHT_BASE_URL: https://test-shop.lax.bid
       PLAYWRIGHT_E2E: "1"
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
       SHOP_OIDC_TEST_EMAIL: ${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}
       SHOP_OIDC_TEST_PASSWORD: ${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}
     steps:
-      - name: Require acceptance credentials before infrastructure access
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.shop_sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate deployed Shop release
+        run: |
+          set -euo pipefail
+          [[ "$SHOP_SHA" =~ ^[0-9a-f]{40}$ ]]
+          for attempt in $(seq 1 30); do
+            if body="$(curl --fail --silent --max-time 30 "$SHOP_STOREFRONT_URL/health/ready" 2>/dev/null)"; then
+              if echo "$body" | jq -e \
+                '.status == "ok" and (.dependencies.shopIdentity.status == "ok")' \
+                >/dev/null; then
+                release="$(echo "$body" | jq -r '.release // empty')"
+                if test "$release" = "$SHOP_SHA"; then
+                  echo "Shop release pinned: $release"
+                  exit 0
+                fi
+                echo "Attempt ${attempt}: release=${release:-unknown}, want $SHOP_SHA"
+              else
+                echo "Attempt ${attempt}: health/ready status not ok"
+              fi
+            else
+              echo "Attempt ${attempt}: health/ready unreachable"
+            fi
+            sleep 10
+          done
+          echo "::error::Shop /health/ready never reported release $SHOP_SHA"
+          exit 1
+      - name: Shop Stripe webhook route is wired
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$SHOP_STOREFRONT_URL/webhooks/stripe")"
+          test "$code" != "404"
+          test "$code" = "400"
+      - name: Require acceptance credentials for catalogue fixtures
+        if: inputs.seed_catalogue
         run: |
           set -euo pipefail
           test -n "${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}" || {
@@ -48,27 +101,20 @@ jobs:
             echo "::error::IDENTITY_ACCEPTANCE_PASSWORD must be configured on the test environment"
             exit 1
           }
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.4
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
       - uses: ./.github/actions/checkout-infra
+        if: inputs.seed_catalogue
         with:
           ref: main
           app-id: ${{ vars.INFRA_REPO_APP_ID }}
           private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
       - uses: ./.github/actions/terraform-setup
+        if: inputs.seed_catalogue
         with:
           working-directory: .infra-config/terraform/ephemeral/test
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - name: Load Shop database contract from Terraform state
+        if: inputs.seed_catalogue
         run: |
           set -euo pipefail
           database_url_shop="$(
@@ -86,17 +132,6 @@ jobs:
           printf '%s\n' "$database_ca_cert" > "$database_ca_path"
           chmod 0600 "$database_ca_path"
           echo "NODE_EXTRA_CA_CERTS=$database_ca_path" >> "$GITHUB_ENV"
-      - name: Shop storefront readiness
-        run: |
-          set -euo pipefail
-          body="$(curl --fail --silent --max-time 30 "$SHOP_STOREFRONT_URL/health/ready")"
-          echo "$body" | jq -e '.status == "ok" or .ok == true' >/dev/null
-      - name: Shop Stripe webhook route is wired
-        run: |
-          set -euo pipefail
-          code="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$SHOP_STOREFRONT_URL/webhooks/stripe")"
-          test "$code" != "404"
-          test "$code" = "400" || test "$code" = "401" || test "$code" = "403"
       - name: Seed foundation catalogue (opt-in)
         if: inputs.seed_catalogue
         run: |
@@ -116,17 +151,18 @@ jobs:
         if: inputs.seed_catalogue
         run: |
           pnpm --filter @auction/shop exec playwright test \
+            e2e/home-catalogue.spec.ts \
             e2e/artwork-detail.spec.ts \
             e2e/catalogue-routes.spec.ts \
             e2e/buyer-flow.spec.ts \
             e2e/unavailable-notify-me.spec.ts
       - name: Retain Shop acceptance evidence
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: shop-staging-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             apps/shop/playwright-report/
             apps/shop/test-results/
-          if-no-files-found: ignore
-          retention-days: 30
+          if-no-files-found: warn
+          retention-days: 14

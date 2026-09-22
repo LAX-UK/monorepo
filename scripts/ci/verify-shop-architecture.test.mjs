@@ -144,12 +144,21 @@ describe("Shop commerce architecture SSOT", () => {
     );
     assert.match(shopAcceptance, /PLAYWRIGHT_E2E: "1"/);
     assert.match(shopAcceptance, /seed_catalogue/);
+    assert.match(shopAcceptance, /shop_sha:/);
+    assert.match(shopAcceptance, /dependencies\.shopIdentity\.status == "ok"/);
+    assert.match(shopAcceptance, /test "\$code" = "400"/);
+    assert.match(shopAcceptance, /if-no-files-found: warn/);
+    assert.match(shopAcceptance, /home-catalogue\.spec\.ts/);
 
     const recovery = readFileSync(
       join(root, ".github/workflows/staging-recovery-test.yml"),
       "utf8",
     );
     assert.match(recovery, /shop-staging-acceptance\.yml/);
+    assert.match(recovery, /shop_acceptance_after_rehearsal/);
+
+    const buildImages = readFileSync(join(root, ".github/workflows/build-images.yml"), "utf8");
+    assert.match(buildImages, /\["shop-identity","shop","shop-api"\]/);
   });
 
   it("enforces Shop browser, media, SEO, and asset contracts", () => {
