@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /** Foundation seed artwork with sellable editions (see shop-api catalogue-seed). */
-const ACCEPTANCE_IN_STOCK_SLUG = "vessel-study";
+const ACCEPTANCE_IN_STOCK_SLUG = "harbor-print";
 
 /**
  * Buyer flow stops before live Stripe; webhook completion is exercised in shop-api tests.
