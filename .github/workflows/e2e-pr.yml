@@ -183,10 +183,6 @@ jobs:
             OIDC_CLIENT_SECRET_LAX_BID_WEB="$OIDC_CLIENT_SECRET_LAX_BID_WEB" \
             OIDC_CLIENT_SECRET_LAX_SHOP_WEB="$OIDC_CLIENT_SECRET" \
             pnpm --filter @auction/db db:configure-oidc-clients
-          # The catalogue seed imports @auction/shop-domain, so its closure has to be
-          # built here rather than in the later application build step.
-          pnpm --filter @auction/shop-api... build
-          pnpm --filter @auction/shop-api seed:catalogue
       - name: Build product applications
         run: pnpm --filter @auction/api... build && pnpm --filter @auction/auth-app... build && pnpm --filter @auction/shop-identity... build && pnpm --filter @auction/web... build && pnpm --filter @auction/shop-api... build && pnpm --filter @auction/shop... build
       - name: Start stack
@@ -237,7 +233,11 @@ jobs:
           PLAYWRIGHT_E2E: "1"
           SHOP_OIDC_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
-        run: pnpm --filter @auction/shop test:e2e
+        run: |
+          pnpm --filter @auction/shop exec playwright test \
+            e2e/home.spec.ts \
+            e2e/theme-audit.spec.ts \
+            e2e/shop-viewport-audit.spec.ts
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

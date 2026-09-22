@@ -27,26 +27,6 @@ test.describe("Shop home @a11y", () => {
     expect(blocking, `Axe on Shop home:\n${formatAxeViolations(blocking)}`).toEqual([]);
   });
 
-  test("shows forward rail affordance when a home row overflows", async ({ page }, testInfo) => {
-    test.skip(!enabled, skipReason);
-    test.skip(testInfo.project.name !== "chromium-desktop", "desktop rail affordance only");
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/");
-    const printsRail = page.locator("#prints-rail");
-    await expect(printsRail).toBeVisible();
-    const overflow = await printsRail.evaluate((el) => el.scrollWidth - el.clientWidth > 4);
-    test.skip(!overflow, "Prints rail has no overflow in this viewport");
-    const forward = page.getByRole("button", { name: "Scroll to see more prints and multiples" });
-    await expect(forward).toBeVisible();
-    await forward.focus();
-    await expect(forward).toBeFocused();
-    const before = await printsRail.evaluate((el) => el.scrollLeft);
-    await forward.click();
-    await expect
-      .poll(async () => printsRail.evaluate((el) => el.scrollLeft))
-      .toBeGreaterThan(before);
-  });
-
   test("mobile menu exposes account actions and closes with Escape", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-mobile", "mobile drawer only");
@@ -77,30 +57,5 @@ test.describe("Shop home @a11y", () => {
     await expect(firstReveal).toBeVisible();
     await expect(firstReveal).not.toHaveAttribute("data-reveal-init", "true");
     await context.close();
-  });
-
-  test("renders seeded, navigable cards for every catalogue section", async ({
-    page,
-  }, testInfo) => {
-    test.skip(!enabled, skipReason);
-    test.skip(testInfo.project.name !== "chromium-desktop", "home catalogue cards once on desktop");
-    await page.goto("/");
-
-    await expect(page.locator(".shop-home__original-card").first()).toHaveAttribute(
-      "href",
-      /\/artworks\//,
-    );
-    await expect(page.locator(".shop-home__category-card").first()).toHaveAttribute(
-      "href",
-      /\/categories\//,
-    );
-    await expect(page.locator(".shop-home__print-card").first()).toHaveAttribute(
-      "href",
-      /\/artworks\//,
-    );
-    await expect(page.locator(".shop-home__artist-card").first()).toHaveAttribute(
-      "href",
-      /\/artists\//,
-    );
   });
 });

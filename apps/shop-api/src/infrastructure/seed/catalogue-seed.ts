@@ -7,7 +7,11 @@ export const SHOP_SEED_IMPORT_KEYS = {
   eligible: "seed:shop:foundation:eligible-artwork",
   ineligible: "seed:shop:foundation:ineligible-artwork",
   secondEligible: "seed:shop:foundation:second-eligible-artwork",
+  buyerFixture: "seed:shop:foundation:buyer-fixture-artwork",
 } as const;
+
+/** Slug with sellable print editions after foundation seed (not depleted). */
+export const SHOP_SEED_BUYER_FIXTURE_SLUG = "harbor-print";
 
 async function depleteEditionStockForSlug(db: Database, slug: string): Promise<void> {
   const artwork = await db
@@ -55,6 +59,21 @@ export async function seedShopFoundationCatalogue(
     artistDisplayName: "Flora Powers",
     artistDiscipline: "Contemporary painter",
     eligibleForEditionAllocation: false,
+  });
+  await importArtwork({
+    importKey: SHOP_SEED_IMPORT_KEYS.buyerFixture,
+    slug: SHOP_SEED_BUYER_FIXTURE_SLUG,
+    title: "Harbor Print",
+    description: "A coastal print edition kept in stock for commerce acceptance fixtures.",
+    primaryImageUrl: "/shop/home/artwork-warm-basket.webp",
+    dimensions: "60 × 45 cm",
+    yearCreated: 2016,
+    saleState: "for_sale",
+    artistSlug: "foundation-artist",
+    artistDisplayName: "Flora Powers",
+    artistDiscipline: "Contemporary painter",
+    eligibleForEditionAllocation: true,
+    printPricePence: 8_500,
   });
   await importArtwork({
     importKey: SHOP_SEED_IMPORT_KEYS.secondEligible,

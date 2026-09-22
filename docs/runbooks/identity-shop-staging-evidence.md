@@ -31,3 +31,15 @@ acceptance green on `main` through migration **0161**; see
 for run URLs and image contract. Soak window started **2026-09-13T13:39:52Z**.
 
 `IDENTITY_STANDALONE_CUTOVER_COMPLETE` remains **unset** until the acceptance workflow is green and soak is signed.
+
+## Shop commerce staging acceptance (2026-09-22)
+
+Immutable cutover publishes four Shop-related images on test: `shop`, `shop-identity`, `shop-api`, and migrate (see [`staging-recovery-test.yml`](../../.github/workflows/staging-recovery-test.yml) inputs). Pass `shop_image` and `shop_api_image` as `<40-char-sha>@<digest>`; recovery parses them into the Terraform image contract. Commerce migrations apply through the latest shop schema on the target SHA; identity evidence through **0161** is not a substitute for commerce deploy proof.
+
+| Check | Workflow / command |
+|---|---|
+| Identity + Shop BFF boundary | [`identity-staging-acceptance.yml`](../../.github/workflows/identity-staging-acceptance.yml) |
+| Shop release-pinned health + Stripe webhook (`400` on unsigned POST) + fixture-independent browser gates | [`shop-staging-acceptance.yml`](../../.github/workflows/shop-staging-acceptance.yml) with required `shop_sha` |
+| Commerce / catalogue Playwright evidence (destructive seed) | Manual [`shop-staging-acceptance.yml`](../../.github/workflows/shop-staging-acceptance.yml) with matching `shop_sha` and `seed_catalogue=true` (destructive on `reed-study` edition ownership). Recovery and rollback rehearsal re-run Shop acceptance after restore with the same `shop_sha`. |
+
+Record run URLs and accepted image digests (including **shop-api**) in [identity-staging-extraction-evidence.md](./identity-staging-extraction-evidence.md) when commerce acceptance completes.

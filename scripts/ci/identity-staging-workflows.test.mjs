@@ -176,7 +176,7 @@ test("build images emits a release manifest artifact", () => {
   const writer = read("scripts/ci/write-release-manifest.mjs");
   assert.match(workflow, /write-release-manifest\.mjs/);
   assert.match(workflow, /release-manifest-/);
-  assert.match(workflow, /!\s*contains\(fromJSON\('\["shop-identity","shop"\]'\)/);
+  assert.match(workflow, /!\s*contains\(fromJSON\('\["shop-identity","shop","shop-api"\]'\)/);
   for (const field of [
     "repository",
     "component",
@@ -215,7 +215,7 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
   assert.match(workflow, /Validate recovery and rollback inputs/);
   assert.match(workflow, /parent_holds_deploy_lock: true/);
   assert.match(workflow, /fromJSON\(inputs\.rollback_manifest\)\.identity\.sha/);
-  assert.match(workflow, /app_image_tag: \$\{\{ inputs\.shop_sha \}\}/);
+  assert.match(workflow, /app_image_tag: \$\{\{ needs\.validate_inputs\.outputs\.shop_sha \}\}/);
   assert.match(
     workflow,
     /app_image_tag: \$\{\{ fromJSON\(inputs\.rollback_manifest\)\.monorepoSha \}\}/,

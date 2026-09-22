@@ -1,12 +1,27 @@
 # Shop Stripe setup (test and production)
 
-Shop shares the LAX Stripe platform account with Bid but uses a **separate restricted API key**, **separate webhook endpoint**, and **Shop-only checkout metadata** (`metadata.app = "shop"`).
+## Account model
+
+**Target end state:** a [Stripe Organization](https://stripe.com/docs/connect/account-management) with
+separate **Bid** and **Shop** accounts so keys, webhooks, and reporting stay product-owned.
+
+**Test phase (current):** Shop may reuse the existing **Bid test account** (`sk_test_…`) to avoid
+standing up a second test account before commerce acceptance is stable. Even when reusing the same
+secret key, Shop still requires its **own webhook endpoint** and signing secret — Stripe issues
+`whsec_…` per endpoint, not per account.
+
+Shop checkout metadata must remain Shop-scoped (`metadata.app = "shop"`). Bid Connect, transfers,
+refunds, and dispute webhooks stay on Bid endpoints only.
+
+When moving to the dedicated Shop test account, rotate `STRIPE_SHOP_SECRET_KEY` and
+`STRIPE_SHOP_WEBHOOK_SECRET` in the GitHub `test` environment and re-apply ephemeral Terraform;
+no Bid webhook URLs change.
 
 ## Test environment
 
 ### 1. Stripe Dashboard (test mode)
 
-1. Create a **restricted key** with **Checkout Sessions: Write** only (no Connect, transfers, refunds, disputes, or payouts).
+1. Create a **restricted key** with **Checkout Sessions: Write** only (no Connect, transfers, refunds, disputes, or payouts). During the shared-account test phase, this may be the same restricted key Bid already uses; prefer a Shop-only restricted key when the Shop account exists.
 2. Create a webhook endpoint:
    - URL: `https://test-shop.lax.bid/webhooks/stripe`
    - Events:

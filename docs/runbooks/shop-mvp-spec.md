@@ -64,12 +64,16 @@ notice that clears `cancelled=1` from the URL.
 3. `apps/shop-api` public catalogue reads; `apps/shop` homepage backed by seeded data.
 4. Figma-derived desktop navigation + accessible responsive fallback (not full homepage Figma parity).
 
-**Subsequent MVP increment (after foundation merges post-soak):**
+**Commerce slice (on main; staging proof via `shop-staging-acceptance.yml`):**
+
+1. Anonymous basket with server-side persistence keyed to Shop session or guest token.
+2. Checkout requires Shop SSO; sandbox Stripe Checkout on staging (`shop-api` requires Stripe secrets at boot).
+3. Persist order + line items under `shop_app` tables; webhook-driven payment completion in `shop-api` tests.
+4. **Automated release acceptance** (recovery / `shop-staging-acceptance.yml` with `seed_catalogue=false`): release-pinned `/health/ready`, Stripe unsigned webhook returns `400`, and fixture-independent Playwright tier (home a11y/theme/viewport). **Commerce evidence** requires a disposable run with `seed_catalogue=true` plus manual Stripe test-card checkout; do not treat tier 1 alone as proof of basket/checkout on staging.
+
+**Later increment:**
 
 1. Import from Shopify export where it maps to artwork/edition (not generic variant SKUs).
-2. Anonymous basket with server-side persistence keyed to Shop session or anonymous token.
-3. Checkout requires Shop SSO; payment uses sandbox credentials only.
-4. Persist order + line items under `shop_app` tables; emit Shop lifecycle events for observability.
 
 ## Shopify migration inputs required
 
@@ -92,11 +96,12 @@ Before implementation starts, provide:
 
 ## Acceptance for MVP slice
 
-- Staging browse → basket → SSO → sandbox checkout completes end-to-end
+- [`shop-staging-acceptance.yml`](../../.github/workflows/shop-staging-acceptance.yml) green on `test-shop.lax.bid` with `shop_sha` matching deployed release (tier 1 always; tier 2 when `seed_catalogue=true` on disposable data)
+- Staging browse → basket → SSO → sandbox checkout completes end-to-end (manual card step until recorded in evidence)
 - Notify-me cannot register for currently purchasable artworks; interest + event proven in DB integration tests
 - Session-aware footer, artwork unavailable panel, and commerce read failures each have distinct UI (no masquerading as empty/unsubscribed)
 - Shop obeys layer guardrails (`scripts/check-layers.mjs` Shop section)
-- Separate Docker image, deploy component, tests, and rollback path documented
+- Separate Docker images (`shop`, `shop-identity`, `shop-api`), deploy components, tests, and rollback path documented
 - Identity staging acceptance remains green with Shop gates enabled
 
 ## Extraction threshold (unchanged)

@@ -132,9 +132,42 @@ describe("Shop commerce architecture SSOT", () => {
     assert.match(browserGate, /visible without JavaScript/);
   });
 
+  it("routes Shop triple changes through immutable staging cutover", () => {
+    const deployTest = readFileSync(join(root, ".github/workflows/app-deploy-test.yml"), "utf8");
+    assert.match(deployTest, /apps\/shop apps\/shop-identity apps\/shop-api/);
+    assert.match(deployTest, /test-shop\.lax\.bid\/health\/ready/);
+    assert.match(deployTest, /select\(\.name == "shop"\)/);
+
+    const shopAcceptance = readFileSync(
+      join(root, ".github/workflows/shop-staging-acceptance.yml"),
+      "utf8",
+    );
+    assert.match(shopAcceptance, /PLAYWRIGHT_E2E: "1"/);
+    assert.match(shopAcceptance, /seed_catalogue/);
+    assert.match(shopAcceptance, /shop_sha:/);
+    assert.match(shopAcceptance, /dependencies\.shopIdentity\.status == "ok"/);
+    assert.match(shopAcceptance, /test "\$code" = "400"/);
+    assert.match(shopAcceptance, /if-no-files-found: warn/);
+    assert.match(shopAcceptance, /home-catalogue\.spec\.ts/);
+
+    const recovery = readFileSync(
+      join(root, ".github/workflows/staging-recovery-test.yml"),
+      "utf8",
+    );
+    assert.match(recovery, /shop-staging-acceptance\.yml/);
+    assert.match(recovery, /shop_acceptance_after_rehearsal/);
+
+    const buildImages = readFileSync(join(root, ".github/workflows/build-images.yml"), "utf8");
+    assert.match(buildImages, /\["shop-identity","shop","shop-api"\]/);
+  });
+
   it("enforces Shop browser, media, SEO, and asset contracts", () => {
     const workflow = readFileSync(join(root, ".github/workflows/e2e-pr.yml"), "utf8");
     assert.match(workflow, /Run Shop accessibility and viewport gates/);
+    assert.match(workflow, /e2e\/home\.spec\.ts/);
+    assert.match(workflow, /e2e\/theme-audit\.spec\.ts/);
+    assert.match(workflow, /e2e\/shop-viewport-audit\.spec\.ts/);
+    assert.doesNotMatch(workflow, /seed:catalogue/);
     assert.doesNotMatch(workflow, /PLAYWRIGHT_VISUAL: "1"/);
 
     const mediaMigration = readFileSync(
