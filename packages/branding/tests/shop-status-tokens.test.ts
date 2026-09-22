@@ -21,6 +21,11 @@ const STATUS_TOKENS = [
   "--color-danger-container",
 ] as const;
 
+/** Shop storefront status chips need higher light-mode contrast than Bid admin surfaces. */
+const SHOP_LIGHT_STATUS_OVERRIDES: Partial<Record<(typeof STATUS_TOKENS)[number], string>> = {
+  "--color-warning": "oklch(0.48 0.14 55)",
+};
+
 function parseCssVar(css: string, name: string): string | undefined {
   const re = new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*([^;]+);`);
   const m = css.match(re);
@@ -41,7 +46,13 @@ describe("Shop status token drift guardrail", () => {
 
   for (const token of STATUS_TOKENS) {
     it(`Shop light ${token} matches Bid`, () => {
-      expect(parseCssVar(shopCss, token)).toBe(parseCssVar(webLight, token));
+      const shopVal = parseCssVar(shopCss, token);
+      const override = SHOP_LIGHT_STATUS_OVERRIDES[token];
+      if (override !== undefined) {
+        expect(shopVal).toBe(override);
+        return;
+      }
+      expect(shopVal).toBe(parseCssVar(webLight, token));
     });
   }
 
