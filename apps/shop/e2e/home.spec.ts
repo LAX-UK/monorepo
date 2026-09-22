@@ -38,8 +38,9 @@ async function settleVisualPage(page: Page) {
 }
 
 test.describe("Shop home @a11y", () => {
-  test("responds, exposes main landmark, and passes whole-page axe", async ({ page }) => {
+  test("responds, exposes main landmark, and passes whole-page axe", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "whole-page axe once on desktop");
     await page.emulateMedia({ reducedMotion: "reduce" });
     const res = await page.goto("/");
     expect(res?.ok()).toBeTruthy();
@@ -52,8 +53,9 @@ test.describe("Shop home @a11y", () => {
     expect(blocking, `Axe on Shop home:\n${formatAxeViolations(blocking)}`).toEqual([]);
   });
 
-  test("shows forward rail affordance when a home row overflows", async ({ page }) => {
+  test("shows forward rail affordance when a home row overflows", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "desktop rail affordance only");
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/");
     const printsRail = page.locator("#prints-rail");
@@ -71,8 +73,9 @@ test.describe("Shop home @a11y", () => {
       .toBeGreaterThan(before);
   });
 
-  test("mobile menu exposes account actions and closes with Escape", async ({ page }) => {
+  test("mobile menu exposes account actions and closes with Escape", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-mobile", "mobile drawer only");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/");
     const openMenu = page.getByRole("button", { name: "Open menu", exact: true });
@@ -89,8 +92,9 @@ test.describe("Shop home @a11y", () => {
     await expect(openMenu).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("keeps storefront content visible without JavaScript", async ({ browser }) => {
+  test("keeps storefront content visible without JavaScript", async ({ browser }, testInfo) => {
     test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "no-JS contract once on desktop");
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
     await page.goto("/");
@@ -101,8 +105,11 @@ test.describe("Shop home @a11y", () => {
     await context.close();
   });
 
-  test("renders seeded, navigable cards for every catalogue section", async ({ page }) => {
+  test("renders seeded, navigable cards for every catalogue section", async ({
+    page,
+  }, testInfo) => {
     test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "home catalogue cards once on desktop");
     await page.goto("/");
 
     await expect(page.locator(".shop-home__original-card").first()).toHaveAttribute(

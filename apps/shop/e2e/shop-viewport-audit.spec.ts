@@ -12,8 +12,9 @@ const viewports = [
 
 test.describe("Shop viewport audit @a11y", () => {
   for (const viewport of viewports) {
-    test(`no horizontal overflow at ${viewport.width}px`, async ({ page }) => {
+    test(`no horizontal overflow at ${viewport.width}px`, async ({ page }, testInfo) => {
       test.skip(!enabled, skipReason);
+      test.skip(testInfo.project.name !== "chromium-desktop", "viewport sizes assigned explicitly");
       await page.setViewportSize(viewport);
       await page.goto("/");
       await expect(page.locator("#main-content")).toBeVisible();
@@ -25,8 +26,9 @@ test.describe("Shop viewport audit @a11y", () => {
     });
   }
 
-  test("hero discover CTA is in viewport on mobile", async ({ page }) => {
+  test("hero discover CTA is in viewport on mobile", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "viewport sizes assigned explicitly");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/");
     await expect(page.getByRole("link", { name: "Discover" })).toBeInViewport();

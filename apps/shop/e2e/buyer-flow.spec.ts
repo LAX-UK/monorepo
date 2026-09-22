@@ -4,7 +4,8 @@ import { expect, test } from "@playwright/test";
  * Buyer flow stops before live Stripe; webhook completion is exercised in shop-api tests.
  */
 test.describe("shop buyer flow @e2e", () => {
-  test("artwork detail exposes basket CTA when stock is listed", async ({ page }) => {
+  test("artwork detail exposes basket CTA when stock is listed", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
     await page.goto("/artworks");
     const firstArtwork = page.locator('a[href^="/artworks/"]').first();
     await firstArtwork.click();
@@ -15,12 +16,14 @@ test.describe("shop buyer flow @e2e", () => {
     }
   });
 
-  test("basket route renders", async ({ page }) => {
+  test("basket route renders", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
     await page.goto("/basket");
     await expect(page.getByRole("heading", { name: "Basket", exact: true })).toBeVisible();
   });
 
-  test("guest can add to basket and see a line on the basket page", async ({ page }) => {
+  test("guest can add to basket and see a line on the basket page", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "buyer journey on desktop only");
     await page.goto("/artworks");
     const addButton = page.getByRole("button", { name: /add to basket/i }).first();
     if (!(await addButton.isVisible())) {

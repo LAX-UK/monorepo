@@ -49,7 +49,7 @@
   --color-success-container: oklch(0.94 0.06 145);
   --color-info: #3a70e2;
   --color-info-container: #e4f2ff;
-  --color-warning: oklch(0.72 0.14 55);
+  --color-warning: oklch(0.48 0.14 55);
   --color-warning-container: oklch(0.94 0.06 85);
   --color-danger: oklch(0.55 0.2 25);
   --color-danger-container: oklch(0.94 0.04 25);

@@ -6,8 +6,9 @@ const skipReason =
   "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_VISUAL=1, PLAYWRIGHT_BASE_URL, and start Shop with seeded catalogue.";
 
 test.describe("Shop catalogue visuals @visual", () => {
-  test("artworks hub matches baseline on desktop", async ({ page }) => {
+  test("artworks hub matches baseline on desktop", async ({ page }, testInfo) => {
     test.skip(!enabled || !visual, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "desktop visual only");
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/artworks");

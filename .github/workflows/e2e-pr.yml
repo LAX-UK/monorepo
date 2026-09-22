@@ -236,6 +236,8 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3020
           PLAYWRIGHT_E2E: "1"
           PLAYWRIGHT_VISUAL: "1"
+          SHOP_OIDC_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
         run: pnpm --filter @auction/shop test:e2e
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

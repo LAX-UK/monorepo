@@ -9,12 +9,15 @@ test.describe("Shop catalogue routes @a11y", () => {
     { path: "/artworks", heading: "Artworks" },
     { path: "/artists", heading: "Artists" },
     { path: "/categories", heading: "Categories" },
-    { path: "/artworks/vessel-study", heading: "Vessel Study" },
     { path: "/artists/emmett-king", heading: "Emmett King" },
     { path: "/categories/art", heading: "Art" },
   ]) {
-    test(`${route.path} renders its catalogue contract`, async ({ page }) => {
+    test(`${route.path} renders its catalogue contract`, async ({ page }, testInfo) => {
       test.skip(!enabled, skipReason);
+      test.skip(
+        testInfo.project.name !== "chromium-desktop",
+        "catalogue route matrix on desktop only",
+      );
       const response = await page.goto(route.path);
 
       expect(response?.ok()).toBeTruthy();

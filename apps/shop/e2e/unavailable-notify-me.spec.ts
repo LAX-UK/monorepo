@@ -18,8 +18,12 @@ async function signInToShop(page: import("@playwright/test").Page, returnTo: str
 }
 
 test.describe("unavailable artwork interest @e2e", () => {
-  test("authenticated viewer sees notify-me on sold-out editions", async ({ page }) => {
+  test("authenticated viewer sees notify-me on sold-out editions", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
+    test.skip(
+      testInfo.project.name !== "chromium-desktop",
+      "authenticated journey on desktop only",
+    );
     await signInToShop(page, "/artworks/reed-study");
     await expect(page).toHaveURL(/\/artworks\/reed-study/, { timeout: 60_000 });
 
@@ -29,8 +33,12 @@ test.describe("unavailable artwork interest @e2e", () => {
 
   test("authenticated viewer can register interest on price-on-request originals", async ({
     page,
-  }) => {
+  }, testInfo) => {
     test.skip(!enabled, skipReason);
+    test.skip(
+      testInfo.project.name !== "chromium-desktop",
+      "authenticated journey on desktop only",
+    );
     await signInToShop(page, "/artworks/string-study");
     await expect(page).toHaveURL(/\/artworks\/string-study/, { timeout: 60_000 });
 
