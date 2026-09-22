@@ -1,3 +1,6 @@
+import type { Database } from "@auction/db";
+import { shopArtwork, shopEdition } from "@auction/db/schema";
+import { eq } from "drizzle-orm";
 import type { ImportArtworkHandler } from "../../application/handlers/import-artwork.handler.js";
 
 export const SHOP_SEED_IMPORT_KEYS = {
@@ -6,8 +9,23 @@ export const SHOP_SEED_IMPORT_KEYS = {
   secondEligible: "seed:shop:foundation:second-eligible-artwork",
 } as const;
 
+async function depleteEditionStockForSlug(db: Database, slug: string): Promise<void> {
+  const artwork = await db
+    .select({ id: shopArtwork.id })
+    .from(shopArtwork)
+    .where(eq(shopArtwork.slug, slug))
+    .limit(1);
+  const artworkId = artwork[0]?.id;
+  if (!artworkId) return;
+  await db
+    .update(shopEdition)
+    .set({ status: "sold", ownerPartyId: null })
+    .where(eq(shopEdition.artworkId, artworkId));
+}
+
 export async function seedShopFoundationCatalogue(
   importArtwork: ImportArtworkHandler,
+  db?: Database,
 ): Promise<void> {
   await importArtwork({
     importKey: SHOP_SEED_IMPORT_KEYS.eligible,
@@ -46,11 +64,14 @@ export async function seedShopFoundationCatalogue(
     primaryImageUrl: "/shop/home/original-3.webp",
     dimensions: "120 × 90 cm",
     yearCreated: 2014,
-    saleState: "sold",
+    saleState: "for_sale",
     artistSlug: "foundation-artist",
     artistDisplayName: "Flora Powers",
     artistDiscipline: "Contemporary painter",
     eligibleForEditionAllocation: true,
     printPricePence: 9_500,
   });
+  if (db) {
+    await depleteEditionStockForSlug(db, "reed-study");
+  }
 }

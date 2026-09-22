@@ -97,7 +97,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     },
     importArtwork,
     async seedCatalogue(): Promise<void> {
-      await seedShopFoundationCatalogue(importArtwork);
+      await seedShopFoundationCatalogue(importArtwork, db);
       await seedShopStorefrontCuration(db, createDrizzleStorefrontCurationWriter);
     },
     close: () => closeDb(db),

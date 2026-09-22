@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
+import { settleVisualPage } from "./settle-visual-page";
 import { applyShopThemeForE2e, syncShopThemeForE2e } from "./shop-theme-e2e";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
@@ -11,30 +11,6 @@ function formatAxeViolations(
   violations: ReadonlyArray<{ id: string; impact?: string | null; help: string }>,
 ) {
   return violations.map((v) => `  - ${v.id} (${v.impact ?? "?"}): ${v.help}`).join("\n");
-}
-
-async function settleVisualPage(page: Page) {
-  for (const image of await page.locator("img").all()) {
-    await image.scrollIntoViewIfNeeded();
-    await image.evaluate((node) => {
-      const element = node as HTMLImageElement;
-      const settle = (): Promise<void> =>
-        element.complete
-          ? Promise.resolve()
-          : new Promise<void>((resolve) => {
-              element.addEventListener("load", () => resolve(), { once: true });
-              element.addEventListener("error", () => resolve(), { once: true });
-            });
-      const timeout = new Promise<void>((resolve) => {
-        window.setTimeout(resolve, 8_000);
-      });
-      return Promise.race([settle(), timeout]);
-    });
-  }
-  await page.locator(".shop-home__scroll-row").evaluateAll((regions) => {
-    for (const region of regions) region.scrollLeft = 0;
-  });
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
 }
 
 test.describe("Shop home @a11y", () => {

@@ -12,7 +12,8 @@ export default defineConfig({
   snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{arg}-{projectName}{ext}",
   expect: {
     toHaveScreenshot: {
-      maxDiffPixelRatio: 0.001,
+      // Ubuntu CI vs local capture can differ slightly on font rasterization.
+      maxDiffPixelRatio: 0.02,
       threshold: 0.2,
     },
   },

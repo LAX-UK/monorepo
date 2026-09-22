@@ -11,6 +11,10 @@ async function openHostedLogin(page: Page): Promise<void> {
   const menu = page.getByRole("button", { name: "Open menu" });
   if (await menu.isVisible()) {
     await menu.click();
+    const mobileSignIn = page.getByRole("link", { name: "Sign in" });
+    await mobileSignIn.click();
+    await expect(page).toHaveURL((url) => url.origin === issuerOrigin && url.pathname === "/login");
+    return;
   }
   await page.getByRole("button", { name: "Account menu" }).filter({ visible: true }).click();
   await page.getByRole("menuitem", { name: "Sign in" }).filter({ visible: true }).click();
