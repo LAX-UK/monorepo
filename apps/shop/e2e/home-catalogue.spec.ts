@@ -29,4 +29,24 @@ test.describe("Shop home catalogue fixtures @e2e", () => {
       /\/artists\//,
     );
   });
+
+  test("shows forward rail affordance when a home row overflows", async ({ page }, testInfo) => {
+    test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "desktop rail affordance only");
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/");
+    const printsRail = page.locator("#prints-rail");
+    await expect(printsRail).toBeVisible();
+    const overflow = await printsRail.evaluate((el) => el.scrollWidth - el.clientWidth > 4);
+    test.skip(!overflow, "Prints rail has no overflow in this viewport");
+    const forward = page.getByRole("button", { name: "Scroll to see more prints and multiples" });
+    await expect(forward).toBeVisible();
+    await forward.focus();
+    await expect(forward).toBeFocused();
+    const before = await printsRail.evaluate((el) => el.scrollLeft);
+    await forward.click();
+    await expect
+      .poll(async () => printsRail.evaluate((el) => el.scrollLeft))
+      .toBeGreaterThan(before);
+  });
 });
