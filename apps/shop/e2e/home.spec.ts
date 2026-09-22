@@ -166,7 +166,7 @@ test.describe("Shop home @visual", () => {
         await expect(page.locator("html")).not.toHaveClass(/dark/);
       }
       await settleVisualPage(page);
-      await expect(page).toHaveScreenshot(`shop-home-mobile-${theme}.png`, { fullPage: true });
+      await expect(page.locator("#main-content")).toHaveScreenshot(`shop-home-mobile-${theme}.png`);
     });
   }
 });
