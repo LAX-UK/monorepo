@@ -12,7 +12,7 @@ describe("OIDC consent HTML", () => {
     expect(html).toContain("&lt;script&gt;");
     expect(html).toContain("&lt;img onerror=alert(1)&gt;");
     expect(html).toContain("&lt;/script&gt;&lt;script&gt;alert(2)&lt;/script&gt;");
-    expect(html).toContain('<script src="/oidc-consent.js" defer></script>');
+    expect(html).toContain('<script src="/oidc-consent.js');
     expect(OIDC_CONSENT_SCRIPT).toContain('fetch("/api/auth/oauth2/consent"');
   });
 });

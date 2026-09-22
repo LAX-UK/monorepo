@@ -1,0 +1,27 @@
+export const HOSTED_AUTH_MESSAGES = {
+  GENERIC_SIGN_IN: "Invalid email or password.",
+  GENERIC_REGISTER: "Unable to create your account. Try again later.",
+  REGISTER_CHECK_EMAIL: "Check your email to continue.",
+  GENERIC_NETWORK: "Something went wrong. Try again.",
+  GENERIC_RECOVERY: "If an account exists for that email, instructions were sent.",
+  GENERIC_OTP_SEND: "If that number can receive a code, we sent one.",
+  GENERIC_OTP_VERIFY: "Invalid or expired code.",
+  GENERIC_MAGIC_LINK: "If an account exists for that email, a sign-in link was sent.",
+  GENERIC_VERIFICATION: "If an account exists for that email, a verification link was sent.",
+  CAPTCHA_REQUIRED: "For your security, complete the check below and try again.",
+  RESET_INVALID: "Reset link is invalid or expired.",
+  RESET_FAILED: "Unable to reset password. Request a new link.",
+  VERIFY_FAILED: "Verification link is invalid or expired.",
+  MFA_FAILED: "Verification failed. Try again.",
+  CONSENT_FAILED: "Authorization failed. Please try again.",
+  EMAIL_REQUIRED: "Enter your email address.",
+  EMAIL_INVALID: "Enter a valid email address.",
+  PASSWORD_REQUIRED: "Password is required.",
+  NAME_REQUIRED: "Enter your full name.",
+  PHONE_REQUIRED: "Enter your mobile number.",
+  OTP_REQUIRED: "Enter the verification code.",
+  OTP_INVALID: "Enter the 6-digit code.",
+  REQUIRED: "This field is required.",
+} as const;
+
+export type HostedAuthMessageKey = keyof typeof HOSTED_AUTH_MESSAGES;

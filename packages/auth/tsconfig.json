@@ -6,5 +6,11 @@
     "noEmit": false
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts"]
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/hosted-auth/browser/*.entry.ts",
+    "src/hosted-auth/browser/runtime-controller.ts",
+    "src/hosted-auth/browser/window-auth.ts",
+    "src/hosted-auth/build-hosted-assets.setup.ts"
+  ]
 }

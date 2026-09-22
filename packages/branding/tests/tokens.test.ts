@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { BRAND_COLORS, BRAND_FONTS } from "../src/brand-identity.js";
-import { SITE_THEME_COLOR_LIGHT } from "../src/site.js";
+import { SITE_COMPANY_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "../src/site.js";
 import {
   COLORS,
   FONT_STACK_BODY,
@@ -146,5 +146,60 @@ describe("globals.css typography tokens", () => {
     expect(FONT_STACK_BODY).toContain(BRAND_FONTS.secondary);
     expect(FONT_STACK_HEADING).toContain(BRAND_FONTS.primary);
     expect(FONT_STACK_SUPPORTING).toContain(BRAND_FONTS.secondary);
+  });
+});
+
+describe("apps/shop base.css @theme brand primitives", () => {
+  const shopBasePath = join(__dirname, "../../../apps/shop/src/app/base.css");
+  const css = readFileSync(shopBasePath, "utf8");
+
+  const brandPrimitiveCases: [keyof typeof BRAND_COLORS, string][] = [
+    ["obsidian", "--color-brand-obsidian"],
+    ["midnight", "--color-brand-midnight"],
+    ["lightGray", "--color-brand-light-gray"],
+    ["lightCream", "--color-brand-light-cream"],
+  ];
+
+  it.each(brandPrimitiveCases)("Shop %s resolves to BRAND_COLORS", (_key, varName) => {
+    const fromCss = parseCssVar(css, varName);
+    expect(fromCss).toBeDefined();
+    expect(fromCss).toMatch(/var\(--brand-/);
+  });
+
+  it("uses Bid-aligned container width tokens", () => {
+    expect(parseCssVar(css, "--container-max")).toBe("90rem");
+    expect(parseCssVar(css, "--container-inner")).toBe("86rem");
+  });
+});
+
+describe("issuer-hosted auth chrome mirrors Brand Identity", () => {
+  const hostedTokens = readFileSync(
+    join(__dirname, "../../../packages/auth/src/hosted-auth/tokens.ts"),
+    "utf8",
+  );
+
+  it("locks Identity login tokens to branding SSOT without a package import", () => {
+    expect(hostedTokens).toContain(`obsidian: "${BRAND_COLORS.obsidian}"`);
+    expect(hostedTokens).toContain(`midnight: "${BRAND_COLORS.midnight}"`);
+    expect(hostedTokens).toContain(`lightCream: "${BRAND_COLORS.lightCream}"`);
+    expect(hostedTokens).toContain(`pageBg: "${COLORS.pageBg}"`);
+    expect(hostedTokens).toContain(`ink: "${COLORS.textPrimary}"`);
+    expect(hostedTokens).toContain(`textSecondary: "${COLORS.textSecondary}"`);
+    expect(hostedTokens).toContain(FONT_STACK_BODY);
+    expect(hostedTokens).toContain(FONT_STACK_SUPPORTING);
+    expect(hostedTokens).toContain(`companyName: "${SITE_COMPANY_NAME}"`);
+    expect(hostedTokens).toContain(`darkPageBg: "${SITE_THEME_COLOR_DARK}"`);
+  });
+});
+
+describe("issuer-hosted Shop logo stays in lockstep with the storefront mark", () => {
+  it("matches the Shop public SVG byte-for-byte", () => {
+    const shopLogo = readFileSync(
+      join(__dirname, "../../../apps/shop/public/shop/lax-shop-logo.svg"),
+    );
+    const issuerLogo = readFileSync(
+      join(__dirname, "../../../packages/auth/src/hosted-auth/assets/lax-shop-logo.svg"),
+    );
+    expect(issuerLogo.equals(shopLogo)).toBe(true);
   });
 });

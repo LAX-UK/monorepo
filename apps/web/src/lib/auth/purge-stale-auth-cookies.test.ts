@@ -7,6 +7,7 @@ describe("purgeStaleAuthCookies", () => {
     const res = NextResponse.next();
     purgeStaleAuthCookies(res, {
       nodeEnv: "production",
+      allowHttpCookies: "false",
     });
 
     for (const name of STALE_AUTH_COOKIE_NAMES) {

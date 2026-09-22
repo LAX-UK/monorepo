@@ -121,6 +121,10 @@
       "types": "./dist/components/ui/dot-status-pill.d.ts",
       "default": "./dist/components/ui/dot-status-pill.js"
     },
+    "./components/media-placeholder": {
+      "types": "./dist/components/ui/media-placeholder.d.ts",
+      "default": "./dist/components/ui/media-placeholder.js"
+    },
     "./components/filter-chip-group": {
       "types": "./dist/components/ui/filter-chip-group.d.ts",
       "default": "./dist/components/ui/filter-chip-group.js"

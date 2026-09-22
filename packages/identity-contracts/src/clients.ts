@@ -17,6 +17,13 @@ export type RegisteredOidcClientId =
 
 export type IdentityScope = OidcDiscoveryDocument["scopes_supported"][number];
 
+/**
+ * `implicit` skips the OIDC consent screen for first-party confidential web
+ * products. `explicit` keeps Deny/Allow (mobile custom URIs and future
+ * third-party clients). `prompt=consent` still forces the screen.
+ */
+export type OidcConsentPolicy = "implicit" | "explicit";
+
 export type RegisteredOidcClientMetadata = {
   clientId: RegisteredOidcClientId;
   kind: OidcClientKind;
@@ -28,6 +35,7 @@ export type RegisteredOidcClientMetadata = {
   allowedResources: readonly LaxResourceId[];
   /** Mandatory for public/browser clients per OAuth 2.0 Security BCP. */
   pkceRequired: boolean;
+  consentPolicy: OidcConsentPolicy;
   /** Exact future OpenID Connect Back-Channel Logout endpoint, when supported by the RP. */
   backchannelLogoutUri?: string | undefined;
   /** Staging receiver on the same product origin boundary. */
@@ -55,6 +63,7 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
       allowedScopes: ["openid", "profile", "email", "offline_access", "bid.read", "bid.write"],
       allowedResources: [LAX_RESOURCE_IDS.LAX_BID_API, LAX_RESOURCE_IDS.LAX_WS],
       pkceRequired: true,
+      consentPolicy: "implicit",
       backchannelLogoutUri: "https://lax.bid/api/auth/backchannel-logout",
       testBackchannelLogoutUri: "https://test.lax.bid/api/auth/backchannel-logout",
       backchannelLogoutSessionRequired: true,
@@ -70,12 +79,14 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
       ],
       postLogoutRedirectUris: [
         "http://localhost:3010/",
+        "http://localhost:3020/",
         "https://shop.lax.art/",
         "https://test-shop.lax.bid/",
       ],
       allowedScopes: ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"],
       allowedResources: [LAX_RESOURCE_IDS.LAX_SHOP_API],
       pkceRequired: true,
+      consentPolicy: "implicit",
       backchannelLogoutUri: "https://shop.lax.art/api/auth/backchannel-logout",
       testBackchannelLogoutUri: "https://test-shop.lax.bid/api/auth/backchannel-logout",
       backchannelLogoutSessionRequired: true,
@@ -89,5 +100,16 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
       allowedScopes: ["openid", "profile", "email", "offline_access", "bid.read"],
       allowedResources: [LAX_RESOURCE_IDS.LAX_WS],
       pkceRequired: true,
+      consentPolicy: "explicit",
     },
   };
+
+export function isRegisteredOidcClientId(value: string): value is RegisteredOidcClientId {
+  return Object.hasOwn(REGISTERED_OIDC_CLIENTS, value);
+}
+
+export function oidcClientIdsWithImplicitConsent(): readonly RegisteredOidcClientId[] {
+  return Object.values(REGISTERED_OIDC_CLIENTS)
+    .filter((client) => client.consentPolicy === "implicit")
+    .map((client) => client.clientId);
+}

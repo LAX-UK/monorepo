@@ -1,16 +1,48 @@
 #!/usr/bin/env node
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describeRejection } from "./http-diagnostics.mjs";
 import { completeAuthorization } from "./oidc-authorize-response.mjs";
 
+const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const envPath = join(root, ".env");
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, "utf8").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq);
+    if (process.env[key]?.trim()) continue;
+    let value = trimmed.slice(eq + 1);
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
+
 const STAGING_SHOP_ORIGIN = "https://test-shop.lax.bid";
-const LOCAL_SHOP_ORIGIN = "http://localhost:3010";
+const LOCAL_SHOP_IDENTITY_ORIGIN = "http://localhost:3010";
+const LOCAL_SHOP_STOREFRONT_ORIGIN = "http://localhost:3020";
 
 const authBase = (process.env.AUTH_BASE_URL ?? "http://localhost:3003").replace(/\/+$/, "");
-const configuredShopBase = (process.env.SHOP_IDENTITY_BASE_URL ?? LOCAL_SHOP_ORIGIN).replace(
-  /\/+$/,
-  "",
-);
+const configuredShopBase = (
+  process.env.SHOP_IDENTITY_BASE_URL ?? LOCAL_SHOP_IDENTITY_ORIGIN
+).replace(/\/+$/, "");
+const configuredStorefrontBase = (
+  process.env.SHOP_STOREFRONT_URL ??
+  process.env.LAX_SHOP_STOREFRONT_URL ??
+  LOCAL_SHOP_STOREFRONT_ORIGIN
+).replace(/\/+$/, "");
 const shopBase = authBase.includes("test-auth.lax.bid") ? STAGING_SHOP_ORIGIN : configuredShopBase;
+const storefrontBase = authBase.includes("test-auth.lax.bid")
+  ? STAGING_SHOP_ORIGIN
+  : configuredStorefrontBase;
 const email = process.env.SHOP_OIDC_TEST_EMAIL;
 const password = process.env.SHOP_OIDC_TEST_PASSWORD;
 
@@ -18,7 +50,16 @@ if (!email || !password) {
   throw new Error("SHOP_OIDC_TEST_EMAIL and SHOP_OIDC_TEST_PASSWORD are required");
 }
 
-const allowedShopOrigins = new Set([STAGING_SHOP_ORIGIN, LOCAL_SHOP_ORIGIN]);
+const allowedShopOrigins = new Set([
+  STAGING_SHOP_ORIGIN,
+  LOCAL_SHOP_IDENTITY_ORIGIN,
+  LOCAL_SHOP_STOREFRONT_ORIGIN,
+]);
+const allowedStorefrontOrigins = new Set([
+  STAGING_SHOP_ORIGIN,
+  LOCAL_SHOP_STOREFRONT_ORIGIN,
+  new URL(storefrontBase).origin,
+]);
 const allowedAuthOrigins = new Set([
   authBase,
   "http://localhost:3003",
@@ -85,6 +126,7 @@ async function main() {
     "/api/auth/oauth2/authorize",
     "Shop login authorize",
   );
+  const expectedState = new URL(authorizeUrl).searchParams.get("state") ?? undefined;
 
   const authorize = await fetch(authorizeUrl, {
     redirect: "manual",
@@ -96,6 +138,8 @@ async function main() {
     authorizeResponse: authorize,
     cookieHeader: cookieHeader(authCookies),
     onResponse: (response) => captureCookies(response, authCookies),
+    requireFirstPartySkip: true,
+    expectedState,
   });
   assertTrustedRedirect(callbackUri, allowedShopOrigins, "/auth/callback", "Shop OIDC callback");
 
@@ -109,8 +153,10 @@ async function main() {
     throw new Error(`Shop callback failed (${callback.status})`);
   }
   assertTrustedRedirect(
-    new URL(callbackLocation, shopBase).toString(),
-    allowedShopOrigins,
+    callbackLocation.startsWith("http")
+      ? callbackLocation
+      : new URL(callbackLocation, shopBase).toString(),
+    allowedStorefrontOrigins,
     "/account",
     "Shop callback",
   );
@@ -126,7 +172,7 @@ async function main() {
   const logout = await fetch(`${shopBase}/logout`, {
     method: "POST",
     redirect: "manual",
-    headers: { cookie: cookieHeader(shopCookies), origin: shopBase },
+    headers: { cookie: cookieHeader(shopCookies), origin: storefrontBase },
   });
   captureCookies(logout, shopCookies);
   const endSessionUrl = logout.headers.get("location");
@@ -149,7 +195,7 @@ async function main() {
   }
   const postLogout = endSession.headers.get("location");
   if (!postLogout) throw new Error("Shop OP end-session omitted its post-logout redirect");
-  assertTrustedRedirect(postLogout, allowedShopOrigins, "/", "Shop post-logout");
+  assertTrustedRedirect(postLogout, allowedStorefrontOrigins, "/", "Shop post-logout");
   const signedOut = await fetch(`${shopBase}/me`, {
     headers: { cookie: cookieHeader(shopCookies) },
   });

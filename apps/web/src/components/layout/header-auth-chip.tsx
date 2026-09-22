@@ -8,6 +8,7 @@ import { useAppSession } from "@/lib/auth/use-app-session";
 import { useAuthHeaderLinks } from "@/lib/auth/use-auth-header-links";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
+import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -19,6 +20,7 @@ type HeaderAuthChipVariant = "account" | "notifications" | "full";
 type HeaderAuthChipProps = {
   variant?: HeaderAuthChipVariant;
   headerTone?: SiteHeaderTone;
+  laxProductLinks?: LaxProductLinkVm[];
 };
 
 function HeaderAuthSkeleton({
@@ -40,7 +42,11 @@ function HeaderAuthSkeleton({
   return <div className={skeletonClass} aria-label="Loading account" aria-busy="true" />;
 }
 
-export function HeaderAuthChip({ variant = "full", headerTone = "on-light" }: HeaderAuthChipProps) {
+export function HeaderAuthChip({
+  variant = "full",
+  headerTone = "on-light",
+  laxProductLinks = [],
+}: HeaderAuthChipProps) {
   const { user, pending } = useAppSession();
 
   if (pending) return <HeaderAuthSkeleton variant={variant} headerTone={headerTone} />;
@@ -48,13 +54,15 @@ export function HeaderAuthChip({ variant = "full", headerTone = "on-light" }: He
     return variant === "notifications" ? null : <HeaderGuestMenu headerTone={headerTone} />;
   }
   if (variant === "notifications") return <NotificationBell headerTone={headerTone} />;
-  if (variant === "account") return <HeaderUserMenu user={user} headerTone={headerTone} />;
+  if (variant === "account") {
+    return <HeaderUserMenu user={user} headerTone={headerTone} laxProductLinks={laxProductLinks} />;
+  }
 
   return (
     <div className="flex items-center gap-2">
       <HeaderBidUrgencyChip />
       <NotificationBell headerTone={headerTone} />
-      <HeaderUserMenu user={user} headerTone={headerTone} />
+      <HeaderUserMenu user={user} headerTone={headerTone} laxProductLinks={laxProductLinks} />
     </div>
   );
 }

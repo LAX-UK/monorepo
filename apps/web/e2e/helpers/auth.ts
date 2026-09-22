@@ -304,11 +304,47 @@ async function completeOidcConsentViaApi(page: Page, destination: RegExp): Promi
     "http://localhost:3003",
   );
   const authorizeUrl = page.url();
-  if (!isOidcConsentUrl(authorizeUrl)) {
+  if (!isOidcConsentUrl(authorizeUrl) && !isOidcCallbackUrl(authorizeUrl)) {
+    if (destination.test(authorizeUrl)) return;
     throw new Error(`Expected OIDC authorize URL but got ${authorizeUrl}`);
   }
+  if (isOidcCallbackUrl(authorizeUrl) || destination.test(authorizeUrl)) {
+    if (!destination.test(page.url())) {
+      await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    }
+    return;
+  }
 
-  const authorizeRes = await page.request.get(authorizeUrl);
+  const authorizeRes = await page.request.get(authorizeUrl, { maxRedirects: 0 });
+  const headers = authorizeRes.headers();
+  const location = headers.location;
+  if (location && authorizeRes.status() >= 300 && authorizeRes.status() < 400) {
+    await page.goto(location, { waitUntil: "domcontentloaded" });
+    if (isOidcCallbackUrl(page.url())) {
+      await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    } else if (!destination.test(page.url())) {
+      await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    }
+    return;
+  }
+
+  const contentType = headers["content-type"] ?? "";
+  if (contentType.includes("application/json")) {
+    const body = (await authorizeRes.json().catch(() => null)) as {
+      url?: string;
+      redirectURI?: string;
+    } | null;
+    const redirectUri = body?.url ?? body?.redirectURI;
+    if (typeof redirectUri !== "string") {
+      throw new Error(`OIDC authorize JSON omitted a redirect (${authorizeRes.status()})`);
+    }
+    await page.goto(redirectUri, { waitUntil: "domcontentloaded" });
+    if (!destination.test(page.url())) {
+      await page.waitForURL(destination, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    }
+    return;
+  }
+
   if (!authorizeRes.ok()) {
     throw new Error(`OIDC authorize failed (${authorizeRes.status()})`);
   }

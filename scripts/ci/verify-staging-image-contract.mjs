@@ -29,6 +29,13 @@ const contracts = [
     releaseEnv: process.env.SHOP_SHA,
     rollingTag: "test",
   },
+  {
+    repository: "lax-test-shop-api",
+    sha: process.env.SHOP_API_SHA,
+    digest: process.env.SHOP_API_DIGEST,
+    releaseEnv: process.env.SHOP_API_SHA,
+    rollingTag: "test",
+  },
 ];
 
 const requiredInputs = [
@@ -38,6 +45,8 @@ const requiredInputs = [
   ["SHOP_IDENTITY_DIGEST", process.env.SHOP_IDENTITY_DIGEST],
   ["SHOP_SHA", process.env.SHOP_SHA],
   ["SHOP_DIGEST", process.env.SHOP_DIGEST],
+  ["SHOP_API_SHA", process.env.SHOP_API_SHA],
+  ["SHOP_API_DIGEST", process.env.SHOP_API_DIGEST],
 ];
 const missingInputs = requiredInputs.filter(([, value]) => !value).map(([name]) => name);
 if (missingInputs.length > 0) {
@@ -92,4 +101,4 @@ if (outputPath) {
   );
 }
 
-console.log("Staging image contracts verified for Identity, Shop Identity, and Shop");
+console.log("Staging image contracts verified for Identity, Shop Identity, Shop, and Shop API");

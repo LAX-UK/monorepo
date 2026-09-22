@@ -1,0 +1,576 @@
+.shop-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-section-gap);
+  width: 100%;
+  max-width: var(--container-max, 90rem);
+  margin: 0 auto;
+  padding-inline: var(--shop-page-gutter);
+  color: var(--color-on-surface);
+}
+
+.shop-home--marketing {
+  max-width: none;
+  padding-inline: 0;
+  padding-top: 0;
+  gap: 0;
+}
+
+.shop-home--marketing > :not(.shop-home__hero) {
+  width: 100%;
+  max-width: var(--container-max, 90rem);
+  margin-inline: auto;
+  padding-inline: var(--shop-page-gutter);
+}
+
+.shop-home--marketing .marketing-status-state--banner,
+.shop-home--marketing .shop-status-state--banner {
+  margin-top: var(--section-spacing-tight, 3rem);
+}
+
+/* Signup sits outside `.shop-home__section`; pad the flex item (reveal) so rhythm matches catalogue bands. */
+.shop-home--marketing > .reveal:has(.shop-home__signup) {
+  padding-top: var(--section-spacing-tight, 3rem);
+}
+
+/* Tall enough for hero copy; leaves the next home section visible without scrolling. */
+.shop-home__hero {
+  position: relative;
+  width: 100%;
+  min-height: clamp(22.5rem, 62svh, 36rem);
+  overflow: hidden;
+  background: var(--color-brand-obsidian);
+}
+
+@supports (height: 100dvh) {
+  .shop-home__hero {
+    min-height: clamp(22.5rem, 62dvh, 36rem);
+  }
+}
+
+.shop-home__hero-media {
+  position: absolute;
+  inset: 0;
+}
+
+.shop-home__hero-layer {
+  object-fit: cover;
+}
+
+/* THEME_FIXED_CONTRAST: photography scrim — independent of page theme */
+.shop-home__hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    var(--color-scrim-hero-strong) 0%,
+    var(--color-scrim-hero-mid) 45%,
+    transparent 100%
+  );
+}
+
+.shop-home__hero-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 47.5rem;
+  min-height: 100%;
+  justify-content: flex-end;
+  padding: calc(var(--header-height, 7rem) + 2rem) var(--shop-page-gutter) 3.5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shop-home__hero:not(.shop-home__hero--static) .shop-home__hero-panel {
+    animation: shop-hero-panel-in 0.65s ease-out both;
+  }
+
+  .shop-home__hero:not(.shop-home__hero--static) .shop-home__hero-layer--2 {
+    animation: shop-hero-drift 18s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes shop-hero-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shop-hero-drift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.02);
+  }
+}
+
+/* THEME_FIXED_CONTRAST: hero scrim — always light text on photography */
+.shop-home__hero-title {
+  margin: 0;
+  font-size: clamp(2.25rem, 6vw, 4.5rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--color-hero-foreground);
+  text-transform: uppercase;
+}
+
+.shop-home__hero-copy {
+  margin: 0;
+  max-width: 36rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: color-mix(in srgb, var(--color-hero-foreground) 80%, transparent);
+}
+
+/* THEME_FIXED_CONTRAST: cream CTA on hero imagery */
+.shop-home__hero-cta {
+  align-self: flex-start;
+  min-height: 2.75rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.25rem;
+  background: var(--color-brand-light-cream);
+  color: var(--color-brand-obsidian);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  text-decoration: none;
+}
+
+.shop-home__section {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--section-spacing-tight, 3rem);
+  padding-bottom: 0;
+}
+
+.shop-home__rail-state {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  font: inherit;
+  color: inherit;
+}
+
+.shop-home__section-header {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 0;
+}
+
+.shop-home__section-heading-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.shop-home__section-subtitle {
+  margin: 0;
+  font-family: var(--font-supporting);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: var(--color-on-surface);
+  max-width: 36rem;
+}
+
+.shop-home__section-title {
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 500;
+  line-height: 3rem;
+  color: var(--color-on-surface);
+}
+
+.shop-home__section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  color: var(--color-on-surface);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.shop-home__scroll-row {
+  display: flex;
+  gap: 2.5rem;
+  padding: 0;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.shop-home__scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+.shop-home__scroll-row > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+.shop-home__original-card {
+  width: min(26.25rem, 85vw);
+  min-height: 40rem;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.shop-home__original-image {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 18rem;
+}
+
+.shop-home__original-body {
+  padding: var(--shop-card-pad-y) var(--shop-card-pad-x);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.shop-home__original-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.shop-home__original-title {
+  margin: 0;
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.75rem;
+  transition: color var(--motion-duration-md, 320ms) ease;
+}
+
+.shop-home__original-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.shop-home__original-card:hover .shop-home__original-title,
+.shop-home__original-card:focus-within .shop-home__original-title {
+  color: var(--color-link);
+}
+
+.shop-home__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+
+.shop-home__badge--sold {
+  text-transform: uppercase;
+}
+
+.shop-home__original-artist {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.shop-home__original-dimensions {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+  color: var(--color-on-surface);
+}
+
+.shop-home__availability-note {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  color: var(--color-on-surface);
+}
+
+.shop-home__category-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: var(--color-surface);
+}
+
+.shop-home__scroll-row--categories {
+  gap: 1.25rem;
+}
+
+.shop-home__scroll-row--categories .shop-home__category-card {
+  width: min(18.75rem, 70vw);
+}
+
+.shop-home__category-image {
+  position: relative;
+  aspect-ratio: 288 / 295;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.shop-home__category-photo {
+  object-fit: cover;
+}
+
+.shop-home__category-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 var(--shop-card-pad-x) var(--shop-card-pad-y);
+}
+
+.shop-home__category-label {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.625rem;
+  transition: color var(--motion-duration-md, 320ms) ease;
+}
+
+.shop-home__category-card:hover .shop-home__category-label,
+.shop-home__category-card:focus-within .shop-home__category-label {
+  color: var(--color-link);
+}
+
+.shop-home__print-card {
+  width: 14.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-card-gap);
+  color: inherit;
+  text-decoration: none;
+  background: var(--color-surface);
+}
+
+.shop-home__print-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 var(--shop-card-pad-x) var(--shop-card-pad-y);
+}
+
+.shop-home__print-image {
+  line-height: 0;
+}
+
+.shop-home__print-image img {
+  width: 14.5rem;
+  height: auto;
+  max-height: 16.5rem;
+  object-fit: cover;
+}
+
+.shop-home__print-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  color: var(--color-on-surface);
+  transition: color var(--motion-duration-md, 320ms) ease;
+}
+
+.shop-home__print-card:hover .shop-home__print-title,
+.shop-home__print-card:focus-within .shop-home__print-title {
+  color: var(--color-link);
+}
+
+.shop-home__print-artist {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+  color: var(--color-on-surface);
+}
+
+.shop-home__print-medium {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+  color: var(--color-on-surface);
+}
+
+.shop-home__section--artists {
+  gap: var(--section-spacing-tight, 3rem);
+}
+
+.shop-home__artists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1.25rem;
+}
+
+.shop-home__artist-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: var(--color-surface);
+}
+
+.shop-home__artist-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 var(--shop-card-pad-x) var(--shop-card-pad-y);
+}
+
+.shop-home__artist-image {
+  position: relative;
+  aspect-ratio: 288 / 295;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.shop-home__artist-photo {
+  object-fit: cover;
+}
+
+.shop-home__artist-name {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.625rem;
+  transition: color var(--motion-duration-md, 320ms) ease;
+}
+
+.shop-home__artist-card:hover .shop-home__artist-name,
+.shop-home__artist-card:focus-within .shop-home__artist-name {
+  color: var(--color-link);
+}
+
+.shop-home__artist-discipline {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.shop-home__signup {
+  display: flex;
+  flex-direction: column;
+  min-height: 24rem;
+  margin: 0 0 6.25rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.shop-home__signup-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2.5rem 2.5rem 2.5rem 2.5rem;
+}
+
+.shop-home__signup-title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 500;
+  line-height: 1.16;
+}
+
+.shop-home__signup-text {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  line-height: 1.625rem;
+  max-width: 32rem;
+}
+
+.shop-home__signup-button {
+  align-self: flex-start;
+  padding: 0.75rem 1.25rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: var(--color-brand-light-cream);
+  color: var(--color-brand-obsidian);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  text-decoration: none;
+}
+
+.shop-home__signup-media {
+  position: relative;
+  min-height: 16rem;
+}
+
+.shop-home__signup-photo {
+  object-fit: cover;
+}
+
+@media (min-width: 64rem) {
+  .shop-home__scroll-row--originals {
+    overflow-x: visible;
+  }
+
+  .shop-home__scroll-row--originals .shop-home__original-card {
+    width: calc((100% - 5rem) / 3);
+    height: 40rem;
+    min-height: 40rem;
+    min-width: 0;
+  }
+
+  .shop-home__scroll-row--categories {
+    overflow-x: visible;
+  }
+
+  .shop-home__scroll-row--categories .shop-home__category-card {
+    width: calc((100% - 3.75rem) / 4);
+    min-width: 0;
+  }
+
+  .shop-home__artists-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .shop-home__signup {
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 37.125rem;
+  }
+
+  .shop-home__signup-copy {
+    flex: 1;
+    justify-content: center;
+    padding: 2.5rem 5rem 2.5rem 2.5rem;
+  }
+
+  .shop-home__signup-media {
+    flex: 0 0 54.5rem;
+    width: 54.5rem;
+    max-width: 54.5rem;
+    min-height: auto;
+  }
+}

@@ -1,6 +1,6 @@
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
 
@@ -10,18 +10,6 @@ vi.mock("next/navigation", () => ({
     push: vi.fn(),
     refresh: vi.fn(),
   }),
-}));
-
-vi.mock("next/image", () => ({
-  default: ({
-    fill: _fill,
-    priority: _priority,
-    sizes: _sizes,
-    ...props
-  }: ComponentProps<"img"> & { fill?: boolean; priority?: boolean; sizes?: string }) => (
-    // biome-ignore lint/a11y/useAltText: alt is supplied by the component under test.
-    <img {...props} />
-  ),
 }));
 
 vi.mock("next/link", () => ({

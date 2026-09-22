@@ -4,9 +4,9 @@ TheAlx is a UK-based art platform with a marketing site at `lax.art`, an auction
 
 > **Implementation status (last reviewed 2026-07-24)**
 >
-> - **Implemented in code:** six deployable apps (`apps/web`, `apps/api`,
->   `apps/auth`, `apps/ws`, `apps/worker`, `apps/shop-identity`) build
->   from this monorepo. Postgres role separation is wired in
+> - **Implemented in code:** seven deployable apps (`apps/web`, `apps/api`,
+>   `apps/auth`, `apps/ws`, `apps/worker`, `apps/shop-identity`, `apps/shop-api`)
+>   plus the Shop storefront (`apps/shop`) build from this monorepo. Postgres role separation is wired in
 >   [packages/db/src/migrate-roles.ts](../../packages/db/src/migrate-roles.ts).
 >   Better Auth issues OIDC + JWT; email and finance integrations use durable
 >   webhook/outbox paths described in [04-domain-events.md](./04-domain-events.md).
@@ -28,9 +28,9 @@ A user encounters TheAlx through its marketing, auction, or Shop properties. The
 
 The architecture is deliberately simple. We could have built this with a separate identity-as-a-service vendor, an event bus, multiple databases per service, and a service mesh. We chose not to. The medium-grade tier we operate at is sized for our current traffic and the next 50× of growth without architectural changes — the things we'd need to build at hyperscale (KMS, separate databases, real event bus) are operational migrations, not rewrites of the application code.
 
-## The six apps
+## The deployable apps
 
-Six deployable units run on DigitalOcean App Platform. Each owns one concern.
+Seven backend deployable units (plus the Shop Next.js storefront) run on DigitalOcean App Platform. Each owns one concern.
 The boundary between the database-backed backends is enforced by Postgres roles;
 `apps/ws` and `apps/web` carry no privileged role of their own.
 
@@ -85,6 +85,19 @@ proves authorization-code + PKCE, host-only Shop sessions, token verification,
 logout/SSF receivers, and a `shop_app`-scoped local profile without importing
 Bid authorization.
 
+### apps/shop-api
+
+The Shop commerce API (`lax-shop-api`). Fastify v5 service owning catalogue
+reads and seed/import writes for artwork and editions under `shop_app`. Public
+foundation routes are unauthenticated; future authenticated commands verify
+Identity resource tokens. See [10-shop-commerce-boundary.md](./10-shop-commerce-boundary.md).
+
+### apps/shop
+
+The Next.js storefront at `shop.lax.art` (local dev port 3020). Server-rendered
+catalogue pages call `apps/shop-api`; sign-in flows delegate to `apps/shop-identity`
+or hosted Identity pages via configured base URLs.
+
 ## External domains
 
 Each external domain plays a different role and interacts with our backend differently.
@@ -122,9 +135,9 @@ We are deliberately not building several things that look like they belong here.
 - KMS for key storage. Keys live in Postgres, encrypted at rest by DO, readable only by the `auth_app` role. KMS-via-Vault is a future hardening step.
 - Multi-region deployment. One London-region DO deployment plus Cloudflare in front for global edge cache. Multi-region only when measurable user latency from a non-EU continent justifies it.
 - A service mesh, dedicated API gateway, or Kubernetes. App Platform absorbs all of this for our scale.
-- More than the current six apps. The discipline is "no seventh app without
-  written justification." Most new backend behavior belongs in an existing app
-  or `apps/worker`.
+- More than the current seven backend apps without a new D-number. Shop commerce
+  (`apps/shop-api`) is justified in D24. Most other new backend behavior still
+  belongs in an existing app or `apps/worker`.
 
 The threshold for revisiting any of these is documented in [the deployment doc](./06-deployment.md) under "defer triggers."
 

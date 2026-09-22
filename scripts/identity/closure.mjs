@@ -23,8 +23,12 @@ export const IDENTITY_PACKAGE_NAMES = Object.freeze(IDENTITY_PACKAGES.map(({ nam
 export const IDENTITY_ROOT_FILES = Object.freeze([
   ".nvmrc",
   ".npmrc",
+  // The extracted repo is secret-scanned on its own history, so it needs the
+  // same allowlist as the monorepo or it applies a different policy.
+  ".gitleaks.toml",
   "biome.json",
   "package.json",
+  "patches",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
 ]);
@@ -54,11 +58,12 @@ export const IDENTITY_DOCKER = Object.freeze({
   dockerfile: "apps/auth/Dockerfile",
   workspaceFilter: "@auction/auth-app...",
   manifestCopyPaths: Object.freeze(IDENTITY_PACKAGE_PATHS.map((path) => `${path}/package.json`)),
-  sourceCopyPaths: IDENTITY_PACKAGE_PATHS,
+  sourceCopyPaths: Object.freeze([...IDENTITY_PACKAGE_PATHS, "patches"]),
 });
 
 export const IDENTITY_ALLOWED_TOP_LEVEL = Object.freeze([
   ".git",
+  ".gitleaks.toml",
   ".nvmrc",
   ".npmrc",
   "apps",
@@ -68,5 +73,6 @@ export const IDENTITY_ALLOWED_TOP_LEVEL = Object.freeze([
   "packages",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
+  "patches",
   "scripts",
 ]);

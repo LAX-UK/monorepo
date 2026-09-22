@@ -8,12 +8,24 @@ import {
   identityPnpmEnvironment,
   prepareIdentityWorkspace,
 } from "../ci/prepare-identity-lockfile.mjs";
-import { IDENTITY_PACKAGES, IDENTITY_PACKAGE_NAMES, IDENTITY_PACKAGE_PATHS } from "./closure.mjs";
+import {
+  IDENTITY_PACKAGES,
+  IDENTITY_PACKAGE_NAMES,
+  IDENTITY_PACKAGE_PATHS,
+  IDENTITY_ROOT_FILES,
+} from "./closure.mjs";
 import { extractIdentityHistory } from "./extract-history.mjs";
 import { importSpecifiers } from "./import-specifiers.mjs";
 import { verifyDockerClosureText, verifyPackageClosure } from "./verify-docker-closure.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
+
+test("carries the monorepo gitleaks policy into extracted Identity history scans", () => {
+  assert.ok(
+    IDENTITY_ROOT_FILES.includes(".gitleaks.toml"),
+    "extracted repo must reuse .gitleaks.toml or portability scans use a different allowlist",
+  );
+});
 
 test("closure fixes the six path-preserving workspace packages", () => {
   assert.deepEqual(IDENTITY_PACKAGE_PATHS, [
@@ -44,6 +56,7 @@ test("bootstrap seeds extraction from the source lockfile", () => {
 test("Docker COPY paths stay aligned with the package closure", () => {
   const dockerfile = readFileSync(join(repoRoot, "apps/auth/Dockerfile"), "utf8");
   assert.deepEqual(verifyDockerClosureText(dockerfile), []);
+  assert.match(dockerfile, /COPY patches \.\/patches/);
   assert.match(dockerfile, /RUN corepack enable/);
   assert.doesNotMatch(dockerfile, /COREPACK_ENABLE_PROJECT_SPEC|corepack prepare/);
   assert.equal(dockerfile.match(/--config\.node-linker=isolated/g)?.length, 2);
@@ -114,6 +127,9 @@ test("bootstrap writes an exact isolated workspace without generating a lockfile
         name: "auction",
         packageManager: "pnpm@10.34.5",
         devDependencies: { "@biomejs/biome": "^1.9.4", unrelated: "1.0.0" },
+        pnpm: {
+          patchedDependencies: { "better-auth@1.6.22": "patches/better-auth@1.6.22.patch" },
+        },
       })}\n`,
     );
     for (const entry of IDENTITY_PACKAGES) {
@@ -126,6 +142,10 @@ test("bootstrap writes an exact isolated workspace without generating a lockfile
 
     const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
     assert.deepEqual(manifest.devDependencies, { "@biomejs/biome": "^1.9.4" });
+    assert.equal(
+      manifest.pnpm.patchedDependencies["better-auth@1.6.22"],
+      "patches/better-auth@1.6.22.patch",
+    );
     assert.equal(
       readFileSync(join(root, ".npmrc"), "utf8"),
       [

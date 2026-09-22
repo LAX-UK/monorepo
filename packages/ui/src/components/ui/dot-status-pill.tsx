@@ -13,7 +13,8 @@ export type DotStatusPillTone =
   | "critical"
   | "neutral"
   | "info"
-  | "success";
+  | "success"
+  | "accent";
 
 export { TONE_SHELL };
 

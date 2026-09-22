@@ -26,36 +26,36 @@ export {
   type OauthAccessTokenRow,
   type TwoFactorRow,
 } from "./at-rest/transform.js";
+export { OIDC_CONSENT_SCRIPT, buildOidcConsentHtml } from "./hosted-auth/index.js";
 export {
-  OIDC_CONSENT_SCRIPT,
-  buildOidcConsentHtml,
-} from "./oidc-consent-html.js";
-export {
+  HOSTED_AUTH_STYLES,
+  HOSTED_AUTH_RUNTIME_SCRIPT,
   HOSTED_LOGIN_SCRIPT,
-  buildHostedLoginHtml,
-} from "./hosted-login-html.js";
-export {
   HOSTED_SIGN_UP_SCRIPT,
-  buildHostedSignUpHtml,
-} from "./hosted-sign-up-html.js";
-export {
   HOSTED_FORGOT_PASSWORD_SCRIPT,
   HOSTED_RESET_PASSWORD_SCRIPT,
+  HOSTED_TWO_FACTOR_SCRIPT,
+  HOSTED_VERIFY_EMAIL_SCRIPT,
+  HOSTED_RESEND_VERIFICATION_SCRIPT,
+  HOSTED_MAGIC_LINK_SCRIPT,
+  HOSTED_PHONE_SCRIPT,
+  buildHostedLoginHtml,
+  buildHostedSignUpHtml,
   buildHostedForgotPasswordHtml,
   buildHostedResetPasswordHtml,
-} from "./hosted-forgot-password-html.js";
-export {
-  HOSTED_TWO_FACTOR_SCRIPT,
   buildHostedTwoFactorHtml,
-} from "./hosted-two-factor-html.js";
-export {
-  HOSTED_VERIFY_EMAIL_SCRIPT,
   buildHostedVerifyEmailHtml,
-} from "./hosted-verify-email-html.js";
-export {
-  HOSTED_RESEND_VERIFICATION_SCRIPT,
   buildHostedResendVerificationHtml,
-} from "./hosted-resend-verification-html.js";
+  buildHostedMagicLinkHtml,
+  buildHostedPhoneHtml,
+  hostedAuthViewFromSearch,
+  createHostedAuthView,
+  parseHostedAuthFlow,
+  readHostedShopLogoSvg,
+  readHostedAsset,
+  type HostedAuthCapabilities,
+  type HostedAuthView,
+} from "./hosted-auth/index.js";
 export { isSafeHostedReturnPath, resolveHostedReturnUrl } from "./safe-return-url.js";
 export * from "./contracts.js";
 export type { AuthDatabase } from "./phone-number-plugin.js";

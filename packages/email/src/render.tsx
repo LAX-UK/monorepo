@@ -99,6 +99,15 @@ import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
+import ShopArtworkEnquiryAlertEmail, {
+  subject as shopArtworkEnquiryAlertSubject,
+} from "./templates/shop-artwork-enquiry-alert.js";
+import ShopEditionAvailableNotifyEmail, {
+  subject as shopEditionAvailableNotifySubject,
+} from "./templates/shop-edition-available-notify.js";
+import ShopOrderReceiptEmail, {
+  subject as shopOrderReceiptSubject,
+} from "./templates/shop-order-receipt.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
 import SocialAccountLinkedEmail, {
   subject as socialAccountLinkedSubject,
@@ -324,6 +333,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "source-of-funds-rejected": {
     subject: sourceOfFundsRejectedSubject,
     component: (vars) => <SourceOfFundsRejectedEmail {...vars} />,
+  },
+  "shop-order-receipt": {
+    subject: shopOrderReceiptSubject,
+    component: (vars) => <ShopOrderReceiptEmail {...vars} />,
+  },
+  "shop-artwork-enquiry-alert": {
+    subject: shopArtworkEnquiryAlertSubject,
+    component: (vars) => <ShopArtworkEnquiryAlertEmail {...vars} />,
+  },
+  "shop-edition-available-notify": {
+    subject: shopEditionAvailableNotifySubject,
+    component: (vars) => <ShopEditionAvailableNotifyEmail {...vars} />,
   },
 };
 

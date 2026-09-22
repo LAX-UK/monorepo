@@ -31,6 +31,15 @@ Identity operations with machine credentials, `@auction/identity-contracts`,
 and versioned events. A database role grant is not permission to bypass this
 boundary.
 
+`apps/shop-identity` is a modular BFF: `index.ts` is process bootstrap only,
+`create-shop-identity-app.ts` composes Hono route adapters, and callback
+orchestration depends on narrow code-exchange, token-verification, profile, and
+session ports. `/me` returns parseable `401 { authenticated:false }` for guests
+and `403 { authenticated:false, reason:"identity_disabled" }` for disabled
+profiles; transport failures and malformed responses are not session outcomes.
+The BFF stores opaque sessions in PostgreSQL and therefore has no
+`SESSION_SECRET` setting.
+
 ## RP/BFF flow and host-only sessions
 
 1. The browser asks its product BFF to sign in.
@@ -257,12 +266,59 @@ limited per hashed client id across issue, introspection, and revocation; the
 counter resets after successful authentication and fails open, with a warning,
 if Redis is unavailable.
 
+## Hosted credential chrome
+
+OIDC `loginPage` is `${issuer}/login` on `apps/auth`. Shop and Bid sign-in
+redirects land on these issuer-hosted pages, not product Next routes. Shared
+HTML and CSS live in `packages/auth/src/hosted-auth/` (`buildHostedAuthHtml`,
+`HOSTED_AUTH_STYLES`, floating-label primitives, and `hosted-auth/browser/`
+controllers) and are served as `/hosted-auth.css`, `/hosted-auth/lax-shop-logo.svg`,
+and bundled page scripts so HTML CSP can stay `style-src 'self' https://fonts.googleapis.com`
+without `unsafe-inline`. Browser controllers are compiled to IIFE assets; tests
+cover the TypeScript helpers those bundles import. Shop authorization requests
+select a Shop theme and the issuer-owned Shop logo after validating `client_id`.
+JSON/API responses keep `default-src 'none'`. Hosted pages never trust raw
+`callbackURL`, `state`, nonce, or PKCE values from browser-generated links;
+auxiliary navigation carries only a validated `client_id`. Session continuation
+uses Better Auth’s signed `oidc_login_prompt` cookie plus a server-injected
+authorize resume path. If that prompt has expired, continuation restarts at the
+product `/login` (Shop BFF starts a fresh authorize). A GET to hosted `/login`
+or `/sign-up` with a live session and no resumable authorize query 302s to the
+same product restart URL. Turnstile is rendered only after `captcha_required`,
+and submit stays disabled until a token is present. Default Shop/Bid login is
+email-first; `HOSTED_AUTH_EMAIL_FIRST=false` restores a combined email/password
+form. When `REQUIRE_EMAIL_VERIFICATION` is on, sign-up success and existing-
+account 4xx responses both show “Check your email to continue.” Better Auth
+remains the credential authority — hosted pages do not add React or client-side
+schema libraries.
+
+First-party confidential web clients (`lax-bid-web`, `lax-shop-web`) are
+pre-authorized in `@auction/identity-contracts`. After login they skip the OIDC
+consent screen and return the authorization code to the registered callback.
+`ws-mobile` and any future third-party client keep the hosted Deny/Allow page
+because their redirect URIs are not first-party HTTPS callbacks. `prompt=consent`
+still forces the screen. Client secrets, exact redirect URIs, PKCE, scopes, and
+the disabled flag stay in the database; Better Auth `trustedClients` is not used
+for this skip because it would replace those records. A pinned
+`better-auth@1.6.22` patch adds `skipConsentClientIds` so DB-backed clients can
+skip consent without storing RP secrets on the issuer. Consent policy is not
+stored in `oauth_application.metadata`; the typed registry is the only
+authority, so live client disablement and secret rotation cannot change who is
+pre-authorized.
+
+Identity extractability forbids importing `@auction/branding`. Hosted pages
+therefore copy Brand Identity literals in `hosted-auth/tokens.ts`; branding
+tests fail the suite if those values or the Shop logo copy drift.
+
 ## Source and image portability proof
 
 The extractable source closure is deliberately limited to `apps/auth`,
 `packages/auth`, `packages/identity-contracts`, `packages/identity-db`,
 `packages/observability`, and `packages/config-ts`, plus the root pnpm
-manifests, frozen lockfile, and Node version declaration. Product applications,
+manifests, frozen lockfile, `patches/`, and Node version declaration. Identity
+images copy `patches/` so the pinned Better Auth consent-policy patch applies.
+Product images that run a root `pnpm install` copy `patches/` as well because
+the monorepo lockfile records `patchedDependencies`. Product applications,
 product persistence, queues, and email implementations are outside this
 closure.
 
@@ -443,3 +499,12 @@ See [new-platform onboarding](../runbooks/onboard-lax-platform.md),
 [SSF operations](../runbooks/ssf-stream-operations.md),
 [back-channel logout triage](../runbooks/backchannel-logout-triage.md), and
 [identity cutover](../runbooks/identity-boundary-cutover.md).
+
+## Ecosystem account and wayfinding
+
+Authentication boundaries above are necessary but not sufficient for a coherent LAX
+relationship. Cross-product profile UI, product discovery, and header account chrome are
+owned outside Identity — see [LAX ecosystem boundary](./11-lax-ecosystem-boundary.md) for
+the responsibility matrix, settings classification, and `@auction/lax-ecosystem`
+contracts. Identity still owns credentials and sessions; products still own roles and
+domain data.

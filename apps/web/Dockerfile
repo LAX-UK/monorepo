@@ -5,6 +5,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 COPY packages ./packages
 COPY apps/api/package.json ./apps/api/
 COPY apps/ws/package.json ./apps/ws/
@@ -59,6 +60,7 @@ ENV SENTRY_RELEASE=$SENTRY_RELEASE
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY scripts/ci/require-node-version.mjs ./scripts/ci/require-node-version.mjs
+COPY scripts/vitest ./scripts/vitest
 COPY .nvmrc ./.nvmrc
 COPY apps/api ./apps/api
 COPY apps/web ./apps/web

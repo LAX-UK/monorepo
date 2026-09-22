@@ -11,11 +11,10 @@ const envSchema = z
     OIDC_CLIENT_SECRET: z.string().min(32),
     OIDC_REDIRECT_URI: z.string().url(),
     OIDC_POST_LOGOUT_REDIRECT_URI: z.string().url(),
-    OIDC_SUCCESS_REDIRECT_URI: z
-      .string()
-      .regex(/^\/(?!\/)/, "Success redirect must be a same-origin path")
-      .default("/account"),
-    SESSION_SECRET: z.string().min(32),
+    SHOP_STOREFRONT_URL: z.string().url().default("http://localhost:3020"),
+    SHOP_API_BASE_URL: z.string().url().default("http://localhost:3011"),
+    SHOP_API_BFF_TOKEN: z.string().min(32).optional(),
+    SHOP_IDENTITY_TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
     DATABASE_URL_SHOP: z.string().min(1).optional(),
     DATABASE_URL: z.string().min(1).optional(),
   })
@@ -57,6 +56,20 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         message: "OIDC_POST_LOGOUT_REDIRECT_URI must be exactly registered for the client",
         path: ["OIDC_POST_LOGOUT_REDIRECT_URI"],
+      });
+    }
+    if (env.NODE_ENV === "production" && !env.SHOP_API_BFF_TOKEN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "SHOP_API_BFF_TOKEN is required in production",
+        path: ["SHOP_API_BFF_TOKEN"],
+      });
+    }
+    if (env.NODE_ENV === "production" && !env.SHOP_IDENTITY_TOKEN_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "SHOP_IDENTITY_TOKEN_ENCRYPTION_KEY is required in production",
+        path: ["SHOP_IDENTITY_TOKEN_ENCRYPTION_KEY"],
       });
     }
   });

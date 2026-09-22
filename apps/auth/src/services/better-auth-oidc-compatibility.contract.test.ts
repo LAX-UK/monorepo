@@ -24,7 +24,10 @@ describe("Better Auth 1.6.22 OIDC compatibility contract", () => {
     ).resolves.toBe("f197a47338d5fddc4c0fb53e078fe77e92e191e9c3e7f36a11cdb9fc434cd037");
     await expect(
       sha256(resolve(betterAuthRoot, "dist/plugins/oidc-provider/authorize.mjs")),
-    ).resolves.toBe("d22b3eae8f557af7bd483ebf27ceff821f4221d78c92d6ddcbb919feb7ae4604");
+    ).resolves.toBe("a5ea7351c982fb5f8c2061745a4a6eaa075287e41ee4ac026530bb76dcdcf377");
+    await expect(
+      sha256(resolve(betterAuthRoot, "dist/plugins/oidc-provider/utils/prompt.mjs")),
+    ).resolves.toBe("a4d05d826b658b77cece36f1302d4640127e052656036a79df66c47f703e4fae");
   });
 
   it("pins the supported callback and authorize/token response assumptions", async () => {
@@ -62,5 +65,42 @@ describe("Better Auth 1.6.22 OIDC compatibility contract", () => {
     expect(tokenSource).toContain(
       "if (session) {\n\t\t\t\t\tawait ctx.context.internalAdapter.deleteSession(session.session.token)",
     );
+  });
+
+  it("pins OIDC login continuation: signed prompt cookie, loginPage query, and session resume", async () => {
+    const [authorizeSource, tokenSource] = await Promise.all([
+      readFile(resolve(betterAuthRoot, "dist/plugins/oidc-provider/authorize.mjs"), "utf8"),
+      readFile(resolve(betterAuthRoot, "dist/plugins/oidc-provider/index.mjs"), "utf8"),
+    ]);
+    expect(authorizeSource).toContain(
+      'await ctx.setSignedCookie("oidc_login_prompt", JSON.stringify(ctx.query), ctx.context.secret, {',
+    );
+    expect(authorizeSource).toContain("maxAge: 600");
+    expect(authorizeSource).toContain('sameSite: "lax"');
+    expect(authorizeSource).toContain(
+      "return handleRedirect(`${options.loginPage}?${queryFromURL}`)",
+    );
+    expect(tokenSource).toContain(
+      'const loginPromptCookie = await ctx.getSignedCookie("oidc_login_prompt", ctx.context.secret)',
+    );
+    expect(tokenSource).toContain("if (!loginPromptCookie || !hasSessionToken) return");
+    expect(tokenSource).toContain("ctx.query = JSON.parse(loginPromptCookie)");
+    expect(tokenSource).toContain("return await authorize(ctx, opts)");
+    expect(authorizeSource).toContain("const requireConsent");
+    expect(authorizeSource).toContain("options?.getConsentHTML");
+    expect(authorizeSource).toContain("options.skipConsentClientIds");
+    expect(authorizeSource).toContain("const skipConsentByPolicy = !promptSet.has(");
+    expect(authorizeSource).toContain('promptSet.has("select_account")');
+    expect(authorizeSource).toContain(
+      'if (requireLogin) return handleRedirect(formatErrorURL(query.redirect_uri, "login_required"',
+    );
+    expect(authorizeSource).toContain(
+      'const requireConsent = !skipConsentForTrustedClient && (!hasAlreadyConsented || promptSet.has("consent"))',
+    );
+    const promptSource = await readFile(
+      resolve(betterAuthRoot, "dist/plugins/oidc-provider/utils/prompt.mjs"),
+      "utf8",
+    );
+    expect(promptSource).toContain("unsupported prompt value");
   });
 });

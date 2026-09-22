@@ -5,6 +5,8 @@ on:
     branches: [main, master]
     paths:
       - "apps/web/**"
+      - "apps/shop/**"
+      - "apps/shop-api/**"
       - "apps/api/src/**"
       - "apps/auth/**"
       - "apps/ws/**"
@@ -27,12 +29,24 @@ on:
       - "packages/db/src/scripts/configure-oidc-clients.ts"
       - "scripts/ci/verify-identity-boundary.mjs"
       - "scripts/ci/verify-shop-oidc-roundtrip.mjs"
+      - "scripts/ci/verify-bid-web-bff-roundtrip.mjs"
+      - "scripts/ci/oidc-authorize-response.mjs"
+      - "scripts/ci/oidc-authorize-response.test.mjs"
+      - "scripts/ci/verify-docker-patched-dependencies.mjs"
+      - "scripts/ci/verify-docker-patched-dependencies.test.mjs"
+      - "patches/**"
+      - "apps/**/Dockerfile"
+      - "docker/migrate.Dockerfile"
       - "scripts/ci/verify-refresh-reuse.mjs"
       - "scripts/ci/verify-identity-ssf-live.mjs"
       - "scripts/ci/provision-identity-acceptance-users.mjs"
       - "scripts/ci/cleanup-identity-acceptance-users.mjs"
       - "packages/db/src/seed/**"
       - "packages/ui/**"
+      - "packages/branding/**"
+      - "packages/lax-ecosystem/**"
+      - "packages/shop-contracts/**"
+      - "packages/shop-domain/**"
       - ".github/workflows/ci.yml"
       - ".github/workflows/e2e-pr.yml"
       - ".github/workflows/identity-staging-acceptance.yml"
@@ -41,6 +55,8 @@ on:
       - "scripts/ci/flush-auth-rate-limits.mjs"
       - "scripts/ci/prepare-e2e-auth-states.mjs"
       - "scripts/ci/run-pr-browser-gates.mjs"
+      - "scripts/ci/verify-shop-architecture.test.mjs"
+      - "scripts/ci/verify-shop-assets.mjs"
       - "pnpm-lock.yaml"
 
 concurrency:
@@ -90,9 +106,13 @@ jobs:
       OIDC_CLIENT_ID: lax-shop-web
       OIDC_CLIENT_SECRET: ci-shop-identity-client-secret-at-least-32
       OIDC_REDIRECT_URI: http://localhost:3010/auth/callback
-      OIDC_POST_LOGOUT_REDIRECT_URI: http://localhost:3010/
+      OIDC_POST_LOGOUT_REDIRECT_URI: http://localhost:3020/
+      SHOP_STOREFRONT_URL: http://localhost:3020
       SESSION_SECRET: ci-shop-identity-session-secret-at-least-32
       DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      SHOP_API_BASE_URL: http://localhost:3011
+      SHOP_API_PUBLIC_BASE_URL: http://localhost:3011
+      LAX_SHOP_STOREFRONT_URL: http://localhost:3020
       AUTH_APP_DB_PASSWORD: postgres
       API_APP_DB_PASSWORD: postgres
       SHOP_APP_DB_PASSWORD: postgres
@@ -163,16 +183,22 @@ jobs:
             OIDC_CLIENT_SECRET_LAX_BID_WEB="$OIDC_CLIENT_SECRET_LAX_BID_WEB" \
             OIDC_CLIENT_SECRET_LAX_SHOP_WEB="$OIDC_CLIENT_SECRET" \
             pnpm --filter @auction/db db:configure-oidc-clients
-      - name: Build web, API, auth issuer, and Shop Identity app
-        run: pnpm --filter @auction/api... build && pnpm --filter @auction/auth-app... build && pnpm --filter @auction/shop-identity... build && pnpm --filter @auction/web... build
+          # The catalogue seed imports @auction/shop-domain, so its closure has to be
+          # built here rather than in the later application build step.
+          pnpm --filter @auction/shop-api... build
+          pnpm --filter @auction/shop-api seed:catalogue
+      - name: Build product applications
+        run: pnpm --filter @auction/api... build && pnpm --filter @auction/auth-app... build && pnpm --filter @auction/shop-identity... build && pnpm --filter @auction/web... build && pnpm --filter @auction/shop-api... build && pnpm --filter @auction/shop... build
       - name: Start stack
         run: |
           mkdir -p /tmp/e2e-logs
           PORT=3001 pnpm --filter @auction/api start > /tmp/e2e-logs/api.log 2>&1 &
           PORT=3003 pnpm --filter @auction/auth-app start > /tmp/e2e-logs/auth.log 2>&1 &
           PORT=3010 pnpm --filter @auction/shop-identity start > /tmp/e2e-logs/shop-identity.log 2>&1 &
+          PORT=3011 pnpm --filter @auction/shop-api start > /tmp/e2e-logs/shop-api.log 2>&1 &
+          pnpm --filter @auction/shop start > /tmp/e2e-logs/shop.log 2>&1 &
           PORT=3000 node scripts/ci/start-e2e-web.mjs > /tmp/e2e-logs/web.log 2>&1 &
-          npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live http://localhost:3010/health/ready --timeout 120000
+          npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live http://localhost:3010/health/ready http://localhost:3011/health/ready http://localhost:3020 --timeout 120000
       - name: Verify canonical identity boundary
         env:
           AUTH_BASE_URL: http://localhost:3003
@@ -205,6 +231,13 @@ jobs:
         run: node scripts/ci/run-platform-onboarding-conformance.mjs
       - name: Prepare auth sessions and run PR browser gates
         run: node scripts/ci/run-pr-browser-gates.mjs --skip-static
+      - name: Run Shop accessibility and viewport gates
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3020
+          PLAYWRIGHT_E2E: "1"
+          SHOP_OIDC_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
+        run: pnpm --filter @auction/shop test:e2e
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -213,6 +246,7 @@ jobs:
           path: |
             apps/web/blob-report
             apps/web/test-results
+            apps/shop/test-results
           if-no-files-found: warn
           retention-days: 7
       - name: Upload session probe and process logs

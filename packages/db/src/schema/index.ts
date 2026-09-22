@@ -3,6 +3,7 @@ export * from "./bid-identity-directory.js";
 export * from "./bid-user-profile.js";
 export * from "./shop-user-profile.js";
 export * from "./shop-session.js";
+export * from "./shop-commerce.js";
 export * from "./user-invitation.js";
 export * from "./lots.js";
 export * from "./lot-lifecycle-snapshot.js";

@@ -440,3 +440,62 @@ while the unchanged issuer URL provides a real staging contract test.
 **Status.** *Accepted for staged implementation.* Production traffic, package
 publication, independent Identity migrations, and physical database separation
 remain deferred.
+
+## D24. Shop commerce API is a separate Fastify deployable with Shop-owned catalogue schema
+
+**Supersedes none; extends D17.**
+
+**Chosen.** Shop catalogue, artwork, editions, and future commerce commands live in
+`apps/shop-api` (Fastify v5, Node 22). Pure artwork/edition policies live in
+`packages/shop-domain`. Transport-neutral request/response shapes live in
+`packages/shop-contracts` (TypeBox). PostgreSQL tables
+(`shop_party`, `shop_artist`, `shop_artwork`, `shop_edition`) are owned by the
+`shop_app` role. `apps/shop-identity` remains auth-only (OIDC BFF); it does not
+serve catalogue HTTP. The foundation slice uses seed/import writes only — no admin
+dashboard in this decision (hosted checkout arrived in later Shop commerce work).
+
+**Alternatives considered.** Extending `apps/shop-identity` with catalogue routes was
+rejected because it mixes auth burst traffic with commerce queries and widens session
+blast radius. NestJS was rejected as heavier than needed for a focused API surface.
+Putting Shop policies in `@auction/domain` was rejected because Shop is an independent
+product boundary with its own extraction path.
+
+**Why this wins.** Shop can deploy and scale commerce independently while keeping
+Identity and auth cookies isolated. Fastify matches the need for typed OpenAPI,
+structured logging, and a thin composition root without adopting a second full-stack
+framework inside the monorepo.
+
+## D25. Shop commerce persistence is split by command and query ports
+
+**Supersedes none; extends D24.**
+
+**Chosen.** `apps/shop-api` commerce I/O is split into basket, checkout, order, and
+payment-event adapters (`drizzle-basket.repository.ts`, `drizzle-checkout.repository.ts`,
+`drizzle-order.repository.ts`, `drizzle-payment-event.processor.ts`) with shared
+`shop-basket.persistence.ts`, `shop-edition-availability.ts`, and `shop-party.ts`.
+Application handlers depend on segregated ports (`BasketRepository`, `CheckoutWriter`,
+`OrderReader`) composed at the Fastify root. `OrderReader.listOrders` accepts bounded
+`limit`/`cursor` input; artwork interest persistence returns domain result unions mapped
+to HTTP in handlers rather than throwing transport errors from adapters.
+
+**Why this wins.** Checkout and webhook paths keep transaction boundaries without a
+750-line god module, and handlers only import the port surface they need.
+
+**Status.** *Implemented.* Boundary doc
+[10-shop-commerce-boundary.md](./10-shop-commerce-boundary.md); executable API in
+[apps/shop-api/](../../apps/shop-api/).
+
+## D26. Cross-product placeholders and semantic status tones
+
+**Chosen.** Missing catalogue media uses `@auction/ui` `MediaPlaceholder` (Bid hatch pattern)
+and `@auction/marketing-ui` `MediaImage` with an injectable `MediaSrcResolver`. Shop keeps
+thin wrappers and label SSOT; Bid retains CDN resolution via `resolveMediaSrc`. Entity status
+colours use the existing Tag-Review tone set in `@auction/ui` (`DotStatusPill`); Shop owns a
+small typed registry in `apps/shop/src/lib/presenters/shop-status-presentation.ts`. Distinct
+statuses that share a semantic colour differ by **glyph + label** (WCAG 1.4.1), not one-off hex
+values.
+
+**Deferred.** Moving Bid’s full admin status registry out of `apps/web` into a shared package
+(Option B) and deduping legal-entity / lot / payment presenter drift remain follow-up work.
+
+**Status.** *Implemented.*

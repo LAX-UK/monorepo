@@ -104,8 +104,7 @@ describe("SaleCardMedia", () => {
       />,
     );
     expect(container.querySelector("[data-overlay-resolved]")).toBeInTheDocument();
-    const img = screen.getByTestId("next-image");
-    expect(img).toHaveAttribute("data-crossorigin", "anonymous");
+    expect(screen.getByAltText("Scheduled sale")).toHaveAttribute("crossorigin", "anonymous");
   });
 
   it("shows live region when isLive and countdownEndIso are set", () => {
@@ -123,7 +122,7 @@ describe("SaleCardMedia", () => {
     expect(screen.getByLabelText(/live auction, time remaining/i)).toBeInTheDocument();
     expect(screen.getByText("Live")).toBeInTheDocument();
     expect(container.querySelector("[data-overlay-resolved]")).toBeInTheDocument();
-    expect(screen.getByTestId("next-image")).toHaveAttribute("data-crossorigin", "anonymous");
+    expect(screen.getByAltText("Live sale")).toHaveAttribute("crossorigin", "anonymous");
   });
 
   it("shows live pill without countdown when isLive without countdownEndIso", () => {

@@ -5,6 +5,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:shop": "turbo dev --filter=@auction/auth-app --filter=@auction/shop-identity --filter=@auction/shop-api --filter=@auction/shop",
+    "shop:auth:preflight": "node scripts/dev/shop-auth-preflight.mjs",
+    "shop:auth:test": "node scripts/ci/verify-shop-oidc-roundtrip.mjs",
     "lint": "turbo run lint",
     "lint:ui-guardrails": "bash ./scripts/check-ui-guardrails.sh",
     "lint:admin-capability-drift": "node scripts/check-admin-capability-drift.mjs",
@@ -17,10 +20,12 @@
     "lint:z-schema-transform": "node scripts/check-z-schema-transform.mjs",
     "lint:e2e-portfolio": "pnpm --filter @auction/web check:e2e-portfolio",
     "lint:e2e-tags": "pnpm --filter @auction/web check:e2e-tags",
+    "lint:test-mocks": "node scripts/check-test-mocks.mjs && node --test scripts/check-test-mocks.test.mjs scripts/vitest/workspace-source-aliases.test.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:docker": "bash scripts/docker-test.sh",
-    "ci:verify": "pnpm exec biome check . && pnpm lint:ui-guardrails && pnpm lint:admin-capability-drift && pnpm lint:deps && pnpm lint:layers && pnpm lint:web-guardrails && pnpm lint:lib-admin-boundaries && pnpm lint:staff-legacy-shell && pnpm lint:staff-route-composition && pnpm lint:z-schema-transform && pnpm lint:e2e-portfolio && pnpm lint:e2e-tags && node scripts/lint-queue-registry.mjs && pnpm ci:identity-boundary && pnpm ci:identity-extractability && pnpm ci:identity-exit-criteria && pnpm turbo run lint && pnpm turbo run typecheck && node scripts/ci/run-test-suite.mjs && pnpm turbo run build && node scripts/check-email-assets.mjs",
+    "ci:verify:fast": "pnpm exec biome check . && pnpm turbo run lint && pnpm turbo run typecheck && pnpm turbo run test --affected",
+    "ci:verify": "pnpm exec biome check . && pnpm lint:ui-guardrails && pnpm lint:admin-capability-drift && pnpm lint:deps && pnpm lint:layers && pnpm lint:web-guardrails && pnpm lint:lib-admin-boundaries && pnpm lint:staff-legacy-shell && pnpm lint:staff-route-composition && pnpm lint:z-schema-transform && pnpm lint:e2e-portfolio && pnpm lint:e2e-tags && pnpm lint:test-mocks && node scripts/lint-queue-registry.mjs && pnpm ci:shop-architecture && pnpm ci:docker-patches && pnpm ci:identity-boundary && pnpm ci:identity-extractability && pnpm ci:identity-exit-criteria && pnpm turbo run lint && pnpm turbo run typecheck && node scripts/ci/run-test-suite.mjs && pnpm turbo run build && node scripts/check-email-assets.mjs",
     "ci:identity-boundary": "node scripts/ci/verify-identity-boundary.mjs",
     "ci:identity-extractability": "node scripts/identity/verify-docker-closure.mjs && node scripts/ci/verify-identity-extractability.mjs && node --test scripts/identity/identity-extraction.test.mjs",
     "ci:identity-exit-criteria": "node scripts/ci/verify-identity-exit-criteria.mjs",
@@ -38,6 +43,9 @@
     "ci:identity-acceptance-preflight": "node scripts/ci/run-identity-acceptance-preflight.mjs",
     "ci:identity-soak-gate-validation": "node --test scripts/ci/identity-soak-gate-validation.test.mjs",
     "ci:identity-staging-watch": "node scripts/ci/watch-identity-staging-pipelines.mjs",
+    "ci:docker-patches": "node --test scripts/ci/verify-docker-patched-dependencies.test.mjs",
+    "ci:shop-architecture": "node --test scripts/ci/verify-shop-architecture.test.mjs && node --test scripts/ci/verify-shop-theme.test.mjs && node --test scripts/ci/verify-lax-ecosystem.test.mjs && node scripts/ci/verify-shop-assets.mjs",
+    "ci:lax-ecosystem": "node --test scripts/ci/verify-lax-ecosystem.test.mjs",
     "ci:identity-nn1-compat": "node scripts/ci/verify-identity-nn1-compat.mjs",
     "ci:identity-source-parity": "node scripts/ci/verify-identity-source-parity.mjs",
     "ci:authorize-cutover": "node scripts/ci/authorize-cutover-preflight.mjs",
@@ -77,6 +85,9 @@
       "sharp@<0.35.0": "0.35.0",
       "socket.io-parser@>=4.0.0 <4.2.7": "4.2.7",
       "ws@>=8.0.0 <8.21.0": "8.21.0"
+    },
+    "patchedDependencies": {
+      "better-auth@1.6.22": "patches/better-auth@1.6.22.patch"
     }
   },
   "devDependencies": {

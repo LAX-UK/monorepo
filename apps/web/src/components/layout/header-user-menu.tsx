@@ -7,6 +7,7 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { shellRolePillLabel } from "@/lib/admin/staff-role-presenter";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
+import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
@@ -36,9 +37,15 @@ function menuItemsFromPanel(panel: HTMLElement | null): HTMLElement[] {
 type HeaderUserMenuProps = {
   user: SessionUser;
   headerTone?: SiteHeaderTone;
+  laxProductLinks?: LaxProductLinkVm[];
 };
 
-export function HeaderUserMenu({ user, headerTone = "on-light" }: HeaderUserMenuProps) {
+export function HeaderUserMenu({
+  user,
+  headerTone = "on-light",
+  laxProductLinks = [],
+}: HeaderUserMenuProps) {
+  const otherProducts = laxProductLinks.filter((link) => !link.current);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -180,6 +187,29 @@ export function HeaderUserMenu({ user, headerTone = "on-light" }: HeaderUserMenu
             </div>
           </div>
           <div className="py-1">
+            {otherProducts.length > 0 ? (
+              <div className="border-b border-nav-border px-3 py-2 dark:border-border-hairline">
+                <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-brand-400 dark:text-on-surface-variant">
+                  LAX products
+                </p>
+                <ul className="mt-2 flex flex-col gap-1">
+                  {otherProducts.map((item) => (
+                    <li key={item.id}>
+                      <a
+                        href={item.href}
+                        role="menuitem"
+                        data-account-menu-item=""
+                        className="block px-0 py-1.5 font-label text-xs font-medium uppercase tracking-wide text-brand-900 transition-colors hover:text-link focus-visible:outline-none dark:text-on-surface"
+                        rel="noopener noreferrer"
+                        onClick={closeMenu}
+                      >
+                        {item.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {links.map((item) => (
               <Link
                 key={item.href}

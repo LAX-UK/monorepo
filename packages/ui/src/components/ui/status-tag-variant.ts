@@ -15,7 +15,16 @@ const BASE =
 
 const ICON_SHELL = "pl-1 pr-3 py-0.5";
 
-export type StatusTagGlyph = "live" | "check" | "x" | "warning" | "info" | "banned";
+export type StatusTagGlyph =
+  | "live"
+  | "check"
+  | "x"
+  | "warning"
+  | "info"
+  | "banned"
+  | "file"
+  | "clock"
+  | "eye";
 
 export type StatusTagVariant = {
   shell: string;
@@ -46,7 +55,11 @@ const INFO_VARIANT: StatusTagVariant = {
 };
 
 const PUBLIC_VARIANT: StatusTagVariant = {
-  ...INFO_VARIANT,
+  shell: iconShell("bg-info-container", "text-info"),
+  iconColor: "text-info",
+  iconBg: "bg-info",
+  glyph: "eye",
+  useIcon: true,
 };
 
 /** Figma Tag-Review: one shell + icon color + glyph per tone. */
@@ -75,14 +88,33 @@ export const STATUS_TAG_VARIANT: Record<DotStatusPillTone, StatusTagVariant> = {
     glyph: "warning",
     useIcon: true,
   },
-  pending: INFO_VARIANT,
+  pending: {
+    shell: iconShell("bg-info-container", "text-info"),
+    iconColor: "text-info",
+    iconBg: "bg-info",
+    glyph: "clock",
+    useIcon: true,
+  },
   info: INFO_VARIANT,
-  draft: INFO_VARIANT,
+  draft: {
+    shell: iconShell("bg-info-container", "text-info"),
+    iconColor: "text-info",
+    iconBg: "bg-info",
+    glyph: "file",
+    useIcon: true,
+  },
   critical: {
     shell: iconShell("bg-danger-container", "text-danger"),
     iconColor: "text-danger",
     iconBg: "bg-danger",
     glyph: "banned",
+    useIcon: true,
+  },
+  accent: {
+    shell: iconShell("bg-brand-light-cream", "text-brand-900"),
+    iconColor: "text-brand-900",
+    iconBg: "bg-accent-gold",
+    glyph: "info",
     useIcon: true,
   },
 };

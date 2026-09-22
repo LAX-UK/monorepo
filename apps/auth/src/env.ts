@@ -35,6 +35,7 @@ const envSchema = z
     BETTER_AUTH_SECRET: z.string().min(16),
     OIDC_ISSUER_URL: z.string().url().default("http://localhost:3003"),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    SHOP_ORIGIN: z.string().url().default("http://localhost:3020"),
     WEB_ORIGINS: z.preprocess((val) => {
       let source = val;
       if (source === undefined || source === "" || source == null) {
@@ -118,7 +119,14 @@ const envSchema = z
     APPLE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     APPLE_DOMAIN_ASSOCIATION: z.preprocess(emptyToUndefined, z.string().optional()),
     TURNSTILE_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    TURNSTILE_SITE_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     TOTP_ISSUER: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    HOSTED_AUTH_EMAIL_FIRST: z
+      .preprocess((val) => {
+        if (val === undefined || val === "") return true;
+        return val === "true" || val === true;
+      }, z.boolean())
+      .default(true),
     ENABLE_PHONE_VERIFICATION: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
@@ -133,6 +141,7 @@ const envSchema = z
       const browserFacingUrls: Array<[field: string, url: string]> = [
         ["OIDC_ISSUER_URL", e.OIDC_ISSUER_URL],
         ["WEB_ORIGIN", e.WEB_ORIGIN],
+        ["SHOP_ORIGIN", e.SHOP_ORIGIN],
         ...(e.WEB_ORIGINS ?? []).map((url): [field: string, url: string] => ["WEB_ORIGINS", url]),
         ...(e.SSR_TRUSTED_ORIGINS ?? []).map((url): [field: string, url: string] => [
           "SSR_TRUSTED_ORIGINS",
@@ -162,7 +171,7 @@ const envSchema = z
           path: ["BETTER_AUTH_SECRET"],
         });
       }
-      for (const u of [e.WEB_ORIGIN, e.OIDC_ISSUER_URL, e.API_INTERNAL_BASE_URL]) {
+      for (const u of [e.WEB_ORIGIN, e.SHOP_ORIGIN, e.OIDC_ISSUER_URL, e.API_INTERNAL_BASE_URL]) {
         if (u.includes("localhost") || u.includes("127.0.0.1")) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,

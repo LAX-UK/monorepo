@@ -66,6 +66,7 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
     assert.match(workflow, /TF_VAR_identity_image_tag/);
     assert.match(workflow, /TF_VAR_shop_identity_image_tag/);
     assert.match(workflow, /TF_VAR_shop_image_tag/);
+    assert.match(workflow, /TF_VAR_shop_api_image_tag/);
   }
 
   const imageContract = read("scripts/ci/verify-staging-image-contract.mjs");
@@ -76,6 +77,8 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
     "SHOP_IDENTITY_DIGEST",
     "SHOP_SHA",
     "SHOP_DIGEST",
+    "SHOP_API_SHA",
+    "SHOP_API_DIGEST",
   ]) {
     assert.match(imageContract, new RegExp(`\\["${required}",`));
   }

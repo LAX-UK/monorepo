@@ -1,6 +1,11 @@
 import pg from "pg";
 import { describe, expect, it } from "vitest";
-import { SHOP_PRODUCT_PROFILE_TABLES, SHOP_SSF_RECEIVER_TABLES } from "./migrate-roles.js";
+import {
+  SHOP_COMMERCE_TABLES,
+  SHOP_EMAIL_OUTBOX_TABLES,
+  SHOP_PRODUCT_PROFILE_TABLES,
+  SHOP_SSF_RECEIVER_TABLES,
+} from "./migrate-roles.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const SHOP_URL = process.env.DATABASE_URL_SHOP;
@@ -92,6 +97,44 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", () => {
       }
     },
   );
+
+  it("owns Shop commerce catalogue tables", async () => {
+    await withShopClient(async (client) => {
+      for (const table of SHOP_COMMERCE_TABLES) {
+        for (const privilege of ["INSERT", "SELECT", "UPDATE", "DELETE"]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(true);
+        }
+      }
+      const domainEventsInsert = await client.query<{ allowed: boolean }>(
+        "select has_table_privilege(current_user, $1, 'INSERT') as allowed",
+        ["public.domain_events"],
+      );
+      expect(domainEventsInsert.rows[0]?.allowed).toBe(true);
+    });
+  });
+
+  it("can enqueue shop transactional email outbox rows", async () => {
+    await withShopClient(async (client) => {
+      for (const table of SHOP_EMAIL_OUTBOX_TABLES) {
+        for (const privilege of ["INSERT", "SELECT"] as const) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(true);
+        }
+        const update = await client.query<{ allowed: boolean }>(
+          "select has_table_privilege(current_user, $1, 'UPDATE') as allowed",
+          [`public.${table}`],
+        );
+        expect(update.rows[0]?.allowed, `${table}:UPDATE`).toBe(false);
+      }
+    });
+  });
 
   it("owns only the Shop SSF replay ledger", async () => {
     await withShopClient(async (client) => {

@@ -18,6 +18,17 @@ This starts all six apps: `apps/web` (3000), `apps/api` (3001), `apps/ws`
 (3002), `apps/auth` (3003), `apps/worker` (3004 — `/health` and `/metrics`
 only), and `apps/shop-identity` (3010).
 
+Shop storefront work without the full monorepo dev graph:
+
+```sh
+pnpm shop:auth:preflight
+pnpm dev:shop
+```
+
+Runs `apps/auth` (3003), `apps/shop-identity` (3010), `apps/shop-api` (3011),
+and `apps/shop` (3020). Verify OIDC with `pnpm shop:auth:test` after setting
+test credentials in `.env`.
+
 ## Database URLs
 
 Local development can keep using the single owner-style `DATABASE_URL` from `.env.example`.

@@ -1,17 +1,29 @@
-import Link from "next/link";
+import {
+  ShopAccountBodyText,
+  ShopAccountLinkButton,
+  ShopAccountShell,
+} from "@/components/account/shop-account-shell";
+import { shopPageWayfinding } from "@/components/shop-page-header";
+import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
+
+export const metadata = shopPrivatePageMetadata;
 
 export default function ShopDisabledAccountPage() {
   return (
-    <main className="shop-shell">
-      <h1 className="text-2xl font-semibold uppercase tracking-tight">Account disabled</h1>
-      <div className="shop-panel">
-        <p className="text-sm text-[var(--color-on-surface-variant)]">
-          This LAX account is disabled. Contact support if you believe this is a mistake.
-        </p>
-        <Link href="/" className="text-link underline-offset-4 hover:underline">
-          Return home
-        </Link>
-      </div>
-    </main>
+    <ShopAccountShell
+      title={shopPageWayfinding.accountDisabled.title}
+      breadcrumbs={shopPageWayfinding.accountDisabled.breadcrumbs}
+      notice={{
+        variant: "destructive",
+        title: "Access restricted",
+        description:
+          "This LAX account is disabled. Contact support if you believe this is a mistake.",
+      }}
+    >
+      <ShopAccountBodyText>
+        You can still browse the storefront while signed out.
+      </ShopAccountBodyText>
+      <ShopAccountLinkButton href="/" label="Return home" variant="outline" />
+    </ShopAccountShell>
   );
 }

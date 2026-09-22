@@ -123,6 +123,21 @@ services:
       auth:
         condition: service_started
 
+  shop-api:
+    build:
+      context: .
+      dockerfile: apps/shop-api/Dockerfile
+    ports:
+      - "${SHOP_API_PORT:-3011}:3011"
+    environment:
+      NODE_ENV: development
+      PORT: "3011"
+      DATABASE_URL_SHOP: postgresql://postgres:postgres@postgres:5432/auction
+      SHOP_API_PUBLIC_BASE_URL: http://localhost:3011
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   shop-identity:
     build:
       context: .
@@ -138,8 +153,8 @@ services:
       OIDC_CLIENT_ID: lax-shop-web
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-local-shop-identity-client-secret-32}
       OIDC_REDIRECT_URI: http://localhost:3010/auth/callback
-      OIDC_POST_LOGOUT_REDIRECT_URI: http://localhost:3010/
-      SESSION_SECRET: ${SESSION_SECRET:-local-shop-identity-session-secret-32}
+      OIDC_POST_LOGOUT_REDIRECT_URI: http://localhost:3020/
+      SHOP_STOREFRONT_URL: http://localhost:3020
     depends_on:
       auth:
         condition: service_started

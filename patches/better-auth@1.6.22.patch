@@ -1,0 +1,81 @@
+diff --git a/dist/plugins/oidc-provider/authorize.mjs b/dist/plugins/oidc-provider/authorize.mjs
+index 9ecfefb..eb249de 100644
+--- a/dist/plugins/oidc-provider/authorize.mjs
++++ b/dist/plugins/oidc-provider/authorize.mjs
+@@ -46,6 +46,7 @@ async function authorize(ctx, options) {
+ 			if (!client) throw new InvalidClient("client_id is required");
+ 			const validRedirectURI = client.redirectUrls.find((url) => url === query.redirect_uri);
+ 			if (!validRedirectURI) throw new InvalidRequest("redirect_uri is invalid or not registered for this client");
++			if (client.disabled) return handleRedirect(formatErrorURL(validRedirectURI, "client_disabled", "client is disabled"));
+ 			return handleRedirect(formatErrorURL(validRedirectURI, "login_required", "Authentication required but prompt is none"));
+ 		}
+ 		/**
+@@ -104,7 +105,6 @@ async function authorize(ctx, options) {
+ 	const code = generateRandomString(32, "a-z", "A-Z", "0-9");
+ 	const codeExpiresInMs = opts.codeExpiresIn * 1e3;
+ 	const expiresAt = new Date(Date.now() + codeExpiresInMs);
+-	const skipConsentForTrustedClient = client.skipConsent;
+ 	const hasAlreadyConsented = await ctx.context.adapter.findOne({
+ 		model: "oauthConsent",
+ 		where: [{
+@@ -120,9 +120,9 @@ async function authorize(ctx, options) {
+ 		return requestScope.every((scope) => consentedScopes.includes(scope));
+ 	});
+ 	const promptSet = parsePrompt(query.prompt ?? "");
+-	if (promptSet.has("none")) {
+-		if (!skipConsentForTrustedClient && !hasAlreadyConsented) return handleRedirect(formatErrorURL(query.redirect_uri, "consent_required", "Consent required but prompt is none"));
+-	}
++	const skipConsentByPolicy = !promptSet.has("consent") && Array.isArray(options.skipConsentClientIds) && options.skipConsentClientIds.includes(client.clientId);
++	const skipConsentForTrustedClient = Boolean(client.skipConsent) || skipConsentByPolicy;
++	if (promptSet.has("select_account")) return handleRedirect(formatErrorURL(query.redirect_uri, "account_selection_required", "Account selection is not supported"));
+ 	let requireLogin = promptSet.has("login");
+ 	if (query.max_age !== void 0) {
+ 		const maxAge = Number(query.max_age);
+@@ -130,6 +130,10 @@ async function authorize(ctx, options) {
+ 			if ((Date.now() - new Date(session.session.createdAt).getTime()) / 1e3 > maxAge) requireLogin = true;
+ 		}
+ 	}
++	if (promptSet.has("none")) {
++		if (requireLogin) return handleRedirect(formatErrorURL(query.redirect_uri, "login_required", "Authentication required but prompt is none"));
++		if (!skipConsentForTrustedClient && !hasAlreadyConsented) return handleRedirect(formatErrorURL(query.redirect_uri, "consent_required", "Consent required but prompt is none"));
++	}
+ 	const requireConsent = !skipConsentForTrustedClient && (!hasAlreadyConsented || promptSet.has("consent"));
+ 	try {
+ 		/**
+diff --git a/dist/plugins/oidc-provider/types.d.mts b/dist/plugins/oidc-provider/types.d.mts
+index 299127c..bf01b98 100644
+--- a/dist/plugins/oidc-provider/types.d.mts
++++ b/dist/plugins/oidc-provider/types.d.mts
+@@ -129,6 +129,12 @@ interface OIDCOptions {
+    * These clients bypass database lookups and can optionally skip consent screens.
+    */
+   trustedClients?: Client[] | undefined;
++  /**
++   * Client IDs that skip the consent screen unless `prompt=consent` is set.
++   * Unlike `trustedClients`, these remain database-backed for secrets, redirects,
++   * and disablement. LAX uses this for first-party confidential web products.
++   */
++  skipConsentClientIds?: string[] | undefined;
+   /**
+    * Store the client secret in your database in a secure way
+    * Note: This will not affect the client secret sent to the user, it will only affect the client secret stored in your database
+diff --git a/dist/plugins/oidc-provider/utils/prompt.mjs b/dist/plugins/oidc-provider/utils/prompt.mjs
+index f53fe0f..94cb144 100644
+--- a/dist/plugins/oidc-provider/utils/prompt.mjs
++++ b/dist/plugins/oidc-provider/utils/prompt.mjs
+@@ -6,9 +6,13 @@ import { InvalidRequest } from "../error.mjs";
+ * @param prompt
+ */
+ function parsePrompt(prompt) {
+-	const prompts = prompt.split(" ").map((p) => p.trim());
++	const raw = prompt == null ? "" : String(prompt);
++	const prompts = raw.split(" ").map((p) => p.trim()).filter((p) => p && p !== "undefined");
+ 	const set = /* @__PURE__ */ new Set();
+-	for (const p of prompts) if (p === "login" || p === "consent" || p === "select_account" || p === "none") set.add(p);
++	for (const p of prompts) {
++		if (p === "login" || p === "consent" || p === "select_account" || p === "none") set.add(p);
++		else throw new InvalidRequest(`unsupported prompt value: ${p}`);
++	}
+ 	if (set.has("none") && set.size > 1) throw new InvalidRequest("prompt none must only be used alone");
+ 	return new Set(set);
+ }

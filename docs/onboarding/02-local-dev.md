@@ -27,8 +27,34 @@ pnpm dev
 | `apps/auth` | http://localhost:3003 | Canonical Hono OIDC issuer and auth routes |
 | `apps/worker` | http://localhost:3004 (`/health/live`, `/health/ready`, `/metrics` only) | BullMQ consumer + projector runner |
 | `apps/shop-identity` | http://localhost:3010 | Executable Shop OIDC/BFF boundary |
+| `apps/shop-api` | http://localhost:3011 | Shop catalogue API |
+| `apps/shop` | http://localhost:3020 | Shop storefront (Next.js) |
 
 Each app's port comes from its env file; the defaults above are what's wired in `.env.example` (`PORT`, `WS_PORT`, `WORKER_PORT`; `apps/auth` uses its own `PORT` default of 3003).
+
+## Shop-only stack (storefront + auth)
+
+Browse catalogue without the full Bid stack:
+
+```bash
+docker compose up -d postgres redis
+pnpm db:migrate
+pnpm db:seed
+pnpm shop:auth:preflight   # validates secrets + provisions lax-shop-web OIDC client
+pnpm dev:shop              # auth :3003, shop-identity :3010, shop-api :3011, shop :3020
+```
+
+Automated Shop OIDC round trip (requires `SHOP_OIDC_TEST_EMAIL` / `SHOP_OIDC_TEST_PASSWORD` in `.env`, seeded user works):
+
+```bash
+pnpm shop:auth:test
+```
+
+Set `OIDC_CLIENT_SECRET`, the canonical Auth app's `SESSION_SECRET` (≥32
+chars), `OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:3020/`, and
+`SHOP_STOREFRONT_URL=http://localhost:3020` in `.env` before preflight. Shop
+Identity sessions are opaque PostgreSQL records and do not use a separate
+session-signing secret.
 
 ## Testing OAuth callbacks locally
 

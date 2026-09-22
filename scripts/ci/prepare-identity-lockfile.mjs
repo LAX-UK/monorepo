@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,6 +36,63 @@ function json(path) {
 
 function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+/**
+ * pnpm 10 frozen installs compare package.json `patchedDependencies` to the
+ * lockfile object (`hash` + `path`). The monorepo keeps the pnpm 9 string form;
+ * Identity workspaces must use the lockfile shape or install fails.
+ */
+export function patchedDependenciesFromLockfile(source) {
+  const match = source.match(/^patchedDependencies:\n((?:[ \t].+\n)*)/m);
+  if (!match || !match[1].trim()) return undefined;
+  /** @type {Record<string, { hash?: string, path?: string }>} */
+  const result = {};
+  let current = null;
+  for (const line of match[1].split("\n")) {
+    if (!line.trim()) continue;
+    const pkg = line.match(/^ {2}([^:]+):\s*$/);
+    if (pkg) {
+      current = pkg[1].replace(/^['"]|['"]$/g, "");
+      result[current] = {};
+      continue;
+    }
+    const hash = line.match(/^ {4}hash: (\S+)\s*$/);
+    if (hash && current) {
+      result[current].hash = hash[1];
+      continue;
+    }
+    const patchPath = line.match(/^ {4}path: (\S+)\s*$/);
+    if (patchPath && current) result[current].path = patchPath[1];
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function hexHashFromPatchFile(patchPath) {
+  return createHash("sha256")
+    .update(readFileSync(patchPath, "utf8").split("\r\n").join("\n"))
+    .digest("hex");
+}
+
+/**
+ * pnpm 9 records base32 patch hashes; Identity frozen installs use pnpm 10,
+ * which hashes the same files as SHA-256 hex. Rewrite before `--frozen-lockfile`.
+ */
+export function rewritePatchedDependencyHashes(workspaceRoot, lockfileText) {
+  const patches = patchedDependenciesFromLockfile(lockfileText);
+  if (!patches) return lockfileText;
+  let next = lockfileText;
+  for (const [name, meta] of Object.entries(patches)) {
+    if (!meta.path) continue;
+    const patchPath = join(workspaceRoot, meta.path);
+    if (!existsSync(patchPath)) {
+      throw new Error(`Identity patch missing: ${meta.path}`);
+    }
+    const hash = hexHashFromPatchFile(patchPath);
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    next = next.replace(new RegExp(`( {2}${escapedName}:\\n {4}hash: )\\S+`), `$1${hash}`);
+  }
+  return next;
 }
 
 export function discoverWorkspacePackagePaths(workspaceRoot) {
@@ -73,7 +131,16 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
       "ci:verify":
         "pnpm lint && pnpm lint:layers && pnpm ci:identity-extractability && pnpm typecheck && pnpm test && pnpm build",
     },
-    ...(manifest.pnpm?.overrides ? { pnpm: { overrides: manifest.pnpm.overrides } } : {}),
+    ...(manifest.pnpm?.overrides || manifest.pnpm?.patchedDependencies
+      ? {
+          pnpm: {
+            ...(manifest.pnpm?.overrides ? { overrides: manifest.pnpm.overrides } : {}),
+            ...(manifest.pnpm?.patchedDependencies
+              ? { patchedDependencies: manifest.pnpm.patchedDependencies }
+              : {}),
+          },
+        }
+      : {}),
     devDependencies: {
       "@biomejs/biome": biomeVersion,
     },
@@ -124,7 +191,11 @@ export function generateIdentityLockfile(workspaceRoot, options = {}) {
   }
   const workspacePaths = discoverWorkspacePackagePaths(workspaceRoot);
   const sourceLockfile = readFileSync(options.sourceLockfile, "utf8");
-  writeFileSync(lockfilePath, pruneIdentityLockfile(sourceLockfile, workspacePaths));
+  const prunedLockfile = rewritePatchedDependencyHashes(
+    workspaceRoot,
+    pruneIdentityLockfile(sourceLockfile, workspacePaths),
+  );
+  writeFileSync(lockfilePath, prunedLockfile);
 
   const result = spawnSync(
     "corepack",

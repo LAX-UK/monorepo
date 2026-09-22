@@ -1,0 +1,108 @@
+/* F8 — Theme toggle circular reveal via View Transitions API. */
+@supports (view-transition-name: root) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-old(root) {
+    z-index: 1;
+  }
+  ::view-transition-new(root) {
+    z-index: 2;
+    animation: theme-reveal var(--motion-duration-xl, 900ms) var(--motion-ease-emphasize) forwards;
+  }
+}
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0));
+  }
+  to {
+    clip-path: circle(
+      var(--theme-toggle-radius, 200vmax) at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0)
+    );
+  }
+}
+
+/* Desktop mega-menu: full-bleed shelf under header (break out of max-width container). */
+.header-megamenu {
+  display: grid;
+  grid-template-rows: 0fr;
+  left: 0;
+  width: 100dvw;
+  margin-inline: calc(50% - 50dvw);
+  transform: translateY(-4px);
+  opacity: 0;
+  pointer-events: none;
+  border-bottom: 1px solid var(--color-nav-border, transparent);
+  transition: grid-template-rows var(--motion-duration-md, 320ms) var(--motion-ease-emphasize),
+    transform var(--motion-duration-sm, 200ms) var(--motion-ease-emphasize), opacity
+    var(--motion-duration-sm, 200ms) var(--motion-ease-decelerate);
+}
+
+@supports not (width: 100dvw) {
+  .header-megamenu {
+    width: 100%;
+    margin-inline: 0;
+  }
+}
+
+.header-megamenu > div {
+  min-height: 0;
+}
+
+.header-megamenu__inner {
+  overflow: hidden;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.header-megamenu[data-open="false"] {
+  background: transparent;
+}
+
+.header-megamenu[data-open="true"] {
+  grid-template-rows: 1fr;
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  background: var(--color-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-megamenu {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Marketing site header — light chrome over immersive home hero */
+[data-chrome-variant="transparentUntilScroll"][data-at-top="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.42), transparent 85%);
+}
+
+[data-header-tone="on-dark"] .site-header-search-icon,
+[data-header-tone="on-dark"] .site-header-search-placeholder {
+  color: var(--color-hero-foreground);
+}
+
+[data-header-tone="on-dark"] .site-header-search-placeholder {
+  opacity: 0.72;
+}
+
+[data-header-tone="on-dark"] .site-header-search-kbd {
+  color: var(--color-hero-foreground);
+  border-color: color-mix(in srgb, var(--color-hero-foreground) 45%, transparent);
+}
+
+[data-header-tone="on-dark"] .site-header-page-title {
+  color: var(--color-hero-foreground);
+  border-color: color-mix(in srgb, var(--color-hero-foreground) 25%, transparent);
+}

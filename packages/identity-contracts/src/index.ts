@@ -36,7 +36,10 @@ export {
   OidcClientKind,
   REGISTERED_OIDC_CLIENTS,
   REGISTERED_OIDC_CLIENT_IDS,
+  isRegisteredOidcClientId,
+  oidcClientIdsWithImplicitConsent,
   type IdentityScope,
+  type OidcConsentPolicy,
   type RegisteredOidcClientId,
   type RegisteredOidcClientMetadata,
 } from "./clients.js";

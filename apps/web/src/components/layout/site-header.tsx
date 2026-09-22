@@ -8,6 +8,7 @@ import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { restoreMegaMenuAuthedHrefs } from "@/lib/marketing/mega-menu-href-rewrite";
+import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +27,7 @@ import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
 import { HeaderUtilityBar } from "./header-utility-bar";
 import { LaxLogo } from "./lax-logo";
+import { LaxProductSwitcher } from "./lax-product-switcher";
 import { MobileNavDrawer } from "./mobile-nav-drawer";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -35,6 +37,7 @@ type SiteHeaderProps = {
   nav?: MegaMenuSection[];
   transparentPaths?: string[];
   chromeVariant?: SiteHeaderChromeVariant;
+  laxProductLinks?: LaxProductLinkVm[];
 };
 
 const SCROLL_FADE_THRESHOLD_PX = 12;
@@ -48,6 +51,7 @@ function SiteHeaderShell({
   transparentPaths,
   chromeVariant,
   searchParams,
+  laxProductLinks = [],
 }: SiteHeaderShellProps) {
   const { user } = useAppSession();
   const nav = useMemo(() => {
@@ -139,7 +143,8 @@ function SiteHeaderShell({
             MARKETING_PAGE_GUTTER_X,
           )}
         >
-          <div className="hidden lg:block">
+          <div className="hidden lg:flex lg:items-center lg:justify-between lg:gap-6">
+            <LaxProductSwitcher links={laxProductLinks} />
             <HeaderUtilityBar headerTone={headerTone} />
           </div>
 
@@ -169,7 +174,11 @@ function SiteHeaderShell({
                   <ThemeToggle headerTone={headerTone} />
                 </div>
                 <HeaderAuthChip variant="notifications" headerTone={headerTone} />
-                <HeaderAuthChip variant="account" headerTone={headerTone} />
+                <HeaderAuthChip
+                  variant="account"
+                  headerTone={headerTone}
+                  laxProductLinks={laxProductLinks}
+                />
                 <MobileMenuIconButton
                   menuOpen={menuOpen}
                   headerTone={headerTone}

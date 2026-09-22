@@ -39,7 +39,7 @@ flowchart TB
   Spaces[(DigitalOcean Spaces<br/>uploads + CDN)]
 
   Marketing[lax.art<br/>Static marketing initially]
-  Shop[shop.lax.art<br/>Custom Shop · planned]
+  Shop[shop.lax.art<br/>apps/shop storefront]
 
   External[Zoho EU · Xero · Sentry · Google · Apple]
   Postmark[Postmark<br/>transactional + broadcast streams]
@@ -113,14 +113,42 @@ Health checks: `GET /health/live` returns 200 unconditionally; `GET /health/read
 `apps/api` verifies audience-bound Bearer tokens and does not resolve browser
 sessions or serve issuer routes.
 
+### Shop on DigitalOcean App Platform
+
+The authoritative Shop runtime is three App Platform components (see
+`auction-infra/terraform/ephemeral/test/main.tf`), not the legacy single-droplet
+`docker-compose.prod.yml` / `nginx/nginx.conf` stack:
+
+| Component | Port | Exposure |
+|---|---|---|
+| `apps/shop` | 3020 | Public shop host (primary domain) |
+| `apps/shop-identity` | 3010 | Path routes on the shop host (`/login`, `/auth`, `/api`, `/me`, …) |
+| `apps/shop-api` | 3011 | Internal catalogue/commerce (`SHOP_API_BASE_URL=http://shop-api:3011`); public ingress only for `POST /webhooks/stripe` on the shop host |
+
+Images are built in GitHub Actions ([`.github/workflows/build-images.yml`](../../.github/workflows/build-images.yml))
+and pulled from DOCR; Terraform pins immutable SHA tags per component.
+
 ### apps/shop-identity
 
-The executable confidential OIDC/BFF boundary for the custom Shop at
-`shop.lax.art`. It has only the `shop_app` database role and writes
-`shop_user_profile`; it does not import Bid roles or repositories. It is a
-reference for the future customer-facing Shop implementation. Health checks are
-`/health/live` and `/health/ready`; logout and SSF receivers are
-`/api/auth/backchannel-logout` and `/api/ssf/events`.
+The confidential OIDC BFF for `lax-shop-web`. It uses the `shop_app` Postgres role,
+writes `shop_user_profile`, and keeps opaque PostgreSQL-backed sessions (no
+session-signing secret). Health checks are `/health/live` and `/health/ready`;
+logout and SSF receivers are `/api/auth/backchannel-logout` and `/api/ssf/events`.
+
+### apps/shop
+
+The Next.js storefront (`apps/shop`). Server components read catalogue data from
+`shop-api` through a runtime-validating BFF client; auth chrome uses
+`SHOP_IDENTITY_BASE_URL` on the public shop host. Health check:
+`GET /health/ready`.
+
+### apps/shop-api
+
+The Fastify catalogue API (`apps/shop-api`). It uses `createDb` from
+`@auction/db` so managed Postgres TLS honours `DATABASE_CA_CERT`. Public GET
+routes are rate-limited; `/docs` (Swagger UI) is disabled in production.
+Health checks: `/health/live` and `/health/ready`; optional `/metrics` when
+`METRICS_TOKEN` is set.
 
 ### apps/api
 
@@ -286,7 +314,8 @@ and the machine-client pair. Bid BFF requires
 `OIDC_CLIENT_SECRET_LAX_BID_WEB`, `BID_BFF_SESSION_ENCRYPTION_KEY`,
 `OIDC_ISSUER_URL`, and `REDIS_URL`. Shop requires `DATABASE_URL_SHOP`,
 `OIDC_CLIENT_ID=lax-shop-web`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`,
-`OIDC_POST_LOGOUT_REDIRECT_URI`, `SESSION_SECRET`, and `OIDC_ISSUER_URL`.
+`OIDC_POST_LOGOUT_REDIRECT_URI`, `SHOP_STOREFRONT_URL`, and
+`OIDC_ISSUER_URL`; its opaque PostgreSQL session does not use a signing secret.
 `OIDC_INTERNAL_BASE_URL` is optional for private routing.
 
 SSF additionally uses `SSF_DELIVERY_ENABLED`,

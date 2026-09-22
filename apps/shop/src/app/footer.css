@@ -1,0 +1,12 @@
+/* Footer layout/text uses Tailwind semantic tokens in shop-footer.tsx; logo sizing only here. */
+.shop-footer__logo {
+  display: block;
+  line-height: 0;
+}
+
+.shop-footer__logo img {
+  width: auto;
+  height: 3.75rem;
+  max-width: min(100%, 19.59rem);
+  object-fit: contain;
+}

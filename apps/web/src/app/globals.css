@@ -1,6 +1,9 @@
 @import "tailwindcss";
+@import "@auction/branding/brand-primitives.css" layer(base);
 @import "../styles/tokens-dark.css" layer(base);
 @import "../styles/tokens-motion.css" layer(base);
+@import "@auction/marketing-ui/marketing-header.css";
+@import "@auction/marketing-ui/marketing-ui.css";
 @import "../styles/tokens-utilities.css";
 
 /* Scan shared UI package so Tailwind keeps utilities used in @auction/ui */

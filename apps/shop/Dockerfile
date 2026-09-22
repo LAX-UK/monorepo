@@ -5,6 +5,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 COPY packages ./packages
 COPY apps/shop/package.json ./apps/shop/
 RUN pnpm install --frozen-lockfile
@@ -27,6 +28,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV SENTRY_RELEASE=${IMAGE_SHA}
 COPY --from=builder --chown=node:node /app/apps/shop/.next/standalone ./
 COPY --from=builder --chown=node:node /app/apps/shop/.next/static ./apps/shop/.next/static
+COPY --from=builder --chown=node:node /app/apps/shop/public ./apps/shop/public
 USER node
 EXPOSE 3020
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \

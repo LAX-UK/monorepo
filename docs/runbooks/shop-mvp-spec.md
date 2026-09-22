@@ -22,6 +22,24 @@ until extraction thresholds are met.
 3. **Sign-in** — Shop BFF OIDC with PKCE; no passwords on Shop pages.
 4. **Checkout (non-production)** — place a test order with sandbox payment; no live capture.
 5. **Account** — order history and profile summary after authentication.
+6. **Notify me** — when a print edition is listed but not purchasable online (sold out or
+   awaiting allocation), signed-in viewers can register interest; the API rejects
+   registration while editions remain purchasable, including direct API calls.
+
+### Notify-me journey and failure states
+
+| Step | Expected behaviour |
+|---|---|
+| Guest on unavailable edition | Sees sign-in CTA with `returnTo` on the artwork URL; no enabled notify button. |
+| Authenticated, interest loaded | Notify button or “already subscribed” copy; never guest “Create a LAX account” on editions. |
+| Interest status load failed / 401 | Alert copy; notify control disabled until status is known. |
+| POST while artwork purchasable | `409 shop.conflict`; storefront shows conflict message. |
+| Unknown artwork slug (GET/POST) | `404 shop.not_found`; storefront does not treat as unsubscribed. |
+| Duplicate registration | Idempotent `already_subscribed`; one interest row and one domain event. |
+
+Post–sign-in basket merge surfaces a global `basketMerge` query notice (merged / skipped /
+failed) on any `returnTo` destination; Stripe checkout cancel uses a dismissible basket
+notice that clears `cancelled=1` from the URL.
 
 ## Domain ownership
 
@@ -39,13 +57,19 @@ until extraction thresholds are met.
 
 ## First commerce vertical slice
 
-Deliver on staging (`test-shop.lax.bid`) before production handover:
+**Foundation (implemented on main; staging deploy follows Identity soak gates):**
 
-1. Import one real product (+ variant) from the Shopify catalogue export.
-2. Render catalogue list and product detail in `apps/shop`.
-3. Anonymous basket with server-side persistence keyed to Shop session or anonymous token.
-4. Checkout requires Shop SSO; payment uses sandbox credentials only.
-5. Persist order + line items under `shop_app` tables; emit Shop lifecycle events for observability.
+1. Shop-owned artwork model with eligibility flag and idempotent `import_key`.
+2. Transactional allocation of editions **1–24** when eligible (**10 / 10 / 4** buyer-entitlement / artist / LAX).
+3. `apps/shop-api` public catalogue reads; `apps/shop` homepage backed by seeded data.
+4. Figma-derived desktop navigation + accessible responsive fallback (not full homepage Figma parity).
+
+**Subsequent MVP increment (after foundation merges post-soak):**
+
+1. Import from Shopify export where it maps to artwork/edition (not generic variant SKUs).
+2. Anonymous basket with server-side persistence keyed to Shop session or anonymous token.
+3. Checkout requires Shop SSO; payment uses sandbox credentials only.
+4. Persist order + line items under `shop_app` tables; emit Shop lifecycle events for observability.
 
 ## Shopify migration inputs required
 
@@ -69,6 +93,8 @@ Before implementation starts, provide:
 ## Acceptance for MVP slice
 
 - Staging browse → basket → SSO → sandbox checkout completes end-to-end
+- Notify-me cannot register for currently purchasable artworks; interest + event proven in DB integration tests
+- Session-aware footer, artwork unavailable panel, and commerce read failures each have distinct UI (no masquerading as empty/unsubscribed)
 - Shop obeys layer guardrails (`scripts/check-layers.mjs` Shop section)
 - Separate Docker image, deploy component, tests, and rollback path documented
 - Identity staging acceptance remains green with Shop gates enabled

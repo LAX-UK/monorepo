@@ -9,6 +9,7 @@ Use this checklist whenever changing brand colors, typography, spacing, or motio
 | Web CSS tokens | `apps/web/src/app/globals.css`, `apps/web/src/styles/tokens-dark.css`, `apps/web/src/styles/tokens-motion.css` |
 | Brand package | `packages/branding/src/brand-identity.ts`, `packages/branding/src/tokens.ts` |
 | Event app mirror | `apps/event/public/brand-tokens.css` |
+| Identity hosted login | `packages/auth/src/hosted-auth/tokens.ts` (literals; Identity cannot import branding) |
 | Shared UI | `@auction/ui` semantic classes (consumers inherit via CSS variables) |
 
 ## Automated guards
@@ -21,7 +22,7 @@ pnpm lint:ui-guardrails
 pnpm exec biome check apps/web/src/app/globals.css packages/branding
 ```
 
-`packages/branding/tests/tokens.test.ts` and `token-drift.test.ts` assert alignment between brand identity, web globals, and event CSS.
+`packages/branding/tests/tokens.test.ts` and `token-drift.test.ts` assert alignment between brand identity, web globals, event CSS, and issuer-hosted login tokens.
 
 ## Manual verification
 

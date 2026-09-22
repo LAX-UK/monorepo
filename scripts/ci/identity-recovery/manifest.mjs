@@ -27,7 +27,7 @@ export function parseRecoveryManifest(serialized) {
   requireString(manifest.migrationJournal?.tip, "migrationJournal.tip");
   requireString(manifest.migrationJournal?.sha256, "migrationJournal.sha256", /^[0-9a-f]{64}$/);
   requireString(manifest.dataContractVersion, "dataContractVersion");
-  for (const component of ["identity", "shopIdentity", "shop"]) {
+  for (const component of ["identity", "shopIdentity", "shop", "shopApi"]) {
     const value = manifest[component];
     requireString(value?.sha, `${component}.sha`, SHA);
     requireString(value?.digest, `${component}.digest`, DIGEST);

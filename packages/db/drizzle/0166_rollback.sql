@@ -1,0 +1,15 @@
+DROP TABLE IF EXISTS "shop_processed_payment_event";
+DROP TABLE IF EXISTS "shop_payout_ledger";
+DROP TABLE IF EXISTS "shop_order_line";
+DROP TABLE IF EXISTS "shop_order";
+DROP TABLE IF EXISTS "shop_basket_line";
+DROP TABLE IF EXISTS "shop_basket";
+ALTER TABLE "shop_edition" DROP COLUMN IF EXISTS "reserved_until";
+ALTER TABLE "shop_edition" DROP COLUMN IF EXISTS "status";
+ALTER TABLE "shop_artwork" DROP COLUMN IF EXISTS "print_price_pence";
+DROP INDEX IF EXISTS "shop_party_identity_subject_uid";
+ALTER TABLE "shop_party" DROP COLUMN IF EXISTS "identity_subject_id";
+DROP TYPE IF EXISTS "shop_payout_status";
+DROP TYPE IF EXISTS "shop_fulfilment_option";
+DROP TYPE IF EXISTS "shop_order_status";
+DROP TYPE IF EXISTS "shop_edition_status";
