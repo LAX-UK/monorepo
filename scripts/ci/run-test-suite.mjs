@@ -31,9 +31,15 @@ function runShard(shard, total) {
 }
 
 async function runWebShards(total = 4) {
+  if (process.env.CI_SKIP_WEB_VITEST_SHARDS === "1") {
+    console.log("Skipping web Vitest shards (CI_SKIP_WEB_VITEST_SHARDS=1).");
+    return;
+  }
+
+  const defaultConcurrency = process.env.CI ? "1" : "2";
   const concurrency = Math.max(
     1,
-    Number.parseInt(process.env.WEB_TEST_SHARD_CONCURRENCY ?? "2", 10),
+    Number.parseInt(process.env.WEB_TEST_SHARD_CONCURRENCY ?? defaultConcurrency, 10),
   );
   console.log(`Running web Vitest with ${total} shards (concurrency ${concurrency})`);
 

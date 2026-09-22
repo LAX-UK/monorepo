@@ -511,7 +511,46 @@ jobs:
       - name: FK removal inventory (report-only)
         run: node scripts/ci/run-fk-removal-inventory-gate.mjs
 
+  full-verify-web-vitest:
+    name: full-verify web vitest (${{ matrix.shard }}/4)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web dependencies
+        run: pnpm turbo run build --filter=@auction/web...
+
+      - name: Vitest shard
+        run: pnpm --filter @auction/web exec vitest run --shard=${{ matrix.shard }}/4 --reporter=dot --reporter=blob
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-web-blob-${{ matrix.shard }}
+          path: apps/web/.vitest-reports/blob-${{ matrix.shard }}-4.json
+          if-no-files-found: error
+          retention-days: 7
+
   full-verify:
+    needs: full-verify-web-vitest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')
     runs-on: ubuntu-latest
     services:
@@ -581,6 +620,8 @@ jobs:
         run: pnpm --filter @auction/db db:roles
 
       - name: Full monorepo verify (ci:verify)
+        env:
+          CI_SKIP_WEB_VITEST_SHARDS: "1"
         run: pnpm ci:verify
 
       - name: Release gates bundle
