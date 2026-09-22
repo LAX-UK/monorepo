@@ -23,4 +23,11 @@ test("main full-verify runs web vitest on matrix runners", () => {
   assert.match(workflow, /full-verify-web-vitest:/);
   assert.match(workflow, /CI_SKIP_WEB_VITEST_SHARDS: "1"/);
   assert.match(workflow, /needs: full-verify-web-vitest/);
+  assert.match(workflow, /build --filter=@auction\/web\^\.\.\./);
+});
+
+test("run-test-suite avoids next build before web vitest", () => {
+  const source = readFileSync(join(root, "scripts/ci/run-test-suite.mjs"), "utf8");
+  assert.match(source, /--filter=@auction\/web\^\.\.\./);
+  assert.doesNotMatch(source, /--filter=@auction\/web\.\.\./);
 });

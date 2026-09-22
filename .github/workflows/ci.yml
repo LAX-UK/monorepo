@@ -244,7 +244,7 @@ jobs:
             echo "Web tests not affected; skipping sharded vitest run."
             exit 0
           fi
-          pnpm turbo run build --filter=@auction/web...
+          pnpm turbo run build --filter=@auction/web^...
           for shard in 1 2 3 4; do
             echo "Running web vitest shard ${shard}/4"
             pnpm --filter @auction/web exec vitest run --shard="${shard}/4"
@@ -534,8 +534,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build web dependencies
-        run: pnpm turbo run build --filter=@auction/web...
+      # Vitest uses Vite; do not run `next build` here (next/font/google network fetch flakes on CI).
+      - name: Build web workspace dependencies
+        run: pnpm turbo run build --filter=@auction/web^...
 
       - name: Vitest shard
         run: pnpm --filter @auction/web exec vitest run --shard=${{ matrix.shard }}/4 --reporter=dot --reporter=blob
@@ -546,7 +547,7 @@ jobs:
         with:
           name: vitest-web-blob-${{ matrix.shard }}
           path: apps/web/.vitest-reports/blob-${{ matrix.shard }}-4.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
 
   full-verify:

@@ -107,5 +107,6 @@ if (isolateDbIntegrationTests) {
   console.log("Running @auction/db integration tests in isolation (MIGRATION_TEST_DATABASE_URL).");
   runSync(["turbo", "run", "test", "--filter=@auction/db"]);
 }
-runSync(["turbo", "run", "build", "--filter=@auction/web..."]);
+// Vitest runs under Vite; building @auction/web triggers next/font network fetches we do not need.
+runSync(["turbo", "run", "build", "--filter=@auction/web^..."]);
 await runWebShards(4);
