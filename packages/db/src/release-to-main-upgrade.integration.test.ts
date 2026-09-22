@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,7 +38,7 @@ describe("release to main lineage adoption", () => {
     "applies main migrations through 0161 on a disposable database",
     async () => {
       if (!migrationUrl) throw new Error("MIGRATION_TEST_DATABASE_URL is required");
-      const databaseName = `release_main_${Date.now()}`;
+      const databaseName = `release_main_${randomUUID().replaceAll("-", "")}`;
       const adminUrl = new URL(migrationUrl);
       adminUrl.pathname = "/postgres";
       const databaseUrl = new URL(migrationUrl);
