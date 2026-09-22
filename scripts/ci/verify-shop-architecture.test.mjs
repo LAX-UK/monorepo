@@ -164,6 +164,10 @@ describe("Shop commerce architecture SSOT", () => {
   it("enforces Shop browser, media, SEO, and asset contracts", () => {
     const workflow = readFileSync(join(root, ".github/workflows/e2e-pr.yml"), "utf8");
     assert.match(workflow, /Run Shop accessibility and viewport gates/);
+    assert.match(workflow, /e2e\/home\.spec\.ts/);
+    assert.match(workflow, /e2e\/theme-audit\.spec\.ts/);
+    assert.match(workflow, /e2e\/shop-viewport-audit\.spec\.ts/);
+    assert.doesNotMatch(workflow, /seed:catalogue/);
     assert.doesNotMatch(workflow, /PLAYWRIGHT_VISUAL: "1"/);
 
     const mediaMigration = readFileSync(
