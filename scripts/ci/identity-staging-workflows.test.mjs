@@ -215,6 +215,7 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
   assert.match(workflow, /write-recovery-accepted-release\.mjs/);
   assert.match(workflow, /git -C \.infra-config rev-parse HEAD/);
   assert.match(workflow, /Validate recovery and rollback inputs/);
+  assert.match(workflow, /infra_ref must be main or a full 40-char commit SHA/);
   assert.match(workflow, /parent_holds_deploy_lock: true/);
   assert.match(workflow, /fromJSON\(inputs\.rollback_manifest\)\.identity\.sha/);
   assert.match(workflow, /app_image_tag: \$\{\{ needs\.validate_inputs\.outputs\.shop_sha \}\}/);

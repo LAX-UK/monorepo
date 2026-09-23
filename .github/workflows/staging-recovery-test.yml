@@ -70,8 +70,13 @@ jobs:
           ROLLBACK_MANIFEST: ${{ inputs.rollback_manifest }}
           SHOP_IMAGE: ${{ inputs.shop_image }}
           SHOP_API_IMAGE: ${{ inputs.shop_api_image }}
+          INFRA_REF: ${{ inputs.infra_ref }}
         run: |
           set -euo pipefail
+          if test "$INFRA_REF" != "main" && [[ ! "$INFRA_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::infra_ref must be main or a full 40-char commit SHA (checkout cannot resolve abbreviated refs)"
+            exit 1
+          fi
           parse_image() {
             local label="$1"
             local value="$2"
