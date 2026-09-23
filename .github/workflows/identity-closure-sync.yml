@@ -1,0 +1,38 @@
+name: Identity closure sync
+
+on:
+  pull_request:
+    paths:
+      - apps/auth/**
+      - packages/auth/**
+      - packages/identity-contracts/**
+      - packages/identity-db/**
+      - packages/observability/**
+      - packages/config-ts/**
+      - patches/**
+      - scripts/identity/**
+      - scripts/ci/prepare-identity-lockfile.mjs
+      - scripts/ci/verify-identity-extractability.mjs
+      - scripts/check-layers.mjs
+      - package.json
+      - pnpm-lock.yaml
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-lax-identity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Compare Identity closure to lax-identity@main
+        env:
+          LAX_IDENTITY_CLOSURE_REF: ${{ vars.LAX_IDENTITY_CLOSURE_REF }}
+        run: node scripts/ci/verify-identity-closure-sync.mjs

@@ -18,17 +18,62 @@ export function identityPnpmEnvironment(source = process.env) {
   return environment;
 }
 
-const BIOME_CONFIG = {
-  $schema: "https://biomejs.dev/schemas/1.9.4/schema.json",
-  vcs: { enabled: true, clientKind: "git", useIgnoreFile: true },
-  files: {
-    ignore: ["**/node_modules/**", "**/dist/**", "**/coverage/**", "**/pnpm-lock.yaml"],
+/** Literal file body so `biome format .` is a no-op on the Identity root config. */
+const IDENTITY_BIOME_JSON_TEXT = `{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
   },
-  formatter: { indentStyle: "space", indentWidth: 2, lineWidth: 100 },
-  organizeImports: { enabled: true },
-  linter: { enabled: true, rules: { recommended: true } },
-  javascript: { formatter: { quoteStyle: "double", semicolons: "always" } },
-};
+  "files": {
+    "ignore": ["**/node_modules/**", "**/dist/**", "**/coverage/**", "**/pnpm-lock.yaml"]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "organizeImports": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always"
+    }
+  }
+}
+`;
+
+/** Scripts required by the standalone lax-identity repository CI (not the monorepo root). */
+export const IDENTITY_STANDALONE_ROOT_SCRIPTS = Object.freeze({
+  build: "pnpm --filter @auction/auth-app... --workspace-concurrency=1 build",
+  format: "biome format --write .",
+  "format:check": "biome format .",
+  lint: "biome check .",
+  "lint:layers": "node scripts/check-layers.mjs",
+  typecheck:
+    "pnpm --filter @auction/auth-app^... --workspace-concurrency=1 build && pnpm --filter @auction/auth-app... --workspace-concurrency=1 typecheck",
+  test: "pnpm test:unit",
+  "test:unit":
+    "pnpm --filter @auction/auth-app... --workspace-concurrency=1 --if-present run test -- --exclude='**/*.integration.test.ts'",
+  "test:integration": "node scripts/ci/run-db-integration-tests.mjs",
+  "test:redis": "node scripts/ci/check-redis.mjs",
+  "test:better-auth-contract":
+    "pnpm --filter @auction/auth-app exec vitest run src/services/better-auth-oidc-compatibility.contract.test.ts",
+  "ci:schema-contract": "node scripts/ci/verify-schema-contract.mjs",
+  "ci:identity-extractability": "node scripts/ci/verify-identity-extractability.mjs",
+  "audit:prod": "pnpm audit --prod --audit-level high",
+  "ci:verify":
+    "pnpm format:check && pnpm lint && pnpm lint:layers && pnpm ci:identity-extractability && pnpm ci:schema-contract && pnpm typecheck && pnpm test:unit && pnpm test:better-auth-contract && pnpm build",
+});
 
 function json(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -120,17 +165,7 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
     type: "module",
     packageManager: `pnpm@${IDENTITY_PNPM_VERSION}`,
     ...(manifest.engines ? { engines: manifest.engines } : {}),
-    scripts: {
-      build: "pnpm --filter @auction/auth-app... --workspace-concurrency=1 build",
-      lint: "biome check .",
-      "lint:layers": "node scripts/check-layers.mjs",
-      typecheck: "pnpm --filter @auction/auth-app... --workspace-concurrency=1 typecheck",
-      test: "pnpm test:unit",
-      "test:unit": `corepack pnpm@${IDENTITY_PNPM_VERSION} --filter @auction/auth-app... --workspace-concurrency=1 --if-present test --exclude='**/*.integration.test.ts'`,
-      "ci:identity-extractability": "node scripts/ci/verify-identity-extractability.mjs",
-      "ci:verify":
-        "pnpm lint && pnpm lint:layers && pnpm ci:identity-extractability && pnpm typecheck && pnpm test && pnpm build",
-    },
+    scripts: { ...IDENTITY_STANDALONE_ROOT_SCRIPTS },
     ...(manifest.pnpm?.overrides || manifest.pnpm?.patchedDependencies
       ? {
           pnpm: {
@@ -177,7 +212,7 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
     join(workspaceRoot, ".npmrc"),
     "node-linker=isolated\nauto-install-peers=false\ndedupe-peer-dependents=false\npublic-hoist-pattern[]=drizzle-orm\n",
   );
-  writeJson(join(workspaceRoot, "biome.json"), BIOME_CONFIG);
+  writeFileSync(join(workspaceRoot, "biome.json"), IDENTITY_BIOME_JSON_TEXT);
 }
 
 /** Prune a copied source lock to the closure without resolving dependencies online. */

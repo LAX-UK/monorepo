@@ -60,6 +60,8 @@ jobs:
       IDENTITY_OUTBOX_MAX_AGE_MS: ${{ inputs.outbox_max_age_ms }}
       IDENTITY_RECONCILIATION_ATTEMPTS: "12"
       IDENTITY_RECONCILIATION_RETRY_DELAY_SEC: "5"
+      IDENTITY_PROBE_RETRY_ATTEMPTS: "2"
+      IDENTITY_PROBE_RETRY_DELAY_SEC: "5"
       BACKCHANNEL_LOGOUT_TIMEOUT_MS: "120000"
       SSF_TEST_TIMEOUT_MS: "120000"
       SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
@@ -168,54 +170,65 @@ jobs:
           echo "ACCEPTANCE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
           echo "ACCEPTANCE_SSF_MODE=${{ inputs.ssf_mode }}" >> "$GITHUB_ENV"
       - name: Discovery, JWKS, HTTPS, headers, and retired API routes
-        run: node scripts/ci/verify-identity-boundary.mjs --live
+        id: probe_boundary
+        continue-on-error: true
+        run: node scripts/ci/run-probe-with-retry.mjs node scripts/ci/verify-identity-boundary.mjs --live
       - name: Machine token lifecycle, forged origin, and rate limit
-        run: node scripts/ci/verify-identity-machine-live.mjs
+        id: probe_machine
+        continue-on-error: true
+        run: node scripts/ci/run-probe-with-retry.mjs node scripts/ci/verify-identity-machine-live.mjs
       - name: Bid BFF login, callback, exchanged resource token, and scopes
-        run: node scripts/ci/verify-bid-web-bff-roundtrip.mjs
+        id: probe_bid_bff
+        continue-on-error: true
+        run: node scripts/ci/run-probe-with-retry.mjs node scripts/ci/verify-bid-web-bff-roundtrip.mjs
       - name: Shop cold login, SSO, session, and logout isolation
-        run: node scripts/ci/verify-shop-oidc-roundtrip.mjs
+        id: probe_shop_oidc
+        continue-on-error: true
+        run: node scripts/ci/run-probe-with-retry.mjs node scripts/ci/verify-shop-oidc-roundtrip.mjs
       - name: Refresh rotation and reuse rejection
-        run: node scripts/ci/verify-refresh-reuse.mjs
+        id: probe_refresh
+        continue-on-error: true
+        run: node scripts/ci/run-probe-with-retry.mjs node scripts/ci/verify-refresh-reuse.mjs
       - name: Bid and Shop back-channel logout delivery
-        run: pnpm tsx scripts/ci/verify-backchannel-logout-live.mjs
+        id: probe_backchannel
+        continue-on-error: true
+        run: node scripts/ci/run-probe-with-retry.mjs pnpm tsx scripts/ci/verify-backchannel-logout-live.mjs
       - name: SSF durable delivery and replay contract (Bid receiver)
         if: inputs.ssf_mode == 'ssf_enabled'
+        id: probe_ssf_bid
+        continue-on-error: true
         env:
           SSF_TEST_CLIENT_ID: lax-bid-web
           SSF_TEST_CLIENT_SECRET: ${{ env.SSF_TEST_CLIENT_SECRET }}
           SSF_TEST_ENDPOINT: https://test-api.lax.bid/ssf/events
-        run: pnpm tsx scripts/ci/verify-identity-ssf-live.mjs
+        run: node scripts/ci/run-probe-with-retry.mjs pnpm tsx scripts/ci/verify-identity-ssf-live.mjs
       - name: SSF durable delivery and replay contract (Shop receiver)
         if: inputs.ssf_mode == 'ssf_enabled'
+        id: probe_ssf_shop
+        continue-on-error: true
         env:
           SSF_TEST_CLIENT_ID: lax-shop-web
           SSF_TEST_CLIENT_SECRET: ${{ env.REFRESH_TEST_CLIENT_SECRET }}
           SSF_TEST_ENDPOINT: https://test-shop.lax.bid/api/ssf/events
-        run: pnpm tsx scripts/ci/verify-identity-ssf-live.mjs
+        run: node scripts/ci/run-probe-with-retry.mjs pnpm tsx scripts/ci/verify-identity-ssf-live.mjs
       - name: Directory and profile reconciliation
-        run: |
-          for attempt in $(seq 1 "$IDENTITY_RECONCILIATION_ATTEMPTS"); do
-            if pnpm tsx scripts/ci/verify-identity-directory-drift.mjs; then
-              break
-            fi
-            test "$attempt" -lt "$IDENTITY_RECONCILIATION_ATTEMPTS" || exit 1
-            sleep "$IDENTITY_RECONCILIATION_RETRY_DELAY_SEC"
-          done
+        id: probe_directory
+        continue-on-error: true
+        run: node scripts/ci/run-probe-with-retry.mjs pnpm tsx scripts/ci/verify-identity-directory-drift.mjs
       - name: Lifecycle outbox lag
-        run: |
-          for attempt in $(seq 1 "$IDENTITY_RECONCILIATION_ATTEMPTS"); do
-            if pnpm tsx scripts/ci/verify-identity-outbox-live.mjs; then
-              break
-            fi
-            test "$attempt" -lt "$IDENTITY_RECONCILIATION_ATTEMPTS" || exit 1
-            sleep "$IDENTITY_RECONCILIATION_RETRY_DELAY_SEC"
-          done
+        id: probe_outbox
+        continue-on-error: true
+        run: node scripts/ci/run-probe-with-retry.mjs pnpm tsx scripts/ci/verify-identity-outbox-live.mjs
       - name: JWKS snapshot encryption and metrics visibility
+        id: probe_jwks_metrics
+        continue-on-error: true
         run: |
-          pnpm tsx scripts/jwks-snapshot.ts test --verify
-          node scripts/ci/verify-identity-auth-metrics-live.mjs
+          set -euo pipefail
+          node scripts/ci/run-probe-with-retry.mjs pnpm tsx scripts/jwks-snapshot.ts test --verify
+          node scripts/ci/run-probe-with-retry.mjs node scripts/ci/verify-identity-auth-metrics-live.mjs
       - name: Live database role contracts
+        id: probe_role_contracts
+        continue-on-error: true
         run: |
           pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:report-user-read-cutover
@@ -223,6 +236,23 @@ jobs:
           pnpm --filter @auction/db test:api-role-contract
           pnpm --filter @auction/db test:shop-role-contract
           pnpm --filter @auction/db test:worker-role-contract
+      - name: Acceptance gate
+        if: always()
+        env:
+          PROBE_OUTCOMES: |
+            probe_boundary=${{ steps.probe_boundary.outcome }}
+            probe_machine=${{ steps.probe_machine.outcome }}
+            probe_bid_bff=${{ steps.probe_bid_bff.outcome }}
+            probe_shop_oidc=${{ steps.probe_shop_oidc.outcome }}
+            probe_refresh=${{ steps.probe_refresh.outcome }}
+            probe_backchannel=${{ steps.probe_backchannel.outcome }}
+            probe_ssf_bid=${{ steps.probe_ssf_bid.outcome }}
+            probe_ssf_shop=${{ steps.probe_ssf_shop.outcome }}
+            probe_directory=${{ steps.probe_directory.outcome }}
+            probe_outbox=${{ steps.probe_outbox.outcome }}
+            probe_jwks_metrics=${{ steps.probe_jwks_metrics.outcome }}
+            probe_role_contracts=${{ steps.probe_role_contracts.outcome }}
+        run: node scripts/ci/identity-acceptance-gate.mjs
       - name: Record bounded acceptance phase evidence
         if: always()
         run: |

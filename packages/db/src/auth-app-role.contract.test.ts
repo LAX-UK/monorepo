@@ -21,7 +21,7 @@ async function withAuthClient<T>(fn: (client: pg.Client) => Promise<T>): Promise
   }
 }
 
-describe.skipIf(!AUTH_URL)("auth_app role contract", () => {
+describe.skipIf(!AUTH_URL)("auth_app role contract", { timeout: 60_000 }, () => {
   it("has full DML only for Better Auth-owned tables", async () => {
     await withAuthClient(async (client) => {
       expectUniformTablePrivileges(

@@ -3,6 +3,16 @@
 `closure.mjs` is the source of truth for the six path-preserved workspace
 packages, generated root files, retained scripts, and Auth Docker expectations.
 
+**Repository direction:** this monorepo owns the Identity closure. The standalone
+[`lax-identity`](https://github.com/LAX-UK/lax-identity) repository is a
+path-preserving extract for image publish and staging deploy — never edit
+closure sources there by hand. After changing closure paths here, run
+`scripts/identity/repo-split.sh` (or open an equivalent sync PR on lax-identity)
+and merge lax-identity before pinning `identity_sha` in staging recovery.
+`pnpm ci:identity-closure-sync` compares the monorepo to lax-identity@main (CI
+and nightly); staging recovery runs the same check against the pinned
+`identity_sha` in `validate_inputs`.
+
 Run a local rehearsal with:
 
 ```sh
