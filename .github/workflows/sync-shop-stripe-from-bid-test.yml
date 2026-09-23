@@ -1,0 +1,76 @@
+# Mirror Bid test Stripe API key to Shop GitHub secrets and ensure a Shop webhook
+# endpoint on the shared test account (see docs/runbooks/shop-stripe-setup.md).
+name: Sync Shop Stripe secrets from Bid test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  secrets: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - name: Mirror STRIPE_SECRET_KEY → STRIPE_SHOP_SECRET_KEY (test env)
+        env:
+          SOURCE: ${{ secrets.STRIPE_SECRET_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if test -z "${SOURCE:-}"; then
+            echo "::error::STRIPE_SECRET_KEY is empty in the test environment."
+            exit 1
+          fi
+          printf '%s' "$SOURCE" | gh secret set STRIPE_SHOP_SECRET_KEY --env test --repo "${{ github.repository }}"
+
+      - name: Ensure Shop webhook on shared test account
+        id: webhook
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+          SHOP_URL="https://test-shop.lax.bid/webhooks/stripe"
+          existing_id="$(
+            curl -sS -G https://api.stripe.com/v1/webhook_endpoints \
+              -u "${STRIPE_SECRET_KEY}:" \
+              --data-urlencode "limit=100" \
+            | jq -r --arg url "$SHOP_URL" '.data[] | select(.url == $url) | .id' | head -1
+          )"
+          if test -n "$existing_id"; then
+            echo "Shop webhook already registered ($existing_id); rolling signing secret for GitHub sync."
+            resp="$(
+              curl -sS -X POST "https://api.stripe.com/v1/webhook_endpoints/${existing_id}/secret" \
+                -u "${STRIPE_SECRET_KEY}:"
+            )"
+          else
+            resp="$(
+              curl -sS https://api.stripe.com/v1/webhook_endpoints \
+                -u "${STRIPE_SECRET_KEY}:" \
+                -d "url=${SHOP_URL}" \
+                -d "enabled_events[]=checkout.session.completed" \
+                -d "enabled_events[]=checkout.session.async_payment_succeeded" \
+                -d "enabled_events[]=checkout.session.async_payment_failed" \
+                -d "enabled_events[]=checkout.session.expired"
+            )"
+          fi
+          if echo "$resp" | jq -e '.error' >/dev/null 2>&1; then
+            echo "::error::Stripe webhook setup failed: $(echo "$resp" | jq -c '.error')"
+            exit 1
+          fi
+          whsec="$(echo "$resp" | jq -r '.secret // empty')"
+          if test -z "$whsec"; then
+            echo "::error::Stripe response did not include a signing secret."
+            exit 1
+          fi
+          echo "whsec=$whsec" >> "$GITHUB_OUTPUT"
+
+      - name: Set STRIPE_SHOP_WEBHOOK_SECRET (test env)
+        env:
+          WHSEC: ${{ steps.webhook.outputs.whsec }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$WHSEC" | gh secret set STRIPE_SHOP_WEBHOOK_SECRET --env test --repo "${{ github.repository }}"
