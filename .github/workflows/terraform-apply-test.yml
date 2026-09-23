@@ -143,6 +143,12 @@ jobs:
       - name: Verify Auth Terraform environment contract
         if: inputs.layer == 'ephemeral'
         run: node scripts/ci/verify-auth-terraform-env.mjs .infra-config/terraform/ephemeral/test/main.tf
+      - name: Verify staging migrate journal contract
+        if: inputs.layer == 'ephemeral'
+        run: |
+          node scripts/ci/verify-staging-migrate-contract.mjs \
+            .infra-config/terraform/ephemeral/test/main.tf \
+            .infra-config/terraform/ephemeral/prod/main.tf
       - uses: digitalocean/action-doctl@v2
         if: inputs.layer == 'ephemeral'
         with:

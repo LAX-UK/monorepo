@@ -76,6 +76,7 @@ runs:
       shell: bash
       env:
         APP_ID: ${{ inputs.app-id }}
+        APPLY_OUTCOME: ${{ steps.apply.outcome }}
       run: |
         set -euo pipefail
         before="$RUNNER_TEMP/${{ inputs.state-key }}-deployments-before.json"
@@ -83,10 +84,16 @@ runs:
         evidence="$RUNNER_TEMP/${{ inputs.state-key }}-app-platform-diagnostics.json"
         doctl apps list-deployments "$APP_ID" --output json > "$deployments" || true
         deployment_id="$(
-          jq -r --slurpfile before "$before" '
+          jq -r --slurpfile before "$before" --arg outcome "$APPLY_OUTCOME" '
             ($before[0] // []) as $prior |
-            [.[] | select(.id as $id | ($prior | index($id) | not))] |
-            sort_by(.created_at) | last | .id // empty
+            [.[] | select(.id as $id | ($prior | index($id) | not))] as $new |
+            if ($new | length) == 0 then empty
+            elif $outcome == "failure" then
+              ([$new[] | select(.phase == "ERROR")] | sort_by(.created_at) | last | .id)
+                // ($new | sort_by(.created_at) | last | .id)
+            else
+              ($new | sort_by(.created_at) | last | .id)
+            end // empty
           ' "$deployments"
         )"
         # A no-op apply creates no deployment; retain the current one for evidence.

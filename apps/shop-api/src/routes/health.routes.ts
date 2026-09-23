@@ -17,10 +17,11 @@ type ReadyPayload =
 export async function registerHealthRoutes(app: FastifyInstance, health: HealthDeps) {
   app.get("/health/live", async () => ({ service: "shop-api", status: "ok" }));
 
-  app.get("/health/ready", async (_request, reply) => {
+  app.get("/health/ready", async (request, reply) => {
     try {
       await health.checkConnectivity();
-    } catch {
+    } catch (error) {
+      request.log.warn({ err: error }, "shop_api_readiness_database_unavailable");
       const body: ReadyPayload = {
         service: "shop-api",
         status: "degraded",
@@ -31,7 +32,8 @@ export async function registerHealthRoutes(app: FastifyInstance, health: HealthD
 
     try {
       await health.checkCatalogueSchema();
-    } catch {
+    } catch (error) {
+      request.log.warn({ err: error }, "shop_api_readiness_catalogue_schema_missing");
       const body: ReadyPayload = {
         service: "shop-api",
         status: "degraded",

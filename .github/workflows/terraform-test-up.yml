@@ -134,6 +134,11 @@ jobs:
         run: node scripts/ci/verify-cloudflare-zone-access.mjs
       - name: Verify Auth Terraform environment contract
         run: node scripts/ci/verify-auth-terraform-env.mjs .infra-config/terraform/ephemeral/test/main.tf
+      - name: Verify staging migrate journal contract
+        run: |
+          node scripts/ci/verify-staging-migrate-contract.mjs \
+            .infra-config/terraform/ephemeral/test/main.tf \
+            .infra-config/terraform/ephemeral/prod/main.tf
       - uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
