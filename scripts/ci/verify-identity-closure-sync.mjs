@@ -23,7 +23,6 @@ const LAX_IDENTITY_REPO =
 function parseArgs(argv) {
   let ref = "main";
   let standaloneRoot = process.env.LAX_IDENTITY_ROOT;
-  let applyMonorepoHandoff = false;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--ref") {
@@ -34,23 +33,9 @@ function parseArgs(argv) {
     if (arg === "--standalone-root") {
       standaloneRoot = argv[index + 1];
       index += 1;
-      continue;
-    }
-    if (arg === "--apply-monorepo-handoff") {
-      applyMonorepoHandoff = true;
     }
   }
-  return { ref, standaloneRoot, applyMonorepoHandoff };
-}
-
-/** Applies monorepo-only handoff files onto a lax-identity checkout before compare. */
-export function applyMonorepoHandoffOverlay(standaloneRoot, monorepoRoot = repoRoot) {
-  copyFileSync(
-    join(monorepoRoot, "scripts/ci/prepare-identity-lockfile.mjs"),
-    join(standaloneRoot, "scripts/ci/prepare-identity-lockfile.mjs"),
-  );
-  copyFileSync(join(monorepoRoot, "package.json"), join(standaloneRoot, "package.json"));
-  prepareIdentityRootManifest(join(standaloneRoot, "package.json"), [...IDENTITY_PACKAGE_PATHS]);
+  return { ref, standaloneRoot };
 }
 
 function sha256File(path) {
@@ -142,7 +127,6 @@ function main() {
   const parsed = parseArgs(process.argv.slice(2));
   const ref = parsed.ref ?? process.env.LAX_IDENTITY_CLOSURE_REF ?? "main";
   const explicitRoot = parsed.standaloneRoot;
-  const applyMonorepoHandoff = parsed.applyMonorepoHandoff;
   if (!/^[0-9a-f]{40}$|^main$/.test(ref)) {
     throw new Error("--ref must be main or a full 40-char commit SHA");
   }
@@ -152,23 +136,15 @@ function main() {
   try {
     standaloneRoot = resolveStandaloneRoot(ref, explicitRoot);
     cleanupRoot = !explicitRoot;
-    if (applyMonorepoHandoff) {
-      applyMonorepoHandoffOverlay(standaloneRoot, repoRoot);
-    }
     const violations = compareTrees(repoRoot, standaloneRoot);
     if (violations.length > 0) {
       console.error(
-        `Identity closure drift vs lax-identity@${ref}${applyMonorepoHandoff ? " (after monorepo handoff overlay)" : ""} (${violations.length} path(s)):\n- ${violations.join("\n- ")}`,
+        `Identity closure drift vs lax-identity@${ref} (${violations.length} path(s)):\n- ${violations.join("\n- ")}`,
       );
       console.error(
         "\nMonorepo is source of truth. Sync lax-identity with scripts/identity/repo-split.sh and open a PR there before pinning staging recovery.",
       );
       process.exit(1);
-    }
-    if (applyMonorepoHandoff) {
-      console.warn(
-        "::warning::lax-identity sync PR matches monorepo after handoff overlay (prepare-identity-lockfile + root manifest). Push that overlay to lax-identity before merge.",
-      );
     }
     console.log(`Identity closure matches lax-identity@${ref}.`);
   } finally {

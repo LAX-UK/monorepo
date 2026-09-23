@@ -32,35 +32,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      - name: Compare Identity closure to lax-identity
+      - name: Compare Identity closure to lax-identity@main
         env:
-          GH_TOKEN: ${{ github.token }}
           LAX_IDENTITY_CLOSURE_REF: ${{ vars.LAX_IDENTITY_CLOSURE_REF }}
-        run: |
-          set -euo pipefail
-          if test -n "${LAX_IDENTITY_CLOSURE_REF:-}"; then
-            node scripts/ci/verify-identity-closure-sync.mjs --ref "$LAX_IDENTITY_CLOSURE_REF"
-            exit 0
-          fi
-          if node scripts/ci/verify-identity-closure-sync.mjs --ref main; then
-            exit 0
-          fi
-          sync_head="$(
-            gh api repos/LAX-UK/lax-identity/pulls --paginate \
-              --jq '[.[] | select(.state == "open") | select(.head.ref | startswith("sync/")) | .head.sha][0] // empty'
-          )"
-          if test -z "$sync_head"; then
-            echo "::error::lax-identity@main drifted and no open sync/* PR to compare"
-            node scripts/ci/verify-identity-closure-sync.mjs --ref main
-            exit 1
-          fi
-          echo "lax-identity@main lags monorepo; verifying open sync PR at $sync_head"
-          if node scripts/ci/verify-identity-closure-sync.mjs --ref "$sync_head"; then
-            exit 0
-          fi
-          if test "${{ github.event_name }}" = "pull_request"; then
-            echo "Checking whether sync PR only needs monorepo handoff files"
-            node scripts/ci/verify-identity-closure-sync.mjs --ref "$sync_head" --apply-monorepo-handoff
-            exit 0
-          fi
-          exit 1
+        run: node scripts/ci/verify-identity-closure-sync.mjs
