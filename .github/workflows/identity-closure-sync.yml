@@ -34,5 +34,25 @@ jobs:
           node-version-file: .nvmrc
       - name: Compare Identity closure to lax-identity
         env:
+          GH_TOKEN: ${{ github.token }}
           LAX_IDENTITY_CLOSURE_REF: ${{ vars.LAX_IDENTITY_CLOSURE_REF }}
-        run: node scripts/ci/verify-identity-closure-sync.mjs
+        run: |
+          set -euo pipefail
+          if test -n "${LAX_IDENTITY_CLOSURE_REF:-}"; then
+            node scripts/ci/verify-identity-closure-sync.mjs --ref "$LAX_IDENTITY_CLOSURE_REF"
+            exit 0
+          fi
+          if node scripts/ci/verify-identity-closure-sync.mjs --ref main; then
+            exit 0
+          fi
+          sync_head="$(
+            gh api repos/LAX-UK/lax-identity/pulls --paginate \
+              --jq '[.[] | select(.state == "open") | select(.head.ref | startswith("sync/")) | .head.sha][0] // empty'
+          )"
+          if test -z "$sync_head"; then
+            echo "::error::lax-identity@main drifted and no open sync/* PR to compare"
+            node scripts/ci/verify-identity-closure-sync.mjs --ref main
+            exit 1
+          fi
+          echo "lax-identity@main lags monorepo; verifying open sync PR at $sync_head"
+          node scripts/ci/verify-identity-closure-sync.mjs --ref "$sync_head"
