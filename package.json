@@ -48,6 +48,7 @@
     "ci:lax-ecosystem": "node --test scripts/ci/verify-lax-ecosystem.test.mjs",
     "ci:identity-nn1-compat": "node scripts/ci/verify-identity-nn1-compat.mjs",
     "ci:identity-source-parity": "node scripts/ci/verify-identity-source-parity.mjs",
+    "ci:identity-closure-sync": "node scripts/ci/verify-identity-closure-sync.mjs",
     "ci:authorize-cutover": "node scripts/ci/authorize-cutover-preflight.mjs",
     "ci:prove-release": "pnpm ci:verify && pnpm ci:release-gates && pnpm ci:record-evidence",
     "ci:e2e-pr": "node scripts/ci/run-pr-browser-gates.mjs",

@@ -23,7 +23,7 @@ async function withShopClient<T>(fn: (client: pg.Client) => Promise<T>): Promise
   }
 }
 
-describe.skipIf(!SHOP_URL)("shop_app role contract", () => {
+describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => {
   it("has only the required DML on the Shop profile", async () => {
     await withShopClient(async (client) => {
       for (const table of SHOP_PRODUCT_PROFILE_TABLES) {

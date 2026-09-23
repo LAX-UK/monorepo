@@ -62,6 +62,12 @@ jobs:
       shop_api_digest: ${{ steps.parse.outputs.shop_api_digest }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Verify pinned Identity matches monorepo closure
+        run: node scripts/ci/verify-identity-closure-sync.mjs --ref ${{ inputs.identity_sha }}
       - id: parse
         name: Validate recovery and rollback inputs
         env:

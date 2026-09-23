@@ -43,3 +43,14 @@ Immutable cutover publishes four Shop-related images on test: `shop`, `shop-iden
 | Commerce / catalogue Playwright evidence (destructive seed) | Manual [`shop-staging-acceptance.yml`](../../.github/workflows/shop-staging-acceptance.yml) with matching `shop_sha` and `seed_catalogue=true` (destructive on `reed-study` edition ownership). Recovery and rollback rehearsal re-run Shop acceptance after restore with the same `shop_sha`. |
 
 Record run URLs and accepted image digests (including **shop-api**) in [identity-staging-extraction-evidence.md](./identity-staging-extraction-evidence.md) when commerce acceptance completes.
+
+## Staging recovery reruns (acceptance vs full chain)
+
+Use the smallest workflow that can prove the fix:
+
+| Change type | Workflow | Typical duration |
+|---|---|---|
+| Acceptance probes only (OIDC, role contracts, directory drift, metrics) | [`identity-staging-acceptance.yml`](../../.github/workflows/identity-staging-acceptance.yml) via **workflow_dispatch** with the **already-deployed** `identity_sha`, `ssf_mode`, and `outbox_max_age_ms` | ~3–10 minutes |
+| Image publish, Terraform apply, SSF toggle, Shop acceptance, rollback rehearsal | [`staging-recovery-test.yml`](../../.github/workflows/staging-recovery-test.yml) or `scripts/ci/dispatch-identity-final-chain.mjs` with full image pins | ~30–60 minutes |
+
+Acceptance reruns do **not** redeploy Identity or Shop images. Full recovery is required when infra, migrate, or image digests change. Network-bound acceptance probes retry once by default (`IDENTITY_PROBE_RETRY_ATTEMPTS`); contract assertions do not retry. Failed probes are listed together in the acceptance job summary after a `continue-on-error` pass.

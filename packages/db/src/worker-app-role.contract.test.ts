@@ -35,7 +35,7 @@ async function withWorkerClient<T>(fn: (client: pg.Client) => Promise<T>): Promi
 }
 
 /** Cutover gate: worker_app can perform delivery, payment maintenance, and lifecycle writes. */
-describe.skipIf(!WORKER_URL)("worker_app role contract", () => {
+describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, () => {
   it("has no DML privileges on Identity and receiver-local tables", async () => {
     const cutover = await readUserReadCutoverFromEnv();
     await withWorkerClient(async (client) => {

@@ -24,7 +24,7 @@ async function withApiClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<
   }
 }
 
-describe.skipIf(!API_URL)("api_app role contract", () => {
+describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
   it("can read but not write the Bid identity directory", async () => {
     await withApiClient(async (client) => {
       const read = await client.query<{ allowed: boolean }>(
