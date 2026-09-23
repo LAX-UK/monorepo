@@ -55,4 +55,12 @@ jobs:
             exit 1
           fi
           echo "lax-identity@main lags monorepo; verifying open sync PR at $sync_head"
-          node scripts/ci/verify-identity-closure-sync.mjs --ref "$sync_head"
+          if node scripts/ci/verify-identity-closure-sync.mjs --ref "$sync_head"; then
+            exit 0
+          fi
+          if test "${{ github.event_name }}" = "pull_request"; then
+            echo "Checking whether sync PR only needs monorepo handoff files"
+            node scripts/ci/verify-identity-closure-sync.mjs --ref "$sync_head" --apply-monorepo-handoff
+            exit 0
+          fi
+          exit 1
