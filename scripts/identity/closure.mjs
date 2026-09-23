@@ -31,12 +31,14 @@ export const IDENTITY_ROOT_FILES = Object.freeze([
   "patches",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
+  "schema-contract.json",
 ]);
 
 export const IDENTITY_SCRIPT_FILES = Object.freeze([
   "scripts/check-layers.mjs",
   "scripts/ci/prepare-identity-lockfile.mjs",
   "scripts/ci/verify-identity-extractability.mjs",
+  "scripts/ci/verify-schema-contract.mjs",
   "scripts/identity",
 ]);
 
@@ -74,5 +76,6 @@ export const IDENTITY_ALLOWED_TOP_LEVEL = Object.freeze([
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
   "patches",
+  "schema-contract.json",
   "scripts",
 ]);

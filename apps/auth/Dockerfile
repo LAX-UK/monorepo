@@ -67,6 +67,7 @@ COPY --from=builder /app/packages/identity-db/package.json ./packages/identity-d
 COPY --from=builder /app/packages/identity-db/dist ./packages/identity-db/dist
 COPY --from=builder /app/packages/observability/package.json ./packages/observability/package.json
 COPY --from=builder /app/packages/observability/dist ./packages/observability/dist
+COPY schema-contract.json ./schema-contract.json
 USER root
 RUN set -eu; \
   pg_path="$(find /app/node_modules/.pnpm -maxdepth 3 -type d -path '*/pg@*/node_modules/pg' | head -n 1)"; \
