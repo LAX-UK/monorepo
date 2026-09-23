@@ -124,7 +124,9 @@ function compareTrees(monorepoRoot, standaloneRoot) {
 }
 
 function main() {
-  const { ref, standaloneRoot: explicitRoot } = parseArgs(process.argv.slice(2));
+  const parsed = parseArgs(process.argv.slice(2));
+  const ref = parsed.ref ?? process.env.LAX_IDENTITY_CLOSURE_REF ?? "main";
+  const explicitRoot = parsed.standaloneRoot;
   if (!/^[0-9a-f]{40}$|^main$/.test(ref)) {
     throw new Error("--ref must be main or a full 40-char commit SHA");
   }

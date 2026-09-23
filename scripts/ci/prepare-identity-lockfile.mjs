@@ -18,38 +18,39 @@ export function identityPnpmEnvironment(source = process.env) {
   return environment;
 }
 
-/** Matches lax-identity `biome format .` expectations (expanded objects, not inline). */
-const BIOME_CONFIG = {
-  $schema: "https://biomejs.dev/schemas/1.9.4/schema.json",
-  vcs: {
-    enabled: true,
-    clientKind: "git",
-    useIgnoreFile: true,
+/** Literal file body so `biome format .` is a no-op on the Identity root config. */
+const IDENTITY_BIOME_JSON_TEXT = `{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
   },
-  files: {
-    ignore: ["**/node_modules/**", "**/dist/**", "**/coverage/**", "**/pnpm-lock.yaml"],
+  "files": {
+    "ignore": ["**/node_modules/**", "**/dist/**", "**/coverage/**", "**/pnpm-lock.yaml"]
   },
-  formatter: {
-    indentStyle: "space",
-    indentWidth: 2,
-    lineWidth: 100,
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
   },
-  organizeImports: {
-    enabled: true,
+  "organizeImports": {
+    "enabled": true
   },
-  linter: {
-    enabled: true,
-    rules: {
-      recommended: true,
-    },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
   },
-  javascript: {
-    formatter: {
-      quoteStyle: "double",
-      semicolons: "always",
-    },
-  },
-};
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always"
+    }
+  }
+}
+`;
 
 /** Scripts required by the standalone lax-identity repository CI (not the monorepo root). */
 export const IDENTITY_STANDALONE_ROOT_SCRIPTS = Object.freeze({
@@ -211,7 +212,7 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
     join(workspaceRoot, ".npmrc"),
     "node-linker=isolated\nauto-install-peers=false\ndedupe-peer-dependents=false\npublic-hoist-pattern[]=drizzle-orm\n",
   );
-  writeJson(join(workspaceRoot, "biome.json"), BIOME_CONFIG);
+  writeFileSync(join(workspaceRoot, "biome.json"), IDENTITY_BIOME_JSON_TEXT);
 }
 
 /** Prune a copied source lock to the closure without resolving dependencies online. */
