@@ -123,6 +123,7 @@ export function prepareIdentityRootManifest(manifestPath, workspacePaths) {
     scripts: {
       build: "pnpm --filter @auction/auth-app... --workspace-concurrency=1 build",
       lint: "biome check .",
+      "format:check": "biome check .",
       "lint:layers": "node scripts/check-layers.mjs",
       typecheck: "pnpm --filter @auction/auth-app... --workspace-concurrency=1 typecheck",
       test: "pnpm test:unit",
