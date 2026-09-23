@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  secrets: write
 
 jobs:
   sync:
@@ -17,9 +16,10 @@ jobs:
       - name: Mirror STRIPE_SECRET_KEY → STRIPE_SHOP_SECRET_KEY (test env)
         env:
           SOURCE: ${{ secrets.STRIPE_SECRET_KEY }}
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.IDENTITY_EVIDENCE_PAT }}
         run: |
           set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo "::error::IDENTITY_EVIDENCE_PAT is required to write test env secrets."; exit 1; }
           if test -z "${SOURCE:-}"; then
             echo "::error::STRIPE_SECRET_KEY is empty in the test environment."
             exit 1
@@ -70,7 +70,8 @@ jobs:
       - name: Set STRIPE_SHOP_WEBHOOK_SECRET (test env)
         env:
           WHSEC: ${{ steps.webhook.outputs.whsec }}
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.IDENTITY_EVIDENCE_PAT }}
         run: |
           set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo "::error::IDENTITY_EVIDENCE_PAT is required to write test env secrets."; exit 1; }
           printf '%s' "$WHSEC" | gh secret set STRIPE_SHOP_WEBHOOK_SECRET --env test --repo "${{ github.repository }}"
