@@ -114,10 +114,7 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
   assert.match(planAction, /retention-days: 30/);
   assert.doesNotMatch(planAction, /path: \|[\s\S]*\.tfplan/);
   assert.match(read(".github/workflows/terraform-plan.yml"), /verify-auth-terraform-env\.mjs/);
-  assert.match(
-    read(".github/actions/terraform-apply/action.yml"),
-    /phase == "ERROR"/,
-  );
+  assert.match(read(".github/actions/terraform-apply/action.yml"), /phase == "ERROR"/);
   assert.match(read(".github/workflows/terraform-apply-test.yml"), /TF_VAR_identity_image_tag/);
   assert.match(read(".github/workflows/terraform-apply-test.yml"), /TF_VAR_app_image_tag/);
 });
