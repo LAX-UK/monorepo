@@ -32,5 +32,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      - name: Compare Identity closure to lax-identity@main
-        run: pnpm ci:identity-closure-sync
+      - name: Compare Identity closure to lax-identity
+        env:
+          LAX_IDENTITY_CLOSURE_REF: ${{ vars.LAX_IDENTITY_CLOSURE_REF }}
+        run: node scripts/ci/verify-identity-closure-sync.mjs
