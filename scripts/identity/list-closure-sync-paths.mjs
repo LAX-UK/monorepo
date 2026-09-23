@@ -16,7 +16,11 @@ const SKIP_DIRECTORIES = new Set([".git", ".turbo", "coverage", "dist", "node_mo
 const ROOT_FILE_SYNC = new Set(
   IDENTITY_ROOT_FILES.filter(
     (entry) =>
-      entry !== "pnpm-lock.yaml" && entry !== "package.json" && entry !== "pnpm-workspace.yaml",
+      entry !== "pnpm-lock.yaml" &&
+      entry !== "package.json" &&
+      entry !== "pnpm-workspace.yaml" &&
+      entry !== ".npmrc" &&
+      entry !== "biome.json",
   ),
 );
 
