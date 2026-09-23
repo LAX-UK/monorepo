@@ -99,7 +99,7 @@ runs:
         if test -n "$deployment_id"; then
           doctl apps get-deployment "$APP_ID" "$deployment_id" --output json \
             > "$RUNNER_TEMP/${{ inputs.state-key }}-deployment-${deployment_id}.json" || true
-          for component in auth shop shop-identity api ws worker web; do
+          for component in auth shop shop-identity shop-api api ws worker web; do
             for log_type in run run_restarted; do
               doctl apps logs "$APP_ID" "$component" --type "$log_type" --tail 200 \
                 --deployment "$deployment_id" \

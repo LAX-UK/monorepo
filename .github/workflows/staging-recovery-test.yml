@@ -38,6 +38,11 @@ on:
         description: Accepted immutable manifest JSON used only for rollback rehearsal
         required: false
         default: "{}"
+      infra_ref:
+        description: auction-infra branch, tag, or commit for Terraform apply
+        type: string
+        required: false
+        default: main
 
 permissions:
   contents: read
@@ -113,6 +118,7 @@ jobs:
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
+      infra_ref: ${{ inputs.infra_ref }}
       parent_holds_deploy_lock: true
       identity_sha: ${{ inputs.identity_sha }}
       identity_digest: ${{ inputs.identity_digest }}
@@ -141,6 +147,7 @@ jobs:
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
+      infra_ref: ${{ inputs.infra_ref }}
       parent_holds_deploy_lock: true
       enable_auth_ssf_delivery: true
       identity_sha: ${{ inputs.identity_sha }}
@@ -179,6 +186,7 @@ jobs:
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
+      infra_ref: ${{ inputs.infra_ref }}
       parent_holds_deploy_lock: true
       enable_auth_ssf_delivery: ${{ fromJSON(inputs.rollback_manifest).enableAuthSsfDelivery }}
       identity_sha: ${{ fromJSON(inputs.rollback_manifest).identity.sha }}
@@ -204,6 +212,7 @@ jobs:
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
+      infra_ref: ${{ inputs.infra_ref }}
       parent_holds_deploy_lock: true
       enable_auth_ssf_delivery: true
       identity_sha: ${{ inputs.identity_sha }}
