@@ -63,7 +63,7 @@ export const IDENTITY_STANDALONE_ROOT_SCRIPTS = Object.freeze({
     "pnpm --filter @auction/auth-app^... --workspace-concurrency=1 build && pnpm --filter @auction/auth-app... --workspace-concurrency=1 typecheck",
   test: "pnpm test:unit",
   "test:unit":
-    "pnpm --filter @auction/auth-app... --workspace-concurrency=1 --if-present test --exclude='**/*.integration.test.ts'",
+    "pnpm --filter @auction/auth-app... --workspace-concurrency=1 --if-present run test -- --exclude='**/*.integration.test.ts'",
   "test:integration": "node scripts/ci/run-db-integration-tests.mjs",
   "test:redis": "node scripts/ci/check-redis.mjs",
   "test:better-auth-contract":
