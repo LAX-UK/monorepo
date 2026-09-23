@@ -178,6 +178,16 @@ jobs:
           working-directory: .infra-config/terraform/${{ inputs.layer }}/test
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Apply full test migrations and role grants before App Platform rollout
+        if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_TEST == 'image' && inputs.app_image_tag != ''
+        env:
+          OIDC_CLIENT_SECRET_LAX_SHOP_WEB_FALLBACK: ${{ secrets.OIDC_CLIENT_SECRET_LAX_SHOP_WEB }}
+          MIGRATE_IMAGE: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}/lax-test-migrate:${{ inputs.app_image_tag }}
+        run: |
+          chmod +x scripts/ci/run-test-ephemeral-predeploy-migrate.sh
+          scripts/ci/run-test-ephemeral-predeploy-migrate.sh \
+            .infra-config/terraform/ephemeral/test \
+            "$MIGRATE_IMAGE"
       - uses: ./.github/actions/terraform-apply
         with:
           working-directory: .infra-config/terraform/${{ inputs.layer }}/test

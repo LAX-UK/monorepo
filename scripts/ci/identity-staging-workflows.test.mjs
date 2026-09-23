@@ -117,6 +117,10 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
   assert.match(read(".github/actions/terraform-apply/action.yml"), /phase == "ERROR"/);
   assert.match(read(".github/workflows/terraform-apply-test.yml"), /TF_VAR_identity_image_tag/);
   assert.match(read(".github/workflows/terraform-apply-test.yml"), /TF_VAR_app_image_tag/);
+  assert.match(
+    read(".github/workflows/terraform-apply-test.yml"),
+    /run-test-ephemeral-predeploy-migrate\.sh/,
+  );
 });
 
 test("auth at-rest maintenance workflow is manually approved and phased", () => {
