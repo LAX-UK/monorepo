@@ -180,7 +180,8 @@ jobs:
           app-id: ${{ inputs.layer == 'ephemeral' && env.APP_ID || '' }}
           allowed-delete-addresses: >-
             ["module.postgres_rbac.postgresql_default_privileges.app_tables[\"shop_app\"]",
-            "module.postgres_rbac.postgresql_default_privileges.app_sequences[\"shop_app\"]"]
+            "module.postgres_rbac.postgresql_default_privileges.app_sequences[\"shop_app\"]",
+            "random_password.shop_session_secret"]
       - name: Require Shop DNS, TLS, and readiness after apply
         if: inputs.layer == 'ephemeral'
         env:
