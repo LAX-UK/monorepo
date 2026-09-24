@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useForgotPasswordController } from "./use-forgot-password-controller";
+import { useMagicLinkRequestController } from "./use-magic-link-request-controller";
 
 const mocks = vi.hoisted(() => ({
   run: vi.fn(),
@@ -15,7 +15,6 @@ vi.mock("@/lib/auth/use-auth-submit", () => ({
     run: mocks.run,
     loading: false,
     bannerError: null,
-    lastErrorCode: null,
   }),
 }));
 
@@ -24,41 +23,37 @@ vi.mock("@/lib/auth/turnstile-site-key", () => ({
   turnstileSiteKey: () => mockSiteKey,
 }));
 
-describe("useForgotPasswordController", () => {
+describe("useMagicLinkRequestController", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSiteKey = undefined;
+    mockSiteKey = "site-key";
     mocks.run.mockResolvedValue({ ok: true });
   });
 
-  it("turnstileReady is false until token when site key is set", () => {
-    mockSiteKey = "site-key";
-    const { result } = renderHook(() => useForgotPasswordController());
+  it("requires a token before enabling submission", () => {
+    const { result } = renderHook(() => useMagicLinkRequestController());
     expect(result.current.turnstileReady).toBe(false);
-    act(() => {
-      result.current.onTurnstileToken("token");
-    });
+
+    act(() => result.current.onTurnstileToken("token"));
+
     expect(result.current.turnstileReady).toBe(true);
   });
 
-  it("clears token after failed submit so a fresh captcha is required", async () => {
+  it("resets the widget and clears a spent token after failure", async () => {
     const reset = vi.fn();
-    mockSiteKey = "site-key";
     mocks.run.mockResolvedValue({
       ok: false,
       code: "captcha_invalid",
       message: "Security check failed.",
     });
-    const { result } = renderHook(() => useForgotPasswordController());
+    const { result } = renderHook(() => useMagicLinkRequestController());
 
     act(() => {
       result.current.onTurnstileReady({ reset });
       result.current.onTurnstileToken("spent-token");
-    });
-    expect(result.current.turnstileReady).toBe(true);
-
-    await act(async () => {
       result.current.form.setValue("email", "user@example.com");
+    });
+    await act(async () => {
       await result.current.onSubmit();
     });
 

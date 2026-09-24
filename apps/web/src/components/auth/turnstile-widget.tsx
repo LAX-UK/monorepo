@@ -35,10 +35,11 @@ export function TurnstileWidget({ siteKey, onToken, onClear, onError, onReady }:
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [apiReady, setApiReady] = useState(false);
-  const [scriptError, setScriptError] = useState(false);
+  const [widgetError, setWidgetError] = useState(false);
 
   const onTokenCb = useCallback(
     (t: string) => {
+      setWidgetError(false);
       onToken(t);
     },
     [onToken],
@@ -59,6 +60,7 @@ export function TurnstileWidget({ siteKey, onToken, onClear, onError, onReady }:
       callback: onTokenCb,
       "expired-callback": () => onClear?.(),
       "error-callback": () => {
+        setWidgetError(true);
         onClear?.();
         onError?.();
       },
@@ -74,21 +76,19 @@ export function TurnstileWidget({ siteKey, onToken, onClear, onError, onReady }:
 
   if (!siteKey) return null;
 
-  const showLoadError = scriptError;
-
   return (
     <>
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
-        onLoad={() => setApiReady(true)}
+        onReady={() => setApiReady(true)}
         onError={() => {
-          setScriptError(true);
+          setWidgetError(true);
           onError?.();
         }}
       />
       <div ref={containerRef} className="flex justify-center" />
-      {showLoadError ? (
+      {widgetError ? (
         <output
           className="block text-center font-footer-links text-sm text-error"
           aria-live="polite"
