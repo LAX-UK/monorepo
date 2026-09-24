@@ -78,4 +78,9 @@ describe("auth app environment contract", () => {
       "Invalid auth app environment variables",
     );
   });
+
+  it("reports SHOP_ORIGIN when production env omits it", () => {
+    const { SHOP_ORIGIN: _shopOrigin, ...withoutShopOrigin } = production;
+    expect(() => parseAuthEnv(withoutShopOrigin)).toThrow(/SHOP_ORIGIN/);
+  });
 });

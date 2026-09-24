@@ -189,6 +189,7 @@ jobs:
     with:
       shop_sha: ${{ needs.validate_inputs.outputs.shop_sha }}
       seed_catalogue: false
+      parent_holds_deploy_lock: true
     secrets: inherit
 
   rollback_rehearsal:
@@ -260,6 +261,7 @@ jobs:
     with:
       shop_sha: ${{ needs.validate_inputs.outputs.shop_sha }}
       seed_catalogue: false
+      parent_holds_deploy_lock: true
     secrets: inherit
 
   record_accepted_release:

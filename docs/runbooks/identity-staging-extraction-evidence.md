@@ -188,6 +188,8 @@ Accepted image contract:
 - Restart only after the final restored standalone acceptance is green.
 - **2026-09-14T08:10:02Z** dispatch invalidated: samples failed metrics scrape (`AUTH_METRICS_TOKEN` was not loaded; fixed by reading `auth_metrics_token` from Terraform like acceptance).
 - Start UTC: **2026-09-14T08:37:21Z** on `main` ([soak 34824155132](https://github.com/LAX-UK/monorepo/actions/runs/34824155132)) after merge [f60ea990](https://github.com/LAX-UK/monorepo/commit/f60ea99013b95f2be90199f24e25ecf521c4ad02) and metrics fix [73e3bc751](https://github.com/LAX-UK/monorepo/commit/73e3bc751). First sample **green** (metrics from Terraform `auth_metrics_token`). Candidate SHA `ada95855ba3ac912eb68a9da976b8ab31028a9e1`. Repo vars `IDENTITY_SOAK_SHA_TEST` / `IDENTITY_SOAK_STARTED_AT_TEST` set to match.
+- **2026-09-23T14:25Z** onward: scheduled soak samples failed release mismatch while test auth remained on `03012a4…` and vars still pinned `ada95855…`.
+- **2026-09-24T03:47Z** restart after [recovery 35951039703](https://github.com/LAX-UK/monorepo/actions/runs/35951039703): `auction-infra` supplies `SHOP_ORIGIN`; test auth `/health/ready` reports `4fdffc1f037742cccc387e952381cef7ce441f68`. Identity acceptance (SSF disabled + enabled) **green**; shop acceptance did not run (recovery held `app-deploy-test` while shop workflow waited on the same group — fixed on `fix/identity-image-schema-contract`). Re-baseline repo vars to `4fdffc1f…` and this start time after shop acceptance + `record_accepted_release` are green.
 - End UTC: pending (minimum 24h; extend to 72h if traffic is insufficient)
 - Total observed traffic by login/refresh/token operation:
 - [ ] At least 24 hours observed.

@@ -102,6 +102,7 @@ try {
 
 writeFileSync(samplePath, `${JSON.stringify(sample, null, 2)}\n`);
 if (sample.probeStatus === "failed" && validationMode === "enforce") {
+  console.error(sample.probeError ?? "identity staging soak sample probe failed");
   process.exitCode = 1;
 }
 
