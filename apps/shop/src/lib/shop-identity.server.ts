@@ -3,6 +3,9 @@ import type { ShopIdentityMePayload } from "@auction/lax-ecosystem";
 
 const DEFAULT_SHOP_IDENTITY_BASE_URL = "http://localhost:3010";
 
+/** Server-side BFF calls must not block SSR longer than this. */
+export const SHOP_IDENTITY_FETCH_TIMEOUT_MS = 3_000;
+
 /** Must match apps/shop-identity session cookie names (BFF-only; not storefront host cookies). */
 export const SHOP_IDENTITY_SESSION_COOKIE = "shop_identity_session";
 export const SHOP_IDENTITY_ID_TOKEN_COOKIE = "shop_identity_id_token";
@@ -12,6 +15,11 @@ const SHOP_IDENTITY_COOKIE_NAMES = new Set([
   SHOP_IDENTITY_ID_TOKEN_COOKIE,
 ]);
 
+function normalizeBaseUrl(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+/** Public shop host — browser links and redirects. */
 export function shopIdentityBaseUrl(): string {
   const configured = loadShopEnv().SHOP_IDENTITY_BASE_URL;
   return (
@@ -19,9 +27,25 @@ export function shopIdentityBaseUrl(): string {
   ).replace(/\/+$/, "");
 }
 
+/** Private component URL when configured; otherwise public (local dev). */
+export function shopIdentityServerBaseUrl(): string {
+  const internal = loadShopEnv().SHOP_IDENTITY_INTERNAL_BASE_URL;
+  if (internal && internal.length > 0) {
+    return normalizeBaseUrl(internal);
+  }
+  return shopIdentityBaseUrl();
+}
+
+/** Absolute URL for browser navigation (login, logout, forms). */
 export function shopIdentityUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `${shopIdentityBaseUrl()}${normalized}`;
+}
+
+/** Absolute URL for server-side fetch to shop-identity BFF. */
+export function shopIdentityServerUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${shopIdentityServerBaseUrl()}${normalized}`;
 }
 
 export function shopIdentityCookieHeader(
@@ -67,8 +91,9 @@ export async function fetchShopIdentityMe(
   cookieHeader: string | undefined,
 ): Promise<ShopIdentityMeReadResult> {
   try {
-    const response = await fetch(shopIdentityUrl("/me"), {
+    const response = await fetch(shopIdentityServerUrl("/me"), {
       cache: "no-store",
+      signal: AbortSignal.timeout(SHOP_IDENTITY_FETCH_TIMEOUT_MS),
       headers: {
         accept: "application/json",
         ...(cookieHeader ? { cookie: cookieHeader } : {}),

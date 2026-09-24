@@ -3,7 +3,10 @@ import {
   SHOP_COMMERCE_CSRF_COOKIE,
   shopCommerceCookieHeader,
 } from "@/lib/shop-commerce-cookies.server";
-import { shopIdentityUrl } from "@/lib/shop-identity.server";
+import {
+  SHOP_IDENTITY_FETCH_TIMEOUT_MS,
+  shopIdentityServerUrl,
+} from "@/lib/shop-identity.server";
 import { cookies } from "next/headers";
 
 export type ShopCommerceRequestOptions = {
@@ -18,7 +21,7 @@ export async function shopCommerceRequest(
   options: ShopCommerceRequestOptions = {},
 ): Promise<Response> {
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  const url = shopIdentityUrl(normalized);
+  const url = shopIdentityServerUrl(normalized);
 
   const cookieStore = await cookies();
   const list = cookieStore.getAll().map((entry) => ({ name: entry.name, value: entry.value }));
@@ -44,6 +47,7 @@ export async function shopCommerceRequest(
     ...init,
     headers: forwardHeaders,
     cache: "no-store",
+    signal: AbortSignal.timeout(SHOP_IDENTITY_FETCH_TIMEOUT_MS),
   });
 
   if (options.applyCookies) {

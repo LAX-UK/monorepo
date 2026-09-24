@@ -5,6 +5,8 @@ import {
   interpretShopIdentityMeResponse,
   shopIdentityBaseUrl,
   shopIdentityCookieHeader,
+  shopIdentityServerBaseUrl,
+  shopIdentityServerUrl,
   shopIdentityUrl,
 } from "./shop-identity.server.js";
 
@@ -19,6 +21,17 @@ describe("shopIdentityUrl", () => {
   it("joins configured base URL with BFF paths", () => {
     process.env.SHOP_IDENTITY_BASE_URL = "https://test-shop.lax.bid";
     expect(shopIdentityUrl("/me")).toBe("https://test-shop.lax.bid/me");
+  });
+});
+
+describe("shopIdentityServerUrl", () => {
+  it("prefers internal base for server-side BFF fetches", () => {
+    process.env.SHOP_IDENTITY_BASE_URL = "https://test-shop.lax.bid";
+    process.env.SHOP_IDENTITY_INTERNAL_BASE_URL = "http://shop-identity:3010";
+    expect(shopIdentityServerBaseUrl()).toBe("http://shop-identity:3010");
+    expect(shopIdentityServerUrl("/commerce/basket")).toBe(
+      "http://shop-identity:3010/commerce/basket",
+    );
   });
 });
 

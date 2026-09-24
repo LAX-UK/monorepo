@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { shopIdentityUrl } from "../../../lib/shop-identity.server";
+import {
+  SHOP_IDENTITY_FETCH_TIMEOUT_MS,
+  shopIdentityServerUrl,
+} from "../../../lib/shop-identity.server";
 
 type ShopIdentityHealth = {
   status?: unknown;
@@ -8,13 +11,20 @@ type ShopIdentityHealth = {
 
 export async function GET() {
   try {
-    const response = await fetch(shopIdentityUrl("/api/health/deps"), {
+    const response = await fetch(shopIdentityServerUrl("/api/health/deps"), {
       cache: "no-store",
-      signal: AbortSignal.timeout(3_000),
+      signal: AbortSignal.timeout(SHOP_IDENTITY_FETCH_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error(`shop_identity_health_${response.status}`);
     const dependency = (await response.json()) as ShopIdentityHealth;
     if (dependency.status !== "ok") throw new Error("shop_identity_unready");
+
+    const commerceProbe = await fetch(shopIdentityServerUrl("/commerce/basket"), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(SHOP_IDENTITY_FETCH_TIMEOUT_MS),
+      headers: { accept: "application/json" },
+    });
+    if (!commerceProbe.ok) throw new Error(`shop_commerce_basket_${commerceProbe.status}`);
 
     return NextResponse.json({
       service: "shop",
