@@ -24,8 +24,10 @@ export function MagicLinkRequestForm({ linkError }: MagicLinkRequestFormProps) {
     resend,
     cooldown,
     turnstileSiteKey,
+    onTurnstileReady,
     onTurnstileToken,
     onTurnstileExpire,
+    onTurnstileError,
     turnstileReady,
   } = useMagicLinkRequestController();
 
@@ -46,6 +48,8 @@ export function MagicLinkRequestForm({ linkError }: MagicLinkRequestFormProps) {
           siteKey={turnstileSiteKey}
           onToken={onTurnstileToken}
           onClear={onTurnstileExpire}
+          onError={onTurnstileError}
+          onReady={onTurnstileReady}
         />
         <Button
           type="button"
@@ -82,9 +86,15 @@ export function MagicLinkRequestForm({ linkError }: MagicLinkRequestFormProps) {
         siteKey={turnstileSiteKey}
         onToken={onTurnstileToken}
         onClear={onTurnstileExpire}
+        onError={onTurnstileError}
+        onReady={onTurnstileReady}
       />
       <div className="flex flex-col gap-6">
-        <AuthSubmitButton loading={loading} loadingLabel="Sending…">
+        <AuthSubmitButton
+          loading={loading}
+          loadingLabel="Sending…"
+          disabled={loading || !turnstileReady}
+        >
           Send activation link
         </AuthSubmitButton>
         <AuthFooterLink prefix="Remembered your password?" linkText="Log in" href={loginHref} />

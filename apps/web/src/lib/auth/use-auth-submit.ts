@@ -1,5 +1,5 @@
 "use client";
-import type { AuthErrorCode } from "@/lib/auth/auth-error-code";
+import { type AuthErrorCode, authSubmitFailure } from "@/lib/auth/auth-error-code";
 import type { SubmitService } from "@/lib/auth/submit-service";
 import { useCallback, useState } from "react";
 
@@ -13,13 +13,22 @@ export function useAuthSubmit<TData>(onExecute: SubmitService<TData>) {
       setBannerError(null);
       setLastErrorCode(null);
       setLoading(true);
-      const result = await onExecute(data);
-      setLoading(false);
-      if (!result.ok) {
+      try {
+        const result = await onExecute(data);
+        if (!result.ok) {
+          setBannerError(result.message);
+          setLastErrorCode(result.code);
+        }
+        return result;
+      } catch (error) {
+        if (!(error instanceof TypeError)) throw error;
+        const result = authSubmitFailure("unknown");
         setBannerError(result.message);
         setLastErrorCode(result.code);
+        return result;
+      } finally {
+        setLoading(false);
       }
-      return result;
     },
     [onExecute],
   );

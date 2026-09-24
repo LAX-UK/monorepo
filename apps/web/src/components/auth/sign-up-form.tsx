@@ -61,8 +61,10 @@ export function SignUpForm({
     loading,
     turnstileSiteKey,
     turnstileReady,
+    onTurnstileReady,
     onTurnstileToken,
     onTurnstileExpire,
+    onTurnstileError,
   } = useSignUpController(controllerOpts);
 
   // Entity (organisation) invites are accepted post-verification via cookie;
@@ -110,6 +112,8 @@ export function SignUpForm({
         siteKey={turnstileSiteKey}
         onToken={onTurnstileToken}
         onClear={onTurnstileExpire}
+        onError={onTurnstileError}
+        onReady={onTurnstileReady}
       />
       {!isInvite ? (
         <div className="flex flex-col gap-6">

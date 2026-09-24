@@ -2,17 +2,17 @@
 
 import { trackSignUp } from "@/lib/analytics/events";
 import { trackSellAuthHandoff } from "@/lib/analytics/sell-funnel";
+import { useTurnstileField } from "@/lib/auth/hooks/use-turnstile-field";
 import { notifySignUpRegistrationError } from "@/lib/auth/notify-sign-up-error";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 /** After email/password registration we always send users to verify-pending (product copy). */
 import { type SignUpFormValues, signUpFormSchema } from "@/lib/auth/schemas";
 import { signUpService } from "@/lib/auth/services/sign-up.service";
-import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { notify } from "@/lib/ui/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useForm } from "react-hook-form";
 
 export function useSignUpController(opts?: {
@@ -27,9 +27,18 @@ export function useSignUpController(opts?: {
 }) {
   const router = useRouter();
   const { run, loading } = useAuthSubmit(signUpService);
-  const siteKey = turnstileSiteKey();
-  const needsTurnstile = Boolean(siteKey);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const {
+    turnstileSiteKey,
+    needsTurnstile,
+    turnstileToken,
+    turnstileReady,
+    turnstileLoadError,
+    onTurnstileReady,
+    onTurnstileToken,
+    onTurnstileExpire,
+    onTurnstileError,
+    resetTurnstileAfterFailedSubmit,
+  } = useTurnstileField();
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpFormSchema),
@@ -47,17 +56,13 @@ export function useSignUpController(opts?: {
     },
   });
 
-  const onTurnstileToken = useCallback(
+  const onTurnstileTokenWithClear = useCallback(
     (t: string) => {
-      setTurnstileToken(t);
+      onTurnstileToken(t);
       form.clearErrors("root");
     },
-    [form],
+    [form, onTurnstileToken],
   );
-
-  const onTurnstileExpire = useCallback(() => {
-    setTurnstileToken(null);
-  }, []);
 
   const onSubmit = form.handleSubmit(async (data) => {
     if (needsTurnstile && !turnstileToken) {
@@ -83,6 +88,8 @@ export function useSignUpController(opts?: {
       return;
     }
 
+    resetTurnstileAfterFailedSubmit(result.code);
+
     const authLinks =
       opts?.loginHref && opts?.forgotPasswordHref
         ? {
@@ -98,9 +105,12 @@ export function useSignUpController(opts?: {
     form,
     onSubmit,
     loading,
-    turnstileSiteKey: siteKey,
-    turnstileReady: !needsTurnstile || Boolean(turnstileToken),
-    onTurnstileToken,
+    turnstileSiteKey,
+    turnstileReady,
+    turnstileLoadError,
+    onTurnstileReady,
+    onTurnstileToken: onTurnstileTokenWithClear,
     onTurnstileExpire,
+    onTurnstileError,
   };
 }
