@@ -17,18 +17,54 @@ inputs:
     description: JSON array of HTTPS URLs that must return status ok
     required: false
     default: "[]"
+  rolling-image-tag:
+    description: >-
+      When set, pin the Bid web DOCR service to this immutable tag via
+      digitalocean/app_action/deploy@v2 (avoids stale :test mutable-tag rolls).
+    required: false
+    default: ""
+  do-token:
+    description: DigitalOcean API token (required when rolling-image-tag is set)
+    required: false
+    default: ""
 outputs:
   deployment_id:
     description: Exact App Platform deployment ID
-    value: ${{ steps.create.outputs.deployment_id }}
+    value: ${{ steps.resolve-deployment.outputs.deployment_id }}
   phase:
     description: Terminal App Platform deployment phase
     value: ${{ steps.poll.outputs.phase }}
 runs:
   using: composite
   steps:
+    - name: Resolve App Platform app name
+      id: meta
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
+      run: |
+        set -euo pipefail
+        app_json="$(doctl apps get "$APP_ID" --output json)"
+        app_name="$(
+          jq -r 'if type == "array" then .[0].spec.name else .spec.name end // empty' <<<"$app_json"
+        )"
+        test -n "$app_name"
+        echo "name=$app_name" >> "$GITHUB_OUTPUT"
+
+    - name: Pin rolling images and deploy
+      id: pin
+      if: inputs.rolling-image-tag != ''
+      uses: digitalocean/app_action/deploy@v2
+      env:
+        IMAGE_TAG_WEB: ${{ inputs.rolling-image-tag }}
+      with:
+        token: ${{ inputs.do-token }}
+        app_name: ${{ steps.meta.outputs.name }}
+        print_deploy_logs: true
+
     - name: Create App Platform deployment
       id: create
+      if: inputs.rolling-image-tag == ''
       shell: bash
       run: |
         set -euo pipefail
@@ -39,12 +75,32 @@ runs:
         test -n "$deployment_id"
         echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
 
+    - name: Resolve deployment ID
+      id: resolve-deployment
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
+        PINNED: ${{ inputs.rolling-image-tag != '' && 'true' || 'false' }}
+        CREATE_DEPLOYMENT_ID: ${{ steps.create.outputs.deployment_id }}
+      run: |
+        set -euo pipefail
+        if test "$PINNED" = "true"; then
+          deployment_id="$(
+            doctl apps list-deployments "$APP_ID" --output json |
+              jq -r 'if type == "array" then .[0].id else .id end // empty'
+          )"
+        else
+          deployment_id="$CREATE_DEPLOYMENT_ID"
+        fi
+        test -n "$deployment_id"
+        echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+
     - name: Poll deployment to terminal phase
       id: poll
       shell: bash
       env:
         APP_ID: ${{ inputs.app-id }}
-        DEPLOYMENT_ID: ${{ steps.create.outputs.deployment_id }}
+        DEPLOYMENT_ID: ${{ steps.resolve-deployment.outputs.deployment_id }}
         TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
         POLL_INTERVAL_SECONDS: ${{ inputs.poll-interval-seconds }}
       run: |

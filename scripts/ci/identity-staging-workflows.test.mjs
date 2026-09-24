@@ -199,7 +199,10 @@ test("App Platform deploy action exposes exact deployment evidence and release c
   const action = read(".github/actions/app-platform-deploy/action.yml");
   const testDeploy = read(".github/workflows/app-deploy-test.yml");
   assert.match(action, /deployment_id:/);
-  assert.match(action, /value: \$\{\{ steps\.create\.outputs\.deployment_id \}\}/);
+  assert.match(action, /value: \$\{\{ steps\.resolve-deployment\.outputs\.deployment_id \}\}/);
+  assert.match(action, /rolling-image-tag:/);
+  assert.match(action, /digitalocean\/app_action\/deploy@v2/);
+  assert.match(testDeploy, /test\.lax\.bid\/api\/health\/ready/);
   assert.match(action, /EXPECTED_RELEASES/);
   assert.match(action, /--deployment "\$DEPLOYMENT_ID"/);
   assert.match(action, /timed out in phase/);
