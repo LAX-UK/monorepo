@@ -304,6 +304,11 @@ async function runLiveVerification() {
 }
 
 async function main() {
+  const rpLayers = spawnSync("node", ["scripts/ci/verify-identity-rp-layers.mjs"], {
+    stdio: "inherit",
+  });
+  if (rpLayers.status !== 0) process.exit(rpLayers.status ?? 1);
+
   if (mode === "live") {
     verifyStaticContracts();
     await runLiveVerification();
