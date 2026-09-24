@@ -3,10 +3,7 @@ import {
   SHOP_COMMERCE_CSRF_COOKIE,
   shopCommerceCookieHeader,
 } from "@/lib/shop-commerce-cookies.server";
-import {
-  SHOP_IDENTITY_FETCH_TIMEOUT_MS,
-  shopIdentityServerUrl,
-} from "@/lib/shop-identity.server";
+import { SHOP_IDENTITY_FETCH_TIMEOUT_MS, shopIdentityServerUrl } from "@/lib/shop-identity.server";
 import { cookies } from "next/headers";
 
 export type ShopCommerceRequestOptions = {

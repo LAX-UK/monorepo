@@ -21,8 +21,7 @@ export function loadShopEnv(
   return shopEnvSchema.parse({
     SHOP_API_BASE_URL: source.SHOP_API_BASE_URL?.trim() || undefined,
     SHOP_IDENTITY_BASE_URL: source.SHOP_IDENTITY_BASE_URL?.trim() || undefined,
-    SHOP_IDENTITY_INTERNAL_BASE_URL:
-      source.SHOP_IDENTITY_INTERNAL_BASE_URL?.trim() || undefined,
+    SHOP_IDENTITY_INTERNAL_BASE_URL: source.SHOP_IDENTITY_INTERNAL_BASE_URL?.trim() || undefined,
     IDENTITY_PUBLIC_BASE_URL: source.IDENTITY_PUBLIC_BASE_URL?.trim() || undefined,
     LAX_BID_PUBLIC_URL: source.LAX_BID_PUBLIC_URL?.trim() || undefined,
     WEB_ORIGIN: source.WEB_ORIGIN?.trim() || undefined,
