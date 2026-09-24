@@ -10,6 +10,10 @@ on:
         type: boolean
         required: false
         default: false
+      parent_holds_deploy_lock:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       shop_sha:
@@ -28,7 +32,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: app-deploy-test
+  group: >-
+    ${{
+      inputs.parent_holds_deploy_lock &&
+      format('staging-recovery-child-{0}-shop', github.run_id) ||
+      'app-deploy-test'
+    }}
   cancel-in-progress: false
 
 jobs:
