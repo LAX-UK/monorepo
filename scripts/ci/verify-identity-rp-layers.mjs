@@ -12,7 +12,10 @@ const rpDir = join(root, "packages/identity-rp/src");
 const rules = [
   {
     label: "packages/identity-rp must not import from apps/**",
-    forbidden: [/^@auction\/(api|web|worker|ws|auth-app|shop-identity|event)(\/|$)/, /(^|\/)apps\//],
+    forbidden: [
+      /^@auction\/(api|web|worker|ws|auth-app|shop-identity|event)(\/|$)/,
+      /(^|\/)apps\//,
+    ],
   },
   {
     label: "packages/identity-rp must stay RP-library scoped",
@@ -56,7 +59,7 @@ for (const file of walk(rpDir)) {
 }
 
 if (violations.length > 0) {
-  console.error("verify-identity-rp-layers failed:\n" + violations.join("\n"));
+  console.error(`verify-identity-rp-layers failed:\n${violations.join("\n")}`);
   process.exit(1);
 }
 
