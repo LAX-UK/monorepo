@@ -98,6 +98,24 @@ const rules = [
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event|db)(\/|$)/, /(^|\/)apps\//],
   },
   {
+    dir: "packages/identity-rp",
+    label: "packages/identity-rp must not import from apps/**",
+    forbiddenSpecifiers: [
+      /^@auction\/(api|web|worker|ws|auth-app|shop-identity|event)(\/|$)/,
+      /(^|\/)apps\//,
+    ],
+  },
+  {
+    dir: "packages/identity-rp",
+    label: "packages/identity-rp must stay RP-library scoped (no auth issuer or db packages)",
+    forbiddenSpecifiers: [
+      /^@auction\/(auth|identity-db|db|persistence|domain)(\/|$)/,
+      /^next(\/|$)/,
+      /^react(\/|$)/,
+      /^hono(\/|$)/,
+    ],
+  },
+  {
     dir: "packages/lot-lifecycle-app",
     label: "packages/lot-lifecycle-app must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],

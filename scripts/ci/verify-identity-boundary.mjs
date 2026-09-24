@@ -52,6 +52,15 @@ const focusedTests = [
     ],
   ],
   [
+    "@auction/identity-rp",
+    [
+      "src/pkce.test.ts",
+      "src/ports/ports.contract.test.ts",
+      "src/adapters/fetch-token-endpoint.test.ts",
+      "src/authorize-url.test.ts",
+    ],
+  ],
+  [
     "@auction/web",
     [
       "src/lib/bff/session-store.server.test.ts",

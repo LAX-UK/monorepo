@@ -1,53 +1,59 @@
 import "server-only";
 
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { LAX_RESOURCES, type LaxResourceId, normalizeIssuerUrl } from "@auction/identity-contracts";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { randomBytes } from "node:crypto";
+import {
+  JWKS_PATH,
+  LAX_RESOURCES,
+  type LaxResourceId,
+  normalizeIssuerUrl,
+} from "@auction/identity-contracts";
+import { verifyIdentityToken } from "@auction/identity-contracts/verify";
+import {
+  IdentityRejectedError,
+  IdentityUnavailableError,
+  buildAuthorizeUrl,
+  buildEndSessionUrl as buildEndSessionHref,
+  createFetchTokenEndpoint,
+  generateOAuthLoginParams,
+  isIdentityRejected,
+  isIdentityUnavailable,
+  mergeRefreshTokens,
+  validateOAuthStateTimingSafe,
+} from "@auction/identity-rp";
 import { bffConfig } from "./config.server";
 import type { AuthenticatedBidSession } from "./session-store.server";
 
-const ACCESS_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:access_token";
 const ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token";
+const ACCESS_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:access_token";
 const TOKEN_EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange";
 
-type OidcTokenResponse = {
-  access_token: string;
-  refresh_token?: string;
-  id_token?: string;
-  expires_in: number;
-  token_type: string;
+/** Upper bound for issuer token-endpoint calls from the Bid BFF. */
+export const IDENTITY_TOKEN_FETCH_TIMEOUT_MS = 15_000;
+
+export {
+  IdentityRejectedError,
+  IdentityUnavailableError,
+  isIdentityRejected,
+  isIdentityUnavailable,
 };
 
-export class IdentityTokenEndpointError extends Error {
-  constructor(
-    readonly status: number | null,
-    message: string,
-  ) {
-    super(message);
-    this.name = "IdentityTokenEndpointError";
+function requireTokenExpiresIn(token: { expires_in?: number }): number {
+  if (typeof token.expires_in !== "number") {
+    throw new IdentityUnavailableError("Identity token endpoint returned an invalid response");
   }
+  return token.expires_in;
 }
 
-export function createLoginProof(): {
-  state: string;
-  nonce: string;
-  codeVerifier: string;
-  codeChallenge: string;
-} {
-  const codeVerifier = randomBytes(32).toString("base64url");
-  return {
-    state: randomBytes(24).toString("base64url"),
-    nonce: randomBytes(24).toString("base64url"),
-    codeVerifier,
-    codeChallenge: createHash("sha256").update(codeVerifier).digest("base64url"),
-  };
-}
+export const createLoginProof = generateOAuthLoginParams;
+export const validateCallbackState = validateOAuthStateTimingSafe;
 
-export function validateCallbackState(expected: string, received: string | null): boolean {
-  if (!received) return false;
-  const left = Buffer.from(expected);
-  const right = Buffer.from(received);
-  return left.length === right.length && timingSafeEqual(left, right);
+function tokenEndpoint() {
+  const config = bffConfig();
+  return createFetchTokenEndpoint({
+    tokenEndpointUrl: `${config.internalIssuer}/api/auth/oauth2/token`,
+    auth: { kind: "basic", clientId: config.clientId, clientSecret: config.clientSecret },
+    timeoutMs: IDENTITY_TOKEN_FETCH_TIMEOUT_MS,
+  });
 }
 
 export function buildAuthorizationUrl(input: {
@@ -56,55 +62,16 @@ export function buildAuthorizationUrl(input: {
   codeChallenge: string;
 }): URL {
   const config = bffConfig();
-  const url = new URL("/api/auth/oauth2/authorize", config.issuer);
-  url.search = new URLSearchParams({
-    response_type: "code",
-    client_id: config.clientId,
-    redirect_uri: config.redirectUri,
-    scope: "openid profile email offline_access bid.read bid.write",
+  const href = buildAuthorizeUrl({
+    authorizationEndpoint: new URL("/api/auth/oauth2/authorize", config.issuer).toString(),
+    clientId: config.clientId,
+    redirectUri: config.redirectUri,
+    scopes: ["openid", "profile", "email", "offline_access", "bid.read", "bid.write"],
     state: input.state,
     nonce: input.nonce,
-    code_challenge: input.codeChallenge,
-    code_challenge_method: "S256",
-  }).toString();
-  return url;
-}
-
-async function tokenRequest(body: URLSearchParams): Promise<OidcTokenResponse> {
-  const config = bffConfig();
-  let response: Response;
-  try {
-    response = await fetch(`${config.internalIssuer}/api/auth/oauth2/token`, {
-      method: "POST",
-      headers: {
-        authorization: `Basic ${Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64")}`,
-        "content-type": "application/x-www-form-urlencoded",
-        accept: "application/json",
-      },
-      body,
-      cache: "no-store",
-    });
-  } catch {
-    throw new IdentityTokenEndpointError(null, "Identity token endpoint is unavailable");
-  }
-  if (!response.ok) {
-    throw new IdentityTokenEndpointError(
-      response.status,
-      `Identity token endpoint returned ${response.status}`,
-    );
-  }
-  const token = (await response.json()) as Partial<OidcTokenResponse>;
-  if (
-    typeof token.access_token !== "string" ||
-    typeof token.expires_in !== "number" ||
-    token.token_type?.toLowerCase() !== "bearer"
-  ) {
-    throw new IdentityTokenEndpointError(
-      response.status,
-      "Identity token endpoint returned an invalid response",
-    );
-  }
-  return token as OidcTokenResponse;
+    codeChallenge: input.codeChallenge,
+  });
+  return new URL(href);
 }
 
 export async function exchangeAuthorizationCode(input: {
@@ -113,7 +80,7 @@ export async function exchangeAuthorizationCode(input: {
   nonce: string;
 }): Promise<AuthenticatedBidSession> {
   const config = bffConfig();
-  const token = await tokenRequest(
+  const token = await tokenEndpoint().requestToken(
     new URLSearchParams({
       grant_type: "authorization_code",
       code: input.code,
@@ -125,30 +92,32 @@ export async function exchangeAuthorizationCode(input: {
     throw new Error("Identity authorization response omitted required tokens");
   }
   const issuer = normalizeIssuerUrl(config.issuer);
-  const result = await jwtVerify(
-    token.id_token,
-    createRemoteJWKSet(new URL(`${config.internalIssuer}/.well-known/jwks.json`)),
-    {
-      issuer,
-      audience: config.clientId,
-      algorithms: ["RS256"],
-    },
-  );
+  const jwksUrl = `${config.internalIssuer.replace(/\/+$/, "")}${JWKS_PATH}`;
+  const verified = await verifyIdentityToken({
+    token: token.id_token,
+    jwksUrl,
+    issuer,
+    audience: config.clientId,
+  });
+  if (!verified) {
+    throw new Error("Identity id_token signature or claims are invalid");
+  }
+  const { payload } = verified;
   if (
-    result.payload.nonce !== input.nonce ||
-    typeof result.payload.sub !== "string" ||
-    typeof result.payload.sid !== "string"
+    payload.nonce !== input.nonce ||
+    typeof payload.sub !== "string" ||
+    typeof payload.sid !== "string"
   ) {
     throw new Error("Identity id_token state binding is invalid");
   }
   return {
     kind: "authenticated",
-    subject: result.payload.sub,
-    sid: result.payload.sid,
+    subject: payload.sub,
+    sid: payload.sid,
     idToken: token.id_token,
     accessToken: token.access_token,
     refreshToken: token.refresh_token,
-    accessTokenExpiresAt: Date.now() + token.expires_in * 1_000,
+    accessTokenExpiresAt: Date.now() + requireTokenExpiresIn(token) * 1_000,
     resourceTokens: {},
   };
 }
@@ -156,18 +125,23 @@ export async function exchangeAuthorizationCode(input: {
 export async function refreshIdentityTokens(
   session: AuthenticatedBidSession,
 ): Promise<AuthenticatedBidSession> {
-  const token = await tokenRequest(
+  const token = await tokenEndpoint().requestToken(
     new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: session.refreshToken,
     }),
   );
+  const merged = mergeRefreshTokens(
+    { refreshToken: session.refreshToken, idToken: session.idToken },
+    token,
+    "bid",
+  );
   return {
     ...session,
     accessToken: token.access_token,
-    refreshToken: token.refresh_token ?? session.refreshToken,
-    idToken: token.id_token ?? session.idToken,
-    accessTokenExpiresAt: Date.now() + token.expires_in * 1_000,
+    refreshToken: merged.refreshToken,
+    idToken: merged.idToken,
+    accessTokenExpiresAt: Date.now() + requireTokenExpiresIn(token) * 1_000,
     resourceTokens: {},
   };
 }
@@ -178,7 +152,7 @@ export async function exchangeResourceToken(
   scopes: string,
 ): Promise<{ token: string; expiresAt: number; scopes: string }> {
   const resource = LAX_RESOURCES[audience];
-  const token = await tokenRequest(
+  const token = await tokenEndpoint().requestToken(
     new URLSearchParams({
       grant_type: TOKEN_EXCHANGE_GRANT,
       subject_token: session.idToken,
@@ -188,17 +162,18 @@ export async function exchangeResourceToken(
       scope: scopes,
     }),
   );
-  return { token: token.access_token, expiresAt: Date.now() + token.expires_in * 1_000, scopes };
+  const expiresIn = requireTokenExpiresIn(token);
+  return { token: token.access_token, expiresAt: Date.now() + expiresIn * 1_000, scopes };
 }
 
 export function buildEndSessionUrl(idToken: string): URL {
   const config = bffConfig();
-  const url = new URL("/api/auth/oauth2/endsession", config.issuer);
-  url.search = new URLSearchParams({
-    id_token_hint: idToken,
-    client_id: config.clientId,
-    post_logout_redirect_uri: config.postLogoutRedirectUri,
+  const href = buildEndSessionHref({
+    endSessionEndpoint: new URL("/api/auth/oauth2/endsession", config.issuer).toString(),
+    clientId: config.clientId,
+    postLogoutRedirectUri: config.postLogoutRedirectUri,
+    idTokenHint: idToken,
     state: randomBytes(24).toString("base64url"),
-  }).toString();
-  return url;
+  });
+  return new URL(href);
 }

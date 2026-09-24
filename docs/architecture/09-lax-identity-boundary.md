@@ -59,6 +59,22 @@ parent domain, but they are not credentials. The host-only cutover intentionally
 logs users out once because old parent-domain sessions cannot safely be adopted.
 APIs never fall back to a browser cookie or an Identity session lookup.
 
+RFC 10017 recommends a **proxying BFF** per browser application (confidential
+client, tokens server-side, host-only session cookie). Bid and Shop therefore
+keep **separate deployable BFF runtimes** (`apps/web`, `apps/shop-identity`) and
+share only `@auction/identity-rp` for PKCE, authorize/end-session URL
+construction, token-endpoint I/O, and the `IdentityUnavailableError` /
+`IdentityRejectedError` taxonomy. `@auction/identity-rp` must not be imported
+from the extractable issuer closure (`apps/auth`, `packages/auth`,
+`packages/identity-db`).
+
+**Degradation contract:** issuer timeouts and 5xx during refresh or token
+exchange surface `503` to the browser without destroying an existing Bid BFF
+session; only issuer 4xx invalidate the session. Bid `/api/health/ready` reports
+`dependencies.identity.status` as `ok` or `degraded` but keeps top-level
+`status: ok` when Redis is healthy so an Identity blip does not restart the
+web component.
+
 ## Exact registries
 
 The executable registries are
