@@ -182,6 +182,7 @@ describe("exchangeAuthorizationCode", () => {
           id_token:
             "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyLTEiLCJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0IiwiYXVkIjoibGF4LXNob3AtcHJvb2YiLCJub25jZSI6Im5vbmNlLTEyMyJ9.sig",
           access_token: "access-token",
+          token_type: "Bearer",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );

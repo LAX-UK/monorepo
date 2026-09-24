@@ -462,6 +462,9 @@ importers:
       '@auction/identity-db':
         specifier: workspace:*
         version: link:../../packages/identity-db
+      '@auction/identity-rp':
+        specifier: workspace:*
+        version: link:../../packages/identity-rp
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.19.13(hono@4.12.25)
