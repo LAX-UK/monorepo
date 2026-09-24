@@ -1,7 +1,8 @@
 import {
+  SHOP_IDENTITY_FETCH_TIMEOUT_MS,
   SHOP_IDENTITY_SESSION_COOKIE,
   shopIdentityBaseUrl,
-  shopIdentityUrl,
+  shopIdentityServerUrl,
 } from "@/lib/shop-identity.server";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -27,8 +28,9 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(shopIdentityUrl("/me"), {
+    const response = await fetch(shopIdentityServerUrl("/me"), {
       cache: "no-store",
+      signal: AbortSignal.timeout(SHOP_IDENTITY_FETCH_TIMEOUT_MS),
       headers: {
         accept: "application/json",
         cookie: `${SHOP_IDENTITY_SESSION_COOKIE}=${sessionCookie}`,
