@@ -52,6 +52,15 @@ const focusedTests = [
     ],
   ],
   [
+    "@auction/identity-rp",
+    [
+      "src/pkce.test.ts",
+      "src/ports/ports.contract.test.ts",
+      "src/adapters/fetch-token-endpoint.test.ts",
+      "src/authorize-url.test.ts",
+    ],
+  ],
+  [
     "@auction/web",
     [
       "src/lib/bff/session-store.server.test.ts",
@@ -295,6 +304,11 @@ async function runLiveVerification() {
 }
 
 async function main() {
+  const rpLayers = spawnSync("node", ["scripts/ci/verify-identity-rp-layers.mjs"], {
+    stdio: "inherit",
+  });
+  if (rpLayers.status !== 0) process.exit(rpLayers.status ?? 1);
+
   if (mode === "live") {
     verifyStaticContracts();
     await runLiveVerification();

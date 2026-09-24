@@ -2,8 +2,9 @@ import "server-only";
 
 import type { LaxResourceId } from "@auction/identity-contracts";
 import {
-  IdentityTokenEndpointError,
   exchangeResourceToken,
+  isIdentityRejected,
+  isIdentityUnavailable,
   refreshIdentityTokens,
 } from "./oidc.server";
 import { getBffRedis } from "./redis.server";
@@ -44,6 +45,23 @@ export class BidBffSessionRequiredError extends Error {
   }
 }
 
+export class BidBffIdentityUnavailableError extends Error {
+  constructor(message = "Identity issuer is temporarily unavailable") {
+    super(message);
+    this.name = "BidBffIdentityUnavailableError";
+  }
+}
+
+function mapIssuerFailure(error: unknown): never {
+  if (isIdentityRejected(error)) {
+    throw new BidBffSessionRequiredError();
+  }
+  if (isIdentityUnavailable(error)) {
+    throw new BidBffIdentityUnavailableError();
+  }
+  throw error;
+}
+
 export class BidBffTokenService {
   constructor(private readonly sessions = new BidBffSessionStore(getBffRedis())) {}
 
@@ -76,18 +94,15 @@ export class BidBffTokenService {
         try {
           current = await refreshIdentityTokens(current);
         } catch (error) {
-          if (
-            error instanceof IdentityTokenEndpointError &&
-            error.status !== null &&
-            error.status >= 400 &&
-            error.status < 500
-          ) {
-            throw new BidBffSessionRequiredError();
-          }
-          throw error;
+          mapIssuerFailure(error);
         }
       }
-      const resource = await exchangeResourceToken(current, audience, scopes);
+      let resource: Awaited<ReturnType<typeof exchangeResourceToken>>;
+      try {
+        resource = await exchangeResourceToken(current, audience, scopes);
+      } catch (error) {
+        mapIssuerFailure(error);
+      }
       current = {
         ...current,
         resourceTokens: { ...current.resourceTokens, [audience]: resource },

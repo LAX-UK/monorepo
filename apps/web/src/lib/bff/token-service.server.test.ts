@@ -6,7 +6,14 @@ const oidc = vi.hoisted(() => ({
   refreshIdentityTokens: vi.fn(),
 }));
 
-vi.mock("./oidc.server", () => oidc);
+vi.mock("./oidc.server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./oidc.server")>();
+  return {
+    ...actual,
+    exchangeResourceToken: oidc.exchangeResourceToken,
+    refreshIdentityTokens: oidc.refreshIdentityTokens,
+  };
+});
 
 import { BidBffTokenService } from "./token-service.server";
 
@@ -126,5 +133,51 @@ describe("BidBffTokenService", () => {
         ({ session }) => session.resourceTokens["lax-bid-api"]?.token === "resource-token",
       ),
     ).toBe(true);
+  });
+
+  it("invalidates the session when refresh receives a 4xx from the issuer", async () => {
+    const { IdentityRejectedError } = await import("@auction/identity-rp");
+    const sessions = new DeterministicSessionStore({
+      kind: "authenticated",
+      subject: "user-1",
+      sid: "sid-1",
+      idToken: "id-token",
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      accessTokenExpiresAt: Date.now() - 1,
+      resourceTokens: {},
+    });
+    oidc.refreshIdentityTokens.mockRejectedValue(new IdentityRejectedError(401, "invalid_grant"));
+    const service = new BidBffTokenService(sessions as never);
+
+    await expect(
+      service.resourceToken("session-id", "lax-bid-api", "bid.read"),
+    ).rejects.toMatchObject({
+      name: "BidBffSessionRequiredError",
+    });
+  });
+
+  it("preserves the session and surfaces unavailable when refresh cannot reach the issuer", async () => {
+    const { IdentityUnavailableError } = await import("@auction/identity-rp");
+    const sessions = new DeterministicSessionStore({
+      kind: "authenticated",
+      subject: "user-1",
+      sid: "sid-1",
+      idToken: "id-token",
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      accessTokenExpiresAt: Date.now() - 1,
+      resourceTokens: {},
+    });
+    oidc.refreshIdentityTokens.mockRejectedValue(
+      new IdentityUnavailableError("Identity token endpoint is unavailable"),
+    );
+    const service = new BidBffTokenService(sessions as never);
+
+    await expect(
+      service.resourceToken("session-id", "lax-bid-api", "bid.read"),
+    ).rejects.toMatchObject({
+      name: "BidBffIdentityUnavailableError",
+    });
   });
 });
