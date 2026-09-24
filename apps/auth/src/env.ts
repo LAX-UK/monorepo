@@ -246,10 +246,19 @@ const envSchema = z
 
 export type AuthAppEnv = z.infer<typeof envSchema>;
 
+function formatAuthEnvIssues(error: z.ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
+}
+
 export function parseAuthEnv(input: NodeJS.ProcessEnv): AuthAppEnv {
   const parsed = envSchema.safeParse(input);
   if (!parsed.success) {
-    throw new Error("Invalid auth app environment variables");
+    throw new Error(`Invalid auth app environment variables: ${formatAuthEnvIssues(parsed.error)}`);
   }
   return parsed.data;
 }
