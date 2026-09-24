@@ -127,7 +127,9 @@ function collectViolations(target) {
       );
     }
     if (!/output\s+"auth_metrics_token"\s*\{/.test(outputs)) {
-      violations.push("[test] Terraform does not expose the test-only auth metrics token to acceptance");
+      violations.push(
+        "[test] Terraform does not expose the test-only auth metrics token to acceptance",
+      );
     }
     for (const command of ["migrate-prod.js", "migrate-roles.js", "configure-oidc-clients.js"]) {
       if (!migrate.includes(command)) {
