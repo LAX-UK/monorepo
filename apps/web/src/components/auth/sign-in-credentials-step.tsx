@@ -5,6 +5,7 @@ import { AuthSubmitButton } from "@/components/auth/primitives/submit-button";
 import { SocialSignInButtons } from "@/components/auth/social-sign-in-buttons";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { AUTH_FOOTER_LINK_ROW } from "@/lib/auth/auth-link-classes";
+import type { TurnstileWidgetApi } from "@/lib/auth/hooks/use-turnstile-field";
 import type { SignInFormValues } from "@/lib/auth/schemas";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -20,16 +21,16 @@ type SignInCredentialsStepProps = {
   signInSubmitDisabled: boolean;
   showCaptcha: boolean;
   turnstileSiteKey: string | null;
+  onTurnstileReady: (api: TurnstileWidgetApi) => void;
   onTurnstileToken: (token: string) => void;
   onTurnstileExpire: () => void;
+  onTurnstileError: () => void;
   onChangeEmail: () => void;
   linkSent: boolean;
   linkCooldown: number;
   magicLinkLoading: boolean;
   magicLinkError: string | null;
   magicLinkTurnstileReady: boolean;
-  onMagicLinkTurnstileToken: (token: string) => void;
-  onMagicLinkTurnstileExpire: () => void;
   onRequestMagicLink: () => void;
   onResendMagicLink: () => void;
   sellIntent?: boolean;
@@ -45,16 +46,16 @@ export function SignInCredentialsStep({
   signInSubmitDisabled,
   showCaptcha,
   turnstileSiteKey,
+  onTurnstileReady,
   onTurnstileToken,
   onTurnstileExpire,
+  onTurnstileError,
   onChangeEmail,
   linkSent,
   linkCooldown,
   magicLinkLoading,
   magicLinkError,
   magicLinkTurnstileReady,
-  onMagicLinkTurnstileToken,
-  onMagicLinkTurnstileExpire,
   onRequestMagicLink,
   onResendMagicLink,
   sellIntent = false,
@@ -83,8 +84,10 @@ export function SignInCredentialsStep({
         {turnstileSiteKey ? (
           <TurnstileWidget
             siteKey={turnstileSiteKey}
-            onToken={onMagicLinkTurnstileToken}
-            onClear={onMagicLinkTurnstileExpire}
+            onToken={onTurnstileToken}
+            onClear={onTurnstileExpire}
+            onError={onTurnstileError}
+            onReady={onTurnstileReady}
           />
         ) : null}
         <Button
@@ -145,29 +148,24 @@ export function SignInCredentialsStep({
         autoComplete="current-password"
       />
       {showCaptcha && turnstileSiteKey ? (
-        <div className="flex flex-col gap-2">
-          <p className="font-footer-links text-sm text-on-surface-variant">
-            For your security, complete the check below and try again.
-          </p>
-          <TurnstileWidget
-            siteKey={turnstileSiteKey}
-            onToken={onTurnstileToken}
-            onClear={onTurnstileExpire}
-          />
-        </div>
+        <p className="font-footer-links text-sm text-on-surface-variant">
+          For your security, complete the check below and try again.
+        </p>
+      ) : null}
+      {turnstileSiteKey ? (
+        <TurnstileWidget
+          siteKey={turnstileSiteKey}
+          onToken={onTurnstileToken}
+          onClear={onTurnstileExpire}
+          onError={onTurnstileError}
+          onReady={onTurnstileReady}
+        />
       ) : null}
       <div className="flex justify-end">
         <Link href={forgotPasswordHref} className={AUTH_FOOTER_LINK_ROW}>
           Forgot password?
         </Link>
       </div>
-      {turnstileSiteKey ? (
-        <TurnstileWidget
-          siteKey={turnstileSiteKey}
-          onToken={onMagicLinkTurnstileToken}
-          onClear={onMagicLinkTurnstileExpire}
-        />
-      ) : null}
       {magicLinkError ? (
         <output className="block font-footer-links text-sm text-error" aria-live="polite">
           {magicLinkError}

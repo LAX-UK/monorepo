@@ -1,5 +1,7 @@
 "use client";
 
+import type { TurnstileWidgetApi } from "@/lib/auth/hooks/use-turnstile-field";
+import { TURNSTILE_LOAD_ERROR_MESSAGE } from "@/lib/auth/turnstile-after-submit";
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -15,6 +17,7 @@ declare global {
           "error-callback"?: () => void;
         },
       ) => string;
+      reset?: (widgetId: string) => void;
       remove?: (widgetId: string) => void;
     };
   }
@@ -24,12 +27,15 @@ type Props = {
   siteKey: string | undefined;
   onToken: (token: string) => void;
   onClear?: () => void;
+  onError?: () => void;
+  onReady?: (api: TurnstileWidgetApi) => void;
 };
 
-export function TurnstileWidget({ siteKey, onToken, onClear }: Props) {
+export function TurnstileWidget({ siteKey, onToken, onClear, onError, onReady }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [apiReady, setApiReady] = useState(false);
+  const [scriptError, setScriptError] = useState(false);
 
   const onTokenCb = useCallback(
     (t: string) => {
@@ -38,6 +44,13 @@ export function TurnstileWidget({ siteKey, onToken, onClear }: Props) {
     [onToken],
   );
 
+  const resetWidget = useCallback(() => {
+    const id = widgetIdRef.current;
+    if (id && window.turnstile?.reset) {
+      window.turnstile.reset(id);
+    }
+  }, []);
+
   useEffect(() => {
     if (!apiReady || !siteKey || !containerRef.current || !window.turnstile) return;
     if (widgetIdRef.current) return;
@@ -45,26 +58,44 @@ export function TurnstileWidget({ siteKey, onToken, onClear }: Props) {
       sitekey: siteKey,
       callback: onTokenCb,
       "expired-callback": () => onClear?.(),
-      "error-callback": () => onClear?.(),
+      "error-callback": () => {
+        onClear?.();
+        onError?.();
+      },
     });
+    onReady?.({ reset: resetWidget });
     return () => {
       if (widgetIdRef.current && window.turnstile?.remove) {
         window.turnstile.remove(widgetIdRef.current);
       }
       widgetIdRef.current = null;
     };
-  }, [apiReady, siteKey, onTokenCb, onClear]);
+  }, [apiReady, siteKey, onTokenCb, onClear, onError, onReady, resetWidget]);
 
   if (!siteKey) return null;
+
+  const showLoadError = scriptError;
 
   return (
     <>
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
         onLoad={() => setApiReady(true)}
+        onError={() => {
+          setScriptError(true);
+          onError?.();
+        }}
       />
       <div ref={containerRef} className="flex justify-center" />
+      {showLoadError ? (
+        <output
+          className="block text-center font-footer-links text-sm text-error"
+          aria-live="polite"
+        >
+          {TURNSTILE_LOAD_ERROR_MESSAGE}
+        </output>
+      ) : null}
     </>
   );
 }

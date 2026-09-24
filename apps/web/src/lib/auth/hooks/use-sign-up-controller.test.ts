@@ -141,4 +141,31 @@ describe("useSignUpController", () => {
     });
     expect(result.current.turnstileReady).toBe(false);
   });
+
+  it("clears turnstile token after a failed registration submit", async () => {
+    mockSiteKey = "site-key";
+    mocks.run.mockResolvedValue({
+      ok: false,
+      code: "captcha_invalid",
+      message: "Security check failed.",
+    });
+    const { result } = renderHook(() => useSignUpController());
+
+    act(() => {
+      result.current.onTurnstileToken("spent-token");
+    });
+    expect(result.current.turnstileReady).toBe(true);
+
+    await act(async () => {
+      result.current.form.setValue("firstName", "Ada");
+      result.current.form.setValue("lastName", "Lovelace");
+      result.current.form.setValue("email", "ada@example.com");
+      result.current.form.setValue("password", "supersecret1!");
+      result.current.form.setValue("persona", "individual");
+      result.current.form.setValue("acceptTerms", true);
+      await result.current.onSubmit();
+    });
+
+    expect(result.current.turnstileReady).toBe(false);
+  });
 });

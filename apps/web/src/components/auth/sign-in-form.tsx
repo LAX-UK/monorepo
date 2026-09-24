@@ -44,8 +44,10 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     showCaptcha,
     signInSubmitDisabled,
     turnstileSiteKey,
+    onTurnstileReady,
     onTurnstileToken,
     onTurnstileExpire,
+    onTurnstileError,
     emailFirst,
     step,
     goToCredentials,
@@ -57,8 +59,6 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
     magicLinkLoading,
     magicLinkError,
     magicLinkTurnstileReady,
-    onMagicLinkTurnstileToken,
-    onMagicLinkTurnstileExpire,
   } = useSignInController(next, {
     sellIntent,
     ...(prefillEmail ? { prefillEmail } : {}),
@@ -386,16 +386,16 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
           signInSubmitDisabled={signInSubmitDisabled}
           showCaptcha={showCaptcha}
           turnstileSiteKey={turnstileSiteKey}
+          onTurnstileReady={onTurnstileReady}
           onTurnstileToken={onTurnstileToken}
           onTurnstileExpire={onTurnstileExpire}
+          onTurnstileError={onTurnstileError}
           onChangeEmail={changeEmail}
           linkSent={linkSent}
           linkCooldown={linkCooldown}
           magicLinkLoading={magicLinkLoading}
           magicLinkError={magicLinkError}
           magicLinkTurnstileReady={magicLinkTurnstileReady}
-          onMagicLinkTurnstileToken={onMagicLinkTurnstileToken}
-          onMagicLinkTurnstileExpire={onMagicLinkTurnstileExpire}
           onRequestMagicLink={() => void requestMagicLink()}
           onResendMagicLink={() => void resendMagicLink()}
         />
@@ -448,16 +448,16 @@ export function SignInForm({ switchAccount = false }: SignInFormProps) {
             signInSubmitDisabled={signInSubmitDisabled}
             showCaptcha={showCaptcha}
             turnstileSiteKey={turnstileSiteKey}
+            onTurnstileReady={onTurnstileReady}
             onTurnstileToken={onTurnstileToken}
             onTurnstileExpire={onTurnstileExpire}
+            onTurnstileError={onTurnstileError}
             onChangeEmail={changeEmail}
             linkSent={linkSent}
             linkCooldown={linkCooldown}
             magicLinkLoading={magicLinkLoading}
             magicLinkError={magicLinkError}
             magicLinkTurnstileReady={magicLinkTurnstileReady}
-            onMagicLinkTurnstileToken={onMagicLinkTurnstileToken}
-            onMagicLinkTurnstileExpire={onMagicLinkTurnstileExpire}
             onRequestMagicLink={() => void requestMagicLink()}
             onResendMagicLink={() => void resendMagicLink()}
             sellIntent={sellIntent}

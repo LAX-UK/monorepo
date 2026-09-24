@@ -26,8 +26,10 @@ export function ForgotPasswordForm() {
     resend,
     cooldown,
     turnstileSiteKey,
+    onTurnstileReady,
     onTurnstileToken,
     onTurnstileExpire,
+    onTurnstileError,
     turnstileReady,
   } = useForgotPasswordController();
 
@@ -52,6 +54,8 @@ export function ForgotPasswordForm() {
           siteKey={turnstileSiteKey}
           onToken={onTurnstileToken}
           onClear={onTurnstileExpire}
+          onError={onTurnstileError}
+          onReady={onTurnstileReady}
         />
         <Button
           type="button"
@@ -83,9 +87,15 @@ export function ForgotPasswordForm() {
         siteKey={turnstileSiteKey}
         onToken={onTurnstileToken}
         onClear={onTurnstileExpire}
+        onError={onTurnstileError}
+        onReady={onTurnstileReady}
       />
       <div className="flex flex-col gap-6">
-        <AuthSubmitButton loading={loading} loadingLabel="Sending…">
+        <AuthSubmitButton
+          loading={loading}
+          loadingLabel="Sending…"
+          disabled={loading || !turnstileReady}
+        >
           Send reset link
         </AuthSubmitButton>
         <AuthFooterLink prefix="Remembered it?" linkText="Log in" href={loginHref} />

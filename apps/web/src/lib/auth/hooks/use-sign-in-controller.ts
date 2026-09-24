@@ -9,11 +9,13 @@ import {
   fetchSessionUserWithRetry,
 } from "@/lib/auth/fetch-session-user-with-retry.client";
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
+import type { TurnstileWidgetApi } from "@/lib/auth/hooks/use-turnstile-field";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { postLoginHandoffHref } from "@/lib/auth/post-login-handoff";
 import { type SignInFormValues, signInFormSchema } from "@/lib/auth/schemas";
 import { requestMagicLinkService } from "@/lib/auth/services/request-magic-link.service";
 import { signInService } from "@/lib/auth/services/sign-in.service";
+import { shouldResetTurnstileAfterFailedSubmit } from "@/lib/auth/turnstile-after-submit";
 import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
@@ -39,14 +41,14 @@ export function useSignInController(nextHref: string, options: SignInControllerO
   const refetchSession = useRefetchAppSession();
   const emailFirst = options.emailFirst ?? isEmailFirstLoginEnabled();
   const turnstileRef = useRef<string | undefined>(undefined);
-  const [magicLinkTurnstileToken, setMagicLinkTurnstileToken] = useState<string | null>(null);
+  const turnstileResetRef = useRef<(() => void) | null>(null);
+  const [credentialsTurnstileToken, setCredentialsTurnstileToken] = useState<string | null>(null);
   const { run, loading, bannerError, lastErrorCode } = useAuthSubmit((data: SignInFormValues) =>
     signInService({ ...data, turnstileToken: turnstileRef.current }),
   );
   const siteKey = turnstileSiteKey();
   const needsMagicLinkTurnstile = Boolean(siteKey);
   const [showCaptcha, setShowCaptcha] = useState(false);
-  const [signInCaptchaToken, setSignInCaptchaToken] = useState<string | null>(null);
   const [captchaGateError, setCaptchaGateError] = useState<string | null>(null);
   const [postAuthError, setPostAuthError] = useState<string | null>(null);
   const [step, setStep] = useState<SignInStep>(
@@ -57,27 +59,35 @@ export function useSignInController(nextHref: string, options: SignInControllerO
   const [magicLinkError, setMagicLinkError] = useState<string | null>(null);
   const { remaining: linkCooldown, start: startLinkCooldown } = useResendCooldown(45);
   const webOrigin = typeof window !== "undefined" ? window.location.origin : "";
-  const signInTurnstileReady = !showCaptcha || !siteKey || Boolean(signInCaptchaToken);
+  const credentialsTurnstileReady = !siteKey || Boolean(credentialsTurnstileToken);
+  const signInTurnstileReady = !showCaptcha || credentialsTurnstileReady;
   const signInSubmitDisabled = loading || !signInTurnstileReady;
+
+  const resetCredentialsTurnstile = useCallback(() => {
+    turnstileRef.current = undefined;
+    setCredentialsTurnstileToken(null);
+    turnstileResetRef.current?.();
+  }, []);
+
+  const onTurnstileReady = useCallback((api: TurnstileWidgetApi) => {
+    turnstileResetRef.current = api.reset;
+  }, []);
 
   const onTurnstileToken = useCallback((t: string) => {
     turnstileRef.current = t;
-    setSignInCaptchaToken(t);
+    setCredentialsTurnstileToken(t);
     setCaptchaGateError(null);
+    setMagicLinkError(null);
   }, []);
 
   const onTurnstileExpire = useCallback(() => {
     turnstileRef.current = undefined;
-    setSignInCaptchaToken(null);
+    setCredentialsTurnstileToken(null);
   }, []);
 
-  const onMagicLinkTurnstileToken = useCallback((t: string) => {
-    setMagicLinkTurnstileToken(t);
-    setMagicLinkError(null);
-  }, []);
-
-  const onMagicLinkTurnstileExpire = useCallback(() => {
-    setMagicLinkTurnstileToken(null);
+  const onTurnstileError = useCallback(() => {
+    turnstileRef.current = undefined;
+    setCredentialsTurnstileToken(null);
   }, []);
 
   const form = useForm<SignInFormValues>({
@@ -114,7 +124,7 @@ export function useSignInController(nextHref: string, options: SignInControllerO
       form.setError("email", { message: "Enter a valid email address" });
       return;
     }
-    if (needsMagicLinkTurnstile && !magicLinkTurnstileToken) {
+    if (needsMagicLinkTurnstile && !turnstileRef.current) {
       setMagicLinkError("Please complete the security check.");
       return;
     }
@@ -125,10 +135,13 @@ export function useSignInController(nextHref: string, options: SignInControllerO
       email,
       webOrigin,
       ...(safeNext ? { next: safeNext } : {}),
-      ...(magicLinkTurnstileToken ? { turnstileToken: magicLinkTurnstileToken } : {}),
+      ...(turnstileRef.current ? { turnstileToken: turnstileRef.current } : {}),
     });
     setMagicLinkLoading(false);
     if (!result.ok) {
+      if (shouldResetTurnstileAfterFailedSubmit(result.code)) {
+        resetCredentialsTurnstile();
+      }
       setMagicLinkError(
         result.code === "rate_limited"
           ? "Too many requests. Please wait and try again."
@@ -143,7 +156,7 @@ export function useSignInController(nextHref: string, options: SignInControllerO
   }, [
     form,
     needsMagicLinkTurnstile,
-    magicLinkTurnstileToken,
+    resetCredentialsTurnstile,
     nextHref,
     webOrigin,
     startLinkCooldown,
@@ -163,14 +176,12 @@ export function useSignInController(nextHref: string, options: SignInControllerO
     const result = await run(data);
     if (!result.ok && result.code === "captcha_required" && siteKey) {
       setShowCaptcha(true);
-      setSignInCaptchaToken(null);
-      turnstileRef.current = undefined;
+      resetCredentialsTurnstile();
       return;
     }
     if (result.ok) {
       setShowCaptcha(false);
-      setSignInCaptchaToken(null);
-      turnstileRef.current = undefined;
+      resetCredentialsTurnstile();
       if (result.requiresTwoFactor) {
         const safeNext = isSafeNextPath(nextHref) ? nextHref : "/dashboard";
         router.push(`/login/two-factor?next=${encodeURIComponent(safeNext)}`);
@@ -198,6 +209,9 @@ export function useSignInController(nextHref: string, options: SignInControllerO
       router.refresh();
       return;
     }
+    if (!result.ok && shouldResetTurnstileAfterFailedSubmit(result.code)) {
+      resetCredentialsTurnstile();
+    }
     const maybeUnverified = result.code === "email_not_verified";
     if (maybeUnverified) {
       const params = new URLSearchParams({ email: data.email });
@@ -216,8 +230,10 @@ export function useSignInController(nextHref: string, options: SignInControllerO
     lastErrorCode,
     showCaptcha: showCaptcha && Boolean(siteKey),
     turnstileSiteKey: siteKey ?? null,
+    onTurnstileReady,
     onTurnstileToken,
     onTurnstileExpire,
+    onTurnstileError,
     signInSubmitDisabled,
     emailFirst,
     step,
@@ -229,8 +245,6 @@ export function useSignInController(nextHref: string, options: SignInControllerO
     linkCooldown,
     magicLinkLoading,
     magicLinkError,
-    magicLinkTurnstileReady: !needsMagicLinkTurnstile || Boolean(magicLinkTurnstileToken),
-    onMagicLinkTurnstileToken,
-    onMagicLinkTurnstileExpire,
+    magicLinkTurnstileReady: !needsMagicLinkTurnstile || credentialsTurnstileReady,
   };
 }

@@ -2,9 +2,9 @@
 
 import { parseAuthEmailParam } from "@/lib/auth/auth-route-links";
 import { useResendCooldown } from "@/lib/auth/hooks/use-resend-cooldown";
+import { useTurnstileField } from "@/lib/auth/hooks/use-turnstile-field";
 import { type ForgotPasswordFormValues, forgotPasswordFormSchema } from "@/lib/auth/schemas";
 import { forgotPasswordService } from "@/lib/auth/services/forgot-password.service";
-import { turnstileSiteKey } from "@/lib/auth/turnstile-site-key";
 import { useAuthSubmit } from "@/lib/auth/use-auth-submit";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
@@ -17,26 +17,31 @@ export function useForgotPasswordController() {
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const { remaining: cooldown, start: startCooldown } = useResendCooldown(45);
   const { run, loading, bannerError, lastErrorCode } = useAuthSubmit(forgotPasswordService);
-  const siteKey = turnstileSiteKey();
-  const needsTurnstile = Boolean(siteKey);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const {
+    turnstileSiteKey,
+    needsTurnstile,
+    turnstileToken,
+    turnstileReady,
+    turnstileLoadError,
+    onTurnstileReady,
+    onTurnstileToken,
+    onTurnstileExpire,
+    onTurnstileError,
+    resetTurnstileAfterFailedSubmit,
+  } = useTurnstileField();
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordFormSchema),
     defaultValues: { email: prefillEmail ?? "" },
   });
 
-  const onTurnstileToken = useCallback(
+  const onTurnstileTokenWithClear = useCallback(
     (t: string) => {
-      setTurnstileToken(t);
+      onTurnstileToken(t);
       form.clearErrors("root");
     },
-    [form],
+    [form, onTurnstileToken],
   );
-
-  const onTurnstileExpire = useCallback(() => {
-    setTurnstileToken(null);
-  }, []);
 
   const onSubmit = form.handleSubmit(async (data) => {
     if (needsTurnstile && !turnstileToken) {
@@ -49,7 +54,9 @@ export function useForgotPasswordController() {
     });
     if (result.ok) {
       setSubmittedEmail(data.email);
+      return;
     }
+    resetTurnstileAfterFailedSubmit(result.code);
   });
 
   const resend = useCallback(async () => {
@@ -59,8 +66,21 @@ export function useForgotPasswordController() {
       email: submittedEmail,
       ...(turnstileToken ? { turnstileToken } : {}),
     });
-    if (result.ok) startCooldown(45);
-  }, [submittedEmail, cooldown, loading, run, startCooldown, needsTurnstile, turnstileToken]);
+    if (result.ok) {
+      startCooldown(45);
+      return;
+    }
+    resetTurnstileAfterFailedSubmit(result.code);
+  }, [
+    submittedEmail,
+    cooldown,
+    loading,
+    run,
+    startCooldown,
+    needsTurnstile,
+    turnstileToken,
+    resetTurnstileAfterFailedSubmit,
+  ]);
 
   return {
     form,
@@ -71,9 +91,12 @@ export function useForgotPasswordController() {
     submittedEmail,
     resend,
     cooldown,
-    turnstileSiteKey: siteKey,
-    onTurnstileToken,
+    turnstileSiteKey,
+    onTurnstileReady,
+    onTurnstileToken: onTurnstileTokenWithClear,
     onTurnstileExpire,
-    turnstileReady: !needsTurnstile || Boolean(turnstileToken),
+    onTurnstileError,
+    turnstileReady,
+    turnstileLoadError,
   };
 }

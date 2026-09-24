@@ -30,8 +30,11 @@ vi.mock("@/lib/auth/hooks/use-sign-in-controller", () => ({
     bannerError: null,
     showCaptcha: false,
     turnstileSiteKey: null,
+    onTurnstileReady: vi.fn(),
     onTurnstileToken: vi.fn(),
     onTurnstileExpire: vi.fn(),
+    onTurnstileError: vi.fn(),
+    signInSubmitDisabled: false,
     emailFirst: mockEmailFirst,
     step: mockStep,
     goToCredentials,
@@ -43,8 +46,6 @@ vi.mock("@/lib/auth/hooks/use-sign-in-controller", () => ({
     magicLinkLoading: false,
     magicLinkError: null,
     magicLinkTurnstileReady: true,
-    onMagicLinkTurnstileToken: vi.fn(),
-    onMagicLinkTurnstileExpire: vi.fn(),
   }),
 }));
 
