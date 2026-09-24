@@ -80,8 +80,7 @@ describe("auth app environment contract", () => {
   });
 
   it("reports SHOP_ORIGIN when production env omits it", () => {
-    const input = { ...production };
-    delete (input as Record<string, unknown>).SHOP_ORIGIN;
-    expect(() => parseAuthEnv(input)).toThrow(/SHOP_ORIGIN/);
+    const { SHOP_ORIGIN: _shopOrigin, ...withoutShopOrigin } = production;
+    expect(() => parseAuthEnv(withoutShopOrigin)).toThrow(/SHOP_ORIGIN/);
   });
 });
