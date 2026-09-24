@@ -190,6 +190,13 @@ product activity. `last_event_id` is the projector ordering/idempotency cursor.
    `lax-bid-api`, and `lax-ws` paths.
 4. Confirm API `/.well-known/*` and `/api/auth/*` return 404 and browser cookies
    are rejected as API credentials.
+5. On test, **identity staging acceptance** runs `verify-bid-web-bff-roundtrip.mjs`
+   and `verify-bid-web-health-ready.mjs` after the Bid web deploy. Confirm
+   `/api/health/ready` stays `200` with `dependencies.identity.status` of `ok`
+   or `degraded`.
+6. Shared RP protocol lives in `@auction/identity-rp`; do not introduce a shared
+   multi-product BFF service. Circuit breakers on the issuer token endpoint stay
+   deferred until measured latency/error data justify them (timeouts are required).
 
 ## Phase 5 — Shop RP/BFF
 
