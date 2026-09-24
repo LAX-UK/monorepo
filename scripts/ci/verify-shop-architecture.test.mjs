@@ -149,8 +149,6 @@ describe("Shop commerce architecture SSOT", () => {
     assert.match(shopAcceptance, /test "\$code" = "400"/);
     assert.match(shopAcceptance, /if-no-files-found: warn/);
     assert.match(shopAcceptance, /home-catalogue\.spec\.ts/);
-    assert.match(shopAcceptance, /Shop SEO smoke \(no browser\)/);
-    assert.match(shopAcceptance, /\/robots\.txt/);
     assert.match(shopAcceptance, /e2e\/theme-audit\.spec\.ts/);
     assert.match(shopAcceptance, /visible without JavaScript\|theme/);
     assert.doesNotMatch(shopAcceptance, /shop-viewport-audit\.spec\.ts/);

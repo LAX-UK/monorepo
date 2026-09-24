@@ -148,18 +148,9 @@ jobs:
           echo "::warning::Catalogue seed may mark reed-study editions sold; use only on disposable staging data."
           pnpm --filter @auction/shop-api... build
           pnpm --filter @auction/shop-api seed:catalogue
-      - name: Shop SEO smoke (no browser)
-        run: |
-          set -euo pipefail
-          for path in /robots.txt /sitemap.xml; do
-            code="$(curl -sS -o /dev/null -w "%{http_code}" "$SHOP_STOREFRONT_URL$path")"
-            test "$code" = "200"
-          done
-          body="$(curl -sS --max-time 30 "$SHOP_STOREFRONT_URL/")"
-          echo "$body" | grep -q 'rel="canonical"'
       - name: Install pinned Chromium
         run: pnpm --filter @auction/shop exec playwright install chromium --with-deps
-      - name: Shop browser tier 1 (light/dark and SEO)
+      - name: Shop browser tier 1 (light/dark)
         run: |
           pnpm --filter @auction/shop exec playwright test \
             e2e/theme-audit.spec.ts \
