@@ -8,7 +8,6 @@ describe("withStepUp", () => {
     const coordinator: IStepUpCoordinator = {
       state: { mode: "idle", busy: false, error: null },
       request: async () => "satisfied",
-      submitPassword: async () => {},
       cancel: () => {},
     };
     const r = await withStepUp(async () => ({ ok: true, value: 42 }), coordinator);
@@ -20,7 +19,6 @@ describe("withStepUp", () => {
     const coordinator: IStepUpCoordinator = {
       state: { mode: "idle", busy: false, error: null },
       request: async () => "satisfied",
-      submitPassword: async () => {},
       cancel: () => {},
     };
     const r = await withStepUp(async (): Promise<StepUpActionResult<number>> => {
@@ -37,7 +35,6 @@ describe("withStepUp", () => {
     const coordinator: IStepUpCoordinator = {
       state: { mode: "idle", busy: false, error: null },
       request: async () => "cancelled",
-      submitPassword: async () => {},
       cancel: () => {},
     };
     const first: StepUpActionResult<void> = { ok: false, reason: "credential_required" };

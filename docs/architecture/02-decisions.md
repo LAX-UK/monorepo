@@ -499,3 +499,32 @@ values.
 (Option B) and deduping legal-entity / lot / payment presenter drift remain follow-up work.
 
 **Status.** *Implemented.*
+
+## D27. Bid primary authentication uses issuer-hosted credentials (BFF redirect)
+
+**Chosen.** Primary Bid sign-in, sign-up, password reset, two-factor, magic link, and
+verify-pending entry points are thin server redirects to `/api/auth/login` (or issuer-hosted
+recovery URLs). Passwords and magic-link requests are entered only on `auth.lax.bid` /
+`test-auth.lax.bid`. The Bid BFF stores PKCE state, exchanges codes server-side, and sets the
+HttpOnly session cookie (RFC 10017 BFF pattern). Sign-up uses OIDC `prompt=create` (Prompt
+Create 1.0). Sensitive in-app actions use OIDC step-up (`prompt=login` + Bid BFF `auth_time`
+check) instead of embedded password re-entry. Bid-specific registration data (terms, persona,
+invite) is collected on `/onboarding/account` after the first OIDC login (`POST /users/me/onboarding`).
+Signed-in account management (2FA enrollment, connected accounts, optional set-password after magic link)
+may still call issuer JSON routes from the Bid browser.
+
+**Alternatives considered.** Embedded credential forms on `lax.bid` were rejected: RFC 9700
+§2.4, cross-origin credential posting, and split WebAuthn/passkey origins.
+
+**Why this wins.** One login origin for Shop and Bid, shared hosted chrome and rate limits,
+and the same security model Auth0 and OWASP recommend for browser apps.
+
+**References.** [RFC 9700](https://www.rfc-editor.org/rfc/rfc9700.html) §2.4;
+[RFC 10017](https://www.rfc-editor.org/info/rfc10017/);
+[OIDC Prompt Create 1.0](https://openid.net/specs/openid-connect-prompt-create-1_0.html);
+[09-lax-identity-boundary.md](./09-lax-identity-boundary.md) (Hosted credential chrome).
+
+**Status.** *Implemented.* Bid BFF modules under `apps/web/src/lib/bff/`; guardrail in
+`scripts/check-web-guardrails.mjs`; issuer `prompt=create` in
+`packages/auth/src/hosted-auth/flow-context.ts`; discovery advertises
+`prompt_values_supported` including `create`.

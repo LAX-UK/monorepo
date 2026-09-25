@@ -64,6 +64,11 @@ const zeroLotCredentials: Credentials = {
   password: process.env.PLAYWRIGHT_ZERO_LOT_PASSWORD ?? "Password123!",
 };
 
+const onboardingIncompleteCredentials: Credentials = {
+  email: process.env.PLAYWRIGHT_ONBOARDING_INCOMPLETE_EMAIL ?? "onboarding-incomplete@lax.bid",
+  password: process.env.PLAYWRIGHT_ONBOARDING_INCOMPLETE_PASSWORD ?? "Password123!",
+};
+
 /** Seeded hybrid saleroom ids — see packages/db dev seed (S.hybridA, L.hybridA1). */
 export const seededHybridSaleId =
   process.env.PLAYWRIGHT_HYBRID_SALE_ID ?? "e1000003-0000-4000-8000-000000000003";
@@ -454,11 +459,17 @@ async function login(
     : `/login?email=${encodeURIComponent(credentials.email)}`;
   await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
   await dismissCookieConsentIfVisible(page);
+  await page
+    .waitForURL(/\/(login|oauth2\/authorize|api\/auth\/login|auth\/post-login)/, {
+      timeout: 45_000,
+    })
+    .catch(() => {});
   await Promise.race([
     page
       .locator("output")
       .filter({ hasText: /signed in/i })
       .waitFor({ state: "visible", timeout: 8_000 }),
+    page.locator("#login-form").waitFor({ state: "visible", timeout: 8_000 }),
     page.locator('input[name="password"]').first().waitFor({ state: "visible", timeout: 8_000 }),
     page.getByRole("button", { name: /^continue$/i }).waitFor({ state: "visible", timeout: 8_000 }),
   ]).catch(() => {});
@@ -502,6 +513,11 @@ async function login(
     await continueAuthed.first().click();
     await waitForLoginDestination(page, destination);
     return;
+  }
+
+  const hostedEmail = page.locator("#email");
+  if (await hostedEmail.isVisible().catch(() => false)) {
+    await hostedEmail.fill(credentials.email);
   }
 
   if (await continueToCredentials.isVisible().catch(() => false)) {
@@ -694,6 +710,13 @@ export async function unapprovedLogin(page: Page): Promise<void> {
 export async function incompleteLogin(page: Page): Promise<void> {
   await login(page, incompleteCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
   await assertNotStaffShell(page, "Incomplete buyer");
+}
+
+export async function onboardingIncompleteLogin(page: Page): Promise<void> {
+  await login(page, onboardingIncompleteCredentials, {
+    destination: /\/onboarding\/account/,
+  });
+  await assertNotStaffShell(page, "Onboarding incomplete buyer");
 }
 
 export async function zeroLotLogin(page: Page): Promise<void> {

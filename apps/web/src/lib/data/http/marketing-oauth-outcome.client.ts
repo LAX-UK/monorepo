@@ -1,4 +1,4 @@
-import type { OAuthProvider } from "@/lib/auth/oauth-return-params";
+import type { OAuthProvider } from "@/lib/auth/oauth-provider";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
 
 export type OAuthOutcome = {

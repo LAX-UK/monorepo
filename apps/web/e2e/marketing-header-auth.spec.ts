@@ -1,33 +1,21 @@
+import { expect, test } from "@playwright/test";
 /**
  * E2E test: Marketing header shows authenticated state after client-side navigation.
- *
- * Verifies that after login, navigating from dashboard to marketing pages
- * shows the authenticated header (account menu) without requiring a hard refresh.
  */
-import { expect, test } from "@playwright/test";
+import { e2eEnabled, e2eSkipReason, loginWithCredentials } from "./helpers/auth";
 
-const enabled = process.env.PLAYWRIGHT_E2E === "1";
-const skipReason = "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and start apps/web (pnpm dev).";
-
-const buyerEmail = process.env.PLAYWRIGHT_BUYER_EMAIL ?? "buyer@lax.bid";
-const buyerPassword = process.env.PLAYWRIGHT_BUYER_PASSWORD ?? "password";
-const apiBase = (process.env.PLAYWRIGHT_API_URL ?? "http://127.0.0.1:3001").replace(/\/$/, "");
-
-async function login(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel(/email/i).fill(buyerEmail);
-  await page.getByLabel(/password/i).fill(buyerPassword);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/dashboard/, { timeout: 20_000 });
-}
+const buyerCredentials = {
+  email: process.env.PLAYWRIGHT_BUYER_EMAIL ?? "estate-owner@lax.bid",
+  password: process.env.PLAYWRIGHT_BUYER_PASSWORD ?? "Password123!",
+};
 
 test.describe("marketing header auth @journey", () => {
   test("header shows authenticated state after client navigation from dashboard to search", async ({
     page,
   }) => {
-    test.skip(!enabled, skipReason);
+    test.skip(!e2eEnabled, e2eSkipReason);
 
-    await login(page);
+    await loginWithCredentials(page, buyerCredentials);
 
     await expect(page.getByRole("heading", { name: /dashboard/i })).toBeVisible({
       timeout: 10_000,
@@ -47,12 +35,12 @@ test.describe("marketing header auth @journey", () => {
   });
 
   test("header updates across tabs on logout", async ({ context }) => {
-    test.skip(!enabled, skipReason);
+    test.skip(!e2eEnabled, e2eSkipReason);
 
     const page1 = await context.newPage();
     const page2 = await context.newPage();
 
-    await login(page1);
+    await loginWithCredentials(page1, buyerCredentials);
 
     await page2.goto("/");
     await page2.waitForLoadState("domcontentloaded");
@@ -67,24 +55,24 @@ test.describe("marketing header auth @journey", () => {
     await expect(page2.getByRole("link", { name: /log in/i })).toBeVisible({ timeout: 10_000 });
   });
 
-  test("header updates across tabs when sign-out is triggered via Better Auth API", async ({
+  test("header updates across tabs when sign-out is triggered via Bid BFF logout", async ({
     context,
   }) => {
-    test.skip(!enabled, skipReason);
+    test.skip(!e2eEnabled, e2eSkipReason);
 
     const page1 = await context.newPage();
     const page2 = await context.newPage();
 
-    await login(page1);
+    await loginWithCredentials(page1, buyerCredentials);
 
     await page2.goto("/");
     await expect(page2.getByRole("button", { name: /account menu/i })).toBeVisible({
       timeout: 10_000,
     });
 
-    await page1.evaluate(async (base) => {
-      await fetch(`${base}/api/auth/sign-out`, { method: "POST", credentials: "include" });
-    }, apiBase);
+    await page1.evaluate(async () => {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    });
 
     await expect(page2.getByRole("link", { name: /log in/i })).toBeVisible({ timeout: 10_000 });
   });

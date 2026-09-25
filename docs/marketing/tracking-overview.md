@@ -140,7 +140,7 @@ These fire from our backend, regardless of the browser. They are essential for e
 
 | Event | When it fires | Source | Consent basis |
 |----|----|----|----|
-| `Lead` | New user registers (email signup) | API `POST /users/register` | Visitor's marketing consent at signup |
+| `Lead` | Account onboarding completes after hosted sign-up | API `POST /users/me/onboarding` | Visitor's marketing consent at signup |
 | `CompleteRegistration` | KYC approval | Veriff decision webhook | Legitimate interest (no browser at event time) |
 | `InitiateCheckout` | Visitor starts payment | API `POST /payments` | Visitor's marketing consent |
 | `Purchase` | Payment captured | Stripe webhook | **Legitimate interest** — fires even if no consent was given because the visitor has already entered a contractual relationship and we need to reconcile ad spend |

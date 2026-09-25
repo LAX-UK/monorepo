@@ -1,3 +1,4 @@
+import { redirectForOnboardingRequired } from "@/lib/auth/account-onboarding-required.client";
 import type { BidWriter, PlaceBidInput, PlaceBidResult } from "@/lib/data/contracts";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { parseBid } from "@/lib/data/http/parse";
@@ -42,6 +43,9 @@ export function createHttpBidWriter(actingEntityId?: string): BidWriter {
       };
       if (!res.ok) {
         const errMsg = json.error ?? "Could not place bid";
+        if (redirectForOnboardingRequired(json.code)) {
+          return { ok: false, error: errMsg, status: res.status, code: json.code ?? null };
+        }
         notifyAdminCannotBuyIfNeeded(json.error, res.status);
         // Self-heal a stale acting-entity cookie: the bid was sent on behalf of
         // a legal entity the user is no longer (or never was) a member of. Drop

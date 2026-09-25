@@ -62,13 +62,17 @@ describe("Bid BFF OIDC callback", () => {
     const response = await GET(request("state=expected-state&code=authorization-code"));
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("https://lax.bid/dashboard");
+    expect(response.headers.get("location")).toBe(
+      "https://lax.bid/auth/post-login?next=%2Fdashboard&auth_fresh=1",
+    );
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(validateCallbackState).toHaveBeenCalledWith("expected-state", "expected-state");
     expect(exchangeAuthorizationCode).toHaveBeenCalledWith({
       code: "authorization-code",
       codeVerifier: "pkce-verifier",
       nonce: "expected-nonce",
+      requireRecentAuthentication: false,
+      maxAgeSeconds: 300,
     });
     expect(rotateAuthenticated).toHaveBeenCalledWith("pending-session", {
       subject: "user-1",
@@ -82,16 +86,72 @@ describe("Bid BFF OIDC callback", () => {
     expect(invalidateSession).not.toHaveBeenCalled();
   });
 
+  it("invalidates the replaced session after a successful re-login", async () => {
+    readSession.mockImplementation(async (id: string) => {
+      if (id === "prior-session") {
+        return { kind: "authenticated", subject: "user-1" };
+      }
+      return {
+        kind: "pending",
+        state: "expected-state",
+        codeVerifier: "pkce-verifier",
+        nonce: "expected-nonce",
+        nextPath: "/dashboard",
+        replacesSessionId: "prior-session",
+      };
+    });
+
+    await GET(request("state=expected-state&code=authorization-code"));
+
+    expect(invalidateSession).toHaveBeenCalledWith("prior-session");
+  });
+
   it("invalidates a pending session when callback binding fails", async () => {
     validateCallbackState.mockReturnValue(false);
 
     const response = await GET(request("state=attacker-state&code=authorization-code"));
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("https://lax.bid/login?error=oidc_callback");
+    expect(response.headers.get("location")).toBe(
+      "https://lax.bid/login?error=oidc_callback&next=%2Fdashboard",
+    );
     expect(invalidateSession).toHaveBeenCalledWith("pending-session");
     expect(exchangeAuthorizationCode).not.toHaveBeenCalled();
     expect(clearBidSessionCookie).toHaveBeenCalledWith(response);
+  });
+
+  it("restores the prior session when reauth subject mismatches", async () => {
+    readBidSessionId.mockReturnValue("pending-session");
+    readSession.mockImplementation(async (id: string) => {
+      if (id === "prior-session") {
+        return { kind: "authenticated", subject: "user-original" };
+      }
+      if (id === "pending-session") {
+        return {
+          kind: "pending",
+          state: "expected-state",
+          codeVerifier: "pkce-verifier",
+          nonce: "expected-nonce",
+          nextPath: "/dashboard",
+          entryIntent: "reauth",
+          replacesSessionId: "prior-session",
+        };
+      }
+      return null;
+    });
+    exchangeAuthorizationCode.mockResolvedValue({
+      subject: "user-attacker",
+      sid: "identity-session-2",
+    });
+
+    const response = await GET(request("state=expected-state&code=authorization-code"));
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(
+      "https://lax.bid/login?error=reauth_subject_mismatch&next=%2Fdashboard&restored=1&intent=reauth",
+    );
+    expect(setBidSessionCookie).toHaveBeenCalledWith(response, "prior-session", "authenticated");
+    expect(rotateAuthenticated).not.toHaveBeenCalled();
   });
 
   it("invalidates the pending session when code exchange or rotation fails", async () => {
@@ -100,7 +160,9 @@ describe("Bid BFF OIDC callback", () => {
     const response = await GET(request("state=expected-state&code=authorization-code"));
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("https://lax.bid/login?error=oidc_exchange");
+    expect(response.headers.get("location")).toBe(
+      "https://lax.bid/login?error=oidc_exchange&next=%2Fdashboard",
+    );
     expect(invalidateSession).toHaveBeenCalledWith("pending-session");
     expect(clearBidSessionCookie).toHaveBeenCalledWith(response);
   });

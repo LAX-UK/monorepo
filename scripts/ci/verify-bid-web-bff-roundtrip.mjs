@@ -81,7 +81,7 @@ async function main() {
     redirect: "manual",
     headers: {
       "content-type": "application/json",
-      origin: webBase,
+      origin: authBase,
     },
     body: JSON.stringify({ email, password }),
   });

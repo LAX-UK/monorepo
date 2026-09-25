@@ -1,45 +1,33 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import type { IStepUpAuthenticator } from "./step-up-authenticator.client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useStepUpCoordinator } from "./use-step-up-coordinator";
 
 describe("useStepUpCoordinator", () => {
-  it("resolves satisfied after successful password proof", async () => {
-    const authenticator: IStepUpAuthenticator = {
-      verifyPassword: vi.fn().mockResolvedValue("ok"),
-    };
-    const { result } = renderHook(() => useStepUpCoordinator(authenticator));
-    let gate!: Promise<"satisfied" | "cancelled">;
-    await act(async () => {
-      gate = result.current.request("recent_auth_required");
-    });
-    expect(result.current.state.mode).toBe("password");
-    await act(async () => {
-      await result.current.submitPassword("secret");
-    });
-    expect(await gate).toBe("satisfied");
-    expect(result.current.state.mode).toBe("idle");
-    expect(authenticator.verifyPassword).toHaveBeenCalledWith("secret");
+  const assign = vi.fn();
+
+  afterEach(() => {
+    assign.mockReset();
   });
 
-  it("switches to no_credential when authenticator returns no_credential", async () => {
-    const authenticator: IStepUpAuthenticator = {
-      verifyPassword: vi.fn().mockResolvedValue("no_credential"),
-    };
-    const { result } = renderHook(() => useStepUpCoordinator(authenticator));
+  it("redirects to hosted reauth for recent_auth_required", async () => {
+    vi.stubGlobal("location", {
+      ...window.location,
+      pathname: "/dashboard/settings",
+      search: "?tab=security",
+      assign,
+    });
+    const { result } = renderHook(() => useStepUpCoordinator());
     await act(async () => {
       void result.current.request("recent_auth_required");
     });
-    await act(async () => {
-      await result.current.submitPassword("any");
-    });
-    expect(result.current.state.mode).toBe("no_credential");
+    expect(assign).toHaveBeenCalledWith(
+      "/api/auth/login?intent=reauth&next=%2Fdashboard%2Fsettings%3Ftab%3Dsecurity",
+    );
+    vi.unstubAllGlobals();
   });
 
   it("resolves cancelled on cancel from no_credential flow", async () => {
-    const { result } = renderHook(() =>
-      useStepUpCoordinator({ verifyPassword: vi.fn().mockResolvedValue("ok") }),
-    );
+    const { result } = renderHook(() => useStepUpCoordinator());
     let gate!: Promise<"satisfied" | "cancelled">;
     await act(async () => {
       gate = result.current.request("credential_required");

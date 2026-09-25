@@ -2,7 +2,6 @@ import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
 import {
   removePhoneNumberService,
   sendPhoneOtpService,
-  signInWithPhoneService,
   verifyPhoneOtpService,
 } from "@/lib/auth/services/phone-verification.service";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,7 +9,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const sendOtp = vi.fn();
 const verify = vi.fn();
 const updateUser = vi.fn();
-const signInPhoneNumber = vi.fn();
 
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
@@ -19,9 +17,6 @@ vi.mock("@/lib/auth-client", () => ({
       verify: (...args: unknown[]) => verify(...args),
     },
     updateUser: (...args: unknown[]) => updateUser(...args),
-    signIn: {
-      phoneNumber: (...args: unknown[]) => signInPhoneNumber(...args),
-    },
   },
 }));
 
@@ -30,7 +25,6 @@ describe("phone-verification.service", () => {
     sendOtp.mockReset();
     verify.mockReset();
     updateUser.mockReset();
-    signInPhoneNumber.mockReset();
   });
 
   it("sendPhoneOtpService succeeds when auth client returns no error", async () => {
@@ -70,38 +64,5 @@ describe("phone-verification.service", () => {
     updateUser.mockResolvedValue({ data: {} });
     await expect(removePhoneNumberService()).resolves.toEqual({ ok: true });
     expect(updateUser).toHaveBeenCalledWith({ phoneNumber: null });
-  });
-
-  it("signInWithPhoneService returns requiresTwoFactor when redirect flag set", async () => {
-    signInPhoneNumber.mockResolvedValue({
-      data: { twoFactorRedirect: true, twoFactorMethods: ["totp"] },
-    });
-    const r = await signInWithPhoneService({
-      phoneE164: "+14155550100",
-      password: "secret12",
-    });
-    expect(r).toEqual({
-      ok: true,
-      requiresTwoFactor: true,
-      twoFactorMethods: ["totp"],
-    });
-  });
-
-  it("signInWithPhoneService maps invalid credentials", async () => {
-    signInPhoneNumber.mockResolvedValue({
-      error: {
-        message: "Invalid phone number or password",
-        code: "INVALID_PHONE_NUMBER_OR_PASSWORD",
-      },
-    });
-    const r = await signInWithPhoneService({
-      phoneE164: "+14155550100",
-      password: "wrong",
-    });
-    expect(r).toEqual({
-      ok: false,
-      code: "invalid_credentials",
-      message: AUTH_ERROR_MESSAGES.invalid_credentials,
-    });
   });
 });

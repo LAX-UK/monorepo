@@ -31,7 +31,7 @@ async function ensureUser(client, authBase, email, password, label) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      origin: process.env.WEB_ORIGIN ?? "https://test.lax.bid",
+      origin: authBase.replace(/\/+$/, ""),
     },
     body: JSON.stringify({
       email,
@@ -104,6 +104,16 @@ async function main() {
       await appendFile(githubEnv, `${envName}=${email}\n`);
     }
     await waitForBidProjection(client, emails);
+    await client.query(
+      `update public.bid_user_profile p
+         set terms_accepted_at = coalesce(p.terms_accepted_at, p.created_at),
+             terms_version = coalesce(p.terms_version, 'legacy')
+        from public.bid_identity_directory d
+        join public."user" u on u.id = d.subject_id
+       where p.user_id = d.subject_id
+         and lower(u.email) = any($1::text[])`,
+      [emails],
+    );
     await writeFile(
       manifestPath,
       `${JSON.stringify({ runId, emails, createdAt: new Date().toISOString() }, null, 2)}\n`,

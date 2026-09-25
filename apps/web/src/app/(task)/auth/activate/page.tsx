@@ -1,9 +1,9 @@
 import { ActivateAccountButton } from "@/components/auth/activate-account-button";
 import { AuthLayout } from "@/components/auth/auth-layout";
-import { MagicLinkRequestForm } from "@/components/auth/magic-link-request-form";
+import { buildBidIssuerHostedUrl } from "@/lib/bff/redirect-to-hosted-auth.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 const description = "Activate your London Art Exchange account with a secure sign-in link.";
 
@@ -17,26 +17,20 @@ export default async function ActivateAccountPage({
   const sp = await searchParams;
   const token = typeof sp.token === "string" ? sp.token.trim() : "";
 
+  if (!token) {
+    redirect(buildBidIssuerHostedUrl("/magic-link"));
+  }
+
   return (
     <main id="main-content">
       <AuthLayout
         chrome="task"
-        title={token ? "Continue to sign in" : "Request activation link"}
-        description={
-          token
-            ? "Click below to continue. This link expires in 15 minutes and works once."
-            : "Enter your email and we will send a secure sign-in link if your account exists."
-        }
+        title="Continue to sign in"
+        description="Click below to continue. This link expires in 15 minutes and works once."
       >
-        {token ? (
-          <div className="flex w-full flex-col gap-8">
-            <ActivateAccountButton token={token} />
-          </div>
-        ) : (
-          <Suspense fallback={null}>
-            <MagicLinkRequestForm />
-          </Suspense>
-        )}
+        <div className="flex w-full flex-col gap-8">
+          <ActivateAccountButton token={token} />
+        </div>
       </AuthLayout>
     </main>
   );

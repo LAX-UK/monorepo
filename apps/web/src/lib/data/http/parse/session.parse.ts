@@ -104,6 +104,9 @@ export function parseSessionUser(raw: unknown): SessionUser {
   } else if (signupPersona === null) {
     out.signupPersona = null;
   }
+  if (typeof row.accountOnboardingComplete === "boolean") {
+    out.accountOnboardingComplete = row.accountOnboardingComplete;
+  }
   const categoryInterestsOnboardingCompletedAt = hasOwn(
     row,
     "categoryInterestsOnboardingCompletedAt",

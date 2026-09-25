@@ -1,10 +1,10 @@
 "use client";
 
-import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
 import { useCallback, useRef, useState } from "react";
-import type { IStepUpAuthenticator, StepUpAuthOutcome } from "./step-up-authenticator.client";
-import { httpStepUpAuthenticator } from "./step-up-authenticator.client";
 import type { StepUpRequirement } from "./types";
+
+const REAUTH_LOOP_GUARD_KEY = "lax:hosted-reauth-attempted-at";
+const REAUTH_LOOP_GUARD_MS = 2 * 60 * 1000;
 
 export type StepUpCoordinatorMode = "idle" | "password" | "no_credential";
 
@@ -14,24 +14,50 @@ export type StepUpCoordinatorState = {
   error: string | null;
 };
 
-function outcomeToErrorMessage(out: StepUpAuthOutcome): string | null {
-  if (out === "invalid_password") return AUTH_ERROR_MESSAGES.invalid_credentials;
-  if (out === "session_required")
-    return "Your session has expired or is no longer valid. Please sign in again and retry.";
-  if (out === "network_error") return AUTH_ERROR_MESSAGES.unknown;
-  return null;
+export function buildHostedReauthHref(pathname?: string, search?: string): string {
+  const next =
+    pathname != null
+      ? `${pathname}${search ?? ""}`
+      : `${window.location.pathname}${window.location.search}`;
+  const params = new URLSearchParams({ intent: "reauth", next });
+  return `/api/auth/login?${params.toString()}`;
+}
+
+export function clearHostedReauthLoopGuard(): void {
+  try {
+    sessionStorage.removeItem(REAUTH_LOOP_GUARD_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function redirectToHostedReauth(): void {
+  try {
+    sessionStorage.setItem(REAUTH_LOOP_GUARD_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+  window.location.assign(buildHostedReauthHref());
+}
+
+function recentReauthAttempt(): boolean {
+  try {
+    const raw = sessionStorage.getItem(REAUTH_LOOP_GUARD_KEY);
+    if (!raw) return false;
+    const at = Number.parseInt(raw, 10);
+    return Number.isFinite(at) && Date.now() - at < REAUTH_LOOP_GUARD_MS;
+  } catch {
+    return false;
+  }
 }
 
 export type IStepUpCoordinator = {
   readonly state: StepUpCoordinatorState;
   request(requirement: StepUpRequirement): Promise<"satisfied" | "cancelled">;
-  submitPassword(password: string): Promise<void>;
   cancel(): void;
 };
 
-export function useStepUpCoordinator(
-  authenticator: IStepUpAuthenticator = httpStepUpAuthenticator,
-): IStepUpCoordinator {
+export function useStepUpCoordinator(): IStepUpCoordinator {
   const [state, setState] = useState<StepUpCoordinatorState>({
     mode: "idle",
     busy: false,
@@ -40,6 +66,9 @@ export function useStepUpCoordinator(
   const resolveRef = useRef<((v: "satisfied" | "cancelled") => void) | null>(null);
 
   const finish = useCallback((outcome: "satisfied" | "cancelled") => {
+    if (outcome === "satisfied") {
+      clearHostedReauthLoopGuard();
+    }
     setState({ mode: "idle", busy: false, error: null });
     resolveRef.current?.(outcome);
     resolveRef.current = null;
@@ -52,9 +81,23 @@ export function useStepUpCoordinator(
   const request = useCallback(
     (requirement: StepUpRequirement): Promise<"satisfied" | "cancelled"> =>
       new Promise((resolve) => {
+        if (requirement === "recent_auth_required") {
+          if (recentReauthAttempt()) {
+            resolveRef.current = resolve;
+            setState({
+              mode: "password",
+              busy: false,
+              error:
+                "Confirm this action by signing in again with your password on the identity page.",
+            });
+            return;
+          }
+          redirectToHostedReauth();
+          return;
+        }
         resolveRef.current = resolve;
         setState({
-          mode: requirement === "credential_required" ? "no_credential" : "password",
+          mode: requirement === "credential_required" ? "no_credential" : "idle",
           busy: false,
           error: null,
         });
@@ -62,28 +105,9 @@ export function useStepUpCoordinator(
     [],
   );
 
-  const submitPassword = useCallback(
-    async (password: string) => {
-      setState((s) => ({ ...s, busy: true, error: null }));
-      const out = await authenticator.verifyPassword(password);
-      if (out === "ok") {
-        finish("satisfied");
-        return;
-      }
-      if (out === "no_credential") {
-        setState({ mode: "no_credential", busy: false, error: null });
-        return;
-      }
-      const msg = outcomeToErrorMessage(out);
-      setState((s) => ({ ...s, busy: false, error: msg }));
-    },
-    [authenticator, finish],
-  );
-
   return {
     state,
     request,
-    submitPassword,
     cancel,
   };
 }

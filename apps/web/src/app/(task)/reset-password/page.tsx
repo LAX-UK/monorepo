@@ -1,10 +1,6 @@
-import { AuthLayout } from "@/components/auth/auth-layout";
-import { ResetPasswordWithUrlStrip } from "@/components/auth/reset-password-with-url-strip";
+import { ensureHostedAuthRedirect } from "@/lib/bff/hosted-auth-page.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = metadataForPrivate(
   "Reset password",
@@ -17,33 +13,12 @@ export default async function ResetPasswordPage({
   searchParams: Promise<{ token?: string; error?: string }>;
 }) {
   const sp = await searchParams;
-  const token = typeof sp.token === "string" ? sp.token : "";
-  const linkError = typeof sp.error === "string" ? sp.error : "";
-
-  return (
-    <main id="main-content">
-      <AuthLayout
-        chrome="task"
-        title="Set a new password"
-        description="Choose a strong password to finish resetting your account."
-      >
-        {token ? (
-          <ResetPasswordWithUrlStrip token={token} />
-        ) : (
-          <div className="flex flex-col gap-6">
-            <Alert variant="destructive">
-              <AlertDescription>
-                {linkError
-                  ? "This reset link has expired or has already been used. Request a new password reset link to continue."
-                  : "This reset link is missing its token. Request a new password reset link to continue."}
-              </AlertDescription>
-            </Alert>
-            <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
-              <Link href="/forgot-password">Request reset link</Link>
-            </Button>
-          </div>
-        )}
-      </AuthLayout>
-    </main>
-  );
+  const params = new URLSearchParams();
+  if (sp.token) params.set("token", sp.token);
+  if (sp.error) params.set("error", sp.error);
+  await ensureHostedAuthRedirect({
+    route: "reset-password",
+    searchParams: params,
+    authenticatedBypass: false,
+  });
 }
