@@ -170,6 +170,7 @@ jobs:
       shop_api_sha: ${{ needs.validate_inputs.outputs.shop_api_sha }}
       shop_api_digest: ${{ needs.validate_inputs.outputs.shop_api_digest }}
       app_image_tag: ${{ needs.validate_inputs.outputs.shop_sha }}
+      run_ephemeral_predeploy_migrate: false
     secrets: inherit
 
   acceptance_enabled:
