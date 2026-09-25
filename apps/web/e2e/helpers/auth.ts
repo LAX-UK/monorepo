@@ -121,10 +121,17 @@ export async function dismissStaffPaletteIfOpen(page: Page): Promise<void> {
 }
 
 async function dismissCookieConsentIfVisible(page: Page): Promise<void> {
-  const acceptCookies = page.getByRole("button", { name: /accept all/i });
-  if (await acceptCookies.isVisible().catch(() => false)) {
-    await acceptCookies.click();
+  try {
+    const webOrigin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+    if (!page.url().startsWith(webOrigin)) return;
+    const acceptCookies = page.getByRole("button", { name: /accept all/i });
+    if (!(await acceptCookies.isVisible({ timeout: 2_000 }).catch(() => false))) return;
+    await acceptCookies.click({ timeout: 3_000 });
     await acceptCookies.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => {});
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/execution context was destroyed|target closed|timeout.*exceeded/i.test(message)) return;
+    throw error;
   }
 }
 
