@@ -1,3 +1,4 @@
+import { redirectForOnboardingRequired } from "@/lib/auth/account-onboarding-required.client";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
 
 export type SaleRegistrationInput = {
@@ -23,6 +24,7 @@ export async function registerForSale(
     );
     const payload = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
     if (!res.ok) {
+      redirectForOnboardingRequired(payload.code);
       return {
         ok: false,
         error: payload.error ?? "Could not submit registration",

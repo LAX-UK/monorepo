@@ -17,12 +17,13 @@ describe("auth guard contract (source)", () => {
     expect(src).toContain("/register/verify-pending");
   });
 
-  it("guarded task auth pages import redirectIfAuthenticated or verify-pending guard", () => {
-    expect(read("app/(task)/login/page.tsx")).toContain("redirectIfAuthenticated");
-    expect(read("app/(task)/register/page.tsx")).toContain("redirectIfAuthenticated");
-    expect(read("app/(task)/forgot-password/page.tsx")).toContain("redirectIfAuthenticated");
+  it("hosted task auth pages use ensureHostedAuthRedirect (redirectIfAuthenticated inside BFF helper)", () => {
+    expect(read("app/(task)/login/page.tsx")).toContain("ensureHostedAuthRedirect");
+    expect(read("app/(task)/register/page.tsx")).toContain("ensureHostedAuthRedirect");
+    expect(read("app/(task)/forgot-password/page.tsx")).toContain("ensureHostedAuthRedirect");
+    expect(read("lib/bff/hosted-auth-page.server.ts")).toContain("redirectIfAuthenticated");
     expect(read("app/(task)/register/verify-pending/page.tsx")).toContain(
-      "redirectIfVerifyPendingNotNeeded",
+      "buildBidIssuerHostedUrl",
     );
   });
 

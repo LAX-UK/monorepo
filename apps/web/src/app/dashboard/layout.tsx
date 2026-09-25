@@ -23,8 +23,10 @@ import {
   CLIENT_WORKSPACE_COOKIE,
   parseClientWorkspaceMode,
 } from "@/lib/workspace/client-workspace-mode";
+import { canAccessStaffAdminShell } from "@auction/types";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
@@ -36,6 +38,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const kycOnboardingEnabled = isIdentityOnboardingEnabled();
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/dashboard" });
+  if (!canAccessStaffAdminShell(user.role) && user.accountOnboardingComplete === false) {
+    redirect("/onboarding/account?next=%2Fdashboard");
+  }
   const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
   const c = await getServerDataContainer();
   const pendingGw = createPendingInvitationsGateway();

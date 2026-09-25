@@ -1,14 +1,11 @@
 import type { Database } from "@auction/db";
 import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
+import { DrizzleAccountOnboardingRepository } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
-import { IdentityIssuerEmailSignupPersister } from "../infrastructure/identity-issuer-email-signup.persister.js";
-import { IdentityIssuerVerificationEmailResender } from "../infrastructure/identity-issuer-verification-email.resender.js";
-import { IdentityRegistrationCompensator } from "../infrastructure/identity-registration.compensator.js";
-import { NoOpWelcomeNotifier } from "../infrastructure/no-op-welcome.notifier.js";
-import { DrizzleUserProfilePersister } from "../infrastructure/user-profile.persister.js";
-import { ZodRegistrationValidator } from "../infrastructure/zod-registration.validator.js";
+import { CachedAccountOnboardingChecker } from "../infrastructure/cached-account-onboarding.checker.js";
 import { type OrgModuleGate, createOrgModuleGate } from "../lib/org-module-gate.js";
 import { createSubmissionsLegalEntityContext } from "../middleware/require-legal-entity-context.js";
+import { AccountOnboardingService } from "../services/account-onboarding.service.js";
 import { AddressService } from "../services/address.service.js";
 import { AdminUserService } from "../services/admin-user.service.js";
 import { ArtistWatchlistService } from "../services/artist-watchlist.service.js";
@@ -23,7 +20,6 @@ import { InvitationService } from "../services/invitation.service.js";
 import type { EnsurePersonalLegalEntityService } from "../services/legal-entity/ensure-personal-legal-entity.service.js";
 import { PersonalLegalEntityResolver } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 import { ProfileService } from "../services/profile.service.js";
-import { RegistrationService } from "../services/registration.service.js";
 import { SavedSearchService } from "../services/saved-search.service.js";
 import { UserDashboardReadService } from "../services/user-dashboard-read.service.js";
 import { UserSecurityReadService } from "../services/user-security-read.service.js";
@@ -49,7 +45,8 @@ export type ContainerUserProfileServices = {
   addressService: AddressService;
   invitationService: InvitationService;
   invitationRepository: IUserInvitationRepository;
-  registrationService: RegistrationService;
+  accountOnboardingService: AccountOnboardingService;
+  accountOnboardingGate: CachedAccountOnboardingChecker;
   orgModuleGate: OrgModuleGate;
   adminUserService: AdminUserService;
 };
@@ -174,15 +171,14 @@ export function createUserProfileServices(
   );
   const invitationConsumptionService = new InvitationConsumptionService(invitationRepository);
 
-  const registrationService = new RegistrationService(
-    new ZodRegistrationValidator(),
-    identityIssuer,
-    new IdentityIssuerVerificationEmailResender(identityIssuer, env.WEB_ORIGIN),
-    new IdentityIssuerEmailSignupPersister(identityIssuer, env.WEB_ORIGIN),
-    new DrizzleUserProfilePersister(db),
-    new NoOpWelcomeNotifier(),
+  const accountOnboardingRepository = new DrizzleAccountOnboardingRepository(db);
+  const accountOnboardingService = new AccountOnboardingService(
+    accountOnboardingRepository,
     invitationConsumptionService,
-    new IdentityRegistrationCompensator(identityIssuer),
+  );
+  const accountOnboardingGate = new CachedAccountOnboardingChecker(
+    accountOnboardingService,
+    infra.cache,
   );
 
   const orgModuleGate = createOrgModuleGate(env.WEB_ORIGIN);
@@ -216,7 +212,8 @@ export function createUserProfileServices(
     addressService,
     invitationService,
     invitationRepository,
-    registrationService,
+    accountOnboardingService,
+    accountOnboardingGate,
     orgModuleGate,
     adminUserService,
   };

@@ -44,6 +44,7 @@ export const AUTH_ERROR_CODES = [
   "session_not_found",
   "session_cannot_delete_current",
   "verification_email_failed",
+  "onboarding_required",
 ] as const;
 
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[number];
@@ -104,6 +105,7 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   session_cannot_delete_current:
     "You cannot remove the session you are currently using from here. Use sign out instead.",
   verification_email_failed: "Could not send verification email. Please try again.",
+  onboarding_required: "Finish setting up your account before continuing.",
 };
 
 function sanitiseRegistrationDetail(raw: string): string {

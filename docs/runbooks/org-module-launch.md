@@ -122,8 +122,8 @@ flowchart TD
 - `apps/web/src/components/layout/acting-as-banner.tsx`
 - `apps/web/src/components/shell/client-shell.tsx`
 - `apps/web/src/lib/shell/build-shell-config.ts`
-- `apps/web/src/components/auth/sign-up-fields.tsx`
-- `apps/web/src/components/auth/sign-up-form.tsx`
+- `apps/web/src/app/(task)/onboarding/account/page.tsx`
+- `apps/web/src/components/auth/account-onboarding-form.tsx`
 - `apps/web/src/components/dashboard/dashboard-banner-stack.tsx`
 - `apps/web/src/components/dashboard/dashboard-overview-view.tsx`
 - `apps/web/src/components/dashboard/overview/build-attention-items.ts`
@@ -160,5 +160,5 @@ flowchart TD
 - `apps/api/src/lib/org-module-enabled.test.ts`
 - `apps/web/src/lib/auth/post-verify-destination.test.ts`
 - `apps/web/src/components/layout/app-shell-nav.test.ts`
-- `apps/web/src/components/auth/sign-up-fields.test.tsx`
+- `packages/validators/src/account-onboarding.ts`
 - `apps/api/src/routes/users.register.routes.test.ts`

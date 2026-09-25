@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createSaleRoutes } from "./sales.js";
 
@@ -26,7 +27,7 @@ describe("sales public GET /:id contract", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue(null),
     };
-    app.route("/sales", createSaleRoutes(container, authenticator));
+    app.route("/sales", createSaleRoutes(container, authenticator, passThroughAccountOnboarding));
     const res = await app.request(`http://t/sales/${saleId}`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { data: Record<string, unknown> };
@@ -54,7 +55,7 @@ describe("sales public GET /:id contract", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue(null),
     };
-    app.route("/sales", createSaleRoutes(container, authenticator));
+    app.route("/sales", createSaleRoutes(container, authenticator, passThroughAccountOnboarding));
     const res = await app.request(`http://t/sales/${saleId}`);
     expect(res.status).toBe(404);
   });
@@ -79,7 +80,7 @@ describe("sales public GET /:id contract", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue(null),
     };
-    app.route("/sales", createSaleRoutes(container, authenticator));
+    app.route("/sales", createSaleRoutes(container, authenticator, passThroughAccountOnboarding));
     const res = await app.request(`http://t/sales/${saleId}/saleroom/status`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {

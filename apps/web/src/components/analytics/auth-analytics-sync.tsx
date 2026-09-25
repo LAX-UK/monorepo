@@ -2,7 +2,7 @@
 
 import { useConsent } from "@/lib/analytics/consent/context";
 import { trackLogin, trackSignUp } from "@/lib/analytics/events";
-import { type OAuthProvider, parseOAuthProvider } from "@/lib/auth/oauth-return-params";
+import { type OAuthProvider, parseOAuthProvider } from "@/lib/auth/oauth-provider";
 import { resolveOAuthOutcome } from "@/lib/data/http/marketing-oauth-outcome.client";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";

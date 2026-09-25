@@ -205,6 +205,11 @@ export function useCheckoutPurchaseState({
       form.clearErrors("root");
       const r = await createCheckoutPaymentAction(lotId, values.addressId);
       if (!r.ok) {
+        if (r.errorCode === "onboarding_required") {
+          const next = encodeURIComponent(dashboardCheckoutLotUrl(lotId));
+          window.location.assign(`/onboarding/account?next=${next}`);
+          return;
+        }
         if (r.status === 401 && r.errorCode === "session_required") {
           const next = encodeURIComponent(dashboardCheckoutLotUrl(lotId));
           window.location.assign(`/login?session_expired=1&next=${next}`);

@@ -9,12 +9,13 @@ const { Pool } = pg;
 
 export const E2E_ROLLOUT_PASSWORD = "Password123!";
 
-/** Legacy demo users — mutated in place so admin client visuals keep a 17-row directory. */
+/** Legacy demo users — mutated in place so admin client visuals keep a stable directory. */
 export const E2E_ROLLOUT_IDS = {
   complete: "90000000-0000-4000-8000-000000000003",
   unapproved: "90000000-0000-4000-8000-000000000008",
   incomplete: "90000000-0000-4000-8000-000000000018",
   zeroLot: "90000000-0000-4000-8000-000000000006",
+  onboardingIncomplete: "90000000-0000-4000-8000-000000000029",
 } as const;
 
 export const E2E_ROLLOUT_EMAILS = {
@@ -22,6 +23,7 @@ export const E2E_ROLLOUT_EMAILS = {
   unapproved: "gallery-finance@lax.bid",
   incomplete: "viewer@lax.bid",
   zeroLot: "apple-test@lax.bid",
+  onboardingIncomplete: "onboarding-incomplete@lax.bid",
 } as const;
 
 /** Same id as `CAT.paintings` in the legacy demo seed — has active lots. */
@@ -72,6 +74,16 @@ export async function seedE2eRolloutIdentities(): Promise<void> {
     .where(eq(schema.bidUserProfile.userId, E2E_ROLLOUT_IDS.zeroLot));
 
   await db
+    .update(schema.bidUserProfile)
+    .set({
+      termsAcceptedAt: null,
+      termsVersion: null,
+      categoryInterestsOnboardingCompletedAt: completedAt,
+      updatedAt: stamp,
+    })
+    .where(eq(schema.bidUserProfile.userId, E2E_ROLLOUT_IDS.onboardingIncomplete));
+
+  await db
     .insert(schema.userCategoryInterest)
     .values({
       userId: E2E_ROLLOUT_IDS.unapproved,
@@ -85,6 +97,7 @@ export async function seedE2eRolloutIdentities(): Promise<void> {
   console.log(`    ${E2E_ROLLOUT_EMAILS.unapproved} interests done, KYC unverified`);
   console.log(`    ${E2E_ROLLOUT_EMAILS.incomplete}         interests incomplete`);
   console.log(`    ${E2E_ROLLOUT_EMAILS.zeroLot}      interests done, empty selection`);
+  console.log(`    ${E2E_ROLLOUT_EMAILS.onboardingIncomplete} account onboarding incomplete`);
 
   await pool.end();
 }

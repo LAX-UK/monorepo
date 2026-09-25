@@ -2,6 +2,7 @@ import "server-only";
 
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from "node:crypto";
 import type Redis from "ioredis";
+import type { StoredAuthEntryIntent } from "./auth-entry-intent.server";
 import { bffConfig } from "./config.server";
 import { ensureBffRedisConnected } from "./redis.server";
 import { isBidSessionId } from "./session-cookie.constants";
@@ -118,6 +119,12 @@ export type PendingBidSession = {
   nonce: string;
   codeVerifier: string;
   nextPath: string;
+  /** Product analytics / handoff (sell funnel, re-auth). */
+  entryIntent?: StoredAuthEntryIntent;
+  /** Invite token captured at sign-up entry for post-login account onboarding. */
+  inviteToken?: string;
+  /** Authenticated session to restore when pending login is abandoned or fails. */
+  replacesSessionId?: string;
 };
 
 export type AuthenticatedBidSession = {

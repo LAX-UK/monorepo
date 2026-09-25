@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createSaleRoutes } from "./sales.js";
 
@@ -41,7 +42,7 @@ describe("POST /sales/:id/delete", () => {
         scopes: ["bid.write"],
       }),
     };
-    app.route("/sales", createSaleRoutes(container, authenticator));
+    app.route("/sales", createSaleRoutes(container, authenticator, passThroughAccountOnboarding));
     return { app, softDelete, bulkSoftDelete };
   }
 
@@ -133,7 +134,7 @@ describe("POST /sales/bulk soft_delete", () => {
         scopes: ["bid.write"],
       }),
     };
-    app.route("/sales", createSaleRoutes(container, authenticator));
+    app.route("/sales", createSaleRoutes(container, authenticator, passThroughAccountOnboarding));
     return { app, bulkSoftDelete };
   }
 

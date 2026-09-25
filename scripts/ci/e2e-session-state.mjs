@@ -150,7 +150,7 @@ export async function mintRoleAuthState(input) {
   const authUrl = input.authUrl ?? endpoints.authUrl;
   const login = await fetch(`${authUrl}/api/auth/sign-in/email`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: webOrigin },
+    headers: { "content-type": "application/json", origin: authUrl.replace(/\/+$/, "") },
     body: JSON.stringify({ email: input.email, password: input.password }),
   });
   if (!login.ok) {

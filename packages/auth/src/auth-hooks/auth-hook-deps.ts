@@ -31,6 +31,8 @@ export type AuthHookDeps = {
    * for every new session. Enabled in production; leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
+  /** When true, reject new auth user rows (email + OAuth) at `user.create.before`. */
+  blockNewUserRegistration?: boolean | undefined;
 };
 
 export type { EmailSender };

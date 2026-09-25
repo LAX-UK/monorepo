@@ -8,6 +8,7 @@ import {
 import {
   IdentityRejectedError,
   IdentityUnavailableError,
+  type OidcAuthorizePrompt,
   buildAuthorizeUrl as buildAuthorizeUrlCore,
   buildEndSessionUrl as buildEndSessionHref,
   createFetchTokenEndpoint,
@@ -92,7 +93,8 @@ export function buildAuthorizeUrl(input: {
   redirectUri: string;
   params: Pick<OAuthLoginParams, "state" | "nonce" | "codeChallenge">;
   scopes?: string[];
-  prompt?: string;
+  prompt?: OidcAuthorizePrompt;
+  maxAge?: number;
 }): string {
   return buildAuthorizeUrlCore({
     authorizationEndpoint: input.discovery.authorization_endpoint,
@@ -110,6 +112,7 @@ export function buildAuthorizeUrl(input: {
     nonce: input.params.nonce,
     codeChallenge: input.params.codeChallenge,
     ...(input.prompt ? { prompt: input.prompt } : {}),
+    ...(input.maxAge != null ? { maxAge: input.maxAge } : {}),
   });
 }
 

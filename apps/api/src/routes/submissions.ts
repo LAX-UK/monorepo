@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { MiddlewareHandler } from "hono";
 import type { ContainerSubmissionRoutesSlice } from "../container.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
@@ -10,6 +11,7 @@ import { attachSubmissionSellerRoutes } from "./submissions/seller.routes.js";
 export function createSubmissionRoutes(
   container: ContainerSubmissionRoutesSlice,
   authenticator: IAuthenticator,
+  requireAccountOnboarding: MiddlewareHandler,
 ) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
@@ -29,6 +31,7 @@ export function createSubmissionRoutes(
     container,
     requireAuth,
     requireSubmissionEntityContext,
+    requireAccountOnboarding,
   };
 
   attachSubmissionSellerRoutes(r, deps);

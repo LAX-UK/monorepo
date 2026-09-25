@@ -3,6 +3,7 @@ import { createMiddleware } from "hono/factory";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { createLotRoutes } from "./lots.js";
 
 const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -80,7 +81,7 @@ function lotRoutesApp(opts: {
   };
 
   const app = new Hono();
-  app.route("/lots", createLotRoutes(container, authenticator));
+  app.route("/lots", createLotRoutes(container, authenticator, passThroughAccountOnboarding));
   return { app, findForBuyerOnLot, createRequest };
 }
 

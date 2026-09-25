@@ -1,5 +1,5 @@
 import type { UpdateAddressInput } from "@auction/persistence/interfaces";
-import { formatPhoneDisplay } from "@auction/validators";
+import { formatPhoneDisplay, isAccountOnboardingComplete } from "@auction/validators";
 import type { AddressService } from "../address.service.js";
 import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
 import type { IUserProfileHttpApplicationService } from "../interfaces/user-routes/user-profile-http.js";
@@ -92,6 +92,9 @@ export class UserProfileHttpApplicationService implements IUserProfileHttpApplic
           hasSeenActingContextTooltip: row.hasSeenActingContextTooltip,
           kycStatus: row.kycStatus,
           signupPersona: row.signupPersona,
+          accountOnboardingComplete: isAccountOnboardingComplete({
+            termsAcceptedAt: row.termsAcceptedAt ?? null,
+          }),
           categoryInterestsOnboardingCompletedAt:
             row.categoryInterestsOnboardingCompletedAt ?? null,
           deletionRequestedAt: row.deletionRequestedAt,

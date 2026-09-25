@@ -16,6 +16,7 @@ export function createOrganizationRoutes(
   container: ContainerOrganizationRoutesSlice,
   authenticator: IAuthenticator,
   orgCreateRateLimit: MiddlewareHandler,
+  requireAccountOnboarding: MiddlewareHandler,
 ) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
@@ -41,6 +42,7 @@ export function createOrganizationRoutes(
   r.post(
     "/",
     requireAuth,
+    requireAccountOnboarding,
     orgCreateRateLimit,
     zValidator("json", createOrganizationSchema),
     async (c) => {

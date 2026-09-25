@@ -161,6 +161,8 @@ export type SessionUser = {
   kycStatus?: "unverified" | "pending" | "approved" | "rejected";
   /** Persona captured at signup; null for users created before Phase B. */
   signupPersona?: "individual" | "organisation" | null;
+  /** False until hosted sign-up onboarding (terms, persona) is complete on Bid. */
+  accountOnboardingComplete?: boolean;
   /** Null only for newly verified users who have not completed/skipped interests. */
   categoryInterestsOnboardingCompletedAt?: string | Date | null;
   /** From GET /users/me when a self-serve account deletion has been requested. */

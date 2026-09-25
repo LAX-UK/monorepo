@@ -251,10 +251,6 @@ const envSchema = z
     SUBMISSION_DRAFT_REMINDER_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     /** Emergency: reject new bids with 503. */
     DISABLE_BIDDING: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(false),
-    /** Block `POST /users/register` (public sign-up). */
-    DISABLE_NEW_USER_REGISTRATION: z
-      .preprocess((v) => v === "true" || v === true, z.boolean())
-      .default(false),
     /** Skip Stripe transfer initiation inside bulk payout settlement cron. */
     DISABLE_PAYOUT_SETTLEMENT: z
       .preprocess((v) => v === "true" || v === true, z.boolean())

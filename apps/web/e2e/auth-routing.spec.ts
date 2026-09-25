@@ -4,11 +4,14 @@ const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and start apps/web (pnpm dev).";
 
 test.describe("marketing auth routing @smoke", () => {
-  test("login page loads", async ({ page }) => {
+  test("login entry reaches hosted identity chrome", async ({ page }) => {
     test.skip(!enabled, skipReason);
     const res = await page.goto("/login");
     expect(res?.ok()).toBeTruthy();
-    await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
+    await page.waitForURL(/\/(login|oauth2\/authorize|api\/auth\/login)/, { timeout: 30_000 });
+    const hostedLogin = page.locator("#login-form");
+    const hostedHeading = page.getByRole("heading", { name: /sign in/i });
+    await expect(hostedLogin.or(hostedHeading).first()).toBeVisible({ timeout: 30_000 });
   });
 
   test("unsafe next param is not preserved after edge redirect to dashboard", async ({ page }) => {
@@ -30,9 +33,9 @@ test.describe("marketing auth routing @smoke", () => {
     expect(page.url()).toMatch(/auth\/post-login|login/);
   });
 
-  test("session_expired query shows recovery copy on login", async ({ page }) => {
+  test("session_expired login entry still starts hosted auth", async ({ page }) => {
     test.skip(!enabled, skipReason);
     await page.goto("/login?session_expired=1");
-    await expect(page.getByText(/session expired/i)).toBeVisible({ timeout: 15_000 });
+    await page.waitForURL(/\/(login|oauth2\/authorize|api\/auth\/login)/, { timeout: 30_000 });
   });
 });

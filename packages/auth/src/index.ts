@@ -51,6 +51,8 @@ export {
   hostedAuthViewFromSearch,
   createHostedAuthView,
   parseHostedAuthFlow,
+  hostedSignUpRequested,
+  normalizeAuthorizePromptForCreate,
   readHostedShopLogoSvg,
   readHostedAsset,
   type HostedAuthCapabilities,

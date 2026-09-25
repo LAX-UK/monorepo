@@ -127,6 +127,9 @@ const envSchema = z
         return val === "true" || val === true;
       }, z.boolean())
       .default(true),
+    DISABLE_NEW_USER_REGISTRATION: z
+      .preprocess((v) => v === "true" || v === true, z.boolean())
+      .default(false),
     ENABLE_PHONE_VERIFICATION: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

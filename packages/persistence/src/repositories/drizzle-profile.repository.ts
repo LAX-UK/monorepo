@@ -30,6 +30,7 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
         hasSeenActingContextTooltip: bidUserProfile.hasSeenActingContextTooltip,
         kycStatus: bidUserProfile.kycStatus,
         signupPersona: bidUserProfile.signupPersona,
+        termsAcceptedAt: bidUserProfile.termsAcceptedAt,
         categoryInterestsOnboardingCompletedAt:
           bidUserProfile.categoryInterestsOnboardingCompletedAt,
         deletionRequestedAt: bidIdentityDirectory.deletionRequestedAt,
@@ -62,6 +63,7 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
       kycStatus: row.kycStatus ?? "unverified",
       signupPersona: persona,
+      termsAcceptedAt: row.termsAcceptedAt ?? null,
       categoryInterestsOnboardingCompletedAt: row.categoryInterestsOnboardingCompletedAt ?? null,
       deletionRequestedAt: row.deletionRequestedAt ?? null,
       twoFactorEnabled: false,

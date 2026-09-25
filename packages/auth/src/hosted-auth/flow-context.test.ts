@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseHostedAuthFlow, productHintHref } from "./flow-context.js";
+import {
+  hostedSignUpRequested,
+  normalizeAuthorizePromptForCreate,
+  parseHostedAuthFlow,
+  productHintHref,
+} from "./flow-context.js";
 
 const shopAuthorize = {
   response_type: "code",
@@ -65,6 +70,25 @@ describe("parseHostedAuthFlow", () => {
     expect(flow.clientId).toBeNull();
     expect(flow.product).toBe("unknown");
     expect(flow.authorizeResumePath).toBeNull();
+  });
+
+  it("detects prompt=create and hosted_chrome sign-up hints", () => {
+    const withCreate = new URLSearchParams({ ...shopAuthorize, prompt: "create" });
+    expect(hostedSignUpRequested(withCreate)).toBe(true);
+    const withHostedChrome = new URLSearchParams({
+      client_id: "lax-shop-web",
+      hosted_chrome: "sign-up",
+    });
+    expect(hostedSignUpRequested(withHostedChrome)).toBe(true);
+    expect(hostedSignUpRequested(new URLSearchParams(shopAuthorize))).toBe(false);
+  });
+
+  it("strips create from authorize URLs for Better Auth compatibility", () => {
+    const url = new URL("https://issuer.test/api/auth/oauth2/authorize");
+    url.search = new URLSearchParams({ ...shopAuthorize, prompt: "create login" }).toString();
+    const normalized = normalizeAuthorizePromptForCreate(url);
+    expect(normalized?.searchParams.get("prompt")).toBe("login");
+    expect(normalized?.searchParams.get("hosted_chrome")).toBe("sign-up");
   });
 
   it("keeps the full authorize query for cookie-backed resume only", () => {

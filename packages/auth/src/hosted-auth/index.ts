@@ -13,6 +13,8 @@ export {
   parseHostedAuthFlow,
   continuationHref,
   productHintHref,
+  hostedSignUpRequested,
+  normalizeAuthorizePromptForCreate,
   type HostedAuthFlow,
   type HostedAuthProduct,
 } from "./flow-context.js";

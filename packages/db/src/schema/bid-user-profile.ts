@@ -34,6 +34,8 @@ export const bidUserProfile = pgTable(
     amlHoldReason: text("aml_hold_reason"),
     amlHoldAt: timestamp("aml_hold_at", { mode: "date", withTimezone: true }),
     signupPersona: text("signup_persona"),
+    termsAcceptedAt: timestamp("terms_accepted_at", { mode: "date", withTimezone: true }),
+    termsVersion: text("terms_version"),
     /** First completion of buyer category-interest onboarding; null for new/incomplete users. */
     categoryInterestsOnboardingCompletedAt: timestamp(
       "category_interests_onboarding_completed_at",

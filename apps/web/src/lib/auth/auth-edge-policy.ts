@@ -1,7 +1,6 @@
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 
-const AUTH_EDGE_CALLBACK_PATH = "/auth/social-callback";
 const AUTH_EDGE_HANDOFF_PATH = "/auth/post-login";
 
 /** Query flags that must keep the user on /login or /register (recovery / explicit intent). */
@@ -53,7 +52,6 @@ export function isLoginRecoveryLanding(url: URL): boolean {
 export function isStaleAuthEdgePublicLanding(url: URL, cookieHeader: string): boolean {
   if (!hasAuthSessionCookie(cookieHeader)) return false;
   if (url.searchParams.get("from") !== "auth-edge") return false;
-  if (url.pathname === AUTH_EDGE_CALLBACK_PATH) return false;
   return !isProtectedPostAuthPath(url.pathname);
 }
 

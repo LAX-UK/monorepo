@@ -284,8 +284,18 @@ if Redis is unavailable.
 
 ## Hosted credential chrome
 
-OIDC `loginPage` is `${issuer}/login` on `apps/auth`. Shop and Bid sign-in
-redirects land on these issuer-hosted pages, not product Next routes. Shared
+OIDC `loginPage` is `${issuer}/login` on `apps/auth`. Shop and Bid **primary**
+sign-in, sign-up, password reset, two-factor, magic link, and verify-pending
+entry points redirect through each product BFF to the issuer; credentials are
+not collected on `lax.bid` / `test.lax.bid` (RFC 9700 §2.4, RFC 10017 BFF
+pattern). Sign-up entry uses OIDC `prompt=create` (Prompt Create 1.0): authorize
+strips `create` for Better Auth compatibility and `/login` redirects to hosted
+`/sign-up` when `prompt=create` or `hosted_chrome=sign-up` is present. Identity
+credentials stay on the issuer; Bid product fields (terms, persona, invite) are
+collected on the RP after first login. Primary credential endpoints
+(`sign-in/*`, `sign-up/*`, reset/magic-link) accept same-origin CORS only;
+`trustedOrigins` credentialed CORS for `lax.bid` remains on account-management
+and session APIs. Shared
 HTML and CSS live in `packages/auth/src/hosted-auth/` (`buildHostedAuthHtml`,
 `HOSTED_AUTH_STYLES`, floating-label primitives, and `hosted-auth/browser/`
 controllers) and are served as `/hosted-auth.css`, `/hosted-auth/lax-shop-logo.svg`,

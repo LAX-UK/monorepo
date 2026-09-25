@@ -106,48 +106,6 @@ export function createInvitePreviewRateLimitMiddleware(redis: Redis) {
   });
 }
 
-async function emailFromJsonBody(req: Request): Promise<string | null> {
-  let body: { email?: unknown } = {};
-  try {
-    body = (await req.clone().json()) as { email?: unknown };
-  } catch {
-    return null;
-  }
-  if (typeof body.email !== "string") return null;
-  const normalised = body.email.trim().toLowerCase();
-  if (normalised.length === 0 || normalised.length > 254) return null;
-  return normalised;
-}
-
-/** Rate-limit `POST /users/register` — per IP and per target email. */
-export function createRegisterRateLimitMiddleware(redis: Redis) {
-  return createMiddleware(async (c, next) => {
-    if (c.req.method !== "POST") {
-      await next();
-      return;
-    }
-    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
-    const ipKey = `rl:register:ip:${ip}`;
-    const ipCount = await slidingIncrement(redis, ipKey, RATE_LIMIT_CONFIG.registerIpWindowSec);
-    if (ipCount > RATE_LIMIT_CONFIG.registerIpMax) {
-      return c.json({ error: "Too many requests", code: "rate_limited" }, 429);
-    }
-    const email = await emailFromJsonBody(c.req.raw);
-    if (email) {
-      const emailKey = `rl:register:email:${email}`;
-      const emailCount = await slidingIncrement(
-        redis,
-        emailKey,
-        RATE_LIMIT_CONFIG.registerEmailWindowSec,
-      );
-      if (emailCount > RATE_LIMIT_CONFIG.registerEmailMax) {
-        return c.json({ error: "Too many requests", code: "rate_limited" }, 429);
-      }
-    }
-    await next();
-  });
-}
-
 /** Rate-limit `/auth/setup-password`. */
 export function createSetupPasswordRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {

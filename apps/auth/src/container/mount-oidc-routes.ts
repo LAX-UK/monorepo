@@ -20,6 +20,7 @@ import {
   createMagicLinkIssuerRateLimitMiddleware,
   createSendVerificationIssuerRateLimitMiddleware,
 } from "../middleware/auth-rate-limit.js";
+import { createAuthRouteCorsMiddleware } from "../middleware/auth-route-cors.js";
 import {
   createOAuthTokenRequestContextMiddleware,
   getOAuthTokenRequestContext,
@@ -63,16 +64,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
   const issuer = env.OIDC_ISSUER_URL.replace(/\/+$/, "");
   app.use("/.well-known/*", cors({ origin: "*", maxAge: 60 }));
   app.use("/api/auth/*", createOidcClientPolicyMiddleware());
-  app.use(
-    "/api/auth/*",
-    cors({
-      origin: options.webOrigins,
-      allowHeaders: ["Content-Type", "Authorization"],
-      exposeHeaders: ["Content-Length"],
-      maxAge: 600,
-      credentials: true,
-    }),
-  );
+  app.use("/api/auth/*", createAuthRouteCorsMiddleware(options.webOrigins));
   app.use("/api/auth/oauth2/token", createOAuthTokenRequestContextMiddleware());
   app.use(
     "/api/auth/*",

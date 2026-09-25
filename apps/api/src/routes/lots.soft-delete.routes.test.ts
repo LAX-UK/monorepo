@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubBiddingRouteServices } from "../testing/stub-bidding-route-services.js";
 import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createLotRoutes } from "./lots.js";
@@ -42,7 +43,7 @@ describe("POST /lots/:id/delete", () => {
         scopes: ["bid.write"],
       }),
     };
-    app.route("/lots", createLotRoutes(container, authenticator));
+    app.route("/lots", createLotRoutes(container, authenticator, passThroughAccountOnboarding));
     return { app, softDelete, bulkLots };
   }
 
@@ -137,7 +138,7 @@ describe("POST /lots/bulk soft_delete", () => {
         scopes: ["bid.write"],
       }),
     };
-    app.route("/lots", createLotRoutes(container, authenticator));
+    app.route("/lots", createLotRoutes(container, authenticator, passThroughAccountOnboarding));
     return { app, bulkLots };
   }
 

@@ -44,7 +44,7 @@ curl -sS -o /dev/null -w "%{http_code}" https://gtm.lax.bid/healthy
 | `InitiateCheckout` | API on `POST /payments` |
 | `Purchase` | API on payment capture (legitimate interest) |
 | `CompleteRegistration` | Veriff decision webhook when KYC approved |
-| `Lead` | `POST /users/register` |
+| `Lead` | `POST /users/me/onboarding` |
 | `AddToWishlist` / `RemoveFromWishlist` | Watchlist API |
 | `_fbp` / `_fbc` sync | Authenticated `POST /marketing/click-ids` (marketing consent) |
 

@@ -1,3 +1,4 @@
+import { PostLoginHandoff } from "@/components/auth/post-login-handoff";
 import { resolveServerPostAuthDestination } from "@/lib/auth/post-auth-destination.server";
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -6,7 +7,12 @@ import { redirect } from "next/navigation";
 export default async function PostLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; welcome?: string }>;
+  searchParams: Promise<{
+    next?: string;
+    welcome?: string;
+    auth_fresh?: string;
+    entry_intent?: string;
+  }>;
 }) {
   const [params, user] = await Promise.all([searchParams, getServerSessionUser()]);
   const requestedNext = isSafeNextPath(params.next) ? params.next : null;
@@ -17,13 +23,16 @@ export default async function PostLoginPage({
     redirect(`/login?${loginParams.toString()}`);
   }
 
-  redirect(
-    resolveServerPostAuthDestination({
-      user,
-      requestedNext,
-      context: "sign-in",
-      requireEmailVerification: false,
-      withWelcomeBack: params.welcome === "back",
-    }),
-  );
+  const destination = resolveServerPostAuthDestination({
+    user,
+    requestedNext,
+    context: "sign-in",
+    requireEmailVerification: false,
+    withWelcomeBack: params.welcome === "back",
+  });
+  if (params.auth_fresh === "1") {
+    return <PostLoginHandoff destination={destination} entryIntent={params.entry_intent ?? null} />;
+  }
+
+  redirect(destination);
 }

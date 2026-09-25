@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { LotService } from "../services/lot.service.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createLotRoutes } from "./lots.js";
 
@@ -88,7 +89,7 @@ function mount(user: { id: string; role: string; staffRole?: string } | null) {
       .fn()
       .mockResolvedValue(user ? { ...user, scopes: ["bid.read", "bid.write"] } : null),
   };
-  app.route("/lots", createLotRoutes(container, authenticator));
+  app.route("/lots", createLotRoutes(container, authenticator, passThroughAccountOnboarding));
   return { app, lotServiceCreate, create: createMock };
 }
 

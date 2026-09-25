@@ -23,6 +23,7 @@ export type ResolvePostAuthDestinationInput = {
     | "email"
     | "kycStatus"
     | "signupPersona"
+    | "accountOnboardingComplete"
     | "categoryInterestsOnboardingCompletedAt"
   >;
   requestedNext?: string | null | undefined;
@@ -59,6 +60,21 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
     return appendWelcomeBack("/account-suspended", withWelcomeBack);
   }
 
+  const role = user.role as UserRole;
+  const isStaff = canAccessStaffAdminShell(role);
+
+  if (!isStaff && user.accountOnboardingComplete === false) {
+    const q = new URLSearchParams();
+    if (isSafeNextPath(requestedNext ?? undefined)) {
+      q.set("next", requestedNext as string);
+    }
+    const qs = q.toString();
+    return appendWelcomeBack(
+      qs ? `/onboarding/account?${qs}` : "/onboarding/account",
+      withWelcomeBack,
+    );
+  }
+
   const needsEmailGate =
     requireEmailVerification &&
     user.emailVerified !== true &&
@@ -76,8 +92,6 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
     );
   }
 
-  const role = user.role as UserRole;
-  const isStaff = canAccessStaffAdminShell(role);
   const requestedIsClientHome =
     requestedNext === "/dashboard" || (requestedNext?.startsWith("/dashboard/") ?? false);
   const requestedIsSellerSubmission =

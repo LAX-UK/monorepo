@@ -130,6 +130,40 @@ for (const file of listWebSources(join(webSrc, "lib/ui/bid-error"))) {
   }
 }
 
+/** @type {string[]} */
+const embeddedCredentialViolations = [];
+const EMBEDDED_CREDENTIAL_RES = [
+  /\/api\/auth\/sign-in\//,
+  /\/api\/auth\/sign-up\//,
+  /["'`]\/api\/auth\/reset-password["'`]/,
+  /\bsignIn\./,
+  /\bsignUp\./,
+];
+const EMBEDDED_CREDENTIAL_ALLOWLIST = new Set([]);
+
+for (const file of listWebSources(webSrc)) {
+  const rel = relative(webSrc, file).replace(/\\/g, "/");
+  if (EMBEDDED_CREDENTIAL_ALLOWLIST.has(rel)) continue;
+  if (/\.(test|spec)\.(ts|tsx)$/.test(rel)) continue;
+  const text = readFileSync(file, "utf8");
+  if (EMBEDDED_CREDENTIAL_RES.some((re) => re.test(text))) {
+    embeddedCredentialViolations.push(
+      `${rel}: references issuer credential endpoints — primary sign-in must use Bid BFF /api/auth/login`,
+    );
+  }
+}
+
+if (embeddedCredentialViolations.length > 0) {
+  failed = true;
+  console.error("Embedded credential violations:\n");
+  for (const v of embeddedCredentialViolations) {
+    console.error(`  ${v}`);
+  }
+  console.error(
+    "\nAccount-management adapters under lib/auth/services/** are allowed; delete cross-origin primary sign-in paths.",
+  );
+}
+
 if (libComponentViolations.length > 0) {
   failed = true;
   console.error("lib/ui/bid-error component import violations:\n");

@@ -76,6 +76,7 @@ describe("OIDC discovery contracts", () => {
         "name",
       ],
       code_challenge_methods_supported: ["S256"],
+      prompt_values_supported: ["none", "login", "consent", "create", "select_account"],
     });
   });
 });

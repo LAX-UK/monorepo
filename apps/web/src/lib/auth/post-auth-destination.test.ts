@@ -57,6 +57,30 @@ describe("staffRoleDefaultDestination", () => {
 });
 
 describe("resolvePostAuthDestination", () => {
+  it("sends clients with incomplete account onboarding to /onboarding/account", () => {
+    expect(
+      resolvePostAuthDestination({
+        user: { ...clientUser, accountOnboardingComplete: false },
+        requestedNext: "/dashboard/bids",
+        context: "sign-in",
+      }),
+    ).toBe("/onboarding/account?next=%2Fdashboard%2Fbids");
+  });
+
+  it("skips account onboarding redirect for staff", () => {
+    expect(
+      resolvePostAuthDestination({
+        user: {
+          ...clientUser,
+          role: "staff",
+          staffRole: "super_admin",
+          accountOnboardingComplete: false,
+        },
+        context: "sign-in",
+      }),
+    ).toBe("/admin");
+  });
+
   it("sends unapproved clients to their requested destination on login", () => {
     expect(
       resolvePostAuthDestination({

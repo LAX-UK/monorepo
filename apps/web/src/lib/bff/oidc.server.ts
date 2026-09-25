@@ -11,6 +11,8 @@ import { verifyIdentityToken } from "@auction/identity-contracts/verify";
 import {
   IdentityRejectedError,
   IdentityUnavailableError,
+  type OidcAuthorizePrompt,
+  assertRecentAuthentication,
   buildAuthorizeUrl,
   buildEndSessionUrl as buildEndSessionHref,
   createFetchTokenEndpoint,
@@ -60,6 +62,8 @@ export function buildAuthorizationUrl(input: {
   state: string;
   nonce: string;
   codeChallenge: string;
+  prompt?: OidcAuthorizePrompt;
+  maxAge?: number;
 }): URL {
   const config = bffConfig();
   const href = buildAuthorizeUrl({
@@ -70,6 +74,8 @@ export function buildAuthorizationUrl(input: {
     state: input.state,
     nonce: input.nonce,
     codeChallenge: input.codeChallenge,
+    ...(input.prompt ? { prompt: input.prompt } : {}),
+    ...(input.maxAge != null ? { maxAge: input.maxAge } : {}),
   });
   return new URL(href);
 }
@@ -78,6 +84,8 @@ export async function exchangeAuthorizationCode(input: {
   code: string;
   codeVerifier: string;
   nonce: string;
+  requireRecentAuthentication?: boolean;
+  maxAgeSeconds?: number;
 }): Promise<AuthenticatedBidSession> {
   const config = bffConfig();
   const token = await tokenEndpoint().requestToken(
@@ -109,6 +117,18 @@ export async function exchangeAuthorizationCode(input: {
     typeof payload.sid !== "string"
   ) {
     throw new Error("Identity id_token state binding is invalid");
+  }
+  if (input.requireRecentAuthentication) {
+    const authTime =
+      typeof payload.auth_time === "number"
+        ? payload.auth_time
+        : typeof payload.auth_time === "string"
+          ? Number(payload.auth_time)
+          : undefined;
+    assertRecentAuthentication({
+      authTime,
+      maxAgeSeconds: input.maxAgeSeconds ?? 300,
+    });
   }
   return {
     kind: "authenticated",

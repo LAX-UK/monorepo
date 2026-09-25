@@ -17,6 +17,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     biddingKillSwitch,
     bidUserRateLimit,
     requireLegalEntity,
+    requireAccountOnboarding,
   } = deps;
 
   const { autoBidHttp, absenteeBidHttp, conditionReportHttp } = container.bidding;
@@ -24,6 +25,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
   r.post(
     "/:id/absentee-bids",
     requireAuth,
+    requireAccountOnboarding,
     biddingKillSwitch,
     requireBuyerRole,
     bidKycGate,
@@ -65,6 +67,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
   r.post(
     "/:id/condition-report-requests",
     requireAuth,
+    requireAccountOnboarding,
     requireBuyerRole,
     bidKycGate,
     requireLegalEntity,
@@ -106,6 +109,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
   r.put(
     "/:id/auto-bid",
     requireAuth,
+    requireAccountOnboarding,
     biddingKillSwitch,
     requireBuyerRole,
     bidKycGate,
@@ -136,6 +140,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
   r.delete(
     "/:id/auto-bid",
     requireAuth,
+    requireAccountOnboarding,
     biddingKillSwitch,
     requireBuyerRole,
     bidKycGate,
