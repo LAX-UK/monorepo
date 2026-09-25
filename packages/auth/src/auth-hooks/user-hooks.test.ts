@@ -23,6 +23,19 @@ function createDeps(onUserUpdated: NonNullable<AuthHookDeps["onUserUpdated"]>): 
   };
 }
 
+describe("user create hooks", () => {
+  it("blocks new users when registration kill switch is enabled", async () => {
+    const hooks = buildUserDatabaseHooks({
+      ...createDeps(vi.fn()),
+      blockNewUserRegistration: true,
+    });
+
+    await expect(hooks.create.before()).rejects.toMatchObject({
+      status: "SERVICE_UNAVAILABLE",
+    });
+  });
+});
+
 describe("user profile update hooks", () => {
   it("publishes image-only profile updates including image removal", async () => {
     const onUserUpdated = vi.fn(async () => undefined);

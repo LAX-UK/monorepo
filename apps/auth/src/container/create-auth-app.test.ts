@@ -112,6 +112,24 @@ describe("auth HTTP app composition", () => {
     expect(html).not.toContain('params.get("callbackURL")');
   });
 
+  it("redirects prompt=create login requests to hosted sign-up", async () => {
+    const app = buildApp();
+    const response = await app.request(
+      "https://auth.test/login?client_id=lax-bid-web&prompt=create",
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/sign-up?client_id=lax-bid-web&prompt=create");
+  });
+
+  it("skips signed-in restart redirect when oidc_login_prompt cookie is present", async () => {
+    const app = buildApp({ session: { id: "s1" }, user: { id: "u1" } });
+    const response = await app.request("https://auth.test/login?client_id=lax-shop-web", {
+      headers: { cookie: "oidc_login_prompt=signed-value" },
+    });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Sign in");
+  });
+
   it("redirects a live session with only a product hint to the Shop restart URL", async () => {
     const app = buildApp({ session: { id: "s1" }, user: { id: "u1" } });
     const login = await app.request("https://auth.test/login?client_id=lax-shop-web");

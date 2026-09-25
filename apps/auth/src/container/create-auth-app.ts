@@ -1,3 +1,4 @@
+import { normalizeAuthorizePromptForCreate } from "@auction/auth";
 import { Sentry } from "@auction/observability";
 import { Hono } from "hono";
 import type pino from "pino";
@@ -65,6 +66,16 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     emailFirst: options.oidc.env.HOSTED_AUTH_EMAIL_FIRST,
     requireEmailVerification: options.oidc.env.REQUIRE_EMAIL_VERIFICATION,
     getSession: (headers) => options.oidc.auth.api.getSession({ headers }),
+  });
+  app.use("/api/auth/oauth2/authorize", async (c, next) => {
+    const normalized = normalizeAuthorizePromptForCreate(new URL(c.req.url));
+    if (normalized) {
+      const current = new URL(c.req.url);
+      if (normalized.pathname !== current.pathname || normalized.search !== current.search) {
+        return c.redirect(`${normalized.pathname}${normalized.search}`, 307);
+      }
+    }
+    await next();
   });
   mountAuthOperationalRoutes(app, {
     ...options.operational,

@@ -66,6 +66,7 @@ export type OidcDiscoveryDocument = {
     "name",
   ];
   code_challenge_methods_supported: readonly ["S256"];
+  prompt_values_supported: readonly ["none", "login", "consent", "create", "select_account"];
 };
 
 export function normalizeIssuerUrl(url: string): string {
@@ -127,5 +128,6 @@ export function buildOidcDiscoveryDocument(issuerUrl: string): OidcDiscoveryDocu
       "name",
     ],
     code_challenge_methods_supported: ["S256"],
+    prompt_values_supported: ["none", "login", "consent", "create", "select_account"],
   };
 }

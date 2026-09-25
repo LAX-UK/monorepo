@@ -89,6 +89,8 @@ export type AuthEnv = {
    * for every new session. Enabled in production; leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
+  /** When true, `databaseHooks.user.create.before` rejects all new auth users. */
+  blockNewUserRegistration?: boolean | undefined;
   /** Request-scoped claims resolver used by the OIDC authorization-code flow. */
   resolveOidcIdTokenClaims?:
     | ((input: {
@@ -219,6 +221,7 @@ export function createAuth(env: AuthEnv): Auth {
       onAccountCreated: env.onAccountCreated,
       onUserUpdated: env.onUserUpdated,
       enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
+      blockNewUserRegistration: env.blockNewUserRegistration,
     }),
     session: {
       expiresIn: AUTH_TIMINGS.sessionExpiresSec,

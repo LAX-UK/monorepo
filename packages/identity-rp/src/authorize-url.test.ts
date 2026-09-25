@@ -20,6 +20,23 @@ describe("buildAuthorizeUrl", () => {
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.get("prompt")).toBe("login");
   });
+
+  it("serializes prompt=create and max_age", () => {
+    const href = buildAuthorizeUrl({
+      authorizationEndpoint: "https://auth.example/authorize",
+      clientId: "lax-bid-web",
+      redirectUri: "https://test.lax.bid/api/auth/callback/lax-bid-web",
+      scopes: ["openid"],
+      state: "s",
+      nonce: "n",
+      codeChallenge: "c",
+      prompt: "create",
+      maxAge: 0,
+    });
+    const url = new URL(href);
+    expect(url.searchParams.get("prompt")).toBe("create");
+    expect(url.searchParams.get("max_age")).toBe("0");
+  });
 });
 
 describe("buildEndSessionUrl", () => {

@@ -110,3 +110,35 @@ export function productHintHref(path: string, flow: HostedAuthFlow): string {
   if (!flow.clientId) return path;
   return `${path}?client_id=${encodeURIComponent(flow.clientId)}`;
 }
+
+const HOSTED_CHROME_SIGN_UP = "sign-up";
+
+function promptTokens(prompt: string | null): string[] {
+  if (!prompt) return [];
+  return prompt
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** True when OIDC Prompt Create 1.0 requests hosted sign-up chrome. */
+export function hostedSignUpRequested(searchParams: URLSearchParams): boolean {
+  if (searchParams.get("hosted_chrome") === HOSTED_CHROME_SIGN_UP) return true;
+  return promptTokens(searchParams.get("prompt")).includes("create");
+}
+
+/**
+ * Better Auth rejects unknown prompt values once a session exists. Strip `create`
+ * before authorize handling and carry sign-up intent via `hosted_chrome`.
+ */
+export function normalizeAuthorizePromptForCreate(url: URL): URL | null {
+  const prompt = url.searchParams.get("prompt");
+  const tokens = promptTokens(prompt);
+  if (!tokens.includes("create")) return null;
+  const normalized = new URL(url.toString());
+  const remaining = tokens.filter((token) => token !== "create");
+  if (remaining.length === 0) normalized.searchParams.delete("prompt");
+  else normalized.searchParams.set("prompt", remaining.join(" "));
+  normalized.searchParams.set("hosted_chrome", HOSTED_CHROME_SIGN_UP);
+  return normalized;
+}

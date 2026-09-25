@@ -1,8 +1,15 @@
+import { APIError } from "better-auth/api";
 import type { AuthHookDeps } from "./auth-hook-deps.js";
 
 export function buildUserDatabaseHooks(deps: AuthHookDeps) {
   return {
     create: {
+      before: async () => {
+        if (!deps.blockNewUserRegistration) return;
+        throw new APIError("SERVICE_UNAVAILABLE", {
+          message: "New registrations are temporarily disabled",
+        });
+      },
       after: async (authUser: {
         id: string;
         email: string;

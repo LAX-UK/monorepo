@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import type { OidcAuthorizePrompt } from "@auction/identity-rp";
 import type { Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type {
@@ -33,7 +34,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
 
   async function startShopAuthorization(
     c: Context,
-    options?: { prompt?: string; requireAuthenticatedSession?: boolean },
+    options?: { prompt?: OidcAuthorizePrompt; requireAuthenticatedSession?: boolean },
   ) {
     const returnTo = c.req.query("returnTo");
     if (typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")) {

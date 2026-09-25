@@ -10,6 +10,7 @@ import {
   buildHostedTwoFactorHtml,
   buildHostedVerifyEmailHtml,
   hostedAuthViewFromSearch,
+  hostedSignUpRequested,
 } from "@auction/auth";
 import type { Context, Hono } from "hono";
 
@@ -25,10 +26,16 @@ function isConfiguredRestartUrl(url: string): boolean {
   return url.startsWith("http://") || url.startsWith("https://");
 }
 
+function hasOidcLoginPromptCookie(cookieHeader: string | null | undefined): boolean {
+  if (!cookieHeader) return false;
+  return /(?:^|;\s*)oidc_login_prompt=/.test(cookieHeader);
+}
+
 async function redirectSignedInIfNeeded(
   c: Context,
   capabilities: HostedAuthPageMountOptions,
 ): Promise<Response | null> {
+  if (hasOidcLoginPromptCookie(c.req.header("cookie"))) return null;
   const view = viewFromRequest(c.req.url, capabilities);
   if (view.config.authorizeResumePath) return null;
   if (!isConfiguredRestartUrl(view.config.restartUrl)) return null;
@@ -54,7 +61,16 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
     });
   };
 
-  html("/login", buildHostedLoginHtml, true);
+  app.get("/login", async (c) => {
+    const url = new URL(c.req.url);
+    if (hostedSignUpRequested(url.searchParams)) {
+      return c.redirect(`/sign-up${url.search}`, 302);
+    }
+    const redirected = await redirectSignedInIfNeeded(c, capabilities);
+    if (redirected) return redirected;
+    c.header("Cache-Control", "no-store");
+    return c.html(buildHostedLoginHtml(viewFromRequest(c.req.url, capabilities)));
+  });
   html("/sign-up", buildHostedSignUpHtml, true);
   html("/forgot-password", buildHostedForgotPasswordHtml);
   html("/reset-password", buildHostedResetPasswordHtml);

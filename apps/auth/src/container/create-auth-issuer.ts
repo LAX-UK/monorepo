@@ -157,6 +157,7 @@ export function createAuthIssuer(options: {
         image: user.image ?? null,
       }),
     enableNewDeviceLoginEmail: env.NODE_ENV === "production",
+    blockNewUserRegistration: Boolean(env.DISABLE_NEW_USER_REGISTRATION),
     resolveOidcIdTokenClaims: adaptOidcClaimsResolver((input) =>
       options.oidcSessions.resolveIdTokenClaims(input),
     ),
