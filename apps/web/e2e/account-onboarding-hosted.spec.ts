@@ -22,6 +22,6 @@ test.describe("hosted step-up reauth @journey", () => {
     await page.waitForURL(/\/(oauth2\/authorize|login)/, { timeout: 30_000 });
     const hostedLogin = page.locator("#login-form");
     const hostedHeading = page.getByRole("heading", { name: /sign in/i });
-    await expect(hostedLogin.or(hostedHeading)).toBeVisible({ timeout: 30_000 });
+    await expect(hostedLogin.or(hostedHeading).first()).toBeVisible({ timeout: 30_000 });
   });
 });

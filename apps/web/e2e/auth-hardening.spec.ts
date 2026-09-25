@@ -7,6 +7,6 @@ test.describe("auth hardening @smoke", () => {
     await page.waitForURL(/\/(login|oauth2\/authorize|api\/auth\/login)/, { timeout: 30_000 });
     const hostedLogin = page.locator("#login-form");
     const hostedHeading = page.getByRole("heading", { name: /sign in/i });
-    await expect(hostedLogin.or(hostedHeading)).toBeVisible({ timeout: 30_000 });
+    await expect(hostedLogin.or(hostedHeading).first()).toBeVisible({ timeout: 30_000 });
   });
 });
