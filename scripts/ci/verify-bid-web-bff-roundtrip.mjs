@@ -35,6 +35,21 @@ function assertTrustedRedirect(url, allowedOrigins, expectedPath, label) {
   return parsed;
 }
 
+/** Success callback may land on post-login handoff before the user's next path. */
+function isSuccessfulBidCallbackRedirect(status, location, webOrigin) {
+  if (status !== 302 && status !== 303) return false;
+  if (!location) return false;
+  if (location.includes("/dashboard")) return true;
+  try {
+    const url = new URL(location, webOrigin);
+    if (url.pathname !== "/auth/post-login") return false;
+    const next = url.searchParams.get("next") ?? "";
+    return next.includes("dashboard");
+  } catch {
+    return false;
+  }
+}
+
 if (!email || !password) {
   throw new Error(
     "BID_BFF_TEST_EMAIL and BID_BFF_TEST_PASSWORD (or SHOP_OIDC_* fallbacks) are required",
@@ -137,10 +152,7 @@ async function main() {
   });
   captureCookies(callback, webCookies);
   const callbackLocation = callback.headers.get("location") ?? "";
-  if (
-    (callback.status !== 302 && callback.status !== 303) ||
-    !callbackLocation.includes("/dashboard")
-  ) {
+  if (!isSuccessfulBidCallbackRedirect(callback.status, callbackLocation, webBase)) {
     throw new Error(
       `Bid BFF callback failed (${callback.status} -> ${callbackLocation || "(no location)"})`,
     );
