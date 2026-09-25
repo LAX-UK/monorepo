@@ -1,3 +1,4 @@
+import { IdentityRejectedError } from "@auction/identity-rp";
 import type {
   OidcRefreshClient,
   OidcRefreshResult,
@@ -32,14 +33,13 @@ export function createOidcRefreshClient(input: {
           refreshExpiresAt: refreshExpiresAtFromNow(now()),
         };
       } catch (error) {
-        const status = (error as { status?: number }).status;
-        const body = (error as { body?: string }).body ?? "";
-        if (status === 400 && body.includes("invalid_grant")) {
+        if (error instanceof IdentityRejectedError && error.oauthError === "invalid_grant") {
           throw new ShopIdentityReauthRequiredError("refresh_rejected");
         }
         if (error instanceof ShopIdentityReauthRequiredError) {
           throw error;
         }
+        const status = error instanceof IdentityRejectedError ? error.status : undefined;
         throw new ShopIdentityUpstreamError(
           error instanceof Error ? error.message : "OIDC refresh failed",
           "oidc_token_exchange",

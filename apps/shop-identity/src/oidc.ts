@@ -1,4 +1,3 @@
-import { createHash, randomBytes } from "node:crypto";
 import {
   JWKS_PATH,
   buildOidcDiscoveryDocument,
@@ -6,16 +5,22 @@ import {
   validateBackchannelLogoutClaims,
   verifyBackchannelLogoutToken,
 } from "@auction/identity-contracts";
+import {
+  IdentityRejectedError,
+  IdentityUnavailableError,
+  buildAuthorizeUrl as buildAuthorizeUrlCore,
+  buildEndSessionUrl as buildEndSessionHref,
+  createFetchTokenEndpoint,
+  generateOAuthLoginParams,
+  mergeRefreshTokens,
+  validateOAuthStateExact,
+} from "@auction/identity-rp";
+import type { OAuthLoginParams as RpOAuthLoginParams } from "@auction/identity-rp";
 import type { JWTPayload } from "jose";
 
 export type OidcDiscovery = ReturnType<typeof buildOidcDiscoveryDocument>;
 
-export type OAuthLoginParams = {
-  state: string;
-  nonce: string;
-  codeVerifier: string;
-  codeChallenge: string;
-};
+export type OAuthLoginParams = RpOAuthLoginParams;
 
 export type TokenResponse = {
   id_token: string;
@@ -25,18 +30,10 @@ export type TokenResponse = {
   refresh_token?: string;
 };
 
-export type IdTokenClaims = {
-  sub: string;
-  iss: string;
-  aud: string | string[];
-  nonce?: string;
-  email?: string;
-  email_verified?: boolean;
-  name?: string;
-  sid?: string;
-};
-
 export { BACKCHANNEL_LOGOUT_EVENT } from "@auction/identity-contracts";
+export { IdentityRejectedError, IdentityUnavailableError, generateOAuthLoginParams };
+
+const SHOP_TOKEN_FETCH_TIMEOUT_MS = 15_000;
 
 export function validateLogoutTokenClaims(
   claims: Record<string, unknown>,
@@ -60,18 +57,6 @@ export async function verifyLogoutToken(
     issuer: input.issuer,
     audience: input.clientId,
   });
-}
-
-function base64UrlEncode(input: Buffer): string {
-  return input.toString("base64url");
-}
-
-export function generateOAuthLoginParams(): OAuthLoginParams {
-  const state = base64UrlEncode(randomBytes(24));
-  const nonce = base64UrlEncode(randomBytes(24));
-  const codeVerifier = base64UrlEncode(randomBytes(32));
-  const codeChallenge = base64UrlEncode(createHash("sha256").update(codeVerifier).digest());
-  return { state, nonce, codeVerifier, codeChallenge };
 }
 
 export function resolveOidcDiscovery(issuerUrl: string): OidcDiscovery {
@@ -109,24 +94,23 @@ export function buildAuthorizeUrl(input: {
   scopes?: string[];
   prompt?: string;
 }): string {
-  const url = new URL(input.discovery.authorization_endpoint);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("client_id", input.clientId);
-  url.searchParams.set("redirect_uri", input.redirectUri);
-  url.searchParams.set(
-    "scope",
-    (
-      input.scopes ?? ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"]
-    ).join(" "),
-  );
-  if (input.prompt) {
-    url.searchParams.set("prompt", input.prompt);
-  }
-  url.searchParams.set("state", input.params.state);
-  url.searchParams.set("nonce", input.params.nonce);
-  url.searchParams.set("code_challenge", input.params.codeChallenge);
-  url.searchParams.set("code_challenge_method", "S256");
-  return url.toString();
+  return buildAuthorizeUrlCore({
+    authorizationEndpoint: input.discovery.authorization_endpoint,
+    clientId: input.clientId,
+    redirectUri: input.redirectUri,
+    scopes: input.scopes ?? [
+      "openid",
+      "profile",
+      "email",
+      "offline_access",
+      "shop.read",
+      "shop.write",
+    ],
+    state: input.params.state,
+    nonce: input.params.nonce,
+    codeChallenge: input.params.codeChallenge,
+    ...(input.prompt ? { prompt: input.prompt } : {}),
+  });
 }
 
 export function buildEndSessionUrl(input: {
@@ -136,21 +120,27 @@ export function buildEndSessionUrl(input: {
   postLogoutRedirectUri: string;
   state: string;
 }): string {
-  const url = new URL(input.discovery.end_session_endpoint);
-  url.searchParams.set("client_id", input.clientId);
-  if (input.idTokenHint) url.searchParams.set("id_token_hint", input.idTokenHint);
-  url.searchParams.set("post_logout_redirect_uri", input.postLogoutRedirectUri);
-  url.searchParams.set("state", input.state);
-  return url.toString();
+  return buildEndSessionHref({
+    endSessionEndpoint: input.discovery.end_session_endpoint,
+    clientId: input.clientId,
+    postLogoutRedirectUri: input.postLogoutRedirectUri,
+    state: input.state,
+    ...(input.idTokenHint ? { idTokenHint: input.idTokenHint } : {}),
+  });
 }
 
-export function validateOAuthState(
-  expectedState: string | undefined,
-  receivedState: string | null,
-): boolean {
-  if (!expectedState || !receivedState) return false;
-  return expectedState === receivedState;
-}
+export const validateOAuthState = validateOAuthStateExact;
+
+export type IdTokenClaims = {
+  sub: string;
+  iss: string;
+  aud: string | string[];
+  nonce?: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+  sid?: string;
+};
 
 export function validateIdTokenClaims(
   claims: IdTokenClaims,
@@ -163,6 +153,20 @@ export function validateIdTokenClaims(
   return true;
 }
 
+function shopTokenEndpoint(input: {
+  discovery: OidcDiscovery;
+  clientId: string;
+  clientSecret: string;
+  fetchImpl?: typeof fetch;
+}) {
+  return createFetchTokenEndpoint({
+    tokenEndpointUrl: input.discovery.token_endpoint,
+    auth: { kind: "body", clientId: input.clientId, clientSecret: input.clientSecret },
+    timeoutMs: SHOP_TOKEN_FETCH_TIMEOUT_MS,
+    ...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
+  });
+}
+
 export async function exchangeAuthorizationCode(input: {
   discovery: OidcDiscovery;
   clientId: string;
@@ -172,29 +176,24 @@ export async function exchangeAuthorizationCode(input: {
   codeVerifier: string;
   fetchImpl?: typeof fetch;
 }): Promise<TokenResponse> {
-  const fetchFn = input.fetchImpl ?? fetch;
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    code: input.code,
-    redirect_uri: input.redirectUri,
-    client_id: input.clientId,
-    client_secret: input.clientSecret,
-    code_verifier: input.codeVerifier,
-  });
-  const response = await fetchFn(input.discovery.token_endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`OIDC token exchange failed (${response.status}): ${detail}`);
-  }
-  const json = (await response.json()) as TokenResponse;
+  const json = await shopTokenEndpoint(input).requestToken(
+    new URLSearchParams({
+      grant_type: "authorization_code",
+      code: input.code,
+      redirect_uri: input.redirectUri,
+      code_verifier: input.codeVerifier,
+    }),
+  );
   if (!json.id_token) {
     throw new Error("OIDC token exchange response missing id_token");
   }
-  return json;
+  return {
+    id_token: json.id_token,
+    ...(json.access_token !== undefined ? { access_token: json.access_token } : {}),
+    ...(json.token_type !== undefined ? { token_type: json.token_type } : {}),
+    ...(json.expires_in !== undefined ? { expires_in: json.expires_in } : {}),
+    ...(json.refresh_token !== undefined ? { refresh_token: json.refresh_token } : {}),
+  };
 }
 
 export async function refreshOAuthTokens(input: {
@@ -204,31 +203,24 @@ export async function refreshOAuthTokens(input: {
   refreshToken: string;
   fetchImpl?: typeof fetch;
 }): Promise<TokenResponse> {
-  const fetchFn = input.fetchImpl ?? fetch;
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: input.refreshToken,
-    client_id: input.clientId,
-    client_secret: input.clientSecret,
-  });
-  const response = await fetchFn(input.discovery.token_endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    const error = new Error(`OIDC refresh failed (${response.status}): ${detail}`);
-    (error as Error & { status?: number; body?: string }).status = response.status;
-    (error as Error & { status?: number; body?: string }).body = detail;
-    throw error;
-  }
-  const json = (await response.json()) as TokenResponse;
-  if (!json.id_token || !json.refresh_token) {
-    throw new Error("OIDC refresh response missing required tokens");
-  }
-  return json;
+  const json = await shopTokenEndpoint(input).requestToken(
+    new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: input.refreshToken,
+    }),
+  );
+  const merged = mergeRefreshTokens(
+    { refreshToken: input.refreshToken, idToken: json.id_token ?? "" },
+    json,
+    "shop",
+  );
+  return {
+    id_token: merged.idToken,
+    refresh_token: merged.refreshToken,
+    ...(json.access_token !== undefined ? { access_token: json.access_token } : {}),
+    ...(json.token_type !== undefined ? { token_type: json.token_type } : {}),
+    ...(json.expires_in !== undefined ? { expires_in: json.expires_in } : {}),
+  };
 }
 
 export function decodeJwtPayload(token: string): IdTokenClaims {
