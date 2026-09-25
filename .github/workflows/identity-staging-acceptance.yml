@@ -181,6 +181,10 @@ jobs:
         id: probe_bid_bff
         continue-on-error: true
         run: node scripts/ci/run-probe-with-retry.mjs node scripts/ci/verify-bid-web-bff-roundtrip.mjs
+      - name: Bid web readiness (identity may be degraded)
+        id: probe_bid_health_ready
+        continue-on-error: true
+        run: node scripts/ci/run-probe-with-retry.mjs node scripts/ci/verify-bid-web-health-ready.mjs
       - name: Shop cold login, SSO, session, and logout isolation
         id: probe_shop_oidc
         continue-on-error: true

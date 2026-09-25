@@ -228,6 +228,10 @@ test("staging rollback restores a reviewed immutable manifest through Terraform"
     read(".github/workflows/shop-staging-acceptance.yml"),
     /staging-recovery-child-\{0\}-shop/,
   );
+  assert.match(
+    read(".github/workflows/identity-staging-acceptance.yml"),
+    /verify-bid-web-health-ready\.mjs/,
+  );
   assert.match(workflow, /fromJSON\(inputs\.rollback_manifest\)\.identity\.sha/);
   assert.match(workflow, /app_image_tag: \$\{\{ needs\.validate_inputs\.outputs\.shop_sha \}\}/);
   assert.match(
