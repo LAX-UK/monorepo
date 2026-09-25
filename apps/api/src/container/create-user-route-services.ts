@@ -7,7 +7,9 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { LotReadPort, SaleLookupPort } from "../container/container-slices.js";
 import type { Env } from "../env.js";
+import type { CachedAccountOnboardingChecker } from "../infrastructure/cached-account-onboarding.checker.js";
 import type { AccountDeletionEligibilityService } from "../services/account-deletion-eligibility.service.js";
+import type { AccountOnboardingService } from "../services/account-onboarding.service.js";
 import type { AddressService } from "../services/address.service.js";
 import type { ArtistWatchlistService } from "../services/artist-watchlist.service.js";
 import type { IAuthAuditPublisher } from "../services/interfaces/auth-audit-publisher.js";
@@ -20,13 +22,13 @@ import type { IPushSubscriptionRepository } from "../services/interfaces/push.js
 import type { UserRouteServices } from "../services/interfaces/user-routes/index.js";
 import type { NotificationQueryService } from "../services/notification-query.service.js";
 import type { ProfileService } from "../services/profile.service.js";
-import type { RegistrationService } from "../services/registration.service.js";
 import type { SavedSearchService } from "../services/saved-search.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
 import type { UiPreferenceService } from "../services/ui-preference.service.js";
 import type { UserDashboardReadService } from "../services/user-dashboard-read.service.js";
 import type { UserSecurityReadService } from "../services/user-security-read.service.js";
 import type { UserService } from "../services/user.service.js";
+import { UserAccountOnboardingHttpApplicationService } from "../services/user/user-account-onboarding-http-application.service.js";
 import { UserCategoryInterestsHttpApplicationService } from "../services/user/user-category-interests-http-application.service.js";
 import { UserDashboardHttpApplicationService } from "../services/user/user-dashboard-http-application.service.js";
 import { UserNotificationsHttpApplicationService } from "../services/user/user-notifications-http-application.service.js";
@@ -38,10 +40,11 @@ import { UserWatchlistHttpApplicationService } from "../services/user/user-watch
 import type { WatchlistService } from "../services/watchlist.service.js";
 
 export type CreateUserRouteServicesInput = {
-  env: Pick<Env, "WEB_ORIGIN" | "DISABLE_NEW_USER_REGISTRATION">;
+  env: Pick<Env, "WEB_ORIGIN">;
   categoryInterestsEligibilityReader: ICategoryInterestsEligibilityReader;
   categoryInterestsRepository: ICategoryInterestsRepository;
-  registrationService: RegistrationService;
+  accountOnboardingService: AccountOnboardingService;
+  accountOnboardingGate: CachedAccountOnboardingChecker;
   marketingEventService: IMarketingEventService;
   attributionStore: IAttributionStore;
   marketingAttributionEnabled: boolean;
@@ -77,11 +80,6 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       input.categoryInterestsEligibilityReader,
     ),
     publicHttp: new UserPublicHttpApplicationService({
-      env: input.env,
-      registrationService: input.registrationService,
-      marketingEventService: input.marketingEventService,
-      attributionStore: input.attributionStore,
-      marketingAttributionEnabled: input.marketingAttributionEnabled,
       userService: input.userService,
       mediaUrlResolver: input.mediaUrlResolver,
     }),
@@ -116,6 +114,15 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       addressService: input.addressService,
       uiPreferenceService: input.uiPreferenceService,
       mediaUrlResolver: input.mediaUrlResolver,
+    }),
+    accountOnboardingHttp: new UserAccountOnboardingHttpApplicationService({
+      onboarding: input.accountOnboardingService,
+      onboardingGate: input.accountOnboardingGate,
+      profileService: input.profileService,
+      webOrigin: input.env.WEB_ORIGIN,
+      marketingEventService: input.marketingEventService,
+      attributionStore: input.attributionStore,
+      marketingAttributionEnabled: input.marketingAttributionEnabled,
     }),
     securityHttp: new UserSecurityHttpApplicationService({
       sessionRevocation: input.sessionRevocation,

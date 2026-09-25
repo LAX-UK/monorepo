@@ -1233,6 +1233,13 @@
       "when": 1790582400000,
       "tag": "0176_shop_session_oidc_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1790668800000,
+      "tag": "0177_bid_account_onboarding",
+      "breakpoints": true
     }
   ]
 }

@@ -21,6 +21,7 @@ export type SubmissionRouteDeps = {
   container: ContainerSubmissionRoutesSlice;
   requireAuth: ReturnType<typeof createRequireAuth>;
   requireSubmissionEntityContext: MiddlewareHandler;
+  requireAccountOnboarding: MiddlewareHandler;
 };
 
 export function viewerFromContext(c: {

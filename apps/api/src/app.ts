@@ -14,7 +14,6 @@ import { createAppLogger } from "./lib/logger.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { buildTrustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
-import { createRegisterRateLimitMiddleware } from "./middleware/auth-rate-limit.js";
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
@@ -22,6 +21,7 @@ import { createOrganizationCreateRateLimitMiddleware } from "./middleware/organi
 import { createPublicCacheControlMiddleware } from "./middleware/public-cache-control.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
+import { createRequireAccountOnboarding } from "./middleware/require-account-onboarding.js";
 import { createRequireAuth } from "./middleware/require-auth.js";
 import { requirePlatformShell } from "./middleware/require-capability.js";
 import { requireSuperAdminStaffRole } from "./middleware/require-staff-role.js";
@@ -199,22 +199,22 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     });
   });
 
-  app.use("/users/register", createRegisterRateLimitMiddleware(container.redis));
+  const requireAccountOnboarding = createRequireAccountOnboarding(container.accountOnboardingGate);
 
   const routed = app
     .route("/internal/jobs", createInternalCronRoutes(container, env))
     .route("/internal/identity", createInternalIdentityEmailRoutes(container, env))
     .route("/internal/identity", createInternalIdentitySubjectUsageRoutes(container, env))
     .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
-    .route("/lots", createLotRoutes(container, authenticator))
+    .route("/lots", createLotRoutes(container, authenticator, requireAccountOnboarding))
     .route("/lots", createLotDocumentRoutes(container, authenticator))
     .route("/events", createOnsiteEventRoutes(container))
     .route("/", createTelephoneBookingRoutes(container, authenticator))
-    .route("/sales", createSaleRoutes(container, authenticator))
+    .route("/sales", createSaleRoutes(container, authenticator, requireAccountOnboarding))
     .route("/press", createPressRoutes(container, authenticator))
     .route("/", createSaleroomDisplayRoutes(container))
     .route("/sales", createSaleDocumentRoutes(container, authenticator))
-    .route("/bids", createBidRoutes(container, authenticator))
+    .route("/bids", createBidRoutes(container, authenticator, requireAccountOnboarding))
     .route("/users", createUserRoutes(container, authenticator))
     .route("/users", createActingContextUserRoutes(container, authenticator))
     .route("/legal-entities", createLegalEntityPayoutStatementRoutes(container, authenticator))
@@ -227,6 +227,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
         container,
         authenticator,
         createOrganizationCreateRateLimitMiddleware(container.redis),
+        requireAccountOnboarding,
       ),
     )
     .route("/artists", createArtistRoutes(container, authenticator))
@@ -241,9 +242,12 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/categories", createCategoryRoutes(container))
     .route("/venues", createVenueRoutes(container, authenticator))
     .route("/q", createQrRoutes(container))
-    .route("/payments", createPaymentRoutes(container, authenticator))
+    .route("/payments", createPaymentRoutes(container, authenticator, requireAccountOnboarding))
     .route("/marketing", createMarketingRoutes(container, authenticator))
-    .route("/submissions", createSubmissionRoutes(container, authenticator))
+    .route(
+      "/submissions",
+      createSubmissionRoutes(container, authenticator, requireAccountOnboarding),
+    )
     .route("/submissions", createSubmissionDocumentRoutes(container, authenticator))
     .route("/uploads", createUploadRoutes(container, authenticator))
     .route("/exports", createExportRoutes(container, authenticator))

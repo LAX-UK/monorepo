@@ -1,4 +1,5 @@
 import { placeBidSchema } from "@auction/validators";
+import type { MiddlewareHandler } from "hono";
 import type { ContainerBidRoutesSlice } from "../container.js";
 import { respondBiddingRouteOutcome } from "../lib/bidding-route-response.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -18,7 +19,11 @@ export {
   createBidUserRateLimitMiddleware,
 } from "../middleware/buyer-participation-policy.js";
 
-export function createBidRoutes(container: ContainerBidRoutesSlice, authenticator: IAuthenticator) {
+export function createBidRoutes(
+  container: ContainerBidRoutesSlice,
+  authenticator: IAuthenticator,
+  requireAccountOnboarding: MiddlewareHandler,
+) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
@@ -32,6 +37,7 @@ export function createBidRoutes(container: ContainerBidRoutesSlice, authenticato
   r.post(
     "/",
     requireAuth,
+    requireAccountOnboarding,
     biddingKillSwitch,
     requireBuyerRole,
     kycGate,

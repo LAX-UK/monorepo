@@ -5,6 +5,7 @@ import { CachedCatalogueListService } from "../services/cached-catalogue-list.se
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { ICacheProvider } from "../services/interfaces/cache.js";
 import { createCatalogLotReadHttpFixture } from "../testing/catalog-lot-read-http-fixture.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubBiddingRouteServices } from "../testing/stub-bidding-route-services.js";
 import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createLotRoutes } from "./lots.js";
@@ -47,7 +48,7 @@ function mount() {
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue(null),
   };
-  app.route("/lots", createLotRoutes(container, authenticator));
+  app.route("/lots", createLotRoutes(container, authenticator, passThroughAccountOnboarding));
   return { app, listLotsForPublicApi };
 }
 

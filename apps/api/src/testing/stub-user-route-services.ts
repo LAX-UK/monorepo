@@ -16,7 +16,6 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       replaceAndComplete: vi.fn().mockResolvedValue(EMPTY_CATEGORY_INTERESTS),
     },
     publicHttp: {
-      register: vi.fn(),
       listPublicArtists: vi.fn(),
       getPublicUserProfile: vi.fn(),
     },
@@ -66,6 +65,9 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       deleteAddress: vi.fn(),
       setDefaultAddress: vi.fn(),
       getMe: vi.fn(),
+    },
+    accountOnboardingHttp: {
+      complete: vi.fn(),
     },
     securityHttp: {
       listSessions: vi.fn(),

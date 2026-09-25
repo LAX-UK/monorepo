@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createCatalogLotReadHttpFixture } from "../testing/catalog-lot-read-http-fixture.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubBiddingRouteServices } from "../testing/stub-bidding-route-services.js";
 import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createLotRoutes } from "./lots.js";
@@ -88,7 +89,7 @@ function mount(
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue(user ? { ...user, scopes: ["bid.read"] } : null),
   };
-  app.route("/lots", createLotRoutes(container, authenticator));
+  app.route("/lots", createLotRoutes(container, authenticator, passThroughAccountOnboarding));
   return { app, listLotsForPublicApi, getById };
 }
 
@@ -155,7 +156,7 @@ describe("lots public contract", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue(null),
     };
-    app.route("/lots", createLotRoutes(container, authenticator));
+    app.route("/lots", createLotRoutes(container, authenticator, passThroughAccountOnboarding));
 
     const res = await app.request(`http://t/lots/${lotId}`);
     expect(res.status).toBe(200);

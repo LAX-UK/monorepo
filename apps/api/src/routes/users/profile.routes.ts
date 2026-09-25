@@ -1,16 +1,34 @@
 import type { UpdateAddressInput } from "@auction/persistence/interfaces";
 import {
+  accountOnboardingBodySchema,
   addressIdParamSchema,
   createAddressBodySchema,
   updateAddressBodySchema,
   updateProfileSchema,
 } from "@auction/validators";
+import { marketingWebsiteContextFromHono } from "../../lib/marketing-website-context.js";
 import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
 
 export function attachUserProfileRoutes(r: UserHono, deps: UserRouteDeps): void {
   const { container, requireAuth, requireAuthAllowSuspended } = deps;
+
+  r.post(
+    "/me/onboarding",
+    requireAuth,
+    zValidator("json", accountOnboardingBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      const response = await container.userRoutes.accountOnboardingHttp.complete({
+        userId,
+        marketingContext: marketingWebsiteContextFromHono(c),
+        body,
+      });
+      return respondUserHttpJson(c, response);
+    },
+  );
 
   r.patch("/me/profile", requireAuth, zValidator("json", updateProfileSchema), async (c) => {
     const userId = c.get("userId") as string;

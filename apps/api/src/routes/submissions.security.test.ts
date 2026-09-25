@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubSubmissionRouteServices } from "../testing/stub-submission-route-services.js";
 import { createSubmissionRoutes } from "./submissions.js";
 
@@ -31,7 +32,10 @@ describe("submissions API contract", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read"] }),
     };
-    app.route("/submissions", createSubmissionRoutes(container, authenticator));
+    app.route(
+      "/submissions",
+      createSubmissionRoutes(container, authenticator, passThroughAccountOnboarding),
+    );
     const res = await app.request(
       `http://t/submissions/mine?${new URLSearchParams({ limit: "10", offset: "0" })}`,
     );
@@ -51,7 +55,10 @@ describe("submissions API contract", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read"] }),
     };
-    app.route("/submissions", createSubmissionRoutes(container, authenticator));
+    app.route(
+      "/submissions",
+      createSubmissionRoutes(container, authenticator, passThroughAccountOnboarding),
+    );
     const res = await app.request(`http://t/submissions/${submissionId}`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { data: unknown };
@@ -73,7 +80,10 @@ describe("submissions API contract", () => {
         .fn()
         .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.write"] }),
     };
-    app.route("/submissions", createSubmissionRoutes(container, authenticator));
+    app.route(
+      "/submissions",
+      createSubmissionRoutes(container, authenticator, passThroughAccountOnboarding),
+    );
     const res = await app.request(`http://t/submissions/${submissionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -95,7 +105,10 @@ describe("submissions API contract", () => {
         .fn()
         .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.write"] }),
     };
-    app.route("/submissions", createSubmissionRoutes(container, authenticator));
+    app.route(
+      "/submissions",
+      createSubmissionRoutes(container, authenticator, passThroughAccountOnboarding),
+    );
     const res = await app.request("http://t/submissions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubSubmissionRouteServices } from "../testing/stub-submission-route-services.js";
 import { createSubmissionRoutes } from "./submissions.js";
 
@@ -26,7 +27,10 @@ function mount(staffRole: string | null) {
       scopes: ["bid.read", "bid.write"],
     }),
   };
-  app.route("/submissions", createSubmissionRoutes(container, authenticator));
+  app.route(
+    "/submissions",
+    createSubmissionRoutes(container, authenticator, passThroughAccountOnboarding),
+  );
   return { app, listSubmissions, startReview };
 }
 

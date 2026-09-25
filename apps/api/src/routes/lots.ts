@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { ContainerLotRouteDepsSlice } from "../container.js";
 import { createOptionalKycGate } from "../middleware/buyer-participation-policy.js";
@@ -15,6 +16,7 @@ import { attachLotLifecycleRoutes } from "./lots/lifecycle.routes.js";
 export function createLotRoutes(
   container: ContainerLotRouteDepsSlice,
   authenticator: IAuthenticator,
+  requireAccountOnboarding: MiddlewareHandler,
 ) {
   const biddingKillSwitch = createMiddleware(async (c, next) => {
     if (container.env?.DISABLE_BIDDING) {
@@ -49,6 +51,7 @@ export function createLotRoutes(
     biddingKillSwitch,
     bidUserRateLimit,
     requireLegalEntity,
+    requireAccountOnboarding,
   };
 
   // Registration order mirrors the original monolith:

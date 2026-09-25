@@ -5,6 +5,7 @@ import type { Container } from "../container.js";
 import { AuthzError } from "../lib/errors.js";
 import { createLotRoutes } from "../routes/lots.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubBiddingRouteServices } from "../testing/stub-bidding-route-services.js";
 import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 
@@ -101,7 +102,10 @@ function makeContainer() {
 }
 
 function mount(authenticator: IAuthenticator, container: Container) {
-  return new Hono().route("/lots", createLotRoutes(container, authenticator));
+  return new Hono().route(
+    "/lots",
+    createLotRoutes(container, authenticator, passThroughAccountOnboarding),
+  );
 }
 
 describe("PUT /lots/:id/marketing-details", () => {

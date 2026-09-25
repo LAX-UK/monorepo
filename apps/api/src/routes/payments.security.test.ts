@@ -7,6 +7,7 @@ import type { ContainerPaymentHttpRoutesSlice } from "../container.js";
 import { X_LEGAL_ENTITY_ID_HEADER } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { MyPaymentRowDTO } from "../services/payment-me-presenter.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { createPaymentRoutes } from "./payments.js";
 
 const paymentId = "11111111-1111-4111-8111-111111111111";
@@ -111,7 +112,10 @@ function mount(role: string, opts: MountOptions = {}) {
         : null,
     ),
   };
-  app.route("/payments", createPaymentRoutes(container, authenticator));
+  app.route(
+    "/payments",
+    createPaymentRoutes(container, authenticator, passThroughAccountOnboarding),
+  );
   return { app, entityStaffPayment, buyerPaymentHttp };
 }
 

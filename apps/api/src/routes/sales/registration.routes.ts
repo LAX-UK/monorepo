@@ -5,11 +5,12 @@ import { requireBuyerRole } from "../../middleware/require-buyer-role.js";
 import type { SaleAuxRouteDeps, SaleHono } from "./_shared.js";
 
 export function attachSaleRegistrationRoutes(r: SaleHono, deps: SaleAuxRouteDeps): void {
-  const { container, requireAuth, kycGate, requireLegalEntity } = deps;
+  const { container, requireAuth, requireAccountOnboarding, kycGate, requireLegalEntity } = deps;
 
   r.post(
     "/:id/register",
     requireAuth,
+    requireAccountOnboarding,
     requireBuyerRole,
     kycGate,
     requireLegalEntity,

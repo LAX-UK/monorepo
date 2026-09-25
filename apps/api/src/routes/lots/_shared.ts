@@ -22,6 +22,7 @@ type LotRouteMiddleware = {
   biddingKillSwitch: MiddlewareHandler;
   bidUserRateLimit: MiddlewareHandler;
   requireLegalEntity: MiddlewareHandler;
+  requireAccountOnboarding: MiddlewareHandler;
 };
 
 export type LotRouteDeps = LotRouteMiddleware & {

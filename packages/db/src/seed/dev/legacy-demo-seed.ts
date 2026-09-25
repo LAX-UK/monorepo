@@ -51,6 +51,7 @@ const U = {
   staffStaffViewer: "90000000-0000-4000-8000-000000000026",
   staffClientAdvisor: "90000000-0000-4000-8000-000000000027",
   staffOperations: "90000000-0000-4000-8000-000000000028",
+  onboardingIncomplete: "90000000-0000-4000-8000-000000000029",
 } as const;
 
 const ADMIN_ID = U.admin;
@@ -72,6 +73,7 @@ const CONSIGNOR_ID = U.consignor;
 const BUYER_AGENT_ID = U.buyerAgent;
 const VIEWER_ID = U.viewer;
 const SPECIALIST_ID = U.specialist;
+const ONBOARDING_INCOMPLETE_ID = U.onboardingIncomplete;
 const STAFF_AUCTION_MGR_ID = U.staffAuctionMgr;
 const STAFF_CATALOGUE_MGR_ID = U.staffCatalogueMgr;
 const STAFF_PLATFORM_SPECIALIST_ID = U.staffPlatformSpecialist;
@@ -622,6 +624,8 @@ export async function runLegacyDemoSeed() {
     mobile: row.mobile ?? null,
     mobileCountry: row.mobileCountry ?? null,
     hasSeenActingContextTooltip: row.hasSeenActingContextTooltip ?? false,
+    termsAcceptedAt: row.createdAt,
+    termsVersion: "legacy",
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   });
@@ -1079,6 +1083,22 @@ export async function runLegacyDemoSeed() {
       createdAt: new Date(now - 60 * day),
       updatedAt: stamp,
     },
+    {
+      id: ONBOARDING_INCOMPLETE_ID,
+      name: "Onboarding Pending",
+      firstName: "Onboarding",
+      lastName: "Pending",
+      email: "onboarding-incomplete@lax.bid",
+      emailVerified: true,
+      image: null,
+      role: "client",
+      staffRole: null,
+      kycStatus: "approved",
+      kycVerifiedAt: new Date(now - 10 * day),
+      signupPersona: "individual",
+      createdAt: new Date(now - 5 * day),
+      updatedAt: stamp,
+    },
   ];
 
   await db.insert(user).values(seedUserRows.map(toIdentityUser));
@@ -1120,6 +1140,7 @@ export async function runLegacyDemoSeed() {
       credentialAccount(BUYER_AGENT_ID),
       credentialAccount(VIEWER_ID),
       credentialAccount(SPECIALIST_ID),
+      credentialAccount(ONBOARDING_INCOMPLETE_ID),
     ]);
 
   // ── OAuth external accounts ────────────────────────────────────────────────

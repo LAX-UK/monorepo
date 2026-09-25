@@ -1,3 +1,4 @@
+import type { IUserAccountOnboardingHttpApplicationService } from "./user-account-onboarding-http.js";
 import type { IUserCategoryInterestsHttpApplicationService } from "./user-category-interests-http.js";
 import type { IUserDashboardHttpApplicationService } from "./user-dashboard-http.js";
 import type { IUserNotificationsHttpApplicationService } from "./user-notifications-http.js";
@@ -15,6 +16,7 @@ export type UserRouteServices = {
   notificationsHttp: IUserNotificationsHttpApplicationService;
   preferencesHttp: IUserPreferencesHttpApplicationService;
   profileHttp: IUserProfileHttpApplicationService;
+  accountOnboardingHttp: IUserAccountOnboardingHttpApplicationService;
   securityHttp: IUserSecurityHttpApplicationService;
 };
 

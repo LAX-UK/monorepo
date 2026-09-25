@@ -6,6 +6,7 @@ import { createBidRoutes } from "../routes/bids.js";
 import { createPaymentRoutes } from "../routes/payments.js";
 import { createSubmissionRoutes } from "../routes/submissions.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubSubmissionRouteServices } from "../testing/stub-submission-route-services.js";
 
 const lotId = "00000000-0000-4000-8000-000000000001";
@@ -25,6 +26,9 @@ function minimalContainer(partial: Record<string, unknown>): Container {
     redis: { get: vi.fn().mockResolvedValue(null), set: vi.fn(), ping: vi.fn() },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     kycService: { isConfigured: () => false, enforceThreshold: vi.fn(), getStatus: vi.fn() },
+    accountOnboardingGate: {
+      isComplete: vi.fn().mockResolvedValue(true),
+    },
     ...partial,
   } as unknown as Container;
 }
@@ -48,6 +52,7 @@ describe("admin session on buyer-gated POST routes", () => {
           }),
         }),
         adminAuth,
+        passThroughAccountOnboarding,
       ),
     );
     const res = await app.request("http://test/bids", {
@@ -95,6 +100,7 @@ describe("admin session on buyer-gated POST routes", () => {
           },
         }),
         adminAuth,
+        passThroughAccountOnboarding,
       ),
     );
     const res = await app.request("http://test/payments", {
@@ -127,6 +133,7 @@ describe("admin session on buyer-gated POST routes", () => {
           }),
         }),
         adminAuth,
+        passThroughAccountOnboarding,
       ),
     );
     const res = await app.request(`http://test/submissions/${submissionId}/submit`, {

@@ -26,6 +26,7 @@ export * from "./notification.js";
 export * from "./payment.js";
 export * from "./password-policy.js";
 export * from "./register.js";
+export * from "./account-onboarding.js";
 export * from "./invitation.js";
 export * from "./forgot-password.js";
 export * from "./reset-password.js";

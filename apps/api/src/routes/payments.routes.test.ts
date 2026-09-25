@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { ContainerPaymentHttpRoutesSlice } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { createPaymentRoutes } from "./payments.js";
 
 const lotId = "00000000-0000-4000-8000-000000000001";
@@ -45,7 +46,10 @@ function mountPaymentRoutes(
       scopes: ["bid.read", "bid.write"],
     })),
   };
-  app.route("/payments", createPaymentRoutes(container, authenticator));
+  app.route(
+    "/payments",
+    createPaymentRoutes(container, authenticator, passThroughAccountOnboarding),
+  );
   return { app, buyerPaymentHttp };
 }
 

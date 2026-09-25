@@ -1,24 +1,10 @@
-import { registerBodySchema, userIdParamSchema } from "@auction/validators";
-import { marketingWebsiteContextFromHono } from "../../lib/marketing-website-context.js";
+import { userIdParamSchema } from "@auction/validators";
 import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
 
 export function attachUserPublicRoutes(r: UserHono, deps: UserRouteDeps): void {
-  const { container, requireTurnstile } = deps;
-
-  r.post("/register", zValidator("json", registerBodySchema), requireTurnstile, async (c) => {
-    const body = c.req.valid("json");
-    const { turnstileToken: _turnstile, ...reg } = body;
-    const response = await container.userRoutes.publicHttp.register({
-      body: reg,
-      webOrigin: container.env.WEB_ORIGIN,
-      registrationDisabled: Boolean(container.env?.DISABLE_NEW_USER_REGISTRATION),
-      marketingContext: marketingWebsiteContextFromHono(c),
-      headers: c.req.raw.headers,
-    });
-    return respondUserHttpJson(c, response);
-  });
+  const { container } = deps;
 
   r.get("/public/artists", async (c) => {
     const limit = Math.min(

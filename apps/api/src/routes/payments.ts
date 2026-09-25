@@ -5,6 +5,7 @@ import {
   paymentIdParamSchema,
 } from "@auction/validators";
 import { Hono } from "hono";
+import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
 import type { ContainerPaymentHttpRoutesSlice } from "../container.js";
 import {
@@ -36,6 +37,7 @@ const attachSofDocumentBodySchema = z.object({
 export function createPaymentRoutes(
   container: ContainerPaymentHttpRoutesSlice,
   authenticator: IAuthenticator,
+  requireAccountOnboarding: MiddlewareHandler,
 ) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
@@ -47,7 +49,6 @@ export function createPaymentRoutes(
   );
   const buyerPaymentHttp = container.finance.buyerPaymentHttp;
   const entityStaffPayment = container.finance.entityStaffPayment;
-
   const r = new Hono<{
     Variables: {
       userId?: string;
@@ -169,6 +170,7 @@ export function createPaymentRoutes(
   r.post(
     "/",
     requireAuth,
+    requireAccountOnboarding,
     requireBuyerRole,
     zValidator("json", createPaymentBodySchema),
     async (c) => {

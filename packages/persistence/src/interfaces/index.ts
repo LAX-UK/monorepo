@@ -72,6 +72,11 @@ export type {
 export type { ISavedSearchRepository, SavedSearchRow } from "./saved-search.repository.js";
 
 export type { IAccountDeletionEligibilityReader } from "./account-deletion-eligibility.reader.js";
+export type {
+  AccountOnboardingStatusRow,
+  CompleteAccountOnboardingInput,
+  IAccountOnboardingRepository,
+} from "./account-onboarding.repository.js";
 
 export type { AbsenteeBidRow, IAbsenteeBidRepository } from "./absentee-bid.repository.js";
 

@@ -19,13 +19,14 @@ import {
 } from "./_shared.js";
 
 export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: SubmissionRouteDeps): void {
-  const { container, requireAuth, requireSubmissionEntityContext } = deps;
+  const { container, requireAuth, requireAccountOnboarding, requireSubmissionEntityContext } = deps;
   const sellerHttp = container.submissionRoutes.sellerHttp;
   const documentHttp = container.submissionRoutes.documentHttp;
 
   r.post(
     "/",
     requireAuth,
+    requireAccountOnboarding,
     requireBuyerRole,
     requireSubmissionEntityContext,
     zValidator("json", createItemSubmissionSchema),
@@ -159,6 +160,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
   r.post(
     "/:id/submit",
     requireAuth,
+    requireAccountOnboarding,
     requireBuyerRole,
     requireSubmissionEntityContext,
     zValidator("param", submissionIdParamSchema),

@@ -26,6 +26,7 @@ type SaleRouteMiddleware = {
   optionalAuth: ReturnType<typeof createOptionalAuth>;
   kycGate: ReturnType<typeof createRequireKyc>;
   requireLegalEntity: MiddlewareHandler;
+  requireAccountOnboarding: MiddlewareHandler;
 };
 
 export type SaleRouteDeps = SaleRouteMiddleware & {
