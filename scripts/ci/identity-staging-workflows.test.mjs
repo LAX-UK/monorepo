@@ -121,6 +121,10 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
     read(".github/workflows/terraform-apply-test.yml"),
     /run-test-ephemeral-predeploy-migrate\.sh/,
   );
+  assert.match(
+    read(".github/workflows/terraform-apply-test.yml"),
+    /run_ephemeral_predeploy_migrate/,
+  );
 });
 
 test("auth at-rest maintenance workflow is manually approved and phased", () => {
@@ -215,6 +219,7 @@ test("App Platform deploy action exposes exact deployment evidence and release c
 
 test("staging rollback restores a reviewed immutable manifest through Terraform", () => {
   const workflow = read(".github/workflows/staging-recovery-test.yml");
+  assert.match(workflow, /enable_ssf:[\s\S]*run_ephemeral_predeploy_migrate: false/);
   assert.match(workflow, /inventory_auth_at_rest/);
   assert.match(workflow, /qualify_identity/);
   assert.match(workflow, /group: app-deploy-test/);

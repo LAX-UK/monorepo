@@ -45,6 +45,11 @@ on:
         type: string
         required: false
         description: Immutable monorepo SHA for lax-test-migrate and default worker images
+      run_ephemeral_predeploy_migrate:
+        type: boolean
+        required: false
+        default: true
+        description: When false, skip the CI migrate container before apply (same pins already migrated in a prior step).
 concurrency:
   group: >-
     ${{
@@ -179,7 +184,11 @@ jobs:
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - name: Apply full test migrations and role grants before App Platform rollout
-        if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_TEST == 'image' && inputs.app_image_tag != ''
+        if: >-
+          inputs.layer == 'ephemeral' &&
+          inputs.run_ephemeral_predeploy_migrate &&
+          vars.APP_DEPLOY_SOURCE_TEST == 'image' &&
+          inputs.app_image_tag != ''
         env:
           OIDC_CLIENT_SECRET_LAX_SHOP_WEB_FALLBACK: ${{ secrets.OIDC_CLIENT_SECRET_LAX_SHOP_WEB }}
           MIGRATE_IMAGE: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}/lax-test-migrate:${{ inputs.app_image_tag }}
