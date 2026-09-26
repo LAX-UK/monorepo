@@ -78,11 +78,11 @@ describe("MarketingPromptDialog", () => {
     ).toHaveAccessibleDescription(/discover exceptional art/i);
     expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
       "href",
-      "/register?next=%2Fsearch%3Fq%3Dmodern",
+      "/api/auth/login?next=%2Fsearch%3Fq%3Dmodern&intent=signup",
     );
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
-      "/login?next=%2Fsearch%3Fq%3Dmodern",
+      "/api/auth/login?next=%2Fsearch%3Fq%3Dmodern",
     );
   });
 
