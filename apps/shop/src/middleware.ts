@@ -4,6 +4,13 @@ import {
   shopIdentityBaseUrl,
   shopIdentityServerUrl,
 } from "@/lib/shop-identity.server";
+import { SHOP_SILENT_SSO_COOKIE_PREFIX, isShopSilentSsoEnabled } from "@/lib/silent-sign-in/config";
+import { readRequestCookieJar } from "@/lib/silent-sign-in/cookie-jar";
+import {
+  createSilentSignInCookieSpec,
+  evaluateSilentSignInEligibility,
+  selectSilentSignInStrategy,
+} from "@auction/identity-rp";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -24,6 +31,31 @@ export async function middleware(request: NextRequest) {
 
   const sessionCookie = request.cookies.get(SHOP_IDENTITY_SESSION_COOKIE)?.value;
   if (!sessionCookie) {
+    if (isShopSilentSsoEnabled()) {
+      const strategy = selectSilentSignInStrategy({
+        fedcmEnabled: process.env.FEDCM_ENABLED === "true",
+      });
+      if (strategy === "redirect") {
+        const eligibility = evaluateSilentSignInEligibility({
+          request: {
+            method: request.method,
+            pathname,
+            getHeader: (name) => request.headers.get(name),
+            userAgent: request.headers.get("user-agent"),
+            hasProductSession: false,
+          },
+          cookieJar: readRequestCookieJar(request),
+          cookieNames: createSilentSignInCookieSpec(SHOP_SILENT_SSO_COOKIE_PREFIX),
+          skipPathPrefixes: SKIP_PREFIXES,
+        });
+        if (eligibility.kind === "probe") {
+          const returnTo = `${pathname}${request.nextUrl.search}`;
+          const probeUrl = new URL("/auth/sso-probe", shopIdentityBaseUrl());
+          probeUrl.searchParams.set("returnTo", returnTo);
+          return NextResponse.redirect(probeUrl);
+        }
+      }
+    }
     return NextResponse.next();
   }
 

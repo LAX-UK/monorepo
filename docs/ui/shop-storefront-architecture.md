@@ -62,6 +62,10 @@ session-aware header account VM).
 - Header chrome matches Bid marketing (fixed utility row, product switcher, mega menu, theme toggle, session utility). Search and wishlist stay omitted until those slices ship. **Basket** is a bag icon link to `/basket` with an optional count badge in the primary navigation row beside theme and account (all viewports); it reflects the persistent basket via `shopCommerceRequest` basket reads. The mega menu is Shop-owned IA (Collect / Artists catalogue destinations), not Bid auction/sell routes. Theme is class-based `html.dark` with a Shop-local cookie/localStorage module. **Theme contract:** consumer CSS/TSX uses semantic tokens from `apps/shop/src/app/base.css`; raw palette literals and Tailwind gray/white/black utilities are forbidden outside `THEME_FIXED_CONTRAST` hero/scrim blocks (`scripts/ci/verify-shop-theme.test.mjs`).
 - Currency/language controls are omitted from header chrome until localization ships (do not add non-functional selectors).
 
+## Silent SSO (cross-product)
+
+When `SILENT_SSO_ENABLED=true`, guest document navigations on eligible storefront paths redirect once to Shop Identity `GET /auth/sso-probe` (`prompt=none`). Callback uses `shop_sso_*` cookies (probe / quiet / suppressed) from `@auction/identity-rp`. See [Silent SSO rollout](../runbooks/silent-sso-rollout.md).
+
 ## Verification
 
 - `pnpm --filter @auction/shop test`, `lint`, `typecheck`, `build`

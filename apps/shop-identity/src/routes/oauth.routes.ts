@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { OidcAuthorizePrompt } from "@auction/identity-rp";
+import { type OidcAuthorizePrompt, classifySilentCallback } from "@auction/identity-rp";
 import type { Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type {
@@ -20,6 +20,14 @@ import {
   writeSessionCookie,
 } from "../session.js";
 import type { ShopIdentityAppDeps } from "../shop-identity-app-deps.js";
+import {
+  SHOP_SILENT_SSO_COOKIE_NAMES,
+  clearShopSilentProbe,
+  clearShopSilentSuppressed,
+  markShopSilentProbe,
+  markShopSilentQuiet,
+  markShopSilentSuppressed,
+} from "../silent-sign-in-cookies.js";
 import { shopStorefrontBaseUrl, shopStorefrontPath } from "../storefront-routes.js";
 
 type OAuthRoutesDeps = Pick<
@@ -79,8 +87,19 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
     );
   }
 
-  app.get("/login", (c) => startShopAuthorization(c));
-  app.get("/register", (c) => startShopAuthorization(c));
+  app.get("/login", (c) => {
+    clearShopSilentSuppressed(c);
+    return startShopAuthorization(c);
+  });
+  app.get("/register", (c) => {
+    clearShopSilentSuppressed(c);
+    return startShopAuthorization(c);
+  });
+
+  app.get("/auth/sso-probe", (c) => {
+    markShopSilentProbe(c, secureCookies);
+    return startShopAuthorization(c, { prompt: "none" });
+  });
 
   app.get("/auth/upgrade", async (c) => {
     if (getCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME)) {
@@ -99,6 +118,23 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
   app.get("/auth/callback", async (c) => {
     const session = await readSession(sessionRepository, c);
     const oauthError = c.req.query("error") ?? null;
+    const probeActive = Boolean(getCookie(c, SHOP_SILENT_SSO_COOKIE_NAMES.probe));
+    const silentCallback = classifySilentCallback(oauthError);
+    if (probeActive && silentCallback.kind !== "success") {
+      deleteCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, { path: "/" });
+      if (session?.id) {
+        await tokenService.clear(session.id);
+      }
+      clearShopAuthCookies(c);
+      markShopSilentQuiet(c, secureCookies);
+      const returnTo = getCookie(c, "shop_return_to");
+      deleteCookie(c, "shop_return_to", { path: "/" });
+      const safeReturnTo =
+        typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
+          ? returnTo
+          : "/";
+      return c.redirect(shopStorefrontPath(env, safeReturnTo), 302);
+    }
     if (
       oauthError === "login_required" ||
       oauthError === "interaction_required" ||
@@ -118,7 +154,20 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       oauthError,
     });
     deleteCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, { path: "/" });
+    if (probeActive) {
+      clearShopSilentProbe(c);
+    }
     if (result.kind === "session_expired") {
+      if (probeActive) {
+        markShopSilentQuiet(c, secureCookies);
+        const returnTo = getCookie(c, "shop_return_to");
+        deleteCookie(c, "shop_return_to", { path: "/" });
+        const safeReturnTo =
+          typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
+            ? returnTo
+            : "/";
+        return c.redirect(shopStorefrontPath(env, safeReturnTo), 302);
+      }
       return c.redirect(shopStorefrontPath(env, "/session-expired"), 302);
     }
     if (result.kind === "error") {
@@ -132,6 +181,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       return c.redirect(shopStorefrontPath(env, "/account/disabled"), 302);
     }
     writeSessionCookie(c, result.sessionId, { secure: secureCookies });
+    clearShopSilentSuppressed(c);
     clearOidcIdTokenCookie(c);
     await tokenService.persist(result.sessionId, {
       idToken: result.idToken,
@@ -144,9 +194,12 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
         ? returnTo
         : null;
-    const destination = safeReturnTo
-      ? `/account?returnTo=${encodeURIComponent(safeReturnTo)}`
-      : "/account";
+    const destination =
+      probeActive && safeReturnTo
+        ? safeReturnTo
+        : safeReturnTo
+          ? `/account?returnTo=${encodeURIComponent(safeReturnTo)}`
+          : "/account";
     return c.redirect(shopStorefrontPath(env, destination), 302);
   });
 
@@ -166,6 +219,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       await tokenService.clear(sessionId);
     }
     clearShopAuthCookies(c);
+    markShopSilentSuppressed(c, secureCookies);
     clearBasketToken(c);
     clearCommerceCsrfCookie(c);
     const state = randomBytes(24).toString("base64url");

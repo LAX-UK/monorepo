@@ -15,7 +15,11 @@ export function runHostedPostLoginEffects(input: {
 }): void {
   if (input.analyticsOnly) {
     if (input.analyticsEnabled) {
-      trackLogin();
+      if (input.entryIntent === "silent") {
+        trackLogin("silent_sso");
+      } else {
+        trackLogin();
+      }
       if (input.entryIntent === "sell" && input.marketingEnabled) {
         trackSellAuthHandoff();
       }

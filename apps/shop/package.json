@@ -15,6 +15,7 @@
     "test:e2e:a11y": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep @a11y"
   },
   "dependencies": {
+    "@auction/identity-rp": "workspace:*",
     "@auction/branding": "workspace:*",
     "@auction/lax-ecosystem": "workspace:*",
     "@auction/marketing-ui": "workspace:*",

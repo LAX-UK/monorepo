@@ -11,6 +11,8 @@ import {
 import { mountHostedAuthAssets } from "./mount-hosted-auth-assets.js";
 import { mountHostedAuthPages } from "./mount-hosted-auth-pages.js";
 import type { OidcRouteMountOptions } from "./mount-oidc-routes.js";
+import { registerFedcmRoutes } from "../http/fedcm.routes.js";
+import { createLoginStatusMiddleware } from "../http/login-status.middleware.js";
 import { mountOidcRoutes } from "./mount-oidc-routes.js";
 
 type Counter = { inc(labels: Record<string, string>): void };
@@ -35,6 +37,12 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
       turnstileEnabled: Boolean(options.oidc.env.TURNSTILE_SITE_KEY),
     }),
   );
+  app.use("*", createLoginStatusMiddleware());
+  registerFedcmRoutes(app, {
+    issuerOrigin: options.oidc.env.OIDC_ISSUER_URL.replace(/\/+$/, ""),
+    clientId: "lax-bid-web",
+    enabled: process.env.FEDCM_ENABLED === "true",
+  });
   app.use("/api/auth/*", async (c, next) => {
     await next();
     const path = c.req.path;

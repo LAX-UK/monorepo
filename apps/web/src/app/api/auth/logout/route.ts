@@ -1,3 +1,4 @@
+import { markBidSilentSuppressed } from "@/lib/auth/silent-sign-in/cookies.server";
 import { bffConfig } from "@/lib/bff/config.server";
 import { buildEndSessionUrl } from "@/lib/bff/oidc.server";
 import { getBffRedis } from "@/lib/bff/redis.server";
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
         : bffConfig().postLogoutRedirectUri,
   });
   clearBidSessionCookie(response);
+  markBidSilentSuppressed(response);
   response.headers.set("cache-control", "no-store");
   return response;
 }
