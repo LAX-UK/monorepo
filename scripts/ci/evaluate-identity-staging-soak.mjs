@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { assertSampleMeetsSoakThresholds } from "./identity-soak-threshold-contract.mjs";
+import { SOAK_TARGET_SAMPLES, isWithinSoakWindow } from "./identity-soak-window.mjs";
 
 const token = process.env.GH_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY ?? "LAX-UK/monorepo";
@@ -65,7 +66,7 @@ for (let page = 1; ; page += 1) {
     (artifact) =>
       !artifact.expired &&
       artifact.name.startsWith("identity-staging-soak-sample-") &&
-      Date.parse(artifact.created_at) >= startedAt,
+      isWithinSoakWindow(Date.parse(artifact.created_at), startedAt),
   );
   artifacts.push(...matches);
   if (result.artifacts.length < 100) break;
@@ -73,10 +74,13 @@ for (let page = 1; ; page += 1) {
 
 const samples = (await Promise.all(artifacts.map(downloadSample)))
   .filter((sample) => sample.identitySha === identitySha)
+  .filter((sample) => isWithinSoakWindow(Date.parse(sample.observedAt), startedAt))
   .sort((left, right) => Date.parse(left.observedAt) - Date.parse(right.observedAt));
 
-if (samples.length < 96) {
-  throw new Error(`Expected at least 96 soak samples; found ${samples.length}`);
+if (samples.length < SOAK_TARGET_SAMPLES) {
+  throw new Error(
+    `Expected at least ${SOAK_TARGET_SAMPLES} soak samples in window; found ${samples.length}`,
+  );
 }
 for (let index = 1; index < samples.length; index += 1) {
   const gap = Date.parse(samples[index].observedAt) - Date.parse(samples[index - 1].observedAt);

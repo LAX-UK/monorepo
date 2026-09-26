@@ -130,7 +130,7 @@ jobs:
             echo "Soak window complete; not scheduling another sample."
             exit 0
           fi
-          sleep 900
+          sleep 780
           gh workflow run identity-staging-soak.yml \
             --ref "${GITHUB_REF_NAME:-main}" \
             -f mode=sample \
