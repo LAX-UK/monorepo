@@ -88,11 +88,9 @@ function printDiagnostics(appId) {
       // ignore
     }
   }
-  const deployments = spawnSync(
-    "doctl",
-    ["apps", "list-deployments", appId, "--output", "json"],
-    { encoding: "utf8" },
-  );
+  const deployments = spawnSync("doctl", ["apps", "list-deployments", appId, "--output", "json"], {
+    encoding: "utf8",
+  });
   if (deployments.stdout) {
     try {
       const list = JSON.parse(deployments.stdout);
@@ -110,18 +108,13 @@ async function main() {
   const { urls, expected, attempts, intervalSeconds, appId } = parseArgs(process.argv.slice(2));
   for (const url of urls) {
     const expectedRelease = expected[url] ?? "";
-    let body = null;
     let actualRelease = "";
     let status = "";
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const result = await fetchReady(url);
-      body = result.body;
       actualRelease = result.release;
       status = result.status;
-      if (
-        status === "ok" &&
-        (!expectedRelease || actualRelease === expectedRelease)
-      ) {
+      if (status === "ok" && (!expectedRelease || actualRelease === expectedRelease)) {
         console.log(`Readiness ok for ${url}${expectedRelease ? ` release ${actualRelease}` : ""}`);
         break;
       }
