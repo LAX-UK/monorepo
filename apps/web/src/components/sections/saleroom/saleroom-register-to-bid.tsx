@@ -3,9 +3,9 @@
 import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { registerForSale } from "@/lib/data/http/sale-registration.client";
-import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import {
   BID_LIMIT_FIELD_LABEL,

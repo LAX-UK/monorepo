@@ -7,12 +7,12 @@ import {
   registerToBidHeroCaption,
   registerToBidNeedsAgentFormBand,
 } from "@/components/sections/saleroom/saleroom-register-to-bid";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { LegalEntityMemberRole, SaleDeliveryMode } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import Link from "next/link";
 import type { SaleHeroVM } from "./view-models";
 

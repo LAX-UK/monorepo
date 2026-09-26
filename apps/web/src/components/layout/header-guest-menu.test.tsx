@@ -34,10 +34,7 @@ describe("HeaderGuestMenu", () => {
     const createAccount = screen.getByRole("menuitem", { name: "Create account" });
     expect(signIn.tagName).toBe("A");
     expect(createAccount.tagName).toBe("A");
-    expect(signIn).toHaveAttribute(
-      "href",
-      "/api/auth/login?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid",
-    );
+    expect(signIn).toHaveAttribute("href", "/api/auth/login?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid");
     expect(createAccount).toHaveAttribute(
       "href",
       "/api/auth/login?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid&intent=signup",

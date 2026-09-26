@@ -1,6 +1,7 @@
 "use client";
 
 import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import {
   overlayOutlineButtonClasses,
   overlayToneProps,
@@ -9,7 +10,6 @@ import {
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Bell, BellRing } from "lucide-react";
-import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { useCallback, useState } from "react";
 
 type Props = {

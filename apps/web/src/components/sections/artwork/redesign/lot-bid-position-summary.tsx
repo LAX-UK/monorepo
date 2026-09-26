@@ -1,5 +1,6 @@
 "use client";
 
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import {
   type LotBidPosition,
   lotBidPositionAutoStickyLabel,
@@ -10,7 +11,6 @@ import type { LotEndedNoSaleReason } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Gavel, Shield, Zap } from "lucide-react";
-import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import Link from "next/link";
 import type { ReactNode } from "react";
 

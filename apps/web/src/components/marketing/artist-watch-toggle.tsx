@@ -1,5 +1,6 @@
 "use client";
 
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import {
   type ArtistWatchlistClient,
   defaultArtistWatchlistClient,
@@ -8,7 +9,6 @@ import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Bookmark, BookmarkPlus, Eye } from "lucide-react";
-import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { useCallback, useState } from "react";
 
 type Props = {

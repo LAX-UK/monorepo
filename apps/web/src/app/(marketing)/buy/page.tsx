@@ -6,10 +6,10 @@ import {
 } from "@/components/marketing/marketing-breadcrumb";
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
-import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { Button } from "@auction/ui";
 import type { Metadata } from "next";
 import Link from "next/link";

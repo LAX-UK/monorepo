@@ -2,11 +2,11 @@
 
 import { SendVerificationEmailButton } from "@/components/auth/send-verification-email-button";
 import { ConditionReportRequestForm } from "@/components/sections/artwork/redesign/condition-report-request-form";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { ConditionReportCardState } from "@/lib/condition-report/derive-condition-report-card-state";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { Button } from "@auction/ui/components/button";
 import type { ConditionReportRequestFormValues } from "@auction/validators";
-import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import Link from "next/link";
 
 export function LotConditionReportPublishedPanel({
