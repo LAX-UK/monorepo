@@ -43,9 +43,24 @@ Release (Set-Login and FedCM Identity routes):
 
 Requires spike validation (`SameSite=None` session reachability, auth code minting). Endpoints live under Identity `/fedcm/*` when `FEDCM_ENABLED=true`. Redirect probe remains the fallback.
 
+Keep **`FEDCM_ENABLED=false`** until all of the following ship:
+
+- Working `POST /fedcm/assertion` (not 501) and RP `/fedcm/complete` handlers.
+- `login_url` in Identity `fedcm/config.json` (required by Chromium).
+- `/.well-known/web-identity` on the **eTLD+1** (`lax.bid`), not only on product subdomains.
+
 **Test environment:** Chromium expects `/.well-known/web-identity` on the **eTLD+1** (`lax.bid`), not on `test.lax.bid` / `test-shop.lax.bid`. FedCM cannot be fully exercised on test subdomains until well-known is served at the registrable root (or prod-like hostnames).
 
 FedCM client bootstraps only run when server-side cookie gates pass (no session, not quiet/suppressed). Each tab attempts FedCM once (`sessionStorage`); failed attempts fall back to the redirect probe, which also refuses suppressed/quiet/authenticated callers.
+
+## Manual cross-product verification (test)
+
+Automated Playwright coverage is not checked in: it needs real test origins, `SILENT_SSO_ENABLED=true`, and an existing IdP session from an interactive sign-in on the other product.
+
+1. Sign in on Shop (interactive) on test; confirm guest basket if merge matters.
+2. Open Bid in a fresh profile (or after clearing Bid cookies only) → expect silent sign-in without a login form; land on the requested page, not forced onboarding.
+3. Reverse: sign in on Bid, open Shop → silent sign-in and basket merge via `/account/post-sign-in` when applicable.
+4. Log out on one product → confirm suppressed cookie blocks silent probe until interactive sign-in on that product.
 
 ## Backchannel logout
 

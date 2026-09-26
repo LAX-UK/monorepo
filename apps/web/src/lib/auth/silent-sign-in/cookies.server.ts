@@ -1,5 +1,6 @@
 import "server-only";
 
+import { bidSessionCookieUsesSecureTransport } from "@/lib/bff/session-cookie.constants";
 import {
   DEFAULT_SILENT_SIGN_IN_MAX_AGES,
   createSilentSignInCookieSpec,
@@ -14,8 +15,8 @@ export const BID_SILENT_SSO_COOKIE_NAMES = createSilentSignInCookieSpec(
   BID_SILENT_SSO_COOKIE_PREFIX,
 );
 
-function secureCookies(): boolean {
-  return process.env.NODE_ENV === "production";
+function secureCookies(env: NodeJS.ProcessEnv = process.env): boolean {
+  return bidSessionCookieUsesSecureTransport(env);
 }
 
 function applyCookieOptions(maxAgeSeconds: number) {

@@ -115,3 +115,14 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
 
   return destination;
 }
+
+/** Silent SSO must not force onboarding; route guards handle gated pages later. */
+export function resolveSilentPostLoginDestination(
+  user: Pick<SessionUser, "suspended">,
+  requestedNext: string | null,
+): string {
+  if (user.suspended === true) {
+    return "/account-suspended";
+  }
+  return requestedNext ?? "/";
+}

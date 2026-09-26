@@ -40,7 +40,6 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
   app.use("*", createLoginStatusMiddleware());
   registerFedcmRoutes(app, {
     issuerOrigin: options.oidc.env.OIDC_ISSUER_URL.replace(/\/+$/, ""),
-    clientId: "lax-bid-web",
     enabled: options.oidc.env.FEDCM_ENABLED,
   });
   app.use("/api/auth/*", async (c, next) => {

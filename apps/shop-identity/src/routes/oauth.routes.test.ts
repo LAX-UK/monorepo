@@ -227,6 +227,46 @@ describe("OAuth routes", () => {
     expect(response.headers.get("set-cookie")).toContain(`${SHOP_SILENT_SSO_COOKIE_NAMES.probe}=`);
   });
 
+  it("silent probe success with returnTo routes through post-sign-in for basket merge", async () => {
+    const tokenService = createTestTokenService();
+    const app = new Hono();
+    registerOAuthRoutes(app, {
+      env: testShopIdentityEnv,
+      discovery: {
+        authorization_endpoint: "https://identity.example/authorize",
+        end_session_endpoint: "https://identity.example/logout",
+      } as unknown as OidcDiscovery,
+      secureCookies: false,
+      sessionRepository: {
+        findActive: vi.fn(async () => null),
+        createPendingOAuth: vi.fn(async () => "pending-session"),
+        attachPendingOAuthToAuthenticatedSession: vi.fn(async () => true),
+        createGuestSession: vi.fn(async () => "guest-session-id01234567890123456789012"),
+        authenticate: vi.fn(async () => "guest-session-id01234567890123456789012"),
+        invalidate: vi.fn(),
+        consumeLogoutToken: vi.fn(async () => "consumed" as const),
+      },
+      tokenService,
+      completeOAuthCallback: vi.fn(
+        async (): Promise<CompleteOAuthCallbackResult> => ({
+          kind: "authenticated",
+          idToken: "header.payload.signature",
+          refreshToken: "refresh-token-value",
+          sessionId: "abcdefghijklmnopqrstuvwxyz0123456789ABCDEfg",
+        }),
+      ),
+    });
+    const response = await app.request("/auth/callback?state=state&code=code", {
+      headers: {
+        cookie: `${SHOP_SILENT_SSO_COOKIE_NAMES.probe}=1; shop_return_to=%2Fcatalog`,
+      },
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3020/account/post-sign-in?returnTo=%2Fcatalog",
+    );
+  });
+
   it("returns guest to returnTo on login_required silent probe callback", async () => {
     const tokenService = createTestTokenService();
     const app = new Hono();

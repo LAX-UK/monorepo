@@ -1,8 +1,9 @@
-import { NextRequest } from "next/server";
+import type { redirectIfSilentProbeBlocked as RedirectIfSilentProbeBlocked } from "@/lib/auth/silent-sign-in/sso-probe-guard.server";
+import { NextRequest, NextResponse } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 
 const startBidAuthorization = vi.fn(async () => new Response(null, { status: 302 }));
-const redirectIfSilentProbeBlocked = vi.fn(() => null);
+const redirectIfSilentProbeBlocked = vi.fn<typeof RedirectIfSilentProbeBlocked>(() => null);
 
 vi.mock("@/lib/bff/start-bid-authorization.server", () => ({
   startBidAuthorization,
@@ -16,7 +17,7 @@ const { GET } = await import("./route");
 describe("sso-probe route", () => {
   it("returns early when probe is blocked", async () => {
     redirectIfSilentProbeBlocked.mockReturnValueOnce(
-      new Response(null, { status: 302, headers: { location: "https://lax.bid/catalog" } }),
+      NextResponse.redirect("https://lax.bid/catalog", 302),
     );
     const request = new NextRequest("https://lax.bid/api/auth/sso-probe?next=%2Fcatalog");
     const response = await GET(request);

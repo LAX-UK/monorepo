@@ -15,7 +15,6 @@ describe("FedCM routes", () => {
     registerFedcmRoutes(app, {
       enabled: false,
       issuerOrigin: "https://auth.test",
-      clientId: "lax-bid-web",
     });
     const response = await app.request("/fedcm/config.json");
     expect(response.status).toBe(404);
@@ -26,11 +25,10 @@ describe("FedCM routes", () => {
     registerFedcmRoutes(app, {
       enabled: true,
       issuerOrigin: "https://auth.test",
-      clientId: "lax-bid-web",
     });
     const response = await app.request("/fedcm/config.json");
     expect(response.status).toBe(200);
-    const body = await response.json();
+    const body = (await response.json()) as { accounts_endpoint: string };
     expect(body.accounts_endpoint).toContain("/fedcm/accounts");
   });
 
@@ -39,7 +37,6 @@ describe("FedCM routes", () => {
     registerFedcmRoutes(app, {
       enabled: true,
       issuerOrigin: "https://auth.test",
-      clientId: "lax-bid-web",
     });
     const response = await app.request("/fedcm/accounts");
     expect(response.status).toBe(403);

@@ -2,7 +2,6 @@ import type { Hono } from "hono";
 
 type FedcmRoutesDeps = {
   issuerOrigin: string;
-  clientId: string;
   enabled: boolean;
 };
 

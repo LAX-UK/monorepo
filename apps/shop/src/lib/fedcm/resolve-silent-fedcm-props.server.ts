@@ -42,13 +42,12 @@ export function resolveShopSilentFedcmBootstrapProps(
     return null;
   }
   const shopEnv = loadShopEnv(env);
-  const issuer = (
-    shopEnv.IDENTITY_PUBLIC_BASE_URL ??
-    shopEnv.WEB_ORIGIN ??
-    "http://localhost:3003"
-  ).replace(/\/+$/, "");
+  const publicBase = shopEnv.IDENTITY_PUBLIC_BASE_URL?.replace(/\/+$/, "");
+  if (!publicBase) {
+    return null;
+  }
   return {
-    configUrl: `${issuer}/fedcm/config.json`,
+    configUrl: `${publicBase}/fedcm/config.json`,
     clientId: "lax-shop-web",
     identityBaseUrl: shopIdentityBaseUrl(),
   };

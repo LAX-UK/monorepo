@@ -233,12 +233,9 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
         ? returnTo
         : null;
-    const destination =
-      probeActive && safeReturnTo
-        ? safeReturnTo
-        : safeReturnTo
-          ? `/account?returnTo=${encodeURIComponent(safeReturnTo)}`
-          : "/account";
+    const destination = safeReturnTo
+      ? `/account/post-sign-in?returnTo=${encodeURIComponent(safeReturnTo)}`
+      : "/account";
     return c.redirect(shopStorefrontPath(env, destination), 302);
   });
 
