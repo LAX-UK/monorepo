@@ -20,12 +20,18 @@ inputs:
   rolling-image-tag:
     description: >-
       When set, pin prebuilt Bid DOCR services (api, ws, worker, web, migrate,
-      clamav) to this immutable tag via digitalocean/app_action/deploy@v2, then
-      create-deployment so :test digest rolls apply to every component.
+      clamav) to this immutable tag via digitalocean/app_action/deploy@v2.
+      Test auth uses standalone lax-identity images; do not set IMAGE_TAG_AUTH here.
+      That action runs a full deployment; do not follow with create-deployment
+      (a second deploy can supersede the pin before web traffic moves).
     required: false
     default: ""
   do-token:
     description: DigitalOcean API token (required when rolling-image-tag is set)
+    required: false
+    default: ""
+  prebuilt-environment:
+    description: test or prod — enables DOCR pre-pin checks for lax-<env>-web
     required: false
     default: ""
 outputs:
@@ -52,6 +58,26 @@ runs:
         test -n "$app_name"
         echo "name=$app_name" >> "$GITHUB_OUTPUT"
 
+    - name: Verify prebuilt web image in DOCR
+      if: inputs.rolling-image-tag != '' && inputs.prebuilt-environment != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+        node scripts/ci/verify-prebuilt-web-for-deploy.mjs \
+          --environment "${{ inputs.prebuilt-environment }}" \
+          --sha "${{ inputs.rolling-image-tag }}"
+
+    - name: Assert App Platform spec before pin
+      if: inputs.rolling-image-tag != ''
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
+      run: |
+        set -euo pipefail
+        node scripts/ci/assert-app-platform-spec.mjs \
+          --app-id "$APP_ID" \
+          --mode pre
+
     - name: Pin prebuilt component image tags
       id: pin
       if: inputs.rolling-image-tag != ''
@@ -70,6 +96,7 @@ runs:
 
     - name: Create App Platform deployment
       id: create
+      if: inputs.rolling-image-tag == ''
       shell: bash
       env:
         APP_ID: ${{ inputs.app-id }}
@@ -86,11 +113,21 @@ runs:
       id: resolve-deployment
       shell: bash
       env:
+        APP_ID: ${{ inputs.app-id }}
+        PINNED: ${{ inputs.rolling-image-tag != '' && 'true' || 'false' }}
         CREATE_DEPLOYMENT_ID: ${{ steps.create.outputs.deployment_id }}
       run: |
         set -euo pipefail
-        test -n "$CREATE_DEPLOYMENT_ID"
-        echo "deployment_id=$CREATE_DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+        if test "$PINNED" = "true"; then
+          deployment_id="$(
+            doctl apps list-deployments "$APP_ID" --output json |
+              jq -r 'if type == "array" then .[0].id else .id end // empty'
+          )"
+        else
+          deployment_id="$CREATE_DEPLOYMENT_ID"
+        fi
+        test -n "$deployment_id"
+        echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
 
     - name: Poll deployment to terminal phase
       id: poll
@@ -139,32 +176,31 @@ runs:
           exit 1
         fi
 
+    - name: Assert App Platform spec after pin
+      if: inputs.rolling-image-tag != ''
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
+        EXPECTED_TAG: ${{ inputs.rolling-image-tag }}
+      run: |
+        set -euo pipefail
+        node scripts/ci/assert-app-platform-spec.mjs \
+          --app-id "$APP_ID" \
+          --expected-tag "$EXPECTED_TAG" \
+          --mode post
+
     - name: Verify readiness URLs
       if: inputs.readiness-urls != '[]'
       shell: bash
       env:
+        APP_ID: ${{ inputs.app-id }}
         READINESS_URLS: ${{ inputs.readiness-urls }}
         EXPECTED_RELEASES: ${{ inputs.expected-releases }}
       run: |
         set -euo pipefail
-        mapfile -t urls < <(jq -r '.[]' <<<"$READINESS_URLS")
-        for url in "${urls[@]}"; do
-          expected_release="$(jq -r --arg url "$url" '.[$url] // empty' <<<"$EXPECTED_RELEASES")"
-          for _ in $(seq 1 60); do
-            body="$(curl --fail --silent --max-time 10 "$url" || true)"
-            actual_release="$(jq -r '.release // empty' <<<"$body" 2>/dev/null || true)"
-            status="$(jq -r '.status // empty' <<<"$body" 2>/dev/null || true)"
-            if test "$status" = "ok" &&
-              { test -z "$expected_release" || test "$actual_release" = "$expected_release"; }; then
-              break
-            fi
-            sleep 10
-          done
-          actual_release="$(jq -r '.release // empty' <<<"$body" 2>/dev/null || true)"
-          status="$(jq -r '.status // empty' <<<"$body" 2>/dev/null || true)"
-          test "$status" = "ok" &&
-            { test -z "$expected_release" || test "$actual_release" = "$expected_release"; } || {
-            echo "::error::Readiness contract failed for $url: expected release ${expected_release:-any}, actual ${actual_release:-missing}"
-            exit 1
-          }
-        done
+        node scripts/ci/verify-readiness-contract.mjs \
+          --urls "$READINESS_URLS" \
+          --expected-releases "$EXPECTED_RELEASES" \
+          --app-id "$APP_ID" \
+          --attempts 60 \
+          --interval-seconds 10

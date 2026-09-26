@@ -67,12 +67,37 @@ function locateComponent(terraform, name) {
   return match?.index ?? -1;
 }
 
+function collectReleaseOwnershipViolations(terraformDir, label) {
+  const violations = [];
+  const sentryRemotePath = resolve(terraformDir, "sentry_remote_state.tf");
+  if (existsSync(sentryRemotePath)) {
+    const sentryRemote = readFileSync(sentryRemotePath, "utf8");
+    if (/key\s*=\s*"SENTRY_RELEASE"/.test(sentryRemote)) {
+      violations.push(
+        `[${label}] sentry_remote_state.tf injects SENTRY_RELEASE into App Platform env (use image-owned release)`,
+      );
+    }
+  }
+  const mainPath = resolve(terraformDir, "main.tf");
+  if (existsSync(mainPath)) {
+    const main = readFileSync(mainPath, "utf8");
+    const specReleaseKeys = main.match(/{\s*key\s*=\s*"SENTRY_RELEASE"/g) ?? [];
+    if (specReleaseKeys.length > 0) {
+      violations.push(
+        `[${label}] main.tf sets SENTRY_RELEASE on ${specReleaseKeys.length} component env block(s)`,
+      );
+    }
+  }
+  return violations;
+}
+
 function collectViolations(target) {
   const { terraformPath, tier, authEndComponent, label } = target;
+  const terraformDir = dirname(terraformPath);
   const terraform = readFileSync(terraformPath, "utf8");
-  const outputs = readFileSync(resolve(dirname(terraformPath), "outputs.tf"), "utf8");
+  const outputs = readFileSync(resolve(terraformDir, "outputs.tf"), "utf8");
   const requiredAuthKeys = tier === "prod" ? prodRequiredAuthKeys : testRequiredAuthKeys;
-  const violations = [];
+  const violations = collectReleaseOwnershipViolations(terraformDir, label);
 
   const authStart = locateComponent(terraform, "auth");
   const authEnd = locateComponent(terraform, authEndComponent);
@@ -118,7 +143,7 @@ function collectViolations(target) {
       violations.push("[test] auth overrides the image-embedded SENTRY_RELEASE");
     }
     if (
-      !/auth_sentry_env\s*=\s*\[[\s\S]*?contains\(\["SENTRY_RELEASE", "SENTRY_AUTH_TOKEN", "SENTRY_ORG"\]/.test(
+      !/auth_sentry_env\s*=\s*\[[\s\S]*?contains\(\["SENTRY_AUTH_TOKEN", "SENTRY_ORG"\]/.test(
         terraform,
       )
     ) {

@@ -7,6 +7,12 @@ on:
       - packages/**
       - package.json
       - pnpm-lock.yaml
+      - .github/actions/app-platform-deploy/**
+      - .github/workflows/app-deploy-test.yml
+      - scripts/ci/verify-prebuilt-web-for-deploy.mjs
+      - scripts/ci/assert-app-platform-spec.mjs
+      - scripts/ci/assert-app-platform-spec.test.mjs
+      - scripts/ci/verify-readiness-contract.mjs
   workflow_dispatch:
 permissions:
   contents: read
@@ -119,4 +125,5 @@ jobs:
           expected-releases: >-
             {"https://test.lax.bid/api/health/ready":"${{ github.sha }}"}
           rolling-image-tag: ${{ vars.USE_PREBUILT_IMAGES_TEST == 'true' && github.sha || '' }}
+          prebuilt-environment: test
           do-token: ${{ secrets.DIGITALOCEAN_TOKEN }}
