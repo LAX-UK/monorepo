@@ -65,9 +65,10 @@ COPY .nvmrc ./.nvmrc
 COPY apps/api ./apps/api
 COPY apps/web ./apps/web
 # SENTRY_AUTH_TOKEN via BuildKit secret — never baked into image layers or cache.
+# next/font/google can fail intermittently when fonts.googleapis.com returns a non-CSS body in CI.
 RUN --mount=type=secret,id=sentry_auth_token \
     --mount=type=cache,target=/app/apps/web/.next/cache \
-    sh -c 'if [ -f /run/secrets/sentry_auth_token ] && [ -s /run/secrets/sentry_auth_token ]; then export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)"; fi && export NODE_OPTIONS="${NODE_OPTIONS}" TURBO_CONCURRENCY="${TURBO_CONCURRENCY}" && pnpm turbo run build --filter=@auction/web'
+    sh -c 'set -e; for attempt in 1 2 3; do if [ -f /run/secrets/sentry_auth_token ] && [ -s /run/secrets/sentry_auth_token ]; then export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)"; fi; export NODE_OPTIONS="${NODE_OPTIONS}" TURBO_CONCURRENCY="${TURBO_CONCURRENCY}"; pnpm turbo run build --filter=@auction/web && exit 0; echo "Web build attempt ${attempt} failed; retrying in 15s..."; sleep 15; done; exit 1'
 
 FROM node:22-alpine AS runner
 WORKDIR /app

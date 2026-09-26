@@ -388,7 +388,15 @@ jobs:
             turbo-${{ github.job }}-${{ runner.os }}-
 
       - name: Build
-        run: pnpm turbo run build --affected
+        run: |
+          set -e
+          # next/font/google can fail when fonts.googleapis.com returns a non-CSS body in CI (see apps/shop/Dockerfile).
+          for attempt in 1 2 3; do
+            pnpm turbo run build --affected && exit 0
+            echo "Build attempt ${attempt} failed; retrying in 15s..."
+            sleep 15
+          done
+          exit 1
 
   docker-images:
     runs-on: ubuntu-latest
