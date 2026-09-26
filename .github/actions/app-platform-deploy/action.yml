@@ -19,8 +19,9 @@ inputs:
     default: "[]"
   rolling-image-tag:
     description: >-
-      When set, pin prebuilt Bid DOCR services (api, auth, ws, worker, web,
-      migrate, clamav) to this immutable tag via digitalocean/app_action/deploy@v2.
+      When set, pin prebuilt Bid DOCR services (api, ws, worker, web, migrate,
+      clamav) to this immutable tag via digitalocean/app_action/deploy@v2.
+      Test auth uses standalone lax-identity images; do not set IMAGE_TAG_AUTH here.
       That action runs a full deployment; do not follow with create-deployment
       (a second deploy can supersede the pin before web traffic moves).
     required: false
@@ -59,7 +60,6 @@ runs:
       uses: digitalocean/app_action/deploy@v2
       env:
         IMAGE_TAG_API: ${{ inputs.rolling-image-tag }}
-        IMAGE_TAG_AUTH: ${{ inputs.rolling-image-tag }}
         IMAGE_TAG_WS: ${{ inputs.rolling-image-tag }}
         IMAGE_TAG_WORKER: ${{ inputs.rolling-image-tag }}
         IMAGE_TAG_WEB: ${{ inputs.rolling-image-tag }}
