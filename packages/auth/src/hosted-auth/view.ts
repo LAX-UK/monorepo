@@ -93,9 +93,7 @@ export type HostedProductBackLink = {
   label: string;
 };
 
-export function resolveHostedProductBackLink(
-  view: HostedAuthView,
-): HostedProductBackLink | null {
+export function resolveHostedProductBackLink(view: HostedAuthView): HostedProductBackLink | null {
   const origin =
     view.flow.product === "shop"
       ? view.capabilities.shopOrigin
@@ -104,7 +102,6 @@ export function resolveHostedProductBackLink(
         : null;
   if (!origin) return null;
   const href = origin.replace(/\/$/, "");
-  const label =
-    view.flow.product === "shop" ? "Back to LAX Shop" : "Back to LAX Bid";
+  const label = view.flow.product === "shop" ? "Back to LAX Shop" : "Back to LAX Bid";
   return { href, label };
 }

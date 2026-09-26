@@ -11,12 +11,9 @@ export type BuildHostedLoginStartHrefOptions = {
 };
 
 /** Client-safe BFF entry URL that starts OIDC without an intermediate /login skeleton. */
-export function buildHostedLoginStartHref(
-  options: BuildHostedLoginStartHrefOptions = {},
-): string {
+export function buildHostedLoginStartHref(options: BuildHostedLoginStartHrefOptions = {}): string {
   const params = new URLSearchParams();
-  const next =
-    options.next && isSafeNextPath(options.next) ? options.next : "/dashboard";
+  const next = options.next && isSafeNextPath(options.next) ? options.next : "/dashboard";
   params.set("next", next);
   const intent = options.intent?.trim();
   if (intent === "signup" || intent === "reauth" || intent === "sell") {
