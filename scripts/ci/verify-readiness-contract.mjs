@@ -69,7 +69,18 @@ async function fetchReady(url) {
   }
 }
 
-function printDiagnostics(appId) {
+function specReleaseOverride(spec) {
+  for (const component of spec?.services ?? []) {
+    for (const env of component.envs ?? component.env ?? []) {
+      if (env.key === "SENTRY_RELEASE") {
+        return { component: component.name ?? "unknown", value: env.value ?? "" };
+      }
+    }
+  }
+  return null;
+}
+
+function printDiagnostics(appId, actualRelease) {
   if (!appId) return;
   const appJson = spawnSync("doctl", ["apps", "get", appId, "--output", "json"], {
     encoding: "utf8",
@@ -82,6 +93,12 @@ function printDiagnostics(appId) {
       if (web?.image) {
         console.error(
           `web image tag: ${web.image.tag ?? "unknown"} registry: ${web.image.registry ?? "unknown"}`,
+        );
+      }
+      const override = specReleaseOverride(spec);
+      if (override && actualRelease && override.value === actualRelease) {
+        console.error(
+          `cause: spec env override — ${override.component} SENTRY_RELEASE=${override.value} overrides image-owned release`,
         );
       }
     } catch {
@@ -126,7 +143,7 @@ async function main() {
       console.error(
         `Readiness contract failed for ${url}: expected release ${expectedRelease || "any"}, actual ${actualRelease || "missing"}`,
       );
-      printDiagnostics(appId);
+      printDiagnostics(appId, actualRelease);
       process.exit(1);
     }
   }

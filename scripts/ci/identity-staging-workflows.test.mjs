@@ -210,9 +210,11 @@ test("App Platform deploy action exposes exact deployment evidence and release c
   assert.match(action, /standalone lax-identity/);
   assert.match(action, /if: inputs\.rolling-image-tag == ''/);
   assert.match(action, /verify-prebuilt-web-for-deploy\.mjs/);
-  assert.match(action, /assert-app-platform-web-image-tag\.mjs/);
+  assert.match(action, /assert-app-platform-spec\.mjs/);
+  assert.match(action, /--mode pre/);
+  assert.match(action, /--mode post/);
   assert.match(action, /verify-readiness-contract\.mjs/);
-  assert.match(action, /create-deployment recovery roll/);
+  assert.doesNotMatch(action, /create-deployment recovery roll/);
   assert.match(action, /prebuilt-environment:/);
   assert.match(action, /digitalocean\/app_action\/deploy@v2/);
   assert.match(testDeploy, /expected-releases:/);
@@ -325,12 +327,22 @@ test("live acceptance uses fixed Shop origin, credential preflight, and phased S
   assert.doesNotMatch(acceptance, /digitalocean\/action-doctl/);
 });
 
-test("Shop images embed the release provenance required by image contracts", () => {
-  for (const dockerfile of ["apps/shop-identity/Dockerfile", "apps/shop/Dockerfile"]) {
+test("Node service images embed image-owned SENTRY_RELEASE from IMAGE_SHA", () => {
+  for (const dockerfile of [
+    "apps/api/Dockerfile",
+    "apps/auth/Dockerfile",
+    "apps/ws/Dockerfile",
+    "apps/worker/Dockerfile",
+    "apps/shop-identity/Dockerfile",
+    "apps/shop/Dockerfile",
+    "apps/shop-api/Dockerfile",
+  ]) {
     const contents = read(dockerfile);
     assert.match(contents, /ARG IMAGE_SHA=unknown/);
     assert.match(contents, /ENV SENTRY_RELEASE=\$\{IMAGE_SHA\}/);
   }
+  const web = read("apps/web/Dockerfile");
+  assert.match(web, /ENV SENTRY_RELEASE=\$SENTRY_RELEASE/);
 
   const shopIdentity = read("apps/shop-identity/src/index.ts");
   assert.match(shopIdentity, /buildPgConnectionConfig/);

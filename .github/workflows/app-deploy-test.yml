@@ -10,7 +10,8 @@ on:
       - .github/actions/app-platform-deploy/**
       - .github/workflows/app-deploy-test.yml
       - scripts/ci/verify-prebuilt-web-for-deploy.mjs
-      - scripts/ci/assert-app-platform-web-image-tag.mjs
+      - scripts/ci/assert-app-platform-spec.mjs
+      - scripts/ci/assert-app-platform-spec.test.mjs
       - scripts/ci/verify-readiness-contract.mjs
   workflow_dispatch:
 permissions:

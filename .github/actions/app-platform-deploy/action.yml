@@ -67,6 +67,17 @@ runs:
           --environment "${{ inputs.prebuilt-environment }}" \
           --sha "${{ inputs.rolling-image-tag }}"
 
+    - name: Assert App Platform spec before pin
+      if: inputs.rolling-image-tag != ''
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
+      run: |
+        set -euo pipefail
+        node scripts/ci/assert-app-platform-spec.mjs \
+          --app-id "$APP_ID" \
+          --mode pre
+
     - name: Pin prebuilt component image tags
       id: pin
       if: inputs.rolling-image-tag != ''
@@ -165,7 +176,7 @@ runs:
           exit 1
         fi
 
-    - name: Assert App Platform web image tag
+    - name: Assert App Platform spec after pin
       if: inputs.rolling-image-tag != ''
       shell: bash
       env:
@@ -173,56 +184,23 @@ runs:
         EXPECTED_TAG: ${{ inputs.rolling-image-tag }}
       run: |
         set -euo pipefail
-        node scripts/ci/assert-app-platform-web-image-tag.mjs \
+        node scripts/ci/assert-app-platform-spec.mjs \
           --app-id "$APP_ID" \
-          --expected-tag "$EXPECTED_TAG"
+          --expected-tag "$EXPECTED_TAG" \
+          --mode post
 
     - name: Verify readiness URLs
-      id: readiness
       if: inputs.readiness-urls != '[]'
       shell: bash
       env:
         APP_ID: ${{ inputs.app-id }}
         READINESS_URLS: ${{ inputs.readiness-urls }}
         EXPECTED_RELEASES: ${{ inputs.expected-releases }}
-        PINNED: ${{ inputs.rolling-image-tag != '' && 'true' || 'false' }}
       run: |
         set -euo pipefail
-        run_readiness() {
-          node scripts/ci/verify-readiness-contract.mjs \
-            --urls "$READINESS_URLS" \
-            --expected-releases "$EXPECTED_RELEASES" \
-            --app-id "$APP_ID" \
-            --attempts 60 \
-            --interval-seconds 10
-        }
-        if run_readiness; then
-          exit 0
-        fi
-        if test "$PINNED" != "true"; then
-          exit 1
-        fi
-        echo "::warning::Readiness failed after pin deploy; attempting one create-deployment recovery roll"
-        deployment_json="$(doctl apps create-deployment "$APP_ID" --output json)"
-        recovery_id="$(
-          jq -r 'if type == "array" then .[0].id else .id end // empty' <<<"$deployment_json"
-        )"
-        test -n "$recovery_id"
-        deadline=$((SECONDS + 1200))
-        phase=""
-        while (( SECONDS < deadline )); do
-          deployment="$(doctl apps get-deployment "$APP_ID" "$recovery_id" --output json)"
-          phase="$(
-            jq -r 'if type == "array" then .[0].phase else .phase end // empty' <<<"$deployment"
-          )"
-          case "$phase" in
-            ACTIVE) break ;;
-            ERROR|CANCELED|SUPERSEDED)
-              echo "::error::Recovery deployment ended in phase $phase"
-              exit 1
-              ;;
-          esac
-          sleep 10
-        done
-        test "$phase" = "ACTIVE"
-        run_readiness
+        node scripts/ci/verify-readiness-contract.mjs \
+          --urls "$READINESS_URLS" \
+          --expected-releases "$EXPECTED_RELEASES" \
+          --app-id "$APP_ID" \
+          --attempts 60 \
+          --interval-seconds 10
