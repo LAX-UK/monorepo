@@ -1,4 +1,5 @@
 import { PostLoginHandoff } from "@/components/auth/post-login-handoff";
+import { resolveSilentPostLoginDestination } from "@/lib/auth/post-auth-destination";
 import { resolveServerPostAuthDestination } from "@/lib/auth/post-auth-destination.server";
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -15,7 +16,7 @@ export default async function PostLoginPage({
   }>;
 }) {
   const [params, user] = await Promise.all([searchParams, getServerSessionUser()]);
-  const requestedNext = isSafeNextPath(params.next) ? params.next : null;
+  const requestedNext = params.next && isSafeNextPath(params.next) ? params.next : null;
 
   if (!user) {
     const loginParams = new URLSearchParams({ session_expired: "1" });
@@ -23,13 +24,16 @@ export default async function PostLoginPage({
     redirect(`/login?${loginParams.toString()}`);
   }
 
-  const destination = resolveServerPostAuthDestination({
-    user,
-    requestedNext,
-    context: "sign-in",
-    requireEmailVerification: false,
-    withWelcomeBack: params.welcome === "back",
-  });
+  const destination =
+    params.entry_intent === "silent"
+      ? resolveSilentPostLoginDestination(user, requestedNext)
+      : resolveServerPostAuthDestination({
+          user,
+          requestedNext,
+          context: "sign-in",
+          requireEmailVerification: false,
+          withWelcomeBack: params.welcome === "back",
+        });
   if (params.auth_fresh === "1") {
     return <PostLoginHandoff destination={destination} entryIntent={params.entry_intent ?? null} />;
   }

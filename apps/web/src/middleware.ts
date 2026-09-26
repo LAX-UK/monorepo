@@ -6,6 +6,7 @@ import {
   isStaleAuthEdgePublicLanding,
 } from "@/lib/auth/auth-public-edge";
 import { purgeStaleAuthCookies } from "@/lib/auth/purge-stale-auth-cookies";
+import { applySilentSignInEdge } from "@/lib/auth/silent-sign-in/apply-silent-sign-in-edge";
 import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
 import { isOrgModuleEnabled } from "@/lib/legal-entity/org-module-enabled";
 import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
@@ -90,6 +91,11 @@ function isStaleSessionLanding(url: URL): boolean {
 }
 
 export async function middleware(request: NextRequest) {
+  const silentRedirect = applySilentSignInEdge(request);
+  if (silentRedirect) {
+    return silentRedirect;
+  }
+
   const nonce = generateNonce();
   const themeInitScriptSrcToken = await themeInitScriptSrcTokenPromise;
   const cookieHeader = request.headers.get("cookie") ?? "";

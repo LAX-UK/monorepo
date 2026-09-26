@@ -4,7 +4,7 @@ import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import type { OidcAuthorizePrompt } from "@auction/identity-rp";
 
 /** Stored on the pending BFF session for analytics / post-login handoff. */
-export type StoredAuthEntryIntent = "signup" | "reauth" | "sell";
+export type StoredAuthEntryIntent = "signup" | "reauth" | "sell" | "silent";
 
 export type HostedAuthEntry = {
   screen: "login" | "signup";

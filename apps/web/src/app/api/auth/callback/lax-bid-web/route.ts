@@ -1,3 +1,9 @@
+import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
+import {
+  clearBidSilentSuppressed,
+  markBidSilentGuestResult,
+  markBidSilentQuiet,
+} from "@/lib/auth/silent-sign-in/cookies.server";
 import { exchangeAuthorizationCode, validateCallbackState } from "@/lib/bff/oidc.server";
 import { setOnboardingInviteCookie } from "@/lib/bff/onboarding-invite-cookie.server";
 import { resolvePublicOriginUrl } from "@/lib/bff/public-origin-url.server";
@@ -8,6 +14,7 @@ import {
   setBidSessionCookie,
 } from "@/lib/bff/session-cookie.server";
 import { BidBffSessionStore, type PendingBidSession } from "@/lib/bff/session-store.server";
+import { classifySilentCallback } from "@auction/identity-rp";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -41,12 +48,23 @@ async function buildLoginFailureResponse(
   return response;
 }
 
+function redirectSilentGuest(nextPath: string): NextResponse {
+  const safePath = isSafeNextPath(nextPath) ? nextPath : "/dashboard";
+  const response = NextResponse.redirect(resolvePublicOriginUrl(safePath), 302);
+  clearBidSessionCookie(response);
+  markBidSilentQuiet(response);
+  markBidSilentGuestResult(response);
+  response.headers.set("cache-control", "no-store");
+  return response;
+}
+
 export async function GET(request: NextRequest) {
   const id = readBidSessionId(request);
   const sessions = new BidBffSessionStore(getBffRedis());
   const pending = id ? await sessions.read(id) : null;
   const state = request.nextUrl.searchParams.get("state");
   const code = request.nextUrl.searchParams.get("code");
+  const oauthError = request.nextUrl.searchParams.get("error");
   const replacesSessionId = pending?.kind === "pending" ? pending.replacesSessionId : undefined;
   const pendingCtx: Pick<PendingBidSession, "nextPath" | "entryIntent"> =
     pending?.kind === "pending"
@@ -55,6 +73,14 @@ export async function GET(request: NextRequest) {
           ...(pending.entryIntent !== undefined ? { entryIntent: pending.entryIntent } : {}),
         }
       : { nextPath: "/dashboard" };
+
+  if (pending?.kind === "pending" && pending.entryIntent === "silent") {
+    const silentOutcome = classifySilentCallback(oauthError);
+    if (silentOutcome.kind !== "success" || !code) {
+      if (id) await sessions.invalidate(id);
+      return redirectSilentGuest(pending.nextPath);
+    }
+  }
 
   if (!id || pending?.kind !== "pending" || !validateCallbackState(pending.state, state) || !code) {
     if (id) await sessions.invalidate(id);
@@ -105,11 +131,15 @@ export async function GET(request: NextRequest) {
     if (pending.inviteToken) {
       setOnboardingInviteCookie(response, pending.inviteToken);
     }
+    clearBidSilentSuppressed(response);
     setBidSessionCookie(response, authenticatedId, "authenticated");
     response.headers.set("cache-control", "no-store");
     return response;
   } catch {
     await sessions.invalidate(id);
+    if (pending.entryIntent === "silent") {
+      return redirectSilentGuest(pending.nextPath);
+    }
     const restored = Boolean(replacesSessionId);
     return buildLoginFailureResponse(
       sessions,
