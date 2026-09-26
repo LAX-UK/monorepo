@@ -7,6 +7,8 @@ on:
       - packages/**
       - package.json
       - pnpm-lock.yaml
+      - .github/actions/app-platform-deploy/**
+      - .github/workflows/app-deploy-test.yml
   workflow_dispatch:
 permissions:
   contents: read

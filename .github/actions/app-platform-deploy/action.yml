@@ -19,9 +19,10 @@ inputs:
     default: "[]"
   rolling-image-tag:
     description: >-
-      When set, pin prebuilt Bid DOCR services (api, ws, worker, web, migrate,
-      clamav) to this immutable tag via digitalocean/app_action/deploy@v2, then
-      create-deployment so :test digest rolls apply to every component.
+      When set, pin prebuilt Bid DOCR services (api, auth, ws, worker, web,
+      migrate, clamav) to this immutable tag via digitalocean/app_action/deploy@v2.
+      That action runs a full deployment; do not follow with create-deployment
+      (a second deploy can supersede the pin before web traffic moves).
     required: false
     default: ""
   do-token:
@@ -58,6 +59,7 @@ runs:
       uses: digitalocean/app_action/deploy@v2
       env:
         IMAGE_TAG_API: ${{ inputs.rolling-image-tag }}
+        IMAGE_TAG_AUTH: ${{ inputs.rolling-image-tag }}
         IMAGE_TAG_WS: ${{ inputs.rolling-image-tag }}
         IMAGE_TAG_WORKER: ${{ inputs.rolling-image-tag }}
         IMAGE_TAG_WEB: ${{ inputs.rolling-image-tag }}
@@ -70,6 +72,7 @@ runs:
 
     - name: Create App Platform deployment
       id: create
+      if: inputs.rolling-image-tag == ''
       shell: bash
       env:
         APP_ID: ${{ inputs.app-id }}
@@ -86,11 +89,21 @@ runs:
       id: resolve-deployment
       shell: bash
       env:
+        APP_ID: ${{ inputs.app-id }}
+        PINNED: ${{ inputs.rolling-image-tag != '' && 'true' || 'false' }}
         CREATE_DEPLOYMENT_ID: ${{ steps.create.outputs.deployment_id }}
       run: |
         set -euo pipefail
-        test -n "$CREATE_DEPLOYMENT_ID"
-        echo "deployment_id=$CREATE_DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+        if test "$PINNED" = "true"; then
+          deployment_id="$(
+            doctl apps list-deployments "$APP_ID" --output json |
+              jq -r 'if type == "array" then .[0].id else .id end // empty'
+          )"
+        else
+          deployment_id="$CREATE_DEPLOYMENT_ID"
+        fi
+        test -n "$deployment_id"
+        echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
 
     - name: Poll deployment to terminal phase
       id: poll
@@ -143,6 +156,7 @@ runs:
       if: inputs.readiness-urls != '[]'
       shell: bash
       env:
+        APP_ID: ${{ inputs.app-id }}
         READINESS_URLS: ${{ inputs.readiness-urls }}
         EXPECTED_RELEASES: ${{ inputs.expected-releases }}
       run: |
@@ -165,6 +179,17 @@ runs:
           test "$status" = "ok" &&
             { test -z "$expected_release" || test "$actual_release" = "$expected_release"; } || {
             echo "::error::Readiness contract failed for $url: expected release ${expected_release:-any}, actual ${actual_release:-missing}"
+            if test -n "${APP_ID:-}"; then
+              doctl apps get "$APP_ID" --output json |
+                jq -r '
+                  (if type == "array" then .[0].spec.services[]? else .spec.services[]? end)
+                  | select(.name == "web")
+                  | "web image tag: \(.image.tag // "unknown") registry: \(.image.registry // "unknown")"
+                ' || true
+              doctl apps list-deployments "$APP_ID" --output json |
+                jq -r 'if type == "array" then .[0] else . end | "latest deployment: \(.id) phase \(.phase)"' ||
+                true
+            fi
             exit 1
           }
         done
