@@ -342,7 +342,8 @@ test("Node service images embed image-owned SENTRY_RELEASE from IMAGE_SHA", () =
     assert.match(contents, /ENV SENTRY_RELEASE=\$\{IMAGE_SHA\}/);
   }
   const web = read("apps/web/Dockerfile");
-  assert.match(web, /ENV SENTRY_RELEASE=\$SENTRY_RELEASE/);
+  assert.match(web, /ARG IMAGE_SHA=unknown/);
+  assert.match(web, /ENV SENTRY_RELEASE=\$\{IMAGE_SHA\}/);
 
   const shopIdentity = read("apps/shop-identity/src/index.ts");
   assert.match(shopIdentity, /buildPgConnectionConfig/);
