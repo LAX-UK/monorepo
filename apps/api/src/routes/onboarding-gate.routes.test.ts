@@ -5,6 +5,7 @@ import type { Container } from "../container.js";
 import type { ContainerOrganizationRoutesSlice } from "../container.js";
 import type { ContainerPaymentHttpRoutesSlice } from "../container.js";
 import { createRequireAccountOnboarding } from "../middleware/require-account-onboarding.js";
+import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { stubSubmissionRouteServices } from "../testing/stub-submission-route-services.js";
@@ -49,6 +50,7 @@ describe("account onboarding gate on product routes", () => {
     const requireAuth = createRequireAuth(authenticator, {
       isSuspended: () => Promise.resolve(false),
     });
+    const optionalAuth = createOptionalAuth(authenticator);
     const requireLegalEntity = createMiddleware(async (c, next) => {
       c.set("legalEntityContext", { legalEntityId: buyerEntityId });
       await next();
@@ -58,6 +60,7 @@ describe("account onboarding gate on product routes", () => {
     attachSaleRegistrationRoutes(sales, {
       container: container as never,
       requireAuth,
+      optionalAuth,
       requireAccountOnboarding: gateBlocking(),
       kycGate,
       requireLegalEntity,
