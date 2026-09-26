@@ -71,8 +71,10 @@ RUN --mount=type=secret,id=sentry_auth_token \
 
 FROM node:22-alpine AS runner
 WORKDIR /app
+ARG IMAGE_SHA=unknown
 ARG NODE_RUNTIME_HEAP_MB=384
 ENV NODE_ENV=production
+ENV SENTRY_RELEASE=${IMAGE_SHA}
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
