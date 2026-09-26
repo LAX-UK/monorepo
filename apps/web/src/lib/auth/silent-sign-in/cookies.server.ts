@@ -6,7 +6,9 @@ import {
   defaultCookieSetOptions,
 } from "@auction/identity-rp";
 import type { NextResponse } from "next/server";
-import { BID_SILENT_SSO_COOKIE_PREFIX } from "./config.js";
+import { BID_SILENT_SSO_COOKIE_PREFIX } from "./config";
+
+export const BID_SILENT_GUEST_RESULT_COOKIE = "bid_sso_result";
 
 export const BID_SILENT_SSO_COOKIE_NAMES = createSilentSignInCookieSpec(
   BID_SILENT_SSO_COOKIE_PREFIX,
@@ -48,4 +50,14 @@ export function markBidSilentSuppressed(response: NextResponse): void {
 
 export function clearBidSilentSuppressed(response: NextResponse): void {
   response.cookies.delete(BID_SILENT_SSO_COOKIE_NAMES.suppressed);
+}
+
+export function markBidSilentGuestResult(response: NextResponse): void {
+  response.cookies.set(BID_SILENT_GUEST_RESULT_COOKIE, "guest", {
+    path: "/",
+    maxAge: 60,
+    sameSite: "lax",
+    secure: secureCookies(),
+    httpOnly: false,
+  });
 }

@@ -1,17 +1,17 @@
-import { readRequestCookieJar } from "@/lib/auth/silent-sign-in/cookie-jar-edge.js";
-import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.server";
+import { readRequestCookieJar } from "@/lib/auth/silent-sign-in/cookie-jar-edge";
+import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.constants";
 import {
   createSilentSignInCookieSpec,
   evaluateSilentSignInEligibility,
   selectSilentSignInStrategy,
-} from "@auction/identity-rp";
+} from "@auction/identity-rp/silent-sign-in";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
   BID_SILENT_SSO_COOKIE_PREFIX,
   BID_SILENT_SSO_SKIP_PREFIXES,
   isBidSilentSsoEnabled,
-} from "./config.js";
+} from "./config";
 
 export function applySilentSignInEdge(request: NextRequest): NextResponse | null {
   if (!isBidSilentSsoEnabled()) {

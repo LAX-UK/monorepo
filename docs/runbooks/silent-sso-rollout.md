@@ -32,6 +32,25 @@ Prefixes: `shop_sso_*` (Shop), `bid_sso_*` (Bid).
 
 When `Set-Login: logged-in|logged-out` is emitted from Identity (`apps/auth`), browsers that support the Login Status API can skip redundant prompts.
 
+Release (Set-Login and FedCM Identity routes):
+
+1. `pnpm ci:identity-closure-sync` — verify `lax-identity` closure matches `apps/auth`.
+2. Publish the lax-identity image for the merge SHA (identity deploy workflow).
+3. Run staging recovery with the new image digest and re-baseline the identity soak gate.
+4. Roll Shop/Bid `SILENT_SSO_ENABLED` only after Identity is live on test.
+
 ## FedCM
 
-Requires spike validation (well-known on `lax.bid`, `SameSite=None` session reachability, auth code minting). Endpoints live under Identity `/fedcm/*` when `FEDCM_ENABLED=true`. Redirect probe remains the fallback.
+Requires spike validation (`SameSite=None` session reachability, auth code minting). Endpoints live under Identity `/fedcm/*` when `FEDCM_ENABLED=true`. Redirect probe remains the fallback.
+
+**Test environment:** Chromium expects `/.well-known/web-identity` on the **eTLD+1** (`lax.bid`), not on `test.lax.bid` / `test-shop.lax.bid`. FedCM cannot be fully exercised on test subdomains until well-known is served at the registrable root (or prod-like hostnames).
+
+FedCM client bootstraps only run when server-side cookie gates pass (no session, not quiet/suppressed). Each tab attempts FedCM once (`sessionStorage`); failed attempts fall back to the redirect probe, which also refuses suppressed/quiet/authenticated callers.
+
+## Backchannel logout
+
+`suppressed` is set on **interactive** product logout (Shop identity `POST /logout`, Bid BFF logout). OIDC backchannel logout invalidates server sessions but cannot set browser cookies — guests may still get one silent probe until the next full-page navigation after cookie expiry unless they hit a product logout path.
+
+## CI: lax-identity closure
+
+PRs touching `apps/auth/**` run **Identity closure sync** against `lax-identity@main`. Merge the paired lax-identity closure PR (or sync SHA) before expecting that check to pass on the monorepo PR.

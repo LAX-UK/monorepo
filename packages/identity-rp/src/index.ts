@@ -33,13 +33,14 @@ export {
   type SilentCallbackClassification,
 } from "./silent-sign-in/callback-outcome.js";
 export {
+  evaluateSilentSignInCookieGate,
   evaluateSilentSignInEligibility,
+  type EvaluateSilentSignInCookieGateInput,
   type EvaluateSilentSignInEligibilityInput,
+  type SilentSignInCookieGate,
   type SilentSignInEligibility,
   type SilentSignInRequest,
-  DEFAULT_SILENT_SIGN_IN_MAX_AGES,
 } from "./silent-sign-in/eligibility.js";
-export type { SilentSignInOutcome } from "./silent-sign-in/outcome.js";
 export {
   isDocumentNavigation,
   isLikelyCrawler,
@@ -49,6 +50,7 @@ export {
 export {
   createSilentSignInCookieSpec,
   defaultCookieSetOptions,
+  DEFAULT_SILENT_SIGN_IN_MAX_AGES,
   type SilentSignInCookieNames,
 } from "./silent-sign-in/silent-sign-in-cookies.js";
 export {

@@ -1,6 +1,6 @@
 "use client";
 
-import { trackLogin } from "@/lib/analytics/events";
+import { trackLogin, trackSilentSignInResult } from "@/lib/analytics/events";
 import { trackSellAuthHandoff } from "@/lib/analytics/sell-funnel";
 import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
 import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
@@ -16,7 +16,7 @@ export function runHostedPostLoginEffects(input: {
   if (input.analyticsOnly) {
     if (input.analyticsEnabled) {
       if (input.entryIntent === "silent") {
-        trackLogin("silent_sso");
+        trackSilentSignInResult({ strategy: "redirect", outcome: "signed_in" });
       } else {
         trackLogin();
       }

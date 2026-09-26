@@ -6,7 +6,6 @@ import {
   isPrefetch,
 } from "./request-signals.js";
 import {
-  DEFAULT_SILENT_SIGN_IN_MAX_AGES,
   type SilentSignInCookieNames,
   createSilentSignInCookieSpec,
 } from "./silent-sign-in-cookies.js";
@@ -24,7 +23,17 @@ export type EvaluateSilentSignInEligibilityInput = {
   cookieJar: CookieJar;
   cookieNames?: SilentSignInCookieNames;
   skipPathPrefixes: string[];
+  /** Skip Sec-Fetch / UA checks (e.g. server-side FedCM bootstrap props). */
+  skipRequestSignals?: boolean;
 };
+
+export type EvaluateSilentSignInCookieGateInput = {
+  hasProductSession: boolean;
+  cookieJar: CookieJar;
+  cookieNames?: SilentSignInCookieNames;
+};
+
+export type SilentSignInCookieGate = { allowed: true } | { allowed: false; reason: string };
 
 export type SilentSignInEligibility = { kind: "probe" } | { kind: "skip"; reason: string };
 
@@ -32,25 +41,12 @@ function pathMatchesSkip(pathname: string, skipPathPrefixes: string[]): boolean 
   return skipPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix));
 }
 
-export function evaluateSilentSignInEligibility(
-  input: EvaluateSilentSignInEligibilityInput,
+function evaluateCookieAndSessionGate(
+  hasProductSession: boolean,
+  cookieJar: CookieJar,
+  cookieNames: SilentSignInCookieNames,
 ): SilentSignInEligibility {
-  const { request, cookieJar, skipPathPrefixes } = input;
-  const cookieNames = input.cookieNames ?? createSilentSignInCookieSpec("sso");
-
-  if (!isDocumentNavigation(request.method, request.getHeader)) {
-    return { kind: "skip", reason: "not_document_navigation" };
-  }
-  if (isPrefetch(request.getHeader)) {
-    return { kind: "skip", reason: "prefetch" };
-  }
-  if (isLikelyCrawler(request.userAgent)) {
-    return { kind: "skip", reason: "crawler" };
-  }
-  if (pathMatchesSkip(request.pathname, skipPathPrefixes)) {
-    return { kind: "skip", reason: "skip_path" };
-  }
-  if (request.hasProductSession) {
+  if (hasProductSession) {
     return { kind: "skip", reason: "has_product_session" };
   }
   if (cookieJar.get(cookieNames.suppressed)) {
@@ -65,4 +61,40 @@ export function evaluateSilentSignInEligibility(
   return { kind: "probe" };
 }
 
-export { DEFAULT_SILENT_SIGN_IN_MAX_AGES };
+export function evaluateSilentSignInCookieGate(
+  input: EvaluateSilentSignInCookieGateInput,
+): SilentSignInCookieGate {
+  const cookieNames = input.cookieNames ?? createSilentSignInCookieSpec("sso");
+  const gate = evaluateCookieAndSessionGate(input.hasProductSession, input.cookieJar, cookieNames);
+  if (gate.kind === "skip") {
+    return { allowed: false, reason: gate.reason };
+  }
+  return { allowed: true };
+}
+
+export function evaluateSilentSignInEligibility(
+  input: EvaluateSilentSignInEligibilityInput,
+): SilentSignInEligibility {
+  const { request, cookieJar, skipPathPrefixes } = input;
+  const cookieNames = input.cookieNames ?? createSilentSignInCookieSpec("sso");
+
+  if (!input.skipRequestSignals) {
+    if (!isDocumentNavigation(request.method, request.getHeader)) {
+      return { kind: "skip", reason: "not_document_navigation" };
+    }
+    if (isPrefetch(request.getHeader)) {
+      return { kind: "skip", reason: "prefetch" };
+    }
+    if (isLikelyCrawler(request.userAgent)) {
+      return { kind: "skip", reason: "crawler" };
+    }
+    if (pathMatchesSkip(request.pathname, skipPathPrefixes)) {
+      return { kind: "skip", reason: "skip_path" };
+    }
+  }
+  const gate = evaluateCookieAndSessionGate(request.hasProductSession, cookieJar, cookieNames);
+  if (gate.kind === "skip") {
+    return gate;
+  }
+  return { kind: "probe" };
+}

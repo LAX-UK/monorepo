@@ -2,7 +2,6 @@ export type SilentSignInStrategy = "redirect" | "fedcm";
 
 export type SelectSilentSignInStrategyInput = {
   fedcmEnabled: boolean;
-  userAgentBrands?: string | null;
 };
 
 export function selectSilentSignInStrategy(

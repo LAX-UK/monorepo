@@ -34,6 +34,9 @@ const envSchema = z
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
     BETTER_AUTH_SECRET: z.string().min(16),
     OIDC_ISSUER_URL: z.string().url().default("http://localhost:3003"),
+    FEDCM_ENABLED: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     SHOP_ORIGIN: z.string().url().default("http://localhost:3020"),
     WEB_ORIGINS: z.preprocess((val) => {

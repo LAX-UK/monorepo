@@ -2,6 +2,8 @@ import { normalizeAuthorizePromptForCreate } from "@auction/auth";
 import { Sentry } from "@auction/observability";
 import { Hono } from "hono";
 import type pino from "pino";
+import { registerFedcmRoutes } from "../http/fedcm.routes.js";
+import { createLoginStatusMiddleware } from "../http/login-status.middleware.js";
 import { createClientIpResolver } from "../infrastructure/client-ip.js";
 import { createSecurityHeadersMiddleware } from "../middleware/security-headers.js";
 import {
@@ -11,8 +13,6 @@ import {
 import { mountHostedAuthAssets } from "./mount-hosted-auth-assets.js";
 import { mountHostedAuthPages } from "./mount-hosted-auth-pages.js";
 import type { OidcRouteMountOptions } from "./mount-oidc-routes.js";
-import { registerFedcmRoutes } from "../http/fedcm.routes.js";
-import { createLoginStatusMiddleware } from "../http/login-status.middleware.js";
 import { mountOidcRoutes } from "./mount-oidc-routes.js";
 
 type Counter = { inc(labels: Record<string, string>): void };
@@ -41,7 +41,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
   registerFedcmRoutes(app, {
     issuerOrigin: options.oidc.env.OIDC_ISSUER_URL.replace(/\/+$/, ""),
     clientId: "lax-bid-web",
-    enabled: process.env.FEDCM_ENABLED === "true",
+    enabled: options.oidc.env.FEDCM_ENABLED,
   });
   app.use("/api/auth/*", async (c, next) => {
     await next();

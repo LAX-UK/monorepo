@@ -14,6 +14,20 @@ describe("login-status middleware", () => {
     expect(response.headers.get("Set-Login")).toBe("logged-in");
   });
 
+  it("emits Set-Login when handler returns a Response with set-cookie", async () => {
+    const app = new Hono();
+    app.use("*", createLoginStatusMiddleware());
+    app.get(
+      "/auth",
+      () =>
+        new Response("ok", {
+          headers: { "set-cookie": "better-auth.session_token=abc; Path=/; HttpOnly" },
+        }),
+    );
+    const response = await app.request("/auth");
+    expect(response.headers.get("Set-Login")).toBe("logged-in");
+  });
+
   it("emits Set-Login logged-out when session cookie is cleared", async () => {
     const app = new Hono();
     app.use("*", createLoginStatusMiddleware());

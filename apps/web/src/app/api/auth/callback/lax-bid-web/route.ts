@@ -1,6 +1,7 @@
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import {
   clearBidSilentSuppressed,
+  markBidSilentGuestResult,
   markBidSilentQuiet,
 } from "@/lib/auth/silent-sign-in/cookies.server";
 import { exchangeAuthorizationCode, validateCallbackState } from "@/lib/bff/oidc.server";
@@ -52,6 +53,7 @@ function redirectSilentGuest(nextPath: string): NextResponse {
   const response = NextResponse.redirect(resolvePublicOriginUrl(safePath), 302);
   clearBidSessionCookie(response);
   markBidSilentQuiet(response);
+  markBidSilentGuestResult(response);
   response.headers.set("cache-control", "no-store");
   return response;
 }

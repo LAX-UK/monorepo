@@ -20,6 +20,9 @@ import { ConsentProvider } from "@/lib/analytics/consent/context";
 import { readConsentFromCookies } from "@/lib/analytics/consent/server";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
 import { AuthSessionProvider } from "@/lib/auth/auth-session-provider";
+import { resolveSilentFedcmBootstrapProps } from "@/lib/auth/fedcm/resolve-silent-fedcm-props.server";
+import { SilentFedcmBootstrap } from "@/lib/auth/fedcm/silent-fedcm-bootstrap.client";
+import { SilentSignInResultEmitter } from "@/lib/auth/fedcm/silent-sign-in-result.client";
 import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import { SITE_SHORT_NAME, SITE_THEME_COLOR_DARK, SITE_THEME_COLOR_LIGHT } from "@/lib/brand";
@@ -107,6 +110,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const profileTheme = user?.uiPreferences?.theme ?? DEFAULT_THEME_PREFERENCE;
   const themePref =
     existingTheme ?? (await resolveEffectiveThemePreference(user ? profileTheme : undefined));
+  const hasSession = Boolean(user) || authCookiePresent;
+  const silentFedcmProps = resolveSilentFedcmBootstrapProps(cookieStore, hasSession);
   const consentSnapshot = readConsentFromCookies(cookieStore);
   const consentProviderKey =
     consentSnapshot === null ? "consent:none" : JSON.stringify(consentSnapshot);
@@ -155,6 +160,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <MarketingAttributionSync />
           <BrowserOfflineBanner />
           <AuthSessionProvider serverUser={user} authCookiePresent={authCookiePresent}>
+            <Suspense fallback={null}>
+              <SilentSignInResultEmitter />
+              <SilentFedcmBootstrap fedcm={silentFedcmProps} />
+            </Suspense>
             <AppQueryProvider>
               <PushBootstrap />
               <PwaInstallPrompt />

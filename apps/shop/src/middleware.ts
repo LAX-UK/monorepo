@@ -10,7 +10,7 @@ import {
   createSilentSignInCookieSpec,
   evaluateSilentSignInEligibility,
   selectSilentSignInStrategy,
-} from "@auction/identity-rp";
+} from "@auction/identity-rp/silent-sign-in";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 

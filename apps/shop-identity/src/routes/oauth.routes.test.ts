@@ -7,6 +7,8 @@ import {
   SESSION_COOKIE_NAME,
   SHOP_TOKEN_UPGRADE_COOKIE_NAME,
 } from "../session.js";
+import { SHOP_SILENT_SSO_COOKIE_NAMES } from "../silent-sign-in-cookies.js";
+import { testShopIdentityEnv } from "../test/shop-identity-env.fixture.js";
 import { createTestTokenService } from "../test/token-service.mock.js";
 import { registerOAuthRoutes } from "./oauth.routes.js";
 
@@ -14,19 +16,7 @@ function createRoute(callbackResult: CompleteOAuthCallbackResult = { kind: "sess
   const app = new Hono();
   const invalidate = vi.fn(async () => undefined);
   registerOAuthRoutes(app, {
-    env: {
-      NODE_ENV: "test",
-      PORT: 3010,
-      OIDC_ISSUER_URL: "https://identity.example",
-      OIDC_CLIENT_ID: "lax-shop-web",
-      OIDC_CLIENT_SECRET: "a-secret-longer-than-thirty-two-characters",
-      OIDC_REDIRECT_URI: "http://localhost:3010/auth/callback",
-      OIDC_POST_LOGOUT_REDIRECT_URI: "http://localhost:3020/",
-      SHOP_STOREFRONT_URL: "http://localhost:3020",
-      SHOP_API_BASE_URL: "http://localhost:3011",
-      SHOP_API_BFF_TOKEN: "test-bff-token-minimum-32-characters-long",
-      DATABASE_URL_SHOP: "postgres://shop:test@localhost/shop",
-    },
+    env: testShopIdentityEnv,
     discovery: {
       authorization_endpoint: "https://identity.example/authorize",
       end_session_endpoint: "https://identity.example/logout",
@@ -83,19 +73,7 @@ describe("OAuth routes", () => {
     const tokenService = createTestTokenService();
     const app = new Hono();
     registerOAuthRoutes(app, {
-      env: {
-        NODE_ENV: "test",
-        PORT: 3010,
-        OIDC_ISSUER_URL: "https://identity.example",
-        OIDC_CLIENT_ID: "lax-shop-web",
-        OIDC_CLIENT_SECRET: "a-secret-longer-than-thirty-two-characters",
-        OIDC_REDIRECT_URI: "http://localhost:3010/auth/callback",
-        OIDC_POST_LOGOUT_REDIRECT_URI: "http://localhost:3020/",
-        SHOP_STOREFRONT_URL: "http://localhost:3020",
-        SHOP_API_BASE_URL: "http://localhost:3011",
-        SHOP_API_BFF_TOKEN: "test-bff-token-minimum-32-characters-long",
-        DATABASE_URL_SHOP: "postgres://shop:test@localhost/shop",
-      },
+      env: testShopIdentityEnv,
       discovery: {
         authorization_endpoint: "https://identity.example/authorize",
         end_session_endpoint: "https://identity.example/logout",
@@ -135,19 +113,7 @@ describe("OAuth routes", () => {
     const attachPendingOAuthToAuthenticatedSession = vi.fn(async () => true);
     const app = new Hono();
     registerOAuthRoutes(app, {
-      env: {
-        NODE_ENV: "test",
-        PORT: 3010,
-        OIDC_ISSUER_URL: "https://identity.example",
-        OIDC_CLIENT_ID: "lax-shop-web",
-        OIDC_CLIENT_SECRET: "a-secret-longer-than-thirty-two-characters",
-        OIDC_REDIRECT_URI: "http://localhost:3010/auth/callback",
-        OIDC_POST_LOGOUT_REDIRECT_URI: "http://localhost:3020/",
-        SHOP_STOREFRONT_URL: "http://localhost:3020",
-        SHOP_API_BASE_URL: "http://localhost:3011",
-        SHOP_API_BFF_TOKEN: "test-bff-token-minimum-32-characters-long",
-        DATABASE_URL_SHOP: "postgres://shop:test@localhost/shop",
-      },
+      env: testShopIdentityEnv,
       discovery: {
         authorization_endpoint: "https://identity.example/authorize",
         end_session_endpoint: "https://identity.example/logout",
@@ -199,19 +165,7 @@ describe("OAuth routes", () => {
     const tokenService = createTestTokenService();
     const app = new Hono();
     registerOAuthRoutes(app, {
-      env: {
-        NODE_ENV: "test",
-        PORT: 3010,
-        OIDC_ISSUER_URL: "https://identity.example",
-        OIDC_CLIENT_ID: "lax-shop-web",
-        OIDC_CLIENT_SECRET: "a-secret-longer-than-thirty-two-characters",
-        OIDC_REDIRECT_URI: "http://localhost:3010/auth/callback",
-        OIDC_POST_LOGOUT_REDIRECT_URI: "http://localhost:3020/",
-        SHOP_STOREFRONT_URL: "http://localhost:3020",
-        SHOP_API_BASE_URL: "http://localhost:3011",
-        SHOP_API_BFF_TOKEN: "test-bff-token-minimum-32-characters-long",
-        DATABASE_URL_SHOP: "postgres://shop:test@localhost/shop",
-      },
+      env: testShopIdentityEnv,
       discovery: {
         authorization_endpoint: "https://identity.example/authorize",
         end_session_endpoint: "https://identity.example/logout",
@@ -262,6 +216,139 @@ describe("OAuth routes", () => {
       expect(response.headers.get("set-cookie")).toContain(`${SESSION_COOKIE_NAME}=`);
       expect(response.headers.get("set-cookie")?.toLowerCase()).toContain("httponly");
     }
+  });
+
+  it("starts sso-probe with prompt=none and sets probe cookie", async () => {
+    const { app } = createRoute();
+    const response = await app.request("/auth/sso-probe?returnTo=%2Fcatalog");
+    expect(response.status).toBe(302);
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.searchParams.get("prompt")).toBe("none");
+    expect(response.headers.get("set-cookie")).toContain(`${SHOP_SILENT_SSO_COOKIE_NAMES.probe}=`);
+  });
+
+  it("returns guest to returnTo on login_required silent probe callback", async () => {
+    const tokenService = createTestTokenService();
+    const app = new Hono();
+    registerOAuthRoutes(app, {
+      env: testShopIdentityEnv,
+      discovery: {
+        authorization_endpoint: "https://identity.example/authorize",
+        end_session_endpoint: "https://identity.example/logout",
+      } as unknown as OidcDiscovery,
+      secureCookies: false,
+      sessionRepository: {
+        findActive: vi.fn(async () => null),
+        createPendingOAuth: vi.fn(async () => "pending-session"),
+        attachPendingOAuthToAuthenticatedSession: vi.fn(async () => true),
+        createGuestSession: vi.fn(),
+        authenticate: vi.fn(),
+        invalidate: vi.fn(),
+        consumeLogoutToken: vi.fn(async () => "consumed" as const),
+      },
+      tokenService,
+      completeOAuthCallback: vi.fn(),
+    });
+    const response = await app.request("/auth/callback?error=login_required&state=state", {
+      headers: {
+        cookie: `${SHOP_SILENT_SSO_COOKIE_NAMES.probe}=1; shop_return_to=%2Fcatalog`,
+      },
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("http://localhost:3020/catalog");
+    expect(response.headers.get("set-cookie")).toContain(`${SHOP_SILENT_SSO_COOKIE_NAMES.quiet}=`);
+  });
+
+  it("sso-probe redirects without authorize when quiet cookie is set", async () => {
+    const { app } = createRoute();
+    const response = await app.request("/auth/sso-probe?returnTo=%2Fcatalog", {
+      headers: { cookie: `${SHOP_SILENT_SSO_COOKIE_NAMES.quiet}=1` },
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("http://localhost:3020/catalog");
+    expect(response.headers.get("location")).not.toContain("authorize");
+  });
+
+  it("sso-probe redirects authenticated sessions without authorize", async () => {
+    const sessionId = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEfg";
+    const app = new Hono();
+    registerOAuthRoutes(app, {
+      env: testShopIdentityEnv,
+      discovery: {
+        authorization_endpoint: "https://identity.example/authorize",
+        end_session_endpoint: "https://identity.example/logout",
+      } as unknown as OidcDiscovery,
+      secureCookies: false,
+      sessionRepository: {
+        findActive: vi.fn(async () => ({
+          id: sessionId,
+          subject: "sub-1",
+          sid: "sid-1",
+          oauth: null,
+        })),
+        createPendingOAuth: vi.fn(),
+        attachPendingOAuthToAuthenticatedSession: vi.fn(),
+        createGuestSession: vi.fn(),
+        authenticate: vi.fn(),
+        invalidate: vi.fn(),
+        consumeLogoutToken: vi.fn(async () => "consumed" as const),
+      },
+      tokenService: createTestTokenService(),
+      completeOAuthCallback: vi.fn(),
+    });
+    const response = await app.request("/auth/sso-probe?returnTo=%2Fcatalog", {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=${sessionId}` },
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("http://localhost:3020/catalog");
+  });
+
+  it("returns guest on token exchange error during silent probe", async () => {
+    const tokenService = createTestTokenService();
+    const app = new Hono();
+    registerOAuthRoutes(app, {
+      env: testShopIdentityEnv,
+      discovery: {
+        authorization_endpoint: "https://identity.example/authorize",
+        end_session_endpoint: "https://identity.example/logout",
+      } as unknown as OidcDiscovery,
+      secureCookies: false,
+      sessionRepository: {
+        findActive: vi.fn(async () => null),
+        createPendingOAuth: vi.fn(async () => "pending-session"),
+        attachPendingOAuthToAuthenticatedSession: vi.fn(async () => true),
+        createGuestSession: vi.fn(),
+        authenticate: vi.fn(),
+        invalidate: vi.fn(),
+        consumeLogoutToken: vi.fn(async () => "consumed" as const),
+      },
+      tokenService,
+      completeOAuthCallback: vi.fn(
+        async (): Promise<CompleteOAuthCallbackResult> => ({
+          kind: "error",
+          code: "token_exchange_failed",
+        }),
+      ),
+    });
+    const response = await app.request("/auth/callback?state=state&code=code", {
+      headers: {
+        cookie: `${SHOP_SILENT_SSO_COOKIE_NAMES.probe}=1; shop_return_to=%2Fcatalog`,
+      },
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("http://localhost:3020/catalog");
+    expect(response.headers.get("set-cookie")).toContain(`${SHOP_SILENT_SSO_COOKIE_NAMES.quiet}=`);
+  });
+
+  it("sets suppressed cookie on logout", async () => {
+    const { app } = createRoute();
+    const response = await app.request("/logout", {
+      method: "POST",
+      headers: { Origin: "http://localhost:3020" },
+    });
+    expect(response.headers.get("set-cookie")).toContain(
+      `${SHOP_SILENT_SSO_COOKIE_NAMES.suppressed}=`,
+    );
   });
 
   it("invalidates the local session and redirects logout through the provider", async () => {

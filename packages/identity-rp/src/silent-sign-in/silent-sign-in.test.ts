@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classifySilentCallback } from "./callback-outcome.js";
-import { evaluateSilentSignInEligibility } from "./eligibility.js";
+import { evaluateSilentSignInCookieGate, evaluateSilentSignInEligibility } from "./eligibility.js";
 import type { CookieJar } from "./ports/cookie-jar.js";
 import { isDocumentNavigation, isLikelyCrawler, isPrefetch } from "./request-signals.js";
 import { createSilentSignInCookieSpec } from "./silent-sign-in-cookies.js";
@@ -95,6 +95,28 @@ describe("evaluateSilentSignInEligibility", () => {
       skipPathPrefixes: ["/login"],
     });
     expect(result.kind).toBe("skip");
+  });
+});
+
+describe("evaluateSilentSignInCookieGate", () => {
+  it("allows when cookies are clear", () => {
+    expect(
+      evaluateSilentSignInCookieGate({
+        hasProductSession: false,
+        cookieJar: memoryJar(),
+        cookieNames,
+      }),
+    ).toEqual({ allowed: true });
+  });
+
+  it("blocks when suppressed", () => {
+    expect(
+      evaluateSilentSignInCookieGate({
+        hasProductSession: false,
+        cookieJar: memoryJar({ [cookieNames.suppressed]: "1" }),
+        cookieNames,
+      }),
+    ).toEqual({ allowed: false, reason: "suppressed" });
   });
 });
 

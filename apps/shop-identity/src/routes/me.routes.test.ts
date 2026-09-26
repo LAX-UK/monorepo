@@ -21,6 +21,7 @@ const baseEnv = {
   SHOP_API_BASE_URL: "http://localhost:3011",
   SHOP_API_BFF_TOKEN: "test-bff-token-minimum-32-characters-long",
   DATABASE_URL_SHOP: "postgres://shop:shop@127.0.0.1:5432/shop",
+  FEDCM_ENABLED: false,
 };
 
 function createTestApp(overrides: {

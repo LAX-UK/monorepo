@@ -25,11 +25,11 @@ export function createLoginStatusMiddleware(): MiddlewareHandler {
     for (const value of setCookieValues) {
       const mutation = sessionCookieMutated(value);
       if (mutation === "set") {
-        c.header(SET_LOGIN_HEADER, "logged-in");
+        c.res.headers.set(SET_LOGIN_HEADER, "logged-in");
         return;
       }
       if (mutation === "cleared") {
-        c.header(SET_LOGIN_HEADER, "logged-out");
+        c.res.headers.set(SET_LOGIN_HEADER, "logged-out");
         return;
       }
     }
