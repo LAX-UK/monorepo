@@ -42,7 +42,9 @@ test("assertAppPlatformSpec pre mode rejects release override", () => {
 test("assertPinnedImageTags reports tag mismatches", () => {
   const mismatches = assertPinnedImageTags(
     {
-      services: [{ name: "web", image: { tag: "aaa", registry: "lax-bid", repository: "lax-test-web" } }],
+      services: [
+        { name: "web", image: { tag: "aaa", registry: "lax-bid", repository: "lax-test-web" } },
+      ],
     },
     "bbb",
   );
