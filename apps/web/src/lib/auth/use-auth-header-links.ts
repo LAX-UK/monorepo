@@ -1,6 +1,6 @@
 "use client";
 
-import { buildAuthHref } from "@/lib/auth/auth-route-links";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
@@ -21,8 +21,8 @@ export function useAuthHeaderLinks(): { signInHref: string; registerHref: string
   return useMemo(() => {
     const next = resolveHeaderAuthNext(pathname, search);
     return {
-      signInHref: buildAuthHref("/login", { next }),
-      registerHref: buildAuthHref("/register", { next }),
+      signInHref: buildHostedLoginStartHref({ next }),
+      registerHref: buildHostedLoginStartHref({ next, intent: "signup" }),
     };
   }, [pathname, search]);
 }

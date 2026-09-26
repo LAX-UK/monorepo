@@ -6,6 +6,7 @@ import {
 } from "@/components/marketing/marketing-breadcrumb";
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -63,7 +64,7 @@ export default function BuyPage() {
           actions={
             <>
               <Button variant="cta" asChild>
-                <Link href="/register">Create account</Link>
+                <a href={buildHostedLoginStartHref({ intent: "signup" })}>Create account</a>
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/sales">Browse auctions</Link>

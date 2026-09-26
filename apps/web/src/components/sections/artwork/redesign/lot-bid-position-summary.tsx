@@ -1,5 +1,6 @@
 "use client";
 
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import {
   type LotBidPosition,
   lotBidPositionAutoStickyLabel,
@@ -39,8 +40,6 @@ export function LotBidPositionSummary({
   supportsAutoBid = false,
   className,
 }: Props) {
-  const next = encodeURIComponent(loginNextPath);
-
   const shell = (tone: "primary" | "error" | "neutral" | "warn", children: ReactNode) => {
     const tones = {
       primary: "border-primary/35 bg-primary-container/15 ring-primary/25 text-on-surface",
@@ -87,12 +86,12 @@ export function LotBidPositionSummary({
           <p className="mt-1 text-on-surface-variant">
             Register or sign in to place bids and set auto-bid on this lot.
           </p>
-          <Link
-            href={`/login?next=${next}`}
+          <a
+            href={buildHostedLoginStartHref({ next: loginNextPath })}
             className="mt-3 inline-flex font-body text-sm font-semibold text-link underline-offset-2 hover:underline"
           >
             Sign in
-          </Link>
+          </a>
         </>,
       );
 

@@ -24,8 +24,8 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/auth/use-auth-header-links", () => ({
   useAuthHeaderLinks: () => ({
-    signInHref: "/login",
-    registerHref: "/register",
+    signInHref: "/api/auth/login?next=%2Fdashboard",
+    registerHref: "/api/auth/login?next=%2Fdashboard&intent=signup",
   }),
 }));
 

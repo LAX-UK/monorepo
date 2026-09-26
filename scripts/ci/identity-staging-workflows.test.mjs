@@ -205,7 +205,10 @@ test("App Platform deploy action exposes exact deployment evidence and release c
   assert.match(action, /deployment_id:/);
   assert.match(action, /value: \$\{\{ steps\.resolve-deployment\.outputs\.deployment_id \}\}/);
   assert.match(action, /rolling-image-tag:/);
+  assert.match(action, /IMAGE_TAG_API:/);
+  assert.match(action, /IMAGE_TAG_WEB:/);
   assert.match(action, /digitalocean\/app_action\/deploy@v2/);
+  assert.match(testDeploy, /expected-releases:/);
   assert.match(testDeploy, /test\.lax\.bid\/api\/health\/ready/);
   assert.match(action, /EXPECTED_RELEASES/);
   assert.match(action, /--deployment "\$DEPLOYMENT_ID"/);

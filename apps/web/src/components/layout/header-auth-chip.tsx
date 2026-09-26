@@ -73,11 +73,11 @@ function MobileGuestAuthSection({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div className="flex flex-col items-center gap-3 border-t border-nav-border pt-4">
       <Button variant="cta" size="lg" className="w-full" asChild>
-        <Link href={registerHref} onClick={onNavigate}>
+        <a href={registerHref} onClick={onNavigate}>
           Create account
-        </Link>
+        </a>
       </Button>
-      <Link
+      <a
         href={signInHref}
         className={cn(
           "min-h-11 rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:text-brand-800 hover:underline dark:text-on-surface dark:hover:text-on-surface-variant",
@@ -86,7 +86,7 @@ function MobileGuestAuthSection({ onNavigate }: { onNavigate: () => void }) {
         onClick={onNavigate}
       >
         Sign in
-      </Link>
+      </a>
     </div>
   );
 }

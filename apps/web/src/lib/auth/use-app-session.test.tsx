@@ -101,11 +101,31 @@ describe("useAppSession", () => {
     expect(result.current.pending).toBe(false);
   });
 
-  it("returns pending=true when client session is loading and no server fallback", () => {
+  it("refetches once when SSR resolved guest but auth cookie is present", async () => {
+    refetchMock.mockResolvedValue(null);
     const { result } = renderWithProvider(null, true);
 
     expect(result.current.user).toBeNull();
-    expect(result.current.pending).toBe(true);
+    expect(result.current.pending).toBe(false);
+
+    await waitFor(() => {
+      expect(refetchMock).toHaveBeenCalledOnce();
+    });
+    expect(result.current.pending).toBe(false);
+  });
+
+  it("refetches on persisted pageshow (browser back)", async () => {
+    refetchMock.mockResolvedValue(null);
+    renderWithProvider(null, false);
+    refetchMock.mockClear();
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+    });
+
+    await waitFor(() => {
+      expect(refetchMock).toHaveBeenCalledOnce();
+    });
   });
 
   it("returns pending=false for confirmed guests without an auth cookie", () => {

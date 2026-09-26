@@ -7,6 +7,7 @@ import {
   registerToBidHeroCaption,
   registerToBidNeedsAgentFormBand,
 } from "@/components/sections/saleroom/saleroom-register-to-bid";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { LegalEntityMemberRole, SaleDeliveryMode } from "@auction/types";
@@ -70,7 +71,7 @@ function SaleroomHeroPrimaryCta({
 
   return (
     <Button variant="cta" size="md" className={ctaClassName} asChild>
-      <Link href="/register">Register to Bid →</Link>
+      <a href={buildHostedLoginStartHref({ intent: "signup" })}>Register to Bid →</a>
     </Button>
   );
 }

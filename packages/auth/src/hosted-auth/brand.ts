@@ -1,6 +1,7 @@
 import { REGISTERED_OIDC_CLIENTS, REGISTERED_OIDC_CLIENT_IDS } from "@auction/identity-contracts";
 
 export const HOSTED_SHOP_LOGO_PATH = "/hosted-auth/lax-shop-logo.svg";
+export const HOSTED_BID_LOGO_PATH = "/hosted-auth/lax-bid-logo.svg";
 
 export type HostedAuthTheme = "shop" | "bid" | "default";
 
@@ -31,8 +32,8 @@ export function selectHostedBrand(clientId: string | null | undefined): HostedBr
     return {
       theme: "bid",
       productName: "LAX Bid",
-      logoSrc: null,
-      logoAlt: null,
+      logoSrc: HOSTED_BID_LOGO_PATH,
+      logoAlt: "LAX Bid",
     };
   }
   return DEFAULT_BRAND;

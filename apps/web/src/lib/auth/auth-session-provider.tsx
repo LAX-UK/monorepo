@@ -21,7 +21,7 @@ export const BETTER_AUTH_MESSAGE_STORAGE_KEY = "better-auth.message";
 export type AuthSessionContextValue = {
   user: SessionUser | null;
   pending: boolean;
-  refetch: () => Promise<void>;
+  refetch: (options?: { pending?: boolean }) => Promise<void>;
 };
 
 export const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
@@ -37,16 +37,34 @@ export function AuthSessionProvider({
   children: ReactNode;
 }) {
   const [user, setUser] = useState<SessionUser | null>(serverUser);
-  const [pending, setPending] = useState(serverUser == null && authCookiePresent);
+  /** SSR already resolved the session when a cookie was present; avoid indefinite header skeletons. */
+  const [pending, setPending] = useState(false);
 
-  const refetch = useCallback(async () => {
-    setPending(true);
+  const refetch = useCallback(async (options?: { pending?: boolean }) => {
+    const showPending = options?.pending ?? true;
+    if (showPending) setPending(true);
     try {
       setUser(await fetchCurrentBffSession());
     } finally {
-      setPending(false);
+      if (showPending) setPending(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!authCookiePresent || serverUser != null) return;
+    void refetch({ pending: false });
+  }, [authCookiePresent, serverUser, refetch]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        void refetch({ pending: false });
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [refetch]);
 
   useEffect(() => {
     if (typeof BroadcastChannel === "undefined") return;

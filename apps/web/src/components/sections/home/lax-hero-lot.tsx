@@ -8,6 +8,7 @@ import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
 import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { RevealOnMount } from "@/components/ui/reveal";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { HOME_HERO_CONTENT_PT, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { Countdown, LiveDot } from "@auction/ui";
 import { cn } from "@auction/ui";
@@ -111,13 +112,13 @@ export function LaxHeroLot({ lot }: Props) {
                       className="min-h-[44px] min-w-0 sm:min-w-[218px]"
                       asChild
                     >
-                      <Link
-                        href="/register"
+                      <a
+                        href={buildHostedLoginStartHref({ intent: "signup" })}
                         className="inline-flex items-center justify-center gap-[11px]"
                       >
                         Register to Bid
                         <ArrowRight className="!size-5 shrink-0 text-cta-on" aria-hidden />
-                      </Link>
+                      </a>
                     </Button>
                   </MagneticButton>
                   {lot.isAuctionLive ? (

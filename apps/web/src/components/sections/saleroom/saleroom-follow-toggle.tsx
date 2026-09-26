@@ -1,6 +1,7 @@
 "use client";
 
 import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import {
   overlayOutlineButtonClasses,
   overlayToneProps,
@@ -9,7 +10,6 @@ import {
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Bell, BellRing } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useState } from "react";
 
 type Props = {
@@ -73,8 +73,8 @@ export function SaleroomFollowToggle({
   if (!isAuthenticated) {
     if (appearance === "outlined-block") {
       return (
-        <Link
-          href={`/login?next=${encodeURIComponent(loginNextPath)}`}
+        <a
+          href={buildHostedLoginStartHref({ next: loginNextPath })}
           className={cn(
             outlinedClass,
             "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand",
@@ -83,17 +83,17 @@ export function SaleroomFollowToggle({
         >
           <BellRing className="size-4 shrink-0" aria-hidden />
           {label ?? "Follow"}
-        </Link>
+        </a>
       );
     }
     return (
-      <Link
-        href={`/login?next=${encodeURIComponent(loginNextPath)}`}
+      <a
+        href={buildHostedLoginStartHref({ next: loginNextPath })}
         className={`inline-flex items-center gap-2 rounded-full border border-outline-variant/60 bg-surface-container-high font-label font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:border-link hover:text-link focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${sizeClasses}`}
       >
         <BellRing className="size-4" aria-hidden />
         {label ?? "Sign in to follow"}
-      </Link>
+      </a>
     );
   }
 

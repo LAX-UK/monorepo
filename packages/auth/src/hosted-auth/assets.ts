@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const HOSTED_SHOP_LOGO_FILENAME = "lax-shop-logo.svg";
+export const HOSTED_BID_LOGO_FILENAME = "lax-bid-logo.svg";
 
 export function hostedShopLogoPath(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "assets", HOSTED_SHOP_LOGO_FILENAME);
@@ -30,4 +31,8 @@ export function readHostedAsset(name: string): string {
 
 export function readHostedShopLogoSvg(): string {
   return readHostedAsset(HOSTED_SHOP_LOGO_FILENAME);
+}
+
+export function readHostedBidLogoSvg(): string {
+  return readHostedAsset(HOSTED_BID_LOGO_FILENAME);
 }

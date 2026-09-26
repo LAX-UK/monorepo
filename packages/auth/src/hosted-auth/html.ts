@@ -48,6 +48,7 @@ export type HostedAuthPage = {
   scriptSrc?: string;
   brand: HostedBrandProfile;
   config: HostedAuthPageConfig;
+  productBack?: { href: string; label: string };
 };
 
 export type FloatingInputOptions = {
@@ -229,6 +230,9 @@ export function buildHostedAuthHtml(page: HostedAuthPage): string {
     ? `<img class="brand-logo" src="${escapeHostedHtml(page.brand.logoSrc)}" alt="${escapeHostedHtml(page.brand.logoAlt ?? page.brand.productName)}" width="201" height="44">`
     : `<p class="brand-mark">${escapeHostedHtml(page.brand.productName)}</p>`;
   const asset = `?v=${HOSTED_AUTH_ASSET_VERSION}`;
+  const productBack = page.productBack
+    ? `<p class="product-back"><a class="text-link" href="${escapeHostedHtml(page.productBack.href)}">${escapeHostedHtml(page.productBack.label)}</a></p>`
+    : "";
   return `<!doctype html>
 <html lang="en" class="${themeClass}">
 <head>
@@ -243,6 +247,7 @@ export function buildHostedAuthHtml(page: HostedAuthPage): string {
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
   <main id="main-content">
+    ${productBack}
     <div class="brand">
       ${logo}
       <p class="brand-sub">${escapeHostedHtml(HOSTED_AUTH_TOKENS.companyName)}</p>

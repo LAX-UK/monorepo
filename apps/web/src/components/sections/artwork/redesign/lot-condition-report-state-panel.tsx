@@ -2,6 +2,7 @@
 
 import { SendVerificationEmailButton } from "@/components/auth/send-verification-email-button";
 import { ConditionReportRequestForm } from "@/components/sections/artwork/redesign/condition-report-request-form";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { ConditionReportCardState } from "@/lib/condition-report/derive-condition-report-card-state";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { Button } from "@auction/ui/components/button";
@@ -36,9 +37,7 @@ export function LotConditionReportNotSignedInPanel({
         Request a formal condition report prepared by our specialists before you bid.
       </p>
       <Button asChild variant="outline" size="sm" className="min-h-11 w-full">
-        <Link href={`/login?next=${encodeURIComponent(state.loginNextPath)}`}>
-          Sign in to request
-        </Link>
+        <a href={buildHostedLoginStartHref({ next: state.loginNextPath })}>Sign in to request</a>
       </Button>
     </>
   );

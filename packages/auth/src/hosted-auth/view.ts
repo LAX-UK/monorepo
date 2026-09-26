@@ -87,3 +87,21 @@ export function hostedAuthViewFromSearch(
   const params = search instanceof URLSearchParams ? search : new URLSearchParams(search ?? "");
   return createHostedAuthView(params, capabilities);
 }
+
+export type HostedProductBackLink = {
+  href: string;
+  label: string;
+};
+
+export function resolveHostedProductBackLink(view: HostedAuthView): HostedProductBackLink | null {
+  const origin =
+    view.flow.product === "shop"
+      ? view.capabilities.shopOrigin
+      : view.flow.product === "bid"
+        ? view.capabilities.bidOrigin
+        : null;
+  if (!origin) return null;
+  const href = origin.replace(/\/$/, "");
+  const label = view.flow.product === "shop" ? "Back to LAX Shop" : "Back to LAX Bid";
+  return { href, label };
+}

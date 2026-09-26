@@ -38,4 +38,15 @@ test.describe("marketing auth routing @smoke", () => {
     await page.goto("/login?session_expired=1");
     await page.waitForURL(/\/(login|oauth2\/authorize|api\/auth\/login)/, { timeout: 30_000 });
   });
+
+  test("header sign in starts hosted auth without task-route skeleton", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Account" }).click();
+    await page.getByRole("menuitem", { name: "Sign in" }).click();
+    await expect(page.getByTestId("auth-logo-skeleton")).toHaveCount(0);
+    const hostedLogin = page.locator("#login-form");
+    const hostedHeading = page.getByRole("heading", { name: /sign in/i });
+    await expect(hostedLogin.or(hostedHeading).first()).toBeVisible({ timeout: 30_000 });
+  });
 });

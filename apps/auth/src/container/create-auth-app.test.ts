@@ -91,6 +91,7 @@ describe("auth HTTP app composition", () => {
     expect(paths).toContain("/hosted-auth.css");
     expect(paths).toContain("/hosted-auth-runtime.js");
     expect(paths).toContain("/hosted-auth/lax-shop-logo.svg");
+    expect(paths).toContain("/hosted-auth/lax-bid-logo.svg");
   });
 
   it("renders Shop branding for a validated Shop authorization query", async () => {
@@ -110,6 +111,23 @@ describe("auth HTTP app composition", () => {
     expect(html).not.toMatch(/href="\/[^"]*code_challenge/);
     expect(html).not.toContain("challenges.cloudflare.com");
     expect(html).not.toContain('params.get("callbackURL")');
+  });
+
+  it("renders Bid branding for lax-bid-web login", async () => {
+    const app = buildApp();
+    const response = await app.request("https://auth.test/login?client_id=lax-bid-web");
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("theme-bid");
+    expect(html).toContain("/hosted-auth/lax-bid-logo.svg");
+    expect(html).toContain("Back to LAX Bid");
+  });
+
+  it("serves the Bid hosted logo asset", async () => {
+    const app = buildApp();
+    const response = await app.request("https://auth.test/hosted-auth/lax-bid-logo.svg");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("image/svg+xml");
   });
 
   it("redirects prompt=create login requests to hosted sign-up", async () => {

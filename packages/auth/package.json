@@ -38,7 +38,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/build-hosted-assets.mjs && mkdir -p dist/hosted-auth/assets && cp src/hosted-auth/assets/lax-shop-logo.svg dist/hosted-auth/assets/lax-shop-logo.svg",
+    "build": "tsc -p tsconfig.json && node scripts/build-hosted-assets.mjs && mkdir -p dist/hosted-auth/assets && cp src/hosted-auth/assets/lax-shop-logo.svg src/hosted-auth/assets/lax-bid-logo.svg dist/hosted-auth/assets/",
     "build:hosted-assets": "node scripts/build-hosted-assets.mjs",
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.browser.json --noEmit",

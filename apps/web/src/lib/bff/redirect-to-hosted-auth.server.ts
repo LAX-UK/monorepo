@@ -1,5 +1,6 @@
 import "server-only";
 
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { REGISTERED_OIDC_CLIENT_IDS } from "@auction/identity-contracts";
 import type { HostedAuthEntry } from "./auth-entry-intent.server";
 import { bffConfig } from "./config.server";
@@ -36,19 +37,21 @@ export function buildBidHostedRecoveryUrl(
   return buildBidIssuerHostedUrl(path, token ? { token } : undefined);
 }
 
-function hostedEntryIntentParam(entry: HostedAuthEntry): string | null {
+function hostedEntryIntentParam(entry: HostedAuthEntry): HostedAuthEntryIntentForHref | null {
   if (entry.reauth) return "reauth";
   if (entry.funnel === "sell") return "sell";
   if (entry.screen === "signup") return "signup";
   return null;
 }
 
+type HostedAuthEntryIntentForHref = "signup" | "reauth" | "sell";
+
 export function buildBidOidcLoginStartUrl(entry: HostedAuthEntry): string {
-  const params = new URLSearchParams();
-  params.set("next", entry.nextPath);
-  const intent = hostedEntryIntentParam(entry);
-  if (intent) params.set("intent", intent);
-  if (entry.inviteToken) params.set("invite", entry.inviteToken);
-  if (entry.forceLoginPrompt && !entry.reauth) params.set("switch", "1");
-  return `/api/auth/login?${params.toString()}`;
+  const invite = entry.inviteToken?.trim();
+  return buildHostedLoginStartHref({
+    next: entry.nextPath,
+    intent: hostedEntryIntentParam(entry),
+    ...(invite && invite.length >= 16 ? { invite } : {}),
+    forceLoginPrompt: entry.forceLoginPrompt,
+  });
 }
