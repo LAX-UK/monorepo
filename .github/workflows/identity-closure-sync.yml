@@ -12,6 +12,7 @@ on:
       - patches/**
       - scripts/identity/**
       - scripts/ci/prepare-identity-lockfile.mjs
+      - scripts/ci/verify-identity-closure-sync.mjs
       - scripts/ci/verify-identity-extractability.mjs
       - scripts/check-layers.mjs
       - package.json
