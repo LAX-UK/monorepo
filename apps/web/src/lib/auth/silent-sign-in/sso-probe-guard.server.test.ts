@@ -3,7 +3,8 @@ import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/bff/public-origin-url.server", () => ({
-  resolvePublicOriginUrl: (path: string) => `https://lax.bid${path.startsWith("/") ? path : `/${path}`}`,
+  resolvePublicOriginUrl: (path: string) =>
+    `https://lax.bid${path.startsWith("/") ? path : `/${path}`}`,
 }));
 
 const { redirectIfSilentProbeBlocked } = await import("./sso-probe-guard.server");

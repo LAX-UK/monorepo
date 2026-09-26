@@ -16,8 +16,7 @@ export default async function PostLoginPage({
   }>;
 }) {
   const [params, user] = await Promise.all([searchParams, getServerSessionUser()]);
-  const requestedNext =
-    params.next && isSafeNextPath(params.next) ? params.next : null;
+  const requestedNext = params.next && isSafeNextPath(params.next) ? params.next : null;
 
   if (!user) {
     const loginParams = new URLSearchParams({ session_expired: "1" });
