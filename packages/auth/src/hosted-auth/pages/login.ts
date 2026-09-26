@@ -8,7 +8,11 @@ import {
   statusRegions,
   turnstileHost,
 } from "../html.js";
-import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
+import {
+  type HostedAuthView,
+  hostedAuthViewFromSearch,
+  resolveHostedProductBackLink,
+} from "../view.js";
 
 export { HOSTED_LOGIN_SCRIPT } from "../scripts.js";
 
@@ -114,6 +118,7 @@ function combinedBody(view: HostedAuthView): string {
 }
 
 export function buildHostedLoginHtml(view: HostedAuthView = hostedAuthViewFromSearch("")): string {
+  const productBack = resolveHostedProductBackLink(view);
   return buildHostedAuthHtml({
     title: "Sign in",
     description: `Sign in to your ${view.brand.productName} account to continue.`,
@@ -121,6 +126,7 @@ export function buildHostedLoginHtml(view: HostedAuthView = hostedAuthViewFromSe
     config: view.config,
     body: view.capabilities.emailFirst ? emailFirstBody(view) : combinedBody(view),
     scriptSrc: "/hosted-login.js",
+    ...(productBack ? { productBack } : {}),
   });
 }
 

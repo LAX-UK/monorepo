@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { HOSTED_SHOP_LOGO_PATH, selectHostedBrand } from "./hosted-auth/brand.js";
+import {
+  HOSTED_BID_LOGO_PATH,
+  HOSTED_SHOP_LOGO_PATH,
+  selectHostedBrand,
+} from "./hosted-auth/brand.js";
 import { HOSTED_AUTH_RUNTIME_SCRIPT } from "./hosted-auth/runtime.js";
 import { HOSTED_AUTH_STYLES } from "./hosted-auth/styles.js";
 import { hostedAuthViewFromSearch } from "./hosted-auth/view.js";
@@ -174,7 +178,9 @@ describe("issuer-hosted credential HTML", () => {
 describe("selectHostedBrand", () => {
   it("selects Shop branding only for the registered Shop client", () => {
     expect(selectHostedBrand("lax-shop-web").theme).toBe("shop");
-    expect(selectHostedBrand("lax-bid-web").logoSrc).toBeNull();
+    expect(selectHostedBrand("lax-shop-web").logoSrc).toBe(HOSTED_SHOP_LOGO_PATH);
+    expect(selectHostedBrand("lax-bid-web").theme).toBe("bid");
+    expect(selectHostedBrand("lax-bid-web").logoSrc).toBe(HOSTED_BID_LOGO_PATH);
     expect(selectHostedBrand("unknown").theme).toBe("default");
   });
 });

@@ -1,4 +1,4 @@
-import { buildAuthHref } from "@/lib/auth/auth-route-links";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { resolveHeaderAuthNext } from "@/lib/auth/use-auth-header-links";
 import { describe, expect, it } from "vitest";
@@ -14,11 +14,11 @@ describe("resolveHeaderAuthNext", () => {
   });
 });
 
-describe("buildAuthHref integration", () => {
+describe("buildHostedLoginStartHref integration", () => {
   it("preserves safe next for lot pages", () => {
     const next = resolveHeaderAuthNext("/lot/foo/1", "");
     expect(next).toBe("/lot/foo/1");
     expect(isSafeNextPath(next)).toBe(true);
-    expect(buildAuthHref("/login", { next })).toBe("/login?next=%2Flot%2Ffoo%2F1");
+    expect(buildHostedLoginStartHref({ next })).toBe("/api/auth/login?next=%2Flot%2Ffoo%2F1");
   });
 });

@@ -513,12 +513,28 @@ html.theme-shop .brand-mark {
   display: none;
 }
 
-html.theme-shop .brand-logo {
+html.theme-shop .brand-logo,
+html.theme-bid .brand-logo {
   display: block;
 }
 
-html.theme-shop .brand-sub {
+html.theme-shop .brand-sub,
+html.theme-bid .brand-sub {
   display: none;
+}
+
+html.theme-bid .brand-logo {
+  height: 3.5rem;
+  max-width: min(100%, 12rem);
+}
+
+.product-back {
+  margin: 0;
+  width: min(100%, var(--auth-column, 528px));
+}
+
+.product-back .text-link {
+  font-size: 0.875rem;
 }
 
 @media (max-width: 32rem) {

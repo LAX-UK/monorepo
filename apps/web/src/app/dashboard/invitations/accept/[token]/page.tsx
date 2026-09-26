@@ -3,6 +3,7 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { OrgModuleComingSoon } from "@/components/organisations/org-module-coming-soon";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -61,7 +62,13 @@ export default async function AcceptInvitationTokenPage({
     );
   }
 
-  const next = encodeURIComponent(`/dashboard/invitations/accept/${encodeURIComponent(token)}`);
+  const acceptNext = `/dashboard/invitations/accept/${encodeURIComponent(token)}`;
+  const signInHref = buildHostedLoginStartHref({ next: acceptNext });
+  const registerHref = buildHostedLoginStartHref({
+    next: acceptNext,
+    intent: "signup",
+    invite: token,
+  });
 
   return (
     <DashboardPage className="mx-auto max-w-lg space-y-6">
@@ -83,20 +90,20 @@ export default async function AcceptInvitationTokenPage({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Button asChild variant="cta" className="h-auto min-h-24 flex-col gap-2 py-4">
-            <Link href={`/register?invite=${encodeURIComponent(token)}`}>
+            <a href={registerHref}>
               <UserPlus className="size-6" aria-hidden />
               <span>Create account</span>
-            </Link>
+            </a>
           </Button>
           <Button asChild variant="outline" className="h-auto min-h-24 flex-col gap-2 py-4">
-            <Link href={`/login?next=${next}`}>
+            <a href={signInHref}>
               <LogIn className="size-6" aria-hidden />
               <span>Sign in</span>
-            </Link>
+            </a>
           </Button>
         </div>
         <Button asChild variant="ghost" size="sm">
-          <Link href={`/login?next=${next}`}>Back to sign in</Link>
+          <a href={signInHref}>Back to sign in</a>
         </Button>
       </Surface>
     </DashboardPage>

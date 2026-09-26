@@ -8,11 +8,16 @@ import {
   turnstileHost,
 } from "../html.js";
 import { HOSTED_AUTH_POLICY } from "../policy.js";
-import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
+import {
+  type HostedAuthView,
+  hostedAuthViewFromSearch,
+  resolveHostedProductBackLink,
+} from "../view.js";
 
 export { HOSTED_SIGN_UP_SCRIPT } from "../scripts.js";
 
 export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromSearch("")): string {
+  const productBack = resolveHostedProductBackLink(view);
   return buildHostedAuthHtml({
     title: "Create account",
     description: `Join ${view.brand.productName} to shop and manage your profile.`,
@@ -34,5 +39,6 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
       <div class="links">${continuationAnchor("Already have an account?", "/login", view.flow)}</div>
     </form>`,
     scriptSrc: "/hosted-sign-up.js",
+    ...(productBack ? { productBack } : {}),
   });
 }

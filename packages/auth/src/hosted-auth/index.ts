@@ -3,6 +3,7 @@ export { HOSTED_AUTH_STYLES } from "./styles.js";
 export { HOSTED_AUTH_RUNTIME_SCRIPT } from "./runtime.js";
 export { readHostedAsset } from "./assets.js";
 export {
+  HOSTED_BID_LOGO_PATH,
   HOSTED_SHOP_LOGO_PATH,
   selectHostedBrand,
   selectHostedBrandFromClientName,
@@ -20,7 +21,13 @@ export {
 } from "./flow-context.js";
 export { HOSTED_AUTH_POLICY, HOSTED_AUTH_ASSET_VERSION } from "./policy.js";
 export { resolveMagicLinkUrl } from "./magic-link-url.js";
-export { readHostedShopLogoSvg, hostedShopLogoPath, HOSTED_SHOP_LOGO_FILENAME } from "./assets.js";
+export {
+  readHostedBidLogoSvg,
+  readHostedShopLogoSvg,
+  hostedShopLogoPath,
+  HOSTED_BID_LOGO_FILENAME,
+  HOSTED_SHOP_LOGO_FILENAME,
+} from "./assets.js";
 export {
   createHostedAuthView,
   hostedAuthViewFromSearch,

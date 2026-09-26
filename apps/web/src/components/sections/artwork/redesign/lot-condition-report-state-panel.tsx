@@ -6,6 +6,7 @@ import type { ConditionReportCardState } from "@/lib/condition-report/derive-con
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { Button } from "@auction/ui/components/button";
 import type { ConditionReportRequestFormValues } from "@auction/validators";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import Link from "next/link";
 
 export function LotConditionReportPublishedPanel({
@@ -36,9 +37,7 @@ export function LotConditionReportNotSignedInPanel({
         Request a formal condition report prepared by our specialists before you bid.
       </p>
       <Button asChild variant="outline" size="sm" className="min-h-11 w-full">
-        <Link href={`/login?next=${encodeURIComponent(state.loginNextPath)}`}>
-          Sign in to request
-        </Link>
+        <a href={buildHostedLoginStartHref({ next: state.loginNextPath })}>Sign in to request</a>
       </Button>
     </>
   );

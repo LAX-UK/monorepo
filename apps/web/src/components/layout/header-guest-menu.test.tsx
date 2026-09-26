@@ -1,6 +1,5 @@
 import { HeaderGuestMenu } from "@/components/layout/header-guest-menu";
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -10,21 +9,9 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/auth/use-auth-header-links", () => ({
   useAuthHeaderLinks: () => ({
-    signInHref: "/login?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid",
-    registerHref: "/register?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid",
+    signInHref: "/api/auth/login?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid",
+    registerHref: "/api/auth/login?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid&intent=signup",
   }),
-}));
-
-vi.mock("next/link", () => ({
-  default: ({
-    href,
-    children,
-    ...props
-  }: { href: string; children: ReactNode } & Record<string, unknown>) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
 }));
 
 describe("HeaderGuestMenu", () => {
@@ -43,13 +30,17 @@ describe("HeaderGuestMenu", () => {
       "true",
     );
     expect(screen.getByRole("menu", { name: "Account" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Sign in" })).toHaveAttribute(
+    const signIn = screen.getByRole("menuitem", { name: "Sign in" });
+    const createAccount = screen.getByRole("menuitem", { name: "Create account" });
+    expect(signIn.tagName).toBe("A");
+    expect(createAccount.tagName).toBe("A");
+    expect(signIn).toHaveAttribute(
       "href",
-      "/login?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid",
+      "/api/auth/login?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid",
     );
-    expect(screen.getByRole("menuitem", { name: "Create account" })).toHaveAttribute(
+    expect(createAccount).toHaveAttribute(
       "href",
-      "/register?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid",
+      "/api/auth/login?next=%2Flot%2Ffoo%2F1%3Fview%3Dgrid&intent=signup",
     );
   });
 });

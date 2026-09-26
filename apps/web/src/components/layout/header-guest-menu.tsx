@@ -13,7 +13,6 @@ import {
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { User } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -133,7 +132,7 @@ export function HeaderGuestMenu({ headerTone = "on-light" }: Props) {
             </p>
           </div>
           <div className="flex flex-col gap-1 px-2 py-2">
-            <Link
+            <a
               href={signInHref}
               role="menuitem"
               data-guest-menu-item=""
@@ -144,8 +143,8 @@ export function HeaderGuestMenu({ headerTone = "on-light" }: Props) {
               onClick={closeMenu}
             >
               Sign in
-            </Link>
-            <Link
+            </a>
+            <a
               href={registerHref}
               role="menuitem"
               data-guest-menu-item=""
@@ -156,7 +155,7 @@ export function HeaderGuestMenu({ headerTone = "on-light" }: Props) {
               onClick={closeMenu}
             >
               Create account
-            </Link>
+            </a>
           </div>
         </ChromePopoverPanel>
       ) : null}

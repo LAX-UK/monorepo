@@ -5,6 +5,7 @@ import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-t
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { registerForSale } from "@/lib/data/http/sale-registration.client";
+import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import {
   BID_LIMIT_FIELD_LABEL,
@@ -119,19 +120,24 @@ export function RegisterHelperText({
 function RegisterOutlineLink({ href, children }: { href: string; children: ReactNode }) {
   const inFrame = useOverlayToneContext() != null;
   const overlayTone = useOverlayTone("contentBlock");
+  const useFullPageNav = href.startsWith("/api/auth/login");
   if (inFrame) {
+    const className = cn(
+      overlayOutlineButtonClasses(
+        overlayTone,
+        cn(saleroomHeroActionSizing, "shrink-0 justify-center"),
+      ),
+      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand",
+    );
+    if (useFullPageNav) {
+      return (
+        <a href={href} className={className} {...overlayToneProps(overlayTone)}>
+          {children}
+        </a>
+      );
+    }
     return (
-      <Link
-        href={href}
-        className={cn(
-          overlayOutlineButtonClasses(
-            overlayTone,
-            cn(saleroomHeroActionSizing, "shrink-0 justify-center"),
-          ),
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand",
-        )}
-        {...overlayToneProps(overlayTone)}
-      >
+      <Link href={href} className={className} {...overlayToneProps(overlayTone)}>
         {children}
       </Link>
     );
@@ -143,7 +149,7 @@ function RegisterOutlineLink({ href, children }: { href: string; children: React
       size="md"
       className={cn(saleroomHeroActionSizing, "shrink-0")}
     >
-      <Link href={href}>{children}</Link>
+      {useFullPageNav ? <a href={href}>{children}</a> : <Link href={href}>{children}</Link>}
     </Button>
   );
 }
@@ -332,7 +338,9 @@ export function SaleroomRegisterToBid({
   if (layout === "button") {
     if (!isAuthenticated) {
       return (
-        <RegisterOutlineLink href={`/login?next=${encodeURIComponent(loginNextPath)}`}>
+        <RegisterOutlineLink
+          href={buildHostedLoginStartHref({ next: loginNextPath, intent: "signup" })}
+        >
           Register to bid
         </RegisterOutlineLink>
       );
@@ -363,7 +371,9 @@ export function SaleroomRegisterToBid({
   // layout === "default"
   if (!isAuthenticated) {
     return (
-      <RegisterOutlineLink href={`/login?next=${encodeURIComponent(loginNextPath)}`}>
+      <RegisterOutlineLink
+        href={buildHostedLoginStartHref({ next: loginNextPath, intent: "signup" })}
+      >
         Register to bid
       </RegisterOutlineLink>
     );

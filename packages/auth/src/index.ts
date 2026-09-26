@@ -53,6 +53,7 @@ export {
   parseHostedAuthFlow,
   hostedSignUpRequested,
   normalizeAuthorizePromptForCreate,
+  readHostedBidLogoSvg,
   readHostedShopLogoSvg,
   readHostedAsset,
   type HostedAuthCapabilities,
