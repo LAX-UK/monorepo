@@ -116,5 +116,7 @@ jobs:
         with:
           app-id: ${{ env.APP_ID }}
           readiness-urls: ${{ steps.readiness.outputs.urls }}
+          expected-releases: >-
+            {"https://test.lax.bid/api/health/ready":"${{ github.sha }}"}
           rolling-image-tag: ${{ vars.USE_PREBUILT_IMAGES_TEST == 'true' && github.sha || '' }}
           do-token: ${{ secrets.DIGITALOCEAN_TOKEN }}

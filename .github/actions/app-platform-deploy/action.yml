@@ -19,8 +19,9 @@ inputs:
     default: "[]"
   rolling-image-tag:
     description: >-
-      When set, pin the Bid web DOCR service to this immutable tag via
-      digitalocean/app_action/deploy@v2 (avoids stale :test mutable-tag rolls).
+      When set, pin prebuilt Bid DOCR services (api, ws, worker, web, migrate,
+      clamav) to this immutable tag via digitalocean/app_action/deploy@v2, then
+      create-deployment so :test digest rolls apply to every component.
     required: false
     default: ""
   do-token:
@@ -51,12 +52,17 @@ runs:
         test -n "$app_name"
         echo "name=$app_name" >> "$GITHUB_OUTPUT"
 
-    - name: Pin rolling images and deploy
+    - name: Pin prebuilt component image tags
       id: pin
       if: inputs.rolling-image-tag != ''
       uses: digitalocean/app_action/deploy@v2
       env:
+        IMAGE_TAG_API: ${{ inputs.rolling-image-tag }}
+        IMAGE_TAG_WS: ${{ inputs.rolling-image-tag }}
+        IMAGE_TAG_WORKER: ${{ inputs.rolling-image-tag }}
         IMAGE_TAG_WEB: ${{ inputs.rolling-image-tag }}
+        IMAGE_TAG_MIGRATE: ${{ inputs.rolling-image-tag }}
+        IMAGE_TAG_CLAMAV: ${{ inputs.rolling-image-tag }}
       with:
         token: ${{ inputs.do-token }}
         app_name: ${{ steps.meta.outputs.name }}
@@ -64,11 +70,12 @@ runs:
 
     - name: Create App Platform deployment
       id: create
-      if: inputs.rolling-image-tag == ''
       shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
       run: |
         set -euo pipefail
-        deployment_json="$(doctl apps create-deployment "${{ inputs.app-id }}" --output json)"
+        deployment_json="$(doctl apps create-deployment "$APP_ID" --output json)"
         deployment_id="$(
           jq -r 'if type == "array" then .[0].id else .id end // empty' <<<"$deployment_json"
         )"
@@ -79,21 +86,11 @@ runs:
       id: resolve-deployment
       shell: bash
       env:
-        APP_ID: ${{ inputs.app-id }}
-        PINNED: ${{ inputs.rolling-image-tag != '' && 'true' || 'false' }}
         CREATE_DEPLOYMENT_ID: ${{ steps.create.outputs.deployment_id }}
       run: |
         set -euo pipefail
-        if test "$PINNED" = "true"; then
-          deployment_id="$(
-            doctl apps list-deployments "$APP_ID" --output json |
-              jq -r 'if type == "array" then .[0].id else .id end // empty'
-          )"
-        else
-          deployment_id="$CREATE_DEPLOYMENT_ID"
-        fi
-        test -n "$deployment_id"
-        echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+        test -n "$CREATE_DEPLOYMENT_ID"
+        echo "deployment_id=$CREATE_DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
 
     - name: Poll deployment to terminal phase
       id: poll
