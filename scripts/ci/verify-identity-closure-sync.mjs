@@ -21,12 +21,13 @@ const LAX_IDENTITY_REPO =
   process.env.LAX_IDENTITY_REPO ?? "https://github.com/LAX-UK/lax-identity.git";
 
 function parseArgs(argv) {
-  let ref = "main";
+  /** Set only when `--ref` is passed; otherwise env/default applies in main(). */
+  let ref;
   let standaloneRoot = process.env.LAX_IDENTITY_ROOT;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--ref") {
-      ref = argv[index + 1] ?? ref;
+      ref = argv[index + 1] ?? "main";
       index += 1;
       continue;
     }
