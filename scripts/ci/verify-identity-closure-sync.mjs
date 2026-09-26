@@ -20,6 +20,14 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const LAX_IDENTITY_REPO =
   process.env.LAX_IDENTITY_REPO ?? "https://github.com/LAX-UK/lax-identity.git";
 
+export function closureRefOrDefault(explicitRef, envRef) {
+  const trimmedExplicit = explicitRef?.trim();
+  if (trimmedExplicit) return trimmedExplicit;
+  const trimmedEnv = envRef?.trim();
+  if (trimmedEnv) return trimmedEnv;
+  return "main";
+}
+
 function parseArgs(argv) {
   /** Set only when `--ref` is passed; otherwise env/default applies in main(). */
   let ref;
@@ -126,7 +134,7 @@ function compareTrees(monorepoRoot, standaloneRoot) {
 
 function main() {
   const parsed = parseArgs(process.argv.slice(2));
-  const ref = parsed.ref ?? process.env.LAX_IDENTITY_CLOSURE_REF ?? "main";
+  const ref = closureRefOrDefault(parsed.ref, process.env.LAX_IDENTITY_CLOSURE_REF);
   const explicitRoot = parsed.standaloneRoot;
   if (!/^[0-9a-f]{40}$|^main$/.test(ref)) {
     throw new Error("--ref must be main or a full 40-char commit SHA");

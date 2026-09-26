@@ -35,5 +35,6 @@ jobs:
           node-version-file: .nvmrc
       - name: Compare Identity closure to lax-identity@main
         env:
+          # Deleted repo vars still inject "" here; verifier treats blank as main.
           LAX_IDENTITY_CLOSURE_REF: ${{ vars.LAX_IDENTITY_CLOSURE_REF }}
         run: node scripts/ci/verify-identity-closure-sync.mjs
