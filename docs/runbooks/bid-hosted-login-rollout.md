@@ -6,9 +6,11 @@
 2. Deploy **issuer** (`apps/auth` / lax-identity): primary-login-only credential CORS, `user.create.before` registration kill switch (issuer-wide, including OAuth), relative redirects, `prompt_values_supported`.
 3. Deploy **Bid API + web**: BFF redirects, `/onboarding/account`, `POST /users/me/onboarding` (no Turnstile; authenticated only), Redis-cached onboarding gate on bids/lots/sales/submissions/payments/org create, staff bypass, dashboard layout guard, HttpOnly invite cookie (not URL).
 4. **Removed** public `POST /users/register` on Bid API — sign-up is issuer-hosted only; `Lead` fires from onboarding completion.
-5. Run staging **identity-staging-acceptance** (`verify-bid-web-bff-roundtrip.mjs`).
-6. Mirror issuer changes to `lax-identity` and run `LAX_IDENTITY_ROOT=../lax-identity node scripts/ci/verify-identity-source-parity.mjs`.
-7. Complete manual parity checklist: [bid-hosted-login-parity-audit.md](./bid-hosted-login-parity-audit.md).
+5. When `app-deploy-test` skips deploy (`immutable_boundary_changed` from shop-identity), run **Staging recovery (test)** with digests from the merge commit build and Identity SHA matching lax-identity `main` (closure sync green).
+6. Run staging **identity-staging-acceptance** (`verify-bid-web-bff-roundtrip.mjs`).
+7. Mirror issuer changes to `lax-identity` and run `LAX_IDENTITY_ROOT=../lax-identity node scripts/ci/verify-identity-source-parity.mjs`.
+8. Complete manual parity checklist: [bid-hosted-login-parity-audit.md](./bid-hosted-login-parity-audit.md).
+9. Re-baseline identity soak repo vars and dispatch the first `identity-staging-soak` sample immediately (see [identity-staging-extraction-evidence.md](./identity-staging-extraction-evidence.md)).
 
 ## Kill switch
 
