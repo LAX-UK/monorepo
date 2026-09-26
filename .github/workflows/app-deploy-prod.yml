@@ -63,4 +63,5 @@ jobs:
           readiness-urls: >-
             ["https://api.lax.bid/health/ready"]
           rolling-image-tag: ${{ vars.USE_PREBUILT_IMAGES_PROD == 'true' && github.sha || '' }}
+          prebuilt-environment: prod
           do-token: ${{ secrets.DIGITALOCEAN_TOKEN }}

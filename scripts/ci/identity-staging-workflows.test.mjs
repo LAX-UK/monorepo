@@ -209,6 +209,11 @@ test("App Platform deploy action exposes exact deployment evidence and release c
   assert.match(action, /IMAGE_TAG_WEB:/);
   assert.match(action, /standalone lax-identity/);
   assert.match(action, /if: inputs\.rolling-image-tag == ''/);
+  assert.match(action, /verify-prebuilt-web-for-deploy\.mjs/);
+  assert.match(action, /assert-app-platform-web-image-tag\.mjs/);
+  assert.match(action, /verify-readiness-contract\.mjs/);
+  assert.match(action, /create-deployment recovery roll/);
+  assert.match(action, /prebuilt-environment:/);
   assert.match(action, /digitalocean\/app_action\/deploy@v2/);
   assert.match(testDeploy, /expected-releases:/);
   assert.match(testDeploy, /test\.lax\.bid\/api\/health\/ready/);
