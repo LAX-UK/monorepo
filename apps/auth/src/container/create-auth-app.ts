@@ -2,6 +2,8 @@ import { normalizeAuthorizePromptForCreate } from "@auction/auth";
 import { Sentry } from "@auction/observability";
 import { Hono } from "hono";
 import type pino from "pino";
+import { registerFedcmRoutes } from "../http/fedcm.routes.js";
+import { createLoginStatusMiddleware } from "../http/login-status.middleware.js";
 import { createClientIpResolver } from "../infrastructure/client-ip.js";
 import { createSecurityHeadersMiddleware } from "../middleware/security-headers.js";
 import {
@@ -35,6 +37,11 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
       turnstileEnabled: Boolean(options.oidc.env.TURNSTILE_SITE_KEY),
     }),
   );
+  app.use("*", createLoginStatusMiddleware());
+  registerFedcmRoutes(app, {
+    issuerOrigin: options.oidc.env.OIDC_ISSUER_URL.replace(/\/+$/, ""),
+    enabled: options.oidc.env.FEDCM_ENABLED,
+  });
   app.use("/api/auth/*", async (c, next) => {
     await next();
     const path = c.req.path;

@@ -43,6 +43,7 @@ function createCommerceApp(
       SHOP_API_BASE_URL: "http://localhost:3011",
       SHOP_API_BFF_TOKEN: "test-bff-token-minimum-32-characters-long",
       DATABASE_URL_SHOP: "postgres://shop:shop@127.0.0.1:5432/shop",
+      FEDCM_ENABLED: false,
     },
     secureCookies: false,
     sessionRepository,
@@ -86,6 +87,7 @@ function createGuestCommerceApp(shopApiFetch: ReturnType<typeof vi.fn>) {
       SHOP_API_BASE_URL: "http://localhost:3011",
       SHOP_API_BFF_TOKEN: "test-bff-token-minimum-32-characters-long",
       DATABASE_URL_SHOP: "postgres://shop:shop@127.0.0.1:5432/shop",
+      FEDCM_ENABLED: false,
     },
     secureCookies: false,
     sessionRepository,
@@ -243,6 +245,7 @@ describe("commerce artwork interest routes", () => {
         SHOP_API_BASE_URL: "http://localhost:3011",
         SHOP_API_BFF_TOKEN: "test-bff-token-minimum-32-characters-long",
         DATABASE_URL_SHOP: "postgres://shop:shop@127.0.0.1:5432/shop",
+        FEDCM_ENABLED: false,
       },
       secureCookies: false,
       sessionRepository: {

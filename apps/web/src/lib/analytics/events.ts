@@ -208,6 +208,23 @@ export function trackLogin(method = "email"): string | null {
   return eventId;
 }
 
+export function trackSilentSignInResult(input: {
+  strategy: "redirect" | "fedcm";
+  outcome: "signed_in" | "guest" | "skipped";
+  reason?: string;
+}): string | null {
+  if (!guardAnalytics()) return null;
+  const eventId = newEventId();
+  pushDataLayer({
+    event: "silent_sign_in_result",
+    event_id: eventId,
+    strategy: input.strategy,
+    outcome: input.outcome,
+    ...(input.reason ? { reason: input.reason } : {}),
+  });
+  return eventId;
+}
+
 export function trackAddToWishlist(lotId: string): string | null {
   if (!guardConversion()) return null;
   const eventId = newEventId();

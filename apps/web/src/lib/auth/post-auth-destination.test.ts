@@ -1,4 +1,8 @@
-import { isSafeNextPath, resolvePostAuthDestination } from "@/lib/auth/post-auth-destination";
+import {
+  isSafeNextPath,
+  resolvePostAuthDestination,
+  resolveSilentPostLoginDestination,
+} from "@/lib/auth/post-auth-destination";
 import { staffRoleDefaultDestination } from "@auction/types";
 import { describe, expect, it } from "vitest";
 
@@ -338,5 +342,21 @@ describe("resolvePostAuthDestination", () => {
         withWelcomeBack: true,
       }),
     ).toBe("/dashboard?welcome=back");
+  });
+});
+
+describe("resolveSilentPostLoginDestination", () => {
+  it("honours requested next without forcing onboarding", () => {
+    expect(resolveSilentPostLoginDestination(clientUser, "/catalog")).toBe("/catalog");
+  });
+
+  it("sends suspended users to account-suspended", () => {
+    expect(resolveSilentPostLoginDestination({ ...clientUser, suspended: true }, "/catalog")).toBe(
+      "/account-suspended",
+    );
+  });
+
+  it("defaults to home when next is missing", () => {
+    expect(resolveSilentPostLoginDestination(clientUser, null)).toBe("/");
   });
 });

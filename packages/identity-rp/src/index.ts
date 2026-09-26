@@ -27,3 +27,35 @@ export {
   createFetchTokenEndpoint,
   type FetchTokenEndpointAuth,
 } from "./adapters/fetch-token-endpoint.js";
+export type { CookieJar, CookieSetOptions } from "./silent-sign-in/ports/cookie-jar.js";
+export {
+  classifySilentCallback,
+  type SilentCallbackClassification,
+} from "./silent-sign-in/callback-outcome.js";
+export {
+  evaluateSilentSignInCookieGate,
+  evaluateSilentSignInEligibility,
+  type EvaluateSilentSignInCookieGateInput,
+  type EvaluateSilentSignInEligibilityInput,
+  type SilentSignInCookieGate,
+  type SilentSignInEligibility,
+  type SilentSignInRequest,
+} from "./silent-sign-in/eligibility.js";
+export {
+  isDocumentNavigation,
+  isLikelyCrawler,
+  isPrefetch,
+  type HeaderGetter,
+} from "./silent-sign-in/request-signals.js";
+export {
+  createSilentSignInCookieSpec,
+  defaultCookieSetOptions,
+  DEFAULT_SILENT_SIGN_IN_MAX_AGES,
+  type SilentSignInCookieNames,
+} from "./silent-sign-in/silent-sign-in-cookies.js";
+export {
+  requestSilentFedcmCredential,
+  selectSilentSignInStrategy,
+  type NavigatorCredentialsLike,
+  type SilentSignInStrategy,
+} from "./silent-sign-in/strategy.js";

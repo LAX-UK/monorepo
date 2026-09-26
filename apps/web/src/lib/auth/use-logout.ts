@@ -1,5 +1,6 @@
 "use client";
 
+import { preventFedcmSilentAccess } from "@/lib/auth/fedcm/prevent-silent-access.client";
 import { useRefetchAppSession } from "@/lib/auth/use-refetch-app-session";
 import { requestBffLogout } from "@/lib/data/http/auth-session.client";
 import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
@@ -25,6 +26,7 @@ export function useLogout(options?: UseLogoutOptions) {
     onBeforeNavigate?.();
     setPending(true);
     try {
+      await preventFedcmSilentAccess();
       const result = await requestBffLogout();
       if (!result.ok) {
         notify.error("Could not sign out");

@@ -32,6 +32,13 @@ vi.mock("@/lib/bff/session-store.server", () => ({
     rotateAuthenticated = rotateAuthenticated;
   },
 }));
+const markBidSilentQuiet = vi.fn();
+const markBidSilentGuestResult = vi.fn();
+vi.mock("@/lib/auth/silent-sign-in/cookies.server", () => ({
+  markBidSilentQuiet,
+  markBidSilentGuestResult,
+  clearBidSilentSuppressed: vi.fn(),
+}));
 
 const { GET } = await import("./route");
 
@@ -152,6 +159,27 @@ describe("Bid BFF OIDC callback", () => {
     );
     expect(setBidSessionCookie).toHaveBeenCalledWith(response, "prior-session", "authenticated");
     expect(rotateAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it("redirects silent probe login_required to nextPath as guest with quiet cookie", async () => {
+    readSession.mockResolvedValue({
+      kind: "pending",
+      state: "expected-state",
+      codeVerifier: "pkce-verifier",
+      nonce: "expected-nonce",
+      nextPath: "/catalog",
+      entryIntent: "silent",
+    });
+
+    const response = await GET(request("error=login_required&state=expected-state"));
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("https://lax.bid/catalog");
+    expect(invalidateSession).toHaveBeenCalledWith("pending-session");
+    expect(clearBidSessionCookie).toHaveBeenCalledWith(response);
+    expect(markBidSilentQuiet).toHaveBeenCalledWith(response);
+    expect(markBidSilentGuestResult).toHaveBeenCalledWith(response);
+    expect(exchangeAuthorizationCode).not.toHaveBeenCalled();
   });
 
   it("invalidates the pending session when code exchange or rotation fails", async () => {

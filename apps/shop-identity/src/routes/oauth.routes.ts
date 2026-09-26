@@ -1,5 +1,9 @@
 import { randomBytes } from "node:crypto";
-import type { OidcAuthorizePrompt } from "@auction/identity-rp";
+import {
+  type OidcAuthorizePrompt,
+  classifySilentCallback,
+  createSilentSignInCookieSpec,
+} from "@auction/identity-rp";
 import type { Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type {
@@ -20,6 +24,14 @@ import {
   writeSessionCookie,
 } from "../session.js";
 import type { ShopIdentityAppDeps } from "../shop-identity-app-deps.js";
+import {
+  SHOP_SILENT_SSO_COOKIE_NAMES,
+  clearShopSilentProbe,
+  clearShopSilentSuppressed,
+  markShopSilentProbe,
+  markShopSilentQuiet,
+  markShopSilentSuppressed,
+} from "../silent-sign-in-cookies.js";
 import { shopStorefrontBaseUrl, shopStorefrontPath } from "../storefront-routes.js";
 
 type OAuthRoutesDeps = Pick<
@@ -29,8 +41,36 @@ type OAuthRoutesDeps = Pick<
   completeOAuthCallback(input: CompleteOAuthCallbackInput): Promise<CompleteOAuthCallbackResult>;
 };
 
+const SHOP_SILENT_COOKIE_PREFIX = "shop_sso";
+
 export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
   const { env, sessionRepository, discovery, secureCookies, tokenService } = deps;
+  const silentCookieNames = createSilentSignInCookieSpec(SHOP_SILENT_COOKIE_PREFIX);
+
+  function safeReturnToFromQuery(c: Context): string {
+    const returnTo = c.req.query("returnTo");
+    return typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
+      ? returnTo
+      : "/";
+  }
+
+  function safeReturnToFromCookie(c: Context): string {
+    const returnTo = getCookie(c, "shop_return_to");
+    deleteCookie(c, "shop_return_to", { path: "/" });
+    return typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
+      ? returnTo
+      : "/";
+  }
+
+  function redirectSilentProbeGuest(c: Context, clearSession: boolean) {
+    deleteCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, { path: "/" });
+    if (clearSession) {
+      clearShopAuthCookies(c);
+    }
+    markShopSilentQuiet(c, secureCookies);
+    const safeReturnTo = safeReturnToFromCookie(c);
+    return c.redirect(shopStorefrontPath(env, safeReturnTo), 302);
+  }
 
   async function startShopAuthorization(
     c: Context,
@@ -79,8 +119,30 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
     );
   }
 
-  app.get("/login", (c) => startShopAuthorization(c));
-  app.get("/register", (c) => startShopAuthorization(c));
+  app.get("/login", (c) => {
+    clearShopSilentSuppressed(c);
+    return startShopAuthorization(c);
+  });
+  app.get("/register", (c) => {
+    clearShopSilentSuppressed(c);
+    return startShopAuthorization(c);
+  });
+
+  app.get("/auth/sso-probe", async (c) => {
+    const safeReturnTo = safeReturnToFromQuery(c);
+    if (getCookie(c, silentCookieNames.suppressed) || getCookie(c, silentCookieNames.quiet)) {
+      return c.redirect(shopStorefrontPath(env, safeReturnTo), 302);
+    }
+    const sessionId = readSessionId(c);
+    if (sessionId) {
+      const active = await sessionRepository.findActive(sessionId);
+      if (active?.subject) {
+        return c.redirect(shopStorefrontPath(env, safeReturnTo), 302);
+      }
+    }
+    markShopSilentProbe(c, secureCookies);
+    return startShopAuthorization(c, { prompt: "none" });
+  });
 
   app.get("/auth/upgrade", async (c) => {
     if (getCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME)) {
@@ -99,6 +161,14 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
   app.get("/auth/callback", async (c) => {
     const session = await readSession(sessionRepository, c);
     const oauthError = c.req.query("error") ?? null;
+    const probeActive = Boolean(getCookie(c, SHOP_SILENT_SSO_COOKIE_NAMES.probe));
+    const silentCallback = classifySilentCallback(oauthError);
+    if (probeActive && silentCallback.kind !== "success") {
+      if (session?.id) {
+        await tokenService.clear(session.id);
+      }
+      return redirectSilentProbeGuest(c, true);
+    }
     if (
       oauthError === "login_required" ||
       oauthError === "interaction_required" ||
@@ -118,20 +188,39 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       oauthError,
     });
     deleteCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, { path: "/" });
+    if (probeActive) {
+      clearShopSilentProbe(c);
+    }
     if (result.kind === "session_expired") {
+      if (probeActive) {
+        return redirectSilentProbeGuest(c, false);
+      }
       return c.redirect(shopStorefrontPath(env, "/session-expired"), 302);
     }
     if (result.kind === "error") {
+      if (probeActive) {
+        if (session?.id) {
+          await tokenService.clear(session.id);
+        }
+        return redirectSilentProbeGuest(c, true);
+      }
       return c.redirect(
         shopStorefrontPath(env, `/auth/callback?error=${encodeURIComponent(result.code)}`),
         302,
       );
     }
     if (result.kind === "disabled") {
+      if (probeActive) {
+        if (session?.id) {
+          await tokenService.clear(session.id);
+        }
+        return redirectSilentProbeGuest(c, true);
+      }
       clearShopAuthCookies(c);
       return c.redirect(shopStorefrontPath(env, "/account/disabled"), 302);
     }
     writeSessionCookie(c, result.sessionId, { secure: secureCookies });
+    clearShopSilentSuppressed(c);
     clearOidcIdTokenCookie(c);
     await tokenService.persist(result.sessionId, {
       idToken: result.idToken,
@@ -145,7 +234,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
         ? returnTo
         : null;
     const destination = safeReturnTo
-      ? `/account?returnTo=${encodeURIComponent(safeReturnTo)}`
+      ? `/account/post-sign-in?returnTo=${encodeURIComponent(safeReturnTo)}`
       : "/account";
     return c.redirect(shopStorefrontPath(env, destination), 302);
   });
@@ -166,6 +255,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       await tokenService.clear(sessionId);
     }
     clearShopAuthCookies(c);
+    markShopSilentSuppressed(c, secureCookies);
     clearBasketToken(c);
     clearCommerceCsrfCookie(c);
     const state = randomBytes(24).toString("base64url");

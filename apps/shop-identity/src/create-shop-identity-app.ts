@@ -5,6 +5,7 @@ import { ShopIdentityUpstreamError } from "./errors/shop-identity-upstream.error
 import { shopApiFetch } from "./infrastructure/shop-api.client.js";
 import { registerBackchannelLogoutRoutes } from "./routes/backchannel-logout.routes.js";
 import { registerCommerceRoutes } from "./routes/commerce.routes.js";
+import { registerFedcmCompleteRoutes } from "./routes/fedcm-complete.routes.js";
 import { registerHealthRoutes } from "./routes/health.routes.js";
 import { registerOAuthRoutes } from "./routes/oauth.routes.js";
 import { registerSessionRoutes } from "./routes/session.routes.js";
@@ -31,6 +32,7 @@ export function createShopIdentityApp(deps: ShopIdentityAppDeps, ssf: ShopIdenti
     shopApiFetch,
   });
   registerOAuthRoutes(app, deps);
+  registerFedcmCompleteRoutes(app, deps.env.FEDCM_ENABLED);
   registerBackchannelLogoutRoutes(app, {
     verifyLogoutToken: deps.verifyLogoutToken,
     sessions: deps.sessionRepository,

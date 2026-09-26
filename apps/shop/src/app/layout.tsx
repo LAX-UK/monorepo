@@ -6,10 +6,13 @@ import {
   loadShopCrossProductFooterLinks,
   loadShopStorefrontBaseUrl,
 } from "@/lib/ecosystem/product-directory.server";
+import { resolveShopSilentFedcmBootstrapProps } from "@/lib/fedcm/resolve-silent-fedcm-props.server";
+import { ShopSilentFedcmBootstrap } from "@/lib/fedcm/silent-fedcm-bootstrap.client";
 import { toShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import type { Metadata } from "next";
 import { Montserrat, Outfit } from "next/font/google";
+import { cookies } from "next/headers";
 import { Suspense } from "react";
 import "./account.css";
 import "./commerce.css";
@@ -53,10 +56,15 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [crossProductFooterLinks, viewer] = await Promise.all([
+  const [crossProductFooterLinks, viewer, cookieStore] = await Promise.all([
     Promise.resolve(loadShopCrossProductFooterLinks()),
     loadShopViewerState(),
+    cookies(),
   ]);
+  const silentFedcmProps = resolveShopSilentFedcmBootstrapProps(
+    cookieStore.getAll(),
+    viewer.kind === "authenticated",
+  );
   return (
     <html
       lang="en"
@@ -73,6 +81,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="overflow-x-clip">
           <ShopHeader />
           <Suspense fallback={null}>
+            <ShopSilentFedcmBootstrap fedcm={silentFedcmProps} />
             <ShopTransientNotices />
           </Suspense>
           {children}

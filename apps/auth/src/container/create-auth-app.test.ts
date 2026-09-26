@@ -4,7 +4,16 @@ import { describe, expect, it, vi } from "vitest";
 import { parseAuthEnv } from "../env.js";
 import { type CreateAuthAppOptions, createAuthApp } from "./create-auth-app.js";
 
-function buildApp(session: unknown = null, getSessionImpl?: () => Promise<unknown>) {
+type BuildAppOptions = {
+  fedcmEnabled?: boolean;
+  authHandler?: (request: Request) => Promise<Response>;
+};
+
+function buildApp(
+  session: unknown = null,
+  getSessionImpl?: () => Promise<unknown>,
+  options: BuildAppOptions = {},
+) {
   const internal = new Hono().post("/oauth/token", (c) => c.json({ internal: true }));
   const counter = { inc: vi.fn() };
   const auth = {
@@ -20,6 +29,7 @@ function buildApp(session: unknown = null, getSessionImpl?: () => Promise<unknow
     BETTER_AUTH_SECRET: "development-secret",
     OIDC_ISSUER_URL: "https://auth.test",
     WEB_ORIGIN: "https://web.test",
+    ...(options.fedcmEnabled ? { FEDCM_ENABLED: "true" } : {}),
   });
   const app = createAuthApp({
     log: pino({ enabled: false }),
@@ -37,6 +47,7 @@ function buildApp(session: unknown = null, getSessionImpl?: () => Promise<unknow
     oidc: {
       env,
       db: {} as CreateAuthAppOptions["oidc"]["db"],
+      sessionStampStore: {} as CreateAuthAppOptions["oidc"]["sessionStampStore"],
       redis: {} as CreateAuthAppOptions["oidc"]["redis"],
       auth,
       webOrigins: ["https://web.test"],
@@ -66,7 +77,7 @@ function buildApp(session: unknown = null, getSessionImpl?: () => Promise<unknow
         },
         ssf: { streams: {}, delivery: {} },
       } as unknown as CreateAuthAppOptions["oidc"]["services"],
-      authHandler: vi.fn(async () => Response.json({ handledBy: "issuer" })),
+      authHandler: options.authHandler ?? vi.fn(async () => Response.json({ handledBy: "issuer" })),
       metrics: { refreshRotationOutcomes: counter, tokenExchangeOutcomes: counter },
     },
   } as unknown as CreateAuthAppOptions);
@@ -189,6 +200,33 @@ describe("auth HTTP app composition", () => {
     expect(css).toContain(".field-input:-webkit-autofill");
     expect(css).not.toContain("input:not([type=");
     expect(css).not.toContain("button {");
+  });
+
+  it("registers FedCM config when FEDCM_ENABLED", async () => {
+    const app = buildApp(null, undefined, { fedcmEnabled: true });
+    const response = await app.request("https://auth.test/fedcm/config.json");
+    expect(response.status).toBe(200);
+  });
+
+  it("emits Set-Login for auth API Response set-cookie (login-status middleware contract)", async () => {
+    const { createLoginStatusMiddleware } = await import("../http/login-status.middleware.js");
+    const authApi = new Hono();
+    authApi.all(
+      "/api/auth/*",
+      () =>
+        new Response(JSON.stringify({ session: null }), {
+          headers: {
+            "content-type": "application/json",
+            "set-cookie": "better-auth.session_token=tok; Path=/; HttpOnly",
+          },
+        }),
+    );
+    const app = new Hono();
+    app.use("*", createLoginStatusMiddleware());
+    app.route("/", authApi);
+    const response = await app.request("https://auth.test/api/auth/get-session");
+    expect(await response.json()).toEqual({ session: null });
+    expect(response.headers.get("Set-Login")).toBe("logged-in");
   });
 
   it("registers token parsing before refresh and exchange, and internal routes before catch-all", () => {

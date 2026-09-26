@@ -31,6 +31,10 @@ Identity operations with machine credentials, `@auction/identity-contracts`,
 and versioned events. A database role grant is not permission to bypass this
 boundary.
 
+## Login Status API (`Set-Login`)
+
+Identity (`apps/auth`) emits `Set-Login: logged-in` or `Set-Login: logged-out` on session cookie transitions via `login-status.middleware.ts`. RPs use redirect-based silent SSO today; Chromium FedCM (`FEDCM_ENABLED`) is an optional enhancement. Rollout: [Silent SSO](../runbooks/silent-sso-rollout.md).
+
 `apps/shop-identity` is a modular BFF: `index.ts` is process bootstrap only,
 `create-shop-identity-app.ts` composes Hono route adapters, and callback
 orchestration depends on narrow code-exchange, token-verification, profile, and

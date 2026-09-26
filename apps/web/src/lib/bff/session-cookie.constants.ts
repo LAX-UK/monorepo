@@ -19,3 +19,21 @@ export function bidSessionCookieUsesSecureTransport(env: NodeJS.ProcessEnv = pro
 export function getBidSessionCookieName(env: NodeJS.ProcessEnv = process.env): string {
   return bidSessionCookieUsesSecureTransport(env) ? "__Host-lax-bid-session" : "lax-bid-session";
 }
+
+/** Reads the active BFF session id from any registered cookie name. */
+export function readBidSessionIdFromStore(
+  store: {
+    get(name: string): { value: string } | undefined;
+  },
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const preferredName = getBidSessionCookieName(env);
+  const preferredId = parseBidSessionId(store.get(preferredName)?.value);
+  if (preferredId) return preferredId;
+  for (const name of BID_SESSION_COOKIE_NAMES) {
+    if (name === preferredName) continue;
+    const id = parseBidSessionId(store.get(name)?.value);
+    if (id) return id;
+  }
+  return null;
+}

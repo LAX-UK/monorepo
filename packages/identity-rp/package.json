@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./silent-sign-in": {
+      "types": "./dist/silent-sign-in/index.d.ts",
+      "default": "./dist/silent-sign-in/index.js"
     }
   },
   "scripts": {

@@ -310,6 +310,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/identity-rp':
+        specifier: workspace:*
+        version: link:../../packages/identity-rp
       '@auction/lax-ecosystem':
         specifier: workspace:*
         version: link:../../packages/lax-ecosystem

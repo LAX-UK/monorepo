@@ -17,6 +17,9 @@ const envSchema = z
     SHOP_IDENTITY_TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
     DATABASE_URL_SHOP: z.string().min(1).optional(),
     DATABASE_URL: z.string().min(1).optional(),
+    FEDCM_ENABLED: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
   })
   .superRefine((env, ctx) => {
     if (!env.DATABASE_URL_SHOP && !env.DATABASE_URL) {
