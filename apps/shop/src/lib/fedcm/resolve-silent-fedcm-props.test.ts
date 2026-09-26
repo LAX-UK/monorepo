@@ -20,10 +20,7 @@ const shopFedcmEnv = (overrides: Record<string, string>): NodeJS.ProcessEnv =>
 
 describe("resolveShopSilentFedcmBootstrapProps", () => {
   it("returns null when IDENTITY_PUBLIC_BASE_URL is unset", () => {
-    const env = {
-      SILENT_SSO_ENABLED: "true",
-      FEDCM_ENABLED: "true",
-    } as NodeJS.ProcessEnv;
+    const env = shopFedcmEnv({ IDENTITY_PUBLIC_BASE_URL: "" });
     expect(resolveShopSilentFedcmBootstrapProps([], false, env)).toBeNull();
   });
 
