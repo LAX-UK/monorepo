@@ -214,6 +214,22 @@ jobs:
           done
           echo "::error::Identity release did not match the pinned immutable tag"
           exit 1
+      - name: Load staging database contract for post-apply scripts
+        run: |
+          set -euo pipefail
+          tf_dir=.infra-config/terraform/ephemeral/test
+          owner_url="$(terraform -chdir="$tf_dir" output -raw postgres_owner_uri)"
+          database_ca_cert="$(terraform -chdir="$tf_dir" output -raw database_ca_certificate)"
+          test -n "$owner_url"
+          test -n "$database_ca_cert"
+          echo "::add-mask::$owner_url"
+          echo "DATABASE_URL_OWNER=$owner_url" >> "$GITHUB_ENV"
+          echo "DATABASE_URL=$owner_url" >> "$GITHUB_ENV"
+          {
+            echo 'DATABASE_CA_CERT<<__DATABASE_CA_CERT__'
+            printf '%s\n' "$database_ca_cert"
+            echo '__DATABASE_CA_CERT__'
+          } >> "$GITHUB_ENV"
       - run: pnpm tsx scripts/jwks-restore.ts test
       - run: pnpm db:seed
       - run: |
