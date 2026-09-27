@@ -1,35 +1,41 @@
-export type ZohoCrmSyncMode = "off" | "dry_run" | "canary" | "live";
-
-export type ZohoCrmModule = "Contacts" | "Deals" | "Sales_Orders";
-
-export type ZohoUpsertRecord = {
-  module: ZohoCrmModule;
-  externalId: string;
-  fields: Record<string, string | number | boolean | null>;
-};
-
-export type ZohoUpsertResult = {
-  module: ZohoCrmModule;
-  externalId: string;
-  zohoRecordId?: string;
-  status: number;
-};
+export type ZohoCrmModule = "Leads" | "Contacts" | "Deals";
 
 export class ZohoCrmHttpError extends Error {
   readonly status: number;
   readonly body: string;
+  readonly retryAfterMs?: number;
 
-  constructor(status: number, body: string) {
+  constructor(status: number, body: string, retryAfterMs?: number) {
     super(`zoho_crm_http_${status}`);
     this.name = "ZohoCrmHttpError";
     this.status = status;
     this.body = body;
+    if (retryAfterMs !== undefined) {
+      this.retryAfterMs = retryAfterMs;
+    }
   }
 }
 
 export class ZohoCrmAuthError extends Error {
-  constructor(message: string) {
+  readonly status?: number;
+
+  constructor(message: string, status?: number) {
     super(message);
     this.name = "ZohoCrmAuthError";
+    if (status !== undefined) {
+      this.status = status;
+    }
+  }
+}
+
+export class ZohoCrmRecordError extends Error {
+  readonly code: string;
+  readonly httpStatus: number;
+
+  constructor(code: string, message: string, httpStatus: number) {
+    super(message);
+    this.name = "ZohoCrmRecordError";
+    this.code = code;
+    this.httpStatus = httpStatus;
   }
 }

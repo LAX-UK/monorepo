@@ -745,6 +745,12 @@ export type {
   IDomainEventDeliveryRepository,
 } from "./domain-event-delivery.repository.js";
 
+export type {
+  CrmRecordLinkRow,
+  ICrmRecordLinkRepository,
+  UpsertCrmRecordLinkInput,
+} from "./crm-record-link.repository.js";
+
 export type { ILotCancelledLifecycleRecorder } from "./lot-cancelled-lifecycle-recorder.js";
 
 export type { ILotSoftDeleteSideEffects } from "./lot-soft-delete.js";

@@ -27,5 +27,6 @@ export interface IDomainEventProjectorReader {
     projectorName: string,
     limit: number,
     conn: ProjectorDbConnection,
+    options?: { eventTypes?: readonly string[] },
   ): Promise<DomainEventProjectorRow[]>;
 }

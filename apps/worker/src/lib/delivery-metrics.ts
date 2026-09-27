@@ -1,6 +1,6 @@
-import { Counter, type Registry } from "prom-client";
+import { Counter, Gauge, type Registry } from "prom-client";
 
-export type DeliveryMetricOutcome = "success" | "retry" | "dead_letter";
+export type DeliveryMetricOutcome = "success" | "retry" | "dead_letter" | "skipped";
 
 let registry: Registry | null = null;
 
@@ -16,10 +16,41 @@ const deliveryDeadLetterTotal = new Counter({
   labelNames: ["consumer"] as const,
 });
 
+const zohoCrmApiCreditsRemaining = new Gauge({
+  name: "auction_zoho_crm_api_credits_remaining",
+  help: "Last observed Zoho CRM API credits remaining (X-API-CREDITS-REMAINING)",
+});
+
+const deliveryOldestPendingAgeSeconds = new Gauge({
+  name: "auction_delivery_oldest_pending_age_seconds",
+  help: "Age in seconds of the oldest undelivered domain_event_delivery row for a consumer",
+  labelNames: ["consumer"] as const,
+});
+
 export function bindDeliveryMetrics(reg: Registry): void {
   registry = reg;
   reg.registerMetric(deliveryAttemptsTotal);
   reg.registerMetric(deliveryDeadLetterTotal);
+  reg.registerMetric(zohoCrmApiCreditsRemaining);
+  reg.registerMetric(deliveryOldestPendingAgeSeconds);
+}
+
+export function recordZohoCrmApiCreditsRemaining(remaining: number | null): void {
+  if (remaining == null) return;
+  zohoCrmApiCreditsRemaining.set(remaining);
+}
+
+export function recordDeliveryOldestPendingAgeSeconds(
+  consumer: string,
+  oldestPendingAt: Date | null,
+  now: Date = new Date(),
+): void {
+  if (oldestPendingAt == null) {
+    deliveryOldestPendingAgeSeconds.set({ consumer }, 0);
+    return;
+  }
+  const ageSeconds = Math.max(0, (now.getTime() - oldestPendingAt.getTime()) / 1000);
+  deliveryOldestPendingAgeSeconds.set({ consumer }, ageSeconds);
 }
 
 export function recordDeliveryOutcome(consumer: string, outcome: DeliveryMetricOutcome): void {

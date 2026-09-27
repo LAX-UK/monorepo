@@ -1,9 +1,19 @@
-import { ZohoCrmAuthError, ZohoCrmHttpError } from "./types.js";
+import { ZohoCrmAuthError, ZohoCrmHttpError, ZohoCrmRecordError } from "./types.js";
 
 export type ZohoRetryClass = "retryable" | "fatal";
 
+const RETRYABLE_RECORD_CODES = new Set(["TOO_MANY_REQUESTS", "INTERNAL_ERROR"]);
+
 export function classifyZohoError(err: unknown): ZohoRetryClass {
-  if (err instanceof ZohoCrmAuthError) return "fatal";
+  if (err instanceof ZohoCrmAuthError) {
+    const status = err.status;
+    if (status !== undefined && (status >= 500 || status === 429)) return "retryable";
+    return "fatal";
+  }
+  if (err instanceof ZohoCrmRecordError) {
+    if (RETRYABLE_RECORD_CODES.has(err.code)) return "retryable";
+    return "fatal";
+  }
   if (err instanceof ZohoCrmHttpError) {
     if (err.status === 429 || err.status >= 500) return "retryable";
     if (err.status === 401 || err.status === 403) return "fatal";

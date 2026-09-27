@@ -3,8 +3,11 @@ import { classifyZohoError } from "./retry-classification.js";
 import { ZohoCrmAuthError, ZohoCrmHttpError } from "./types.js";
 
 describe("classifyZohoError", () => {
-  it("classifies auth errors as fatal", () => {
+  it("classifies auth errors as fatal unless token refresh hit 5xx", () => {
     expect(classifyZohoError(new ZohoCrmAuthError("token"))).toBe("fatal");
+    expect(classifyZohoError(new ZohoCrmAuthError("zoho_token_refresh_failed_503", 503))).toBe(
+      "retryable",
+    );
   });
 
   it("classifies rate limits as retryable", () => {

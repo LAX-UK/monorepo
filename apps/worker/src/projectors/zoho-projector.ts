@@ -1,28 +1,18 @@
-import { assertDomainEventConsumerContract } from "@auction/types";
-import { classifyZohoError } from "../integrations/zoho/retry-classification.js";
-import { zohoCrmUpsert } from "../integrations/zoho/zoho-crm-client.js";
+import { assertDomainEventConsumerContract, listDomainEventTypesForConsumer } from "@auction/types";
+import { resolveZohoDeliveryMode } from "../integrations/zoho/zoho-crm-config.js";
 import {
-  shouldLogZohoDryRun,
-  shouldPerformZohoHttp,
-} from "../integrations/zoho/zoho-crm-config.js";
-import { mapDomainEventToZohoUpsert } from "../integrations/zoho/zoho-event-mapper.js";
-import { recordDeliveryOutcome } from "../lib/delivery-metrics.js";
-import { claimAndRunDomainEventDeliveries } from "./lib/domain-event-delivery-runner.js";
+  recordDeliveryOldestPendingAgeSeconds,
+  recordDeliveryOutcome,
+  recordZohoCrmApiCreditsRemaining,
+} from "../lib/delivery-metrics.js";
+import { claimAndRunDomainEventDeliveriesWithBudget } from "./lib/domain-event-delivery-runner.js";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
 import { redactDomainEventPayload } from "./lib/redact-pii.js";
 
 export const ZOHO_PROJECTOR = "zoho";
 const ZOHO_CONSUMER = "zoho";
 
-const ZOHO_CONTRACT_EVENT_TYPES = new Set([
-  "user.registered",
-  "user.email_verified",
-  "bid.lot_won",
-  "bid.first_for_user",
-  "bid.outbid",
-  "lot.ended",
-  "payment.captured",
-]);
+const ZOHO_CATALOG_EVENT_TYPES = listDomainEventTypesForConsumer("zoho");
 
 async function deliverZohoEvent(
   ctx: ProjectorRunContext,
@@ -33,54 +23,69 @@ async function deliverZohoEvent(
     payload: unknown;
     schemaVersion?: number;
   },
-): Promise<void> {
+): Promise<
+  | { ok: true; providerReference?: string | null }
+  | { skipped: true; reason: string; providerReference?: string | null }
+  | { ok: false; error: unknown }
+> {
   if (!ctx.env) throw new Error("zoho_projector_missing_env");
-  if (ZOHO_CONTRACT_EVENT_TYPES.has(event.eventType)) {
-    assertDomainEventConsumerContract(event);
-  }
-  const upsert = mapDomainEventToZohoUpsert(event);
-  if (!upsert) {
-    ctx.log.debug({ eventId: event.id, eventType: event.eventType }, "zoho_skip_unmapped_event");
-    return;
+  if (!ctx.crmSyncService) throw new Error("zoho_projector_missing_crm_sync_service");
+
+  assertDomainEventConsumerContract(event);
+
+  const mode = resolveZohoDeliveryMode(ctx.env, event.eventType);
+  if (mode === "off" || mode === "disabled_type") {
+    return {
+      skipped: true,
+      reason: mode === "off" ? "sync_mode_off" : "event_type_disabled",
+    };
   }
 
-  if (shouldLogZohoDryRun(ctx.env, event.eventType)) {
+  if (mode === "dry_run") {
     ctx.log.info(
       {
         eventId: event.id,
         eventType: event.eventType,
-        module: upsert.module,
-        externalId: upsert.externalId,
         payload: redactDomainEventPayload(event.eventType, event.payload),
       },
-      "zoho_crm_dry_run_upsert",
+      "zoho_crm_dry_run",
     );
+    return { skipped: true, reason: "dry_run" };
   }
 
-  if (!shouldPerformZohoHttp(ctx.env, event.eventType)) {
-    return;
-  }
-
-  try {
-    const result = await zohoCrmUpsert(ctx.env, upsert);
-    recordDeliveryOutcome("zoho", "success");
-    ctx.log.info(
-      { eventId: event.id, zohoRecordId: result.zohoRecordId, module: result.module },
-      "zoho_crm_upsert_ok",
-    );
-  } catch (err) {
-    recordDeliveryOutcome("zoho", classifyZohoError(err) === "retryable" ? "retry" : "dead_letter");
-    throw err;
+  const result = await ctx.crmSyncService.syncEvent(event);
+  switch (result.outcome) {
+    case "success":
+      recordDeliveryOutcome("zoho", "success");
+      return { ok: true, providerReference: result.providerReference };
+    case "skipped":
+      recordDeliveryOutcome("zoho", "skipped");
+      return { skipped: true, reason: result.reason };
+    case "retry":
+      return { ok: false, error: result.error };
+    case "fatal":
+      return { ok: false, error: result.error };
+    default:
+      return { skipped: true, reason: "unknown_outcome" };
   }
 }
 
 export async function processZohoProjector(ctx: ProjectorRunContext): Promise<void> {
   if (!ctx.env || ctx.env.ZOHO_CRM_SYNC_MODE === "off") return;
   if (!ctx.deliveryRepo) throw new Error("zoho_projector_missing_delivery_repo");
+
   const deliveryRepo = ctx.deliveryRepo;
+  const batchLimit = ctx.env.ZOHO_CRM_CURSOR_BATCH_SIZE;
 
   await ctx.transactionRunner.runInTransaction(async (tx) => {
-    const events = await ctx.domainEventReader.listLockedForProjector(ZOHO_PROJECTOR, 100, tx);
+    const events = await ctx.domainEventReader.listLockedForProjector(
+      ZOHO_PROJECTOR,
+      batchLimit,
+      tx,
+      {
+        eventTypes: ZOHO_CATALOG_EVENT_TYPES,
+      },
+    );
     for (const event of events) {
       await deliveryRepo.ensurePending({
         consumer: ZOHO_CONSUMER,
@@ -94,27 +99,34 @@ export async function processZohoProjector(ctx: ProjectorRunContext): Promise<vo
     }
   });
 
-  await claimAndRunDomainEventDeliveries({
+  await claimAndRunDomainEventDeliveriesWithBudget({
     consumer: ZOHO_CONSUMER,
-    batchSize: 25,
+    batchSize: 1,
     leaseMs: 60_000,
+    timeBudgetMs: ctx.env.ZOHO_CRM_TICK_TIME_BUDGET_MS,
     repo: deliveryRepo,
+    metricsConsumer: ZOHO_CONSUMER,
     deliverOne: async (delivery) => {
       const event = await ctx.domainEventReader.getById(delivery.eventId);
       if (!event) {
         throw new Error(`domain_event_missing:${delivery.eventId}`);
       }
-      await deliverZohoEvent(ctx, event);
-      return undefined;
+      return deliverZohoEvent(ctx, event);
     },
   });
+
+  const oldestPendingAt = await deliveryRepo.oldestPendingAt({ consumer: ZOHO_CONSUMER });
+  recordDeliveryOldestPendingAgeSeconds(ZOHO_CONSUMER, oldestPendingAt);
+  if (ctx.crmSyncService) {
+    recordZohoCrmApiCreditsRemaining(ctx.crmSyncService.getGatewayMetrics().apiCreditsRemaining);
+  }
 }
 
 export function createZohoProjector(): Projector {
   return {
     name: ZOHO_PROJECTOR,
     isEnabled(ctx) {
-      return ctx.env?.ZOHO_CRM_SYNC_MODE !== "off";
+      return (ctx.env?.ZOHO_CRM_SYNC_MODE ?? "off") !== "off";
     },
     async run(ctx) {
       await ctx.projectorStateRepo.ensureCursor(ZOHO_PROJECTOR);

@@ -60,15 +60,31 @@ export class DrizzleDomainEventProjectorReader implements IDomainEventProjectorR
     projectorName: string,
     limit: number,
     conn: ProjectorDbConnection,
+    options?: { eventTypes?: readonly string[] },
   ): Promise<DomainEventProjectorRow[]> {
-    const rows = await conn.execute(sql`
-      select id, event_type, aggregate_id, payload, actor_user_id, occurred_at
-      from ${domainEvent}
-      where id > (select last_processed_event_id from ${projectorState} where projector_name = ${projectorName})
-      order by id
-      limit ${limit}
-      for update skip locked
-    `);
+    const eventTypes = options?.eventTypes?.filter((value) => value.length > 0) ?? [];
+    const rows =
+      eventTypes.length > 0
+        ? await conn.execute(sql`
+            select id, event_type, aggregate_id, payload, actor_user_id, occurred_at
+            from ${domainEvent}
+            where id > (select last_processed_event_id from ${projectorState} where projector_name = ${projectorName})
+              and event_type in (${sql.join(
+                eventTypes.map((eventType) => sql`${eventType}`),
+                sql`, `,
+              )})
+            order by id
+            limit ${limit}
+            for update skip locked
+          `)
+        : await conn.execute(sql`
+            select id, event_type, aggregate_id, payload, actor_user_id, occurred_at
+            from ${domainEvent}
+            where id > (select last_processed_event_id from ${projectorState} where projector_name = ${projectorName})
+            order by id
+            limit ${limit}
+            for update skip locked
+          `);
     const events = rowsFromExecuteResult(rows) as Array<{
       id: number | string;
       event_type: string;

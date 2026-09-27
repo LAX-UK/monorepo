@@ -10,7 +10,10 @@
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "backfill:media-assets": "tsx --env-file=../../.env src/scripts/backfill-media-assets.ts"
+    "backfill:media-assets": "tsx --env-file=../../.env src/scripts/backfill-media-assets.ts",
+    "backfill:crm-users": "tsx --env-file=../../.env src/scripts/backfill-crm-users.ts",
+    "reconcile:crm-links": "tsx --env-file=../../.env src/scripts/reconcile-crm-links.ts",
+    "replay:crm-skipped": "tsx --env-file=../../.env src/scripts/replay-crm-skipped.ts"
   },
   "dependencies": {
     "@auction/background-runtime": "workspace:*",

@@ -27,7 +27,10 @@ export async function getZohoCrmAccessToken(env: WorkerEnv): Promise<string | nu
   const res = await fetch(url, { method: "POST" });
   const text = await res.text();
   if (!res.ok) {
-    throw new ZohoCrmAuthError(`zoho_token_refresh_failed_${res.status}:${text.slice(0, 200)}`);
+    throw new ZohoCrmAuthError(
+      `zoho_token_refresh_failed_${res.status}:${text.slice(0, 200)}`,
+      res.status,
+    );
   }
 
   let json: { access_token?: string; expires_in?: number };
@@ -49,7 +52,11 @@ export async function getZohoCrmAccessToken(env: WorkerEnv): Promise<string | nu
   return cached.accessToken;
 }
 
+export function invalidateZohoCrmAccessToken(): void {
+  cached = null;
+}
+
 /** Test hook */
 export function resetZohoTokenCacheForTests(): void {
-  cached = null;
+  invalidateZohoCrmAccessToken();
 }

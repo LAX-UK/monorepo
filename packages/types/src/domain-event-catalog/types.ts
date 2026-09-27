@@ -1,7 +1,12 @@
 import type { z } from "zod";
 
 /** Known producers that append rows to `domain_events`. */
-export type DomainEventProducer = "apps/api" | "apps/auth" | "apps/worker" | "packages/db";
+export type DomainEventProducer =
+  | "apps/api"
+  | "apps/auth"
+  | "apps/worker"
+  | "packages/db"
+  | "shop-api";
 
 /** Downstream async consumers (projectors, CRM, notifications). */
 export type DomainEventConsumer =

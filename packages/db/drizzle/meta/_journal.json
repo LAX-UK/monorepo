@@ -1240,6 +1240,27 @@
       "when": 1790668800000,
       "tag": "0177_bid_account_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1790755200000,
+      "tag": "0178_crm_record_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1790841600000,
+      "tag": "0179_crm_record_link_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1790928000000,
+      "tag": "0180_crm_record_link_subject_id",
+      "breakpoints": true
     }
   ]
 }

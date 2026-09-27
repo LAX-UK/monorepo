@@ -53,7 +53,7 @@ describe("migration history contract", () => {
       },
     ]);
     expect(journal.entries[139]?.tag).toBe("0140_identity_boundary_profiles");
-    expect(journal.entries.at(-1)?.tag).toBe("0177_bid_account_onboarding");
+    expect(journal.entries.at(-1)?.tag).toBe("0180_crm_record_link_subject_id");
   });
 
   it("keeps every registered migration and rollback pair on disk", async () => {

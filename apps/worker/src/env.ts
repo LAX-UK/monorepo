@@ -24,6 +24,8 @@ const envSchema = z
     POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),
     POSTMARK_BROADCAST_STREAM: z.string().default("broadcast"),
     ZOHO_API_HOST: z.string().url().default("https://www.zohoapis.eu"),
+    /** CRM-only API host (sandbox in test: https://sandbox.zohoapis.eu). */
+    ZOHO_CRM_API_HOST: z.string().url().default("https://www.zohoapis.eu"),
     ZOHO_ACCOUNTS_HOST: z.string().url().default("https://accounts.zoho.eu"),
     ZOHO_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     ZOHO_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -69,6 +71,22 @@ const envSchema = z
     CLAMAV_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     ZOHO_CRM_SYNC_MODE: z.enum(["off", "dry_run", "canary", "live"]).default("off"),
     ZOHO_CRM_ENABLED_EVENT_TYPES: z.string().default(""),
+    /** JSON array passed as Zoho upsert/update `trigger` (default `[]` suppresses workflows). */
+    ZOHO_CRM_UPSERT_TRIGGER: z.string().default("[]"),
+    ZOHO_CRM_EXPECTED_ORG_TYPE: z.preprocess(
+      emptyToUndefined,
+      z.enum(["sandbox", "production"]).optional(),
+    ),
+    ZOHO_CRM_AUCTION_PIPELINE: z.string().default(""),
+    ZOHO_CRM_DEAL_STAGE_LOT_WON: z.string().default(""),
+    ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED: z.string().default(""),
+    ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED: z.string().default(""),
+    ZOHO_CRM_DEAL_STAGE_SHOP_PAID: z.string().default(""),
+    ZOHO_CRM_LEAD_CONVERSION_ENABLED: z
+      .preprocess((val) => val === "true" || val === true, z.boolean())
+      .default(false),
+    ZOHO_CRM_CURSOR_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(100),
+    ZOHO_CRM_TICK_TIME_BUDGET_MS: z.coerce.number().int().min(100).max(120_000).default(2_000),
     XERO_PROJECTOR_MODE: z.enum(["off", "shadow", "canary", "live"]).default("off"),
     XERO_PROJECTOR_LIVE_OPERATIONS: z.string().default(""),
     DOMAIN_EVENT_PUBLISH_VALIDATE: z.enum(["off", "observe", "enforce"]).default("off"),
@@ -179,6 +197,19 @@ const envSchema = z
           message:
             "CLAMAV_URL or CLAMAV_HOST is required in production for Source-of-Funds malware scanning",
           path: ["CLAMAV_URL"],
+        });
+      }
+    }
+    if (e.ZOHO_CRM_SYNC_MODE !== "off") {
+      const enabled = e.ZOHO_CRM_ENABLED_EVENT_TYPES.split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (enabled.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "ZOHO_CRM_ENABLED_EVENT_TYPES must list at least one event type when ZOHO_CRM_SYNC_MODE is not off",
+          path: ["ZOHO_CRM_ENABLED_EVENT_TYPES"],
         });
       }
     }

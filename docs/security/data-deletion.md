@@ -11,7 +11,7 @@ V1 is a manual GDPR deletion workflow.
 5. Anonymise Bid and Shop profiles independently while preserving
    financial/audit integrity where legally required. Do not query product data
    by joining directly to Identity tables.
-6. Delete or anonymise linked Zoho Contact/Deal/Sales_Order records.
+6. Delete linked Zoho Lead/Contact/Deal records via the worker CRM adapter (`wf_trigger=false`), purge each id from the Zoho Recycle Bin, and tombstone `crm_record_link` (including subjects never synced — tombstone rows block later backfill). Deal links store `subject_id` so erasure cascades to shop/lot Deals even when COQL lookup is incomplete.
 7. Trigger Xero or other active processor deletion where contracts require it.
 8. Reconcile every product by immutable `sub` and record completion date and operator.
 

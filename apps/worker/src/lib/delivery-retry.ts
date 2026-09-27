@@ -20,12 +20,27 @@ function httpStatus(err: unknown): number | undefined {
 
 function errorCode(err: unknown): string | undefined {
   if (typeof err !== "object" || err === null) return undefined;
-  const code = (err as { code?: unknown }).code;
-  return typeof code === "string" ? code : undefined;
+  const direct = (err as { code?: unknown }).code;
+  if (typeof direct === "string") return direct;
+  const cause = (err as { cause?: unknown }).cause;
+  if (typeof cause === "object" && cause !== null) {
+    const nested = (cause as { code?: unknown }).code;
+    if (typeof nested === "string") return nested;
+  }
+  return undefined;
+}
+
+export function isRetryableDeliveryError(err: unknown): boolean {
+  return (
+    typeof err === "object" && err !== null && (err as { retryable?: boolean }).retryable === true
+  );
 }
 
 /** Classify outbound delivery failures for retry vs dead-letter. */
 export function classifyDeliveryError(err: unknown): DeliveryErrorClass {
+  if (isRetryableDeliveryError(err)) {
+    return "retryable";
+  }
   if (typeof DomainEventContractError === "function" && err instanceof DomainEventContractError) {
     return "fatal";
   }
@@ -55,7 +70,30 @@ export type DeliveryBackoffOptions = {
   baseMs?: number;
   maxMs?: number;
   jitterRatio?: number;
+  /** Minimum delay (e.g. from Retry-After). */
+  floorMs?: number;
 };
+
+/** Read Retry-After style delay from errors (including CrmGatewayError and cause chain). */
+export function readRetryAfterMs(err: unknown): number | undefined {
+  if (typeof err !== "object" || err === null) return undefined;
+  const direct = (err as { retryAfterMs?: unknown }).retryAfterMs;
+  if (typeof direct === "number" && direct >= 0) return direct;
+  const cause = (err as { cause?: unknown }).cause;
+  if (typeof cause === "object" && cause !== null) {
+    const nested = (cause as { retryAfterMs?: unknown }).retryAfterMs;
+    if (typeof nested === "number" && nested >= 0) return nested;
+  }
+  return undefined;
+}
+
+export function isCircuitOpenDeliveryError(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const message = errorMessage(err);
+  if (message === "zoho_crm_circuit_open") return true;
+  const code = (err as { code?: unknown }).code;
+  return code === "circuit_open";
+}
 
 /** Exponential backoff with full jitter (AWS-style). */
 export function computeDeliveryBackoffMs(
@@ -67,7 +105,9 @@ export function computeDeliveryBackoffMs(
   const jitterRatio = options.jitterRatio ?? 1;
   const exp = Math.min(maxMs, baseMs * 2 ** Math.max(0, attempt - 1));
   const jitter = exp * jitterRatio * Math.random();
-  return Math.max(baseMs, Math.round(jitter));
+  const withJitter = Math.max(baseMs, Math.round(jitter));
+  const floorMs = options.floorMs ?? 0;
+  return Math.min(maxMs, Math.max(withJitter, floorMs));
 }
 
 export function formatDeliveryError(err: unknown): string {

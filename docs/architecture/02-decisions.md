@@ -79,6 +79,8 @@ API/auth/worker, the typed catalog is in `@auction/types`, and each consumer use
 the durable `domain_event_delivery` ledger. External Zoho/Xero writes remain
 off by default; see [04-domain-events.md](./04-domain-events.md).
 
+**2026-09 CRM refresh.** Zoho outbound code uses a `CrmGateway` port, pure event mappers, `crm_record_link`, catalog-filtered projector cursor, explicit delivery `skipped` status, separate `ZOHO_CRM_API_HOST` for sandbox, and GDPR erasure via Recycle Bin purge. Details: [integrations/zoho.md](../integrations/zoho.md).
+
 ## D6. Webhook authenticity verified per source, with replay window
 
 **Status.** *Amended by D17.* This decision covers active external webhook
