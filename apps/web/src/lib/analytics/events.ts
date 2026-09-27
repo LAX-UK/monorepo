@@ -210,7 +210,7 @@ export function trackLogin(method = "email"): string | null {
 
 export function trackSilentSignInResult(input: {
   strategy: "redirect" | "fedcm";
-  outcome: "signed_in" | "guest" | "skipped";
+  outcome: "signed_in" | "guest" | "skipped" | "notice_continue" | "notice_sign_out";
   reason?: string;
 }): string | null {
   if (!guardAnalytics()) return null;

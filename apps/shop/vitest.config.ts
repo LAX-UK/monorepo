@@ -5,7 +5,7 @@ import { workspaceSourceAliases } from "../../scripts/vitest/workspace-source-al
 export default defineConfig({
   resolve: {
     alias: [
-      ...workspaceSourceAliases(["@auction/ui", "@auction/marketing-ui"]),
+      ...workspaceSourceAliases(["@auction/ui", "@auction/marketing-ui", "@auction/lax-ecosystem"]),
       { find: "@", replacement: path.resolve(import.meta.dirname, "src") },
     ],
   },
@@ -14,7 +14,10 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    environmentMatchGlobs: [["**/shop-theme.test.ts", "jsdom"]],
+    environmentMatchGlobs: [
+      ["**/shop-theme.test.ts", "jsdom"],
+      ["**/silent-sign-in-notice.test.tsx", "jsdom"],
+    ],
     setupFiles: ["./src/test/setup.ts"],
     exclude: ["**/node_modules/**", "**/e2e/**"],
     server: {

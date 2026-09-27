@@ -62,3 +62,13 @@ export function markBidSilentGuestResult(response: NextResponse): void {
     httpOnly: false,
   });
 }
+
+export function markBidSilentNotice(response: NextResponse): void {
+  response.cookies.set(BID_SILENT_SSO_COOKIE_NAMES.notice, "1", {
+    path: "/",
+    maxAge: DEFAULT_SILENT_SIGN_IN_MAX_AGES.noticeSeconds,
+    sameSite: "lax",
+    secure: secureCookies(),
+    httpOnly: false,
+  });
+}

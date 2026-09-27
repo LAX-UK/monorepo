@@ -2,6 +2,7 @@ import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import {
   clearBidSilentSuppressed,
   markBidSilentGuestResult,
+  markBidSilentNotice,
   markBidSilentQuiet,
 } from "@/lib/auth/silent-sign-in/cookies.server";
 import { exchangeAuthorizationCode, validateCallbackState } from "@/lib/bff/oidc.server";
@@ -132,6 +133,9 @@ export async function GET(request: NextRequest) {
       setOnboardingInviteCookie(response, pending.inviteToken);
     }
     clearBidSilentSuppressed(response);
+    if (pending.entryIntent === "silent") {
+      markBidSilentNotice(response);
+    }
     setBidSessionCookie(response, authenticatedId, "authenticated");
     response.headers.set("cache-control", "no-store");
     return response;

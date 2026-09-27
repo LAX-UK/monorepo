@@ -2,6 +2,7 @@ import { ShopThemeInit } from "@/components/layout/shop-theme-init";
 import { ShopFooter } from "@/components/shop-footer";
 import { ShopHeader } from "@/components/shop-header";
 import { ShopTransientNotices } from "@/components/shop-transient-notices.client";
+import { SilentSignInNotice } from "@/components/silent-sign-in-notice.client";
 import {
   loadShopCrossProductFooterLinks,
   loadShopStorefrontBaseUrl,
@@ -9,6 +10,7 @@ import {
 import { resolveShopSilentFedcmBootstrapProps } from "@/lib/fedcm/resolve-silent-fedcm-props.server";
 import { ShopSilentFedcmBootstrap } from "@/lib/fedcm/silent-fedcm-bootstrap.client";
 import { toShopFooterAccountState } from "@/lib/shop-footer-account-state";
+import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import type { Metadata } from "next";
 import { Montserrat, Outfit } from "next/font/google";
@@ -82,6 +84,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ShopHeader />
           <Suspense fallback={null}>
             <ShopSilentFedcmBootstrap fedcm={silentFedcmProps} />
+            <SilentSignInNotice
+              logoutActionUrl={shopIdentityUrl("/logout")}
+              displayName={viewer.kind === "authenticated" ? viewer.displayName : null}
+              email={viewer.kind === "authenticated" ? viewer.email : null}
+            />
             <ShopTransientNotices />
           </Suspense>
           {children}

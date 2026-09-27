@@ -263,8 +263,9 @@ describe("OAuth routes", () => {
     });
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3020/account/post-sign-in?returnTo=%2Fcatalog",
+      "http://localhost:3020/account/post-sign-in?returnTo=%2Fcatalog&silentNotice=1",
     );
+    expect(response.headers.get("set-cookie")).toContain(`${SHOP_SILENT_SSO_COOKIE_NAMES.notice}=1`);
   });
 
   it("returns guest to returnTo on login_required silent probe callback", async () => {
