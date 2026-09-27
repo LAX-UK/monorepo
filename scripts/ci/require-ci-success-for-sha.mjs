@@ -16,6 +16,12 @@ const requiredWorkflows = [
   ...(process.env.CI_GATE_REQUIRE_BROWSER === "1" ? ["Web PR browser gates"] : []),
 ];
 
+/** GitHub workflow file for each required run name (scoped runs API avoids head_sha pagination gaps). */
+const workflowFileByName = {
+  CI: "ci.yml",
+  "Web PR browser gates": "e2e-pr.yml",
+};
+
 if (!sha || !repo || !token) {
   console.error("Requires GITHUB_SHA, GITHUB_REPOSITORY, and GITHUB_TOKEN");
   process.exit(1);
@@ -24,14 +30,14 @@ if (!sha || !repo || !token) {
 const [owner, name] = repo.split("/");
 
 function fetchLatestRun(workflowName) {
+  const workflowFile = workflowFileByName[workflowName];
+  const path = workflowFile
+    ? `/repos/${owner}/${name}/actions/workflows/${workflowFile}/runs?head_sha=${sha}&per_page=5`
+    : `/repos/${owner}/${name}/actions/runs?head_sha=${sha}&per_page=100`;
+
   const query = spawnSync(
     "gh",
-    [
-      "api",
-      "-H",
-      "Accept: application/vnd.github+json",
-      `/repos/${owner}/${name}/actions/runs?head_sha=${sha}&per_page=20`,
-    ],
+    ["api", "-H", "Accept: application/vnd.github+json", path],
     { encoding: "utf8", env: { ...process.env, GH_TOKEN: token } },
   );
 
@@ -41,7 +47,9 @@ function fetchLatestRun(workflowName) {
   }
 
   const payload = JSON.parse(query.stdout);
-  const runs = (payload.workflow_runs ?? []).filter((r) => r.name === workflowName);
+  const runs = workflowFile
+    ? (payload.workflow_runs ?? [])
+    : (payload.workflow_runs ?? []).filter((r) => r.name === workflowName);
   if (runs.length === 0) return null;
   runs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   return runs[0];
