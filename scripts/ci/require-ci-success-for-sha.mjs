@@ -35,11 +35,10 @@ function fetchLatestRun(workflowName) {
     ? `/repos/${owner}/${name}/actions/workflows/${workflowFile}/runs?head_sha=${sha}&per_page=5`
     : `/repos/${owner}/${name}/actions/runs?head_sha=${sha}&per_page=100`;
 
-  const query = spawnSync(
-    "gh",
-    ["api", "-H", "Accept: application/vnd.github+json", path],
-    { encoding: "utf8", env: { ...process.env, GH_TOKEN: token } },
-  );
+  const query = spawnSync("gh", ["api", "-H", "Accept: application/vnd.github+json", path], {
+    encoding: "utf8",
+    env: { ...process.env, GH_TOKEN: token },
+  });
 
   if (query.status !== 0) {
     console.error(query.stderr || query.stdout);
