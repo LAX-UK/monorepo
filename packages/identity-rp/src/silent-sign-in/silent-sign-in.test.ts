@@ -120,6 +120,12 @@ describe("evaluateSilentSignInCookieGate", () => {
   });
 });
 
+describe("createSilentSignInCookieSpec", () => {
+  it("includes notice cookie name", () => {
+    expect(cookieNames.notice).toBe("shop_sso_notice");
+  });
+});
+
 describe("selectSilentSignInStrategy", () => {
   it("defaults to redirect", () => {
     expect(selectSilentSignInStrategy({ fedcmEnabled: false })).toBe("redirect");

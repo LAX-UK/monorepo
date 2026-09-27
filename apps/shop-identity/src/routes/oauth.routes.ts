@@ -28,6 +28,7 @@ import {
   SHOP_SILENT_SSO_COOKIE_NAMES,
   clearShopSilentProbe,
   clearShopSilentSuppressed,
+  markShopSilentNotice,
   markShopSilentProbe,
   markShopSilentQuiet,
   markShopSilentSuppressed,
@@ -221,6 +222,9 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
     }
     writeSessionCookie(c, result.sessionId, { secure: secureCookies });
     clearShopSilentSuppressed(c);
+    if (probeActive) {
+      markShopSilentNotice(c, secureCookies);
+    }
     clearOidcIdTokenCookie(c);
     await tokenService.persist(result.sessionId, {
       idToken: result.idToken,
@@ -233,9 +237,19 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
         ? returnTo
         : null;
-    const destination = safeReturnTo
-      ? `/account/post-sign-in?returnTo=${encodeURIComponent(safeReturnTo)}`
-      : "/account";
+    const postSignInParams = new URLSearchParams();
+    if (safeReturnTo) {
+      postSignInParams.set("returnTo", safeReturnTo);
+    }
+    if (probeActive) {
+      postSignInParams.set("silentNotice", "1");
+    }
+    const postSignInQuery = postSignInParams.toString();
+    const destination = postSignInQuery
+      ? `/account/post-sign-in?${postSignInQuery}`
+      : probeActive
+        ? "/account/post-sign-in?silentNotice=1"
+        : "/account";
     return c.redirect(shopStorefrontPath(env, destination), 302);
   });
 

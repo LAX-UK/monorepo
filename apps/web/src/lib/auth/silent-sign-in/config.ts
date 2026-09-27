@@ -4,6 +4,8 @@ export function isBidSilentSsoEnabled(env: NodeJS.ProcessEnv = process.env): boo
 
 export const BID_SILENT_SSO_COOKIE_PREFIX = "bid_sso";
 
+export const BID_SILENT_NOTICE_COOKIE = `${BID_SILENT_SSO_COOKIE_PREFIX}_notice`;
+
 export const BID_SILENT_SSO_SKIP_PREFIXES = [
   "/login",
   "/register",

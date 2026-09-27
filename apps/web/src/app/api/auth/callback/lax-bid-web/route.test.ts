@@ -34,9 +34,11 @@ vi.mock("@/lib/bff/session-store.server", () => ({
 }));
 const markBidSilentQuiet = vi.fn();
 const markBidSilentGuestResult = vi.fn();
+const markBidSilentNotice = vi.fn();
 vi.mock("@/lib/auth/silent-sign-in/cookies.server", () => ({
   markBidSilentQuiet,
   markBidSilentGuestResult,
+  markBidSilentNotice,
   clearBidSilentSuppressed: vi.fn(),
 }));
 
@@ -91,6 +93,23 @@ describe("Bid BFF OIDC callback", () => {
       "authenticated",
     );
     expect(invalidateSession).not.toHaveBeenCalled();
+    expect(markBidSilentNotice).not.toHaveBeenCalled();
+  });
+
+  it("sets silent notice cookie after successful silent probe exchange", async () => {
+    readSession.mockResolvedValue({
+      kind: "pending",
+      state: "expected-state",
+      codeVerifier: "pkce-verifier",
+      nonce: "expected-nonce",
+      nextPath: "/catalog",
+      entryIntent: "silent",
+    });
+
+    const response = await GET(request("state=expected-state&code=authorization-code"));
+
+    expect(response.status).toBe(302);
+    expect(markBidSilentNotice).toHaveBeenCalledWith(response);
   });
 
   it("invalidates the replaced session after a successful re-login", async () => {

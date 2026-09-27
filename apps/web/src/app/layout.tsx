@@ -6,6 +6,7 @@ import { ConsentInit } from "@/components/analytics/consent-init";
 import { GtmNoscript } from "@/components/analytics/gtm-noscript";
 import { MarketingAttributionSync } from "@/components/analytics/marketing-attribution-sync";
 import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-ids-sync";
+import { SilentSignInNotice } from "@/components/auth/silent-sign-in-notice.client";
 import { BottomChromeSync } from "@/components/layout/bottom-chrome-sync";
 import { SessionThemeSync } from "@/components/layout/session-theme-sync";
 import { ThemeInit } from "@/components/layout/theme-init";
@@ -162,6 +163,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <AuthSessionProvider serverUser={user} authCookiePresent={authCookiePresent}>
             <Suspense fallback={null}>
               <SilentSignInResultEmitter />
+              <SilentSignInNotice />
               <SilentFedcmBootstrap fedcm={silentFedcmProps} />
             </Suspense>
             <AppQueryProvider>

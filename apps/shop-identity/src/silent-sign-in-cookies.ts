@@ -39,3 +39,11 @@ export function markShopSilentSuppressed(c: Context, secureCookies: boolean): vo
 export function clearShopSilentSuppressed(c: Context): void {
   deleteCookie(c, SHOP_SILENT_SSO_COOKIE_NAMES.suppressed, { path: "/" });
 }
+
+export function markShopSilentNotice(c: Context, secureCookies: boolean): void {
+  setCookie(c, SHOP_SILENT_SSO_COOKIE_NAMES.notice, "1", {
+    ...defaultCookieSetOptions(DEFAULT_SILENT_SIGN_IN_MAX_AGES.noticeSeconds),
+    secure: secureCookies,
+    httpOnly: false,
+  });
+}

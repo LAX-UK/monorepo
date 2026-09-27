@@ -20,14 +20,17 @@ Enable on **test** first; watch error rates and redirect loops before prod.
 | `{prefix}_probe` | 10 min | Silent redirect in flight |
 | `{prefix}_quiet` | 30 min | No IdP session; suppress repeat probes |
 | `{prefix}_suppressed` | 30 days | User logged out; no silent sign-in |
+| `{prefix}_notice` | 120 s | Silent sign-in succeeded; show one-shot “signed in as …” modal (not httpOnly, value `1`, no PII) |
 
 Prefixes: `shop_sso_*` (Shop), `bid_sso_*` (Bid).
+
+After a **silent** OIDC success, the product callback sets `{prefix}_notice`. The storefront reads and clears it on the next page load, then shows a small centred modal: **Continue** (or Esc / outside click) keeps the session; **Not you? Sign out** runs the normal product logout (RP-initiated IdP logout + suppressed cookie). Interactive sign-in and FedCM paths do not set the notice cookie.
 
 ## Flow
 
 1. Guest document navigation on an eligible page → middleware redirects to product SSO probe route.
 2. Probe starts OIDC with `prompt=none`.
-3. Success → same page, signed in. `login_required` → guest on same page + quiet cookie.
+3. Success → same page, signed in + notice cookie → one-shot modal with display name from session. `login_required` → guest on same page + quiet cookie.
 4. Logout → suppressed cookie until interactive sign-in.
 
 ## Identity Login Status
@@ -60,13 +63,20 @@ FedCM client bootstraps only run when server-side cookie gates pass (no session,
 Automated Playwright coverage is not checked in: it needs real test origins, `SILENT_SSO_ENABLED=true`, and an existing IdP session from an interactive sign-in on the other product.
 
 1. Sign in on Shop (interactive) on test; confirm guest basket if merge matters.
-2. Open Bid in a fresh profile (or after clearing Bid cookies only) → expect silent sign-in without a login form; land on the requested page, not forced onboarding.
-3. Reverse: sign in on Bid, open Shop → silent sign-in and basket merge via `/account/post-sign-in` when applicable.
-4. Log out on one product → confirm suppressed cookie blocks silent probe until interactive sign-in on that product.
+2. Open Bid in a fresh profile (or after clearing Bid cookies only) → expect silent sign-in without a login form; land on the requested page, not forced onboarding. Confirm the **You're signed in** modal shows the correct name/email; **Continue** dismisses it.
+3. Reverse: sign in on Bid, open Shop → silent sign-in, notice modal (before any basket-merge banner), and basket merge via `/account/post-sign-in` when applicable.
+4. On a fresh profile after silent sign-in, choose **Not you? Sign out** on Bid and Shop → confirm IdP session ends (no silent re-sign-in on the other product until interactive login).
+5. Log out on one product (header/account) → confirm suppressed cookie blocks silent probe until interactive sign-in on that product.
+
+**Privacy / legal (no code change):** Bid footer entity is “London Auction Xchange LTD” and Shop is “London Art Exchange Ltd”. If these are separate controllers, ensure the shared LAX sign-in is covered in the privacy notice.
 
 ## Backchannel logout
 
 `suppressed` is set on **interactive** product logout (Shop identity `POST /logout`, Bid BFF logout). OIDC backchannel logout invalidates server sessions but cannot set browser cookies — guests may still get one silent probe until the next full-page navigation after cookie expiry unless they hit a product logout path.
+
+## Hosted login (Identity auth component)
+
+Turnstile (`TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY`) must be set on the **auth** App Platform component (not only web/api) so hosted login renders the widget and enforces captcha after repeated failed passwords. Confirm Cloudflare Turnstile hostname allow-list includes `test-auth.lax.bid` / `auth.lax.bid`.
 
 ## CI: lax-identity closure
 

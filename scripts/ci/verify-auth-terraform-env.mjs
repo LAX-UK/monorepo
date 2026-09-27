@@ -185,6 +185,15 @@ function collectViolations(target) {
     violations.push("[prod] SHOP_ORIGIN must bind to local.domain.shop");
   }
 
+  for (const key of ["TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"]) {
+    if (!envSource.includes(`${key}:`)) {
+      violations.push(`[${label}] ${key} is not declared by apps/auth/src/env.ts`);
+    }
+    if (!auth.includes(`key = "${key}"`)) {
+      violations.push(`[${label}] Terraform auth environment omits ${key}`);
+    }
+  }
+
   return violations;
 }
 

@@ -28,7 +28,7 @@ export default defineConfig({
   },
   resolve: {
     alias: [
-      ...workspaceSourceAliases(["@auction/ui", "@auction/marketing-ui"]),
+      ...workspaceSourceAliases(["@auction/ui", "@auction/marketing-ui", "@auction/lax-ecosystem"]),
       { find: "@", replacement: path.resolve(__dirname, "./src") },
     ],
   },
