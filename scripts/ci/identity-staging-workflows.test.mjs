@@ -151,7 +151,9 @@ test("directory repair is approved maintenance, never acceptance self-healing", 
   assert.doesNotMatch(acceptance, /repair_directory/);
   assert.doesNotMatch(acceptance, /reconcile-identity-directory\.mjs --apply/);
   const recovery = read(".github/workflows/staging-recovery-test.yml");
-  assert.doesNotMatch(recovery, /identity-directory-maintenance-test\.yml/);
+  assert.match(recovery, /directory_reconcile_after_ssf/);
+  assert.match(recovery, /identity-directory-maintenance-test\.yml/);
+  assert.doesNotMatch(recovery, /reconcile-identity-directory\.mjs --apply/);
 });
 
 test("role repair is reviewed maintenance with post-apply verification", () => {
@@ -372,6 +374,13 @@ test("recovery reconcile reacts to failed recovery runs", () => {
   const reconcile = read(".github/workflows/staging-recovery-reconcile.yml");
   assert.match(reconcile, /workflow_run/);
   assert.match(reconcile, /Staging recovery \(test\)/);
+});
+
+test("accepted recovery re-baselines identity staging soak repo vars", () => {
+  const recovery = read(".github/workflows/staging-recovery-test.yml");
+  assert.match(recovery, /Re-baseline Identity staging soak window/);
+  assert.match(recovery, /IDENTITY_SOAK_SHA_TEST/);
+  assert.match(recovery, /identity-staging-soak\.yml/);
 });
 
 test("fallback guard covers extraction manifests, lockfiles, and image workflows", () => {

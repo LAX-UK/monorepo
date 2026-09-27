@@ -173,9 +173,18 @@ jobs:
       run_ephemeral_predeploy_migrate: false
     secrets: inherit
 
-  acceptance_enabled:
+  directory_reconcile_after_ssf:
     if: inputs.run_acceptance
     needs: enable_ssf
+    uses: ./.github/workflows/identity-directory-maintenance-test.yml
+    with:
+      mode: apply
+      confirm_backup: true
+    secrets: inherit
+
+  acceptance_enabled:
+    if: inputs.run_acceptance
+    needs: directory_reconcile_after_ssf
     uses: ./.github/workflows/identity-staging-acceptance.yml
     with:
       identity_sha: ${{ inputs.identity_sha }}
@@ -282,6 +291,9 @@ jobs:
        (needs.acceptance_after_rehearsal.result == 'success' &&
         needs.shop_acceptance_after_rehearsal.result == 'success'))
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/checkout-infra
@@ -315,3 +327,19 @@ jobs:
           name: staging-recovery-accepted-release
           path: ${{ runner.temp }}/recovery-evidence/accepted-release.json
           retention-days: 30
+      - name: Re-baseline Identity staging soak window
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IDENTITY_SHA: ${{ inputs.identity_sha }}
+        run: |
+          set -euo pipefail
+          SOAK_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh variable set IDENTITY_SOAK_SHA_TEST --body "$IDENTITY_SHA" --repo "$GITHUB_REPOSITORY"
+          gh variable set IDENTITY_SOAK_STARTED_AT_TEST --body "$SOAK_STARTED_AT" --repo "$GITHUB_REPOSITORY"
+          gh workflow run identity-staging-soak.yml --ref main --repo "$GITHUB_REPOSITORY" \
+            -f mode=sample \
+            -f "identity_sha=$IDENTITY_SHA" \
+            -f "soak_started_at=$SOAK_STARTED_AT" \
+            -f minimum_operations=1 \
+            -f chain_next=true
+          echo "Soak re-baselined at $SOAK_STARTED_AT for $IDENTITY_SHA"
