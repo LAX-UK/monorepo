@@ -11,6 +11,8 @@ Cross-product silent sign-in uses a shared policy in `@auction/identity-rp` and 
 
 Enable on **test** first; watch error rates and redirect loops before prod.
 
+**Test App Platform:** `SILENT_SSO_ENABLED=true` on the `web` and `shop` components in [auction-infra/terraform/ephemeral/test/main.tf](https://github.com/LAX-UK/auction-infra/blob/main/terraform/ephemeral/test/main.tf). Apply Terraform (or your usual test infra workflow) after merging that change. Leave `FEDCM_ENABLED` unset/false everywhere on test.
+
 ## Cookies (host-only, `SameSite=Lax`, httpOnly)
 
 | Cookie | Max age | Meaning |
