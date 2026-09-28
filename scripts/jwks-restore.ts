@@ -2,6 +2,7 @@ import { createDecipheriv } from "node:crypto";
 import process from "node:process";
 import { GetObjectCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import pg from "pg";
+import { buildPgConnectionConfig } from "../packages/identity-db/src/pg/ssl.ts";
 
 const { Client } = pg;
 type EnvName = "test" | "prod";
@@ -91,7 +92,7 @@ async function main() {
     console.log(`Would restore ${payload.rows.length} JWKS rows from ${latest.Key}.`);
     return;
   }
-  const client = new Client({ connectionString: requireEnv("DATABASE_URL_OWNER") });
+  const client = new Client(buildPgConnectionConfig(requireEnv("DATABASE_URL_OWNER")));
   await client.connect();
   await client.query("begin");
   try {
