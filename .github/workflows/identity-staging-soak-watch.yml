@@ -18,6 +18,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          SOAK_STARTED_AT: ${{ vars.IDENTITY_SOAK_STARTED_AT_TEST }}
-          IDENTITY_SHA: ${{ vars.IDENTITY_SOAK_SHA_TEST }}
+          AUTH_BASE_URL: https://test-auth.lax.bid
         run: node scripts/ci/watch-identity-staging-pipelines.mjs

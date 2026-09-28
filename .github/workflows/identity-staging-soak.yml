@@ -6,17 +6,17 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Collect one sample or evaluate the completed sample window
+        description: Collect one sample, evaluate the window, or upload a reset marker
         required: true
         type: choice
-        options: [sample, evaluate]
+        options: [sample, evaluate, reset]
         default: sample
       identity_sha:
-        description: Standalone Identity SHA under soak
-        required: true
+        description: Optional Identity SHA override (defaults to live test-auth release)
+        required: false
         type: string
       soak_started_at:
-        description: UTC start timestamp used by the final evaluator and sample chain
+        description: Optional UTC window start override for manual sample chains
         required: false
         type: string
       minimum_operations:
@@ -39,14 +39,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  reset:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'reset'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve live Identity release
+        id: live
+        run: node scripts/ci/resolve-live-identity-sha.mjs
+      - name: Upload soak reset marker
+        run: |
+          set -euo pipefail
+          path="$RUNNER_TEMP/soak-reset.json"
+          printf '%s\n' "{\"resetAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"identitySha\":\"${{ steps.live.outputs.identity_sha }}\"}" > "$path"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: identity-staging-soak-reset-${{ steps.live.outputs.identity_sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/soak-reset.json
+          if-no-files-found: error
+          retention-days: 90
+
   sample:
-    if: github.event_name == 'schedule' || inputs.mode == 'sample'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'sample')
     runs-on: ubuntu-latest
     environment: test
     env:
       DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
-      IDENTITY_SHA: ${{ github.event_name == 'schedule' && vars.IDENTITY_SOAK_SHA_TEST || inputs.identity_sha }}
-      SOAK_STARTED_AT: ${{ github.event_name == 'schedule' && vars.IDENTITY_SOAK_STARTED_AT_TEST || inputs.soak_started_at }}
       AUTH_BASE_URL: https://test-auth.lax.bid
       API_BASE_URL: https://test-api.lax.bid
       SHOP_IDENTITY_BASE_URL: https://test-shop.lax.bid
@@ -61,6 +78,14 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Resolve live Identity release
+        id: live
+        run: node scripts/ci/resolve-live-identity-sha.mjs
+      - name: Detect staging maintenance
+        id: maintenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/detect-staging-maintenance.mjs
       - uses: ./.github/actions/checkout-infra
         with:
           ref: main
@@ -72,9 +97,11 @@ jobs:
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - name: Load read-only staging database contracts
+        if: steps.maintenance.outputs.active != 'true'
         run: |
           set -euo pipefail
-          [[ "$IDENTITY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          identity_sha="${{ steps.live.outputs.identity_sha }}"
+          [[ "$identity_sha" =~ ^[0-9a-f]{40}$ ]]
           for pair in \
             DATABASE_URL_OWNER:postgres_owner_uri \
             DATABASE_URL_WORKER:database_url_worker \
@@ -104,15 +131,28 @@ jobs:
         if: always()
         env:
           SOAK_SAMPLE_PATH: ${{ runner.temp }}/soak-sample.json
+          IDENTITY_SHA: ${{ steps.live.outputs.identity_sha }}
+          SOAK_SAMPLE_KIND: ${{ steps.maintenance.outputs.active == 'true' && 'maintenance' || 'probe' }}
         run: pnpm tsx scripts/ci/collect-identity-staging-soak-sample.mjs
       - name: Upload soak evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: identity-staging-soak-sample-${{ github.run_id }}
+          name: >-
+            ${{ steps.maintenance.outputs.active == 'true'
+              && format('identity-staging-soak-maintenance-{0}', github.run_id)
+              || format('identity-staging-soak-sample-{0}-{1}', steps.live.outputs.identity_sha, github.run_id) }}
           path: ${{ runner.temp }}/soak-sample.json
           if-no-files-found: error
           retention-days: 90
+      - name: Resolve soak chain context
+        if: always()
+        id: chain
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IDENTITY_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.identity_sha || steps.live.outputs.identity_sha }}
+          SOAK_STARTED_AT: ${{ github.event_name == 'workflow_dispatch' && inputs.soak_started_at || '' }}
+        run: node scripts/ci/resolve-soak-chain-context.mjs
       - name: Schedule next soak sample
         if: >-
           always() &&
@@ -120,6 +160,8 @@ jobs:
            (github.event_name == 'workflow_dispatch' && inputs.chain_next != false))
         env:
           GH_TOKEN: ${{ github.token }}
+          IDENTITY_SHA: ${{ steps.chain.outputs.identity_sha }}
+          SOAK_STARTED_AT: ${{ steps.chain.outputs.soak_started_at }}
         run: |
           set -euo pipefail
           test -n "${SOAK_STARTED_AT:-}" || exit 0
@@ -147,6 +189,7 @@ jobs:
       IDENTITY_SHA: ${{ inputs.identity_sha }}
       SOAK_STARTED_AT: ${{ inputs.soak_started_at }}
       MINIMUM_OPERATIONS: ${{ inputs.minimum_operations }}
+      AUTH_BASE_URL: https://test-auth.lax.bid
     steps:
       - uses: actions/checkout@v4
       - name: Evaluate complete 24-hour sample window

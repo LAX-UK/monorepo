@@ -3,7 +3,10 @@
  * Read-only row counts for tables touched by the destructive dev seed clearAll().
  */
 import pg from "pg";
-import { buildPgConnectionConfig } from "../../packages/db/src/ssl.js";
+import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
+
+/** Drizzle journal `when` for 0180_crm_record_link_subject_id */
+const CRM_MIGRATION_THROUGH_MILLIS = 1790928000000;
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL_OWNER ?? process.env.DATABASE_URL;
@@ -21,6 +24,7 @@ async function main() {
     "jwks_key",
     "user",
     "session",
+    "crm_record_link",
   ];
 
   const client = new pg.Client(buildPgConnectionConfig(databaseUrl));
@@ -40,7 +44,7 @@ async function main() {
       "SELECT coalesce(max(id), 0)::bigint AS max_id FROM identity_lifecycle_outbox",
     );
     const dupesSince = process.env.ASSESS_SINCE_ISO ?? "2026-09-28T11:40:00Z";
-    const dupes = await client.query(
+    const eventsSince = await client.query(
       `
     SELECT event_type, count(*)::integer AS count
     FROM domain_events
@@ -50,6 +54,35 @@ async function main() {
   `,
       [dupesSince],
     );
+    const duplicateCandidates = await client.query(
+      `
+    SELECT event_type, aggregate_id, count(*)::integer AS count
+    FROM domain_events
+    WHERE occurred_at >= $1::timestamptz
+    GROUP BY event_type, aggregate_id
+    HAVING count(*) > 1
+    ORDER BY count DESC
+    LIMIT 50
+  `,
+      [dupesSince],
+    );
+    const deliverySince = await client.query(
+      `
+    SELECT consumer, status, count(*)::integer AS count
+    FROM domain_event_delivery
+    WHERE created_at >= $1::timestamptz
+      AND consumer IN ('zoho', 'xero')
+    GROUP BY consumer, status
+    ORDER BY consumer, status
+  `,
+      [dupesSince],
+    );
+    const lastMigration = await client.query(
+      "SELECT max(created_at)::bigint AS last_applied_folder_millis FROM drizzle.__drizzle_migrations",
+    );
+    const lastAppliedFolderMillis = Number(lastMigration.rows[0]?.last_applied_folder_millis ?? 0);
+    const crmMigrationsThrough0180 = lastAppliedFolderMillis >= CRM_MIGRATION_THROUGH_MILLIS;
+
     console.log(
       JSON.stringify(
         {
@@ -57,7 +90,11 @@ async function main() {
           relay: relay.rows[0] ?? null,
           maxOutboxId: maxOutbox.rows[0]?.max_id,
           dupesSince,
-          domainEventsSince: dupes.rows,
+          domainEventsSince: eventsSince.rows,
+          duplicateAggregateEventsSince: duplicateCandidates.rows,
+          domainEventDeliverySince: deliverySince.rows,
+          lastAppliedFolderMillis,
+          crmMigrationsThrough0180,
         },
         null,
         2,

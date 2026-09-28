@@ -4,7 +4,7 @@
  */
 import { spawnSync } from "node:child_process";
 import pg from "pg";
-import { buildPgConnectionConfig } from "../../packages/db/src/ssl.js";
+import { buildPgConnectionConfig } from "../../packages/identity-db/src/pg/ssl.ts";
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL_OWNER ?? process.env.DATABASE_URL;

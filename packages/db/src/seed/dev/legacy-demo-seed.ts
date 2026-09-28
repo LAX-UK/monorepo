@@ -485,9 +485,10 @@ export async function runLegacyDemoSeed() {
     throw new Error("DATABASE_URL is required");
   }
 
-  const pool = new Pool(buildPgConnectionConfig(url));
-  await pool.query("SET lock_timeout = '5s'");
-  await pool.query("SET statement_timeout = '120s'");
+  const pool = new Pool({
+    ...buildPgConnectionConfig(url),
+    options: "-c lock_timeout=5s -c statement_timeout=120s",
+  });
   const db = drizzle(pool, { schema });
   await assertDevSeedMayRunDestructiveClear(db, {
     databaseUrl: url,

@@ -8,6 +8,7 @@ const samplePath = process.env.SOAK_SAMPLE_PATH;
 const identitySha = process.env.IDENTITY_SHA;
 const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
 const validationMode = process.env.SOAK_VALIDATION_MODE ?? "enforce";
+const sampleKind = process.env.SOAK_SAMPLE_KIND ?? "probe";
 
 if (!samplePath || !/^[0-9a-f]{40}$/.test(identitySha ?? "")) {
   throw new Error("SOAK_SAMPLE_PATH and IDENTITY_SHA are required");
@@ -17,6 +18,7 @@ const observedAt = new Date().toISOString();
 const sample = {
   observedAt,
   identitySha,
+  maintenance: sampleKind === "maintenance",
   probeStatus: "ok",
   probeError: null,
   ready: null,
@@ -25,6 +27,13 @@ const sample = {
   metrics: null,
   operations: 0,
 };
+
+if (sampleKind === "maintenance") {
+  sample.probeError = null;
+  writeFileSync(samplePath, `${JSON.stringify(sample, null, 2)}\n`);
+  console.log("Recorded maintenance soak sample (probes skipped).");
+  process.exit(0);
+}
 
 function captureProbeError(message) {
   sample.probeStatus = "failed";

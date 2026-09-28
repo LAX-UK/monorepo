@@ -255,17 +255,3 @@ jobs:
           done
           echo "::error::Auth readiness did not report the approved Identity release"
           exit 1
-      - name: Re-baseline Identity staging soak window
-        if: inputs.layer == 'ephemeral'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          identity_release="$(curl -sf https://test-auth.lax.bid/health/ready | jq -r '.release // empty')"
-          [[ "$identity_release" =~ ^[0-9a-f]{40}$ ]] || {
-            echo "Skipping soak re-baseline: Identity release unavailable"
-            exit 0
-          }
-          chmod +x scripts/ci/rebaseline-identity-soak-vars.sh
-          IDENTITY_SHA="$identity_release" ./scripts/ci/rebaseline-identity-soak-vars.sh
