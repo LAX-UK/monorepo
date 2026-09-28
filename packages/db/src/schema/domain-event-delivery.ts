@@ -5,6 +5,7 @@ export const domainEventDeliveryStatuses = [
   "pending",
   "processing",
   "succeeded",
+  "skipped",
   "retryable",
   "dead_lettered",
 ] as const;

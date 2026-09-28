@@ -1,5 +1,6 @@
 import type { IMarketingProfileReader } from "@auction/marketing-events";
 import type {
+  ICrmRecordLinkRepository,
   IDomainEventDeliveryRepository,
   INotificationWriteRepository,
   IQrCodeScanPersister,
@@ -11,6 +12,7 @@ import {
 } from "@auction/persistence/lib";
 import { DrizzleTransactionRunner } from "@auction/persistence/repositories";
 import {
+  DrizzleCrmRecordLinkRepository,
   DrizzleDomainEventDeliveryRepository,
   DrizzleNotificationWriteRepository,
   DrizzleQrCodeScanPersister,
@@ -136,6 +138,7 @@ export type WorkerRepositories = {
   sourceOfFundsReviewResolutionRepo: ISourceOfFundsReviewResolutionRepository;
   lotNotifyReader: ILotNotifyReader;
   domainEventDeliveryRepo: IDomainEventDeliveryRepository;
+  crmRecordLinkRepo: ICrmRecordLinkRepository;
 };
 
 import type { WorkerEnv } from "../env.js";
@@ -189,5 +192,6 @@ export function createWorkerRepositories(
     sourceOfFundsReviewResolutionRepo: new DrizzleSourceOfFundsReviewResolutionRepository(db),
     lotNotifyReader: new DrizzleLotNotifyReader(db),
     domainEventDeliveryRepo: new DrizzleDomainEventDeliveryRepository(db),
+    crmRecordLinkRepo: new DrizzleCrmRecordLinkRepository(db),
   };
 }

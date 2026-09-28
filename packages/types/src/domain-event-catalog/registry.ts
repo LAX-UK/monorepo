@@ -27,6 +27,7 @@ import {
   userRegisteredPayloadSchemaV1,
   userSessionRevokedPayloadSchemaV1,
 } from "./payload-schemas.js";
+import { shopOrderPaidPayloadSchemaV1 } from "./shop-payload-schemas.js";
 import type {
   DomainEventConsumer,
   DomainEventDefinition,
@@ -124,6 +125,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "sale.published",
   "sale.soft_deleted",
   "sale.unpublished",
+  "shop.order.paid",
   "saleroom.display.overlay_clear",
   "saleroom.display.overlay_set",
   "saleroom.display.paired",
@@ -208,7 +210,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "bid.outbid": {
     schema: bidOutbidPayloadSchemaV1,
     idempotencyPolicy: "aggregate_event_unique",
-    consumers: ["zoho", "notifications"],
+    consumers: ["notifications"],
     piiClassification: "none",
   },
   "bid.proxy_cancelled": { consumers: ["notification_fanout"], piiClassification: "none" },
@@ -237,7 +239,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.ended": {
     schema: LotEventSchemas["lot.ended"],
-    consumers: ["lot_invoice_initiation", "notification_fanout", "zoho", "xero"],
+    consumers: ["lot_invoice_initiation", "notification_fanout", "xero"],
     piiClassification: "none",
   },
   "lot.published": {
@@ -306,14 +308,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "user.deletion_cancelled": {
     schema: userDeletionCancelledPayloadSchemaV1,
     producers: ["apps/auth"],
-    consumers: ["bid_identity_directory"],
+    consumers: ["bid_identity_directory", "zoho"],
     idempotencyPolicy: "none",
     piiClassification: "none",
   },
   "user.deletion_requested": {
     schema: userDeletionRequestedPayloadSchemaV1,
     producers: ["apps/auth"],
-    consumers: ["marketing_contacts", "bid_identity_directory"],
+    consumers: ["marketing_contacts", "bid_identity_directory", "zoho"],
     idempotencyPolicy: "none",
     piiClassification: "none",
   },
@@ -346,6 +348,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
       "shop_identity_projection",
       "ssf_transmitter",
       "bid_identity_directory",
+      "zoho",
     ],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
@@ -353,7 +356,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "user.identity_deleted": {
     schema: userIdentityDeletedPayloadSchemaV1,
     producers: ["apps/auth"],
-    consumers: ["ssf_transmitter", "bid_identity_directory"],
+    consumers: ["ssf_transmitter", "bid_identity_directory", "zoho"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
@@ -374,7 +377,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "user.profile_updated": {
     schema: userProfileUpdatedPayloadSchemaV1,
     producers: ["apps/auth"],
-    consumers: ["bid_profile_provisioning", "shop_identity_projection", "bid_identity_directory"],
+    consumers: [
+      "bid_profile_provisioning",
+      "shop_identity_projection",
+      "bid_identity_directory",
+      "zoho",
+    ],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },
@@ -389,6 +397,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
       "shop_identity_projection",
       "zoho",
     ],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "contains_pii",
+  },
+  "shop.order.paid": {
+    schema: shopOrderPaidPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["zoho"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },

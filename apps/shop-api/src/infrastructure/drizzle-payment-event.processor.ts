@@ -161,6 +161,22 @@ export async function completeShopCheckoutSession(
       });
     }
 
+    await tx.insert(domainEvent).values({
+      aggregateType: "shop_order",
+      aggregateId: order.id,
+      eventType: "shop.order.paid",
+      schemaVersion: 1,
+      payload: {
+        schemaVersion: 1,
+        orderId: order.id,
+        identitySubjectId: order.identitySubjectId,
+        totalPence: order.totalPence,
+        paidAt: input.paidAt.toISOString(),
+        lineCount: lines.length,
+      },
+      producer: "shop-api",
+    });
+
     if (options.notifications && options.storefrontUrl) {
       const lineDetails = await tx
         .select({

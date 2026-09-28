@@ -26,10 +26,16 @@ import { type WorkerEnv, loadWorkerEnv } from "../env.js";
 import { createWorkerFinanceCronHandlers } from "../finance/create-worker-finance-cron.js";
 import { createWorkerFinanceServices } from "../finance/create-worker-finance-services.js";
 import type { FinanceCronDispatchContext } from "../finance/finance-cron-dispatch.js";
+import { createCrmSyncService } from "../integrations/crm/create-crm-sync-stack.js";
 import {
   createXeroLiveExecutorPortsFromStack,
   syncXeroInvoiceWebhookLocal,
 } from "../integrations/xero/create-xero-live-executor-ports-local.js";
+import { createZohoCrmGateway } from "../integrations/zoho/create-zoho-crm-gateway.js";
+import {
+  assertZohoCrmOrgEnvironment,
+  shouldRunZohoCrmOrgCheck,
+} from "../integrations/zoho/zoho-crm-org-check.js";
 import { runIdentityOutboxRelayJob } from "../jobs/identity-outbox-relay.job.js";
 import type { MarketingContactSyncJobData } from "../jobs/marketing-contact-sync.js";
 import { marketingEventsOutcomeTotal } from "../jobs/marketing-event-processor.js";
@@ -90,6 +96,7 @@ export type WorkerContainer = {
   deadLetterQueue: Queue;
   projectorRunner: ReturnType<typeof createProjectorRunner>;
   lotLifecycleConsumer: ReturnType<typeof registerWorkerLotLifecycleConsumer> | null;
+  ensureReady: () => Promise<void>;
 };
 
 export function createWorkerContainer(): WorkerContainer {
@@ -116,6 +123,16 @@ export function createWorkerContainer(): WorkerContainer {
   const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
   const repoFactory = new DrizzleRepositoryFactory(db);
   const repositories = createWorkerRepositories(db, env);
+  const crmGateway = env.ZOHO_CRM_SYNC_MODE !== "off" ? createZohoCrmGateway(env) : undefined;
+  const crmSyncService =
+    env.ZOHO_CRM_SYNC_MODE !== "off" && crmGateway
+      ? createCrmSyncService({
+          env,
+          db,
+          linkRepo: repositories.crmRecordLinkRepo,
+          gateway: crmGateway,
+        })
+      : undefined;
   const exportProviderDeps = createExportProviderDeps(db);
   const redis = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
@@ -434,7 +451,10 @@ export function createWorkerContainer(): WorkerContainer {
       sourceOfFundsReviewResolutionRepo: repositories.sourceOfFundsReviewResolutionRepo,
       lotNotifyReader: repositories.lotNotifyReader,
       env,
+      db,
       deliveryRepo: repositories.domainEventDeliveryRepo,
+      crmRecordLinkRepo: repositories.crmRecordLinkRepo,
+      crmSyncService,
       log,
       emailService: emailWorkers.emailOutboxService,
       supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",
@@ -494,7 +514,6 @@ export function createWorkerContainer(): WorkerContainer {
         : {}),
     }),
   });
-  void projectorRunner.start();
 
   return {
     env,
@@ -517,6 +536,10 @@ export function createWorkerContainer(): WorkerContainer {
     deadLetterQueue,
     projectorRunner,
     lotLifecycleConsumer,
+    ensureReady: async () => {
+      if (!shouldRunZohoCrmOrgCheck(env)) return;
+      await assertZohoCrmOrgEnvironment(env);
+    },
   };
 }
 

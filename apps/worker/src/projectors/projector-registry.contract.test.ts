@@ -20,9 +20,9 @@ import { ZOHO_PROJECTOR } from "./zoho-projector.js";
 
 /** Pin tick order and projector names from the pre-registry runner. */
 const EXPECTED_PROJECTOR_ORDER = [
-  ZOHO_PROJECTOR,
   XERO_PROJECTOR,
   MARKETING_CONTACTS_PROJECTOR,
+  ZOHO_PROJECTOR,
   "shop_identity_projection",
   "admin_impersonation_notify",
   "payout_transfer_failed_notify",
@@ -122,8 +122,8 @@ describe("createDefaultProjectorRegistry", () => {
     expect(enabled).not.toContain(NOTIFICATION_FANOUT_PROJECTOR);
     expect(enabled).not.toContain("payment_refund_notify");
     expect(enabled).not.toContain("lot_voided_anti_shilling_admin_notify");
-    expect(enabled).toContain(ZOHO_PROJECTOR);
     expect(enabled).toContain(XERO_PROJECTOR);
+    expect(enabled).not.toContain(ZOHO_PROJECTOR);
   });
 
   it("requires adminPayoutsUrl for payout and notification fanout projectors", () => {

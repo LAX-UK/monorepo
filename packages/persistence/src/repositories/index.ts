@@ -79,6 +79,7 @@ export {
   NOTIFICATION_OUTBOX_MAX_ATTEMPTS,
 } from "./drizzle-notification-outbox.repository.js";
 export { DrizzleDomainEventDeliveryRepository } from "./drizzle-domain-event-delivery.repository.js";
+export { DrizzleCrmRecordLinkRepository } from "./drizzle-crm-record-link.repository.js";
 export { DrizzleNotificationPreferenceRepository } from "./drizzle-notification-preference.repository.js";
 export { DrizzleSaleFollowRepository } from "./drizzle-sale-follow.repository.js";
 export { DrizzleSaleBiddersReader } from "./drizzle-sale-bidders.reader.js";

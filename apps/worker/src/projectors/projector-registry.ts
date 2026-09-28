@@ -77,9 +77,9 @@ function emailProjectorArgs(ctx: ProjectorRunContext) {
 
 export function createDefaultProjectorRegistry(): ProjectorRegistry {
   const projectors: Projector[] = [
-    createZohoProjector(),
     createXeroProjector(),
     createMarketingContactsProjector(),
+    createZohoProjector(),
     {
       name: SHOP_IDENTITY_PROJECTION_PROJECTOR,
       isEnabled(ctx) {

@@ -4,6 +4,7 @@ export type DomainEventDeliveryStatus =
   | "pending"
   | "processing"
   | "succeeded"
+  | "skipped"
   | "retryable"
   | "dead_lettered";
 
@@ -37,12 +38,27 @@ export interface IDomainEventDeliveryRepository {
     providerReference?: string | null;
     now?: Date;
   }): Promise<void>;
+  markSkipped(input: {
+    deliveryId: number;
+    reason: string;
+    providerReference?: string | null;
+    now?: Date;
+  }): Promise<void>;
+  replaySkippedForEventTypes(input: {
+    consumer: string;
+    eventTypes: readonly string[];
+    limit: number;
+    now?: Date;
+  }): Promise<number>;
   scheduleRetry(input: {
     deliveryId: number;
     nextRetryAt: Date;
     lastError: string;
+    /** Undo the attempt increment from claim (e.g. circuit open without consuming max attempts). */
+    undoAttemptIncrement?: boolean;
     now?: Date;
   }): Promise<void>;
+  oldestPendingAt(input: { consumer: string; now?: Date }): Promise<Date | null>;
   deadLetter(input: { deliveryId: number; lastError: string; now?: Date }): Promise<void>;
   replay(input: { deliveryId: number; now?: Date }): Promise<void>;
   ensurePending(input: {

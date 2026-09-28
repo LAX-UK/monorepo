@@ -144,10 +144,62 @@ export class DrizzleDomainEventDeliveryRepository implements IDomainEventDeliver
       .where(eq(domainEventDelivery.id, input.deliveryId));
   }
 
+  async markSkipped(input: {
+    deliveryId: number;
+    reason: string;
+    providerReference?: string | null;
+    now?: Date;
+  }): Promise<void> {
+    const now = input.now ?? new Date();
+    await this.db
+      .update(domainEventDelivery)
+      .set({
+        status: "skipped",
+        providerReference: input.providerReference ?? null,
+        leaseExpiresAt: null,
+        nextRetryAt: null,
+        lastError: redactDeliveryError(input.reason),
+        updatedAt: now,
+      })
+      .where(eq(domainEventDelivery.id, input.deliveryId));
+  }
+
+  async replaySkippedForEventTypes(input: {
+    consumer: string;
+    eventTypes: readonly string[];
+    limit: number;
+    now?: Date;
+  }): Promise<number> {
+    if (input.eventTypes.length === 0) return 0;
+    const now = input.now ?? new Date();
+    const eventTypeList = sql.join(
+      input.eventTypes.map((eventType) => sql`${eventType}`),
+      sql`, `,
+    );
+    const rows = await this.db.execute(sql`
+      UPDATE domain_event_delivery d
+      SET status = 'pending', next_retry_at = NULL, lease_expires_at = NULL,
+          last_error = NULL, updated_at = ${now}
+      WHERE d.id IN (
+        SELECT d2.id
+        FROM domain_event_delivery d2
+        INNER JOIN domain_events e ON e.id = d2.event_id
+        WHERE d2.consumer = ${input.consumer}
+          AND d2.status = 'skipped'
+          AND e.event_type IN (${eventTypeList})
+        ORDER BY d2.id
+        LIMIT ${input.limit}
+      )
+      RETURNING d.id
+    `);
+    return rowsFromExecuteResult(rows).length;
+  }
+
   async scheduleRetry(input: {
     deliveryId: number;
     nextRetryAt: Date;
     lastError: string;
+    undoAttemptIncrement?: boolean;
     now?: Date;
   }): Promise<void> {
     const now = input.now ?? new Date();
@@ -159,8 +211,34 @@ export class DrizzleDomainEventDeliveryRepository implements IDomainEventDeliver
         lastError: redactDeliveryError(input.lastError),
         leaseExpiresAt: null,
         updatedAt: now,
+        ...(input.undoAttemptIncrement
+          ? { attempts: sql`GREATEST(0, ${domainEventDelivery.attempts} - 1)` }
+          : {}),
       })
       .where(eq(domainEventDelivery.id, input.deliveryId));
+  }
+
+  async oldestPendingAt(input: { consumer: string; now?: Date }): Promise<Date | null> {
+    const now = input.now ?? new Date();
+    const result = await this.db.execute(sql`
+      SELECT MIN(created_at) AS oldest_at
+      FROM domain_event_delivery
+      WHERE consumer = ${input.consumer}
+        AND (
+          status = 'pending'
+          OR status = 'processing'
+          OR (
+            status = 'retryable'
+            AND (next_retry_at IS NULL OR next_retry_at <= ${now})
+          )
+        )
+    `);
+    const rows = rowsFromExecuteResult(result) as unknown as Array<{
+      oldest_at: Date | string | null;
+    }>;
+    const oldest = rows[0]?.oldest_at;
+    if (oldest == null) return null;
+    return oldest instanceof Date ? oldest : new Date(oldest);
   }
 
   async deadLetter(input: { deliveryId: number; lastError: string; now?: Date }): Promise<void> {

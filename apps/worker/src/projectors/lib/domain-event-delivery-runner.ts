@@ -2,15 +2,19 @@ import type {
   DomainEventDeliveryRow,
   IDomainEventDeliveryRepository,
 } from "@auction/persistence/interfaces";
+import { recordDeliveryOutcome } from "../../lib/delivery-metrics.js";
 import {
   classifyDeliveryError,
   computeDeliveryBackoffMs,
   formatDeliveryError,
+  isCircuitOpenDeliveryError,
+  readRetryAfterMs,
 } from "../../lib/delivery-retry.js";
 
 export type DomainEventDeliveryOutcome =
   | { ok: true; providerReference?: string | null }
-  | { ok: false; error: unknown };
+  | { ok: false; error: unknown }
+  | { skipped: true; reason: string; providerReference?: string | null };
 
 export type RunDomainEventDeliveryOptions = {
   delivery: DomainEventDeliveryRow;
@@ -19,6 +23,8 @@ export type RunDomainEventDeliveryOptions = {
   maxAttempts?: number;
   deliver: () => Promise<DomainEventDeliveryOutcome | undefined>;
   now?: Date;
+  /** When set, dead-letter metrics use this consumer label. */
+  metricsConsumer?: string;
 };
 
 const DEFAULT_MAX_ATTEMPTS = 12;
@@ -49,6 +55,16 @@ export async function runDomainEventDelivery(
       throw outcome.error;
     }
 
+    if (outcome && "skipped" in outcome && outcome.skipped) {
+      await repo.markSkipped({
+        deliveryId: delivery.id,
+        reason: outcome.reason,
+        providerReference: outcome.providerReference ?? null,
+        ...withOptionalNow(options.now),
+      });
+      return;
+    }
+
     const providerReference =
       outcome && typeof outcome === "object" && "ok" in outcome && outcome.ok
         ? (outcome.providerReference ?? null)
@@ -70,17 +86,27 @@ export async function runDomainEventDelivery(
         lastError: message,
         ...withOptionalNow(options.now),
       });
+      if (options.metricsConsumer) {
+        recordDeliveryOutcome(options.metricsConsumer, "dead_letter");
+      }
       return;
     }
 
-    const delayMs = computeDeliveryBackoffMs(attemptsAfterClaim);
+    const retryAfterMs = readRetryAfterMs(err);
+    const delayMs = computeDeliveryBackoffMs(attemptsAfterClaim, {
+      floorMs: retryAfterMs ?? 0,
+    });
     const nextRetryAt = new Date((options.now ?? new Date()).getTime() + delayMs);
     await repo.scheduleRetry({
       deliveryId: delivery.id,
       nextRetryAt,
       lastError: message,
+      undoAttemptIncrement: isCircuitOpenDeliveryError(err),
       ...withOptionalNow(options.now),
     });
+    if (options.metricsConsumer) {
+      recordDeliveryOutcome(options.metricsConsumer, "retry");
+    }
   } finally {
     if (renewTimer) clearInterval(renewTimer);
   }
@@ -93,6 +119,8 @@ export type ClaimAndRunDomainEventDeliveriesOptions = {
   repo: IDomainEventDeliveryRepository;
   deliverOne: (row: DomainEventDeliveryRow) => Promise<DomainEventDeliveryOutcome | undefined>;
   now?: Date;
+  /** Record delivery attempt outcomes (success/retry/dead_letter) for this consumer. */
+  metricsConsumer?: string;
 };
 
 /** Claims a batch then runs each delivery with lease-aware wrapping. */
@@ -112,9 +140,49 @@ export async function claimAndRunDomainEventDeliveries(
       repo: options.repo,
       leaseMs: options.leaseMs,
       deliver: () => options.deliverOne(row),
+      ...(options.metricsConsumer !== undefined
+        ? { metricsConsumer: options.metricsConsumer }
+        : {}),
       ...withOptionalNow(options.now),
     });
   }
 
   return claimed.length;
+}
+
+export type ClaimAndRunDomainEventDeliveriesWithBudgetOptions =
+  ClaimAndRunDomainEventDeliveriesOptions & {
+    timeBudgetMs: number;
+  };
+
+/** Runs deliveries until the batch is exhausted or the time budget elapses. */
+export async function claimAndRunDomainEventDeliveriesWithBudget(
+  options: ClaimAndRunDomainEventDeliveriesWithBudgetOptions,
+): Promise<number> {
+  const started = Date.now();
+  let processed = 0;
+  while (Date.now() - started < options.timeBudgetMs) {
+    const claimed = await options.repo.claim({
+      consumer: options.consumer,
+      batchSize: 1,
+      leaseMs: options.leaseMs,
+      ...withOptionalNow(options.now),
+    });
+    if (claimed.length === 0) break;
+    for (const row of claimed) {
+      if (Date.now() - started >= options.timeBudgetMs) break;
+      await runDomainEventDelivery({
+        delivery: row,
+        repo: options.repo,
+        leaseMs: options.leaseMs,
+        deliver: () => options.deliverOne(row),
+        ...(options.metricsConsumer !== undefined
+          ? { metricsConsumer: options.metricsConsumer }
+          : {}),
+        ...withOptionalNow(options.now),
+      });
+      processed += 1;
+    }
+  }
+  return processed;
 }

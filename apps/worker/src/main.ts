@@ -4,18 +4,31 @@ import {
 } from "./container/create-worker-container.js";
 import { startHealthServer } from "./health-server.js";
 
-const container = createWorkerContainer();
-const { server } = startHealthServer(container);
+async function start(): Promise<void> {
+  const container = createWorkerContainer();
+  try {
+    await container.ensureReady();
+  } catch (err) {
+    container.log.fatal({ err }, "worker_startup_gate_failed");
+    process.exit(1);
+  }
 
-function shutdown(signal: NodeJS.Signals) {
-  void shutdownWorkerContainer(container, signal, () =>
-    Promise.resolve(
-      new Promise<void>((resolve) => {
-        server.close(() => resolve());
-      }),
-    ),
-  );
+  void container.projectorRunner.start();
+
+  const { server } = startHealthServer(container);
+
+  function shutdown(signal: NodeJS.Signals) {
+    void shutdownWorkerContainer(container, signal, () =>
+      Promise.resolve(
+        new Promise<void>((resolve) => {
+          server.close(() => resolve());
+        }),
+      ),
+    );
+  }
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }
 
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+void start();

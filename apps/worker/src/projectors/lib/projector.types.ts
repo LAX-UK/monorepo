@@ -1,5 +1,7 @@
+import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import type {
+  ICrmRecordLinkRepository,
   IDomainEventDeliveryRepository,
   INotificationWriteRepository,
   ITransactionRunner,
@@ -7,6 +9,7 @@ import type {
 import type { IEnsurePersonalLegalEntityService } from "@auction/persistence/lib";
 import type pino from "pino";
 import type { WorkerEnv } from "../../env.js";
+import type { CrmSyncService } from "../../integrations/crm/crm-sync-service.js";
 import type { XeroLiveExecutorPorts } from "../../integrations/xero/xero-live-executor.js";
 import type { IAdminImpersonationNotifyReader } from "../../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";
@@ -65,7 +68,10 @@ export type ProjectorRunContext = {
   ensureLotInvoice?: ((lotId: string) => Promise<void>) | undefined;
   xeroLiveExecutorPorts?: XeroLiveExecutorPorts | undefined;
   env?: WorkerEnv | undefined;
+  db?: Database | undefined;
   deliveryRepo?: IDomainEventDeliveryRepository | undefined;
+  crmRecordLinkRepo?: ICrmRecordLinkRepository | undefined;
+  crmSyncService?: CrmSyncService | undefined;
   enqueueMarketingContactSync?:
     | ((data: { userId: string; reason: string; eventId: number }) => Promise<void>)
     | undefined;

@@ -56,6 +56,7 @@ export * from "./processed-stripe-events.js";
 export * from "./processed-webhook-events.js";
 export * from "./domain-events.js";
 export * from "./domain-event-delivery.js";
+export * from "./crm-record-link.js";
 export * from "./ssf.js";
 export * from "./identity-lifecycle-outbox.js";
 export * from "./impersonation-sessions.js";

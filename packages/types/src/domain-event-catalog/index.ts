@@ -64,6 +64,8 @@ export {
   type DomainEventPublishValidateMode,
 } from "./publish-guard.js";
 export { assertDomainEventConsumerContract } from "./consumer-guard.js";
+export { listDomainEventTypesForConsumer } from "./consumer-routing.js";
+export { shopOrderPaidPayloadSchemaV1 } from "./shop-payload-schemas.js";
 export {
   paymentCapturedPayloadSchemaV1,
   paymentRefundedPayloadSchemaV1,

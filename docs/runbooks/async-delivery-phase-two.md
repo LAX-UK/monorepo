@@ -17,19 +17,21 @@ This runbook covers domain-event delivery, Zoho/Xero projectors, inbound webhook
 ## Staged cutover order
 
 1. **Contracts only** — deploy catalog + delivery ledger; confirm `@auction/types` registry tests green (`pnpm --filter @auction/types test`, including `financial-contracts.test.ts`). Optionally set `DOMAIN_EVENT_PUBLISH_VALIDATE=observe` on API/worker and watch for contract violations before enforce.
-2. **Shadow / dry-run** — set `ZOHO_CRM_SYNC_MODE=dry_run` and/or `XERO_PROJECTOR_MODE=shadow`; watch worker logs for mapped commands without provider writes.
+2. **Shadow / dry-run** — set `ZOHO_CRM_SYNC_MODE=dry_run` and/or `XERO_PROJECTOR_MODE=shadow`; watch worker logs for `zoho_crm_dry_run` (deliveries marked **skipped**, no HTTP). Org-type startup check runs only for `canary`/`live`, not `dry_run`.
 3. **Webhooks** — enable `WEBHOOK_EVENTS_ENQUEUE` on API, then `WEBHOOK_EVENTS_PROCESS` on worker; monitor `webhook_event` oldest unprocessed age and drain job metrics.
-4. **Canary event types** — narrow lists: `ZOHO_CRM_ENABLED_EVENT_TYPES`, `XERO_PROJECTOR_LIVE_OPERATIONS`.
-5. **Single-owner live** — for each Xero operation, set `XERO_API_WRITES_DISABLED=true` on API **before** enabling matching live projector operations. Run `DOMAIN_EVENT_SMOKE_GATES` suites (`apps/worker/src/domain-event-smoke.test.ts`) and confirm zero new contract dead-letters in shadow/canary.
-6. **Lifecycle** — after parity checks, set `LIFECYCLE_EXECUTION_OWNER=worker` on **both** API and worker in the same deploy window.
+4. **Canary event types** — narrow lists: `ZOHO_CRM_ENABLED_EVENT_TYPES`, `XERO_PROJECTOR_LIVE_OPERATIONS`. For Zoho, `canary` and `live` both perform HTTP for allowlisted types; only the allowlist differs from a full rollout.
+5. **Replay skipped CRM deliveries** — after fixing config or policy, run `pnpm --filter @auction/worker replay:crm-skipped` (uses enabled event types or full Zoho catalog).
+6. **Single-owner live** — for each Xero operation, set `XERO_API_WRITES_DISABLED=true` on API **before** enabling matching live projector operations. Run `DOMAIN_EVENT_SMOKE_GATES` suites (`apps/worker/src/domain-event-smoke.test.ts`) and confirm zero new contract dead-letters in shadow/canary.
+7. **Lifecycle** — after parity checks, set `LIFECYCLE_EXECUTION_OWNER=worker` on **both** API and worker in the same deploy window.
 
 Finance cron and Xero ownership cutovers: [worker-runtime-cutover.md](./worker-runtime-cutover.md).
 
 ## Go / no-go gates (live writes)
 
 - Zero duplicate provider objects in shadow/canary window.
-- Oldest pending delivery age bounded (alert thresholds in `delivery-metrics`).
-- No sustained retry or dead-letter growth for 24h after canary.
+- `auction_delivery_oldest_pending_age_seconds{consumer="zoho"}` stays within agreed SLO (e.g. &lt; 15 minutes under normal load).
+- `auction_delivery_dead_letter_total{consumer="zoho"}` does not increase during canary; investigate any new dead-letter rows via admin delivery ops.
+- No sustained `auction_delivery_attempts_total{consumer="zoho",outcome="retry"}` growth for 24h after canary.
 - Successful replay drill on a dead-lettered row (admin delivery ops or SQL `replay` port).
 - Lifecycle: no overdue active/scheduled lots vs baseline when worker owns execution.
 
