@@ -1,0 +1,33 @@
+name: Identity staging DB repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_relay_cursor:
+        description: Apply identity outbox relay cursor repair
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      DATABASE_URL_OWNER: ${{ secrets.DATABASE_URL_OWNER }}
+      DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - name: Assess staging seed damage (read-only)
+        run: node scripts/ci/assess-staging-seed-damage.mjs
+      - name: Repair identity outbox relay cursor
+        if: inputs.apply_relay_cursor
+        run: node scripts/ci/repair-identity-outbox-relay-cursor.mjs --apply
