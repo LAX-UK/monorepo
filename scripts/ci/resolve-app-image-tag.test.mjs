@@ -22,7 +22,10 @@ test("resolveAppImageTag rejects rolling env tags without input", () => {
 test("readWebImageTagFromSpec reads web service image tag", () => {
   assert.equal(
     readWebImageTagFromSpec({
-      services: [{ name: "api", image: { tag: "ignored" } }, { name: "web", image: { tag: "abc" } }],
+      services: [
+        { name: "api", image: { tag: "ignored" } },
+        { name: "web", image: { tag: "abc" } },
+      ],
     }),
     "abc",
   );

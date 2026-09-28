@@ -42,9 +42,7 @@ export function resolveAppImageTag({ inputTag, liveTag }) {
   }
   if (!SHA_PATTERN.test(liveTag)) {
     throw new Error(
-      `Live web image tag must be a 40-character git SHA (got "${liveTag || "(missing)"}). ` +
-        "Run app-deploy-test (or app-deploy-prod) to pin immutable tags before Terraform apply, " +
-        "or pass app_image_tag explicitly.",
+      `Live web image tag must be a 40-character git SHA (got "${liveTag || "(missing)"}). Run app-deploy-test (or app-deploy-prod) to pin immutable tags before Terraform apply, or pass app_image_tag explicitly.`,
     );
   }
   return liveTag;

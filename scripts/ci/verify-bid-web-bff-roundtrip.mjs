@@ -90,10 +90,9 @@ function assertBidSessionCookie(jar) {
 }
 
 async function assertHostedLoginEntry() {
-  const loginPage = await fetch(
-    `${webBase}/login?next=${encodeURIComponent("/dashboard")}`,
-    { redirect: "manual" },
-  );
+  const loginPage = await fetch(`${webBase}/login?next=${encodeURIComponent("/dashboard")}`, {
+    redirect: "manual",
+  });
   if (loginPage.status !== 307 && loginPage.status !== 308) {
     throw new Error(
       `/login did not redirect to hosted login start (${loginPage.status}); legacy local login may be deployed`,
