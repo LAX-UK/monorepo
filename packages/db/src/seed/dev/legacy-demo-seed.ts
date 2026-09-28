@@ -13,6 +13,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "../../schema/index.js";
 import { buildPgConnectionConfig } from "../../ssl.js";
+import { assertDevSeedMayRunDestructiveClear } from "../runners/dev-seed-guard.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 
@@ -485,7 +486,13 @@ export async function runLegacyDemoSeed() {
   }
 
   const pool = new Pool(buildPgConnectionConfig(url));
+  await pool.query("SET lock_timeout = '5s'");
+  await pool.query("SET statement_timeout = '120s'");
   const db = drizzle(pool, { schema });
+  await assertDevSeedMayRunDestructiveClear(db, {
+    databaseUrl: url,
+    appEnv: process.env.APP_ENV,
+  });
   const now = DEMO_SEED_NOW.getTime();
   const day = 86_400_000;
   const hour = 3_600_000;

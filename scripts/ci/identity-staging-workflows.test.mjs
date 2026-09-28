@@ -77,6 +77,13 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
   assert.match(testUp, /TF_VAR_app_image_tag/);
   assert.match(testUp, /verify-readiness-contract\.mjs/);
   assert.match(testUp, /https:\/\/test\.lax\.bid\/api\/health\/ready/);
+  assert.match(testUp, /run-staging-seed-if-empty\.mjs/);
+  assert.match(testUp, /timeout-minutes: 10/);
+  assert.doesNotMatch(testUp, /^\s*-\s*run:\s*pnpm db:seed\s*$/m);
+  assert.match(testUp, /rebaseline-identity-soak-vars\.sh/);
+
+  const applyTest = read(".github/workflows/terraform-apply-test.yml");
+  assert.match(applyTest, /rebaseline-identity-soak-vars\.sh/);
 
   const applyProd = read(".github/workflows/terraform-apply-prod.yml");
   assert.match(applyProd, /app_image_tag:/);

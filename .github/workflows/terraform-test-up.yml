@@ -54,6 +54,9 @@ concurrency:
 jobs:
   up:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     environment: test
     env:
       DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
@@ -259,9 +262,13 @@ jobs:
             echo '__DATABASE_CA_CERT__'
           } >> "$GITHUB_ENV"
       - run: pnpm tsx scripts/jwks-restore.ts test
+      - name: Align identity outbox relay cursor
+        run: node scripts/ci/repair-identity-outbox-relay-cursor.mjs --apply
       - name: Build db package graph for seed
         run: pnpm --filter @auction/db... build
-      - run: pnpm db:seed
+      - name: Seed only an empty staging database
+        timeout-minutes: 10
+        run: node scripts/ci/run-staging-seed-if-empty.mjs
       - name: Verify staging readiness and web release contract
         env:
           APP_ID: ${{ env.APP_ID }}
@@ -278,3 +285,17 @@ jobs:
             --app-id "$APP_ID" \
             --attempts 60 \
             --interval-seconds 10
+      - name: Re-baseline Identity staging soak window
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          identity_release="$(curl -sf https://test-auth.lax.bid/health/ready | jq -r '.release // empty')"
+          [[ "$identity_release" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "Skipping soak re-baseline: Identity release unavailable"
+            exit 0
+          }
+          chmod +x scripts/ci/rebaseline-identity-soak-vars.sh
+          IDENTITY_SHA="$identity_release" ./scripts/ci/rebaseline-identity-soak-vars.sh

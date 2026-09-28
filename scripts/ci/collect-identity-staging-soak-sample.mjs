@@ -31,6 +31,17 @@ function captureProbeError(message) {
   sample.probeError = message;
 }
 
+function lastProbeLine(result) {
+  const text = `${result.stderr ?? ""}\n${result.stdout ?? ""}`.trim();
+  const lines = text.split("\n").filter(Boolean);
+  return lines.at(-1) ?? "";
+}
+
+function captureProbeFailure(label, result) {
+  const detail = lastProbeLine(result);
+  captureProbeError(detail ? `${label}: ${detail}` : `${label} failed`);
+}
+
 try {
   const readyResponse = spawnSync(
     "curl",
@@ -56,7 +67,7 @@ try {
     });
     sample.directoryDrift = parseDirectoryDriftLog(`${drift.stdout}\n${drift.stderr}`);
     if (drift.status !== 0) {
-      captureProbeError("verify-identity-directory-drift failed");
+      captureProbeFailure("verify-identity-directory-drift", drift);
     }
 
     const outbox = spawnSync("pnpm", ["tsx", "scripts/ci/verify-identity-outbox-live.mjs"], {
@@ -65,7 +76,7 @@ try {
     });
     sample.outbox = parseOutboxLog(`${outbox.stdout}\n${outbox.stderr}`);
     if (outbox.status !== 0) {
-      captureProbeError("verify-identity-outbox-live failed");
+      captureProbeFailure("verify-identity-outbox-live", outbox);
     }
 
     const metricsResponse = spawnSync(
@@ -82,7 +93,7 @@ try {
       { encoding: "utf8" },
     );
     if (metricsResponse.status !== 0) {
-      captureProbeError("metrics scrape failed");
+      captureProbeFailure("metrics scrape", metricsResponse);
     } else {
       sample.metrics = parseAuthSoakMetrics(metricsResponse.stdout);
       sample.operations = sample.metrics.operations;
