@@ -6,17 +6,12 @@ import { listGithubSoakArtifacts } from "./list-github-soak-artifacts.mjs";
 const repository = process.env.GITHUB_REPOSITORY ?? "LAX-UK/monorepo";
 const token = process.env.GH_TOKEN;
 const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
-const identityShaOverride = process.env.IDENTITY_SHA;
-const soakStartedAtOverride = process.env.SOAK_STARTED_AT;
 
 if (!token) {
   throw new Error("GH_TOKEN is required");
 }
 
 async function loadLiveIdentitySha() {
-  if (/^[0-9a-f]{40}$/.test(identityShaOverride ?? "")) {
-    return identityShaOverride;
-  }
   const response = await fetch(`${authBase}/health/ready`, { signal: AbortSignal.timeout(15_000) });
   if (!response.ok) {
     throw new Error(`health/ready failed (${response.status})`);
@@ -30,19 +25,9 @@ async function loadLiveIdentitySha() {
 }
 
 const liveSha = await loadLiveIdentitySha();
-let startedMs = Number.isFinite(Date.parse(soakStartedAtOverride ?? ""))
-  ? Date.parse(soakStartedAtOverride)
-  : Number.NaN;
-
-if (!Number.isFinite(startedMs)) {
-  const artifacts = await listGithubSoakArtifacts({ token, repository });
-  const window = resolveSoakWindow({ liveSha, artifacts });
-  if (!window) {
-    startedMs = Date.now();
-  } else {
-    startedMs = window.startedMs;
-  }
-}
+const artifacts = await listGithubSoakArtifacts({ token, repository });
+const window = resolveSoakWindow({ liveSha, artifacts });
+const startedMs = window?.startedMs ?? Date.now();
 
 const payload = {
   identity_sha: liveSha,

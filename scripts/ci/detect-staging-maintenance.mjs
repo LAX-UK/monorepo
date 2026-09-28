@@ -12,6 +12,12 @@ const workflows = [
   "terraform-apply-test.yml",
   "staging-recovery-test.yml",
   "app-deploy-test.yml",
+  "identity-staging-deploy.yml",
+  "identity-directory-maintenance-test.yml",
+  "identity-migration-maintenance-test.yml",
+  "identity-role-maintenance-test.yml",
+  "auth-at-rest-maintenance-test.yml",
+  "identity-staging-db-repair.yml",
 ];
 
 function ghJson(args) {

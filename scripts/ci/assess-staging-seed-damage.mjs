@@ -56,16 +56,47 @@ async function main() {
     );
     const duplicateCandidates = await client.query(
       `
-    SELECT event_type, aggregate_id, count(*)::integer AS count
+    SELECT event_type, aggregate_type, aggregate_id, count(*)::integer AS count
     FROM domain_events
     WHERE occurred_at >= $1::timestamptz
-    GROUP BY event_type, aggregate_id
+    GROUP BY event_type, aggregate_type, aggregate_id
     HAVING count(*) > 1
     ORDER BY count DESC
     LIMIT 50
   `,
       [dupesSince],
     );
+    const exactDuplicates = await client.query(`
+    SELECT event_type, aggregate_type, aggregate_id, occurred_at, count(*)::integer AS count
+    FROM domain_events
+    GROUP BY event_type, aggregate_type, aggregate_id, occurred_at, payload
+    HAVING count(*) > 1
+    ORDER BY count DESC
+    LIMIT 50
+  `);
+    const emailOutboxSince = await client.query(
+      `
+    SELECT count(*)::integer AS count
+    FROM email_outbox
+    WHERE created_at >= $1::timestamptz
+  `,
+      [dupesSince],
+    );
+    const activity = await client.query(`
+    SELECT
+      pid,
+      usename,
+      state,
+      wait_event_type,
+      extract(epoch FROM (clock_timestamp() - state_change))::integer AS state_age_sec,
+      left(query, 80) AS query_preview
+    FROM pg_stat_activity
+    WHERE datname = current_database()
+      AND backend_type = 'client backend'
+      AND pid <> pg_backend_pid()
+    ORDER BY state_change
+    LIMIT 30
+  `);
     const deliverySince = await client.query(
       `
     SELECT consumer, status, count(*)::integer AS count
@@ -92,6 +123,9 @@ async function main() {
           dupesSince,
           domainEventsSince: eventsSince.rows,
           duplicateAggregateEventsSince: duplicateCandidates.rows,
+          exactDuplicateDomainEvents: exactDuplicates.rows,
+          emailOutboxCreatedSince: emailOutboxSince.rows[0]?.count ?? 0,
+          pgStatActivity: activity.rows,
           domainEventDeliverySince: deliverySince.rows,
           lastAppliedFolderMillis,
           crmMigrationsThrough0180,

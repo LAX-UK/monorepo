@@ -174,7 +174,7 @@ if (successes.length === 0 && inProgressMain.length === 0) {
   process.exit(1);
 }
 
-const latestSuccess = successes.at(-1);
+const latestSuccess = successes[0];
 if (latestSuccess) {
   const latestAgeMs = nowMs - Date.parse(latestSuccess.createdAt);
   if (latestAgeMs > maxGapMs && inProgressMain.length === 0) {

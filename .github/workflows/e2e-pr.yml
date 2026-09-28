@@ -3,68 +3,83 @@ name: Web PR browser gates
 on:
   pull_request:
     branches: [main, master]
-    paths:
-      - "apps/web/**"
-      - "apps/shop/**"
-      - "apps/shop-api/**"
-      - "apps/api/src/**"
-      - "apps/auth/**"
-      - "apps/ws/**"
-      - "apps/worker/src/**"
-      - "apps/worker/src/projectors/*identity*"
-      - "apps/worker/src/projectors/bid-profile-provisioning*"
-      - "apps/worker/src/services/shop-identity-projection*"
-      - "apps/shop-identity/**"
-      - "packages/auth/**"
-      - "packages/domain/**"
-      - "packages/persistence/**"
-      - "packages/bidding-runtime/**"
-      - "packages/identity-contracts/**"
-      - "packages/db/drizzle/**"
-      - "packages/types/src/domain-event-catalog/**"
-      - "packages/db/src/migrate-roles.ts"
-      - "packages/db/src/auth-*.contract.test.ts"
-      - "packages/db/src/shop-*.contract.test.ts"
-      - "packages/db/src/migrations/**"
-      - "packages/db/src/scripts/configure-oidc-clients.ts"
-      - "scripts/ci/verify-identity-boundary.mjs"
-      - "scripts/ci/verify-shop-oidc-roundtrip.mjs"
-      - "scripts/ci/verify-bid-web-bff-roundtrip.mjs"
-      - "scripts/ci/oidc-authorize-response.mjs"
-      - "scripts/ci/oidc-authorize-response.test.mjs"
-      - "scripts/ci/verify-docker-patched-dependencies.mjs"
-      - "scripts/ci/verify-docker-patched-dependencies.test.mjs"
-      - "patches/**"
-      - "apps/**/Dockerfile"
-      - "docker/migrate.Dockerfile"
-      - "scripts/ci/verify-refresh-reuse.mjs"
-      - "scripts/ci/verify-identity-ssf-live.mjs"
-      - "scripts/ci/provision-identity-acceptance-users.mjs"
-      - "scripts/ci/cleanup-identity-acceptance-users.mjs"
-      - "packages/db/src/seed/**"
-      - "packages/ui/**"
-      - "packages/branding/**"
-      - "packages/lax-ecosystem/**"
-      - "packages/shop-contracts/**"
-      - "packages/shop-domain/**"
-      - ".github/workflows/ci.yml"
-      - ".github/workflows/e2e-pr.yml"
-      - ".github/workflows/identity-staging-acceptance.yml"
-      - "scripts/ci/e2e-session-state.mjs"
-      - "scripts/ci/e2e-session-state.test.mjs"
-      - "scripts/ci/flush-auth-rate-limits.mjs"
-      - "scripts/ci/prepare-e2e-auth-states.mjs"
-      - "scripts/ci/run-pr-browser-gates.mjs"
-      - "scripts/ci/verify-shop-architecture.test.mjs"
-      - "scripts/ci/verify-shop-assets.mjs"
-      - "pnpm-lock.yaml"
 
 concurrency:
   group: e2e-pr-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      browser: ${{ steps.filter.outputs.browser }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            browser:
+              - "apps/web/**"
+              - "apps/shop/**"
+              - "apps/shop-api/**"
+              - "apps/api/src/**"
+              - "apps/auth/**"
+              - "apps/ws/**"
+              - "apps/worker/src/**"
+              - "apps/worker/src/projectors/*identity*"
+              - "apps/worker/src/projectors/bid-profile-provisioning*"
+              - "apps/worker/src/services/shop-identity-projection*"
+              - "apps/shop-identity/**"
+              - "packages/auth/**"
+              - "packages/domain/**"
+              - "packages/persistence/**"
+              - "packages/bidding-runtime/**"
+              - "packages/identity-contracts/**"
+              - "packages/db/drizzle/**"
+              - "packages/types/src/domain-event-catalog/**"
+              - "packages/db/src/migrate-roles.ts"
+              - "packages/db/src/auth-*.contract.test.ts"
+              - "packages/db/src/shop-*.contract.test.ts"
+              - "packages/db/src/migrations/**"
+              - "packages/db/src/scripts/configure-oidc-clients.ts"
+              - "scripts/ci/verify-identity-boundary.mjs"
+              - "scripts/ci/verify-shop-oidc-roundtrip.mjs"
+              - "scripts/ci/verify-bid-web-bff-roundtrip.mjs"
+              - "scripts/ci/oidc-authorize-response.mjs"
+              - "scripts/ci/oidc-authorize-response.test.mjs"
+              - "scripts/ci/verify-docker-patched-dependencies.mjs"
+              - "scripts/ci/verify-docker-patched-dependencies.test.mjs"
+              - "patches/**"
+              - "apps/**/Dockerfile"
+              - "docker/migrate.Dockerfile"
+              - "scripts/ci/verify-refresh-reuse.mjs"
+              - "scripts/ci/verify-identity-ssf-live.mjs"
+              - "scripts/ci/provision-identity-acceptance-users.mjs"
+              - "scripts/ci/cleanup-identity-acceptance-users.mjs"
+              - "packages/db/src/seed/**"
+              - "packages/ui/**"
+              - "packages/branding/**"
+              - "packages/lax-ecosystem/**"
+              - "packages/shop-contracts/**"
+              - "packages/shop-domain/**"
+              - ".github/workflows/ci.yml"
+              - ".github/workflows/e2e-pr.yml"
+              - ".github/workflows/identity-staging-acceptance.yml"
+              - "scripts/ci/e2e-session-state.mjs"
+              - "scripts/ci/e2e-session-state.test.mjs"
+              - "scripts/ci/flush-auth-rate-limits.mjs"
+              - "scripts/ci/prepare-e2e-auth-states.mjs"
+              - "scripts/ci/run-pr-browser-gates.mjs"
+              - "scripts/ci/verify-shop-architecture.test.mjs"
+              - "scripts/ci/verify-shop-assets.mjs"
+              - "pnpm-lock.yaml"
+
   browser-gates:
+    needs: changes
+    if: needs.changes.outputs.browser == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     services:

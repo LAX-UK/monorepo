@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
@@ -177,7 +177,10 @@ test("directory repair is approved maintenance, never acceptance self-healing", 
   assert.doesNotMatch(acceptance, /repair_directory/);
   assert.doesNotMatch(acceptance, /reconcile-identity-directory\.mjs --apply/);
   const recovery = read(".github/workflows/staging-recovery-test.yml");
-  assert.doesNotMatch(recovery, /identity-directory-maintenance-test\.yml/);
+  assert.match(recovery, /directory_reconcile_after_ssf/);
+  assert.match(recovery, /identity-directory-maintenance-test\.yml/);
+  assert.doesNotMatch(recovery, /reconcile-identity-directory\.mjs --apply/);
+  assert.doesNotMatch(recovery, /Re-baseline Identity staging soak window/);
 });
 
 test("role repair is reviewed maintenance with post-apply verification", () => {
@@ -389,6 +392,12 @@ test("identity staging soak samples read-only contracts on a schedule", () => {
   assert.match(soak, /evaluate-identity-staging-soak\.mjs/);
   assert.match(soak, /resolve-live-identity-sha\.mjs/);
   assert.match(soak, /detect-staging-maintenance\.mjs/);
+  const sampleJob = soak.slice(soak.indexOf("  sample:"), soak.indexOf("  evaluate:"));
+  assertOrdered(sampleJob, ["Detect staging maintenance", "Resolve live Identity release"]);
+  assert.match(soak, /ALLOW_MISSING_RELEASE/);
+  const resetJob = soak.slice(soak.indexOf("reset:"));
+  assert.match(resetJob, /uses: actions\/checkout@v4/);
+  assert.doesNotMatch(soak.slice(soak.indexOf("Schedule next soak sample")), /-f "identity_sha=/);
   assert.match(soak, /identity-staging-soak-sample-/);
   assert.match(soak, /inputs\.mode == 'reset'/);
   assert.match(soak, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
@@ -404,9 +413,23 @@ test("identity staging db repair loads database contract from terraform output",
   const repair = read(".github/workflows/identity-staging-db-repair.yml");
   assert.match(repair, /postgres_owner_uri/);
   assert.match(repair, /pnpm tsx scripts\/ci\/assess-staging-seed-damage\.mjs/);
+  assert.match(repair, /restore-staging-projector-cursors\.mjs/);
+  assert.match(repair, /restore_cursors/);
   assert.match(repair, /repair-identity-outbox-relay-cursor\.mjs/);
   assert.match(repair, /--cutoff/);
   assert.doesNotMatch(repair, /secrets\.DATABASE_URL_OWNER/);
+});
+
+test("workflows do not mutate IDENTITY_SOAK repository variables", () => {
+  for (const file of readdirSync(resolve(root, ".github/workflows"))) {
+    if (!file.endsWith(".yml")) continue;
+    const workflow = read(`.github/workflows/${file}`);
+    assert.doesNotMatch(
+      workflow,
+      /gh variable set IDENTITY_SOAK/,
+      `${file} must not write IDENTITY_SOAK_* variables`,
+    );
+  }
 });
 
 test("recovery reconcile reacts to failed recovery runs", () => {
