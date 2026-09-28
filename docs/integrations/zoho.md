@@ -26,7 +26,26 @@ Scopes (sandbox integration user):
 
 GitHub **test** / **production** environment secrets: `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, and `ZOHO_REFRESH_TOKEN` (wired into Terraform as `TF_VAR_zoho_*`) — never in chat.
 
-Test Terraform sets `ZOHO_CRM_SYNC_MODE=off` until all three OAuth secrets are present; then it enables `dry_run` with a sandbox org check skipped (org check runs only for `canary` / `live`).
+Test Terraform sets `ZOHO_CRM_SYNC_MODE=off` until all three OAuth secrets are present; otherwise the mode comes from GitHub **test** environment variables (default `dry_run` in CI). Org check runs only for `canary` / `live`.
+
+## Test rollout controls (GitHub environment `test`)
+
+Set these **variables** (not secrets) on the monorepo test environment; Terraform test workflows pass them as `TF_VAR_zoho_crm_*`:
+
+| Variable | Default in CI | Purpose |
+|----------|---------------|---------|
+| `ZOHO_CRM_SYNC_MODE` | `dry_run` | `off` \| `dry_run` \| `canary` \| `live` on test worker |
+| `ZOHO_CRM_ENABLED_EVENT_TYPES` | `user.registered` | Comma-separated allowlist |
+| `ZOHO_CRM_AUCTION_PIPELINE` | empty | e.g. `LAX Platform` before deal events |
+| `ZOHO_CRM_DEAL_STAGE_LOT_WON` | empty | e.g. `Lot Won` |
+| `ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED` | empty | e.g. `Paid` |
+| `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED` | empty | e.g. `Refunded` |
+| `ZOHO_CRM_DEAL_STAGE_SHOP_PAID` | empty | e.g. `Paid` |
+| `ZOHO_CRM_LEAD_CONVERSION_ENABLED` | `false` | Set `true` before lot-win conversion tests |
+
+After changing vars, re-run **Terraform test up** (with image contracts) or **Terraform apply test** so the worker spec updates.
+
+**Zoho CRM maintenance (test)** workflow (`zoho-crm-maintenance-test.yml`): manual `backfill-dry-run`, `backfill`, or `replay-skipped` against the test database and sandbox API host (pinned in the workflow).
 
 ## Worker env (CRM)
 
