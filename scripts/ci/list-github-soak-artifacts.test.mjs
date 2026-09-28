@@ -7,7 +7,7 @@ test("listGithubSoakArtifacts stops paging once artifacts are older than lookbac
   const recent = new Date(now - 60_000).toISOString();
   const stale = new Date(now - 96 * 60 * 60 * 1000).toISOString();
   let page = 0;
-  const fetchImpl = async (url) => {
+  const fetchImpl = async (_url) => {
     page += 1;
     const artifacts =
       page === 1

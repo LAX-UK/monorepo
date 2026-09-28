@@ -72,7 +72,8 @@ async function readCurrentCursors(client) {
 }
 
 async function terminateBlockers(client, ownPid) {
-  const candidates = await client.query(`
+  const candidates = await client.query(
+    `
     SELECT
       pid,
       usename,
@@ -84,7 +85,9 @@ async function terminateBlockers(client, ownPid) {
     WHERE pid <> $1
       AND datname = current_database()
       AND backend_type = 'client backend'
-  `, [ownPid]);
+  `,
+    [ownPid],
+  );
 
   const terminated = [];
   for (const row of candidates.rows) {
@@ -92,12 +95,9 @@ async function terminateBlockers(client, ownPid) {
     const age = Number(row.state_age_sec ?? 0);
     const isSeedDelete =
       query.startsWith('delete from "') || query.startsWith("delete from domain_events");
-    const isLongLockWait =
-      row.wait_event_type === "Lock" && age >= 60;
+    const isLongLockWait = row.wait_event_type === "Lock" && age >= 60;
     if ((isSeedDelete && age >= 60) || isLongLockWait) {
-      const term = await client.query("SELECT pg_terminate_backend($1::integer) AS ok", [
-        row.pid,
-      ]);
+      const term = await client.query("SELECT pg_terminate_backend($1::integer) AS ok", [row.pid]);
       if (term.rows[0]?.ok) {
         terminated.push({
           pid: row.pid,

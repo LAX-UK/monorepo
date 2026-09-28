@@ -16,8 +16,9 @@ if (!samplePath) {
 if (sampleKind !== "maintenance" && !/^[0-9a-f]{40}$/.test(identitySha ?? "")) {
   throw new Error("IDENTITY_SHA must be a 40-character git SHA for probe samples");
 }
-const effectiveIdentitySha =
-  /^[0-9a-f]{40}$/.test(identitySha ?? "") ? identitySha : "0".repeat(40);
+const effectiveIdentitySha = /^[0-9a-f]{40}$/.test(identitySha ?? "")
+  ? identitySha
+  : "0".repeat(40);
 
 const observedAt = new Date().toISOString();
 const sample = {

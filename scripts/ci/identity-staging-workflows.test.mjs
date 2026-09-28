@@ -390,17 +390,11 @@ test("identity staging soak samples read-only contracts on a schedule", () => {
   assert.match(soak, /resolve-live-identity-sha\.mjs/);
   assert.match(soak, /detect-staging-maintenance\.mjs/);
   const sampleJob = soak.slice(soak.indexOf("  sample:"), soak.indexOf("  evaluate:"));
-  assertOrdered(sampleJob, [
-    "Detect staging maintenance",
-    "Resolve live Identity release",
-  ]);
+  assertOrdered(sampleJob, ["Detect staging maintenance", "Resolve live Identity release"]);
   assert.match(soak, /ALLOW_MISSING_RELEASE/);
   const resetJob = soak.slice(soak.indexOf("reset:"));
   assert.match(resetJob, /uses: actions\/checkout@v4/);
-  assert.doesNotMatch(
-    soak.slice(soak.indexOf("Schedule next soak sample")),
-    /-f "identity_sha=/,
-  );
+  assert.doesNotMatch(soak.slice(soak.indexOf("Schedule next soak sample")), /-f "identity_sha=/);
   assert.match(soak, /identity-staging-soak-sample-/);
   assert.match(soak, /inputs\.mode == 'reset'/);
   assert.match(soak, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);

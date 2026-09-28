@@ -26,16 +26,17 @@ function collectWorkerProjectorNames() {
     resolve(root, "apps/worker/src/repositories/drizzle-identity-outbox-relay.repository.ts"),
     "utf8",
   );
-  const relayMatch = relay.match(
-    /IDENTITY_LIFECYCLE_OUTBOX_RELAY_PROJECTOR\s*=\s*"([a-z_]+)"/,
-  );
+  const relayMatch = relay.match(/IDENTITY_LIFECYCLE_OUTBOX_RELAY_PROJECTOR\s*=\s*"([a-z_]+)"/);
   if (relayMatch) names.add(relayMatch[1]);
   return [...names].sort();
 }
 
 test("worker projector SSOT matches worker source constants", () => {
   const fromWorker = collectWorkerProjectorNames();
-  assert.deepEqual([...DOMAIN_EVENT_PROJECTOR_NAMES].sort(), fromWorker.filter((n) => n !== IDENTITY_LIFECYCLE_OUTBOX_RELAY_PROJECTOR).sort());
+  assert.deepEqual(
+    [...DOMAIN_EVENT_PROJECTOR_NAMES].sort(),
+    fromWorker.filter((n) => n !== IDENTITY_LIFECYCLE_OUTBOX_RELAY_PROJECTOR).sort(),
+  );
   assert.equal(ALL_STAGING_PROJECTOR_NAMES.length, 20);
   assert.ok(ALL_STAGING_PROJECTOR_NAMES.includes(IDENTITY_LIFECYCLE_OUTBOX_RELAY_PROJECTOR));
 });
