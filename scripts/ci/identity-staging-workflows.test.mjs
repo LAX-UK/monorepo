@@ -418,6 +418,8 @@ test("identity staging db repair loads database contract from terraform output",
   assert.match(repair, /repair-identity-outbox-relay-cursor\.mjs/);
   assert.match(repair, /--cutoff/);
   assert.doesNotMatch(repair, /secrets\.DATABASE_URL_OWNER/);
+  const assess = read("scripts/ci/assess-staging-seed-damage.mjs");
+  assert.match(assess, /FROM "\$\{table\}"/, "table names must be quoted (user is a keyword)");
 });
 
 test("workflows do not mutate IDENTITY_SOAK repository variables", () => {

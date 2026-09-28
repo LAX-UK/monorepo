@@ -32,7 +32,7 @@ async function main() {
     await client.connect();
     const counts = {};
     for (const table of tables) {
-      const result = await client.query(`SELECT count(*)::bigint AS count FROM ${table}`);
+      const result = await client.query(`SELECT count(*)::bigint AS count FROM "${table}"`);
       counts[table] = Number(result.rows[0]?.count ?? 0);
     }
     const relay = await client.query(`
