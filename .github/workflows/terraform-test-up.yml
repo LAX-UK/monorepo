@@ -234,6 +234,8 @@ jobs:
             echo '__DATABASE_CA_CERT__'
           } >> "$GITHUB_ENV"
       - run: pnpm tsx scripts/jwks-restore.ts test
+      - name: Build db package graph for seed
+        run: pnpm --filter @auction/db... build
       - run: pnpm db:seed
       - run: |
           curl --fail https://test.lax.bid/
