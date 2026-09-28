@@ -490,9 +490,10 @@ export async function runLegacyDemoSeed() {
     options: "-c lock_timeout=5s -c statement_timeout=120s",
   });
   const db = drizzle(pool, { schema });
+  const appEnv = process.env.APP_ENV;
   await assertDevSeedMayRunDestructiveClear(db, {
     databaseUrl: url,
-    appEnv: process.env.APP_ENV,
+    ...(appEnv ? { appEnv } : {}),
   });
   const now = DEMO_SEED_NOW.getTime();
   const day = 86_400_000;
