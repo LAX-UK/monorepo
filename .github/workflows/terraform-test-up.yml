@@ -44,6 +44,10 @@ on:
         type: boolean
         required: false
         default: false
+      app_image_tag:
+        description: Immutable monorepo SHA for web/api/ws/worker/migrate/clamav (defaults to live pinned web tag)
+        type: string
+        required: false
 concurrency:
   group: app-deploy-test
   cancel-in-progress: false
@@ -145,6 +149,27 @@ jobs:
       - uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Resolve monorepo app image tag for Terraform
+        if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
+        env:
+          APP_ID: ${{ env.APP_ID }}
+          INPUT_APP_IMAGE_TAG: ${{ inputs.app_image_tag }}
+        run: |
+          set -euo pipefail
+          tag="$(node scripts/ci/resolve-app-image-tag.mjs \
+            --app-id "$APP_ID" \
+            --input-tag "$INPUT_APP_IMAGE_TAG")"
+          echo "APP_IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "TF_VAR_app_image_tag=$tag" >> "$GITHUB_ENV"
+      - name: Verify prebuilt web image exists for app pin
+        if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
+        env:
+          APP_IMAGE_TAG: ${{ env.APP_IMAGE_TAG }}
+        run: |
+          set -euo pipefail
+          node scripts/ci/verify-prebuilt-web-for-deploy.mjs \
+            --environment test \
+            --sha "$APP_IMAGE_TAG"
       - name: Require approved Identity and Shop image contracts before ephemeral apply
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:
@@ -237,8 +262,19 @@ jobs:
       - name: Build db package graph for seed
         run: pnpm --filter @auction/db... build
       - run: pnpm db:seed
-      - run: |
-          curl --fail https://test.lax.bid/
-          curl --fail https://test-api.lax.bid/health/ready
-          curl --fail https://test-auth.lax.bid/health/ready
-          curl --fail https://test-ws.lax.bid/health/ready
+      - name: Verify staging readiness and web release contract
+        env:
+          APP_ID: ${{ env.APP_ID }}
+          APP_IMAGE_TAG: ${{ env.APP_IMAGE_TAG }}
+        run: |
+          set -euo pipefail
+          expected='{}'
+          if test -n "${APP_IMAGE_TAG:-}"; then
+            expected="{\"https://test.lax.bid/api/health/ready\":\"$APP_IMAGE_TAG\"}"
+          fi
+          node scripts/ci/verify-readiness-contract.mjs \
+            --urls '["https://test-api.lax.bid/health/ready","https://test-auth.lax.bid/health/ready","https://test-ws.lax.bid/health/ready","https://test.lax.bid/api/health/ready"]' \
+            --expected-releases "$expected" \
+            --app-id "$APP_ID" \
+            --attempts 60 \
+            --interval-seconds 10

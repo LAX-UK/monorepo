@@ -70,6 +70,22 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
     assert.match(workflow, /TF_VAR_shop_api_image_tag/);
   }
 
+  const testUp = read(".github/workflows/terraform-test-up.yml");
+  assert.match(testUp, /app_image_tag:/);
+  assert.match(testUp, /resolve-app-image-tag\.mjs/);
+  assert.match(testUp, /verify-prebuilt-web-for-deploy\.mjs/);
+  assert.match(testUp, /TF_VAR_app_image_tag/);
+  assert.match(testUp, /verify-readiness-contract\.mjs/);
+  assert.match(testUp, /https:\/\/test\.lax\.bid\/api\/health\/ready/);
+
+  const applyProd = read(".github/workflows/terraform-apply-prod.yml");
+  assert.match(applyProd, /app_image_tag:/);
+  assert.match(applyProd, /resolve-app-image-tag\.mjs/);
+  assert.match(applyProd, /verify-prebuilt-web-for-deploy\.mjs/);
+  assert.match(applyProd, /TF_VAR_app_image_tag/);
+  assert.match(applyProd, /verify-readiness-contract\.mjs/);
+  assert.match(applyProd, /https:\/\/lax\.bid\/api\/health\/ready/);
+
   const imageContract = read("scripts/ci/verify-staging-image-contract.mjs");
   for (const required of [
     "IDENTITY_SHA",
