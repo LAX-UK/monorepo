@@ -173,9 +173,18 @@ jobs:
       run_ephemeral_predeploy_migrate: false
     secrets: inherit
 
-  acceptance_enabled:
+  directory_reconcile_after_ssf:
     if: inputs.run_acceptance
     needs: enable_ssf
+    uses: ./.github/workflows/identity-directory-maintenance-test.yml
+    with:
+      mode: apply
+      confirm_backup: true
+    secrets: inherit
+
+  acceptance_enabled:
+    if: inputs.run_acceptance
+    needs: directory_reconcile_after_ssf
     uses: ./.github/workflows/identity-staging-acceptance.yml
     with:
       identity_sha: ${{ inputs.identity_sha }}

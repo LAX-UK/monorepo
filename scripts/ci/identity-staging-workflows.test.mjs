@@ -177,7 +177,10 @@ test("directory repair is approved maintenance, never acceptance self-healing", 
   assert.doesNotMatch(acceptance, /repair_directory/);
   assert.doesNotMatch(acceptance, /reconcile-identity-directory\.mjs --apply/);
   const recovery = read(".github/workflows/staging-recovery-test.yml");
-  assert.doesNotMatch(recovery, /identity-directory-maintenance-test\.yml/);
+  assert.match(recovery, /directory_reconcile_after_ssf/);
+  assert.match(recovery, /identity-directory-maintenance-test\.yml/);
+  assert.doesNotMatch(recovery, /reconcile-identity-directory\.mjs --apply/);
+  assert.doesNotMatch(recovery, /Re-baseline Identity staging soak window/);
 });
 
 test("role repair is reviewed maintenance with post-apply verification", () => {

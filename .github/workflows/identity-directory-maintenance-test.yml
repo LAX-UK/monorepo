@@ -1,6 +1,14 @@
 name: Identity directory maintenance (test)
 
 on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        required: true
+      confirm_backup:
+        type: boolean
+        required: true
   workflow_dispatch:
     inputs:
       mode:
