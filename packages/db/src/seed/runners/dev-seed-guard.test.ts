@@ -23,7 +23,8 @@ describe("isRemoteOrProtectedSeedTarget", () => {
   it("treats remote hosts as protected", () => {
     expect(
       isRemoteOrProtectedSeedTarget({
-        databaseUrl: "postgresql://u:p@db-postgresql-fra1-do-user-123.db.ondigitalocean.com:25060/defaultdb",
+        databaseUrl:
+          "postgresql://u:p@db-postgresql-fra1-do-user-123.db.ondigitalocean.com:25060/defaultdb",
       }),
     ).toBe(true);
   });
