@@ -9,10 +9,20 @@ on:
         required: true
         default: false
       relay_cutoff_iso:
-        description: UTC cutoff for forward-only cursor (max outbox id before this time)
+        description: UTC cutoff for forward-only relay cursor (max outbox id before this time)
         type: string
         required: false
         default: "2026-09-28T11:21:44Z"
+      restore_cursors:
+        description: Restore all worker projector_state cursors after seed damage
+        type: boolean
+        required: true
+        default: false
+      domain_event_cutoff:
+        description: UTC cutoff for domain-event projector cursors
+        type: string
+        required: false
+        default: "2026-09-28T13:36:32Z"
 
 permissions:
   contents: read
@@ -60,6 +70,17 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Assess staging seed damage (read-only)
         run: pnpm tsx scripts/ci/assess-staging-seed-damage.mjs
+      - name: Restore staging projector cursors
+        if: inputs.restore_cursors
+        env:
+          DOMAIN_EVENT_CUTOFF: ${{ inputs.domain_event_cutoff }}
+          RELAY_CUTOFF: ${{ inputs.relay_cutoff_iso }}
+        run: |
+          set -euo pipefail
+          pnpm tsx scripts/ci/restore-staging-projector-cursors.mjs \
+            --domain-event-cutoff "$DOMAIN_EVENT_CUTOFF" \
+            --relay-cutoff "$RELAY_CUTOFF" \
+            --apply
       - name: Repair identity outbox relay cursor
         if: inputs.apply_relay_cursor
         run: |

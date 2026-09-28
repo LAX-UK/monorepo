@@ -41,6 +41,18 @@ test("resolveSoakWindow starts after maintenance and release changes", () => {
   assert.equal(window.startedMs, Date.parse("2026-09-28T11:05:00Z"));
 });
 
+test("resolveSoakWindow honors manual reset markers for the live release", () => {
+  const window = resolveSoakWindow({
+    liveSha,
+    artifacts: [
+      { name: `identity-staging-soak-reset-${liveSha}-9`, created_at: "2026-09-28T14:00:00Z" },
+      { name: soakArtifactNameForSample(liveSha, "10"), created_at: "2026-09-28T14:05:00Z" },
+    ],
+  });
+  assert.ok(window);
+  assert.equal(window.startedMs, Date.parse("2026-09-28T14:05:00Z"));
+});
+
 test("resolveSoakWindow returns null before the first live sample", () => {
   const window = resolveSoakWindow({
     liveSha,

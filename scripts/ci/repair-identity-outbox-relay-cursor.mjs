@@ -89,13 +89,13 @@ async function main() {
       console.log("Dry run only; pass --apply and --cutoff to update projector_state.");
       return;
     }
-    if (!forwardOnly) {
+    if (targetCursor < currentCursor) {
       throw new Error(
         `Refusing to move cursor backward (current=${currentCursor}, target=${targetCursor})`,
       );
     }
-    if (targetCursor === currentCursor) {
-      console.log("Cursor already at target; no update needed.");
+    if (targetCursor <= currentCursor) {
+      console.log("Cursor already at or above target; no update needed.");
       return;
     }
 

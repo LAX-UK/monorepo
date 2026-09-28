@@ -10,14 +10,19 @@ const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").repl
 const validationMode = process.env.SOAK_VALIDATION_MODE ?? "enforce";
 const sampleKind = process.env.SOAK_SAMPLE_KIND ?? "probe";
 
-if (!samplePath || !/^[0-9a-f]{40}$/.test(identitySha ?? "")) {
-  throw new Error("SOAK_SAMPLE_PATH and IDENTITY_SHA are required");
+if (!samplePath) {
+  throw new Error("SOAK_SAMPLE_PATH is required");
 }
+if (sampleKind !== "maintenance" && !/^[0-9a-f]{40}$/.test(identitySha ?? "")) {
+  throw new Error("IDENTITY_SHA must be a 40-character git SHA for probe samples");
+}
+const effectiveIdentitySha =
+  /^[0-9a-f]{40}$/.test(identitySha ?? "") ? identitySha : "0".repeat(40);
 
 const observedAt = new Date().toISOString();
 const sample = {
   observedAt,
-  identitySha,
+  identitySha: effectiveIdentitySha,
   maintenance: sampleKind === "maintenance",
   probeStatus: "ok",
   probeError: null,
@@ -64,8 +69,8 @@ try {
   } else {
     sample.ready = JSON.parse(readyResponse.stdout);
     const release = sample.ready?.release ?? sample.ready?.version ?? "";
-    if (release !== identitySha) {
-      captureProbeError(`release ${release} != expected ${identitySha}`);
+    if (release !== effectiveIdentitySha) {
+      captureProbeError(`release ${release} != expected ${effectiveIdentitySha}`);
     }
   }
 

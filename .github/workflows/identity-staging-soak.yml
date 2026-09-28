@@ -42,7 +42,10 @@ jobs:
   reset:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'reset'
     runs-on: ubuntu-latest
+    env:
+      AUTH_BASE_URL: https://test-auth.lax.bid
     steps:
+      - uses: actions/checkout@v4
       - name: Resolve live Identity release
         id: live
         run: node scripts/ci/resolve-live-identity-sha.mjs
@@ -78,14 +81,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Resolve live Identity release
-        id: live
-        run: node scripts/ci/resolve-live-identity-sha.mjs
       - name: Detect staging maintenance
         id: maintenance
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/ci/detect-staging-maintenance.mjs
+      - name: Resolve live Identity release
+        id: live
+        env:
+          ALLOW_MISSING_RELEASE: ${{ steps.maintenance.outputs.active == 'true' && '1' || '0' }}
+        run: node scripts/ci/resolve-live-identity-sha.mjs
       - uses: ./.github/actions/checkout-infra
         with:
           ref: main
@@ -150,8 +155,6 @@ jobs:
         id: chain
         env:
           GH_TOKEN: ${{ github.token }}
-          IDENTITY_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.identity_sha || steps.live.outputs.identity_sha }}
-          SOAK_STARTED_AT: ${{ github.event_name == 'workflow_dispatch' && inputs.soak_started_at || '' }}
         run: node scripts/ci/resolve-soak-chain-context.mjs
       - name: Schedule next soak sample
         if: >-
@@ -160,7 +163,6 @@ jobs:
            (github.event_name == 'workflow_dispatch' && inputs.chain_next != false))
         env:
           GH_TOKEN: ${{ github.token }}
-          IDENTITY_SHA: ${{ steps.chain.outputs.identity_sha }}
           SOAK_STARTED_AT: ${{ steps.chain.outputs.soak_started_at }}
         run: |
           set -euo pipefail
@@ -176,8 +178,6 @@ jobs:
           gh workflow run identity-staging-soak.yml \
             --ref "${GITHUB_REF_NAME:-main}" \
             -f mode=sample \
-            -f "identity_sha=$IDENTITY_SHA" \
-            -f "soak_started_at=$SOAK_STARTED_AT" \
             -f minimum_operations=1 \
             -f chain_next=true
 
