@@ -34,10 +34,6 @@ permissions:
   contents: read
   actions: write
 
-concurrency:
-  group: identity-staging-soak
-  cancel-in-progress: false
-
 jobs:
   reset:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'reset'
@@ -64,6 +60,9 @@ jobs:
   sample:
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'sample')
     runs-on: ubuntu-latest
+    concurrency:
+      group: identity-staging-soak-sample
+      cancel-in-progress: false
     environment: test
     env:
       DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}

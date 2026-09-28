@@ -397,6 +397,12 @@ test("identity staging soak samples read-only contracts on a schedule", () => {
   assert.match(soak, /ALLOW_MISSING_RELEASE/);
   const resetJob = soak.slice(soak.indexOf("reset:"));
   assert.match(resetJob, /uses: actions\/checkout@v4/);
+  assert.doesNotMatch(
+    soak.slice(0, soak.indexOf("jobs:")),
+    /concurrency:/,
+    "reset must not queue behind long-running samples",
+  );
+  assert.match(sampleJob, /concurrency:\n\s+group: identity-staging-soak-sample/);
   assert.doesNotMatch(soak.slice(soak.indexOf("Schedule next soak sample")), /-f "identity_sha=/);
   assert.match(soak, /identity-staging-soak-sample-/);
   assert.match(soak, /inputs\.mode == 'reset'/);
@@ -418,6 +424,8 @@ test("identity staging db repair loads database contract from terraform output",
   assert.match(repair, /repair-identity-outbox-relay-cursor\.mjs/);
   assert.match(repair, /--cutoff/);
   assert.doesNotMatch(repair, /secrets\.DATABASE_URL_OWNER/);
+  const assess = read("scripts/ci/assess-staging-seed-damage.mjs");
+  assert.match(assess, /FROM "\$\{table\}"/, "table names must be quoted (user is a keyword)");
 });
 
 test("workflows do not mutate IDENTITY_SOAK repository variables", () => {
