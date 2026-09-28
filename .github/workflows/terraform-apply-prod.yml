@@ -19,6 +19,10 @@ on:
         type: string
         required: false
         default: main
+      app_image_tag:
+        description: Immutable monorepo SHA for web/api/ws/worker when using prebuilt images
+        type: string
+        required: false
 concurrency:
   group: terraform-prod-${{ inputs.layer }}
   cancel-in-progress: false
@@ -122,6 +126,35 @@ jobs:
           b="${{ inputs.app_git_branch }}"
           [ -n "$b" ] || b="main"
           echo "TF_VAR_app_git_branch=$b" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_PROD == 'image'
+        with:
+          node-version: "22"
+      - uses: digitalocean/action-doctl@v2
+        if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_PROD == 'image'
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Resolve monorepo app image tag for Terraform
+        if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_PROD == 'image'
+        env:
+          APP_ID: ${{ secrets.DO_PROD_APP_ID }}
+          INPUT_APP_IMAGE_TAG: ${{ inputs.app_image_tag }}
+        run: |
+          set -euo pipefail
+          tag="$(node scripts/ci/resolve-app-image-tag.mjs \
+            --app-id "$APP_ID" \
+            --input-tag "$INPUT_APP_IMAGE_TAG")"
+          echo "APP_IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "TF_VAR_app_image_tag=$tag" >> "$GITHUB_ENV"
+      - name: Verify prebuilt web image exists for app pin
+        if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_PROD == 'image'
+        env:
+          APP_IMAGE_TAG: ${{ env.APP_IMAGE_TAG }}
+        run: |
+          set -euo pipefail
+          node scripts/ci/verify-prebuilt-web-for-deploy.mjs \
+            --environment prod \
+            --sha "$APP_IMAGE_TAG"
       - uses: ./.github/actions/sentry-auth-preflight
         if: inputs.layer == 'sentry'
         with:
@@ -136,3 +169,17 @@ jobs:
         with:
           working-directory: .infra-config/terraform/${{ inputs.layer }}/prod
           state-key: ${{ inputs.layer }}-prod
+      - name: Verify prod readiness and web release contract
+        if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_PROD == 'image'
+        env:
+          APP_ID: ${{ secrets.DO_PROD_APP_ID }}
+          APP_IMAGE_TAG: ${{ env.APP_IMAGE_TAG }}
+        run: |
+          set -euo pipefail
+          expected="{\"https://lax.bid/api/health/ready\":\"$APP_IMAGE_TAG\"}"
+          node scripts/ci/verify-readiness-contract.mjs \
+            --urls '["https://api.lax.bid/health/ready","https://auth.lax.bid/health/ready","https://ws.lax.bid/health/ready","https://lax.bid/api/health/ready"]' \
+            --expected-releases "$expected" \
+            --app-id "$APP_ID" \
+            --attempts 60 \
+            --interval-seconds 10

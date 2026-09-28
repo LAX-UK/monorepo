@@ -8,6 +8,7 @@ const samplePath = process.env.SOAK_SAMPLE_PATH;
 const identitySha = process.env.IDENTITY_SHA;
 const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
 const validationMode = process.env.SOAK_VALIDATION_MODE ?? "enforce";
+const sampleKind = process.env.SOAK_SAMPLE_KIND ?? "probe";
 
 if (!samplePath || !/^[0-9a-f]{40}$/.test(identitySha ?? "")) {
   throw new Error("SOAK_SAMPLE_PATH and IDENTITY_SHA are required");
@@ -17,6 +18,7 @@ const observedAt = new Date().toISOString();
 const sample = {
   observedAt,
   identitySha,
+  maintenance: sampleKind === "maintenance",
   probeStatus: "ok",
   probeError: null,
   ready: null,
@@ -26,9 +28,27 @@ const sample = {
   operations: 0,
 };
 
+if (sampleKind === "maintenance") {
+  sample.probeError = null;
+  writeFileSync(samplePath, `${JSON.stringify(sample, null, 2)}\n`);
+  console.log("Recorded maintenance soak sample (probes skipped).");
+  process.exit(0);
+}
+
 function captureProbeError(message) {
   sample.probeStatus = "failed";
   sample.probeError = message;
+}
+
+function lastProbeLine(result) {
+  const text = `${result.stderr ?? ""}\n${result.stdout ?? ""}`.trim();
+  const lines = text.split("\n").filter(Boolean);
+  return lines.at(-1) ?? "";
+}
+
+function captureProbeFailure(label, result) {
+  const detail = lastProbeLine(result);
+  captureProbeError(detail ? `${label}: ${detail}` : `${label} failed`);
 }
 
 try {
@@ -56,7 +76,7 @@ try {
     });
     sample.directoryDrift = parseDirectoryDriftLog(`${drift.stdout}\n${drift.stderr}`);
     if (drift.status !== 0) {
-      captureProbeError("verify-identity-directory-drift failed");
+      captureProbeFailure("verify-identity-directory-drift", drift);
     }
 
     const outbox = spawnSync("pnpm", ["tsx", "scripts/ci/verify-identity-outbox-live.mjs"], {
@@ -65,7 +85,7 @@ try {
     });
     sample.outbox = parseOutboxLog(`${outbox.stdout}\n${outbox.stderr}`);
     if (outbox.status !== 0) {
-      captureProbeError("verify-identity-outbox-live failed");
+      captureProbeFailure("verify-identity-outbox-live", outbox);
     }
 
     const metricsResponse = spawnSync(
@@ -82,7 +102,7 @@ try {
       { encoding: "utf8" },
     );
     if (metricsResponse.status !== 0) {
-      captureProbeError("metrics scrape failed");
+      captureProbeFailure("metrics scrape", metricsResponse);
     } else {
       sample.metrics = parseAuthSoakMetrics(metricsResponse.stdout);
       sample.operations = sample.metrics.operations;

@@ -70,6 +70,32 @@ test("every ephemeral Terraform apply path enforces image contracts and serializ
     assert.match(workflow, /TF_VAR_shop_api_image_tag/);
   }
 
+  const testUp = read(".github/workflows/terraform-test-up.yml");
+  assert.match(testUp, /app_image_tag:/);
+  assert.match(testUp, /resolve-app-image-tag\.mjs/);
+  assert.match(testUp, /verify-prebuilt-web-for-deploy\.mjs/);
+  assert.match(testUp, /TF_VAR_app_image_tag/);
+  assert.match(testUp, /verify-readiness-contract\.mjs/);
+  assert.match(testUp, /https:\/\/test\.lax\.bid\/api\/health\/ready/);
+  assert.match(testUp, /run-staging-seed-if-empty\.mjs/);
+  assert.match(testUp, /pnpm tsx scripts\/ci\/run-staging-seed-if-empty\.mjs/);
+  assert.match(testUp, /timeout-minutes: 10/);
+  assert.doesNotMatch(testUp, /^\s*-\s*run:\s*pnpm db:seed\s*$/m);
+  assert.doesNotMatch(testUp, /repair-identity-outbox-relay-cursor\.mjs --apply/);
+  assert.doesNotMatch(testUp, /rebaseline-identity-soak-vars\.sh/);
+  assert.doesNotMatch(testUp, /gh variable set IDENTITY_SOAK/);
+
+  const applyTest = read(".github/workflows/terraform-apply-test.yml");
+  assert.doesNotMatch(applyTest, /rebaseline-identity-soak-vars\.sh/);
+
+  const applyProd = read(".github/workflows/terraform-apply-prod.yml");
+  assert.match(applyProd, /app_image_tag:/);
+  assert.match(applyProd, /resolve-app-image-tag\.mjs/);
+  assert.match(applyProd, /verify-prebuilt-web-for-deploy\.mjs/);
+  assert.match(applyProd, /TF_VAR_app_image_tag/);
+  assert.match(applyProd, /verify-readiness-contract\.mjs/);
+  assert.match(applyProd, /https:\/\/lax\.bid\/api\/health\/ready/);
+
   const imageContract = read("scripts/ci/verify-staging-image-contract.mjs");
   for (const required of [
     "IDENTITY_SHA",
@@ -353,19 +379,34 @@ test("Node service images embed image-owned SENTRY_RELEASE from IMAGE_SHA", () =
 test("identity staging soak watch fails closed on unhealthy chains", () => {
   const watch = read(".github/workflows/identity-staging-soak-watch.yml");
   assert.match(watch, /watch-identity-staging-pipelines\.mjs/);
-  assert.match(watch, /IDENTITY_SOAK_STARTED_AT_TEST/);
+  assert.doesNotMatch(watch, /IDENTITY_SOAK_STARTED_AT_TEST/);
+  assert.match(watch, /resolve-live-identity-sha|AUTH_BASE_URL/);
 });
 
 test("identity staging soak samples read-only contracts on a schedule", () => {
   const soak = read(".github/workflows/identity-staging-soak.yml");
   assert.match(soak, /collect-identity-staging-soak-sample\.mjs/);
   assert.match(soak, /evaluate-identity-staging-soak\.mjs/);
+  assert.match(soak, /resolve-live-identity-sha\.mjs/);
+  assert.match(soak, /detect-staging-maintenance\.mjs/);
+  assert.match(soak, /identity-staging-soak-sample-/);
+  assert.match(soak, /inputs\.mode == 'reset'/);
   assert.match(soak, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
   assert.match(soak, /actions: write/);
   assert.match(soak, /if: always\(\)/);
   assert.match(soak, /gh workflow run identity-staging-soak\.yml/);
   assert.match(soak, /AUTH_METRICS_TOKEN:auth_metrics_token/);
   assert.match(soak, /\*\/15 \* \* \* \*/);
+  assert.doesNotMatch(soak, /vars\.IDENTITY_SOAK_SHA_TEST/);
+});
+
+test("identity staging db repair loads database contract from terraform output", () => {
+  const repair = read(".github/workflows/identity-staging-db-repair.yml");
+  assert.match(repair, /postgres_owner_uri/);
+  assert.match(repair, /pnpm tsx scripts\/ci\/assess-staging-seed-damage\.mjs/);
+  assert.match(repair, /repair-identity-outbox-relay-cursor\.mjs/);
+  assert.match(repair, /--cutoff/);
+  assert.doesNotMatch(repair, /secrets\.DATABASE_URL_OWNER/);
 });
 
 test("recovery reconcile reacts to failed recovery runs", () => {

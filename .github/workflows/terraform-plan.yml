@@ -65,8 +65,17 @@ jobs:
       TF_VAR_container_registry_region: ${{ vars.DOCR_REGISTRY_REGION || 'fra1' }}
       TF_VAR_container_registry_subscription_tier: ${{ vars.DOCR_REGISTRY_TIER || 'professional' }}
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+      APP_ID: ${{ matrix.env == 'test' && secrets.DO_TEST_APP_ID || secrets.DO_PROD_APP_ID }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        if: matrix.layer == 'ephemeral'
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: matrix.layer == 'ephemeral'
       - uses: ./.github/actions/checkout-infra
         with:
           ref: ${{ inputs.infra_ref }}
@@ -83,6 +92,22 @@ jobs:
       - name: Verify Auth Terraform environment contract
         if: matrix.layer == 'ephemeral' && matrix.env == 'test'
         run: node scripts/ci/verify-auth-terraform-env.mjs .infra-config/terraform/ephemeral/test/main.tf
+      - uses: digitalocean/action-doctl@v2
+        if: matrix.layer == 'ephemeral'
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Resolve monorepo app image tag for Terraform plan
+        if: matrix.layer == 'ephemeral'
+        env:
+          APP_ID: ${{ env.APP_ID }}
+        run: |
+          set -euo pipefail
+          deploy_source="${{ (matrix.env == 'prod' && (vars.APP_DEPLOY_SOURCE_PROD || 'github')) || (vars.APP_DEPLOY_SOURCE_TEST || 'github') }}"
+          if test "$deploy_source" != "image"; then
+            exit 0
+          fi
+          tag="$(node scripts/ci/resolve-app-image-tag.mjs --app-id "$APP_ID")"
+          echo "TF_VAR_app_image_tag=$tag" >> "$GITHUB_ENV"
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: .infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }}

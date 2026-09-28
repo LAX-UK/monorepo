@@ -51,13 +51,42 @@ jobs:
       TF_VAR_kyc_onboarding_enabled: ${{ vars.KYC_ONBOARDING_ENABLED || 'false' }}
       TF_VAR_full_buyer_onboarding_enabled: ${{ vars.FULL_BUYER_ONBOARDING_ENABLED || 'false' }}
       TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
+      TF_VAR_app_deploy_source: ${{ (matrix.env == 'prod' && (vars.APP_DEPLOY_SOURCE_PROD || 'github')) || (vars.APP_DEPLOY_SOURCE_TEST || 'github') }}
+      TF_VAR_create_container_registry: ${{ vars.CREATE_CONTAINER_REGISTRY || 'false' }}
+      TF_VAR_container_registry_name: ${{ vars.DOCR_REGISTRY || 'lax-bid' }}
+      TF_VAR_container_registry_region: ${{ vars.DOCR_REGISTRY_REGION || 'fra1' }}
+      TF_VAR_container_registry_subscription_tier: ${{ vars.DOCR_REGISTRY_TIER || 'professional' }}
+      APP_ID: ${{ matrix.env == 'test' && secrets.DO_TEST_APP_ID || secrets.DO_PROD_APP_ID }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        if: matrix.layer == 'ephemeral'
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: matrix.layer == 'ephemeral'
       - uses: ./.github/actions/checkout-infra
         with:
           ref: main
           app-id: ${{ vars.INFRA_REPO_APP_ID }}
           private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: digitalocean/action-doctl@v2
+        if: matrix.layer == 'ephemeral'
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Resolve monorepo app image tag for Terraform drift check
+        if: matrix.layer == 'ephemeral'
+        env:
+          APP_ID: ${{ env.APP_ID }}
+        run: |
+          set -euo pipefail
+          if test "${TF_VAR_app_deploy_source}" != "image"; then
+            exit 0
+          fi
+          tag="$(node scripts/ci/resolve-app-image-tag.mjs --app-id "$APP_ID")"
+          echo "TF_VAR_app_image_tag=$tag" >> "$GITHUB_ENV"
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: .infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }}

@@ -4,21 +4,52 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { assertSampleMeetsSoakThresholds } from "./identity-soak-threshold-contract.mjs";
-import { SOAK_TARGET_SAMPLES, isWithinSoakWindow } from "./identity-soak-window.mjs";
+import {
+  SOAK_TARGET_SAMPLES,
+  isWithinSoakWindow,
+  resolveSoakWindow,
+} from "./identity-soak-window.mjs";
+import { listGithubSoakArtifacts } from "./list-github-soak-artifacts.mjs";
 
 const token = process.env.GH_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY ?? "LAX-UK/monorepo";
-const identitySha = process.env.IDENTITY_SHA;
-const soakStartedAt = process.env.SOAK_STARTED_AT;
+const identityShaInput = process.env.IDENTITY_SHA;
+const soakStartedAtInput = process.env.SOAK_STARTED_AT;
 const minimumOperations = Number(process.env.MINIMUM_OPERATIONS ?? "1");
+const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
 const outputPath = join(process.env.RUNNER_TEMP ?? tmpdir(), "identity-soak-evaluation.json");
 
-if (!token || !/^[0-9a-f]{40}$/.test(identitySha ?? "")) {
-  throw new Error("GH_TOKEN and a valid IDENTITY_SHA are required");
+if (!token) {
+  throw new Error("GH_TOKEN is required");
 }
-const startedAt = Date.parse(soakStartedAt ?? "");
-if (!Number.isFinite(startedAt)) {
-  throw new Error("SOAK_STARTED_AT must be a valid UTC timestamp");
+
+async function loadLiveIdentitySha() {
+  const response = await fetch(`${authBase}/health/ready`, { signal: AbortSignal.timeout(15_000) });
+  if (!response.ok) {
+    throw new Error(`health/ready failed (${response.status})`);
+  }
+  const body = await response.json();
+  return String(body.release ?? body.version ?? "").trim();
+}
+
+const artifacts = await listGithubSoakArtifacts({ token, repository });
+const liveSha = /^[0-9a-f]{40}$/.test(identityShaInput ?? "")
+  ? identityShaInput
+  : await loadLiveIdentitySha();
+const window = resolveSoakWindow({ liveSha, artifacts });
+if (!window) {
+  throw new Error("No soak window found for the live Identity release");
+}
+
+const identitySha = window.identitySha;
+const startedAt =
+  Number.isFinite(Date.parse(soakStartedAtInput ?? "")) && soakStartedAtInput
+    ? Date.parse(soakStartedAtInput)
+    : window.startedMs;
+const soakStartedAt = new Date(startedAt).toISOString();
+
+if (!/^[0-9a-f]{40}$/.test(identitySha)) {
+  throw new Error("A valid IDENTITY_SHA is required");
 }
 const elapsedMs = Date.now() - startedAt;
 if (elapsedMs < 24 * 60 * 60 * 1000) {
@@ -30,16 +61,6 @@ const headers = {
   authorization: `Bearer ${token}`,
   "x-github-api-version": "2022-11-28",
 };
-
-async function github(path) {
-  const response = await fetch(`https://api.github.com/repos/${repository}${path}`, {
-    headers,
-  });
-  if (!response.ok) {
-    throw new Error(`GitHub API ${path} failed (${response.status}): ${await response.text()}`);
-  }
-  return response.json();
-}
 
 async function downloadSample(artifact) {
   const response = await fetch(artifact.archive_download_url, {
@@ -59,21 +80,16 @@ async function downloadSample(artifact) {
   return JSON.parse(readFileSync(join(directory, "soak-sample.json"), "utf8"));
 }
 
-const artifacts = [];
-for (let page = 1; ; page += 1) {
-  const result = await github(`/actions/artifacts?per_page=100&page=${page}`);
-  const matches = result.artifacts.filter(
-    (artifact) =>
-      !artifact.expired &&
-      artifact.name.startsWith("identity-staging-soak-sample-") &&
-      isWithinSoakWindow(Date.parse(artifact.created_at), startedAt),
-  );
-  artifacts.push(...matches);
-  if (result.artifacts.length < 100) break;
-}
+const matchingArtifacts = artifacts.filter(
+  (artifact) =>
+    !artifact.expired &&
+    artifact.name.startsWith("identity-staging-soak-sample-") &&
+    isWithinSoakWindow(Date.parse(artifact.created_at), startedAt),
+);
 
-const samples = (await Promise.all(artifacts.map(downloadSample)))
+const samples = (await Promise.all(matchingArtifacts.map(downloadSample)))
   .filter((sample) => sample.identitySha === identitySha)
+  .filter((sample) => !sample.maintenance)
   .filter((sample) => isWithinSoakWindow(Date.parse(sample.observedAt), startedAt))
   .sort((left, right) => Date.parse(left.observedAt) - Date.parse(right.observedAt));
 

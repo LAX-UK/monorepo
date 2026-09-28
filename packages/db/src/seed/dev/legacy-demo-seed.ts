@@ -13,6 +13,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "../../schema/index.js";
 import { buildPgConnectionConfig } from "../../ssl.js";
+import { assertDevSeedMayRunDestructiveClear } from "../runners/dev-seed-guard.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 
@@ -484,8 +485,16 @@ export async function runLegacyDemoSeed() {
     throw new Error("DATABASE_URL is required");
   }
 
-  const pool = new Pool(buildPgConnectionConfig(url));
+  const pool = new Pool({
+    ...buildPgConnectionConfig(url),
+    options: "-c lock_timeout=5s -c statement_timeout=120s",
+  });
   const db = drizzle(pool, { schema });
+  const appEnv = process.env.APP_ENV;
+  await assertDevSeedMayRunDestructiveClear(db, {
+    databaseUrl: url,
+    ...(appEnv ? { appEnv } : {}),
+  });
   const now = DEMO_SEED_NOW.getTime();
   const day = 86_400_000;
   const hour = 3_600_000;

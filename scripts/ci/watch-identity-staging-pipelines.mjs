@@ -11,31 +11,35 @@ import {
   checkStartGap,
   filterWithinSoakWindow,
   isSoakWindowComplete,
+  resolveSoakWindow,
   soakWindowEndMs,
 } from "./identity-soak-window.mjs";
+import { listGithubSoakArtifacts } from "./list-github-soak-artifacts.mjs";
 
 const repository = process.env.GITHUB_REPOSITORY ?? "LAX-UK/monorepo";
-const soakStartedAt =
-  process.env.SOAK_STARTED_AT ??
-  process.env.IDENTITY_SOAK_STARTED_AT_TEST ??
-  "2026-09-14T08:37:21Z";
-const identitySha =
-  process.env.IDENTITY_SHA ??
-  process.env.IDENTITY_SOAK_SHA_TEST ??
-  "ada95855ba3ac912eb68a9da976b8ab31028a9e1";
+const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
 const minimumSamplesBeforeGapCheck = Number(process.env.SOAK_WATCH_MIN_SAMPLES ?? "2");
 const targetSamples = Number(process.env.SOAK_TARGET_SAMPLES ?? String(SOAK_TARGET_SAMPLES));
 const maxGapMs = SOAK_MAX_GAP_MS;
+const token = process.env.GH_TOKEN;
 
-const startedMs = Date.parse(soakStartedAt);
-if (!Number.isFinite(startedMs)) {
-  console.error(`Invalid SOAK_STARTED_AT: ${soakStartedAt}`);
+if (!token) {
+  console.error("GH_TOKEN is required");
   process.exit(1);
 }
 
-const windowEndMs = soakWindowEndMs(startedMs);
-const nowMs = Date.now();
-const windowComplete = isSoakWindowComplete(nowMs, startedMs);
+async function loadLiveIdentitySha() {
+  const response = await fetch(`${authBase}/health/ready`, { signal: AbortSignal.timeout(15_000) });
+  if (!response.ok) {
+    throw new Error(`health/ready failed (${response.status})`);
+  }
+  const body = await response.json();
+  const release = String(body.release ?? body.version ?? "").trim();
+  if (!/^[0-9a-f]{40}$/.test(release)) {
+    throw new Error(`Invalid Identity release SHA: ${release || "(missing)"}`);
+  }
+  return release;
+}
 
 function ghJson(args) {
   const result = spawnSync("gh", args, { encoding: "utf8" });
@@ -45,6 +49,24 @@ function ghJson(args) {
   }
   return JSON.parse(result.stdout);
 }
+
+const identitySha = await loadLiveIdentitySha();
+const artifacts = await listGithubSoakArtifacts({ token, repository });
+const window = resolveSoakWindow({ liveSha: identitySha, artifacts });
+
+if (!window) {
+  console.log("Identity staging pipeline watch");
+  console.log(`  repository: ${repository}`);
+  console.log(`  identity_sha: ${identitySha}`);
+  console.log("  soak window: not started (waiting for first sample on live release)");
+  process.exit(0);
+}
+
+const { startedMs } = window;
+const soakStartedAt = new Date(startedMs).toISOString();
+const nowMs = Date.now();
+const windowEndMs = soakWindowEndMs(startedMs);
+const windowComplete = isSoakWindowComplete(nowMs, startedMs);
 
 const soakRuns = ghJson([
   "run",
@@ -136,7 +158,7 @@ if (successTimes.length >= minimumSamplesBeforeGapCheck) {
 if (windowComplete) {
   if (successes.length < targetSamples) {
     console.error(
-      `Soak window complete but only ${successes.length} in-window samples (need ${targetSamples}). Re-baseline or restart the chain.`,
+      `Soak window complete but only ${successes.length} in-window samples (need ${targetSamples}). Dispatch identity-staging-soak mode=reset after fixing staging.`,
     );
     process.exit(1);
   }
@@ -152,7 +174,7 @@ if (successes.length === 0 && inProgressMain.length === 0) {
   process.exit(1);
 }
 
-const latestSuccess = successes[0];
+const latestSuccess = successes.at(-1);
 if (latestSuccess) {
   const latestAgeMs = nowMs - Date.parse(latestSuccess.createdAt);
   if (latestAgeMs > maxGapMs && inProgressMain.length === 0) {

@@ -50,3 +50,97 @@ export function checkStartGap(firstSampleMs, startedMs, maxGapMs) {
   }
   return { ok: true };
 }
+
+export const SOAK_SAMPLE_PREFIX = "identity-staging-soak-sample-";
+export const SOAK_MAINTENANCE_PREFIX = "identity-staging-soak-maintenance-";
+export const SOAK_RESET_PREFIX = "identity-staging-soak-reset-";
+
+const SHA_PATTERN = /^[0-9a-f]{40}$/;
+
+/**
+ * @param {string} name
+ * @returns {{ kind: "sample"; sha: string; runId: string } | { kind: "maintenance"; runId: string } | { kind: "reset"; sha: string; runId: string } | null}
+ */
+export function parseSoakArtifactName(name) {
+  const maintenanceMatch = name.match(/^identity-staging-soak-maintenance-(\d+)$/);
+  if (maintenanceMatch) {
+    return { kind: "maintenance", runId: maintenanceMatch[1] };
+  }
+  const resetMatch = name.match(/^identity-staging-soak-reset-([0-9a-f]{40})-(\d+)$/);
+  if (resetMatch) {
+    return { kind: "reset", sha: resetMatch[1], runId: resetMatch[2] };
+  }
+  const sampleMatch = name.match(/^identity-staging-soak-sample-([0-9a-f]{40})-(\d+)$/);
+  if (sampleMatch) {
+    return { kind: "sample", sha: sampleMatch[1], runId: sampleMatch[2] };
+  }
+  return null;
+}
+
+/**
+ * Resolve the active soak window start for the live Identity SHA using artifact metadata.
+ *
+ * @param {{ liveSha: string; artifacts: Array<{ name: string; created_at: string }> }} params
+ * @returns {{ startedMs: number; identitySha: string } | null}
+ */
+export function resolveSoakWindow({ liveSha, artifacts }) {
+  if (!SHA_PATTERN.test(liveSha)) {
+    throw new Error(`liveSha must be a 40-character git SHA (got "${liveSha}")`);
+  }
+
+  const sorted = [...artifacts]
+    .filter((artifact) => parseSoakArtifactName(artifact.name))
+    .sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
+
+  let boundaryMs = 0;
+  let lastSampleSha = null;
+
+  for (const artifact of sorted) {
+    const parsed = parseSoakArtifactName(artifact.name);
+    if (!parsed) continue;
+    const createdMs = Date.parse(artifact.created_at);
+    if (!Number.isFinite(createdMs)) continue;
+
+    if (parsed.kind === "maintenance") {
+      boundaryMs = Math.max(boundaryMs, createdMs);
+      continue;
+    }
+    if (parsed.kind === "reset" && parsed.sha === liveSha) {
+      boundaryMs = Math.max(boundaryMs, createdMs);
+      continue;
+    }
+    if (parsed.kind === "sample") {
+      if (parsed.sha === liveSha && lastSampleSha !== null && lastSampleSha !== liveSha) {
+        boundaryMs = Math.max(boundaryMs, createdMs);
+      }
+      lastSampleSha = parsed.sha;
+    }
+  }
+
+  const liveSamples = sorted
+    .map((artifact) => ({ artifact, parsed: parseSoakArtifactName(artifact.name) }))
+    .filter((entry) => entry.parsed?.kind === "sample" && entry.parsed.sha === liveSha)
+    .map((entry) => Date.parse(entry.artifact.created_at))
+    .filter((value) => Number.isFinite(value) && value >= boundaryMs);
+
+  if (liveSamples.length === 0) {
+    return null;
+  }
+
+  return {
+    identitySha: liveSha,
+    startedMs: Math.min(...liveSamples),
+  };
+}
+
+export function soakArtifactNameForSample(identitySha, runId) {
+  return `${SOAK_SAMPLE_PREFIX}${identitySha}-${runId}`;
+}
+
+export function soakArtifactNameForMaintenance(runId) {
+  return `${SOAK_MAINTENANCE_PREFIX}${runId}`;
+}
+
+export function soakArtifactNameForReset(identitySha, runId) {
+  return `${SOAK_RESET_PREFIX}${identitySha}-${runId}`;
+}

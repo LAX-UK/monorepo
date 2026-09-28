@@ -89,7 +89,50 @@ function assertBidSessionCookie(jar) {
   return entry;
 }
 
+async function assertHostedLoginEntry() {
+  const loginPage = await fetch(`${webBase}/login?next=${encodeURIComponent("/dashboard")}`, {
+    redirect: "manual",
+  });
+  if (loginPage.status !== 307 && loginPage.status !== 308) {
+    throw new Error(
+      `/login did not redirect to hosted login start (${loginPage.status}); legacy local login may be deployed`,
+    );
+  }
+  const loginStart = loginPage.headers.get("location");
+  if (!loginStart) {
+    throw new Error("/login redirect omitted Location header");
+  }
+  const loginStartUrl = new URL(loginStart, webBase);
+  if (loginStartUrl.pathname !== "/api/auth/login") {
+    throw new Error(`/login redirect path is not /api/auth/login: ${loginStartUrl.pathname}`);
+  }
+
+  const beginFromLogin = await fetch(loginStartUrl, { redirect: "manual" });
+  const authorizeUrl = beginFromLogin.headers.get("location");
+  if (beginFromLogin.status !== 302 || !authorizeUrl) {
+    throw new Error(
+      `/login -> /api/auth/login did not redirect to authorize (${beginFromLogin.status})`,
+    );
+  }
+  assertTrustedRedirect(
+    authorizeUrl,
+    allowedAuthOrigins,
+    "/api/auth/oauth2/authorize",
+    "Hosted login entry authorize",
+  );
+}
+
+async function assertSsoProbeRouteExists() {
+  const probe = await fetch(`${webBase}/api/auth/sso-probe`, { redirect: "manual" });
+  if (probe.status === 404) {
+    throw new Error("/api/auth/sso-probe returned 404; web deploy is missing silent SSO route");
+  }
+}
+
 async function main() {
+  await assertHostedLoginEntry();
+  await assertSsoProbeRouteExists();
+
   const authCookies = new Map();
   const signIn = await fetch(`${authBase}/api/auth/sign-in/email`, {
     method: "POST",
