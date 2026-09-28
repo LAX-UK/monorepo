@@ -13,6 +13,7 @@ import { CRM_ENTITY, CRM_FIELD } from "../integrations/crm/crm-field-constants.j
 import { isRealZohoLink } from "../integrations/crm/crm-tombstone.js";
 import { createZohoCrmGateway } from "../integrations/zoho/create-zoho-crm-gateway.js";
 import { resolveZohoDeliveryMode } from "../integrations/zoho/zoho-crm-config.js";
+import { runBackfillCrmUsersOrgGuard } from "./backfill-crm-users.org-check.js";
 
 const BATCH = 100;
 const SLEEP_MS = 1_500;
@@ -54,6 +55,7 @@ async function main(): Promise<void> {
   const env = loadWorkerEnv();
   const mode = env.ZOHO_CRM_SYNC_MODE;
   const performHttp = !dryRun && (mode === "live" || mode === "canary");
+  await runBackfillCrmUsersOrgGuard({ performHttp, env });
 
   const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
   const linkRepo = new DrizzleCrmRecordLinkRepository(db);

@@ -35,6 +35,14 @@ jobs:
       TF_VAR_zoho_client_id: ${{ secrets.ZOHO_CLIENT_ID }}
       TF_VAR_zoho_client_secret: ${{ secrets.ZOHO_CLIENT_SECRET }}
       TF_VAR_zoho_refresh_token: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+      TF_VAR_zoho_crm_sync_mode: ${{ vars.ZOHO_CRM_SYNC_MODE || 'dry_run' }}
+      TF_VAR_zoho_crm_enabled_event_types: ${{ vars.ZOHO_CRM_ENABLED_EVENT_TYPES || 'user.registered' }}
+      TF_VAR_zoho_crm_auction_pipeline: ${{ vars.ZOHO_CRM_AUCTION_PIPELINE || '' }}
+      TF_VAR_zoho_crm_deal_stage_lot_won: ${{ vars.ZOHO_CRM_DEAL_STAGE_LOT_WON || '' }}
+      TF_VAR_zoho_crm_deal_stage_payment_captured: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED || '' }}
+      TF_VAR_zoho_crm_deal_stage_payment_refunded: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED || '' }}
+      TF_VAR_zoho_crm_deal_stage_shop_paid: ${{ vars.ZOHO_CRM_DEAL_STAGE_SHOP_PAID || '' }}
+      TF_VAR_zoho_crm_lead_conversion_enabled: ${{ vars.ZOHO_CRM_LEAD_CONVERSION_ENABLED || 'false' }}
       TF_VAR_brevo_api_key: ${{ secrets.BREVO_API_KEY }}
       TF_VAR_brevo_webhook_secret: ${{ secrets.BREVO_WEBHOOK_SECRET }}
       TF_VAR_brevo_list_id: ${{ vars.BREVO_LIST_ID }}

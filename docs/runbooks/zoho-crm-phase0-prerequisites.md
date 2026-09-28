@@ -16,7 +16,7 @@ Complete these in the **LAX Integration Test** sandbox before enabling `ZOHO_CRM
 | `LAX_Deal_Key` (external, org-based) | Deals | Present (MCP 2026-09-28); confirm external + unique in UI |
 | `Lead_Source_Detailed`, `Eligibility_LAX_*`, `UTM_*`, `Landing_Page_URL` | Contacts | Present (MCP 2026-09-28) |
 | Picklist value `LAX Platform` | Leads + Contacts `Lead_Source` | Present (`type=used` on both; MCP 2026-09-28) |
-| Auction pipeline + stages (or agreed reuse of LAX Art Sales Pipeline) | Deals | **Required** — set `ZOHO_CRM_AUCTION_PIPELINE` and each `ZOHO_CRM_DEAL_STAGE_*` to **exact** Zoho API names before deal/payment events |
+| **LAX Platform** pipeline (recommended) | Deals | Create in sandbox — do **not** reuse **LAX Art Sales Pipeline** (human sales). Stages: **Lot Won** (Open 90%), **Paid** (Closed Won 100%), **Refunded** (Closed Lost 0%). Map to GitHub test vars `ZOHO_CRM_AUCTION_PIPELINE` and `ZOHO_CRM_DEAL_STAGE_*` with **exact** API names. |
 
 Optional engagement fields used by sync when present: `First_Bid_At`, `Shop_First_Order_At`.
 
@@ -34,7 +34,18 @@ The worker uses the same predicate in `findDealIdsByContact`. If COQL rejects `C
 
 1. CRM owner confirms pipeline name and stage labels in Zoho UI.
 2. Test worker env: `ZOHO_CRM_AUCTION_PIPELINE`, `ZOHO_CRM_DEAL_STAGE_LOT_WON`, `ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED`, `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED`, `ZOHO_CRM_DEAL_STAGE_SHOP_PAID`.
-3. GitHub **test** environment: OAuth secrets present (`TF_VAR_zoho_*`); `ZOHO_CRM_SYNC_MODE` starts `off` → `dry_run` per [zoho.md](../integrations/zoho.md).
+3. GitHub **test** environment: OAuth secrets (`ZOHO_CLIENT_*`, `ZOHO_REFRESH_TOKEN`); CRM **variables** per [zoho.md](../integrations/zoho.md). Rollout: `dry_run` → `canary` → `live` via `ZOHO_CRM_SYNC_MODE`.
+4. **Lead conversion:** set `ZOHO_CRM_LEAD_CONVERSION_ENABLED=true` when testing `bid.lot_won` (requires Contacts `LAX_Subject_ID` external).
+
+### Sandbox vs production MCP (2026-09-29)
+
+Confirm Zoho MCP and OAuth token target **LAX Integration Test** sandbox, not production. Module-customization MCP showed full LAX fields; a separate data-insights connection lacked `LAX_Subject_ID` on Leads — treat missing fields as wrong org until verified in UI.
+
+### Token / org gate (before `canary`)
+
+1. Exchange refresh token at `https://accounts.zoho.eu/oauth/v2/token`.
+2. `GET https://sandbox.zohoapis.eu/crm/v8/org` — `org[0].type` must indicate sandbox (worker startup check).
+3. Fix Contacts `LAX_Subject_ID` external flag and Deals `LAX_Deal_Key` unique if not already set.
 
 ## Automation review (Step 6)
 

@@ -1,0 +1,91 @@
+name: Zoho CRM maintenance (test)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: backfill-dry-run, backfill, or replay-skipped
+        required: true
+        type: choice
+        options: [backfill-dry-run, backfill, replay-skipped]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zoho-crm-maintenance-test
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      APP_ENV: test
+      NODE_ENV: production
+      ZOHO_CRM_API_HOST: https://sandbox.zohoapis.eu
+      ZOHO_CRM_EXPECTED_ORG_TYPE: sandbox
+      ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+      ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+      ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+      ZOHO_CRM_SYNC_MODE: ${{ vars.ZOHO_CRM_SYNC_MODE || 'canary' }}
+      ZOHO_CRM_ENABLED_EVENT_TYPES: ${{ vars.ZOHO_CRM_ENABLED_EVENT_TYPES || 'user.registered' }}
+      ZOHO_CRM_AUCTION_PIPELINE: ${{ vars.ZOHO_CRM_AUCTION_PIPELINE || '' }}
+      ZOHO_CRM_DEAL_STAGE_LOT_WON: ${{ vars.ZOHO_CRM_DEAL_STAGE_LOT_WON || '' }}
+      ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED || '' }}
+      ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED || '' }}
+      ZOHO_CRM_DEAL_STAGE_SHOP_PAID: ${{ vars.ZOHO_CRM_DEAL_STAGE_SHOP_PAID || '' }}
+      ZOHO_CRM_LEAD_CONVERSION_ENABLED: ${{ vars.ZOHO_CRM_LEAD_CONVERSION_ENABLED || 'false' }}
+      CRON_INTERNAL_SECRET: ${{ secrets.CRON_INTERNAL_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/checkout-infra
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working-directory: .infra-config/terraform/ephemeral/test
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Load staging database contract for worker scripts
+        run: |
+          set -euo pipefail
+          tf_dir=.infra-config/terraform/ephemeral/test
+          worker_url="$(terraform -chdir="$tf_dir" output -raw database_url_worker)"
+          database_ca_cert="$(terraform -chdir="$tf_dir" output -raw database_ca_certificate)"
+          redis_url="$(terraform -chdir="$tf_dir" output -raw redis_uri)"
+          test -n "$worker_url"
+          test -n "$database_ca_cert"
+          echo "::add-mask::$worker_url"
+          echo "::add-mask::$redis_url"
+          echo "DATABASE_URL=$worker_url" >> "$GITHUB_ENV"
+          echo "DATABASE_URL_WORKER=$worker_url" >> "$GITHUB_ENV"
+          echo "REDIS_URL=$redis_url" >> "$GITHUB_ENV"
+          {
+            echo 'DATABASE_CA_CERT<<__DATABASE_CA_CERT__'
+            printf '%s\n' "$database_ca_cert"
+            echo '__DATABASE_CA_CERT__'
+          } >> "$GITHUB_ENV"
+      - name: Build worker dependencies
+        run: pnpm --filter @auction/worker... build
+      - name: Backfill CRM users (dry run)
+        if: inputs.action == 'backfill-dry-run'
+        working-directory: apps/worker
+        run: pnpm exec tsx src/scripts/backfill-crm-users.ts --dry-run
+      - name: Backfill CRM users
+        if: inputs.action == 'backfill'
+        working-directory: apps/worker
+        run: pnpm exec tsx src/scripts/backfill-crm-users.ts
+      - name: Replay skipped Zoho CRM deliveries
+        if: inputs.action == 'replay-skipped'
+        working-directory: apps/worker
+        run: pnpm exec tsx src/scripts/replay-crm-skipped.ts
