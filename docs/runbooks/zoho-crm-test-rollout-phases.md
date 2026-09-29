@@ -4,6 +4,18 @@ Prerequisites: [zoho-crm-phase0-prerequisites.md](./zoho-crm-phase0-prerequisite
 
 After each phase, re-run **Terraform test up** (with image contracts) so the worker picks up GitHub **test** environment variables.
 
+## Execution log (2026-09-29)
+
+| Step | Status |
+|------|--------|
+| Infra TF vars + monorepo workflows + backfill org guard | Shipped (auction-infra #24, monorepo #402) |
+| Maintenance workflow CI | Fixed on main (#404 db/persistence build, #405 NODE_ENV scoping) |
+| Phase 1 maintenance | `backfill-dry-run` OK; `backfill` completed with some `INVALID_DATA` (fix sandbox Lead fields / picklists); `replay-skipped` replayed **2** `user.registered` |
+| Phase 2 GitHub var | `ZOHO_CRM_ENABLED_EVENT_TYPES` set to person-patch allowlist — **re-run Terraform test up with image contracts** to apply worker env |
+| Phase 3–4 | Pending Terraform apply + manual E2E / GDPR / 24h soak |
+
+Backfill `INVALID_DATA` usually means the OAuth token’s org is missing LAX custom fields, `Lead_Source` picklist value `LAX Platform`, or external-field settings from [Phase 0](./zoho-crm-phase0-prerequisites.md).
+
 ## Phase 1 — canary `user.registered`
 
 | Variable | Value |
