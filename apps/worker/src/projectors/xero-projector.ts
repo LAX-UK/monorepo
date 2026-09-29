@@ -1,4 +1,5 @@
 import { assertDomainEventConsumerContract } from "@auction/types";
+import { deliveryRepoForProjectorTransaction } from "../container/delivery-repo-for-projector-transaction.js";
 import {
   buildLegacyXeroCommandFromEvent,
   buildXeroCommandFromEvent,
@@ -18,7 +19,6 @@ import { recordDeliveryOutcome } from "../lib/delivery-metrics.js";
 import { classifyDeliveryError } from "../lib/delivery-retry.js";
 import { claimAndRunDomainEventDeliveries } from "./lib/domain-event-delivery-runner.js";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
-import { deliveryRepoForProjectorTransaction } from "./lib/transaction-scoped-delivery-repo.js";
 
 export const XERO_PROJECTOR = "xero";
 const XERO_CONSUMER = "xero";

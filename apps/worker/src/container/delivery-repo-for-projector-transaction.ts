@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import type { IDomainEventDeliveryRepository } from "@auction/persistence/interfaces";
 import { DrizzleDomainEventDeliveryRepository } from "@auction/persistence/repositories";
-import type { ProjectorDbConnection } from "../../interfaces/worker-db.types.js";
+import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 
 function isDrizzleDatabase(conn: ProjectorDbConnection): conn is Database {
   return typeof (conn as Database).insert === "function";
