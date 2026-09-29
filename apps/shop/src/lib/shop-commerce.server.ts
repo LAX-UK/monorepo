@@ -16,11 +16,21 @@ async function fetchShopBasketUncached(): Promise<ShopFetchResult<BasketView>> {
     });
     if (response.status === 401) return { status: "unauthorized" };
     if (!response.ok) return { status: "failed" };
-    const parsed = parseBasketResponse(await response.json());
-    if (parsed.basketId === null) {
-      return { status: "empty" };
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      return { status: "failed" };
     }
-    return { status: "ok", data: parsed };
+    try {
+      const parsed = parseBasketResponse(body);
+      if (parsed.basketId === null) {
+        return { status: "empty" };
+      }
+      return { status: "ok", data: parsed };
+    } catch {
+      return { status: "failed" };
+    }
   } catch {
     return { status: "failed" };
   }

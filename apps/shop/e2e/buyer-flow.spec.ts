@@ -29,9 +29,10 @@ test.describe("shop buyer flow @e2e", () => {
     await expect(addButton).toBeVisible();
     await expect(addButton).toBeEnabled();
     await addButton.click();
-    await page.waitForURL("**/basket**", { timeout: 15_000 }).catch(() => undefined);
-    await page.goto("/basket");
-    await expect(page.getByRole("heading", { name: "Basket", exact: true })).toBeVisible();
+    await page.waitForURL("**/basket**", { timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Basket", exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.getByText("Your basket is empty.")).not.toBeVisible();
     await expect(page.locator(".shop-basket__line").first()).toBeVisible();
   });

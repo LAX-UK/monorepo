@@ -34,8 +34,8 @@ export function AddToBasketButton({ slug, disabled }: Props) {
               );
               return;
             }
-            router.push("/basket");
             router.refresh();
+            router.push("/basket");
           });
         }}
       >
