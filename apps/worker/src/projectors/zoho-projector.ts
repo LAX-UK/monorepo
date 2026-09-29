@@ -1,5 +1,7 @@
 import { assertDomainEventConsumerContract, listDomainEventTypesForConsumer } from "@auction/types";
 import { resolveZohoDeliveryMode } from "../integrations/zoho/zoho-crm-config.js";
+import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
+import { deliveryRepoForProjectorTransaction } from "./lib/transaction-scoped-delivery-repo.js";
 import {
   recordDeliveryOldestPendingAgeSeconds,
   recordDeliveryOutcome,
@@ -78,16 +80,17 @@ export async function processZohoProjector(ctx: ProjectorRunContext): Promise<vo
   const batchLimit = ctx.env.ZOHO_CRM_CURSOR_BATCH_SIZE;
 
   await ctx.transactionRunner.runInTransaction(async (tx) => {
+    const txDeliveryRepo = deliveryRepoForProjectorTransaction(tx, deliveryRepo);
     const events = await ctx.domainEventReader.listLockedForProjector(
       ZOHO_PROJECTOR,
       batchLimit,
-      tx,
+      tx as ProjectorDbConnection,
       {
         eventTypes: ZOHO_CATALOG_EVENT_TYPES,
       },
     );
     for (const event of events) {
-      await deliveryRepo.ensurePending({
+      await txDeliveryRepo.ensurePending({
         consumer: ZOHO_CONSUMER,
         eventId: event.id,
         idempotencyKey: `${ZOHO_CONSUMER}:${event.id}`,

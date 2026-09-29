@@ -1,4 +1,6 @@
 import { assertDomainEventConsumerContract } from "@auction/types";
+import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
+import { deliveryRepoForProjectorTransaction } from "./lib/transaction-scoped-delivery-repo.js";
 import {
   buildLegacyXeroCommandFromEvent,
   buildXeroCommandFromEvent,
@@ -37,14 +39,19 @@ export async function processXeroProjector(ctx: ProjectorRunContext): Promise<vo
   const liveOps = parseXeroLiveOperations(ctx.env?.XERO_PROJECTOR_LIVE_OPERATIONS);
 
   await ctx.transactionRunner.runInTransaction(async (tx) => {
-    const events = await ctx.domainEventReader.listLockedForProjector(XERO_PROJECTOR, 100, tx);
+    const txDeliveryRepo = deliveryRepoForProjectorTransaction(tx, deliveryRepo);
+    const events = await ctx.domainEventReader.listLockedForProjector(
+      XERO_PROJECTOR,
+      100,
+      tx as ProjectorDbConnection,
+    );
     for (const event of events) {
       if (!XERO_EVENT_TYPES.includes(event.eventType as (typeof XERO_EVENT_TYPES)[number])) {
         continue;
       }
       const command = buildXeroCommandFromEvent(event);
       if (!command) continue;
-      await deliveryRepo.ensurePending({
+      await txDeliveryRepo.ensurePending({
         consumer: XERO_CONSUMER,
         eventId: event.id,
         idempotencyKey: command.idempotencyKey,

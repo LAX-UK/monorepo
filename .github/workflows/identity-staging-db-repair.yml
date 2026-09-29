@@ -18,6 +18,11 @@ on:
         type: boolean
         required: true
         default: false
+      terminate_worker_blockers:
+        description: Terminate worker_app idle-in-transaction sessions blocking projectors
+        type: boolean
+        required: true
+        default: true
       domain_event_cutoff:
         description: UTC cutoff for domain-event projector cursors
         type: string
@@ -70,6 +75,9 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Assess staging seed damage (read-only)
         run: pnpm tsx scripts/ci/assess-staging-seed-damage.mjs
+      - name: Terminate stuck worker projector DB sessions
+        if: inputs.terminate_worker_blockers
+        run: pnpm tsx scripts/ci/terminate-staging-worker-projector-blockers.mjs --apply
       - name: Restore staging projector cursors
         if: inputs.restore_cursors
         env:

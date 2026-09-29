@@ -28,9 +28,11 @@ test.describe("shop buyer flow @e2e", () => {
     const addButton = page.getByRole("button", { name: /add to basket/i });
     await expect(addButton).toBeVisible();
     await expect(addButton).toBeEnabled();
-    await addButton.click();
-    await page.waitForURL("**/basket**", { timeout: 15_000 }).catch(() => undefined);
-    await page.goto("/basket");
+    await Promise.all([
+      page.waitForURL("**/basket**", { timeout: 20_000 }),
+      addButton.click(),
+    ]);
+    await expect(page.getByRole("heading", { name: "Basket", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Basket", exact: true })).toBeVisible();
     await expect(page.getByText("Your basket is empty.")).not.toBeVisible();
     await expect(page.locator(".shop-basket__line").first()).toBeVisible();
