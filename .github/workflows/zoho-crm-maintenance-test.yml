@@ -23,7 +23,6 @@ jobs:
     env:
       DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
       APP_ENV: test
-      NODE_ENV: production
       ZOHO_CRM_API_HOST: https://sandbox.zohoapis.eu
       ZOHO_CRM_EXPECTED_ORG_TYPE: sandbox
       ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
@@ -82,12 +81,18 @@ jobs:
       - name: Backfill CRM users (dry run)
         if: inputs.action == 'backfill-dry-run'
         working-directory: apps/worker
+        env:
+          NODE_ENV: production
         run: pnpm exec tsx src/scripts/backfill-crm-users.ts --dry-run
       - name: Backfill CRM users
         if: inputs.action == 'backfill'
         working-directory: apps/worker
+        env:
+          NODE_ENV: production
         run: pnpm exec tsx src/scripts/backfill-crm-users.ts
       - name: Replay skipped Zoho CRM deliveries
         if: inputs.action == 'replay-skipped'
         working-directory: apps/worker
+        env:
+          NODE_ENV: production
         run: pnpm exec tsx src/scripts/replay-crm-skipped.ts
