@@ -114,7 +114,9 @@ function waitForPostmarkVerificationLink(recipient: string): string {
 }
 
 async function completeStripeCheckout(page: Page, payerEmail: string) {
-  await page.waitForURL(/checkout\.stripe\.com/, { timeout: 120_000 });
+  if (!page.url().includes("checkout.stripe.com")) {
+    throw new Error(`Expected Stripe Hosted Checkout, got ${page.url()}`);
+  }
   await shot(page, "03-stripe-checkout");
 
   const emailField = page
@@ -249,8 +251,16 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     await page.getByLabel("City").fill("London");
     await page.getByLabel("Postcode").fill("W1A 1AA");
     await page.getByRole("button", { name: "Continue to payment" }).click();
-
-    await completeStripeCheckout(page, backupEmail as string);
+    await page.waitForURL(/checkout\.stripe\.com|\/checkout\/confirmation/, {
+      timeout: 180_000,
+    });
+    const checkoutAlert = page.getByRole("alert");
+    if (await checkoutAlert.isVisible().catch(() => false)) {
+      throw new Error(`Checkout blocked: ${(await checkoutAlert.textContent()) ?? "unknown"}`);
+    }
+    if (!page.url().includes("/checkout/confirmation")) {
+      await completeStripeCheckout(page, backupEmail as string);
+    }
     await expect(page).toHaveURL(/checkout\/confirmation/, { timeout: 30_000 });
 
     const thankYou = page.getByRole("heading", { name: /thank you|payment processing/i });
