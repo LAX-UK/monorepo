@@ -102,12 +102,14 @@ async function assertHealthyBasket(page: Page) {
       await expect(page.locator(".shop-basket__line").first()).toBeVisible();
       return;
     }
+    if (await unavailable.isVisible().catch(() => false)) {
+      return;
+    }
     if (
-      (await unavailable.isVisible().catch(() => false)) ||
-      (await page
+      await page
         .getByRole("heading", { name: "Basket temporarily unavailable" })
         .isVisible()
-        .catch(() => false))
+        .catch(() => false)
     ) {
       await page.getByRole("button", { name: "Try again" }).click();
       await page.waitForLoadState("domcontentloaded");
@@ -130,11 +132,28 @@ async function addHarborPrintToBasket(page: Page) {
   await assertHealthyBasket(page);
 }
 
+async function shopSignOut(page: Page) {
+  await page.goto(`${shopBase}/`);
+  await dismissCookieConsentIfPresent(page);
+  const menu = page.getByRole("button", { name: "Open menu" });
+  if (await menu.isVisible().catch(() => false)) {
+    await menu.click();
+    await page.getByRole("button", { name: "Sign out" }).click();
+    return;
+  }
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+}
+
 async function ensureAuthenticatedCheckout(page: Page, email: string, password: string) {
+  const basketUnavailable = page.getByRole("heading", { name: "Basket unavailable" });
+  if (await basketUnavailable.isVisible().catch(() => false)) {
+    await page.goto("/checkout");
+  }
   const proceed = page.getByRole("link", { name: /proceed to checkout/i });
   if (await proceed.isVisible().catch(() => false)) {
     await proceed.click();
-  } else {
+  } else if (!page.url().includes("/checkout")) {
     await page.goto("/checkout");
   }
   await page.waitForURL(/\/checkout|\/login|test-auth/, { timeout: 60_000 });
@@ -376,15 +395,7 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     await bidInteractiveSignIn(page, backupEmail as string, backupPassword as string);
     await shot(page, "04-bid-before-logout");
 
-    await page.goto(`${shopBase}/`);
-    const menu = page.getByRole("button", { name: "Open menu" });
-    if (await menu.isVisible()) {
-      await menu.click();
-      await page.getByRole("button", { name: "Sign out" }).click();
-    } else {
-      await page.getByRole("button", { name: "Account menu" }).click();
-      await page.getByRole("menuitem", { name: "Sign out" }).click();
-    }
+    await shopSignOut(page);
 
     await page.waitForTimeout(5_000);
     await shot(page, "04-shop-after-logout");
