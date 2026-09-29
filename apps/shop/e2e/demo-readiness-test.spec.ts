@@ -95,31 +95,22 @@ async function bidInteractiveSignIn(page: Page, email: string, password: string)
 }
 
 async function addHarborPrintToBasket(page: Page) {
-  const csrfResponse = await page.request.get(`${shopBase}/commerce/csrf`);
-  expect(csrfResponse.ok()).toBeTruthy();
-  const { csrfToken } = (await csrfResponse.json()) as { csrfToken: string };
-  const addLine = await page.request.put(`${shopBase}/commerce/basket/lines`, {
-    headers: {
-      "content-type": "application/json",
-      "x-shop-csrf": csrfToken,
-    },
-    data: { artworkSlug: harborSlug, quantity: 1 },
-  });
-  if (!addLine.ok()) {
-    throw new Error(
-      `Could not add Harbor Print to basket: ${(await addLine.text()).slice(0, 400)}`,
-    );
-  }
-  const basketGet = await page.request.get(`${shopBase}/commerce/basket`);
-  if (!basketGet.ok()) {
-    throw new Error(`Basket read failed after add (${basketGet.status()})`);
-  }
-  const basketBody = (await basketGet.json()) as { lines?: unknown[] };
-  if (!basketBody.lines?.length) {
-    throw new Error(
-      "Basket has no lines after add — session may not be linked to commerce cookies",
-    );
-  }
+  await page.goto(`/artworks/${harborSlug}`);
+  await dismissCookieConsentIfPresent(page);
+  const addButton = page.getByRole("button", { name: /add to basket/i });
+  await expect(addButton).toBeEnabled();
+  await addButton.click();
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get(`${shopBase}/commerce/basket`);
+        if (!response.ok()) return 0;
+        const body = (await response.json()) as { lines?: unknown[] };
+        return body.lines?.length ?? 0;
+      },
+      { timeout: 60_000 },
+    )
+    .toBeGreaterThan(0);
 }
 
 async function shopSignOut(page: Page) {
@@ -164,7 +155,16 @@ async function ensureAuthenticatedCheckout(page: Page, email: string, password: 
       "Checkout unavailable on test Shop — basket could not be loaded for the signed-in session",
     );
   }
-  await expect(page.getByLabel("Address line 1")).toBeVisible({ timeout: 60_000 });
+  const addressLine = page.getByLabel("Address line 1");
+  if (!(await addressLine.isVisible().catch(() => false))) {
+    const snippet = await page
+      .locator("[data-testid=shop-commerce-content], main")
+      .first()
+      .textContent();
+    throw new Error(
+      `Checkout delivery form missing at ${page.url()}: ${(snippet ?? "").replace(/\s+/g, " ").slice(0, 500)}`,
+    );
+  }
 }
 
 function deriveRehearsalSignupEmail(sourceEmail: string, stamp: number): string {
@@ -342,8 +342,6 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     await page.goto(`${shopBase}/account/post-sign-in`);
     await page.waitForURL(/\/account/, { timeout: 60_000 });
     await addHarborPrintToBasket(page);
-    await page.goto(`/artworks/${harborSlug}`);
-    await dismissCookieConsentIfPresent(page);
     await shot(page, "03-basket-with-line");
 
     await ensureAuthenticatedCheckout(page, backupEmail as string, backupPassword as string);
