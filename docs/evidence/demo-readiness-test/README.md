@@ -26,3 +26,7 @@ Workflow [`.github/workflows/demo-readiness-test-rehearsal.yml`](../../../.githu
 (warm-up → backup account verification → Playwright → optional rehearsal user delete).
 
 Download the `demo-readiness-screenshots-*` artifact from the run for the four proof images.
+
+Latest rehearsal run (partial green): [36605627093](https://github.com/LAX-UK/monorepo/actions/runs/36605627093)
+— Postmark sign-up + cross-product Shop sign-in passed; checkout/logout steps may need
+`SILENT_SSO_ENABLED` / shop immutable deploy for full parity.
