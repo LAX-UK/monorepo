@@ -8,4 +8,4 @@ export const HOSTED_AUTH_POLICY = {
   magicLinkExpiresMinutes: 15,
 } as const;
 
-export const HOSTED_AUTH_ASSET_VERSION = "20260917a";
+export const HOSTED_AUTH_ASSET_VERSION = "20260929a";

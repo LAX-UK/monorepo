@@ -11,6 +11,7 @@ import {
   HOSTED_TWO_FACTOR_SCRIPT,
   HOSTED_VERIFY_EMAIL_SCRIPT,
   OIDC_CONSENT_SCRIPT,
+  readHostedBidLogoLightSvg,
   readHostedBidLogoSvg,
   readHostedShopLogoSvg,
 } from "@auction/auth";
@@ -46,6 +47,12 @@ export function mountHostedAuthAssets(app: Hono): void {
   app.get("/hosted-auth/lax-bid-logo.svg", (c) => {
     c.header("Cache-Control", cache);
     return c.body(readHostedBidLogoSvg(), 200, {
+      "Content-Type": "image/svg+xml; charset=utf-8",
+    });
+  });
+  app.get("/hosted-auth/lax-bid-logo-light.svg", (c) => {
+    c.header("Cache-Control", cache);
+    return c.body(readHostedBidLogoLightSvg(), 200, {
       "Content-Type": "image/svg+xml; charset=utf-8",
     });
   });

@@ -525,16 +525,53 @@ html.theme-bid .brand-sub {
 
 html.theme-bid .brand-logo {
   height: 3.5rem;
-  max-width: min(100%, 12rem);
+  max-width: min(100%, 15rem);
 }
 
 .product-back {
   margin: 0;
   width: min(100%, var(--auth-column, 528px));
+  align-self: stretch;
 }
 
-.product-back .text-link {
+.product-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  font-family: var(--font-supporting);
   font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
+  text-decoration: none;
+}
+
+.product-back-link:hover {
+  color: var(--color-on-surface);
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.product-back-chevron {
+  flex-shrink: 0;
+}
+
+.brand-logo-picture {
+  display: block;
+}
+
+.links.links--stacked {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.links-secondary {
+  margin: 0;
+  font-family: var(--font-supporting);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
 }
 
 @media (max-width: 32rem) {

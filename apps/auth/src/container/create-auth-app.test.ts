@@ -103,6 +103,7 @@ describe("auth HTTP app composition", () => {
     expect(paths).toContain("/hosted-auth-runtime.js");
     expect(paths).toContain("/hosted-auth/lax-shop-logo.svg");
     expect(paths).toContain("/hosted-auth/lax-bid-logo.svg");
+    expect(paths).toContain("/hosted-auth/lax-bid-logo-light.svg");
   });
 
   it("renders Shop branding for a validated Shop authorization query", async () => {
@@ -131,6 +132,9 @@ describe("auth HTTP app composition", () => {
     const html = await response.text();
     expect(html).toContain("theme-bid");
     expect(html).toContain("/hosted-auth/lax-bid-logo.svg");
+    expect(html).toContain('media="(prefers-color-scheme: dark)"');
+    expect(html).toContain("/hosted-auth/lax-bid-logo-light.svg");
+    expect(html).toContain("product-back-link");
     expect(html).toContain("Back to LAX Bid");
   });
 
@@ -139,6 +143,9 @@ describe("auth HTTP app composition", () => {
     const response = await app.request("https://auth.test/hosted-auth/lax-bid-logo.svg");
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("image/svg+xml");
+    const light = await app.request("https://auth.test/hosted-auth/lax-bid-logo-light.svg");
+    expect(light.status).toBe(200);
+    expect(light.headers.get("content-type")).toContain("image/svg+xml");
   });
 
   it("redirects prompt=create login requests to hosted sign-up", async () => {

@@ -43,11 +43,11 @@ function socialActions(view: HostedAuthView): string {
 }
 
 function phoneAndSignUp(view: HostedAuthView): string {
+  const signUp = `<p class="links-secondary">Don't have an account? ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;
   const phone = view.capabilities.phoneEnabled
-    ? continuationAnchor("Sign in with phone number", "/phone", view.flow)
+    ? `<p class="links-secondary">${continuationAnchor("Sign in with phone number", "/phone", view.flow)}</p>`
     : "";
-  const signUp = `<p class="lead">Don't have an account? ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;
-  return `<div class="links" data-login-chrome="footer">${phone}${signUp}</div>`;
+  return `<div class="links links--stacked" data-login-chrome="footer">${signUp}${phone}</div>`;
 }
 
 function emailFirstBody(view: HostedAuthView): string {
@@ -121,7 +121,7 @@ export function buildHostedLoginHtml(view: HostedAuthView = hostedAuthViewFromSe
   const productBack = resolveHostedProductBackLink(view);
   return buildHostedAuthHtml({
     title: "Sign in",
-    description: `Sign in to your ${view.brand.productName} account to continue.`,
+    description: `Sign in to continue to ${view.brand.productName}.`,
     brand: view.brand,
     config: view.config,
     body: view.capabilities.emailFirst ? emailFirstBody(view) : combinedBody(view),

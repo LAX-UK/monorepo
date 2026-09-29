@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  HOSTED_BID_LOGO_LIGHT_PATH,
   HOSTED_BID_LOGO_PATH,
   HOSTED_SHOP_LOGO_PATH,
   selectHostedBrand,
@@ -103,7 +104,7 @@ describe("issuer-hosted credential HTML", () => {
     const html = buildHostedLoginHtml(view);
     expect(html).toContain('class="theme-shop"');
     expect(html).toContain(HOSTED_SHOP_LOGO_PATH);
-    expect(html).toContain("Sign in to your LAX Shop account to continue.");
+    expect(html).toContain("Sign in to continue to LAX Shop.");
     expect(html).toContain("Continue with Google");
     expect(html).not.toContain("Continue with Apple");
     expect(html).toContain('data-email-first="true"');
@@ -181,6 +182,8 @@ describe("selectHostedBrand", () => {
     expect(selectHostedBrand("lax-shop-web").logoSrc).toBe(HOSTED_SHOP_LOGO_PATH);
     expect(selectHostedBrand("lax-bid-web").theme).toBe("bid");
     expect(selectHostedBrand("lax-bid-web").logoSrc).toBe(HOSTED_BID_LOGO_PATH);
+    expect(selectHostedBrand("lax-bid-web").logoDarkSrc).toBe(HOSTED_BID_LOGO_LIGHT_PATH);
+    expect(selectHostedBrand("lax-shop-web").logoDarkSrc).toBeNull();
     expect(selectHostedBrand("unknown").theme).toBe("default");
   });
 });
