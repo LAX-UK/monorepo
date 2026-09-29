@@ -11,6 +11,8 @@ export type CrmRecordResult = {
   code?: string;
   status: "success" | "error";
   message?: string;
+  /** Zoho `details.api_name` when a field-level validation fails. */
+  fieldApiName?: string;
 };
 
 export type CrmUpsertInput = {

@@ -45,7 +45,7 @@ Set these **variables** (not secrets) on the monorepo test environment; Terrafor
 
 After changing vars, re-run **Terraform test up** (with image contracts) or **Terraform apply test** so the worker spec updates.
 
-**Zoho CRM maintenance (test)** workflow (`zoho-crm-maintenance-test.yml`): manual `backfill-dry-run`, `backfill`, or `replay-skipped` against the test database and sandbox API host (pinned in the workflow). CI builds `@auction/db` and `@auction/persistence` only (tsx runs worker scripts); do not set job-level `NODE_ENV=production` before `pnpm install` or TypeScript builds lose `@types/node`.
+**Zoho CRM maintenance (test)** workflow (`zoho-crm-maintenance-test.yml`): manual `backfill-dry-run`, `backfill`, `replay-skipped`, or read-only `delivery-status` (counts and recent retry/dead-letter rows from `domain_event_delivery`; no event payloads). Backfill exits non-zero when any Zoho row returns an error. CI builds `@auction/db` and `@auction/persistence` only (tsx runs worker scripts); do not set job-level `NODE_ENV=production` before `pnpm install` or TypeScript builds lose `@types/node`.
 
 ## Worker env (CRM)
 

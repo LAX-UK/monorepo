@@ -14,6 +14,10 @@ import { isRealZohoLink } from "../integrations/crm/crm-tombstone.js";
 import { createZohoCrmGateway } from "../integrations/zoho/create-zoho-crm-gateway.js";
 import { resolveZohoDeliveryMode } from "../integrations/zoho/zoho-crm-config.js";
 import { runBackfillCrmUsersOrgGuard } from "./backfill-crm-users.org-check.js";
+import {
+  type BackfillCrmUsersSummary,
+  shouldBackfillExitWithError,
+} from "./backfill-crm-users.summary.js";
 
 const BATCH = 100;
 const SLEEP_MS = 1_500;
@@ -61,6 +65,12 @@ async function main(): Promise<void> {
   const linkRepo = new DrizzleCrmRecordLinkRepository(db);
   const gateway = createZohoCrmGateway(env);
   const mapperContext = mapperContextFromEnv(env);
+  const summary: BackfillCrmUsersSummary = {
+    success: 0,
+    error: 0,
+    linkedExisting: 0,
+    skipped: 0,
+  };
 
   let offset = 0;
   for (;;) {
@@ -86,6 +96,7 @@ async function main(): Promise<void> {
     for (const row of rows) {
       const skip = await shouldSkipSubject(linkRepo, row.id);
       if (skip.skip) {
+        summary.skipped += 1;
         console.log(JSON.stringify({ userId: row.id, skipped: skip.reason, dryRun }));
         continue;
       }
@@ -145,6 +156,7 @@ async function main(): Promise<void> {
             zohoModule: leadMatch.module,
             zohoRecordId: leadMatch.recordId,
           });
+          summary.linkedExisting += 1;
           console.log(
             JSON.stringify({
               userId: row.id,
@@ -195,24 +207,34 @@ async function main(): Promise<void> {
       const row = toUpsert[i];
       const result = results[i];
       if (row && result?.status === "success" && result.recordId) {
+        summary.success += 1;
         await linkRepo.upsertLink({
           entityType: CRM_ENTITY.subject,
           entityId: row.id,
           zohoModule: "Leads",
           zohoRecordId: result.recordId,
         });
+      } else if (result?.status === "error") {
+        summary.error += 1;
       }
       console.log(
         JSON.stringify({
           userId: row?.id,
           outcome: result?.status ?? "missing_result",
           code: result?.code,
+          ...(result?.fieldApiName ? { fieldApiName: result.fieldApiName } : {}),
+          ...(result?.message ? { message: result.message } : {}),
         }),
       );
     }
 
     offset += rows.length;
     await new Promise((r) => setTimeout(r, SLEEP_MS));
+  }
+
+  console.log(JSON.stringify({ summary, dryRun, mode }));
+  if (!dryRun && shouldBackfillExitWithError(summary)) {
+    process.exitCode = 1;
   }
 }
 

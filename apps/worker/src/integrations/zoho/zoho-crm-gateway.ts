@@ -81,7 +81,7 @@ export class ZohoCrmGateway implements CrmGateway {
         action: "upsert" as const,
         status: "error" as const,
         ...(row.code ? { code: row.code } : {}),
-        ...(row.message ? { message: row.message } : {}),
+        ...(row.fieldApiName ? { fieldApiName: row.fieldApiName } : {}),
         message: row.message ?? `upsert_row_${index}_failed`,
       };
     });
@@ -102,6 +102,7 @@ export class ZohoCrmGateway implements CrmGateway {
         action: "update",
         status: "error",
         ...(first?.code ? { code: first.code } : {}),
+        ...(first?.fieldApiName ? { fieldApiName: first.fieldApiName } : {}),
         ...(first?.message ? { message: first.message } : {}),
       };
     }

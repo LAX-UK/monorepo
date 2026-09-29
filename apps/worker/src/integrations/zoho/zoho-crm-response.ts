@@ -4,14 +4,22 @@ type ZohoRecordResponse = {
   code?: string;
   status?: string;
   message?: string;
-  details?: { id?: string };
+  details?: { id?: string; api_name?: string };
+};
+
+export type ParsedZohoRecordResponse = {
+  status: "success" | "error";
+  recordId?: string;
+  code?: string;
+  message?: string;
+  fieldApiName?: string;
 };
 
 export function parseZohoRecordResponses(
   httpStatus: number,
   bodyText: string,
   retryAfterMs?: number,
-): Array<{ status: "success" | "error"; recordId?: string; code?: string; message?: string }> {
+): ParsedZohoRecordResponse[] {
   let parsed: { data?: ZohoRecordResponse[] };
   try {
     parsed = JSON.parse(bodyText) as { data?: ZohoRecordResponse[] };
@@ -30,6 +38,7 @@ export function parseZohoRecordResponses(
   return rows.map((row) => ({
     status: row.status === "success" ? "success" : "error",
     ...(row.details?.id ? { recordId: row.details.id } : {}),
+    ...(row.details?.api_name ? { fieldApiName: row.details.api_name } : {}),
     ...(row.code ? { code: row.code } : {}),
     ...(row.message ? { message: row.message } : {}),
   }));
