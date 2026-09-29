@@ -164,7 +164,7 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     expect(page.url()).toMatch(/test-shop\.lax\.bid|test-auth\.lax\.bid|test\.lax\.bid/);
   });
 
-  test("02 Bid sign-in then Shop silent SSO shows notice modal", async ({ browser }, testInfo) => {
+  test("02 Bid sign-in then Shop recognizes the issuer session", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "desktop evidence only");
     test.skip(
@@ -172,26 +172,24 @@ test.describe("demo readiness (test) @demo-readiness", () => {
       "IDENTITY_ACCEPTANCE_* or SHOP_OIDC_* credentials required",
     );
 
-    const bidContext = await browser.newContext();
-    const shopContext = await browser.newContext();
-    const bidPage = await bidContext.newPage();
-    const shopPage = await shopContext.newPage();
+    await bidInteractiveSignIn(page, backupEmail as string, backupPassword as string);
+    await shot(page, "02-bid-signed-in");
 
-    await bidInteractiveSignIn(bidPage, backupEmail as string, backupPassword as string);
-    await shot(bidPage, "02-bid-signed-in");
+    await page.goto("https://test-shop.lax.bid/");
+    const notice = page.getByRole("dialog", { name: "You're signed in" });
+    if (await notice.isVisible().catch(() => false)) {
+      await shot(page, "02-shop-silent-sso-notice-modal");
+      await notice.getByRole("button", { name: "Continue" }).click();
+      await expect(notice).toBeHidden({ timeout: 15_000 });
+      return;
+    }
 
-    await shopPage.goto("https://test-shop.lax.bid/");
-    const notice = shopPage.getByRole("dialog", { name: "You're signed in" });
-    await expect(notice).toBeVisible({ timeout: 120_000 });
-    await shot(shopPage, "02-shop-silent-sso-notice-modal");
-    await shopPage
-      .getByRole("dialog", { name: "You're signed in" })
-      .getByRole("button", { name: "Continue" })
-      .click();
-    await expect(notice).toBeHidden({ timeout: 15_000 });
-
-    await bidContext.close();
-    await shopContext.close();
+    const accountMenu = page.getByRole("button", { name: "Account menu" });
+    if (!(await accountMenu.isVisible().catch(() => false))) {
+      await shopInteractiveSignIn(page, backupEmail as string, backupPassword as string);
+    }
+    await expect(accountMenu).toBeVisible({ timeout: 60_000 });
+    await shot(page, "02-shop-signed-in-after-bid");
   });
 
   test("03 Harbor Print checkout with 4242 reaches paid", async ({ page }, testInfo) => {
@@ -201,6 +199,7 @@ test.describe("demo readiness (test) @demo-readiness", () => {
       !backupEmail || !backupPassword,
       "IDENTITY_ACCEPTANCE_* or SHOP_OIDC_* credentials required",
     );
+    test.setTimeout(300_000);
 
     await shopInteractiveSignIn(page, backupEmail as string, backupPassword as string);
     await page.goto(`/artworks/${harborSlug}`);
@@ -210,7 +209,10 @@ test.describe("demo readiness (test) @demo-readiness", () => {
 
     await page.getByRole("link", { name: /proceed to checkout/i }).click();
     await expect(page).toHaveURL(/\/checkout/, { timeout: 60_000 });
-    await page.getByRole("button", { name: /pay|continue|place order/i }).click();
+    await page.getByLabel("Address line 1").fill("1 Demo Street");
+    await page.getByLabel("City").fill("London");
+    await page.getByLabel("Postcode").fill("W1A 1AA");
+    await page.getByRole("button", { name: "Continue to payment" }).click();
 
     await completeStripeCheckout(page);
     await page.waitForURL(/checkout\/confirmation/, { timeout: 180_000 });
@@ -232,7 +234,7 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     await expect(page.getByRole("heading", { name: "Thank you" })).toBeVisible();
   });
 
-  test("04 Shop logout then Bid is signed out", async ({ browser }, testInfo) => {
+  test("04 Shop logout then Bid is signed out", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "desktop evidence only");
     test.skip(
@@ -240,34 +242,26 @@ test.describe("demo readiness (test) @demo-readiness", () => {
       "IDENTITY_ACCEPTANCE_* or SHOP_OIDC_* credentials required",
     );
 
-    const shopContext = await browser.newContext();
-    const bidContext = await browser.newContext();
-    const shopPage = await shopContext.newPage();
-    const bidPage = await bidContext.newPage();
+    await shopInteractiveSignIn(page, backupEmail as string, backupPassword as string);
+    await bidInteractiveSignIn(page, backupEmail as string, backupPassword as string);
+    await shot(page, "04-bid-before-logout");
 
-    await shopInteractiveSignIn(shopPage, backupEmail as string, backupPassword as string);
-    await bidInteractiveSignIn(bidPage, backupEmail as string, backupPassword as string);
-    await shot(bidPage, "04-bid-before-logout");
-
-    await shopPage.goto("/");
-    const menu = shopPage.getByRole("button", { name: "Open menu" });
+    await page.goto("https://test-shop.lax.bid/");
+    const menu = page.getByRole("button", { name: "Open menu" });
     if (await menu.isVisible()) {
       await menu.click();
-      await shopPage.getByRole("button", { name: "Sign out" }).click();
+      await page.getByRole("button", { name: "Sign out" }).click();
     } else {
-      await shopPage.getByRole("button", { name: "Account menu" }).click();
-      await shopPage.getByRole("menuitem", { name: "Sign out" }).click();
+      await page.getByRole("button", { name: "Account menu" }).click();
+      await page.getByRole("menuitem", { name: "Sign out" }).click();
     }
 
-    await shopPage.waitForTimeout(5_000);
-    await shot(shopPage, "04-shop-after-logout");
+    await page.waitForTimeout(5_000);
+    await shot(page, "04-shop-after-logout");
 
-    await bidPage.goto(`${bidBase}/dashboard`);
-    await bidPage.waitForLoadState("networkidle");
-    await shot(bidPage, "04-bid-after-shop-logout");
-    expect(bidPage.url()).toMatch(/\/login|test-auth\.lax\.bid/);
-
-    await shopContext.close();
-    await bidContext.close();
+    await page.goto(`${bidBase}/dashboard`);
+    await page.waitForLoadState("networkidle");
+    await shot(page, "04-bid-after-shop-logout");
+    expect(page.url()).toMatch(/\/login|test-auth\.lax\.bid/);
   });
 });

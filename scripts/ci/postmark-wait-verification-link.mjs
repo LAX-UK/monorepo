@@ -76,11 +76,17 @@ async function main() {
     const messages = await fetchLatestMessage();
     for (const message of messages) {
       if (!messageRecipientEmails(message).includes(recipient)) continue;
-      const body = await fetchMessageHtml(message.MessageID);
-      const link = extractLink(body);
-      if (link) {
-        process.stdout.write(link);
-        return;
+      try {
+        const body = await fetchMessageHtml(message.MessageID);
+        const link = extractLink(body);
+        if (link) {
+          process.stdout.write(link);
+          return;
+        }
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes("(422)")) {
+          throw error;
+        }
       }
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
