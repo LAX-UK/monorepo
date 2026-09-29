@@ -30,11 +30,12 @@ function shot(page: Page, name: string) {
 }
 
 async function hostedAuthSignIn(page: Page, email: string, password: string) {
-  await page.locator("#email").fill(email);
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.locator("#password")).toBeVisible({ timeout: 30_000 });
-  await page.locator("#password").fill(password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+  const loginForm = page.locator("#login-form");
+  await loginForm.locator("#email").fill(email);
+  await loginForm.getByRole("button", { name: "Continue" }).click();
+  await expect(loginForm.locator("#password")).toBeVisible({ timeout: 30_000 });
+  await loginForm.locator("#password").fill(password);
+  await loginForm.getByRole("button", { name: "Sign In" }).click();
 }
 
 async function shopInteractiveSignIn(page: Page, email: string, password: string) {
@@ -102,7 +103,7 @@ function waitForPostmarkVerificationLink(recipient: string): string {
       POSTMARK_RECIPIENT: recipient,
     },
     encoding: "utf8",
-    timeout: 130_000,
+    timeout: 190_000,
   }).trim();
 }
 
@@ -183,7 +184,10 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     const notice = shopPage.getByRole("dialog", { name: "You're signed in" });
     await expect(notice).toBeVisible({ timeout: 120_000 });
     await shot(shopPage, "02-shop-silent-sso-notice-modal");
-    await shopPage.getByRole("button", { name: "Continue" }).click();
+    await shopPage
+      .getByRole("dialog", { name: "You're signed in" })
+      .getByRole("button", { name: "Continue" })
+      .click();
     await expect(notice).toBeHidden({ timeout: 15_000 });
 
     await bidContext.close();

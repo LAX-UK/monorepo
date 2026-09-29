@@ -57,12 +57,25 @@ function extractLink(body) {
   return match?.[0]?.replace(/&amp;/g, "&") ?? null;
 }
 
+function messageRecipientEmails(message) {
+  const raw = message.Recipients ?? message.To ?? [];
+  if (Array.isArray(raw)) {
+    return raw.map((entry) => {
+      if (typeof entry === "string") return entry.toLowerCase();
+      if (entry && typeof entry.Email === "string") return entry.Email.toLowerCase();
+      return "";
+    });
+  }
+  if (typeof raw === "string") return [raw.toLowerCase()];
+  return [];
+}
+
 async function main() {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const messages = await fetchLatestMessage();
     for (const message of messages) {
-      if ((message.Recipients ?? "").toLowerCase() !== recipient) continue;
+      if (!messageRecipientEmails(message).includes(recipient)) continue;
       const body = await fetchMessageHtml(message.MessageID);
       const link = extractLink(body);
       if (link) {
