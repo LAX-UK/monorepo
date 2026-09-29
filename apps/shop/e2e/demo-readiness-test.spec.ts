@@ -135,6 +135,11 @@ async function addHarborPrintToBasket(page: Page) {
 async function shopSignOut(page: Page) {
   await page.goto(`${shopBase}/`);
   await dismissCookieConsentIfPresent(page);
+  const notice = page.getByRole("dialog", { name: "You're signed in" });
+  if (await notice.isVisible().catch(() => false)) {
+    await notice.getByRole("button", { name: "Continue" }).click();
+    await expect(notice).toBeHidden({ timeout: 15_000 });
+  }
   const menu = page.getByRole("button", { name: "Open menu" });
   if (await menu.isVisible().catch(() => false)) {
     await menu.click();
@@ -142,27 +147,30 @@ async function shopSignOut(page: Page) {
     return;
   }
   await page.getByRole("button", { name: "Account menu" }).click();
-  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  const signOut = page.getByRole("menuitem", { name: "Sign out" });
+  await expect(signOut).toBeVisible({ timeout: 30_000 });
+  await signOut.click();
 }
 
 async function ensureAuthenticatedCheckout(page: Page, email: string, password: string) {
+  const accountMenu = page.getByRole("button", { name: "Account menu" });
+  if (!(await accountMenu.isVisible().catch(() => false))) {
+    await shopInteractiveSignIn(page, email, password);
+  }
   const basketUnavailable = page.getByRole("heading", { name: "Basket unavailable" });
   if (await basketUnavailable.isVisible().catch(() => false)) {
     await page.goto("/checkout");
+  } else {
+    const proceed = page.getByRole("link", { name: /proceed to checkout/i });
+    if (await proceed.isVisible().catch(() => false)) {
+      await proceed.click();
+    } else if (!page.url().includes("/checkout")) {
+      await page.goto("/checkout");
+    }
   }
-  const proceed = page.getByRole("link", { name: /proceed to checkout/i });
-  if (await proceed.isVisible().catch(() => false)) {
-    await proceed.click();
-  } else if (!page.url().includes("/checkout")) {
-    await page.goto("/checkout");
-  }
-  await page.waitForURL(/\/checkout|\/login|test-auth/, { timeout: 60_000 });
-  if (page.url().includes("test-auth") && page.url().includes("/login")) {
+  if (page.url().includes("test-auth.lax.bid")) {
     await hostedAuthSignIn(page, email, password);
     await page.waitForURL(/test-shop\.lax\.bid\/checkout/, { timeout: 120_000 });
-  } else if (!page.url().includes("/checkout")) {
-    await shopInteractiveSignIn(page, email, password);
-    await page.goto("/checkout");
   }
   await expect(page).toHaveURL(/\/checkout/, { timeout: 60_000 });
   await expect(page.getByLabel("Address line 1")).toBeVisible({ timeout: 60_000 });
@@ -330,7 +338,7 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     await shot(page, "02-shop-signed-in-after-bid");
   });
 
-  test("03 Harbor Print checkout with 4242 reaches paid", async ({ page, context }, testInfo) => {
+  test("03 Harbor Print checkout with 4242 reaches paid", async ({ page }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "desktop evidence only");
     test.skip(
@@ -339,7 +347,7 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     );
     test.setTimeout(300_000);
 
-    await context.clearCookies();
+    await shopInteractiveSignIn(page, backupEmail as string, backupPassword as string);
     await addHarborPrintToBasket(page);
     await shot(page, "03-basket-with-line");
 
