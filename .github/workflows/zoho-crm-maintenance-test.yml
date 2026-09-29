@@ -75,8 +75,10 @@ jobs:
             printf '%s\n' "$database_ca_cert"
             echo '__DATABASE_CA_CERT__'
           } >> "$GITHUB_ENV"
-      - name: Build worker dependencies
-        run: pnpm --filter @auction/worker... build
+      - name: Build package graph for CRM maintenance scripts
+        run: |
+          pnpm --filter @auction/db... build
+          pnpm --filter @auction/persistence... build
       - name: Backfill CRM users (dry run)
         if: inputs.action == 'backfill-dry-run'
         working-directory: apps/worker
