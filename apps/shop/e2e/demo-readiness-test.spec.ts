@@ -14,6 +14,11 @@ const evidenceDir =
   join(repoRoot, "docs/evidence/demo-readiness-test/screenshots");
 
 const bidBase = (process.env.BID_WEB_ORIGIN ?? "https://test.lax.bid").replace(/\/+$/, "");
+const shopBase = (process.env.PLAYWRIGHT_BASE_URL ?? "https://test-shop.lax.bid").replace(
+  /\/+$/,
+  "",
+);
+const shopOrigin = new URL(shopBase).origin;
 const authBase = (process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid").replace(/\/+$/, "");
 const backupEmail = process.env.IDENTITY_ACCEPTANCE_EMAIL ?? process.env.SHOP_OIDC_TEST_EMAIL;
 const backupPassword =
@@ -29,6 +34,13 @@ function shot(page: Page, name: string) {
   });
 }
 
+async function dismissCookieConsentIfPresent(page: Page) {
+  const accept = page.getByRole("button", { name: /Accept all/i });
+  if (await accept.isVisible().catch(() => false)) {
+    await accept.click();
+  }
+}
+
 async function hostedAuthSignIn(page: Page, email: string, password: string) {
   const loginForm = page.locator("#login-form");
   await loginForm.locator("#email").fill(email);
@@ -39,7 +51,14 @@ async function hostedAuthSignIn(page: Page, email: string, password: string) {
 }
 
 async function shopInteractiveSignIn(page: Page, email: string, password: string) {
-  await page.goto("/");
+  if (!page.url().startsWith(shopOrigin)) {
+    await page.goto(`${shopBase}/`);
+  }
+  await dismissCookieConsentIfPresent(page);
+  const accountMenu = page.getByRole("button", { name: "Account menu" });
+  if (await accountMenu.isVisible().catch(() => false)) {
+    return;
+  }
   const menu = page.getByRole("button", { name: "Open menu" });
   if (await menu.isVisible()) {
     await menu.click();
@@ -48,11 +67,17 @@ async function shopInteractiveSignIn(page: Page, email: string, password: string
     await page.getByRole("button", { name: "Account menu" }).click();
     await page.getByRole("menuitem", { name: "Sign in" }).click();
   }
-  await expect(page).toHaveURL((url) => url.origin === authBase && url.pathname === "/login", {
-    timeout: 60_000,
-  });
-  await hostedAuthSignIn(page, email, password);
-  await expect(page).toHaveURL((url) => url.origin !== authBase, { timeout: 120_000 });
+  const hostedLogin = page.waitForURL(
+    (url) => url.origin === authBase && url.pathname === "/login",
+    { timeout: 90_000 },
+  );
+  const silentShopSignIn = accountMenu.waitFor({ state: "visible", timeout: 90_000 });
+  await Promise.race([hostedLogin, silentShopSignIn]);
+  if (new URL(page.url()).origin === authBase) {
+    await hostedAuthSignIn(page, email, password);
+    await expect(page).toHaveURL((url) => url.origin !== authBase, { timeout: 120_000 });
+  }
+  await expect(accountMenu).toBeVisible({ timeout: 60_000 });
 }
 
 async function bidInteractiveSignIn(page: Page, email: string, password: string) {
@@ -65,7 +90,63 @@ async function bidInteractiveSignIn(page: Page, email: string, password: string)
     await hostedAuthSignIn(page, email, password);
     await page.waitForURL((url) => url.origin === bidOrigin, { timeout: 120_000 });
   }
+  await dismissCookieConsentIfPresent(page);
   await expect(page).toHaveURL((url) => url.origin === bidOrigin && url.pathname !== "/login");
+}
+
+async function assertHealthyBasket(page: Page) {
+  const basketHeading = page.getByRole("heading", { name: "Basket", exact: true });
+  const unavailable = page.getByRole("heading", { name: "Basket unavailable" });
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (await basketHeading.isVisible().catch(() => false)) {
+      await expect(page.locator(".shop-basket__line").first()).toBeVisible();
+      return;
+    }
+    if (
+      (await unavailable.isVisible().catch(() => false)) ||
+      (await page
+        .getByRole("heading", { name: "Basket temporarily unavailable" })
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await page.getByRole("button", { name: "Try again" }).click();
+      await page.waitForLoadState("domcontentloaded");
+      continue;
+    }
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
+  }
+  await expect(basketHeading).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".shop-basket__line").first()).toBeVisible();
+}
+
+async function addHarborPrintToBasket(page: Page) {
+  await page.goto(`/artworks/${harborSlug}`);
+  await dismissCookieConsentIfPresent(page);
+  const addButton = page.getByRole("button", { name: /add to basket/i });
+  await expect(addButton).toBeEnabled();
+  await addButton.click();
+  await page.waitForURL("**/basket**", { timeout: 60_000 });
+  await assertHealthyBasket(page);
+}
+
+async function ensureAuthenticatedCheckout(page: Page, email: string, password: string) {
+  const proceed = page.getByRole("link", { name: /proceed to checkout/i });
+  if (await proceed.isVisible().catch(() => false)) {
+    await proceed.click();
+  } else {
+    await page.goto("/checkout");
+  }
+  await page.waitForURL(/\/checkout|\/login|test-auth/, { timeout: 60_000 });
+  if (page.url().includes("test-auth") && page.url().includes("/login")) {
+    await hostedAuthSignIn(page, email, password);
+    await page.waitForURL(/test-shop\.lax\.bid\/checkout/, { timeout: 120_000 });
+  } else if (!page.url().includes("/checkout")) {
+    await shopInteractiveSignIn(page, email, password);
+    await page.goto("/checkout");
+  }
+  await expect(page).toHaveURL(/\/checkout/, { timeout: 60_000 });
+  await expect(page.getByLabel("Address line 1")).toBeVisible({ timeout: 60_000 });
 }
 
 function deriveRehearsalSignupEmail(sourceEmail: string, stamp: number): string {
@@ -208,7 +289,8 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     await bidInteractiveSignIn(page, backupEmail as string, backupPassword as string);
     await shot(page, "02-bid-signed-in");
 
-    await page.goto("https://test-shop.lax.bid/");
+    await page.goto(`${shopBase}/`);
+    await dismissCookieConsentIfPresent(page);
     const notice = page.getByRole("dialog", { name: "You're signed in" });
     if (await notice.isVisible().catch(() => false)) {
       await shot(page, "02-shop-silent-sso-notice-modal");
@@ -218,14 +300,18 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     }
 
     const accountMenu = page.getByRole("button", { name: "Account menu" });
-    if (!(await accountMenu.isVisible().catch(() => false))) {
+    const signedInAfterBid = await accountMenu
+      .waitFor({ state: "visible", timeout: 120_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!signedInAfterBid) {
       await shopInteractiveSignIn(page, backupEmail as string, backupPassword as string);
     }
     await expect(accountMenu).toBeVisible({ timeout: 60_000 });
     await shot(page, "02-shop-signed-in-after-bid");
   });
 
-  test("03 Harbor Print checkout with 4242 reaches paid", async ({ page }, testInfo) => {
+  test("03 Harbor Print checkout with 4242 reaches paid", async ({ page, context }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "desktop evidence only");
     test.skip(
@@ -234,30 +320,28 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     );
     test.setTimeout(300_000);
 
-    await shopInteractiveSignIn(page, backupEmail as string, backupPassword as string);
-    await page.goto(`/artworks/${harborSlug}`);
-    await page.getByRole("button", { name: /add to basket/i }).click();
-    await page.waitForURL("**/basket**", { timeout: 60_000 });
+    await context.clearCookies();
+    await addHarborPrintToBasket(page);
     await shot(page, "03-basket-with-line");
 
-    const proceed = page.getByRole("link", { name: /proceed to checkout/i });
-    if (await proceed.isVisible().catch(() => false)) {
-      await proceed.click();
-    } else {
-      await page.goto("/checkout");
-    }
-    await expect(page).toHaveURL(/\/checkout/, { timeout: 60_000 });
+    await ensureAuthenticatedCheckout(page, backupEmail as string, backupPassword as string);
     await page.getByLabel("Address line 1").fill("1 Demo Street");
     await page.getByLabel("City").fill("London");
     await page.getByLabel("Postcode").fill("W1A 1AA");
     await page.getByRole("button", { name: "Continue to payment" }).click();
-    await page.waitForURL(/checkout\.stripe\.com|\/checkout\/confirmation/, {
+    const stripeOrConfirmation = page.waitForURL(/checkout\.stripe\.com|\/checkout\/confirmation/, {
       timeout: 180_000,
     });
-    const checkoutAlert = page.getByRole("alert");
-    if (await checkoutAlert.isVisible().catch(() => false)) {
-      throw new Error(`Checkout blocked: ${(await checkoutAlert.textContent()) ?? "unknown"}`);
-    }
+    const checkoutBlocked = page
+      .getByRole("alert")
+      .filter({ hasText: /.+/ })
+      .waitFor({ state: "visible", timeout: 180_000 })
+      .then(async () => {
+        throw new Error(
+          `Checkout blocked: ${(await page.getByRole("alert").first().textContent()) ?? "unknown"}`,
+        );
+      });
+    await Promise.race([stripeOrConfirmation, checkoutBlocked]);
     if (!page.url().includes("/checkout/confirmation")) {
       await completeStripeCheckout(page, backupEmail as string);
     }
@@ -292,7 +376,7 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     await bidInteractiveSignIn(page, backupEmail as string, backupPassword as string);
     await shot(page, "04-bid-before-logout");
 
-    await page.goto("https://test-shop.lax.bid/");
+    await page.goto(`${shopBase}/`);
     const menu = page.getByRole("button", { name: "Open menu" });
     if (await menu.isVisible()) {
       await menu.click();
