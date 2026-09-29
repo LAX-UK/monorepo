@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: backfill-dry-run, backfill, or replay-skipped
+        description: backfill-dry-run, backfill, replay-skipped, or delivery-status
         required: true
         type: choice
-        options: [backfill-dry-run, backfill, replay-skipped]
+        options: [backfill-dry-run, backfill, replay-skipped, delivery-status]
 
 permissions:
   contents: read
@@ -96,3 +96,9 @@ jobs:
         env:
           NODE_ENV: production
         run: pnpm exec tsx src/scripts/replay-crm-skipped.ts
+      - name: Zoho CRM delivery status (read-only)
+        if: inputs.action == 'delivery-status'
+        working-directory: apps/worker
+        env:
+          NODE_ENV: production
+        run: pnpm exec tsx src/scripts/crm-delivery-status.ts

@@ -29,4 +29,6 @@ test("Zoho CRM maintenance workflow pins sandbox API host", () => {
   assert.match(text, /ZOHO_CRM_API_HOST: https:\/\/sandbox\.zohoapis\.eu/);
   assert.match(text, /ZOHO_CRM_EXPECTED_ORG_TYPE: sandbox/);
   assert.match(text, /replay-crm-skipped/);
+  assert.match(text, /delivery-status/);
+  assert.match(text, /crm-delivery-status\.ts/);
 });

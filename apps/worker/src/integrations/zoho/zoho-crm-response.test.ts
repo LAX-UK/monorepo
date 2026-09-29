@@ -17,6 +17,23 @@ describe("parseZohoRecordResponses", () => {
     expect(rows[1]?.status).toBe("error");
   });
 
+  it("keeps details.api_name as fieldApiName on error rows", () => {
+    const rows = parseZohoRecordResponses(
+      207,
+      JSON.stringify({
+        data: [
+          {
+            status: "error",
+            code: "INVALID_DATA",
+            message: "invalid value",
+            details: { api_name: "Email" },
+          },
+        ],
+      }),
+    );
+    expect(rows[0]?.fieldApiName).toBe("Email");
+  });
+
   it("throws on hard HTTP errors", () => {
     expect(() => parseZohoRecordResponses(400, '{"code":"INVALID_REQUEST"}')).toThrow(
       ZohoCrmHttpError,

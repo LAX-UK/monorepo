@@ -10,11 +10,24 @@ After each phase, re-run **Terraform test up** (with image contracts) so the wor
 |------|--------|
 | Infra TF vars + monorepo workflows + backfill org guard | Shipped (auction-infra #24, monorepo #402) |
 | Maintenance workflow CI | Fixed on main (#404 db/persistence build, #405 NODE_ENV scoping) |
-| Phase 1 maintenance | `backfill-dry-run` OK; `backfill` completed with some `INVALID_DATA` (fix sandbox Lead fields / picklists); `replay-skipped` replayed **2** `user.registered` |
-| Phase 2 GitHub var | `ZOHO_CRM_ENABLED_EVENT_TYPES` set to person-patch allowlist — **re-run Terraform test up with image contracts** to apply worker env |
-| Phase 3–4 | Pending Terraform apply + manual E2E / GDPR / 24h soak |
+| Phase 1 maintenance | `backfill-dry-run` OK (43 eligible); `backfill` **40 success / 3 `INVALID_DATA`** (row-level: subjects `7ETkWP5P…`, `Asao9KOw…`, `xR4WD3UL…`); `replay-skipped` replayed **2** `user.registered`. Phase 1 **still open** until signup Lead + `delivery-status` shows those deliveries `succeeded`. |
+| Phase 2 GitHub var | `ZOHO_CRM_ENABLED_EVENT_TYPES` set to person-patch allowlist — worker env **not applied** until Terraform test up succeeds (runs [36514777641](https://github.com/LAX-UK/monorepo/actions/runs/36514777641), [36515552378](https://github.com/LAX-UK/monorepo/actions/runs/36515552378) failed: missing contracts / bad shop-identity digest). |
+| Phase 3–4 | Pending Phase 0 UI checks, Terraform apply, E2E, GDPR, 24h soak |
 
-Backfill `INVALID_DATA` usually means the OAuth token’s org is missing LAX custom fields, `Lead_Source` picklist value `LAX Platform`, or external-field settings from [Phase 0](./zoho-crm-phase0-prerequisites.md).
+Row-level `INVALID_DATA` with 40/43 successes is not a missing-org-field scenario; re-run `backfill` after the worker logs `fieldApiName` from Zoho, then fix those rows or the mapper.
+
+**Terraform test up image contracts:** copy inputs from the last green run ([36456765871](https://github.com/LAX-UK/monorepo/actions/runs/36456765871)) or resolve tag + digest pairs from DOCR before dispatch (never retype digests):
+
+```bash
+for repo in lax-test-identity lax-test-shop-identity lax-test-shop lax-test-shop-api; do
+  echo "=== $repo ==="
+  doctl registry repository list-tags "$repo" -o json \
+    | jq -r '.[] | select(.tag | test("^[a-f0-9]{40}$")) | "\(.tag) \(.manifest_digest)"' \
+    | head -3
+done
+```
+
+Pass the chosen tag as each `*_sha` workflow input and the matching `manifest_digest` as each `*_digest`.
 
 ## Phase 1 — canary `user.registered`
 
@@ -25,7 +38,7 @@ Backfill `INVALID_DATA` usually means the OAuth token’s org is missing LAX cus
 
 Verify: register on `https://test-auth.lax.bid/sign-up`; worker logs show successful Zoho delivery (not `zoho_crm_dry_run`); sandbox Lead has `LAX_Subject_ID` and `Lead_Source = LAX Platform`.
 
-Maintenance (order): **Zoho CRM maintenance (test)** → `backfill-dry-run`, `backfill`, `replay-skipped`.
+Maintenance (order): **Zoho CRM maintenance (test)** → `backfill-dry-run`, `backfill`, `replay-skipped`, then `delivery-status` to confirm ledger rows (no payloads logged).
 
 ## Phase 2 — person patches
 
