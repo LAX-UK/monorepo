@@ -79,7 +79,8 @@ jobs:
         run: |
           pnpm --filter @auction/shop exec playwright test \
             e2e/demo-readiness-test.spec.ts \
-            --project=chromium-desktop
+            --project=chromium-desktop \
+            --workers=1
       - uses: actions/upload-artifact@v4
         if: always()
         with:

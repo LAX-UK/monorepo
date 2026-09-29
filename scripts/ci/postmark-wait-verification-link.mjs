@@ -12,7 +12,7 @@ if (!token || !recipient) {
   throw new Error("POSTMARK_SERVER_TOKEN and POSTMARK_RECIPIENT are required");
 }
 
-const linkPattern = /https:\/\/[^\s"'<>]+(?:verify|confirm|token)[^\s"'<>]*/i;
+const linkPattern = /https:\/\/[^\s"'<>]+(?:verify|confirm|token|callback|register)[^\s"'<>]*/i;
 
 async function fetchLatestMessage() {
   const url = new URL("https://api.postmarkapp.com/messages/outbound");

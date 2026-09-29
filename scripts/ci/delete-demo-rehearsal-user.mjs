@@ -49,7 +49,7 @@ async function main() {
       "delete from public.bid_identity_directory where subject_id = any($1::text[]) or merged_into_subject_id = any($1::text[])",
       [userIds],
     );
-    await client.query("delete from public.bid_user_profile where subject_id = any($1::text[])", [
+    await client.query("delete from public.bid_user_profile where user_id = any($1::text[])", [
       userIds,
     ]);
     await client.query('delete from public."user" where id = any($1::text[])', [userIds]);

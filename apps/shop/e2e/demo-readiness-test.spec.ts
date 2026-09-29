@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type Page, expect, test } from "@playwright/test";
+import { type APIRequestContext, type Page, expect, test } from "@playwright/test";
 
 const enabled = process.env.DEMO_READINESS_TEST === "1";
 const skipReason =
@@ -61,6 +61,39 @@ async function bidInteractiveSignIn(page: Page, email: string, password: string)
   await page.waitForURL((url) => url.origin === new URL(bidBase).origin, { timeout: 120_000 });
 }
 
+function deriveRehearsalSignupEmail(sourceEmail: string, stamp: number): string {
+  const normalized = sourceEmail.trim().toLowerCase();
+  const at = normalized.lastIndexOf("@");
+  if (at < 1) {
+    throw new Error("IDENTITY_ACCEPTANCE_EMAIL must be a valid address for Postmark sign-up proof");
+  }
+  const local = normalized.slice(0, at).split("+")[0];
+  const domain = normalized.slice(at + 1);
+  return `${local}+demo-rehearsal-${stamp}@${domain}`;
+}
+
+async function signUpViaIssuer(
+  request: APIRequestContext,
+  email: string,
+  password: string,
+): Promise<void> {
+  const response = await request.post(`${authBase}/api/auth/sign-up/email`, {
+    headers: {
+      "content-type": "application/json",
+      origin: authBase,
+    },
+    data: {
+      email,
+      password,
+      name: "Demo rehearsal sign-up",
+    },
+  });
+  if (!response.ok()) {
+    const body = await response.text();
+    throw new Error(`Issuer sign-up failed (${response.status()}): ${body.slice(0, 400)}`);
+  }
+}
+
 function waitForPostmarkVerificationLink(recipient: string): string {
   return execFileSync(process.execPath, ["scripts/ci/postmark-wait-verification-link.mjs"], {
     cwd: repoRoot,
@@ -101,48 +134,25 @@ async function completeStripeCheckout(page: Page) {
 }
 
 test.describe("demo readiness (test) @demo-readiness", () => {
-  test.describe.configure({ mode: "serial" });
+  test.setTimeout(180_000);
 
-  test("01 Postmark sign-up email lands verification back on Shop", async ({ page }, testInfo) => {
+  test("01 Postmark sign-up email lands verification back on Shop", async ({
+    page,
+    request,
+  }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-desktop", "desktop evidence only");
     test.skip(
       !process.env.POSTMARK_SERVER_TOKEN,
       "POSTMARK_SERVER_TOKEN required to fetch verification email",
     );
+    test.skip(!backupEmail, "IDENTITY_ACCEPTANCE_EMAIL required for deliverable Postmark proof");
 
     const stamp = Date.now();
-    const email = `lax.demo.rehearsal+demo${stamp}@example.com`;
+    const email = deriveRehearsalSignupEmail(backupEmail as string, stamp);
     const password = process.env.DEMO_REHEARSAL_PASSWORD ?? `Demo-${stamp}-Aa1!`;
 
-    await page.goto("/register");
-    await expect(page).toHaveURL(
-      (url) => url.pathname === "/register" || url.pathname === "/login",
-      {
-        timeout: 60_000,
-      },
-    );
-    if (new URL(page.url()).origin === authBase) {
-      await page
-        .getByRole("link", { name: /create an account|sign up|register/i })
-        .first()
-        .click();
-    }
-
-    await expect(page.locator("#email")).toBeVisible({ timeout: 60_000 });
-    await page.locator("#email").fill(email);
-    await page.getByRole("button", { name: /continue|next/i }).click();
-
-    const passwordField = page.locator("#password");
-    if (await passwordField.isVisible()) {
-      await passwordField.fill(password);
-      const confirm = page.locator("#confirmPassword, #password-confirm");
-      if (await confirm.isVisible()) {
-        await confirm.fill(password);
-      }
-      await page.getByRole("button", { name: /sign up|create account|register/i }).click();
-    }
-
+    await signUpViaIssuer(request, email, password);
     await shot(page, "01-sign-up-submitted");
 
     const verifyLink = waitForPostmarkVerificationLink(email);
