@@ -95,14 +95,21 @@ async function bidInteractiveSignIn(page: Page, email: string, password: string)
 }
 
 async function addHarborPrintToBasket(page: Page) {
-  await page.goto(`/artworks/${harborSlug}`);
-  await dismissCookieConsentIfPresent(page);
-  const addButton = page.getByRole("button", { name: /add to basket/i });
-  await expect(addButton).toBeEnabled();
-  await addButton.click();
-  await page.waitForURL("**/basket**", { timeout: 60_000 });
-  // Basket SSR can hit the route error boundary while commerce APIs stay healthy; checkout still works.
-  await page.goto("/checkout");
+  const csrfResponse = await page.request.get(`${shopBase}/commerce/csrf`);
+  expect(csrfResponse.ok()).toBeTruthy();
+  const { csrfToken } = (await csrfResponse.json()) as { csrfToken: string };
+  const addLine = await page.request.put(`${shopBase}/commerce/basket/lines`, {
+    headers: {
+      "content-type": "application/json",
+      "x-shop-csrf": csrfToken,
+    },
+    data: { artworkSlug: harborSlug, quantity: 1 },
+  });
+  if (!addLine.ok()) {
+    throw new Error(
+      `Could not add Harbor Print to basket: ${(await addLine.text()).slice(0, 400)}`,
+    );
+  }
 }
 
 async function shopSignOut(page: Page) {
@@ -131,34 +138,17 @@ async function ensureAuthenticatedCheckout(page: Page, email: string, password: 
   if (!(await accountMenu.isVisible().catch(() => false))) {
     await shopInteractiveSignIn(page, email, password);
   }
-  if (!page.url().includes("/checkout")) {
+  await page.goto("/checkout");
+  if (page.url().includes("test-auth.lax.bid")) {
+    await hostedAuthSignIn(page, email, password);
+    await page.waitForURL(/test-shop\.lax\.bid/, { timeout: 120_000 });
     await page.goto("/checkout");
   }
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (page.url().includes("test-auth.lax.bid")) {
-      await hostedAuthSignIn(page, email, password);
-      await expect(page).toHaveURL((url) => url.origin !== new URL(authBase).origin, {
-        timeout: 120_000,
-      });
-      if (!page.url().includes("/checkout")) {
-        await page.goto("/checkout");
-      }
-      continue;
-    }
-    if (
-      await page
-        .getByLabel("Address line 1")
-        .isVisible()
-        .catch(() => false)
-    ) {
-      return;
-    }
-    await page
-      .getByRole("button", { name: "Try again" })
-      .click()
-      .catch(() => undefined);
-    await page.goto("/checkout");
-    await page.waitForLoadState("domcontentloaded");
+  const checkoutUnavailable = page.getByRole("heading", { name: "Checkout unavailable" });
+  if (await checkoutUnavailable.isVisible().catch(() => false)) {
+    throw new Error(
+      "Checkout unavailable on test Shop — basket could not be loaded for the signed-in session",
+    );
   }
   await expect(page.getByLabel("Address line 1")).toBeVisible({ timeout: 60_000 });
 }
@@ -336,6 +326,8 @@ test.describe("demo readiness (test) @demo-readiness", () => {
 
     await shopInteractiveSignIn(page, backupEmail as string, backupPassword as string);
     await addHarborPrintToBasket(page);
+    await page.goto(`/artworks/${harborSlug}`);
+    await dismissCookieConsentIfPresent(page);
     await shot(page, "03-basket-with-line");
 
     await ensureAuthenticatedCheckout(page, backupEmail as string, backupPassword as string);
