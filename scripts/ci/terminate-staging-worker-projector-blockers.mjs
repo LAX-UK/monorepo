@@ -64,7 +64,9 @@ async function main() {
 
     const terminated = [];
     for (const row of candidates.rows) {
-      const result = await client.query("SELECT pg_terminate_backend($1::integer) AS ok", [row.pid]);
+      const result = await client.query("SELECT pg_terminate_backend($1::integer) AS ok", [
+        row.pid,
+      ]);
       terminated.push({ pid: row.pid, ok: result.rows[0]?.ok === true });
     }
     console.log(JSON.stringify({ terminated }, null, 2));
