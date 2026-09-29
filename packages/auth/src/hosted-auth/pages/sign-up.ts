@@ -20,7 +20,7 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
   const productBack = resolveHostedProductBackLink(view);
   return buildHostedAuthHtml({
     title: "Create account",
-    description: `Join ${view.brand.productName} to shop and manage your profile.`,
+    description: `Create an account to continue to ${view.brand.productName}.`,
     brand: view.brand,
     config: view.config,
     body: `<form id="signup-form" class="auth-form" novalidate>

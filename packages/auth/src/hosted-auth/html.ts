@@ -224,14 +224,30 @@ export function continuationAnchor(label: string, path: string, flow: HostedAuth
   return `<a class="text-link" href="${escapeHostedHtml(productHintHref(path, flow))}">${escapeHostedHtml(label)}</a>`;
 }
 
+const PRODUCT_BACK_CHEVRON = `<svg class="product-back-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+function hostedBrandLogoMarkup(brand: HostedBrandProfile, assetSuffix: string): string {
+  if (!brand.logoSrc) {
+    return `<p class="brand-mark">${escapeHostedHtml(brand.productName)}</p>`;
+  }
+  const alt = escapeHostedHtml(brand.logoAlt ?? brand.productName);
+  const src = escapeHostedHtml(`${brand.logoSrc}${assetSuffix}`);
+  if (brand.logoDarkSrc) {
+    const darkSrc = escapeHostedHtml(`${brand.logoDarkSrc}${assetSuffix}`);
+    return `<picture class="brand-logo-picture">
+      <source srcset="${darkSrc}" media="(prefers-color-scheme: dark)">
+      <img class="brand-logo" src="${src}" alt="${alt}" width="240" height="62">
+    </picture>`;
+  }
+  return `<img class="brand-logo" src="${src}" alt="${alt}" width="201" height="44">`;
+}
+
 export function buildHostedAuthHtml(page: HostedAuthPage): string {
   const themeClass = `theme-${page.brand.theme}`;
-  const logo = page.brand.logoSrc
-    ? `<img class="brand-logo" src="${escapeHostedHtml(page.brand.logoSrc)}" alt="${escapeHostedHtml(page.brand.logoAlt ?? page.brand.productName)}" width="201" height="44">`
-    : `<p class="brand-mark">${escapeHostedHtml(page.brand.productName)}</p>`;
   const asset = `?v=${HOSTED_AUTH_ASSET_VERSION}`;
+  const logo = hostedBrandLogoMarkup(page.brand, asset);
   const productBack = page.productBack
-    ? `<p class="product-back"><a class="text-link" href="${escapeHostedHtml(page.productBack.href)}">${escapeHostedHtml(page.productBack.label)}</a></p>`
+    ? `<p class="product-back"><a class="product-back-link" href="${escapeHostedHtml(page.productBack.href)}">${PRODUCT_BACK_CHEVRON}<span>${escapeHostedHtml(page.productBack.label)}</span></a></p>`
     : "";
   return `<!doctype html>
 <html lang="en" class="${themeClass}">
