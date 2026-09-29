@@ -56,10 +56,16 @@ async function shopInteractiveSignIn(page: Page, email: string, password: string
 }
 
 async function bidInteractiveSignIn(page: Page, email: string, password: string) {
+  const bidOrigin = new URL(bidBase).origin;
   await page.goto(`${bidBase}/login?next=${encodeURIComponent("/dashboard")}`);
-  await expect(page).toHaveURL((url) => url.origin === authBase, { timeout: 60_000 });
-  await hostedAuthSignIn(page, email, password);
-  await page.waitForURL((url) => url.origin === new URL(bidBase).origin, { timeout: 120_000 });
+  await page.waitForURL((url) => url.origin === authBase || url.origin === bidOrigin, {
+    timeout: 120_000,
+  });
+  if (new URL(page.url()).origin === authBase) {
+    await hostedAuthSignIn(page, email, password);
+    await page.waitForURL((url) => url.origin === bidOrigin, { timeout: 120_000 });
+  }
+  await expect(page).toHaveURL((url) => url.origin === bidOrigin && url.pathname !== "/login");
 }
 
 function deriveRehearsalSignupEmail(sourceEmail: string, stamp: number): string {
@@ -107,22 +113,46 @@ function waitForPostmarkVerificationLink(recipient: string): string {
   }).trim();
 }
 
-async function completeStripeCheckout(page: Page) {
+async function completeStripeCheckout(page: Page, payerEmail: string) {
   await page.waitForURL(/checkout\.stripe\.com/, { timeout: 120_000 });
   await shot(page, "03-stripe-checkout");
 
-  const card = page.locator('input[name="cardNumber"], input[autocomplete="cc-number"]').first();
-  await card.waitFor({ state: "visible", timeout: 60_000 });
-  await card.fill("4242424242424242");
-
-  const expiry = page.locator('input[name="cardExpiry"], input[autocomplete="cc-exp"]').first();
-  if (await expiry.isVisible()) {
-    await expiry.fill("12/34");
+  const emailField = page
+    .getByPlaceholder(/email/i)
+    .or(page.locator('input[type="email"], input[name="email"]'))
+    .first();
+  if (await emailField.isVisible().catch(() => false)) {
+    await emailField.fill(payerEmail);
   }
 
-  const cvc = page.locator('input[name="cardCvc"], input[autocomplete="cc-csc"]').first();
-  if (await cvc.isVisible()) {
-    await cvc.fill("123");
+  const cardByPlaceholder = page.getByPlaceholder(/1234 1234 1234 1234|card number/i).first();
+  if (await cardByPlaceholder.isVisible().catch(() => false)) {
+    await cardByPlaceholder.fill("4242424242424242");
+    const expiry = page.getByPlaceholder(/MM \/ YY|MM\/YY/i).first();
+    if (await expiry.isVisible()) {
+      await expiry.fill("12 / 34");
+    }
+    const cvc = page.getByPlaceholder(/CVC|cvc/i).first();
+    if (await cvc.isVisible()) {
+      await cvc.fill("123");
+    }
+  } else {
+    const cardFrame = page.frameLocator('iframe[src*="stripe"]').first();
+    const card = cardFrame
+      .locator('input[name="cardnumber"], input[autocomplete="cc-number"]')
+      .first();
+    await card.waitFor({ state: "visible", timeout: 60_000 });
+    await card.fill("4242424242424242");
+    const expiry = cardFrame
+      .locator('input[name="exp-date"], input[autocomplete="cc-exp"]')
+      .first();
+    if (await expiry.isVisible()) {
+      await expiry.fill("12 / 34");
+    }
+    const cvc = cardFrame.locator('input[name="cvc"], input[autocomplete="cc-csc"]').first();
+    if (await cvc.isVisible()) {
+      await cvc.fill("123");
+    }
   }
 
   const billingName = page.locator('input[name="billingName"]').first();
@@ -130,8 +160,9 @@ async function completeStripeCheckout(page: Page) {
     await billingName.fill("Demo Rehearsal");
   }
 
-  const payButton = page.getByRole("button", { name: /pay|submit|complete/i }).first();
+  const payButton = page.getByRole("button", { name: /^Pay|^Submit|^Complete order/i }).first();
   await payButton.click();
+  await page.waitForURL(/test-shop\.lax\.bid.*\/checkout\/confirmation/, { timeout: 180_000 });
 }
 
 test.describe("demo readiness (test) @demo-readiness", () => {
@@ -219,8 +250,8 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     await page.getByLabel("Postcode").fill("W1A 1AA");
     await page.getByRole("button", { name: "Continue to payment" }).click();
 
-    await completeStripeCheckout(page);
-    await page.waitForURL(/checkout\/confirmation/, { timeout: 180_000 });
+    await completeStripeCheckout(page, backupEmail as string);
+    await expect(page).toHaveURL(/checkout\/confirmation/, { timeout: 30_000 });
 
     const thankYou = page.getByRole("heading", { name: /thank you|payment processing/i });
     await expect(thankYou).toBeVisible({ timeout: 30_000 });
@@ -267,11 +298,13 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     await page.goto(`${bidBase}/dashboard`);
     await page.waitForLoadState("networkidle");
     await shot(page, "04-bid-after-shop-logout");
-    if (!page.url().match(/\/login|test-auth\.lax\.bid/)) {
-      await page.getByRole("button", { name: "Log out" }).click({ timeout: 15_000 });
-      await page.waitForLoadState("networkidle");
-      await shot(page, "04-bid-explicit-logout");
-    }
-    expect(page.url()).toMatch(/\/login|test-auth\.lax\.bid/);
+
+    const onHostedLogin = /\/login|test-auth\.lax\.bid/.test(page.url());
+    const bidLogout = page.getByRole("button", { name: "Log out" });
+    const stillSignedInOnBid = !onHostedLogin && (await bidLogout.isVisible().catch(() => false));
+    expect(
+      stillSignedInOnBid,
+      "Shop logout should end the Bid BFF session (back-channel logout); dashboard still shows Log out",
+    ).toBe(false);
   });
 });
