@@ -1,7 +1,6 @@
 import { assertDomainEventConsumerContract, listDomainEventTypesForConsumer } from "@auction/types";
 import { resolveZohoDeliveryMode } from "../integrations/zoho/zoho-crm-config.js";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
-import { deliveryRepoForProjectorTransaction } from "./lib/transaction-scoped-delivery-repo.js";
 import {
   recordDeliveryOldestPendingAgeSeconds,
   recordDeliveryOutcome,
@@ -10,6 +9,7 @@ import {
 import { claimAndRunDomainEventDeliveriesWithBudget } from "./lib/domain-event-delivery-runner.js";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
 import { redactDomainEventPayload } from "./lib/redact-pii.js";
+import { deliveryRepoForProjectorTransaction } from "./lib/transaction-scoped-delivery-repo.js";
 
 export const ZOHO_PROJECTOR = "zoho";
 const ZOHO_CONSUMER = "zoho";
