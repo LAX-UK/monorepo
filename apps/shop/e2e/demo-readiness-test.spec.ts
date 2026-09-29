@@ -110,6 +110,16 @@ async function addHarborPrintToBasket(page: Page) {
       `Could not add Harbor Print to basket: ${(await addLine.text()).slice(0, 400)}`,
     );
   }
+  const basketGet = await page.request.get(`${shopBase}/commerce/basket`);
+  if (!basketGet.ok()) {
+    throw new Error(`Basket read failed after add (${basketGet.status()})`);
+  }
+  const basketBody = (await basketGet.json()) as { lines?: unknown[] };
+  if (!basketBody.lines?.length) {
+    throw new Error(
+      "Basket has no lines after add — session may not be linked to commerce cookies",
+    );
+  }
 }
 
 async function shopSignOut(page: Page) {
@@ -139,10 +149,14 @@ async function ensureAuthenticatedCheckout(page: Page, email: string, password: 
     await shopInteractiveSignIn(page, email, password);
   }
   await page.goto("/checkout");
+  await page.waitForURL(/\/checkout|\/basket|test-auth/, { timeout: 60_000 });
   if (page.url().includes("test-auth.lax.bid")) {
     await hostedAuthSignIn(page, email, password);
     await page.waitForURL(/test-shop\.lax\.bid/, { timeout: 120_000 });
     await page.goto("/checkout");
+  }
+  if (!page.url().includes("/checkout")) {
+    throw new Error(`Expected /checkout after sign-in, got ${page.url()}`);
   }
   const checkoutUnavailable = page.getByRole("heading", { name: "Checkout unavailable" });
   if (await checkoutUnavailable.isVisible().catch(() => false)) {
@@ -325,6 +339,8 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     test.setTimeout(300_000);
 
     await shopInteractiveSignIn(page, backupEmail as string, backupPassword as string);
+    await page.goto(`${shopBase}/account/post-sign-in`);
+    await page.waitForURL(/\/account/, { timeout: 60_000 });
     await addHarborPrintToBasket(page);
     await page.goto(`/artworks/${harborSlug}`);
     await dismissCookieConsentIfPresent(page);
