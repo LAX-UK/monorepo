@@ -74,6 +74,11 @@ describe("shop commerce reads", () => {
       new Error("network"),
     );
     await expect(fetchShopBasket()).resolves.toEqual({ status: "failed" });
+
+    vi.spyOn(shopCommerceRequestModule, "shopCommerceRequest").mockResolvedValueOnce(
+      new Response(JSON.stringify({ unexpected: true }), { status: 200 }),
+    );
+    await expect(fetchShopBasket()).resolves.toEqual({ status: "failed" });
   });
 
   it("maps order and list outcomes including unauthorized", async () => {
