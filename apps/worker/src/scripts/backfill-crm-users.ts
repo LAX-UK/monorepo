@@ -10,6 +10,8 @@ import { and, asc, isNull } from "drizzle-orm";
 import { loadWorkerEnv } from "../env.js";
 import { mapDomainEventToCrmIntent } from "../integrations/crm/crm-event-mappers.js";
 import { CRM_ENTITY, CRM_FIELD } from "../integrations/crm/crm-field-constants.js";
+import { CrmGatewayError } from "../integrations/crm/crm-gateway-error.js";
+import type { CrmRecordResult } from "../integrations/crm/crm-gateway.js";
 import { isRealZohoLink } from "../integrations/crm/crm-tombstone.js";
 import { createZohoCrmGateway } from "../integrations/zoho/create-zoho-crm-gateway.js";
 import { resolveZohoDeliveryMode } from "../integrations/zoho/zoho-crm-config.js";
@@ -21,6 +23,7 @@ import {
 
 const BATCH = 100;
 const SLEEP_MS = 1_500;
+const LEAD_DUPLICATE_CHECK_FIELDS = [CRM_FIELD.subjectExternalId, "Email"] as const;
 
 function parseArgs(argv: string[]): { dryRun: boolean } {
   return { dryRun: argv.includes("--dry-run") };
@@ -52,6 +55,18 @@ async function shouldSkipSubject(
     return { skip: true, reason: "already_linked" };
   }
   return { skip: false };
+}
+
+function logBackfillUpsertOutcome(userId: string, result: CrmRecordResult): void {
+  console.log(
+    JSON.stringify({
+      userId,
+      outcome: result.status,
+      code: result.code,
+      ...(result.fieldApiName ? { fieldApiName: result.fieldApiName } : {}),
+      ...(result.message ? { message: result.message } : {}),
+    }),
+  );
 }
 
 async function main(): Promise<void> {
@@ -170,7 +185,7 @@ async function main(): Promise<void> {
       toUpsert.push(row);
     }
 
-    const records = toUpsert.map((row) => {
+    for (const row of toUpsert) {
       const intent = mapDomainEventToCrmIntent(
         {
           id: 0,
@@ -189,43 +204,39 @@ async function main(): Promise<void> {
       if (intent.kind !== "person_upsert") {
         throw new Error(`unexpected_intent:${intent.kind}`);
       }
-      return intent.fields as Record<string, string | number | boolean | null>;
-    });
+      const fields = intent.fields as Record<string, string | number | boolean | null>;
 
-    if (records.length === 0) {
-      offset += rows.length;
-      continue;
-    }
-
-    const results = await gateway.upsertMany({
-      module: "Leads",
-      records,
-      duplicateCheckFields: [CRM_FIELD.subjectExternalId, "Email"],
-    });
-
-    for (let i = 0; i < toUpsert.length; i += 1) {
-      const row = toUpsert[i];
-      const result = results[i];
-      if (row && result?.status === "success" && result.recordId) {
-        summary.success += 1;
-        await linkRepo.upsertLink({
-          entityType: CRM_ENTITY.subject,
-          entityId: row.id,
-          zohoModule: "Leads",
-          zohoRecordId: result.recordId,
+      try {
+        const result = await gateway.upsert({
+          module: "Leads",
+          fields,
+          duplicateCheckFields: [...LEAD_DUPLICATE_CHECK_FIELDS],
         });
-      } else if (result?.status === "error") {
+        if (result.status === "success" && result.recordId) {
+          summary.success += 1;
+          await linkRepo.upsertLink({
+            entityType: CRM_ENTITY.subject,
+            entityId: row.id,
+            zohoModule: "Leads",
+            zohoRecordId: result.recordId,
+          });
+        } else if (result.status === "error") {
+          summary.error += 1;
+        }
+        logBackfillUpsertOutcome(row.id, result);
+      } catch (err) {
         summary.error += 1;
+        const gatewayErr = err instanceof CrmGatewayError ? err : null;
+        console.log(
+          JSON.stringify({
+            userId: row.id,
+            outcome: "error",
+            code: gatewayErr?.code ?? "exception",
+            message: gatewayErr?.message ?? (err instanceof Error ? err.message : String(err)),
+            ...(gatewayErr?.status ? { httpStatus: gatewayErr.status } : {}),
+          }),
+        );
       }
-      console.log(
-        JSON.stringify({
-          userId: row?.id,
-          outcome: result?.status ?? "missing_result",
-          code: result?.code,
-          ...(result?.fieldApiName ? { fieldApiName: result.fieldApiName } : {}),
-          ...(result?.message ? { message: result.message } : {}),
-        }),
-      );
     }
 
     offset += rows.length;
