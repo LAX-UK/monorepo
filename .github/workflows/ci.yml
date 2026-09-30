@@ -5,6 +5,12 @@ on:
     branches: [main, master, release]
   pull_request:
     branches: [main, master]
+  merge_group:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  id-token: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -14,6 +20,10 @@ env:
   SSF_DELIVERY_ENABLED: "false"
   SSF_DELIVERY_TIMEOUT_MS: "5000"
   SSF_DELIVERY_MAX_ATTEMPTS: "8"
+  TURBO_SCM_BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  TURBO_CACHE: ${{ vars.TURBO_TEAM != '' && (github.event_name == 'pull_request' && 'local:rw,remote:r' || 'local:rw,remote:rw') || 'local:rw' }}
+  TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
 jobs:
   static-checks:
@@ -33,13 +43,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Cache turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: turbo-${{ github.job }}-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            turbo-${{ github.job }}-${{ runner.os }}-
+      - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != ''
+        uses: ./.github/actions/setup-turbo-remote-cache
 
       - name: Biome root check
         run: pnpm exec biome check .
@@ -136,7 +142,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         id: identity_paths
         with:
           filters: |
@@ -234,9 +240,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch main for turbo affected
-        if: github.event_name == 'pull_request'
-        run: git fetch origin main:main
+      - name: Fetch base for turbo affected
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch origin main:main
+          else
+            git fetch origin "${{ github.event.merge_group.base_sha }}"
+          fi
 
       - uses: pnpm/action-setup@v4
 
@@ -248,13 +259,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Cache turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: turbo-${{ github.job }}-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            turbo-${{ github.job }}-${{ runner.os }}-
+      - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != ''
+        uses: ./.github/actions/setup-turbo-remote-cache
 
       - name: Build db package dependencies
         run: pnpm --filter @auction/db... build
@@ -295,9 +302,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch main for turbo affected
-        if: github.event_name == 'pull_request'
-        run: git fetch origin main:main
+      - name: Fetch base for turbo affected
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch origin main:main
+          else
+            git fetch origin "${{ github.event.merge_group.base_sha }}"
+          fi
 
       - uses: pnpm/action-setup@v4
 
@@ -308,6 +320,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != ''
+        uses: ./.github/actions/setup-turbo-remote-cache
 
       - name: Vitest shard
         run: |
@@ -430,6 +446,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch base for turbo affected
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch origin main:main
+          else
+            git fetch origin "${{ github.event.merge_group.base_sha }}"
+          fi
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -440,24 +465,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Cache turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: turbo-${{ github.job }}-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            turbo-${{ github.job }}-${{ runner.os }}-
+      - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != ''
+        uses: ./.github/actions/setup-turbo-remote-cache
 
       - name: Build
-        run: |
-          set -e
-          # next/font/google can fail when fonts.googleapis.com returns a non-CSS body in CI (see apps/shop/Dockerfile).
-          for attempt in 1 2 3; do
-            pnpm turbo run build --affected && exit 0
-            echo "Build attempt ${attempt} failed; retrying in 15s..."
-            sleep 15
-          done
-          exit 1
+        run: pnpm turbo run build --affected
 
   docker-images:
     runs-on: ubuntu-latest
@@ -478,7 +491,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         id: docker_paths
         with:
           filters: |
@@ -549,7 +562,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         id: identity_paths
         with:
           filters: |

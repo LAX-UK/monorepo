@@ -11,11 +11,11 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
-    // jsdom + Vite transform saturates Vitest worker RPC on shared CI runners.
+    // Parallel forks (not threads): Radix popover/cmdk + jsdom can hang under pool:threads.
     ...(ci
       ? {
-          fileParallelism: false,
-          maxWorkers: 1,
+          fileParallelism: true,
+          maxWorkers: 2,
           teardownTimeout: 30_000,
           pool: "forks" as const,
         }

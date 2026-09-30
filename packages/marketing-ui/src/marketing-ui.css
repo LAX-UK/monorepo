@@ -195,7 +195,7 @@
 
 .marketing-status-state__illustration {
   max-width: 12rem;
-  color: var(--color-on-surface-variant, #474747);
+  color: var(--color-on-surface-variant, #525252);
 }
 
 .marketing-status-state__illustration svg {
@@ -233,7 +233,7 @@
 .marketing-status-state__description {
   margin: 0;
   max-width: 30rem;
-  color: var(--color-on-surface-variant, #474747);
+  color: var(--color-on-surface-variant, #525252);
   font-size: 0.9375rem;
   line-height: 1.6;
 }

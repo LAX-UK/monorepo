@@ -359,15 +359,15 @@ The defer triggers above are the explicit conditions under which any of these be
 
 ## Change to test
 
-1. Open a PR against `main`. Required checks: `static-checks`, `build`, `test`, `web vitest` shards (when `@auction/web` is affected), `auth-role-contract`, `worker-role-contract`, and `browser-gates` (from `ci.yml` and `e2e-pr.yml`).
-2. Merge after green CI. **PR and `main` run the same CI jobs** (no post-merge-only `full-verify`). Pushes to `main` do **not** cancel an in-flight CI run (only PR updates cancel superseded runs), so `app-deploy-test` can gate on a completed CI conclusion.
+1. Open a PR against `main`. Wait for required checks **`ci-result`** (aggregates all CI jobs in `.github/workflows/ci.yml`) and **`browser-gates`** (`.github/workflows/e2e-pr.yml`).
+2. Merge through the **merge queue** (squash). Queue runs use the `merge_group` event; do not rename `ci-result` or `browser-gates` without updating the ruleset in the same PR (`scripts/ci/github-main-ruleset.json`). **PR and `main` run the same CI jobs.** Pushes to `main` do **not** cancel an in-flight CI run (only PR updates cancel superseded runs), so `app-deploy-test` can gate on a completed CI conclusion.
 3. **Bid path:** `app-deploy-test.yml` rolls App Platform when Shop immutable paths did not change (rolling image tags when `USE_PREBUILT_IMAGES_TEST=true`).
 4. **Shop path:** when `apps/shop`, `apps/shop-identity`, or `apps/shop-api` change, the same workflow can apply digest-pinned Shop images via Terraform after `build-images`, gated on repository variable `AUTO_DEPLOY_SHOP_TEST` (off during demo freeze; turn on when Shop should track `main` automatically). Until then, use `staging-recovery-test.yml` for reviewed immutable cutovers.
 5. **Production** stays manual: reviewed `app-deploy-prod.yml` / Terraform apply with explicit confirmation.
 
 **Manual ops workflows** (dispatch when needed, not on every merge): Identity and auth maintenance (`identity-directory-maintenance-test`, `identity-migration-maintenance-test`, `identity-role-maintenance-test`, `auth-at-rest-maintenance-test`), `staging-recovery-test.yml` for rollback rehearsal, weekly Terraform drift check, and daily Identity closure sync.
 
-**Branch protection:** on `main`, disable admin bypass (“Do not allow bypassing”) so every change lands through a PR and required checks.
+**Branch ruleset (`main`):** required checks `ci-result` and `browser-gates`, merge queue (squash, ALLGREEN), no bypass actors. Apply or update with `node scripts/ci/apply-github-main-ruleset.mjs` (repo admin). Turborepo remote cache (optional): set repo variable `TURBO_TEAM` and secret `TURBO_REMOTE_CACHE_SIGNATURE_KEY`; PR workflows then use read-only remote cache (`TURBO_CACHE=local:rw,remote:r`). If `TURBO_TEAM` is unset, CI skips Vercel OIDC setup and runs with `TURBO_CACHE=local:rw` only.
 
 ## Where to look in the code
 
