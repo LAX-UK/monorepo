@@ -19,8 +19,8 @@ export const COLORS = {
   surface: "#ffffff",
   /** `--color-brand-500` */
   textPrimary: "#191919",
-  /** `--color-brand-400` */
-  textSecondary: "#474747",
+  /** `--color-brand-400` / `--color-on-surface-variant` */
+  textSecondary: "#525252",
   /** `--color-brand-300` */
   textMuted: "#757575",
   /** `--color-nav-border` */
@@ -34,7 +34,7 @@ export const COLORS = {
   /** `--color-live-red` */
   red: "#e83030",
   /** Same as textSecondary — category accent for account/admin */
-  graphite: "#474747",
+  graphite: "#525252",
   /** `--color-cta-bg` */
   ctaBg: BRAND_COLORS.obsidian,
   /** `--color-cta-on` */

@@ -22,7 +22,7 @@
   --color-brand-900: var(--color-brand-obsidian);
   --color-brand-800: #0a0a0a;
   --color-brand-500: #191919;
-  --color-brand-400: #474747;
+  --color-brand-400: #525252;
   --color-brand-300: #757575;
   --color-brand-200: var(--color-brand-light-gray);
   --color-brand-100: #d1d1d1;
@@ -52,7 +52,8 @@
   --color-on-surface: #1a1c1c;
   --color-surface-container-high: #e8e8e8;
   --color-surface-container-low: #f3f3f3;
-  --color-on-surface-variant: #474747;
+  /* WCAG AA on #fff (12px+); #474747 sampled ~#7c7c7c in CI axe on Linux Chromium. */
+  --color-on-surface-variant: #525252;
   --color-on-primary-fixed-variant: var(--color-accent-gold);
   --color-primary: var(--color-brand-obsidian);
   --color-outline: var(--color-brand-light-gray);
