@@ -21,6 +21,10 @@ export {
   type PlacementTarget,
   type PlacementTargetKind,
 } from "./placement-slot.js";
+export {
+  assertFeaturedOriginalArtwork,
+  type FeaturedOriginalArtworkCandidate,
+} from "./featured-originals-placement.js";
 export { ShopDomainError } from "./shop-domain-error.js";
 export {
   assertQuantityWithinSellable,

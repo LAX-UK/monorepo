@@ -33,6 +33,7 @@ export const BasketLineSchema = Type.Object(
     sellableCount: Type.Integer({ minimum: 0 }),
     priceChanged: Type.Boolean(),
     outOfStock: Type.Boolean(),
+    imageUrl: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
   },
   { additionalProperties: false },
 );

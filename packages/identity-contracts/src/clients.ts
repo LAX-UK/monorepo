@@ -80,8 +80,11 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
       postLogoutRedirectUris: [
         "http://localhost:3010/",
         "http://localhost:3020/",
+        "http://localhost:3020/signed-out",
         "https://shop.lax.art/",
+        "https://shop.lax.art/signed-out",
         "https://test-shop.lax.bid/",
+        "https://test-shop.lax.bid/signed-out",
       ],
       allowedScopes: ["openid", "profile", "email", "offline_access", "shop.read", "shop.write"],
       allowedResources: [LAX_RESOURCE_IDS.LAX_SHOP_API],
