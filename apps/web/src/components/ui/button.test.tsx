@@ -50,4 +50,8 @@ describe("Button", () => {
     expect(el.className).not.toMatch(/min-h-11/);
     expect(el.className).toMatch(/border-b/);
   });
+
+  it("CI gating throwaway — must fail and block merge", () => {
+    expect(true).toBe(false);
+  });
 });
