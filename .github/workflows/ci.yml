@@ -46,6 +46,8 @@ jobs:
       - name: Setup Turborepo remote cache
         if: vars.TURBO_TEAM != ''
         uses: ./.github/actions/setup-turbo-remote-cache
+        with:
+          team: ${{ vars.TURBO_TEAM }}
 
       - name: Biome root check
         run: pnpm exec biome check .
@@ -262,6 +264,8 @@ jobs:
       - name: Setup Turborepo remote cache
         if: vars.TURBO_TEAM != ''
         uses: ./.github/actions/setup-turbo-remote-cache
+        with:
+          team: ${{ vars.TURBO_TEAM }}
 
       - name: Build db package dependencies
         run: pnpm --filter @auction/db... build
@@ -324,6 +328,8 @@ jobs:
       - name: Setup Turborepo remote cache
         if: vars.TURBO_TEAM != ''
         uses: ./.github/actions/setup-turbo-remote-cache
+        with:
+          team: ${{ vars.TURBO_TEAM }}
 
       - name: Vitest shard
         run: |
@@ -468,6 +474,8 @@ jobs:
       - name: Setup Turborepo remote cache
         if: vars.TURBO_TEAM != ''
         uses: ./.github/actions/setup-turbo-remote-cache
+        with:
+          team: ${{ vars.TURBO_TEAM }}
 
       - name: Build
         run: pnpm turbo run build --affected
