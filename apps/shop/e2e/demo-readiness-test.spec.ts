@@ -159,7 +159,12 @@ async function ensureAuthenticatedCheckout(page: Page, email: string, password: 
     );
     while (new URL(page.url()).origin === new URL(authBase).origin) {
       await hostedAuthSignIn(page, email, password);
-      await page.waitForURL((url) => url.origin === shopOrigin, { timeout: 120_000 });
+      await page.waitForURL(
+        (url) => url.origin === shopOrigin && !url.pathname.startsWith("/auth/"),
+        { timeout: 120_000 },
+      );
+      await page.goto(`${shopBase}/account/post-sign-in`);
+      await page.waitForURL(/\/account/, { timeout: 60_000 });
       await page.goto("/checkout");
       await page.waitForURL(
         (url) =>
