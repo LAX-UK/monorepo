@@ -148,32 +148,44 @@ async function ensureAuthenticatedCheckout(page: Page, email: string, password: 
   if (!(await accountMenu.isVisible().catch(() => false))) {
     await shopInteractiveSignIn(page, email, password);
   }
-  await page.goto("/checkout");
-  await page.waitForURL(/test-shop\.lax\.bid\/checkout|test-auth\.lax\.bid/, { timeout: 60_000 });
-  if (new URL(page.url()).hostname.includes("test-auth")) {
-    await hostedAuthSignIn(page, email, password);
-    await page.waitForURL(/test-shop\.lax\.bid/, { timeout: 120_000 });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     await page.goto("/checkout");
+    await page.waitForURL(/test-shop\.lax\.bid\/checkout|test-auth\.lax\.bid\/login/, {
+      timeout: 60_000,
+    });
+    while (new URL(page.url()).hostname.includes("test-auth")) {
+      await hostedAuthSignIn(page, email, password);
+      await page.waitForURL(/test-shop\.lax\.bid/, { timeout: 120_000 });
+      await page.goto("/checkout");
+      await page.waitForURL(/test-shop\.lax\.bid\/checkout|test-auth\.lax\.bid\/login/, {
+        timeout: 60_000,
+      });
+    }
+    if (!isShopCheckoutUrl(page.url())) {
+      throw new Error(`Expected Shop /checkout after sign-in, got ${page.url()}`);
+    }
+    const checkoutUnavailable = page.getByRole("heading", { name: "Checkout unavailable" });
+    if (await checkoutUnavailable.isVisible().catch(() => false)) {
+      throw new Error(
+        "Checkout unavailable on test Shop — basket could not be loaded for the signed-in session",
+      );
+    }
+    if (
+      await page
+        .getByLabel("Address line 1")
+        .isVisible()
+        .catch(() => false)
+    ) {
+      return;
+    }
   }
-  if (!isShopCheckoutUrl(page.url())) {
-    throw new Error(`Expected Shop /checkout after sign-in, got ${page.url()}`);
-  }
-  const checkoutUnavailable = page.getByRole("heading", { name: "Checkout unavailable" });
-  if (await checkoutUnavailable.isVisible().catch(() => false)) {
-    throw new Error(
-      "Checkout unavailable on test Shop — basket could not be loaded for the signed-in session",
-    );
-  }
-  const addressLine = page.getByLabel("Address line 1");
-  if (!(await addressLine.isVisible().catch(() => false))) {
-    const snippet = await page
-      .locator("[data-testid=shop-commerce-content], main")
-      .first()
-      .textContent();
-    throw new Error(
-      `Checkout delivery form missing at ${page.url()}: ${(snippet ?? "").replace(/\s+/g, " ").slice(0, 500)}`,
-    );
-  }
+  const snippet = await page
+    .locator("[data-testid=shop-commerce-content], main")
+    .first()
+    .textContent();
+  throw new Error(
+    `Checkout delivery form missing at ${page.url()}: ${(snippet ?? "").replace(/\s+/g, " ").slice(0, 500)}`,
+  );
 }
 
 function deriveRehearsalSignupEmail(sourceEmail: string, stamp: number): string {
