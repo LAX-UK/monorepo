@@ -256,6 +256,7 @@ test("App Platform deploy action exposes exact deployment evidence and release c
   assert.match(testDeploy, /apps\/shop apps\/shop-identity/);
   assert.match(testDeploy, /needs\.classify\.outputs\.immutable_boundary_changed != 'true'/);
   assert.match(testDeploy, /AUTO_DEPLOY_SHOP_TEST/);
+  assert.match(testDeploy, /deploy-shop-immutable:[\s\S]*actions: write/);
   assert.match(testDeploy, /resolve-immutable-shop-deploy-pins\.mjs/);
   assert.match(testDeploy, /shop-staging-acceptance\.yml/);
   assert.match(read(".github/workflows/app-deploy-prod.yml"), /actions\/app-platform-deploy/);

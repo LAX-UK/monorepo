@@ -132,6 +132,9 @@ jobs:
         always() &&
         needs.resolve-shop-immutable-pins.result == 'success'
       }}
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
