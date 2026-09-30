@@ -201,6 +201,14 @@ describe("Bid BFF OIDC callback", () => {
     expect(exchangeAuthorizationCode).not.toHaveBeenCalled();
   });
 
+  it("does not redirect callback failures back into the OIDC callback route", async () => {
+    validateCallbackState.mockReturnValue(false);
+    const response = await GET(request("state=bad&code=authorization-code"));
+    const location = response.headers.get("location") ?? "";
+    expect(location).toMatch(/^https:\/\/lax\.bid\/login\?/);
+    expect(location).not.toContain("/api/auth/callback");
+  });
+
   it("invalidates the pending session when code exchange or rotation fails", async () => {
     exchangeAuthorizationCode.mockRejectedValue(new Error("invalid verifier"));
 

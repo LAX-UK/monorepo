@@ -8,9 +8,17 @@ import {
   SHOP_TOKEN_UPGRADE_COOKIE_NAME,
 } from "../session.js";
 import { SHOP_SILENT_SSO_COOKIE_NAMES } from "../silent-sign-in-cookies.js";
+import { assertStorefrontRedirectNotIdentityOwned } from "../storefront-owned-prefixes.js";
 import { testShopIdentityEnv } from "../test/shop-identity-env.fixture.js";
 import { createTestTokenService } from "../test/token-service.mock.js";
 import { registerOAuthRoutes } from "./oauth.routes.js";
+
+const documentNavigation = {
+  headers: {
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-dest": "document",
+  },
+};
 
 function createRoute(callbackResult: CompleteOAuthCallbackResult = { kind: "session_expired" }) {
   const app = new Hono();
@@ -49,7 +57,7 @@ describe("OAuth routes", () => {
   it.each([
     {
       outcome: { kind: "error", code: "token_exchange_failed" } as const,
-      location: "http://localhost:3020/auth/callback?error=token_exchange_failed",
+      location: "http://localhost:3020/sign-in-error?reason=token_exchange_failed",
     },
     {
       outcome: { kind: "disabled" } as const,
@@ -138,6 +146,7 @@ describe("OAuth routes", () => {
     });
     const response = await app.request("/auth/upgrade", {
       headers: {
+        ...documentNavigation.headers,
         cookie: `${SESSION_COOKIE_NAME}=${sessionId}`,
       },
     });
@@ -149,37 +158,92 @@ describe("OAuth routes", () => {
     expect(response.headers.get("set-cookie")).toContain(`${SHOP_TOKEN_UPGRADE_COOKIE_NAME}=`);
   });
 
-  it("blocks a second upgrade attempt while the one-shot cookie is present", async () => {
+  it("blocks a third document upgrade attempt while the counter cookie is present", async () => {
     const sessionId = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEfg";
     const { app } = createRoute();
     const response = await app.request("/auth/upgrade", {
       headers: {
-        cookie: `${SESSION_COOKIE_NAME}=${sessionId}; ${SHOP_TOKEN_UPGRADE_COOKIE_NAME}=1`,
+        ...documentNavigation.headers,
+        cookie: `${SESSION_COOKIE_NAME}=${sessionId}; ${SHOP_TOKEN_UPGRADE_COOKIE_NAME}=2`,
       },
     });
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("http://localhost:3020/session-expired");
   });
 
-  it("redirects repeated interactive login for the same returnTo to session-expired", async () => {
+  it("redirects the third interactive login for the same returnTo to session-expired", async () => {
     const { app } = createRoute();
-    const first = await app.request("/login?returnTo=%2Fcheckout");
-    expect(first.status).toBe(302);
-    const setCookies =
-      typeof first.headers.getSetCookie === "function"
-        ? first.headers.getSetCookie()
-        : [first.headers.get("set-cookie") ?? ""];
-    const cookieHeader = setCookies
-      .flatMap((entry) => entry.split(/,(?=\s*[^;]+=)/))
-      .map((part) => part.trim().split(";")[0] ?? "")
-      .filter(Boolean)
-      .join("; ");
-    expect(cookieHeader).toContain("shop_auth_attempt=");
-    const second = await app.request("/login?returnTo=%2Fcheckout", {
-      headers: { cookie: cookieHeader },
+    const cookieHeader = "shop_auth_attempt=%2Fcheckout|2";
+    const response = await app.request("/login?returnTo=%2Fcheckout", {
+      headers: { ...documentNavigation.headers, cookie: cookieHeader },
     });
-    expect(second.status).toBe(302);
-    expect(second.headers.get("location")).toBe("http://localhost:3020/session-expired");
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("http://localhost:3020/session-expired");
+  });
+
+  it("skips OAuth when login is requested with an active authenticated session", async () => {
+    const sessionId = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEfg";
+    const app = new Hono();
+    registerOAuthRoutes(app, {
+      env: testShopIdentityEnv,
+      discovery: {
+        authorization_endpoint: "https://identity.example/authorize",
+        end_session_endpoint: "https://identity.example/logout",
+      } as unknown as OidcDiscovery,
+      secureCookies: false,
+      sessionRepository: {
+        findActive: vi.fn(async () => ({
+          id: sessionId,
+          subject: "sub-1",
+          sid: "sid-1",
+          oauth: null,
+        })),
+        createPendingOAuth: vi.fn(),
+        attachPendingOAuthToAuthenticatedSession: vi.fn(),
+        createGuestSession: vi.fn(),
+        authenticate: vi.fn(),
+        invalidate: vi.fn(),
+        consumeLogoutToken: vi.fn(async () => "consumed" as const),
+      },
+      tokenService: createTestTokenService(),
+      completeOAuthCallback: vi.fn(),
+    });
+    const response = await app.request("/login?returnTo=%2Fcheckout", {
+      headers: { ...documentNavigation.headers, cookie: `${SESSION_COOKIE_NAME}=${sessionId}` },
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("http://localhost:3020/checkout");
+  });
+
+  it("never redirects storefront users into shop-identity-owned paths (except OP authorize)", async () => {
+    const outcomes: CompleteOAuthCallbackResult[] = [
+      { kind: "error", code: "invalid_state" },
+      { kind: "error", code: "token_exchange_failed" },
+      { kind: "session_expired" },
+      { kind: "disabled" },
+    ];
+    for (const outcome of outcomes) {
+      const { app } = createRoute(outcome);
+      const response = await app.request("/auth/callback?state=state&code=code", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=pending-session` },
+      });
+      const location = response.headers.get("location");
+      if (!location) {
+        throw new Error("expected redirect location");
+      }
+      if (location.includes("identity.example/authorize")) continue;
+      expect(() => assertStorefrontRedirectNotIdentityOwned(location)).not.toThrow();
+      expect(location).not.toMatch(/\/auth\/callback/);
+    }
+  });
+
+  it("returns 204 for prefetch login without starting OAuth", async () => {
+    const { app } = createRoute();
+    const response = await app.request("/login?returnTo=%2Fcheckout", {
+      headers: { "next-router-prefetch": "1", rsc: "1" },
+    });
+    expect(response.status).toBe(204);
+    expect(response.headers.get("set-cookie")).toBeNull();
   });
 
   it("clears session on login_required upgrade callback without looping", async () => {
@@ -223,7 +287,7 @@ describe("OAuth routes", () => {
   it("starts confidential-client authorization with PKCE S256 on login and register", async () => {
     for (const path of ["/login", "/register"] as const) {
       const { app } = createRoute();
-      const response = await app.request(path);
+      const response = await app.request(path, documentNavigation);
       expect(response.status).toBe(302);
       const location = new URL(response.headers.get("location") ?? "");
       expect(location.pathname).toBe("/authorize");

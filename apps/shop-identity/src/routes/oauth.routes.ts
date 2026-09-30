@@ -11,6 +11,8 @@ import type {
   CompleteOAuthCallbackResult,
 } from "../application/complete-oauth-callback.handler.js";
 import { refreshExpiresAtFromNow } from "../application/token-expiry.js";
+import { isBackgroundShopAuthRequest, isDocumentShopAuthRequest } from "../auth-request-policy.js";
+import { logShopIdentityAuth } from "../auth-telemetry.js";
 import { clearBasketToken } from "../basket-cookie.js";
 import { clearShopAuthCookies } from "../clear-shop-auth-cookies.js";
 import { assertStorefrontOrigin, clearCommerceCsrfCookie } from "../commerce-csrf.js";
@@ -34,6 +36,7 @@ import {
   markShopSilentQuiet,
   markShopSilentSuppressed,
 } from "../silent-sign-in-cookies.js";
+import { assertStorefrontRedirectNotIdentityOwned } from "../storefront-owned-prefixes.js";
 import { shopStorefrontBaseUrl, shopStorefrontPath } from "../storefront-routes.js";
 
 type OAuthRoutesDeps = Pick<
@@ -64,6 +67,29 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       : "/";
   }
 
+  function parseAuthAttempt(raw: string | undefined): { returnTo: string; count: number } | null {
+    if (!raw) return null;
+    const separator = raw.lastIndexOf("|");
+    if (separator <= 0) return null;
+    const returnTo = raw.slice(0, separator);
+    const count = Number(raw.slice(separator + 1));
+    if (!returnTo.startsWith("/") || returnTo.startsWith("//") || !Number.isFinite(count)) {
+      return null;
+    }
+    return { returnTo, count };
+  }
+
+  function storefrontSignInError(code: string): string {
+    const location = shopStorefrontPath(env, `/sign-in-error?reason=${encodeURIComponent(code)}`);
+    assertStorefrontRedirectNotIdentityOwned(location);
+    return location;
+  }
+
+  function skipBackgroundAuthStart(c: Context) {
+    logShopIdentityAuth("auth_start_skipped_background", { path: c.req.path });
+    return c.body(null, 204);
+  }
+
   function redirectSilentProbeGuest(c: Context, clearSession: boolean) {
     deleteCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, { path: "/" });
     if (clearSession) {
@@ -78,18 +104,35 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
     c: Context,
     options?: { prompt?: OidcAuthorizePrompt; requireAuthenticatedSession?: boolean },
   ) {
+    if (isBackgroundShopAuthRequest(c)) {
+      return skipBackgroundAuthStart(c);
+    }
     const returnTo = c.req.query("returnTo");
     const safeReturnTo =
       typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
         ? returnTo
         : null;
     const isInteractiveLogin = !options?.prompt;
-    if (isInteractiveLogin && safeReturnTo) {
-      const priorAttempt = getCookie(c, SHOP_AUTH_ATTEMPT_COOKIE_NAME);
-      if (priorAttempt === safeReturnTo) {
+    if (
+      isInteractiveLogin &&
+      !options?.requireAuthenticatedSession &&
+      isDocumentShopAuthRequest(c)
+    ) {
+      const sessionId = readSessionId(c);
+      if (sessionId) {
+        const active = await sessionRepository.findActive(sessionId);
+        if (active?.subject) {
+          return c.redirect(shopStorefrontPath(env, safeReturnTo ?? "/account"), 302);
+        }
+      }
+    }
+    if (isInteractiveLogin && safeReturnTo && isDocumentShopAuthRequest(c)) {
+      const parsed = parseAuthAttempt(getCookie(c, SHOP_AUTH_ATTEMPT_COOKIE_NAME));
+      if (parsed?.returnTo === safeReturnTo && parsed.count >= 2) {
         return c.redirect(shopStorefrontPath(env, "/session-expired"), 302);
       }
-      setCookie(c, SHOP_AUTH_ATTEMPT_COOKIE_NAME, safeReturnTo, {
+      const nextCount = parsed?.returnTo === safeReturnTo ? parsed.count + 1 : 1;
+      setCookie(c, SHOP_AUTH_ATTEMPT_COOKIE_NAME, `${safeReturnTo}|${nextCount}`, {
         httpOnly: true,
         secure: secureCookies,
         sameSite: "Lax",
@@ -139,16 +182,25 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
     );
   }
 
-  app.get("/login", (c) => {
+  app.get("/login", async (c) => {
+    if (isBackgroundShopAuthRequest(c)) {
+      return skipBackgroundAuthStart(c);
+    }
     clearShopSilentSuppressed(c);
     return startShopAuthorization(c);
   });
-  app.get("/register", (c) => {
+  app.get("/register", async (c) => {
+    if (isBackgroundShopAuthRequest(c)) {
+      return skipBackgroundAuthStart(c);
+    }
     clearShopSilentSuppressed(c);
     return startShopAuthorization(c);
   });
 
   app.get("/auth/sso-probe", async (c) => {
+    if (isBackgroundShopAuthRequest(c)) {
+      return skipBackgroundAuthStart(c);
+    }
     const safeReturnTo = safeReturnToFromQuery(c);
     if (getCookie(c, silentCookieNames.suppressed) || getCookie(c, silentCookieNames.quiet)) {
       return c.redirect(shopStorefrontPath(env, safeReturnTo), 302);
@@ -165,16 +217,23 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/auth/upgrade", async (c) => {
-    if (getCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME)) {
-      return c.redirect(shopStorefrontPath(env, "/session-expired"), 302);
+    if (isBackgroundShopAuthRequest(c)) {
+      return skipBackgroundAuthStart(c);
     }
-    setCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, "1", {
-      httpOnly: true,
-      secure: secureCookies,
-      sameSite: "Lax",
-      path: "/",
-      maxAge: 60 * 5,
-    });
+    if (isDocumentShopAuthRequest(c)) {
+      const prior = getCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME);
+      const count = prior ? Number(prior) : 0;
+      if (Number.isFinite(count) && count >= 2) {
+        return c.redirect(shopStorefrontPath(env, "/session-expired"), 302);
+      }
+      setCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, String(count + 1), {
+        httpOnly: true,
+        secure: secureCookies,
+        sameSite: "Lax",
+        path: "/",
+        maxAge: 60 * 5,
+      });
+    }
     return startShopAuthorization(c, { prompt: "none", requireAuthenticatedSession: true });
   });
 
@@ -207,6 +266,11 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       code: c.req.query("code") ?? null,
       oauthError,
     });
+    logShopIdentityAuth("oauth_callback", {
+      kind: result.kind,
+      code: result.kind === "error" ? result.code : undefined,
+      probe: probeActive,
+    });
     deleteCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, { path: "/" });
     if (probeActive) {
       clearShopSilentProbe(c);
@@ -224,10 +288,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
         }
         return redirectSilentProbeGuest(c, true);
       }
-      return c.redirect(
-        shopStorefrontPath(env, `/auth/callback?error=${encodeURIComponent(result.code)}`),
-        302,
-      );
+      return c.redirect(storefrontSignInError(result.code), 302);
     }
     if (result.kind === "disabled") {
       if (probeActive) {

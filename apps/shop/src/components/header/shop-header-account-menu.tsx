@@ -1,5 +1,6 @@
 "use client";
 
+import { ShopAuthLink } from "@/components/shop-auth-link";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { FOCUS_RING } from "@auction/branding";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
@@ -113,12 +114,12 @@ export function ShopGuestAccountMenu({
         </div>
         <div className="flex flex-col gap-1 px-2 py-2">
           <DropdownMenuItem asChild className={menuItemClass(headerTone)}>
-            <Link href={loginHref} {...(onNavigate ? { onClick: onNavigate } : {})}>
+            <ShopAuthLink href={loginHref} {...(onNavigate ? { onClick: onNavigate } : {})}>
               Sign in
-            </Link>
+            </ShopAuthLink>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="p-0 focus:bg-transparent">
-            <Link
+            <ShopAuthLink
               href={registerHref}
               className={cn(
                 "inline-flex min-h-11 w-full items-center justify-center rounded bg-cta-bg px-3 py-2 text-center font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-cta-on transition-opacity hover:opacity-95",
@@ -127,7 +128,7 @@ export function ShopGuestAccountMenu({
               {...(onNavigate ? { onClick: onNavigate } : {})}
             >
               Create account
-            </Link>
+            </ShopAuthLink>
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>

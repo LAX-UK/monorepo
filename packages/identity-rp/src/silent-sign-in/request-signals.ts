@@ -8,8 +8,19 @@ export function isDocumentNavigation(method: string, getHeader: HeaderGetter): b
 }
 
 export function isPrefetch(getHeader: HeaderGetter): boolean {
+  if (getHeader("next-router-prefetch") === "1") return true;
   const purpose = getHeader("sec-purpose") ?? getHeader("purpose");
   return purpose?.toLowerCase().includes("prefetch") ?? false;
+}
+
+/** Next.js App Router client prefetch / flight requests (not a full document navigation). */
+export function isNextRscRequest(getHeader: HeaderGetter): boolean {
+  const rsc = getHeader("rsc");
+  return rsc === "1" || rsc === "true";
+}
+
+export function isBackgroundAuthRequest(getHeader: HeaderGetter): boolean {
+  return isPrefetch(getHeader) || isNextRscRequest(getHeader);
 }
 
 const CRAWLER_UA =

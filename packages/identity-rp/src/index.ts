@@ -42,8 +42,10 @@ export {
   type SilentSignInRequest,
 } from "./silent-sign-in/eligibility.js";
 export {
+  isBackgroundAuthRequest,
   isDocumentNavigation,
   isLikelyCrawler,
+  isNextRscRequest,
   isPrefetch,
   type HeaderGetter,
 } from "./silent-sign-in/request-signals.js";
