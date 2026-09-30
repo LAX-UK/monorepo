@@ -22,6 +22,10 @@ test.describe("staff catalog smoke @smoke", () => {
       });
     });
   }
+});
+
+test.describe("staff catalog detail and edit @journey", () => {
+  test.skip(!e2eEnabled, e2eSkipReason);
 
   test("category detail and edit load", async ({ page }) => {
     await gotoAdminPath(page, `/admin/categories/${seededStaffRoutes.categoryDetail}`);

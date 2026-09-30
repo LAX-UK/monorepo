@@ -18,11 +18,12 @@ test("run-test-suite isolates @auction/db when migration integration DB is confi
   assert.match(source, /--filter=@auction\/db/);
 });
 
-test("main full-verify runs web vitest on matrix runners", () => {
+test("CI runs web vitest on parallel matrix shards", () => {
   const workflow = readFileSync(join(root, ".github/workflows/ci.yml"), "utf8");
-  assert.match(workflow, /full-verify-web-vitest:/);
-  assert.match(workflow, /CI_SKIP_WEB_VITEST_SHARDS: "1"/);
-  assert.match(workflow, /needs: full-verify-web-vitest/);
+  assert.match(workflow, /web-vitest:/);
+  assert.match(workflow, /shard: \[1, 2, 3, 4\]/);
+  assert.doesNotMatch(workflow, /full-verify-web-vitest:/);
+  assert.doesNotMatch(workflow, /full-verify:/);
   assert.match(workflow, /build --filter=@auction\/web\^\.\.\./);
 });
 

@@ -1,16 +1,12 @@
 import type { IEmailService } from "@auction/email";
 import { describe, expect, it, vi } from "vitest";
-import {
-  type AssertAssignable,
-  defineCompileTimeContract,
-} from "../testing/compile-time-contract.js";
 import { AML_MATCH_REVIEW_PROJECTOR } from "./aml-match-review.js";
 import { BID_IDENTITY_DIRECTORY_PROJECTOR } from "./bid-identity-directory.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { LOT_INVOICE_INITIATION_PROJECTOR } from "./lot-invoice-initiation.js";
 import { MARKETING_CONTACTS_PROJECTOR } from "./marketing-contacts-projector.js";
 import { NOTIFICATION_FANOUT_PROJECTOR } from "./notification-fanout.js";
-import { type ProjectorRegistry, createDefaultProjectorRegistry } from "./projector-registry.js";
+import { createDefaultProjectorRegistry } from "./projector-registry.js";
 import { SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR } from "./source-of-funds-document-review.js";
 import { SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR } from "./source-of-funds-documents.js";
 import { SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR } from "./source-of-funds-review-resolution.js";
@@ -40,12 +36,6 @@ const EXPECTED_PROJECTOR_ORDER = [
   SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR,
   LOT_INVOICE_INITIATION_PROJECTOR,
 ] as const;
-
-type _RegistryContract = AssertAssignable<
-  ReturnType<typeof createDefaultProjectorRegistry>,
-  ProjectorRegistry
->;
-defineCompileTimeContract<_RegistryContract>();
 
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {
   return {

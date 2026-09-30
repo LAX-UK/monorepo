@@ -21,7 +21,7 @@ This runbook covers domain-event delivery, Zoho/Xero projectors, inbound webhook
 3. **Webhooks** — enable `WEBHOOK_EVENTS_ENQUEUE` on API, then `WEBHOOK_EVENTS_PROCESS` on worker; monitor `webhook_event` oldest unprocessed age and drain job metrics.
 4. **Canary event types** — narrow lists: `ZOHO_CRM_ENABLED_EVENT_TYPES`, `XERO_PROJECTOR_LIVE_OPERATIONS`. For Zoho, `canary` and `live` both perform HTTP for allowlisted types; only the allowlist differs from a full rollout.
 5. **Replay skipped CRM deliveries** — after fixing config or policy, run `pnpm --filter @auction/worker replay:crm-skipped` (uses enabled event types or full Zoho catalog).
-6. **Single-owner live** — for each Xero operation, set `XERO_API_WRITES_DISABLED=true` on API **before** enabling matching live projector operations. Run `DOMAIN_EVENT_SMOKE_GATES` suites (`apps/worker/src/domain-event-smoke.test.ts`) and confirm zero new contract dead-letters in shadow/canary.
+6. **Single-owner live** — for each Xero operation, set `XERO_API_WRITES_DISABLED=true` on API **before** enabling matching live projector operations. Run `DOMAIN_EVENT_SMOKE_GATES` via `node scripts/ci/run-domain-event-smoke-gates.mjs` and confirm zero new contract dead-letters in shadow/canary.
 7. **Lifecycle** — after parity checks, set `LIFECYCLE_EXECUTION_OWNER=worker` on **both** API and worker in the same deploy window.
 
 Finance cron and Xero ownership cutovers: [worker-runtime-cutover.md](./worker-runtime-cutover.md).

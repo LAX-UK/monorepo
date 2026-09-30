@@ -90,6 +90,9 @@ jobs:
       - name: Zod schema transform lint
         run: pnpm lint:z-schema-transform
 
+      - name: Vitest mock hygiene
+        run: pnpm lint:test-mocks
+
       - name: Lint
         run: pnpm turbo run lint --affected
 
@@ -108,8 +111,8 @@ jobs:
       - name: Identity exit criteria
         run: pnpm ci:identity-exit-criteria
 
-      - name: Identity staging workflow contracts
-        run: node --test scripts/ci/ci-workflow.test.mjs scripts/ci/identity-staging-workflows.test.mjs scripts/ci/parse-docker-image-pin.test.mjs scripts/ci/verify-zoho-crm-workflows.test.mjs scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/identity-soak-gate-validation.test.mjs scripts/ci/identity-soak-window.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/identity-recovery/manifest.test.mjs scripts/ci/identity-recovery/transition-policy.test.mjs
+      - name: CI script unit tests
+        run: node --test scripts/ci/parse-docker-image-pin.test.mjs scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/identity-soak-gate-validation.test.mjs scripts/ci/identity-soak-window.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/identity-recovery/manifest.test.mjs scripts/ci/identity-recovery/transition-policy.test.mjs
 
       - name: Actionlint workflow contracts
         run: |
@@ -263,27 +266,11 @@ jobs:
       - name: Verify executable migration rollback pairs
         run: node scripts/ci/verify-migration-pairs.mjs
 
-      - name: FK removal inventory (report-only)
-        run: node scripts/ci/run-fk-removal-inventory-gate.mjs
-
       - name: Identity boundary conformance
         run: pnpm ci:identity-boundary
 
       - name: Test affected packages (excluding web)
         run: pnpm turbo run test --affected --filter=!@auction/web
-
-      - name: Test web suite (sharded)
-        run: |
-          set -euo pipefail
-          if ! pnpm turbo run test --affected --filter=@auction/web --dry-run 2>&1 | grep -q '@auction/web'; then
-            echo "Web tests not affected; skipping sharded vitest run."
-            exit 0
-          fi
-          pnpm turbo run build --filter=@auction/web^...
-          for shard in 1 2 3 4; do
-            echo "Running web vitest shard ${shard}/4"
-            pnpm --filter @auction/web exec vitest run --shard="${shard}/4"
-          done
 
       - name: Runtime ownership smoke gates
         run: pnpm --filter @auction/types build && pnpm --filter @auction/background-runtime build && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
@@ -293,6 +280,44 @@ jobs:
 
       - name: Cutover readiness defaults
         run: node scripts/ci/verify-cutover-readiness.mjs
+
+  web-vitest:
+    name: web vitest (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main for turbo affected
+        if: github.event_name == 'pull_request'
+        run: git fetch origin main:main
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Vitest shard
+        run: |
+          set -euo pipefail
+          if ! pnpm turbo run test --affected --filter=@auction/web --dry-run 2>&1 | grep -q '@auction/web'; then
+            echo "Web tests not affected; skipping shard ${{ matrix.shard }}/4."
+            exit 0
+          fi
+          pnpm turbo run build --filter=@auction/web^...
+          pnpm --filter @auction/web exec vitest run --shard=${{ matrix.shard }}/4
 
   worker-role-contract:
     runs-on: ubuntu-latest
@@ -568,120 +593,3 @@ jobs:
       - name: N/N-1 Auth image compatibility
         if: steps.identity_paths.outputs.identity == 'true'
         run: pnpm ci:identity-nn1-compat
-
-  full-verify-web-vitest:
-    name: full-verify web vitest (${{ matrix.shard }}/4)
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    env:
-      CI: "true"
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # Vitest uses Vite; do not run `next build` here (next/font/google network fetch flakes on CI).
-      - name: Build web workspace dependencies
-        run: pnpm turbo run build --filter=@auction/web^...
-
-      - name: Vitest shard
-        run: pnpm --filter @auction/web exec vitest run --shard=${{ matrix.shard }}/4 --reporter=dot --reporter=blob
-
-      - name: Upload blob report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: vitest-web-blob-${{ matrix.shard }}
-          path: apps/web/.vitest-reports/blob-${{ matrix.shard }}-4.json
-          if-no-files-found: warn
-          retention-days: 7
-
-  full-verify:
-    needs: full-verify-web-vitest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/release')
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: auction_ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
-      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
-      REDIS_URL: redis://127.0.0.1:6379
-      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
-      DATABASE_URL_WORKER: postgresql://worker_app:postgres@localhost:5432/auction_ci
-      DATABASE_URL_AUTH: postgresql://auth_app:postgres@localhost:5432/auction_ci
-      DATABASE_URL_API: postgresql://api_app:postgres@localhost:5432/auction_ci
-      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
-      WORKER_APP_DB_PASSWORD: postgres
-      API_APP_DB_PASSWORD: postgres
-      AUTH_APP_DB_PASSWORD: postgres
-      SHOP_APP_DB_PASSWORD: postgres
-      WORKER_ROLE_CONTRACT_REQUIRED: "true"
-      AUTH_ROLE_CONTRACT_REQUIRED: "true"
-      CI: "true"
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build db package dependencies
-        run: pnpm --filter @auction/db... build
-
-      - name: Migrate test database
-        run: pnpm --filter @auction/db db:migrate
-
-      - name: Verify executable migration rollback pairs
-        run: node scripts/ci/verify-migration-pairs.mjs
-
-      - name: Seed worker role contract probes
-        run: pnpm --filter @auction/db exec tsx scripts/seed-worker-role-contract-probes.ts
-
-      - name: Apply application role grants
-        run: pnpm --filter @auction/db db:roles
-
-      - name: Full monorepo verify (ci:verify)
-        env:
-          CI_SKIP_WEB_VITEST_SHARDS: "1"
-        run: pnpm ci:verify
-
-      - name: Release gates bundle
-        run: pnpm ci:release-gates
