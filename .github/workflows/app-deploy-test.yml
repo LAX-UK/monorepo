@@ -149,6 +149,8 @@ jobs:
     uses: ./.github/workflows/terraform-apply-test.yml
     with:
       layer: ephemeral
+      # Pin until shop /health/live health_check_path is on main (auction-infra 2376d2c).
+      infra_ref: 2376d2cc16b79486d9912715e239b2e050ed3d60
       parent_holds_deploy_lock: true
       identity_sha: ${{ needs.resolve-shop-immutable-pins.outputs.identity_sha }}
       identity_digest: ${{ needs.resolve-shop-immutable-pins.outputs.identity_digest }}
