@@ -10,7 +10,7 @@
 6. Run staging **identity-staging-acceptance** (`verify-bid-web-bff-roundtrip.mjs`).
 7. Mirror issuer changes to `lax-identity` and run `LAX_IDENTITY_ROOT=../lax-identity node scripts/ci/verify-identity-source-parity.mjs`.
 8. Complete manual parity checklist: [bid-hosted-login-parity-audit.md](./bid-hosted-login-parity-audit.md).
-9. Re-baseline identity soak repo vars and dispatch the first `identity-staging-soak` sample immediately (see [identity-staging-extraction-evidence.md](./identity-staging-extraction-evidence.md)).
+9. When soak evidence is required, dispatch `identity-staging-soak` manually (`mode=sample`; no cron chain). See [identity-staging-extraction-evidence.md](./identity-staging-extraction-evidence.md).
 
 ## Kill switch
 

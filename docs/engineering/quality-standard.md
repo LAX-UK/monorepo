@@ -86,14 +86,14 @@ Run with Node.js 22, seeded stack on `:3000` (web) and `:3001` (API), and
 |------|---------|-------|-----|
 | Portfolio guard | `pnpm lint:e2e-portfolio` | all PRs | `ci.yml` static-checks |
 | Tag taxonomy guard | `pnpm lint:e2e-tags` | all PRs | `ci.yml` static-checks |
-| PR smoke + curated visuals | `pnpm ci:e2e-pr` | UI cross-stack changes | `e2e-pr.yml` |
-| Staff catalog smoke | `pnpm --filter @auction/web test:e2e:smoke` | navigation regressions | PR subset |
-| Role contracts | `pnpm --filter @auction/web test:e2e:roles` | authorization | manual / stabilization |
-| Curated admin visuals | `pnpm --filter @auction/web test:e2e:visual` | layout/theme | PR subset |
+| PR browser gates | `pnpm ci:e2e-pr` | cross-stack UI | `e2e-pr.yml` (`@smoke`, `@roles`, three Shop specs) |
+| Staff catalog smoke | `pnpm --filter @auction/web test:e2e:smoke` | navigation regressions | PR subset via `e2e-pr.yml` |
+| Role contracts | `pnpm --filter @auction/web test:e2e:roles` | authorization | PR via `e2e-pr.yml` |
+| Curated admin visuals | `pnpm --filter @auction/web test:e2e:visual` | layout/theme | **manual only** (`visual-baselines.yml`) |
 | Broader stabilization | `pnpm --filter @auction/web test:e2e:stabilization` | a11y + journeys | weekly shard |
 | Admin baseline refresh | `pnpm --filter @auction/web test:e2e:admin-visual-update` | explicit UI refresh | `visual-baselines.yml` |
 | Marketing visuals | `UPDATE_MARKETING_VISUALS=1 pnpm ci:visual-baseline` | opt-in only | not in PR gates |
-| Shop browser gates | `pnpm --filter @auction/shop test:e2e` | behavior, a11y, theme | `e2e-pr.yml` |
+| Shop browser gates | `pnpm --filter @auction/shop test:e2e` | behavior, a11y, theme | `e2e-pr.yml` (curated subset) |
 
 Tag ownership in specs: `@smoke`, `@journey`, `@a11y`, `@roles`, `@visual`,
 `@optin`. Every `test.describe` block must declare one tier tag; `pnpm lint:e2e-tags`

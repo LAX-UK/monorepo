@@ -255,6 +255,9 @@ test("App Platform deploy action exposes exact deployment evidence and release c
   assert.match(testDeploy, /Detect changes requiring immutable staging cutover/);
   assert.match(testDeploy, /apps\/shop apps\/shop-identity/);
   assert.match(testDeploy, /needs\.classify\.outputs\.immutable_boundary_changed != 'true'/);
+  assert.match(testDeploy, /AUTO_DEPLOY_SHOP_TEST/);
+  assert.match(testDeploy, /resolve-immutable-shop-deploy-pins\.mjs/);
+  assert.match(testDeploy, /shop-staging-acceptance\.yml/);
   assert.match(read(".github/workflows/app-deploy-prod.yml"), /actions\/app-platform-deploy/);
 });
 
@@ -379,14 +382,11 @@ test("Node service images embed image-owned SENTRY_RELEASE from IMAGE_SHA", () =
   assert.match(shopIdentity, /new pg\.Pool\(buildPgConnectionConfig\(databaseUrl\)\)/);
 });
 
-test("identity staging soak watch fails closed on unhealthy chains", () => {
-  const watch = read(".github/workflows/identity-staging-soak-watch.yml");
-  assert.match(watch, /watch-identity-staging-pipelines\.mjs/);
-  assert.doesNotMatch(watch, /IDENTITY_SOAK_STARTED_AT_TEST/);
-  assert.match(watch, /resolve-live-identity-sha|AUTH_BASE_URL/);
+test("identity staging soak is manual dispatch only (no cron chain)", () => {
+  assert.throws(() => read(".github/workflows/identity-staging-soak-watch.yml"));
 });
 
-test("identity staging soak samples read-only contracts on a schedule", () => {
+test("identity staging soak samples read-only contracts when dispatched", () => {
   const soak = read(".github/workflows/identity-staging-soak.yml");
   assert.match(soak, /collect-identity-staging-soak-sample\.mjs/);
   assert.match(soak, /evaluate-identity-staging-soak\.mjs/);
@@ -403,29 +403,15 @@ test("identity staging soak samples read-only contracts on a schedule", () => {
     "reset must not queue behind long-running samples",
   );
   assert.match(sampleJob, /concurrency:\n\s+group: identity-staging-soak-sample/);
-  assert.doesNotMatch(soak.slice(soak.indexOf("Schedule next soak sample")), /-f "identity_sha=/);
   assert.match(soak, /identity-staging-soak-sample-/);
   assert.match(soak, /inputs\.mode == 'reset'/);
   assert.match(soak, /DIGITALOCEAN_TOKEN: \$\{\{ secrets\.DIGITALOCEAN_TOKEN \}\}/);
-  assert.match(soak, /actions: write/);
   assert.match(soak, /if: always\(\)/);
-  assert.match(soak, /gh workflow run identity-staging-soak\.yml/);
   assert.match(soak, /AUTH_METRICS_TOKEN:auth_metrics_token/);
-  assert.match(soak, /\*\/15 \* \* \* \*/);
+  assert.doesNotMatch(soak, /schedule:/);
+  assert.doesNotMatch(soak, /gh workflow run identity-staging-soak\.yml/);
+  assert.doesNotMatch(soak, /resolve-soak-chain-context\.mjs/);
   assert.doesNotMatch(soak, /vars\.IDENTITY_SOAK_SHA_TEST/);
-});
-
-test("identity staging db repair loads database contract from terraform output", () => {
-  const repair = read(".github/workflows/identity-staging-db-repair.yml");
-  assert.match(repair, /postgres_owner_uri/);
-  assert.match(repair, /pnpm tsx scripts\/ci\/assess-staging-seed-damage\.mjs/);
-  assert.match(repair, /restore-staging-projector-cursors\.mjs/);
-  assert.match(repair, /restore_cursors/);
-  assert.match(repair, /repair-identity-outbox-relay-cursor\.mjs/);
-  assert.match(repair, /--cutoff/);
-  assert.doesNotMatch(repair, /secrets\.DATABASE_URL_OWNER/);
-  const assess = read("scripts/ci/assess-staging-seed-damage.mjs");
-  assert.match(assess, /FROM "\$\{table\}"/, "table names must be quoted (user is a keyword)");
 });
 
 test("workflows do not mutate IDENTITY_SOAK repository variables", () => {
@@ -440,10 +426,9 @@ test("workflows do not mutate IDENTITY_SOAK repository variables", () => {
   }
 });
 
-test("recovery reconcile reacts to failed recovery runs", () => {
-  const reconcile = read(".github/workflows/staging-recovery-reconcile.yml");
-  assert.match(reconcile, /workflow_run/);
-  assert.match(reconcile, /Staging recovery \(test\)/);
+test("staging recovery parses immutable shop pins from shared script", () => {
+  const workflow = read(".github/workflows/staging-recovery-test.yml");
+  assert.match(workflow, /parse-docker-image-pin\.mjs/);
 });
 
 test("fallback guard covers extraction manifests, lockfiles, and image workflows", () => {

@@ -42,7 +42,6 @@
     "ci:staging-acceptance": "node scripts/ci/run-staging-acceptance-preflight.mjs",
     "ci:identity-acceptance-preflight": "node scripts/ci/run-identity-acceptance-preflight.mjs",
     "ci:identity-soak-gate-validation": "node --test scripts/ci/identity-soak-gate-validation.test.mjs",
-    "ci:identity-staging-watch": "node scripts/ci/watch-identity-staging-pipelines.mjs",
     "ci:docker-patches": "node --test scripts/ci/verify-docker-patched-dependencies.test.mjs",
     "ci:shop-architecture": "node --test scripts/ci/verify-shop-architecture.test.mjs && node --test scripts/ci/verify-shop-theme.test.mjs && node --test scripts/ci/verify-lax-ecosystem.test.mjs && node scripts/ci/verify-shop-assets.mjs",
     "ci:lax-ecosystem": "node --test scripts/ci/verify-lax-ecosystem.test.mjs",
