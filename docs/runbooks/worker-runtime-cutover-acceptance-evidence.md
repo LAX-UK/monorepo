@@ -17,7 +17,7 @@ Record **concrete evidence** in staging (or production dry-run) before flipping 
 ## Preconditions (automated in CI)
 
 - [x] Repository defaults keep rollback posture (`scripts/ci/verify-cutover-readiness.mjs`: lifecycle `api`, absentee/finance `api_rollback`, finance rollback enabled)
-- [ ] `pnpm ci:verify` green on the **release commit** (also `full-verify` job on `main` / `release` push)
+- [ ] `pnpm ci:verify` green on the **release commit** (CI workflow green on `main` / `release` push for that SHA)
 - [ ] `pnpm ci:release-gates` green (`REDIS_URL` required)
 - [ ] Worker role contract job green (`DATABASE_URL_WORKER`, `db:roles`, snapshot + domain_event + `failed_jobs` probes)
 - [ ] `pnpm ci:classify-tree` reviewed; working tree **clean** before tag (`pnpm ci:record-evidence`)
