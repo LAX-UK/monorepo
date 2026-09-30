@@ -14,10 +14,10 @@ export default defineConfig({
     // jsdom + Vite transform saturates Vitest worker RPC on shared CI runners.
     ...(ci
       ? {
-          fileParallelism: false,
-          maxWorkers: 1,
+          fileParallelism: true,
+          maxWorkers: 2,
           teardownTimeout: 30_000,
-          pool: "forks" as const,
+          pool: "threads" as const,
         }
       : { maxWorkers: "50%" }),
     server: {
