@@ -177,7 +177,7 @@ const PUBLISH_TX_RE = /publish\s*\(\s*tx\b/;
 
 /** @param {string} rel POSIX path relative to repo root */
 function isTestSource(rel) {
-  return /\.(test|spec|integration\.test)\.(ts|tsx)$/.test(rel);
+  return /\.(test|spec|integration\.test|type-contract)\.(ts|tsx)$/.test(rel);
 }
 
 // ─── API Identity storage boundary ───────────────────────────────────────────
