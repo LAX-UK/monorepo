@@ -151,16 +151,22 @@ async function ensureAuthenticatedCheckout(page: Page, email: string, password: 
   }
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await page.goto("/checkout");
-    await page.waitForURL(/test-shop\.lax\.bid\/checkout|test-auth\.lax\.bid\/login/, {
-      timeout: 60_000,
-    });
-    while (new URL(page.url()).hostname.includes("test-auth")) {
+    await page.waitForURL(
+      (url) =>
+        (url.origin === shopOrigin && url.pathname.startsWith("/checkout")) ||
+        (url.origin === new URL(authBase).origin && url.pathname === "/login"),
+      { timeout: 60_000 },
+    );
+    while (new URL(page.url()).origin === new URL(authBase).origin) {
       await hostedAuthSignIn(page, email, password);
-      await page.waitForURL(/test-shop\.lax\.bid/, { timeout: 120_000 });
+      await page.waitForURL((url) => url.origin === shopOrigin, { timeout: 120_000 });
       await page.goto("/checkout");
-      await page.waitForURL(/test-shop\.lax\.bid\/checkout|test-auth\.lax\.bid\/login/, {
-        timeout: 60_000,
-      });
+      await page.waitForURL(
+        (url) =>
+          (url.origin === shopOrigin && url.pathname.startsWith("/checkout")) ||
+          (url.origin === new URL(authBase).origin && url.pathname === "/login"),
+        { timeout: 60_000 },
+      );
     }
     if (!isShopCheckoutUrl(page.url())) {
       throw new Error(`Expected Shop /checkout after sign-in, got ${page.url()}`);
@@ -285,7 +291,10 @@ async function completeStripeCheckout(page: Page, payerEmail: string) {
 
   const payButton = page.getByRole("button", { name: /^Pay|^Submit|^Complete order/i }).first();
   await payButton.click();
-  await page.waitForURL(/test-shop\.lax\.bid.*\/checkout\/confirmation/, { timeout: 180_000 });
+  await page.waitForURL(
+    (url) => url.origin === shopOrigin && url.pathname.includes("/checkout/confirmation"),
+    { timeout: 180_000 },
+  );
 }
 
 test.describe("demo readiness (test) @demo-readiness", () => {
