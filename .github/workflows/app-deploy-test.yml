@@ -17,6 +17,11 @@ on:
       - scripts/ci/resolve-immutable-shop-deploy-pins.mjs
       - scripts/ci/registry-tag-poll.mjs
   workflow_dispatch:
+    inputs:
+      deploy_shop:
+        description: Force immutable Shop deploy on this commit (requires AUTO_DEPLOY_SHOP_TEST)
+        type: boolean
+        default: false
 permissions:
   contents: read
   actions: read
@@ -40,7 +45,10 @@ jobs:
         run: |
           set -euo pipefail
           changed=false
-          if test "${{ github.event_name }}" = "push" &&
+          if test "${{ github.event_name }}" = "workflow_dispatch" &&
+            test "${{ inputs.deploy_shop }}" = "true"; then
+            changed=true
+          elif test "${{ github.event_name }}" = "push" &&
             git diff --quiet "$BEFORE_SHA" "$CURRENT_SHA" -- \
               apps/shop apps/shop-identity apps/shop-api; then
             changed=false
@@ -57,6 +65,9 @@ jobs:
                 echo "Bid-only App Platform deploy runs; enable repo variable AUTO_DEPLOY_SHOP_TEST or use staging-recovery-test.yml for Shop."
               fi
             } >> "$GITHUB_STEP_SUMMARY"
+            if test "${{ vars.AUTO_DEPLOY_SHOP_TEST }}" != "true"; then
+              echo "::warning::Shop boundary changed but AUTO_DEPLOY_SHOP_TEST is not enabled; Bid App Platform deploy runs and test-shop stays on the previous Shop release."
+            fi
           fi
 
   ci-gate:
@@ -174,7 +185,8 @@ jobs:
       ${{
         always() &&
         !cancelled() &&
-        needs.classify.outputs.immutable_boundary_changed != 'true' &&
+        (needs.classify.outputs.immutable_boundary_changed != 'true' ||
+          vars.AUTO_DEPLOY_SHOP_TEST != 'true') &&
         needs.build-images.result != 'failure' &&
         needs.build-images.result != 'cancelled'
       }}
