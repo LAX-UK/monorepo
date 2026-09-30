@@ -6,11 +6,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
-    ...(ci
-      ? {
-          pool: "threads" as const,
-          isolate: false,
-        }
-      : {}),
+    // threads only in CI: isolate stays default (true) — isolate:false broke shared-state tests.
+    ...(ci ? { pool: "threads" as const } : {}),
   },
 });
