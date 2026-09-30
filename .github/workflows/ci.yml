@@ -22,6 +22,7 @@ env:
   SSF_DELIVERY_MAX_ATTEMPTS: "8"
   TURBO_SCM_BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_CACHE: ${{ vars.TURBO_TEAM != '' && (github.event_name == 'pull_request' && 'local:rw,remote:r' || 'local:rw,remote:rw') || 'local:rw' }}
   TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
@@ -280,8 +281,8 @@ jobs:
       - name: Identity boundary conformance
         run: pnpm ci:identity-boundary
 
-      - name: Test affected packages (excluding web)
-        run: pnpm turbo run test --affected --filter=!@auction/web --summarize
+      - name: Test affected packages (excluding web and api)
+        run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --summarize
 
       - name: Runtime ownership smoke gates
         run: pnpm --filter @auction/types build && pnpm --filter @auction/background-runtime build && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
@@ -341,6 +342,92 @@ jobs:
           fi
           pnpm turbo run build --filter=@auction/web^...
           pnpm --filter @auction/web exec vitest run --shard=${{ matrix.shard }}/4
+
+  api-vitest:
+    name: api vitest (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      SHOP_APP_DB_PASSWORD: postgres
+      REDIS_URL: redis://127.0.0.1:6379
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base for turbo affected
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch origin main:main
+          else
+            git fetch origin "${{ github.event.merge_group.base_sha }}"
+          fi
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != ''
+        uses: ./.github/actions/setup-turbo-remote-cache
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+
+      - name: Build db package dependencies
+        run: pnpm --filter @auction/db... build
+
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+      - name: Apply application role grants
+        run: pnpm --filter @auction/db db:roles
+
+      - name: Vitest shard
+        run: |
+          set -euo pipefail
+          pnpm turbo run test --affected --filter=@auction/api --dry-run=json > /tmp/affected.json
+          if ! jq -e '.tasks[] | select(.taskId == "@auction/api#test")' /tmp/affected.json > /dev/null; then
+            echo "API tests not affected; skipping shard ${{ matrix.shard }}/2."
+            exit 0
+          fi
+          pnpm turbo run build --filter=@auction/api^...
+          pnpm --filter @auction/api exec vitest run --shard=${{ matrix.shard }}/2
 
   worker-role-contract:
     runs-on: ubuntu-latest
@@ -623,6 +710,7 @@ jobs:
       - static-checks
       - identity-portability
       - test
+      - api-vitest
       - web-vitest
       - worker-role-contract
       - auth-role-contract
