@@ -1,7 +1,13 @@
 name: Setup Turborepo remote cache
 description: Authenticate to Vercel Remote Cache via GitHub OIDC (see turbo.json remoteCache).
+inputs:
+  team:
+    description: Vercel team slug (repo variable TURBO_TEAM)
+    required: true
 runs:
   using: composite
   steps:
     - name: Connect Turborepo remote cache
       uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f
+      with:
+        team: ${{ inputs.team }}
