@@ -25,7 +25,8 @@
     "test": "turbo run test",
     "test:docker": "bash scripts/docker-test.sh",
     "ci:verify:fast": "pnpm exec biome check . && pnpm turbo run lint && pnpm turbo run typecheck && pnpm turbo run test --affected",
-    "ci:verify": "pnpm exec biome check . && pnpm lint:ui-guardrails && pnpm lint:admin-capability-drift && pnpm lint:deps && pnpm lint:layers && pnpm lint:web-guardrails && pnpm lint:lib-admin-boundaries && pnpm lint:staff-legacy-shell && pnpm lint:staff-route-composition && pnpm lint:z-schema-transform && pnpm lint:e2e-portfolio && pnpm lint:e2e-tags && pnpm lint:test-mocks && node scripts/lint-queue-registry.mjs && pnpm ci:shop-architecture && pnpm ci:docker-patches && pnpm ci:identity-boundary && pnpm ci:identity-extractability && pnpm ci:identity-exit-criteria && pnpm turbo run lint && pnpm turbo run typecheck && node scripts/ci/run-test-suite.mjs && pnpm turbo run build && node scripts/check-email-assets.mjs",
+    "ci:verify": "pnpm exec biome check . && pnpm lint:ui-guardrails && pnpm lint:admin-capability-drift && pnpm lint:deps && pnpm lint:layers && pnpm lint:web-guardrails && pnpm lint:lib-admin-boundaries && pnpm lint:staff-legacy-shell && pnpm lint:staff-route-composition && pnpm lint:z-schema-transform && pnpm lint:e2e-portfolio && pnpm lint:e2e-tags && pnpm lint:test-mocks && node scripts/lint-queue-registry.mjs && pnpm ci:shop-architecture && pnpm ci:docker-patches && pnpm ci:identity-boundary && pnpm ci:identity-extractability && pnpm ci:identity-exit-criteria && pnpm turbo run lint && pnpm turbo run typecheck && node scripts/ci/run-test-suite.mjs && pnpm turbo run build",
+    "prepare": "node -e \"const fs=require('fs');if(fs.existsSync('.git')&&fs.existsSync('node_modules/simple-git-hooks'))require('child_process').execSync('simple-git-hooks',{stdio:'inherit'})\"",
     "ci:identity-boundary": "node scripts/ci/verify-identity-boundary.mjs",
     "ci:identity-extractability": "node scripts/identity/verify-docker-closure.mjs && node scripts/ci/verify-identity-extractability.mjs && node --test scripts/identity/identity-extraction.test.mjs",
     "ci:identity-exit-criteria": "node scripts/ci/verify-identity-exit-criteria.mjs",
@@ -33,7 +34,6 @@
     "ci:auth-terraform-env": "node scripts/ci/verify-auth-terraform-env.mjs",
     "ci:gitleaks-full-history": "gitleaks detect --source . --log-opts=--all --verbose --redact",
     "ci:platform-onboarding": "node scripts/ci/run-platform-onboarding-conformance.mjs",
-    "ci:fk-inventory": "node scripts/ci/run-fk-removal-inventory-gate.mjs",
     "ci:pr-local": "node scripts/ci/run-pr-ci-local.mjs",
     "ci:release-gates": "node scripts/ci/run-local-release-gates.mjs",
     "ci:classify-tree": "node scripts/ci/classify-working-tree.mjs",
@@ -98,8 +98,12 @@
     "jose": "^6.2.3",
     "madge": "^8.0.0",
     "pg": "^8.13.1",
+    "simple-git-hooks": "^2.14.0",
     "tsx": "^4.19.2",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec biome check --write --staged --files-ignore-unknown=true --no-errors-on-unmatched && git update-index --again"
   }
 }

@@ -25,6 +25,24 @@ export function digestForTag(tags, tag) {
   return tags.find((entry) => entry.tag === tag)?.manifest_digest ?? null;
 }
 
+export async function waitForShaTag(repository, sha, options = {}) {
+  const maxAttempts = options.maxAttempts ?? 12;
+  let delayMs = options.initialDelayMs ?? 5_000;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const digest = digestForTag(listTags(repository), sha);
+    if (digest) {
+      return digest;
+    }
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      delayMs = Math.min(delayMs * 2, 30_000);
+    }
+  }
+  throw new Error(
+    `DOCR ${repository} is missing immutable tag ${sha} after ${maxAttempts} attempts; build-images must finish before deploy`,
+  );
+}
+
 export async function waitForTagDigest(repository, tag, expectedDigest, options = {}) {
   const maxAttempts = options.maxAttempts ?? 8;
   let delayMs = options.initialDelayMs ?? 1_000;

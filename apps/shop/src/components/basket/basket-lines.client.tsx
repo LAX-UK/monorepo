@@ -2,6 +2,7 @@
 
 import { removeBasketLine, setBasketLineQuantity } from "@/app/actions/basket.actions";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
+import { formatGbpPence } from "@/lib/presenters/shop-money.presenter";
 import type { BasketView } from "@auction/shop-contracts";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,14 +10,13 @@ import { useState, useTransition } from "react";
 
 type Props = {
   basket: BasketView;
-  formatGbp: (pence: number) => string;
 };
 
 function errorMessage(error: unknown): string {
   return commerceErrorMessage(error, "Could not update your basket.");
 }
 
-export function BasketLinesClient({ basket, formatGbp }: Props) {
+export function BasketLinesClient({ basket }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export function BasketLinesClient({ basket, formatGbp }: Props) {
           <li key={line.lineId} className="shop-basket__line">
             <div>
               <Link href={`/artworks/${line.artworkSlug}`}>{line.artworkTitle}</Link>
-              <p>{formatGbp(line.unitPricePence)} each</p>
+              <p>{formatGbpPence(line.unitPricePence)} each</p>
               {line.priceChanged ? (
                 <p className="shop-basket__alert">Price updated — refresh before checkout.</p>
               ) : null}
@@ -87,7 +87,9 @@ export function BasketLinesClient({ basket, formatGbp }: Props) {
           </li>
         ))}
       </ul>
-      <p className="shop-basket__total">Subtotal {formatGbp(basket.merchandiseSubtotalPence)}</p>
+      <p className="shop-basket__total">
+        Subtotal {formatGbpPence(basket.merchandiseSubtotalPence)}
+      </p>
     </>
   );
 }

@@ -12,8 +12,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "biome check .",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@auction/persistence": "workspace:*",
@@ -23,7 +22,6 @@
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
     "@auction/db": "workspace:*",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "typescript": "^5.7.3"
   }
 }

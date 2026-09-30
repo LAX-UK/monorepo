@@ -2,7 +2,7 @@
 /**
  * Fail closed before App Platform pin when DOCR does not have the expected web image.
  */
-import { digestForTag, listTags, waitForTagDigest } from "./registry-tag-poll.mjs";
+import { digestForTag, listTags, waitForShaTag, waitForTagDigest } from "./registry-tag-poll.mjs";
 
 function parseArgs(argv) {
   let environment;
@@ -31,12 +31,11 @@ function parseArgs(argv) {
 async function main() {
   const { environment, sha } = parseArgs(process.argv.slice(2));
   const repository = `lax-${environment}-web`;
-  const tags = listTags(repository);
-  const shaDigest = digestForTag(tags, sha);
+  let tags = listTags(repository);
+  let shaDigest = digestForTag(tags, sha);
   if (!shaDigest) {
-    throw new Error(
-      `DOCR ${repository} is missing immutable tag ${sha}; build-images must finish before deploy`,
-    );
+    shaDigest = await waitForShaTag(repository, sha, { maxAttempts: 12, initialDelayMs: 5_000 });
+    tags = listTags(repository);
   }
   const rollingDigest = digestForTag(tags, environment);
   if (rollingDigest !== shaDigest) {

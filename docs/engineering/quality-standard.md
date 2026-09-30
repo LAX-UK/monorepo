@@ -46,6 +46,22 @@ Canonical boundaries:
 - A defect found high in the pyramid gets the lowest-level regression test that
   can reproduce it.
 
+### Test admission (what belongs in CI)
+
+1. A test must fail on a realistic bug and stay green on a correct refactor.
+2. Prove each rule once at the lowest layer; higher layers only map outcomes
+   (for example HTTP status), not restated policy.
+3. Code-shape rules live in lint scripts (`lint:*`, `check-layers.mjs`, actionlint),
+   not in Vitest files that read source text.
+4. PR browser gates cover sign-in, role authorization, catalog visibility smoke,
+   and Shop basket add-to-cart (`buyer-flow`). Layout, theme, viewport, and most
+   `@journey` / `@a11y` specs run weekly via `e2e-stabilization.yml` or post-deploy
+   Shop acceptance.
+5. Migration and rollout tests expire after production has applied the change.
+
+Pre-commit: `simple-git-hooks` runs Biome on staged files (`pnpm prepare` installs
+the hook). Workflow YAML validity is actionlint only, not string-matching unit tests.
+
 ## Required evidence
 
 Every production change must:
@@ -86,14 +102,14 @@ Run with Node.js 22, seeded stack on `:3000` (web) and `:3001` (API), and
 |------|---------|-------|-----|
 | Portfolio guard | `pnpm lint:e2e-portfolio` | all PRs | `ci.yml` static-checks |
 | Tag taxonomy guard | `pnpm lint:e2e-tags` | all PRs | `ci.yml` static-checks |
-| PR browser gates | `pnpm ci:e2e-pr` | cross-stack UI | `e2e-pr.yml` (`@smoke`, `@roles`, three Shop specs) |
+| PR browser gates | `pnpm ci:e2e-pr` | cross-stack UI | `e2e-pr.yml` (`@smoke`, `@roles`; Shop `buyer-flow`) |
 | Staff catalog smoke | `pnpm --filter @auction/web test:e2e:smoke` | navigation regressions | PR subset via `e2e-pr.yml` |
 | Role contracts | `pnpm --filter @auction/web test:e2e:roles` | authorization | PR via `e2e-pr.yml` |
 | Curated admin visuals | `pnpm --filter @auction/web test:e2e:visual` | layout/theme | **manual only** (`visual-baselines.yml`) |
 | Broader stabilization | `pnpm --filter @auction/web test:e2e:stabilization` | a11y + journeys | weekly shard |
 | Admin baseline refresh | `pnpm --filter @auction/web test:e2e:admin-visual-update` | explicit UI refresh | `visual-baselines.yml` |
 | Marketing visuals | `UPDATE_MARKETING_VISUALS=1 pnpm ci:visual-baseline` | opt-in only | not in PR gates |
-| Shop browser gates | `pnpm --filter @auction/shop test:e2e` | behavior, a11y, theme | `e2e-pr.yml` (curated subset) |
+| Shop browser gates | `pnpm --filter @auction/shop test:e2e` | commerce + layout | PR: `buyer-flow`; staging acceptance: theme, home, viewport, catalogue |
 
 Tag ownership in specs: `@smoke`, `@journey`, `@a11y`, `@roles`, `@visual`,
 `@optin`. Every `test.describe` block must declare one tier tag; `pnpm lint:e2e-tags`

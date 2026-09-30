@@ -9,7 +9,7 @@ import {
   basketCheckoutBlockReasons,
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
-import { fetchShopBasket, formatGbpPence } from "@/lib/shop-commerce.server";
+import { fetchShopBasket } from "@/lib/shop-commerce.server";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { MarketingDetailShell } from "@auction/marketing-ui";
@@ -80,7 +80,7 @@ export default async function BasketPage() {
                 {basketCheckoutBlockMessage(basketCheckoutBlockReasons(basketResult.data))}
               </p>
             ) : null}
-            <BasketLinesClient basket={basketResult.data} formatGbp={formatGbpPence} />
+            <BasketLinesClient basket={basketResult.data} />
             {canProceedToCheckout(basketResult.data) ? (
               <Link href="/checkout" className="shop-detail__cta shop-focus-ring">
                 Proceed to checkout

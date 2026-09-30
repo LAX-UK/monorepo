@@ -150,10 +150,11 @@ jobs:
           pnpm --filter @auction/shop-api seed:catalogue
       - name: Install pinned Chromium
         run: pnpm --filter @auction/shop exec playwright install chromium --with-deps
-      - name: Shop browser tier 1 (light/dark)
+      - name: Shop browser tier 1 (light/dark, viewport)
         run: |
           pnpm --filter @auction/shop exec playwright test \
             e2e/theme-audit.spec.ts \
+            e2e/shop-viewport-audit.spec.ts \
             e2e/home.spec.ts --grep "visible without JavaScript|theme"
       - name: Shop browser tier 2 (foundation catalogue fixtures)
         if: inputs.seed_catalogue

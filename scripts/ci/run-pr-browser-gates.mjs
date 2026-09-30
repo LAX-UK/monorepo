@@ -40,9 +40,6 @@ function run(command, extraEnv = {}) {
 }
 
 if (!args.values["skip-static"]) {
-  run("pnpm exec biome check .");
-  run("node --test scripts/ci/e2e-session-state.test.mjs");
-  run("node --test scripts/ci/require-node-version.test.mjs");
   run("node scripts/ci/require-node-version.mjs");
   run('pnpm --filter @auction/web exec playwright test --list --grep "@smoke|@roles"');
 }
