@@ -39,5 +39,5 @@ COPY --from=builder --chown=node:node /app/apps/shop/public ./apps/shop/public
 USER node
 EXPOSE 3020
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:3020/health/ready').then(async r=>{await r.text();process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:3020/health/live').then(async r=>{await r.text();process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"
 CMD ["node", "apps/shop/server.js"]

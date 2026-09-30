@@ -33,7 +33,7 @@ describe("Shop readiness", () => {
       },
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringMatching(/\/api\/health\/deps$/),
+      expect.stringMatching(/\/health\/ready$/),
       expect.objectContaining({ cache: "no-store" }),
     );
   });
