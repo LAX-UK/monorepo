@@ -132,12 +132,6 @@ async function seedShopStorefrontCurationTransaction(
   if (stringId) {
     placements.push({ slot: "featured_originals", position: 0, artworkId: stringId });
   }
-  if (vesselId) {
-    placements.push({ slot: "featured_originals", position: 1, artworkId: vesselId });
-  }
-  if (reedId) {
-    placements.push({ slot: "featured_originals", position: 2, artworkId: reedId });
-  }
 
   placements.push(
     { slot: "featured_categories", position: 0, categoryId: artCategoryId },

@@ -21,6 +21,7 @@ function sampleBasket(overrides: Partial<BasketRecord> = {}): BasketRecord {
         livePricePence: 12000,
         quantity: 2,
         sellableCount: 5,
+        imageUrl: null,
       },
     ],
     ...overrides,

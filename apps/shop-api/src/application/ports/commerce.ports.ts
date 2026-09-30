@@ -14,6 +14,7 @@ export type BasketLineRecord = {
   livePricePence: number | null;
   quantity: number;
   sellableCount: number;
+  imageUrl: string | null;
 };
 
 export type BasketRecord = {

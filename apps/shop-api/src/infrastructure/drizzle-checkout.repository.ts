@@ -15,7 +15,7 @@ import type {
   PaymentCheckoutGateway,
 } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
-import { isPgUniqueViolation } from "../lib/pg-errors.js";
+import { isPgUniqueViolation, pgUniqueViolationConstraint } from "../lib/pg-errors.js";
 import { cancelShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 import {
   assertBasketStock,
@@ -189,12 +189,25 @@ export function createDrizzleCheckoutRepository(
         });
       } catch (error) {
         if (isPgUniqueViolation(error)) {
+          const constraint = pgUniqueViolationConstraint(error);
+          if (
+            constraint === "shop_order_line_edition_active_uid" ||
+            constraint === "shop_order_line_edition_uid"
+          ) {
+            throw new ShopApiError(SHOP_API_ERROR_CODES.OUT_OF_STOCK, "Edition unavailable", 409);
+          }
+          if (constraint !== "shop_order_idempotency_key_uid" && constraint !== null) {
+            throw error;
+          }
           const [existing] = await db
             .select()
             .from(shopOrder)
             .where(eq(shopOrder.idempotencyKey, input.idempotencyKey))
             .limit(1);
-          if (!existing || existing.identitySubjectId !== input.subject) {
+          if (!existing) {
+            throw new ShopApiError(SHOP_API_ERROR_CODES.OUT_OF_STOCK, "Edition unavailable", 409);
+          }
+          if (existing.identitySubjectId !== input.subject) {
             throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Order ownership mismatch", 403);
           }
           pending = {

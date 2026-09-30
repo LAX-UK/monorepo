@@ -9,7 +9,7 @@ import {
   shopProcessedPaymentEvent,
 } from "@auction/db/schema";
 import { computePayoutDueAt, computeRefundPeriodEndsAt } from "@auction/shop-domain";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopPaymentWebhookError } from "../errors/shop-payment-webhook.error.js";
@@ -44,6 +44,7 @@ async function releaseReservedEditionsForOrder(tx: Database, orderId: string): P
   if (editionIds.length === 0) {
     return;
   }
+  const releasedAt = new Date();
   await tx
     .update(shopEdition)
     .set({ status: "available", reservedUntil: null, reservedByOrderId: null })
@@ -54,6 +55,10 @@ async function releaseReservedEditionsForOrder(tx: Database, orderId: string): P
         eq(shopEdition.reservedByOrderId, orderId),
       ),
     );
+  await tx
+    .update(shopOrderLine)
+    .set({ releasedAt })
+    .where(and(eq(shopOrderLine.orderId, orderId), isNull(shopOrderLine.releasedAt)));
   for (const line of lines) {
     await tx.insert(domainEvent).values({
       aggregateType: "shop_edition",
