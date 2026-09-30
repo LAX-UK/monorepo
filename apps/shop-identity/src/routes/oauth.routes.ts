@@ -17,6 +17,7 @@ import { assertStorefrontOrigin, clearCommerceCsrfCookie } from "../commerce-csr
 import { clearResourceTokenCacheForSession } from "../infrastructure/shop-api.client.js";
 import { buildAuthorizeUrl, buildEndSessionUrl, generateOAuthLoginParams } from "../oidc.js";
 import {
+  SHOP_AUTH_ATTEMPT_COOKIE_NAME,
   SHOP_TOKEN_UPGRADE_COOKIE_NAME,
   clearOidcIdTokenCookie,
   readSession,
@@ -78,8 +79,26 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
     options?: { prompt?: OidcAuthorizePrompt; requireAuthenticatedSession?: boolean },
   ) {
     const returnTo = c.req.query("returnTo");
-    if (typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
-      setCookie(c, "shop_return_to", returnTo, {
+    const safeReturnTo =
+      typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
+        ? returnTo
+        : null;
+    const isInteractiveLogin = !options?.prompt;
+    if (isInteractiveLogin && safeReturnTo) {
+      const priorAttempt = getCookie(c, SHOP_AUTH_ATTEMPT_COOKIE_NAME);
+      if (priorAttempt === safeReturnTo) {
+        return c.redirect(shopStorefrontPath(env, "/session-expired"), 302);
+      }
+      setCookie(c, SHOP_AUTH_ATTEMPT_COOKIE_NAME, safeReturnTo, {
+        httpOnly: true,
+        secure: secureCookies,
+        sameSite: "Lax",
+        path: "/",
+        maxAge: 60,
+      });
+    }
+    if (safeReturnTo) {
+      setCookie(c, "shop_return_to", safeReturnTo, {
         httpOnly: true,
         secure: secureCookies,
         sameSite: "Lax",
@@ -147,7 +166,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
 
   app.get("/auth/upgrade", async (c) => {
     if (getCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME)) {
-      return c.redirect(shopStorefrontPath(env, "/login"), 302);
+      return c.redirect(shopStorefrontPath(env, "/session-expired"), 302);
     }
     setCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, "1", {
       httpOnly: true,
@@ -221,6 +240,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       return c.redirect(shopStorefrontPath(env, "/account/disabled"), 302);
     }
     writeSessionCookie(c, result.sessionId, { secure: secureCookies });
+    deleteCookie(c, SHOP_AUTH_ATTEMPT_COOKIE_NAME, { path: "/" });
     clearShopSilentSuppressed(c);
     if (probeActive) {
       markShopSilentNotice(c, secureCookies);

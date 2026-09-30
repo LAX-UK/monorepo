@@ -4,6 +4,8 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 export const SESSION_COOKIE_NAME = "shop_identity_session";
 export const OIDC_ID_TOKEN_COOKIE_NAME = "shop_identity_id_token";
 export const SHOP_TOKEN_UPGRADE_COOKIE_NAME = "shop_token_upgrade";
+/** Detects repeated interactive sign-in attempts for the same returnTo (redirect loops). */
+export const SHOP_AUTH_ATTEMPT_COOKIE_NAME = "shop_auth_attempt";
 
 export type PendingOAuthSession = {
   state: string;

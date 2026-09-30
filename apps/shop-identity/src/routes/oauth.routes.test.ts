@@ -158,7 +158,28 @@ describe("OAuth routes", () => {
       },
     });
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("http://localhost:3020/login");
+    expect(response.headers.get("location")).toBe("http://localhost:3020/session-expired");
+  });
+
+  it("redirects repeated interactive login for the same returnTo to session-expired", async () => {
+    const { app } = createRoute();
+    const first = await app.request("/login?returnTo=%2Fcheckout");
+    expect(first.status).toBe(302);
+    const setCookies =
+      typeof first.headers.getSetCookie === "function"
+        ? first.headers.getSetCookie()
+        : [first.headers.get("set-cookie") ?? ""];
+    const cookieHeader = setCookies
+      .flatMap((entry) => entry.split(/,(?=\s*[^;]+=)/))
+      .map((part) => part.trim().split(";")[0] ?? "")
+      .filter(Boolean)
+      .join("; ");
+    expect(cookieHeader).toContain("shop_auth_attempt=");
+    const second = await app.request("/login?returnTo=%2Fcheckout", {
+      headers: { cookie: cookieHeader },
+    });
+    expect(second.status).toBe(302);
+    expect(second.headers.get("location")).toBe("http://localhost:3020/session-expired");
   });
 
   it("clears session on login_required upgrade callback without looping", async () => {
@@ -406,7 +427,9 @@ describe("OAuth routes", () => {
     const location = new URL(response.headers.get("location") ?? "");
     expect(location.origin).toBe("https://identity.example");
     expect(location.pathname).toBe("/logout");
-    expect(location.searchParams.get("post_logout_redirect_uri")).toBe("http://localhost:3020/");
+    expect(location.searchParams.get("post_logout_redirect_uri")).toBe(
+      "http://localhost:3020/signed-out",
+    );
   });
 
   it("rejects logout when the storefront origin does not match", async () => {
