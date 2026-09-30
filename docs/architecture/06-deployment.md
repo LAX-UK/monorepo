@@ -357,6 +357,18 @@ prebuilt in GitHub Actions and pulled from DOCR when prebuilt images are enabled
 
 The defer triggers above are the explicit conditions under which any of these become candidates for the next architectural iteration.
 
+## Change to test
+
+1. Open a PR against `main`. Required checks: `static-checks`, `build`, `test`, `auth-role-contract`, `worker-role-contract`, and `browser-gates` (from `ci.yml` and `e2e-pr.yml`).
+2. Merge after green CI. Pushes to `main` do **not** cancel an in-flight CI run (only PR updates cancel superseded runs), so `app-deploy-test` can gate on a completed CI conclusion.
+3. **Bid path:** `app-deploy-test.yml` rolls App Platform when Shop immutable paths did not change (rolling image tags when `USE_PREBUILT_IMAGES_TEST=true`).
+4. **Shop path:** when `apps/shop`, `apps/shop-identity`, or `apps/shop-api` change, the same workflow can apply digest-pinned Shop images via Terraform after `build-images`, gated on repository variable `AUTO_DEPLOY_SHOP_TEST` (off during demo freeze; turn on when Shop should track `main` automatically). Until then, use `staging-recovery-test.yml` for reviewed immutable cutovers.
+5. **Production** stays manual: reviewed `app-deploy-prod.yml` / Terraform apply with explicit confirmation.
+
+**Manual ops workflows** (dispatch when needed, not on every merge): Identity and auth maintenance (`identity-directory-maintenance-test`, `identity-migration-maintenance-test`, `identity-role-maintenance-test`, `auth-at-rest-maintenance-test`), `staging-recovery-test.yml` for rollback rehearsal, weekly Terraform drift check, and daily Identity closure sync.
+
+**Branch protection:** on `main`, disable admin bypass (“Do not allow bypassing”) so every change lands through a PR and required checks.
+
 ## Where to look in the code
 
 Application Dockerfiles live next to their source, including

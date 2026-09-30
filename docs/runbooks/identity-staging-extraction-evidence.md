@@ -182,7 +182,20 @@ Accepted image contract:
 | Shop identity | `20a9a335b9f8d6686b52092af06f2f185373ca57` | `sha256:69067e6c02b11564baaba7107dfcc832ff528fa6cbbbb975efb6fd15a776e434` |
 | Shop | `20a9a335b9f8d6686b52092af06f2f185373ca57` | `sha256:c3b589069599c65eca718a97cdf94890c788e7db7fe270729faec2176cbd1465` |
 
+## Directory drift baseline (test)
+
+When soak or acceptance reports `verify-identity-directory-drift` with mismatched rows, reconcile once before re-running evidence:
+
+```bash
+gh workflow run "Identity directory maintenance (test)" --ref main \
+  -f mode=apply -f confirm_backup=true
+```
+
+Use **apply** only after a successful backup confirmation in the same workflow run. Re-dispatch soak manually after apply is green.
+
 ## Soak
+
+**Manual only:** dispatch [identity-staging-soak.yml](../../.github/workflows/identity-staging-soak.yml) when you need a 24h evidence window (`mode=sample` per sample, `mode=evaluate` after the window). There is no cron or self-chaining schedule; `identity-staging-soak-watch` was removed.
 
 - Previous soak start **2026-09-13T13:39:52Z** is invalidated by rollback/spec drift; do not count it.
 - Restart only after the final restored standalone acceptance is green.

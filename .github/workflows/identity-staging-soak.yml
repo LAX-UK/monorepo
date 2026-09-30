@@ -1,8 +1,6 @@
 name: Identity staging soak
 
 on:
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -24,15 +22,10 @@ on:
         required: true
         type: number
         default: 1
-      chain_next:
-        description: After a sample, sleep 15 minutes and dispatch the next sample
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
-  actions: write
+  actions: read
 
 jobs:
   reset:
@@ -58,7 +51,7 @@ jobs:
           retention-days: 90
 
   sample:
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'sample')
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'sample'
     runs-on: ubuntu-latest
     concurrency:
       group: identity-staging-soak-sample
@@ -149,37 +142,6 @@ jobs:
           path: ${{ runner.temp }}/soak-sample.json
           if-no-files-found: error
           retention-days: 90
-      - name: Resolve soak chain context
-        if: always()
-        id: chain
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/ci/resolve-soak-chain-context.mjs
-      - name: Schedule next soak sample
-        if: >-
-          always() &&
-          (github.event_name == 'schedule' ||
-           (github.event_name == 'workflow_dispatch' && inputs.chain_next != false))
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOAK_STARTED_AT: ${{ steps.chain.outputs.soak_started_at }}
-        run: |
-          set -euo pipefail
-          test -n "${SOAK_STARTED_AT:-}" || exit 0
-          start_epoch="$(date -u -d "$SOAK_STARTED_AT" +%s)"
-          end_epoch=$((start_epoch + 24 * 60 * 60))
-          now_epoch="$(date -u +%s)"
-          if test "$now_epoch" -ge "$end_epoch"; then
-            echo "Soak window complete; not scheduling another sample."
-            exit 0
-          fi
-          sleep 780
-          gh workflow run identity-staging-soak.yml \
-            --ref "${GITHUB_REF_NAME:-main}" \
-            -f mode=sample \
-            -f minimum_operations=1 \
-            -f chain_next=true
-
   evaluate:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'evaluate'
     runs-on: ubuntu-latest

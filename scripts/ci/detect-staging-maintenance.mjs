@@ -17,7 +17,6 @@ const workflows = [
   "identity-migration-maintenance-test.yml",
   "identity-role-maintenance-test.yml",
   "auth-at-rest-maintenance-test.yml",
-  "identity-staging-db-repair.yml",
 ];
 
 function ghJson(args) {

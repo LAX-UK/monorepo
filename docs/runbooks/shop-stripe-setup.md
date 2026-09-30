@@ -33,6 +33,19 @@ no Bid webhook URLs change.
 
 ### 2. GitHub environment secrets (`test`)
 
+**Bootstrap from Bid test (shared account):** when `STRIPE_SECRET_KEY` already exists in the `test` environment, mirror it and register the Shop webhook manually:
+
+```bash
+# Requires IDENTITY_EVIDENCE_PAT with permission to write test env secrets.
+printf '%s' "$STRIPE_SECRET_KEY" | gh secret set STRIPE_SHOP_SECRET_KEY --env test --repo LAX-UK/monorepo
+
+SHOP_URL="https://test-shop.lax.bid/webhooks/stripe"
+# List or create the endpoint on the shared test account, then:
+printf '%s' "$WHSEC_FROM_STRIPE" | gh secret set STRIPE_SHOP_WEBHOOK_SECRET --env test --repo LAX-UK/monorepo
+```
+
+Create the webhook with Stripe API (`checkout.session.*` events on `SHOP_URL`) if it does not exist; roll the endpoint secret when reusing an existing endpoint.
+
 Add:
 
 - `STRIPE_SHOP_SECRET_KEY` — restricted Shop Checkout key

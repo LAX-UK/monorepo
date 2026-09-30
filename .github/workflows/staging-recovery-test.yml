@@ -83,18 +83,19 @@ jobs:
             echo "::error::infra_ref must be main or a full 40-char commit SHA (checkout cannot resolve abbreviated refs)"
             exit 1
           fi
-          parse_image() {
-            local label="$1"
-            local value="$2"
-            if [[ ! "$value" =~ ^([0-9a-f]{40})@(.+)$ ]]; then
-              echo "::error::${label} must be <40-char-sha>@<digest>"
-              exit 1
-            fi
-            echo "${label}_sha=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
-            echo "${label}_digest=${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
+          node --input-type=module <<'EOF'
+          import { appendFileSync } from "node:fs";
+          import { parseDockerImagePin } from "./scripts/ci/parse-docker-image-pin.mjs";
+          const out = process.env.GITHUB_OUTPUT;
+          for (const [label, envName] of [
+            ["shop", "SHOP_IMAGE"],
+            ["shop_api", "SHOP_API_IMAGE"],
+          ]) {
+            const { sha, digest } = parseDockerImagePin(process.env[envName], label);
+            appendFileSync(out, `${label}_sha=${sha}\n`);
+            appendFileSync(out, `${label}_digest=${digest}\n`);
           }
-          parse_image shop "$SHOP_IMAGE"
-          parse_image shop_api "$SHOP_API_IMAGE"
+          EOF
           if test "$ROLLBACK_REHEARSAL" = "true"; then
             test "$RUN_ACCEPTANCE" = "true" || {
               echo "::error::Rollback rehearsal requires both acceptance phases"
