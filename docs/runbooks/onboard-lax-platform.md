@@ -41,7 +41,7 @@ For the current Shop BFF, set the names required by
 - `OIDC_CLIENT_ID=lax-shop-web`
 - `OIDC_CLIENT_SECRET`
 - `OIDC_REDIRECT_URI=https://shop.lax.art/auth/callback`
-- `OIDC_POST_LOGOUT_REDIRECT_URI=https://shop.lax.art/`
+- `OIDC_POST_LOGOUT_REDIRECT_URI=https://shop.lax.art/signed-out`
 - `SESSION_SECRET` with at least 32 characters
 - `DATABASE_URL_SHOP` using the Shop-local role
 

@@ -325,6 +325,9 @@ importers:
       '@auction/shop-contracts':
         specifier: workspace:*
         version: link:../../packages/shop-contracts
+      '@auction/shop-domain':
+        specifier: workspace:*
+        version: link:../../packages/shop-domain
       '@auction/ui':
         specifier: workspace:*
         version: link:../../packages/ui
