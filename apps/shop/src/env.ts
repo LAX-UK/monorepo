@@ -30,8 +30,11 @@ export function loadShopEnv(
     SHOP_IMAGE_REMOTE_HOSTS: source.SHOP_IMAGE_REMOTE_HOSTS?.trim() || undefined,
   });
   const isNextProductionBuild = source.NEXT_PHASE === "phase-production-build";
-  if (source.NODE_ENV === "production" && !parsed.LAX_BID_PUBLIC_URL && !isNextProductionBuild) {
-    throw new Error("LAX_BID_PUBLIC_URL is required in production for shop cross-product links.");
+  const hasBidPublicUrl = Boolean(parsed.LAX_BID_PUBLIC_URL ?? parsed.WEB_ORIGIN);
+  if (source.NODE_ENV === "production" && !hasBidPublicUrl && !isNextProductionBuild) {
+    throw new Error(
+      "LAX_BID_PUBLIC_URL or WEB_ORIGIN is required in production for shop cross-product links.",
+    );
   }
   return parsed;
 }
