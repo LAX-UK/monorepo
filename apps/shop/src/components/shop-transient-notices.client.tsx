@@ -34,7 +34,7 @@ export function ShopTransientNotices() {
 
   return (
     <div
-      className="shop-basket__alert mx-auto max-w-[var(--container-max,90rem)] px-4 py-3"
+      className="shop-transient-notice shop-basket__alert mx-auto max-w-[var(--container-max,90rem)] px-4 py-3"
       role={basketMerge === "failed" ? "alert" : "status"}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">

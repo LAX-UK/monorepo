@@ -20,6 +20,7 @@ const SKIP_PREFIXES = [
   "/auth/",
   "/session-expired",
   "/account/disabled",
+  "/account/post-sign-in",
   "/api/",
 ];
 

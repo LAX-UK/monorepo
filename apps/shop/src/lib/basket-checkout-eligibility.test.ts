@@ -14,6 +14,7 @@ const baseBasket: BasketView = {
       sellableCount: 1,
       priceChanged: false,
       outOfStock: false,
+      imageUrl: null,
     },
   ],
   merchandiseSubtotalPence: 1000,

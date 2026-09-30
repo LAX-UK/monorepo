@@ -11,6 +11,7 @@ type Props = {
   artworkSlug: string;
   reason: ArtworkUnavailableReason;
   interestRead: ShopInterestReadResult;
+  isEdition?: boolean;
 };
 
 const COPY: Record<
@@ -59,9 +60,20 @@ function guestSignInIcon(intent: "notify_me" | "enquiry") {
   return <MarketingInfoIcon className="size-4" />;
 }
 
-export function ArtworkUnavailablePanel({ viewer, artworkSlug, reason, interestRead }: Props) {
+export function ArtworkUnavailablePanel({
+  viewer,
+  artworkSlug,
+  reason,
+  interestRead,
+  isEdition = false,
+}: Props) {
   const returnTo = `/artworks/${encodeURIComponent(artworkSlug)}`;
-  const { title, description, guestCta, intent } = COPY[reason];
+  const base = COPY[reason];
+  const description =
+    reason === "price_enquiry" && isEdition
+      ? "Contact LAX and we will share the price for this edition and answer questions about availability."
+      : base.description;
+  const { title, guestCta, intent } = base;
 
   const interestStatusKnown = interestRead.status === "ok";
   const interestSubscribed = interestStatusKnown && interestRead.data.subscribed;

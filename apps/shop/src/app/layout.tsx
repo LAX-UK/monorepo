@@ -12,6 +12,7 @@ import { ShopSilentFedcmBootstrap } from "@/lib/fedcm/silent-fedcm-bootstrap.cli
 import { toShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
+import { SHOP_THEME_COOKIE, parseShopTheme } from "@/lib/theme/shop-theme";
 import type { Metadata } from "next";
 import { Montserrat, Outfit } from "next/font/google";
 import { cookies } from "next/headers";
@@ -67,10 +68,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     cookieStore.getAll(),
     viewer.kind === "authenticated",
   );
+  const themePreference = parseShopTheme(cookieStore.get(SHOP_THEME_COOKIE)?.value);
   return (
     <html
       lang="en"
-      className={`${montserrat.variable} ${outfit.variable}`}
+      className={`${montserrat.variable} ${outfit.variable}${themePreference === "dark" ? " dark" : ""}`}
       suppressHydrationWarning
     >
       <head>

@@ -9,20 +9,28 @@ import {
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
-import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
+import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-export const metadata = shopPrivatePageMetadata;
+export const metadata = shopPrivatePageTitle("Checkout");
 
-export default async function CheckoutPage() {
+type CheckoutPageProps = {
+  searchParams: Promise<{ basketMerge?: string }>;
+};
+
+export default async function CheckoutPage({ searchParams }: CheckoutPageProps) {
+  const params = await searchParams;
   const [basketResult, viewer] = await Promise.all([fetchShopBasket(), loadShopViewerState()]);
 
   const gate = gateShopAuthenticatedRoute(viewer, "/checkout");
   if (!gate.allowed) {
+    if (viewer.kind === "guest" && params.basketMerge) {
+      redirect("/session-expired");
+    }
     if (gate.redirectTo) redirect(gate.redirectTo);
     return (
       <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
@@ -133,7 +141,7 @@ export default async function CheckoutPage() {
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
       <ShopCommercePageShell header={shopPageWayfinding.checkout} contentClassName="shop-checkout">
-        <CheckoutForm basketId={basket.basketId} />
+        <CheckoutForm basket={basket} />
         <Link href="/basket" className="shop-detail__cta shop-focus-ring">
           Back to basket
         </Link>

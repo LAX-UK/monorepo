@@ -22,7 +22,9 @@ describe("commerceErrorMessage", () => {
     expect(commerceErrorMessage({ code: SHOP_API_ERROR_CODES.UNAUTHORIZED }, "x")).toMatch(
       /sign in/i,
     );
-    expect(commerceErrorMessage({ code: SHOP_API_ERROR_CODES.FORBIDDEN }, "x")).toMatch(/sign in/i);
+    expect(commerceErrorMessage({ code: SHOP_API_ERROR_CODES.FORBIDDEN }, "x")).toMatch(
+      /can't be checked out/i,
+    );
     expect(commerceErrorMessage({ code: SHOP_API_ERROR_CODES.VALIDATION }, "x")).toMatch(
       /check your details/i,
     );

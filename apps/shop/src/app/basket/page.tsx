@@ -10,13 +10,13 @@ import {
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
-import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
+import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { MarketingDetailShell } from "@auction/marketing-ui";
 import Link from "next/link";
 import { Suspense } from "react";
 
-export const metadata = shopPrivatePageMetadata;
+export const metadata = shopPrivatePageTitle("Basket");
 
 export default async function BasketPage() {
   const basketResult = await fetchShopBasket();

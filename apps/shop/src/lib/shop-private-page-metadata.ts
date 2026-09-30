@@ -4,3 +4,10 @@ import type { Metadata } from "next";
 export const shopPrivatePageMetadata: Metadata = {
   robots: { index: false, follow: false },
 };
+
+export function shopPrivatePageTitle(title: string): Metadata {
+  return {
+    ...shopPrivatePageMetadata,
+    title: `${title} | LAX Shop`,
+  };
+}

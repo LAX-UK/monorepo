@@ -18,7 +18,7 @@ export type ShopEnv = z.infer<typeof shopEnvSchema>;
 export function loadShopEnv(
   source: Readonly<Record<string, string | undefined>> = process.env,
 ): ShopEnv {
-  return shopEnvSchema.parse({
+  const parsed = shopEnvSchema.parse({
     SHOP_API_BASE_URL: source.SHOP_API_BASE_URL?.trim() || undefined,
     SHOP_IDENTITY_BASE_URL: source.SHOP_IDENTITY_BASE_URL?.trim() || undefined,
     SHOP_IDENTITY_INTERNAL_BASE_URL: source.SHOP_IDENTITY_INTERNAL_BASE_URL?.trim() || undefined,
@@ -29,4 +29,9 @@ export function loadShopEnv(
     SHOP_STOREFRONT_URL: source.SHOP_STOREFRONT_URL?.trim() || undefined,
     SHOP_IMAGE_REMOTE_HOSTS: source.SHOP_IMAGE_REMOTE_HOSTS?.trim() || undefined,
   });
+  const isNextProductionBuild = source.NEXT_PHASE === "phase-production-build";
+  if (source.NODE_ENV === "production" && !parsed.LAX_BID_PUBLIC_URL && !isNextProductionBuild) {
+    throw new Error("LAX_BID_PUBLIC_URL is required in production for shop cross-product links.");
+  }
+  return parsed;
 }
