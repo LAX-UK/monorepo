@@ -8,6 +8,14 @@ runs:
   using: composite
   steps:
     - name: Connect Turborepo remote cache
+      id: connect
+      continue-on-error: true
       uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f
       with:
         team: ${{ inputs.team }}
+    - name: Fall back to local turbo cache if Vercel OIDC is not authorized
+      if: steps.connect.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::warning::Vercel remote cache OIDC failed (link GitHub repo to team ${{ inputs.team }} in Vercel). Using TURBO_CACHE=local:rw for this job."
+        echo "TURBO_CACHE=local:rw" >> "$GITHUB_ENV"
