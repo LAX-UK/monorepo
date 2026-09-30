@@ -6,8 +6,8 @@ import type {
   DrizzleLotTransitionGuardReader,
   DrizzleLotTransitionRepository,
 } from "@auction/persistence/repositories";
+import type { LotTransitionOrchestrator } from "../services/lot-transition-orchestrator.js";
 import { defineCompileTimeContract } from "../testing/compile-time-contract.js";
-import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js";
 
 type AssertAssignable<T extends U, U> = T;
 
