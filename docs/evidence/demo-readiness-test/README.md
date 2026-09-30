@@ -27,6 +27,9 @@ Workflow [`.github/workflows/demo-readiness-test-rehearsal.yml`](../../../.githu
 
 Download the `demo-readiness-screenshots-*` artifact from the run for the four proof images.
 
-Latest rehearsal run (partial green): [36605627093](https://github.com/LAX-UK/monorepo/actions/runs/36605627093)
-— Postmark sign-up + cross-product Shop sign-in passed; checkout/logout steps may need
-`SILENT_SSO_ENABLED` / shop immutable deploy for full parity.
+Latest rehearsal run (3/4 green): [36658501016](https://github.com/LAX-UK/monorepo/actions/runs/36658501016)
+— **01** Postmark sign-up, **02** Bid→Shop silent SSO, and **04** Shop logout clears Bid pass on
+`fix/demo-rehearsal-spec`. **03** checkout (Stripe 4242) still fails: `/checkout` re-initiates Shop
+OAuth and the automated run does not reach the delivery form on the pinned test Shop release (use
+manual 4242 checkout in the demo browser per demo fallback). Screenshots in `screenshots/` are from
+this run.
