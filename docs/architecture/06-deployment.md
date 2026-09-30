@@ -367,7 +367,7 @@ The defer triggers above are the explicit conditions under which any of these be
 
 **Manual ops workflows** (dispatch when needed, not on every merge): Identity and auth maintenance (`identity-directory-maintenance-test`, `identity-migration-maintenance-test`, `identity-role-maintenance-test`, `auth-at-rest-maintenance-test`), `staging-recovery-test.yml` for rollback rehearsal, weekly Terraform drift check, and daily Identity closure sync.
 
-**Branch ruleset (`main`):** required checks `ci-result` and `browser-gates`, merge queue (squash, ALLGREEN), no bypass actors. Apply or update with `node scripts/ci/apply-github-main-ruleset.mjs` (repo admin). Turborepo remote cache: set repo variable `TURBO_TEAM` and secret `TURBO_REMOTE_CACHE_SIGNATURE_KEY`; PR workflows use read-only remote cache (`TURBO_CACHE=local:rw,remote:r`).
+**Branch ruleset (`main`):** required checks `ci-result` and `browser-gates`, merge queue (squash, ALLGREEN), no bypass actors. Apply or update with `node scripts/ci/apply-github-main-ruleset.mjs` (repo admin). Turborepo remote cache (optional): set repo variable `TURBO_TEAM` and secret `TURBO_REMOTE_CACHE_SIGNATURE_KEY`; PR workflows then use read-only remote cache (`TURBO_CACHE=local:rw,remote:r`). If `TURBO_TEAM` is unset, CI skips Vercel OIDC setup and runs with `TURBO_CACHE=local:rw` only.
 
 ## Where to look in the code
 

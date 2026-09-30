@@ -22,7 +22,7 @@ env:
   SSF_DELIVERY_MAX_ATTEMPTS: "8"
   TURBO_SCM_BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-  TURBO_CACHE: ${{ github.event_name == 'pull_request' && 'local:rw,remote:r' || 'local:rw,remote:rw' }}
+  TURBO_CACHE: ${{ vars.TURBO_TEAM != '' && (github.event_name == 'pull_request' && 'local:rw,remote:r' || 'local:rw,remote:rw') || 'local:rw' }}
   TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
 jobs:
@@ -44,6 +44,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != ''
         uses: ./.github/actions/setup-turbo-remote-cache
 
       - name: Biome root check
@@ -259,6 +260,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != ''
         uses: ./.github/actions/setup-turbo-remote-cache
 
       - name: Build db package dependencies
@@ -320,6 +322,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != ''
         uses: ./.github/actions/setup-turbo-remote-cache
 
       - name: Vitest shard
@@ -463,6 +466,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != ''
         uses: ./.github/actions/setup-turbo-remote-cache
 
       - name: Build
