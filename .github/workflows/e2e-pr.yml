@@ -121,6 +121,7 @@ jobs:
       DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
       SHOP_API_BASE_URL: http://localhost:3011
       SHOP_API_PUBLIC_BASE_URL: http://localhost:3011
+      SHOP_API_BFF_TOKEN: ci-shop-api-bff-token-at-least-32-characters
       LAX_SHOP_STOREFRONT_URL: http://localhost:3020
       AUTH_APP_DB_PASSWORD: postgres
       API_APP_DB_PASSWORD: postgres
