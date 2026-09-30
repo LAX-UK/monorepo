@@ -567,6 +567,7 @@ const SHOP_ALLOWED_AUCTION_IMPORTS = new Set([
   "@auction/lax-ecosystem",
   "@auction/observability",
   "@auction/shop-contracts",
+  "@auction/shop-domain",
   "@auction/ui",
   "@auction/branding",
   "@auction/marketing-ui",
