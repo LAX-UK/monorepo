@@ -33,3 +33,18 @@ Targets: PR critical path under 10 minutes; `test` job under 7 minutes — **tes
 - **Classic branch protection** on `main` removed; repo **squash-only**, **delete branch on merge**.
 - **PR #413** merged to `main` before queue was enabled; use **merge queue** for subsequent PRs.
 - **Failing checks:** ruleset + required checks block merge when `ci-result` or `browser-gates` fail (including admins, `current_user_can_bypass: never` on ruleset).
+- **Throwaway probe:** PR #416 run [36737097596](https://github.com/LAX-UK/monorepo/actions/runs/36737097596) — `web vitest (4/4)` and **`ci-result` failed**; `mergeStateStatus=BLOCKED`. PR closed without merge.
+
+## After api vitest sharding + deploy gap fix (main @ 9f409f391, PR #415 run 36725502082)
+
+| Job / area | Duration | Notes |
+|------------|----------|--------|
+| `test` (excludes web + api) | **4m 32s** | under 7m target |
+| `api vitest` shard 1/2 | **1m 16s** | Postgres + Redis service containers |
+| `api vitest` shard 2/2 | **1m 36s** | parallel with shard 1 |
+| `web vitest` shards | **27s – 39s** | unchanged pilot settings |
+| Merge queue `test` (PR #415) | **3m 52s** | run 36726233283 |
+| Merge queue `browser-gates` | **17m 8s** | run 36726233215 |
+| Remote cache | `TURBO_TEAM=lax-team`; OIDC or `TURBO_TOKEN` | CI skips OIDC when `secrets.TURBO_TOKEN` is set; add team token in Vercel for stable remote hits |
+
+**Shop test deploy:** `app-deploy-test` run [36728602751](https://github.com/LAX-UK/monorepo/actions/runs/36728602751) (`deploy_shop=true`); `test-shop.lax.bid/health/ready` release `9f409f391`. `AUTO_DEPLOY_SHOP_TEST=true` enabled for ongoing Shop cuts on `main`.
