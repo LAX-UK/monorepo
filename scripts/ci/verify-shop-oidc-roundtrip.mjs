@@ -195,7 +195,7 @@ async function main() {
   }
   const postLogout = endSession.headers.get("location");
   if (!postLogout) throw new Error("Shop OP end-session omitted its post-logout redirect");
-  assertTrustedRedirect(postLogout, allowedStorefrontOrigins, "/", "Shop post-logout");
+  assertTrustedRedirect(postLogout, allowedStorefrontOrigins, "/signed-out", "Shop post-logout");
   const signedOut = await fetch(`${shopBase}/me`, {
     headers: { cookie: cookieHeader(shopCookies) },
   });
