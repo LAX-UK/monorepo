@@ -57,6 +57,7 @@ async function hostedAuthSignIn(page: Page, email: string, password: string) {
   await expect(loginForm.locator("#password")).toBeVisible({ timeout: 30_000 });
   await loginForm.locator("#password").fill(password);
   await loginForm.getByRole("button", { name: "Sign In" }).click();
+  await expect(page).not.toHaveURL(/test-auth\.lax\.bid\/login/, { timeout: 120_000 });
 }
 
 async function shopInteractiveSignIn(page: Page, email: string, password: string) {
@@ -360,8 +361,6 @@ test.describe("demo readiness (test) @demo-readiness", () => {
     test.setTimeout(300_000);
 
     await shopInteractiveSignIn(page, backupEmail as string, backupPassword as string);
-    await page.goto(`${shopBase}/account/post-sign-in`);
-    await page.waitForURL(/\/account/, { timeout: 60_000 });
     await addHarborPrintToBasket(page);
     await shot(page, "03-basket-with-line");
 
