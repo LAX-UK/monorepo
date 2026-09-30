@@ -26,6 +26,15 @@ const backupPassword =
 
 const harborSlug = "harbor-print";
 
+function isShopCheckoutUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    return url.hostname.includes("test-shop") && url.pathname.startsWith("/checkout");
+  } catch {
+    return false;
+  }
+}
+
 function shot(page: Page, name: string) {
   mkdirSync(evidenceDir, { recursive: true });
   return page.screenshot({
@@ -140,14 +149,14 @@ async function ensureAuthenticatedCheckout(page: Page, email: string, password: 
     await shopInteractiveSignIn(page, email, password);
   }
   await page.goto("/checkout");
-  await page.waitForURL(/\/checkout|\/basket|test-auth/, { timeout: 60_000 });
-  if (page.url().includes("test-auth.lax.bid")) {
+  await page.waitForURL(/test-shop\.lax\.bid\/checkout|test-auth\.lax\.bid/, { timeout: 60_000 });
+  if (new URL(page.url()).hostname.includes("test-auth")) {
     await hostedAuthSignIn(page, email, password);
     await page.waitForURL(/test-shop\.lax\.bid/, { timeout: 120_000 });
     await page.goto("/checkout");
   }
-  if (!page.url().includes("/checkout")) {
-    throw new Error(`Expected /checkout after sign-in, got ${page.url()}`);
+  if (!isShopCheckoutUrl(page.url())) {
+    throw new Error(`Expected Shop /checkout after sign-in, got ${page.url()}`);
   }
   const checkoutUnavailable = page.getByRole("heading", { name: "Checkout unavailable" });
   if (await checkoutUnavailable.isVisible().catch(() => false)) {
