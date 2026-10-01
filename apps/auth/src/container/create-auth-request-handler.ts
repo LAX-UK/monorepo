@@ -4,6 +4,7 @@ import {
   stampMfaCompletedFromResponse,
 } from "@auction/auth";
 import type { createAuth } from "@auction/auth";
+import { resolveIdentitySessionForAuthorization } from "../auth-handoff/resolve-identity-session-for-authorization.js";
 import type { BackchannelLogoutRevoker } from "../services/backchannel-logout-revocation.service.js";
 import {
   type OidcSessionCoordinator,
@@ -16,13 +17,22 @@ export type AuthRequestHandler = (
   authorizationCode?: string | null,
 ) => Promise<Response>;
 
+function collectSetCookieHeaders(response: Response): string[] {
+  return typeof response.headers.getSetCookie === "function"
+    ? response.headers.getSetCookie()
+    : [response.headers.get("set-cookie") ?? ""];
+}
+
 export function createAuthRequestHandler(options: {
   events: IdentityEventPublisher;
   sessionStampStore: SessionStampStore;
   auth: ReturnType<typeof createAuth>;
   oidcSessions: Pick<OidcSessionCoordinator, "runTokenRequest" | "captureAuthorizationSession">;
   logout: BackchannelLogoutRevoker;
+  logAuthorizationHandoff?: (payload: Record<string, string | boolean | undefined>) => void;
 }): AuthRequestHandler {
+  const logHandoff = options.logAuthorizationHandoff;
+
   return async (request, authorizationCode = null) => {
     const path = new URL(request.url).pathname;
     const logoutSensitive =
@@ -82,25 +92,35 @@ export function createAuthRequestHandler(options: {
       await stampMfaCompletedFromResponse(options.sessionStampStore, response);
     }
     if (await readAuthorizationCodeFromResponse(response)) {
-      const sessionHeaders = new Headers(request.headers);
-      const setCookies =
-        typeof response.headers.getSetCookie === "function"
-          ? response.headers.getSetCookie()
-          : [response.headers.get("set-cookie") ?? ""];
-      const responseSessionCookie = setCookies
-        .map((cookie) => /((?:__Secure-)?better-auth\.session_token=[^;,]+)/.exec(cookie)?.[1])
-        .find(Boolean);
-      if (responseSessionCookie) {
-        const existingCookie = sessionHeaders.get("cookie");
-        sessionHeaders.set(
-          "cookie",
-          existingCookie ? `${existingCookie}; ${responseSessionCookie}` : responseSessionCookie,
-        );
+      const setCookies = collectSetCookieHeaders(response);
+      const resolved = await resolveIdentitySessionForAuthorization({
+        getSession: (headers) => options.auth.api.getSession({ headers }),
+        requestHeaders: request.headers,
+        setCookieHeaders: setCookies,
+      });
+      const identitySessionId = resolved.identitySessionId;
+      if (!identitySessionId) {
+        logHandoff?.({
+          event: "auth_authorization_handoff",
+          stage: "session_lookup",
+          outcome: "error",
+          hadIncomingSessionCookie: resolved.hadIncomingSessionCookie,
+          hadResponseSessionCookie: resolved.hadResponseSessionCookie,
+          strippedStale: resolved.strippedStale,
+          sessionSource: resolved.sessionSource,
+        });
+        return createAuthorizationServerErrorResponse(response);
       }
-      const codeSession = await options.auth.api.getSession({ headers: sessionHeaders });
-      const identitySessionId = codeSession?.session?.id;
-      if (!identitySessionId) return createAuthorizationServerErrorResponse(response);
       await options.oidcSessions.captureAuthorizationSession(response, identitySessionId);
+      logHandoff?.({
+        event: "auth_authorization_handoff",
+        stage: "session_correlation",
+        outcome: "ok",
+        hadIncomingSessionCookie: resolved.hadIncomingSessionCookie,
+        hadResponseSessionCookie: resolved.hadResponseSessionCookie,
+        strippedStale: resolved.strippedStale,
+        sessionSource: resolved.sessionSource,
+      });
     }
     return response;
   };

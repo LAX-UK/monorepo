@@ -6,6 +6,7 @@ import type {
   OAuthCodeExchanger,
   ShopProfileDirectory,
 } from "./ports/oauth-callback.ports.js";
+import { describeTokenExchangeFailure } from "./token-exchange-failure-metadata.js";
 
 export type CompleteOAuthCallbackInput = {
   session: ShopIdentitySession | null;
@@ -16,7 +17,12 @@ export type CompleteOAuthCallbackInput = {
 
 export type CompleteOAuthCallbackResult =
   | { kind: "session_expired" }
-  | { kind: "error"; code: string }
+  | {
+      kind: "error";
+      code: string;
+      tokenExchangeFailureClass?: "rejected" | "unavailable";
+      oauthError?: string;
+    }
   | { kind: "disabled" }
   | { kind: "authenticated"; idToken: string; refreshToken: string; sessionId: string };
 
@@ -51,8 +57,13 @@ export async function completeOAuthCallback(
       code: input.code,
       codeVerifier: pending.codeVerifier,
     });
-  } catch {
-    return { kind: "error", code: "token_exchange_failed" };
+  } catch (error) {
+    const metadata = describeTokenExchangeFailure(error);
+    return {
+      kind: "error",
+      code: "token_exchange_failed",
+      ...metadata,
+    };
   }
 
   const decodedClaims = deps.tokenVerifier.decode(tokenResponse.id_token);

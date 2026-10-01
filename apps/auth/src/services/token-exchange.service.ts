@@ -32,6 +32,8 @@ export class TokenExchangeError extends Error {
 export type VerifiedSubjectToken = {
   subject: string;
   sid?: string;
+  acr?: string;
+  authTime?: number;
 };
 
 export type TokenExchangePorts = {
@@ -46,6 +48,8 @@ export type TokenExchangePorts = {
     sid?: string;
     audience: LaxResourceId;
     scopes: readonly ProductScope[];
+    acr?: string;
+    authTime?: number;
   }): Promise<string>;
 };
 
@@ -116,6 +120,8 @@ export class TokenExchangeService {
     const accessToken = await this.ports.signAccessToken({
       subject: verified.subject,
       ...(verified.sid ? { sid: verified.sid } : {}),
+      ...(verified.acr ? { acr: verified.acr } : {}),
+      ...(verified.authTime !== undefined ? { authTime: verified.authTime } : {}),
       audience: policy.audience,
       scopes: policy.scopes,
     });

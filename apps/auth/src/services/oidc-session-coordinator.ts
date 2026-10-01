@@ -5,10 +5,18 @@ import { OIDC_ACR_BRONZE, OIDC_ACR_SILVER } from "@auction/identity-contracts";
 const AUTHORIZATION_CODE_TTL_SEC = 10 * 60;
 const OAUTH_SERVER_ERROR_DESCRIPTION = "Authorization request could not be completed";
 
+export type OidcAuthorizationCodeCorrelationReason =
+  | "correlation_missing"
+  | "session_missing"
+  | "subject_mismatch";
+
 export class OidcAuthorizationCodeCorrelationError extends Error {
-  constructor() {
+  readonly reason: OidcAuthorizationCodeCorrelationReason;
+
+  constructor(reason: OidcAuthorizationCodeCorrelationReason) {
     super("OIDC authorization-code correlation is missing, invalid, or already consumed");
     this.name = "OidcAuthorizationCodeCorrelationError";
+    this.reason = reason;
   }
 }
 
@@ -175,10 +183,15 @@ export class OidcSessionCoordinator {
     if (!requestContext) return {};
 
     const identitySessionId = await this.correlations.consume(requestContext.codeHash);
-    if (!identitySessionId) throw new OidcAuthorizationCodeCorrelationError();
+    if (!identitySessionId) {
+      throw new OidcAuthorizationCodeCorrelationError("correlation_missing");
+    }
     const identitySession = await this.sessions.findIdentitySession(identitySessionId);
-    if (!identitySession || identitySession.subjectId !== input.subjectId) {
-      throw new OidcAuthorizationCodeCorrelationError();
+    if (!identitySession) {
+      throw new OidcAuthorizationCodeCorrelationError("session_missing");
+    }
+    if (identitySession.subjectId !== input.subjectId) {
+      throw new OidcAuthorizationCodeCorrelationError("subject_mismatch");
     }
 
     const now = this.now();

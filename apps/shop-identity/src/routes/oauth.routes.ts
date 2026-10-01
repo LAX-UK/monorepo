@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   type OidcAuthorizePrompt,
   classifySilentCallback,
@@ -47,6 +47,10 @@ type OAuthRoutesDeps = Pick<
 };
 
 const SHOP_SILENT_COOKIE_PREFIX = "shop_sso";
+
+function oauthStateCorrelationHash(state: string): string {
+  return createHash("sha256").update(state).digest("hex").slice(0, 16);
+}
 
 export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
   const { env, sessionRepository, discovery, secureCookies, tokenService } = deps;
@@ -195,6 +199,10 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       });
     }
     const oauth = generateOAuthLoginParams();
+    logShopIdentityAuth("auth_start", {
+      oauthStateHash: oauthStateCorrelationHash(oauth.state),
+      hasReturnTo: Boolean(safeReturnTo),
+    });
     if (options?.requireAuthenticatedSession) {
       const sessionId = readSessionId(c);
       const session = sessionId ? await sessionRepository.findActive(sessionId) : null;
@@ -283,6 +291,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
   });
 
   app.get("/auth/callback", async (c) => {
+    const receivedState = c.req.query("state") ?? null;
     const session = await readSession(sessionRepository, c);
     const oauthError = c.req.query("error") ?? null;
     const probeActive = Boolean(getCookie(c, SHOP_SILENT_SSO_COOKIE_NAMES.probe));
@@ -308,12 +317,13 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
         kind: "upgrade_login_required",
         code: oauthError ?? undefined,
         probe: probeActive,
+        ...(receivedState ? { oauthStateHash: oauthStateCorrelationHash(receivedState) } : {}),
       });
       return redirectStorefrontInteractiveLogin(c, returnTo);
     }
     const result = await deps.completeOAuthCallback({
       session,
-      receivedState: c.req.query("state") ?? null,
+      receivedState,
       code: c.req.query("code") ?? null,
       oauthError,
     });
@@ -321,6 +331,11 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       kind: result.kind,
       code: result.kind === "error" ? result.code : undefined,
       probe: probeActive,
+      ...(receivedState ? { oauthStateHash: oauthStateCorrelationHash(receivedState) } : {}),
+      ...(result.kind === "error" && result.tokenExchangeFailureClass
+        ? { tokenExchangeFailureClass: result.tokenExchangeFailureClass }
+        : {}),
+      ...(result.kind === "error" && result.oauthError ? { oauthError: result.oauthError } : {}),
     });
     deleteCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, { path: "/" });
     if (probeActive) {

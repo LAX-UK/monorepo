@@ -158,8 +158,14 @@ export function createAuthIssuer(options: {
       }),
     enableNewDeviceLoginEmail: env.NODE_ENV === "production",
     blockNewUserRegistration: Boolean(env.DISABLE_NEW_USER_REGISTRATION),
-    resolveOidcIdTokenClaims: adaptOidcClaimsResolver((input) =>
-      options.oidcSessions.resolveIdTokenClaims(input),
+    resolveOidcIdTokenClaims: adaptOidcClaimsResolver(
+      (input) => options.oidcSessions.resolveIdTokenClaims(input),
+      (reason) =>
+        options.log.info({
+          event: "auth_token_correlation",
+          outcome: "error",
+          reason,
+        }),
     ),
   });
 }

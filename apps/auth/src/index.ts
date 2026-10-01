@@ -91,6 +91,7 @@ const authHandler = createAuthRequestHandler({
   auth,
   oidcSessions: services.oidc.sessions,
   logout: services.oidc.logout,
+  logAuthorizationHandoff: (payload) => log.info(payload),
 });
 const schedules = await createAuthSchedules({
   db,
