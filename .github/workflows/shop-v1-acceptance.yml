@@ -61,6 +61,8 @@ jobs:
         run: |
           pnpm --filter @auction/shop-domain test
           pnpm --filter @auction/db test -- migration-0182 migration-0186 migration-0193 migration-0194
+      - name: Build shop-api dependency graph
+        run: pnpm --filter @auction/shop-api... build
       - name: Shop-api Postgres integration (no skips)
         run: node scripts/ci/run-shop-v1-postgres-integration.mjs
       - name: Phase flag documentation reminder
