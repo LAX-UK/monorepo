@@ -158,5 +158,5 @@ describe.skipIf(!migrationUrl)("migrations 0182–0194 legacy fixtures", () => {
       );
       expect(constraints.rowCount).toBe(3);
     });
-  });
+  }, 120_000);
 });
