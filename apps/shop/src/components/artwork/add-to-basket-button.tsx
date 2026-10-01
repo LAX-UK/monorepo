@@ -20,7 +20,9 @@ export function AddToBasketButton({ slug, disabled, inBasket = false, basketLine
   const [added, setAdded] = useState(inBasket);
 
   useEffect(() => {
-    setAdded(inBasket);
+    if (inBasket) {
+      setAdded(true);
+    }
   }, [inBasket]);
 
   return (
