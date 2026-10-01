@@ -79,11 +79,22 @@
   min-height: 100%;
   justify-content: flex-end;
   padding: calc(var(--header-height, 7rem) + 2rem) var(--shop-page-gutter) 3.5rem;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* No-JS / smoke: entrance animation uses fill-mode both elsewhere and can leave opacity 0 when scripting is off. */
+@media (scripting: none) {
+  .shop-home__hero-panel {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .shop-home__hero:not(.shop-home__hero--static) .shop-home__hero-panel {
-    animation: shop-hero-panel-in 0.65s ease-out both;
+    animation: shop-hero-panel-in 0.65s ease-out forwards;
   }
 
   .shop-home__hero:not(.shop-home__hero--static) .shop-home__hero-layer--2 {
