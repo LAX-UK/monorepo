@@ -63,6 +63,7 @@ export function createDrizzleBasketRepository(db: Database): BasketRepository {
           })
           .onConflictDoUpdate({
             target: [shopBasketLine.basketId, shopBasketLine.artworkId],
+            targetWhere: sql`${shopBasketLine.artworkId} IS NOT NULL`,
             set: { quantity, unitPricePence, updatedAt: new Date() },
           });
         return loadBasketRecord(tx as Database, basketId);
@@ -120,6 +121,7 @@ export function createDrizzleBasketRepository(db: Database): BasketRepository {
             })
             .onConflictDoUpdate({
               target: [shopBasketLine.basketId, shopBasketLine.artworkId],
+              targetWhere: sql`${shopBasketLine.artworkId} IS NOT NULL`,
               set: {
                 quantity: sql`${shopBasketLine.quantity} + ${line.quantity}`,
                 updatedAt: new Date(),

@@ -92,9 +92,21 @@ test.describe("shop buyer flow @e2e", () => {
     await expect(addButton).toBeVisible();
     await expect(addButton).toBeEnabled();
     await addButton.click();
-    await expect(page.getByRole("link", { name: /view basket/i })).toBeVisible({
-      timeout: 15_000,
-    });
+    const addError = page.getByRole("alert");
+    await expect
+      .poll(
+        async () => {
+          if (await page.getByRole("link", { name: /view basket/i }).isVisible()) {
+            return "ok";
+          }
+          if (await addError.isVisible()) {
+            return (await addError.textContent()) ?? "add failed";
+          }
+          return "pending";
+        },
+        { timeout: 15_000 },
+      )
+      .toBe("ok");
     await page.getByRole("link", { name: /view basket/i }).click();
     await expect(page.getByRole("heading", { name: "Basket", exact: true })).toBeVisible({
       timeout: 15_000,

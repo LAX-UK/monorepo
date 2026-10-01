@@ -22,9 +22,10 @@ export async function importTestArtwork(
 ) {
   const suffix = integrationSuffix(label);
   const importWriter = createDrizzleArtworkImportRepository(db, "off");
-  return importWriter.importArtwork({
+  const slug = `integration-${label}-${suffix}`;
+  const result = await importWriter.importArtwork({
     importKey: `integration:${label}:${suffix}`,
-    slug: `integration-${label}-${suffix}`,
+    slug,
     title: `Integration ${label}`,
     description: null,
     primaryImageUrl: null,
@@ -33,6 +34,7 @@ export async function importTestArtwork(
     eligibleForEditionAllocation: true,
     printPricePence: options?.printPricePence ?? 5_000,
   });
+  return { ...result, slug };
 }
 
 export async function selectLaxEdition(db: Database, artworkId: string) {
