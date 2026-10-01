@@ -9,7 +9,7 @@ import {
   pence,
   reservedUntilFromCheckoutExpiry,
 } from "@auction/shop-domain";
-import { isUkPostcode, normalizeUkPostcode } from "@auction/validators";
+import { isUkPostcode, normalizeUkPostcode } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type {
   CheckoutWriter,

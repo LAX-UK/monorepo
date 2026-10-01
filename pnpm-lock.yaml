@@ -331,9 +331,6 @@ importers:
       '@auction/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@auction/validators':
-        specifier: workspace:*
-        version: link:../../packages/validators
       next:
         specifier: 15.5.9
         version: 15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -404,9 +401,6 @@ importers:
       '@auction/shop-domain':
         specifier: workspace:*
         version: link:../../packages/shop-domain
-      '@auction/validators':
-        specifier: workspace:*
-        version: link:../../packages/validators
       '@fastify/etag':
         specifier: ^6.0.3
         version: 6.2.0
@@ -1514,6 +1508,10 @@ importers:
         version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
 
   packages/shop-domain:
+    dependencies:
+      '@auction/validators':
+        specifier: workspace:*
+        version: link:../validators
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*

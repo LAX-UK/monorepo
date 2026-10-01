@@ -1,1 +1,1 @@
-export { isUkPostcode as isValidUkPostcode, normalizeUkPostcode } from "@auction/validators";
+export { isUkPostcode as isValidUkPostcode, normalizeUkPostcode } from "@auction/shop-domain";

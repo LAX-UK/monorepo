@@ -58,3 +58,4 @@ export {
   computeRefundPeriodEndsAt,
 } from "./payout-due.js";
 export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
+export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";
