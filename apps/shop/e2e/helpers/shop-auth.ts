@@ -13,11 +13,11 @@ export async function signInShopBuyer(
   await page.goto(`/login?returnTo=${encodeURIComponent(returnTo)}`);
   await page.waitForLoadState("networkidle");
 
-  const email = page.getByLabel(/email/i).first();
-  const password = page.getByLabel(/password/i).first();
+  const email = page.locator("#email");
   if (await email.isVisible().catch(() => false)) {
     await email.fill(credentials.email);
-    await password.fill(credentials.password);
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.locator("#password").fill(credentials.password);
     await page
       .getByRole("button", { name: /sign in|log in|continue/i })
       .first()
