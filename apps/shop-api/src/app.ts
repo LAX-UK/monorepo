@@ -23,6 +23,7 @@ import { registerArtworkRoutes } from "./routes/v1/artworks.routes.js";
 import { registerBasketRoutes } from "./routes/v1/basket.routes.js";
 import { registerCategoryRoutes } from "./routes/v1/categories.routes.js";
 import { registerOrderRoutes } from "./routes/v1/orders.routes.js";
+import { registerPortalMeDisabledRoutes } from "./routes/v1/portal-me-disabled.routes.js";
 import { registerPortalMeRoutes } from "./routes/v1/portal-me.routes.js";
 import { registerStripeWebhookRoutes } from "./routes/webhooks/stripe.routes.js";
 
@@ -138,6 +139,8 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
       ...options.deps.portal,
       payoutsEnabled: options.deps.env.SHOP_PAYOUTS_ENABLED,
     });
+  } else {
+    void registerPortalMeDisabledRoutes(app);
   }
 
   void app.register(swagger, {

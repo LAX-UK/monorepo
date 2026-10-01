@@ -5,12 +5,14 @@ import { describe, expect, it } from "vitest";
 const drizzle = resolve(import.meta.dirname, "../drizzle");
 
 describe("migration 0194 contract", () => {
-  it("backfills LAX owners and adds basket/order price checks", async () => {
-    const [forward, rollback] = await Promise.all([
+  it("adds basket/order price checks without LAX owner backfill", async () => {
+    const [forward, rollback, reaudit] = await Promise.all([
       readFile(resolve(drizzle, "0194_shop_phase1_constraints.sql"), "utf8"),
       readFile(resolve(drizzle, "0194_rollback.sql"), "utf8"),
+      readFile(resolve(drizzle, "0193_shop_reaudit_holds_payout_authority.sql"), "utf8"),
     ]);
-    expect(forward).toContain("owner_party_id");
+    expect(reaudit).toContain("owner_party_id");
+    expect(forward).not.toContain("owner_party_id");
     expect(forward).toContain("lax_platform_seller");
     expect(forward).toContain("NOT VALID");
     expect(forward).toContain("VALIDATE CONSTRAINT");

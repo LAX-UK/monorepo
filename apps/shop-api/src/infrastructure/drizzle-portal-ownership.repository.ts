@@ -105,6 +105,7 @@ export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwne
           artworkId: shopSaleAuthorityGrant.artworkId,
           authorisedCount: shopSaleAuthorityGrant.authorisedCount,
           createdAt: shopSaleAuthorityGrant.createdAt,
+          revision: shopSaleAuthorityGrant.revision,
         })
         .from(shopSaleAuthorityGrant)
         .where(
@@ -113,7 +114,7 @@ export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwne
             inArray(shopSaleAuthorityGrant.artworkId, artworkIds),
           ),
         )
-        .orderBy(desc(shopSaleAuthorityGrant.createdAt));
+        .orderBy(desc(shopSaleAuthorityGrant.revision), desc(shopSaleAuthorityGrant.id));
 
       const grantByArtwork = new Map<string, { authorisedCount: number; createdAt: Date }>();
       for (const grant of latestGrants) {

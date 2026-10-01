@@ -15,6 +15,8 @@ describe("migration 0193 contract", () => {
     expect(forward).toContain("pending_possession");
     expect(forward).not.toContain("lax_platform_seller");
     expect(forward).toContain("shop_sale_authority_grant");
+    expect(forward).toContain("authorised edition without owner after LAX backfill");
+    expect(forward).toContain("revision");
     expect(rollback).toContain("irreversible");
     expect(rollback).toContain("shop_stock_hold_edition_active_idx");
   });

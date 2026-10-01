@@ -6,16 +6,25 @@ export type HealthDeps = {
 };
 
 type ReadyPayload =
-  | { service: "shop-api"; status: "ok"; database: "ok"; catalogueSchema: "ok" }
+  | {
+      service: "shop-api";
+      status: "ok";
+      database: "ok";
+      catalogueSchema: "ok";
+      release: string;
+    }
   | {
       service: "shop-api";
       status: "degraded";
       database?: "unavailable";
       catalogueSchema?: "missing";
+      release: string;
     };
 
 export async function registerHealthRoutes(app: FastifyInstance, health: HealthDeps) {
-  app.get("/health/live", async () => ({ service: "shop-api", status: "ok" }));
+  const release = process.env.SENTRY_RELEASE ?? "unknown";
+
+  app.get("/health/live", async () => ({ service: "shop-api", status: "ok", release }));
 
   app.get("/health/ready", async (request, reply) => {
     try {
@@ -26,6 +35,7 @@ export async function registerHealthRoutes(app: FastifyInstance, health: HealthD
         service: "shop-api",
         status: "degraded",
         database: "unavailable",
+        release,
       };
       return reply.status(503).send(body);
     }
@@ -38,6 +48,7 @@ export async function registerHealthRoutes(app: FastifyInstance, health: HealthD
         service: "shop-api",
         status: "degraded",
         catalogueSchema: "missing",
+        release,
       };
       return reply.status(503).send(body);
     }
@@ -47,6 +58,7 @@ export async function registerHealthRoutes(app: FastifyInstance, health: HealthD
       status: "ok",
       database: "ok",
       catalogueSchema: "ok",
+      release,
     } satisfies ReadyPayload;
   });
 }

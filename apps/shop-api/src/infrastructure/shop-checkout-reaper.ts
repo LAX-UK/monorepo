@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopOrder } from "@auction/db/schema";
 import { and, asc, eq, isNotNull, lt } from "drizzle-orm";
+import type pino from "pino";
 import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 
@@ -15,6 +16,7 @@ export async function reapStaleShopCheckouts(
   db: Database,
   now: Date,
   paymentGateway?: PaymentCheckoutGateway,
+  log?: pino.Logger,
 ): Promise<number> {
   const stale = await db
     .select({ id: shopOrder.id })
@@ -29,10 +31,10 @@ export async function reapStaleShopCheckouts(
     .orderBy(asc(shopOrder.checkoutExpiresAt))
     .limit(REAPER_BATCH_SIZE);
 
-  let processed = 0;
+  let expired = 0;
   for (const row of stale) {
     try {
-      await expireShopCheckoutSession(
+      const outcome = await expireShopCheckoutSession(
         db,
         {
           eventId: reaperEventIdForOrder(row.id),
@@ -41,10 +43,17 @@ export async function reapStaleShopCheckouts(
         },
         paymentGateway ? { paymentGateway } : {},
       );
-      processed += 1;
-    } catch {
-      // Continue reaping other orders; one bad row must not stall the batch.
+      if (outcome === "expired") {
+        expired += 1;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (log) {
+        log.error({ orderId: row.id, err: message }, "shop checkout reaper failed for order");
+      } else {
+        console.error(`shop checkout reaper failed for order ${row.id}: ${message}`);
+      }
     }
   }
-  return processed;
+  return expired;
 }

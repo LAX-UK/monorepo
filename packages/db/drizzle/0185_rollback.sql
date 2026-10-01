@@ -1,4 +1,15 @@
 -- IRREVERSIBLE: drops shop product/variant tables and merchandise line columns; historical order data may reference removed product rows.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM "shop_basket_line" WHERE "product_variant_id" IS NOT NULL
+  ) OR EXISTS (
+    SELECT 1 FROM "shop_order_line" WHERE "product_variant_id" IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION '0185 rollback blocked: merchandise basket/order lines exist; archive or delete them first';
+  END IF;
+END $$;
+--> statement-breakpoint
 DROP TABLE IF EXISTS "shop_document";
 --> statement-breakpoint
 ALTER TABLE "shop_payout_ledger"

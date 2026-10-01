@@ -34,9 +34,10 @@ describe("sendEmailUseCase claim handling", () => {
       markSuppressed: vi.fn(),
       markSent: vi.fn(),
       markFailedOrPending: vi.fn(),
+      markSentPersistenceFailed: vi.fn(),
       resolveUserEmail: vi.fn(),
       insertSuppression: vi.fn(),
-      findStalePendingIds: vi.fn(async () => []),
+      recoverStaleForDispatch: vi.fn(async () => []),
     };
     await sendEmailUseCase(
       { outboxRepo, sender, log: pino({ level: "silent" }) },

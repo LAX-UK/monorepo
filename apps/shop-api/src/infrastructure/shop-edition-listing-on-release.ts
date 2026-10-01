@@ -35,7 +35,7 @@ export async function resolveListingStatusAfterReservationRelease(
         eq(shopSaleAuthorityGrant.ownerPartyId, input.ownerPartyId),
       ),
     )
-    .orderBy(desc(shopSaleAuthorityGrant.createdAt), desc(shopSaleAuthorityGrant.id))
+    .orderBy(desc(shopSaleAuthorityGrant.revision), desc(shopSaleAuthorityGrant.id))
     .limit(1);
 
   if (!grant) {

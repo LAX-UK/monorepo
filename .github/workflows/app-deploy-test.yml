@@ -171,6 +171,7 @@ jobs:
     uses: ./.github/workflows/shop-staging-acceptance.yml
     with:
       shop_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_sha }}
+      shop_api_sha: ${{ needs.resolve-shop-immutable-pins.outputs.shop_api_sha }}
       seed_catalogue: false
       parent_holds_deploy_lock: true
     secrets: inherit

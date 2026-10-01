@@ -81,6 +81,7 @@ describe("createShopApiApp", () => {
       headers: { authorization: "Bearer test-bff-token-minimum-32-characters-long" },
     });
     expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: "shop.feature_disabled" });
     await app.close();
   });
 

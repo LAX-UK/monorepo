@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS "shop_sale_authority_grant" (
   "recorded_by_subject_id" text NOT NULL,
   "evidence_note" text NOT NULL,
   "request_id" uuid,
+  "revision" bigserial NOT NULL,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   CONSTRAINT "shop_sale_authority_grant_count_range" CHECK ("authorised_count" >= 0 AND "authorised_count" <= 10)
 );

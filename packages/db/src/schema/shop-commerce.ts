@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   check,
   index,
@@ -597,6 +598,7 @@ export const shopSaleAuthorityGrant = pgTable(
     recordedBySubjectId: text("recorded_by_subject_id").notNull(),
     evidenceNote: text("evidence_note").notNull(),
     requestId: uuid("request_id"),
+    revision: bigint("revision", { mode: "number" }).generatedByDefaultAsIdentity().notNull(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

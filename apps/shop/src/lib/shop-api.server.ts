@@ -28,6 +28,11 @@ export function shopApiBaseUrl(): string {
   );
 }
 
+export function shopApiServerUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${shopApiBaseUrl()}${normalized}`;
+}
+
 async function shopApiFetch(path: string, init?: RequestInit): Promise<Response> {
   const resource = path.split(/[/?]/).filter(Boolean)[1] ?? "catalogue";
   return fetch(`${shopApiBaseUrl()}${path}`, {

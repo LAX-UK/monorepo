@@ -222,4 +222,57 @@ describe.skipIf(!migrationUrl)("migrations 0182–0194 legacy fixtures", () => {
       expect(synced.rows[0]?.status).toBe("reserved");
     });
   }, 120_000);
+
+  it("0193 reconciles partial grants to effective authorised count", async () => {
+    await withScratchDatabase(async (pool) => {
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0192);
+
+      const client = await pool.connect();
+      let artworkId: string | undefined;
+      let ownerPartyId: string | undefined;
+      try {
+        const ownerParty = await client.query<{ id: string }>(
+          `INSERT INTO shop_party (display_name, kind) VALUES ($1, 'artist') RETURNING id`,
+          [`partial-grant-owner-${randomUUID().slice(0, 8)}`],
+        );
+        ownerPartyId = ownerParty.rows[0]?.id;
+        const artist = await client.query<{ id: string }>(
+          "INSERT INTO shop_artist (slug, party_id) VALUES ($1, $2) RETURNING id",
+          [`partial-grant-artist-${randomUUID().slice(0, 8)}`, ownerPartyId],
+        );
+        const artwork = await client.query<{ id: string }>(
+          `INSERT INTO shop_artwork (slug, title, artist_id, eligible_for_edition_allocation, import_key)
+           VALUES ($1, 'Partial grant', $2, true, $3) RETURNING id`,
+          [
+            `partial-grant-${randomUUID().slice(0, 8)}`,
+            artist.rows[0]?.id,
+            `import:${randomUUID()}`,
+          ],
+        );
+        artworkId = artwork.rows[0]?.id;
+        await client.query(
+          `INSERT INTO shop_sale_authority_grant (artwork_id, owner_party_id, authorised_count, recorded_by_subject_id, evidence_note)
+           VALUES ($1, $2, 1, 'fixture', 'partial grant before 0193')`,
+          [artworkId, ownerPartyId],
+        );
+        for (const editionNumber of [1, 2, 3]) {
+          await client.query(
+            `INSERT INTO shop_edition (artwork_id, edition_number, allocation, owner_party_id, listing_status, custody_status)
+             VALUES ($1, $2, 'artist', $3, 'authorised', 'unprinted')`,
+            [artworkId, editionNumber, ownerPartyId],
+          );
+        }
+      } finally {
+        client.release();
+      }
+
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0194);
+
+      const authorised = await pool.query<{ cnt: string }>(
+        `SELECT count(*)::text AS cnt FROM shop_edition WHERE artwork_id = $1 AND listing_status = 'authorised'`,
+        [artworkId],
+      );
+      expect(Number(authorised.rows[0]?.cnt ?? 0)).toBe(1);
+    });
+  }, 120_000);
 });

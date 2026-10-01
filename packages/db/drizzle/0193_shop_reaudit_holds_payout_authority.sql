@@ -1,6 +1,20 @@
 -- IRREVERSIBLE (rollback cannot restore): fulfilment backfill, payout blocked_reason, LAX grants, edition de-authorisation.
 SET LOCAL lock_timeout = '30s';
 --> statement-breakpoint
+DO $$
+DECLARE
+  "lax_count" integer;
+BEGIN
+  SELECT COUNT(*)::integer INTO "lax_count" FROM "shop_party" WHERE "kind" = 'lax';
+  IF "lax_count" > 1 THEN
+    RAISE EXCEPTION '0193: expected at most one shop_party with kind=lax, found %', "lax_count";
+  END IF;
+  IF "lax_count" = 0 THEN
+    INSERT INTO "shop_party" ("display_name", "kind")
+    VALUES ('LAX London Art Exchange', 'lax');
+  END IF;
+END $$;
+--> statement-breakpoint
 -- Release duplicate active holds (keep earliest per edition) before unique partial index.
 WITH "ranked" AS (
   SELECT
@@ -63,8 +77,7 @@ FROM (
 ) AS "lax"
 WHERE "e"."owner_party_id" IS NULL
   AND "e"."allocation" = 'lax'
-  AND "e"."listing_status" <> 'sold'::"shop_edition_listing_status"
-  AND "lax"."id" IS NOT NULL;
+  AND "e"."listing_status" <> 'sold'::"shop_edition_listing_status";
 --> statement-breakpoint
 -- Preserve LAX platform stock: record explicit grants before undoing 0182 implicit authorisation.
 INSERT INTO "shop_sale_authority_grant" (
@@ -104,3 +117,46 @@ WHERE "e"."listing_status" = 'authorised'
     WHERE "g"."artwork_id" = "e"."artwork_id"
       AND "g"."owner_party_id" = "e"."owner_party_id"
   );
+--> statement-breakpoint
+-- Reconcile authorised editions to the effective grant count (latest revision per artwork+owner).
+WITH "latest_grant" AS (
+  SELECT DISTINCT ON ("artwork_id", "owner_party_id")
+    "artwork_id",
+    "owner_party_id",
+    "authorised_count"
+  FROM "shop_sale_authority_grant"
+  ORDER BY "artwork_id", "owner_party_id", "revision" DESC
+),
+"ranked" AS (
+  SELECT
+    "e"."id",
+    ROW_NUMBER() OVER (
+      PARTITION BY "e"."artwork_id", "e"."owner_party_id"
+      ORDER BY "e"."edition_number" DESC
+    ) AS "rn",
+    "g"."authorised_count"
+  FROM "shop_edition" AS "e"
+  INNER JOIN "latest_grant" AS "g"
+    ON "g"."artwork_id" = "e"."artwork_id"
+    AND "g"."owner_party_id" = "e"."owner_party_id"
+  WHERE "e"."listing_status" = 'authorised'
+)
+UPDATE "shop_edition" AS "e"
+SET
+  "listing_status" = 'not_authorised',
+  "sale_authorised_at" = NULL
+FROM "ranked" AS "r"
+WHERE "e"."id" = "r"."id"
+  AND "r"."rn" > "r"."authorised_count";
+--> statement-breakpoint
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM "shop_edition"
+    WHERE "listing_status" = 'authorised'
+      AND "owner_party_id" IS NULL
+  ) THEN
+    RAISE EXCEPTION '0193: authorised edition without owner after LAX backfill';
+  END IF;
+END $$;

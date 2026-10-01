@@ -58,6 +58,12 @@ test.describe("Shop V1 phase 1 smoke", () => {
       }
       await expect(page.locator("#main-content")).not.toBeEmpty();
     }
+
+    const ownedArtworkTitle = process.env.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE?.trim();
+    if (ownedArtworkTitle) {
+      await page.goto("/account/editions");
+      await expect(page.getByText(ownedArtworkTitle)).toBeVisible();
+    }
   });
 
   test("account hub exposes ownership entry points", async ({ page }) => {

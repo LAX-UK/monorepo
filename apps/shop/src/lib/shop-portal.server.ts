@@ -32,10 +32,9 @@ function readUpstreamErrorCode(body: unknown): string | undefined {
   return undefined;
 }
 
-function isPortalOwnershipDisabled(response: Response, body: unknown): boolean {
-  if (response.status === 404) return true;
+function isPortalOwnershipDisabled(_response: Response, body: unknown): boolean {
   const code = readUpstreamErrorCode(body);
-  return code === SHOP_API_ERROR_CODES.FEATURE_DISABLED || code === SHOP_API_ERROR_CODES.NOT_FOUND;
+  return code === SHOP_API_ERROR_CODES.FEATURE_DISABLED;
 }
 
 function parsePortalEditionItems(body: unknown): PortalEditionItem[] | null {

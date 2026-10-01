@@ -22,7 +22,7 @@ export async function notifyZohoCrmDeadLetter(options: {
     vars: {
       eventId: String(delivery.eventId),
       deliveryId: String(delivery.id),
-      lastError,
+      lastError: `One or more Shop Zoho CRM deliveries failed; inspect domain_event_delivery. Latest: ${lastError}`,
       eventType,
     },
   });

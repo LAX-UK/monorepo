@@ -18,7 +18,7 @@ Phased delivery uses feature flags on `shop-api` (and related deployables). Do n
 
 ## Phase 1 deploy (migrations)
 
-Apply **`0182` through `0194`** together before enabling Phase 1 flags. Migration **`0191`** installs a sync trigger that keeps legacy `shop_edition.status` aligned with `listing_status` / `custody_status` during rolling deploys; **dropping the legacy column is a separate contract release** (see below). **`0193`** data changes are irreversible (rollback is index-only). **`0194`** adds price CHECK constraints and backfills LAX `owner_party_id`.
+Apply **`0182` through `0194`** together before enabling Phase 1 flags. Migration **`0191`** installs a sync trigger that keeps legacy `shop_edition.status` aligned with `listing_status` / `custody_status` during rolling deploys; **dropping the legacy column is a separate contract release** (see below). **`0193`** data changes are irreversible (rollback is index-only), backfills LAX `owner_party_id`, reconciles sale-authority grants to authorised edition counts, and fails closed on duplicate or missing LAX parties. **`0194`** adds price CHECK constraints and LAX-seller payout cancellation (no owner backfill).
 
 ### Pre-deploy: old-schema preflight (Shop DB)
 
@@ -119,13 +119,22 @@ Do not enable Phase 1 portal or run portal acceptance until all of the following
 | Sale authority | Rows that must stay listed have matching `shop_sale_authority_grant` after **`0193`** (see pre-deploy SQL) |
 | Ops alerts | `SHOP_OPS_ALERT_EMAIL` on **`shop-api`** when enquiry / dead-letter alerts are required |
 
-Deploy order on test: merge infra Terraform shop flags → migrate on deploy → **`auth`** ready → **`shop-api`** → **`shop-identity`** → **`shop`** storefront → run **Shop staging acceptance** with matching `shop_sha`.
+Deploy order on test: merge infra Terraform shop flags → migrate on deploy → **`auth`** ready → **`shop-api`** → **`shop-identity`** → **`shop`** storefront → run **Shop staging acceptance** with matching `shop_sha`, **`shop_api_sha`**, and identity release SHAs from `/health/ready`.
+
+**Identity closure:** when `compare-lax-identity` fails, sync the seven drifted paths listed by `node scripts/ci/verify-identity-closure-sync.mjs` into [lax-identity](https://github.com/LAX-UK/lax-identity) via `./scripts/identity/repo-split.sh <empty-destination>` and merge that PR before pinning staging recovery.
 
 ## Phase 2+ gate blockers (recorded; not Phase 1 scope)
 
-- Hold `createHold` role-aware broker resolution; broker release IDOR.
-- Possession date bounds (`paidAt` ≤ `possessionAt` ≤ now) and finance recency on possession.
-- Refund amount caps and idempotency payload matching; Stripe refund wiring.
+Keep **`SHOP_PAYOUTS_ENABLED`**, **`SHOP_THIRD_PARTY_ENABLED`**, **`SHOP_ORIGINALS_ENABLED`**, **`SHOP_MERCHANDISE_ENABLED`**, and **`SHOP_ADMIN_ENABLED`** off until these are resolved:
+
+- Payout eligibility accepts missing/pending compliance and has a read/update race.
+- Refund amount, cumulative balance, paid status, line ownership, and idempotency payload are not validated end-to-end.
+- Brokers can release another broker’s hold (hold release IDOR).
+- No registered OIDC client can obtain `shop.admin`; admin UI remains deferred.
+- **`SHOP_MERCHANDISE_ENABLED`** is build-time baked on the storefront static merchandise page — runtime enable is unsafe without a follow-up release.
+- Payouts/documents portal routes have inconsistent no-party behaviour when payouts are enabled.
+- Admin audit gaps, finance step-up, URL-prefix auth, identity merge, refunded status, and fulfilment-price issues listed in prior gate reviews.
+- Hold `createHold` role-aware broker resolution; possession date bounds (`paidAt` ≤ `possessionAt` ≤ now) and finance recency on possession.
 - Missing audit on production/third-party/original writers and hold-expiry scheduler.
 - VAT computation on checkout lines.
 - Dispatch/production/refund/cancellation customer emails (templates exist; not all wired).

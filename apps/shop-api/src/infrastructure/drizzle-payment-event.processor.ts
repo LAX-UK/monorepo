@@ -115,8 +115,14 @@ export function createDrizzlePaymentEventProcessor(
         ...options,
         fallbackCustomerEmail: input.customerEmail ?? options.fallbackCustomerEmail ?? null,
       }),
-    expireCheckout: (input) =>
-      expireShopCheckoutSession(db, { ...input, source: input.source ?? "stripe" }, options),
+    expireCheckout: async (input) => {
+      const outcome = await expireShopCheckoutSession(
+        db,
+        { ...input, source: input.source ?? "stripe" },
+        options,
+      );
+      return outcome === "duplicate" ? "duplicate" : "processed";
+    },
     failCheckout: (input) =>
       failShopCheckoutSession(db, { ...input, source: input.source ?? "stripe" }, options),
     recordCurrencyViolation: (input) => recordShopCheckoutCurrencyViolation(db, input, options),
@@ -376,11 +382,26 @@ export async function completeShopCheckoutSession(
   });
 }
 
+const REAPER_ASYNC_PAYMENT_BACKOFF_MS = 15 * 60 * 1000;
+
+export type ShopCheckoutExpireOutcome = "expired" | "duplicate" | "unchanged" | "deferred_async";
+
+async function deferCheckoutReaperForAsyncPayment(db: Database, orderId: string): Promise<void> {
+  await db
+    .update(shopOrder)
+    .set({
+      checkoutExpiresAt: new Date(Date.now() + REAPER_ASYNC_PAYMENT_BACKOFF_MS),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(shopOrder.id, orderId), eq(shopOrder.status, "pending_payment")));
+}
+
 export async function recordShopCheckoutCurrencyViolation(
   db: Database,
   input: { eventId: string; orderId: string; currency: string; sessionId: string },
   options: CheckoutTransitionOptions = {},
 ): Promise<"processed" | "duplicate"> {
+  const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
   return db.transaction(async (tx) => {
     const [claim] = await tx
       .insert(shopProcessedPaymentEvent)
@@ -394,6 +415,21 @@ export async function recordShopCheckoutCurrencyViolation(
       orderId: input.orderId,
       detail: `Stripe session ${input.sessionId} settled in ${input.currency.toUpperCase()} instead of GBP.`,
     });
+    const locked = await tx
+      .select()
+      .from(shopOrder)
+      .where(eq(shopOrder.id, input.orderId))
+      .for("update")
+      .limit(1);
+    const order = locked[0];
+    if (order?.status === "pending_payment") {
+      await tx
+        .update(shopOrder)
+        .set({ status: "payment_failed", updatedAt: new Date() })
+        .where(eq(shopOrder.id, input.orderId));
+      await releaseReservedEditionsForOrder(tx as Database, input.orderId, events);
+      await restoreBasketLinesFromOrder(tx as Database, order, input.orderId);
+    }
     return "processed";
   });
 }
@@ -443,7 +479,7 @@ export async function expireShopCheckoutSession(
   db: Database,
   input: { eventId: string; orderId: string; source?: string; sessionId?: string },
   options: CheckoutTransitionOptions = {},
-): Promise<"processed" | "duplicate"> {
+): Promise<ShopCheckoutExpireOutcome> {
   const source = input.source ?? "stripe";
   const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
   const stripeGate = await expireStripeBeforeLocalTransition(
@@ -453,7 +489,8 @@ export async function expireShopCheckoutSession(
     "expire",
   );
   if (stripeGate === "skip_async") {
-    return "processed";
+    await deferCheckoutReaperForAsyncPayment(db, input.orderId);
+    return "deferred_async";
   }
   return db.transaction(async (tx) => {
     const [claim] = await tx
@@ -471,7 +508,7 @@ export async function expireShopCheckoutSession(
       .limit(1);
     const order = locked[0];
     if (!order || order.status !== "pending_payment") {
-      return "processed";
+      return "unchanged";
     }
     if (input.sessionId) {
       assertStripeSessionMatchesOrder(order, input.sessionId);
@@ -482,7 +519,7 @@ export async function expireShopCheckoutSession(
       .where(eq(shopOrder.id, input.orderId));
     await releaseReservedEditionsForOrder(tx as Database, input.orderId, events);
     await restoreBasketLinesFromOrder(tx as Database, order, input.orderId);
-    return "processed";
+    return "expired";
   });
 }
 

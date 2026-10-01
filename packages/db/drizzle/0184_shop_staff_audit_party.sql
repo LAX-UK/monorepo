@@ -1,3 +1,5 @@
+SET LOCAL lock_timeout = '30s';
+--> statement-breakpoint
 CREATE TYPE "shop_party_kind" AS ENUM('person', 'artist', 'lax', 'gallery', 'broker', 'marketplace');
 --> statement-breakpoint
 CREATE TYPE "shop_staff_role" AS ENUM(

@@ -1,3 +1,5 @@
+SET LOCAL lock_timeout = '30s';
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "shop_payout_ledger_status_due_idx"
   ON "shop_payout_ledger" ("status", "payout_due_at");
 --> statement-breakpoint
