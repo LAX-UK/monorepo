@@ -41,6 +41,7 @@ export function createCommerceServices(
   const paymentEvents: PaymentEventProcessor = createDrizzlePaymentEventProcessor(db, {
     notifications,
     storefrontUrl: env.SHOP_STOREFRONT_URL,
+    paymentGateway,
   });
 
   return {

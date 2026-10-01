@@ -34,6 +34,7 @@ export type StripeWebhookDeps = {
   completeCheckout(input: {
     eventId: string;
     orderId: string;
+    sessionId: string;
     amountTotalPence: number;
     paidAt: Date;
     customerEmail?: string | null;
@@ -41,11 +42,13 @@ export type StripeWebhookDeps = {
   expireCheckout(input: {
     eventId: string;
     orderId: string;
+    sessionId: string;
     source?: string;
   }): Promise<"processed" | "duplicate">;
   failCheckout(input: {
     eventId: string;
     orderId: string;
+    sessionId: string;
     source?: string;
   }): Promise<"processed" | "duplicate">;
 };

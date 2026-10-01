@@ -56,7 +56,15 @@ describe("createStripeShopCheckoutGateway", () => {
       successUrl: "http://localhost:3020/ok?orderId={ORDER_ID}",
       cancelUrl: "http://localhost:3020/basket?orderId={ORDER_ID}",
       expiresAt: new Date(Date.now() + 60_000),
-      lines: [],
+      lines: [
+        {
+          title: "Test print",
+          description: "Edition 1",
+          quantity: 1,
+          unitAmountPence: 1000,
+          imageUrl: null,
+        },
+      ],
       fulfilmentSurchargePence: 0,
     });
     expect(session.checkoutUrl).toContain("orderId=11111111-1111-4111-8111-111111111111");

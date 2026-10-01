@@ -160,6 +160,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       completeShopCheckoutSession(db, {
         eventId: `evt-a-${suffix}`,
         orderId: orderA.id,
+        sessionId: "cs_test_attribution",
         amountTotalPence: 5_000,
         paidAt: new Date(),
       }),

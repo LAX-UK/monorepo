@@ -181,7 +181,7 @@ describe("OAuth routes", () => {
     expect(response.headers.get("location")).toBe("http://localhost:3020/session-expired");
   });
 
-  it("skips OAuth when login is requested with an active authenticated session", async () => {
+  it("routes healthy existing login through post-sign-in for basket merge", async () => {
     const sessionId = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEfg";
     const app = new Hono();
     registerOAuthRoutes(app, {
@@ -205,14 +205,52 @@ describe("OAuth routes", () => {
         invalidate: vi.fn(),
         consumeLogoutToken: vi.fn(async () => "consumed" as const),
       },
-      tokenService: createTestTokenService(),
+      tokenService: createTestTokenService({ hasStoredRefreshToken: vi.fn(async () => true) }),
       completeOAuthCallback: vi.fn(),
     });
     const response = await app.request("/login?returnTo=%2Fcheckout", {
       headers: { ...documentNavigation.headers, cookie: `${SESSION_COOKIE_NAME}=${sessionId}` },
     });
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("http://localhost:3020/checkout");
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3020/account/post-sign-in?returnTo=%2Fcheckout",
+    );
+  });
+
+  it("starts OAuth when an existing session lacks a stored refresh token", async () => {
+    const sessionId = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEfg";
+    const createPendingOAuth = vi.fn(async () => "pending-session");
+    const app = new Hono();
+    registerOAuthRoutes(app, {
+      env: testShopIdentityEnv,
+      discovery: {
+        authorization_endpoint: "https://identity.example/authorize",
+        end_session_endpoint: "https://identity.example/logout",
+      } as unknown as OidcDiscovery,
+      secureCookies: false,
+      sessionRepository: {
+        findActive: vi.fn(async () => ({
+          id: sessionId,
+          subject: "sub-1",
+          sid: "sid-1",
+          oauth: null,
+        })),
+        createPendingOAuth,
+        attachPendingOAuthToAuthenticatedSession: vi.fn(),
+        createGuestSession: vi.fn(),
+        authenticate: vi.fn(),
+        invalidate: vi.fn(),
+        consumeLogoutToken: vi.fn(async () => "consumed" as const),
+      },
+      tokenService: createTestTokenService({ hasStoredRefreshToken: vi.fn(async () => false) }),
+      completeOAuthCallback: vi.fn(),
+    });
+    const response = await app.request("/login?returnTo=%2Fcheckout", {
+      headers: { ...documentNavigation.headers, cookie: `${SESSION_COOKIE_NAME}=${sessionId}` },
+    });
+    expect(response.status).toBe(302);
+    expect(createPendingOAuth).toHaveBeenCalled();
+    expect(response.headers.get("location")).toContain("identity.example/authorize");
   });
 
   it("never redirects storefront users into shop-identity-owned paths (except OP authorize)", async () => {

@@ -63,7 +63,7 @@ test.describe("shop buyer flow @e2e", () => {
       .click();
 
     await page.waitForURL(/\/checkout\/confirmation/, { timeout: 120_000 });
-    await expect(page.getByRole("heading", { name: /order confirmation/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /thank you/i })).toBeVisible();
 
     await page.goto("/account/orders");
     await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
@@ -99,7 +99,7 @@ test.describe("shop buyer flow @e2e", () => {
     await expect(page.getByRole("heading", { name: "Basket", exact: true })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByText("Your basket is empty.")).not.toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your basket is empty" })).not.toBeVisible();
     await expect(page.locator(".shop-basket__line").first()).toBeVisible();
   });
 });

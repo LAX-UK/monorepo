@@ -29,14 +29,7 @@ function readCheckoutSessionObject(event: Stripe.Event): Stripe.Checkout.Session
 }
 
 function isShopCheckoutSession(session: Stripe.Checkout.Session): boolean {
-  const app = session.metadata?.app;
-  if (app === SHOP_CHECKOUT_APP) {
-    return true;
-  }
-  if (app && app !== SHOP_CHECKOUT_APP) {
-    return false;
-  }
-  return Boolean(session.metadata?.orderId);
+  return session.metadata?.app === SHOP_CHECKOUT_APP && Boolean(session.metadata?.orderId?.trim());
 }
 
 function customerEmailFromSession(session: Stripe.Checkout.Session): string | null {
@@ -69,6 +62,7 @@ export function parseCheckoutSessionCompleted(
     eventId: event.id,
     paidAt: new Date(event.created * 1000),
     orderId,
+    sessionId: session.id,
     amountTotalPence: amountTotal,
     customerEmail: customerEmailFromSession(session),
   };
@@ -80,7 +74,7 @@ export function parseCheckoutSessionExpired(event: Stripe.Event): StripeCheckout
   if (!session || !isShopCheckoutSession(session)) return null;
   const orderId = session.metadata?.orderId;
   if (!orderId) return null;
-  return { eventId: event.id, orderId };
+  return { eventId: event.id, orderId, sessionId: session.id };
 }
 
 export function parseCheckoutSessionAsyncPaymentFailed(
@@ -91,5 +85,5 @@ export function parseCheckoutSessionAsyncPaymentFailed(
   if (!session || !isShopCheckoutSession(session)) return null;
   const orderId = session.metadata?.orderId;
   if (!orderId) return null;
-  return { eventId: event.id, orderId };
+  return { eventId: event.id, orderId, sessionId: session.id };
 }

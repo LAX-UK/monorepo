@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopBasketLine, shopOrderLine } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { BasketOwner } from "../application/ports/commerce.ports.js";
 import { ensureOpenBasket } from "./shop-basket.persistence.js";
 import { sellableCountsByArtworkIds } from "./shop-edition-availability.js";
@@ -51,18 +51,27 @@ export async function restoreBasketLinesFromOrder(
       continue;
     }
     const restoreQuantity = Math.min(quantity, sellable);
+    const [existingLine] = await tx
+      .select({ quantity: shopBasketLine.quantity })
+      .from(shopBasketLine)
+      .where(and(eq(shopBasketLine.basketId, basketId), eq(shopBasketLine.artworkId, artworkId)))
+      .limit(1);
+    const mergedQuantity = Math.min((existingLine?.quantity ?? 0) + restoreQuantity, sellable);
+    if (mergedQuantity < 1) {
+      continue;
+    }
     await tx
       .insert(shopBasketLine)
       .values({
         basketId,
         artworkId,
         unitPricePence,
-        quantity: restoreQuantity,
+        quantity: mergedQuantity,
       })
       .onConflictDoUpdate({
         target: [shopBasketLine.basketId, shopBasketLine.artworkId],
         set: {
-          quantity: restoreQuantity,
+          quantity: mergedQuantity,
           unitPricePence,
           updatedAt: new Date(),
         },

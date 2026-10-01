@@ -7,6 +7,7 @@ import { ShopContractParseError, parseCheckoutSession } from "@auction/shop-cont
 import { headers } from "next/headers";
 
 import type { ShopDeliveryAddressInput, ShopFulfilmentOption } from "@/lib/shop-fulfilment";
+import { isValidUkPostcode, normalizeUkPostcode } from "@/lib/uk-postcode";
 
 export async function startCheckout(input: {
   basketId: string;
@@ -19,6 +20,16 @@ export async function startCheckout(input: {
 > {
   if (input.fulfilment === "international_quotation") {
     return { kind: "enquiry" };
+  }
+  let deliveryAddress = input.deliveryAddress;
+  if (input.fulfilment === "uk_insured_delivery" && deliveryAddress) {
+    if (!isValidUkPostcode(deliveryAddress.postcode)) {
+      return { kind: "error", message: "Enter a valid UK postcode (for example SW1A 1AA)." };
+    }
+    deliveryAddress = {
+      ...deliveryAddress,
+      postcode: normalizeUkPostcode(deliveryAddress.postcode),
+    };
   }
   const csrf = await fetchShopCommerceCsrfForMutation();
   if (!csrf.ok) {
@@ -45,8 +56,8 @@ export async function startCheckout(input: {
         fulfilment: input.fulfilment,
         idempotencyKey,
         successUrl: `${origin}/checkout/confirmation?orderId={ORDER_ID}`,
-        cancelUrl: `${origin}/basket?cancelled=1&orderId={ORDER_ID}`,
-        ...(input.deliveryAddress ? { deliveryAddress: input.deliveryAddress } : {}),
+        cancelUrl: `${origin}/checkout/cancel?orderId={ORDER_ID}`,
+        ...(deliveryAddress ? { deliveryAddress } : {}),
       }),
     },
     { applyCookies: true, csrfToken: csrf.token },

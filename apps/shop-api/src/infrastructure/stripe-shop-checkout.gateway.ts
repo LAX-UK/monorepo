@@ -7,8 +7,6 @@ import type {
 import { ShopApiError } from "../errors/shop-api-error.js";
 
 const SHOP_CHECKOUT_METADATA_APP = "shop";
-const GENERIC_LINE_NAME = "LAX Shop print order";
-
 function substituteOrderId(url: string, orderId: string): string {
   return url.replaceAll("{ORDER_ID}", orderId);
 }
@@ -72,17 +70,12 @@ function buildStripeLineItems(input: {
     return acc + unit * qty;
   }, 0);
 
-  if (sum !== input.totalPence || lineItems.length === 0) {
-    return [
-      {
-        quantity: 1,
-        price_data: {
-          currency: "gbp",
-          unit_amount: input.totalPence,
-          product_data: { name: GENERIC_LINE_NAME },
-        },
-      },
-    ];
+  if (lineItems.length === 0 || sum !== input.totalPence) {
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.INTERNAL,
+      "Checkout line items do not match order total",
+      500,
+    );
   }
 
   return lineItems;
@@ -177,6 +170,20 @@ export function createStripeShopCheckoutGateway(options: {
         "Checkout session is no longer available",
         409,
       );
+    },
+    async expireHostedCheckout(input) {
+      if (!stripe || input.sessionId.startsWith("fake_")) {
+        return { kind: "not_expirable" as const };
+      }
+      const session = await stripe.checkout.sessions.retrieve(input.sessionId);
+      if (session.status === "complete") {
+        return { kind: "already_complete" as const };
+      }
+      if (session.status === "expired") {
+        return { kind: "expired" as const };
+      }
+      await stripe.checkout.sessions.expire(input.sessionId);
+      return { kind: "expired" as const };
     },
   };
 }

@@ -1,3 +1,4 @@
+import { isUkPostcode, normalizeUkPostcode } from "@auction/validators";
 import { z } from "zod";
 
 export const upsertBasketLineBodySchema = z.object({
@@ -49,6 +50,29 @@ export function createCheckoutBodySchema(storefrontOrigin: string) {
           path: ["deliveryAddress"],
         });
       }
+      if (
+        body.fulfilment === "uk_insured_delivery" &&
+        body.deliveryAddress &&
+        !isUkPostcode(body.deliveryAddress.postcode)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter a valid UK postcode",
+          path: ["deliveryAddress", "postcode"],
+        });
+      }
+    })
+    .transform((body) => {
+      if (body.fulfilment !== "uk_insured_delivery" || !body.deliveryAddress) {
+        return body;
+      }
+      return {
+        ...body,
+        deliveryAddress: {
+          ...body.deliveryAddress,
+          postcode: normalizeUkPostcode(body.deliveryAddress.postcode),
+        },
+      };
     });
 }
 

@@ -40,6 +40,7 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
   const [pending, startTransition] = useTransition();
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [postcodeError, setPostcodeError] = useState<string | null>(null);
   const fieldsDisabled = pending || redirecting;
 
   return (
@@ -50,8 +51,11 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
         onSubmit={(event) => {
           event.preventDefault();
           setError(null);
+          setPostcodeError(null);
           if (fulfilment === "uk_insured_delivery" && !isValidUkPostcode(delivery.postcode)) {
-            setError("Enter a valid UK postcode (for example SW1A 1AA).");
+            const message = "Enter a valid UK postcode (for example SW1A 1AA).";
+            setPostcodeError(message);
+            document.getElementById("checkout-postcode")?.focus();
             return;
           }
           startTransition(async () => {
@@ -71,8 +75,10 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
               ...(deliveryAddress ? { deliveryAddress } : {}),
             });
             if (result.kind === "enquiry") {
-              setRedirecting(true);
-              window.location.href = `mailto:${SITE_SUPPORT_EMAIL}?subject=${encodeURIComponent("International delivery quotation")}`;
+              window.open(
+                `mailto:${SITE_SUPPORT_EMAIL}?subject=${encodeURIComponent("International delivery quotation")}`,
+                "_self",
+              );
               return;
             }
             if (result.kind === "error") {
@@ -145,9 +151,19 @@ export function CheckoutForm({ basket, customerEmail }: Props) {
                   required
                   disabled={fieldsDisabled}
                   value={delivery.postcode}
-                  onChange={(event) => setDelivery({ ...delivery, postcode: event.target.value })}
+                  aria-invalid={postcodeError ? true : undefined}
+                  aria-describedby={postcodeError ? "checkout-postcode-error" : undefined}
+                  onChange={(event) => {
+                    setPostcodeError(null);
+                    setDelivery({ ...delivery, postcode: event.target.value });
+                  }}
                   autoComplete="postal-code"
                 />
+                {postcodeError ? (
+                  <p id="checkout-postcode-error" className="shop-basket__alert" role="alert">
+                    {postcodeError}
+                  </p>
+                ) : null}
               </div>
               <div className="shop-checkout__field shop-checkout__field--full">
                 <Label htmlFor="checkout-country">Country</Label>

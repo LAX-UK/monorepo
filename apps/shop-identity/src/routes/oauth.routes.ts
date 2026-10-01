@@ -150,7 +150,24 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       if (sessionId) {
         const active = await sessionRepository.findActive(sessionId);
         if (active?.subject) {
-          return c.redirect(shopStorefrontPath(env, safeReturnTo ?? "/account"), 302);
+          const hasRefresh = await tokenService.hasStoredRefreshToken(sessionId);
+          if (hasRefresh) {
+            logShopIdentityAuth("login_existing_session_post_sign_in", {
+              reason: "healthy_session_merge_basket",
+              hasReturnTo: Boolean(safeReturnTo),
+            });
+            const postSignInQuery = safeReturnTo
+              ? new URLSearchParams({ returnTo: safeReturnTo }).toString()
+              : "";
+            const postSignInPath = postSignInQuery
+              ? `/account/post-sign-in?${postSignInQuery}`
+              : "/account/post-sign-in";
+            return c.redirect(shopStorefrontPath(env, postSignInPath), 302);
+          }
+          logShopIdentityAuth("login_existing_session_missing_refresh", {
+            reason: "interactive_oauth_required",
+            hasReturnTo: Boolean(safeReturnTo),
+          });
         }
       }
     }

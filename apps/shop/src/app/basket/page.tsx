@@ -16,7 +16,6 @@ import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
-import Link from "next/link";
 import { Suspense } from "react";
 
 export const metadata = shopPrivatePageTitle("Basket");
@@ -94,15 +93,11 @@ export default async function BasketPage() {
               </p>
             ) : null}
             <BasketLinesClient basket={basketResult.data} />
-            {canProceedToCheckout(basketResult.data) ? (
+            {canProceedToCheckout(basketResult.data) && !pendingCheckoutOrder ? (
               viewer.kind === "authenticated" ? (
-                <Link
-                  href="/checkout"
-                  prefetch={false}
-                  className="shop-detail__cta shop-focus-ring"
-                >
+                <a href="/checkout" className="shop-detail__cta shop-focus-ring">
                   Proceed to checkout
-                </Link>
+                </a>
               ) : (
                 <ShopAuthLink
                   href={shopStorefrontLoginHref("/checkout")}

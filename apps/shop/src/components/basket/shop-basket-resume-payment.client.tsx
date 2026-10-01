@@ -20,7 +20,11 @@ export function ShopBasketResumePayment({ order }: Props) {
           You have a checkout in progress ({formatGbpPence(order.totalPence)}). Resume secure
           payment or cancel from Stripe to change your basket.
         </p>
-        {error ? <p className="text-sm text-red-700">{error}</p> : null}
+        {error ? (
+          <p className="shop-basket__alert" role="alert">
+            {error}
+          </p>
+        ) : null}
         <button
           type="button"
           className="shop-detail__cta shop-focus-ring w-fit"

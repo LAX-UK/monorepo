@@ -1,25 +1,13 @@
 "use client";
 
-import { abandonCheckout } from "@/app/actions/cancel-checkout.actions";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef } from "react";
 
 export function ShopBasketCancelNotice() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-  const cancelHandled = useRef(false);
 
   const cancelled = searchParams.get("cancelled") === "1";
-  const orderId = searchParams.get("orderId");
-
-  useEffect(() => {
-    if (!cancelled || !orderId || cancelHandled.current) {
-      return;
-    }
-    cancelHandled.current = true;
-    void abandonCheckout(orderId);
-  }, [cancelled, orderId]);
 
   if (!cancelled) {
     return null;

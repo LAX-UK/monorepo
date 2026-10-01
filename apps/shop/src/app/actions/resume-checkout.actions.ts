@@ -30,7 +30,7 @@ export async function resumeCheckoutPayment(
       },
       body: JSON.stringify({
         successUrl: `${origin}/checkout/confirmation?orderId={ORDER_ID}`,
-        cancelUrl: `${origin}/basket?cancelled=1&orderId={ORDER_ID}`,
+        cancelUrl: `${origin}/checkout/cancel?orderId={ORDER_ID}`,
       }),
     },
     { applyCookies: true, csrfToken: csrf.token },
