@@ -13,6 +13,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
 import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
+import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
 import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
 import { reapStaleShopCheckouts, reaperEventIdForOrder } from "./shop-checkout-reaper.js";
 import { countSellableForArtwork } from "./shop-edition-availability.js";
@@ -66,6 +67,14 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
       .limit(1);
     const reservedEdition = requireDefined(edition, "lax edition");
     const ownerPartyId = requireDefined(reservedEdition.ownerPartyId, "owner party");
+    const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
+    await authorityWriter.grantSaleAuthority({
+      artworkId: imported.artworkId,
+      ownerPartyId,
+      authorisedCount: 4,
+      evidenceNote: "reaper fixture grant",
+      recordedBySubjectId: "integration-staff",
+    });
 
     const pastExpiry = new Date(Date.now() - 60_000);
     const [orderRow] = await db
@@ -94,7 +103,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
     await db
       .update(shopEdition)
       .set({
-        status: "reserved",
+        listingStatus: "reserved",
         reservedUntil: pastExpiry,
         reservedByOrderId: order.id,
       })
@@ -138,6 +147,19 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
       artistDisplayName: "Notify Artist",
       eligibleForEditionAllocation: true,
       printPricePence: 5_000,
+    });
+    const [laxEdition] = await db
+      .select({ ownerPartyId: shopEdition.ownerPartyId })
+      .from(shopEdition)
+      .where(and(eq(shopEdition.artworkId, imported.artworkId), eq(shopEdition.allocation, "lax")))
+      .limit(1);
+    const notifyOwnerPartyId = requireDefined(laxEdition?.ownerPartyId, "lax owner");
+    await createDrizzleSaleAuthorityWriter(db, "off").grantSaleAuthority({
+      artworkId: imported.artworkId,
+      ownerPartyId: notifyOwnerPartyId,
+      authorisedCount: 4,
+      evidenceNote: "notify dispatch fixture",
+      recordedBySubjectId: "integration-staff",
     });
 
     const [interest] = await db

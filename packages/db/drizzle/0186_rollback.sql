@@ -1,0 +1,9 @@
+DROP INDEX IF EXISTS "shop_certificate_edition_uid";
+DROP TABLE IF EXISTS "shop_certificate";
+DROP INDEX IF EXISTS "shop_production_task_order_line_uid";
+DROP TABLE IF EXISTS "shop_production_task";
+DROP INDEX IF EXISTS "shop_fulfilment_order_uid";
+DROP TABLE IF EXISTS "shop_fulfilment";
+DROP TABLE IF EXISTS "shop_fulfilment_option_price";
+DROP TYPE IF EXISTS "shop_production_task_status";
+DROP TYPE IF EXISTS "shop_fulfilment_status";

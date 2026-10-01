@@ -25,6 +25,11 @@ export type RunDomainEventDeliveryOptions = {
   now?: Date;
   /** When set, dead-letter metrics use this consumer label. */
   metricsConsumer?: string;
+  /** Optional hook after a delivery is moved to dead-letter (e.g. ops email). */
+  onDeadLetter?: (input: {
+    delivery: DomainEventDeliveryRow;
+    lastError: string;
+  }) => Promise<void>;
 };
 
 const DEFAULT_MAX_ATTEMPTS = 12;
@@ -89,6 +94,9 @@ export async function runDomainEventDelivery(
       if (options.metricsConsumer) {
         recordDeliveryOutcome(options.metricsConsumer, "dead_letter");
       }
+      if (options.onDeadLetter) {
+        await options.onDeadLetter({ delivery, lastError: message });
+      }
       return;
     }
 
@@ -121,6 +129,7 @@ export type ClaimAndRunDomainEventDeliveriesOptions = {
   now?: Date;
   /** Record delivery attempt outcomes (success/retry/dead_letter) for this consumer. */
   metricsConsumer?: string;
+  onDeadLetter?: RunDomainEventDeliveryOptions["onDeadLetter"];
 };
 
 /** Claims a batch then runs each delivery with lease-aware wrapping. */
@@ -143,6 +152,7 @@ export async function claimAndRunDomainEventDeliveries(
       ...(options.metricsConsumer !== undefined
         ? { metricsConsumer: options.metricsConsumer }
         : {}),
+      ...(options.onDeadLetter !== undefined ? { onDeadLetter: options.onDeadLetter } : {}),
       ...withOptionalNow(options.now),
     });
   }
@@ -179,6 +189,7 @@ export async function claimAndRunDomainEventDeliveriesWithBudget(
         ...(options.metricsConsumer !== undefined
           ? { metricsConsumer: options.metricsConsumer }
           : {}),
+        ...(options.onDeadLetter !== undefined ? { onDeadLetter: options.onDeadLetter } : {}),
         ...withOptionalNow(options.now),
       });
       processed += 1;

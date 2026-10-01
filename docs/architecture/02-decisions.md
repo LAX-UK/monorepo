@@ -530,3 +530,88 @@ and the same security model Auth0 and OWASP recommend for browser apps.
 `scripts/check-web-guardrails.mjs`; issuer `prompt=create` in
 `packages/auth/src/hosted-auth/flow-context.ts`; discovery advertises
 `prompt_values_supported` including `create`.
+
+## D28. Shop V1 uses Stripe as the sole payment provider
+
+**Supersedes none; extends D24 / D17.**
+
+**Chosen.** Shop checkout, refunds, disputes, fund-availability tracking, and original-art
+invoicing use Stripe only. Square is out of scope for Shop V1.
+
+**Why this wins.** The existing `apps/shop-api` Stripe Checkout integration, webhook
+deduplication, and payout ledger are already in production on staging; extending one provider
+reduces PCI scope and operational surface area.
+
+**Status.** *Planned (Shop V1).* Runbook: [shop-stripe-setup.md](../runbooks/shop-stripe-setup.md).
+
+## D29. Shop V1 ships in four releasable phases
+
+**Supersedes none; extends D24.**
+
+**Chosen.** Shop V1 is delivered in four phases, each with its own exit criteria and feature
+flags: (1) client ownership foundation — editions, sale authority, minimal staff admin, client
+portal reads, Zoho catalogue sync; (2) sell, deliver, get paid — production, fulfilment,
+refunds, disputes, manual payouts; (3) operations dashboard, brokers, third-party sales, full
+Zoho money sync and reconciliation; (4) original-art sales and merchandise. Phase 1 fixes the
+database shapes later phases depend on; later phases add tables and behaviour without redesigning
+live columns.
+
+**Why this wins.** Money flows and broker stock need proof on top of a working edition model;
+outside inputs (VAT, legal cancellation rules) block Phase 2 go-live but not Phase 1 build.
+
+**Status.** *Planned.* SSOT: [12-shop-v1-brief-validation.md](./12-shop-v1-brief-validation.md).
+
+## D30. Shop staff administration is a separate Next.js app with Shop-owned RBAC
+
+**Supersedes the “no admin dashboard” deferral in D24 for Shop V1.**
+
+**Chosen.** Staff workflows live in `apps/shop-admin` on `admin.shop.lax.art`, a confidential
+OIDC client (`lax-shop-admin`) that server-side exchanges ID tokens for `lax-shop-api` access
+tokens carrying the `shop.admin` scope only on that client. Roles and capabilities
+(`shop_staff_member`, capability matrix) live in Shop Postgres; Identity tokens carry no roles
+(D13). Sale limits are recorded by account managers in admin with evidence notes; the client
+portal shows limits read-only and accepts change requests.
+
+**Alternatives considered.** Reusing Bid admin authorization (rejected — D17). Putting admin
+routes on the storefront BFF only (rejected — widens session blast radius and mixes shopper and
+staff traffic).
+
+**Why this wins.** Least-privilege staff access, MFA-enforced finance actions, and an audit trail
+without coupling Shop operations to Bid’s saleroom model.
+
+**Status.** *Phase 1:* staff API + RBAC + ops CLI (`staff:grant`, `sale-authority`); `lax-shop-admin`
+OIDC client and `apps/shop-admin` UI deferred until BFF login ships. Boundary:
+[10-shop-commerce-boundary.md](./10-shop-commerce-boundary.md).
+
+## D31. RFC 8693 exchanged access tokens may carry `acr` and `auth_time` for Shop admin MFA
+
+**Supersedes none; extends D13 / [09-lax-identity-boundary.md](./09-lax-identity-boundary.md).**
+
+**Chosen.** When the subject token in token exchange is an OIDC ID token, the issuer copies
+`acr` and `auth_time` into the issued `lax-shop-api` access token. `apps/shop-admin` rejects
+non-silver ID tokens; `apps/shop-api` `/admin/v1/*` requires `shop.admin`, `acr` silver, and
+(for finance mutations) recent `auth_time`. This is not a role claim — capabilities remain in
+Shop Postgres.
+
+**Alternatives considered.** Trusting ID-token checks only in the admin BFF without API
+enforcement (rejected). Adding roles to JWTs (rejected — D13).
+
+**Why this wins.** Defense in depth: a leaked storefront token cannot call admin routes even if
+scopes were misconfigured; finance actions require fresh step-up.
+
+**Status.** *Planned (Shop V1 Phase 1).*
+
+## D32. Shop V1 online checkout excludes international delivery; quotation stays enquiry-only
+
+**Supersedes none; extends Shop fulfilment policy.**
+
+**Chosen.** V1 purchasable fulfilment is UK insured delivery, collection (New Cavendish,
+Brunswick), and LAX storage. The existing `international_quotation` option remains
+non-checkout (email enquiry). UK delivery orders reject non-UK delivery countries at checkout.
+
+**Note.** The Oliver/Felix business brief listed international delivery by quotation as a
+product option; this decision narrows V1 **online payment** scope. Confirm with product owners
+before production go-live.
+
+**Status.** *Planned (Shop V1).* Domain gate already exists:
+`packages/shop-domain/src/basket-totals.ts` (`International quotation fulfilment cannot be checked out online`).

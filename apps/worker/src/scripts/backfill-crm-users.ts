@@ -36,6 +36,7 @@ function mapperContextFromEnv(env: ReturnType<typeof loadWorkerEnv>) {
     dealStagePaymentCaptured: env.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED,
     dealStagePaymentRefunded: env.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED,
     dealStageShopPaid: env.ZOHO_CRM_DEAL_STAGE_SHOP_PAID,
+    dealStageShopEnquiry: env.ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY,
     attribution: null,
   };
 }

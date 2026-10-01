@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { domainEvent, shopArtwork, shopEdition } from "@auction/db/schema";
+import { shopArtist, shopArtwork, shopEdition } from "@auction/db/schema";
 import { assertValidEditionPlan, planEditionsForArtwork } from "@auction/shop-domain";
 import { eq, sql } from "drizzle-orm";
 import { assertArtworkImportIdentityUnchanged } from "../application/artwork-import-policy.js";
@@ -9,11 +9,17 @@ import type {
   ImportArtworkResult,
 } from "../application/ports/artwork-import.writer.js";
 import { ensureLaxShopParty } from "./ensure-lax-party.js";
+import type { ShopDomainEventPublisherMode } from "./shop-domain-event-publisher.js";
+import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 import { updateShopArtist, upsertShopArtist } from "./upsert-shop-artist.js";
 
 type Db = Database;
 
-export function createDrizzleArtworkImportRepository(db: Db): ArtworkImportWriter {
+export function createDrizzleArtworkImportRepository(
+  db: Db,
+  eventPublishMode: ShopDomainEventPublisherMode = "observe",
+): ArtworkImportWriter {
+  const events = createShopDomainEventPublisher(eventPublishMode);
   return {
     async importArtwork(command: ImportArtworkCommand): Promise<ImportArtworkResult> {
       return db.transaction(async (tx) => {
@@ -86,11 +92,12 @@ export function createDrizzleArtworkImportRepository(db: Db): ArtworkImportWrite
           .returning({ id: shopArtwork.id });
         if (!artwork) throw new Error("Failed to create shop artwork");
 
-        await tx.insert(domainEvent).values({
+        await events.insertInTransaction(tx as Database, {
           aggregateType: "shop_artwork",
           aggregateId: artwork.id,
           eventType: "shop.artwork.created",
           payload: {
+            schemaVersion: 1,
             importKey: command.importKey,
             slug: command.slug,
             eligibleForEditionAllocation: command.eligibleForEditionAllocation,
@@ -102,23 +109,33 @@ export function createDrizzleArtworkImportRepository(db: Db): ArtworkImportWrite
         assertValidEditionPlan(plan);
         if (plan.length > 0) {
           const laxPartyId = await ensureLaxShopParty(tx as Database);
+          const artistPartyRows = await tx
+            .select({ partyId: shopArtist.partyId })
+            .from(shopArtist)
+            .where(eq(shopArtist.id, artistId))
+            .limit(1);
+          const artistPartyId = artistPartyRows[0]?.partyId ?? null;
           await tx.insert(shopEdition).values(
             plan.map((row) => {
-              const isLaxStock = row.allocation === "lax";
+              const isLax = row.allocation === "lax";
+              const isArtist = row.allocation === "artist";
+              const ownerPartyId = isLax ? laxPartyId : isArtist ? artistPartyId : null;
               return {
                 artworkId: artwork.id,
                 editionNumber: row.editionNumber,
                 allocation: row.allocation,
-                ownerPartyId: isLaxStock ? laxPartyId : null,
-                status: isLaxStock ? ("available" as const) : ("allocated" as const),
+                ownerPartyId,
+                listingStatus: "not_authorised" as const,
+                custodyStatus: "unprinted" as const,
               };
             }),
           );
-          await tx.insert(domainEvent).values({
+          await events.insertInTransaction(tx as Database, {
             aggregateType: "shop_artwork",
             aggregateId: artwork.id,
             eventType: "shop.editions.allocated",
             payload: {
+              schemaVersion: 1,
               importKey: command.importKey,
               editionCount: plan.length,
             },

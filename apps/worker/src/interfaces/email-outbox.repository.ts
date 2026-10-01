@@ -14,8 +14,14 @@ export type EmailOutboxRow = {
   category: string;
 };
 
+/** Result of a send claim: `claimed` is true only when this caller moved pending → sending. */
+export type EmailOutboxClaimResult = {
+  row: EmailOutboxRow;
+  claimed: boolean;
+};
+
 export interface IEmailOutboxRepository {
-  claimForSend(outboxId: string): Promise<EmailOutboxRow | null>;
+  claimForSend(outboxId: string): Promise<EmailOutboxClaimResult | null>;
   findSuppression(emailHash: string): Promise<boolean>;
   markSuppressed(outboxId: string, reason: string): Promise<void>;
   markSent(outboxId: string, messageId: string): Promise<void>;

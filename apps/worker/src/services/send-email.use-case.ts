@@ -19,13 +19,21 @@ export async function sendEmailUseCase(
   { outboxRepo, sender, log }: SendEmailUseCaseDeps,
   data: SendEmailJobData,
 ): Promise<void> {
-  const row = await outboxRepo.claimForSend(data.outboxId);
+  const claim = await outboxRepo.claimForSend(data.outboxId);
 
-  if (!row) {
+  if (!claim) {
     throw new Error(`email_outbox row not found: ${data.outboxId}`);
   }
-  if (row.status === "sent" || row.status === "suppressed" || row.status === "failed") {
-    log.info({ outboxId: data.outboxId, status: row.status }, "email job already terminal");
+  const { row, claimed } = claim;
+  if (!claimed) {
+    if (row.status === "sent" || row.status === "suppressed" || row.status === "failed") {
+      log.info({ outboxId: data.outboxId, status: row.status }, "email job already terminal");
+    } else {
+      log.info(
+        { outboxId: data.outboxId, status: row.status },
+        "email send skipped: outbox row claimed by another worker",
+      );
+    }
     return;
   }
   if (row.status !== "sending") {

@@ -7,6 +7,11 @@ import type {
 import { ShopApiError } from "../errors/shop-api-error.js";
 
 const SHOP_CHECKOUT_METADATA_APP = "shop";
+
+function isStripeCheckoutSessionPaid(session: Stripe.Checkout.Session): boolean {
+  return session.payment_status === "paid" || session.payment_status === "no_payment_required";
+}
+
 function substituteOrderId(url: string, orderId: string): string {
   return url.replaceAll("{ORDER_ID}", orderId);
 }
@@ -160,7 +165,7 @@ export function createStripeShopCheckoutGateway(options: {
       if (session.url) {
         return { checkoutUrl: session.url };
       }
-      if (session.status === "complete") {
+      if (session.status === "complete" && isStripeCheckoutSessionPaid(session)) {
         return {
           checkoutUrl: `${options.storefrontUrl}/checkout/confirmation?orderId=${input.orderId}&session_id=${input.sessionId}`,
         };
@@ -177,7 +182,12 @@ export function createStripeShopCheckoutGateway(options: {
       }
       const session = await stripe.checkout.sessions.retrieve(input.sessionId);
       if (session.status === "complete") {
-        return { kind: "already_complete" as const };
+        if (isStripeCheckoutSessionPaid(session)) {
+          return { kind: "already_complete" as const };
+        }
+        if (session.payment_status === "unpaid") {
+          return { kind: "async_pending" as const };
+        }
       }
       if (session.status === "expired") {
         return { kind: "expired" as const };

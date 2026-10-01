@@ -6,6 +6,7 @@ import { registerCommerceBasketRoutes } from "./commerce/basket.routes.js";
 import { registerCommerceCheckoutRoutes } from "./commerce/checkout.routes.js";
 import type { CommerceRoutesDeps } from "./commerce/commerce-route-types.js";
 import { registerCommerceInterestRoutes } from "./commerce/interest.routes.js";
+import { registerCommerceMeRoutes } from "./commerce/me.routes.js";
 import { registerCommerceOrdersRoutes } from "./commerce/orders.routes.js";
 
 export type { CommerceRoutesDeps } from "./commerce/commerce-route-types.js";
@@ -22,6 +23,7 @@ export function registerCommerceRoutes(app: Hono, deps: CommerceRoutesDeps): voi
   registerCommerceCheckoutRoutes(app, deps, storefrontOrigin);
   registerCommerceOrdersRoutes(app, deps);
   registerCommerceInterestRoutes(app, deps);
+  registerCommerceMeRoutes(app, deps);
 }
 
 export { SHOP_BASKET_COOKIE_NAME };

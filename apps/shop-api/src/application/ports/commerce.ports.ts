@@ -146,5 +146,10 @@ export interface PaymentCheckoutGateway {
   expireHostedCheckout(input: {
     orderId: string;
     sessionId: string;
-  }): Promise<{ kind: "expired" } | { kind: "already_complete" } | { kind: "not_expirable" }>;
+  }): Promise<
+    | { kind: "expired" }
+    | { kind: "already_complete" }
+    | { kind: "not_expirable" }
+    | { kind: "async_pending" }
+  >;
 }

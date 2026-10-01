@@ -3,6 +3,7 @@ import type { EmailSuppressionReason } from "@auction/db/schema";
 import { bidIdentityDirectory, emailOutbox, emailSuppression } from "@auction/db/schema";
 import { and, eq, lt, sql } from "drizzle-orm";
 import type {
+  EmailOutboxClaimResult,
   EmailOutboxRow,
   IEmailOutboxRepository,
 } from "../interfaces/email-outbox.repository.js";
@@ -26,8 +27,8 @@ function mapRow(row: typeof emailOutbox.$inferSelect): EmailOutboxRow {
 export class DrizzleEmailOutboxRepository implements IEmailOutboxRepository {
   constructor(private readonly db: Database) {}
 
-  async claimForSend(outboxId: string): Promise<EmailOutboxRow | null> {
-    const row = await this.db.transaction(async (tx) => {
+  async claimForSend(outboxId: string): Promise<EmailOutboxClaimResult | null> {
+    return this.db.transaction(async (tx) => {
       const [updated] = await tx
         .update(emailOutbox)
         .set({
@@ -37,16 +38,18 @@ export class DrizzleEmailOutboxRepository implements IEmailOutboxRepository {
         })
         .where(and(eq(emailOutbox.id, outboxId), eq(emailOutbox.status, "pending")))
         .returning();
-      if (updated) return updated;
+      if (updated) {
+        return { row: mapRow(updated), claimed: true };
+      }
 
       const [existing] = await tx
         .select()
         .from(emailOutbox)
         .where(eq(emailOutbox.id, outboxId))
         .limit(1);
-      return existing ?? null;
+      if (!existing) return null;
+      return { row: mapRow(existing), claimed: false };
     });
-    return row ? mapRow(row) : null;
   }
 
   async findSuppression(emailHash: string): Promise<boolean> {
@@ -104,7 +107,7 @@ export class DrizzleEmailOutboxRepository implements IEmailOutboxRepository {
       .where(
         and(
           eq(emailOutbox.status, "pending"),
-          lt(emailOutbox.createdAt, sql`now() - interval '5 minutes'`),
+          lt(emailOutbox.createdAt, sql`now() - interval '30 seconds'`),
           lt(emailOutbox.attempts, 5),
         ),
       )

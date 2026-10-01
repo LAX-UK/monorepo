@@ -6,7 +6,7 @@ export type PaymentEventProcessor = {
     amountTotalPence: number;
     paidAt: Date;
     customerEmail?: string | null;
-  }): Promise<"processed" | "duplicate">;
+  }): Promise<"processed" | "duplicate" | "terminal_acknowledged">;
   expireCheckout(input: {
     eventId: string;
     orderId: string;
@@ -18,5 +18,11 @@ export type PaymentEventProcessor = {
     orderId: string;
     sessionId: string;
     source?: string;
+  }): Promise<"processed" | "duplicate">;
+  recordCurrencyViolation(input: {
+    eventId: string;
+    orderId: string;
+    currency: string;
+    sessionId: string;
   }): Promise<"processed" | "duplicate">;
 };

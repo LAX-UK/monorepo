@@ -31,6 +31,12 @@ export type StripeWebhookDeps = {
   parseCheckoutSessionCompleted(event: unknown): StripeCheckoutCompletedDto | null;
   parseCheckoutSessionExpired(event: unknown): StripeCheckoutExpiredDto | null;
   parseCheckoutSessionAsyncPaymentFailed(event: unknown): StripeCheckoutAsyncFailedDto | null;
+  parseShopCheckoutCurrencyViolation?(event: unknown): {
+    eventId: string;
+    orderId: string;
+    currency: string;
+    sessionId: string;
+  } | null;
   completeCheckout(input: {
     eventId: string;
     orderId: string;
@@ -38,7 +44,7 @@ export type StripeWebhookDeps = {
     amountTotalPence: number;
     paidAt: Date;
     customerEmail?: string | null;
-  }): Promise<"processed" | "duplicate">;
+  }): Promise<"processed" | "duplicate" | "terminal_acknowledged">;
   expireCheckout(input: {
     eventId: string;
     orderId: string;
@@ -50,5 +56,11 @@ export type StripeWebhookDeps = {
     orderId: string;
     sessionId: string;
     source?: string;
+  }): Promise<"processed" | "duplicate">;
+  recordCurrencyViolation(input: {
+    eventId: string;
+    orderId: string;
+    currency: string;
+    sessionId: string;
   }): Promise<"processed" | "duplicate">;
 };

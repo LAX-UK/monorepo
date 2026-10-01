@@ -85,7 +85,7 @@ describe("completeShopCheckoutSession", () => {
     });
   });
 
-  it("rejects invalid order status as retryable", async () => {
+  it("acknowledges paid webhook for terminal order status without mutating", async () => {
     const db = createDbMock({
       claim: true,
       order: {
@@ -104,10 +104,7 @@ describe("completeShopCheckoutSession", () => {
         amountTotalPence: 1000,
         paidAt: new Date(),
       }),
-    ).rejects.toMatchObject({
-      message: "payment_state_invalid",
-      retryable: true,
-    });
+    ).resolves.toBe("terminal_acknowledged");
   });
 });
 

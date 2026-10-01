@@ -38,8 +38,20 @@ describe("orders routes", () => {
       payload: { scope: "shop.write" },
     } as never);
     const cancelCheckoutOrder = vi.fn(async () => undefined);
+    const getOrder = vi.fn(async () => ({
+      orderId: "00000000-0000-4000-8000-000000000042",
+      status: "cancelled" as const,
+      totalPence: 1000,
+      merchandiseSubtotalPence: 1000,
+      fulfilmentSurchargePence: 0,
+      fulfilment: "collect_brunswick" as const,
+      lines: [],
+      createdAt: new Date(),
+      paidAt: null,
+      deliveryAddress: null,
+    }));
     const deps = createMinimalShopApiTestDeps({
-      commerce: { ...createMinimalShopApiTestDeps().commerce, cancelCheckoutOrder },
+      commerce: { ...createMinimalShopApiTestDeps().commerce, cancelCheckoutOrder, getOrder },
     });
     const app = createShopApiApp({ deps, logger: false });
     await app.ready();

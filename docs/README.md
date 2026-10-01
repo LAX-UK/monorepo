@@ -17,6 +17,7 @@ Reference material — the system as it is, not as it was planned. Read these to
 - [Identity flow](./architecture/05-identity-flow.md) — Identity and product RP/BFF flows
 - [LAX Identity boundary](./architecture/09-lax-identity-boundary.md) — global Identity vs product profiles (D13)
 - [Shop commerce boundary](./architecture/10-shop-commerce-boundary.md) — Shop API, domain, and first artwork/edition slice (D24)
+- [Shop V1 brief validation](./architecture/12-shop-v1-brief-validation.md) — V1 phased delivery, acceptance tests, outside inputs (D28–D32)
 - [LAX ecosystem boundary](./architecture/11-lax-ecosystem-boundary.md) — cross-product account UX, wayfinding, `@auction/lax-ecosystem`
 - [Deployment](./architecture/06-deployment.md) — how the system is laid out on DigitalOcean, what runs where
 - [Security model](./architecture/07-security-model.md) — trust boundaries, threat model, secrets handling

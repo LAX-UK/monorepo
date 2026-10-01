@@ -14,20 +14,24 @@ import { reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
 describe("edition sellability", () => {
   const now = new Date("2026-01-01T12:00:00Z");
 
-  it("requires an owner and available status", () => {
+  it("requires an owner and authorised listing status", () => {
     expect(
       isEditionSellable({
         ownerPartyId: "party-1",
-        status: "available",
+        listingStatus: "authorised",
+        custodyStatus: "unprinted",
         reservedUntil: null,
+        reservedByPendingOrder: false,
         now,
       }),
     ).toBe(true);
     expect(
       isEditionSellable({
         ownerPartyId: null,
-        status: "available",
+        listingStatus: "authorised",
+        custodyStatus: "unprinted",
         reservedUntil: null,
+        reservedByPendingOrder: false,
         now,
       }),
     ).toBe(false);
@@ -37,8 +41,10 @@ describe("edition sellability", () => {
     expect(
       isEditionSellable({
         ownerPartyId: "party-1",
-        status: "reserved",
+        listingStatus: "reserved",
+        custodyStatus: "unprinted",
         reservedUntil: new Date("2026-01-01T11:00:00Z"),
+        reservedByPendingOrder: false,
         now,
       }),
     ).toBe(true);
@@ -97,8 +103,22 @@ describe("countSellableEditions", () => {
     expect(
       countSellableEditions(
         [
-          { ownerPartyId: "a", status: "available", reservedUntil: null, now },
-          { ownerPartyId: null, status: "allocated", reservedUntil: null, now },
+          {
+            ownerPartyId: "a",
+            listingStatus: "authorised",
+            custodyStatus: "unprinted",
+            reservedUntil: null,
+            reservedByPendingOrder: false,
+            now,
+          },
+          {
+            ownerPartyId: null,
+            listingStatus: "not_authorised",
+            custodyStatus: "unprinted",
+            reservedUntil: null,
+            reservedByPendingOrder: false,
+            now,
+          },
         ],
         now,
       ),

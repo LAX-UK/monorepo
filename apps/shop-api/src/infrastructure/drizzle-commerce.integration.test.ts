@@ -38,7 +38,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle commerce checkout", () => {
         storefrontUrl: "http://localhost:3020",
         fakeCheckoutEnabled: true,
       }),
-      { storefrontUrl: "http://localhost:3020" },
+      { storefrontUrl: "http://localhost:3020", domainEventMode: "off" },
     );
     expect(repo.getBasket).toBeTypeOf("function");
   });
@@ -52,7 +52,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle commerce checkout", () => {
         storefrontUrl: "http://localhost:3020",
         fakeCheckoutEnabled: true,
       }),
-      { storefrontUrl: "http://localhost:3020" },
+      { storefrontUrl: "http://localhost:3020", domainEventMode: "off" },
     );
     expect(repo.createCheckoutOrder).toBeTypeOf("function");
   });

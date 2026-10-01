@@ -43,7 +43,14 @@ export type CrmMappedIntent =
   | { kind: "merge_subjects"; subjectId: string; retiredSubjectId: string }
   | { kind: "deletion_requested"; subjectId: string }
   | { kind: "deletion_cancelled"; subjectId: string }
-  | { kind: "erase_subject"; subjectId: string };
+  | { kind: "erase_subject"; subjectId: string }
+  | {
+      kind: "shop_artwork_product_upsert";
+      aggregateId: string;
+      importKey: string;
+      slug: string;
+      eligibleForEditionAllocation: boolean;
+    };
 
 export type CrmMapperContext = {
   auctionPipeline: string;
@@ -51,6 +58,7 @@ export type CrmMapperContext = {
   dealStagePaymentCaptured: string;
   dealStagePaymentRefunded: string;
   dealStageShopPaid: string;
+  dealStageShopEnquiry: string;
   attribution?: Record<string, CrmFieldValue> | null;
 };
 
@@ -242,6 +250,47 @@ export function mapDomainEventToCrmIntent(
         kind: "deal_stage",
         dealEntityId: `lot-won:${lotId}`,
         stage: dealConfig.stage,
+      };
+    }
+    case "shop.artwork.created": {
+      if (payload === null) return { kind: "skip", reason: "invalid_payload" };
+      const p = payload as {
+        importKey: string;
+        slug: string;
+        eligibleForEditionAllocation: boolean;
+      };
+      return {
+        kind: "shop_artwork_product_upsert",
+        aggregateId: event.aggregateId,
+        importKey: p.importKey,
+        slug: p.slug,
+        eligibleForEditionAllocation: p.eligibleForEditionAllocation,
+      };
+    }
+    case "shop.artwork.interest_registered": {
+      if (payload === null) return { kind: "skip", reason: "invalid_payload" };
+      const p = payload as {
+        artworkId: string;
+        identitySubjectId: string;
+        intent: "notify_me" | "enquiry";
+      };
+      if (p.intent !== "enquiry") {
+        return { kind: "skip", reason: "interest_not_enquiry" };
+      }
+      const dealKey = `shop-enquiry:${p.artworkId}:${p.identitySubjectId}`;
+      const dealConfig = requireDealConfig(ctx, ctx.dealStageShopEnquiry);
+      if (!dealConfig.ok) return { kind: "skip", reason: dealConfig.reason };
+      return {
+        kind: "deal_upsert",
+        dealEntityId: dealKey,
+        dealKey,
+        subjectId: p.identitySubjectId,
+        fields: {
+          Deal_Name: `Shop original enquiry ${p.artworkId.slice(0, 8)}`,
+          Stage: dealConfig.stage,
+          Pipeline: dealConfig.pipeline,
+          [CRM_FIELD.dealExternalKey]: dealKey,
+        },
       };
     }
     case "shop.order.paid": {

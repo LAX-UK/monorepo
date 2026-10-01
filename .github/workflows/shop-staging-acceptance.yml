@@ -156,6 +156,14 @@ jobs:
             e2e/theme-audit.spec.ts \
             e2e/shop-viewport-audit.spec.ts \
             e2e/home.spec.ts --grep "visible without JavaScript|theme"
+      - name: Shop V1 phase 1 portal smoke
+        run: |
+          pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
+      - name: Phase flags (manual enable on staging)
+        run: |
+          echo "Shop V1 later phases: set SHOP_PAYOUTS_ENABLED, SHOP_THIRD_PARTY_ENABLED,"
+          echo "SHOP_ORIGINALS_ENABLED, SHOP_MERCHANDISE_ENABLED on shop-api per"
+          echo "docs/runbooks/shop-v1-phase-gates.md before running phase 2+ acceptance."
       - name: Shop browser tier 2 (foundation catalogue fixtures)
         if: inputs.seed_catalogue
         run: |

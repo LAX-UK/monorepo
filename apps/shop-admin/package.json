@@ -1,0 +1,30 @@
+{
+  "name": "@auction/shop-admin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "LAX Shop staff admin (Phase 1 minimum)",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3030 --turbopack",
+    "build": "next build",
+    "start": "next start --port 3030",
+    "lint": "biome check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@auction/branding": "workspace:*",
+    "@auction/ui": "workspace:*",
+    "next": "15.5.9",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@auction/config-ts": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.7.3"
+  }
+}

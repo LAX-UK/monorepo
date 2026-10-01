@@ -1,3 +1,6 @@
+import type { EditionCustodyStatus } from "./edition-custody-state.js";
+import type { EditionListingStatus } from "./edition-listing-state.js";
+
 export type EditionLifecycleStatus =
   | "allocated"
   | "available"
@@ -10,23 +13,32 @@ export type EditionLifecycleStatus =
 
 export type EditionSellabilityInput = {
   ownerPartyId: string | null;
-  status: EditionLifecycleStatus;
+  /** @deprecated Use listingStatus — kept for tests during migration */
+  status?: EditionLifecycleStatus;
+  listingStatus: EditionListingStatus;
+  custodyStatus: EditionCustodyStatus;
   reservedUntil: Date | null;
+  reservedByPendingOrder: boolean;
   now: Date;
 };
 
-/** An edition is sellable when it has an owner who is due proceeds and stock is not held elsewhere. */
+const BLOCKED_CUSTODY: readonly EditionCustodyStatus[] = ["with_owner", "returned"];
+
 export function isEditionSellable(input: EditionSellabilityInput): boolean {
   if (input.ownerPartyId === null) {
     return false;
   }
-  if (input.status === "available") {
+  if (BLOCKED_CUSTODY.includes(input.custodyStatus)) {
+    return false;
+  }
+  if (input.listingStatus === "authorised") {
     return true;
   }
   if (
-    input.status === "reserved" &&
+    input.listingStatus === "reserved" &&
     input.reservedUntil !== null &&
-    input.reservedUntil < input.now
+    input.reservedUntil < input.now &&
+    !input.reservedByPendingOrder
   ) {
     return true;
   }

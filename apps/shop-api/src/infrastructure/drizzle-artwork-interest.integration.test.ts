@@ -6,8 +6,10 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createGetArtworkInterestHandler } from "../application/handlers/get-artwork-interest.handler.js";
 import { createRegisterArtworkInterestHandler } from "../application/handlers/register-artwork-interest.handler.js";
+import { selectLaxEdition } from "../test-support/shop-fixtures.js";
 import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./drizzle-artwork-interest.repository.js";
+import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const shopUrl = process.env.DATABASE_URL_SHOP;
@@ -50,7 +52,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     });
     await db
       .update(shopEdition)
-      .set({ status: "sold", ownerPartyId: null })
+      .set({ listingStatus: "sold", ownerPartyId: null })
       .where(eq(shopEdition.artworkId, imported.artworkId));
 
     const first = await registerInterest({
@@ -80,7 +82,8 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     const interestEvents = events.filter((e) => e.eventType === "shop.artwork.interest_registered");
     expect(interestEvents).toHaveLength(1);
     expect(interestEvents[0]?.payload).toMatchObject({
-      idempotencyKey: `shop.artwork.interest_registered:${imported.artworkId}:${subject}:notify_me`,
+      artworkId: imported.artworkId,
+      identitySubjectId: subject,
       intent: "notify_me",
     });
 
@@ -102,7 +105,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     const suffix = Date.now();
     const slug = `integration-interest-purchasable-${suffix}`;
 
-    await importWriter.importArtwork({
+    const imported = await importWriter.importArtwork({
       importKey: `integration:interest:purchasable:${suffix}`,
       slug,
       title: "Purchasable interest test",
@@ -112,6 +115,17 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
       artistDisplayName: "Interest Artist",
       eligibleForEditionAllocation: true,
       printPricePence: 8_000,
+    });
+    const laxEdition = await selectLaxEdition(db, imported.artworkId);
+    const ownerPartyId = laxEdition.ownerPartyId;
+    if (!ownerPartyId) throw new Error("Missing LAX owner party");
+    const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
+    await authorityWriter.grantSaleAuthority({
+      artworkId: imported.artworkId,
+      ownerPartyId,
+      authorisedCount: 4,
+      evidenceNote: "interest purchasable fixture",
+      recordedBySubjectId: "integration-staff",
     });
 
     await expect(

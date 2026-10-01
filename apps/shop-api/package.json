@@ -10,13 +10,16 @@
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "seed:catalogue": "tsx src/scripts/seed-catalogue.ts"
+    "seed:catalogue": "tsx src/scripts/seed-catalogue.ts",
+    "staff:grant": "tsx src/scripts/staff-grant.ts",
+    "sale-authority": "tsx src/scripts/sale-authority.ts"
   },
   "dependencies": {
     "@auction/db": "workspace:*",
     "@auction/observability": "workspace:*",
     "@auction/shop-contracts": "workspace:*",
     "@auction/shop-domain": "workspace:*",
+    "@auction/types": "workspace:*",
     "@auction/auth": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@fastify/etag": "^6.0.3",

@@ -29,14 +29,19 @@ import { assertReplayableCheckoutOrder } from "./shop-checkout-order-validation.
 import { reserveEditionsForCheckoutOrder } from "./shop-checkout-reservation.js";
 import { loadCheckoutStripePresentation } from "./shop-checkout-stripe-presentation.js";
 import { resolveOrCreateStripeCheckoutSession } from "./shop-checkout-stripe-session.js";
+import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 
 const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000;
 
 export function createDrizzleCheckoutRepository(
   db: Database,
   paymentGateway: PaymentCheckoutGateway,
-  options: { storefrontUrl: string },
+  options: {
+    storefrontUrl: string;
+    domainEventMode: "off" | "observe" | "enforce";
+  },
 ): CheckoutWriter {
+  const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
   return {
     async createCheckoutOrder(input) {
       let deliveryAddress = input.deliveryAddress;
@@ -64,8 +69,17 @@ export function createDrizzleCheckoutRepository(
         if (!isUkPostcode(address.postcode)) {
           throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Enter a valid UK postcode", 400);
         }
+        const country = address.country.trim().toUpperCase();
+        if (country !== "GB" && country !== "UK") {
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.VALIDATION,
+            "UK insured delivery requires a GB delivery address",
+            400,
+          );
+        }
         deliveryAddress = {
           ...address,
+          country: "GB",
           postcode: normalizeUkPostcode(address.postcode),
         };
       }
@@ -161,11 +175,15 @@ export function createDrizzleCheckoutRepository(
             }
           }
 
-          await reserveEditionsForCheckoutOrder(tx as Database, {
-            orderId: order.id,
-            reservedUntil,
-            expandedLines,
-          });
+          await reserveEditionsForCheckoutOrder(
+            tx as Database,
+            {
+              orderId: order.id,
+              reservedUntil,
+              expandedLines,
+            },
+            domainEvents,
+          );
 
           await tx
             .update(shopBasket)

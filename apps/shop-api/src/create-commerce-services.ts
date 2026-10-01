@@ -21,6 +21,7 @@ import {
   parseVerifiedCheckoutSessionAsyncPaymentFailed,
   parseVerifiedCheckoutSessionCompleted,
   parseVerifiedCheckoutSessionExpired,
+  parseVerifiedShopCheckoutCurrencyViolation,
 } from "./infrastructure/stripe-webhook-adapters.js";
 import { constructStripeWebhookEvent } from "./infrastructure/stripe-webhook-verifier.js";
 
@@ -33,15 +34,20 @@ export function createCommerceServices(
     storefrontUrl: env.SHOP_STOREFRONT_URL,
     fakeCheckoutEnabled: env.SHOP_FAKE_CHECKOUT_ENABLED,
   });
+  const domainEventMode = env.DOMAIN_EVENT_PUBLISH_VALIDATE;
   const repository = createDrizzleCommerceRepository(db, paymentGateway, {
     storefrontUrl: env.SHOP_STOREFRONT_URL,
+    domainEventMode,
   });
 
   const notifications = createDrizzleShopNotificationPublisher();
+  const opsAlertEmail = env.SHOP_OPS_ALERT_EMAIL ?? env.SHOP_ENQUIRY_NOTIFICATION_EMAIL ?? null;
   const paymentEvents: PaymentEventProcessor = createDrizzlePaymentEventProcessor(db, {
     notifications,
+    opsAlertEmail,
     storefrontUrl: env.SHOP_STOREFRONT_URL,
     paymentGateway,
+    domainEventMode,
   });
 
   return {
@@ -67,9 +73,11 @@ export function createCommerceServices(
       parseCheckoutSessionCompleted: parseVerifiedCheckoutSessionCompleted,
       parseCheckoutSessionExpired: parseVerifiedCheckoutSessionExpired,
       parseCheckoutSessionAsyncPaymentFailed: parseVerifiedCheckoutSessionAsyncPaymentFailed,
+      parseShopCheckoutCurrencyViolation: parseVerifiedShopCheckoutCurrencyViolation,
       completeCheckout: paymentEvents.completeCheckout,
       expireCheckout: paymentEvents.expireCheckout,
       failCheckout: paymentEvents.failCheckout,
+      recordCurrencyViolation: paymentEvents.recordCurrencyViolation,
     },
   };
 }

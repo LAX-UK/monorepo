@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS "shop_client_assignment_client_broker_uid";
+DROP TABLE IF EXISTS "shop_client_assignment";
+DROP INDEX IF EXISTS "shop_sale_fee_sale_idx";
+DROP TABLE IF EXISTS "shop_sale_fee";
+DROP TABLE IF EXISTS "shop_third_party_sale";
+DROP INDEX IF EXISTS "shop_stock_hold_edition_active_idx";
+DROP TABLE IF EXISTS "shop_stock_hold";
+DROP TYPE IF EXISTS "shop_sale_fee_status";
+DROP TYPE IF EXISTS "shop_third_party_sale_status";
+DROP TYPE IF EXISTS "shop_stock_hold_status";

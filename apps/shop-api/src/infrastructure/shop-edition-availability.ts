@@ -4,7 +4,7 @@ import { and, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 /** Expired reservation TTL only counts as sellable when no pending_payment order still holds the lock. */
 const expiredReservationSellableSql = sql`(
-  ${shopEdition.status} = 'reserved'
+  ${shopEdition.listingStatus} = 'reserved'
   and ${shopEdition.reservedUntil} is not null
   and ${shopEdition.reservedUntil} < now()
   and (
@@ -17,7 +17,9 @@ const expiredReservationSellableSql = sql`(
   )
 )`;
 
-const sellableEditionCoreSql = sql`${shopEdition.ownerPartyId} is not null and (${shopEdition.status} = 'available' or ${expiredReservationSellableSql})`;
+const sellableEditionCoreSql = sql`${shopEdition.ownerPartyId} is not null
+  and ${shopEdition.custodyStatus} not in ('with_owner', 'returned')
+  and (${shopEdition.listingStatus} = 'authorised' or ${expiredReservationSellableSql})`;
 
 /** Sellable edition count for notify-me, catalogue, and basket stock checks. */
 export const sellableEditionCountSql = sql<number>`count(*) filter (where ${sellableEditionCoreSql})`;
@@ -26,13 +28,14 @@ export const sellableEditionCountSql = sql<number>`count(*) filter (where ${sell
 export function sellableEditionCondition() {
   return and(
     isNotNull(shopEdition.ownerPartyId),
-    or(eq(shopEdition.status, "available"), expiredReservationSellableCondition()),
+    sql`${shopEdition.custodyStatus} not in ('with_owner', 'returned')`,
+    or(eq(shopEdition.listingStatus, "authorised"), expiredReservationSellableCondition()),
   );
 }
 
 function expiredReservationSellableCondition() {
   return and(
-    eq(shopEdition.status, "reserved"),
+    eq(shopEdition.listingStatus, "reserved"),
     isNotNull(shopEdition.reservedUntil),
     sql`${shopEdition.reservedUntil} < now()`,
     or(
