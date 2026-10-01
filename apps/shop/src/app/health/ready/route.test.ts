@@ -7,17 +7,27 @@ afterEach(() => {
 });
 
 describe("Shop readiness", () => {
-  it("reports both immutable releases when Shop Identity dependencies are ready", async () => {
+  it("reports immutable releases when Shop Identity and Shop API dependencies are ready", async () => {
     process.env.SENTRY_RELEASE = "a".repeat(40);
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: "ok",
-          release: "b".repeat(40),
-        }),
-        { status: 200 },
-      ),
-    );
+    const identityRelease = "b".repeat(40);
+    const shopApiRelease = "c".repeat(40);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/health/ready") && url.includes("3011")) {
+        return new Response(JSON.stringify({ status: "ok", release: shopApiRelease }), {
+          status: 200,
+        });
+      }
+      if (url.endsWith("/health/ready")) {
+        return new Response(JSON.stringify({ status: "ok", release: identityRelease }), {
+          status: 200,
+        });
+      }
+      if (url.includes("/commerce/basket")) {
+        return new Response(JSON.stringify({ lines: [] }), { status: 200 });
+      }
+      return new Response("not found", { status: 404 });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await GET();
@@ -28,10 +38,18 @@ describe("Shop readiness", () => {
       dependencies: {
         shopIdentity: {
           status: "ok",
-          release: "b".repeat(40),
+          release: identityRelease,
+        },
+        shopApi: {
+          status: "ok",
+          release: shopApiRelease,
         },
       },
     });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/health\/ready$/),
+      expect.objectContaining({ cache: "no-store" }),
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringMatching(/\/health\/ready$/),
       expect.objectContaining({ cache: "no-store" }),

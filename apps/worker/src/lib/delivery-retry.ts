@@ -1,4 +1,5 @@
 import { DomainEventContractError } from "@auction/types";
+import { CrmGatewayError } from "../integrations/crm/crm-gateway-error.js";
 
 export type DeliveryErrorClass = "retryable" | "fatal";
 
@@ -38,6 +39,9 @@ export function isRetryableDeliveryError(err: unknown): boolean {
 
 /** Classify outbound delivery failures for retry vs dead-letter. */
 export function classifyDeliveryError(err: unknown): DeliveryErrorClass {
+  if (err instanceof CrmGatewayError && !err.retryable) {
+    return "fatal";
+  }
   if (isRetryableDeliveryError(err)) {
     return "retryable";
   }

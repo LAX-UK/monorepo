@@ -1,4 +1,4 @@
-export type ZohoCrmModule = "Leads" | "Contacts" | "Deals";
+export type ZohoCrmModule = "Leads" | "Contacts" | "Deals" | "Products" | "Arts";
 
 export class ZohoCrmHttpError extends Error {
   readonly status: number;

@@ -26,6 +26,7 @@ export function createCrmSyncService(input: {
       dealStagePaymentCaptured: input.env.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED,
       dealStagePaymentRefunded: input.env.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED,
       dealStageShopPaid: input.env.ZOHO_CRM_DEAL_STAGE_SHOP_PAID,
+      dealStageShopEnquiry: input.env.ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY,
     },
   };
   return new CrmSyncService(deps);

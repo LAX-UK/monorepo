@@ -90,11 +90,14 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
     .innerJoin(shopArtwork, eq(shopBasketLine.artworkId, shopArtwork.id))
     .where(eq(shopBasketLine.basketId, basketId));
 
+  const artworkLines = lines.filter(
+    (line): line is typeof line & { artworkId: string } => line.artworkId !== null,
+  );
   const sellableByArtwork = await sellableCountsByArtworkIds(
     db,
-    lines.map((line) => line.artworkId),
+    artworkLines.map((line) => line.artworkId),
   );
-  const enriched = lines.map((line) => ({
+  const enriched = artworkLines.map((line) => ({
     lineId: line.lineId,
     artworkId: line.artworkId,
     artworkSlug: line.slug,
@@ -127,9 +130,10 @@ export async function ensureOpenBasket(db: Database, owner: BasketOwner): Promis
   const now = new Date();
   if (existing[0]) {
     if (existing[0].expiresAt < now) {
-      throw new ShopApiError(SHOP_API_ERROR_CODES.BASKET_CONFLICT, "Basket expired", 409);
+      await db.update(shopBasket).set({ retiredAt: now }).where(eq(shopBasket.id, existing[0].id));
+    } else {
+      return existing[0].id;
     }
-    return existing[0].id;
   }
   const expiresAt = new Date(now.getTime() + BASKET_TTL_MS);
   try {
@@ -152,7 +156,8 @@ export async function ensureOpenBasket(db: Database, owner: BasketOwner): Promis
       .limit(1);
     if (!raced[0]) throw error;
     if (raced[0].expiresAt < now) {
-      throw new ShopApiError(SHOP_API_ERROR_CODES.BASKET_CONFLICT, "Basket expired", 409);
+      await db.update(shopBasket).set({ retiredAt: now }).where(eq(shopBasket.id, raced[0].id));
+      return ensureOpenBasket(db, owner);
     }
     return raced[0].id;
   }

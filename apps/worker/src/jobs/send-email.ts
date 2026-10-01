@@ -12,14 +12,14 @@ export async function enqueueStaleEmailOutboxRows({
   outboxRepo: IEmailOutboxRepository;
   queue: Queue<SendEmailJobData | Record<string, never>>;
 }): Promise<number> {
-  const stale = await outboxRepo.findStalePendingIds();
+  const stale = await outboxRepo.recoverStaleForDispatch();
 
   for (const row of stale) {
     await queue.add(
       "send-email",
       { outboxId: row.id },
       {
-        jobId: row.id,
+        jobId: `${row.id}:${row.dispatchGeneration}`,
         attempts: 5,
         backoff: { type: "exponential", delay: 30_000 },
         removeOnComplete: 1000,

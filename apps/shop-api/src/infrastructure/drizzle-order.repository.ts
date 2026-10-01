@@ -67,6 +67,9 @@ async function fetchLinesByOrderIds(
     .where(inArray(shopOrderLine.orderId, orderIds));
   const linesByOrder = new Map<string, OrderRecord["lines"]>();
   for (const line of lineRows) {
+    if (line.editionNumber === null) {
+      continue;
+    }
     const bucket = linesByOrder.get(line.orderId) ?? [];
     bucket.push({
       orderLineId: line.orderLineId,

@@ -12,6 +12,7 @@ import type { CrmAttributionReader, CrmPaymentLotReader } from "./crm-readers.js
 import type { CrmSyncResult } from "./crm-sync-result.js";
 import { CrmDealSyncHandler } from "./handlers/crm-deal-sync-handler.js";
 import { CrmPersonSyncHandler } from "./handlers/crm-person-sync-handler.js";
+import { CrmShopRecordSyncHandler } from "./handlers/crm-shop-record-sync-handler.js";
 import { CrmSubjectLifecycleHandler } from "./handlers/crm-subject-lifecycle-handler.js";
 
 export type { CrmSyncResult } from "./crm-sync-result.js";
@@ -29,6 +30,7 @@ export class CrmSyncService {
   private readonly personHandler: CrmPersonSyncHandler;
   private readonly dealHandler: CrmDealSyncHandler;
   private readonly lifecycleHandler: CrmSubjectLifecycleHandler;
+  private readonly shopRecordHandler: CrmShopRecordSyncHandler;
 
   constructor(private readonly deps: CrmSyncServiceDeps) {
     const dealHandlerRef: { current: CrmDealSyncHandler | null } = { current: null };
@@ -48,6 +50,10 @@ export class CrmSyncService {
     this.lifecycleHandler = new CrmSubjectLifecycleHandler({
       gateway: deps.gateway,
       linkRepo: deps.linkRepo,
+    });
+    this.shopRecordHandler = new CrmShopRecordSyncHandler({
+      gateway: deps.gateway,
+      catalogueSyncEnabled: deps.env.SHOP_ZOHO_CATALOGUE_SYNC_ENABLED,
     });
   }
 
@@ -86,7 +92,29 @@ export class CrmSyncService {
     }
 
     try {
-      return await this.dispatch(intent);
+      const primary = await this.dispatch(intent);
+      if (event.eventType === "shop.order.paid" && primary.outcome === "success") {
+        const payload = event.payload as {
+          orderId?: string;
+          identitySubjectId?: string;
+          totalPence?: number;
+          paidAt?: string;
+        };
+        if (
+          payload.orderId &&
+          payload.identitySubjectId &&
+          payload.totalPence !== undefined &&
+          payload.paidAt
+        ) {
+          await this.shopRecordHandler.syncOrderPaidFinancials({
+            orderId: payload.orderId,
+            identitySubjectId: payload.identitySubjectId,
+            totalPence: payload.totalPence,
+            paidAt: payload.paidAt,
+          });
+        }
+      }
+      return primary;
     } catch (err) {
       const { retryable, error } = crmErrorOutcome(err);
       return retryable ? { outcome: "retry", error } : { outcome: "fatal", error };
@@ -118,6 +146,8 @@ export class CrmSyncService {
         return this.dealHandler.updateDealStage(intent.dealEntityId, intent.stage);
       case "convert_lead_on_win":
         return this.dealHandler.convertLeadAndCreateDeal(intent);
+      case "shop_artwork_product_upsert":
+        return this.shopRecordHandler.syncArtworkCreated(intent);
       default:
         return { outcome: "skipped", reason: "unhandled_intent" };
     }

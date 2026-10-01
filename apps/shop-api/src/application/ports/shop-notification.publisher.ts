@@ -41,4 +41,15 @@ export type ShopNotificationPublisher = {
       storefrontUrl: string;
     },
   ): Promise<void>;
+
+  queueCheckoutOpsAlert(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      opsEmail: string;
+      alertKind: string;
+      orderId: string;
+      detail: string;
+    },
+  ): Promise<void>;
 };

@@ -1268,6 +1268,97 @@
       "when": 1791014400000,
       "tag": "0181_shop_order_line_released_at",
       "breakpoints": true
+    },
+    {
+      "idx": 181,
+      "version": "7",
+      "when": 1791100800000,
+      "tag": "0182_shop_edition_two_axis",
+      "breakpoints": true
+    },
+    {
+      "idx": 182,
+      "version": "7",
+      "when": 1791187200000,
+      "tag": "0183_shop_sale_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1791273600000,
+      "tag": "0184_shop_staff_audit_party",
+      "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1791360000000,
+      "tag": "0185_shop_lines_ledger_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 185,
+      "version": "7",
+      "when": 1791446400000,
+      "tag": "0186_shop_fulfilment_production",
+      "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1791532800000,
+      "tag": "0187_shop_refund_dispute_return_compliance",
+      "breakpoints": true
+    },
+    {
+      "idx": 187,
+      "version": "7",
+      "when": 1791619200000,
+      "tag": "0188_shop_payout_eligibility_support",
+      "breakpoints": true
+    },
+    {
+      "idx": 188,
+      "version": "7",
+      "when": 1791705600000,
+      "tag": "0189_shop_holds_third_party_brokers",
+      "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1791792000000,
+      "tag": "0190_shop_original_sale",
+      "breakpoints": true
+    },
+    {
+      "idx": 190,
+      "version": "7",
+      "when": 1791878400000,
+      "tag": "0191_shop_edition_status_sync_trigger",
+      "breakpoints": true
+    },
+    {
+      "idx": 191,
+      "version": "7",
+      "when": 1791964800000,
+      "tag": "0192_shop_sale_authority_grant_request_uid",
+      "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1792051200000,
+      "tag": "0193_shop_reaudit_holds_payout_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1792137600000,
+      "tag": "0194_shop_phase1_constraints",
+      "breakpoints": true
     }
   ]
 }

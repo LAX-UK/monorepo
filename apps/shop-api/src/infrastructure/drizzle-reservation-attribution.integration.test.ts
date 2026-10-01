@@ -5,6 +5,7 @@ import { LAX_ALLOCATION_COUNT } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { grantLaxSaleAuthority } from "../test-support/shop-fixtures.js";
 import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
 import {
   completeShopCheckoutSession,
@@ -63,6 +64,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       eligibleForEditionAllocation: true,
       printPricePence: 5_000,
     });
+    await grantLaxSaleAuthority(db, imported.artworkId, LAX_ALLOCATION_COUNT);
     const reservedEdition = await selectLaxEdition(db, imported.artworkId);
     expect(await countSellableForArtwork(db, imported.artworkId)).toBe(LAX_ALLOCATION_COUNT);
 
@@ -83,7 +85,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
     await db
       .update(shopEdition)
       .set({
-        status: "reserved",
+        listingStatus: "reserved",
         reservedUntil: past,
         reservedByOrderId: orderA.id,
       })
@@ -150,7 +152,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
     await db
       .update(shopEdition)
       .set({
-        status: "reserved",
+        listingStatus: "reserved",
         reservedUntil: new Date(Date.now() + 60_000),
         reservedByOrderId: orderB.id,
       })
@@ -227,7 +229,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
     await db
       .update(shopEdition)
       .set({
-        status: "reserved",
+        listingStatus: "reserved",
         reservedUntil: new Date(Date.now() + 60_000),
         reservedByOrderId: orderB.id,
       })
@@ -242,7 +244,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       .select()
       .from(shopEdition)
       .where(eq(shopEdition.id, reservedEdition.id));
-    expect(after?.status).toBe("reserved");
+    expect(after?.listingStatus).toBe("reserved");
     expect(after?.reservedByOrderId).toBe(orderB.id);
   });
 
@@ -261,6 +263,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       eligibleForEditionAllocation: true,
       printPricePence: 5_000,
     });
+    await grantLaxSaleAuthority(db, imported.artworkId, LAX_ALLOCATION_COUNT);
     const reservedEdition = await selectLaxEdition(db, imported.artworkId);
     const ownerPartyId = requireDefined(reservedEdition.ownerPartyId, "owner party");
 
@@ -290,7 +293,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
     await db
       .update(shopEdition)
       .set({
-        status: "reserved",
+        listingStatus: "reserved",
         reservedUntil: new Date(Date.now() + 60_000),
         reservedByOrderId: order.id,
       })

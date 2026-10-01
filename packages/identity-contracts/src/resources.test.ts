@@ -24,7 +24,7 @@ describe("LAX resource registry", () => {
       "lax-shop-api": {
         id: "lax-shop-api",
         uri: "https://shop.lax.art/api",
-        allowedScopes: ["shop.read", "shop.write"],
+        allowedScopes: ["shop.read", "shop.write", "shop.admin"],
       },
     });
     expect(
@@ -40,6 +40,7 @@ describe("LAX resource registry", () => {
       "offline_access",
       "bid.read",
       "bid.write",
+      "shop.admin",
       "shop.read",
       "shop.write",
     ]);

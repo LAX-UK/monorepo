@@ -6,7 +6,7 @@ export const LAX_RESOURCE_IDS = {
 
 export type LaxResourceId = (typeof LAX_RESOURCE_IDS)[keyof typeof LAX_RESOURCE_IDS];
 
-export type ProductScope = "bid.read" | "bid.write" | "shop.read" | "shop.write";
+export type ProductScope = "bid.read" | "bid.write" | "shop.read" | "shop.write" | "shop.admin";
 
 export type LaxResourceMetadata = {
   id: LaxResourceId;
@@ -33,7 +33,7 @@ export const LAX_RESOURCES: Record<LaxResourceId, LaxResourceMetadata> = {
   [LAX_RESOURCE_IDS.LAX_SHOP_API]: {
     id: LAX_RESOURCE_IDS.LAX_SHOP_API,
     uri: "https://shop.lax.art/api",
-    allowedScopes: ["shop.read", "shop.write"],
+    allowedScopes: ["shop.read", "shop.write", "shop.admin"],
   },
 };
 

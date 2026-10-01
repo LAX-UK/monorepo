@@ -46,6 +46,33 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_payout_ledger",
   "shop_processed_payment_event",
   "shop_artwork_interest",
+  "shop_product",
+  "shop_product_variant",
+  "shop_sale_authority_request",
+  "shop_staff_member",
+  "shop_admin_idempotency",
+  "shop_party_invite",
+  "shop_document",
+  "shop_fulfilment_option_price",
+  "shop_fulfilment",
+  "shop_production_task",
+  "shop_certificate",
+  "shop_refund",
+  "shop_dispute",
+  "shop_return",
+  "shop_payee_compliance",
+  "shop_stock_hold",
+  "shop_third_party_sale",
+  "shop_sale_fee",
+  "shop_client_assignment",
+  "shop_original_sale",
+] as const;
+
+/** Append-only Shop tables: shop_app may INSERT and SELECT only. */
+export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
+  "shop_admin_audit",
+  "shop_sale_authority_grant",
+  "shop_edition_event",
 ] as const;
 export const API_DENY_TABLES = [
   "user",
@@ -67,6 +94,7 @@ export const API_DENY_TABLES = [
   "identity_lifecycle_outbox",
   "shop_ssf_replay",
   ...SHOP_COMMERCE_TABLES,
+  ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
 /** Identity-backed read models exposed to the Bid API without write privileges. */
 export const API_READ_TABLES = ["bid_identity_directory"] as const;
@@ -96,6 +124,7 @@ export const WORKER_DENY_TABLES = [
   "shop_logout_token_replay",
   ...SHOP_SSF_RECEIVER_TABLES,
   ...SHOP_COMMERCE_TABLES,
+  ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
 export const WORKER_READ_TABLES = [
   /** Identity lifecycle outbox relay reads pending rows before inserting into domain_events. */
@@ -469,6 +498,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of SHOP_COMMERCE_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT, UPDATE, DELETE");
         }
+        for (const tableName of SHOP_COMMERCE_APPEND_ONLY_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
+        }
         await grantIfExists(client, "shop_app", "domain_events", "INSERT, SELECT");
         for (const tableName of SHOP_EMAIL_OUTBOX_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
@@ -577,7 +609,7 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         if (restoreApiUserSelect) {
           await grantIfExists(client, "api_app", "user", "SELECT");
         }
-        for (const role of ["auth_app", "api_app", "worker_app"] as const) {
+        for (const role of ["auth_app", "api_app", "shop_app", "worker_app"] as const) {
           await grantSequences(client, role, "public");
         }
 

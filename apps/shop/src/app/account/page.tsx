@@ -84,6 +84,8 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
     redirect(q.size > 0 ? `/account/post-sign-in?${q.toString()}` : "/account/post-sign-in");
   }
 
+  const portalOwnershipEnabled = process.env.SHOP_PORTAL_OWNERSHIP_ENABLED === "true";
+
   return (
     <ShopAccountShell
       title={shopPageWayfinding.account.title}
@@ -100,6 +102,16 @@ export default async function ShopAccountPage({ searchParams }: ShopAccountPageP
         </div>
       </dl>
       <ShopAccountLinkButton href="/account/orders" label="View orders" variant="outline" />
+      {portalOwnershipEnabled ? (
+        <>
+          <ShopAccountLinkButton href="/account/editions" label="My editions" variant="outline" />
+          <ShopAccountLinkButton
+            href="/account/sale-limits"
+            label="Sale limits"
+            variant="outline"
+          />
+        </>
+      ) : null}
       <form action={shopIdentityUrl("/logout")} method="post" className="pt-2">
         <Button type="submit" variant="secondaryOutline" className="min-h-11 w-full">
           Sign out

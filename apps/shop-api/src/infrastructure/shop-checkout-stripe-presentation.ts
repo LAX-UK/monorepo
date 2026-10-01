@@ -42,6 +42,9 @@ export async function loadCheckoutStripePresentation(
   >();
 
   for (const row of rows) {
+    if (row.artworkId === null || row.editionNumber === null) {
+      continue;
+    }
     const existing = grouped.get(row.artworkId);
     if (existing) {
       existing.quantity += 1;

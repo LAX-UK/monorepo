@@ -1,16 +1,21 @@
 import type { Database } from "@auction/db";
-import { domainEvent, shopArtwork, shopArtworkInterest } from "@auction/db/schema";
+import { shopArtwork, shopArtworkInterest } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type {
   ArtworkInterestContext,
   ArtworkInterestWriter,
 } from "../application/ports/artwork-interest.writer.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
+import {
+  type ShopDomainEventPublisherMode,
+  createShopDomainEventPublisher,
+} from "./shop-domain-event-publisher.js";
 import { countSellableForArtwork } from "./shop-edition-availability.js";
 
 type ArtworkInterestRepositoryOptions = {
   notifications?: ShopNotificationPublisher;
   enquiryOpsEmail?: string;
+  domainEventMode?: ShopDomainEventPublisherMode;
 };
 
 async function loadArtworkSubscriptionContext(
@@ -48,6 +53,7 @@ export function createDrizzleArtworkInterestRepository(
   db: Database,
   options: ArtworkInterestRepositoryOptions = {},
 ): ArtworkInterestWriter {
+  const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
   return {
     loadInterestContext: (artworkSlug) => loadArtworkSubscriptionContext(db, artworkSlug, false),
 
@@ -96,18 +102,17 @@ export function createDrizzleArtworkInterestRepository(
           return "already_subscribed";
         }
 
-        await tx.insert(domainEvent).values({
+        await events.insertInTransaction(tx as Database, {
           aggregateType: "shop_artwork",
           aggregateId: input.artworkId,
           eventType: "shop.artwork.interest_registered",
+          producer: "shop-api",
           payload: {
+            schemaVersion: 1,
             artworkId: input.artworkId,
-            artworkSlug: input.artworkSlug,
             identitySubjectId: input.identitySubjectId,
             intent: input.intent,
-            idempotencyKey: `shop.artwork.interest_registered:${input.artworkId}:${input.identitySubjectId}:${input.intent}`,
           },
-          producer: "shop-api",
         });
 
         if (

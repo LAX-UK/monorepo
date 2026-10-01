@@ -1,13 +1,14 @@
 import type { Database } from "@auction/db";
 import { shopOrder } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type {
   CheckoutOrderResult,
   HostedCheckoutLineItem,
   PaymentCheckoutGateway,
 } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
+import { expireHostedCheckoutSession } from "./shop-checkout-stripe-expiry.js";
 
 export async function resolveOrCreateStripeCheckoutSession(
   db: Database,
@@ -57,14 +58,33 @@ export async function resolveOrCreateStripeCheckoutSession(
     customerEmail: input.customerEmail,
   });
 
-  await db
+  const [attached] = await db
     .update(shopOrder)
     .set({
       stripeCheckoutSessionId: session.sessionId,
       stripePaymentIntentId: session.paymentIntentId,
       updatedAt: new Date(),
     })
-    .where(eq(shopOrder.id, input.orderId));
+    .where(
+      and(
+        eq(shopOrder.id, input.orderId),
+        eq(shopOrder.status, "pending_payment"),
+        isNull(shopOrder.stripeCheckoutSessionId),
+      ),
+    )
+    .returning({ id: shopOrder.id });
+
+  if (!attached) {
+    await expireHostedCheckoutSession(paymentGateway, {
+      orderId: input.orderId,
+      sessionId: session.sessionId,
+    });
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.CONFLICT,
+      "Checkout session is no longer available for this order",
+      409,
+    );
+  }
 
   return {
     orderId: input.orderId,

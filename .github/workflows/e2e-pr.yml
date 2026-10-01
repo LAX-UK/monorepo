@@ -74,7 +74,11 @@ jobs:
               - "packages/branding/**"
               - "packages/lax-ecosystem/**"
               - "packages/shop-contracts/**"
+              - "packages/types/**"
               - "packages/shop-domain/**"
+              - ".github/workflows/e2e-pr.yml"
+              - ".github/workflows/ci.yml"
+              - ".github/workflows/shop-staging-acceptance.yml"
               - "scripts/ci/e2e-session-state.mjs"
               - "scripts/ci/flush-auth-rate-limits.mjs"
               - "scripts/ci/prepare-e2e-auth-states.mjs"
@@ -176,6 +180,7 @@ jobs:
       PLAYWRIGHT_READONLY_PASSWORD: Password123!
       PLAYWRIGHT_OPERATIONS_EMAIL: staff-operations@lax.bid
       PLAYWRIGHT_OPERATIONS_PASSWORD: Password123!
+      SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -254,6 +259,13 @@ jobs:
         run: |
           pnpm --filter @auction/shop-api seed:catalogue
           pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts
+      - name: Run Shop V1 phase 1 portal smoke
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3020
+          PLAYWRIGHT_E2E: "1"
+          SHOP_OIDC_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
+          SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
+        run: pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

@@ -5,7 +5,8 @@ import { ShopApiError } from "../errors/shop-api-error.js";
 export type StripeExpiryOutcome =
   | { kind: "expired" }
   | { kind: "already_complete" }
-  | { kind: "not_expirable" };
+  | { kind: "not_expirable" }
+  | { kind: "async_pending" };
 
 export async function expireHostedCheckoutSession(
   paymentGateway: PaymentCheckoutGateway,
@@ -28,4 +29,14 @@ export function assertCheckoutNotAlreadyPaid(outcome: StripeExpiryOutcome): void
       409,
     );
   }
+}
+
+export function assertCheckoutNotAsyncPending(outcome: StripeExpiryOutcome): void {
+  if (outcome.kind === "async_pending") {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Payment in progress", 409);
+  }
+}
+
+export function isAsyncCheckoutPaymentPending(outcome: StripeExpiryOutcome): boolean {
+  return outcome.kind === "async_pending";
 }

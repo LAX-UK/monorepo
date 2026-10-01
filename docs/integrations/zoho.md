@@ -41,6 +41,8 @@ Set these **variables** (not secrets) on the monorepo test environment; Terrafor
 | `ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED` | empty | e.g. `Paid` |
 | `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED` | empty | e.g. `Refunded` |
 | `ZOHO_CRM_DEAL_STAGE_SHOP_PAID` | empty | e.g. `Paid` |
+| `ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY` | empty | Enquiry deals (Phase 4; not shop-paid stage) |
+| `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED` | `false` | `shop.artwork.created` → Products |
 | `ZOHO_CRM_LEAD_CONVERSION_ENABLED` | `false` | Set `true` before lot-win conversion tests |
 
 After changing vars, re-run **Terraform test up** (with image contracts) or **Terraform apply test** so the worker spec updates.
@@ -65,7 +67,7 @@ After changing vars, re-run **Terraform test up** (with image contracts) or **Te
 
 Production worker keeps `ZOHO_CRM_SYNC_MODE=off` until [Phase 0 runbook](../runbooks/zoho-crm-phase0-prerequisites.md) exit criteria pass.
 
-**Not implemented yet:** automated dead-letter alerting; shop refund/fulfilment events (no producers).
+**Shop gaps:** refund/fulfilment domain events are not emitted yet; enquiry stage and catalogue sync require the env vars above.
 
 ## Architecture
 
@@ -79,7 +81,7 @@ Production worker keeps `ZOHO_CRM_SYNC_MODE=off` until [Phase 0 runbook](../runb
 - Identity: `user.registered`, `user.email_verified`, `user.profile_updated`, `user.deletion_requested`, `user.deletion_cancelled`, `user.identity_merged`, `user.identity_deleted`  
   **Lifecycle** (`deletion_*`, `identity_merged`, `identity_deleted`) is always delivered when any person event type is allowlisted, even if omitted from `ZOHO_CRM_ENABLED_EVENT_TYPES`.
 - Bid: `bid.first_for_user`, `bid.lot_won`, `payment.captured`, `payment.refunded`
-- Shop: `shop.order.paid` only (refund/fulfilment not emitted yet). Deal patches require an existing person link — run `backfill:crm-users` for shop-only buyers before enabling shop CRM events.
+- Shop: `shop.order.paid`, optional `shop.artwork.created` (catalogue sync flag), `shop.artwork.interest_registered` (enquiry). Deal patches require an existing person link — run `backfill:crm-users` for shop-only buyers before enabling shop CRM events.
 
 **Enable order (test/canary):** turn on `user.registered` and run `backfill:crm-users` before any patch-only types (`user.email_verified`, `user.profile_updated`, `bid.first_for_user`) or deal/payment events. Patch handlers retry then dead-letter when the subject has no CRM link yet.
 

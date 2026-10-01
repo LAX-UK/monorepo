@@ -42,6 +42,21 @@ export async function registerStripeWebhookRoutes(
           return reply.status(400).send("Invalid signature");
         }
 
+        const currencyViolation = deps.parseShopCheckoutCurrencyViolation?.(event);
+        if (currencyViolation) {
+          request.log.error(
+            { orderId: currencyViolation.orderId, currency: currencyViolation.currency },
+            "stripe checkout currency mismatch for shop order",
+          );
+          await deps.recordCurrencyViolation({
+            eventId: currencyViolation.eventId,
+            orderId: currencyViolation.orderId,
+            currency: currencyViolation.currency,
+            sessionId: currencyViolation.sessionId,
+          });
+          return reply.status(200).send({ received: true, currencyViolation: true });
+        }
+
         const completed = deps.parseCheckoutSessionCompleted(event);
         if (completed) {
           try {
@@ -55,6 +70,13 @@ export async function registerStripeWebhookRoutes(
             });
             if (outcome === "duplicate") {
               return reply.status(200).send({ received: true, duplicate: true });
+            }
+            if (outcome === "terminal_acknowledged") {
+              request.log.error(
+                { orderId: completed.orderId },
+                "stripe paid webhook for terminal shop order; manual refund may be required",
+              );
+              return reply.status(200).send({ received: true, terminal: true });
             }
             return reply.status(200).send({ received: true });
           } catch (error) {

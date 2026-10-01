@@ -6,6 +6,10 @@ on:
       shop_sha:
         type: string
         required: true
+      shop_api_sha:
+        type: string
+        required: false
+        default: ""
       seed_catalogue:
         type: boolean
         required: false
@@ -46,6 +50,7 @@ jobs:
     environment: test
     env:
       SHOP_SHA: ${{ inputs.shop_sha }}
+      SHOP_API_SHA: ${{ inputs.shop_api_sha != '' && inputs.shop_api_sha || inputs.shop_sha }}
       SHOP_STOREFRONT_URL: https://test-shop.lax.bid
       AUTH_BASE_URL: https://test-auth.lax.bid
       SHOP_IDENTITY_BASE_URL: https://test-shop.lax.bid
@@ -74,14 +79,20 @@ jobs:
           for attempt in $(seq 1 30); do
             if body="$(curl --fail --silent --max-time 30 "$SHOP_STOREFRONT_URL/health/ready" 2>/dev/null)"; then
               if echo "$body" | jq -e \
-                '.status == "ok" and (.dependencies.shopIdentity.status == "ok")' \
+                '.status == "ok"
+                  and (.dependencies.shopIdentity.status == "ok")
+                  and (.dependencies.shopApi.status == "ok")' \
                 >/dev/null; then
                 release="$(echo "$body" | jq -r '.release // empty')"
-                if test "$release" = "$SHOP_SHA"; then
-                  echo "Shop release pinned: $release"
+                identity_release="$(echo "$body" | jq -r '.dependencies.shopIdentity.release // empty')"
+                shop_api_release="$(echo "$body" | jq -r '.dependencies.shopApi.release // empty')"
+                if test "$release" = "$SHOP_SHA" \
+                  && test "$identity_release" = "$SHOP_SHA" \
+                  && test "$shop_api_release" = "$SHOP_API_SHA"; then
+                  echo "Shop release pinned: storefront=$release identity=$identity_release shop-api=$shop_api_release"
                   exit 0
                 fi
-                echo "Attempt ${attempt}: release=${release:-unknown}, want $SHOP_SHA"
+                echo "Attempt ${attempt}: storefront=${release:-unknown} identity=${identity_release:-unknown} shop-api=${shop_api_release:-unknown}; want storefront/identity=$SHOP_SHA shop-api=$SHOP_API_SHA"
               else
                 echo "Attempt ${attempt}: health/ready status not ok"
               fi
@@ -150,12 +161,33 @@ jobs:
           pnpm --filter @auction/shop-api seed:catalogue
       - name: Install pinned Chromium
         run: pnpm --filter @auction/shop exec playwright install chromium --with-deps
+      - name: Require acceptance credentials for portal smoke
+        run: |
+          set -euo pipefail
+          test -n "${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}" || {
+            echo "::error::IDENTITY_ACCEPTANCE_EMAIL must be configured on the test environment"
+            exit 1
+          }
+          test -n "${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}" || {
+            echo "::error::IDENTITY_ACCEPTANCE_PASSWORD must be configured on the test environment"
+            exit 1
+          }
       - name: Shop browser tier 1 (light/dark, viewport)
         run: |
           pnpm --filter @auction/shop exec playwright test \
             e2e/theme-audit.spec.ts \
             e2e/shop-viewport-audit.spec.ts \
             e2e/home.spec.ts --grep "visible without JavaScript|theme"
+      - name: Shop V1 phase 1 portal smoke
+        env:
+          SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
+          SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE: ${{ vars.SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE }}
+        run: pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
+      - name: Phase flags (manual enable on staging)
+        run: |
+          echo "Shop V1 later phases: set SHOP_PAYOUTS_ENABLED, SHOP_THIRD_PARTY_ENABLED,"
+          echo "SHOP_ORIGINALS_ENABLED, SHOP_MERCHANDISE_ENABLED on shop-api per"
+          echo "docs/runbooks/shop-v1-phase-gates.md before running phase 2+ acceptance."
       - name: Shop browser tier 2 (foundation catalogue fixtures)
         if: inputs.seed_catalogue
         run: |

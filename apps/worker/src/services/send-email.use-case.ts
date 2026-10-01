@@ -19,13 +19,21 @@ export async function sendEmailUseCase(
   { outboxRepo, sender, log }: SendEmailUseCaseDeps,
   data: SendEmailJobData,
 ): Promise<void> {
-  const row = await outboxRepo.claimForSend(data.outboxId);
+  const claim = await outboxRepo.claimForSend(data.outboxId);
 
-  if (!row) {
+  if (!claim) {
     throw new Error(`email_outbox row not found: ${data.outboxId}`);
   }
-  if (row.status === "sent" || row.status === "suppressed" || row.status === "failed") {
-    log.info({ outboxId: data.outboxId, status: row.status }, "email job already terminal");
+  const { row, claimed } = claim;
+  if (!claimed) {
+    if (row.status === "sent" || row.status === "suppressed" || row.status === "failed") {
+      log.info({ outboxId: data.outboxId, status: row.status }, "email job already terminal");
+    } else {
+      log.info(
+        { outboxId: data.outboxId, status: row.status },
+        "email send skipped: outbox row claimed by another worker",
+      );
+    }
     return;
   }
   if (row.status !== "sending") {
@@ -44,6 +52,7 @@ export async function sendEmailUseCase(
     log.warn({ outboxId: row.id }, "email send: auth mail to suppressed address (flagged)");
   }
 
+  let providerMessageId: string | undefined;
   try {
     const result = await sender.send({
       outboxId: row.id,
@@ -54,8 +63,22 @@ export async function sendEmailUseCase(
       flaggedAddress: row.flaggedAddress,
       userId: row.userId,
     });
-    await outboxRepo.markSent(row.id, result.messageId);
+    providerMessageId = result.messageId;
+    try {
+      await outboxRepo.markSent(row.id, result.messageId);
+    } catch (markErr) {
+      const message = markErr instanceof Error ? markErr.message : String(markErr);
+      await outboxRepo.markSentPersistenceFailed(row.id, result.messageId, message);
+      log.error(
+        { outboxId: row.id, messageId: result.messageId, err: message },
+        "email provider accepted send but markSent failed; row left for reconciliation",
+      );
+      throw markErr;
+    }
   } catch (err) {
+    if (providerMessageId) {
+      throw err;
+    }
     const message = err instanceof Error ? err.message : String(err);
     const terminal = row.attempts >= 5;
     await outboxRepo.markFailedOrPending(row.id, message, terminal);

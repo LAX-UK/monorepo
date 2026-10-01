@@ -4,9 +4,11 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  API_DENY_TABLES,
   API_READ_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
+  SHOP_COMMERCE_APPEND_ONLY_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
@@ -335,6 +337,18 @@ describe("migrate-roles invariants", () => {
 
   it("WORKER_READ_TABLES includes identity_lifecycle_outbox (outbox relay job)", () => {
     expect([...WORKER_READ_TABLES]).toContain("identity_lifecycle_outbox");
+  });
+
+  it("denies api_app and worker_app on shop append-only commerce tables", () => {
+    for (const table of SHOP_COMMERCE_APPEND_ONLY_TABLES) {
+      expect([...API_DENY_TABLES]).toContain(table);
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+    }
+  });
+
+  it("grants public sequence usage to shop_app (sale authority grant revision)", async () => {
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toMatch(/\["auth_app", "api_app", "shop_app", "worker_app"\].*grantSequences/s);
   });
 
   it("models the post-0160 Identity directory cutover", () => {

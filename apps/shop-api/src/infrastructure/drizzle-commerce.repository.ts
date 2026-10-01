@@ -16,7 +16,10 @@ export {
 export function createDrizzleCommerceRepository(
   db: Database,
   paymentGateway: PaymentCheckoutGateway,
-  options: { storefrontUrl: string },
+  options: {
+    storefrontUrl: string;
+    domainEventMode: "off" | "observe" | "enforce";
+  },
 ): CommerceRepository {
   const basket = createDrizzleBasketRepository(db);
   const checkout = createDrizzleCheckoutRepository(db, paymentGateway, options);

@@ -28,7 +28,16 @@ describe("cross-platform token claim contracts", () => {
   });
 
   it("freezes the minimal access-token claim allowlist", () => {
-    expect(MINIMAL_ACCESS_TOKEN_CLAIMS).toEqual(["sub", "iss", "aud", "iat", "exp", "sid"]);
+    expect(MINIMAL_ACCESS_TOKEN_CLAIMS).toEqual([
+      "sub",
+      "iss",
+      "aud",
+      "iat",
+      "exp",
+      "sid",
+      "acr",
+      "auth_time",
+    ]);
   });
 
   it("defaults first-party audience to lax-bid-api", () => {

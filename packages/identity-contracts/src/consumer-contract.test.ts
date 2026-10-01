@@ -32,6 +32,11 @@ describe("identity-contracts consumer fixtures", () => {
         allowedScopes: string[];
         backchannelLogoutUri: string;
       };
+      shopAdmin: {
+        allowedResources: string[];
+        allowedScopes: string[];
+        backchannelLogoutUri: string;
+      };
       wsMobile: { allowedResources: string[]; allowedScopes: string[] };
     }>("registered-clients.v1.json");
 

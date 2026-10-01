@@ -53,6 +53,7 @@ describe("OIDC discovery contracts", () => {
         "bid.write",
         "shop.read",
         "shop.write",
+        "shop.admin",
       ],
       token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],
       revocation_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],

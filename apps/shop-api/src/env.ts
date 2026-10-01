@@ -32,10 +32,49 @@ export const shopApiEnvSchema = z.object({
     (val) => (val === "" ? undefined : val),
     z.string().email().optional(),
   ),
+  SHOP_OPS_ALERT_EMAIL: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().email().optional(),
+  ),
   SHOP_FAKE_CHECKOUT_ENABLED: z
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  DOMAIN_EVENT_PUBLISH_VALIDATE: z.enum(["off", "observe", "enforce"]).default("observe"),
+  SHOP_ADMIN_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  SHOP_PORTAL_OWNERSHIP_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  SHOP_PAYOUTS_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  SHOP_THIRD_PARTY_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  SHOP_ORIGINALS_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  SHOP_MERCHANDISE_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  SHOP_CANCELLATION_DAYS_AFTER_POSSESSION: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : Number(val)),
+    z.number().int().min(0).max(365).optional(),
+  ),
+  SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /** Max seconds since OIDC `auth_time` for finance admin mutations (D31). */
+  SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
 });
 
 export type ShopApiEnv = z.infer<typeof shopApiEnvSchema>;
@@ -63,6 +102,9 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
     }
     if (!parsed.data.STRIPE_WEBHOOK_SECRET) {
       throw new Error("STRIPE_WEBHOOK_SECRET is required in production");
+    }
+    if (parsed.data.SHOP_FAKE_CHECKOUT_ENABLED) {
+      throw new Error("SHOP_FAKE_CHECKOUT_ENABLED must not be enabled in production");
     }
   }
   return parsed.data;

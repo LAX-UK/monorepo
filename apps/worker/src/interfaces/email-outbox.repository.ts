@@ -14,13 +14,25 @@ export type EmailOutboxRow = {
   category: string;
 };
 
+export type EmailOutboxClaimResult = {
+  row: EmailOutboxRow;
+  claimed: boolean;
+};
+
+export type EmailOutboxRecoveryRow = {
+  id: string;
+  /** BullMQ job id suffix; matches outbox attempts after recovery claim. */
+  dispatchGeneration: number;
+};
+
 export interface IEmailOutboxRepository {
-  claimForSend(outboxId: string): Promise<EmailOutboxRow | null>;
+  claimForSend(outboxId: string): Promise<EmailOutboxClaimResult | null>;
   findSuppression(emailHash: string): Promise<boolean>;
   markSuppressed(outboxId: string, reason: string): Promise<void>;
   markSent(outboxId: string, messageId: string): Promise<void>;
   markFailedOrPending(outboxId: string, message: string, terminal: boolean): Promise<void>;
+  markSentPersistenceFailed(outboxId: string, messageId: string, message: string): Promise<void>;
   resolveUserEmail(userId: string): Promise<string | null>;
   insertSuppression(emailHash: string, reason: EmailSuppressionReason): Promise<void>;
-  findStalePendingIds(): Promise<Array<{ id: string }>>;
+  recoverStaleForDispatch(): Promise<EmailOutboxRecoveryRow[]>;
 }

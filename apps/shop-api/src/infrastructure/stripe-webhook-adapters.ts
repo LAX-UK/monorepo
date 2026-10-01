@@ -3,6 +3,7 @@ import {
   parseCheckoutSessionAsyncPaymentFailed,
   parseCheckoutSessionCompleted,
   parseCheckoutSessionExpired,
+  parseShopCheckoutCurrencyViolation,
 } from "./stripe-webhook.dto.js";
 
 export function parseVerifiedCheckoutSessionCompleted(event: unknown) {
@@ -15,4 +16,8 @@ export function parseVerifiedCheckoutSessionExpired(event: unknown) {
 
 export function parseVerifiedCheckoutSessionAsyncPaymentFailed(event: unknown) {
   return parseCheckoutSessionAsyncPaymentFailed(event as Stripe.Event);
+}
+
+export function parseVerifiedShopCheckoutCurrencyViolation(event: unknown) {
+  return parseShopCheckoutCurrencyViolation(event as Stripe.Event);
 }

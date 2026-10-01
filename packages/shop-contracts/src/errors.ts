@@ -9,6 +9,16 @@ export const SHOP_API_ERROR_CODES = {
   PAYMENT_FAILED: "shop.payment_failed",
   UNAUTHORIZED: "shop.unauthorized",
   FORBIDDEN: "shop.forbidden",
+  STAFF_REQUIRED: "shop.staff_required",
+  STEP_UP_REQUIRED: "shop.step_up_required",
+  POLICY_NOT_CONFIGURED: "shop.policy_not_configured",
+  AUTHORITY_INSUFFICIENT: "shop.authority_insufficient",
+  EDITION_NOT_SELLABLE: "shop.edition_not_sellable",
+  HOLD_CONFLICT: "shop.hold_conflict",
+  PAYOUT_BLOCKED: "shop.payout_blocked",
+  REFUND_FAILED: "shop.refund_failed",
+  STAFF_FORBIDDEN: "shop.staff_forbidden",
+  FEATURE_DISABLED: "shop.feature_disabled",
 } as const;
 
 export type ShopApiErrorCode = (typeof SHOP_API_ERROR_CODES)[keyof typeof SHOP_API_ERROR_CODES];

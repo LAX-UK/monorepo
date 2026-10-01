@@ -1,4 +1,5 @@
 import { type Database, closeDb, createDb } from "@auction/db";
+import type { AdminRoutesDeps } from "./admin-route-deps.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
 import { createGetPublicArtistHandler } from "./application/handlers/get-public-artist.handler.js";
 import { createGetPublicArtworkHandler } from "./application/handlers/get-public-artwork.handler.js";
@@ -17,12 +18,27 @@ import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzl
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
+import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
+import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
+import {
+  createDrizzleFulfilmentWriter,
+  createDrizzleOriginalSaleWriter,
+  createDrizzlePayoutWriter,
+  createDrizzleProductionWriter,
+  createDrizzleRefundWriter,
+  createDrizzleSaleFeeWriter,
+  createDrizzleStockHoldWriter,
+  createDrizzleThirdPartySaleWriter,
+} from "./infrastructure/drizzle-shop-phase-writers.js";
 import { createDrizzleShopReadinessAdapter } from "./infrastructure/drizzle-shop-readiness.adapter.js";
+import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-shop-staff-member.reader.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
+import { loadShopCancellationPolicy } from "./infrastructure/shop-cancellation-policy.js";
 import type { InterestRoutesDeps } from "./interest-route-deps.js";
+import type { PortalRoutesDeps } from "./portal-route-deps.js";
 
 export type ShopApiAppDeps = {
   env: ShopApiEnv;
@@ -39,6 +55,9 @@ export type ShopApiAppDeps = {
     issuer: string;
     bffToken?: string | undefined;
   };
+  admin: AdminRoutesDeps;
+  portal: PortalRoutesDeps;
+  staffReader: AdminRoutesDeps["staffReader"];
 };
 
 export type ShopApiContainer = {
@@ -55,18 +74,32 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const catalogueReader = createDrizzleArtworkCatalogueRepository(db);
   const categoryReader = createDrizzleCategoryCatalogueRepository(db);
   const artistReader = createDrizzleArtistDirectoryRepository(db);
-  const artworkImportWriter = createDrizzleArtworkImportRepository(db);
+  const artworkImportWriter = createDrizzleArtworkImportRepository(
+    db,
+    env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+  );
   const importArtwork = createImportArtworkHandler(artworkImportWriter);
   const { commerce, stripeWebhook } = createCommerceServices(db, env);
   const readiness = createDrizzleShopReadinessAdapter(db);
   const artworkInterestWriter = createDrizzleArtworkInterestRepository(db, {
     notifications,
+    domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
     ...(env.SHOP_ENQUIRY_NOTIFICATION_EMAIL
       ? { enquiryOpsEmail: env.SHOP_ENQUIRY_NOTIFICATION_EMAIL }
       : {}),
   });
   const internalBase = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
   const jwksUrl = `${internalBase.replace(/\/+$/, "")}/.well-known/jwks.json`;
+  const staffReader = createDrizzleShopStaffMemberReader(db);
+  const saleAuthorityWriter = createDrizzleSaleAuthorityWriter(
+    db,
+    env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+  );
+  const portalOwnership = createDrizzlePortalOwnershipRepository(db);
+  const healthDeps = {
+    checkConnectivity: () => readiness.checkConnectivity(),
+    checkCatalogueSchema: () => readiness.checkCatalogueSchema(),
+  };
   return {
     db,
     app: {
@@ -78,10 +111,24 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       },
       commerce,
       stripeWebhook,
-      health: {
-        checkConnectivity: () => readiness.checkConnectivity(),
-        checkCatalogueSchema: () => readiness.checkCatalogueSchema(),
+      health: healthDeps,
+      staffReader,
+      admin: {
+        financeMaxAuthAgeSeconds: env.SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS,
+        health: healthDeps,
+        importArtwork,
+        grantSaleAuthority: (command) => saleAuthorityWriter.grantSaleAuthority(command),
+        staffReader,
+        production: createDrizzleProductionWriter(db),
+        fulfilment: createDrizzleFulfilmentWriter(db, loadShopCancellationPolicy(env)),
+        refunds: createDrizzleRefundWriter(db),
+        payouts: createDrizzlePayoutWriter(db),
+        saleFees: createDrizzleSaleFeeWriter(db),
+        stockHolds: createDrizzleStockHoldWriter(db),
+        thirdPartySales: createDrizzleThirdPartySaleWriter(db),
+        originalSales: createDrizzleOriginalSaleWriter(db),
       },
+      portal: { portalOwnership },
       catalogue: {
         listPublicArtworks: createListPublicArtworksHandler(catalogueReader),
         getPublicArtwork: createGetPublicArtworkHandler(catalogueReader),
@@ -97,7 +144,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     },
     importArtwork,
     async seedCatalogue(): Promise<void> {
-      await seedShopFoundationCatalogue(importArtwork, db);
+      await seedShopFoundationCatalogue(importArtwork, db, (command) =>
+        saleAuthorityWriter.grantSaleAuthority(command),
+      );
       await seedShopStorefrontCuration(db, createDrizzleStorefrontCurationWriter);
     },
     close: () => closeDb(db),

@@ -33,6 +33,7 @@ export type OidcDiscoveryDocument = {
     "bid.write",
     "shop.read",
     "shop.write",
+    "shop.admin",
   ];
   token_endpoint_auth_methods_supported: readonly [
     "client_secret_basic",
@@ -105,6 +106,7 @@ export function buildOidcDiscoveryDocument(issuerUrl: string): OidcDiscoveryDocu
       "bid.write",
       "shop.read",
       "shop.write",
+      "shop.admin",
     ],
     token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],
     revocation_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],

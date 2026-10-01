@@ -54,7 +54,7 @@ export function parseCheckoutSessionCompleted(
   const session = readCheckoutSessionObject(event);
   if (!session || !isShopCheckoutSession(session)) return null;
   if (!isPaidCheckoutSession(session)) return null;
-  if (session.currency && session.currency !== SHOP_CHECKOUT_CURRENCY) return null;
+  if (session.currency !== SHOP_CHECKOUT_CURRENCY) return null;
   const orderId = session.metadata?.orderId;
   const amountTotal = session.amount_total;
   if (!orderId || amountTotal === null || amountTotal === undefined) return null;
@@ -75,6 +75,36 @@ export function parseCheckoutSessionExpired(event: Stripe.Event): StripeCheckout
   const orderId = session.metadata?.orderId;
   if (!orderId) return null;
   return { eventId: event.id, orderId, sessionId: session.id };
+}
+
+/** Shop checkout paid in a non-GBP currency (must fail closed, not ignore). */
+export function parseShopCheckoutCurrencyViolation(event: Stripe.Event): {
+  eventId: string;
+  orderId: string;
+  currency: string;
+  sessionId: string;
+} | null {
+  if (
+    event.type !== "checkout.session.completed" &&
+    event.type !== "checkout.session.async_payment_succeeded"
+  ) {
+    return null;
+  }
+  const session = readCheckoutSessionObject(event);
+  if (!session || !isShopCheckoutSession(session) || !isPaidCheckoutSession(session)) {
+    return null;
+  }
+  if (session.currency === SHOP_CHECKOUT_CURRENCY) {
+    return null;
+  }
+  const orderId = session.metadata?.orderId?.trim();
+  if (!orderId) return null;
+  return {
+    eventId: event.id,
+    orderId,
+    currency: session.currency ?? "unknown",
+    sessionId: session.id,
+  };
 }
 
 export function parseCheckoutSessionAsyncPaymentFailed(

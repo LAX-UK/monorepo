@@ -1,4 +1,4 @@
-export type CrmModule = "Leads" | "Contacts" | "Deals";
+export type CrmModule = "Leads" | "Contacts" | "Deals" | "Products" | "Arts";
 
 export type CrmFieldValue = string | number | boolean | null | { id: string };
 

@@ -80,10 +80,13 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork import", () => {
     const laxOwned = editions.filter((row) => row.allocation === "lax");
     const other = editions.filter((row) => row.allocation !== "lax");
     expect(laxOwned).toHaveLength(4);
-    expect(laxOwned.every((row) => row.ownerPartyId !== null && row.status === "available")).toBe(
-      true,
-    );
-    expect(other.every((row) => row.ownerPartyId === null)).toBe(true);
+    expect(
+      laxOwned.every((row) => row.ownerPartyId !== null && row.listingStatus === "not_authorised"),
+    ).toBe(true);
+    const artistOwned = other.filter((row) => row.allocation === "artist");
+    const buyerEntitlement = other.filter((row) => row.allocation === "original_buyer_entitlement");
+    expect(artistOwned.every((row) => row.ownerPartyId !== null)).toBe(true);
+    expect(buyerEntitlement.every((row) => row.ownerPartyId === null)).toBe(true);
 
     const events = await db
       .select({ eventType: domainEvent.eventType })

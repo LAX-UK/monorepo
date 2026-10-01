@@ -9,13 +9,14 @@ import type { Static } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 
 type ShopFulfilmentOption = Static<typeof ShopFulfilmentOptionSchema>;
+import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   decodeCatalogueCursor,
   encodeCatalogueCursor,
 } from "../../application/catalogue-cursor.js";
 import { DEFAULT_ORDER_LIST_LIMIT } from "../../application/ports/commerce.ports.js";
 import type { CommerceRoutesDeps } from "../../commerce-route-deps.js";
-import { notFound } from "../../errors/shop-api-error.js";
+import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
 import { presentCheckoutSession, presentOrder } from "../../presenters/commerce.presenter.js";
 
@@ -34,7 +35,13 @@ const OrderListSchema = Type.Object({
 /** JSON body rather than 204: the Shop Identity proxy re-serialises every upstream response. */
 const OrderCancelledSchema = Type.Object({
   orderId: Type.String({ format: "uuid" }),
-  status: Type.Literal("cancelled"),
+  status: Type.Union([
+    Type.Literal("pending_payment"),
+    Type.Literal("paid"),
+    Type.Literal("cancelled"),
+    Type.Literal("expired"),
+    Type.Literal("payment_failed"),
+  ]),
 });
 
 export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRoutesDeps) {
@@ -192,7 +199,11 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
       const subject = requireShopSubject(request);
       const { orderId } = request.params as { orderId: string };
       await deps.cancelCheckoutOrder({ subject, orderId });
-      return { orderId, status: "cancelled" as const };
+      const order = await deps.getOrder(subject, orderId);
+      if (!order) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Order not found", 404);
+      }
+      return { orderId, status: order.status };
     },
   );
 }

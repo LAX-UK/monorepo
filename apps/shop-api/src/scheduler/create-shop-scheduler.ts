@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import type { FastifyBaseLogger } from "fastify";
-import { releaseShopSchedulerLock, tryAcquireShopSchedulerLock } from "./shop-scheduler-lock.js";
+import { runWithShopSchedulerLock } from "./shop-scheduler-lock.js";
 import type { ShopSchedulerTask } from "./shop-scheduler-task.js";
 
 export type ShopSchedulerOptions = {
@@ -22,23 +22,17 @@ export function createShopScheduler(options: ShopSchedulerOptions): ShopSchedule
     if (stopped || running) return;
     running = true;
     const now = new Date();
-    let acquired = false;
     try {
-      acquired = await tryAcquireShopSchedulerLock(options.db);
-      if (!acquired) return;
-      for (const task of options.tasks) {
-        try {
-          await task.run(now);
-        } catch (error) {
-          options.log.error({ err: error, task: task.name }, "shop scheduler task failed");
+      await runWithShopSchedulerLock(options.db, async () => {
+        for (const task of options.tasks) {
+          try {
+            await task.run(now);
+          } catch (error) {
+            options.log.error({ err: error, task: task.name }, "shop scheduler task failed");
+          }
         }
-      }
+      });
     } finally {
-      if (acquired) {
-        await releaseShopSchedulerLock(options.db).catch((error) => {
-          options.log.error({ err: error }, "shop scheduler lock release failed");
-        });
-      }
       running = false;
     }
   };

@@ -26,7 +26,16 @@ export const CROSS_PLATFORM_ID_TOKEN_CLAIMS = [
 ] as const;
 
 /** Verification-essential access-token claims for remote consumers. */
-export const MINIMAL_ACCESS_TOKEN_CLAIMS = ["sub", "iss", "aud", "iat", "exp", "sid"] as const;
+export const MINIMAL_ACCESS_TOKEN_CLAIMS = [
+  "sub",
+  "iss",
+  "aud",
+  "iat",
+  "exp",
+  "sid",
+  "acr",
+  "auth_time",
+] as const;
 
 export type CrossPlatformIdTokenClaim = (typeof CROSS_PLATFORM_ID_TOKEN_CLAIMS)[number];
 export type MinimalAccessTokenClaim = (typeof MINIMAL_ACCESS_TOKEN_CLAIMS)[number];
@@ -59,6 +68,8 @@ export const minimalAccessTokenPayloadSchemaV1 = z.object({
   iat: z.number(),
   exp: z.number(),
   sid: z.string().optional(),
+  acr: z.enum([OIDC_ACR_BRONZE, OIDC_ACR_SILVER]).optional(),
+  auth_time: numericDateSchema.optional(),
 });
 
 export type CrossPlatformIdTokenPayloadV1 = z.infer<typeof crossPlatformIdTokenPayloadSchemaV1>;

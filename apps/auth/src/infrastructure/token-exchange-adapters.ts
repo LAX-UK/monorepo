@@ -119,6 +119,10 @@ export function createTokenExchangePorts(options: {
         return {
           subject: result.payload.sub,
           ...(typeof result.payload.sid === "string" ? { sid: result.payload.sid } : {}),
+          ...(typeof result.payload.acr === "string" ? { acr: result.payload.acr } : {}),
+          ...(typeof result.payload.auth_time === "number"
+            ? { authTime: result.payload.auth_time }
+            : {}),
         };
       } catch {
         return null;
@@ -136,7 +140,7 @@ export function createTokenExchangePorts(options: {
         .limit(1);
       return Boolean(identity && !identity.disabledAt && !identity.mergedInto);
     },
-    async signAccessToken({ subject, sid, audience, scopes }) {
+    async signAccessToken({ subject, sid, audience, scopes, acr, authTime }) {
       const { token } = await options.signer.sign({
         typ: "at+jwt",
         issuer,
@@ -147,6 +151,8 @@ export function createTokenExchangePorts(options: {
         claims: {
           ...(scopes.length > 0 ? { scope: scopes.join(" ") } : {}),
           ...(sid ? { sid } : {}),
+          ...(acr ? { acr } : {}),
+          ...(authTime !== undefined ? { auth_time: authTime } : {}),
         },
       });
       return token;

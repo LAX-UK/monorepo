@@ -99,4 +99,12 @@ export const shopPageWayfinding = {
     title: "Account unavailable",
     breadcrumbs: [shopRoot, { label: "Account" }],
   },
+  accountEditions: {
+    title: "My editions",
+    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "My editions" }],
+  },
+  accountSaleLimits: {
+    title: "Sale limits",
+    breadcrumbs: [shopRoot, { label: "Account", href: "/account" }, { label: "Sale limits" }],
+  },
 } as const;

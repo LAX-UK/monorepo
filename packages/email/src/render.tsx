@@ -102,12 +102,24 @@ import ResetPassword, { subject as resetPasswordSubject } from "./templates/rese
 import ShopArtworkEnquiryAlertEmail, {
   subject as shopArtworkEnquiryAlertSubject,
 } from "./templates/shop-artwork-enquiry-alert.js";
+import ShopCheckoutOpsAlertEmail, {
+  subject as shopCheckoutOpsAlertSubject,
+} from "./templates/shop-checkout-ops-alert.js";
+import ShopDispatchNoticeEmail, {
+  subject as shopDispatchNoticeSubject,
+} from "./templates/shop-dispatch-notice.js";
 import ShopEditionAvailableNotifyEmail, {
   subject as shopEditionAvailableNotifySubject,
 } from "./templates/shop-edition-available-notify.js";
 import ShopOrderReceiptEmail, {
   subject as shopOrderReceiptSubject,
 } from "./templates/shop-order-receipt.js";
+import ShopProductionStartedEmail, {
+  subject as shopProductionStartedSubject,
+} from "./templates/shop-production-started.js";
+import ShopZohoDeadLetterNoticeEmail, {
+  subject as shopZohoDeadLetterNoticeSubject,
+} from "./templates/shop-zoho-dead-letter-notice.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
 import SocialAccountLinkedEmail, {
   subject as socialAccountLinkedSubject,
@@ -342,9 +354,25 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: shopArtworkEnquiryAlertSubject,
     component: (vars) => <ShopArtworkEnquiryAlertEmail {...vars} />,
   },
+  "shop-checkout-ops-alert": {
+    subject: shopCheckoutOpsAlertSubject,
+    component: (vars) => <ShopCheckoutOpsAlertEmail {...vars} />,
+  },
   "shop-edition-available-notify": {
     subject: shopEditionAvailableNotifySubject,
     component: (vars) => <ShopEditionAvailableNotifyEmail {...vars} />,
+  },
+  "shop-zoho-dead-letter-notice": {
+    subject: shopZohoDeadLetterNoticeSubject,
+    component: (vars) => <ShopZohoDeadLetterNoticeEmail {...vars} />,
+  },
+  "shop-production-started": {
+    subject: shopProductionStartedSubject,
+    component: (vars) => <ShopProductionStartedEmail {...vars} />,
+  },
+  "shop-dispatch-notice": {
+    subject: shopDispatchNoticeSubject,
+    component: (vars) => <ShopDispatchNoticeEmail {...vars} />,
   },
 };
 

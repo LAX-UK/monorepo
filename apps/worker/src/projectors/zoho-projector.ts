@@ -10,6 +10,7 @@ import {
 import { claimAndRunDomainEventDeliveriesWithBudget } from "./lib/domain-event-delivery-runner.js";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
 import { redactDomainEventPayload } from "./lib/redact-pii.js";
+import { notifyZohoCrmDeadLetter } from "./lib/zoho-dead-letter-notify.js";
 
 export const ZOHO_PROJECTOR = "zoho";
 const ZOHO_CONSUMER = "zoho";
@@ -102,6 +103,9 @@ export async function processZohoProjector(ctx: ProjectorRunContext): Promise<vo
     }
   });
 
+  const adminEmail = ctx.adminEmailAddress;
+  const emailService = ctx.emailService;
+
   await claimAndRunDomainEventDeliveriesWithBudget({
     consumer: ZOHO_CONSUMER,
     batchSize: 1,
@@ -109,6 +113,20 @@ export async function processZohoProjector(ctx: ProjectorRunContext): Promise<vo
     timeBudgetMs: ctx.env.ZOHO_CRM_TICK_TIME_BUDGET_MS,
     repo: deliveryRepo,
     metricsConsumer: ZOHO_CONSUMER,
+    ...(emailService && adminEmail
+      ? {
+          onDeadLetter: async ({ delivery, lastError }) => {
+            const event = await ctx.domainEventReader.getById(delivery.eventId);
+            await notifyZohoCrmDeadLetter({
+              emailService,
+              adminEmail,
+              delivery,
+              lastError,
+              eventType: event?.eventType,
+            });
+          },
+        }
+      : {}),
     deliverOne: async (delivery) => {
       const event = await ctx.domainEventReader.getById(delivery.eventId);
       if (!event) {

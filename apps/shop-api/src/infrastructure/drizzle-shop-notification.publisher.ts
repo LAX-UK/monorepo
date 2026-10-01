@@ -99,6 +99,20 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       });
     },
 
+    async queueCheckoutOpsAlert(tx, input) {
+      const db = asDb(tx);
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to: input.opsEmail,
+        template: "shop-checkout-ops-alert",
+        vars: {
+          alertKind: input.alertKind,
+          orderId: input.orderId,
+          detail: input.detail,
+        },
+      });
+    },
+
     async queueEditionAvailable(tx, input) {
       const db = asDb(tx);
       const to = await resolveShopUserEmail(db, input.identitySubjectId);

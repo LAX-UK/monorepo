@@ -1,0 +1,12 @@
+DROP INDEX IF EXISTS "shop_payee_compliance_party_uid";
+DROP TABLE IF EXISTS "shop_payee_compliance";
+DROP INDEX IF EXISTS "shop_return_order_line_uid";
+DROP TABLE IF EXISTS "shop_return";
+DROP INDEX IF EXISTS "shop_dispute_stripe_uid";
+DROP TABLE IF EXISTS "shop_dispute";
+DROP INDEX IF EXISTS "shop_refund_idempotency_uid";
+DROP TABLE IF EXISTS "shop_refund";
+DROP TYPE IF EXISTS "shop_payee_compliance_status";
+DROP TYPE IF EXISTS "shop_return_status";
+DROP TYPE IF EXISTS "shop_dispute_status";
+DROP TYPE IF EXISTS "shop_refund_status";

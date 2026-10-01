@@ -10,14 +10,37 @@ export async function signInShopBuyer(
   credentials: ShopBuyerCredentials,
   returnTo = "/checkout",
 ): Promise<void> {
-  await page.goto(`/login?returnTo=${encodeURIComponent(returnTo)}`);
-  await page.waitForLoadState("networkidle");
+  await page.goto(`/login?returnTo=${encodeURIComponent(returnTo)}`, {
+    waitUntil: "domcontentloaded",
+  });
 
-  const email = page.getByLabel(/email/i).first();
-  const password = page.getByLabel(/password/i).first();
+  const continueToCredentials = page.getByRole("button", { name: /^continue$/i });
+  const password = page
+    .locator('input[name="password"], input[autocomplete="current-password"]')
+    .first();
+  const email = page.locator('#email, input[name="email"], input[type="email"]').first();
+
+  await Promise.race([
+    continueToCredentials.waitFor({ state: "visible", timeout: 45_000 }),
+    password.waitFor({ state: "visible", timeout: 45_000 }),
+    email.waitFor({ state: "visible", timeout: 45_000 }),
+  ]).catch(() => {});
+
   if (await email.isVisible().catch(() => false)) {
     await email.fill(credentials.email);
-    await password.fill(credentials.password);
+  }
+
+  if (await continueToCredentials.isVisible().catch(() => false)) {
+    await continueToCredentials.click();
+  }
+
+  await password.waitFor({ state: "visible", timeout: 45_000 });
+  await password.fill(credentials.password);
+
+  const submit = page.getByRole("button", { name: /^sign in$/i });
+  if (await submit.isVisible().catch(() => false)) {
+    await submit.click();
+  } else {
     await page
       .getByRole("button", { name: /sign in|log in|continue/i })
       .first()

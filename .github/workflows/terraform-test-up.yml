@@ -127,6 +127,13 @@ jobs:
       TF_VAR_shop_identity_image_tag: ${{ inputs.shop_identity_sha }}
       TF_VAR_shop_image_tag: ${{ inputs.shop_sha }}
       TF_VAR_shop_api_image_tag: ${{ inputs.shop_api_sha }}
+      TF_VAR_shop_portal_ownership_enabled: ${{ vars.SHOP_PORTAL_OWNERSHIP_ENABLED || 'true' }}
+      TF_VAR_shop_admin_enabled: ${{ vars.SHOP_ADMIN_ENABLED || 'false' }}
+      TF_VAR_shop_payouts_enabled: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}
+      TF_VAR_shop_third_party_enabled: ${{ vars.SHOP_THIRD_PARTY_ENABLED || 'false' }}
+      TF_VAR_shop_originals_enabled: ${{ vars.SHOP_ORIGINALS_ENABLED || 'false' }}
+      TF_VAR_shop_merchandise_enabled: ${{ vars.SHOP_MERCHANDISE_ENABLED || 'false' }}
+      TF_VAR_shop_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
       APP_ID: ${{ secrets.DO_TEST_APP_ID }}
       DATABASE_URL_OWNER: ${{ secrets.DATABASE_URL_OWNER }}
       JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}

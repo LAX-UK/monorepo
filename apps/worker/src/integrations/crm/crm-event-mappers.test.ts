@@ -8,6 +8,7 @@ const ctx = {
   dealStagePaymentCaptured: "Closed Won",
   dealStagePaymentRefunded: "Closed Lost",
   dealStageShopPaid: "Closed Won",
+  dealStageShopEnquiry: "Qualification",
 };
 
 describe("mapDomainEventToCrmIntent", () => {
@@ -73,6 +74,32 @@ describe("mapDomainEventToCrmIntent", () => {
       dealEntityId: `lot-won:${lotId}`,
       stage: ctx.dealStagePaymentRefunded,
     });
+  });
+
+  it("uses subject-specific deal entity id for shop original enquiries", () => {
+    const artworkId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const subjectId = "subject-enquirer-1";
+    const intent = mapDomainEventToCrmIntent(
+      {
+        id: 10,
+        eventType: "shop.artwork.interest_registered",
+        aggregateId: artworkId,
+        schemaVersion: 1,
+        payload: {
+          schemaVersion: 1,
+          artworkId,
+          identitySubjectId: subjectId,
+          intent: "enquiry",
+        },
+      },
+      ctx,
+    );
+    expect(intent.kind).toBe("deal_upsert");
+    if (intent.kind === "deal_upsert") {
+      const dealKey = `shop-enquiry:${artworkId}:${subjectId}`;
+      expect(intent.dealKey).toBe(dealKey);
+      expect(intent.dealEntityId).toBe(dealKey);
+    }
   });
 
   it("maps payment.refunded webhook payload when lot id is resolved externally", () => {

@@ -29,6 +29,9 @@ export async function restoreBasketLinesFromOrder(
 
   const quantityByArtwork = new Map<string, { quantity: number; unitPricePence: number }>();
   for (const line of lines) {
+    if (line.artworkId === null) {
+      continue;
+    }
     const existing = quantityByArtwork.get(line.artworkId);
     if (existing) {
       existing.quantity += 1;
@@ -60,21 +63,22 @@ export async function restoreBasketLinesFromOrder(
     if (mergedQuantity < 1) {
       continue;
     }
-    await tx
-      .insert(shopBasketLine)
-      .values({
+    if (existingLine) {
+      await tx
+        .update(shopBasketLine)
+        .set({
+          quantity: mergedQuantity,
+          unitPricePence,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(shopBasketLine.basketId, basketId), eq(shopBasketLine.artworkId, artworkId)));
+    } else {
+      await tx.insert(shopBasketLine).values({
         basketId,
         artworkId,
         unitPricePence,
         quantity: mergedQuantity,
-      })
-      .onConflictDoUpdate({
-        target: [shopBasketLine.basketId, shopBasketLine.artworkId],
-        set: {
-          quantity: mergedQuantity,
-          unitPricePence,
-          updatedAt: new Date(),
-        },
       });
+    }
   }
 }

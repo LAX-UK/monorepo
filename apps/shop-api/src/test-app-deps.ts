@@ -15,6 +15,15 @@ export function createMinimalShopApiTestDeps(
       SHOP_SCHEDULER_ENABLED: false,
       SHOP_SCHEDULER_INTERVAL_MS: 60_000,
       SHOP_FAKE_CHECKOUT_ENABLED: false,
+      DOMAIN_EVENT_PUBLISH_VALIDATE: "off",
+      SHOP_ADMIN_ENABLED: false,
+      SHOP_PORTAL_OWNERSHIP_ENABLED: false,
+      SHOP_PAYOUTS_ENABLED: false,
+      SHOP_THIRD_PARTY_ENABLED: false,
+      SHOP_ORIGINALS_ENABLED: false,
+      SHOP_MERCHANDISE_ENABLED: false,
+      SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT: false,
+      SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: 900,
     },
     auth: {
       jwksUrl: "http://localhost:3001/.well-known/jwks.json",
@@ -32,6 +41,7 @@ export function createMinimalShopApiTestDeps(
       completeCheckout: async () => "processed" as const,
       expireCheckout: async () => "processed" as const,
       failCheckout: async () => "processed" as const,
+      recordCurrencyViolation: async () => "processed" as const,
     },
     commerce: {
       getBasket: async () => null,
@@ -69,6 +79,98 @@ export function createMinimalShopApiTestDeps(
     interest: {
       registerArtworkInterest: async () => "registered" as const,
       getArtworkInterest: async () => ({ subscribed: false }),
+    },
+    staffReader: {
+      findActiveByIdentitySubject: async () => null,
+      brokerCanAccessClientParty: async () => false,
+    },
+    admin: {
+      financeMaxAuthAgeSeconds: 900,
+      health: {
+        checkConnectivity: async () => undefined,
+        checkCatalogueSchema: async () => undefined,
+      },
+      importArtwork: async () => ({
+        artworkId: "00000000-0000-4000-8000-000000000001",
+        created: true,
+        editionCount: 0,
+      }),
+      grantSaleAuthority: async () => ({
+        grantId: "00000000-0000-4000-8000-000000000002",
+        artworkId: "00000000-0000-4000-8000-000000000001",
+        ownerPartyId: "00000000-0000-4000-8000-000000000003",
+        authorisedCount: 0,
+        editionNumbersAuthorised: [],
+        editionNumbersRevoked: [],
+      }),
+      staffReader: {
+        findActiveByIdentitySubject: async () => null,
+        brokerCanAccessClientParty: async () => false,
+      },
+      production: {
+        createTask: async () => ({
+          taskId: "00000000-0000-4000-8000-000000000010",
+          status: "queued",
+        }),
+      },
+      fulfilment: {
+        updateStatus: async () => ({
+          fulfilmentId: "00000000-0000-4000-8000-000000000011",
+          status: "pending_production",
+        }),
+      },
+      refunds: {
+        requestRefund: async () => ({
+          refundId: "00000000-0000-4000-8000-000000000012",
+          status: "pending",
+        }),
+      },
+      payouts: {
+        markPaid: async () => ({
+          payoutId: "00000000-0000-4000-8000-000000000016",
+          status: "paid" as const,
+        }),
+      },
+      saleFees: {
+        approveFee: async () => ({
+          feeId: "00000000-0000-4000-8000-000000000017",
+          status: "approved" as const,
+        }),
+      },
+      stockHolds: {
+        createHold: async () => ({
+          holdId: "00000000-0000-4000-8000-000000000013",
+          status: "active",
+        }),
+        releaseHold: async () => ({
+          holdId: "00000000-0000-4000-8000-000000000013",
+          status: "released",
+        }),
+      },
+      thirdPartySales: {
+        recordSale: async () => ({
+          saleId: "00000000-0000-4000-8000-000000000014",
+          status: "draft",
+        }),
+      },
+      originalSales: {
+        createReservation: async () => ({
+          originalSaleId: "00000000-0000-4000-8000-000000000015",
+          status: "reserved",
+        }),
+      },
+    },
+    portal: {
+      portalOwnership: {
+        listOwnedEditions: async () => [],
+        listSaleAuthority: async () => [],
+        createSaleAuthorityRequest: async () => ({
+          requestId: "00000000-0000-4000-8000-000000000004",
+          status: "pending" as const,
+        }),
+        listPayouts: async () => [],
+        listDocuments: async () => [],
+      },
     },
     ...overrides,
   };
