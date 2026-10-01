@@ -49,7 +49,7 @@ test.describe("Shop hosted authentication @a11y", () => {
     await expectNoBlockingAxe(page);
 
     await page.locator("#email").fill("buyer@example.com");
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.locator("#password")).toBeFocused();
     await expect(page.locator('[data-login-step="credentials"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Authorize LAX Shop Web" })).toHaveCount(0);
@@ -74,7 +74,7 @@ test.describe("Shop hosted authentication @a11y", () => {
     );
     await openHostedLogin(page);
     await page.locator("#email").fill(email as string);
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.locator("#password")).toBeVisible();
     await page.locator("#password").fill(password as string);
     await page.getByRole("button", { name: "Sign In" }).click();
@@ -96,7 +96,7 @@ test.describe("Shop hosted authentication @a11y", () => {
     test.skip(!enabled, skipReason);
     await openHostedLogin(page);
     await page.locator("#email").fill("buyer@example.com");
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.locator("#password")).toBeFocused();
     await page.getByRole("link", { name: "Forgot password?" }).click();
     await expect(page).toHaveURL(/\/forgot-password/);

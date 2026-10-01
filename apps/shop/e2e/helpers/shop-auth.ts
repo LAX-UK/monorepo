@@ -34,3 +34,11 @@ export async function signInShopBuyer(
     });
   }
 }
+
+export async function signOutShopBuyer(page: Page): Promise<void> {
+  await page.goto("/account", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.waitForURL((url) => url.pathname === "/signed-out" || url.pathname === "/", {
+    timeout: 60_000,
+  });
+}

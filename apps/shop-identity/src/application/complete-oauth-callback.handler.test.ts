@@ -1,3 +1,4 @@
+import { IdentityRejectedError } from "@auction/identity-rp";
 import { describe, expect, it, vi } from "vitest";
 import {
   type CompleteOAuthCallbackDeps,
@@ -85,10 +86,14 @@ describe("completeOAuthCallback", () => {
 
   it("maps token exchange and verification failures to stable error codes", async () => {
     const exchangeFailure = createDeps();
-    vi.mocked(exchangeFailure.codeExchanger.exchange).mockRejectedValue(new Error("offline"));
+    vi.mocked(exchangeFailure.codeExchanger.exchange).mockRejectedValue(
+      new IdentityRejectedError(400, "bad grant", "invalid_grant"),
+    );
     await expect(completeOAuthCallback(exchangeFailure, input)).resolves.toEqual({
       kind: "error",
       code: "token_exchange_failed",
+      tokenExchangeFailureClass: "rejected",
+      oauthError: "invalid_grant",
     });
 
     const verificationFailure = createDeps();
