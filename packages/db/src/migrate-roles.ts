@@ -94,6 +94,7 @@ export const API_DENY_TABLES = [
   "identity_lifecycle_outbox",
   "shop_ssf_replay",
   ...SHOP_COMMERCE_TABLES,
+  ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
 /** Identity-backed read models exposed to the Bid API without write privileges. */
 export const API_READ_TABLES = ["bid_identity_directory"] as const;
@@ -123,6 +124,7 @@ export const WORKER_DENY_TABLES = [
   "shop_logout_token_replay",
   ...SHOP_SSF_RECEIVER_TABLES,
   ...SHOP_COMMERCE_TABLES,
+  ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
 export const WORKER_READ_TABLES = [
   /** Identity lifecycle outbox relay reads pending rows before inserting into domain_events. */

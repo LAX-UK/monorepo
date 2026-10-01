@@ -71,7 +71,7 @@ Zoho sandbox module shapes were verified 2026-10-01 (LAX Integration Test); prod
 
 See [10-shop-commerce-boundary.md](./10-shop-commerce-boundary.md) for executable boundaries.
 
-1. **Phase 1 — Client ownership foundation:** migrations 0182–0185 (+ staff/authority), domain modules, event catalog, `shop-admin` minimum screens, client portal editions/limits/orders, authorised-only checkout, Zoho Products upsert when `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED`, dead-letter email alert.
+1. **Phase 1 — Client ownership foundation:** migrations 0182–0194 (+ staff/authority), domain modules, event catalog, ops CLI (`staff:grant`, `sale-authority`), client portal editions/limits (orders via existing commerce routes), authorised-only checkout, Zoho Products upsert when `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED`, dead-letter email alert. Staff browser UI (`apps/shop-admin`) deferred.
 2. **Phase 2 — Sell, deliver, get paid:** production, fulfilment, possession-based cancellation, refunds/disputes, payout eligibility, finance mark-paid, portal payouts/documents, Zoho Transactions/Royalties/production/fulfilment docs.
 3. **Phase 3 — Operations dashboard:** brokers, holds, third-party sales and fees, reconciliation, ARR report, full admin dashboard.
 4. **Phase 4 — Originals and merchandise:** Stripe Invoicing, enquiry → Deals, original sale workflow, merchandise storefront.

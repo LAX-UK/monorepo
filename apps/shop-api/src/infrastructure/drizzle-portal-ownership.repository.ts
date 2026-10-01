@@ -19,22 +19,33 @@ import type {
 } from "../application/ports/portal-ownership.reader.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 
-async function resolveOwnerPartyId(db: Database, identitySubjectId: string): Promise<string> {
+async function tryResolveOwnerPartyId(
+  db: Database,
+  identitySubjectId: string,
+): Promise<string | null> {
   const [party] = await db
     .select({ id: shopParty.id })
     .from(shopParty)
     .where(eq(shopParty.identitySubjectId, identitySubjectId))
     .limit(1);
-  if (!party) {
+  return party?.id ?? null;
+}
+
+async function resolveOwnerPartyId(db: Database, identitySubjectId: string): Promise<string> {
+  const ownerPartyId = await tryResolveOwnerPartyId(db, identitySubjectId);
+  if (!ownerPartyId) {
     throw notFound("Owner party");
   }
-  return party.id;
+  return ownerPartyId;
 }
 
 export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwnershipReader {
   return {
     async listOwnedEditions(identitySubjectId: string): Promise<PortalOwnedEditionRow[]> {
-      const ownerPartyId = await resolveOwnerPartyId(db, identitySubjectId);
+      const ownerPartyId = await tryResolveOwnerPartyId(db, identitySubjectId);
+      if (!ownerPartyId) {
+        return [];
+      }
       const rows = await db
         .select({
           editionId: shopEdition.id,
@@ -53,7 +64,10 @@ export function createDrizzlePortalOwnershipRepository(db: Database): PortalOwne
     },
 
     async listSaleAuthority(identitySubjectId: string): Promise<PortalSaleAuthorityRow[]> {
-      const ownerPartyId = await resolveOwnerPartyId(db, identitySubjectId);
+      const ownerPartyId = await tryResolveOwnerPartyId(db, identitySubjectId);
+      if (!ownerPartyId) {
+        return [];
+      }
       const ownedArtworkIds = await db
         .selectDistinct({ artworkId: shopEdition.artworkId })
         .from(shopEdition)

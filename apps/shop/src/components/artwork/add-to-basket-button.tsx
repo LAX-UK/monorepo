@@ -20,9 +20,7 @@ export function AddToBasketButton({ slug, disabled, inBasket = false, basketLine
   const [added, setAdded] = useState(inBasket);
 
   useEffect(() => {
-    if (inBasket) {
-      setAdded(true);
-    }
+    setAdded(inBasket);
   }, [inBasket]);
 
   return (
@@ -35,7 +33,7 @@ export function AddToBasketButton({ slug, disabled, inBasket = false, basketLine
           <button
             type="button"
             className="shop-detail__cta shop-detail__cta--secondary shop-focus-ring"
-            disabled={pending}
+            disabled={pending || !basketLineId}
             onClick={() => {
               if (!basketLineId) return;
               setError(null);

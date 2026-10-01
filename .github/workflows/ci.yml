@@ -429,6 +429,84 @@ jobs:
           pnpm turbo run build --filter=@auction/api^...
           pnpm --filter @auction/api exec vitest run --shard=${{ matrix.shard }}/2
 
+  shop-v1-paths:
+    runs-on: ubuntu-latest
+    outputs:
+      shop_v1: ${{ steps.filter.outputs.shop_v1 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: filter
+        with:
+          filters: |
+            shop_v1:
+              - "apps/shop/**"
+              - "apps/shop-api/**"
+              - "apps/shop-identity/**"
+              - "apps/auth/**"
+              - "packages/shop-domain/**"
+              - "packages/shop-contracts/**"
+              - "packages/types/**"
+              - "packages/identity-contracts/**"
+              - "packages/db/**"
+              - "scripts/ci/run-shop-v1-postgres-integration.mjs"
+              - ".github/workflows/ci.yml"
+              - ".github/workflows/e2e-pr.yml"
+              - ".github/workflows/shop-staging-acceptance.yml"
+
+  shop-v1-phase-smoke:
+    needs: shop-v1-paths
+    if: needs.shop-v1-paths.outputs.shop_v1 == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      SHOP_APP_DB_PASSWORD: postgres
+      SHOP_V1_INTEGRATION_REQUIRED: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build db package
+        run: pnpm --filter @auction/db... build
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+      - name: Apply application role grants
+        run: pnpm --filter @auction/db db:roles
+      - name: Shop domain + db contract tests
+        run: |
+          pnpm --filter @auction/shop-domain test
+          pnpm --filter @auction/db test -- migration-0182 migration-0186 migration-0193 migration-0194
+      - name: Build shop-api dependency graph
+        run: pnpm --filter @auction/shop-api... build
+      - name: Shop-api Postgres integration (no skips)
+        run: node scripts/ci/run-shop-v1-postgres-integration.mjs
+      - name: Shop package build (includes phase1 e2e spec)
+        run: pnpm --filter @auction/shop... build
+
   worker-role-contract:
     runs-on: ubuntu-latest
     services:
@@ -712,6 +790,7 @@ jobs:
       - test
       - api-vitest
       - web-vitest
+      - shop-v1-phase-smoke
       - worker-role-contract
       - auth-role-contract
       - build

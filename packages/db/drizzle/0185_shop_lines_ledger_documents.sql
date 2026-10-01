@@ -1,3 +1,5 @@
+SET LOCAL lock_timeout = '30s';
+--> statement-breakpoint
 CREATE TYPE "shop_document_kind" AS ENUM('certificate', 'purchase_invoice', 'fee_evidence', 'other');
 --> statement-breakpoint
 CREATE TYPE "shop_document_visibility" AS ENUM('client', 'staff', 'internal');
@@ -35,12 +37,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS "shop_product_variant_sku_uid" ON "shop_produc
 ALTER TABLE "shop_basket_line" ALTER COLUMN "artwork_id" DROP NOT NULL;
 --> statement-breakpoint
 ALTER TABLE "shop_basket_line" ADD COLUMN IF NOT EXISTS "product_variant_id" uuid REFERENCES "shop_product_variant"("id") ON DELETE restrict;
---> statement-breakpoint
-DROP INDEX IF EXISTS "shop_basket_line_basket_artwork_uid";
---> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "shop_basket_line_basket_artwork_uid"
-  ON "shop_basket_line" ("basket_id", "artwork_id")
-  WHERE "artwork_id" IS NOT NULL;
 --> statement-breakpoint
 ALTER TABLE "shop_basket_line" ADD CONSTRAINT "shop_basket_line_target_xor"
   CHECK ((("artwork_id" IS NOT NULL)::int + ("product_variant_id" IS NOT NULL)::int) = 1);

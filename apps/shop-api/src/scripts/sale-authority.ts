@@ -11,7 +11,10 @@ function readArg(flag: string): string | undefined {
 }
 
 const subcommand = process.argv[2];
-const operator = readArg("--operator")?.trim() ?? "ops-cli:unknown";
+const operator = readArg("--operator")?.trim();
+if (!operator) {
+  throw new Error("--operator is required (e.g. ops:you@lax.bid)");
+}
 
 const env = loadShopApiEnv();
 const db = createDb(env.DATABASE_URL_SHOP);

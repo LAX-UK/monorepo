@@ -24,7 +24,7 @@ export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): v
     return proxyAuthenticatedCommerce(c, deps, {
       method: "POST",
       path: "/v1/me/sale-authority-requests",
-      scopes: "shop.read",
+      scopes: "shop.write",
       requireCsrf: true,
       body,
     });

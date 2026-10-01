@@ -150,6 +150,17 @@ jobs:
           pnpm --filter @auction/shop-api seed:catalogue
       - name: Install pinned Chromium
         run: pnpm --filter @auction/shop exec playwright install chromium --with-deps
+      - name: Require acceptance credentials for portal smoke
+        run: |
+          set -euo pipefail
+          test -n "${{ secrets.IDENTITY_ACCEPTANCE_EMAIL }}" || {
+            echo "::error::IDENTITY_ACCEPTANCE_EMAIL must be configured on the test environment"
+            exit 1
+          }
+          test -n "${{ secrets.IDENTITY_ACCEPTANCE_PASSWORD }}" || {
+            echo "::error::IDENTITY_ACCEPTANCE_PASSWORD must be configured on the test environment"
+            exit 1
+          }
       - name: Shop browser tier 1 (light/dark, viewport)
         run: |
           pnpm --filter @auction/shop exec playwright test \
@@ -157,8 +168,9 @@ jobs:
             e2e/shop-viewport-audit.spec.ts \
             e2e/home.spec.ts --grep "visible without JavaScript|theme"
       - name: Shop V1 phase 1 portal smoke
-        run: |
-          pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
+        env:
+          SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
+        run: pnpm --filter @auction/shop exec playwright test e2e/shop-v1-phase1.spec.ts
       - name: Phase flags (manual enable on staging)
         run: |
           echo "Shop V1 later phases: set SHOP_PAYOUTS_ENABLED, SHOP_THIRD_PARTY_ENABLED,"

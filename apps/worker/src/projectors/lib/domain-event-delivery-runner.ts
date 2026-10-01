@@ -95,7 +95,12 @@ export async function runDomainEventDelivery(
         recordDeliveryOutcome(options.metricsConsumer, "dead_letter");
       }
       if (options.onDeadLetter) {
-        await options.onDeadLetter({ delivery, lastError: message });
+        try {
+          await options.onDeadLetter({ delivery, lastError: message });
+        } catch (notifyErr) {
+          const notifyMessage = notifyErr instanceof Error ? notifyErr.message : String(notifyErr);
+          console.error(`onDeadLetter hook failed for delivery ${delivery.id}: ${notifyMessage}`);
+        }
       }
       return;
     }

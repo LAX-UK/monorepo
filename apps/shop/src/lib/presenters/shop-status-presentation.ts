@@ -1,4 +1,5 @@
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
+import type { EditionCustodyStatus, EditionListingStatus } from "@auction/shop-domain";
 import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
 
 type PublicArtworkSaleState = PublicArtworkSummary["saleState"];
@@ -92,4 +93,45 @@ export function resolveCatalogueArtworkBadgePresentation(
     return { label: "Sold out", tone: "neutral" };
   }
   return resolveArtworkSaleStatePresentation(saleState);
+}
+
+const PORTAL_LISTING_STATUS: Record<EditionListingStatus, ShopStatusPresentation> = {
+  not_authorised: { label: "Not authorised", tone: "neutral" },
+  authorised: { label: "Authorised for sale", tone: "success" },
+  reserved: { label: "Reserved", tone: "pending" },
+  held: { label: "On hold", tone: "warning" },
+  sold: { label: "Sold", tone: "neutral" },
+  withdrawn: { label: "Withdrawn", tone: "neutral" },
+};
+
+const PORTAL_CUSTODY_STATUS: Record<EditionCustodyStatus, ShopStatusPresentation> = {
+  unprinted: { label: "Unprinted", tone: "neutral" },
+  in_production: { label: "In production", tone: "pending" },
+  qc_failed: { label: "QC failed", tone: "critical" },
+  stored: { label: "Stored at LAX", tone: "neutral" },
+  in_transit: { label: "In transit", tone: "pending" },
+  delivered: { label: "Delivered", tone: "success" },
+  collected: { label: "Collected", tone: "success" },
+  with_owner: { label: "With owner", tone: "accent" },
+  returned: { label: "Returned", tone: "neutral" },
+};
+
+const unknownPortalStatus: ShopStatusPresentation = { label: "Unknown", tone: "neutral" };
+
+export function resolvePortalListingStatusPresentation(
+  listingStatus: string,
+): ShopStatusPresentation {
+  if (listingStatus in PORTAL_LISTING_STATUS) {
+    return PORTAL_LISTING_STATUS[listingStatus as EditionListingStatus];
+  }
+  return unknownPortalStatus;
+}
+
+export function resolvePortalCustodyStatusPresentation(
+  custodyStatus: string,
+): ShopStatusPresentation {
+  if (custodyStatus in PORTAL_CUSTODY_STATUS) {
+    return PORTAL_CUSTODY_STATUS[custodyStatus as EditionCustodyStatus];
+  }
+  return unknownPortalStatus;
 }

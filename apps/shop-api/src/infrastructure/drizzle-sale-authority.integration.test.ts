@@ -9,6 +9,7 @@ import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.write
 import { reserveEditionsForCheckoutOrder } from "./shop-checkout-reservation.js";
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 import { countSellableForArtwork } from "./shop-edition-availability.js";
+import { resolveListingStatusAfterReservationRelease } from "./shop-edition-listing-on-release.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const shopUrl = process.env.DATABASE_URL_SHOP;
@@ -122,12 +123,33 @@ describe.skipIf(!ownerUrl || !shopUrl)("sale authority and checkout pick order",
       evidenceNote: "revoke free only",
       recordedBySubjectId: "staff-subject-integration",
     });
-    expect(reduced.editionNumbersRevoked.length).toBeGreaterThanOrEqual(0);
+    expect(reduced.editionNumbersRevoked.length).toBe(0);
     const [stillReserved] = await db
       .select({ listingStatus: shopEdition.listingStatus })
       .from(shopEdition)
       .where(eq(shopEdition.id, requireDefined(laxEdition?.id, "edition id")));
     expect(stillReserved?.listingStatus).toBe("reserved");
+
+    await db.transaction(async (tx) => {
+      const listingStatus = await resolveListingStatusAfterReservationRelease(tx, {
+        artworkId: imported.artworkId,
+        ownerPartyId,
+      });
+      expect(listingStatus).toBe("not_authorised");
+      await tx
+        .update(shopEdition)
+        .set({
+          listingStatus,
+          reservedUntil: null,
+          reservedByOrderId: null,
+        })
+        .where(eq(shopEdition.id, requireDefined(laxEdition?.id, "edition id")));
+    });
+    const [afterRelease] = await db
+      .select({ listingStatus: shopEdition.listingStatus })
+      .from(shopEdition)
+      .where(eq(shopEdition.id, requireDefined(laxEdition?.id, "edition id")));
+    expect(afterRelease?.listingStatus).toBe("not_authorised");
   });
 
   it("reserves lowest edition number first after grant", async () => {

@@ -41,13 +41,15 @@ export class CrmShopRecordSyncHandler {
     });
 
     if (productResult.status !== "success" || !productResult.recordId) {
+      const code = productResult.code ?? "product_upsert_failed";
+      const nonRetryable = ["INVALID_DATA", "MANDATORY_NOT_FOUND", "INVALID_MODULE"].includes(code);
       return {
-        outcome: "retry",
+        outcome: nonRetryable ? "fatal" : "retry",
         error: new CrmGatewayError({
-          code: productResult.code ?? "product_upsert_failed",
+          code,
           message: productResult.message ?? "Product upsert failed",
           status: 502,
-          retryable: true,
+          retryable: !nonRetryable,
         }),
       };
     }

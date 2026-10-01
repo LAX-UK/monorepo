@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import type { EmailSuppressionReason } from "@auction/db/schema";
 import { bidIdentityDirectory, emailOutbox, emailSuppression } from "@auction/db/schema";
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, asc, eq, lt, sql } from "drizzle-orm";
 import type {
   EmailOutboxClaimResult,
   EmailOutboxRow,
@@ -35,6 +35,7 @@ export class DrizzleEmailOutboxRepository implements IEmailOutboxRepository {
           status: "sending",
           attempts: sql`${emailOutbox.attempts} + 1`,
           lastError: null,
+          nextAttemptAt: new Date(),
         })
         .where(and(eq(emailOutbox.id, outboxId), eq(emailOutbox.status, "pending")))
         .returning();
@@ -101,6 +102,19 @@ export class DrizzleEmailOutboxRepository implements IEmailOutboxRepository {
   }
 
   async findStalePendingIds(): Promise<Array<{ id: string }>> {
+    await this.db
+      .update(emailOutbox)
+      .set({ status: "pending", nextAttemptAt: null })
+      .where(
+        and(
+          eq(emailOutbox.status, "sending"),
+          lt(
+            sql`coalesce(${emailOutbox.nextAttemptAt}, ${emailOutbox.createdAt})`,
+            sql`now() - interval '10 minutes'`,
+          ),
+        ),
+      );
+
     return this.db
       .select({ id: emailOutbox.id })
       .from(emailOutbox)
@@ -111,6 +125,7 @@ export class DrizzleEmailOutboxRepository implements IEmailOutboxRepository {
           lt(emailOutbox.attempts, 5),
         ),
       )
+      .orderBy(asc(emailOutbox.createdAt))
       .limit(100)
       .for("update", { skipLocked: true });
   }

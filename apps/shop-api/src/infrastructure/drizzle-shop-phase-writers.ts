@@ -36,6 +36,7 @@ import { ShopApiError } from "../errors/shop-api-error.js";
 import { notFound } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
 import { insertShopAdminAudit } from "./shop-admin-audit.js";
+import { resolveListingStatusAfterReservationRelease } from "./shop-edition-listing-on-release.js";
 
 const POSSESSION_FULFILMENT_STATUSES: readonly ShopFulfilmentStatus[] = [
   "delivered",
@@ -400,10 +401,24 @@ export function createDrizzleStockHoldWriter(db: Database): StockHoldWriter {
           .update(shopStockHold)
           .set({ status: "released", releasedAt })
           .where(eq(shopStockHold.id, command.holdId));
-        await tx
-          .update(shopEdition)
-          .set({ listingStatus: "authorised" })
-          .where(and(eq(shopEdition.id, hold.editionId), eq(shopEdition.listingStatus, "held")));
+        const [edition] = await tx
+          .select({
+            artworkId: shopEdition.artworkId,
+            ownerPartyId: shopEdition.ownerPartyId,
+          })
+          .from(shopEdition)
+          .where(and(eq(shopEdition.id, hold.editionId), eq(shopEdition.listingStatus, "held")))
+          .limit(1);
+        if (edition) {
+          const listingStatus = await resolveListingStatusAfterReservationRelease(tx, {
+            artworkId: edition.artworkId,
+            ownerPartyId: edition.ownerPartyId,
+          });
+          await tx
+            .update(shopEdition)
+            .set({ listingStatus })
+            .where(and(eq(shopEdition.id, hold.editionId), eq(shopEdition.listingStatus, "held")));
+        }
         await insertShopAdminAudit(tx as Database, {
           actorSubjectId: command.actorSubjectId,
           capability: "stock_hold.write",

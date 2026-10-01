@@ -1,72 +1,17 @@
-name: Shop V1 acceptance (phase smoke)
+# Shop V1 Postgres integration smoke moved to the shop-v1-phase-smoke job in ci.yml.
+name: Shop V1 acceptance (deprecated)
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "apps/shop/**"
-      - "apps/shop-api/**"
-      - "apps/shop-identity/**"
-      - "apps/auth/**"
-      - "packages/shop-domain/**"
-      - "packages/identity-contracts/**"
-      - "packages/db/**"
-      - "scripts/ci/run-shop-v1-postgres-integration.mjs"
 
 permissions:
   contents: read
 
 jobs:
-  phase-smoke:
+  deprecated:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: auction_ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
-      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
-      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
-      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
-      SHOP_APP_DB_PASSWORD: postgres
-      SHOP_V1_INTEGRATION_REQUIRED: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.4
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Build db package
-        run: pnpm --filter @auction/db... build
-      - name: Migrate test database
-        run: pnpm --filter @auction/db db:migrate
-      - name: Apply application role grants
-        run: pnpm --filter @auction/db db:roles
-      - name: Shop domain + db contract tests
+      - name: Use CI shop-v1-phase-smoke instead
         run: |
-          pnpm --filter @auction/shop-domain test
-          pnpm --filter @auction/db test -- migration-0182 migration-0186 migration-0193 migration-0194
-      - name: Build shop-api dependency graph
-        run: pnpm --filter @auction/shop-api... build
-      - name: Shop-api Postgres integration (no skips)
-        run: node scripts/ci/run-shop-v1-postgres-integration.mjs
-      - name: Phase flag documentation reminder
-        run: |
-          echo "Enable SHOP_PORTAL_OWNERSHIP_ENABLED for Phase 1 portal; later phases per docs/runbooks/shop-v1-phase-gates.md"
-      - name: Shop package build (includes phase1 e2e spec)
-        run: pnpm --filter @auction/shop... build
+          echo "::error::This workflow was retired. Run the main CI workflow (job shop-v1-phase-smoke) on Shop-touched PRs instead."
+          exit 1

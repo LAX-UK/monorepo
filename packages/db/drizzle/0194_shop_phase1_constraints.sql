@@ -1,3 +1,6 @@
+-- IRREVERSIBLE (rollback cannot restore): cancels LAX seller payout rows; clamps basket/order line prices and quantities.
+SET LOCAL lock_timeout = '30s';
+--> statement-breakpoint
 -- Platform (LAX) seller payouts are never paid to owners; cancel legacy rows (idempotent).
 UPDATE "shop_payout_ledger" AS "pl"
 SET
@@ -10,20 +13,6 @@ WHERE "pl"."status" = 'pending_refund_period'
     INNER JOIN "shop_party" AS "p" ON "p"."id" = "ol"."seller_party_id" AND "p"."kind" = 'lax'
     WHERE "ol"."id" = "pl"."order_line_id"
   );
---> statement-breakpoint
--- Backfill LAX owner on editions missing owner_party_id (deterministic single LAX party).
-UPDATE "shop_edition" AS "e"
-SET "owner_party_id" = "lax"."id"
-FROM (
-  SELECT "id"
-  FROM "shop_party"
-  WHERE "kind" = 'lax'
-  ORDER BY "id"
-  LIMIT 1
-) AS "lax"
-WHERE "e"."owner_party_id" IS NULL
-  AND "e"."allocation" = 'lax'
-  AND "lax"."id" IS NOT NULL;
 --> statement-breakpoint
 UPDATE "shop_basket_line"
 SET "quantity" = 1

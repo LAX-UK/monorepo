@@ -15,7 +15,9 @@ const ROLES: readonly ShopStaffRole[] = [
 ];
 
 function usage(): never {
-  console.error(`Usage: staff-grant --subject <identity-subject-id> --role <${ROLES.join("|")}>`);
+  console.error(
+    `Usage: staff-grant --subject <identity-subject-id> --role <${ROLES.join("|")}> --operator <ops:email>`,
+  );
   process.exit(1);
 }
 
@@ -27,8 +29,9 @@ function readArg(flag: string): string | undefined {
 
 const subject = readArg("--subject")?.trim();
 const role = readArg("--role")?.trim() as ShopStaffRole | undefined;
+const operator = readArg("--operator")?.trim();
 
-if (!subject || !role) {
+if (!subject || !role || !operator) {
   usage();
 }
 if (!ROLES.includes(role)) {
@@ -40,45 +43,55 @@ const env = loadShopApiEnv();
 const db = createDb(env.DATABASE_URL_SHOP);
 
 try {
-  const existing = await db
-    .select({ id: shopStaffMember.id, role: shopStaffMember.role })
-    .from(shopStaffMember)
-    .where(eq(shopStaffMember.identitySubjectId, subject))
-    .limit(1);
+  await db.transaction(async (tx) => {
+    const existing = await tx
+      .select({
+        id: shopStaffMember.id,
+        role: shopStaffMember.role,
+        disabledAt: shopStaffMember.disabledAt,
+      })
+      .from(shopStaffMember)
+      .where(eq(shopStaffMember.identitySubjectId, subject))
+      .limit(1);
 
-  const operator = readArg("--operator")?.trim() ?? "ops-cli:staff-grant";
-  if (existing[0]) {
-    await db
-      .update(shopStaffMember)
-      .set({ role, disabledAt: null })
-      .where(eq(shopStaffMember.id, existing[0].id));
-    await insertShopAdminAudit(db, {
-      actorSubjectId: operator,
-      capability: "settings.write",
-      action: "staff_grant_update",
-      targetType: "shop_staff_member",
-      targetId: existing[0].id,
-      afterJson: { identitySubjectId: subject, role },
-    });
-    console.log(`Updated shop staff member ${existing[0].id} → role ${role}`);
-  } else {
-    const [created] = await db
-      .insert(shopStaffMember)
-      .values({ identitySubjectId: subject, role })
-      .returning({ id: shopStaffMember.id });
-    const staffId = created?.id ?? "?";
-    if (created?.id) {
-      await insertShopAdminAudit(db, {
+    if (existing[0]) {
+      await tx
+        .update(shopStaffMember)
+        .set({ role, disabledAt: null })
+        .where(eq(shopStaffMember.id, existing[0].id));
+      await insertShopAdminAudit(tx, {
         actorSubjectId: operator,
         capability: "settings.write",
-        action: "staff_grant_create",
+        action: "staff_grant_update",
         targetType: "shop_staff_member",
-        targetId: created.id,
-        afterJson: { identitySubjectId: subject, role },
+        targetId: existing[0].id,
+        beforeJson: {
+          identitySubjectId: subject,
+          role: existing[0].role,
+          disabledAt: existing[0].disabledAt?.toISOString() ?? null,
+        },
+        afterJson: { identitySubjectId: subject, role, disabledAt: null },
       });
+      console.log(`Updated shop staff member ${existing[0].id} → role ${role}`);
+    } else {
+      const [created] = await tx
+        .insert(shopStaffMember)
+        .values({ identitySubjectId: subject, role })
+        .returning({ id: shopStaffMember.id });
+      const staffId = created?.id ?? "?";
+      if (created?.id) {
+        await insertShopAdminAudit(tx, {
+          actorSubjectId: operator,
+          capability: "settings.write",
+          action: "staff_grant_create",
+          targetType: "shop_staff_member",
+          targetId: created.id,
+          afterJson: { identitySubjectId: subject, role },
+        });
+      }
+      console.log(`Created shop staff member ${staffId} with role ${role}`);
     }
-    console.log(`Created shop staff member ${staffId} with role ${role}`);
-  }
+  });
 } finally {
   await closeDb(db);
 }

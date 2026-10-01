@@ -5,6 +5,7 @@ import { runMigrationsPerTransactionThrough } from "./migrate-runner.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const migrationUrl = process.env.MIGRATION_TEST_DATABASE_URL;
+const THROUGH_0181 = 1791014400000;
 const THROUGH_0192 = 1791964800000;
 const THROUGH_0194 = 1792137600000;
 
@@ -157,6 +158,68 @@ describe.skipIf(!migrationUrl)("migrations 0182–0194 legacy fixtures", () => {
         )`,
       );
       expect(constraints.rowCount).toBe(3);
+    });
+  }, 120_000);
+
+  it("maps legacy status at 0182 and keeps status in sync after 0191 trigger", async () => {
+    await withScratchDatabase(async (pool) => {
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0181);
+
+      const client = await pool.connect();
+      let artworkId: string | undefined;
+      try {
+        const laxParty = await client.query<{ id: string }>(
+          `INSERT INTO shop_party (display_name) VALUES ('LAX London Art Exchange') RETURNING id`,
+        );
+        const laxPartyId = laxParty.rows[0]?.id;
+        const artist = await client.query<{ id: string }>(
+          "INSERT INTO shop_artist (slug, party_id) VALUES ($1, $2) RETURNING id",
+          [`legacy-map-artist-${randomUUID().slice(0, 8)}`, laxPartyId],
+        );
+        const artwork = await client.query<{ id: string }>(
+          `INSERT INTO shop_artwork (slug, title, artist_id, eligible_for_edition_allocation, import_key)
+           VALUES ($1, 'Legacy map', $2, true, $3) RETURNING id`,
+          [`legacy-map-${randomUUID().slice(0, 8)}`, artist.rows[0]?.id, `import:${randomUUID()}`],
+        );
+        artworkId = artwork.rows[0]?.id;
+        await client.query(
+          `INSERT INTO shop_edition (artwork_id, edition_number, allocation, owner_party_id, status)
+           VALUES ($1, 1, 'lax', NULL, 'available')`,
+          [artworkId],
+        );
+        await client.query(
+          `INSERT INTO shop_edition (artwork_id, edition_number, allocation, owner_party_id, status)
+           VALUES ($1, 2, 'lax', NULL, 'sold')`,
+          [artworkId],
+        );
+      } finally {
+        client.release();
+      }
+
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0194);
+
+      const mapped = await pool.query<{ listing_status: string; status: string }>(
+        "SELECT listing_status, status FROM shop_edition WHERE artwork_id = $1 AND edition_number = 1",
+        [artworkId],
+      );
+      expect(mapped.rows[0]?.listing_status).toBe("authorised");
+      expect(mapped.rows[0]?.status).toBe("available");
+
+      const soldRow = await pool.query<{ owner_party_id: string | null }>(
+        "SELECT owner_party_id FROM shop_edition WHERE artwork_id = $1 AND edition_number = 2",
+        [artworkId],
+      );
+      expect(soldRow.rows[0]?.owner_party_id).toBeNull();
+
+      await pool.query(
+        `UPDATE shop_edition SET listing_status = 'reserved' WHERE artwork_id = $1 AND edition_number = 1`,
+        [artworkId],
+      );
+      const synced = await pool.query<{ status: string }>(
+        "SELECT status FROM shop_edition WHERE artwork_id = $1 AND edition_number = 1",
+        [artworkId],
+      );
+      expect(synced.rows[0]?.status).toBe("reserved");
     });
   }, 120_000);
 });

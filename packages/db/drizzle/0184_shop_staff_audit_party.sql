@@ -13,6 +13,18 @@ ALTER TABLE "shop_party"
   ADD COLUMN IF NOT EXISTS "kind" "shop_party_kind" DEFAULT 'person' NOT NULL,
   ADD COLUMN IF NOT EXISTS "stripe_customer_id" text;
 --> statement-breakpoint
+DO $$
+DECLARE
+  "lax_party_count" integer;
+BEGIN
+  SELECT COUNT(*)::integer INTO "lax_party_count"
+  FROM "shop_party"
+  WHERE "display_name" = 'LAX London Art Exchange';
+  IF "lax_party_count" > 1 THEN
+    RAISE EXCEPTION '0184: expected at most one shop_party named LAX London Art Exchange, found %', "lax_party_count";
+  END IF;
+END $$;
+--> statement-breakpoint
 UPDATE "shop_party" SET "kind" = 'lax' WHERE "display_name" = 'LAX London Art Exchange';
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "shop_party_single_lax_uid" ON "shop_party" ("kind") WHERE "kind" = 'lax';

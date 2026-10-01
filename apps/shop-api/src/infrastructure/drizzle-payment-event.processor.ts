@@ -25,6 +25,7 @@ import {
   type ShopDomainEventPublisherMode,
   createShopDomainEventPublisher,
 } from "./shop-domain-event-publisher.js";
+import { resolveListingStatusAfterReservationRelease } from "./shop-edition-listing-on-release.js";
 import { findOrCreateBuyerParty } from "./shop-party.js";
 import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
 
@@ -136,21 +137,39 @@ async function releaseReservedEditionsForOrder(
     return;
   }
   const releasedAt = new Date();
-  const releasedEditionIds = await tx
-    .update(shopEdition)
-    .set({
-      listingStatus: "authorised",
-      reservedUntil: null,
-      reservedByOrderId: null,
+  const candidates = await tx
+    .select({
+      id: shopEdition.id,
+      artworkId: shopEdition.artworkId,
+      ownerPartyId: shopEdition.ownerPartyId,
     })
+    .from(shopEdition)
     .where(
       and(
         inArray(shopEdition.id, editionIds),
         eq(shopEdition.listingStatus, "reserved"),
         eq(shopEdition.reservedByOrderId, orderId),
       ),
-    )
-    .returning({ id: shopEdition.id });
+    );
+  const releasedEditionIds: { id: string }[] = [];
+  for (const edition of candidates) {
+    const listingStatus = await resolveListingStatusAfterReservationRelease(tx, {
+      artworkId: edition.artworkId,
+      ownerPartyId: edition.ownerPartyId,
+    });
+    const [updated] = await tx
+      .update(shopEdition)
+      .set({
+        listingStatus,
+        reservedUntil: null,
+        reservedByOrderId: null,
+      })
+      .where(eq(shopEdition.id, edition.id))
+      .returning({ id: shopEdition.id });
+    if (updated) {
+      releasedEditionIds.push(updated);
+    }
+  }
   await tx
     .update(shopOrderLine)
     .set({ releasedAt })

@@ -1,3 +1,6 @@
+-- IRREVERSIBLE (rollback cannot restore): fulfilment backfill, payout blocked_reason, LAX grants, edition de-authorisation.
+SET LOCAL lock_timeout = '30s';
+--> statement-breakpoint
 -- Release duplicate active holds (keep earliest per edition) before unique partial index.
 WITH "ranked" AS (
   SELECT
@@ -47,6 +50,21 @@ WHERE "pl"."blocked_reason" IS NULL
     WHERE "ol"."id" = "pl"."order_line_id"
       AND ("f"."id" IS NULL OR "f"."possession_at" IS NULL)
   );
+--> statement-breakpoint
+-- Backfill LAX owner on editions missing owner_party_id (before grant insert; excludes sold).
+UPDATE "shop_edition" AS "e"
+SET "owner_party_id" = "lax"."id"
+FROM (
+  SELECT "id"
+  FROM "shop_party"
+  WHERE "kind" = 'lax'
+  ORDER BY "id"
+  LIMIT 1
+) AS "lax"
+WHERE "e"."owner_party_id" IS NULL
+  AND "e"."allocation" = 'lax'
+  AND "e"."listing_status" <> 'sold'::"shop_edition_listing_status"
+  AND "lax"."id" IS NOT NULL;
 --> statement-breakpoint
 -- Preserve LAX platform stock: record explicit grants before undoing 0182 implicit authorisation.
 INSERT INTO "shop_sale_authority_grant" (

@@ -1,3 +1,6 @@
+-- IRREVERSIBLE (rollback cannot restore): sets refund_period_ends_at = NULL on all paid shop_order rows.
+SET LOCAL lock_timeout = '30s';
+--> statement-breakpoint
 CREATE TYPE "shop_edition_listing_status" AS ENUM(
   'not_authorised',
   'authorised',

@@ -121,7 +121,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
       },
     },
     async (request) => {
-      requireShopScope(request, "shop.read");
+      requireShopScope(request, "shop.write");
       const subject = requireShopSubject(request);
       const body = request.body as {
         artworkId: string;

@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopEdition, shopStockHold } from "@auction/db/schema";
 import { and, eq, lte } from "drizzle-orm";
+import { resolveListingStatusAfterReservationRelease } from "../../infrastructure/shop-edition-listing-on-release.js";
 import type { ShopSchedulerTask } from "../shop-scheduler-task.js";
 
 export function createStockHoldExpiryTask(db: Database): ShopSchedulerTask {
@@ -23,10 +24,26 @@ export function createStockHoldExpiryTask(db: Database): ShopSchedulerTask {
           if (updated.length !== 1) {
             return;
           }
-          await tx
-            .update(shopEdition)
-            .set({ listingStatus: "authorised" })
-            .where(and(eq(shopEdition.id, hold.editionId), eq(shopEdition.listingStatus, "held")));
+          const [edition] = await tx
+            .select({
+              artworkId: shopEdition.artworkId,
+              ownerPartyId: shopEdition.ownerPartyId,
+            })
+            .from(shopEdition)
+            .where(and(eq(shopEdition.id, hold.editionId), eq(shopEdition.listingStatus, "held")))
+            .limit(1);
+          if (edition) {
+            const listingStatus = await resolveListingStatusAfterReservationRelease(tx, {
+              artworkId: edition.artworkId,
+              ownerPartyId: edition.ownerPartyId,
+            });
+            await tx
+              .update(shopEdition)
+              .set({ listingStatus })
+              .where(
+                and(eq(shopEdition.id, hold.editionId), eq(shopEdition.listingStatus, "held")),
+              );
+          }
         });
       }
     },
