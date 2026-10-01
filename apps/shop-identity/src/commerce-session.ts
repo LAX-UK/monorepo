@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import type { ShopIdentityTokenService } from "./application/shop-identity-token.service.js";
+import { logShopIdentityAuth } from "./auth-telemetry.js";
 import { clearShopAuthCookies } from "./clear-shop-auth-cookies.js";
 import { ShopIdentityReauthRequiredError } from "./errors/shop-identity-reauth.error.js";
 import {
@@ -69,6 +70,7 @@ export async function resolveAuthenticatedCommerceContext(
     };
   } catch (error) {
     if (error instanceof ShopIdentityReauthRequiredError) {
+      logShopIdentityAuth("commerce_reauth_required", { reason: error.reason });
       clearShopAuthCookies(c);
       await deps.tokenService.clear(session.id);
       throw error;

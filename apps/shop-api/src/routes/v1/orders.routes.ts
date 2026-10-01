@@ -142,6 +142,39 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
   );
 
   app.post(
+    "/v1/orders/:orderId/resume-checkout",
+    {
+      schema: {
+        tags: ["commerce"],
+        params: Type.Object({ orderId: Type.String({ format: "uuid" }) }),
+        body: Type.Object({
+          successUrl: Type.String({ minLength: 1 }),
+          cancelUrl: Type.String({ minLength: 1 }),
+        }),
+        response: {
+          200: CheckoutSessionSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.write");
+      const subject = requireShopSubject(request);
+      const { orderId } = request.params as { orderId: string };
+      const body = request.body as { successUrl: string; cancelUrl: string };
+      const session = await deps.resumeCheckoutOrder({
+        subject,
+        orderId,
+        successUrl: body.successUrl,
+        cancelUrl: body.cancelUrl,
+      });
+      return presentCheckoutSession(session);
+    },
+  );
+
+  app.post(
     "/v1/orders/:orderId/cancel",
     {
       schema: {

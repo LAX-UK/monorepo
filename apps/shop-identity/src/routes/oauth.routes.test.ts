@@ -275,11 +275,13 @@ describe("OAuth routes", () => {
     });
     const response = await app.request("/auth/callback?error=login_required&state=state", {
       headers: {
-        cookie: `${SESSION_COOKIE_NAME}=abcdefghijklmnopqrstuvwxyz0123456789ABCDEfg`,
+        cookie: `${SESSION_COOKIE_NAME}=abcdefghijklmnopqrstuvwxyz0123456789ABCDEfg; shop_return_to=%2Fcheckout`,
       },
     });
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("http://localhost:3020/login");
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3020/login?returnTo=%2Fcheckout",
+    );
     expect(tokenService.clear).toHaveBeenCalled();
     expect(response.headers.get("set-cookie")).toContain(`${SESSION_COOKIE_NAME}=; Max-Age=0`);
   });

@@ -4,6 +4,7 @@ import { startCheckout } from "@/app/actions/checkout.actions";
 import { CheckoutBasketSummary } from "@/components/checkout/checkout-basket-summary";
 import { ShopStatusState } from "@/components/shop-status-state";
 import type { ShopDeliveryAddressInput, ShopFulfilmentOption } from "@/lib/shop-fulfilment";
+import { isValidUkPostcode } from "@/lib/uk-postcode";
 import { SITE_SUPPORT_EMAIL } from "@auction/branding";
 import type { BasketView } from "@auction/shop-contracts";
 import { Input, Label, RadioCardGroup } from "@auction/ui";
@@ -24,9 +25,10 @@ const FULFILMENT_OPTIONS: Array<{ id: ShopFulfilmentOption; label: string; descr
 
 type Props = {
   basket: BasketView;
+  customerEmail?: string;
 };
 
-export function CheckoutForm({ basket }: Props) {
+export function CheckoutForm({ basket, customerEmail }: Props) {
   const [fulfilment, setFulfilment] = useState<ShopFulfilmentOption>("uk_insured_delivery");
   const [delivery, setDelivery] = useState<ShopDeliveryAddressInput>({
     line1: "",
@@ -36,7 +38,9 @@ export function CheckoutForm({ basket }: Props) {
     country: "GB",
   });
   const [pending, startTransition] = useTransition();
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fieldsDisabled = pending || redirecting;
 
   return (
     <div className="shop-checkout__layout">
@@ -46,6 +50,10 @@ export function CheckoutForm({ basket }: Props) {
         onSubmit={(event) => {
           event.preventDefault();
           setError(null);
+          if (fulfilment === "uk_insured_delivery" && !isValidUkPostcode(delivery.postcode)) {
+            setError("Enter a valid UK postcode (for example SW1A 1AA).");
+            return;
+          }
           startTransition(async () => {
             const deliveryAddress =
               fulfilment === "uk_insured_delivery"
@@ -63,6 +71,7 @@ export function CheckoutForm({ basket }: Props) {
               ...(deliveryAddress ? { deliveryAddress } : {}),
             });
             if (result.kind === "enquiry") {
+              setRedirecting(true);
               window.location.href = `mailto:${SITE_SUPPORT_EMAIL}?subject=${encodeURIComponent("International delivery quotation")}`;
               return;
             }
@@ -70,10 +79,16 @@ export function CheckoutForm({ basket }: Props) {
               setError(result.message);
               return;
             }
+            setRedirecting(true);
             window.location.href = result.checkoutUrl;
           });
         }}
       >
+        {customerEmail ? (
+          <p className="shop-checkout__paying-as">
+            Paying as <strong>{customerEmail}</strong>
+          </p>
+        ) : null}
         <div className="shop-checkout__fieldset">
           <RadioCardGroup
             legend="Fulfilment"
@@ -82,6 +97,7 @@ export function CheckoutForm({ basket }: Props) {
             options={FULFILMENT_OPTIONS.map((option) => ({
               value: option.id,
               label: option.label,
+              disabled: fieldsDisabled,
               ...(option.description ? { description: option.description } : {}),
             }))}
           />
@@ -95,6 +111,7 @@ export function CheckoutForm({ basket }: Props) {
                 <Input
                   id="checkout-line1"
                   required
+                  disabled={fieldsDisabled}
                   value={delivery.line1}
                   onChange={(event) => setDelivery({ ...delivery, line1: event.target.value })}
                   autoComplete="address-line1"
@@ -104,6 +121,7 @@ export function CheckoutForm({ basket }: Props) {
                 <Label htmlFor="checkout-line2">Address line 2 (optional)</Label>
                 <Input
                   id="checkout-line2"
+                  disabled={fieldsDisabled}
                   value={delivery.line2 ?? ""}
                   onChange={(event) => setDelivery({ ...delivery, line2: event.target.value })}
                   autoComplete="address-line2"
@@ -114,6 +132,7 @@ export function CheckoutForm({ basket }: Props) {
                 <Input
                   id="checkout-city"
                   required
+                  disabled={fieldsDisabled}
                   value={delivery.city}
                   onChange={(event) => setDelivery({ ...delivery, city: event.target.value })}
                   autoComplete="address-level2"
@@ -124,6 +143,7 @@ export function CheckoutForm({ basket }: Props) {
                 <Input
                   id="checkout-postcode"
                   required
+                  disabled={fieldsDisabled}
                   value={delivery.postcode}
                   onChange={(event) => setDelivery({ ...delivery, postcode: event.target.value })}
                   autoComplete="postal-code"
@@ -147,8 +167,16 @@ export function CheckoutForm({ basket }: Props) {
             announcement="assertive"
           />
         ) : null}
-        <button type="submit" className="shop-detail__cta shop-focus-ring" disabled={pending}>
-          {pending ? "Starting payment…" : "Continue to payment"}
+        <button
+          type="submit"
+          className="shop-detail__cta shop-focus-ring"
+          disabled={fieldsDisabled}
+        >
+          {redirecting
+            ? "Redirecting to secure payment…"
+            : pending
+              ? "Starting payment…"
+              : "Continue to payment"}
         </button>
       </form>
     </div>

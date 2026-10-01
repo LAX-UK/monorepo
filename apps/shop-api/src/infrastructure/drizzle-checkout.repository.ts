@@ -17,6 +17,7 @@ import type {
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation, pgUniqueViolationConstraint } from "../lib/pg-errors.js";
 import { cancelShopCheckoutSession } from "./drizzle-payment-event.processor.js";
+import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
 import {
   assertBasketStock,
   assertStorefrontRedirectUrl,
@@ -24,6 +25,7 @@ import {
   repriceBasketLinesIfNeeded,
 } from "./shop-basket.persistence.js";
 import { reserveEditionsForCheckoutOrder } from "./shop-checkout-reservation.js";
+import { loadCheckoutStripePresentation } from "./shop-checkout-stripe-presentation.js";
 import { resolveOrCreateStripeCheckoutSession } from "./shop-checkout-stripe-session.js";
 
 const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000;
@@ -227,6 +229,11 @@ export function createDrizzleCheckoutRepository(
         .where(eq(shopOrder.id, pending.orderId))
         .limit(1);
 
+      const [stripeLines, customerEmail] = await Promise.all([
+        loadCheckoutStripePresentation(db, pending.orderId),
+        resolveShopUserEmail(db, input.subject),
+      ]);
+
       return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
         orderId: pending.orderId,
         totalPence: pending.totalPence,
@@ -236,8 +243,57 @@ export function createDrizzleCheckoutRepository(
         needsStripeSession: pending.needsStripeSession,
         existingSessionId: orderRow?.stripeCheckoutSessionId ?? null,
         existingCheckoutExpiresAt: orderRow?.checkoutExpiresAt ?? null,
+        lines: stripeLines,
+        fulfilmentSurchargePence: orderRow?.fulfilmentSurchargePence ?? fulfilmentSurcharge,
+        customerEmail,
       });
     },
+    async resumeCheckoutOrder(input) {
+      const [order] = await db
+        .select()
+        .from(shopOrder)
+        .where(eq(shopOrder.id, input.orderId))
+        .limit(1);
+      if (!order) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Order not found", 404);
+      }
+      if (order.identitySubjectId !== input.subject) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Order ownership mismatch", 403);
+      }
+      if (order.status !== "pending_payment") {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.CONFLICT,
+          "Order is no longer checkoutable",
+          409,
+        );
+      }
+      if (order.checkoutExpiresAt && order.checkoutExpiresAt < new Date()) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Checkout session expired", 409);
+      }
+      assertStorefrontRedirectUrl(input.successUrl, options.storefrontUrl);
+      assertStorefrontRedirectUrl(input.cancelUrl, options.storefrontUrl);
+
+      const [stripeLines, customerEmail] = await Promise.all([
+        loadCheckoutStripePresentation(db, order.id),
+        resolveShopUserEmail(db, input.subject),
+      ]);
+
+      return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
+        orderId: order.id,
+        totalPence: order.totalPence,
+        successUrl: input.successUrl,
+        cancelUrl: input.cancelUrl,
+        checkoutExpiresAt:
+          order.checkoutExpiresAt ?? new Date(Date.now() + CHECKOUT_SESSION_TTL_MS),
+        needsStripeSession: !order.stripeCheckoutSessionId,
+        existingSessionId: order.stripeCheckoutSessionId,
+        existingCheckoutExpiresAt: order.checkoutExpiresAt,
+        lines: stripeLines,
+        fulfilmentSurchargePence: order.fulfilmentSurchargePence,
+        customerEmail,
+      });
+    },
+
     async cancelCheckoutOrder(input) {
       const locked = await db
         .select({ id: shopOrder.id, identitySubjectId: shopOrder.identitySubjectId })

@@ -1,0 +1,58 @@
+"use server";
+
+import { commerceErrorMessage } from "@/lib/commerce-error-message";
+import { fetchShopCommerceCsrfForMutation } from "@/lib/shop-commerce-mutation.server";
+import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
+import { ShopContractParseError, parseCheckoutSession } from "@auction/shop-contracts";
+import { headers } from "next/headers";
+
+export async function resumeCheckoutPayment(
+  orderId: string,
+): Promise<{ kind: "redirect"; checkoutUrl: string } | { kind: "error"; message: string }> {
+  const csrf = await fetchShopCommerceCsrfForMutation();
+  if (!csrf.ok) {
+    return {
+      kind: "error",
+      message: commerceErrorMessage({ error: "csrf_failed" }, "Could not resume checkout."),
+    };
+  }
+  const headerStore = await headers();
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3020";
+  const proto = headerStore.get("x-forwarded-proto") ?? "http";
+  const origin = `${proto}://${host}`;
+  const response = await shopCommerceRequest(
+    `/commerce/orders/${encodeURIComponent(orderId)}/resume-checkout`,
+    {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        successUrl: `${origin}/checkout/confirmation?orderId={ORDER_ID}`,
+        cancelUrl: `${origin}/basket?cancelled=1&orderId={ORDER_ID}`,
+      }),
+    },
+    { applyCookies: true, csrfToken: csrf.token },
+  );
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    return {
+      kind: "error",
+      message: commerceErrorMessage(
+        body,
+        "We could not reopen your payment session. Try again from your basket.",
+      ),
+    };
+  }
+  try {
+    const session = parseCheckoutSession(await response.json());
+    return { kind: "redirect", checkoutUrl: session.checkoutUrl };
+  } catch (error) {
+    const message =
+      error instanceof ShopContractParseError
+        ? "Checkout returned an unexpected response. Try again shortly."
+        : "We could not reopen your payment session.";
+    return { kind: "error", message };
+  }
+}

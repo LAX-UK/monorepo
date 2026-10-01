@@ -4,6 +4,7 @@ import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { eq } from "drizzle-orm";
 import type {
   CheckoutOrderResult,
+  HostedCheckoutLineItem,
   PaymentCheckoutGateway,
 } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
@@ -20,6 +21,9 @@ export async function resolveOrCreateStripeCheckoutSession(
     needsStripeSession: boolean;
     existingSessionId: string | null;
     existingCheckoutExpiresAt: Date | null;
+    lines: HostedCheckoutLineItem[];
+    fulfilmentSurchargePence: number;
+    customerEmail: string | null;
   },
 ): Promise<CheckoutOrderResult> {
   if (input.existingSessionId && input.existingCheckoutExpiresAt) {
@@ -48,6 +52,9 @@ export async function resolveOrCreateStripeCheckoutSession(
     successUrl: input.successUrl,
     cancelUrl: input.cancelUrl,
     expiresAt: input.checkoutExpiresAt,
+    lines: input.lines,
+    fulfilmentSurchargePence: input.fulfilmentSurchargePence,
+    customerEmail: input.customerEmail,
   });
 
   await db

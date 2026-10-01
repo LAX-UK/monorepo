@@ -20,6 +20,16 @@ export function registerCommerceOrdersRoutes(app: Hono, deps: CommerceRoutesDeps
     });
   });
 
+  app.post("/commerce/orders/:orderId/resume-checkout", async (c) => {
+    const orderId = c.req.param("orderId");
+    return proxyAuthenticatedCommerce(c, deps, {
+      method: "POST",
+      path: `/v1/orders/${encodeURIComponent(orderId)}/resume-checkout`,
+      scopes: "shop.write",
+      requireCsrf: true,
+    });
+  });
+
   app.post("/commerce/orders/:orderId/cancel", async (c) => {
     const orderId = c.req.param("orderId");
     return proxyAuthenticatedCommerce(c, deps, {

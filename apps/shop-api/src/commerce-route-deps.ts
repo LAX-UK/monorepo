@@ -5,6 +5,7 @@ import type { createGetOrderHandler } from "./application/handlers/commerce-hand
 import type { createListOrdersHandler } from "./application/handlers/commerce-handlers.js";
 import type { createMergeBasketsHandler } from "./application/handlers/commerce-handlers.js";
 import type { createRemoveBasketLineHandler } from "./application/handlers/commerce-handlers.js";
+import type { createResumeCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createUpsertBasketLineHandler } from "./application/handlers/commerce-handlers.js";
 import type {
   StripeCheckoutAsyncFailedDto,
@@ -18,6 +19,7 @@ export type CommerceRoutesDeps = {
   removeBasketLine: ReturnType<typeof createRemoveBasketLineHandler>;
   mergeBaskets: ReturnType<typeof createMergeBasketsHandler>;
   checkoutOrder: ReturnType<typeof createCheckoutOrderHandler>;
+  resumeCheckoutOrder: ReturnType<typeof createResumeCheckoutOrderHandler>;
   cancelCheckoutOrder: ReturnType<typeof createCancelCheckoutOrderHandler>;
   listOrders: ReturnType<typeof createListOrdersHandler>;
   getOrder: ReturnType<typeof createGetOrderHandler>;

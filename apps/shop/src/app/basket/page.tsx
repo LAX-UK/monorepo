@@ -1,6 +1,8 @@
 import { BasketLinesClient } from "@/components/basket/basket-lines.client";
 import { ShopBasketCancelNotice } from "@/components/basket/shop-basket-cancel-notice.client";
+import { ShopBasketResumePayment } from "@/components/basket/shop-basket-resume-payment.client";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
+import { ShopAuthLink } from "@/components/shop-auth-link";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
@@ -9,9 +11,10 @@ import {
   basketCheckoutBlockReasons,
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
-import { fetchShopBasket } from "@/lib/shop-commerce.server";
+import { fetchShopBasket, listShopOrders } from "@/lib/shop-commerce.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
+import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -19,7 +22,16 @@ import { Suspense } from "react";
 export const metadata = shopPrivatePageTitle("Basket");
 
 export default async function BasketPage() {
-  const basketResult = await fetchShopBasket();
+  const viewer = await loadShopViewerState();
+  const ordersPromise =
+    viewer.kind === "authenticated"
+      ? listShopOrders()
+      : Promise.resolve({ status: "empty" as const });
+  const [basketResult, ordersResult] = await Promise.all([fetchShopBasket(), ordersPromise]);
+  const pendingCheckoutOrder =
+    ordersResult.status === "ok"
+      ? (ordersResult.data.find((order) => order.status === "pending_payment") ?? null)
+      : null;
 
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--basket">
@@ -27,6 +39,7 @@ export default async function BasketPage() {
         <Suspense fallback={null}>
           <ShopBasketCancelNotice />
         </Suspense>
+        {pendingCheckoutOrder ? <ShopBasketResumePayment order={pendingCheckoutOrder} /> : null}
         {basketResult.status === "unauthorized" ? (
           <ShopStatusState
             variant="error"
@@ -82,9 +95,22 @@ export default async function BasketPage() {
             ) : null}
             <BasketLinesClient basket={basketResult.data} />
             {canProceedToCheckout(basketResult.data) ? (
-              <Link href="/checkout" className="shop-detail__cta shop-focus-ring">
-                Proceed to checkout
-              </Link>
+              viewer.kind === "authenticated" ? (
+                <Link
+                  href="/checkout"
+                  prefetch={false}
+                  className="shop-detail__cta shop-focus-ring"
+                >
+                  Proceed to checkout
+                </Link>
+              ) : (
+                <ShopAuthLink
+                  href={shopStorefrontLoginHref("/checkout")}
+                  className="shop-detail__cta shop-focus-ring"
+                >
+                  Sign in to check out
+                </ShopAuthLink>
+              )
             ) : (
               <p className="shop-detail__notice">
                 Update your basket before proceeding to checkout.

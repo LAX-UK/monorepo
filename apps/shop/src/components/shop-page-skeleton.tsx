@@ -53,14 +53,22 @@ function DetailSkeleton() {
 
 function CommerceSkeleton() {
   return (
-    <div className="shop-skeleton shop-skeleton--commerce" aria-busy="true" aria-live="polite">
-      <ShopSkeletonBar className="shop-skeleton__bar--title" />
+    <div
+      className="shop-skeleton shop-skeleton--commerce shop-checkout__layout"
+      aria-busy="true"
+      aria-live="polite"
+    >
       <div className="shop-skeleton__commerce-panel">
+        <ShopSkeletonBar className="shop-skeleton__bar--title" />
         <ShopSkeletonBar className="shop-skeleton__bar--section" />
         <ShopSkeletonBar className="shop-skeleton__bar--section" />
         <ShopSkeletonBar className="shop-skeleton__bar--section" />
       </div>
-      <ShopSkeletonBar className="shop-skeleton__bar--action" />
+      <div className="shop-skeleton__commerce-panel">
+        <ShopSkeletonBar className="shop-skeleton__bar--section" />
+        <ShopSkeletonBar className="shop-skeleton__bar--section" />
+        <ShopSkeletonBar className="shop-skeleton__bar--action" />
+      </div>
     </div>
   );
 }

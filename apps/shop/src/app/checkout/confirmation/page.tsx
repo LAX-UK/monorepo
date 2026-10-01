@@ -1,3 +1,4 @@
+import { CheckoutConfirmationPoller } from "@/components/checkout/checkout-confirmation-poller.client";
 import { ShopOrderSummary } from "@/components/commerce/shop-order-summary";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
@@ -145,6 +146,7 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
 
   return (
     <ConfirmationRouteShell title={view.heading}>
+      <CheckoutConfirmationPoller active={view.order.status === "pending_payment"} />
       {view.statusMessage ? <output className="block">{view.statusMessage}</output> : null}
       {view.order.status === "payment_failed" ? (
         <ShopStatusStateLink href="/basket" priority="primary">

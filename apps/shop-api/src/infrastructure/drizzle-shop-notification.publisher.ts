@@ -1,11 +1,11 @@
 import crypto from "node:crypto";
 import type { Database } from "@auction/db";
-import { emailOutbox, shopUserProfile } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { emailOutbox } from "@auction/db/schema";
 import type {
   ShopNotificationPublisher,
   ShopNotificationTx,
 } from "../application/ports/shop-notification.publisher.js";
+import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
 
 function asDb(tx: ShopNotificationTx): Database {
   return tx as Database;
@@ -23,19 +23,6 @@ function snapshotPurgeDate(now = new Date()): Date {
 
 function formatPence(pence: number): string {
   return `£${(pence / 100).toFixed(2)}`;
-}
-
-async function resolveShopUserEmail(
-  tx: Database,
-  identitySubjectId: string,
-): Promise<string | null> {
-  const [profile] = await tx
-    .select({ email: shopUserProfile.email })
-    .from(shopUserProfile)
-    .where(eq(shopUserProfile.identitySubjectId, identitySubjectId))
-    .limit(1);
-  const email = profile?.email?.trim();
-  return email?.includes("@") ? email : null;
 }
 
 async function insertShopEmailOutbox(

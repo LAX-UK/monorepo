@@ -7,6 +7,7 @@ import {
   createListOrdersHandler,
   createMergeBasketsHandler,
   createRemoveBasketLineHandler,
+  createResumeCheckoutOrderHandler,
   createUpsertBasketLineHandler,
 } from "./application/handlers/commerce-handlers.js";
 import type { PaymentEventProcessor } from "./application/ports/payment-event.processor.js";
@@ -49,6 +50,7 @@ export function createCommerceServices(
       removeBasketLine: createRemoveBasketLineHandler(repository),
       mergeBaskets: createMergeBasketsHandler(repository),
       checkoutOrder: createCheckoutOrderHandler(repository),
+      resumeCheckoutOrder: createResumeCheckoutOrderHandler(repository),
       cancelCheckoutOrder: createCancelCheckoutOrderHandler(repository),
       listOrders: createListOrdersHandler(repository),
       getOrder: createGetOrderHandler(repository),

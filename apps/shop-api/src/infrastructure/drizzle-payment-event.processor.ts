@@ -14,6 +14,7 @@ import type { PaymentEventProcessor } from "../application/ports/payment-event.p
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopPaymentWebhookError } from "../errors/shop-payment-webhook.error.js";
 import { findOrCreateBuyerParty } from "./shop-party.js";
+import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
 
 type CheckoutTransitionOptions = {
   notifications?: ShopNotificationPublisher;
@@ -242,6 +243,7 @@ export async function cancelShopCheckoutSession(
       .set({ status: "cancelled", updatedAt: new Date() })
       .where(eq(shopOrder.id, input.orderId));
     await releaseReservedEditionsForOrder(tx as Database, input.orderId);
+    await restoreBasketLinesFromOrder(tx as Database, order, input.orderId);
     return "processed";
   });
 }
@@ -274,6 +276,7 @@ export async function expireShopCheckoutSession(
       .set({ status: "expired", updatedAt: new Date() })
       .where(eq(shopOrder.id, input.orderId));
     await releaseReservedEditionsForOrder(tx as Database, input.orderId);
+    await restoreBasketLinesFromOrder(tx as Database, order, input.orderId);
     return "processed";
   });
 }

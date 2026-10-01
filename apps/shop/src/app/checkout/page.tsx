@@ -141,7 +141,12 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
       <ShopCommercePageShell header={shopPageWayfinding.checkout} contentClassName="shop-checkout">
-        <CheckoutForm basket={basket} />
+        <CheckoutForm
+          basket={basket}
+          {...(viewer.kind === "authenticated" && viewer.email
+            ? { customerEmail: viewer.email }
+            : {})}
+        />
         <Link href="/basket" className="shop-detail__cta shop-focus-ring">
           Back to basket
         </Link>

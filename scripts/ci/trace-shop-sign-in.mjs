@@ -7,7 +7,7 @@
  *   SHOP_TRACE_EMAIL=user1@lax.bid SHOP_TRACE_PASSWORD='…' \
  *   node scripts/ci/trace-shop-sign-in.mjs --scenario=checkout
  *
- * Scenarios: checkout | account | header | register | curl-error-loop
+ * Scenarios: checkout | account | header | register | stripe | curl-error-loop
  */
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -172,6 +172,13 @@ try {
     await page.waitForURL(/test-auth\\.lax\\.bid/, { timeout: 20000 });
     await signInAtOp(page);
     await page.waitForTimeout(12000);
+  } else if (scenario === "stripe") {
+    await page.goto(B + "/login?returnTo=%2Fcheckout");
+    await page.waitForURL(/test-auth\\.lax\\.bid/, { timeout: 20000 });
+    await signInAtOp(page);
+    await page.waitForURL(/\\/checkout/, { timeout: 30000 });
+    await page.getByRole("button", { name: /continue to payment/i }).click();
+    await page.waitForURL(/checkout\\.stripe\\.com/, { timeout: 45000 });
   }
 } catch (e) {
   console.log("ERROR", e.message?.split("\\n")[0]);
@@ -185,6 +192,10 @@ const verifyFix = process.env.SHOP_TRACE_VERIFY_FIX === "1";
 if (verifyFix && scenario === "checkout" && !String(page.url()).includes("/checkout")) {
   console.error("FAIL: expected to land on /checkout after sign-in");
   process.exit(4);
+}
+if (scenario === "stripe" && !String(page.url()).includes("checkout.stripe.com")) {
+  console.error("FAIL: expected redirect to checkout.stripe.com");
+  process.exit(5);
 }
 await browser.close();
 `;

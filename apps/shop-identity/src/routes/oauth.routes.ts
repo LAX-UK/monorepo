@@ -90,6 +90,34 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
     return c.body(null, 204);
   }
 
+  function safeReturnToFromRequest(c: Context): string | null {
+    const fromQuery = c.req.query("returnTo");
+    if (typeof fromQuery === "string" && fromQuery.startsWith("/") && !fromQuery.startsWith("//")) {
+      return fromQuery;
+    }
+    const fromCookie = getCookie(c, "shop_return_to");
+    if (
+      typeof fromCookie === "string" &&
+      fromCookie.startsWith("/") &&
+      !fromCookie.startsWith("//")
+    ) {
+      return fromCookie;
+    }
+    return null;
+  }
+
+  function redirectStorefrontInteractiveLogin(c: Context, returnTo?: string | null) {
+    const safeReturnTo = returnTo ?? safeReturnToFromRequest(c);
+    deleteCookie(c, "shop_return_to", { path: "/" });
+    if (safeReturnTo) {
+      return c.redirect(
+        shopStorefrontPath(env, `/login?returnTo=${encodeURIComponent(safeReturnTo)}`),
+        302,
+      );
+    }
+    return c.redirect(shopStorefrontPath(env, "/login"), 302);
+  }
+
   function redirectSilentProbeGuest(c: Context, clearSession: boolean) {
     deleteCookie(c, SHOP_TOKEN_UPGRADE_COOKIE_NAME, { path: "/" });
     if (clearSession) {
@@ -154,14 +182,14 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       const sessionId = readSessionId(c);
       const session = sessionId ? await sessionRepository.findActive(sessionId) : null;
       if (!session?.subject || !sessionId) {
-        return c.redirect(shopStorefrontPath(env, "/login"), 302);
+        return redirectStorefrontInteractiveLogin(c);
       }
       const attached = await sessionRepository.attachPendingOAuthToAuthenticatedSession(
         sessionId,
         oauth,
       );
       if (!attached) {
-        return c.redirect(shopStorefrontPath(env, "/login"), 302);
+        return redirectStorefrontInteractiveLogin(c);
       }
     } else {
       const sessionId = await sessionRepository.createPendingOAuth(oauth);
@@ -257,8 +285,14 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       if (session?.id) {
         await tokenService.clear(session.id);
       }
+      const returnTo = safeReturnToFromRequest(c);
       clearShopAuthCookies(c);
-      return c.redirect(shopStorefrontPath(env, "/login"), 302);
+      logShopIdentityAuth("oauth_callback", {
+        kind: "upgrade_login_required",
+        code: oauthError ?? undefined,
+        probe: probeActive,
+      });
+      return redirectStorefrontInteractiveLogin(c, returnTo);
     }
     const result = await deps.completeOAuthCallback({
       session,

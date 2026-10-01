@@ -1,12 +1,91 @@
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import Stripe from "stripe";
-import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
+import type {
+  HostedCheckoutLineItem,
+  PaymentCheckoutGateway,
+} from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 
 const SHOP_CHECKOUT_METADATA_APP = "shop";
+const GENERIC_LINE_NAME = "LAX Shop print order";
 
 function substituteOrderId(url: string, orderId: string): string {
   return url.replaceAll("{ORDER_ID}", orderId);
+}
+
+function stripeImageUrl(imageUrl: string | null | undefined): string[] | undefined {
+  if (!imageUrl?.trim()) {
+    return undefined;
+  }
+  try {
+    const parsed = new URL(imageUrl);
+    if (parsed.protocol !== "https:") {
+      return undefined;
+    }
+    return [parsed.toString()];
+  } catch {
+    return undefined;
+  }
+}
+
+function buildStripeLineItems(input: {
+  lines: HostedCheckoutLineItem[];
+  fulfilmentSurchargePence: number;
+  totalPence: number;
+}): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = input.lines.map((line) => {
+    const images = stripeImageUrl(line.imageUrl);
+    const productData: Stripe.Checkout.SessionCreateParams.LineItem.PriceData.ProductData = {
+      name: line.title,
+      description: line.description,
+    };
+    if (images) {
+      productData.images = images;
+    }
+    return {
+      quantity: line.quantity,
+      price_data: {
+        currency: "gbp",
+        unit_amount: line.unitAmountPence,
+        product_data: productData,
+      },
+    };
+  });
+
+  if (input.fulfilmentSurchargePence > 0) {
+    lineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: "gbp",
+        unit_amount: input.fulfilmentSurchargePence,
+        product_data: {
+          name: "Delivery & fulfilment",
+          description: "Insured delivery or collection handling",
+        },
+      },
+    });
+  }
+
+  const sum = lineItems.reduce((acc, item) => {
+    const unit = item.price_data?.unit_amount ?? 0;
+    const qty = item.quantity ?? 1;
+    return acc + unit * qty;
+  }, 0);
+
+  if (sum !== input.totalPence || lineItems.length === 0) {
+    return [
+      {
+        quantity: 1,
+        price_data: {
+          currency: "gbp",
+          unit_amount: input.totalPence,
+          product_data: { name: GENERIC_LINE_NAME },
+        },
+      },
+    ];
+  }
+
+  return lineItems;
 }
 
 export function createStripeShopCheckoutGateway(options: {
@@ -35,22 +114,23 @@ export function createStripeShopCheckoutGateway(options: {
       }
       const successUrl = substituteOrderId(input.successUrl, input.orderId);
       const cancelUrl = substituteOrderId(input.cancelUrl, input.orderId);
+      const lineItems = buildStripeLineItems(input);
+      const customerEmail = input.customerEmail?.trim();
       const session = await stripe.checkout.sessions.create(
         {
           mode: "payment",
           success_url: successUrl,
           cancel_url: cancelUrl,
           expires_at: Math.floor(input.expiresAt.getTime() / 1000),
-          line_items: [
-            {
-              quantity: 1,
-              price_data: {
-                currency: "gbp",
-                unit_amount: input.totalPence,
-                product_data: { name: "LAX Shop print order" },
-              },
+          locale: "en-GB",
+          ...(customerEmail?.includes("@") ? { customer_email: customerEmail } : {}),
+          line_items: lineItems,
+          custom_text: {
+            submit: {
+              message:
+                "Prints are reserved while you pay. Complete checkout within the session time limit.",
             },
-          ],
+          },
           metadata: {
             app: SHOP_CHECKOUT_METADATA_APP,
             orderId: input.orderId,
