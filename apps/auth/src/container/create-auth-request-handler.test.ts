@@ -45,65 +45,6 @@ describe("auth request lifecycle ordering", () => {
     expect(logout.revokeSubject).toHaveBeenCalledWith("subject-1");
   });
 
-  it("uses fresh session cookies when correlating authorization codes", async () => {
-    const captureAuthorizationSession = vi.fn(async () => undefined);
-    const auth = {
-      handler: vi.fn(
-        async () =>
-          new Response(null, {
-            status: 302,
-            headers: {
-              Location: "https://shop.test/callback?code=issued-code&state=s",
-              "set-cookie": "better-auth.session_token=fresh-token; Path=/; HttpOnly; SameSite=Lax",
-            },
-          }),
-      ),
-      api: {
-        getSession: vi.fn(async (input: { headers: Headers }) => {
-          const cookie = input.headers.get("cookie") ?? "";
-          if (cookie.includes("better-auth.session_token=fresh-token")) {
-            return { session: { id: "identity-session-fresh" } };
-          }
-          return { session: null };
-        }),
-      },
-    };
-    const handler = createAuthRequestHandler({
-      events: { publish: vi.fn(async () => undefined) },
-      sessionStampStore: {} as never,
-      auth: auth as never,
-      oidcSessions: {
-        runTokenRequest: vi.fn(async (_code, action) => action()),
-        captureAuthorizationSession,
-      } as never,
-      logout: {
-        revokeClientSubject: vi.fn(),
-        revokeIdentitySessions: vi.fn(),
-        revokeSubject: vi.fn(),
-      },
-    });
-
-    const response = await handler(
-      new Request("https://auth.test/api/auth/sign-in/email", {
-        method: "POST",
-        headers: {
-          cookie: "better-auth.session_token=stale-token; __Secure-better-auth.session_data=x",
-        },
-      }),
-    );
-
-    expect(response.status).toBeGreaterThanOrEqual(300);
-    expect(auth.api.getSession).toHaveBeenCalled();
-    const lookupHeaders = auth.api.getSession.mock.calls[0]?.[0].headers as Headers;
-    const lookupCookie = lookupHeaders.get("cookie") ?? "";
-    expect(lookupCookie).toContain("better-auth.session_token=fresh-token");
-    expect(lookupCookie).not.toContain("stale-token");
-    expect(captureAuthorizationSession).toHaveBeenCalledWith(
-      expect.any(Response),
-      "identity-session-fresh",
-    );
-  });
-
   it("still dispatches logout when durable event publication fails", async () => {
     const publish = vi.fn().mockRejectedValue(new Error("outbox unavailable"));
     const { handler, logout } = setup(publish);

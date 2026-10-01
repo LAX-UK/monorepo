@@ -1,4 +1,4 @@
-import { isIdentityRejected, isIdentityUnavailable } from "@auction/identity-rp";
+import { IdentityRejectedError, IdentityUnavailableError } from "@auction/identity-rp";
 
 export type TokenExchangeFailureMetadata = {
   tokenExchangeFailureClass: "rejected" | "unavailable";
@@ -6,13 +6,13 @@ export type TokenExchangeFailureMetadata = {
 };
 
 export function describeTokenExchangeFailure(error: unknown): TokenExchangeFailureMetadata {
-  if (isIdentityRejected(error)) {
+  if (error instanceof IdentityRejectedError) {
     return {
       tokenExchangeFailureClass: "rejected",
       ...(error.oauthError ? { oauthError: error.oauthError } : {}),
     };
   }
-  if (isIdentityUnavailable(error)) {
+  if (error instanceof IdentityUnavailableError) {
     return { tokenExchangeFailureClass: "unavailable" };
   }
   return { tokenExchangeFailureClass: "unavailable" };

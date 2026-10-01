@@ -7,7 +7,7 @@ import { adaptOidcClaimsResolver } from "./oidc-claim-resolver-adapter.js";
 describe("OIDC claims resolver adapter", () => {
   it("returns OAuth invalid_grant HTTP semantics for a missing or consumed correlation", async () => {
     const resolve = adaptOidcClaimsResolver(async () => {
-      throw new OidcAuthorizationCodeCorrelationError("correlation_missing");
+      throw new OidcAuthorizationCodeCorrelationError();
     });
     const app = new Hono();
     app.onError((error, c) => {
