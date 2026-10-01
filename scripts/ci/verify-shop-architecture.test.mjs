@@ -125,6 +125,11 @@ describe("Shop commerce architecture SSOT", () => {
       false,
       "Artwork details must not stream a JS-dependent loading boundary",
     );
+    assert.equal(
+      existsSync(join(root, "apps/shop/src/app/loading.tsx")),
+      false,
+      "Shop home must not use a root loading boundary that hides SSR content until JS runs",
+    );
 
     const browserGate = readFileSync(join(root, "apps/shop/e2e/home.spec.ts"), "utf8");
     assert.match(browserGate, /passes whole-page axe/);

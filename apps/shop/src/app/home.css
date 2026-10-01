@@ -83,7 +83,7 @@
   transform: translateY(0);
 }
 
-/* No-JS / smoke: entrance animation uses fill-mode both elsewhere and can leave opacity 0 when scripting is off. */
+/* Progressive enhancement: disable hero motion when scripting is unavailable. */
 @media (scripting: none) {
   .shop-home__hero-panel {
     opacity: 1;
@@ -94,7 +94,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .shop-home__hero:not(.shop-home__hero--static) .shop-home__hero-panel {
-    animation: shop-hero-panel-in 0.65s ease-out forwards;
+    animation: shop-hero-panel-in 0.65s ease-out both;
   }
 
   .shop-home__hero:not(.shop-home__hero--static) .shop-home__hero-layer--2 {
